@@ -1,5 +1,38 @@
 ## Unreleased — cleanup pass
 
+- **The README now names all eleven gating suites, and the list is gated.** An
+  earlier entry below records replacing the README's stale five-name list with
+  the discovery rule — "`flutter test` takes `*_test.dart`; no list is kept here
+  to fall out of date". That was accurate and it was the wrong repair. The rule
+  describes what the *runner* collects, which a reader can work out from the
+  directory; what they cannot work out is what the suite is *for*, and the
+  package's front door said nothing about it. The omission was also already
+  self-contradicted, since the section went on to devote a full paragraph to
+  `demo_overflow_test.dart` — a partial inventory kept for the one suite worth
+  explaining.
+
+  A list is kept because it can now be *checked*.
+  `tool/check_test_inventories.py` gained the ability to register a document
+  outside the quest completion folder (`INVENTORIES` entries carry an explicit
+  document path rather than resolving against one hard-coded root), and this
+  README is registered against `test/`. It fails on a suite that runs but is
+  unlisted, and on a name listed that no longer exists — the two ways the old
+  list rotted. Both directions were provoked before being trusted: renaming a
+  row's file reported `UNLISTED widget_test.dart`, and listing a
+  `golden_baseline_test.dart` that does not exist reported `PHANTOM`.
+
+  `tom_flutter_ui_test` is now inventoried twice, by its completion document and
+  by its README, deliberately: the two are read by different people, and both
+  are held to set equality against the same directory, so they cannot drift
+  apart. Gate `2 → 3` inventories, `72 → 83` files, 0 faults.
+- **"27 widget showcases" contradicted the README's own layout table**, which
+  says `demo_01…demo_28`. Both numbers were right and neither said so: the
+  Widget Demos tab lists `demo_01…demo_27`, while `demo_28_authorization.dart`
+  is surfaced from Authorization/Resources, which *also* repeats
+  `demo_21_resource_resolution.dart`. So 28 screens produce 29 widget tiles.
+  The README states the split and the reason for it rather than a bare count —
+  the same trap as the 59-screens/60-tiles one, and `demo_coverage_test.dart`
+  compares by runtime type precisely because of it.
 - **Two suites were in the gate that could not fail.** `debug_form_test.dart`
   and `debug_heights_test.dart` mounted a layout, `print()`ed measurements and
   contained no `expect` between them — three tests whose only cost was their

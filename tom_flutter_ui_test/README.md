@@ -15,9 +15,18 @@ of `DemoTile`s that open a single full-screen demo:
 | Tab | Source | What it shows |
 | --- | --- | --- |
 | **ACL Demos** | `lib/acl_demos/` | The Advanced Container Layout engine: rows, alignment, expand flags, spacing, min/preferred/max sizing, character-width sizing, reference & cross-row constraints, titled/bordered groups, nested containers, responsive shrink/grow, row breakpoints, and the fluent `AclBuilder` API. |
-| **Widget Demos** | `lib/widget_demos/` | 27 widget showcases grouped into Input & Actions, Layout & Structure, Display & Info, Advanced, and Scope & Architecture — the Tom wrappers over buttons, inputs, selection, toggles, sliders, cards, tables, navigation, slivers, animation, effects, plus resource resolution and scoped element providers. |
+| **Widget Demos** | `lib/widget_demos/demo_01…demo_27` | 27 of the 28 screens in `lib/widget_demos/`, grouped into Input & Actions, Layout & Structure, Display & Info, Advanced, and Scope & Architecture — the Tom wrappers over buttons, inputs, selection, toggles, sliders, cards, tables, navigation, slivers, animation, effects, plus resource resolution and scoped element providers. |
 | **Forms/Actions** | `lib/forms_demos/` | The Tom form framework: `TomForm` field types with validation, selection/boolean variants over a shared `TomSelectableSource`, `TomFormStyleScope` breakpoint overrides, and complex action/authorization gating. |
 | **Authorization/Resources** | `lib/widget_demos/demo_21…`, `demo_28…` | Resource resolution (labels/icons/tooltips by `tomId`) and widget authorization (visibility, readonly, `TomAuthorizationGroup`). |
+
+**28 widget screens, 29 widget tiles.** `lib/widget_demos/` holds
+`demo_01…demo_28`, but the Widget Demos tab lists only `demo_01…demo_27`:
+`demo_28_authorization.dart` is surfaced from Authorization/Resources instead,
+which also repeats `demo_21_resource_resolution.dart` because that screen is the
+resource half of the same tab's subject. So the file count (28) and the tab
+counts (27 + 2) are both right, and differ by the one screen that appears twice.
+`demo_coverage_test.dart` compares tiles to harness entries by runtime type, not
+by name, for exactly this reason.
 
 ## Running it
 
@@ -42,12 +51,36 @@ flutter test --concurrency=1       # default gate; serial, never parallel
 flutter test test/screenshots.dart # on-demand visual-capture harness (not a gate)
 ```
 
-`test/screenshots.dart` is a manual "rerun and diff the PNGs" tool, deliberately
-excluded from the default gate — `flutter test` discovers `*_test.dart` and
-nothing else, and neither it nor `demo_harness.dart` carries the suffix. Every
-other file under `test/` does, and together they are the automated suite; the
-suffix is the whole rule, so no inventory of names is kept here to fall out of
-date.
+Two files under `test/` deliberately lack the `_test.dart` suffix, which is how
+`flutter test` discovers suites, and so are not part of the gate:
+`screenshots.dart` is a manual "rerun and diff the PNGs" tool that asserts
+nothing, and `demo_harness.dart` is the shared demo mount both it and the
+overflow gate build on. Everything else is a gate, and this is all of it:
+
+<!-- test-inventory:begin -->
+
+| Suite | What it asserts |
+| --- | --- |
+| `demo_overflow_test.dart` | Every demo mounts in a 1280×2400 viewport without overflowing — one test per slug in `demos`. |
+| `demo_coverage_test.dart` | The harness can construct every screen the app actually offers, compared by runtime type across all four tabs. |
+| `demo_04_radio_group_test.dart` | The five radio groups in `demo_04_toggles.dart` start on their seed and move independently — wiring a missing `RadioGroup` ancestor would break silently. |
+| `demo_scaffold_test.dart` | `DemoTile.onTap` pushes a `DemoScaffold` route, and the RTL switch re-wraps the body in `Directionality` + `AclDirectionScope`. |
+| `forms_demos_logic_test.dart` | The validate → save → commit gate, the shared-source item swap, the boolean lock-step guard, and the 600 px breakpoint branching. |
+| `forms_dispose_test.dart` | Each of the five demo `State` classes releases what it owns on unmount — fields, observers, and the shared broadcast controller. |
+| `locale_settings_test.dart` | `AppLocales.find()`'s three-tier fallback, `initialize()` idempotency, the corrupt-prefs guard, and notify-before-write persistence. |
+| `resizable_box_test.dart` | 1:1 drag deltas on the right / bottom / corner handles, the 100 px minimum clamps, and first-drag intrinsic-height seeding. |
+| `widget_demos_logic_test.dart` | `DemoAuthorizationAdapter.resolveAuth`'s exact-then-parent-walk resolution, and `createPlaceholderBytes` as a pure PNG generator. |
+| `widget_test.dart` | The app builds and the tab shell renders. |
+| `debug_shrink_test.dart` | Panel 4 of `size_constraints` shrinks cleanly from 800 px down to 300 px, and the only exception on the way is the by-design overflow below the 328 px minimum floor. |
+
+<!-- test-inventory:end -->
+
+That table is checked against the directory by
+`tom_ai/core/tool/check_test_inventories.py`, which fails on a suite that runs
+but is unlisted and on a name listed here that no longer exists. It is gated
+because the untrue version of this section was worse than none: it named five
+suites as though they were all of them, and the six it left out were the whole
+of the coverage the last cleanup pass added.
 
 `demo_overflow_test.dart` mounts every demo and fails if any of them overflows
 the 1280x2400 viewport — an overflow hides a control the demo exists to show, so
@@ -73,7 +106,7 @@ the striped banner in `test/screenshots/<demo>.png`.
 | `lib/forms_demos/` | Form-framework demos. |
 | `lib/common/` | Shared `DemoTile` / `DemoScaffold`. |
 | `doc/` | `demo_catalogue.md` (navigation map of every demo) plus developer notes on widget resource parameters and discovery. |
-| `test/` | Automated widget suite (including the demo overflow gate), the shared demo mount, and the on-demand screenshot harness. |
+| `test/` | The eleven gating suites inventoried under [Tests](#tests), plus the shared demo mount and the on-demand screenshot harness, neither of which the runner picks up. |
 
 ## Dependencies
 

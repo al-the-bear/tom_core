@@ -38,9 +38,19 @@ kind, that the prose describing a kind is accurate, or that the tests inside a
 file do what the row says. Those need judgement. This needs two sets and a
 comparison, and set equality is decidable.
 
-Registering another package is one entry in ``INVENTORIES``. The population is
+Registering another document is one entry in ``INVENTORIES``. The population is
 deliberately small: a document earns an entry by claiming to be exhaustive, and
 most documents that mention a test file in passing do not.
+
+**Any document may be registered, not just a completion document.** A package
+README that tells a reader what the suite covers is making the same claim as a
+completion table and rots the same way, so it is registered the same way. That
+is not hypothetical: this package's README once named five of the eleven suites
+as though they were all of them, and the six it omitted were the whole of the
+coverage a cleanup pass had just added. The repair for that had been to name no
+files at all -- accurate, and useless to the reader, because "the suffix is the
+whole rule" is only true of the *runner*, not of what the suite is for. A gated
+list can be both specific and correct, so the README keeps one.
 """
 
 from __future__ import annotations
@@ -48,16 +58,28 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 QUEST_COMPLETION = (
     REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
 )
 
-# doc -> the test directory it claims to inventory (relative to REPO_ROOT) and
-# the table column its file names sit in.
-#
-# Only the *files* column of the table is the inventory. The other columns
+
+class Inventory(NamedTuple):
+    """A document, the test directory it claims to inventory, and where to look.
+
+    ``doc`` is an absolute path so that a document anywhere in the workspace can
+    be registered; ``tests`` is likewise absolute and reported relative to
+    ``REPO_ROOT``.
+    """
+
+    doc: Path
+    tests: Path
+    files_column: int
+
+
+# Only the *files* column of a table is the inventory. The other columns
 # routinely name a file to say something specific about it ("...including
 # validator behaviour (`form_validation_test.dart`)"), and reading those as
 # inventory entries would report a duplicate for a file that is in fact filed
@@ -66,13 +88,32 @@ QUEST_COMPLETION = (
 # The column is per-document because the two demo apps group their suites
 # differently, and neither grouping is wrong. `tom_flutter_form_test` has 61
 # suites and files them by kind, so its table is `| Kind | Files | ... |` and one
-# row names many files. `tom_flutter_ui_test` has 13 and gives each its own row,
+# row names many files. `tom_flutter_ui_test` has 11 and gives each its own row,
 # so its table is `| Suite | What it asserts |` and the names are in column 1.
-# Forcing the second into the first's shape would trade thirteen specific
+# Forcing the second into the first's shape would trade eleven specific
 # sentences for four generic ones purely to satisfy this checker.
-INVENTORIES: dict[str, tuple[str, int]] = {
-    "tom_flutter_form_test_app_changes.md": ("tom_flutter_form_test/test", 2),
-    "tom_flutter_ui_test_app_changes.md": ("tom_flutter_ui_test/test", 1),
+#
+# `tom_flutter_ui_test` is inventoried twice on purpose -- once by its completion
+# document and once by its README -- because the two are read by different people
+# for different reasons, and a reader of one is not served by the accuracy of the
+# other. Both are held to the same set equality against the same directory, so
+# they cannot drift apart either.
+INVENTORIES: dict[str, Inventory] = {
+    "completion/tom_flutter_form_test_app_changes.md": Inventory(
+        doc=QUEST_COMPLETION / "tom_flutter_form_test_app_changes.md",
+        tests=REPO_ROOT / "tom_flutter_form_test" / "test",
+        files_column=2,
+    ),
+    "completion/tom_flutter_ui_test_app_changes.md": Inventory(
+        doc=QUEST_COMPLETION / "tom_flutter_ui_test_app_changes.md",
+        tests=REPO_ROOT / "tom_flutter_ui_test" / "test",
+        files_column=1,
+    ),
+    "tom_flutter_ui_test/README.md": Inventory(
+        doc=REPO_ROOT / "tom_flutter_ui_test" / "README.md",
+        tests=REPO_ROOT / "tom_flutter_ui_test" / "test",
+        files_column=1,
+    ),
 }
 
 # The document's inventory lives between these two markers, so that test files
@@ -110,9 +151,10 @@ def main() -> int:
     faults = 0
     checked = 0
 
-    for doc_name, (test_rel, files_column) in sorted(INVENTORIES.items()):
-        doc = QUEST_COMPLETION / doc_name
-        test_dir = REPO_ROOT / test_rel
+    for doc_name, inventory in sorted(INVENTORIES.items()):
+        doc = inventory.doc
+        test_dir = inventory.tests
+        test_rel = test_dir.relative_to(REPO_ROOT)
 
         if not doc.exists():
             print(f"{doc_name}: MISSING document")
@@ -123,7 +165,7 @@ def main() -> int:
             faults += 1
             continue
 
-        listed, error = documented(doc, files_column)
+        listed, error = documented(doc, inventory.files_column)
         if error:
             print(f"{doc_name}: {error}")
             faults += 1
