@@ -2,6 +2,42 @@
 
 ### Fixed
 
+- **The refactoring guide briefed the next agent to do work that is already
+  finished (tcinc1110).** `_copilot_guidelines/refactoring_guide.md` carried
+  the **RCF2** follow-up — remove the legacy `forms/` module and migrate
+  `tom_uam_client` onto `tom_flutter_ui` — as pending, and its per-module
+  `forms/` entry said "scheduled for removal". Both halves have landed:
+  `lib/src/tomclient/forms/` is gone and `tom_uam_client` carries the
+  `tom_flutter_ui` dependency the follow-up said it lacked. The two facts check
+  each other rather than being read off a pubspec — the client analyzes clean
+  *while* the module it used to import no longer exists, which is impossible if
+  the migration were partial. A new dated RCF2 done-marker records the outcome
+  and the per-module entry states it.
+
+  The guide is a progress document, so being overtaken by events is its normal
+  condition. It was worth fixing anyway because it is the package's own
+  `_copilot_guidelines/` file — the first thing an agent reads before touching
+  this package.
+
+- **The guide's quality gate did not gate.** Steps 12 and 13 and the
+  per-module workflow told the agent to run `dart analyze`. Measured in this
+  package: with a single planted `unawaited_futures` violation, `flutter
+  analyze` exits 1 and `dart analyze` exits 0 — both print the diagnostic, but
+  only one fails. A `dart analyze` gate passes a tree with lint violations in
+  it. The live instructions now say `flutter analyze`, with the measurement
+  recorded beside them; the dated OT2 done-markers still say what OT2 ran.
+
+- **The reflection note pointed at a script this package does not have.**
+  "use the project's `reflection_generation.sh`" — nine sibling packages under
+  `tom_ai/core` carry that script; this one does not. The note now gives the
+  command that was actually run to verify it (`dart run
+  tom_reflection_generator`, ~6 min) and names the three roots `build.yaml`
+  restricts generation to, which is why the companions sit beside them rather
+  than under `lib/`. Running it today rewrites all three (~400 k lines) because
+  an upstream Flutter import dropped out and every `prefixNN` alias shifts, so
+  the note also warns against committing a regeneration as a side effect —
+  the checked-in companions are the ones the green suite was measured against.
+
 - **Two documents said the `preferences` module had been deleted; it is the
   destination the removal record redirects *to* (tcinc1109).** The status banner
   in `doc/review_findings.md` and the per-module marker in

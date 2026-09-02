@@ -74,6 +74,19 @@ Iterate in order. Each step states its **done** condition.
 > architectural rewrite requiring a `tom_flutter_ui` dependency the client does
 > not yet carry); and **RCF3** — scale example/test surface coverage for the
 > five remaining modules (low priority, same depth character as kernel's RCF1).
+>
+> ✅ **RCF2 done (2026-09-02) — `forms/` removed, `tom_uam_client` migrated.**
+> Both halves landed: `lib/src/tomclient/forms/` no longer exists, and
+> `tom_uam/tom_uam_client` carries the `tom_flutter_ui` path dependency the
+> follow-up said it did not yet have. The two facts check each other — the
+> client analyzes clean (`flutter analyze`, "No issues found!") *while* the
+> module it used to import is gone, which it could not do if the migration were
+> partial. `TomFormOld` survives only as a dartdoc contrast in
+> `tom_core_samples/advanced_authadmin_client/`, not as code. The package suite
+> is **+326 / 0** (`flutter test --concurrency=1`, 2026-09-02); the `59/59`
+> figures above are what OT2 ran on 15 July 2026 and stay as written. **RCF3**
+> was not assessed in this pass — read its status from the todo, not from
+> RCF2's closure.
 
 1. **Meta files.** ✅ **Done (OT2, 2026-07-15).** `README.md` (customized,
    ~10 KB), `CHANGELOG.md` (1.1.0), and `LICENSE` (BSD 3-Clause) all present and
@@ -84,9 +97,10 @@ Iterate in order. Each step states its **done** condition.
    describes the package accurately.*
 2. **Per-module pass — `camera/`.** ✅ **Done (OT2) — removed** (placeholder,
    see CHANGELOG 1.1.0 §Removed).
-3. **Per-module pass — `forms/`.** ✅ **Done (OT2).** Legacy module
-   (`TomFormOld`/`TomFieldOld`) — scheduled for removal + `tom_uam_client`
-   migration under **RCF2** (see RCE3 done-marker above).
+3. **Per-module pass — `forms/`.** ✅ **Done (OT2) — since removed (RCF2,
+   2026-09-02).** The legacy module (`TomFormOld`/`TomFieldOld`) is gone and its
+   only consumer `tom_uam_client` now uses `tom_flutter_ui`'s widget-based
+   `TomForm`. Nothing is pending here; see the RCF2 done-marker above.
 4. **Per-module pass — `little_things/`.** ✅ **Done (OT2).** Deepening → RCE3.
 5. **Per-module pass — `localstorage/`.** ✅ **Done (OT2) — removed** (placeholder).
 6. **Per-module pass — `observing/`.** ✅ **Done (OT2).** Deepening → RCE3.
@@ -105,12 +119,21 @@ Iterate in order. Each step states its **done** condition.
 12. **Barrel exports & dead code.** ✅ **Done (OT2, 2026-07-15).** Barrel exports
     all six modules incl. `authentication.dart`; the unused `_onChange` is gone;
     `dart analyze` clean. Verify every public symbol is exported from
-    `lib/`; remove unused private declarations. *Done when `dart analyze` is
+    `lib/`; remove unused private declarations. *Done when `flutter analyze` is
     clean.*
 13. **Whole-package QA.** ✅ **Done (OT2, 2026-07-15).** `dart analyze` clean +
-    `flutter test --concurrency=1` 59/59 green. Run `dart analyze` (zero
-    warnings) and `flutter test` (all green; never run Flutter test invocations
-    in parallel). *Done when analyzer and tests are clean.*
+    `flutter test --concurrency=1` 59/59 green; re-verified 2026-09-02 at
+    `+326 / 0`. Run `flutter analyze` (zero warnings) and
+    `flutter test --concurrency=1` (all green; never run Flutter test
+    invocations in parallel). *Done when analyzer and tests are clean.*
+
+    > **Use `flutter analyze`, not `dart analyze`.** The workspace
+    > `analysis_options.yaml` enables lints (`unawaited_futures`,
+    > `discarded_futures`) that the analyzer reports at `info` severity. Both
+    > commands *print* those, but only `flutter analyze` exits non-zero on them —
+    > measured in this package: with one planted `unawaited_futures` violation,
+    > `flutter analyze` exits 1 and `dart analyze` exits 0. A `dart analyze`
+    > gate therefore passes a tree with lint violations in it.
 14. **Final review.** ✅ **Done (OT2, 2026-07-15).** Module docs re-read;
     `doc/review_findings.md` annotated as resolved; `CHANGELOG.md` updated.
     Re-read each module doc and `api.dart`; confirm docs only
@@ -127,7 +150,8 @@ private additions allowed):
 2. Review real-world usage in `tom_uam_client`.
 3. Refactor and document per
    [`dart/coding_guidelines.md`](/_copilot_guidelines/dart/coding_guidelines.md).
-4. Quality check: no public API change; `dart analyze` clean.
+4. Quality check: no public API change; `flutter analyze` clean (see step 13 —
+   `dart analyze` exits 0 on the `info`-severity lints this workspace enables).
 5. Create module documentation in `doc/{module}.md` per
    [`documentation_guidelines.md`](/_copilot_guidelines/documentation_guidelines.md).
 6. Create **executable** examples per
@@ -148,8 +172,17 @@ private additions allowed):
 - **Flutter widget testing:** use `flutter_test` and `WidgetTester`; mock
   platform channels; test both Android and iOS behaviors where applicable.
 - **Reflection:** import and initialize reflection in examples/tests; only
-  regenerate reflection on signature changes (use the project's
-  `reflection_generation.sh`).
+  regenerate on signature changes. This package has **no**
+  `reflection_generation.sh` (nine sibling packages under `tom_ai/core` carry
+  one) — regenerate with `dart run tom_reflection_generator` from the package
+  root, which takes ~6 minutes. `build.yaml` restricts generation to three
+  roots, which is why the companions sit beside them rather than under `lib/`:
+  `test/security_test.reflection.dart`, `test/preferences_test.reflection.dart`
+  and `example/reflection_seed.reflection.dart`.
+  > Regenerating today rewrites all three (~400 k lines) because an upstream
+  > Flutter import dropped out and every `prefixNN` alias shifts. The
+  > checked-in companions are the ones the green suite was measured against, so
+  > do not commit a regeneration as a side effect of unrelated work.
 
 ---
 
