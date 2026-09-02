@@ -446,29 +446,38 @@ In order, stopping at the first that applies:
 reaches `toJson`, and only through step 1. This is the gap worth knowing about:
 
 ```dart
-// TomErrorResult implements TomJsonSerializable and has a working toJson().
-final e = TomErrorResult('E_LIMIT', message: 'too many');
+// SelfSerializingDto implements TomJsonSerializable and has a working toJson()
+// that deliberately renames the field, so the two answers cannot coincide.
+final dto = SelfSerializingDto()..status = 'up';
 
-e.toJson();
-// {code: E_LIMIT, message: too many, retryable: false, severity: error}
+dto.toJson();
+// {ok: up}
 
-tomReflectionInfo.getValues(e);
-// throws TomReflectorException(reflector.reflect.not_reflectable)
+tomReflectionInfo.getValues(dto);
+// {status: up} — the interface was not consulted
 ```
 
-`getValues` does not `is`-check `TomJsonSerializable`, so it goes on to reflect
-a class that was never annotated — it does not need to be, having a hand-written
-`toJson` — and fails there. A `TomJsonSerializable` that *is* annotated fares no
-better in substance: its `toJson` is still skipped and its fields are walked
-instead, and since a shape adapter's fields are usually `final`, the walk yields
-`{}`.
+`getValues` does not `is`-check `TomJsonSerializable`, and what that costs
+depends only on whether the class carries `@tomReflector`. Annotated, as above,
+it is field-walked: the hand-written shape is silently replaced by the raw field
+map, which is the quieter and more dangerous of the two outcomes. *Un*annotated,
+it never gets that far — `getValues` reflects a class that was never annotated
+(it does not need to be, having a hand-written `toJson`) and throws
+`reflector.reflect.not_reflectable`. A shape adapter whose fields are `final`
+walks to `{}`. In every case the declared shape is lost.
+
+The example is the fixture from `test/reflection_test.dart`, and the pair of
+tests that pin it are written to fail deliberately if the planned
+central-dispatch rework lands — so this passage cannot drift from the behaviour
+without the suite saying so.
 
 This is why the server endpoint pipeline carries a chain of its own
-(`endpoint_pipeline.dart`), testing `TomClass` and then `TomJsonSerializable`
-**before** falling through to `convertToJsonString`. That chain is load-bearing,
-not a convenience: a `TomResult` returned from an endpoint serializes correctly
-because the pipeline caught it first, while the same object handed straight to
-`tomReflectionInfo.getValues` throws.
+(`endpoint_pipeline.dart:925-933`), testing `TomClass` and then
+`TomJsonSerializable` **before** falling through to `convertToJsonString`. That
+chain is load-bearing, not a convenience: a `TomJsonSerializable` returned from
+an endpoint serializes to its declared shape because the pipeline caught it
+first, while the same object handed straight to `tomReflectionInfo.getValues`
+is field-walked or throws.
 
 ### Inbound precedence — `createInstanceFromJson` and `setValues`
 

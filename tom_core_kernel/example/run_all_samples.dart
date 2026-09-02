@@ -42,7 +42,6 @@ import 'samples/observable/00_run_all_examples.dart' as observable;
 import 'samples/preferences/00_run_all_examples.dart' as preferences;
 import 'samples/reflection/00_run_all_examples.dart' as reflection;
 import 'samples/resources/00_run_all_examples.dart' as resources;
-import 'samples/result/00_run_all_examples.dart' as result;
 import 'samples/runtime/00_run_all_examples.dart' as runtime;
 import 'samples/scheduling/00_run_all_examples.dart' as scheduling;
 import 'samples/scope_ids/00_run_all_examples.dart' as scope_ids;
@@ -149,56 +148,49 @@ Future<void> main() async {
     resources.run();
     samplesRun++;
 
-    // 13. Result samples
-    print('\n${'═' * 70}');
-    print('RESULT SAMPLES');
-    print('═' * 70);
-    result.run();
-    samplesRun++;
-
-    // 14. Runtime samples
+    // 13. Runtime samples
     print('\n${'═' * 70}');
     print('RUNTIME SAMPLES');
     print('═' * 70);
     runtime.run();
     samplesRun++;
 
-    // 15. Scheduling samples
+    // 14. Scheduling samples
     print('\n${'═' * 70}');
     print('SCHEDULING SAMPLES');
     print('═' * 70);
     await scheduling.run();
     samplesRun++;
 
-    // 16. Scope IDs samples
+    // 15. Scope IDs samples
     print('\n${'═' * 70}');
     print('SCOPE IDS SAMPLES');
     print('═' * 70);
     scope_ids.run();
     samplesRun++;
 
-    // 17. Security samples
+    // 16. Security samples
     print('\n${'═' * 70}');
     print('SECURITY SAMPLES');
     print('═' * 70);
     await security.run();
     samplesRun++;
 
-    // 18. Settings samples
+    // 17. Settings samples
     print('\n${'═' * 70}');
     print('SETTINGS SAMPLES');
     print('═' * 70);
     settings.run();
     samplesRun++;
 
-    // 19. Shutdown Cleanup samples
+    // 18. Shutdown Cleanup samples
     print('\n${'═' * 70}');
     print('SHUTDOWN CLEANUP SAMPLES');
     print('═' * 70);
     await shutdown_cleanup.run();
     samplesRun++;
 
-    // 20. Timezoned samples
+    // 19. Timezoned samples
     print('\n${'═' * 70}');
     print('TIMEZONED SAMPLES');
     print('═' * 70);

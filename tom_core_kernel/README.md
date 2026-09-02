@@ -114,7 +114,6 @@ handle declared so far so a missing binding fails at start-up.
 | `isolate_pooling` | `TomWorker`, `TomWorkerPool`, `TomExecutor`, `TomCommand` | Worker-pool execution across isolates |
 | `scheduling` | `TomScheduler`, `TomJobDefinition`, `TomSchedule` (cron / calendar / interval / once / event), `TomJobStore`, `TomLeaseLock` | Durable, leased job scheduling with retry and catch-up policies |
 | `json` | map-merge, pretty-print helpers | JSON tree merge/serialization utilities |
-| `result` | `TomResult<T>`, `TomErrorResult`, `TomFieldError`, `TomErrorSeverity` | The canonical success-or-error envelope every operation returns |
 | `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
 | `settings` | client settings/authorization | Settings management |
 | `preferences` | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `tomUserPreferencesApi` | The contract both preference stores bind to: well-known keys, wire DTOs, the value codec, and the `/preferences` API |
@@ -166,7 +165,6 @@ so anything listed below is executed on every run.
 | [`example/samples/isolate_pooling/`](example/samples/isolate_pooling/) | Worker-pool execution |
 | [`example/samples/logging/`](example/samples/logging/) | Structured / isolate / remote logging |
 | [`example/samples/resources/`](example/samples/resources/) | Text & config resource providers |
-| [`example/samples/result/`](example/samples/result/) | The success-or-error envelope, error details, and its wire form |
 | [`example/samples/preferences/`](example/samples/preferences/) | The preference codec's scalar, `DateTime` and reflected round-trips, and the `/preferences` contract |
 | [`example/samples/scheduling/`](example/samples/scheduling/) | The in-memory substrate, `@TomScheduledJob` discovery, every schedule kind against the missed-window policies, and what at-least-once asks of a job body |
 | [`example/samples/json/`](example/samples/json/) · [`example/samples/timezoned/`](example/samples/timezoned/) · [`example/samples/settings/`](example/samples/settings/) · [`example/samples/shutdown_cleanup/`](example/samples/shutdown_cleanup/) · [`example/samples/http_connection/`](example/samples/http_connection/) · [`example/samples/little_things/`](example/samples/little_things/) · [`example/samples/reflection/`](example/samples/reflection/) | The remaining utility modules |
@@ -339,8 +337,6 @@ the common dependency of the server and Flutter layers. See the
 - [`doc/scheduling/scheduling.md`](doc/scheduling/scheduling.md) — the job
   scheduler: schedule kinds, retry and missed-window policies, the job store,
   and the lease lock that keeps one owner per job across processes.
-- [`doc/result/result.md`](doc/result/result.md) — the result envelope: why an
-  application outcome is not an HTTP error, and how error codes key client copy.
 - Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
   one summary per barrel-exported module plus a cross-module type index; start at
   [`api_summary_index.md`](doc/api_reference/api_summary_index.md).

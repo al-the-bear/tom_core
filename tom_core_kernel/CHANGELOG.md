@@ -1,7 +1,7 @@
 ## 1.1.16
 
-The largest release since 1.0: four new modules (`scheduling/`, `preferences/`,
-`result/`, and the file-transfer half of `http_connection/`), the second
+The largest release since 1.0: three new modules (`scheduling/`,
+`preferences/`, and the file-transfer half of `http_connection/`), the second
 authentication pass, the deployment's own principal, and a set of deliberate
 API narrowings. Read the **Changed** section before upgrading — several public
 members became read-only or non-overridable, which is a compile break for
@@ -111,15 +111,6 @@ anyone who was writing them.
   This removes the failure mode where the class and a hand-written
   `TomJobDefinition` are joined only by a string typed twice, so a rename
   silently unpairs them.
-- **`TomResult<T>` — the canonical success-or-error envelope (csmb4, CodeSpecs
-  CE-ER).** The server contract treats only 5xx as a transport failure; every
-  application outcome, success *or* structured error, comes back in a 2xx body
-  as one envelope. `TomResult` is that envelope (explicit `success`
-  discriminator, reflection-free `TomJsonSerializable` wire form), carrying
-  either a value or a `TomErrorResult` (machine `code`, default message,
-  `TomFieldError` list, `retryable`, `TomErrorSeverity` with forward-compatible
-  `fromWire`). It lives in the kernel rather than a CodeSpecs-only package
-  because both tiers read the same discriminator.
 - **Second-factor authentication, end to end (`security/two_factor.dart`).**
   Login became a two-pass flow: pass 1 verifies the primary credential and, when
   the principal still owes a second factor, answers with a token that is a
@@ -1201,7 +1192,7 @@ anyone who was writing them.
   was proven fireable by mutating the implementation.
 - New suites for every new module: `scheduling_test.dart`,
   `scheduled_job_test.dart` (plus `test/contracts/scheduling_contract.dart`, the
-  shared store/lock contract), `result_test.dart`, `file_transfer_test.dart`,
+  shared store/lock contract), `file_transfer_test.dart`,
   `observable_enum_test.dart`, `server_principal_test.dart`.
 - Bean selection is now covered end to end: `beanlocator_selection_test.dart`
   (the four tiers), `beanlocator_ambiguous_selection_test.dart` (the new throw)
@@ -1419,7 +1410,6 @@ anyone who was writing them.
   awkward characters.
 - `example/samples/scheduling/` (memory substrate, declared jobs, the five
   schedule kinds, the at-least-once execution guarantee),
-  `example/samples/result/` (envelope, error details, wire format),
   `example/samples/preferences/` (codec, contract), and
   `example/samples/observable/08_observable_enum.dart`.
 - **Every sample now refuses to run without `--enable-asserts` (tcinc198).**
@@ -1930,7 +1920,7 @@ anyone who was writing them.
   `TomScopeException` entry with its three keys, and the `initScope` and
   `withScope` rows now state the id contract.
 - `doc/scheduling/scheduling.md` (including the execution guarantee in full),
-  `doc/result/result.md`, `doc/preferences/preferences.md`, and the matching
+  `doc/preferences/preferences.md`, and the matching
   `doc/api_reference/api_summary_*.md` entries.
 - `doc/scope_ids/scope_ids.md` no longer calls `runInScope` "a no-op wrapper"
   when the scope is already current. What is elided is the zone, not the call:

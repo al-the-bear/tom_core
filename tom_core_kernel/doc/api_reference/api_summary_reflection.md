@@ -173,9 +173,10 @@ outbound pair is `jsonEncode`/`toJson`, the inbound pair
 A plain `toJson()` method is not consulted at step 3, and neither is
 `TomJsonSerializable`. Today a class that implements `TomJsonSerializable` but
 is neither a `TomClass` nor `@tomReflector`-annotated does not fall back to its
-own `toJson()` — it fails at step 2. `TomErrorResult` is the worked case: its
-`toJson()` returns `{code: …, message: …, retryable: …, severity: …}`, while
-`tomReflectionInfo.getValues` on the same instance throws
+own `toJson()` — it fails at step 2. `SelfSerializingDto`
+(`test/reflection_test.dart`) is the worked case: its `toJson()` returns
+`{ok: …}`, while `tomReflectionInfo.getValues` on the same instance returns the
+field map `{status: …}`; strip its annotation and the same call throws
 `TomReflectorException` (`reflector.reflect.not_reflectable`). The server's
 endpoint pipeline reaches such results only because it tests `TomClass`,
 `TomJsonSerializable`, `Map` and `List` itself before falling through to

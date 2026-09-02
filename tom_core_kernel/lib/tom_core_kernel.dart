@@ -31,7 +31,6 @@ export 'src/tombase/preferences/user_preference_codec.dart';
 export 'src/tombase/preferences/user_preference_keys.dart';
 export 'src/tombase/preferences/user_preferences_contract.dart';
 export 'src/tombase/resources/tom_resource_provider.dart';
-export 'src/tombase/result/result.dart';
 export 'src/tombase/scheduling/job_definition.dart';
 export 'src/tombase/scheduling/job_store.dart';
 export 'src/tombase/scheduling/lease_lock.dart';

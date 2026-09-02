@@ -208,15 +208,6 @@ declarations are omitted.
 | `TomTextResourceProvider` | class | Provides localized text over a JSON tree with key fallback; `appResourcesRevision` announces bundle changes. |
 | `TomConfigResourceProvider` | class | Provides config values over a JSON tree. |
 
-### Result (`lib/src/tombase/result/`)
-
-| Type | Kind | Description |
-| ---- | ---- | ----------- |
-| `TomResult<T>` | class | The success-or-error envelope, with an explicit `success` wire discriminator. |
-| `TomErrorResult` | class | A structured application error: machine code, optional message, field details, retryable flag, severity. |
-| `TomFieldError` | class | A field-level error detail (field path + code). |
-| `TomErrorSeverity` | enum | `info`, `warning`, `error`, `fatal` — a presentation hint, parsed forward-compatibly. |
-
 ### Scheduling (`lib/src/tombase/scheduling/`)
 
 | Type | Kind | Description |
