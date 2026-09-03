@@ -34,10 +34,8 @@ enum ScheduleMode {
 
   final String value;
 
-  static ScheduleMode fromValue(String? value) => ScheduleMode.values.firstWhere(
-        (m) => m.value == value,
-        orElse: () => ScheduleMode.interval,
-      );
+  static ScheduleMode fromValue(String? value) => ScheduleMode.values
+      .firstWhere((m) => m.value == value, orElse: () => ScheduleMode.interval);
 }
 
 /// A single scheduled slot. A bare [time] repeats daily; adding a [date]
@@ -52,14 +50,14 @@ final class ScheduledTime {
   final String? date;
 
   factory ScheduledTime.fromYaml(Map<String, dynamic> yaml) => ScheduledTime(
-        time: yaml['time'] as String? ?? '00:00',
-        date: yaml['date'] as String?,
-      );
+    time: yaml['time'] as String? ?? '00:00',
+    date: yaml['date'] as String?,
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'time': time,
-        if (date != null) 'date': date,
-      };
+    'time': time,
+    if (date != null) 'date': date,
+  };
 }
 
 /// A timed / repeating prompt entry.
@@ -113,43 +111,41 @@ final class TimedRequest {
   /// entry. Requiring the parameter is about the callers this package can see
   /// at compile time; coercing the key is about the ones it cannot.
   factory TimedRequest.fromYaml(Map<String, dynamic> yaml) => TimedRequest(
-        id: yaml['id'] as String,
-        enabled: yaml['enabled'] as bool? ?? true,
-        template: yaml['template'] as String? ?? '(None)',
-        answerWrapper: yaml['answerWrapper'] as bool?,
-        originalText: yaml['originalText'] as String? ?? '',
-        scheduleMode: ScheduleMode.fromValue(yaml['scheduleMode'] as String?),
-        intervalMinutes: yaml['intervalMinutes'] as int?,
-        scheduledTimes: decodeAgentYamlEntries(
-          yaml['scheduledTimes'],
-          ScheduledTime.fromYaml,
-        ),
-        reminderEnabled: yaml['reminderEnabled'] as bool?,
-        reminderTemplateId: yaml['reminderTemplateId'] as String?,
-        reminderTimeoutMinutes: yaml['reminderTimeoutMinutes'] as int?,
-        reminderRepeat: yaml['reminderRepeat'] as bool?,
-        lastSentAt: yaml['lastSentAt'] as String?,
-        status: TimedRequestStatus.fromValue(yaml['status'] as String?),
-      );
+    id: yaml['id'] as String,
+    enabled: yaml['enabled'] as bool? ?? true,
+    template: yaml['template'] as String? ?? '(None)',
+    answerWrapper: yaml['answerWrapper'] as bool?,
+    originalText: yaml['originalText'] as String? ?? '',
+    scheduleMode: ScheduleMode.fromValue(yaml['scheduleMode'] as String?),
+    intervalMinutes: yaml['intervalMinutes'] as int?,
+    scheduledTimes: decodeAgentYamlEntries(
+      yaml['scheduledTimes'],
+      ScheduledTime.fromYaml,
+    ),
+    reminderEnabled: yaml['reminderEnabled'] as bool?,
+    reminderTemplateId: yaml['reminderTemplateId'] as String?,
+    reminderTimeoutMinutes: yaml['reminderTimeoutMinutes'] as int?,
+    reminderRepeat: yaml['reminderRepeat'] as bool?,
+    lastSentAt: yaml['lastSentAt'] as String?,
+    status: TimedRequestStatus.fromValue(yaml['status'] as String?),
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'enabled': enabled,
-        'template': template,
-        if (answerWrapper != null) 'answerWrapper': answerWrapper,
-        'originalText': originalText,
-        'scheduleMode': scheduleMode.value,
-        if (intervalMinutes != null) 'intervalMinutes': intervalMinutes,
-        if (scheduledTimes != null)
-          'scheduledTimes':
-              scheduledTimes!.map((t) => t.toYaml()).toList(),
-        if (reminderEnabled != null) 'reminderEnabled': reminderEnabled,
-        if (reminderTemplateId != null)
-          'reminderTemplateId': reminderTemplateId,
-        if (reminderTimeoutMinutes != null)
-          'reminderTimeoutMinutes': reminderTimeoutMinutes,
-        if (reminderRepeat != null) 'reminderRepeat': reminderRepeat,
-        if (lastSentAt != null) 'lastSentAt': lastSentAt,
-        'status': status.value,
-      };
+    'id': id,
+    'enabled': enabled,
+    'template': template,
+    if (answerWrapper != null) 'answerWrapper': answerWrapper,
+    'originalText': originalText,
+    'scheduleMode': scheduleMode.value,
+    if (intervalMinutes != null) 'intervalMinutes': intervalMinutes,
+    if (scheduledTimes != null)
+      'scheduledTimes': scheduledTimes!.map((t) => t.toYaml()).toList(),
+    if (reminderEnabled != null) 'reminderEnabled': reminderEnabled,
+    if (reminderTemplateId != null) 'reminderTemplateId': reminderTemplateId,
+    if (reminderTimeoutMinutes != null)
+      'reminderTimeoutMinutes': reminderTimeoutMinutes,
+    if (reminderRepeat != null) 'reminderRepeat': reminderRepeat,
+    if (lastSentAt != null) 'lastSentAt': lastSentAt,
+    'status': status.value,
+  };
 }

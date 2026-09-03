@@ -58,11 +58,8 @@ final class TtlCache<K, V> {
   /// Builds a cache with entry lifetime [ttl] and optional [maxEntries]
   /// ceiling. [ttl] must be strictly positive; [maxEntries], when given,
   /// must be `>= 1`. [clock] defaults to [systemClock].
-  TtlCache({
-    required this.ttl,
-    this.maxEntries,
-    DateTime Function()? clock,
-  }) : clock = clock ?? systemClock {
+  TtlCache({required this.ttl, this.maxEntries, DateTime Function()? clock})
+    : clock = clock ?? systemClock {
     if (ttl <= Duration.zero) {
       throw ArgumentError.value(ttl, 'ttl', 'must be strictly positive');
     }

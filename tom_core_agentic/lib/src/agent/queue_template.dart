@@ -37,8 +37,8 @@ final class QueueTemplate {
   }
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'name': name,
-        'prompts': List<String>.from(prompts),
-      };
+    'id': id,
+    'name': name,
+    'prompts': List<String>.from(prompts),
+  };
 }

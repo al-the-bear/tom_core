@@ -11,7 +11,8 @@ import 'package:test/test.dart';
 
 void main() {
   group('Deadline', () {
-    DateTime t(int ms) => DateTime.utc(2026, 1, 1).add(Duration(milliseconds: ms));
+    DateTime t(int ms) =>
+        DateTime.utc(2026, 1, 1).add(Duration(milliseconds: ms));
 
     test('startingNow sets expiry to now + budget', () {
       var nowMs = 0;

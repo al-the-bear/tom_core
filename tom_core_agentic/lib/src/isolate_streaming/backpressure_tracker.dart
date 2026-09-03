@@ -52,7 +52,8 @@ final class BackpressureTracker {
   final List<Completer<void>> _waiters = <Completer<void>>[];
   bool _closed = false;
 
-  BackpressureTracker({required int initialCredits}) : _credits = initialCredits {
+  BackpressureTracker({required int initialCredits})
+    : _credits = initialCredits {
     if (initialCredits < 0) {
       throw ArgumentError.value(
         initialCredits,
@@ -76,9 +77,7 @@ final class BackpressureTracker {
   /// call [consume] after pushing the chunk.
   Future<void> awaitCredit() {
     if (_closed) {
-      return Future<void>.error(
-        StateError('BackpressureTracker is closed.'),
-      );
+      return Future<void>.error(StateError('BackpressureTracker is closed.'));
     }
     if (_credits > 0) return Future<void>.value();
     final completer = Completer<void>();

@@ -21,7 +21,8 @@ final class DeadlineExceeded implements Exception {
   const DeadlineExceeded(this.expiresAt);
 
   @override
-  String toString() => 'DeadlineExceeded: wall-clock deadline $expiresAt passed';
+  String toString() =>
+      'DeadlineExceeded: wall-clock deadline $expiresAt passed';
 }
 
 /// A wall-clock expiry instant evaluated against an injectable clock.
@@ -38,7 +39,7 @@ final class Deadline {
   /// Builds a deadline that expires at [expiresAt], read against [clock]
   /// (default [systemClock]).
   Deadline.at(this.expiresAt, {DateTime Function()? clock})
-      : _clock = clock ?? systemClock;
+    : _clock = clock ?? systemClock;
 
   /// Builds a deadline expiring [budget] after *now*, read against [clock]
   /// (default [systemClock]).

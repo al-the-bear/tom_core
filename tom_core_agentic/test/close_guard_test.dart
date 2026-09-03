@@ -25,8 +25,7 @@ void main() {
       expect(r.use, returnsNormally);
     });
 
-    test('ensureOpen throws after close with the operation in the message',
-        () {
+    test('ensureOpen throws after close with the operation in the message', () {
       final r = _Resource()..close();
       expect(
         r.use,
@@ -40,15 +39,17 @@ void main() {
       );
     });
 
-    test('markClosed transitions once and reports it; close() stays idempotent',
-        () {
-      final r = _Resource();
-      expect(r.isClosed, isFalse);
-      r.close();
-      expect(r.isClosed, isTrue);
-      expect(r.released, 1);
-      r.close(); // second call short-circuits
-      expect(r.released, 1);
-    });
+    test(
+      'markClosed transitions once and reports it; close() stays idempotent',
+      () {
+        final r = _Resource();
+        expect(r.isClosed, isFalse);
+        r.close();
+        expect(r.isClosed, isTrue);
+        expect(r.released, 1);
+        r.close(); // second call short-circuits
+        expect(r.released, 1);
+      },
+    );
   });
 }

@@ -16,10 +16,7 @@ final class _SampleException implements Exception {
 void main() {
   group('formatException', () {
     test('bare form omits the parenthesised context', () {
-      expect(
-        formatException(_Marker(), 'boom'),
-        equals('_Marker: boom'),
-      );
+      expect(formatException(_Marker(), 'boom'), equals('_Marker: boom'));
     });
 
     test('context form wraps the fragment in parentheses', () {

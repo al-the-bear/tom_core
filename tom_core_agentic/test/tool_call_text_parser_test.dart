@@ -24,23 +24,30 @@ void main() {
 
       expect(calls, hasLength(1));
       expect(calls.single.name, 'web.search');
-      expect(calls.single.arguments,
-          <String, Object?>{'query': 'reliable sources for news online'});
+      expect(calls.single.arguments, <String, Object?>{
+        'query': 'reliable sources for news online',
+      });
     });
 
-    test('parses a bare call:file.search{pattern: "..."} without sentinels', () {
-      const text = 'call:file.search{pattern: "answer_with_memory_v1.dart"}';
+    test(
+      'parses a bare call:file.search{pattern: "..."} without sentinels',
+      () {
+        const text = 'call:file.search{pattern: "answer_with_memory_v1.dart"}';
 
-      final calls = parseToolCallsFromText(text);
+        final calls = parseToolCallsFromText(text);
 
-      expect(calls, hasLength(1));
-      expect(calls.single.name, 'file.search');
-      expect(calls.single.arguments,
-          <String, Object?>{'pattern': 'answer_with_memory_v1.dart'});
-    });
+        expect(calls, hasLength(1));
+        expect(calls.single.name, 'file.search');
+        expect(calls.single.arguments, <String, Object?>{
+          'pattern': 'answer_with_memory_v1.dart',
+        });
+      },
+    );
 
     test('functional call with no args yields an empty argument map', () {
-      final calls = parseToolCallsFromText('<|tool_call>call:memory.read{}<tool_call|>');
+      final calls = parseToolCallsFromText(
+        '<|tool_call>call:memory.read{}<tool_call|>',
+      );
       expect(calls, hasLength(1));
       expect(calls.single.name, 'memory.read');
       expect(calls.single.arguments, isEmpty);
@@ -50,7 +57,8 @@ void main() {
   group('parseToolCallsFromText — JSON object dialects', () {
     test('OpenAI-ish {"tool", "arguments"} object', () {
       final calls = parseToolCallsFromText(
-          '{"tool": "memory.read", "arguments": {"q": "x"}}');
+        '{"tool": "memory.read", "arguments": {"q": "x"}}',
+      );
       expect(calls, hasLength(1));
       expect(calls.single.name, 'memory.read');
       expect(calls.single.arguments, <String, Object?>{'q': 'x'});
@@ -58,30 +66,37 @@ void main() {
 
     test('{"name", "parameters"} variant', () {
       final calls = parseToolCallsFromText(
-          '{"name": "web.search", "parameters": {"query": "news"}}');
+        '{"name": "web.search", "parameters": {"query": "news"}}',
+      );
       expect(calls.single.name, 'web.search');
       expect(calls.single.arguments, <String, Object?>{'query': 'news'});
     });
 
-    test('OpenAI nested {"function": {"name", "arguments": "<json-string>"}}', () {
-      // The arguments here are a JSON *string* (as OpenAI tool_calls encode
-      // them) and must be decoded a second time.
-      final calls = parseToolCallsFromText(
-          '{"function": {"name": "file.search", "arguments": "{\\"pattern\\": \\"x\\"}"}}');
-      expect(calls.single.name, 'file.search');
-      expect(calls.single.arguments, <String, Object?>{'pattern': 'x'});
-    });
+    test(
+      'OpenAI nested {"function": {"name", "arguments": "<json-string>"}}',
+      () {
+        // The arguments here are a JSON *string* (as OpenAI tool_calls encode
+        // them) and must be decoded a second time.
+        final calls = parseToolCallsFromText(
+          '{"function": {"name": "file.search", "arguments": "{\\"pattern\\": \\"x\\"}"}}',
+        );
+        expect(calls.single.name, 'file.search');
+        expect(calls.single.arguments, <String, Object?>{'pattern': 'x'});
+      },
+    );
 
     test('markdown-fenced JSON tool call', () {
       final calls = parseToolCallsFromText(
-          '```json\n{"tool": "memory.read", "arguments": {}}\n```');
+        '```json\n{"tool": "memory.read", "arguments": {}}\n```',
+      );
       expect(calls.single.name, 'memory.read');
       expect(calls.single.arguments, isEmpty);
     });
 
     test('a JSON array of calls yields one ParsedToolCall each', () {
       final calls = parseToolCallsFromText(
-          '[{"tool": "a", "arguments": {}}, {"tool": "b", "arguments": {"n": 1}}]');
+        '[{"tool": "a", "arguments": {}}, {"tool": "b", "arguments": {"n": 1}}]',
+      );
       expect(calls.map((c) => c.name), <String>['a', 'b']);
       expect(calls[1].arguments, <String, Object?>{'n': 1});
     });
@@ -90,22 +105,25 @@ void main() {
   group('parseToolCallsFromText — Hermes/Qwen + Mistral dialects', () {
     test('<tool_call>{...}</tool_call> (Hermes/Qwen)', () {
       final calls = parseToolCallsFromText(
-          'Sure.\n<tool_call>{"name": "web.search", "arguments": {"query": "q"}}</tool_call>');
+        'Sure.\n<tool_call>{"name": "web.search", "arguments": {"query": "q"}}</tool_call>',
+      );
       expect(calls.single.name, 'web.search');
       expect(calls.single.arguments, <String, Object?>{'query': 'q'});
     });
 
     test('[TOOL_CALLS] [ {...} ] (Mistral)', () {
       final calls = parseToolCallsFromText(
-          '[TOOL_CALLS] [{"name": "memory.read", "arguments": {"id": "n1"}}]');
+        '[TOOL_CALLS] [{"name": "memory.read", "arguments": {"id": "n1"}}]',
+      );
       expect(calls.single.name, 'memory.read');
       expect(calls.single.arguments, <String, Object?>{'id': 'n1'});
     });
 
     test('multiple <tool_call> blocks are all parsed in order', () {
       final calls = parseToolCallsFromText(
-          '<tool_call>{"name":"a","arguments":{}}</tool_call>'
-          '<tool_call>{"name":"b","arguments":{}}</tool_call>');
+        '<tool_call>{"name":"a","arguments":{}}</tool_call>'
+        '<tool_call>{"name":"b","arguments":{}}</tool_call>',
+      );
       expect(calls.map((c) => c.name), <String>['a', 'b']);
     });
   });
@@ -116,8 +134,9 @@ void main() {
       // a bare object the model buried in a sentence. The whole-text decode
       // fails; the embedded-span scan recovers it.
       final calls = parseToolCallsFromText(
-          'Here is the call you asked for: '
-          '{"tool": "memory.read", "arguments": {"id": "n1"}} — done.');
+        'Here is the call you asked for: '
+        '{"tool": "memory.read", "arguments": {"id": "n1"}} — done.',
+      );
       expect(calls, hasLength(1));
       expect(calls.single.name, 'memory.read');
       expect(calls.single.arguments, <String, Object?>{'id': 'n1'});
@@ -125,46 +144,56 @@ void main() {
 
     test('a JSON array wrapped in prose is recovered', () {
       final calls = parseToolCallsFromText(
-          'Sure, running these: '
-          '[{"tool": "a", "arguments": {}}, {"tool": "b", "arguments": {"n": 1}}]'
-          ' now.');
+        'Sure, running these: '
+        '[{"tool": "a", "arguments": {}}, {"tool": "b", "arguments": {"n": 1}}]'
+        ' now.',
+      );
       expect(calls.map((c) => c.name), <String>['a', 'b']);
       expect(calls[1].arguments, <String, Object?>{'n': 1});
     });
 
     test('multiple concatenated bare objects (no array) are all parsed', () {
       final calls = parseToolCallsFromText(
-          '{"tool": "a", "arguments": {}}'
-          '{"tool": "b", "arguments": {"n": 1}}');
+        '{"tool": "a", "arguments": {}}'
+        '{"tool": "b", "arguments": {"n": 1}}',
+      );
       expect(calls.map((c) => c.name), <String>['a', 'b']);
       expect(calls[1].arguments, <String, Object?>{'n': 1});
     });
 
     test('multiple bare objects separated by prose are all parsed', () {
       final calls = parseToolCallsFromText(
-          'first {"tool": "a", "arguments": {}} then '
-          '{"tool": "b", "arguments": {}} please');
+        'first {"tool": "a", "arguments": {}} then '
+        '{"tool": "b", "arguments": {}} please',
+      );
       expect(calls.map((c) => c.name), <String>['a', 'b']);
     });
 
-    test('an embedded non-tool JSON object inside prose still yields no calls', () {
-      // Robustness must not turn ordinary data-bearing prose into a call.
-      expect(parseToolCallsFromText('The record is {"answer": 42} for you.'),
-          isEmpty);
-    });
+    test(
+      'an embedded non-tool JSON object inside prose still yields no calls',
+      () {
+        // Robustness must not turn ordinary data-bearing prose into a call.
+        expect(
+          parseToolCallsFromText('The record is {"answer": 42} for you.'),
+          isEmpty,
+        );
+      },
+    );
 
     test('knownToolNames still filters embedded calls', () {
       final filtered = parseToolCallsFromText(
-          'Do this: {"tool": "web.search", "arguments": {}} '
-          'and {"tool": "rm_rf", "arguments": {}}',
-          knownToolNames: <String>{'web.search'});
+        'Do this: {"tool": "web.search", "arguments": {}} '
+        'and {"tool": "rm_rf", "arguments": {}}',
+        knownToolNames: <String>{'web.search'},
+      );
       expect(filtered.map((c) => c.name), <String>['web.search']);
     });
 
     test('a string containing braces does not desync the span scan', () {
       // The brace inside the quoted value must not break balance tracking.
       final calls = parseToolCallsFromText(
-          'note: {"tool": "echo", "arguments": {"text": "a } b { c"}} end');
+        'note: {"tool": "echo", "arguments": {"text": "a } b { c"}} end',
+      );
       expect(calls.single.name, 'echo');
       expect(calls.single.arguments, <String, Object?>{'text': 'a } b { c'});
     });
@@ -173,7 +202,8 @@ void main() {
   group('parseToolCallsFromText — lenient argument values', () {
     test('single-quoted strings, numbers, booleans and null', () {
       final calls = parseToolCallsFromText(
-          "call:t{a: 'hi', b: 3, c: 1.5, d: true, e: null}");
+        "call:t{a: 'hi', b: 3, c: 1.5, d: true, e: null}",
+      );
       expect(calls.single.arguments, <String, Object?>{
         'a': 'hi',
         'b': 3,
@@ -185,7 +215,8 @@ void main() {
 
     test('nested objects and arrays', () {
       final calls = parseToolCallsFromText(
-          'call:t{outer: {inner: "v"}, list: [1, 2, "x"]}');
+        'call:t{outer: {inner: "v"}, list: [1, 2, "x"]}',
+      );
       expect(calls.single.arguments, <String, Object?>{
         'outer': <String, Object?>{'inner': 'v'},
         'list': <Object?>[1, 2, 'x'],
@@ -205,14 +236,19 @@ void main() {
 
     test('knownToolNames filters out calls to unknown tools', () {
       const text = 'call:web.search{query: "x"} call:rm_rf{path: "/"}';
-      final filtered =
-          parseToolCallsFromText(text, knownToolNames: <String>{'web.search'});
+      final filtered = parseToolCallsFromText(
+        text,
+        knownToolNames: <String>{'web.search'},
+      );
       expect(filtered.map((c) => c.name), <String>['web.search']);
     });
 
     test('malformed input never throws — returns empty', () {
       expect(parseToolCallsFromText('<|tool_call>call:broken{a: '), isEmpty);
-      expect(parseToolCallsFromText('{"tool": "x", "arguments": {bad'), isEmpty);
+      expect(
+        parseToolCallsFromText('{"tool": "x", "arguments": {bad'),
+        isEmpty,
+      );
     });
 
     // Security §5 / tests §56: the bare-JSON scan was quadratic on a long run
@@ -221,28 +257,36 @@ void main() {
     // (steerable by prompt injection) of a few hundred KB of a single bracket
     // char pegged the agent isolate for minutes. The work is now bounded, so a
     // large unbalanced run returns empty well within a small fixed time budget.
-    test('a large unbalanced bracket run is bounded and yields no calls (§56)',
-        () {
-      final huge = '{' * 200000; // ~200 KB of unbalanced openers
-      final sw = Stopwatch()..start();
-      final calls = parseToolCallsFromText(huge);
-      sw.stop();
-      expect(calls, isEmpty);
-      // Quadratic behaviour would take many seconds here; the bounded scan is
-      // linear. A generous 2 s ceiling fails loudly on a regression without
-      // flaking on a slow CI box.
-      expect(sw.elapsedMilliseconds, lessThan(2000),
-          reason: 'scan must stay linear on adversarial input');
-    });
+    test(
+      'a large unbalanced bracket run is bounded and yields no calls (§56)',
+      () {
+        final huge = '{' * 200000; // ~200 KB of unbalanced openers
+        final sw = Stopwatch()..start();
+        final calls = parseToolCallsFromText(huge);
+        sw.stop();
+        expect(calls, isEmpty);
+        // Quadratic behaviour would take many seconds here; the bounded scan is
+        // linear. A generous 2 s ceiling fails loudly on a regression without
+        // flaking on a slow CI box.
+        expect(
+          sw.elapsedMilliseconds,
+          lessThan(2000),
+          reason: 'scan must stay linear on adversarial input',
+        );
+      },
+    );
 
-    test('a balanced JSON call embedded after prose is still recovered (§56)',
-        () {
-      // The work bound must not blind the scanner to a real call once the
-      // (well-formed) input is comfortably under budget.
-      const text = 'here you go: {"tool": "echo", "arguments": {"x": 1}} done';
-      final calls = parseToolCallsFromText(text);
-      expect(calls.map((c) => c.name), <String>['echo']);
-    });
+    test(
+      'a balanced JSON call embedded after prose is still recovered (§56)',
+      () {
+        // The work bound must not blind the scanner to a real call once the
+        // (well-formed) input is comfortably under budget.
+        const text =
+            'here you go: {"tool": "echo", "arguments": {"x": 1}} done';
+        final calls = parseToolCallsFromText(text);
+        expect(calls.map((c) => c.name), <String>['echo']);
+      },
+    );
   });
 
   group('looksLikeToolCallAttempt', () {

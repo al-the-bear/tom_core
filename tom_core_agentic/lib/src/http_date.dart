@@ -101,7 +101,13 @@ class HttpDate {
     return DateTime.utc(year, month, day, hour, minute, second);
   }
 
-  static void _checkRange(String input, String field, int value, int lo, int hi) {
+  static void _checkRange(
+    String input,
+    String field,
+    int value,
+    int lo,
+    int hi,
+  ) {
     if (value < lo || value > hi) {
       throw FormatException('Invalid HTTP-date $field ($value): $input');
     }

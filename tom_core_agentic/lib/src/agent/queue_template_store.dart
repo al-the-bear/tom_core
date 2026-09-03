@@ -35,11 +35,11 @@ class QueueTemplateStore {
   /// missing, unreadable or malformed. Entries the file cannot supply
   /// are skipped individually — see [decodeAgentYamlList].
   List<QueueTemplate> load() => decodeAgentYamlList(
-        readAgentYamlFile(file),
-        key: 'templates',
-        identity: 'id',
-        fromYaml: QueueTemplate.fromYaml,
-      );
+    readAgentYamlFile(file),
+    key: 'templates',
+    identity: 'id',
+    fromYaml: QueueTemplate.fromYaml,
+  );
 
   /// Persists [templates], creating the parent directory if needed.
   void save(List<QueueTemplate> templates) {

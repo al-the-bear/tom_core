@@ -31,9 +31,12 @@ void main() {
       }
     });
 
-    test('bearerAuthRpcErrorCode sits in the JSON-RPC server-defined range', () {
-      expect(bearerAuthRpcErrorCode, equals(-32001));
-      expect(bearerAuthRpcErrorCode, inInclusiveRange(-32099, -32000));
-    });
+    test(
+      'bearerAuthRpcErrorCode sits in the JSON-RPC server-defined range',
+      () {
+        expect(bearerAuthRpcErrorCode, equals(-32001));
+        expect(bearerAuthRpcErrorCode, inInclusiveRange(-32099, -32000));
+      },
+    );
   });
 }

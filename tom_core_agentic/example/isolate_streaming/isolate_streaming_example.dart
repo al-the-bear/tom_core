@@ -111,11 +111,13 @@ void _cancellationWorker(SendPort toHost) {
       case 'work':
         // Not awaited: the request has to run *alongside* the message loop, or
         // the cancel envelope it is waiting for could never be delivered.
-        unawaited(_serveRequest(
-          registry,
-          IsolateCancellationToken(envelope['cancellation'] as int),
-          toHost,
-        ));
+        unawaited(
+          _serveRequest(
+            registry,
+            IsolateCancellationToken(envelope['cancellation'] as int),
+            toHost,
+          ),
+        );
     }
   });
 }
@@ -229,11 +231,14 @@ void _demoExceptionRegistry() {
   final registry = IsolateExceptionRegistry()
     ..register(
       'NotFound',
-      (message, details) => _NotFoundError(message, id: details['id'] as String?),
+      (message, details) =>
+          _NotFoundError(message, id: details['id'] as String?),
     );
 
   assert(registry.isRegistered('NotFound'));
-  final restored = registry.reconstruct('NotFound', 'missing record', {'id': 'x-7'});
+  final restored = registry.reconstruct('NotFound', 'missing record', {
+    'id': 'x-7',
+  });
   print('  reconstructed: $restored');
   assert(restored is _NotFoundError);
 

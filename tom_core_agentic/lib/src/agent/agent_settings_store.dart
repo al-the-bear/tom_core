@@ -33,11 +33,11 @@ class AgentSettingsStore {
   /// Loads the persisted settings, or the defaults when the file is missing,
   /// unreadable, malformed or shaped unlike [AgentSettings].
   AgentSettings load() => decodeAgentYamlValue(
-        readAgentYamlFile(file),
-        key: 'settings',
-        fromYaml: AgentSettings.fromYaml,
-        orElse: const AgentSettings(),
-      );
+    readAgentYamlFile(file),
+    key: 'settings',
+    fromYaml: AgentSettings.fromYaml,
+    orElse: const AgentSettings(),
+  );
 
   /// Persists [settings], creating the parent directory if needed.
   void save(AgentSettings settings) {

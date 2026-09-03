@@ -31,8 +31,10 @@ void main() {
     });
 
     test('decode rejects a non-mapping root', () {
-      expect(() => decodeAgentYaml('- just\n- a\n- list'),
-          throwsA(isA<FormatException>()));
+      expect(
+        () => decodeAgentYaml('- just\n- a\n- list'),
+        throwsA(isA<FormatException>()),
+      );
     });
 
     test('decode coerces a multi-line block scalar back verbatim', () {
@@ -49,8 +51,7 @@ void main() {
         prompt: 'Still there after {{timeoutMinutes}} minutes?',
         isDefault: true,
       );
-      final restored =
-          ReminderTemplate.fromYaml(roundTrip(template.toYaml()));
+      final restored = ReminderTemplate.fromYaml(roundTrip(template.toYaml()));
       expect(restored.toYaml(), template.toYaml());
       expect(restored.id, 'default');
       expect(restored.isDefault, isTrue);
@@ -221,11 +222,15 @@ void main() {
         'id': 'p2',
         'name': 'Bare',
       });
-      expect(restored.interruptRetryPrefix,
-          AgentProfile.defaultInterruptRetryPrefix);
+      expect(
+        restored.interruptRetryPrefix,
+        AgentProfile.defaultInterruptRetryPrefix,
+      );
       // The default is re-emitted, so a re-encode is stable.
-      expect(roundTrip(restored.toYaml())['interruptRetryPrefix'],
-          AgentProfile.defaultInterruptRetryPrefix);
+      expect(
+        roundTrip(restored.toYaml())['interruptRetryPrefix'],
+        AgentProfile.defaultInterruptRetryPrefix,
+      );
     });
   });
 
@@ -385,8 +390,9 @@ void main() {
 
     test('rejection happens before the alias pass, so a real {{name}} after '
         'an expression is never reached', () {
-      final binder =
-          EditorPlaceholderBindings(bindings: <String, String>{'x': 'y'});
+      final binder = EditorPlaceholderBindings(
+        bindings: <String, String>{'x': 'y'},
+      );
       expect(
         () => binder.resolve(r'${{ foo }} and {{x}}'),
         throwsA(isA<PlaceholderExpressionsUnsupportedError>()),

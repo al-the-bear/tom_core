@@ -28,15 +28,12 @@ final class _FakeRejected implements Exception {
 
 void main() {
   group('IsolateExceptionRegistry', () {
-    test('reconstruct rebuilds the registered type from message + details',
-        () {
+    test('reconstruct rebuilds the registered type from message + details', () {
       final registry = IsolateExceptionRegistry()
         ..register(
           '_FakeNotFound',
-          (message, details) => _FakeNotFound(
-            key: details['key']! as String,
-            message: message,
-          ),
+          (message, details) =>
+              _FakeNotFound(key: details['key']! as String, message: message),
         );
 
       final rebuilt = registry.reconstruct(
@@ -62,14 +59,12 @@ void main() {
           ),
         );
 
-      final rebuilt = registry.reconstruct(
-        '_FakeRejected',
-        'denied',
-        <String, Object?>{
-          'code': 7,
-          'reasons': <String>['a', 'b'],
-        },
-      ) as _FakeRejected;
+      final rebuilt =
+          registry.reconstruct('_FakeRejected', 'denied', <String, Object?>{
+                'code': 7,
+                'reasons': <String>['a', 'b'],
+              })
+              as _FakeRejected;
 
       expect(rebuilt.code, equals(7));
       expect(rebuilt.reasons, equals(<String>['a', 'b']));
@@ -78,29 +73,28 @@ void main() {
 
     test('reconstruct returns null for an unregistered type (fallback)', () {
       final registry = IsolateExceptionRegistry();
-      expect(
-        registry.reconstruct('StateError', 'boom'),
-        isNull,
-      );
+      expect(registry.reconstruct('StateError', 'boom'), isNull);
     });
 
     test('details defaults to empty when omitted', () {
       final registry = IsolateExceptionRegistry()
-        ..register(
-          'NoFields',
-          (message, details) {
-            expect(details, isEmpty);
-            return _FakeNotFound(key: 'x', message: message);
-          },
-        );
+        ..register('NoFields', (message, details) {
+          expect(details, isEmpty);
+          return _FakeNotFound(key: 'x', message: message);
+        });
       expect(registry.reconstruct('NoFields', 'm'), isA<_FakeNotFound>());
     });
 
     test('isRegistered / registeredTypes reflect the registered set', () {
       final registry = IsolateExceptionRegistry()
-        ..register('_FakeNotFound', (m, d) => _FakeNotFound(key: '', message: m))
-        ..register('_FakeRejected',
-            (m, d) => _FakeRejected(code: 0, reasons: const [], message: m));
+        ..register(
+          '_FakeNotFound',
+          (m, d) => _FakeNotFound(key: '', message: m),
+        )
+        ..register(
+          '_FakeRejected',
+          (m, d) => _FakeRejected(code: 0, reasons: const [], message: m),
+        );
 
       expect(registry.isRegistered('_FakeNotFound'), isTrue);
       expect(registry.isRegistered('_FakeRejected'), isTrue);
@@ -113,10 +107,14 @@ void main() {
 
     test('register overwrites a prior factory for the same tag', () {
       final registry = IsolateExceptionRegistry()
-        ..register('_FakeNotFound',
-            (m, d) => _FakeNotFound(key: 'first', message: m))
-        ..register('_FakeNotFound',
-            (m, d) => _FakeNotFound(key: 'second', message: m));
+        ..register(
+          '_FakeNotFound',
+          (m, d) => _FakeNotFound(key: 'first', message: m),
+        )
+        ..register(
+          '_FakeNotFound',
+          (m, d) => _FakeNotFound(key: 'second', message: m),
+        );
 
       final rebuilt =
           registry.reconstruct('_FakeNotFound', 'm') as _FakeNotFound;

@@ -29,26 +29,34 @@ void main() {
       reg.cancel(tok);
       expect(reg.pendingCancelCount, equals(1));
       final h = reg.register(tok);
-      expect(h.isCancelled, isTrue,
-          reason: 'register must consume the pending cancel');
+      expect(
+        h.isCancelled,
+        isTrue,
+        reason: 'register must consume the pending cancel',
+      );
       expect(reg.pendingCancelCount, equals(0));
     });
 
-    test('throwIfCancelled raises IsolateCancellationException with the token',
-        () {
-      final reg = IsolateCancellationRegistry();
-      final tok = const IsolateCancellationToken(3);
-      final h = reg.register(tok);
-      h.throwIfCancelled(); // does nothing
-      reg.cancel(tok);
-      expect(
-        h.throwIfCancelled,
-        throwsA(
-          isA<IsolateCancellationException>()
-              .having((e) => e.token.id, 'token.id', 3),
-        ),
-      );
-    });
+    test(
+      'throwIfCancelled raises IsolateCancellationException with the token',
+      () {
+        final reg = IsolateCancellationRegistry();
+        final tok = const IsolateCancellationToken(3);
+        final h = reg.register(tok);
+        h.throwIfCancelled(); // does nothing
+        reg.cancel(tok);
+        expect(
+          h.throwIfCancelled,
+          throwsA(
+            isA<IsolateCancellationException>().having(
+              (e) => e.token.id,
+              'token.id',
+              3,
+            ),
+          ),
+        );
+      },
+    );
 
     test('cancelled future completes when the request is cancelled', () async {
       final reg = IsolateCancellationRegistry();
@@ -95,8 +103,11 @@ void main() {
       h.dispose();
       expect(reg.inFlightCount, equals(0));
       reg.cancel(tok); // late, post-close cancel for a completed request
-      expect(reg.pendingCancelCount, equals(0),
-          reason: 'a post-close cancel must not accumulate in pending');
+      expect(
+        reg.pendingCancelCount,
+        equals(0),
+        reason: 'a post-close cancel must not accumulate in pending',
+      );
       // False here is a *consequence* of the narrowed registry contract,
       // not an independent intention: the registry answers only for tokens
       // it currently holds, and this one was disposed. See the pair of
@@ -117,24 +128,39 @@ void main() {
       final h = reg.register(tok);
       reg.cancel(tok);
       expect(h.isCancelled, isTrue);
-      expect(reg.isCancelled(tok), isTrue,
-          reason: 'inside the window the two sides agree');
+      expect(
+        reg.isCancelled(tok),
+        isTrue,
+        reason: 'inside the window the two sides agree',
+      );
 
       h.dispose();
-      expect(reg.isCancelled(tok), isFalse,
-          reason: 'the registry holds in-flight state only');
-      expect(h.isCancelled, isTrue,
-          reason: 'the handle keeps the answer for its own request');
-      expect(h.throwIfCancelled, throwsA(isA<IsolateCancellationException>()),
-          reason: 'so a post-dispose checkpoint still refuses to proceed');
+      expect(
+        reg.isCancelled(tok),
+        isFalse,
+        reason: 'the registry holds in-flight state only',
+      );
+      expect(
+        h.isCancelled,
+        isTrue,
+        reason: 'the handle keeps the answer for its own request',
+      );
+      expect(
+        h.throwIfCancelled,
+        throwsA(isA<IsolateCancellationException>()),
+        reason: 'so a post-dispose checkpoint still refuses to proceed',
+      );
     });
 
     test('a remembered pre-open cancel is inside the window', () {
       final reg = IsolateCancellationRegistry();
       final tok = const IsolateCancellationToken(6);
       reg.cancel(tok);
-      expect(reg.isCancelled(tok), isTrue,
-          reason: 'pending cancels count as held, so register can consume it');
+      expect(
+        reg.isCancelled(tok),
+        isTrue,
+        reason: 'pending cancels count as held, so register can consume it',
+      );
     });
 
     test('a pre-open cancel is still remembered after an earlier request closed'
@@ -154,12 +180,18 @@ void main() {
 
   group('IsolateCancellationToken / allocator', () {
     test('value equality keys off the id', () {
-      expect(const IsolateCancellationToken(7),
-          equals(const IsolateCancellationToken(7)));
-      expect(const IsolateCancellationToken(7),
-          isNot(equals(const IsolateCancellationToken(8))));
-      expect(const IsolateCancellationToken(7).hashCode,
-          equals(const IsolateCancellationToken(7).hashCode));
+      expect(
+        const IsolateCancellationToken(7),
+        equals(const IsolateCancellationToken(7)),
+      );
+      expect(
+        const IsolateCancellationToken(7),
+        isNot(equals(const IsolateCancellationToken(8))),
+      );
+      expect(
+        const IsolateCancellationToken(7).hashCode,
+        equals(const IsolateCancellationToken(7).hashCode),
+      );
     });
 
     test('allocator hands out monotonic ids', () {
@@ -191,8 +223,9 @@ void main() {
     });
 
     test('a handle does not cross — it holds a Completer', () {
-      final handle = IsolateCancellationRegistry()
-          .register(const IsolateCancellationToken(1));
+      final handle = IsolateCancellationRegistry().register(
+        const IsolateCancellationToken(1),
+      );
       expect(() => port.sendPort.send(handle), throwsArgumentError);
     });
 
@@ -212,7 +245,10 @@ void main() {
 
   group('BackpressureTracker', () {
     test('rejects negative initial credits', () {
-      expect(() => BackpressureTracker(initialCredits: -1), throwsArgumentError);
+      expect(
+        () => BackpressureTracker(initialCredits: -1),
+        throwsArgumentError,
+      );
     });
 
     test('awaitCredit returns immediately when credits > 0', () async {
@@ -256,26 +292,28 @@ void main() {
     // (the producer consumes after pushing), a single grant woke *every* parked
     // waiter, so n+1 producers would push against only n credits and consume()
     // would cascade StateErrors. grant(n) must release at most n waiters.
-    test('grant(1) wakes exactly one of three parked waiters (bug §72)',
-        () async {
-      final t = BackpressureTracker(initialCredits: 0);
-      var woken = 0;
-      final f1 = t.awaitCredit().then((_) => woken++);
-      final f2 = t.awaitCredit().then((_) => woken++);
-      final f3 = t.awaitCredit().then((_) => woken++);
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-      expect(t.waiterCount, equals(3));
-      t.grant(1);
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-      // Exactly one waiter wakes; the other two stay parked.
-      expect(woken, equals(1));
-      expect(t.waiterCount, equals(2));
-      // The leftover credit is one, claimable by the woken producer.
-      expect(t.credits, equals(1));
-      // Draining the rest so no future completes after the test ends.
-      t.grant(2);
-      await Future.wait([f1, f2, f3]);
-    });
+    test(
+      'grant(1) wakes exactly one of three parked waiters (bug §72)',
+      () async {
+        final t = BackpressureTracker(initialCredits: 0);
+        var woken = 0;
+        final f1 = t.awaitCredit().then((_) => woken++);
+        final f2 = t.awaitCredit().then((_) => woken++);
+        final f3 = t.awaitCredit().then((_) => woken++);
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        expect(t.waiterCount, equals(3));
+        t.grant(1);
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        // Exactly one waiter wakes; the other two stay parked.
+        expect(woken, equals(1));
+        expect(t.waiterCount, equals(2));
+        // The leftover credit is one, claimable by the woken producer.
+        expect(t.credits, equals(1));
+        // Draining the rest so no future completes after the test ends.
+        t.grant(2);
+        await Future.wait([f1, f2, f3]);
+      },
+    );
 
     test('consume rejects negative and over-consume', () {
       final t = BackpressureTracker(initialCredits: 1);
@@ -331,8 +369,11 @@ void main() {
     // catch and report a clean close to the host as a stream error.)
     test('a closed over-consume does not throw', () {
       final t = BackpressureTracker(initialCredits: 0)..close();
-      expect(() => t.consume(2), returnsNormally,
-          reason: 'the over-consume guard describes a live balance');
+      expect(
+        () => t.consume(2),
+        returnsNormally,
+        reason: 'the over-consume guard describes a live balance',
+      );
     });
 
     test('the unwind still arrives at the next awaitCredit', () async {
@@ -340,8 +381,11 @@ void main() {
       await t.awaitCredit();
       t.close(); // as if a close envelope landed before the chunk settled
       t.consume(); // trailing bookkeeping: silent
-      await expectLater(t.awaitCredit(), throwsStateError,
-          reason: 'the producer unwinds at its control-flow point, not here');
+      await expectLater(
+        t.awaitCredit(),
+        throwsStateError,
+        reason: 'the producer unwinds at its control-flow point, not here',
+      );
     });
   });
 

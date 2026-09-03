@@ -35,11 +35,11 @@ class TimedRequestStore {
   /// missing, unreadable or malformed. Entries the file cannot supply
   /// are skipped individually — see [decodeAgentYamlList].
   List<TimedRequest> load() => decodeAgentYamlList(
-        readAgentYamlFile(file),
-        key: 'requests',
-        identity: 'id',
-        fromYaml: TimedRequest.fromYaml,
-      );
+    readAgentYamlFile(file),
+    key: 'requests',
+    identity: 'id',
+    fromYaml: TimedRequest.fromYaml,
+  );
 
   /// Persists [requests], creating the parent directory if needed.
   void save(List<TimedRequest> requests) {

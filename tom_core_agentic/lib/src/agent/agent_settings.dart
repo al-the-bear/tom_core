@@ -55,32 +55,31 @@ final class AgentSettings {
   final ToolApprovalMode? toolApprovalMode;
 
   factory AgentSettings.fromYaml(Map<String, dynamic> yaml) => AgentSettings(
-        bridgeHost: yaml['bridgeHost'] as String? ?? defaultBridgeHost,
-        portScanStart: yaml['portScanStart'] as int? ?? bridgeScanMinPort,
-        portScanEnd: yaml['portScanEnd'] as int? ?? bridgeScanMaxPort,
-        defaultProfileId: yaml['defaultProfileId'] as String?,
-        maxTokens: yaml['maxTokens'] as int?,
-        maxRounds: yaml['maxRounds'] as int?,
-        thinkingEnabled: yaml['thinkingEnabled'] as bool?,
-        promptCachingEnabled: yaml['promptCachingEnabled'] as bool?,
-        toolApprovalMode: yaml['toolApprovalMode'] == null
-            ? null
-            : ToolApprovalMode.fromValue(yaml['toolApprovalMode'] as String?),
-      );
+    bridgeHost: yaml['bridgeHost'] as String? ?? defaultBridgeHost,
+    portScanStart: yaml['portScanStart'] as int? ?? bridgeScanMinPort,
+    portScanEnd: yaml['portScanEnd'] as int? ?? bridgeScanMaxPort,
+    defaultProfileId: yaml['defaultProfileId'] as String?,
+    maxTokens: yaml['maxTokens'] as int?,
+    maxRounds: yaml['maxRounds'] as int?,
+    thinkingEnabled: yaml['thinkingEnabled'] as bool?,
+    promptCachingEnabled: yaml['promptCachingEnabled'] as bool?,
+    toolApprovalMode: yaml['toolApprovalMode'] == null
+        ? null
+        : ToolApprovalMode.fromValue(yaml['toolApprovalMode'] as String?),
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'bridgeHost': bridgeHost,
-        'portScanStart': portScanStart,
-        'portScanEnd': portScanEnd,
-        if (defaultProfileId != null) 'defaultProfileId': defaultProfileId,
-        if (maxTokens != null) 'maxTokens': maxTokens,
-        if (maxRounds != null) 'maxRounds': maxRounds,
-        if (thinkingEnabled != null) 'thinkingEnabled': thinkingEnabled,
-        if (promptCachingEnabled != null)
-          'promptCachingEnabled': promptCachingEnabled,
-        if (toolApprovalMode != null)
-          'toolApprovalMode': toolApprovalMode!.value,
-      };
+    'bridgeHost': bridgeHost,
+    'portScanStart': portScanStart,
+    'portScanEnd': portScanEnd,
+    if (defaultProfileId != null) 'defaultProfileId': defaultProfileId,
+    if (maxTokens != null) 'maxTokens': maxTokens,
+    if (maxRounds != null) 'maxRounds': maxRounds,
+    if (thinkingEnabled != null) 'thinkingEnabled': thinkingEnabled,
+    if (promptCachingEnabled != null)
+      'promptCachingEnabled': promptCachingEnabled,
+    if (toolApprovalMode != null) 'toolApprovalMode': toolApprovalMode!.value,
+  };
 
   AgentSettings copyWith({
     String? bridgeHost,
@@ -92,18 +91,17 @@ final class AgentSettings {
     bool? thinkingEnabled,
     bool? promptCachingEnabled,
     ToolApprovalMode? toolApprovalMode,
-  }) =>
-      AgentSettings(
-        bridgeHost: bridgeHost ?? this.bridgeHost,
-        portScanStart: portScanStart ?? this.portScanStart,
-        portScanEnd: portScanEnd ?? this.portScanEnd,
-        defaultProfileId: defaultProfileId ?? this.defaultProfileId,
-        maxTokens: maxTokens ?? this.maxTokens,
-        maxRounds: maxRounds ?? this.maxRounds,
-        thinkingEnabled: thinkingEnabled ?? this.thinkingEnabled,
-        promptCachingEnabled: promptCachingEnabled ?? this.promptCachingEnabled,
-        toolApprovalMode: toolApprovalMode ?? this.toolApprovalMode,
-      );
+  }) => AgentSettings(
+    bridgeHost: bridgeHost ?? this.bridgeHost,
+    portScanStart: portScanStart ?? this.portScanStart,
+    portScanEnd: portScanEnd ?? this.portScanEnd,
+    defaultProfileId: defaultProfileId ?? this.defaultProfileId,
+    maxTokens: maxTokens ?? this.maxTokens,
+    maxRounds: maxRounds ?? this.maxRounds,
+    thinkingEnabled: thinkingEnabled ?? this.thinkingEnabled,
+    promptCachingEnabled: promptCachingEnabled ?? this.promptCachingEnabled,
+    toolApprovalMode: toolApprovalMode ?? this.toolApprovalMode,
+  );
 
   /// Whether the port-scan range is well-formed (start ≤ end, both positive).
   bool get hasValidPortRange =>

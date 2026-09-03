@@ -73,8 +73,11 @@ void main() {
       // Line-by-line diff: every line is identical except the dims line.
       final before = _fixture.split('\n');
       final after = out.split('\n');
-      expect(after.length, before.length,
-          reason: 'no lines added or removed by a scalar edit');
+      expect(
+        after.length,
+        before.length,
+        reason: 'no lines added or removed by a scalar edit',
+      );
       for (var i = 0; i < before.length; i++) {
         if (before[i].trimLeft().startsWith('dims:')) {
           expect(after[i], '    dims: 1024');
@@ -129,7 +132,10 @@ void main() {
   group('YamlConfigWriter — round-trip', () {
     test('source getter mirrors toString()', () {
       final w = YamlConfigWriter(_fixture)
-        ..set(['substrate', 'dims'], 1); // harmless top-level add under substrate
+        ..set([
+          'substrate',
+          'dims',
+        ], 1); // harmless top-level add under substrate
       expect(w.source, w.toString());
     });
 

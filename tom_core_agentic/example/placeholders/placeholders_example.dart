@@ -32,7 +32,9 @@ void _demoSimpleAndEnv() {
 
   // ${name} reads a binding; ${env:NAME} is the only way to the environment.
   print('  ${r.resolveSync(r'${name} lives under ${env:ROOT}')}');
-  assert(r.resolveSync(r'${name} lives under ${env:ROOT}') == 'Tom lives under /srv');
+  assert(
+    r.resolveSync(r'${name} lives under ${env:ROOT}') == 'Tom lives under /srv',
+  );
 
   // Reserved prefixes pass through verbatim.
   final reserved = r.resolveSync(r'${file:/etc/x} ${state:run.id}');

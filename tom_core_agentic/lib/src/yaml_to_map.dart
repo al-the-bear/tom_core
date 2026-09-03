@@ -80,8 +80,10 @@ class _NodeBudget {
   /// Charges one materialised node, throwing once [max] is exceeded.
   void charge(String path) {
     if (++_count > max) {
-      throw err('$path exceeds the maximum of $max materialised YAML nodes; '
-          'input rejected to prevent alias-expansion amplification.');
+      throw err(
+        '$path exceeds the maximum of $max materialised YAML nodes; '
+        'input rejected to prevent alias-expansion amplification.',
+      );
     }
   }
 }
@@ -100,8 +102,10 @@ Object? _toPlain(
     final out = <String, Object?>{};
     for (final key in node.keys) {
       if (key is! String) {
-        throw err('$path has a non-string key `$key` '
-            '(got ${_typeName(key)}); config maps must be string-keyed.');
+        throw err(
+          '$path has a non-string key `$key` '
+          '(got ${_typeName(key)}); config maps must be string-keyed.',
+        );
       }
       out[key] = _toPlain(node[key], '$path.$key', err, budget);
     }
@@ -121,4 +125,5 @@ Object? _toPlain(
   return node;
 }
 
-String _typeName(Object? value) => value == null ? 'Null' : '${value.runtimeType}';
+String _typeName(Object? value) =>
+    value == null ? 'Null' : '${value.runtimeType}';

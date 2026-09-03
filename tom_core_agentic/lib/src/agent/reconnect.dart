@@ -47,11 +47,7 @@ enum ReconnectResolution {
 
 /// The outcome of [ReconnectCoordinator.reconnect].
 class ReconnectResult {
-  const ReconnectResult(
-    this.resolution, {
-    this.server,
-    required this.attempts,
-  });
+  const ReconnectResult(this.resolution, {this.server, required this.attempts});
 
   /// How the reconnect resolved.
   final ReconnectResolution resolution;
@@ -116,7 +112,8 @@ class ReconnectCoordinator {
       await _delay(backoff[attempt]);
       final match = _serverOnPort(await _safeScan(), bound);
       if (match != null) {
-        final sameWorkspace = boundWorkspace == null ||
+        final sameWorkspace =
+            boundWorkspace == null ||
             boundWorkspace.isEmpty ||
             match.workspace == boundWorkspace;
         return ReconnectResult(

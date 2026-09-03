@@ -57,7 +57,8 @@ String sqlSafeIdentifier(String input, {int maxLength = 32}) {
   final out = StringBuffer();
   for (var i = 0; i < lower.length && out.length < maxLength; i++) {
     final ch = lower.codeUnitAt(i);
-    final isAlnum = (ch >= 0x30 && ch <= 0x39) || // 0-9
+    final isAlnum =
+        (ch >= 0x30 && ch <= 0x39) || // 0-9
         (ch >= 0x61 && ch <= 0x7a); // a-z
     final isUnderscore = ch == 0x5f; // _
     out.write(isAlnum || isUnderscore ? String.fromCharCode(ch) : '_');

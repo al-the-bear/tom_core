@@ -40,11 +40,11 @@ class PromptQueueStore {
   /// missing, unreadable or malformed. Entries the file cannot supply
   /// are skipped individually — see [decodeAgentYamlList].
   List<QueuedPrompt> load() => decodeAgentYamlList(
-        readAgentYamlFile(file),
-        key: 'items',
-        identity: 'id',
-        fromYaml: QueuedPrompt.fromYaml,
-      );
+    readAgentYamlFile(file),
+    key: 'items',
+    identity: 'id',
+    fromYaml: QueuedPrompt.fromYaml,
+  );
 
   /// Persists [queue], creating the parent directory if needed.
   void save(List<QueuedPrompt> queue) {

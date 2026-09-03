@@ -38,11 +38,11 @@ class AgentProfileStore {
   /// missing, unreadable or malformed. Entries the file cannot supply
   /// are skipped individually — see [decodeAgentYamlList].
   List<AgentProfile> load() => decodeAgentYamlList(
-        readAgentYamlFile(file),
-        key: 'profiles',
-        identity: 'id',
-        fromYaml: AgentProfile.fromYaml,
-      );
+    readAgentYamlFile(file),
+    key: 'profiles',
+    identity: 'id',
+    fromYaml: AgentProfile.fromYaml,
+  );
 
   /// Persists [profiles], creating the parent directory if needed.
   void save(List<AgentProfile> profiles) {

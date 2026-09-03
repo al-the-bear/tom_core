@@ -39,9 +39,11 @@ void main() {
 
     test('whenCancelled never resolves', () {
       var resolved = false;
-      unawaited(CancellationToken.none.whenCancelled.then((_) {
-        resolved = true;
-      }));
+      unawaited(
+        CancellationToken.none.whenCancelled.then((_) {
+          resolved = true;
+        }),
+      );
       expect(resolved, isFalse);
     });
   });

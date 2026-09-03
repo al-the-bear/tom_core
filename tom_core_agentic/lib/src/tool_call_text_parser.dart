@@ -66,8 +66,9 @@ List<ParsedToolCall> parseToolCallsFromText(
     return const <ParsedToolCall>[];
   }
   if (knownToolNames != null) {
-    calls =
-        calls.where((c) => knownToolNames.contains(c.name)).toList(growable: false);
+    calls = calls
+        .where((c) => knownToolNames.contains(c.name))
+        .toList(growable: false);
   }
   return calls;
 }
@@ -91,8 +92,7 @@ bool looksLikeToolCallAttempt(String text) {
 
 // --- functional family: call:NAME{ARGS} -----------------------------------
 
-final RegExp _functionalCallPattern =
-    RegExp(r'call:([A-Za-z_][\w.]*)\s*\{');
+final RegExp _functionalCallPattern = RegExp(r'call:([A-Za-z_][\w.]*)\s*\{');
 
 List<ParsedToolCall> _functionalCalls(String text) {
   final out = <ParsedToolCall>[];
@@ -145,8 +145,10 @@ int? _matchBrace(String s, int start) {
 
 // --- JSON family ----------------------------------------------------------
 
-final RegExp _toolCallTagPattern =
-    RegExp(r'<tool_call>(.*?)</tool_call>', dotAll: true);
+final RegExp _toolCallTagPattern = RegExp(
+  r'<tool_call>(.*?)</tool_call>',
+  dotAll: true,
+);
 final RegExp _mistralMarkerPattern = RegExp(r'\[TOOL_CALLS\]');
 
 List<ParsedToolCall> _jsonCalls(String text) {
@@ -286,8 +288,9 @@ ParsedToolCall? _callFromObject(Object? object) {
   }
   final name = map['tool'] ?? map['name'];
   if (name is! String || name.isEmpty) return null;
-  final argsRaw =
-      map.containsKey('arguments') ? map['arguments'] : map['parameters'];
+  final argsRaw = map.containsKey('arguments')
+      ? map['arguments']
+      : map['parameters'];
   return ParsedToolCall(name, _decodeArguments(argsRaw));
 }
 
@@ -486,8 +489,6 @@ class _LenientParser {
 
   static bool _isWhitespace(String c) =>
       c == ' ' || c == '\t' || c == '\n' || c == '\r';
-  static bool _isKeyChar(String c) =>
-      RegExp(r'[\w.\-]').hasMatch(c);
-  static bool _isNumberChar(String c) =>
-      RegExp(r'[-+0-9.eE]').hasMatch(c);
+  static bool _isKeyChar(String c) => RegExp(r'[\w.\-]').hasMatch(c);
+  static bool _isNumberChar(String c) => RegExp(r'[-+0-9.eE]').hasMatch(c);
 }

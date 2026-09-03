@@ -77,8 +77,11 @@ class AsyncShutdownCoordinator<S> {
     required List<Stream<S>> signals,
     required ProcessTerminator terminate,
   }) {
-    final coordinator =
-        AsyncShutdownCoordinator<S>._(label, onShutdown, terminate);
+    final coordinator = AsyncShutdownCoordinator<S>._(
+      label,
+      onShutdown,
+      terminate,
+    );
     for (final stream in signals) {
       coordinator._subscriptions.add(stream.listen(coordinator._onSignal));
     }
@@ -89,8 +92,10 @@ class AsyncShutdownCoordinator<S> {
   /// while the teardown is already in flight is logged and ignored.
   void _onSignal(S signal) {
     if (_triggered) {
-      tomLog.status('[$_label] $signal received while already shutting '
-          'down — ignored');
+      tomLog.status(
+        '[$_label] $signal received while already shutting '
+        'down — ignored',
+      );
       return;
     }
     _triggered = true;

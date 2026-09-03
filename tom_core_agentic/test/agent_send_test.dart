@@ -20,8 +20,7 @@ import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 class _ScriptedTransport implements AgentSdkTransport {
   _ScriptedTransport(this.script);
 
-  final List<Map<String, dynamic>> Function(Map<String, dynamic> params)
-      script;
+  final List<Map<String, dynamic>> Function(Map<String, dynamic> params) script;
 
   final _chunks = StreamController<Map<String, dynamic>>.broadcast();
   final List<Map<String, dynamic>> started = [];
@@ -36,12 +35,14 @@ class _ScriptedTransport implements AgentSdkTransport {
     final messages = script(params);
     // Emit after startQuery returns; the query's chunk subscription is already
     // attached (AgentSdkClient subscribes in onListen before calling start).
-    unawaited(Future<void>(() async {
-      for (final message in messages) {
-        _chunks.add({'streamId': streamId, 'message': message});
-      }
-      _chunks.add({'streamId': streamId, 'done': true});
-    }));
+    unawaited(
+      Future<void>(() async {
+        for (final message in messages) {
+          _chunks.add({'streamId': streamId, 'message': message});
+        }
+        _chunks.add({'streamId': streamId, 'done': true});
+      }),
+    );
   }
 
   @override
@@ -80,9 +81,11 @@ class _StallingTransport implements AgentSdkTransport {
     final streamId = params['streamId'];
     // One chunk, then silence — no `done`, so the send never completes on its
     // own; only a cancel ends it.
-    unawaited(Future<void>(() async {
-      _chunks.add({'streamId': streamId, 'message': _assistant('partial')});
-    }));
+    unawaited(
+      Future<void>(() async {
+        _chunks.add({'streamId': streamId, 'message': _assistant('partial')});
+      }),
+    );
   }
 
   @override
@@ -106,28 +109,28 @@ class _StallingTransport implements AgentSdkTransport {
 }
 
 Map<String, dynamic> _assistant(String text) => {
-      'type': 'assistant',
-      'message': {
-        'content': [
-          {'type': 'text', 'text': text},
-        ],
-      },
-    };
+  'type': 'assistant',
+  'message': {
+    'content': [
+      {'type': 'text', 'text': text},
+    ],
+  },
+};
 
 Map<String, dynamic> _success(String sessionId) => {
-      'type': 'result',
-      'subtype': 'success',
-      'is_error': false,
-      'session_id': sessionId,
-      'result': 'ok',
-    };
+  'type': 'result',
+  'subtype': 'success',
+  'is_error': false,
+  'session_id': sessionId,
+  'result': 'ok',
+};
 
 Map<String, dynamic> _errorResult(String text) => {
-      'type': 'result',
-      'subtype': 'error_during_execution',
-      'is_error': true,
-      'result': text,
-    };
+  'type': 'result',
+  'subtype': 'error_during_execution',
+  'is_error': true,
+  'result': text,
+};
 
 String? _resumeOf(Map<String, dynamic> params) =>
     (params['options'] as Map?)?['resume'] as String?;
@@ -189,8 +192,9 @@ void main() {
 
   group('AgentSendEngine.send', () {
     test('streams assistant text and persists the session id', () async {
-      final transport =
-          _ScriptedTransport((_) => [_assistant('hello'), _success('s-new')]);
+      final transport = _ScriptedTransport(
+        (_) => [_assistant('hello'), _success('s-new')],
+      );
       addTearDown(transport.dispose);
       final store = _tempStore();
       final engine = AgentSendEngine(
@@ -202,81 +206,92 @@ void main() {
       final events = await engine.send('hi').toList();
 
       expect(events.first, isA<AgentSendStarted>());
-      expect(events.whereType<AgentSendChunk>().map((c) => c.text).join(),
-          'hello');
-      final completed =
-          events.whereType<AgentSendCompleted>().single;
+      expect(
+        events.whereType<AgentSendChunk>().map((c) => c.text).join(),
+        'hello',
+      );
+      final completed = events.whereType<AgentSendCompleted>().single;
       expect(completed.sessionId, 's-new');
       // The id is persisted so the next send resumes it.
       expect(store.load(), 's-new');
     });
 
-    test('refreshes the session id on a session error and retries fresh',
-        () async {
-      // First attempt resumes the stale id and fails with a session error; the
-      // retry (no resume) succeeds with a fresh id.
-      final transport = _ScriptedTransport((params) {
-        if (_resumeOf(params) == 'stale-id') {
-          return [_errorResult('Session not found: invalid session id')];
-        }
-        return [_assistant('recovered'), _success('s-fresh')];
-      });
-      addTearDown(transport.dispose);
+    test(
+      'refreshes the session id on a session error and retries fresh',
+      () async {
+        // First attempt resumes the stale id and fails with a session error; the
+        // retry (no resume) succeeds with a fresh id.
+        final transport = _ScriptedTransport((params) {
+          if (_resumeOf(params) == 'stale-id') {
+            return [_errorResult('Session not found: invalid session id')];
+          }
+          return [_assistant('recovered'), _success('s-fresh')];
+        });
+        addTearDown(transport.dispose);
 
-      final store = _tempStore()..save('stale-id');
-      final engine = AgentSendEngine(
-        client: AgentSdkClient(transport),
-        sessionStore: store,
-        config: const AgentSendConfig(),
-      );
+        final store = _tempStore()..save('stale-id');
+        final engine = AgentSendEngine(
+          client: AgentSdkClient(transport),
+          sessionStore: store,
+          config: const AgentSendConfig(),
+        );
 
-      final events = await engine.send('hi').toList();
+        final events = await engine.send('hi').toList();
 
-      // A refresh happened, then the fresh attempt streamed and completed.
-      expect(events.whereType<AgentSendSessionRefreshed>(), hasLength(1));
-      expect(events.whereType<AgentSendChunk>().map((c) => c.text).join(),
-          'recovered');
-      expect(events.whereType<AgentSendCompleted>().single.sessionId,
-          's-fresh');
-      // The sidecar now holds the fresh id, not the stale one.
-      expect(store.load(), 's-fresh');
+        // A refresh happened, then the fresh attempt streamed and completed.
+        expect(events.whereType<AgentSendSessionRefreshed>(), hasLength(1));
+        expect(
+          events.whereType<AgentSendChunk>().map((c) => c.text).join(),
+          'recovered',
+        );
+        expect(
+          events.whereType<AgentSendCompleted>().single.sessionId,
+          's-fresh',
+        );
+        // The sidecar now holds the fresh id, not the stale one.
+        expect(store.load(), 's-fresh');
 
-      // Two queries: the first resumed the stale id, the second was fresh.
-      expect(transport.started, hasLength(2));
-      expect(_resumeOf(transport.started[0]), 'stale-id');
-      expect(_resumeOf(transport.started[1]), isNull);
-    });
+        // Two queries: the first resumed the stale id, the second was fresh.
+        expect(transport.started, hasLength(2));
+        expect(_resumeOf(transport.started[0]), 'stale-id');
+        expect(_resumeOf(transport.started[1]), isNull);
+      },
+    );
 
-    test('a cancel token interrupts the query and ends the stream silently',
-        () async {
-      final transport = _StallingTransport();
-      addTearDown(transport.dispose);
-      final engine = AgentSendEngine(
-        client: AgentSdkClient(transport),
-        sessionStore: _tempStore(),
-        config: const AgentSendConfig(),
-      );
+    test(
+      'a cancel token interrupts the query and ends the stream silently',
+      () async {
+        final transport = _StallingTransport();
+        addTearDown(transport.dispose);
+        final engine = AgentSendEngine(
+          client: AgentSdkClient(transport),
+          sessionStore: _tempStore(),
+          config: const AgentSendConfig(),
+        );
 
-      final source = CancellationTokenSource();
-      final events = <AgentSendEvent>[];
-      // Drive the cold stream; cancel once the first chunk has streamed (the
-      // transport then stalls forever, so without the cancel this never ends).
-      final done = engine.send('hi', cancelToken: source.token).forEach((e) {
-        events.add(e);
-        if (e is AgentSendChunk) source.cancel();
-      });
-      await done.timeout(const Duration(seconds: 5));
+        final source = CancellationTokenSource();
+        final events = <AgentSendEvent>[];
+        // Drive the cold stream; cancel once the first chunk has streamed (the
+        // transport then stalls forever, so without the cancel this never ends).
+        final done = engine.send('hi', cancelToken: source.token).forEach((e) {
+          events.add(e);
+          if (e is AgentSendChunk) source.cancel();
+        });
+        await done.timeout(const Duration(seconds: 5));
 
-      // The partial text streamed, but a user-driven stop is neither a
-      // completion nor a failure — no terminal event is emitted.
-      expect(events.whereType<AgentSendChunk>().map((c) => c.text).join(),
-          'partial');
-      expect(events.whereType<AgentSendCompleted>(), isEmpty);
-      expect(events.whereType<AgentSendFailed>(), isEmpty);
-      // The remote query was aborted through the transport cancel path.
-      final streamId = transport.started.single['streamId'] as String;
-      expect(transport.cancelled, contains(streamId));
-    });
+        // The partial text streamed, but a user-driven stop is neither a
+        // completion nor a failure — no terminal event is emitted.
+        expect(
+          events.whereType<AgentSendChunk>().map((c) => c.text).join(),
+          'partial',
+        );
+        expect(events.whereType<AgentSendCompleted>(), isEmpty);
+        expect(events.whereType<AgentSendFailed>(), isEmpty);
+        // The remote query was aborted through the transport cancel path.
+        final streamId = transport.started.single['streamId'] as String;
+        expect(transport.cancelled, contains(streamId));
+      },
+    );
 
     test('a non-session error fails without refreshing or retrying', () async {
       final transport = _ScriptedTransport(
@@ -294,8 +309,10 @@ void main() {
       final events = await engine.send('hi').toList();
 
       expect(events.whereType<AgentSendSessionRefreshed>(), isEmpty);
-      expect(events.whereType<AgentSendFailed>().single.message,
-          contains('rate limit'));
+      expect(
+        events.whereType<AgentSendFailed>().single.message,
+        contains('rate limit'),
+      );
       // The stored id is untouched on a non-session failure.
       expect(store.load(), 'keep-id');
       expect(transport.started, hasLength(1));

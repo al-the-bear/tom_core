@@ -32,8 +32,10 @@ void main() {
     });
 
     test('fits in 32 bits', () {
-      expect(fnv1a32('a-very-long-model-identifier-string') & 0xffffffff,
-          fnv1a32('a-very-long-model-identifier-string'));
+      expect(
+        fnv1a32('a-very-long-model-identifier-string') & 0xffffffff,
+        fnv1a32('a-very-long-model-identifier-string'),
+      );
       expect(fnv1a32('x') <= 0xffffffff, isTrue);
     });
 
@@ -91,11 +93,13 @@ void main() {
     test('throws a context-tagged StateError for a non-blob', () {
       expect(
         () => blobFromColumn(42, context: 'pending.payload_blob'),
-        throwsA(isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          allOf(contains('pending.payload_blob'), contains('expected BLOB')),
-        )),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('pending.payload_blob'), contains('expected BLOB')),
+          ),
+        ),
       );
     });
   });

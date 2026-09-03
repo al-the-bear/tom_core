@@ -10,10 +10,10 @@ class _Item {
 void main() {
   group('buildUniqueById', () {
     test('keys items by their extracted id', () {
-      final map = buildUniqueById<_Item>(
-        const [_Item('a', 1), _Item('b', 2)],
-        (i) => i.id,
-      );
+      final map = buildUniqueById<_Item>(const [
+        _Item('a', 1),
+        _Item('b', 2),
+      ], (i) => i.id);
       expect(map.keys, unorderedEquals(['a', 'b']));
       expect(map['a']!.value, 1);
       expect(map['b']!.value, 2);

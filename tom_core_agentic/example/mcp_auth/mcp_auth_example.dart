@@ -43,8 +43,8 @@ void main() {
 /// Builds the JSON-RPC `_meta` map a client sends at `initialize`, carrying the
 /// bearer token under the agreed namespaced key.
 Map<String, Object?> _clientMeta(String token) => <String, Object?>{
-      bearerTokenMetaKey: token,
-    };
+  bearerTokenMetaKey: token,
+};
 
 /// A trivial static-token authenticator binding a `String` principal.
 final class _StaticAuthenticator implements BearerTokenAuthenticator<String> {

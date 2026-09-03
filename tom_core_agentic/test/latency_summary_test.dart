@@ -29,7 +29,10 @@ void main() {
     });
 
     test('out-of-range quantile throws ArgumentError', () {
-      expect(() => nearestRankPercentile(tenAscending, 1.5), throwsArgumentError);
+      expect(
+        () => nearestRankPercentile(tenAscending, 1.5),
+        throwsArgumentError,
+      );
     });
   });
 
@@ -41,21 +44,29 @@ void main() {
 
     test('p50 of 10 ascending samples is the 5th (nearest-rank)', () {
       // rank = ceil(0.50 · 10) = 5 ⇒ index 4 ⇒ 50 ms.
-      expect(percentileDuration(tenAscending, 0.50),
-          const Duration(milliseconds: 50));
+      expect(
+        percentileDuration(tenAscending, 0.50),
+        const Duration(milliseconds: 50),
+      );
     });
 
     test('p95 of 10 ascending samples is the 10th (nearest-rank)', () {
       // rank = ceil(0.95 · 10) = 10 ⇒ index 9 ⇒ 100 ms.
-      expect(percentileDuration(tenAscending, 0.95),
-          const Duration(milliseconds: 100));
+      expect(
+        percentileDuration(tenAscending, 0.95),
+        const Duration(milliseconds: 100),
+      );
     });
 
     test('p0 clamps to the smallest, p100 to the largest', () {
-      expect(percentileDuration(tenAscending, 0.0),
-          const Duration(milliseconds: 10));
-      expect(percentileDuration(tenAscending, 1.0),
-          const Duration(milliseconds: 100));
+      expect(
+        percentileDuration(tenAscending, 0.0),
+        const Duration(milliseconds: 10),
+      );
+      expect(
+        percentileDuration(tenAscending, 1.0),
+        const Duration(milliseconds: 100),
+      );
     });
 
     test('a single-sample list returns that sample for any quantile', () {
@@ -66,47 +77,57 @@ void main() {
     });
 
     test('an empty list is a programming error', () {
-      expect(() => percentileDuration(<Duration>[], 0.5),
-          throwsA(isA<ArgumentError>()));
+      expect(
+        () => percentileDuration(<Duration>[], 0.5),
+        throwsA(isA<ArgumentError>()),
+      );
     });
 
     test('a quantile outside [0, 1] is rejected', () {
-      expect(() => percentileDuration(tenAscending, 1.5),
-          throwsA(isA<ArgumentError>()));
-      expect(() => percentileDuration(tenAscending, -0.1),
-          throwsA(isA<ArgumentError>()));
+      expect(
+        () => percentileDuration(tenAscending, 1.5),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => percentileDuration(tenAscending, -0.1),
+        throwsA(isA<ArgumentError>()),
+      );
     });
   });
 
   group('LatencySummary.fromSamples', () {
-    test('computes count/min/max/p50/p95 and leaves the caller list unsorted',
-        () {
-      // Deliberately unsorted on input.
-      final List<Duration> samples = <Duration>[
-        const Duration(milliseconds: 30),
-        const Duration(milliseconds: 10),
-        const Duration(milliseconds: 50),
-        const Duration(milliseconds: 20),
-        const Duration(milliseconds: 40),
-      ];
-      final List<Duration> original = List<Duration>.of(samples);
+    test(
+      'computes count/min/max/p50/p95 and leaves the caller list unsorted',
+      () {
+        // Deliberately unsorted on input.
+        final List<Duration> samples = <Duration>[
+          const Duration(milliseconds: 30),
+          const Duration(milliseconds: 10),
+          const Duration(milliseconds: 50),
+          const Duration(milliseconds: 20),
+          const Duration(milliseconds: 40),
+        ];
+        final List<Duration> original = List<Duration>.of(samples);
 
-      final LatencySummary summary = LatencySummary.fromSamples(samples);
+        final LatencySummary summary = LatencySummary.fromSamples(samples);
 
-      expect(summary.sampleCount, 5);
-      expect(summary.min, const Duration(milliseconds: 10));
-      expect(summary.max, const Duration(milliseconds: 50));
-      // rank = ceil(0.50 · 5) = 3 ⇒ index 2 ⇒ 30 ms (sorted).
-      expect(summary.p50, const Duration(milliseconds: 30));
-      // rank = ceil(0.95 · 5) = 5 ⇒ index 4 ⇒ 50 ms.
-      expect(summary.p95, const Duration(milliseconds: 50));
-      // The caller's list is untouched (a copy was sorted).
-      expect(samples, original);
-    });
+        expect(summary.sampleCount, 5);
+        expect(summary.min, const Duration(milliseconds: 10));
+        expect(summary.max, const Duration(milliseconds: 50));
+        // rank = ceil(0.50 · 5) = 3 ⇒ index 2 ⇒ 30 ms (sorted).
+        expect(summary.p50, const Duration(milliseconds: 30));
+        // rank = ceil(0.95 · 5) = 5 ⇒ index 4 ⇒ 50 ms.
+        expect(summary.p95, const Duration(milliseconds: 50));
+        // The caller's list is untouched (a copy was sorted).
+        expect(samples, original);
+      },
+    );
 
     test('an empty sample set is rejected', () {
-      expect(() => LatencySummary.fromSamples(<Duration>[]),
-          throwsA(isA<ArgumentError>()));
+      expect(
+        () => LatencySummary.fromSamples(<Duration>[]),
+        throwsA(isA<ArgumentError>()),
+      );
     });
 
     test('meetsTarget gates on p95 against the supplied target', () {

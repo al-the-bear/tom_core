@@ -37,10 +37,8 @@
 /// Returns `Object` (not `Exception`) because Dart's `throw` accepts any
 /// object and some domain taxonomies re-raise `Error` subtypes; the
 /// registry does not constrain the thrown shape.
-typedef IsolateExceptionFactory = Object Function(
-  String message,
-  Map<String, Object?> details,
-);
+typedef IsolateExceptionFactory =
+    Object Function(String message, Map<String, Object?> details);
 
 /// Host-side registry that turns the flat wire form of a worker-thrown
 /// exception (a type tag + message + sendable details map) back into a

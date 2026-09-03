@@ -151,12 +151,9 @@ final class IsolateRequestGuard {
 
     final completer = Completer<T>();
     Timer? timer;
-    final entry = _GuardEntry(
-      label,
-      (failure) {
-        if (!completer.isCompleted) completer.completeError(failure);
-      },
-    );
+    final entry = _GuardEntry(label, (failure) {
+      if (!completer.isCompleted) completer.completeError(failure);
+    });
     _pending.add(entry);
 
     final effective = timeout ?? defaultTimeout;

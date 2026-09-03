@@ -74,7 +74,8 @@ double scoreProcedureCandidate({
 }) {
   final total = weights._total;
   if (total <= 0) return 0.0;
-  final weighted = weights.embedding * _unit(embeddingSimilarity) +
+  final weighted =
+      weights.embedding * _unit(embeddingSimilarity) +
       weights.requiresOverlap * _unit(requiresOverlap) +
       weights.successRate * _unit(successRate) +
       weights.recency * _unit(recencyScore);

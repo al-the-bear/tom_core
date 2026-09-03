@@ -31,8 +31,8 @@ Duration percentileDuration(List<Duration> sorted, double q) {
   final int clamped = index < 0
       ? 0
       : index > n - 1
-          ? n - 1
-          : index;
+      ? n - 1
+      : index;
   return sorted[clamped];
 }
 
@@ -58,8 +58,8 @@ int nearestRankPercentile(List<int> sortedAsc, double q) {
   final int clamped = index < 0
       ? 0
       : index > n - 1
-          ? n - 1
-          : index;
+      ? n - 1
+      : index;
   return sortedAsc[clamped];
 }
 

@@ -102,9 +102,7 @@ final class AgentSdkSessionStore {
       if (await file.exists()) {
         final decoded = jsonDecode(await file.readAsString());
         loaded = decoded is Map
-            ? decoded.map(
-                (key, value) => MapEntry('$key', '$value'),
-              )
+            ? decoded.map((key, value) => MapEntry('$key', '$value'))
             : <String, String>{};
       } else {
         loaded = <String, String>{};
@@ -224,9 +222,8 @@ final class QuestSessionStrategy implements AgentSdkSessionStrategy {
     required this.sessionKey,
   });
 
-  File get _sessionFile => File(
-        '$questHistoryRoot/$questId/history/$sessionKey.session.json',
-      );
+  File get _sessionFile =>
+      File('$questHistoryRoot/$questId/history/$sessionKey.session.json');
 
   @override
   Future<String?> resumeIdFor(LlmOptions options) async {

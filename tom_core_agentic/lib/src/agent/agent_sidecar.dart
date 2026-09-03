@@ -60,8 +60,7 @@ List<T> decodeAgentYamlList<T>(
   required String key,
   required String identity,
   required T Function(Map<String, dynamic>) fromYaml,
-}) =>
-    decodeAgentYamlEntries(root?[key], fromYaml, identity: identity) ?? <T>[];
+}) => decodeAgentYamlEntries(root?[key], fromYaml, identity: identity) ?? <T>[];
 
 /// Builds the single model under [key] of [root], or [orElse] when the file
 /// cannot supply it. The singleton counterpart of [decodeAgentYamlList] —

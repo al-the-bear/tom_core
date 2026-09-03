@@ -34,18 +34,18 @@ final class ChatVariable {
   final bool builtIn;
 
   factory ChatVariable.fromYaml(Map<String, dynamic> yaml) => ChatVariable(
-        name: yaml['name'] as String,
-        value: yaml['value'] as String? ?? '',
-        description: yaml['description'] as String? ?? '',
-        builtIn: yaml['builtIn'] as bool? ?? false,
-      );
+    name: yaml['name'] as String,
+    value: yaml['value'] as String? ?? '',
+    description: yaml['description'] as String? ?? '',
+    builtIn: yaml['builtIn'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'name': name,
-        'value': value,
-        'description': description,
-        'builtIn': builtIn,
-      };
+    'name': name,
+    'value': value,
+    'description': description,
+    'builtIn': builtIn,
+  };
 
   /// Folds [variables] into a `name → value` bindings map (later entries win
   /// on a name clash), ready to feed an `EditorPlaceholderBindings`.

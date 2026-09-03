@@ -39,11 +39,11 @@ class ChatVariableStore {
   /// missing, unreadable or malformed. Entries the file cannot supply
   /// are skipped individually — see [decodeAgentYamlList].
   List<ChatVariable> load() => decodeAgentYamlList(
-        readAgentYamlFile(file),
-        key: 'variables',
-        identity: 'name',
-        fromYaml: ChatVariable.fromYaml,
-      );
+    readAgentYamlFile(file),
+    key: 'variables',
+    identity: 'name',
+    fromYaml: ChatVariable.fromYaml,
+  );
 
   /// Persists [variables], creating the parent directory if needed. Built-in
   /// variables are dropped — only user-authored variables are written.

@@ -82,8 +82,10 @@ Future<void> _demoAsyncShutdown() async {
   signals.add('SIGTERM'); // ignored: shutdown already in flight
   final code = await coordinator.completed;
 
-  print('  triggered: ${coordinator.isTriggered}, drained: $drained, '
-      'exit code: $code');
+  print(
+    '  triggered: ${coordinator.isTriggered}, drained: $drained, '
+    'exit code: $code',
+  );
   assert(coordinator.isTriggered);
   assert(drained); // teardown completed BEFORE terminate ran
   assert(code == shutdownExitOk);

@@ -47,7 +47,8 @@ extension PathScopeIo on PathScope {
 
   /// Whether [relative] stays within at least one root once symlinks are
   /// resolved — the filesystem-aware counterpart of [PathScope.admits].
-  bool admitsCanonical(String relative) => resolveCanonical(relative).isNotEmpty;
+  bool admitsCanonical(String relative) =>
+      resolveCanonical(relative).isNotEmpty;
 
   /// Resolves symlinks on the longest existing prefix of [path] and re-appends
   /// the non-existent tail. Equivalent to `resolveSymbolicLinksSync` for a path

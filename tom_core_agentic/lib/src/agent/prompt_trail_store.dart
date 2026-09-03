@@ -36,11 +36,11 @@ class PromptTrailStore {
   /// missing, unreadable or malformed. Entries the file cannot supply
   /// are skipped individually — see [decodeAgentYamlList].
   List<TrailPair> load() => decodeAgentYamlList(
-        readAgentYamlFile(file),
-        key: 'pairs',
-        identity: 'id',
-        fromYaml: TrailPair.fromYaml,
-      );
+    readAgentYamlFile(file),
+    key: 'pairs',
+    identity: 'id',
+    fromYaml: TrailPair.fromYaml,
+  );
 
   /// Persists [trail], creating the parent directory if needed.
   void save(List<TrailPair> trail) {

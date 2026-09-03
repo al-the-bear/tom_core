@@ -31,16 +31,16 @@ final class PromptTemplate {
   final bool isUserMessage;
 
   factory PromptTemplate.fromYaml(Map<String, dynamic> yaml) => PromptTemplate(
-        id: yaml['id'] as String,
-        name: yaml['name'] as String? ?? '',
-        body: yaml['body'] as String? ?? '',
-        isUserMessage: yaml['isUserMessage'] as bool? ?? false,
-      );
+    id: yaml['id'] as String,
+    name: yaml['name'] as String? ?? '',
+    body: yaml['body'] as String? ?? '',
+    isUserMessage: yaml['isUserMessage'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'name': name,
-        'body': body,
-        'isUserMessage': isUserMessage,
-      };
+    'id': id,
+    'name': name,
+    'body': body,
+    'isUserMessage': isUserMessage,
+  };
 }

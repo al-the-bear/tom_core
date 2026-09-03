@@ -84,63 +84,61 @@ final class AgentProfile {
   final String interruptRetryPrefix;
 
   factory AgentProfile.fromYaml(Map<String, dynamic> yaml) => AgentProfile(
-        id: yaml['id'] as String,
-        name: yaml['name'] as String? ?? '',
-        description: yaml['description'] as String? ?? '',
-        systemPrompt: yaml['systemPrompt'] as String? ?? '',
-        configurationId: yaml['configurationId'] as String?,
-        toolsEnabled: yaml['toolsEnabled'] as bool?,
-        enabledTools:
-            (yaml['enabledTools'] as List?)?.whereType<String>().toList(),
-        maxRounds: yaml['maxRounds'] as int?,
-        historyMode: yaml['historyMode'] as String?,
-        maxTokens: yaml['maxTokens'] as int?,
-        retryMaxTotalWaitMinutes: yaml['retryMaxTotalWaitMinutes'] as int?,
-        isDefault: yaml['isDefault'] as bool?,
-        thinkingEnabled: yaml['thinkingEnabled'] as bool?,
-        thinkingBudgetTokens: yaml['thinkingBudgetTokens'] as int?,
-        promptCachingEnabled: yaml['promptCachingEnabled'] as bool?,
-        toolApprovalMode: yaml['toolApprovalMode'] == null
-            ? null
-            : ToolApprovalMode.fromValue(yaml['toolApprovalMode'] as String?),
-        useBuiltInTools: yaml['useBuiltInTools'] as bool?,
-        allowInteractiveQuestions: yaml['allowInteractiveQuestions'] as bool?,
-        interactiveQuestionsTemplateId:
-            yaml['interactiveQuestionsTemplateId'] as String?,
-        autoInjectMemory: yaml['autoInjectMemory'] as bool?,
-        userPromptWrapper: yaml['userPromptWrapper'] as String?,
-        interruptRetryPrefix: yaml['interruptRetryPrefix'] as String? ??
-            defaultInterruptRetryPrefix,
-      );
+    id: yaml['id'] as String,
+    name: yaml['name'] as String? ?? '',
+    description: yaml['description'] as String? ?? '',
+    systemPrompt: yaml['systemPrompt'] as String? ?? '',
+    configurationId: yaml['configurationId'] as String?,
+    toolsEnabled: yaml['toolsEnabled'] as bool?,
+    enabledTools: (yaml['enabledTools'] as List?)?.whereType<String>().toList(),
+    maxRounds: yaml['maxRounds'] as int?,
+    historyMode: yaml['historyMode'] as String?,
+    maxTokens: yaml['maxTokens'] as int?,
+    retryMaxTotalWaitMinutes: yaml['retryMaxTotalWaitMinutes'] as int?,
+    isDefault: yaml['isDefault'] as bool?,
+    thinkingEnabled: yaml['thinkingEnabled'] as bool?,
+    thinkingBudgetTokens: yaml['thinkingBudgetTokens'] as int?,
+    promptCachingEnabled: yaml['promptCachingEnabled'] as bool?,
+    toolApprovalMode: yaml['toolApprovalMode'] == null
+        ? null
+        : ToolApprovalMode.fromValue(yaml['toolApprovalMode'] as String?),
+    useBuiltInTools: yaml['useBuiltInTools'] as bool?,
+    allowInteractiveQuestions: yaml['allowInteractiveQuestions'] as bool?,
+    interactiveQuestionsTemplateId:
+        yaml['interactiveQuestionsTemplateId'] as String?,
+    autoInjectMemory: yaml['autoInjectMemory'] as bool?,
+    userPromptWrapper: yaml['userPromptWrapper'] as String?,
+    interruptRetryPrefix:
+        yaml['interruptRetryPrefix'] as String? ?? defaultInterruptRetryPrefix,
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'name': name,
-        'description': description,
-        'systemPrompt': systemPrompt,
-        if (configurationId != null) 'configurationId': configurationId,
-        if (toolsEnabled != null) 'toolsEnabled': toolsEnabled,
-        if (enabledTools != null) 'enabledTools': enabledTools,
-        if (maxRounds != null) 'maxRounds': maxRounds,
-        if (historyMode != null) 'historyMode': historyMode,
-        if (maxTokens != null) 'maxTokens': maxTokens,
-        if (retryMaxTotalWaitMinutes != null)
-          'retryMaxTotalWaitMinutes': retryMaxTotalWaitMinutes,
-        if (isDefault != null) 'isDefault': isDefault,
-        if (thinkingEnabled != null) 'thinkingEnabled': thinkingEnabled,
-        if (thinkingBudgetTokens != null)
-          'thinkingBudgetTokens': thinkingBudgetTokens,
-        if (promptCachingEnabled != null)
-          'promptCachingEnabled': promptCachingEnabled,
-        if (toolApprovalMode != null)
-          'toolApprovalMode': toolApprovalMode!.value,
-        if (useBuiltInTools != null) 'useBuiltInTools': useBuiltInTools,
-        if (allowInteractiveQuestions != null)
-          'allowInteractiveQuestions': allowInteractiveQuestions,
-        if (interactiveQuestionsTemplateId != null)
-          'interactiveQuestionsTemplateId': interactiveQuestionsTemplateId,
-        if (autoInjectMemory != null) 'autoInjectMemory': autoInjectMemory,
-        if (userPromptWrapper != null) 'userPromptWrapper': userPromptWrapper,
-        'interruptRetryPrefix': interruptRetryPrefix,
-      };
+    'id': id,
+    'name': name,
+    'description': description,
+    'systemPrompt': systemPrompt,
+    if (configurationId != null) 'configurationId': configurationId,
+    if (toolsEnabled != null) 'toolsEnabled': toolsEnabled,
+    if (enabledTools != null) 'enabledTools': enabledTools,
+    if (maxRounds != null) 'maxRounds': maxRounds,
+    if (historyMode != null) 'historyMode': historyMode,
+    if (maxTokens != null) 'maxTokens': maxTokens,
+    if (retryMaxTotalWaitMinutes != null)
+      'retryMaxTotalWaitMinutes': retryMaxTotalWaitMinutes,
+    if (isDefault != null) 'isDefault': isDefault,
+    if (thinkingEnabled != null) 'thinkingEnabled': thinkingEnabled,
+    if (thinkingBudgetTokens != null)
+      'thinkingBudgetTokens': thinkingBudgetTokens,
+    if (promptCachingEnabled != null)
+      'promptCachingEnabled': promptCachingEnabled,
+    if (toolApprovalMode != null) 'toolApprovalMode': toolApprovalMode!.value,
+    if (useBuiltInTools != null) 'useBuiltInTools': useBuiltInTools,
+    if (allowInteractiveQuestions != null)
+      'allowInteractiveQuestions': allowInteractiveQuestions,
+    if (interactiveQuestionsTemplateId != null)
+      'interactiveQuestionsTemplateId': interactiveQuestionsTemplateId,
+    if (autoInjectMemory != null) 'autoInjectMemory': autoInjectMemory,
+    if (userPromptWrapper != null) 'userPromptWrapper': userPromptWrapper,
+    'interruptRetryPrefix': interruptRetryPrefix,
+  };
 }

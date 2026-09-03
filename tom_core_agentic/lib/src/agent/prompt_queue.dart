@@ -129,27 +129,24 @@ final class QueuedFollowUpPrompt {
       );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'originalText': originalText,
-        'createdAt': createdAt,
-        if (template != null) 'template': template,
-        if (reminderTemplateId != null)
-          'reminderTemplateId': reminderTemplateId,
-        if (reminderTimeoutMinutes != null)
-          'reminderTimeoutMinutes': reminderTimeoutMinutes,
-        if (reminderRepeat != null) 'reminderRepeat': reminderRepeat,
-        if (reminderEnabled != null) 'reminderEnabled': reminderEnabled,
-        if (repeatCount != null) 'repeatCount': repeatCount,
-        if (resolvedRepeatCount != null)
-          'resolvedRepeatCount': resolvedRepeatCount,
-        if (repeatIndex != null) 'repeatIndex': repeatIndex,
-        if (answerWaitMinutes != null) 'answerWaitMinutes': answerWaitMinutes,
-        if (transport != null) 'transport': transport!.value,
-        if (anthropicProfileId != null)
-          'anthropicProfileId': anthropicProfileId,
-        if (anthropicConfigId != null) 'anthropicConfigId': anthropicConfigId,
-        if (answerText != null) 'answerText': answerText,
-      };
+    'id': id,
+    'originalText': originalText,
+    'createdAt': createdAt,
+    if (template != null) 'template': template,
+    if (reminderTemplateId != null) 'reminderTemplateId': reminderTemplateId,
+    if (reminderTimeoutMinutes != null)
+      'reminderTimeoutMinutes': reminderTimeoutMinutes,
+    if (reminderRepeat != null) 'reminderRepeat': reminderRepeat,
+    if (reminderEnabled != null) 'reminderEnabled': reminderEnabled,
+    if (repeatCount != null) 'repeatCount': repeatCount,
+    if (resolvedRepeatCount != null) 'resolvedRepeatCount': resolvedRepeatCount,
+    if (repeatIndex != null) 'repeatIndex': repeatIndex,
+    if (answerWaitMinutes != null) 'answerWaitMinutes': answerWaitMinutes,
+    if (transport != null) 'transport': transport!.value,
+    if (anthropicProfileId != null) 'anthropicProfileId': anthropicProfileId,
+    if (anthropicConfigId != null) 'anthropicConfigId': anthropicConfigId,
+    if (answerText != null) 'answerText': answerText,
+  };
 }
 
 /// A pre-prompt sent ahead of a queue item's main prompt.
@@ -188,7 +185,8 @@ final class QueuedPrePrompt {
   final String? anthropicConfigId;
   final String? answerText;
 
-  factory QueuedPrePrompt.fromYaml(Map<String, dynamic> yaml) => QueuedPrePrompt(
+  factory QueuedPrePrompt.fromYaml(Map<String, dynamic> yaml) =>
+      QueuedPrePrompt(
         text: yaml['text'] as String? ?? '',
         status: QueuedPrePromptStatus.fromValue(yaml['status'] as String?),
         template: yaml['template'] as String?,
@@ -207,26 +205,23 @@ final class QueuedPrePrompt {
       );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'text': text,
-        'status': status.value,
-        if (template != null) 'template': template,
-        if (repeatCount != null) 'repeatCount': repeatCount,
-        if (resolvedRepeatCount != null)
-          'resolvedRepeatCount': resolvedRepeatCount,
-        if (repeatIndex != null) 'repeatIndex': repeatIndex,
-        if (answerWaitMinutes != null) 'answerWaitMinutes': answerWaitMinutes,
-        if (reminderTemplateId != null)
-          'reminderTemplateId': reminderTemplateId,
-        if (reminderTimeoutMinutes != null)
-          'reminderTimeoutMinutes': reminderTimeoutMinutes,
-        if (reminderRepeat != null) 'reminderRepeat': reminderRepeat,
-        if (reminderEnabled != null) 'reminderEnabled': reminderEnabled,
-        if (transport != null) 'transport': transport!.value,
-        if (anthropicProfileId != null)
-          'anthropicProfileId': anthropicProfileId,
-        if (anthropicConfigId != null) 'anthropicConfigId': anthropicConfigId,
-        if (answerText != null) 'answerText': answerText,
-      };
+    'text': text,
+    'status': status.value,
+    if (template != null) 'template': template,
+    if (repeatCount != null) 'repeatCount': repeatCount,
+    if (resolvedRepeatCount != null) 'resolvedRepeatCount': resolvedRepeatCount,
+    if (repeatIndex != null) 'repeatIndex': repeatIndex,
+    if (answerWaitMinutes != null) 'answerWaitMinutes': answerWaitMinutes,
+    if (reminderTemplateId != null) 'reminderTemplateId': reminderTemplateId,
+    if (reminderTimeoutMinutes != null)
+      'reminderTimeoutMinutes': reminderTimeoutMinutes,
+    if (reminderRepeat != null) 'reminderRepeat': reminderRepeat,
+    if (reminderEnabled != null) 'reminderEnabled': reminderEnabled,
+    if (transport != null) 'transport': transport!.value,
+    if (anthropicProfileId != null) 'anthropicProfileId': anthropicProfileId,
+    if (anthropicConfigId != null) 'anthropicConfigId': anthropicConfigId,
+    if (answerText != null) 'answerText': answerText,
+  };
 }
 
 /// Status of a pre-prompt — the source uses a narrower set than the main
@@ -323,91 +318,86 @@ final class QueuedPrompt {
   final String? answerText;
 
   factory QueuedPrompt.fromYaml(Map<String, dynamic> yaml) => QueuedPrompt(
-        id: yaml['id'] as String,
-        template: yaml['template'] as String? ?? '(None)',
-        answerWrapper: yaml['answerWrapper'] as bool?,
-        originalText: yaml['originalText'] as String? ?? '',
-        expandedText: yaml['expandedText'] as String? ?? '',
-        status: QueuedPromptStatus.fromValue(yaml['status'] as String?),
-        type: QueuedPromptType.fromValue(yaml['type'] as String?),
-        createdAt: yaml['createdAt'] as String? ?? '',
-        sentAt: yaml['sentAt'] as String?,
-        error: yaml['error'] as String?,
-        reminderTemplateId: yaml['reminderTemplateId'] as String?,
-        reminderTimeoutMinutes: yaml['reminderTimeoutMinutes'] as int?,
-        reminderRepeat: yaml['reminderRepeat'] as bool?,
-        reminderEnabled: yaml['reminderEnabled'] as bool?,
-        reminderQueued: yaml['reminderQueued'] as bool?,
-        reminderSentCount: yaml['reminderSentCount'] as int?,
-        lastReminderAt: yaml['lastReminderAt'] as String?,
-        requestId: yaml['requestId'] as String?,
-        expectedRequestId: yaml['expectedRequestId'] as String?,
-        prePrompts: decodeAgentYamlEntries(
-          yaml['prePrompts'],
-          QueuedPrePrompt.fromYaml,
-        ),
-        followUps: decodeAgentYamlEntries(
-          yaml['followUps'],
-          QueuedFollowUpPrompt.fromYaml,
-          identity: 'id',
-        ),
-        followUpIndex: yaml['followUpIndex'] as int?,
-        repeatCount: yaml['repeatCount'],
-        resolvedRepeatCount: yaml['resolvedRepeatCount'] as int?,
-        repeatIndex: yaml['repeatIndex'] as int?,
-        repeatPrefix: yaml['repeatPrefix'] as String?,
-        repeatSuffix: yaml['repeatSuffix'] as String?,
-        templateRepeatCount: yaml['templateRepeatCount'],
-        templateRepeatIndex: yaml['templateRepeatIndex'] as int?,
-        answerWaitMinutes: yaml['answerWaitMinutes'] as int?,
-        transport: QueuedTransport.fromValue(yaml['transport'] as String?),
-        anthropicProfileId: yaml['anthropicProfileId'] as String?,
-        anthropicConfigId: yaml['anthropicConfigId'] as String?,
-        answerText: yaml['answerText'] as String?,
-      );
+    id: yaml['id'] as String,
+    template: yaml['template'] as String? ?? '(None)',
+    answerWrapper: yaml['answerWrapper'] as bool?,
+    originalText: yaml['originalText'] as String? ?? '',
+    expandedText: yaml['expandedText'] as String? ?? '',
+    status: QueuedPromptStatus.fromValue(yaml['status'] as String?),
+    type: QueuedPromptType.fromValue(yaml['type'] as String?),
+    createdAt: yaml['createdAt'] as String? ?? '',
+    sentAt: yaml['sentAt'] as String?,
+    error: yaml['error'] as String?,
+    reminderTemplateId: yaml['reminderTemplateId'] as String?,
+    reminderTimeoutMinutes: yaml['reminderTimeoutMinutes'] as int?,
+    reminderRepeat: yaml['reminderRepeat'] as bool?,
+    reminderEnabled: yaml['reminderEnabled'] as bool?,
+    reminderQueued: yaml['reminderQueued'] as bool?,
+    reminderSentCount: yaml['reminderSentCount'] as int?,
+    lastReminderAt: yaml['lastReminderAt'] as String?,
+    requestId: yaml['requestId'] as String?,
+    expectedRequestId: yaml['expectedRequestId'] as String?,
+    prePrompts: decodeAgentYamlEntries(
+      yaml['prePrompts'],
+      QueuedPrePrompt.fromYaml,
+    ),
+    followUps: decodeAgentYamlEntries(
+      yaml['followUps'],
+      QueuedFollowUpPrompt.fromYaml,
+      identity: 'id',
+    ),
+    followUpIndex: yaml['followUpIndex'] as int?,
+    repeatCount: yaml['repeatCount'],
+    resolvedRepeatCount: yaml['resolvedRepeatCount'] as int?,
+    repeatIndex: yaml['repeatIndex'] as int?,
+    repeatPrefix: yaml['repeatPrefix'] as String?,
+    repeatSuffix: yaml['repeatSuffix'] as String?,
+    templateRepeatCount: yaml['templateRepeatCount'],
+    templateRepeatIndex: yaml['templateRepeatIndex'] as int?,
+    answerWaitMinutes: yaml['answerWaitMinutes'] as int?,
+    transport: QueuedTransport.fromValue(yaml['transport'] as String?),
+    anthropicProfileId: yaml['anthropicProfileId'] as String?,
+    anthropicConfigId: yaml['anthropicConfigId'] as String?,
+    answerText: yaml['answerText'] as String?,
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'template': template,
-        if (answerWrapper != null) 'answerWrapper': answerWrapper,
-        'originalText': originalText,
-        'expandedText': expandedText,
-        'status': status.value,
-        'type': type.value,
-        'createdAt': createdAt,
-        if (sentAt != null) 'sentAt': sentAt,
-        if (error != null) 'error': error,
-        if (reminderTemplateId != null)
-          'reminderTemplateId': reminderTemplateId,
-        if (reminderTimeoutMinutes != null)
-          'reminderTimeoutMinutes': reminderTimeoutMinutes,
-        if (reminderRepeat != null) 'reminderRepeat': reminderRepeat,
-        if (reminderEnabled != null) 'reminderEnabled': reminderEnabled,
-        if (reminderQueued != null) 'reminderQueued': reminderQueued,
-        if (reminderSentCount != null) 'reminderSentCount': reminderSentCount,
-        if (lastReminderAt != null) 'lastReminderAt': lastReminderAt,
-        if (requestId != null) 'requestId': requestId,
-        if (expectedRequestId != null) 'expectedRequestId': expectedRequestId,
-        if (prePrompts != null)
-          'prePrompts': prePrompts!.map((p) => p.toYaml()).toList(),
-        if (followUps != null)
-          'followUps': followUps!.map((f) => f.toYaml()).toList(),
-        if (followUpIndex != null) 'followUpIndex': followUpIndex,
-        if (repeatCount != null) 'repeatCount': repeatCount,
-        if (resolvedRepeatCount != null)
-          'resolvedRepeatCount': resolvedRepeatCount,
-        if (repeatIndex != null) 'repeatIndex': repeatIndex,
-        if (repeatPrefix != null) 'repeatPrefix': repeatPrefix,
-        if (repeatSuffix != null) 'repeatSuffix': repeatSuffix,
-        if (templateRepeatCount != null)
-          'templateRepeatCount': templateRepeatCount,
-        if (templateRepeatIndex != null)
-          'templateRepeatIndex': templateRepeatIndex,
-        if (answerWaitMinutes != null) 'answerWaitMinutes': answerWaitMinutes,
-        if (transport != null) 'transport': transport!.value,
-        if (anthropicProfileId != null)
-          'anthropicProfileId': anthropicProfileId,
-        if (anthropicConfigId != null) 'anthropicConfigId': anthropicConfigId,
-        if (answerText != null) 'answerText': answerText,
-      };
+    'id': id,
+    'template': template,
+    if (answerWrapper != null) 'answerWrapper': answerWrapper,
+    'originalText': originalText,
+    'expandedText': expandedText,
+    'status': status.value,
+    'type': type.value,
+    'createdAt': createdAt,
+    if (sentAt != null) 'sentAt': sentAt,
+    if (error != null) 'error': error,
+    if (reminderTemplateId != null) 'reminderTemplateId': reminderTemplateId,
+    if (reminderTimeoutMinutes != null)
+      'reminderTimeoutMinutes': reminderTimeoutMinutes,
+    if (reminderRepeat != null) 'reminderRepeat': reminderRepeat,
+    if (reminderEnabled != null) 'reminderEnabled': reminderEnabled,
+    if (reminderQueued != null) 'reminderQueued': reminderQueued,
+    if (reminderSentCount != null) 'reminderSentCount': reminderSentCount,
+    if (lastReminderAt != null) 'lastReminderAt': lastReminderAt,
+    if (requestId != null) 'requestId': requestId,
+    if (expectedRequestId != null) 'expectedRequestId': expectedRequestId,
+    if (prePrompts != null)
+      'prePrompts': prePrompts!.map((p) => p.toYaml()).toList(),
+    if (followUps != null)
+      'followUps': followUps!.map((f) => f.toYaml()).toList(),
+    if (followUpIndex != null) 'followUpIndex': followUpIndex,
+    if (repeatCount != null) 'repeatCount': repeatCount,
+    if (resolvedRepeatCount != null) 'resolvedRepeatCount': resolvedRepeatCount,
+    if (repeatIndex != null) 'repeatIndex': repeatIndex,
+    if (repeatPrefix != null) 'repeatPrefix': repeatPrefix,
+    if (repeatSuffix != null) 'repeatSuffix': repeatSuffix,
+    if (templateRepeatCount != null) 'templateRepeatCount': templateRepeatCount,
+    if (templateRepeatIndex != null) 'templateRepeatIndex': templateRepeatIndex,
+    if (answerWaitMinutes != null) 'answerWaitMinutes': answerWaitMinutes,
+    if (transport != null) 'transport': transport!.value,
+    if (anthropicProfileId != null) 'anthropicProfileId': anthropicProfileId,
+    if (anthropicConfigId != null) 'anthropicConfigId': anthropicConfigId,
+    if (answerText != null) 'answerText': answerText,
+  };
 }

@@ -40,8 +40,8 @@ final class EditorPlaceholderBindings {
     Map<String, String> bindings = const <String, String>{},
     this.strict = false,
     Map<String, String>? environment,
-  })  : _bindings = Map<String, String>.unmodifiable(bindings),
-        _environment = environment;
+  }) : _bindings = Map<String, String>.unmodifiable(bindings),
+       _environment = environment;
 
   final Map<String, String> _bindings;
   final Map<String, String>? _environment;
@@ -76,8 +76,9 @@ final class EditorPlaceholderBindings {
     final at = template.indexOf(r'${{');
     if (at < 0) return;
     final end = template.indexOf('}}', at + 3);
-    final body =
-        end < 0 ? template.substring(at + 3) : template.substring(at + 3, end);
+    final body = end < 0
+        ? template.substring(at + 3)
+        : template.substring(at + 3, end);
     throw PlaceholderExpressionsUnsupportedError(body.trim());
   }
 
@@ -85,10 +86,7 @@ final class EditorPlaceholderBindings {
   /// resolver's simple form handles it. Assumes `${{ … }}` has already been
   /// rejected, so no expression opener is touched.
   static String _expandMustacheAlias(String template) =>
-      template.replaceAllMapped(
-        _mustache,
-        (m) => '\${${m.group(1)!.trim()}}',
-      );
+      template.replaceAllMapped(_mustache, (m) => '\${${m.group(1)!.trim()}}');
 
   static final RegExp _mustache = RegExp(r'\{\{\s*([^{}]+?)\s*\}\}');
 }

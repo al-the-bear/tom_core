@@ -43,9 +43,7 @@ const Set<String> _loopbackHosts = {'localhost', '127.0.0.1', '::1'};
 /// so `[::1]` and `::1` are one token.
 String _canonicalHost(String host) {
   final trimmed = host.trim().toLowerCase();
-  return trimmed.length > 1 &&
-          trimmed.startsWith('[') &&
-          trimmed.endsWith(']')
+  return trimmed.length > 1 && trimmed.startsWith('[') && trimmed.endsWith(']')
       ? trimmed.substring(1, trimmed.length - 1)
       : trimmed;
 }
@@ -101,11 +99,11 @@ class BridgeServer {
   final BridgeServerStatus status;
 
   BridgeServer copyWith({BridgeServerStatus? status}) => BridgeServer(
-        port: port,
-        host: host,
-        workspace: workspace,
-        status: status ?? this.status,
-      );
+    port: port,
+    host: host,
+    workspace: workspace,
+    status: status ?? this.status,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -128,18 +126,18 @@ class BridgeServer {
 /// Injected into [BridgeConnectionService] so a test can supply fake bridges
 /// without opening sockets. The production default delegates to
 /// [scanBridgePorts].
-typedef BridgePortScanner = Future<Map<int, String>> Function({
-  required String host,
-  required int minPort,
-  required int maxPort,
-});
+typedef BridgePortScanner =
+    Future<Map<int, String>> Function({
+      required String host,
+      required int minPort,
+      required int maxPort,
+    });
 
 Future<Map<int, String>> _defaultScanner({
   required String host,
   required int minPort,
   required int maxPort,
-}) =>
-    scanBridgePorts(host: host, minPort: minPort, maxPort: maxPort);
+}) => scanBridgePorts(host: host, minPort: minPort, maxPort: maxPort);
 
 /// Discovers live VS Code bridge servers (§6).
 ///
@@ -269,11 +267,11 @@ class BridgeChoiceStore {
   /// to check which port the editor bound to, so the damage this swallows is
   /// the realistic case rather than the exotic one.
   BridgeChoice? load() => decodeAgentYamlValue(
-        readAgentYamlFile(file),
-        key: 'bridge',
-        fromYaml: BridgeChoice.fromMap,
-        orElse: null,
-      );
+    readAgentYamlFile(file),
+    key: 'bridge',
+    fromYaml: BridgeChoice.fromMap,
+    orElse: null,
+  );
 
   /// Persists [choice], creating the parent directory if needed.
   void save(BridgeChoice choice) {

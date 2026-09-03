@@ -17,5 +17,4 @@ const int approxCharsPerToken = 4;
 /// Cheap and tokenizer-free — suitable for budget pre-checks and usage
 /// reporting where an exact count is unnecessary. An empty string
 /// estimates to zero tokens.
-int estimateTokens(String text) =>
-    (text.length / approxCharsPerToken).ceil();
+int estimateTokens(String text) => (text.length / approxCharsPerToken).ceil();

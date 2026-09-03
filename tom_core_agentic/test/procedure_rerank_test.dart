@@ -114,25 +114,34 @@ void main() {
 
   group('recencyDecay', () {
     test('a brand-new run scores 1.0', () {
-      expect(recencyDecay(ageMillis: 0, halfLifeMillis: 86400000),
-          closeTo(1.0, 1e-9));
+      expect(
+        recencyDecay(ageMillis: 0, halfLifeMillis: 86400000),
+        closeTo(1.0, 1e-9),
+      );
     });
 
     test('an age of exactly one half-life scores 0.5', () {
-      expect(recencyDecay(ageMillis: 86400000, halfLifeMillis: 86400000),
-          closeTo(0.5, 1e-9));
+      expect(
+        recencyDecay(ageMillis: 86400000, halfLifeMillis: 86400000),
+        closeTo(0.5, 1e-9),
+      );
     });
 
     test('older runs decay monotonically toward 0', () {
       final fresh = recencyDecay(ageMillis: 1000, halfLifeMillis: 86400000);
-      final stale = recencyDecay(ageMillis: 10 * 86400000, halfLifeMillis: 86400000);
+      final stale = recencyDecay(
+        ageMillis: 10 * 86400000,
+        halfLifeMillis: 86400000,
+      );
       expect(stale, lessThan(fresh));
       expect(stale, greaterThanOrEqualTo(0));
     });
 
     test('a negative age (clock skew) clamps to the freshest score', () {
-      expect(recencyDecay(ageMillis: -5000, halfLifeMillis: 86400000),
-          closeTo(1.0, 1e-9));
+      expect(
+        recencyDecay(ageMillis: -5000, halfLifeMillis: 86400000),
+        closeTo(1.0, 1e-9),
+      );
     });
 
     test('a never-run candidate (null age) scores 0.0', () {

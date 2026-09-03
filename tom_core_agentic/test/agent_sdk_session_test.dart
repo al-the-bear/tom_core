@@ -88,16 +88,15 @@ const _wire = WirePrompt(
   templateSha: 'template-sha-T1',
 );
 
-Map<String, dynamic> _successResult(String sessionId, {String text = 'ok'}) =>
-    {
-      'type': 'result',
-      'subtype': 'success',
-      'is_error': false,
-      'result': text,
-      'duration_ms': 12,
-      'usage': {'input_tokens': 5, 'output_tokens': 9},
-      'session_id': sessionId,
-    };
+Map<String, dynamic> _successResult(String sessionId, {String text = 'ok'}) => {
+  'type': 'result',
+  'subtype': 'success',
+  'is_error': false,
+  'result': text,
+  'duration_ms': 12,
+  'usage': {'input_tokens': 5, 'output_tokens': 9},
+  'session_id': sessionId,
+};
 
 /// A store path whose parent directory can never be created, because an
 /// ancestor component is an ordinary file. Both `create(recursive: true)` and
@@ -112,14 +111,13 @@ File _unwritableFile(Directory tmp) {
 AgentSdkLlmProvider _provider(
   _ScriptedAgentSdkTransport transport,
   AgentSdkSessionStrategy strategy,
-) =>
-    AgentSdkLlmProvider(
-      id: 'claude:sonnet:test',
-      defaultModel: 'claude-sonnet-4-6',
-      bridgePort: 19900,
-      clientFactory: (port) async => AgentSdkClient(transport),
-      sessionStrategy: strategy,
-    );
+) => AgentSdkLlmProvider(
+  id: 'claude:sonnet:test',
+  defaultModel: 'claude-sonnet-4-6',
+  bridgePort: 19900,
+  clientFactory: (port) async => AgentSdkClient(transport),
+  sessionStrategy: strategy,
+);
 
 void main() {
   late Directory tmp;
@@ -148,8 +146,9 @@ void main() {
     });
 
     test('a missing file reads as empty', () async {
-      final store =
-          AgentSdkSessionStore(File('${tmp.path}/never_written.json'));
+      final store = AgentSdkSessionStore(
+        File('${tmp.path}/never_written.json'),
+      );
       expect(await store.lookup('x'), isNull);
     });
 
@@ -170,14 +169,16 @@ void main() {
       expect(await store.lookup('tb-1'), 'claude-aaa');
     });
 
-    test('remove on an unwritable store degrades instead of throwing',
-        () async {
-      final store = AgentSdkSessionStore(_unwritableFile(tmp));
-      await store.put('tb-1', 'claude-aaa');
+    test(
+      'remove on an unwritable store degrades instead of throwing',
+      () async {
+        final store = AgentSdkSessionStore(_unwritableFile(tmp));
+        await store.put('tb-1', 'claude-aaa');
 
-      await expectLater(store.remove('tb-1'), completes);
-      expect(await store.lookup('tb-1'), isNull);
-    });
+        await expectLater(store.remove('tb-1'), completes);
+        expect(await store.lookup('tb-1'), isNull);
+      },
+    );
   });
 
   group('strategies', () {
@@ -192,58 +193,65 @@ void main() {
       await strategy.evict(LlmOptions.empty);
     });
 
-    test('BrainSessionStrategy keys by brainSessionId; null key → fresh',
-        () async {
-      final store =
-          AgentSdkSessionStore(File('${tmp.path}/agent_sdk_sessions.json'));
-      final strategy = BrainSessionStrategy(store);
+    test(
+      'BrainSessionStrategy keys by brainSessionId; null key → fresh',
+      () async {
+        final store = AgentSdkSessionStore(
+          File('${tmp.path}/agent_sdk_sessions.json'),
+        );
+        final strategy = BrainSessionStrategy(store);
 
-      // Null session (background / boot) always starts fresh, never stored.
-      expect(await strategy.resumeIdFor(LlmOptions.empty), isNull);
-      await strategy.record(LlmOptions.empty, 'claude-zzz');
-      expect(await store.lookup(''), isNull);
+        // Null session (background / boot) always starts fresh, never stored.
+        expect(await strategy.resumeIdFor(LlmOptions.empty), isNull);
+        await strategy.record(LlmOptions.empty, 'claude-zzz');
+        expect(await store.lookup(''), isNull);
 
-      const opts = LlmOptions(brainSessionId: 'tb-7');
-      expect(await strategy.resumeIdFor(opts), isNull);
-      await strategy.record(opts, 'claude-bbb');
-      expect(await strategy.resumeIdFor(opts), 'claude-bbb');
-      await strategy.evict(opts);
-      expect(await strategy.resumeIdFor(opts), isNull);
-    });
+        const opts = LlmOptions(brainSessionId: 'tb-7');
+        expect(await strategy.resumeIdFor(opts), isNull);
+        await strategy.record(opts, 'claude-bbb');
+        expect(await strategy.resumeIdFor(opts), 'claude-bbb');
+        await strategy.evict(opts);
+        expect(await strategy.resumeIdFor(opts), isNull);
+      },
+    );
 
-    test('QuestSessionStrategy reads sessionId; missing → null; read-only',
-        () async {
-      final root = Directory('${tmp.path}/quests')..createSync();
-      final histDir = Directory('${root.path}/tom_brain/history')
-        ..createSync(recursive: true);
-      final file = File('${histDir.path}/default.session.json')
-        ..writeAsStringSync(jsonEncode(<String, Object?>{
-          'sessionId': 'claude-quest-1',
-          'updatedAt': '2026-06-13T00:00:00Z',
-          'model': 'claude-sonnet-4-6',
-        }));
+    test(
+      'QuestSessionStrategy reads sessionId; missing → null; read-only',
+      () async {
+        final root = Directory('${tmp.path}/quests')..createSync();
+        final histDir = Directory('${root.path}/tom_brain/history')
+          ..createSync(recursive: true);
+        final file = File('${histDir.path}/default.session.json')
+          ..writeAsStringSync(
+            jsonEncode(<String, Object?>{
+              'sessionId': 'claude-quest-1',
+              'updatedAt': '2026-06-13T00:00:00Z',
+              'model': 'claude-sonnet-4-6',
+            }),
+          );
 
-      final strategy = QuestSessionStrategy(
-        questHistoryRoot: root.path,
-        questId: 'tom_brain',
-        sessionKey: 'default',
-      );
-      expect(await strategy.resumeIdFor(LlmOptions.empty), 'claude-quest-1');
+        final strategy = QuestSessionStrategy(
+          questHistoryRoot: root.path,
+          questId: 'tom_brain',
+          sessionKey: 'default',
+        );
+        expect(await strategy.resumeIdFor(LlmOptions.empty), 'claude-quest-1');
 
-      // record / evict are no-ops: the file is never mutated.
-      final before = file.readAsStringSync();
-      await strategy.record(LlmOptions.empty, 'claude-new');
-      await strategy.evict(LlmOptions.empty);
-      expect(file.readAsStringSync(), before);
+        // record / evict are no-ops: the file is never mutated.
+        final before = file.readAsStringSync();
+        await strategy.record(LlmOptions.empty, 'claude-new');
+        await strategy.evict(LlmOptions.empty);
+        expect(file.readAsStringSync(), before);
 
-      // A missing session file degrades to a fresh session.
-      final missing = QuestSessionStrategy(
-        questHistoryRoot: root.path,
-        questId: 'tom_brain',
-        sessionKey: 'chat',
-      );
-      expect(await missing.resumeIdFor(LlmOptions.empty), isNull);
-    });
+        // A missing session file degrades to a fresh session.
+        final missing = QuestSessionStrategy(
+          questHistoryRoot: root.path,
+          questId: 'tom_brain',
+          sessionKey: 'chat',
+        );
+        expect(await missing.resumeIdFor(LlmOptions.empty), isNull);
+      },
+    );
   });
 
   group('agentSdkLooksLikeSessionError', () {
@@ -259,80 +267,89 @@ void main() {
   });
 
   group('provider — brain mode', () {
-    test('resumes the stored Claude session id, then records the new one',
-        () async {
-      final store =
-          AgentSdkSessionStore(File('${tmp.path}/agent_sdk_sessions.json'));
-      await store.put('tb-1', 'claude-old');
-      final transport = _ScriptedAgentSdkTransport(<_Attempt>[
-        _Attempt(messages: <Map<String, dynamic>>[
-          _successResult('claude-new', text: 'Paris.'),
-        ]),
-      ]);
-      final provider = _provider(transport, BrainSessionStrategy(store));
+    test(
+      'resumes the stored Claude session id, then records the new one',
+      () async {
+        final store = AgentSdkSessionStore(
+          File('${tmp.path}/agent_sdk_sessions.json'),
+        );
+        await store.put('tb-1', 'claude-old');
+        final transport = _ScriptedAgentSdkTransport(<_Attempt>[
+          _Attempt(
+            messages: <Map<String, dynamic>>[
+              _successResult('claude-new', text: 'Paris.'),
+            ],
+          ),
+        ]);
+        final provider = _provider(transport, BrainSessionStrategy(store));
 
-      final events = await provider
-          .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
-          .toList();
+        final events = await provider
+            .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+            .toList();
 
-      expect(events.last, isA<LlmStreamCompleted>());
-      // The first (only) query resumed the stored id.
-      expect(transport.resumesSeen, <Object?>['claude-old']);
-      // The returned Claude session id is written back for the next call.
-      expect(await store.lookup('tb-1'), 'claude-new');
-      // A first-shot success reports no retries — the other half of the count
-      // the retry test pins at 1.
-      expect((events.last as LlmStreamCompleted).report.retries, 0);
-    });
+        expect(events.last, isA<LlmStreamCompleted>());
+        // The first (only) query resumed the stored id.
+        expect(transport.resumesSeen, <Object?>['claude-old']);
+        // The returned Claude session id is written back for the next call.
+        expect(await store.lookup('tb-1'), 'claude-new');
+        // A first-shot success reports no retries — the other half of the count
+        // the retry test pins at 1.
+        expect((events.last as LlmStreamCompleted).report.retries, 0);
+      },
+    );
 
-    test('a session-error on the resumed call evicts + retries once fresh',
-        () async {
-      final store =
-          AgentSdkSessionStore(File('${tmp.path}/agent_sdk_sessions.json'));
-      await store.put('tb-1', 'claude-stale');
-      // Both attempts take real time, so the report's elapsed figure can be
-      // told apart from the second attempt's own `duration_ms` of 12.
-      final transport = _ScriptedAgentSdkTransport(<_Attempt>[
-        // Attempt 1 (resume = claude-stale): a session-shaped failure.
-        _Attempt(
-          error: 'Session claude-stale not found',
-          delay: const Duration(milliseconds: 25),
-        ),
-        // Attempt 2 (fresh): succeeds and yields a new session id.
-        _Attempt(
-          messages: <Map<String, dynamic>>[
-            _successResult('claude-fresh', text: 'Paris.'),
-          ],
-          delay: const Duration(milliseconds: 25),
-        ),
-      ]);
-      final provider = _provider(transport, BrainSessionStrategy(store));
+    test(
+      'a session-error on the resumed call evicts + retries once fresh',
+      () async {
+        final store = AgentSdkSessionStore(
+          File('${tmp.path}/agent_sdk_sessions.json'),
+        );
+        await store.put('tb-1', 'claude-stale');
+        // Both attempts take real time, so the report's elapsed figure can be
+        // told apart from the second attempt's own `duration_ms` of 12.
+        final transport = _ScriptedAgentSdkTransport(<_Attempt>[
+          // Attempt 1 (resume = claude-stale): a session-shaped failure.
+          _Attempt(
+            error: 'Session claude-stale not found',
+            delay: const Duration(milliseconds: 25),
+          ),
+          // Attempt 2 (fresh): succeeds and yields a new session id.
+          _Attempt(
+            messages: <Map<String, dynamic>>[
+              _successResult('claude-fresh', text: 'Paris.'),
+            ],
+            delay: const Duration(milliseconds: 25),
+          ),
+        ]);
+        final provider = _provider(transport, BrainSessionStrategy(store));
 
-      final events = await provider
-          .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
-          .toList();
+        final events = await provider
+            .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+            .toList();
 
-      // Exactly one Started (no duplicate on retry), terminal Completed.
-      expect(events.whereType<LlmStreamStarted>(), hasLength(1));
-      expect(events.last, isA<LlmStreamCompleted>());
-      // First query resumed the stale id, the retry went fresh (resume null).
-      expect(transport.resumesSeen, <Object?>['claude-stale', null]);
-      // The fresh session id was written back over the evicted stale one.
-      expect(await store.lookup('tb-1'), 'claude-fresh');
+        // Exactly one Started (no duplicate on retry), terminal Completed.
+        expect(events.whereType<LlmStreamStarted>(), hasLength(1));
+        expect(events.last, isA<LlmStreamCompleted>());
+        // First query resumed the stale id, the retry went fresh (resume null).
+        expect(transport.resumesSeen, <Object?>['claude-stale', null]);
+        // The fresh session id was written back over the evicted stale one.
+        expect(await store.lookup('tb-1'), 'claude-fresh');
 
-      // The report tells the truth about the retry. `retries` counts it, and
-      // `wallClockMs` is the caller's total — it spans the failed first attempt
-      // and the wait as well as the successful second one, so it is well above
-      // the 50 ms the two scripted delays alone cost and nowhere near the
-      // second attempt's own `duration_ms` of 12.
-      final report = (events.last as LlmStreamCompleted).report;
-      expect(report.retries, 1);
-      expect(report.wallClockMs, greaterThanOrEqualTo(40));
-    });
+        // The report tells the truth about the retry. `retries` counts it, and
+        // `wallClockMs` is the caller's total — it spans the failed first attempt
+        // and the wait as well as the successful second one, so it is well above
+        // the 50 ms the two scripted delays alone cost and nowhere near the
+        // second attempt's own `duration_ms` of 12.
+        final report = (events.last as LlmStreamCompleted).report;
+        expect(report.retries, 1);
+        expect(report.wallClockMs, greaterThanOrEqualTo(40));
+      },
+    );
 
     test('a non-session error does NOT retry', () async {
-      final store =
-          AgentSdkSessionStore(File('${tmp.path}/agent_sdk_sessions.json'));
+      final store = AgentSdkSessionStore(
+        File('${tmp.path}/agent_sdk_sessions.json'),
+      );
       await store.put('tb-1', 'claude-old');
       final transport = _ScriptedAgentSdkTransport(<_Attempt>[
         _Attempt(error: 'bridge exploded'),
@@ -357,9 +374,11 @@ void main() {
     test('an unwritable store still completes a successful call', () async {
       final store = AgentSdkSessionStore(_unwritableFile(tmp));
       final transport = _ScriptedAgentSdkTransport(<_Attempt>[
-        _Attempt(messages: <Map<String, dynamic>>[
-          _successResult('claude-new', text: 'Paris.'),
-        ]),
+        _Attempt(
+          messages: <Map<String, dynamic>>[
+            _successResult('claude-new', text: 'Paris.'),
+          ],
+        ),
       ]);
       final provider = _provider(transport, BrainSessionStrategy(store));
 
@@ -392,9 +411,11 @@ void main() {
       await store.put('tb-1', 'claude-stale');
       final transport = _ScriptedAgentSdkTransport(<_Attempt>[
         _Attempt(error: 'Session claude-stale not found'),
-        _Attempt(messages: <Map<String, dynamic>>[
-          _successResult('claude-fresh', text: 'Paris.'),
-        ]),
+        _Attempt(
+          messages: <Map<String, dynamic>>[
+            _successResult('claude-fresh', text: 'Paris.'),
+          ],
+        ),
       ]);
       final provider = _provider(transport, BrainSessionStrategy(store));
 
@@ -413,17 +434,21 @@ void main() {
       final histDir = Directory('${root.path}/tom_brain/history')
         ..createSync(recursive: true);
       final file = File('${histDir.path}/default.session.json')
-        ..writeAsStringSync(jsonEncode(<String, Object?>{
-          'sessionId': 'claude-quest-1',
-          'updatedAt': '2026-06-13T00:00:00Z',
-          'model': 'claude-sonnet-4-6',
-        }));
+        ..writeAsStringSync(
+          jsonEncode(<String, Object?>{
+            'sessionId': 'claude-quest-1',
+            'updatedAt': '2026-06-13T00:00:00Z',
+            'model': 'claude-sonnet-4-6',
+          }),
+        );
       final before = file.readAsStringSync();
 
       final transport = _ScriptedAgentSdkTransport(<_Attempt>[
-        _Attempt(messages: <Map<String, dynamic>>[
-          _successResult('claude-quest-1', text: 'Paris.'),
-        ]),
+        _Attempt(
+          messages: <Map<String, dynamic>>[
+            _successResult('claude-quest-1', text: 'Paris.'),
+          ],
+        ),
       ]);
       final provider = _provider(
         transport,
@@ -434,8 +459,9 @@ void main() {
         ),
       );
 
-      final events =
-          await provider.completeStream(_wire, LlmOptions.empty).toList();
+      final events = await provider
+          .completeStream(_wire, LlmOptions.empty)
+          .toList();
 
       expect(events.last, isA<LlmStreamCompleted>());
       expect(transport.resumesSeen, <Object?>['claude-quest-1']);

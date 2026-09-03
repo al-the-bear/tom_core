@@ -132,10 +132,8 @@ final class TokenBucket {
   final Map<String, _BucketState> _buckets = {};
 
   /// Builds a bucket set over [policy]. [clock] defaults to [systemClock].
-  TokenBucket({
-    required this.policy,
-    DateTime Function()? clock,
-  }) : clock = clock ?? systemClock;
+  TokenBucket({required this.policy, DateTime Function()? clock})
+    : clock = clock ?? systemClock;
 
   /// Number of keys with live bucket state — for observability and as the
   /// seam an external eviction policy reads.
@@ -150,12 +148,12 @@ final class TokenBucket {
   /// restart, so a long-horizon throttle layered on the bucket survives the
   /// restart. An empty map when no key has been seen.
   Map<String, TokenBucketSnapshot> snapshot() => <String, TokenBucketSnapshot>{
-        for (final entry in _buckets.entries)
-          entry.key: TokenBucketSnapshot(
-            tokens: entry.value.tokens,
-            lastRefill: entry.value.lastRefill,
-          ),
-      };
+    for (final entry in _buckets.entries)
+      entry.key: TokenBucketSnapshot(
+        tokens: entry.value.tokens,
+        lastRefill: entry.value.lastRefill,
+      ),
+  };
 
   /// Snapshot of a single [key]'s bucket, or `null` when it has no live state.
   ///
@@ -228,8 +226,10 @@ final class TokenBucket {
       return;
     }
     final refilled = elapsedMicros * policy.tokensPerMicrosecond;
-    bucket.tokens =
-        (bucket.tokens + refilled).clamp(0.0, policy.capacity.toDouble());
+    bucket.tokens = (bucket.tokens + refilled).clamp(
+      0.0,
+      policy.capacity.toDouble(),
+    );
     bucket.lastRefill = now;
   }
 }

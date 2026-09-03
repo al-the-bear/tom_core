@@ -171,11 +171,7 @@ final class AgentSdkLlmProvider implements LlmProvider {
     final modelId = options.model ?? defaultModel;
     final callId = _newCallId(prompt);
 
-    yield LlmStreamStarted(
-      callId: callId,
-      providerId: id,
-      modelId: modelId,
-    );
+    yield LlmStreamStarted(callId: callId, providerId: id, modelId: modelId);
 
     // The session id to resume, or null for a fresh session. Mode `none` always
     // returns null; mode `brain` looks it up by the caller's session id; mode
@@ -209,7 +205,10 @@ final class AgentSdkLlmProvider implements LlmProvider {
         // `wire.combined` carries the assistant-dedication anchor verbatim (the
         // anchor leads `wire.system`, which leads `combined`) and is handed to
         // Claude Code unmodified.
-        final query = client.query(prompt: prompt.combined, options: sdkOptions);
+        final query = client.query(
+          prompt: prompt.combined,
+          options: sdkOptions,
+        );
         await for (final message in query) {
           if (message is SdkAssistantMessage) {
             for (final block in message.content) {
@@ -300,7 +299,8 @@ final class AgentSdkLlmProvider implements LlmProvider {
 
       // ── Costed error result ──
       if (resolved.isError) {
-        final message = resolved.result ?? 'Agent SDK reported an error result.';
+        final message =
+            resolved.result ?? 'Agent SDK reported an error result.';
         if (await _shouldRetryFresh(
           resumeId: resumeId,
           retries: retries,

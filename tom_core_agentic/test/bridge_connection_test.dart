@@ -7,18 +7,18 @@ void main() {
   group('BridgeConnectionService.scan', () {
     test('maps a fake port table to ascending BridgeServers', () async {
       final service = BridgeConnectionService(
-        scanner: ({required host, required minPort, required maxPort}) async => {
-          19902: 'other_workspace',
-          19900: 'tom_agent_container',
-        },
+        scanner: ({required host, required minPort, required maxPort}) async =>
+            {19902: 'other_workspace', 19900: 'tom_agent_container'},
       );
 
       final servers = await service.scan();
 
       expect(servers.map((s) => s.port), [19900, 19902]);
       expect(servers.first.workspace, 'tom_agent_container');
-      expect(servers.every((s) => s.status == BridgeServerStatus.available),
-          isTrue);
+      expect(
+        servers.every((s) => s.status == BridgeServerStatus.available),
+        isTrue,
+      );
     });
 
     test('scans the full 19900–19909 range by default', () async {
@@ -70,8 +70,10 @@ void main() {
       const bound = BridgeChoice(host: 'LocalHost', port: 19900);
       expect(bound.matches(serverOn('localhost')), isTrue);
       expect(
-        const BridgeChoice(host: 'Build-Box', port: 19900)
-            .matches(serverOn('build-box')),
+        const BridgeChoice(
+          host: 'Build-Box',
+          port: 19900,
+        ).matches(serverOn('build-box')),
         isTrue,
       );
     });
@@ -171,8 +173,10 @@ void main() {
       // `fromMap` already defaults an *absent* key, so a value it cannot read
       // is treated the same way rather than escaping as a `TypeError`.
       final file = File('${dir.path}/bridge.yaml')
-        ..writeAsStringSync('version: 1\nbridge:\n  host: 42\n'
-            '  port: "not-a-number"\n');
+        ..writeAsStringSync(
+          'version: 1\nbridge:\n  host: 42\n'
+          '  port: "not-a-number"\n',
+        );
 
       final loaded = BridgeChoiceStore(file).load();
       expect(loaded, isNotNull);
@@ -184,8 +188,10 @@ void main() {
       final dir = Directory.systemTemp.createTempSync('bridge_choice_perm_');
       addTearDown(() => dir.deleteSync(recursive: true));
       final file = File('${dir.path}/bridge.yaml')
-        ..writeAsStringSync('version: 1\nbridge:\n  host: 127.0.0.1\n'
-            '  port: 19900\n');
+        ..writeAsStringSync(
+          'version: 1\nbridge:\n  host: 127.0.0.1\n'
+          '  port: 19900\n',
+        );
 
       // Permissions are the only portable way to make an *existing* file
       // unreadable, and they do not bite on Windows or for root. Rather than

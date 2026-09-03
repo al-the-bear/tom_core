@@ -19,9 +19,9 @@ enum ChatRole {
   final String value;
 
   static ChatRole fromValue(String? value) => ChatRole.values.firstWhere(
-        (r) => r.value == value,
-        orElse: () => ChatRole.user,
-      );
+    (r) => r.value == value,
+    orElse: () => ChatRole.user,
+  );
 }
 
 /// A single message in a chat exchange.
@@ -47,22 +47,22 @@ final class ChatMessage {
   final String? toolCallId;
 
   factory ChatMessage.fromYaml(Map<String, dynamic> yaml) => ChatMessage(
-        id: yaml['id'] as String,
-        role: ChatRole.fromValue(yaml['role'] as String?),
-        text: yaml['text'] as String? ?? '',
-        createdAt: yaml['createdAt'] as String? ?? '',
-        toolName: yaml['toolName'] as String?,
-        toolCallId: yaml['toolCallId'] as String?,
-      );
+    id: yaml['id'] as String,
+    role: ChatRole.fromValue(yaml['role'] as String?),
+    text: yaml['text'] as String? ?? '',
+    createdAt: yaml['createdAt'] as String? ?? '',
+    toolName: yaml['toolName'] as String?,
+    toolCallId: yaml['toolCallId'] as String?,
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'role': role.value,
-        'text': text,
-        'createdAt': createdAt,
-        if (toolName != null) 'toolName': toolName,
-        if (toolCallId != null) 'toolCallId': toolCallId,
-      };
+    'id': id,
+    'role': role.value,
+    'text': text,
+    'createdAt': createdAt,
+    if (toolName != null) 'toolName': toolName,
+    if (toolCallId != null) 'toolCallId': toolCallId,
+  };
 }
 
 /// One request/answer pair from an SDK exchange, as shown in the trail.
@@ -94,34 +94,32 @@ final class TrailPair {
   final double? costUsd;
 
   factory TrailPair.fromYaml(Map<String, dynamic> yaml) => TrailPair(
-        id: yaml['id'] as String,
-        request: ChatMessage.fromYaml(
-          (yaml['request'] as Map).cast<String, dynamic>(),
-        ),
-        answer: yaml['answer'] is Map
-            ? ChatMessage.fromYaml(
-                (yaml['answer'] as Map).cast<String, dynamic>(),
-              )
-            : null,
-        createdAt: yaml['createdAt'] as String? ?? '',
-        summaryMarkdown: yaml['summaryMarkdown'] as String?,
-        providerId: yaml['providerId'] as String?,
-        modelId: yaml['modelId'] as String?,
-        tokensIn: yaml['tokensIn'] as int?,
-        tokensOut: yaml['tokensOut'] as int?,
-        costUsd: (yaml['costUsd'] as num?)?.toDouble(),
-      );
+    id: yaml['id'] as String,
+    request: ChatMessage.fromYaml(
+      (yaml['request'] as Map).cast<String, dynamic>(),
+    ),
+    answer: yaml['answer'] is Map
+        ? ChatMessage.fromYaml((yaml['answer'] as Map).cast<String, dynamic>())
+        : null,
+    createdAt: yaml['createdAt'] as String? ?? '',
+    summaryMarkdown: yaml['summaryMarkdown'] as String?,
+    providerId: yaml['providerId'] as String?,
+    modelId: yaml['modelId'] as String?,
+    tokensIn: yaml['tokensIn'] as int?,
+    tokensOut: yaml['tokensOut'] as int?,
+    costUsd: (yaml['costUsd'] as num?)?.toDouble(),
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'request': request.toYaml(),
-        if (answer != null) 'answer': answer!.toYaml(),
-        'createdAt': createdAt,
-        if (summaryMarkdown != null) 'summaryMarkdown': summaryMarkdown,
-        if (providerId != null) 'providerId': providerId,
-        if (modelId != null) 'modelId': modelId,
-        if (tokensIn != null) 'tokensIn': tokensIn,
-        if (tokensOut != null) 'tokensOut': tokensOut,
-        if (costUsd != null) 'costUsd': costUsd,
-      };
+    'id': id,
+    'request': request.toYaml(),
+    if (answer != null) 'answer': answer!.toYaml(),
+    'createdAt': createdAt,
+    if (summaryMarkdown != null) 'summaryMarkdown': summaryMarkdown,
+    if (providerId != null) 'providerId': providerId,
+    if (modelId != null) 'modelId': modelId,
+    if (tokensIn != null) 'tokensIn': tokensIn,
+    if (tokensOut != null) 'tokensOut': tokensOut,
+    if (costUsd != null) 'costUsd': costUsd,
+  };
 }

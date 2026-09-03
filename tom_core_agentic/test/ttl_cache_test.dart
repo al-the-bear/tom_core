@@ -23,7 +23,9 @@ void main() {
     test('rejects a maxEntries below 1', () {
       expect(
         () => TtlCache<String, int>(
-            ttl: const Duration(minutes: 1), maxEntries: 0),
+          ttl: const Duration(minutes: 1),
+          maxEntries: 0,
+        ),
         throwsA(isA<ArgumentError>()),
       );
     });

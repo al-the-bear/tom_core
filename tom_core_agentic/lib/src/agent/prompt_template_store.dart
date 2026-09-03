@@ -35,11 +35,11 @@ class PromptTemplateStore {
   /// missing, unreadable or malformed. Entries the file cannot supply
   /// are skipped individually — see [decodeAgentYamlList].
   List<PromptTemplate> load() => decodeAgentYamlList(
-        readAgentYamlFile(file),
-        key: 'templates',
-        identity: 'id',
-        fromYaml: PromptTemplate.fromYaml,
-      );
+    readAgentYamlFile(file),
+    key: 'templates',
+    identity: 'id',
+    fromYaml: PromptTemplate.fromYaml,
+  );
 
   /// Persists [templates], creating the parent directory if needed.
   void save(List<PromptTemplate> templates) {

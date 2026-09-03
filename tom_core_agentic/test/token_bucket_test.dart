@@ -45,11 +45,13 @@ void main() {
     setUp(() => now = DateTime.utc(2026, 1, 1));
 
     test('a fresh bucket starts full at capacity', () {
-      final bucket = bucketWith(TokenBucketPolicy(
-        capacity: 3,
-        refillTokens: 1,
-        refillPeriod: const Duration(seconds: 1),
-      ));
+      final bucket = bucketWith(
+        TokenBucketPolicy(
+          capacity: 3,
+          refillTokens: 1,
+          refillPeriod: const Duration(seconds: 1),
+        ),
+      );
       expect(bucket.tryTake('p'), isNull);
       expect(bucket.tryTake('p'), isNull);
       expect(bucket.tryTake('p'), isNull);
@@ -58,22 +60,26 @@ void main() {
     });
 
     test('returns the wait until one token refills when empty', () {
-      final bucket = bucketWith(TokenBucketPolicy(
-        capacity: 1,
-        refillTokens: 1,
-        refillPeriod: const Duration(seconds: 10),
-      ));
+      final bucket = bucketWith(
+        TokenBucketPolicy(
+          capacity: 1,
+          refillTokens: 1,
+          refillPeriod: const Duration(seconds: 10),
+        ),
+      );
       expect(bucket.tryTake('p'), isNull);
       final wait = bucket.tryTake('p');
       expect(wait, const Duration(seconds: 10));
     });
 
     test('refills continuously over elapsed wall-clock time', () {
-      final bucket = bucketWith(TokenBucketPolicy(
-        capacity: 2,
-        refillTokens: 1,
-        refillPeriod: const Duration(seconds: 1),
-      ));
+      final bucket = bucketWith(
+        TokenBucketPolicy(
+          capacity: 2,
+          refillTokens: 1,
+          refillPeriod: const Duration(seconds: 1),
+        ),
+      );
       expect(bucket.tryTake('p'), isNull);
       expect(bucket.tryTake('p'), isNull);
       expect(bucket.tryTake('p'), isNotNull); // empty
@@ -82,11 +88,13 @@ void main() {
     });
 
     test('a rejected take does not push the retry window further out', () {
-      final bucket = bucketWith(TokenBucketPolicy(
-        capacity: 1,
-        refillTokens: 1,
-        refillPeriod: const Duration(seconds: 4),
-      ));
+      final bucket = bucketWith(
+        TokenBucketPolicy(
+          capacity: 1,
+          refillTokens: 1,
+          refillPeriod: const Duration(seconds: 4),
+        ),
+      );
       expect(bucket.tryTake('p'), isNull);
       final first = bucket.tryTake('p')!;
       final second = bucket.tryTake('p')!;
@@ -94,31 +102,37 @@ void main() {
     });
 
     test('keys are independent', () {
-      final bucket = bucketWith(TokenBucketPolicy(
-        capacity: 1,
-        refillTokens: 1,
-        refillPeriod: const Duration(seconds: 1),
-      ));
+      final bucket = bucketWith(
+        TokenBucketPolicy(
+          capacity: 1,
+          refillTokens: 1,
+          refillPeriod: const Duration(seconds: 1),
+        ),
+      );
       expect(bucket.tryTake('a'), isNull);
       expect(bucket.tryTake('b'), isNull); // b has its own full bucket
       expect(bucket.keyCount, 2);
     });
 
     test('rejects an empty key', () {
-      final bucket = bucketWith(TokenBucketPolicy(
-        capacity: 1,
-        refillTokens: 1,
-        refillPeriod: const Duration(seconds: 1),
-      ));
+      final bucket = bucketWith(
+        TokenBucketPolicy(
+          capacity: 1,
+          refillTokens: 1,
+          refillPeriod: const Duration(seconds: 1),
+        ),
+      );
       expect(() => bucket.tryTake(''), throwsA(isA<ArgumentError>()));
     });
 
     test('clear resets every bucket to full', () {
-      final bucket = bucketWith(TokenBucketPolicy(
-        capacity: 1,
-        refillTokens: 1,
-        refillPeriod: const Duration(seconds: 1),
-      ));
+      final bucket = bucketWith(
+        TokenBucketPolicy(
+          capacity: 1,
+          refillTokens: 1,
+          refillPeriod: const Duration(seconds: 1),
+        ),
+      );
       expect(bucket.tryTake('p'), isNull);
       expect(bucket.tryTake('p'), isNotNull);
       bucket.clear();
@@ -127,11 +141,13 @@ void main() {
     });
 
     test('a backwards clock does not credit the bucket', () {
-      final bucket = bucketWith(TokenBucketPolicy(
-        capacity: 2,
-        refillTokens: 1,
-        refillPeriod: const Duration(seconds: 1),
-      ));
+      final bucket = bucketWith(
+        TokenBucketPolicy(
+          capacity: 2,
+          refillTokens: 1,
+          refillPeriod: const Duration(seconds: 1),
+        ),
+      );
       expect(bucket.tryTake('p'), isNull);
       expect(bucket.tryTake('p'), isNull); // empty
       now = now.subtract(const Duration(seconds: 100)); // clock jumps back
@@ -144,10 +160,10 @@ void main() {
     TokenBucket bucketWith(TokenBucketPolicy policy) =>
         TokenBucket(policy: policy, clock: () => now);
     TokenBucketPolicy policy() => TokenBucketPolicy(
-          capacity: 3,
-          refillTokens: 1,
-          refillPeriod: const Duration(seconds: 1),
-        );
+      capacity: 3,
+      refillTokens: 1,
+      refillPeriod: const Duration(seconds: 1),
+    );
 
     setUp(() => now = DateTime.utc(2026, 1, 1));
 
@@ -207,9 +223,7 @@ void main() {
 
     test('restore() clamps tokens to the current capacity', () {
       final restored = bucketWith(policy()); // capacity 3
-      restored.restore({
-        'p': TokenBucketSnapshot(tokens: 99, lastRefill: now),
-      });
+      restored.restore({'p': TokenBucketSnapshot(tokens: 99, lastRefill: now)});
       // Capacity is 3, so at most three immediate takes despite the bloated
       // snapshot.
       expect(restored.tryTake('p'), isNull);
@@ -221,7 +235,9 @@ void main() {
     test('restore() rejects an empty key', () {
       final bucket = bucketWith(policy());
       expect(
-        () => bucket.restore({'': TokenBucketSnapshot(tokens: 1, lastRefill: now)}),
+        () => bucket.restore({
+          '': TokenBucketSnapshot(tokens: 1, lastRefill: now),
+        }),
         throwsA(isA<ArgumentError>()),
       );
     });

@@ -19,14 +19,16 @@ void main() {
     test('throws a context-tagged StateError on a non-object payload', () {
       expect(
         () => decodeJsonObject('[1,2,3]', context: 'edges.attrs_json'),
-        throwsA(isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          allOf(
-            contains('edges.attrs_json'),
-            contains('is not a JSON object'),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('edges.attrs_json'),
+              contains('is not a JSON object'),
+            ),
           ),
-        )),
+        ),
       );
     });
 

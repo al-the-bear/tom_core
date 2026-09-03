@@ -82,13 +82,18 @@ final class MapFieldReader {
   /// Returns the map at [key], or `null` when absent; throws when present
   /// but non-map.
   Map<Object?, Object?>? optionalMap(
-          Map<Object?, Object?> map, String key, String path) =>
-      mapValue(map[key], path, allowNull: true);
+    Map<Object?, Object?> map,
+    String key,
+    String path,
+  ) => mapValue(map[key], path, allowNull: true);
 
   /// Returns the list at [key], or `null` when absent; throws when present
   /// but non-list.
   List<Object?>? optionalList(
-      Map<Object?, Object?> map, String key, String path) {
+    Map<Object?, Object?> map,
+    String key,
+    String path,
+  ) {
     final v = map[key];
     if (v == null) return null;
     if (v is! List) {
@@ -114,8 +119,11 @@ final class MapFieldReader {
 
   /// Asserts [value] is a map. When [allowNull] is set a `null` returns
   /// `null`; otherwise `null` is a type mismatch.
-  Map<Object?, Object?>? mapValue(Object? value, String path,
-      {bool allowNull = false}) {
+  Map<Object?, Object?>? mapValue(
+    Object? value,
+    String path, {
+    bool allowNull = false,
+  }) {
     if (value == null && allowNull) return null;
     if (value is! Map) {
       _fail('$path must be a map (got ${value.runtimeType}).');

@@ -17,4 +17,5 @@ import 'package:crypto/crypto.dart';
 /// text fingerprints consistently regardless of platform string
 /// representation. The prefix lets a trail reader tell the hash
 /// algorithm from the digest without an out-of-band agreement.
-String promptSha256(String body) => 'sha256:${sha256.convert(utf8.encode(body))}';
+String promptSha256(String body) =>
+    'sha256:${sha256.convert(utf8.encode(body))}';

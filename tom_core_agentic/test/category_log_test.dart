@@ -23,10 +23,7 @@ final class _DemoLog extends CategoryLog {
 void main() {
   group('CategoryLog.tagMessage', () {
     test('tags an eager (non-function) message', () {
-      expect(
-        CategoryLog.tagMessage('demo.host', 'hello'),
-        '[demo.host] hello',
-      );
+      expect(CategoryLog.tagMessage('demo.host', 'hello'), '[demo.host] hello');
     });
 
     test('tags a lazy () => Object message only when evaluated', () {

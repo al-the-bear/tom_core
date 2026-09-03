@@ -45,9 +45,9 @@ final class PathScope {
   /// Throws [ArgumentError] when [roots] is empty — a scope with no roots admits
   /// nothing and is always a configuration mistake.
   PathScope(Iterable<String> roots)
-      : roots = List<String>.unmodifiable(
-          roots.map((r) => p.normalize(p.absolute(r))),
-        ) {
+    : roots = List<String>.unmodifiable(
+        roots.map((r) => p.normalize(p.absolute(r))),
+      ) {
     if (this.roots.isEmpty) {
       throw ArgumentError.value(roots, 'roots', 'must not be empty');
     }

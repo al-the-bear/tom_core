@@ -40,14 +40,18 @@ void main() {
       final r = PlaceholderResolver(environment: const {});
       expect(
         () => r.resolveSync(r'${env:MISSING}'),
-        throwsA(isA<PlaceholderUnresolvedException>()
-            .having((e) => e.reference, 'reference', 'env:MISSING')),
+        throwsA(
+          isA<PlaceholderUnresolvedException>().having(
+            (e) => e.reference,
+            'reference',
+            'env:MISSING',
+          ),
+        ),
       );
     });
 
     test('an undefined env var renders empty in lenient mode', () {
-      final r =
-          PlaceholderResolver(environment: const {}, strict: false);
+      final r = PlaceholderResolver(environment: const {}, strict: false);
       expect(r.resolveSync(r'[${env:MISSING}]'), '[]');
     });
   });
@@ -64,8 +68,13 @@ void main() {
       final r = PlaceholderResolver(environment: const {'NAME': 'from-env'});
       expect(
         () => r.resolveSync(r'${NAME}'),
-        throwsA(isA<PlaceholderUnresolvedException>()
-            .having((e) => e.reference, 'reference', 'NAME')),
+        throwsA(
+          isA<PlaceholderUnresolvedException>().having(
+            (e) => e.reference,
+            'reference',
+            'NAME',
+          ),
+        ),
       );
     });
 
@@ -93,8 +102,13 @@ void main() {
       final r = PlaceholderResolver(environment: const {});
       expect(
         () => r.resolveSync(r'${absent}'),
-        throwsA(isA<PlaceholderUnresolvedException>()
-            .having((e) => e.reference, 'reference', 'absent')),
+        throwsA(
+          isA<PlaceholderUnresolvedException>().having(
+            (e) => e.reference,
+            'reference',
+            'absent',
+          ),
+        ),
       );
     });
 
@@ -120,8 +134,13 @@ void main() {
       final r = PlaceholderResolver(environment: const {'TOKEN': 'secret'});
       expect(
         () => r.resolveSync(r'${env:TOKEN?}'),
-        throwsA(isA<PlaceholderUnresolvedException>()
-            .having((e) => e.reference, 'reference', 'env:TOKEN?')),
+        throwsA(
+          isA<PlaceholderUnresolvedException>().having(
+            (e) => e.reference,
+            'reference',
+            'env:TOKEN?',
+          ),
+        ),
       );
     });
 
@@ -169,17 +188,20 @@ void main() {
       );
     });
 
-    test('resolve evaluates through the injected backing with the scope', () async {
-      final r = PlaceholderResolver(
-        environment: const {},
-        expressions: _FakeExpressions(),
-      );
-      r.stack.bind('who', 'world');
-      // Bound name → the backing returns the scope value.
-      expect(await r.resolve(r'hello ${{ who }}'), 'hello world');
-      // Unbound body → the fake renders <body>.
-      expect(await r.resolve(r'${{ other }}'), '<other>');
-    });
+    test(
+      'resolve evaluates through the injected backing with the scope',
+      () async {
+        final r = PlaceholderResolver(
+          environment: const {},
+          expressions: _FakeExpressions(),
+        );
+        r.stack.bind('who', 'world');
+        // Bound name → the backing returns the scope value.
+        expect(await r.resolve(r'hello ${{ who }}'), 'hello world');
+        // Unbound body → the fake renders <body>.
+        expect(await r.resolve(r'${{ other }}'), '<other>');
+      },
+    );
 
     // The docs used to call `${name}` "equivalent to `${{ name }}`". It is
     // not: the forms agree on exactly one case and diverge on three axes.
@@ -194,14 +216,8 @@ void main() {
         expressions: _FakeExpressions(),
       );
       r.stack.bind('name', 'Tom');
-      expect(
-        r.resolve(r'${name}'),
-        completion(equals('Tom')),
-      );
-      expect(
-        r.resolve(r'${{ name }}'),
-        completion(equals('Tom')),
-      );
+      expect(r.resolve(r'${name}'), completion(equals('Tom')));
+      expect(r.resolve(r'${{ name }}'), completion(equals('Tom')));
     });
 
     test('axis 1+2: the simple form needs neither a backing nor resolve', () {
@@ -280,8 +296,13 @@ void main() {
       final r = PlaceholderResolver(environment: const {});
       expect(
         () => r.resolveSync(r'${a.b}'),
-        throwsA(isA<PlaceholderUnresolvedException>()
-            .having((e) => e.reference, 'reference', 'a.b')),
+        throwsA(
+          isA<PlaceholderUnresolvedException>().having(
+            (e) => e.reference,
+            'reference',
+            'a.b',
+          ),
+        ),
       );
     });
 
@@ -303,13 +324,16 @@ void main() {
   });
 
   group('PlaceholderResolver — reserved prefixes', () {
-    test(r'${file:…} / ${state:…} pass through verbatim and do not recurse', () {
-      final r = PlaceholderResolver(environment: const {});
-      expect(
-        r.resolveSync(r'${file:/etc/x} and ${state:run.id}'),
-        r'${file:/etc/x} and ${state:run.id}',
-      );
-    });
+    test(
+      r'${file:…} / ${state:…} pass through verbatim and do not recurse',
+      () {
+        final r = PlaceholderResolver(environment: const {});
+        expect(
+          r.resolveSync(r'${file:/etc/x} and ${state:run.id}'),
+          r'${file:/etc/x} and ${state:run.id}',
+        );
+      },
+    );
   });
 
   group('PlaceholderResolver — recursion', () {
@@ -320,8 +344,7 @@ void main() {
     });
 
     test('a self-referential binding errors at the recursion cap', () {
-      final r =
-          PlaceholderResolver(environment: const {}, maxRecursion: 5);
+      final r = PlaceholderResolver(environment: const {}, maxRecursion: 5);
       r.stack.bind('loop', r'${loop}');
       expect(
         () => r.resolveSync(r'${loop}'),
@@ -385,8 +408,10 @@ void main() {
       );
       // The fake renders an unbound body as `<body>`; the body must arrive as
       // the full `{'a': 1}`, proving the nested brace did not close early.
-      expect(await r.resolve(r"pre ${{ {'a': 1} }} post"),
-          r"pre <{'a': 1}> post");
+      expect(
+        await r.resolve(r"pre ${{ {'a': 1} }} post"),
+        r"pre <{'a': 1}> post",
+      );
     });
 
     test(r'an unterminated ${{ (no closing }}) is left verbatim', () {

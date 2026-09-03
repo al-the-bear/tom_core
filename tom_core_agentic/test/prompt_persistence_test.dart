@@ -19,15 +19,17 @@ void main() {
     PromptQueueStore store() =>
         PromptQueueStore(File('${dir.path}/prompt_queue.yaml'));
 
-    QueuedPrompt prompt(String id, String text,
-            {QueuedPromptStatus status = QueuedPromptStatus.pending}) =>
-        QueuedPrompt(
-          id: id,
-          originalText: text,
-          expandedText: text,
-          createdAt: '2026-06-17T10:00:00Z',
-          status: status,
-        );
+    QueuedPrompt prompt(
+      String id,
+      String text, {
+      QueuedPromptStatus status = QueuedPromptStatus.pending,
+    }) => QueuedPrompt(
+      id: id,
+      originalText: text,
+      expandedText: text,
+      createdAt: '2026-06-17T10:00:00Z',
+      status: status,
+    );
 
     test('round-trips a queue through YAML preserving order and status', () {
       final s = store();
@@ -65,23 +67,23 @@ void main() {
         PromptTrailStore(File('${dir.path}/prompt_trail.yaml'));
 
     TrailPair pair(String id, String request, String? answer) => TrailPair(
-          id: id,
-          createdAt: '2026-06-17T10:00:00Z',
-          request: ChatMessage(
-            id: '$id-q',
-            role: ChatRole.user,
-            text: request,
-            createdAt: '2026-06-17T10:00:00Z',
-          ),
-          answer: answer == null
-              ? null
-              : ChatMessage(
-                  id: '$id-a',
-                  role: ChatRole.assistant,
-                  text: answer,
-                  createdAt: '2026-06-17T10:00:01Z',
-                ),
-        );
+      id: id,
+      createdAt: '2026-06-17T10:00:00Z',
+      request: ChatMessage(
+        id: '$id-q',
+        role: ChatRole.user,
+        text: request,
+        createdAt: '2026-06-17T10:00:00Z',
+      ),
+      answer: answer == null
+          ? null
+          : ChatMessage(
+              id: '$id-a',
+              role: ChatRole.assistant,
+              text: answer,
+              createdAt: '2026-06-17T10:00:01Z',
+            ),
+    );
 
     test('round-trips request/answer pairs, including a pending answer', () {
       final s = store();

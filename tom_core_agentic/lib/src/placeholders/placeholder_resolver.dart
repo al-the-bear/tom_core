@@ -99,8 +99,8 @@ final class PlaceholderResolver {
     this.strict = true,
     this.maxRecursion = 10,
     Map<String, String>? environment,
-  })  : stack = stack ?? PlaceholderStack(),
-        environment = environment ?? Platform.environment;
+  }) : stack = stack ?? PlaceholderStack(),
+       environment = environment ?? Platform.environment;
 
   /// The live binding namespace both the simple and expression forms read.
   final PlaceholderStack stack;
@@ -323,7 +323,9 @@ final class PlaceholderResolver {
         start: open,
         tokenEnd: close + 1,
         form: form,
-        body: optional ? raw.substring(0, raw.length - 1).trimRight() : _bodyOf(raw),
+        body: optional
+            ? raw.substring(0, raw.length - 1).trimRight()
+            : _bodyOf(raw),
         optional: optional,
       );
     }

@@ -25,11 +25,13 @@ void main() {
     test('optionalString throws with path + runtimeType on mismatch', () {
       expect(
         () => _reader.optionalString({'a': 7}, 'a', 'root.a'),
-        throwsA(isA<_ReadException>().having(
-          (e) => e.message,
-          'message',
-          contains('root.a must be a string (got'),
-        )),
+        throwsA(
+          isA<_ReadException>().having(
+            (e) => e.message,
+            'message',
+            contains('root.a must be a string (got'),
+          ),
+        ),
       );
     });
 
@@ -40,11 +42,13 @@ void main() {
     test('requireString throws when missing', () {
       expect(
         () => _reader.requireString({'b': 'x'}, 'a', 'root.a'),
-        throwsA(isA<_ReadException>().having(
-          (e) => e.message,
-          'message',
-          'Missing required field: root.a',
-        )),
+        throwsA(
+          isA<_ReadException>().having(
+            (e) => e.message,
+            'message',
+            'Missing required field: root.a',
+          ),
+        ),
       );
     });
 
@@ -57,11 +61,13 @@ void main() {
     test('optionalNum throws on non-numeric', () {
       expect(
         () => _reader.optionalNum({'a': 'x'}, 'a', 'root.a'),
-        throwsA(isA<_ReadException>().having(
-          (e) => e.message,
-          'message',
-          contains('root.a must be a number (got'),
-        )),
+        throwsA(
+          isA<_ReadException>().having(
+            (e) => e.message,
+            'message',
+            contains('root.a must be a number (got'),
+          ),
+        ),
       );
     });
 
@@ -70,39 +76,61 @@ void main() {
       expect(_reader.optionalBool({'b': true}, 'a', 'root.a'), isNull);
       expect(
         () => _reader.optionalBool({'a': 'x'}, 'a', 'root.a'),
-        throwsA(isA<_ReadException>().having(
-          (e) => e.message,
-          'message',
-          contains('root.a must be a boolean (got'),
-        )),
+        throwsA(
+          isA<_ReadException>().having(
+            (e) => e.message,
+            'message',
+            contains('root.a must be a boolean (got'),
+          ),
+        ),
       );
     });
 
     test('optionalMap returns value / null / throws', () {
-      expect(_reader.optionalMap({'a': const {'k': 1}}, 'a', 'root.a'),
-          <Object?, Object?>{'k': 1});
+      expect(
+        _reader.optionalMap(
+          {
+            'a': const {'k': 1},
+          },
+          'a',
+          'root.a',
+        ),
+        <Object?, Object?>{'k': 1},
+      );
       expect(_reader.optionalMap({'b': const {}}, 'a', 'root.a'), isNull);
       expect(
         () => _reader.optionalMap({'a': 'x'}, 'a', 'root.a'),
-        throwsA(isA<_ReadException>().having(
-          (e) => e.message,
-          'message',
-          contains('root.a must be a map (got'),
-        )),
+        throwsA(
+          isA<_ReadException>().having(
+            (e) => e.message,
+            'message',
+            contains('root.a must be a map (got'),
+          ),
+        ),
       );
     });
 
     test('optionalList returns value / null / throws', () {
-      expect(_reader.optionalList({'a': const [1, 2]}, 'a', 'root.a'),
-          <Object?>[1, 2]);
+      expect(
+        _reader.optionalList(
+          {
+            'a': const [1, 2],
+          },
+          'a',
+          'root.a',
+        ),
+        <Object?>[1, 2],
+      );
       expect(_reader.optionalList({'b': const []}, 'a', 'root.a'), isNull);
       expect(
         () => _reader.optionalList({'a': 'x'}, 'a', 'root.a'),
-        throwsA(isA<_ReadException>().having(
-          (e) => e.message,
-          'message',
-          contains('root.a must be a list (got'),
-        )),
+        throwsA(
+          isA<_ReadException>().having(
+            (e) => e.message,
+            'message',
+            contains('root.a must be a list (got'),
+          ),
+        ),
       );
     });
   });
@@ -112,11 +140,13 @@ void main() {
       expect(_reader.stringValue('hi', 'root.a[0]'), 'hi');
       expect(
         () => _reader.stringValue(7, 'root.a[0]'),
-        throwsA(isA<_ReadException>().having(
-          (e) => e.message,
-          'message',
-          contains('root.a[0] must be a string (got'),
-        )),
+        throwsA(
+          isA<_ReadException>().having(
+            (e) => e.message,
+            'message',
+            contains('root.a[0] must be a string (got'),
+          ),
+        ),
       );
     });
 
@@ -129,15 +159,18 @@ void main() {
     });
 
     test('mapValue validates a value in hand', () {
-      expect(_reader.mapValue(const {'k': 1}, 'root.a'),
-          <Object?, Object?>{'k': 1});
+      expect(_reader.mapValue(const {'k': 1}, 'root.a'), <Object?, Object?>{
+        'k': 1,
+      });
       expect(
         () => _reader.mapValue(7, 'root.a'),
-        throwsA(isA<_ReadException>().having(
-          (e) => e.message,
-          'message',
-          contains('root.a must be a map (got'),
-        )),
+        throwsA(
+          isA<_ReadException>().having(
+            (e) => e.message,
+            'message',
+            contains('root.a must be a map (got'),
+          ),
+        ),
       );
     });
   });

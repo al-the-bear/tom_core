@@ -38,9 +38,9 @@ final class ReminderTemplate {
       );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
-        'id': id,
-        'name': name,
-        'prompt': prompt,
-        'isDefault': isDefault,
-      };
+    'id': id,
+    'name': name,
+    'prompt': prompt,
+    'isDefault': isDefault,
+  };
 }

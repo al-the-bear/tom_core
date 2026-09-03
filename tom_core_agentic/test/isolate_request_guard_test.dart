@@ -30,21 +30,22 @@ import 'package:test/test.dart';
 
 void main() {
   group('IsolateRequestGuard — happy path', () {
-    test('a completing request returns its value and drains bookkeeping',
-        () async {
-      final guard = IsolateRequestGuard();
-      final source = Completer<int>();
-      final guarded = guard.guard(source.future, operation: 'recall');
-      expect(guard.inFlightCount, equals(1));
-      source.complete(42);
-      expect(await guarded, equals(42));
-      // The entry removes itself once the request settles.
-      expect(guard.inFlightCount, equals(0));
-      expect(guard.isWorkerDead, isFalse);
-    });
+    test(
+      'a completing request returns its value and drains bookkeeping',
+      () async {
+        final guard = IsolateRequestGuard();
+        final source = Completer<int>();
+        final guarded = guard.guard(source.future, operation: 'recall');
+        expect(guard.inFlightCount, equals(1));
+        source.complete(42);
+        expect(await guarded, equals(42));
+        // The entry removes itself once the request settles.
+        expect(guard.inFlightCount, equals(0));
+        expect(guard.isWorkerDead, isFalse);
+      },
+    );
 
-    test('a request that throws propagates its own error unchanged',
-        () async {
+    test('a request that throws propagates its own error unchanged', () async {
       final guard = IsolateRequestGuard();
       final source = Completer<int>();
       final guarded = guard.guard(source.future, operation: 'open');
@@ -55,25 +56,34 @@ void main() {
   });
 
   group('IsolateRequestGuard — worker death', () {
-    test('markWorkerDead fails an in-flight request with workerDeath',
-        () async {
-      final guard = IsolateRequestGuard();
-      final neverCompletes = Completer<int>();
-      final guarded = guard.guard(neverCompletes.future, operation: 'stats');
-      guard.markWorkerDead('isolate exited');
-      await expectLater(
-        guarded,
-        throwsA(
-          isA<IsolateRequestFailure>()
-              .having((f) => f.reason, 'reason',
-                  IsolateRequestFailureReason.workerDeath)
-              .having((f) => f.message, 'message', contains('stats'))
-              .having((f) => f.message, 'message', contains('isolate exited')),
-        ),
-      );
-      expect(guard.isWorkerDead, isTrue);
-      expect(guard.inFlightCount, equals(0));
-    });
+    test(
+      'markWorkerDead fails an in-flight request with workerDeath',
+      () async {
+        final guard = IsolateRequestGuard();
+        final neverCompletes = Completer<int>();
+        final guarded = guard.guard(neverCompletes.future, operation: 'stats');
+        guard.markWorkerDead('isolate exited');
+        await expectLater(
+          guarded,
+          throwsA(
+            isA<IsolateRequestFailure>()
+                .having(
+                  (f) => f.reason,
+                  'reason',
+                  IsolateRequestFailureReason.workerDeath,
+                )
+                .having((f) => f.message, 'message', contains('stats'))
+                .having(
+                  (f) => f.message,
+                  'message',
+                  contains('isolate exited'),
+                ),
+          ),
+        );
+        expect(guard.isWorkerDead, isTrue);
+        expect(guard.inFlightCount, equals(0));
+      },
+    );
 
     test('markWorkerDead fails every in-flight request at once', () async {
       final guard = IsolateRequestGuard();
@@ -88,16 +98,18 @@ void main() {
       expect(guard.inFlightCount, equals(0));
     });
 
-    test('a request guarded after death fails fast with workerDeath',
-        () async {
+    test('a request guarded after death fails fast with workerDeath', () async {
       final guard = IsolateRequestGuard();
       guard.markWorkerDead();
       final guarded = guard.guard(Completer<int>().future, operation: 'late');
       await expectLater(
         guarded,
         throwsA(
-          isA<IsolateRequestFailure>().having((f) => f.reason, 'reason',
-              IsolateRequestFailureReason.workerDeath),
+          isA<IsolateRequestFailure>().having(
+            (f) => f.reason,
+            'reason',
+            IsolateRequestFailureReason.workerDeath,
+          ),
         ),
       );
     });
@@ -111,58 +123,71 @@ void main() {
       await expectLater(
         guarded,
         throwsA(
-          isA<IsolateRequestFailure>().having((f) => f.message, 'message',
-              contains('first')),
+          isA<IsolateRequestFailure>().having(
+            (f) => f.message,
+            'message',
+            contains('first'),
+          ),
         ),
       );
     });
 
-    test('a request that already completed is unaffected by a later death',
-        () async {
-      final guard = IsolateRequestGuard();
-      final source = Completer<int>();
-      final guarded = guard.guard(source.future);
-      source.complete(7);
-      expect(await guarded, equals(7));
-      // No throw, no state corruption.
-      guard.markWorkerDead();
-      expect(guard.isWorkerDead, isTrue);
-    });
+    test(
+      'a request that already completed is unaffected by a later death',
+      () async {
+        final guard = IsolateRequestGuard();
+        final source = Completer<int>();
+        final guarded = guard.guard(source.future);
+        source.complete(7);
+        expect(await guarded, equals(7));
+        // No throw, no state corruption.
+        guard.markWorkerDead();
+        expect(guard.isWorkerDead, isTrue);
+      },
+    );
   });
 
   group('IsolateRequestGuard — per-request deadline', () {
     test('a hanging request fails with timeout after the deadline', () async {
-      final guard =
-          IsolateRequestGuard(defaultTimeout: const Duration(milliseconds: 30));
+      final guard = IsolateRequestGuard(
+        defaultTimeout: const Duration(milliseconds: 30),
+      );
       final guarded = guard.guard(Completer<int>().future, operation: 'recall');
       await expectLater(
         guarded,
         throwsA(
           isA<IsolateRequestFailure>()
-              .having((f) => f.reason, 'reason',
-                  IsolateRequestFailureReason.timeout)
+              .having(
+                (f) => f.reason,
+                'reason',
+                IsolateRequestFailureReason.timeout,
+              )
               .having((f) => f.message, 'message', contains('recall')),
         ),
       );
       expect(guard.inFlightCount, equals(0));
     });
 
-    test('a fast request under the deadline resolves and cancels the timer',
-        () async {
-      final guard = IsolateRequestGuard(
-          defaultTimeout: const Duration(milliseconds: 200));
-      final source = Completer<int>();
-      final guarded = guard.guard(source.future);
-      source.complete(1);
-      expect(await guarded, equals(1));
-      // Wait past the deadline to prove no late timeout error fires.
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-      expect(guard.inFlightCount, equals(0));
-    });
+    test(
+      'a fast request under the deadline resolves and cancels the timer',
+      () async {
+        final guard = IsolateRequestGuard(
+          defaultTimeout: const Duration(milliseconds: 200),
+        );
+        final source = Completer<int>();
+        final guarded = guard.guard(source.future);
+        source.complete(1);
+        expect(await guarded, equals(1));
+        // Wait past the deadline to prove no late timeout error fires.
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        expect(guard.inFlightCount, equals(0));
+      },
+    );
 
     test('an explicit per-call timeout overrides the default', () async {
       final guard = IsolateRequestGuard(
-          defaultTimeout: const Duration(seconds: 10));
+        defaultTimeout: const Duration(seconds: 10),
+      );
       final guarded = guard.guard(
         Completer<int>().future,
         timeout: const Duration(milliseconds: 20),
@@ -171,30 +196,39 @@ void main() {
       await expectLater(
         guarded,
         throwsA(
-          isA<IsolateRequestFailure>().having((f) => f.reason, 'reason',
-              IsolateRequestFailureReason.timeout),
+          isA<IsolateRequestFailure>().having(
+            (f) => f.reason,
+            'reason',
+            IsolateRequestFailureReason.timeout,
+          ),
         ),
       );
     });
 
-    test('worker death pre-empts a pending deadline (no wait for the timer)',
-        () async {
-      final guard = IsolateRequestGuard(
-          defaultTimeout: const Duration(seconds: 30));
-      final guarded = guard.guard(Completer<int>().future);
-      final sw = Stopwatch()..start();
-      guard.markWorkerDead();
-      await expectLater(
-        guarded,
-        throwsA(
-          isA<IsolateRequestFailure>().having((f) => f.reason, 'reason',
-              IsolateRequestFailureReason.workerDeath),
-        ),
-      );
-      sw.stop();
-      // Must fail promptly, not after the 30s deadline.
-      expect(sw.elapsed, lessThan(const Duration(seconds: 5)));
-    });
+    test(
+      'worker death pre-empts a pending deadline (no wait for the timer)',
+      () async {
+        final guard = IsolateRequestGuard(
+          defaultTimeout: const Duration(seconds: 30),
+        );
+        final guarded = guard.guard(Completer<int>().future);
+        final sw = Stopwatch()..start();
+        guard.markWorkerDead();
+        await expectLater(
+          guarded,
+          throwsA(
+            isA<IsolateRequestFailure>().having(
+              (f) => f.reason,
+              'reason',
+              IsolateRequestFailureReason.workerDeath,
+            ),
+          ),
+        );
+        sw.stop();
+        // Must fail promptly, not after the 30s deadline.
+        expect(sw.elapsed, lessThan(const Duration(seconds: 5)));
+      },
+    );
   });
 
   group('IsolateRequestFailure — value semantics', () {

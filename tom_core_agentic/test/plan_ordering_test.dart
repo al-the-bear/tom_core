@@ -69,16 +69,19 @@ void main() {
       expect(result.hasCycle, isFalse);
     });
 
-    test('a dependency on an unknown (external) id is ignored for ordering', () {
-      // 'a' depends on 'user', which is not a step in the graph — an external
-      // owner. It must not block 'a' from being ordered.
-      final result = orderPlanSteps(<String, Iterable<String>>{
-        'a': <String>['user'],
-        'b': <String>['a'],
-      });
-      expect(result.hasCycle, isFalse);
-      expect(result.order, <String>['a', 'b']);
-    });
+    test(
+      'a dependency on an unknown (external) id is ignored for ordering',
+      () {
+        // 'a' depends on 'user', which is not a step in the graph — an external
+        // owner. It must not block 'a' from being ordered.
+        final result = orderPlanSteps(<String, Iterable<String>>{
+          'a': <String>['user'],
+          'b': <String>['a'],
+        });
+        expect(result.hasCycle, isFalse);
+        expect(result.order, <String>['a', 'b']);
+      },
+    );
 
     test('duplicate dependency edges do not double-count', () {
       final result = orderPlanSteps(<String, Iterable<String>>{

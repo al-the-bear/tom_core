@@ -102,7 +102,8 @@ final _stores = <_ListStore>[
     name: 'PromptTrailStore',
     listKey: 'pairs',
     identity: 'id',
-    entry: (id) => '  - id: $id\n    request:\n'
+    entry: (id) =>
+        '  - id: $id\n    request:\n'
         '      id: ${id}_req\n      text: hi\n',
     identitiesOf: (f) => PromptTrailStore(f).load().map((e) => e.id).toList(),
   ),

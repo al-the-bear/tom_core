@@ -164,16 +164,16 @@ class AgentSendConfig {
   /// into `resume` (omitted from the wire when `null`, so a fresh session is
   /// started).
   Options buildOptions({String? resumeSessionId}) => Options(
-        model: model,
-        systemPrompt: (systemPrompt == null || systemPrompt!.isEmpty)
-            ? null
-            : SystemPromptText(systemPrompt!),
-        permissionMode: permissionMode,
-        maxTurns: maxTurns,
-        cwd: cwd,
-        mcpServers: mcpServers,
-        resume: resumeSessionId,
-      );
+    model: model,
+    systemPrompt: (systemPrompt == null || systemPrompt!.isEmpty)
+        ? null
+        : SystemPromptText(systemPrompt!),
+    permissionMode: permissionMode,
+    maxTurns: maxTurns,
+    cwd: cwd,
+    mcpServers: mcpServers,
+    resume: resumeSessionId,
+  );
 }
 
 /// One step of an [AgentSendEngine.send] run.
@@ -225,8 +225,8 @@ class AgentSendFailed extends AgentSendEvent {
 /// specifics" (N7): it hands the controller this factory (or a fake) and stays
 /// transport-agnostic. Throws a [StateError] if the bridge socket does not come
 /// up, so the caller can surface a connect failure to the user.
-typedef AgentSdkClientFactory = Future<AgentSdkClient> Function(
-    {required String host, required int port});
+typedef AgentSdkClientFactory =
+    Future<AgentSdkClient> Function({required String host, required int port});
 
 /// The production [AgentSdkClientFactory]: opens a [VSCodeBridgeClient] socket
 /// and wraps it in the bridge-backed transport.
@@ -329,8 +329,8 @@ class AgentSendEngine {
       final String? errorText = caught != null
           ? caught.toString()
           : (result != null && result.isError
-              ? (result.result ?? 'Agent SDK reported an error result.')
-              : null);
+                ? (result.result ?? 'Agent SDK reported an error result.')
+                : null);
 
       if (errorText != null) {
         // §7.2: refresh the session id and retry once when we were resuming a

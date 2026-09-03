@@ -54,10 +54,7 @@ final class YamlConfigReader {
   /// Wraps a message in the loader's domain exception type.
   final YamlConfigErrorFactory errorFactory;
 
-  const YamlConfigReader({
-    required this.env,
-    required this.errorFactory,
-  });
+  const YamlConfigReader({required this.env, required this.errorFactory});
 
   Never _fail(String message) => throw errorFactory(message);
 
@@ -144,7 +141,10 @@ final class YamlConfigReader {
 
   /// Returns the map at [key]; throws if missing or non-map.
   Map<Object?, Object?> requireMap(
-      Map<Object?, Object?> node, String key, String path) {
+    Map<Object?, Object?> node,
+    String key,
+    String path,
+  ) {
     final v = node[key];
     if (v == null) {
       _fail('Missing required field: $path');
@@ -171,7 +171,10 @@ final class YamlConfigReader {
 
   /// Returns the list at [key]; throws if missing or non-list.
   List<Object?> requireList(
-      Map<Object?, Object?> node, String key, String path) {
+    Map<Object?, Object?> node,
+    String key,
+    String path,
+  ) {
     final v = node[key];
     if (v == null) {
       _fail('Missing required field: $path');
@@ -185,7 +188,10 @@ final class YamlConfigReader {
   /// Returns the list at [key], or `null` when absent; throws if present
   /// but non-list.
   List<Object?>? optionalList(
-      Map<Object?, Object?> node, String key, String path) {
+    Map<Object?, Object?> node,
+    String key,
+    String path,
+  ) {
     final v = node[key];
     if (v == null) return null;
     if (v is! List<Object?>) {
@@ -227,10 +233,12 @@ final class YamlConfigReader {
       return resolver.resolveSync(input);
     } on PlaceholderUnresolvedException catch (e) {
       final ref = e.reference;
-      throw errorFactory(ref.startsWith('env:')
-          ? '$path references undefined env var `\${$ref}`.'
-          : '$path references unbound placeholder `\${$ref}` '
-              '(reach the environment with `\${env:$ref}`).');
+      throw errorFactory(
+        ref.startsWith('env:')
+            ? '$path references undefined env var `\${$ref}`.'
+            : '$path references unbound placeholder `\${$ref}` '
+                  '(reach the environment with `\${env:$ref}`).',
+      );
     } on PlaceholderRecursionException catch (e) {
       throw errorFactory('$path: ${e.message}');
     } on PlaceholderExpressionException catch (e) {

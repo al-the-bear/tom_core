@@ -90,11 +90,29 @@ void main() {
 
     test('nested lists compare by contents, not reference', () {
       expect(
-        deepValueEquals([1, [2, 3]], [1, [2, 3]]),
+        deepValueEquals(
+          [
+            1,
+            [2, 3],
+          ],
+          [
+            1,
+            [2, 3],
+          ],
+        ),
         isTrue,
       );
       expect(
-        deepValueEquals([1, [2, 3]], [1, [2, 4]]),
+        deepValueEquals(
+          [
+            1,
+            [2, 3],
+          ],
+          [
+            1,
+            [2, 4],
+          ],
+        ),
         isFalse,
       );
     });
@@ -114,10 +132,7 @@ void main() {
     });
 
     test('equal nested values hash equal', () {
-      expect(
-        deepValueHash([1, 2, 3]),
-        deepValueHash([1, 2, 3]),
-      );
+      expect(deepValueHash([1, 2, 3]), deepValueHash([1, 2, 3]));
     });
 
     // Bug §71: the list arm hashed elements by their own hashCode
@@ -126,8 +141,14 @@ void main() {
     // deepValueEquals reports them equal — breaking the equals/hash contract.
     // The hash must recurse like the equality does.
     test('equal nested-list values hash equal (bug §71)', () {
-      final a = [1, [2, 3]];
-      final b = [1, [2, 3]];
+      final a = [
+        1,
+        [2, 3],
+      ];
+      final b = [
+        1,
+        [2, 3],
+      ];
       // The two share the same notion of equality...
       expect(deepValueEquals(a, b), isTrue);
       // ...so they must hash equal (before §71 these differed by identity).
@@ -135,8 +156,20 @@ void main() {
     });
 
     test('deeply nested equal values hash equal (bug §71)', () {
-      final a = [1, [2, [3, 4]]];
-      final b = [1, [2, [3, 4]]];
+      final a = [
+        1,
+        [
+          2,
+          [3, 4],
+        ],
+      ];
+      final b = [
+        1,
+        [
+          2,
+          [3, 4],
+        ],
+      ];
       expect(deepValueEquals(a, b), isTrue);
       expect(deepValueHash(a), deepValueHash(b));
     });

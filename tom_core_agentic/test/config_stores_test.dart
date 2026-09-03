@@ -130,15 +130,17 @@ void main() {
   group('AgentSettingsStore', () {
     test('round-trips the singleton settings', () {
       final store = AgentSettingsStore(f('agent_settings.yaml'));
-      store.save(const AgentSettings(
-        bridgeHost: '127.0.0.1',
-        portScanStart: 19900,
-        portScanEnd: 19905,
-        defaultProfileId: 'p1',
-        maxTokens: 8192,
-        thinkingEnabled: true,
-        toolApprovalMode: ToolApprovalMode.never,
-      ));
+      store.save(
+        const AgentSettings(
+          bridgeHost: '127.0.0.1',
+          portScanStart: 19900,
+          portScanEnd: 19905,
+          defaultProfileId: 'p1',
+          maxTokens: 8192,
+          thinkingEnabled: true,
+          toolApprovalMode: ToolApprovalMode.never,
+        ),
+      );
 
       final loaded = store.load();
       expect(loaded.bridgeHost, '127.0.0.1');

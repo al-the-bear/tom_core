@@ -92,7 +92,8 @@ void main() {
       expect(
         stack.flatten().keys,
         containsAll(<String>['role.anchor', 'a b']),
-        reason: 'flatten must not filter — the backing decides what it can '
+        reason:
+            'flatten must not filter — the backing decides what it can '
             'express',
       );
     });

@@ -115,9 +115,25 @@ list:
   });
 
   group('loadYamlAsMap — type errors', () {
-    test('a non-map document fails with a located message (default factory)', () {
+    test(
+      'a non-map document fails with a located message (default factory)',
+      () {
+        expect(
+          () => loadYamlAsMap('- just\n- a\n- list'),
+          throwsA(
+            isA<FormatException>().having(
+              (e) => e.message,
+              'message',
+              contains('root must be a map'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test('an empty document fails as a non-map', () {
       expect(
-        () => loadYamlAsMap('- just\n- a\n- list'),
+        () => loadYamlAsMap(''),
         throwsA(
           isA<FormatException>().having(
             (e) => e.message,
@@ -128,39 +144,43 @@ list:
       );
     });
 
-    test('an empty document fails as a non-map', () {
-      expect(
-        () => loadYamlAsMap(''),
-        throwsA(isA<FormatException>()
-            .having((e) => e.message, 'message', contains('root must be a map'))),
-      );
-    });
-
     test('a non-string key fails with a located message', () {
       // YAML allows integer keys; config requires string keys.
       expect(
         () => loadYamlAsMap('1: a\n2: b'),
-        throwsA(isA<FormatException>().having(
-          (e) => e.message,
-          'message',
-          allOf(contains('non-string key'), contains('root')),
-        )),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('non-string key'), contains('root')),
+          ),
+        ),
       );
     });
 
     test('a custom error factory wraps the message in the caller type', () {
       expect(
         () => loadYamlAsMap('- x', errorFactory: _ConfigError.new),
-        throwsA(isA<_ConfigError>()
-            .having((e) => e.message, 'message', contains('root must be a map'))),
+        throwsA(
+          isA<_ConfigError>().having(
+            (e) => e.message,
+            'message',
+            contains('root must be a map'),
+          ),
+        ),
       );
     });
 
     test('rootPath appears verbatim in messages', () {
       expect(
         () => loadYamlAsMap('- x', rootPath: 'substrate'),
-        throwsA(isA<FormatException>().having(
-            (e) => e.message, 'message', contains('substrate must be a map'))),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('substrate must be a map'),
+          ),
+        ),
       );
     });
   });
@@ -186,19 +206,29 @@ d: &d [*c, *c, *c, *c, *c]
 e: [*d, *d, *d, *d, *d]
 ''';
 
-    test('an aliased document past the node budget is rejected, not amplified',
-        () {
-      expect(
-        () => loadYamlAsMap(aliasBomb, maxNodes: 100),
-        throwsA(isA<FormatException>().having((e) => e.message, 'message',
-            allOf(contains('node'), contains('100')))),
-      );
-    });
+    test(
+      'an aliased document past the node budget is rejected, not amplified',
+      () {
+        expect(
+          () => loadYamlAsMap(aliasBomb, maxNodes: 100),
+          throwsA(
+            isA<FormatException>().having(
+              (e) => e.message,
+              'message',
+              allOf(contains('node'), contains('100')),
+            ),
+          ),
+        );
+      },
+    );
 
     test('a custom error factory wraps the expansion-bound message', () {
       expect(
-        () => loadYamlAsMap(aliasBomb,
-            maxNodes: 100, errorFactory: _ConfigError.new),
+        () => loadYamlAsMap(
+          aliasBomb,
+          maxNodes: 100,
+          errorFactory: _ConfigError.new,
+        ),
         throwsA(isA<_ConfigError>()),
       );
     });

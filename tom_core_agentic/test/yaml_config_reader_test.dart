@@ -30,11 +30,13 @@ void main() {
       final r = _reader();
       expect(
         () => r.requireString(_map('b: x'), 'a', 'root.a'),
-        throwsA(isA<_CfgException>().having(
-          (e) => e.message,
-          'message',
-          'Missing required field: root.a',
-        )),
+        throwsA(
+          isA<_CfgException>().having(
+            (e) => e.message,
+            'message',
+            'Missing required field: root.a',
+          ),
+        ),
       );
     });
 
@@ -42,11 +44,13 @@ void main() {
       final r = _reader();
       expect(
         () => r.requireString(_map('a: 7'), 'a', 'root.a'),
-        throwsA(isA<_CfgException>().having(
-          (e) => e.message,
-          'message',
-          contains('root.a must be a string (got'),
-        )),
+        throwsA(
+          isA<_CfgException>().having(
+            (e) => e.message,
+            'message',
+            contains('root.a must be a string (got'),
+          ),
+        ),
       );
     });
 
@@ -98,11 +102,13 @@ void main() {
       expect(r.optionalMap(_map('b: 1'), 'a'), isNull);
       expect(
         () => r.optionalMap(_map('a: 1'), 'a'),
-        throwsA(isA<_CfgException>().having(
-          (e) => e.message,
-          'message',
-          contains('Field `a` must be a map'),
-        )),
+        throwsA(
+          isA<_CfgException>().having(
+            (e) => e.message,
+            'message',
+            contains('Field `a` must be a map'),
+          ),
+        ),
       );
     });
 
@@ -165,42 +171,51 @@ void main() {
     test('throws on undefined env var with path', () {
       expect(
         () => _reader().expandEnv(r'${env:MISSING}', 'root.x'),
-        throwsA(isA<_CfgException>().having(
-          (e) => e.message,
-          'message',
-          contains(r'root.x references undefined env var `${env:MISSING}`'),
-        )),
+        throwsA(
+          isA<_CfgException>().having(
+            (e) => e.message,
+            'message',
+            contains(r'root.x references undefined env var `${env:MISSING}`'),
+          ),
+        ),
       );
     });
 
     test('a bare \${name} (no env: prefix) is an unbound-placeholder error '
         'that points at the env: form', () {
       expect(
-        () => _reader(env: {'TOKEN': 'secret'}).expandEnv(r'${TOKEN}', 'root.x'),
-        throwsA(isA<_CfgException>().having(
-          (e) => e.message,
-          'message',
-          allOf(
-            contains(r'root.x references unbound placeholder `${TOKEN}`'),
-            contains(r'${env:TOKEN}'),
+        () =>
+            _reader(env: {'TOKEN': 'secret'}).expandEnv(r'${TOKEN}', 'root.x'),
+        throwsA(
+          isA<_CfgException>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains(r'root.x references unbound placeholder `${TOKEN}`'),
+              contains(r'${env:TOKEN}'),
+            ),
           ),
-        )),
+        ),
       );
     });
 
-    test('an unterminated \${ (no closing brace) is passed through verbatim',
-        () {
-      expect(_reader().expandEnv(r'${UNCLOSED', 'root.x'), r'${UNCLOSED');
-    });
+    test(
+      'an unterminated \${ (no closing brace) is passed through verbatim',
+      () {
+        expect(_reader().expandEnv(r'${UNCLOSED', 'root.x'), r'${UNCLOSED');
+      },
+    );
 
     test('empty \${} is an unbound-placeholder error', () {
       expect(
         () => _reader().expandEnv(r'${}', 'root.x'),
-        throwsA(isA<_CfgException>().having(
-          (e) => e.message,
-          'message',
-          contains('unbound placeholder'),
-        )),
+        throwsA(
+          isA<_CfgException>().having(
+            (e) => e.message,
+            'message',
+            contains('unbound placeholder'),
+          ),
+        ),
       );
     });
 
