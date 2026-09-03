@@ -48,12 +48,16 @@
 #      renamed or mistyped file is invisible to every other check here and
 #      fails immediately for the reader.
 #
-# It also checks the reader's side of (a): every sample's `main()` must open
-# with `requireAsserts()` (or `bootstrapSamples()`, which calls it), so a
-# flagless run refuses instead of reporting a success it did not verify.
+# It also checks the reader's side of (a), on two counts of its own: every
+# sample must contain at least one `assert` — a sample with none exits 0
+# whatever the API does, and so proves nothing about what it demonstrates — and
+# every sample's `main()` must open with `requireAsserts()` (or
+# `bootstrapSamples()`, which calls it), so a flagless run refuses instead of
+# reporting a success it did not verify.
 #
 # Exits non-zero if any sample fails, any documented command omits the flag or
-# names a file that does not exist, or any sample would run hollow without it.
+# names a file that does not exist, or any sample verifies nothing — either by
+# asserting nothing, or by running hollow without the flag.
 
 set -uo pipefail
 
@@ -145,8 +149,8 @@ fi
 # point is to catch the *next* sample, written by someone who did not know the
 # convention, on the first sweep after they add it.
 #
-# A sample with no `assert` at all is a separate defect and not this one's to
-# report — it has no verification for a missing flag to strip.
+# A sample with no `assert` at all has no verification for a missing flag to
+# strip, so it is skipped here and caught by the check below instead.
 unguarded=()
 while IFS= read -r file; do
   grep -q 'assert(' "$file" || continue
@@ -157,6 +161,29 @@ done < <(find example/samples -name '[0-9][0-9]_*.dart' | sort; echo example/run
 if [ ${#unguarded[@]} -gt 0 ]; then
   echo "Samples whose main() never calls requireAsserts() (${#unguarded[@]}):"
   printf '    %s\n' "${unguarded[@]}"
+  echo
+fi
+
+# The gap the check above leaves open, and the more serious of the two: a sample
+# with no `assert` anywhere. It prints its output and exits 0 whatever the API
+# does, so it proves nothing about what it demonstrates — and it slips past the
+# guard check as well, because there is no verification for a missing flag to
+# strip. One such sample existed (`beanlocator/05`) and stayed green under every
+# check in this script for as long as it did.
+#
+# `00_run_all_examples.dart` and `example/run_all_samples.dart` are excluded by
+# name: a group runner delegates to samples that assert and correctly has none
+# of its own.
+unverified=()
+while IFS= read -r file; do
+  case "${file##*/}" in 00_run_all_examples.dart) continue ;; esac
+  grep -q 'assert(' "$file" && continue
+  unverified+=("$file")
+done < <(find example/samples -name '[0-9][0-9]_*.dart' | sort)
+
+if [ ${#unverified[@]} -gt 0 ]; then
+  echo "Samples containing no assert at all (${#unverified[@]}):"
+  printf '    %s\n' "${unverified[@]}"
   echo
 fi
 
@@ -247,10 +274,12 @@ done
 
 echo
 if [ ${#failed[@]} -eq 0 ] && [ ${#hung[@]} -eq 0 ] && [ ${#flagless[@]} -eq 0 ] \
-  && [ ${#unguarded[@]} -eq 0 ] && [ ${#missing_path[@]} -eq 0 ]; then
+  && [ ${#unguarded[@]} -eq 0 ] && [ ${#unverified[@]} -eq 0 ] \
+  && [ ${#missing_path[@]} -eq 0 ]; then
   echo "All ${#files[@]} samples ran standalone and exited 0,"
   echo "every documented command names a file that exists and passes"
-  echo "--enable-asserts, and every sample refuses to run without it."
+  echo "--enable-asserts, every sample asserts something, and every"
+  echo "sample refuses to run without the flag."
   exit 0
 fi
 
@@ -271,6 +300,10 @@ fi
 if [ ${#unguarded[@]} -gt 0 ]; then
   echo "No requireAsserts() in main() (${#unguarded[@]}):"
   printf '    %s\n' "${unguarded[@]}"
+fi
+if [ ${#unverified[@]} -gt 0 ]; then
+  echo "No assert at all (${#unverified[@]}):"
+  printf '    %s\n' "${unverified[@]}"
 fi
 if [ ${#missing_path[@]} -gt 0 ]; then
   echo "Documented path does not exist (${#missing_path[@]}):"
