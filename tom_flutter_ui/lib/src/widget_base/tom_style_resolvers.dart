@@ -1153,12 +1153,10 @@ class TomStyleResolvers {
   /// bottom: 4)` and `['x', 2]` gives `EdgeInsets.symmetric(vertical: 2)`.
   ///
   /// A recognised shape out of which *nothing* parsed — `['x']`,
-  /// `{'all': 'x'}`, `{'nonsense': 1}` — therefore yields `EdgeInsets.zero`
-  /// rather than `null`, so a caller writing `?? fallback` gets flush-to-the-
-  /// edge insets instead of its fallback. This parser is the one exception to
-  /// the null-for-nothing-recognised contract the other eighteen hold;
-  /// `widget_base_resolvers_test.dart` names it as such and pins it, and it is
-  /// tracked for correction as its own todo.
+  /// `{'all': 'x'}`, `{'nonsense': 1}` — is not a value at all and returns
+  /// `null`, like every other parser here. Zero insets and no insets are
+  /// different answers: a caller writing `?? fallback` reaches its fallback for
+  /// a typo'd resource rather than rendering flush to the edge.
   ///
   /// [TomCtr.edgeInsets] is the resource route to this parser.
   static EdgeInsets? parseEdgeInsets(dynamic value) {
@@ -1177,22 +1175,39 @@ class TomStyleResolvers {
     // and it is deliberately the same rule at all three lengths — the branches
     // used to disagree, the short ones discarding the whole value over one bad
     // element while the four-element one skipped it.
+    //
+    // Element tolerance protects a survivor, so where there is no survivor it
+    // has nothing to do: a shape in which not one slot could be read named no
+    // insets and answers `null`, exactly as the map form and every other parser
+    // in this class do. The two rules are independent and both are checked at
+    // every length — holding one at some shapes and not others is how this
+    // parser drifted twice, once in each direction.
     if (value is List) {
       if (value.length == 1) {
-        return EdgeInsets.all(_asNum(value[0])?.toDouble() ?? 0);
+        final all = _asNum(value[0]);
+        if (_nothingContributed([all])) return null;
+        return EdgeInsets.all(all!.toDouble());
       }
       if (value.length == 2) {
+        final horizontal = _asNum(value[0]);
+        final vertical = _asNum(value[1]);
+        if (_nothingContributed([horizontal, vertical])) return null;
         return EdgeInsets.symmetric(
-          horizontal: _asNum(value[0])?.toDouble() ?? 0,
-          vertical: _asNum(value[1])?.toDouble() ?? 0,
+          horizontal: horizontal?.toDouble() ?? 0,
+          vertical: vertical?.toDouble() ?? 0,
         );
       }
       if (value.length == 4) {
+        final left = _asNum(value[0]);
+        final top = _asNum(value[1]);
+        final right = _asNum(value[2]);
+        final bottom = _asNum(value[3]);
+        if (_nothingContributed([left, top, right, bottom])) return null;
         return EdgeInsets.only(
-          left: _asNum(value[0])?.toDouble() ?? 0,
-          top: _asNum(value[1])?.toDouble() ?? 0,
-          right: _asNum(value[2])?.toDouble() ?? 0,
-          bottom: _asNum(value[3])?.toDouble() ?? 0,
+          left: left?.toDouble() ?? 0,
+          top: top?.toDouble() ?? 0,
+          right: right?.toDouble() ?? 0,
+          bottom: bottom?.toDouble() ?? 0,
         );
       }
     }
@@ -1201,19 +1216,26 @@ class TomStyleResolvers {
     if (value is Map<String, dynamic>) {
       final all = _asNum(value['all']);
       if (all != null) return EdgeInsets.all(all.toDouble());
+
+      // Read every key first, then decide. Composing the fallbacks inline the
+      // way this used to would hide the question being asked: four absent sides
+      // render as `EdgeInsets.only()` — zero on all four — which is a real
+      // object built from a map nothing was read out of.
+      final left = _asNum(value['left']);
+      final top = _asNum(value['top']);
+      final right = _asNum(value['right']);
+      final bottom = _asNum(value['bottom']);
+      final horizontal = _asNum(value['horizontal']);
+      final vertical = _asNum(value['vertical']);
+      if (_nothingContributed(
+          [left, top, right, bottom, horizontal, vertical])) {
+        return null;
+      }
       return EdgeInsets.only(
-        left: _asNum(value['left'])?.toDouble() ??
-            _asNum(value['horizontal'])?.toDouble() ??
-            0,
-        top: _asNum(value['top'])?.toDouble() ??
-            _asNum(value['vertical'])?.toDouble() ??
-            0,
-        right: _asNum(value['right'])?.toDouble() ??
-            _asNum(value['horizontal'])?.toDouble() ??
-            0,
-        bottom: _asNum(value['bottom'])?.toDouble() ??
-            _asNum(value['vertical'])?.toDouble() ??
-            0,
+        left: (left ?? horizontal)?.toDouble() ?? 0,
+        top: (top ?? vertical)?.toDouble() ?? 0,
+        right: (right ?? horizontal)?.toDouble() ?? 0,
+        bottom: (bottom ?? vertical)?.toDouble() ?? 0,
       );
     }
 

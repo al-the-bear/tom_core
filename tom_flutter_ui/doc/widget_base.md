@@ -470,6 +470,14 @@ negotiable in the same way — a list of a length no form names, such as
 `[1, 2, 3]`, is rejected outright, because there is no way to tell which three
 sides were meant.
 
+The two rules compose without overlapping, and the list forms are where that is
+easiest to see. Skipping protects a *survivor*: it costs the bad element its own
+slot so the good ones still arrive. Where no element survived there is nothing
+to protect, and the second rule applies instead — `['x']` and `['x', 'y']` are
+`null`, not `EdgeInsets.zero`, exactly as `{'all': 'x'}` and `{'nonsense': 1}`
+are. Zero insets and no insets are different answers, and only one of them lets
+a caller's `?? fallback` run.
+
 `ButtonStyle`'s three size maps are the one place a missing entry is *completed*
 rather than skipped, because a `Size` has no partially-populated form — and each
 of the three completes differently, so there is no single default that would do:
@@ -499,13 +507,10 @@ An unrecognised value for `type` in `parseShapeBorder` or `shape` in
 a misspelled name as the default shape would turn a typo into a real shape.
 
 [`test/widget_base/widget_base_resolvers_test.dart`](../test/widget_base/widget_base_resolvers_test.dart)
-asserts the `null` return for 18 of the 19 parsers, and holds its own list of
-them to the class's member count so a parser added later cannot be exempt in
-silence. `parseEdgeInsets` is the one exception, and is named as such in the
-test rather than left off the list: a value of a shape it reads but out of which
-nothing parsed — `{'all': 'x'}`, `{'nonsense': 1}`, `['x']` — yields
-`EdgeInsets.zero`, a real object built out of nothing. That is tracked as its
-own fix; the test pins the current behaviour so the note cannot outlive it.
+asserts the `null` return for all 19 parsers, and holds its own list of them to
+the class's member count so a parser added later cannot be exempt in silence.
+There is no exempt parser: the list is the whole class, and the property is
+asserted the same way for every entry in it.
 
 ## Dependencies
 

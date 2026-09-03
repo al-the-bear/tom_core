@@ -346,6 +346,11 @@ class TomCtr {
   /// - An array \[all\], \[horizontal, vertical\], or \[left, top, right, bottom\]
   /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
   ///
+  /// Returns `null` when the resource is absent, is of a shape the parser does
+  /// not read, or holds nothing usable — `{'all': 'x'}` is a typo, not a
+  /// padding of zero, so `edgeInsets(path, 'pad') ?? fallback` reaches its
+  /// fallback rather than rendering flush to the edge.
+  ///
   /// The value-to-object step is [TomStyleResolvers.parseEdgeInsets], which is
   /// also what the `contentPadding` key of a decoration map goes through — one
   /// implementation, so the two cannot read a resource differently.

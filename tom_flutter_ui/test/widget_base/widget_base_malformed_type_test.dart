@@ -16,11 +16,17 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // value" is only observable next to a value that survived. A map whose *every*
 // entry is unusable contributed nothing and resolves to `null` — that contract
 // belongs to the parsers themselves and is asserted in
-// `widget_base_resolvers_test.dart`, which also records the one parser that
-// does not yet hold it: `parseEdgeInsets` answers an unreadable value with
-// `EdgeInsets.zero`. The unpaired cases below (`['x']`, `{'all': 'x'}`) are
-// that exception, asserted rather than omitted so that fixing it fails here
-// too.
+// `widget_base_resolvers_test.dart`.
+//
+// The two rules are separate and this file keeps them apart, because collapsing
+// them is how the parser went wrong in the first place. **Element tolerance**
+// says a bad element costs its own slot and nothing else, so `['x', 2]` is
+// still a vertical inset of 2. **Nothing-contributed** says a shape out of
+// which no slot could be read is not a value at all, so `['x']` and
+// `{'all': 'x'}` are `null` rather than `EdgeInsets.zero`. `parseEdgeInsets`
+// used to answer zero in the second case, which a caller writing `?? fallback`
+// could not tell from a deliberate "no padding"; it now holds both rules at
+// every list length and for the map form.
 
 void main() {
   setUpAll(() {
@@ -87,15 +93,37 @@ void main() {
       expect(deco!.labelText, 'Name');
     });
 
-    test('parseInputDecoration({contentPadding: {all: String}}) is tolerant',
+    test('parseInputDecoration({contentPadding: {all: String}}) skips padding',
         () {
+      // Paired with a usable key, because an unreadable `contentPadding` is now
+      // absent rather than zero — and "absent" is only visible next to a
+      // sibling that survived the same call.
       late InputDecoration? deco;
       expect(
           () => deco = TomStyleResolvers.parseInputDecoration({
                 'contentPadding': {'all': 'x'},
+                'labelText': 'Name',
               }),
           returnsNormally);
-      expect(deco!.contentPadding, EdgeInsets.zero);
+      expect(deco!.contentPadding, isNull,
+          reason: 'a padding nothing could be read out of is not a padding of '
+              'zero — the decoration must leave the field unset so Flutter '
+              'applies its own default');
+      expect(deco!.labelText, 'Name');
+    });
+
+    test('parseInputDecoration({contentPadding: {all: String}}) alone is null',
+        () {
+      // The unpaired form. The nested parser now answers `null`, so the outer
+      // map contributed nothing either and the whole decoration collapses —
+      // which is how a caller's `?? defaultDecoration` finally reaches its
+      // fallback for a decoration whose only key was a typo.
+      expect(
+        TomStyleResolvers.parseInputDecoration({
+          'contentPadding': {'all': 'x'},
+        }),
+        isNull,
+      );
     });
 
     test('parseInputDecoration({contentPadding: [n, String, n, n]}) is tolerant',
@@ -130,34 +158,58 @@ void main() {
       expect(insets, const EdgeInsets.symmetric(horizontal: 1, vertical: 0));
     });
 
-    test('parseEdgeInsets([String]) degrades like every other list length', () {
-      // Nothing parsed, so nothing survives — but the answer is the same
-      // `EdgeInsets.zero` the four-element form and the map form give for an
-      // equally unreadable value, not a `null` that only this length returns.
-      // See the note at the head of this file: zero-for-unreadable is the
-      // parser's known deviation, and it deviates uniformly.
+    test('parseEdgeInsets([String]) has nothing to keep, so keeps nothing', () {
+      // The one-element form names a single inset and that one element did not
+      // parse, so no slot was filled. Element tolerance has nothing to be
+      // tolerant *of* here — there is no survivor to protect — and answering
+      // `EdgeInsets.zero` would state a padding the resource never named.
       late EdgeInsets? insets;
       expect(() => insets = TomStyleResolvers.parseEdgeInsets(<dynamic>['x']),
           returnsNormally);
-      expect(insets, EdgeInsets.zero);
+      expect(insets, isNull);
     });
 
-    test('parseEdgeInsets recovers the same way at every list length', () {
-      // The defect this pins was an asymmetry, not a single wrong answer: the
-      // four-element branch skipped a bad element while the one- and
-      // two-element branches discarded the whole value. Asserting the three
-      // lengths together is what states the rule — element in, element out,
-      // whatever the length — so a future edit cannot restore the split by
-      // touching one branch.
-      expect(TomStyleResolvers.parseEdgeInsets(<dynamic>['x']),
-          EdgeInsets.zero);
+    test('parseEdgeInsets applies both rules at every list length', () {
+      // Two rules, three lengths, asserted together because each rule was once
+      // held at some lengths and not others. Element tolerance was the earlier
+      // asymmetry — the four-element branch skipped a bad element while the
+      // shorter ones discarded the whole value. Nothing-contributed was the
+      // later one, and ran the other way: the one-element branch answered
+      // `null` while the map form and the longer lists answered zero.
+      //
+      // Something parsed → the survivors are kept, at every length:
+      expect(TomStyleResolvers.parseEdgeInsets(<dynamic>[2]),
+          const EdgeInsets.all(2));
       expect(TomStyleResolvers.parseEdgeInsets(<dynamic>['x', 2]),
           const EdgeInsets.symmetric(horizontal: 0, vertical: 2));
       expect(TomStyleResolvers.parseEdgeInsets(<dynamic>['x', 2, 'y', 4]),
           const EdgeInsets.only(left: 0, top: 2, right: 0, bottom: 4));
+
+      // Nothing parsed → no value, at every length:
+      expect(TomStyleResolvers.parseEdgeInsets(<dynamic>['x']), isNull);
+      expect(TomStyleResolvers.parseEdgeInsets(<dynamic>['x', 'y']), isNull);
+      expect(TomStyleResolvers.parseEdgeInsets(<dynamic>['w', 'x', 'y', 'z']),
+          isNull);
+
       // A length no branch reads is still rejected outright: tolerance is for
       // elements of a recognised shape, not for the shape itself.
       expect(TomStyleResolvers.parseEdgeInsets(<dynamic>[1, 2, 3]), isNull);
+    });
+
+    test('parseEdgeInsets applies both rules to the map form too', () {
+      // The map form has two sub-shapes — `all`, and the per-side/axis keys —
+      // and the second one is where the leak lived longest: an unrecognised
+      // key set produced four absent sides, which `EdgeInsets.only` renders as
+      // zero on all four without anything having been read.
+      expect(TomStyleResolvers.parseEdgeInsets({'left': 'x', 'top': 3}),
+          const EdgeInsets.only(top: 3));
+      expect(TomStyleResolvers.parseEdgeInsets({'all': 'x'}), isNull);
+      expect(TomStyleResolvers.parseEdgeInsets({'nonsense': 1}), isNull);
+      expect(TomStyleResolvers.parseEdgeInsets({'left': 'x'}), isNull);
+      // `all` unreadable but a side usable: the map still contributed, and the
+      // side is what it contributed.
+      expect(TomStyleResolvers.parseEdgeInsets({'all': 'x', 'bottom': 5}),
+          const EdgeInsets.only(bottom: 5));
     });
 
     test('TomCtr.edgeInsets([String, n]) keeps the element that parsed', () {
@@ -204,7 +256,11 @@ void main() {
       expect(strut!.fontSize, 12);
     });
 
-    test('TomCtr.edgeInsets({all: String}) does not throw', () {
+    test('TomCtr.edgeInsets({all: String}) reports the resource as unusable',
+        () {
+      // The resource route carries the contract as well as the parsing, so a
+      // caller writing `TomCtr.edgeInsets('pad') ?? defaultPadding` reaches its
+      // fallback for a typo'd resource instead of rendering flush to the edge.
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from(<String, dynamic>{
           'pad': {'all': 'x'},
@@ -212,7 +268,7 @@ void main() {
       );
       late EdgeInsets? insets;
       expect(() => insets = TomCtr.edgeInsets('pad'), returnsNormally);
-      expect(insets, EdgeInsets.zero);
+      expect(insets, isNull);
     });
   });
 }

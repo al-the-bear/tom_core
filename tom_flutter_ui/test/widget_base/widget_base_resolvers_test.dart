@@ -401,28 +401,18 @@ void main() {
       'parseTextHeightBehavior': TomStyleResolvers.parseTextHeightBehavior,
       'parseScrollPhysics': TomStyleResolvers.parseScrollPhysics,
       'parseFontWeight': TomStyleResolvers.parseFontWeight,
+      // The last parser to hold the property. It read an unrecognised map as
+      // four absent sides and returned `EdgeInsets.zero` — a real object built
+      // out of nothing, which is the exact failure this group forbids — and was
+      // carried here as a named exception until that was fixed. The exception
+      // is gone; the entry is the point.
+      'parseEdgeInsets': TomStyleResolvers.parseEdgeInsets,
     };
-
-    /// The one parser that does *not* hold the property.
-    ///
-    /// `parseEdgeInsets` reads an unrecognised map as four absent sides and
-    /// returns `EdgeInsets.zero` — a real object built out of nothing, which is
-    /// the exact failure the rest of this group forbids. It is named here
-    /// rather than left off the list, because an omission is indistinguishable
-    /// from an oversight; the fix is tracked separately as its own todo.
-    const knownException = 'parseEdgeInsets';
 
     test('the list covers every parser in the class', () {
       // Guards the guard: a parser added later and not listed here would be
       // exempt from the property without anything saying so.
-      expect(parsers, hasLength(18));
-      expect(parsers.containsKey(knownException), isFalse);
-    });
-
-    test('$knownException is still the exception the list records', () {
-      // Held to its current behaviour so the note above cannot outlive it: if
-      // the leak is fixed, this fails and the parser moves into the list.
-      expect(TomStyleResolvers.parseEdgeInsets(unrecognised), EdgeInsets.zero);
+      expect(parsers, hasLength(19));
     });
 
     for (final entry in parsers.entries) {

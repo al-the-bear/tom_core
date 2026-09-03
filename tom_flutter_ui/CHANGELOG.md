@@ -2,6 +2,26 @@
 
 ### Fixed
 
+- **`TomStyleResolvers.parseEdgeInsets` built an `EdgeInsets` out of a value it
+  could read nothing from.** `{'all': 'x'}`, `{'nonsense': 1}`, `['x']` and
+  `['x', 'y']` all resolved to `EdgeInsets.zero` — a real object assembled from
+  four absent sides. `EdgeInsets.zero` is indistinguishable from a deliberate
+  "no padding", so `TomCtr.edgeInsets(path, 'padding') ?? defaultPadding` never
+  reached its fallback and a typo'd resource key rendered flush to the edge
+  rather than reporting itself. This was the last parser in the class not
+  holding the null-for-nothing-contributed contract; it holds it now, at every
+  list length and for the map form, and `widget_base_resolvers_test.dart`
+  asserts it alongside the other eighteen instead of naming it as an exception.
+
+  Element tolerance is unchanged and remains a separate rule: a bad element
+  still costs its own slot and nothing else, so `['x', 2]` is still a vertical
+  inset of 2 and `[1, 'x', 3, 4]` still keeps three sides.
+
+  The nested route inherits the fix — `parseInputDecoration`'s `contentPadding`
+  feeds the enclosing map's nothing-contributed check, so a decoration whose
+  only key is a typo'd padding now collapses to `null` rather than coming back
+  non-null with zero insets.
+
 - **`TomAuthState.disabled` was granted and never enforced by the ACL
   container.** `disabled.isVisible` is `true`, and both container sites were
   written as "return early if not visible, else dim if `read`" — so a component,
