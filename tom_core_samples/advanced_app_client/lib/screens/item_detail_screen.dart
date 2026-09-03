@@ -1,6 +1,6 @@
 /// The item-detail screen the board opens when a card is tapped — a bound
 /// `TomForm<TodoItem>` whose per-field controls are graded through the framework
-/// authorization registry (RCC2).
+/// authorization registry.
 ///
 /// This is where the authorization model becomes visible end-to-end. On open the
 /// screen resolves the item's **resource-level** state through the framework —
@@ -141,7 +141,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   ///
   /// Resolution is now synchronous: the principal's per-resource role grants are
   /// already on the session (snapshotted + installed as the [TomAuthorization]
-  /// adapter at login, RCC2), so there is no backend round-trip to await — this
+  /// adapter at login), so there is no backend round-trip to await — this
   /// runs once from [initState], before the first build.
   void _resolveForm() {
     final itemKey = ResourceRoleKeys.item(_item.id.get());
@@ -166,7 +166,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     // sit at or below its resource ceiling, the narrow reproduces
     // [projectRoleFieldGrades] exactly — while keeping the registry
     // load-bearing: no role → resource state none → the field collapses
-    // (closed-safe, D-A4).
+    // (closed-safe).
     for (final field in form.gradableFields) {
       final fieldGrade = grades[field.basePath] ?? TomAuthState.none;
       field.authorizer = TomAuthorizer.fixed(resourceState.narrow(fieldGrade));

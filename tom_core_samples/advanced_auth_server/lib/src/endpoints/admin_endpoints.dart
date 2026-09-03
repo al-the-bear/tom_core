@@ -734,7 +734,7 @@ class AdvancedAdminApiService implements AdminApiService {
   // `resources` (`adminResources`, admin-gated `GET /admin/resources`) serves
   // the admin console's full text bundle (the user/role/group editor labels and
   // the grant-matrix screen texts), installed after an admin signs in.
-  // Admin-gated because only administrators reach the console (D-A10).
+  // Admin-gated because only administrators reach the console.
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminResources')
   @override
   Future<ResourceBundleDto> resources() async =>

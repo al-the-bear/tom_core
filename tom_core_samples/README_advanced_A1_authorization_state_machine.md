@@ -100,7 +100,7 @@ makes the field's authorization key equal the wire grade key with no translation
 
 ## The closed-safe default, as it falls out of the code
 
-"Ungraded ⇒ hidden" (D-A4) is enforced at **three** independent points, each
+"Ungraded ⇒ hidden" is enforced at **three** independent points, each
 defaulting to `none`, so no single omission can leak an editable control:
 
 1. **Ungranted resource key.** The installed `AppResourceRoleAdapter` gates every
@@ -189,8 +189,8 @@ the exact matrix on both sides.
 
 The installed `AppResourceRoleAdapter` gates only `<type>:<id>` resource keys
 (those containing `:`); any dotted path (login, board, dialogs, and the gradable
-`todo.item.<field>` keys alike) stays permissive (`full`) — matching the pre-RCC2
-no-adapter behaviour for everything except the item's resource ceiling. The grade
+`todo.item.<field>` keys alike) stays permissive (`full`) — the framework's
+no-adapter default for everything except the item's resource ceiling. The grade
 a gradable field renders at is the item's resource ceiling — layer 1
 (`TomAuthorization.resolveAuth(ResourceRoleKeys.item(id))`, resolved through the
 registry via the adapter) — **narrowed** by the shared `projectRoleFieldGrades[role]`
@@ -202,23 +202,25 @@ out:
 | Path | Resolves to | Why |
 | --- | --- | --- |
 | a gradable leaf, principal holds a role | `resourceState.narrow(grade)` (layer 4) | `TomAuthorizer.fixed(resourceState.narrow(grades[basePath]))` |
-| a gradable leaf, **no** role on the item | `none` | resource ceiling is `none` (adapter), and the narrow can only restrict — closed-safe (D-A4) |
-| a gradable leaf **absent** from the shared row | `none` (layer 4) | `grades[basePath] ?? TomAuthState.none` — closed-safe (D-A4) |
+| a gradable leaf, **no** role on the item | `none` | resource ceiling is `none` (adapter), and the narrow can only restrict — closed-safe |
+| a gradable leaf **absent** from the shared row | `none` (layer 4) | `grades[basePath] ?? TomAuthState.none` — closed-safe |
 | any non-gradable dotted field (login, board, dialogs) | `full` | the adapter leaves dotted paths permissive; no layer-4 stamp |
 
 This keeps the framework registry load-bearing: a principal with no role on the
 item resolves the resource ceiling to `none`, so every field collapses closed-safe
 without any per-field payload. Because every role's field grades sit at or below
-its resource ceiling, the narrow reproduces the §A.4 matrix exactly. An earlier
-(pre-RCC2) design shipped the per-field matrix over the wire and stamped it
-directly; folding the read down to a flat `resourceRoles` map and narrowing the
-registry-resolved ceiling by the shared grades removes the read-time matrix while
-preserving the same closed-safe outcomes (D-A5).
+its resource ceiling, the narrow reproduces the field-grade matrix exactly. The
+alternative — shipping the per-field matrix over the wire and stamping it
+directly — is the obvious design and costs more than it looks: it makes the read
+payload grow with the matrix and puts a second authority on the client. Folding
+the read down to a flat `resourceRoles` map and narrowing the registry-resolved
+ceiling by the shared grades reaches the same closed-safe outcomes with no
+read-time matrix at all.
 
 ## Worked role matrix
 
 Take one field — `assigneeId` (`todo.item.assigneeId`) — and trace its effective
-state for each role, using the seeded §A.4 field-grade rows (doc 07) and the
+state for each role, using the seeded field-grade rows (doc 07) and the
 resolution layers above. The item field carries one per-field authorizer (layer
 4) and no group or controller; the dotted `todo.item.assigneeId` path stays at
 the adapter's permissive default at layers 1 and 3 (only the `item:<id>`

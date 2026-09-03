@@ -1,4 +1,4 @@
-/// Database-free tests for the share endpoints (RCC3): the
+/// Database-free tests for the share endpoints: the
 /// [AppShareService] composes the [ResourceRoleResolver] over a seeded in-memory
 /// share-delegation store, so the whole `POST /share` / `DELETE /share/{id}`
 /// owner-only path — and the headline "a created share immediately grants the
@@ -13,7 +13,7 @@
 /// read seam, feeding the persisted share back into a [TomDelegationResolver]
 /// proves the grant is effective on the grantee's very next request.
 ///
-/// Ownership is a seeded C-5 owner grant (RCC1); each principal holds at most one
+/// Ownership is a seeded C-5 owner grant; each principal holds at most one
 /// role per resource key, so the fold never breaks a per-key tie and the suite
 /// needs no reflection and no live role-vocabulary registry.
 library;

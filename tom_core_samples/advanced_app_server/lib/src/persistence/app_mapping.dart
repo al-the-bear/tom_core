@@ -221,7 +221,7 @@ Subtask subtaskFromRecord(SubtaskRecord record) => Subtask()
   ..done.set(record.done ?? false)
   ..position.set(record.position ?? 0);
 
-// Cross-user shares have no `app_db` record mapping: RCC3 migrated them to
-// framework `share`-mode `TomPrincipalDelegation` rows (see
+// Cross-user shares have no `app_db` record mapping: they are framework
+// `share`-mode `TomPrincipalDelegation` rows (see
 // `share_delegation_store.dart`), which the share service builds directly from
 // the wire `ShareRequest` — no domain `Share`↔record round-trip.

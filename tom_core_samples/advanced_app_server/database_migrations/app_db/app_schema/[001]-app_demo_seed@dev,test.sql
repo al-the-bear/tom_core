@@ -1,6 +1,6 @@
 -- app_db demo seed: the starter rows that make the app non-empty on first run.
 -- This is **demo** content — the filename carries the `@dev,test` environment tag
--- (G-MIG-2/3, step 12), so a production apply (any environment other than
+-- (G-MIG-2/3), so a production apply (any environment other than
 -- `dev`/`test`) **skips** it and the app comes up empty. The DDL is the untagged
 -- [000]-app_core_schema migration, applied in every environment.
 --
@@ -11,7 +11,7 @@
 --
 -- Seed: a starter workspace owned by alice (auth user 2), one project with two
 -- lists and three items, a comment from bob, and two subtasks. Cross-user
--- *shares* are NOT seeded here: RCC3 migrated them to framework `share`-mode
+-- *shares* are NOT seeded here: they are framework `share`-mode
 -- tom_principal_delegation rows in auth_db (see the auth server's
 -- [003]-auth_demo_seed migration), so there is no `app_shares` table to seed.
 

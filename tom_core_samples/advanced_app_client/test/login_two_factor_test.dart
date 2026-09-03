@@ -11,7 +11,7 @@
 /// **Everything on screen below the app-bar title is the framework's.** The
 /// phase is one widget — `Tom2FAFlowPanel` over a `SessionTwoFactorController` —
 /// so these tests address its keys (`tom-2fa-*`), not this app's. That is the
-/// property tcca5 is about: an application gets the chooser, the QR code, the
+/// property being asserted: an application gets the chooser, the QR code, the
 /// digit field, the attempt counter and the skip rule without writing any of
 /// them, and a test that had to reach for app-local keys would mean it had.
 ///

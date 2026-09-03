@@ -35,8 +35,8 @@
 /// the app's own tables, and `main` points at the auth server's `auth_db` — home
 /// of the framework authorization tables. The field-grade resolver *reads* the
 /// `tom_resource_grant` matrix the auth server seeds; the app server also
-/// *writes* to `main`: RCC1 stamps ownership as `tom_principal_resource_grant`
-/// rows, and RCC3 records cross-user shares as `share`-mode
+/// *writes* to `main`: ownership is stamped as `tom_principal_resource_grant`
+/// rows, and cross-user shares as `share`-mode
 /// `tom_principal_delegation` rows — both resolved back through the framework
 /// delegation resolver as the sole resource-access enforcement path.
 ///
@@ -272,7 +272,7 @@ Future<void> main(List<String> args) async {
   // start-up failure rather than a failed upload hours later.
   await TomBlobStoreInfo.initializeBlobStores(blobStoreLoaderFunction());
 
-  // RCB8: register the async `visible:project|list|item` data scopes so the CRUD
+  // Register the async `visible:project|list|item` data scopes so the CRUD
   // repository pushes each caller's owned ∪ shared id-set to `app_db` as an
   // OR-union predicate — the DB-side counterpart of the app read service's
   // in-memory visibility filter. Must run after *both* reflection init and

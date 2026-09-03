@@ -103,7 +103,7 @@ simply *mirrors* `auth_db.auth_users.id`. A token minted by the auth server
 therefore resolves to the same numeric id on the app side. Within a single
 database, parent links (`workspace_id`, `project_id`, `list_id`, `item_id`)
 **are** real foreign keys with `ON DELETE CASCADE`. Cross-user shares are **not**
-an `app_db` table anymore: RCC3 migrated them to `share`-mode
+an `app_db` table at all: they are `share`-mode
 `tom_principal_delegation` rows in `auth_db` (the delegate/resource/role are
 plain columns there, resolved by the framework `TomDelegationResolver`).
 

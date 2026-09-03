@@ -1,4 +1,4 @@
-/// Widget tests for the item-detail screen ([ItemDetailScreen], RCC2): the bound
+/// Widget tests for the item-detail screen ([ItemDetailScreen]): the bound
 /// `TomForm<TodoItem>` whose per-field controls are graded through the framework
 /// authorization registry.
 ///
@@ -241,7 +241,7 @@ void main() {
       await openDetail(tester, 'carol', shareCarolAs: ProjectRole.commenter);
 
       // The commenter matrix grades both priority and estimate `none`, so the
-      // closed-safe render hides *both* fields (D-A4 made visible end-to-end) —
+      // closed-safe render hides *both* fields end-to-end —
       // this is the only role that hides priority.
       expect(find.text('Priority'), findsNothing);
       expect(find.text('Estimate (h)'), findsNothing);
@@ -305,7 +305,7 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // The two child sections (tcca21): the comment thread and the checklist.
+  // The two child sections: the comment thread and the checklist.
   //
   // These prove the half of the item screen the field matrix above does not
   // reach: reading a thread and a checklist back, and writing to them under a

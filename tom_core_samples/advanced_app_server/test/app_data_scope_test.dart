@@ -1,4 +1,4 @@
-/// Connection-free C-3 row-scope tests for the app records (RCC4 + RCB8).
+/// Connection-free C-3 row-scope tests for the app records.
 ///
 /// The framework `@TomDbScope` filters a repository read to the current
 /// principal's allowed values at the database. The advanced sample declares two
@@ -7,16 +7,16 @@
 ///  - [WorkspaceRecord] carries the *synchronous* single-column owner scope on
 ///    `ownerId` — a workspace's read visibility is *owner-only* (a workspace is
 ///    reachable iff the caller owns it; shares never target or flow up to one),
-///    so it is faithfully one `owner_id IN (…)` predicate (RCC4).
-///  - [ProjectRecord] / [ListRecord] / [ItemRecord] carry the RCB8 *async union*
+///    so it is faithfully one `owner_id IN (…)` predicate.
+///  - [ProjectRecord] / [ListRecord] / [ItemRecord] carry the *async union*
 ///    scope on their surrogate `id`. Their visibility folds ownership *and*
 ///    `share`-mode delegations over the containment chain, which a single-column
 ///    AND-scope would silently AND-hide (dropping shared rows), so they use the
 ///    async resolver that ORs the owned and shared id-sets
 ///    (`id IN (owned…) OR id IN (shared…)`) instead.
 ///
-/// The repository enforcement itself needs a live data source (exercised live in
-/// the RCC5 integration script); here we verify the facts that need no
+/// The repository enforcement itself needs a live data source (exercised by the
+/// integration script); here we verify the facts that need no
 /// connection: each record declares the intended scope, the workspace scope
 /// resolves to the owner predicate riding the prepared-statement protocol (the
 /// value is bound, never inlined — C-7), and the boot registration wires an
@@ -54,7 +54,7 @@ void main() {
 
     test('project/list/item are async union-scoped on their surrogate id', () {
       // Their share + containment visibility folds ownership ∪ shared rows over
-      // the containment chain — not a single-column AND-scope. RCB8 re-scopes
+      // the containment chain — not a single-column AND-scope. The record scopes
       // them on `id` bound to an async union resolver, so the CRUD repository
       // pushes the caller's owned ∪ shared id-set to the DB as an OR-union.
       final project = TomAnnotationAnalyzer.findDataScope(ProjectRecord);

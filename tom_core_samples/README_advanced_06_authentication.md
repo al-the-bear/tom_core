@@ -102,7 +102,7 @@ server's `ResourceRoleResolver` re-resolves the C-5 ownership grants
 `TomDelegationResolver.resolveEffectiveRoles` (strongest role per resource,
 resolving "now" so a revoked share stops granting access immediately, not at
 token expiry), and its `GET /resource-roles` endpoint returns that same live map
-to the client. The client reads its roles from that endpoint (RCB5), never from
+to the client. The client reads its roles from that endpoint, never from
 the token — so there is a single live source of truth rather than a token claim
 that must be kept consistent with it. `AdvancedAuthenticationService` therefore
 leaves `aci.resourceRoles` empty at issue time.

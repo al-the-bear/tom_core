@@ -2,8 +2,8 @@
 /// task-management model (workspaces, projects, lists, items, comments, and
 /// subtasks).
 ///
-/// Cross-user *shares* are no longer an `app_db` record: RCC3 migrated them to
-/// framework `share`-mode `TomPrincipalDelegation` rows on the shared
+/// Cross-user *shares* are not an `app_db` record at all: they are framework
+/// `share`-mode `TomPrincipalDelegation` rows on the shared
 /// `tom_principal_delegation` table (see `share_delegation_store.dart`), so the
 /// resource-role resolver enforces ownership and shares through one framework
 /// path.
@@ -59,24 +59,24 @@ const String appItemsTable = AppFileSlots.itemsTable;
 const String itemAttachmentColumn = AppFileSlots.itemAttachmentColumn;
 
 /// The async `@TomDbScope` kind that scopes [ProjectRecord] reads to the
-/// caller's visible projects (RCB8). Registered at boot via
+/// caller's visible projects. Registered at boot via
 /// `registerAppDataScopes` to `VisibleResourceResolver`, which resolves the
 /// owned ∪ shared project id-sets and pushes them to the database as
 /// `(id IN (owned…) OR id IN (shared…))`.
 const String projectVisibilityScope = 'visible:project';
 
 /// The async `@TomDbScope` kind that scopes [ListRecord] reads to the caller's
-/// visible lists (RCB8). See [projectVisibilityScope].
+/// visible lists. See [projectVisibilityScope].
 const String listVisibilityScope = 'visible:list';
 
 /// The async `@TomDbScope` kind that scopes [ItemRecord] reads to the caller's
-/// visible items (RCB8). See [projectVisibilityScope].
+/// visible items. See [projectVisibilityScope].
 const String itemVisibilityScope = 'visible:item';
 
 /// A workspace row in `app_workspaces` — the root of the ownership chain
 /// `Workspace → Project → TodoList → TodoItem` the access resolver walks.
 ///
-/// **C-3 row scope (RCC4 + RCB8).** The workspace is the one entity whose read
+/// **C-3 row scope.** The workspace is the one entity whose read
 /// visibility is *owner-only*: a workspace is reachable iff the caller owns it
 /// (shares never target a workspace and never flow upward — see
 /// `AppReadService`). That makes it faithfully expressible as the framework's
@@ -86,14 +86,14 @@ const String itemVisibilityScope = 'visible:item';
 ///
 /// The project/list/item records fold ownership *and* `share`-mode delegations
 /// over the containment chain, so a single-column *AND* scope cannot express
-/// them (it would silently AND-hide legitimately shared rows). RCB8 extends the
-/// framework data scope with an **async, union/OR** resolver, and these three
-/// records now carry an `@TomDbScope` on their surrogate `id` bound to that
+/// them (it would silently AND-hide legitimately shared rows). The framework
+/// data scope therefore also accepts an **async, union/OR** resolver, and these
+/// three records carry an `@TomDbScope` on their surrogate `id` bound to that
 /// resolver ([projectVisibilityScope] / [listVisibilityScope] /
 /// [itemVisibilityScope]): the repository pushes the caller's owned ∪ shared
 /// id-set to the database as `(id IN (owned…) OR id IN (shared…))`, so the full
 /// C-5/C-6 visibility is enforced at the database rather than by a service-layer
-/// `ResourceRoleResolver` pass (which RCB8 drops).
+/// `ResourceRoleResolver` pass, which the async scope makes unnecessary.
 @tomReflector
 @TomDbTable(
   datasource: appDatasource,
@@ -130,7 +130,7 @@ final workspaceRepository = WorkspaceRepository();
 /// A project row in `app_projects`; groups [ListRecord]s inside a workspace.
 ///
 /// Read-scoped by the async [projectVisibilityScope] on its surrogate `id`
-/// (RCB8): the repository restricts reads to the caller's owned ∪ shared
+///: the repository restricts reads to the caller's owned ∪ shared
 /// projects. The scope is on `id` (not a principal column) because a project's
 /// visibility is not a single-column fact — it is the union of ownership and
 /// share delegations folded over the containment chain, computed by
@@ -178,7 +178,7 @@ final projectRepository = ProjectRepository();
 
 /// A list (board column) row in `app_lists`; groups [ItemRecord]s.
 ///
-/// Read-scoped by the async [listVisibilityScope] on its surrogate `id` (RCB8);
+/// Read-scoped by the async [listVisibilityScope] on its surrogate `id`;
 /// see [ProjectRecord] for why the scope is on `id`.
 @tomReflector
 @TomDbTable(
@@ -220,7 +220,7 @@ final listRepository = ListRepository();
 /// text column rather than a child table — the mapping layer owns the
 /// join/split codec, keeping this row flat like every other record.
 ///
-/// Read-scoped by the async [itemVisibilityScope] on its surrogate `id` (RCB8);
+/// Read-scoped by the async [itemVisibilityScope] on its surrogate `id`;
 /// see [ProjectRecord] for why the scope is on `id`.
 @tomReflector
 @TomDbTable(

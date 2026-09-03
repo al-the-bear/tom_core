@@ -1,9 +1,9 @@
 -- app_db application schema: the workspaces/projects/lists/items the app server
 -- serves. Column names match the @TomDbColumn mappings in
--- lib/src/persistence/app_persistence_model.dart (step 14) exactly, so the
+-- lib/src/persistence/app_persistence_model.dart exactly, so the
 -- records read/write these tables with no aliasing.
 --
--- Cross-user *shares* are NOT an app_db table: RCC3 migrated them to framework
+-- Cross-user *shares* are NOT an app_db table: they are framework
 -- `share`-mode tom_principal_delegation rows in auth_db (see the auth server's
 -- [001]-auth_authz_grants migration), resolved alongside the C-5 ownership
 -- grants — so there is one framework enforcement path and no `app_shares` table.

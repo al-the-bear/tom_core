@@ -1,4 +1,4 @@
-/// Tests for the app server's authenticated resource endpoint (todo 7).
+/// Tests for the app server's authenticated resource endpoint.
 ///
 /// Three things the done-when calls for: the bundle returns the app tier's keys
 /// (board + item-form labels), the keys are *derived* from the todo-1 domain
@@ -35,7 +35,7 @@ TomPrincipal _authenticated({List<String> roles = const []}) => TomPrincipal(
 );
 
 void main() {
-  group('app resource bundle (todo 7)', () {
+  group('app resource bundle', () {
     test('appBundle labels every gradable item field, keyed off the domain '
         'convention', () {
       final texts = AppResourceBundles.appBundle().texts;

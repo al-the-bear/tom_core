@@ -27,7 +27,7 @@
 ///   (role minimums for create/delete/comment) and, for item writes, enforces
 ///   the four-state field grade — a change to any field the caller is not `full`
 ///   on rejects the write, and the persisted row overlays only permitted fields.
-/// - [AppShareService] is the cross-user sharing counterpart (RCC3):
+/// - [AppShareService] is the cross-user sharing counterpart:
 ///   only an `owner` of the target resource may create a `share`-mode
 ///   `TomPrincipalDelegation` (which immediately grants the grantee access, since
 ///   the resource-role resolver folds delegations into the effective roles) or
@@ -292,30 +292,30 @@ class InMemoryAppReadStore implements AppReadStore {
 /// Pure read logic over an [AppReadStore], filtered by the principal's access.
 ///
 /// The project/list/item list endpoints keep only the rows in the principal's
-/// **visible id-set** — the owned ∪ shared ids the step-RCB8
+/// **visible id-set** — the owned ∪ shared ids the
 /// [VisibleResourceResolver] computes (the same set the record's async
 /// `@TomDbScope` pushes to the database). On the live store the repository read
 /// is already scoped, so this membership filter is a reconciliation no-op; on
 /// the database-free [InMemoryAppReadStore] (which is not DB-scoped) it is what
 /// enforces visibility — the two stores agree by construction. Workspaces are
-/// the RCC4 exception: their visibility is *owner-only* (shares never target or
+/// the exception: their visibility is *owner-only* (shares never target or
 /// flow up to a workspace), so [listWorkspaces] filters by the owner column
 /// directly — the same `owner_id = <principal.id>` predicate the
 /// `WorkspaceRecord` synchronous `@TomDbScope` enforces at the database. The
 /// [resourceRoles] endpoint expands the principal's ownership grants and share
 /// delegations into a flat `<type>:<id> → role` map the client grades fields
-/// against locally (RCC2).
+/// against locally.
 class AppReadService {
   /// The listing seam candidate rows are enumerated through.
   final AppReadStore store;
 
   /// Resolves a principal's effective [ProjectRole] on a resource.
   /// Still used by [resourceRoles] to expand the client's grading map; the
-  /// list endpoints resolve visibility through [visibleResolver] instead (RCB8).
+  /// list endpoints resolve visibility through [visibleResolver] instead.
   final ResourceRoleResolver accessResolver;
 
   /// Resolves a principal's visible id-set (owned ∪ shared) per entity type —
-  /// the same set the async `@TomDbScope` pushes to the database (RCB8). Derived
+  /// the same set the async `@TomDbScope` pushes to the database. Derived
   /// from [store] and the [accessResolver]'s framework delegation resolver, so
   /// the service-layer reconciliation and the DB scope share one source of truth.
   final VisibleResourceResolver visibleResolver;
@@ -338,7 +338,7 @@ class AppReadService {
   ///
   /// Workspace visibility is owner-only (shares never target or flow up to a
   /// workspace), so this filters by the owner column — the identical predicate
-  /// the `WorkspaceRecord` `@TomDbScope` applies at the database (RCC4). The
+  /// the `WorkspaceRecord` `@TomDbScope` applies at the database. The
   /// repository read is already owner-scoped by that annotation; applying the
   /// same predicate here filters the database-free [InMemoryAppReadStore] too,
   /// so both stores agree without a redundant per-row [ResourceRoleResolver]
@@ -462,7 +462,7 @@ class AppReadService {
   /// (ownership grants C-5 ∪ share delegations C-6), then expands each grant down
   /// its containment subtree — a role on a workspace/project/list surfaces on
   /// every resource it contains — so the client's exact-match resource-role
-  /// adapter (RCC2) can grade any reachable resource without re-walking ancestry.
+  /// adapter can grade any reachable resource without re-walking ancestry.
   /// When two grants cover the same resource the strongest role wins
   /// ([ProjectRole] is declared most-to-least privileged, so the lowest index is
   /// strongest). This is the read side of the resolver's containment rule: the
@@ -530,13 +530,13 @@ class AppReadService {
   /// Loads the candidate rows and keeps those whose id is in the principal's
   /// visible id-set for [resourceType] (owned ∪ shared, resolved by
   /// [visibleResolver]), projecting each survivor into its domain entity — the
-  /// single filtering path every list endpoint shares (RCB8).
+  /// single filtering path every list endpoint shares.
   ///
   /// The visible set is computed once per call (not per row), then each
   /// candidate is a set-membership test. On the live store the rows are already
   /// database-scoped to this same set, so the filter is a reconciliation no-op;
   /// on the in-memory store it is the sole visibility gate. This mirrors how
-  /// [listWorkspaces] reconciles the owner-only workspace scope (RCC4).
+  /// [listWorkspaces] reconciles the owner-only workspace scope.
   Future<List<R>> _filterByVisibility<T, R>(
     int userId,
     String resourceType,
@@ -567,7 +567,7 @@ class AppReadService {
 abstract class AppWriteStore {
   /// Inserts or updates [record], returning the saved workspace row.
   ///
-  /// This is the one **scoped-entity** write seam (RCB9): [WorkspaceRecord]
+  /// This is the one **scoped-entity** write seam: [WorkspaceRecord]
   /// carries `@TomDbScope(field: 'ownerId')`, so on the live repository an
   /// update/delete of a row the caller does not own raises
   /// [TomDataScopeAuthorizationException] before any statement runs.
@@ -712,7 +712,7 @@ class InMemoryAppWriteStore implements AppWriteStore {
 
   /// The persisted workspace rows (test introspection). The database-free store
   /// does *not* enforce the framework `@TomDbScope` owner-scope (that lives in
-  /// the live repository and is exercised in the RCB9 integration script); here
+  /// the live repository and is exercised by the integration script); here
   /// a save/delete always succeeds, so the create path can be unit-tested.
   List<WorkspaceRecord> get workspaces => List.unmodifiable(_workspaces);
 
@@ -967,7 +967,7 @@ class AppWriteService {
   /// Resolves a [ProjectRole]'s per-field grades.
   final FieldGradeResolver gradeResolver;
 
-  /// Records the creator's C-5 ownership grant when a resource is created (RCC1).
+  /// Records the creator's C-5 ownership grant when a resource is created.
   final OwnershipGrantWriter ownershipWriter;
 
   /// Builds the service over its four collaborators (live stores at boot,
@@ -1007,7 +1007,7 @@ class AppWriteService {
       'create projects in this workspace',
     );
     final saved = await store.saveProject(record);
-    // RCC1: the creator becomes the project's owner — stamp the explicit C-5
+    // The creator becomes the project's owner — stamp the explicit C-5
     // owner grant so enforcement (which re-resolves grants/shares live from the
     // DB on every request) and the `/resource-roles` endpoint both see the
     // ownership, rather than only the implicit workspace chain the bespoke
@@ -1019,7 +1019,7 @@ class AppWriteService {
     return projectFromRecord(saved);
   }
 
-  /// Creates [workspace] owned by the caller (RCB9's scoped-entity create).
+  /// Creates [workspace] owned by the caller — the scoped-entity create path.
   ///
   /// The caller "becomes the owner" two ways, mirroring [createProject]: the
   /// persisted `ownerId` column is stamped with their id — so the framework
@@ -1042,14 +1042,14 @@ class AppWriteService {
   }
 
   /// Updates the workspace [workspaceId] (its mutable name), owner-only *by
-  /// construction* (RCB9's live write-rejection path).
+  /// construction* — the live write-rejection path.
   ///
   /// The save routes through the framework CRUD repository, whose C-3 write
   /// enforcement first asserts the target row is within the caller's owner-scope
   /// — a non-owner's update raises [TomDataScopeAuthorizationException] before
   /// any statement runs, which the app server maps to a 403. There is
   /// deliberately **no pre-read** here (which would surface a not-found instead):
-  /// the point of RCB9 is to let the framework exception fire. `ownerId` is
+  /// the point is to let the framework exception fire. `ownerId` is
   /// re-stamped with the caller's id — a no-op for the legitimate owner, and
   /// never reached by a non-owner.
   Future<Workspace> updateWorkspace(
@@ -1102,7 +1102,7 @@ class AppWriteService {
       ..updatedAt = now;
     final toPersist = _enforceFieldWrites(baseline, incoming, grades);
     final saved = await store.saveItem(toPersist);
-    // RCC1: the creator (also the reporter) owns the new item — stamp the C-5
+    // The creator (also the reporter) owns the new item — stamp the C-5
     // owner grant so ownership is an explicit, resolvable resource role.
     await ownershipWriter.recordOwner(
       userId.toString(),
@@ -1343,8 +1343,8 @@ class AppWriteService {
     ..updatedAt = record.updatedAt;
 }
 
-/// Cross-user sharing — the `POST /share` / `DELETE /share/{id}` logic
-/// (RCC3-migrated to framework delegation).
+/// Cross-user sharing — the `POST /share` / `DELETE /share/{id}` logic over
+/// framework delegation.
 ///
 /// Both operations are **owner-only**: the principal must resolve to
 /// [ProjectRole.owner] on the shared resource (via the [ResourceRoleResolver]).
@@ -1466,14 +1466,14 @@ const String appEndpointAccessDeniedKey =
 /// - `app.access.forbidden` / `app.item.field_forbidden` (and the pipeline's
 ///   pre-invocation [appEndpointAccessDeniedKey]) → **403**.
 /// - a framework [TomDataScopeAuthorizationException] (a non-owner's write to a
-///   `@TomDbScope` row, RCB9) → **403**, carrying its own
+///   `@TomDbScope` row) → **403**, carrying its own
 ///   `data_scope.write.out_of_scope` key.
 Response? appForbiddenOrNotFound(
   Request request,
   Object error,
   StackTrace stack,
 ) {
-  // RCB9: a framework data-scope *write* rejection — a non-owner updating or
+  // A framework data-scope *write* rejection — a non-owner updating or
   // deleting a `@TomDbScope` row (the sample's workspace write path) — surfaces
   // as a 403 carrying the framework's own stable key
   // (`data_scope.write.out_of_scope`), distinct from the app's own
@@ -1611,7 +1611,7 @@ class AdvancedAppApiService implements AppApiService {
   Future<List<Workspace>> listWorkspaces() =>
       _reads.listWorkspaces(_principalId);
 
-  // ----- Workspace write endpoints (RCB9 scoped-entity write path) ----------
+  // ----- Workspace write endpoints (scoped-entity write path) --------------
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateWorkspace')
   @override
@@ -1731,13 +1731,13 @@ class AdvancedAppApiService implements AppApiService {
   // `resources` (`appResources`, authenticated `GET /resources`) serves the app
   // client's full text bundle (board + item-form labels), installed after
   // sign-in. Any authenticated principal may read it — the texts are display
-  // strings, not data (D-A10).
+  // strings, not data.
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appResources')
   @override
   Future<ResourceBundleDto> resources() async => AppResourceBundles.appBundle();
 
   // `resourceRoles` (`appResourceRoles`, authenticated `GET /resource-roles`)
-  // serves the caller's effective resource-role map (RCC2/RCB5). The client
+  // serves the caller's effective resource-role map. The client
   // holds the authz token as an opaque bearer, so the grade-bearing role map is
   // fetched here rather than decoded from a token claim; the app server resolves
   // it from the principal's ownership grants and share delegations.

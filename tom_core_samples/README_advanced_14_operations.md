@@ -306,9 +306,9 @@ connection-free suite here — had never reached:
 
 | Defect | Symptom | Fix |
 | --- | --- | --- |
-| §73 | a UTC `DateTime` could not be written to a datetime column at all — the driver serializes it with a `Z` suffix MariaDB rejects (error 1292) | `_toBindValue` converts to local, preserving the instant so a write/read is a round trip |
-| §74 | a `DateTime` predicate was uncompilable unless the entity spelled out `columnType:` by hand — one arm of the declared-type switch built its node and dropped it | the missing `return` |
-| §75 | an audited entity with a `DateTime` column could not be updated or deleted **at all**: the before-image was not JSON-encodable, and `_audit` is deliberately uncaught, so the trail's failure failed the mutation | `TomAuditRecord` normalises both images to encodable values in its constructor |
+| UTC bind | a UTC `DateTime` could not be written to a datetime column at all — the driver serializes it with a `Z` suffix MariaDB rejects (error 1292) | `_toBindValue` converts to local, preserving the instant so a write/read is a round trip |
+| column typing | a `DateTime` predicate was uncompilable unless the entity spelled out `columnType:` by hand — one arm of the declared-type switch built its node and dropped it | the missing `return` |
+| audit before-image | an audited entity with a `DateTime` column could not be updated or deleted **at all**: the before-image was not JSON-encodable, and `_audit` is deliberately uncaught, so the trail's failure failed the mutation | `TomAuditRecord` normalises both images to encodable values in its constructor |
 
 All three are one-line-to-one-method framework fixes with their own regression
 tests. They are also all `DateTime` defects, which is the pattern worth naming:
@@ -384,8 +384,8 @@ authorization lines with their enforcement anchors.
   `retention_service.dart`, `digest_service.dart`, `report_service.dart`
 - `advanced_ops_server/bin/ops_server_start.dart` (the boot sequence and `--migrate-only`),
   `database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql`
-- `tom_core_server/doc/` — `scheduling.md`, `audit.md` (§496), `messaging.md`
-  (§317 delivery, §435 application email), `resources.md`, `export.md` (§394)
+- `tom_core_server/doc/` — `scheduling.md`, `audit.md`, `messaging.md` (both the
+  delivery contract and application email), `resources.md`, `export.md`
 - `advanced_ops_server/test/ops_live_test.dart`, `tool/run_ops_integration.sh`
 
 ---

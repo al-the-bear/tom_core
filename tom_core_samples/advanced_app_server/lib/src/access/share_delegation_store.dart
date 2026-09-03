@@ -1,14 +1,15 @@
 /// Persistence + write seam for cross-user shares, expressed as framework C-6
-/// `share`-mode delegations (RCC3).
+/// `share`-mode delegations.
 ///
 /// A share is exactly "principal A lends principal B a named role on a named
-/// resource" — a [TomPrincipalDelegation] in [TomDelegationMode.share]. RCC3
-/// retires the sample's earlier bespoke `app_shares` table: shares are now
-/// [TomPrincipalDelegation] rows on the framework `tom_principal_delegation`
+/// resource" — a [TomPrincipalDelegation] in [TomDelegationMode.share]. Shares
+/// are [TomPrincipalDelegation] rows on the framework `tom_principal_delegation`
 /// table (datasource `main`, bound to the shared `auth_db` connection at boot),
 /// resolved through the framework [TomDelegationResolver] alongside the C-5
-/// ownership grants (RCC1). That leaves **one** enforcement path — the framework
-/// resolver — with no parallel share scheme.
+/// ownership grants. A bespoke `app_shares` table of the sample's own is the
+/// obvious alternative and buys a second enforcement path for nothing; this
+/// shape leaves **one** — the framework resolver — with no parallel share
+/// scheme.
 ///
 /// Writes sit behind a [ShareDelegationStore] seam so `AppShareService` is pure
 /// over whichever store it is handed: [RepositoryShareDelegationStore] is the
@@ -16,7 +17,7 @@
 /// seeded, database-free store the share tests drive — and, because it *also*
 /// implements the framework read seam [PrincipalDelegationStore], the same
 /// instance can be handed to a [TomDelegationResolver] to prove a written share
-/// takes effect immediately (RCC3-migrated).
+/// takes effect immediately.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';

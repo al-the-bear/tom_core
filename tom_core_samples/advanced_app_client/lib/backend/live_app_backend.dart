@@ -14,8 +14,7 @@
 /// reflected entities, so the bootstrap must call `initializeReflection()` before
 /// the first call.
 ///
-/// **Live resourceRoles (RCB5).** Since RCC2 the app resolves field grades by
-/// installing the principal's `resourceRoles` as a framework
+/// **Live resourceRoles.** The app resolves field grades by installing the principal's `resourceRoles` as a framework
 /// [TomResourceRoleAdapter] (see [resourceRoles]). This Flutter-free client
 /// treats the authorization token as an opaque bearer (`decryptTokens: false`),
 /// so it cannot read the token's `resourceRoles` claim; instead [resourceRoles]

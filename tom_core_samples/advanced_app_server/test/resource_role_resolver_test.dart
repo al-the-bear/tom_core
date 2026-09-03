@@ -1,4 +1,4 @@
-/// Database-free unit tests for the resource-role resolver (RCC3): the
+/// Database-free unit tests for the resource-role resolver: the
 /// ownership-and-share rule is pure over the framework [TomDelegationResolver]
 /// (fed a seeded C-5 grant store and a C-6 delegation store) plus the app's
 /// [ResourceContainmentStore] seam, so it verifies against seeded in-memory
@@ -7,9 +7,8 @@
 /// The seed mirrors the demo data `[001]-app_demo_seed@dev,test.sql` creates:
 /// workspace 1 owned by alice (auth user 2), a project 1 with two lists and an
 /// item, and two shares — bob (3) as `editor` and carol (4) as `viewer` on the
-/// project. RCC3 expresses those as an
-/// explicit C-5 owner grant (RCC1) and C-6 `share`-mode [TomPrincipalDelegation]
-/// rows, folded by the framework resolver into one flat `resourceKey → roleName`
+/// project. Those are an explicit C-5 owner grant and C-6 `share`-mode
+/// [TomPrincipalDelegation] rows, folded by the framework resolver into one flat `resourceKey → roleName`
 /// map; this resolver adds only the sample's containment rule.
 ///
 /// Each principal holds at most one role per resource key here, so the fold

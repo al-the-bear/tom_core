@@ -2,7 +2,7 @@
 /// ownership as a C-5 [TomPrincipalResourceGrant] (`principal:resource -> owner`)
 /// in the shared `main`/`auth_db` grant table.
 ///
-/// This is the write half of RCC1's ownership model: ownership is an *explicit*
+/// This is the write half of the ownership model: ownership is an *explicit*
 /// owner grant, not an implicit `workspace.owner_id` chain a resolver walks, so
 /// the login can fold it into
 /// [TomAccessControlInformation.resourceRoles] and the app/client resolve

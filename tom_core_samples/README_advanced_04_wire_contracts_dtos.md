@@ -158,7 +158,7 @@ a shape represents* — **a persisted domain entity, or a wire-only projection?*
 > sample: a client binds a `TomForm` directly to a domain entity and `save`
 > writes it back (part [09](README_advanced_09_forms_ui.md)), so there is no
 > client-local "draft" payload to serialize. The only boundary is the
-> entity-vs-wire-projection split above. Recorded as decision D-RC7-c.
+> entity-vs-wire-projection split above.
 
 ## Primary sources
 

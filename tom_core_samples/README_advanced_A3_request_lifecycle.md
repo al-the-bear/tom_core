@@ -116,10 +116,11 @@ store.
 
 > **The two stores are not the same store.** `TomBearerAuthentication` here is
 > the **client-side** token holder. The server never populates it; it recovers
-> the principal from the request *zone* (§2). Conflating the two is the bug the
-> RC-15 green gate caught (zone principal resolution) — see
-> [A1](README_advanced_A1_authorization_state_machine.md) and the five-fix note
-> in [Part 12](README_advanced_12_testing_integration.md).
+> the principal from the request *zone* (§2). Conflating the two is what
+> zone-principal resolution exists to prevent, and it is a mistake the two
+> stores' shared vocabulary invites — see
+> [A1](README_advanced_A1_authorization_state_machine.md) and the framework-fix
+> note in [Part 12](README_advanced_12_testing_integration.md).
 
 ## 2. App-server bearer validation
 
@@ -241,7 +242,7 @@ Three facts keep this closed-safe *and* keep the registry load-bearing:
   server agree on grade semantics by construction.
 - **The narrow reproduces the matrix.** Because every role's field grades sit at
   or below its resource ceiling, `resourceState.narrow(grades[basePath] ?? none)`
-  reproduces the §A.4 matrix exactly; a missing grade or a missing role collapses
+  reproduces the field-grade matrix exactly; a missing grade or a missing role collapses
   the field to `none` (`_ItemDetailScreenState._resolveForm`).
 
 **The server still computes per-field grades — but only to ENFORCE writes**
@@ -282,7 +283,7 @@ At login the session snapshots the principal's `resourceRoles` map (field
 `TomResourceRoleAdapter` over the map and the `TomResourceRoleRegistry`: it gates
 only `<type>:<id>` resource keys (those containing `:`); any dotted path
 (`todo.item.title`, `todo.item.save`, chrome) stays permissive (`full`), matching
-the pre-RCC2 no-adapter behaviour.
+the framework's no-adapter default.
 
 When the item detail screen opens an item, `_ItemDetailScreenState._resolveForm`
 (`advanced_app_client/lib/screens/item_detail_screen.dart`) grades each

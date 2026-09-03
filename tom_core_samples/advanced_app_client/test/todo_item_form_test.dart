@@ -7,7 +7,7 @@
 /// authorizer keyed by that `basePath` — the registry-resolved resource ceiling
 /// narrowed by the field's per-role grade.
 /// The estimate field is the special case: its `tomId` is `estimate` while its
-/// reflected member stays `estimateHours` (D-A2), so its `basePath` is
+/// reflected member stays `estimateHours`, so its `basePath` is
 /// `todo.item.estimate` but `bind`/`save` still round-trips into the entity by
 /// member name.
 library;

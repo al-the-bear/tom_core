@@ -131,7 +131,7 @@ drives its `basePath`/grade/text) is free to differ from the entity member it
 binds. The item editor uses exactly this freedom: the effort field is the entity
 member `estimateHours` (so `bind`/`save` round-trips into `TodoItem.estimateHours`)
 but carries `tomId: 'estimate'`, so it self-addresses as the graded key
-`todo.item.estimate` (D-A2). The sample's three bound-form families:
+`todo.item.estimate`. The sample's three bound-form families:
 
 | Form | Binds | Scope · formId | Path shape |
 | --- | --- | --- | --- |

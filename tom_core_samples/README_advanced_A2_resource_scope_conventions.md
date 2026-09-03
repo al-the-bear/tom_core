@@ -55,7 +55,7 @@ key    = '<scope>.<formId>.<field>'   // e.g. 'todo.item.title'
 
 `todo.item.title` is *derived* structurally (`scopePath.formId.tomId`) rather than
 written as a free string — so the wire key, the grade key, and the field's
-`basePath` are the same token by construction, not by coincidence (D-A1).
+`basePath` are the same token by construction, not by coincidence.
 
 ## One path, two uses
 
@@ -90,7 +90,7 @@ Screen chrome that is not a field uses the same flat-dotted shape with no field
 segment — `login.title`, `board.empty`, `grants.title` — resolved through the
 same provider.
 
-## The `estimate` / `estimateHours` mismatch (D-A2)
+## The `estimate` / `estimateHours` mismatch
 
 There is exactly **one** deliberate divergence between a field's `tomId` and the
 entity member it binds, and it exists to demonstrate that the two are
@@ -174,7 +174,7 @@ terminating a key at the first non-map value (so a scalar leaf like
 `"board.title": "My Board"` flattens as written). The flattened
 bundle is exactly the flat `<basePath>.<suffix>` map the wire contract
 specifies, so the resource-endpoint and sentinel tests assert against it
-directly (part [08](README_advanced_08_resources_texts.md), D-A9).
+directly (part [08](README_advanced_08_resources_texts.md)).
 
 Note the JSON tree keys the estimate field under **`estimate`** (the resource-key
 segment), not `estimateHours` (the member) — the asset mirrors the *`tomId`*
@@ -191,7 +191,7 @@ contract pins.
 
 ## Primary sources
 
-- The `scope`/`formId`/`tomId` convention (D-A1, D-A2): segments are plain string literals declared at use — `formId` in `super(formId: 'item')`, scope in `TomScope.withScope('todo', …)` — resolved by naming, not catalogued as constants (G-RES-2/6)
+- The `scope`/`formId`/`tomId` convention: segments are plain string literals declared at use — `formId` in `super(formId: 'item')`, scope in `TomScope.withScope('todo', …)` — resolved by naming, not catalogued as constants (G-RES-2/6)
 - `tom_flutter_ui/lib/src/forms/tom_form.dart` — `TomForm.prepareForSelfObservation` (form `basePath`), the `TomField` constructor (field `basePath`), `TomField.resolveEffectiveAuth` (auth lookup), `TomField.resolvedLabel`
 - `tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart` (`TomCtr._key`/`textOrNull`)
 - `advanced_app_client/lib/forms/todo_item_form.dart` — the `TodoItemForm` constructor (`formId: 'item'`), `TodoItemForm.createFormElements`; `advanced_app_client/lib/screens/item_detail_screen.dart` — `_ItemDetailScreenState._resolveForm`

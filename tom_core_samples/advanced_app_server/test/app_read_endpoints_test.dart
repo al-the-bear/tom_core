@@ -1,13 +1,14 @@
-/// Database-free integration tests for the read endpoints (RCC3): the
+/// Database-free integration tests for the read endpoints: the
 /// [AppReadService] composes the [ResourceRoleResolver], so the read
 /// path — visibility filtering plus the flat resource-role map the client grades
-/// fields against locally (RCC2) — verifies against seeded in-memory stores with
+/// fields against locally — verifies against seeded in-memory stores with
 /// no server or MariaDB.
 ///
 /// The fixture mirrors the demo seed `[001]-app_demo_seed@dev,test.sql`
 /// (workspace 1 owned by alice=2, project 1 → lists 1,2; items 1,2 in list 1),
-/// with bob=3 shared `editor` and carol=4 shared `viewer` on the project. RCC3 expresses ownership as a C-5 owner grant (RCC1)
-/// and each share as a C-6 `share`-mode [TomPrincipalDelegation], folded by the
+/// with bob=3 shared `editor` and carol=4 shared `viewer` on the project.
+/// Ownership is a C-5 owner grant and each share a C-6 `share`-mode
+/// [TomPrincipalDelegation], folded by the
 /// framework resolver into the effective roles the containment rule then walks.
 /// The headline pair is: a shared user sees the owner's project, a stranger
 /// does not.
@@ -63,7 +64,7 @@ List<ItemRecord> demoItems() => [
     ..listId = 1,
 ];
 
-/// Alice owns the whole tree via a single workspace-level owner grant (RCC1);
+/// Alice owns the whole tree via a single workspace-level owner grant;
 /// the containment rule flows it down to the project, lists and items.
 List<TomPrincipalResourceGrant> demoGrants() => [
   TomPrincipalResourceGrant(
@@ -74,7 +75,7 @@ List<TomPrincipalResourceGrant> demoGrants() => [
 ];
 
 /// The two shares as C-6 `share`-mode delegations: bob `editor`, carol `viewer`
-/// on project 1 (RCC3).
+/// on project 1.
 List<TomPrincipalDelegation> demoShares() => [
   TomPrincipalDelegation(
     mode: TomDelegationMode.share.name,
@@ -307,7 +308,7 @@ void main() {
     );
   });
 
-  // The RCB5 read side: the resource-role map the app client installs as its
+  // The read side: the resource-role map the app client installs as its
   // exact-match [TomResourceRoleAdapter]. Each grant is expanded down its
   // containment subtree, so a workspace/project grant surfaces on every
   // contained resource — the same downward flow the visibility filter above

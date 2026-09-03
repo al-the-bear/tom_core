@@ -59,7 +59,7 @@ class TodoItemForm extends TomForm<TodoItem> {
   /// Optional effort estimate in hours. The reflected member stays
   /// `estimateHours` (so `bind`/`save` round-trips into the entity), but the
   /// `tomId` is `'estimate'` so the field self-addresses as the graded key
-  /// `todo.item.estimate` (D-A2).
+  /// `todo.item.estimate`.
   late final TomFormNDoubleInput estimateHours;
 
   /// Free-text description.

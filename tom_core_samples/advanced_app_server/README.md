@@ -36,7 +36,7 @@ Two resolvers underpin authorization (both database-free over their own seam):
   `TomPrincipalDelegation` rows; strongest role wins), then keeps the strongest
   over the `item → list → project → workspace` containment chain. `null` means no
   access.
-- **`FieldGradeResolver`** — `ProjectRole` → per-field `TomAuthState` (the §A.4
+- **`FieldGradeResolver`** — `ProjectRole` → per-field `TomAuthState` (the
   grant matrix the auth server owns), so a write touching a field the role is
   not `full` on is rejected server-side.
 
@@ -50,7 +50,7 @@ resource- and field-level checks then run inside the handlers. The services
 throw stable `TomEndpointHandlerException` keys rather than HTTP responses, and
 `bin/app_server_start.dart` installs the server-level `appServerErrorHandler`
 that maps those keys (and the pipeline's pre-invocation access-denied) onto the
-HTTP contract (§A.6): denials → **403**, an unreachable resource → **404**
+HTTP contract: denials → **403**, an unreachable resource → **404**
 (closed/safe, never leaking existence), everything else → the framework default.
 
 ## Running it

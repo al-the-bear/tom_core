@@ -62,8 +62,8 @@ abstract class AuthApiService {
   /// `authLoginResources` — `GET /auth/resources/login` (public). The small,
   /// genuinely-public set of login-screen texts (`login.*` / `adminLogin.*`
   /// keys) a client installs *before* anyone signs in, so the login form needs
-  /// no bundled UI strings (D-A9: a public login-resources endpoint, chosen over
-  /// guest login).
+  /// no bundled UI strings — a public endpoint rather than a guest login, so
+  /// the login screen needs no credentials to render itself.
   Future<ResourceBundleDto> loginResources();
 
   /// `authRefresh` — `POST /auth/refresh` (authenticated). Issues a fresh token
@@ -143,8 +143,8 @@ abstract class AdminApiService {
 
   /// `adminResources` — `GET /admin/resources` (admin-gated). The admin
   /// console's full text bundle (admin forms + grants texts), installed after
-  /// sign-in. Admin-gated because only administrators reach the console (D-A10:
-  /// the auth server serves the admin console's full bundle).
+  /// sign-in. Admin-gated because only administrators reach the console; the
+  /// auth server serves it because it owns the console.
   Future<ResourceBundleDto> resources();
 }
 
@@ -176,7 +176,7 @@ abstract class AppApiService {
   /// construction**: the update routes through the framework CRUD repository,
   /// whose `@TomDbScope` write enforcement rejects an update to a workspace the
   /// caller does not own with a `TomDataScopeAuthorizationException` — the app
-  /// server maps that to **403** (the RCB9 live write-rejection path). The `{id}`
+  /// server maps that to **403**. The `{id}`
   /// path capture binds onto `Workspace.id` via `urlParameterMapping`.
   Future<Workspace> updateWorkspace(Workspace workspace);
 
@@ -263,8 +263,8 @@ abstract class AppApiService {
   /// `appResources` — `GET /resources` (authenticated). The app client's full
   /// text bundle (board + item-form texts: `todo.item.*`, `board.*`, …),
   /// installed after sign-in. Any authenticated principal may read it; the texts
-  /// are display strings, not data (D-A10: the app server serves the app
-  /// client's full bundle).
+  /// are display strings, not data. The app server serves it because it owns
+  /// the app client.
   Future<ResourceBundleDto> resources();
 
   /// `appResourceRoles` — `GET /resource-roles` (authenticated). The principal's
@@ -274,7 +274,7 @@ abstract class AppApiService {
   /// the framework delegation resolver, then expands each grant down its
   /// containment chain so a project grant surfaces every contained item — the
   /// exact key set the client's exact-match resource-role adapter needs to grade
-  /// fields (RCC2). The authz token is an opaque bearer client-side, so the map
+  /// fields. The authz token is an opaque bearer client-side, so the map
   /// is fetched here rather than read from a claim.
   Future<Map<String, String>> resourceRoles();
 }

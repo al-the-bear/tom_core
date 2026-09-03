@@ -289,7 +289,7 @@ final TomApi appApi = TomApi(
       requestTypes: const [],
       access: TomAuthenticatedAccess(),
     ),
-    // The RCB9 scoped-entity write path: create/update/delete a workspace. The
+    // The scoped-entity write path: create/update/delete a workspace. The
     // creator becomes the owner (an explicit C-5 grant plus the `ownerId`
     // column), and update/delete are owner-only *by construction* — the
     // framework `@TomDbScope(field: 'ownerId')` write enforcement rejects a

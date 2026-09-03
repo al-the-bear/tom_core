@@ -1,13 +1,13 @@
 /// Computes a principal's **visible id-set** per entity type — the input the
-/// RCB8 async data-scope resolver pushes to the database.
+/// async data-scope resolver pushes to the database.
 ///
 /// The workspace entity's visibility is owner-only, so it stays a synchronous
-/// single-column `@TomDbScope` (RCC4). Project/list/item visibility, in
+/// single-column `@TomDbScope`. Project/list/item visibility, in
 /// contrast, folds C-5 ownership grants **and** C-6 `share`-mode delegations
 /// over the containment chain (`workspace → project → list → item`): a role held
 /// on an ancestor covers every descendant. A single-column `IN (…)` AND-scope
 /// cannot express that (it would silently AND-hide legitimately shared rows), so
-/// RCB8 extends the framework data scope to accept an **async, union/OR**
+/// The framework data scope accepts an **async, union/OR**
 /// resolver — and this class is the sample's implementation of it.
 ///
 /// For a principal it produces two id-sets per entity type — the ids reachable
@@ -52,7 +52,7 @@ import '../persistence/app_persistence_model.dart';
 import 'resource_role_resolver.dart';
 
 /// Registers the async `visible:project|list|item` data scopes onto the
-/// framework [TomDataScopeRegistry] (RCB8), each resolving a principal's owned ∪
+/// framework [TomDataScopeRegistry], each resolving a principal's owned ∪
 /// shared id-set through a production [VisibleResourceResolver].
 ///
 /// Called once at app-server boot — after *both* `initializeReflection()` and
@@ -125,7 +125,7 @@ class VisibleResourceResolver {
   );
 
   /// The owned and shared id-set groups for entity [type] that principal
-  /// [principalId] may see — the two groups the RCB8 async data scope ORs into
+  /// [principalId] may see — the two groups the async data scope ORs into
   /// `(id IN (owned…) OR id IN (shared…))`.
   ///
   /// A `null`/blank principal denies every row (an empty outer list — deny-all,
@@ -158,7 +158,7 @@ class VisibleResourceResolver {
   /// The flat visible id-set for entity [type] and principal [principalId] — the
   /// union of the [visibleIdGroups]. The service layer filters the in-memory
   /// store against this so a database-free read agrees with the pushed-down DB
-  /// scope (the same reconciliation RCC4 applies to owner-scoped workspaces).
+  /// scope (the same reconciliation applied to owner-scoped workspaces).
   Future<Set<Object?>> visibleIds(String type, String? principalId) async {
     final groups = await visibleIdGroups(type, principalId);
     return {for (final group in groups) ...group};

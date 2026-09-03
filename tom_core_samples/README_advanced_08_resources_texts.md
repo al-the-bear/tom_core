@@ -90,9 +90,9 @@ full dotted path, and the provider resolves it directly.
 
 ## Scope/form/field-structured JSON resource files
 
-Before RC-24 these texts were Dart `const` maps built in code. They now live as
-**nested JSON assets** structured along the client's `scope → form → field`
-hierarchy, so a text file *mirrors the screen it describes*:
+These texts live as **nested JSON assets** structured along the client's
+`scope → form → field` hierarchy — not as Dart `const` maps built in code — so a
+text file *mirrors the screen it describes*:
 
 ```jsonc
 // advanced_app_server/assets/resources_app.json
@@ -147,7 +147,7 @@ member name — is appendix [A2](README_advanced_A2_resource_scope_conventions.m
 A client needs *some* texts before anyone signs in (the login screen has a
 title, a hint, a submit caption) but the full set of post-login texts is only
 reachable *with* a session. The app client resolves this with a **two-stage
-install** (D-A9):
+install**:
 
 1. **Pre-login.** The bootstrap awaits `loadLoginResources()` before the first
    frame: it fetches the *public* login bundle through the backend seam and
@@ -203,7 +203,7 @@ are byte-identical.
 
 - `advanced_todo_contracts/lib/src/resource_bundle_dto.dart` — `ResourceBundleDto`, `flattenResourceTree`
 - `advanced_app_server/lib/src/resources/app_resource_bundles.dart`, `advanced_auth_server/lib/src/resources/auth_resource_bundles.dart`; the `assets/resources_*.json` trees
-- `advanced_app_client/lib/app/app_session.dart` (`loadLoginResources` / `_installFullResources`, D-A9)
+- `advanced_app_client/lib/app/app_session.dart` (`loadLoginResources` / `_installFullResources`)
 - `TomField.resolvedLabel` in `tom_flutter_ui/.../tom_form.dart`; `TomCtr.text`/`TomCtr.textOrNull` in `tom_construction_helpers.dart`
 - `advanced_app_client/test/form_label_resolution_test.dart` (the `[srv]` sentinel proof)
 - Appendix [A2](README_advanced_A2_resource_scope_conventions.md)

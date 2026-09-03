@@ -11,7 +11,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ///
 /// The app client, by contrast, no longer receives per-field grades over the
 /// wire: it fetches its flat `resourceKey → role` map from `GET /resource-roles`
-/// and resolves each field's grade locally through the framework registry (RCC2).
+/// and resolves each field's grade locally through the framework registry.
 ///
 /// A reflection-first wire DTO (G-DTO): `@tomReflector`, plain non-`final`
 /// fields, no hand-written serializer. The framework serializes it through the

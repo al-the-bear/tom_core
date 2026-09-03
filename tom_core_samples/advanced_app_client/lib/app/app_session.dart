@@ -1,5 +1,5 @@
 /// The signed-in session: who is logged in, the token pair, and the principal's
-/// per-resource role grants (RCC2).
+/// per-resource role grants.
 ///
 /// A [ChangeNotifier] so the app shell ([AdvancedTodoApp]) rebuilds the home on
 /// every login/logout — navigation between "signed out" and "signed in" is a
@@ -290,7 +290,7 @@ class AppSession extends ChangeNotifier {
     _expiresAt = result.expiresAt;
     // Snapshot the principal's per-resource role grants and install them as the
     // framework authorization adapter, so every screen resolves resource keys
-    // through the TomResourceRoleRegistry (RCC2). Non-resource-key lookups stay
+    // through the TomResourceRoleRegistry. Non-resource-key lookups stay
     // permissive via [AppResourceRoleAdapter].
     _resourceRoles = await backend.resourceRoles();
     TomAuthorization.adapter = AppResourceRoleAdapter(_resourceRoles);

@@ -48,10 +48,10 @@ keys on that **`basePath` alone, no suffix** —
 So when the item form runs under `TomScope.withScope('todo', …)` with
 `formId: 'item'`, the field `title` (tomId `title`) self-addresses as
 `todo.item.title` — *exactly* the `todo.item.title` key the server's grade
-matrix is keyed by (D-A1). One alignment makes the field's
+matrix is keyed by. One alignment makes the field's
 authorization key equal the wire grade key with **zero translation layer**.
 
-The one deliberate exception is the estimate field (D-A2): its grade key is
+The one deliberate exception is the estimate field: its grade key is
 `todo.item.estimate`, so the form gives it an explicit `tomId: 'estimate'` for
 addressing while keeping the reflected member name `estimateHours` for the
 save round-trip — `TomField.tomId` and the Dart member name are independent.
@@ -66,7 +66,7 @@ A role's field grades are **data**, not code — rows in the auth server's
 `auth_db` `tom_resource_grant` table (`(role_name, resource_key, access_level)`),
 seeded by `[003]-auth_demo_seed@dev,test.sql` (dev/test only) and editable through
 the admin console.
-The sample seeds the full §A.4 matrix — **8 graded item keys × 4 project
+The sample seeds the full matrix — **8 graded item keys × 4 project
 roles = 32 rows** (the seven form fields below plus the item's file column,
 `todo.item.attachment`, covered in
 [13 · File transfer](README_advanced_13_file_transfer.md)):
@@ -104,7 +104,7 @@ Changing a grade on one side alone fails there.
 
 ## The two server resolvers
 
-The app server computes a caller's grades in **two layers** (§A.4), each pure
+The app server computes a caller's grades in **two layers**, each pure
 over a small store seam (`RepositoryGrantStore` for the grade matrix; the
 framework `RepositoryPrincipalResourceGrantStore` / `RepositoryPrincipalDelegationStore`
 plus the app's `RepositoryResourceContainmentStore` for roles — `InMemory*`
@@ -124,7 +124,7 @@ seeded for socket-free tests):
    `FieldGradeResolver` (`.../access/field_grade_resolver.dart`) loads the
    role's grant rows and folds them, resolving **every** gradable `todo.item.*`
    key to its `TomAuthState`. A field with no grant row
-   degrades to `none` — closed-safe (D-A4).
+   degrades to `none` — closed-safe.
 
 Server-side these grades feed the **write enforcement** path (below). The app
 client obtains what it needs to grade fields locally from a different, flat read:
@@ -148,7 +148,7 @@ principal's `resourceRoles` map and installs an
 adapter (`advanced_app_client/lib/app/app_resource_role_adapter.dart`); on logout
 it resets the adapter. That adapter gates only `<type>:<id>` resource keys (those
 containing `:`); any dotted path (`todo.item.title`, chrome) stays permissive
-(`full`), matching the pre-RCC2 no-adapter behaviour.
+(`full`), matching the framework's no-adapter default.
 
 When the item detail screen opens an item, `_ItemDetailScreenState._resolveForm`
 grades each gradable field **synchronously**
@@ -171,7 +171,7 @@ framework registry via the installed adapter (no role → `none`);
 `projectRoleFieldGrades[role]` row. Because every role's field grades sit at or
 below its resource ceiling, `resourceState.narrow(...)` reproduces the field-grade
 matrix exactly; a missing role or missing grade collapses the field to
-`TomAuthState.none` — **closed-safe** (D-A4). There is **no** per-field installed
+`TomAuthState.none` — **closed-safe**. There is **no** per-field installed
 adapter; the global `AppResourceRoleAdapter` leaves every *non-gradable* dotted
 path (login, board, dialogs) permissive — the screen never has to carve out a
 namespace to keep the login screen visible.
@@ -182,7 +182,7 @@ repointed its matrix per item. That approach forced the adapter to special-case
 a `gradableKeys` namespace (so a closed-safe `none` would not hide the login
 form) and routed *every* field's layer-1 lookup through the singleton. Stamping
 each gradable field directly is simpler, keeps `none` scoped to the fields that
-opt into grading, and needs no global installation step (D-A5).
+opt into grading, and needs no global installation step.
 
 ## Where per-field authorizers also appear
 
@@ -193,7 +193,7 @@ for **create-vs-edit shaping** (`username` read-only on edit, a stable key),
 which is a legitimate **layer-4** concern with no server grade matrix behind it.
 The group form has neither, needing no shaping. Both uses — the item screen's
 DB-resolved grades and the admin forms' create/edit shaping — are the *correct*
-use of the layer-4 authorizer (D-A5).
+use of the layer-4 authorizer.
 
 The full five-layer order is in `TomField.resolveEffectiveAuth`
 (`tom_form.dart`): (1) resource-based via `basePath`, (2) group auth, (3)

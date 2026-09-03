@@ -1,4 +1,4 @@
-/// Database-free integration tests for the write endpoints (RCC3): the
+/// Database-free integration tests for the write endpoints: the
 /// [AppWriteService] composes the [ResourceRoleResolver] and the field-grade
 /// resolver, so the whole write path — role gating plus per-field
 /// grade enforcement — verifies against seeded in-memory stores with no server
@@ -7,8 +7,9 @@
 /// The fixture mirrors the demo seed `[001]-app_demo_seed@dev,test.sql`
 /// (workspace 1 owned by alice=2, project 1 → list 1, item 1 in list 1) and the
 /// grant matrix `[001]-auth_authz_grants.sql` seeds, with bob=3 shared `editor`,
-/// erin=5 shared `commenter`, and carol=4 shared `viewer` on project 1. RCC3 expresses ownership as a C-5 owner grant (RCC1) and each
-/// share as a C-6 `share`-mode [TomPrincipalDelegation], folded by the framework
+/// erin=5 shared `commenter`, and carol=4 shared `viewer` on project 1.
+/// Ownership is a C-5 owner grant and each share a C-6 `share`-mode
+/// [TomPrincipalDelegation], folded by the framework
 /// resolver into the effective roles the containment rule walks. The headline
 /// triple is: a `viewer` `PUT` to `title` is rejected, an
 /// `editor` `PUT` succeeds, and the persisted row reflects only the permitted
@@ -115,7 +116,7 @@ ItemRecord demoItem() => ItemRecord()
   ..reporterId = alice
   ..estimateHours = 4.0;
 
-/// Alice owns the whole tree via a single workspace-level owner grant (RCC1);
+/// Alice owns the whole tree via a single workspace-level owner grant;
 /// the containment rule flows it down to the project, lists and item.
 List<TomPrincipalResourceGrant> demoGrants() => [
   TomPrincipalResourceGrant(
@@ -126,7 +127,7 @@ List<TomPrincipalResourceGrant> demoGrants() => [
 ];
 
 /// The three shares as C-6 `share`-mode delegations on project 1: bob `editor`,
-/// carol `viewer`, erin `commenter` (RCC3). None target the workspace, so a
+/// carol `viewer`, erin `commenter`. None target the workspace, so a
 /// grantee holds no role there.
 List<TomPrincipalDelegation> demoShares() => [
   shareDelegation(delegate: bob, role: ProjectRole.editor),
@@ -150,7 +151,7 @@ TomPrincipalDelegation shareDelegation({
 /// Wires a write service over a caller-supplied [writeStore] (so a test can
 /// inspect what was persisted) and freshly-seeded resolver stores. A test that
 /// asserts ownership grants passes its own [ownershipWriter] to introspect the
-/// recorded owner grants (RCC1); the default writer discards them.
+/// recorded owner grants; the default writer discards them.
 AppWriteService writeServiceOver(
   InMemoryAppWriteStore writeStore, {
   OwnershipGrantWriter? ownershipWriter,
@@ -544,7 +545,7 @@ void main() {
     });
 
     test(
-      'creating an item stamps the creator as its C-5 owner (RCC1)',
+      'creating an item stamps the creator as its C-5 owner',
       () async {
         final store = seededWriteStore();
         final owner = InMemoryOwnershipGrantWriter();
@@ -625,7 +626,7 @@ void main() {
     });
 
     test(
-      'creating a project stamps the creator as its C-5 owner (RCC1)',
+      'creating a project stamps the creator as its C-5 owner',
       () async {
         final store = seededWriteStore();
         final owner = InMemoryOwnershipGrantWriter();
@@ -665,14 +666,14 @@ void main() {
     );
   });
 
-  group('createWorkspace ownership (RCB9 scoped-entity create)', () {
+  group('createWorkspace ownership (scoped-entity create)', () {
     // The scoped-entity write path. `createWorkspace` has no share/role gate: any
     // authenticated principal may create their *own* workspace, and the creator
     // "becomes the owner" both ways — the `ownerId` column is stamped with their
     // id (so the framework `@TomDbScope(field: 'ownerId')` owner-scope makes the
     // row theirs; the live insert-scope check permits it) and an explicit C-5
     // owner grant is recorded. The database-free store cannot enforce the scope
-    // (that fires only against the live repository, exercised in the RCB9
+    // (that fires only against the live repository, exercised in the
     // integration script), so these tests assert the creator↔owner wiring.
     test('persists the workspace with the creator as its owner', () async {
       final store = seededWriteStore();
@@ -687,7 +688,7 @@ void main() {
       expect(store.workspaces.single.ownerId, dave);
     });
 
-    test('stamps the creator as the workspace C-5 owner (RCC1)', () async {
+    test('stamps the creator as the workspace C-5 owner', () async {
       final store = seededWriteStore();
       final owner = InMemoryOwnershipGrantWriter();
       final created = await writeServiceOver(

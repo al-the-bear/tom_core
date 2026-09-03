@@ -146,8 +146,8 @@ authorization is two resolvers the handlers consult per call (introduced in
 - **`ResourceRoleResolver`** — maps `(userId, resourceType, resourceId)` to an
   *effective* `ProjectRole`, or `null` for no access. It resolves the principal's
   flat effective-role map through the framework `TomDelegationResolver` — the C-5
-  ownership grants (RCC1) and C-6 `share`-mode `TomPrincipalDelegation` rows
-  (RCC3), strongest role wins — then keeps the strongest role over the target's
+  ownership grants and C-6 `share`-mode `TomPrincipalDelegation` rows
+ , strongest role wins — then keeps the strongest role over the target's
   containment chain, climbing item → list → project → workspace. Every list
   endpoint filters each candidate row through it and drops the invisible ones
   (`AppReadService._filterByVisibility`, `app_endpoints.dart`); `null` means the

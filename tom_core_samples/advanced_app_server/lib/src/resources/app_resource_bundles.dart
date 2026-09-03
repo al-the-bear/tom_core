@@ -1,17 +1,17 @@
-/// The app server's text resource bundle (step / todo 7; externalized in RC-24).
+/// The app server's text resource bundle.
 ///
 /// The app client's post-login screens — the board and the item editor — render
 /// their labels and hints through the Tom Flutter UI resource system rather than
 /// from client-side strings. This is the server-owned source of those texts.
 ///
-/// The texts no longer live as Dart `const` maps: they are a **nested JSON
-/// asset** (`assets/resources_app.json`) structured along the client's
-/// scope → form → field hierarchy (`todo.item.title.label`, `board.*`). The
-/// asset is loaded once and [flattenResourceTree]-ed into the flat
-/// `<basePath>.<suffix>` map the `appResources` endpoint serves and the client
-/// installs via `TomTextResourceProvider.from(dto.texts)` (todo 9). The flat
-/// served shape is byte-equivalent to the pre-RC-24 bundle, so the wire contract
-/// and the resource-endpoint tests are unchanged.
+/// The texts are a **nested JSON asset** (`assets/resources_app.json`)
+/// structured along the client's scope → form → field hierarchy
+/// (`todo.item.title.label`, `board.*`) rather than Dart `const` maps: the
+/// authoring shape then mirrors the screen it describes. The asset is loaded
+/// once and [flattenResourceTree]-ed into the flat `<basePath>.<suffix>` map the
+/// `appResources` endpoint serves and the client installs via
+/// `TomTextResourceProvider.from(dto.texts)` — so the nesting is an authoring
+/// convenience only and never reaches the wire.
 ///
 /// The item-form keys live under `todo.item.*` so a served label key tracks the
 /// field's grade key: the field at `todo.item.title` is graded on
@@ -76,7 +76,7 @@ class AppResourceBundles {
   ///
   /// The bundle — not raw entity reflection — is the source because it carries
   /// the wire tokens the two authorization layers agree on (`estimate`, whose
-  /// reflected member is `estimateHours`; D-A2). The bundle↔domain linkage is
+  /// reflected member is `estimateHours`). The bundle↔domain linkage is
   /// held by the `resource_key_consistency` drift guard.
   static List<String> gradableItemKeys() {
     final seen = <String>{};

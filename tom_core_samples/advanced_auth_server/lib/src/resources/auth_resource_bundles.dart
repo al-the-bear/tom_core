@@ -1,6 +1,6 @@
 /// The auth server's text resource bundles.
 ///
-/// Per D-A10 the auth server owns two text sets: the **public** login-screen
+/// The auth server owns two text sets: the **public** login-screen
 /// texts (served before anyone signs in, by both clients) and the **admin
 /// console** texts (served after an admin signs in). Both are served as the flat
 /// `<basePath>.<suffix>` maps the resource endpoints return and the clients

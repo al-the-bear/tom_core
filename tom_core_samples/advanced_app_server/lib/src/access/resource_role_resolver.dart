@@ -1,5 +1,5 @@
 /// Resource-level access resolution over the framework delegation resolver
-/// (RCC3): given a principal and a target resource, compute the principal's
+///: given a principal and a target resource, compute the principal's
 /// effective [ProjectRole] from their framework-resolved roles.
 ///
 /// This is the first of the app server's two authorization layers. It
@@ -9,8 +9,8 @@
 ///
 /// It **replaces** the sample's earlier bespoke resolver, which walked an
 /// implicit `workspace.owner_id` chain and read a separate share table:
-/// ownership is now an explicit C-5 owner grant (RCC1) and a share is a C-6
-/// `share`-mode `TomPrincipalDelegation` (RCC3). Both arrive folded into one
+/// ownership is now an explicit C-5 owner grant and a share is a C-6
+/// `share`-mode `TomPrincipalDelegation`. Both arrive folded into one
 /// flat `resourceKey → roleName` map from
 /// [TomDelegationResolver.resolveEffectiveRoles]; this resolver adds only the
 /// sample's **containment** rule — a role held on an ancestor covers its

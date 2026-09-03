@@ -484,7 +484,7 @@ class AdvancedAuthApiService implements AuthApiService {
   // serves the genuinely-public login-screen texts a client installs *before*
   // sign-in (`login.*` for the app client, `adminLogin.*` for the admin
   // console). Public — no bearer — because the login form needs its strings to
-  // render the very screen on which a user obtains a token (D-A9).
+  // render the very screen on which a user obtains a token.
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authLoginResources')
   @override
   Future<ResourceBundleDto> loginResources() async =>

@@ -125,7 +125,7 @@ void main() {
   });
 
   // Login snapshots the principal's per-resource role grants and installs them as
-  // the framework [TomAuthorization] adapter (RCC2); logout clears the snapshot
+  // the framework [TomAuthorization] adapter; logout clears the snapshot
   // and resets the adapter. The item screen resolves field states through that
   // adapter rather than a session-held matrix.
   group('session installs the resource-role adapter at login', () {

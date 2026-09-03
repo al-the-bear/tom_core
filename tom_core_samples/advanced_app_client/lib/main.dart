@@ -37,7 +37,7 @@
 /// environment *name* ([_clientEnvironment]) and the kernel bean locator installs
 /// the one backend registered for that environment (G-DI-3/G-DI-5).
 ///
-/// Authorization resolves through the framework registry (RCC2): boot registers
+/// Authorization resolves through the framework registry: boot registers
 /// the shared `ProjectRole → TomAuthState` vocabulary
 /// ([registerProjectRoleVocabulary]), and on login the [AppSession] installs the
 /// principal's per-resource role grants as the [TomAuthorization] adapter, so the

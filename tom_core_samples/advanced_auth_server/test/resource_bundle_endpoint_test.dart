@@ -1,6 +1,6 @@
 /// Tests for the auth server's two resource endpoints.
 ///
-/// Per D-A9/D-A10 the auth server serves the **public** login texts
+/// The auth server serves the **public** login texts
 /// (`/auth/resources/login`) and the **admin-gated** console texts
 /// (`/admin/resources`). The done-when: the login bundle is reachable
 /// unauthenticated and returns the login keys; the admin bundle returns the

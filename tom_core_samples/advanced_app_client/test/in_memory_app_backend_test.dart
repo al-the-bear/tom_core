@@ -1,4 +1,4 @@
-/// Contract tests for the seeded [InMemoryAppBackend] (RCC2): the
+/// Contract tests for the seeded [InMemoryAppBackend]: the
 /// offline teaching backend the app's widgets bind in tests, exercised across the
 /// seam's whole surface — login, the workspace→project→list→item reads, item
 /// save, the per-principal-per-resource role grants ([AppBackend.resourceRoles]),

@@ -16,8 +16,8 @@
 /// No JSON read endpoint resolves them at all: `AppReadService` holds no
 /// [FieldGradeResolver].
 ///
-/// The client never receives them either. Since RCC2 it grades its own form
-/// fields locally, from the flat `resourceKey → roleName` map it fetches once at
+/// The client never receives them either: it grades its own form fields
+/// locally, from the flat `resourceKey → roleName` map it fetches once at
 /// login folded against the shared domain's [projectRoleFieldGrades]. So the
 /// matrix exists twice, and the duality is deliberate: the client's copy is
 /// cooperation, this one is the decision. The two must *start* equal —

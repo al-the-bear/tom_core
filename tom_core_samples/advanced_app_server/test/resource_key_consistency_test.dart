@@ -1,4 +1,4 @@
-/// Drift guard: the externalized text-resource tree (RC-24) and the gradable
+/// Drift guard: the externalized text-resource tree and the gradable
 /// item field set must name the same set of `todo.item.*` fields.
 ///
 /// Three artifacts have to agree on the scope/form/field keys — the gradable
@@ -66,7 +66,7 @@ Set<String> _gradedFieldsLabelledIn(Map<String, Object?> texts) {
 }
 
 void main() {
-  group('resource-key consistency (RC-26)', () {
+  group('resource-key consistency', () {
     test('resources_app.json labels exactly the gradable item fields '
         '(no missing, no stray)', () {
       final texts = AppResourceBundles.appBundle().texts;
