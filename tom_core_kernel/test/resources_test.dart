@@ -723,7 +723,10 @@ void main() {
         final provider = TomConfigResourceProvider.from({
           'baseUrl': 'https://api.example.com',
         });
-        expect(provider.getObject('baseUrl'), equals('https://api.example.com'));
+        expect(
+          provider.getObject('baseUrl'),
+          equals('https://api.example.com'),
+        );
       });
 
       test('should return integer value for flat key', () {
@@ -769,7 +772,10 @@ void main() {
             'connection': {'maxPoolSize': 25},
           },
         });
-        expect(provider.getObject('database.connection.maxPoolSize'), equals(25));
+        expect(
+          provider.getObject('database.connection.maxPoolSize'),
+          equals(25),
+        );
       });
 
       test('should return key when nested path does not exist', () {

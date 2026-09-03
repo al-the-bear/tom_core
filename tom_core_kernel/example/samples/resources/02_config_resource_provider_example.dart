@@ -137,7 +137,9 @@ class ConfigResourceProviderExample {
     } on TypeError {
       directCastThrew = true;
     }
-    print('   - getObject(...) as int on a missing key threw: $directCastThrew');
+    print(
+      '   - getObject(...) as int on a missing key threw: $directCastThrew',
+    );
 
     // Two ways to read a typed value without that risk. Prefer the first: one
     // lookup, one line, and it cannot throw on an absent key.

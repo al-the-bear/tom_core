@@ -2196,8 +2196,10 @@ void main() {
       final member = _MutableAuthorizable('a', TomAuthState.full);
       final group = TomAuthorizationGroup('shipping')..register(member);
 
-      expect(group.toString(),
-          'TomAuthorizationGroup(shipping, mode: AuthGroupMode.controlsWidest)');
+      expect(
+        group.toString(),
+        'TomAuthorizationGroup(shipping, mode: AuthGroupMode.controlsWidest)',
+      );
       expect(group.memberCount, 1);
     });
   });

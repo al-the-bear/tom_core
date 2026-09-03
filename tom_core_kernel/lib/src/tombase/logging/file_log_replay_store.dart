@@ -172,15 +172,11 @@ class TomFileLogReplayStore implements TomLogReplayStore {
   /// [_records] directly for that reason, including [trim]'s clearing branch,
   /// which would otherwise delegate to [clear] and deadlock on the guard this
   /// call already holds.
-  T _guarded<T>(T Function() operation) => tomWithFileLock(
-    _lockFile,
-    () {
-      _records.clear();
-      _load();
-      return operation();
-    },
-    onBrokenLock: _report,
-  );
+  T _guarded<T>(T Function() operation) => tomWithFileLock(_lockFile, () {
+    _records.clear();
+    _load();
+    return operation();
+  }, onBrokenLock: _report);
 
   /// Where damaged content is moved so the next [_persist] cannot overwrite
   /// the evidence of what was lost.
