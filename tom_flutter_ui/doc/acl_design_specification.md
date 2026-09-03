@@ -177,9 +177,12 @@ Replaces the built-in 150 × 0 default preferred size for components without an 
 | `setAclDefaultAppendGap`, `setAclDefaultRowGap` | **Off.** The gap is 0 — the built-in 8 is discarded. |
 | `setAclDefaultUnknownPreferredSize` | **Width only:** fall back to the factory 150. Height is stored as 0. |
 | `setAclDefaultUnknownMinimumSize` | **Stored as 0.** No fallback on either axis. |
-| `setPSize`, `setMSize`, `setXSize` (per-component) | **Leave that dimension alone** — keep the value an earlier call on the same component set, or 0 if there was none. |
+| `setPSize`, `setMSize` (per-component) | **Leave that dimension alone** — keep the value an earlier call on the same component set, or 0 if there was none. |
+| `setXSize` (per-component) | **Leave that dimension alone** — keep the value an earlier call set, or leave the axis **unconstrained** (`double.infinity`) if there was none. |
 
 The split is structural rather than stylistic. A per-component setter targets a component that may already carry a size, so "leave it alone" names a real previous value. The builder-wide setters have no per-axis previous value to preserve — each call replaces the whole `Size` — so the only fallback available to them is a *factory constant*, and only the preferred width has one.
+
+`setXSize` differs from its two siblings on the unset case because 0 does not mean the same thing to a maximum. A preferred or minimum of 0 is no constraint; a maximum of 0 is *no size at all*, and the container turns it into `BoxConstraints(maxHeight: 0)` faithfully enough to collapse the child. So `setXSize(200)` — the natural spelling of "cap the width at 200" — must leave the height alone rather than pin it to 0. This is also what makes the char-width shorthand above exact: `setXWidthInChars` has always fallen back to `double.infinity`, and `setXSize` now agrees with it.
 
 A gap of 0 is meaningful in a way that a size of 0 is not, which is why the gap setters take it literally instead of falling back to the built-in 8.
 

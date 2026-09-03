@@ -201,6 +201,10 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   }
 
   /// Sets a maximum size on the current component.
+  ///
+  /// An omitted or 0 axis is left unconstrained rather than capped at 0 —
+  /// unlike [setPSize] and [setMSize], where 0 falls back to 0. See
+  /// [AclBuilder.setXSize].
   TomAclBuilder<T> setXSize(double width, [double height = 0]) {
     _builder.setXSize(width, height);
     return this;

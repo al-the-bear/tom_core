@@ -214,6 +214,96 @@ void main() {
 
       expect(acl.rows[0].components[0].preferredSize, const Size(60, 12));
     });
+
+    test('setXSize(0, h) keeps the width set by the earlier call', () {
+      final acl = AclBuilder()
+          .append(const Text('A'))
+          .setXSize(80, 8)
+          .setXSize(0, 12)
+          .build();
+
+      expect(acl.rows[0].components[0].maximumSize, const Size(80, 12));
+    });
+  });
+
+  group('an omitted maximum leaves its axis unconstrained, not at zero', () {
+    // 0 means "leave this axis alone" on all three setters, but what it falls
+    // back to when there is nothing to leave alone differs by setter, because
+    // 0 does not mean the same thing to a maximum as to a preferred or a
+    // minimum. A preferred or minimum of 0 is no constraint; a *maximum* of 0
+    // is "no size at all", which the container faithfully turns into
+    // `BoxConstraints(maxHeight: 0)` and the child collapses.
+    //
+    // So `setXSize(200)` — the natural way to write "cap the width at 200" —
+    // used to render nothing at all. Both shipped ACL sizing samples call it
+    // that way, including the one titled "Maximum width — setXSize".
+
+    test('setXSize(width) leaves the height unconstrained', () {
+      final acl = AclBuilder().append(const Text('A')).setXSize(200).build();
+
+      final max = acl.rows[0].components[0].maximumSize!;
+      expect(max.width, 200.0);
+      expect(max.height, double.infinity,
+          reason: 'an omitted height must not cap the component at 0 high');
+    });
+
+    test('setXSize(0, height) leaves the width unconstrained', () {
+      // The same defect on the other axis, reachable by the documented
+      // "pass 0 to leave that dimension unchanged" spelling.
+      final acl = AclBuilder().append(const Text('A')).setXSize(0, 44).build();
+
+      final max = acl.rows[0].components[0].maximumSize!;
+      expect(max.width, double.infinity);
+      expect(max.height, 44.0);
+    });
+
+    test('setXSize and setXWidthInChars agree on the missing-height fallback',
+        () {
+      // The two set the same field and had two different answers. Derive both
+      // rather than restating the constant, so they stay agreed rather than
+      // merely being equal today.
+      final bySize = AclBuilder().append(const Text('A')).setXSize(80).build();
+      final byChars =
+          AclBuilder().append(const Text('A')).setXWidthInChars(10).build();
+
+      expect(bySize.rows[0].components[0].maximumSize!.height,
+          byChars.rows[0].components[0].maximumSize!.height);
+    });
+
+    testWidgets('capping the width does not change the rendered height', (
+      tester,
+    ) async {
+      // The done-bar, asserted in pixels rather than only in the builder's
+      // data. The subject has to be a child with an intrinsic height — a bare
+      // `Container` measures 0 high with or without the cap, so it would have
+      // passed this test while the bug was live.
+      //
+      // Stated as a comparison against the uncapped component, because the
+      // claim is not "some height" but "the height a width cap has no business
+      // touching". Before the fix the capped `Text` rendered 0.0 against the
+      // uncapped 20.0.
+      Future<double> heightOf(AclBuilder builder) async {
+        await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+            body: SizedBox(width: 500, child: builder.build()),
+          ),
+        ));
+        await tester.pump();
+        return tester.getRect(find.byKey(const ValueKey('x-capped'))).height;
+      }
+
+      const child = Text('A', key: ValueKey('x-capped'));
+      final uncapped = await heightOf(AclBuilder().append(child));
+      final capped =
+          await heightOf(AclBuilder().append(child).setXSize(200));
+
+      expect(uncapped, greaterThan(0),
+          reason: 'the subject must have an intrinsic height, or this test '
+              'cannot detect the collapse it exists to catch');
+      expect(capped, uncapped,
+          reason: 'setXSize(200) caps the width and must say nothing about '
+              'the height');
+    });
   });
 
   group('the remaining default setters change what their dartdoc names', () {

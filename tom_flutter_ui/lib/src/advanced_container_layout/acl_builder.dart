@@ -458,13 +458,22 @@ class AclBuilder {
   /// Sets a maximum size on the current component.
   ///
   /// Pass 0 for [width] or [height] to leave that dimension unchanged
-  /// (preserving any previously set value).
+  /// (preserving any previously set value, or leaving it **unconstrained**
+  /// when none was set).
+  ///
+  /// The unset fallback is `double.infinity`, not 0 as it is on [setPSize]
+  /// and [setMSize]. A preferred or minimum of 0 is no constraint, so those
+  /// two can share the sentinel; a *maximum* of 0 means "no size at all", and
+  /// the container turns it into `BoxConstraints(maxHeight: 0)` faithfully
+  /// enough to collapse the child. `setXSize(200)` therefore caps the width
+  /// and says nothing about the height, which is what it reads as.
+  /// [setXWidthInChars] uses the same fallback for the same reason.
   AclBuilder setXSize(double width, [double height = 0]) {
     if (_currentComponent != null) {
       final cur = _currentComponent!.maximumSize;
       _currentComponent!.maximumSize = Size(
-        width == 0 ? (cur?.width ?? 0) : width,
-        height == 0 ? (cur?.height ?? 0) : height,
+        width == 0 ? (cur?.width ?? double.infinity) : width,
+        height == 0 ? (cur?.height ?? double.infinity) : height,
       );
     }
     return this;
