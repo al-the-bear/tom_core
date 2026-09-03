@@ -46,14 +46,17 @@ The third is about a keyword rather than a bracket:
     being reported: they are quoting a declaration, and whether the *real*
     declaration carries ``const`` is a different question than this tool asks.
 
-**Why not just compile the samples.** The obvious guard is to extract every
-```dart fence and analyze it, and that is a much larger job than it sounds:
-there are 1500-odd fences in this tree and the great majority are fragments --
-no imports, undefined variables, a method body with no class around it. Making
-them compilable means writing a harness per sample, and a check that expensive
-to satisfy gets switched off.
+**Why this reads text rather than compiling.** Running every fence through the
+analyzer is a separate gate -- ``check_doc_dart_blocks.py`` -- and the two are
+not substitutes. That one wraps a block in each context a sample can occupy and
+asks whether it parses and whether the framework names in it resolve; it needs
+a scratch package, a `pub get` and the Dart toolchain, and it says nothing
+about a call whose arguments are the wrong *shape* for a constructor that does
+exist. This one needs nothing but the files, runs over the whole repository
+rather than the packages that gate has been triaged for, and answers exactly
+that question.
 
-This takes the part that is decidable from the text alone. Whether a call is
+So this takes the part decidable from the text alone. Whether a call is
 positional or named is visible in the call; whether the constructor accepts
 that is visible in the signature; neither needs the surrounding program. It is
 a narrow slice of "does the sample compile", but it is the slice that catches

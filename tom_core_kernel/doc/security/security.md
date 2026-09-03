@@ -1190,9 +1190,11 @@ and every principal. Without its first line, the snippet below protects nothing:
 TomResourceKeyProtection.globalSettingProtectionDefault = true;
 
 // In your user serialization
-'email': tomProtect(user.email, null, 'user.email'),
-'phone': tomProtect(user.phone, null, 'user.phone'),
-'salary': tomProtect(user.salary, null, 'user.salary'),
+final json = {
+  'email': tomProtect(user.email, null, 'user.email'),
+  'phone': tomProtect(user.phone, null, 'user.phone'),
+  'salary': tomProtect(user.salary, null, 'user.salary'),
+};
 ```
 
 Once it is on, protection is **fail-closed**: `tomProtect` resolves the

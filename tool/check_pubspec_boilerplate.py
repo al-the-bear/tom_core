@@ -47,7 +47,11 @@ from gate_report import report_faults
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Directories that hold generated or vendored package copies, not our sources.
-SKIP_PARTS = {"build", ".dart_tool", "ephemeral", ".pub-cache", "node_modules"}
+# `ztmp` is the workspace's scratch convention and is gitignored everywhere:
+# `check_doc_dart_blocks.py` writes a throwaway package there to analyze the
+# documents' samples, and a scratch package is not part of what we publish.
+SKIP_PARTS = {"build", ".dart_tool", "ephemeral", ".pub-cache", "node_modules",
+              "ztmp"}
 
 # Verbatim `description:` values written by the generators.
 TEMPLATE_DESCRIPTIONS = {

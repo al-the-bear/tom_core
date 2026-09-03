@@ -136,7 +136,7 @@ TomGetSettingsResult({
   String? clientLanguage,
   String? clientCountry,
   String? clientTimezone,
-})
+});
 ```
 
 Two default contracts follow from it, and both matter to callers:

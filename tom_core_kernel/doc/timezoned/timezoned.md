@@ -206,19 +206,19 @@ final nowInTokyo = tokyo.now();
 
 All types share these features, because `TomTimezoned` itself has them:
 
-```dart
-// Common accessors (return UTC values)
-year, month, day, hour, minute, second, millisecond, microsecond, weekday
+```text
+Common accessors (return UTC values)
+  year, month, day, hour, minute, second, millisecond, microsecond, weekday
 
-// Local accessors (return values in the timezone)
-localYear, localMonth, localDay, localHour, localMinute, localSecond,
-localMillisecond, localMicrosecond, localWeekday
+Local accessors (return values in the timezone)
+  localYear, localMonth, localDay, localHour, localMinute, localSecond,
+  localMillisecond, localMicrosecond, localWeekday
 
-// Common members
-timezone                    // The associated TomTimezone
-getSerializationPrefix()    // '' here; '@D@', '@T@' or '@X@' on the subclasses
-toDateTime()                // Get DateTime with local time values
-toString()                  // Serialize to string
+Common members
+  timezone                    The associated TomTimezone
+  getSerializationPrefix()    '' here; '@D@', '@T@' or '@X@' on the subclasses
+  toDateTime()                Get DateTime with local time values
+  toString()                  Serialize to string
 ```
 
 Conversion is not on that list. Each of the three subclasses declares its own
@@ -433,11 +433,11 @@ and `getUtcOffsetOn(when)` compute it.
 Exactly as produced, trailing space included — the quotes are what make it
 visible:
 
-```dart
-'@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo '  // TomZonedDateTime
-'@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo '  // TomZonedDate
-'@T@1970-01-01T14:00:00.000Z_+09:00_Asia/Tokyo '  // TomZonedTime
-'@X@2024-06-15T14:30:00.000Z_Z_UTC '              // UTC
+```text
+'@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo '  TomZonedDateTime
+'@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo '  TomZonedDate
+'@T@1970-01-01T14:00:00.000Z_+09:00_Asia/Tokyo '  TomZonedTime
+'@X@2024-06-15T14:30:00.000Z_Z_UTC '              UTC
 ```
 
 ### Parsing

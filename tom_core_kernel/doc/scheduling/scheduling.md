@@ -297,8 +297,13 @@ field than with seven. Terms are whitespace-separated `key:value` pairs:
 Exactly one of `day:` and `weekday:` selects the rule.
 
 ```dart
+@tomReflector
 @TomScheduledJob(calendar: 'day:-1 at:23:30')        // month end, 23:30
+class MonthEndCloseJob extends TomJobBase { /* … */ }
+
+@tomReflector
 @TomScheduledJob(calendar: 'weekday:2/tue at:09:00 every:3 from:2')
+class QuarterlyReviewJob extends TomJobBase { /* … */ }
 ```
 
 Parsing is strict: an unknown term, a repeated term or a malformed value is
@@ -632,8 +637,9 @@ default:
 The default is the safe one: `requestsRecovery` is `false` unless a job asks.
 
 ```dart
+@tomReflector
 @TomScheduledJob(name: 'rebuild-index', cron: '@hourly', requestsRecovery: true)
-class RebuildIndexJob extends TomJobBase { … }
+class RebuildIndexJob extends TomJobBase { /* … */ }
 ```
 
 The declined case is *written off explicitly* rather than left in place, and
@@ -791,6 +797,8 @@ against this package's own parameterised contract suite rather than against test
 written to fit them. Point both at the same `TomDataSource`:
 
 ```dart
+import 'package:tom_core_server/tom_core_server.dart';
+
 final scheduler = TomScheduler(
   store: TomSqlJobStore.named('main', createSchema: false),
   dispatcher: const TomInlineJobDispatcher(),

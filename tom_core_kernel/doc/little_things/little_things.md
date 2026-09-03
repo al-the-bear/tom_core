@@ -394,17 +394,17 @@ Future<void> handleRequest(HttpRequest request) async {
 A key is dotted lowercase, `lower_snake_case` within each segment, and reads
 `<area>.<operation>.<condition>`:
 
-```dart
-// Good
-'beanlocator.bean_access.bean_not_found_by_name'
-'isolate.pool_closed.execute_after_close'
-'apis.endpoint.missing_url_parameter'
+```text
+Good
+  beanlocator.bean_access.bean_not_found_by_name
+  isolate.pool_closed.execute_after_close
+  apis.endpoint.missing_url_parameter
 
-// Avoid
-'USER_NOT_FOUND'      // no dots — nothing to group or namespace by
-'user not found'      // spaces; not usable as a lookup key
-'userNotFound'        // camelCase
-'Error123'            // says nothing about what went wrong
+Avoid
+  USER_NOT_FOUND      no dots — nothing to group or namespace by
+  user not found      spaces; not usable as a lookup key
+  userNotFound        camelCase
+  Error123            says nothing about what went wrong
 ```
 
 Three segments is the norm and two or four are fine when the subject genuinely

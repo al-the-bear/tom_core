@@ -177,10 +177,10 @@ if (config.exists('features.experimental')) {
 instead of crashing — but configuration is cast, so the miss lands on the cast:
 
 ```dart
-config.getText('api.timeout') as int   // 30000 when present
-config.getText('api.retries') as int   // throws: String is not a subtype of int
-config.getText('api.retries') as int?  // throws too — the miss value is a
-                                       // non-null String, not null
+config.getText('api.timeout') as int;   // 30000 when present
+config.getText('api.retries') as int;   // throws: String is not a subtype of int
+config.getText('api.retries') as int?;  // throws too — the miss value is a
+                                        // non-null String, not null
 ```
 
 The `TypeError` names `String` and `int` and never names the key, so it does not

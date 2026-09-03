@@ -128,7 +128,7 @@ final api = TomApi(
   uri: '/api/v1/orders',
   requestEncoding: utf8,
   responseEncoding: utf8,
-  endpoints: [...],
+  endpoints: [/* TomApiEndpoint entries — see below */],
 );
 ```
 
@@ -292,13 +292,13 @@ final method = TomHttpMethod.methods['GET'];  // TomHttpMethod.get
 Common MIME types for request/response content:
 
 ```dart
-TomMimeType.json        // application/json
-TomMimeType.html        // text/html
-TomMimeType.plainText   // text/plain
-TomMimeType.xml         // application/xml
-TomMimeType.pdf         // application/pdf
-TomMimeType.urlEncoded  // application/x-www-form-urlencoded
-TomMimeType.multipartFormData  // multipart/form-data
+TomMimeType.json;        // application/json
+TomMimeType.html;        // text/html
+TomMimeType.plainText;   // text/plain
+TomMimeType.xml;         // application/xml
+TomMimeType.pdf;         // application/pdf
+TomMimeType.urlEncoded;  // application/x-www-form-urlencoded
+TomMimeType.multipartFormData;  // multipart/form-data
 ```
 
 #### Reading a Content-Type Header

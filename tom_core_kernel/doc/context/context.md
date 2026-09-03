@@ -341,19 +341,19 @@ Static methods for extracting common values from `TomPrincipal`:
 
 ```dart
 // Organization/tenant info
-TomContextProviders.getOrganization()  // Returns 'default' if no principal
-TomContextProviders.getApplication()
-TomContextProviders.getProcess()
+TomContextProviders.getOrganization();  // Returns 'default' if no principal
+TomContextProviders.getApplication();
+TomContextProviders.getProcess();
 
 // Server locale
-TomContextProviders.getLanguage()      // Returns 'en' if no principal
-TomContextProviders.getCountry()       // Returns 'XX' if no principal
-TomContextProviders.getTimezone()      // Returns 'utc' if no principal
+TomContextProviders.getLanguage();      // Returns 'en' if no principal
+TomContextProviders.getCountry();       // Returns 'XX' if no principal
+TomContextProviders.getTimezone();      // Returns 'utc' if no principal
 
 // Client locale
-TomContextProviders.getClientLanguage()
-TomContextProviders.getClientCountry()
-TomContextProviders.getClientTimezone()
+TomContextProviders.getClientLanguage();
+TomContextProviders.getClientCountry();
+TomContextProviders.getClientTimezone();
 ```
 
 #### Field readers, not a locale derivation

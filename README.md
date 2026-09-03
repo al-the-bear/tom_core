@@ -200,6 +200,7 @@ reports and never gates.
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, or `const` one that is not |
+| [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, and every framework name in it must resolve |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
 | [`tool/check_test_inventories.py`](tool/check_test_inventories.py) | Audits a document that claims to inventory a package's test files against the files the runner discovers |
@@ -331,21 +332,69 @@ missing title would fail at the call site rather than becoming an error card
 inside some enclosing `TomErrorBoundary`, and `custom/readme.md` went on showing
 a const one until this check was written.
 
-The obvious guard — extract every ` ```dart ` fence and analyze it — is a much
-larger job than it sounds. There are 1770 fences here and most are fragments: no
-imports, undefined variables, a method body with no class around it. Making them
-compilable needs a harness per sample, and a check that expensive to satisfy gets
-switched off. This takes the part that is decidable from the text alone, because
-whether a call is positional or named is visible in the call and whether the
-constructor accepts that is visible in the signature. It is a narrow slice, but
-it is the slice that catches the copy-paste failure: a reader pastes the shortest
+This check reads text and never invokes a compiler, which is what lets it run
+over all 1770 fences in the repository rather than the packages a heavier gate
+has been triaged for. It is a narrow slice of "does the sample compile", but it
+is the slice that catches the copy-paste failure: a reader pastes the shortest
 snippet in the document, and the shortest snippet is the one nobody re-checked
-after the signature grew a named parameter.
+after the signature grew a named parameter. Running the fences through the
+analyzer is the sibling gate below, and the two answer different questions —
+that one cannot see a call whose *arguments* are the wrong shape for a
+constructor that does exist.
 
 Names resolve within the document's own package only. Without an import graph
 there is no telling a real cross-package reference from a collision, and
 collisions dominate — the `User` a document sketches inside its own fence is not
 some other package's `User`.
+
+```bash
+python3 tool/check_doc_dart_blocks.py                  # the gated packages
+python3 tool/check_doc_dart_blocks.py tom_core_server  # one package, ad hoc
+```
+
+The sibling that does invoke the compiler. Every ` ```dart ` block in a
+package's documents is written into a scratch package with a path dependency on
+that package and handed to `dart analyze`, under two rules.
+
+**It must parse.** A block is wrapped in each context a sample can occupy — at
+top level, inside an async function, as class members, as a single expression,
+or a declaration followed by statements using it — and one success is enough.
+Trying every context beats classifying first: classification is the harder
+problem, and a wrong answer reports a fault that is really a mis-wrap.
+
+**Every framework name in it must resolve.** A sample is free to invent
+`Person`, `OrderService`, `settings` — that is its own illustrative fiction, and
+resolving it would mean writing the fiction out as stubs, which is a great deal
+of invention *and self-fulfilling*, since a stub written to match a sample can
+never contradict it. Auto-stubbing is worse: it would define away the exact
+failure the gate exists to find, because a mistyped `TomBeen` would be stubbed
+into existence and pass. A name beginning `Tom`/`tom` is not fiction — that
+prefix is the framework's, so a sample using one is *claiming* the framework has
+it.
+
+The documents' elision conventions are honoured rather than edited away: `{ ... }`
+for a body and `// ...` for elided statements are how a sample says "the rest is
+not the point". Three positions for `{ ... }` have to be told apart, because
+Dart accepts different things in each — a type body becomes empty, a collection
+literal becomes empty, and a function body throws, since a non-void function
+that completes normally is an error.
+
+This is the defect class that is invisible to review by construction. Four
+non-compiling samples were found in `beanlocator.md`; two were spotted by
+reading, and two — an elided `[...]` in argument position, and a class declared
+twice in one block — were not, having already survived a careful pass. A
+failing block is left behind in `tool/ztmp/doc_dart_blocks/lib/samples/` as the
+source the analyzer actually saw, which reads far more easily than a line
+number; a clean run leaves nothing.
+
+`doc/api_reference/` is excluded. Those fences quote *signatures*, and a
+signature is a declaration rather than a use: making them parse would take a
+mechanical `;` per block and buy nothing, because a declaration never consults
+the real API and so the second rule could never fire. A green light there would
+be coverage in appearance only. `tom_core_kernel` is repaired and gated at
+zero; the other packages have a backlog that has not been triaged, and adding
+one to `PACKAGES` before triaging it would pin that backlog in place rather than
+fix it — run them with the argument in the meantime.
 
 ```bash
 python3 tool/check_section_refs.py                  # the whole repository

@@ -13,6 +13,11 @@
       "faults": 0,
       "measured": "2026-09-03"
     },
+    "check_doc_dart_blocks": {
+      "faults": 0,
+      "measured": "2026-09-03",
+      "note": "Lands at zero because the 14 faults it was written for were repaired in the same pass, across 11 tom_core_kernel documents. Zero here does not mean the tree is clean: only tom_core_kernel is in PACKAGES, and doc/api_reference/ is excluded within it. tom_core_server reports 19 when run with its name as an argument, tom_flutter_ui and tom_core_flutter have not been surveyed -- see tcextension7_aico-doc-dart-blocks-other-packages."
+    },
     "check_doc_error_keys": {
       "faults": 1,
       "measured": "2026-09-03",

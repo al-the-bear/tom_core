@@ -699,6 +699,7 @@ every zoned observable is forced to state how it parses its own wire format:
 
 ```dart
 abstract class TomOTimezoned<TZ extends TomTimezoned?> extends TomObject<TZ> {
+  TomOTimezoned._(super.initialValue);  // private — the flavours are the API
   String getSerializationPrefix() => TomZonedDateTime.serializationPrefix;
   void setByString(String s);   // abstract — no inherited body
 }
