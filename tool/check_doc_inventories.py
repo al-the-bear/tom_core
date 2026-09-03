@@ -130,8 +130,13 @@ labelled ``4 exports`` and had three: the missing fourth was
 listed one line below and the document gave its own section, but which no
 consumer of ``package:advanced_app_client/app/app.dart`` could name. The
 number was right about what the barrel was *for* and wrong about what it
-*was*, and only counting the directives tells the two apart. Three of the nine
-labels in this set were wrong when the check was written.
+*was*, and only counting the directives tells the two apart. Three of the labels
+the check could see were wrong the first time it ran.
+
+That record is why a barrel label is required to carry its count. An uncounted
+one -- ``public barrel``, ``wire barrel`` -- states nothing that can go stale, so
+it looks harmless, and it is exactly the shape this audit cannot see. The seven
+that were written that way had gone unread for as long as they had existed.
 
 **Which layout styles are read, and what in them is a claim.** The blocks come
 in two hands. Most indent with spaces::
@@ -146,12 +151,18 @@ while others draw the tree::
 
 Both are walked, and a row's directory is the chain of folder rows above it at
 smaller indents either way -- the box-drawing characters are simply part of the
-indent. That is worth saying because for a while only the first hand was read:
-``stripped.split()[0]`` on a drawn row yields ``├──`` rather than a filename, so
-every drawn block was skipped in silence. It was not a false pass, because the
-drawn blocks happened to carry no labels -- but coverage that depends on which
-characters a document indents with, and says so nowhere, is a false pass
-waiting for the next document.
+indent. Which hands are read is worth stating rather than leaving to be
+discovered, because coverage that depends on the characters a document happens
+to indent with, and says so nowhere, reads exactly like coverage that is
+complete.
+
+Only a fence whose first row names a directory is walked at all. These documents
+also paste console transcripts into ``text`` fences, and a transcript read as a
+tree yields a row per line, each "naming" whatever its first word happens to be.
+Within a block, a row whose first word is ``#`` is a comment wrapped onto its own
+line: it continues the row above, names nothing, and is skipped without
+disturbing the folder stack, since its indent is the comment column rather than a
+depth in the tree.
 
 A claim is a number immediately in front of the word ``lines``, on a row that
 names a file. The noun is required. Two of these documents also wrote a length
@@ -225,6 +236,10 @@ LAYOUT_FENCE = re.compile(r"^```text\n(.*?)^```", re.M | re.S)
 # `DTO barrel — 9 exports` both carry the same claim, so the word `barrel` is
 # matched wherever it falls rather than required to start the label.
 BARREL_LABEL = re.compile(r"\bbarrel\s+—\s+(\d+)\s+exports")
+
+#: A row that calls its file a barrel. Used to catch the ones `BARREL_LABEL`
+#: cannot read, so an uncounted barrel is reported rather than quietly skipped.
+BARE_BARREL = re.compile(r"\b(barrel)\b")
 
 #: The characters a drawn tree indents with. Treated as indentation rather than
 #: as content, which is what lets one walk read both hands -- see the module
@@ -433,16 +448,32 @@ def layout_rows(text: str, package: Path):
     two hands differ only in what they fill the indent with. A row that names a
     folder is consumed into the stack rather than yielded -- it locates the rows
     below it, and its own labels are aggregates rather than facts about a file.
+
+    A `text` fence is only walked when its first line names a directory. These
+    documents also paste console transcripts into `text` fences, and a transcript
+    walked as a tree yields a row per line, each "naming" whatever its first word
+    happens to be. Nothing came of it so far only because no transcript line
+    carries a label -- but one that printed `wrote 42 lines` would be read as a
+    claim about a file called `wrote`. Requiring a root directory row also makes
+    honest an assumption the walk already had: `stack[1:]` drops the first folder
+    as the tree's root, which is only right if there is one.
     """
     for fence in LAYOUT_FENCE.finditer(text):
         body, offset = fence.group(1), fence.start(1)
+        rows = (line.lstrip(BRANCH).split() for line in body.splitlines())
+        root = next((words[0] for words in rows if words), "")
+        if not root.endswith("/"):
+            continue
         stack: list[tuple[int, str]] = []
         position = offset
         for line in body.splitlines(keepends=True):
             rest = line.lstrip(BRANCH)
             indent = len(line) - len(rest)
             words = rest.split()
-            if words:
+            # A comment wrapped onto its own line continues the row above: it
+            # names nothing and, since its indent is the comment column rather
+            # than a tree depth, must not disturb the folder stack either.
+            if words and not words[0].startswith("#"):
                 while stack and stack[-1][0] >= indent:
                     stack.pop()
                 name = words[0]
@@ -468,6 +499,13 @@ def audit_barrel_exports(text: str, report: Report) -> bool:
     """Check each layout-block barrel label against the file's export count.
 
     Returns whether the document has a layout block with labels at all.
+
+    A row that calls a file a barrel and gives no count is itself a fault. It is
+    not a wrong measurement -- it makes no claim, so nothing can drift -- but it
+    is a barrel this audit cannot see, and every barrel that has been outside the
+    guard for long enough has turned out to be wrong. Requiring the count is what
+    makes the coverage total rather than equal to whichever labels somebody
+    happened to write in the counted style.
     """
     package = layout_package(text)
     if package is None:
@@ -477,6 +515,17 @@ def audit_barrel_exports(text: str, report: Report) -> bool:
     for path, start, end in layout_rows(text, package):
         label = BARREL_LABEL.search(text, start, end)
         if label is None:
+            bare = BARE_BARREL.search(text, start, end)
+            if bare is not None and path.is_file():
+                found = True
+                shown = path.relative_to(package)
+                actual = len(EXPORT.findall(path.read_text(encoding="utf-8", errors="replace")))
+                report.faults.append(
+                    f"BARREL   `{shown}` is called a barrel without a count"
+                )
+                report.edits.append(
+                    rewrite_groups(bare, {1: f"barrel — {actual} exports"})
+                )
             continue
         found = True
         shown = path.relative_to(package)
