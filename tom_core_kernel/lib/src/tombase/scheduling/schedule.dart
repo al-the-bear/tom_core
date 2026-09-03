@@ -30,12 +30,31 @@
 ///
 /// ## Time zones
 ///
-/// Every schedule preserves the UTC-ness of the [DateTime] it is asked about:
-/// evaluate against a local `DateTime` and you get wall-clock semantics
-/// (including the DST discontinuities a wall-clock schedule inherently has);
-/// evaluate against a UTC `DateTime` and you get a DST-immune absolute
-/// cadence. The schedule does not decide which you want — the scheduler's
-/// clock does.
+/// Every schedule answers in the zone it was asked in: a UTC [DateTime] in
+/// gives a UTC one out, a local one gives local. That is the *flag* only, and
+/// the two recurring families differ in what the zone goes on to mean.
+///
+/// * [TomCronSchedule] and [TomCalendarSchedule] read and write **wall-clock
+///   fields**, so a local `0 3 * * *` means 03:00 civil time. Across a DST
+///   boundary they hold 03:00, and the gap to the previous run becomes 23 or
+///   25 real hours.
+/// * [TomIntervalSchedule] computes in **epoch microseconds** and never
+///   consults the zone, so a 24-hour period is always 24 real hours and its
+///   wall-clock time shifts by an hour across that same boundary.
+///
+/// Asked in UTC, both give the same DST-immune absolute cadence, because there
+/// is no civil time left to disagree about. The schedule does not decide which
+/// you want — the scheduler's clock does.
+///
+/// That mirror image is this module's most surprising property, and no unit
+/// test pins it. Each half follows from its own arithmetic rather than from a
+/// policy that could drift: the cron half from the local branch of `_at`, the
+/// interval half from epoch arithmetic that cannot see a zone at all. A DST
+/// assertion would therefore be re-testing `DateTime`, and pinning one for
+/// real needs a zone-controlled process, which the fleet's Windows host cannot
+/// run. What the suite does pin is the mechanism on each side — that cron
+/// reads its fields in the caller's zone, and that the interval grid is
+/// absolute — which is what the DST behaviour is a consequence of.
 ///
 /// [TomOnceSchedule] is the exception that proves the rule: it names one
 /// absolute instant rather than a wall-clock position, so there is nothing for
@@ -826,6 +845,11 @@ class TomIntervalSchedule extends TomSchedule {
     // after `from` even when `from` sits exactly on the grid.
     final steps = (elapsed / micros).floor() + 1;
     final fire = anchor.microsecondsSinceEpoch + steps * micros;
+    // Both branches name the same instant; only the flag differs, so that the
+    // answer is comparable to the question. Rebuilding the local answer from
+    // wall-clock fields instead would make a 24-hour period skip or repeat an
+    // hour at a DST boundary — the drift documented at the top of this library
+    // is the whole point, not an oversight.
     return from.isUtc
         ? DateTime.fromMicrosecondsSinceEpoch(fire, isUtc: true)
         : DateTime.fromMicrosecondsSinceEpoch(fire);
