@@ -49,6 +49,8 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
@@ -91,7 +93,7 @@ def main(argv: list[str]) -> int:
     print()
     print(f"figures checked  : {len(found)}")
     print(f"not well-formed  : {len(broken)}")
-    return 1 if broken else 0
+    return report_faults(len(broken))
 
 
 if __name__ == "__main__":

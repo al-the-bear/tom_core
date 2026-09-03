@@ -35,6 +35,8 @@ import re
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 TOC_HEADING = re.compile(r"^##\s+table of contents\s*$", re.I)
@@ -181,7 +183,7 @@ def main(argv: list[str]) -> int:
     print(f"  unlisted sections                : {missing}")
     print(f"  links resolving to no heading    : {stale}")
     print(f"  contents out of document order   : {order}")
-    return 1 if defective else 0
+    return report_faults(missing + stale + order)
 
 
 if __name__ == "__main__":

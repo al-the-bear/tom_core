@@ -85,6 +85,8 @@ import re
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
@@ -183,7 +185,7 @@ def main(argv: list[str]) -> int:
     print(f"dart files scanned       : {scanned['.dart']}")
     print(f"figures scanned          : {scanned['.svg']}")
     print(f"citations naming a line  : {len(faults)}")
-    return 1 if faults else 0
+    return report_faults(len(faults))
 
 
 if __name__ == "__main__":

@@ -132,6 +132,8 @@ import re
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
@@ -309,7 +311,7 @@ def main(argv: list[str]) -> int:
     print(f"references resolving to nothing       : {len(dangling)}")
     print(f"backticked names framed as superseded : {framed}")
     print(f"  of those, naming nothing in the repo: {len(vanished)}")
-    return 1 if dangling or vanished else 0
+    return report_faults(len(dangling) + len(vanished))
 
 
 if __name__ == "__main__":

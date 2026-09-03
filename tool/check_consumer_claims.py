@@ -62,6 +62,8 @@ import re
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
@@ -275,7 +277,7 @@ def main(argv: list[str]) -> int:
     print(f"resolvable claims checked         : {total}")
     print(f"claims naming a type that is gone : {len(missing)}")
     print(f"claims not backed by any use      : {len(unbacked)}")
-    return 1 if (missing or unbacked) else 0
+    return report_faults(len(missing) + len(unbacked))
 
 
 if __name__ == "__main__":

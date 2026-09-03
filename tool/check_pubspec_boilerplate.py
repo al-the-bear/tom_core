@@ -42,6 +42,8 @@ import re
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Directories that hold generated or vendored package copies, not our sources.
@@ -153,7 +155,7 @@ def main(argv: list[str]) -> int:
     print()
     print(f"pubspecs scanned : {scanned}")
     print(f"faults           : {faults}")
-    return 1 if faults else 0
+    return report_faults(faults)
 
 
 if __name__ == "__main__":

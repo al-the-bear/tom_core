@@ -53,6 +53,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 #: Documents are cited across repo boundaries -- `codespecs_mapping.md` lives
@@ -208,7 +210,7 @@ def main(argv: list[str]) -> int:
     print(f"dart files scanned       : {scanned}")
     print(f"section numbers resolved : {checked}")
     print(f"citing a missing section : {len(faults)}")
-    return 1 if faults else 0
+    return report_faults(len(faults))
 
 
 if __name__ == "__main__":

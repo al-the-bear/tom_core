@@ -60,6 +60,8 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 QUEST_COMPLETION = (
     REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
@@ -193,7 +195,7 @@ def main() -> int:
     print(f"inventories audited : {len(INVENTORIES)}")
     print(f"test files checked  : {checked}")
     print(f"faults              : {faults}")
-    return 1 if faults else 0
+    return report_faults(faults)
 
 
 if __name__ == "__main__":

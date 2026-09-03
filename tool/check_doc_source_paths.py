@@ -121,6 +121,8 @@ import re
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKSPACE = REPO_ROOT.parent.parent
 
@@ -290,7 +292,7 @@ def main(argv: list[str]) -> int:
     print(f"  unresolved            : {faults}")
     print(f"directory claims checked: {claimed}")
     print(f"  unrecorded            : {dir_faults}")
-    return 1 if faults or dir_faults else 0
+    return report_faults(faults + dir_faults)
 
 
 if __name__ == "__main__":

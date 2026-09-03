@@ -1,0 +1,83 @@
+{
+  "about": "Fault counts the gates in tool/ are held to. Read by tool/check_gates.py, which fails when a gate's count moves in either direction: up means a new fault, down means a baseline that should be lowered so the repair sticks. 'measured' is the date the count last changed. Regenerate with `python3 tool/check_gates.py --update`; write 'note' by hand.",
+  "gates": {
+    "check_consumer_claims": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_dartdoc_refs": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_demo_counts": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_doc_error_keys": {
+      "faults": 1,
+      "measured": "2026-09-03",
+      "note": "One key listed in an \"Error keys\" section that no code raises: `storage.blob.exists` in tom_core_server_file_storage_new.md."
+    },
+    "check_doc_inventories": {
+      "faults": 43,
+      "measured": "2026-09-03",
+      "note": "Stale line counts and file tallies across 14 completion documents. `--fix` re-measures most of them; adding and retiring rows needs a hand, because a new row needs a sentence saying what the file carries."
+    },
+    "check_doc_kinds": {
+      "faults": 132,
+      "measured": "2026-09-03",
+      "note": "132 Kind cells naming something Dart does not declare, across 23 documents. Nearly all are one of eight substitutions: 'exception', 'annotation', 'widget', 'entity', 'value class' and 'reflected class' for 'class'; 'interface' and 'abstract' for 'abstract class'."
+    },
+    "check_doc_samples": {
+      "faults": 8,
+      "measured": "2026-09-03",
+      "note": "8 miscalled constructors in two tom_flutter_ui documents -- five TomForm* samples passing a named argument to a constructor whose first parameter is positional, and three TomColumn samples passing positionally to a named-only constructor."
+    },
+    "check_doc_source_paths": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_doc_tocs": {
+      "faults": 42,
+      "measured": "2026-09-03",
+      "note": "39 sections no table of contents lists, 2 entries linking to no heading, and 1 contents list in an order its document does not follow, across 9 documents."
+    },
+    "check_field_grade_matrix": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_figure_wellformed": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_kernel_bridge": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_pubspec_boilerplate": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_resource_key_namespace": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_section_numbers": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_section_refs": {
+      "faults": 218,
+      "measured": "2026-09-03",
+      "note": "218 bare section references in shipped lib/, test/ and example/ code -- '§7.2', 'tests §27', 'Phase 2a §16' -- indexing quest plans that ship with neither the package nor its tests, so a reader of the shipped artefact cannot resolve them. Concentrated in tom_core_agentic and the two demo apps."
+    },
+    "check_source_citations": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    },
+    "check_test_inventories": {
+      "faults": 0,
+      "measured": "2026-09-03"
+    }
+  }
+}

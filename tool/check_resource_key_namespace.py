@@ -75,6 +75,8 @@ import re
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
@@ -155,7 +157,7 @@ def main(argv: list[str]) -> int:
     print(f"resource types (from resource_keys.dart) : {', '.join(types)}")
     print(f"files scanned                            : {scanned}")
     print(f"merged resource keys                     : {len(faults)}")
-    return 1 if faults else 0
+    return report_faults(len(faults))
 
 
 if __name__ == "__main__":

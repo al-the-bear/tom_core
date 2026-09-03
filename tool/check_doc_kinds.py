@@ -81,6 +81,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # A type declaration and its modifiers. The modifier group is deliberately
@@ -291,7 +293,7 @@ def main(argv: list[str]) -> int:
         f"documents defective     : {len(defective)}\n"
         f"claims naming a non-kind: {faults}"
     )
-    return 1 if defective else 0
+    return report_faults(faults)
 
 
 if __name__ == "__main__":

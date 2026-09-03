@@ -78,6 +78,8 @@ import sys
 from itertools import chain
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
@@ -364,7 +366,7 @@ def main(argv: list[str]) -> int:
     print(f"documents with samples   : {documents}")
     print(f"dart samples checked     : {samples}")
     print(f"miscalled constructors   : {len(faults)}")
-    return 1 if faults else 0
+    return report_faults(len(faults))
 
 
 if __name__ == "__main__":

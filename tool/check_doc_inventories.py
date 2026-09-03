@@ -134,6 +134,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
 
@@ -608,8 +610,8 @@ def main(argv: list[str]) -> int:
     )
     if fix:
         print(f"rewrote {total - remaining}; {remaining} need a hand")
-        return 1 if remaining else 0
-    return 1 if defective else 0
+        return report_faults(remaining)
+    return report_faults(total)
 
 
 if __name__ == "__main__":

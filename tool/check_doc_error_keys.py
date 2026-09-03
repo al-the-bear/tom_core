@@ -67,6 +67,8 @@ import re
 import sys
 from pathlib import Path
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
 
@@ -311,7 +313,7 @@ def main(argv: list[str]) -> int:
         f"\n{len(reports)} error-key sections audited, "
         f"{len(defective)} defective, {total} faults"
     )
-    return 1 if defective else 0
+    return report_faults(total)
 
 
 if __name__ == "__main__":

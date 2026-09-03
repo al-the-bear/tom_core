@@ -46,6 +46,8 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
+from gate_report import report_faults
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP = REPO_ROOT / "tom_flutter_ui_test"
 
@@ -181,7 +183,7 @@ def main() -> int:
     print(f"demo tiles offered    : {total.tiles}")
     print(f"documents audited     : {len(DOCUMENTS)}")
     print(f"faults                : {len(faults)}")
-    return 1 if faults else 0
+    return report_faults(len(faults))
 
 
 if __name__ == "__main__":

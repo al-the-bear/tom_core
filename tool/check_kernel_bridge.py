@@ -25,6 +25,8 @@ import os
 import re
 import sys
 
+from gate_report import report_faults
+
 CORE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UI = os.path.join(CORE, 'tom_flutter_ui')
 BRIDGE = os.path.join(UI, 'lib', 'src', 'kernel_types.dart')
@@ -203,14 +205,14 @@ def main() -> int:
         print()
         print('Add each name to the show list in lib/src/kernel_types.dart, '
               'then exercise it from test/kernel_types_test.dart.')
-        return 1
-
-    unused = sorted(bridged - set(used))
-    if unused:
-        print()
-        print('bridged but not in a declaration position (rule 2 companions):')
-        print('  ' + ', '.join(unused))
-    return 0
+    else:
+        unused = sorted(bridged - set(used))
+        if unused:
+            print()
+            print('bridged but not in a declaration position '
+                  '(rule 2 companions):')
+            print('  ' + ', '.join(unused))
+    return report_faults(len(missing))
 
 
 if __name__ == '__main__':

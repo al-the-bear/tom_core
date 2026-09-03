@@ -163,8 +163,37 @@ Dependency direction, simplified: everything roots at `tom_core_kernel`;
 Tools that span the whole repository live in `tool/`; anything scoped to one
 package lives in that package's own `tool/`.
 
+Every `check_*.py` below is a **gate**: it counts documentation faults and exits
+non-zero when it finds any. They are run together by `tool/check_gates.py`,
+which `tom_flutter_ui/test/repo_doc_gates_test.dart` invokes — so a gate that
+starts failing surfaces in `flutter test` / `testkit :test` rather than waiting
+for somebody to run it by hand.
+
+```bash
+python3 tool/check_gates.py            # run them all, report, gate
+python3 tool/check_gates.py --update   # re-record the baselines to today
+```
+
+Each gate is pinned to a fault count in
+[`tool/gate_baselines.json`](tool/gate_baselines.json), not to zero. Demanding
+zero on the day the runner landed would have meant repairing several hundred
+documentation faults before anything at all was enforced, and until they were,
+every *new* fault would land unnoticed among them. So the backlog is frozen
+where it is and the next fault is a failure. Clearing a backlog is separate
+work, and lowering its baseline is part of that work.
+
+The ratchet turns both ways: a count *below* its baseline fails too, asking for
+the baseline to be lowered, because otherwise repaired ground reopens silently.
+Gates are discovered by glob, so a checker added tomorrow is enforced tomorrow —
+it fails as unbaselined until it is recorded. To be run, a gate must be named
+`check_*.py` in `tool/` and end its `main()` with `report_faults(n)` from
+[`tool/gate_report.py`](tool/gate_report.py); `report_*.py` names a tool that
+reports and never gates.
+
 | Tool | What it does |
 | ---- | ------------ |
+| [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below and holds each to its recorded fault count |
+| [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
