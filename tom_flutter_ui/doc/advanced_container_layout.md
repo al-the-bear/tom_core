@@ -711,8 +711,10 @@ height if a height-gated variant is meant to fire. See
 A named group's visibility is driven by an [`AclGroupVisibilityController`],
 whose `modeNotifier` (a `ValueNotifier<AclGroupVisibilityMode>`) the container
 listens to. The three modes are `visible`, `hidden` (removed from layout — zero
-size, no paint), and `disabled` (shown but non-interactive). Two
-implementations ship:
+size, no paint), and `disabled` (shown but non-interactive, rendered through
+`TomTheme.disabledStyle` exactly as a `disabled` grant is — see
+[What the container does with each state](#what-the-container-does-with-each-state)).
+Two implementations ship:
 
 - **`AclBinaryVisibilityController`** — a direct toggle; assign `controller.mode`
   to flip it.
@@ -829,27 +831,35 @@ four cases against one fixture.
 | State | What the container does |
 | ----- | ----------------------- |
 | `none` | Removed, by whichever of the two mechanisms applies — see above. |
-| `disabled` | **Nothing. It renders exactly as `full`** — full opacity, input live. |
-| `read` | Wrapped in `TomThemeScope.readonlyStyleOf(context).apply(child)` — by default `AbsorbPointer` + `Opacity(0.6)`: the value stays readable, dimmed, and inert. Applies at both levels — a `read` row styles all its components, a `read` component styles itself. Geometry is untouched. |
+| `disabled` | Wrapped in the theme's `disabledStyle` — by default `AbsorbPointer` + `Opacity(0.38)`: visible, dimmed, and inert. Geometry is untouched. |
+| `read` | Wrapped in the theme's `readonlyStyle` — by default `AbsorbPointer` + `Opacity(0.6)`: the value stays readable, dimmed, and inert. Geometry is untouched. |
 | `full` | Rendered as authored — no wrapper. |
 
-`TomAuthState.disabled` is intended to render a component visible but inert,
-and the container does not implement it — there is no `disabled` branch in the
-component pipeline, so a `disabled` grant is not enforced. Do not confuse this
-with the group-visibility axis above: `AclGroupVisibilityMode.disabled` *does*
-dim and block input, but that wrapper keys on the group mode alone and never on
-the resolved authorization state. Until the container consults
-`TomAuthState.isInteractive`, express a "visible but not usable" grant as
-`none`, or through the component's group.
+Three inputs can withhold a component: its row's grant, its own grant, and the
+runtime mode of its group. They are folded into **one** effective state with
+`TomAuthState.narrow`, whose ordering is `none < disabled < read < full`, and
+that one state is rendered through `TomThemeScope.applyAuthState`. Two
+consequences worth stating outright:
 
-`read` is therefore the only authorization visual the container gives you to
-customise, and it belongs to the theme rather than to the container.
-`TomTheme.readonlyStyle` holds a [`TomStateStyle`], which the container reaches
-through `TomThemeScope.readonlyStyleOf(context)`. The theme carries a
-`disabledStyle` of the same type for the `disabled` state — honoured by
-`TomPolicyNodeBase` and `TomWidgetMixin` — but the container never reaches for
-it, for the reason above. Put a `TomThemeScope` anywhere above the container to
-change the `read` treatment:
+- **The most restrictive input wins.** A `read` row containing a `disabled`
+  component renders that component as `disabled`; neither level can widen the
+  other.
+- **The treatment is applied once.** A row and a component that both withhold
+  do not stack their wrappers into a doubly-dimmed component.
+
+`AclGroupVisibilityMode.disabled` — the group-visibility axis above — is folded
+in at the same point. The axes stay separate in *who decides*: one is a policy
+grant resolved from `TomAuthorization`, the other a toggle the application
+drives at runtime. They are deliberately not separate in *how they look*. A
+user cannot tell from the pixels why a control is inert, and showing two shades
+of "off" in one container is a defect they can see. Both therefore render
+through `TomTheme.disabledStyle`.
+
+The visuals belong to the theme rather than to the container.
+`TomTheme.readonlyStyle` and `TomTheme.disabledStyle` each hold a
+[`TomStateStyle`] — the same fields `TomPolicyNodeBase` and `TomWidgetMixin`
+honour, so a restyle reaches the whole framework and not just this container.
+Put a `TomThemeScope` anywhere above the container to change either treatment:
 
 ```dart
 TomThemeScope(
@@ -858,10 +868,18 @@ TomThemeScope(
       opacity: 1.0,                      // 1.0 disables dimming
       colorOverlay: Color(0x33888888),   // tint via ColorFiltered instead
     ),
+    disabledStyle: TomStateStyle(opacity: 0.25),
   ),
   child: acl,
 )
 ```
+
+Dimming is a style; enforcement is not. `opacity: 1.0` removes the `Opacity`
+wrapper and nothing else — the `AbsorbPointer` stays, so a theme cannot turn a
+withheld control back into a usable one.
+`test/advanced_container_layout/acl_disabled_enforcement_test.dart` asserts all
+of this against both axes, dispatching a real tap rather than looking for a
+wrapper.
 
 `apply` wraps `ColorFiltered` → `Opacity` → `AbsorbPointer` outwards, omitting
 the opacity wrapper at `opacity: 1.0` and the `AbsorbPointer` at

@@ -2,6 +2,24 @@
 
 ### Fixed
 
+- **`TomAuthState.disabled` was granted and never enforced by the ACL
+  container.** `disabled.isVisible` is `true`, and both container sites were
+  written as "return early if not visible, else dim if `read`" — so a component,
+  a row, or a whole `TomAclBuilder` that a policy resolved to `disabled`
+  rendered at full opacity with input live. A grant meant to withhold a control
+  withheld nothing.
+
+  Both sites now route through `TomThemeScope.applyAuthState`, which maps all
+  four states from the one place that knows what each looks like. In
+  `acl_container.dart` the three inputs that can withhold a component — the
+  row's grant, its own grant, and its group's runtime mode — are first folded
+  into a single effective state with `TomAuthState.narrow`, so the most
+  restrictive wins and the treatment is applied once rather than stacked into a
+  doubly-dimmed component.
+
+  Enforcement is a paint-time wrapper, so the geometry is identical to `full`;
+  a grant change does not reflow the screen.
+
 - **A structural reset told observers the list was empty, and
   `TomMasterDetailListForm` believed it.** `TomListForm` tears its sub-forms
   down in `onBeforeClear` and rebuilds them one at a time in `onAfterReset`,
@@ -69,6 +87,17 @@
   `**Source:**` means "go and read this" whatever document it appears in.
 
 ### Changed
+
+- **`AclGroupVisibilityMode.disabled` now renders through
+  `TomTheme.disabledStyle`** instead of a hard-coded
+  `IgnorePointer(child: Opacity(opacity: 0.4, …))`. The axes stay separate in
+  who decides — one is a policy grant, the other a toggle the application drives
+  — but not in how they look: a user cannot tell from the pixels why a control
+  is inert, and 0.4 beside the grant's 0.38 was two shades of "off" visible in
+  one container. `IgnorePointer` was additionally the wrong widget: it makes the
+  subtree transparent to hit tests, so a tap fell through to whatever was behind
+  it rather than being swallowed. An app that restyles the withheld state now
+  restyles both axes at once.
 
 - **Dropped the `flutter create` tutorial commentary from the pubspec.** The
   library's own description and dependency comments were already specific and

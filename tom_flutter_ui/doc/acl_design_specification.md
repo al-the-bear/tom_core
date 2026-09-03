@@ -1878,18 +1878,18 @@ final containerPath = scopePath.isNotEmpty ? '$scopePath.$id' : id;
 final auth = TomAuthorization.resolveAuth(containerPath);
 if (!auth.isVisible) return const SizedBox.shrink();   // TomAuthState.none
 // … resource-driven chrome fallbacks …
-final acl = _builder.build();
-if (auth == TomAuthState.read) {
-  final style = TomThemeScope.readonlyStyleOf(context);
-  result = style.apply(acl);            // read-only visual wrapper
-}
+return TomThemeScope.applyAuthState(context, auth, _builder.build);
 ```
+
+The early return for `none` is redundant with `applyAuthState`'s own `none`
+branch and is kept anyway, because it also skips the resource resolution above
+— there is no point reading a title for a container that will not be painted.
 
 So a `TomAclBuilder`:
 
 - **`none`** on its path → the whole container (rows, fields, title) disappears without a layout slot.
-- **`read`** → the children render, but the theme's `TomStateStyle` (reached via `TomThemeScope.readonlyStyleOf`; default `AbsorbPointer` + `Opacity(0.6)`) dims / blocks interaction at the container boundary.
-- **`full` / `disabled`** → delegated to each child. `TomField`'s own `resolveEffectiveAuth` does the per-field narrowing via resource path + group + form + authorizer + UI-state controller (see [tom_ui_widgets_forms.md §19](tom_ui_widgets_forms.md)).
+- **`read`** / **`disabled`** → the children render, but the theme's `TomStateStyle` for that state (default `AbsorbPointer` + `Opacity(0.6)` / `Opacity(0.38)`) dims and blocks interaction at the container boundary. Routing through `applyAuthState` rather than a per-state branch is what keeps `disabled` enforced: it is `isVisible`, so a gate that only reacts to `read` would hand a withheld container to the user fully live.
+- **`full`** → delegated to each child. `TomField`'s own `resolveEffectiveAuth` does the per-field narrowing via resource path + group + form + authorizer + UI-state controller (see [tom_ui_widgets_forms.md §19](tom_ui_widgets_forms.md)).
 
 Because the container check uses `<scopePath>.<id>`, you drive it by setting a rule in whatever `TomAuthorizationAdapter` the app installs — e.g. Demo B's `_DemoBAdapter` flips the form-level `demoB.customer` entry to narrow every descendant at once.
 

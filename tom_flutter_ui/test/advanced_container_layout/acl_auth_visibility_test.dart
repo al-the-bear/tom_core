@@ -326,23 +326,17 @@ void main() {
           closeTo(_defaultGap + 2 * (_size + _compGap), 0.5));
     });
 
-    testWidgets('disabled renders exactly as full — no treatment at all',
-        (tester) async {
-      // Recorded as it is, not as it reads: `disabled.isVisible` is true and
-      // nothing downstream consults the resolved state again, so the
-      // component is rendered fully interactive. The container's only
-      // `IgnorePointer` + `Opacity` wrapper is gated on group visibility, a
-      // different axis. Making `disabled` inert is tcopen253's job; pinning
-      // today's behaviour so that change is visible is this file's.
+    testWidgets('disabled renders the component in place too', (tester) async {
+      // `disabled` is enforced — dimmed and pointer-blocked, which
+      // acl_disabled_enforcement_test.dart measures — but enforcement is a
+      // paint-time wrapper, so it must cost the layout nothing. If it did,
+      // a grant change would reflow the screen, which is the whole reason
+      // this file measures the visible states separately from the hidden
+      // ones.
       adapter.denials['b'] = TomAuthState.disabled;
       await pump(tester, policyLayout());
 
       expect(find.text('b'), findsOneWidget);
-      expect(
-        find.byWidgetPredicate((w) => w is IgnorePointer && w.ignoring),
-        findsNothing,
-        reason: 'nothing in the container blocks input for a disabled grant',
-      );
       expect(originOf(tester, 'c').dx,
           closeTo(_defaultGap + 2 * (_size + _compGap), 0.5));
     });

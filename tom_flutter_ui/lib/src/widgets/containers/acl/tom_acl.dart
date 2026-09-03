@@ -727,7 +727,8 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// can use this container's ID as part of their canonical path.
   ///
   /// The returned widget must be placed in a [BuildContext] that has a
-  /// [TomThemeScope] ancestor for readonly styling (falls back to default).
+  /// [TomThemeScope] ancestor for the withheld-state styling (falls back to
+  /// the default theme).
   Widget build(BuildContext context) {
     // Self-path: <scopePath>.<id>
     final containerPath = TomScopePath.qualify(id);
@@ -792,16 +793,13 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       if (resAlign != null) _builder.setAclTitleBorderAlign(resAlign);
     }
 
-    final acl = _builder.build();
-
-    // ACL containers no longer create new scopes - scoping is external
-    Widget result = acl;
-    if (auth == TomAuthState.read) {
-      final style = TomThemeScope.readonlyStyleOf(context);
-      result = style.apply(result);
-    }
-
-    return result;
+    // ACL containers no longer create new scopes - scoping is external.
+    //
+    // Why applyAuthState rather than a `read` branch: `disabled` is visible
+    // too, so a gate that only reacts to `read` hands a withheld container to
+    // the user fully live. Routing through the theme maps all four states from
+    // the one place that knows what each of them looks like.
+    return TomThemeScope.applyAuthState(context, auth, _builder.build);
   }
 
   /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].

@@ -2640,15 +2640,28 @@ class _AclContainerState extends State<AclContainer> {
         fullPath: componentPolicyPath,
       );
 
-      if (rowAuthState == TomAuthState.read || authState == TomAuthState.read) {
-        final style = TomThemeScope.readonlyStyleOf(context);
-        child = style.apply(child);
-      }
-
-      // Apply disabled treatment if needed.
+      // ── Withheld treatment, decided once and applied once ────────────────
+      // Three inputs can withhold this component: the row's grant, its own
+      // grant, and the runtime mode of its group. They are different *axes* —
+      // two are policy, one is an application toggle — but they are not
+      // different *looks*: a user cannot tell from the pixels why a control is
+      // inert, and must not be shown two shades of "off" in one container.
+      //
+      // So they are folded into a single effective state with `narrow`, whose
+      // ordering (none < disabled < read < full) makes the most restrictive
+      // input win, and rendered through the theme. Folding first is what stops
+      // a row and a component that both withhold from stacking their
+      // treatments into a doubly-dimmed component.
+      var effectiveAuth = (rowAuthState ?? TomAuthState.full)
+          .narrow(authState ?? TomAuthState.full);
       if (visMode == AclGroupVisibilityMode.disabled) {
-        child = IgnorePointer(child: Opacity(opacity: 0.4, child: child));
+        effectiveAuth = effectiveAuth.narrow(TomAuthState.disabled);
       }
+      // `none` is unreachable: both gates above already returned for it. The
+      // local binding keeps the callback from closing over `child` while
+      // `child` is the very thing being reassigned.
+      final laidOut = child;
+      child = TomThemeScope.applyAuthState(context, effectiveAuth, () => laidOut);
 
       // ── Auto-defaulted width: measure, and never overflow ────────────────
       // Innermost wrapper, so it sees the component's own content and receives
