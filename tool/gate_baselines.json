@@ -73,7 +73,7 @@
     "check_section_refs": {
       "faults": 218,
       "measured": "2026-09-03",
-      "note": "218 bare section references in shipped lib/, test/ and example/ code -- '§7.2', 'tests §27', 'Phase 2a §16' -- indexing quest plans that ship with neither the package nor its tests, so a reader of the shipped artefact cannot resolve them. Concentrated in tom_core_agentic and the two demo apps."
+      "note": "218 bare section references in shipped lib/, test/ and example/ code -- '\u00a77.2', 'tests \u00a727', 'Phase 2a \u00a716' -- indexing quest plans that ship with neither the package nor its tests, so a reader of the shipped artefact cannot resolve them. Concentrated in tom_core_agentic and the two demo apps."
     },
     "check_source_citations": {
       "faults": 0,
@@ -82,6 +82,11 @@
     "check_test_inventories": {
       "faults": 0,
       "measured": "2026-09-03"
+    },
+    "check_tooling_table": {
+      "faults": 0,
+      "measured": "2026-09-03",
+      "note": "Lands at zero because the two faults it was written for were repaired in the same pass: check_unimplemented_claims.py and this gate itself were on disk with no row in the README tooling table and no prose section. Zero is the expected steady state -- the gate exists for recurrence, not backlog. The drift it guards had already re-opened once: check_kernel_bridge.py and check_section_numbers.py were filed as missing, were added incidentally before the filing was worked, and a third script had silently taken their place by then."
     },
     "check_unimplemented_claims": {
       "faults": 0,

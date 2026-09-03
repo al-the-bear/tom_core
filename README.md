@@ -194,6 +194,7 @@ reports and never gates.
 | ---- | ------------ |
 | [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below and holds each to its recorded fault count |
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
+| [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
@@ -206,6 +207,7 @@ reports and never gates.
 | [`tool/check_test_inventories.py`](tool/check_test_inventories.py) | Audits a document that claims to inventory a package's test files against the files the runner discovers |
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and sample guides that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
+| [`tool/check_unimplemented_claims.py`](tool/check_unimplemented_claims.py) | Finds documentation that calls a shipped `Tom*` type unimplemented |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
@@ -214,6 +216,33 @@ reports and never gates.
 | [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
 | [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
+
+```bash
+python3 tool/check_tooling_table.py    # the whole repository
+```
+
+The table above and the prose below it are an inventory of `tool/`, and both are
+kept by hand — adding a script touches neither. So a gate can land, be picked up
+by `check_gates.py`'s glob, run on every build, and be documented nowhere; the
+reader who came to the README to learn what the repository checks gets a
+confident, incomplete answer, and the undocumented gate is the first candidate
+for deletion because nothing points at it.
+
+This has already re-opened once, which is why it is a gate rather than a
+promise. `check_kernel_bridge.py` and `check_section_numbers.py` each ran
+undocumented long enough to be noticed and written up — and by the time they
+were, `check_unimplemented_claims.py` had silently taken their place. Clearing
+the backlog was never the difficulty. Nobody who reviewed the commit that added
+a script made a mistake either: the omission is in a file that commit did not
+touch, so there is no diff in which to see it.
+
+Three counts are kept apart: a script with no row, a row naming no script (the
+reverse drift, left behind by a rename), and a `check_*.py` with no invocation
+block. `gate_report.py` legitimately has no block — it is the contract a gate
+implements rather than a gate to run, and its row says so. Accuracy is not
+checked, only presence: whether a summary is *true* needs judgement, whether a
+row exists does not. That is the same line `check_doc_inventories.py` and
+`check_test_inventories.py` draw.
 
 ```bash
 python3 tool/check_doc_tocs.py                # the whole repository
@@ -580,6 +609,45 @@ is skipped rather than reported, since these documents name Flutter and Dart
 core types freely.
 
 ```bash
+python3 tool/check_unimplemented_claims.py                 # the whole repository
+python3 tool/check_unimplemented_claims.py tom_flutter_ui  # one subtree
+```
+
+A planning table is written before the work, listing what is to be built with an
+`Implemented` column reading `No`. The work then happens, and nothing brings the
+writer back to the column. In `tom_flutter_ui` such a table sat for months
+denying eleven widgets, nine of which ship and seven of which have their own
+section in `doc/custom.md` — and one row denied a widget the same document had
+already recorded as wrapped, three hundred lines higher up.
+
+That decay is why this is mechanical rather than a review item. Most
+documentation faults are a sentence that was always wrong; this one was *right
+when written*, so nobody who reviewed it erred, and the moment it turned false
+left no trace in either file's diff. Building `TomEmptyState` does not touch the
+document that says `TomEmptyState` does not exist. There is no edit to review,
+so only re-checking finds it.
+
+The neighbouring gates ask different questions. `check_dartdoc_refs` and
+`check_consumer_claims` ask whether a name *resolves* — every name in these
+tables resolves, and the row about it is still false. `check_doc_kinds` reads
+the cell beside a symbol, but only where the second column is `Kind`, and it
+asks what the symbol *is* rather than whether it is. The two share one
+`DECLARATION` index rather than a copy of it, so they cannot come to disagree
+about what Dart declares.
+
+Three restrictions stop it inventing claims. The table needs a header naming
+existence (`Implemented`, `Ships`, `Wrapped`, …) — `Status` is deliberately
+excluded, because a "No" there is a workflow state, not a denial. The cell must
+open with a denial once emphasis and backticks are stripped, so an emphasised
+"No — superseded" still reads as one, and the qualification after the dash
+survives into the report.
+And the row's first cell must name a `` `Tom*` `` symbol in backticks: reading
+prose mentions as row claims was the source of its false positives. Only type
+declarations count, never a same-named function. `CHANGELOG.md` is out of scope
+— an entry records what was true when it was written, and editing it would
+falsify a record rather than repair a claim.
+
+```bash
 python3 tool/check_field_grade_matrix.py                  # the whole repository
 python3 tool/check_field_grade_matrix.py tom_core_samples # one subtree
 ```
@@ -690,6 +758,13 @@ README reads. The commentary is worse than merely useless: in
 `tom_flutter_ui_test` it was 62 of 100 lines, and its commented-out asset block
 described an asset bundle the package does not have.
 
+Unlike a prose slip this defect is machine-generated, reproducibly, by the
+standard way packages are created — so every future `flutter create` reintroduces
+it in full. The match is exact rather than heuristic: every sentinel was verified
+verbatim against freshly generated `flutter create` (app and package) and
+`dart create` (package and console) output, so a hand-written description is
+never a false positive.
+
 ```bash
 python3 tool/check_doc_source_paths.py                  # the whole repository
 python3 tool/check_doc_source_paths.py tom_flutter_ui   # one subtree
@@ -712,13 +787,6 @@ There is no exemption for history documents. Naming a removed type in prose is
 fine and often necessary; `**Source:**` is different, because it is an
 instruction to go and read something, and that instruction is false once the
 target is gone.
-
-Unlike a prose slip this defect is machine-generated, reproducibly, by the
-standard way packages are created — so every future `flutter create` reintroduces
-it in full. The match is exact rather than heuristic: every sentinel was verified
-verbatim against freshly generated `flutter create` (app and package) and
-`dart create` (package and console) output, so a hand-written description is
-never a false positive.
 
 ## License
 
