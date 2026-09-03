@@ -212,16 +212,19 @@ Future<void> run() async {
   // Example 1: the chooser stop. An enrolment is owed and no mechanism has
   // been picked, which is exactly what `hasOffer == false` means.
   final opening = controller.pendingEnrolment!;
-  print('stop 1: hasOffer=${opening.hasOffer} '
-      'skippable=${opening.skippable} offered=${opening.offeredTypes}');
+  print(
+    'stop 1: hasOffer=${opening.hasOffer} '
+    'skippable=${opening.skippable} offered=${opening.offeredTypes}',
+  );
 
   // The chooser lists only what this build can render. That is not a rule the
   // example is restating — `Tom2FAClientRegistry.has` is the same predicate
   // the panel filters with, so `sms` is dropped here for the same reason it
   // would be dropped on screen: a server upgraded ahead of its clients offers
   // keys we have no panel for, and listing one would strand the user.
-  final renderable =
-      opening.offeredTypes.where(Tom2FAClientRegistry.has).toList();
+  final renderable = opening.offeredTypes
+      .where(Tom2FAClientRegistry.has)
+      .toList();
   print('renderable of ${opening.offeredTypes}: $renderable');
 
   assert(opening.hasOffer == false);
@@ -232,8 +235,10 @@ Future<void> run() async {
   // Example 2: the labels come from the bundle, via keys the descriptor
   // derives from the mechanism key alone.
   final totp = controller.availableMethods.firstWhere((d) => d.type == 'totp');
-  print('totp label: ${Tom2FATexts.text(totp.displayNameKey)} '
-      '— ${Tom2FATexts.text(totp.descriptionKey)}');
+  print(
+    'totp label: ${Tom2FATexts.text(totp.displayNameKey)} '
+    '— ${Tom2FATexts.text(totp.descriptionKey)}',
+  );
 
   assert(totp.displayNameKey == 'two_factor.totp.name');
   assert(Tom2FATexts.text(totp.displayNameKey) == 'Authenticator app');
@@ -243,8 +248,10 @@ Future<void> run() async {
   // mechanism's panel will render.
   await controller.chooseMethod('totp');
   final offer = controller.pendingEnrolment!;
-  print('stop 2: hasOffer=${offer.hasOffer} type=${offer.type} '
-      'clientData keys=${offer.clientData.keys.toList()}');
+  print(
+    'stop 2: hasOffer=${offer.hasOffer} type=${offer.type} '
+    'clientData keys=${offer.clientData.keys.toList()}',
+  );
 
   assert(offer.hasOffer == true);
   assert(offer.type == 'totp');
@@ -259,26 +266,29 @@ Future<void> run() async {
   } on DemoBackendException catch (error) {
     print('refused: ${controller.describeError(error)}');
     // The message, not the `toString` the default would have produced.
-    assert(controller.describeError(error) == 'That code did not match. '
-        'Try again.');
+    assert(
+      controller.describeError(error) ==
+          'That code did not match. '
+              'Try again.',
+    );
     assert(controller.describeError(error) != '$error');
   }
 
   // A spent attempt is visible on the same object the panel reads, so the
   // attempt line does not need its own counter.
-  print('after one refusal: ${Tom2FATexts.textWith(
-    Tom2FATexts.attemptsRemaining,
-    'count',
-    controller.pendingEnrolment!.attemptsRemaining,
-  )}');
+  print(
+    'after one refusal: ${Tom2FATexts.textWith(Tom2FATexts.attemptsRemaining, 'count', controller.pendingEnrolment!.attemptsRemaining)}',
+  );
   assert(controller.pendingEnrolment!.attemptsRemaining == 2);
 
   // Example 5: the right code settles this login. Both getters go null, which
   // is the state the panel renders as nothing at all — the flow is over and
   // the application shows whatever comes after signing in.
   await controller.confirmEnrolment('123456');
-  print('stop 2 cleared: enrolment=${controller.pendingEnrolment} '
-      'challenge=${controller.pendingChallenge} settled=${controller.settled}');
+  print(
+    'stop 2 cleared: enrolment=${controller.pendingEnrolment} '
+    'challenge=${controller.pendingChallenge} settled=${controller.settled}',
+  );
 
   assert(controller.pendingEnrolment == null);
   assert(controller.pendingChallenge == null);
@@ -297,9 +307,11 @@ Future<void> run() async {
   // returning user meets every time.
   controller.beginReturningLogin();
   final challenge = controller.pendingChallenge!;
-  print('stop 3: type=${challenge.type} hint=${challenge.hint} '
-      'attemptsRemaining=${challenge.attemptsRemaining} '
-      'expired=${challenge.isExpired()}');
+  print(
+    'stop 3: type=${challenge.type} hint=${challenge.hint} '
+    'attemptsRemaining=${challenge.attemptsRemaining} '
+    'expired=${challenge.isExpired()}',
+  );
 
   assert(challenge.attemptsRemaining == 3);
   assert(challenge.isExpired() == false);
@@ -312,8 +324,10 @@ Future<void> run() async {
       await controller.submitSecondFactor(wrong);
     } on DemoBackendException {
       final now = controller.pendingChallenge!;
-      print('wrong code $wrong: remaining=${now.attemptsRemaining} '
-          'exhausted=${now.isExhausted}');
+      print(
+        'wrong code $wrong: remaining=${now.attemptsRemaining} '
+        'exhausted=${now.isExhausted}',
+      );
     }
   }
   assert(controller.pendingChallenge!.attemptsRemaining == 1);
@@ -321,8 +335,10 @@ Future<void> run() async {
 
   // Example 9: the right code clears the challenge and the login completes.
   await controller.submitSecondFactor('123456');
-  print('stop 3 cleared: challenge=${controller.pendingChallenge} '
-      'settled=${controller.settled}');
+  print(
+    'stop 3 cleared: challenge=${controller.pendingChallenge} '
+    'settled=${controller.settled}',
+  );
 
   assert(controller.pendingChallenge == null);
   assert(controller.settled);
@@ -334,9 +350,11 @@ Future<void> run() async {
   const totpMarker = TomClient2FAAdaptor('totp');
   const smsMarker = TomClient2FAAdaptor('sms');
   const totpAgain = TomClient2FAAdaptor('totp');
-  print('adaptor types: ${totpMarker.type}, ${smsMarker.type}; '
-      'canonicalized: ${identical(totpMarker, totpAgain)}; '
-      'annotated: ${TotpAdaptor().runtimeType}');
+  print(
+    'adaptor types: ${totpMarker.type}, ${smsMarker.type}; '
+    'canonicalized: ${identical(totpMarker, totpAgain)}; '
+    'annotated: ${TotpAdaptor().runtimeType}',
+  );
 
   assert(totpMarker.type == 'totp');
   assert(smsMarker.type == 'sms');

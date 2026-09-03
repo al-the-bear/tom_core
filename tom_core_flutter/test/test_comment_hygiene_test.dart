@@ -55,8 +55,14 @@ void main() {
   // present in the file being read, and the positive check passed against its
   // own argument — it went green with the comment it was guarding deleted.
   // Moving the guard out of the file it reads is what fixed that, not care.
-  final tddPhaseMarker = RegExp('RED ' r'(against|before)');
-  final sectionCitation = RegExp('§' r'\s*\d');
+  final tddPhaseMarker = RegExp(
+    'RED '
+    r'(against|before)',
+  );
+  final sectionCitation = RegExp(
+    '§'
+    r'\s*\d',
+  );
 
   /// Per guarded module file, the claims its comments must still make, mapped
   /// to what a reader loses when one goes missing.
@@ -72,13 +78,13 @@ void main() {
           'the type-mismatch group no longer says what the report has to name',
       'A property declared without a default is obligatory':
           'the obligatory-key group no longer says why an absent key is a '
-              'failure rather than a null',
+          'failure rather than a null',
       '`getObjectOrNull` returns null both for a key that was never written':
           'the null-as-absent test no longer says which lookup makes a written '
-              'null and an unwritten key indistinguishable',
+          'null and an unwritten key indistinguishable',
       'The module tracks whether a default was supplied':
           'the nullable-default group no longer says why an explicit null '
-              'default is honoured instead of being read as no default',
+          'default is honoured instead of being read as no default',
     },
   };
 
@@ -95,8 +101,11 @@ void main() {
               File(path).readAsStringSync().trim().isEmpty)
             path,
       ];
-      expect(unreadable, isEmpty,
-          reason: 'the guard is scanning a file it cannot read');
+      expect(
+        unreadable,
+        isEmpty,
+        reason: 'the guard is scanning a file it cannot read',
+      );
       expect(commentedFiles.length, greaterThanOrEqualTo(3));
     });
 

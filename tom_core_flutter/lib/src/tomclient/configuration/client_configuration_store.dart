@@ -75,7 +75,7 @@ abstract class TomClientConfigurationStore {
 class TomMemoryClientConfigurationStore extends TomClientConfigurationStore {
   /// Creates an empty store, optionally pre-seeded with [initialValues].
   TomMemoryClientConfigurationStore([Map<String, Object?>? initialValues])
-      : _values = {...?initialValues};
+    : _values = {...?initialValues};
 
   Map<String, Object?> _values;
 

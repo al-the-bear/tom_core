@@ -52,33 +52,33 @@ void main() {
   // values distinct enough that a test asserting one cannot accidentally match
   // another.
   TomTextResourceProvider bundle() => TomTextResourceProvider.from({
-        Tom2FATexts.chooseTitle: 'Choose a method',
-        Tom2FATexts.chooseIntro: 'Pick how you want to confirm it is you.',
-        Tom2FATexts.enrolTitle: 'Set it up',
-        Tom2FATexts.challengeTitle: 'Confirm it is you',
-        Tom2FATexts.skip: 'Not now',
-        Tom2FATexts.skipSpendsGrace: 'You can only skip a few more times.',
-        Tom2FATexts.cancel: 'Back to sign-in',
-        Tom2FATexts.attemptsRemaining: '{count} tries left',
-        Tom2FATexts.noRenderableMethods: 'This app cannot set any of these up.',
-        Tom2FATexts.totpEnrolIntro: 'Scan this with your authenticator app.',
-        Tom2FATexts.totpEnrolQrLabel: 'Enrolment QR code',
-        Tom2FATexts.totpEnrolManualEntry: 'Or type this key:',
-        Tom2FATexts.totpEnrolCodeLabel: 'Code from the app',
-        Tom2FATexts.totpEnrolSubmit: 'Finish set-up',
-        Tom2FATexts.totpChallengeCodeLabel: 'Authenticator code',
-        Tom2FATexts.totpChallengeSubmit: 'Sign in',
-        // Descriptors the chooser falls back to when the server sent none.
-        'two_factor.totp.name': 'Authenticator app',
-        'two_factor.totp.description': 'A code from an app on your phone.',
-        // An icon *name* for the adapter to resolve, not an asset path — the
-        // two-step convention `tom_flutter_ui` uses everywhere else. SMS
-        // deliberately has no icon entry, so one bundle covers both the
-        // configured and the unconfigured mechanism.
-        'two_factor.totp.icon': 'mSecurity',
-        'two_factor.sms.name': 'Text message',
-        'two_factor.sms.description': 'A code sent to your phone.',
-      });
+    Tom2FATexts.chooseTitle: 'Choose a method',
+    Tom2FATexts.chooseIntro: 'Pick how you want to confirm it is you.',
+    Tom2FATexts.enrolTitle: 'Set it up',
+    Tom2FATexts.challengeTitle: 'Confirm it is you',
+    Tom2FATexts.skip: 'Not now',
+    Tom2FATexts.skipSpendsGrace: 'You can only skip a few more times.',
+    Tom2FATexts.cancel: 'Back to sign-in',
+    Tom2FATexts.attemptsRemaining: '{count} tries left',
+    Tom2FATexts.noRenderableMethods: 'This app cannot set any of these up.',
+    Tom2FATexts.totpEnrolIntro: 'Scan this with your authenticator app.',
+    Tom2FATexts.totpEnrolQrLabel: 'Enrolment QR code',
+    Tom2FATexts.totpEnrolManualEntry: 'Or type this key:',
+    Tom2FATexts.totpEnrolCodeLabel: 'Code from the app',
+    Tom2FATexts.totpEnrolSubmit: 'Finish set-up',
+    Tom2FATexts.totpChallengeCodeLabel: 'Authenticator code',
+    Tom2FATexts.totpChallengeSubmit: 'Sign in',
+    // Descriptors the chooser falls back to when the server sent none.
+    'two_factor.totp.name': 'Authenticator app',
+    'two_factor.totp.description': 'A code from an app on your phone.',
+    // An icon *name* for the adapter to resolve, not an asset path — the
+    // two-step convention `tom_flutter_ui` uses everywhere else. SMS
+    // deliberately has no icon entry, so one bundle covers both the
+    // configured and the unconfigured mechanism.
+    'two_factor.totp.icon': 'mSecurity',
+    'two_factor.sms.name': 'Text message',
+    'two_factor.sms.description': 'A code sent to your phone.',
+  });
 
   setUp(() {
     TomTextResourceProvider.setAppResourceProvider(bundle());
@@ -107,8 +107,9 @@ void main() {
       );
 
   group('the chooser', () {
-    testWidgets('lists every offered mechanism this build can render',
-        (tester) async {
+    testWidgets('lists every offered mechanism this build can render', (
+      tester,
+    ) async {
       Tom2FAClientRegistry.register(const _SmsMechanism());
       await pump(
         tester,
@@ -135,12 +136,13 @@ void main() {
     // is a legitimate deployment rather than a misconfiguration.
 
     Finder iconIn(String type) => find.descendant(
-          of: find.byKey(Key('tom-2fa-method-$type')),
-          matching: find.byType(Icon),
-        );
+      of: find.byKey(Key('tom-2fa-method-$type')),
+      matching: find.byType(Icon),
+    );
 
-    testWidgets('shows the descriptor icon beside a mechanism that has one',
-        (tester) async {
+    testWidgets('shows the descriptor icon beside a mechanism that has one', (
+      tester,
+    ) async {
       Tom2FAClientRegistry.register(const _SmsMechanism());
       await pump(
         tester,
@@ -164,8 +166,9 @@ void main() {
       expect(iconIn('sms'), findsNothing);
     });
 
-    testWidgets('renders no icon when the build configured no icon adapter',
-        (tester) async {
+    testWidgets('renders no icon when the build configured no icon adapter', (
+      tester,
+    ) async {
       // An application that never calls `TomUIIcons.adapter =` still gets a
       // working chooser; the icon is an enhancement, never a requirement.
       TomUIIcons.reset();
@@ -211,8 +214,9 @@ void main() {
       expect(find.text('This app cannot set any of these up.'), findsOneWidget);
     });
 
-    testWidgets('tapping a mechanism asks the controller to begin it',
-        (tester) async {
+    testWidgets('tapping a mechanism asks the controller to begin it', (
+      tester,
+    ) async {
       final controller = _FakeController(
         enrolment: Tom2FAPendingEnrolment(offeredTypes: const ['totp']),
       );
@@ -224,8 +228,9 @@ void main() {
       expect(controller.chosen, ['totp']);
     });
 
-    testWidgets('prefers the descriptor the server sent over the convention',
-        (tester) async {
+    testWidgets('prefers the descriptor the server sent over the convention', (
+      tester,
+    ) async {
       await pump(
         tester,
         _FakeController(
@@ -249,8 +254,9 @@ void main() {
   });
 
   group('the skip affordance', () {
-    testWidgets('is absent when the server did not permit declining',
-        (tester) async {
+    testWidgets('is absent when the server did not permit declining', (
+      tester,
+    ) async {
       await pump(
         tester,
         _FakeController(
@@ -261,8 +267,9 @@ void main() {
       expect(find.byKey(const Key('tom-2fa-skip')), findsNothing);
     });
 
-    testWidgets('is present, and silent about cost, when skipping is free',
-        (tester) async {
+    testWidgets('is present, and silent about cost, when skipping is free', (
+      tester,
+    ) async {
       await pump(
         tester,
         _FakeController(
@@ -290,10 +297,7 @@ void main() {
       );
 
       expect(find.byKey(const Key('tom-2fa-skip-cost')), findsOneWidget);
-      expect(
-        find.text('You can only skip a few more times.'),
-        findsOneWidget,
-      );
+      expect(find.text('You can only skip a few more times.'), findsOneWidget);
     });
 
     testWidgets('tapping it declines through the controller', (tester) async {
@@ -346,8 +350,9 @@ void main() {
     // controller through the flow into the mechanism's context, and a break
     // anywhere on that path shows up as a missing widget here.
 
-    testWidgets('captions the code with the account the application named',
-        (tester) async {
+    testWidgets('captions the code with the account the application named', (
+      tester,
+    ) async {
       await pump(
         tester,
         _FakeController(enrolment: offer(), label: 'ada@example.com'),
@@ -357,8 +362,9 @@ void main() {
       expect(find.text('ada@example.com'), findsOneWidget);
     });
 
-    testWidgets('omits the caption entirely when no account was named',
-        (tester) async {
+    testWidgets('omits the caption entirely when no account was named', (
+      tester,
+    ) async {
       // Not "renders an empty caption": an empty one is a gap in the layout
       // that reads as a missing value rather than as an absent one.
       await pump(tester, _FakeController(enrolment: offer()));
@@ -369,8 +375,9 @@ void main() {
       expect(find.text('JBSW Y3DP EHPK 3PXP'), findsOneWidget);
     });
 
-    testWidgets('hands the typed code to the controller unmodified',
-        (tester) async {
+    testWidgets('hands the typed code to the controller unmodified', (
+      tester,
+    ) async {
       final controller = _FakeController(enrolment: offer());
       await pump(tester, controller);
 
@@ -384,8 +391,9 @@ void main() {
       expect(controller.confirmed, ['123456']);
     });
 
-    testWidgets('sizes the field to the width the server declared',
-        (tester) async {
+    testWidgets('sizes the field to the width the server declared', (
+      tester,
+    ) async {
       await pump(tester, _FakeController(enrolment: offer(digits: 8)));
 
       final field = tester.widget<TextField>(
@@ -397,8 +405,9 @@ void main() {
       expect(field.maxLength, 8);
     });
 
-    testWidgets('falls back to six digits when the server declared none',
-        (tester) async {
+    testWidgets('falls back to six digits when the server declared none', (
+      tester,
+    ) async {
       await pump(tester, _FakeController(enrolment: offer()));
 
       final field = tester.widget<TextField>(
@@ -410,8 +419,9 @@ void main() {
       expect(field.maxLength, TomTotp.defaultDigits);
     });
 
-    testWidgets('renders nothing to scan when the URI is missing',
-        (tester) async {
+    testWidgets('renders nothing to scan when the URI is missing', (
+      tester,
+    ) async {
       // A server-side omission must degrade to a blank code beside a usable
       // manual-entry string, not to a crashed login screen.
       await pump(
@@ -430,8 +440,9 @@ void main() {
       expect(find.text('JBSW Y3DP'), findsOneWidget);
     });
 
-    testWidgets('renders nothing to scan when the URI will not fit a code',
-        (tester) async {
+    testWidgets('renders nothing to scan when the URI will not fit a code', (
+      tester,
+    ) async {
       // A QR code has a hard capacity ceiling and a server can cross it
       // without doing anything wrong — a long issuer or account label is
       // enough. Arriving over the wire, that has to degrade the way a missing
@@ -445,10 +456,7 @@ void main() {
             type: 'totp',
             offeredTypes: const ['totp'],
             expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-            clientData: {
-              'otpauthUri': _oversizedUri(),
-              'secret': 'JBSWY3DP',
-            },
+            clientData: {'otpauthUri': _oversizedUri(), 'secret': 'JBSWY3DP'},
           ),
         ),
       );
@@ -506,22 +514,21 @@ void main() {
       // keys. The panel reads the first; the second is what a countdown would
       // be driven from, and there is no countdown.
       Tom2FAChallenge challenge({required bool withPeriod}) => Tom2FAChallenge(
-            type: 'totp',
-            expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-            clientData: {
-              'digits': 8,
-              if (withPeriod) 'periodSeconds': 30,
-            },
-          );
+        type: 'totp',
+        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+        clientData: {'digits': 8, if (withPeriod) 'periodSeconds': 30},
+      );
 
-      await pump(tester, _FakeController(challenge: challenge(
-        withPeriod: false,
-      )));
+      await pump(
+        tester,
+        _FakeController(challenge: challenge(withPeriod: false)),
+      );
       final withoutPeriod = _renderedText(tester);
 
-      await pump(tester, _FakeController(challenge: challenge(
-        withPeriod: true,
-      )));
+      await pump(
+        tester,
+        _FakeController(challenge: challenge(withPeriod: true)),
+      );
 
       final field = tester.widget<TextField>(
         find.descendant(
@@ -560,10 +567,10 @@ void main() {
     // hold the flow to the promise using a mechanism that does read it.
 
     Tom2FAChallenge smsChallenge({String hint = ''}) => Tom2FAChallenge(
-          type: 'sms',
-          hint: hint,
-          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-        );
+      type: 'sms',
+      hint: hint,
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+    );
 
     String hintShown(WidgetTester tester) =>
         tester.widget<Text>(find.byKey(const Key('sms-challenge-hint'))).data ??
@@ -580,8 +587,9 @@ void main() {
       expect(hintShown(tester), '•••• •••• 4417');
     });
 
-    testWidgets('arrives empty, not null, when the server sent none',
-        (tester) async {
+    testWidgets('arrives empty, not null, when the server sent none', (
+      tester,
+    ) async {
       // The mechanism gets a `String` either way, so a panel can render it
       // unconditionally without a null check of its own — which is the reason
       // the field is non-nullable with an empty default rather than `String?`.
@@ -593,16 +601,18 @@ void main() {
   });
 
   group('the shared frame', () {
-    testWidgets('renders nothing when no second factor is owed',
-        (tester) async {
+    testWidgets('renders nothing when no second factor is owed', (
+      tester,
+    ) async {
       await pump(tester, _FakeController());
 
       expect(find.byKey(const Key('tom-2fa-title')), findsNothing);
       expect(find.byKey(const Key('tom-2fa-cancel')), findsNothing);
     });
 
-    testWidgets('shows a failed move through the controller\'s own wording',
-        (tester) async {
+    testWidgets('shows a failed move through the controller\'s own wording', (
+      tester,
+    ) async {
       final controller = _FakeController(
         enrolment: Tom2FAPendingEnrolment(offeredTypes: const ['totp']),
         failure: StateError('nope'),
@@ -654,8 +664,10 @@ void main() {
 
   group('TOTP client helpers', () {
     test('groupSecret splits into fours and leaves a short tail alone', () {
-      expect(TomTotp2FAClientMechanism.groupSecret('ABCDEFGHIJ'),
-          'ABCD EFGH IJ');
+      expect(
+        TomTotp2FAClientMechanism.groupSecret('ABCDEFGHIJ'),
+        'ABCD EFGH IJ',
+      );
       expect(TomTotp2FAClientMechanism.groupSecret('AB'), 'AB');
       expect(TomTotp2FAClientMechanism.groupSecret(''), '');
     });
@@ -665,10 +677,14 @@ void main() {
       // Servers that JSON-encode numbers as strings are a real thing.
       expect(TomTotp2FAClientMechanism.digitsOf({'digits': '7'}), 7);
       expect(TomTotp2FAClientMechanism.digitsOf({}), TomTotp.defaultDigits);
-      expect(TomTotp2FAClientMechanism.digitsOf({'digits': 0}),
-          TomTotp.defaultDigits);
-      expect(TomTotp2FAClientMechanism.digitsOf({'digits': 'six'}),
-          TomTotp.defaultDigits);
+      expect(
+        TomTotp2FAClientMechanism.digitsOf({'digits': 0}),
+        TomTotp.defaultDigits,
+      );
+      expect(
+        TomTotp2FAClientMechanism.digitsOf({'digits': 'six'}),
+        TomTotp.defaultDigits,
+      );
     });
   });
 
@@ -680,26 +696,21 @@ void main() {
       WidgetTester tester,
       String data, {
       Color? foreground,
-    }) =>
-        tester.pumpWidget(
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Center(
-              child: TomQrCodeView(
-                data: data,
-                size: 120,
-                foreground: foreground,
-              ),
-            ),
-          ),
-        );
+    }) => tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: TomQrCodeView(data: data, size: 120, foreground: foreground),
+        ),
+      ),
+    );
 
     // The painter is the difference between the two outcomes: present means a
     // code was encoded, absent means the space was reserved and left blank.
     Finder painter() => find.descendant(
-          of: find.byType(TomQrCodeView),
-          matching: find.byType(CustomPaint),
-        );
+      of: find.byType(TomQrCodeView),
+      matching: find.byType(CustomPaint),
+    );
 
     testWidgets('paints a code for a payload that fits', (tester) async {
       await pumpCode(tester, 'otpauth://totp/Tom:alice?secret=JBSWY3DPEHPK3');
@@ -716,15 +727,22 @@ void main() {
       expect(painter(), findsNothing);
       // Same box either way, so a payload that grew past the ceiling between
       // two enrolments does not also shift the layout around it.
-      expect(tester.getSize(find.byType(TomQrCodeView)), const Size.square(120));
+      expect(
+        tester.getSize(find.byType(TomQrCodeView)),
+        const Size.square(120),
+      );
     });
 
-    testWidgets('holds its size and paints nothing when there is no payload',
-        (tester) async {
+    testWidgets('holds its size and paints nothing when there is no payload', (
+      tester,
+    ) async {
       await pumpCode(tester, '');
 
       expect(painter(), findsNothing);
-      expect(tester.getSize(find.byType(TomQrCodeView)), const Size.square(120));
+      expect(
+        tester.getSize(find.byType(TomQrCodeView)),
+        const Size.square(120),
+      );
     });
 
     // Encoding a QR code is the expensive part of this widget by a wide margin
@@ -748,16 +766,23 @@ void main() {
       final first = encodedImageOf(tester);
 
       await pumpCode(tester, uri);
-      expect(identical(encodedImageOf(tester), first), isTrue,
-          reason: 'an unchanged payload must reuse the encoded code');
+      expect(
+        identical(encodedImageOf(tester), first),
+        isTrue,
+        reason: 'an unchanged payload must reuse the encoded code',
+      );
 
       await pumpCode(tester, '$uri&issuer=Tom');
-      expect(identical(encodedImageOf(tester), first), isFalse,
-          reason: 'a changed payload must be re-encoded');
+      expect(
+        identical(encodedImageOf(tester), first),
+        isFalse,
+        reason: 'a changed payload must be re-encoded',
+      );
     });
 
-    testWidgets('does not repaint when nothing that shows has changed',
-        (tester) async {
+    testWidgets('does not repaint when nothing that shows has changed', (
+      tester,
+    ) async {
       await pumpCode(tester, uri);
       final first = painterOf(tester);
 
@@ -768,8 +793,9 @@ void main() {
       expect(painterOf(tester).shouldRepaint(first), isFalse);
     });
 
-    testWidgets('repaints when the payload or the styling changes',
-        (tester) async {
+    testWidgets('repaints when the payload or the styling changes', (
+      tester,
+    ) async {
       await pumpCode(tester, uri);
       final first = painterOf(tester);
 
@@ -780,8 +806,11 @@ void main() {
       // always true, so this pins that they now decide something.
       await pumpCode(tester, '$uri&issuer=Tom');
       final settled = painterOf(tester);
-      await pumpCode(tester, '$uri&issuer=Tom',
-          foreground: const Color(0xFF00FF00));
+      await pumpCode(
+        tester,
+        '$uri&issuer=Tom',
+        foreground: const Color(0xFF00FF00),
+      );
       expect(painterOf(tester).shouldRepaint(settled), isTrue);
     });
   });
@@ -873,19 +902,15 @@ class _SmsMechanism extends Tom2FAClientMechanism {
   Widget buildEnrolmentPanel(
     BuildContext context,
     Tom2FAEnrolmentPanelContext data,
-  ) =>
-      const SizedBox(key: Key('sms-enrolment'));
+  ) => const SizedBox(key: Key('sms-enrolment'));
 
   @override
   Widget buildChallengePanel(
     BuildContext context,
     Tom2FAChallengePanelContext data,
-  ) =>
-      Column(
-        key: const Key('sms-challenge'),
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(data.hint, key: const Key('sms-challenge-hint')),
-        ],
-      );
+  ) => Column(
+    key: const Key('sms-challenge'),
+    mainAxisSize: MainAxisSize.min,
+    children: [Text(data.hint, key: const Key('sms-challenge-hint'))],
+  );
 }

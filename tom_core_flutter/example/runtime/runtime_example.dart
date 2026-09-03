@@ -38,9 +38,11 @@ void run() {
   // is the module working, not failing, so the target is printed next to the
   // answer and the reason stays visible.
   print('flutterTarget=$defaultTargetPlatform');
-  print('isWeb=${utils.isWeb()} '
-      'isDesktop=${utils.isDesktop()} '
-      'isMobile=${utils.isMobile()}');
+  print(
+    'isWeb=${utils.isWeb()} '
+    'isDesktop=${utils.isDesktop()} '
+    'isMobile=${utils.isMobile()}',
+  );
   print('isolate=${utils.getIsolateName()}');
 
   // Example 4: the browser location is web-only; on native it is null. The

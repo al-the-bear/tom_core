@@ -103,18 +103,16 @@ class TomProperty<T> {
   final bool _hasDefault;
 
   /// Resolves [key] from config at construction; throws if absent.
-  TomProperty(String key)
-      : _propertyKey = key,
-        _hasDefault = false {
+  TomProperty(String key) : _propertyKey = key, _hasDefault = false {
     _getValue();
   }
 
   /// Resolves [key] from config at construction, falling back to [value] when
   /// the key is absent.
   TomProperty.withDefault(String key, T value)
-      : _propertyKey = key,
-        _defaultValue = value,
-        _hasDefault = true {
+    : _propertyKey = key,
+      _defaultValue = value,
+      _hasDefault = true {
     _getValue();
   }
 

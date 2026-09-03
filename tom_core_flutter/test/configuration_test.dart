@@ -55,8 +55,8 @@ class _DuplicateConfiguration extends TomBaseClientConfiguration {
 }
 
 Matcher throwsConfigException(String key) => throwsA(
-      isA<TomClientConfigurationException>().having((e) => e.key, 'key', key),
-    );
+  isA<TomClientConfigurationException>().having((e) => e.key, 'key', key),
+);
 
 void main() {
   void installConfig(Map<String, Object> values) {
@@ -129,31 +129,43 @@ void main() {
         _TestConfiguration.new,
         throwsA(
           isA<TomClientConfigurationException>()
-              .having((e) => e.key, 'key',
-                  'client_configuration.value.type_mismatch')
-              .having((e) => e.toString(), 'message',
-                  contains('client.retries')),
+              .having(
+                (e) => e.key,
+                'key',
+                'client_configuration.value.type_mismatch',
+              )
+              .having(
+                (e) => e.toString(),
+                'message',
+                contains('client.retries'),
+              ),
         ),
       );
     });
 
     test('a double is not silently truncated into an int', () {
       installConfig({'client.retries': 1.5});
-      expect(_TestConfiguration.new,
-          throwsConfigException('client_configuration.value.type_mismatch'));
+      expect(
+        _TestConfiguration.new,
+        throwsConfigException('client_configuration.value.type_mismatch'),
+      );
     });
   });
 
   group('declaration', () {
     test('a duplicate key is rejected at declaration', () {
-      expect(_DuplicateConfiguration.new,
-          throwsConfigException('client_configuration.key.duplicate'));
+      expect(
+        _DuplicateConfiguration.new,
+        throwsConfigException('client_configuration.key.duplicate'),
+      );
     });
 
     test('settings are addressable as a set', () {
       final config = _TestConfiguration();
-      expect(config.settings.keys,
-          containsAll(<String>['client.retries', 'client.darkMode']));
+      expect(
+        config.settings.keys,
+        containsAll(<String>['client.retries', 'client.darkMode']),
+      );
       expect(config.settingFor('client.retries'), same(config.retries));
       expect(config.settingFor('client.nope'), isNull);
     });
@@ -175,14 +187,16 @@ void main() {
       expect(config.isOverridden('client.server.url'), isFalse);
     });
 
-    test('restores the baseline for settings the store does not carry',
-        () async {
-      final store = TomMemoryClientConfigurationStore();
-      final config = _TestConfiguration(store: store);
-      config.retries | 42;
-      await config.load();
-      expect(~config.retries, 3, reason: 'load() reproduces a fresh start');
-    });
+    test(
+      'restores the baseline for settings the store does not carry',
+      () async {
+        final store = TomMemoryClientConfigurationStore();
+        final config = _TestConfiguration(store: store);
+        config.retries | 42;
+        await config.load();
+        expect(~config.retries, 3, reason: 'load() reproduces a fresh start');
+      },
+    );
 
     test('a setting declared after load still sees its override', () async {
       final store = TomMemoryClientConfigurationStore({'client.retries': 9});
@@ -192,8 +206,10 @@ void main() {
     });
 
     test('throws when no store is wired', () {
-      expect(_TestConfiguration().load,
-          throwsConfigException('client_configuration.store.not_configured'));
+      expect(
+        _TestConfiguration().load,
+        throwsConfigException('client_configuration.store.not_configured'),
+      );
     });
 
     test('a store wired after construction is used', () async {
@@ -222,25 +238,31 @@ void main() {
       expect(await store.read(), isEmpty);
     });
 
-    test('carries forward persisted keys this build does not declare',
-        () async {
-      final store =
-          TomMemoryClientConfigurationStore({'client.fromNewerBuild': 'keep'});
-      final config = _TestConfiguration(store: store);
-      await config.load();
-      config.retries | 9;
-      await config.save();
-      expect(await store.read(),
-          {'client.fromNewerBuild': 'keep', 'client.retries': 9});
-    });
+    test(
+      'carries forward persisted keys this build does not declare',
+      () async {
+        final store = TomMemoryClientConfigurationStore({
+          'client.fromNewerBuild': 'keep',
+        });
+        final config = _TestConfiguration(store: store);
+        await config.load();
+        config.retries | 9;
+        await config.save();
+        expect(await store.read(), {
+          'client.fromNewerBuild': 'keep',
+          'client.retries': 9,
+        });
+      },
+    );
 
     test('carries forward a key written after this holder loaded', () async {
       // Carry-forward seeds from the store it is about to write, not from the
       // snapshot taken at load(). Otherwise the promise above holds only for
       // keys that were already there when this holder started: a key another
       // writer added in between is not "carried forward", it is deleted.
-      final store =
-          TomMemoryClientConfigurationStore({'client.fromNewerBuild': 'keep'});
+      final store = TomMemoryClientConfigurationStore({
+        'client.fromNewerBuild': 'keep',
+      });
       final config = _TestConfiguration(store: store);
       await config.load();
       await store.write({
@@ -283,19 +305,21 @@ void main() {
     });
 
     test('throws when no store is wired', () {
-      expect(_TestConfiguration().save,
-          throwsConfigException('client_configuration.store.not_configured'));
+      expect(
+        _TestConfiguration().save,
+        throwsConfigException('client_configuration.store.not_configured'),
+      );
     });
   });
 
   group('swapping the store', () {
-    test('does not carry the previous store\'s keys into the new one',
-        () async {
+    test('does not carry the previous store\'s keys into the new one', () async {
       // Carry-forward protects the keys of *a* store. A holder moved to a
       // different store must not deposit the first store's keys in the second:
       // they describe an install location this holder has been moved away from.
-      final oldStore =
-          TomMemoryClientConfigurationStore({'client.legacy': 'FROM-OLD-STORE'});
+      final oldStore = TomMemoryClientConfigurationStore({
+        'client.legacy': 'FROM-OLD-STORE',
+      });
       final config = _TestConfiguration(store: oldStore);
       await config.load();
 
@@ -313,24 +337,29 @@ void main() {
       // store's foreign keys — trading a leak for a wipe, and breaking the
       // carry-forward promise for the store actually being written. Only
       // reading the store that is about to be written gets both right.
-      final oldStore =
-          TomMemoryClientConfigurationStore({'client.legacy': 'FROM-OLD-STORE'});
+      final oldStore = TomMemoryClientConfigurationStore({
+        'client.legacy': 'FROM-OLD-STORE',
+      });
       final config = _TestConfiguration(store: oldStore);
       await config.load();
 
-      final newStore =
-          TomMemoryClientConfigurationStore({'client.ownKey': 'KEEP-ME'});
+      final newStore = TomMemoryClientConfigurationStore({
+        'client.ownKey': 'KEEP-ME',
+      });
       config.store = newStore;
       config.retries | 9;
       await config.save();
 
-      expect(await newStore.read(),
-          {'client.ownKey': 'KEEP-ME', 'client.retries': 9});
+      expect(await newStore.read(), {
+        'client.ownKey': 'KEEP-ME',
+        'client.retries': 9,
+      });
     });
 
     test('leaves the previous store untouched', () async {
-      final oldStore =
-          TomMemoryClientConfigurationStore({'client.legacy': 'FROM-OLD-STORE'});
+      final oldStore = TomMemoryClientConfigurationStore({
+        'client.legacy': 'FROM-OLD-STORE',
+      });
       final config = _TestConfiguration(store: oldStore);
       await config.load();
 
@@ -338,24 +367,33 @@ void main() {
       config.retries | 9;
       await config.save();
 
-      expect(await oldStore.read(), {'client.legacy': 'FROM-OLD-STORE'},
-          reason: 'saving to the new store must not write to the old one');
+      expect(
+        await oldStore.read(),
+        {'client.legacy': 'FROM-OLD-STORE'},
+        reason: 'saving to the new store must not write to the old one',
+      );
     });
 
-    test('a setting declared after the swap does not see the old override',
-        () async {
-      // The same stale snapshot reaches a second consumer: a setting declared
-      // late is initialised from it. After a swap that snapshot describes a
-      // store this holder no longer writes to, so the override it carries
-      // belongs to somebody else's install location.
-      final config = _LateConfiguration(
-          store: TomMemoryClientConfigurationStore({'client.retries': 9}));
-      await config.load();
+    test(
+      'a setting declared after the swap does not see the old override',
+      () async {
+        // The same stale snapshot reaches a second consumer: a setting declared
+        // late is initialised from it. After a swap that snapshot describes a
+        // store this holder no longer writes to, so the override it carries
+        // belongs to somebody else's install location.
+        final config = _LateConfiguration(
+          store: TomMemoryClientConfigurationStore({'client.retries': 9}),
+        );
+        await config.load();
 
-      config.store = TomMemoryClientConfigurationStore();
-      expect(~config.declareRetries(), 3,
-          reason: 'the new store has no override, so the baseline stands');
-    });
+        config.store = TomMemoryClientConfigurationStore();
+        expect(
+          ~config.declareRetries(),
+          3,
+          reason: 'the new store has no override, so the baseline stands',
+        );
+      },
+    );
 
     test('re-assigning the same store keeps the loaded snapshot', () async {
       // Only a *change* of store invalidates the snapshot. Assigning the same
@@ -384,10 +422,14 @@ void main() {
 
     test('an unknown key is rejected rather than silently ignored', () {
       final config = _TestConfiguration();
-      expect(() => config.reset('client.nope'),
-          throwsConfigException('client_configuration.key.unknown'));
-      expect(() => config.isOverridden('client.nope'),
-          throwsConfigException('client_configuration.key.unknown'));
+      expect(
+        () => config.reset('client.nope'),
+        throwsConfigException('client_configuration.key.unknown'),
+      );
+      expect(
+        () => config.isOverridden('client.nope'),
+        throwsConfigException('client_configuration.key.unknown'),
+      );
     });
   });
 
@@ -433,8 +475,9 @@ void main() {
     });
 
     test('a load that changes nothing is silent', () async {
-      final config =
-          _TestConfiguration(store: TomMemoryClientConfigurationStore());
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore(),
+      );
       var holderChanges = 0;
       final observer = config >> (_) => holderChanges++;
 
@@ -495,12 +538,14 @@ void main() {
       expect(await TomFileClientConfigurationStore(path).read(), isEmpty);
     });
 
-    test('round-trips the override map, creating parent directories',
-        () async {
+    test('round-trips the override map, creating parent directories', () async {
       final store = TomFileClientConfigurationStore(path);
       await store.write({'client.retries': 9, 'client.darkMode': true});
       expect(File(path).existsSync(), isTrue);
-      expect(await store.read(), {'client.retries': 9, 'client.darkMode': true});
+      expect(await store.read(), {
+        'client.retries': 9,
+        'client.darkMode': true,
+      });
     });
 
     test('an empty write deletes the file', () async {
@@ -526,27 +571,33 @@ void main() {
       File(path)
         ..createSync(recursive: true)
         ..writeAsStringSync('{not json');
-      expect(TomFileClientConfigurationStore(path).read,
-          throwsConfigException('client_configuration.store.invalid_content'));
+      expect(
+        TomFileClientConfigurationStore(path).read,
+        throwsConfigException('client_configuration.store.invalid_content'),
+      );
     });
 
     test('a JSON value that is not an object throws', () async {
       File(path)
         ..createSync(recursive: true)
         ..writeAsStringSync(jsonEncode([1, 2, 3]));
-      expect(TomFileClientConfigurationStore(path).read,
-          throwsConfigException('client_configuration.store.invalid_content'));
+      expect(
+        TomFileClientConfigurationStore(path).read,
+        throwsConfigException('client_configuration.store.invalid_content'),
+      );
     });
 
     test('drives a holder end to end', () async {
-      final config =
-          _TestConfiguration(store: TomFileClientConfigurationStore(path));
+      final config = _TestConfiguration(
+        store: TomFileClientConfigurationStore(path),
+      );
       config.serverUrl | 'https://chosen.example';
       await config.save();
 
       // A second holder over the same file is what the next app start sees.
-      final reloaded =
-          _TestConfiguration(store: TomFileClientConfigurationStore(path));
+      final reloaded = _TestConfiguration(
+        store: TomFileClientConfigurationStore(path),
+      );
       await reloaded.load();
       expect(~reloaded.serverUrl, 'https://chosen.example');
       expect(~reloaded.retries, 3, reason: 'defaults are not persisted');
@@ -643,7 +694,8 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason: 'these public members are declared in the configuration '
+        reason:
+            'these public members are declared in the configuration '
             'sources but named nowhere in $summaryPath',
       );
     });
@@ -695,7 +747,8 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason: 'these classes declare a public constructor that $summaryPath '
+        reason:
+            'these classes declare a public constructor that $summaryPath '
             'never shows the call shape of',
       );
     });
@@ -762,8 +815,9 @@ void main() {
       // Conditioned on the pubspec rather than hard-coding the answer: if
       // `tom_code_specs` ever becomes a dependency, pointing at its
       // annotations stops being a dead end and this guard stops objecting.
-      final dependsOnCodeSpecs =
-          File('pubspec.yaml').readAsStringSync().contains('tom_code_specs');
+      final dependsOnCodeSpecs = File(
+        'pubspec.yaml',
+      ).readAsStringSync().contains('tom_code_specs');
       if (dependsOnCodeSpecs) return;
 
       final offenders = <String>[
@@ -773,7 +827,8 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason: 'these artefacts point the reader at the `Cs*` annotations for '
+        reason:
+            'these artefacts point the reader at the `Cs*` annotations for '
             'per-field constraints, but tom_code_specs is not a dependency of '
             'this package, so nothing here can reference them',
       );
@@ -822,7 +877,8 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason: 'the module performs no per-field validation, so the passage '
+        reason:
+            'the module performs no per-field validation, so the passage '
             'that says so must name who does',
       );
     });
@@ -887,10 +943,8 @@ void main() {
           home: Scaffold(
             body: TomObservingWidget<TomSetting<bool>>(
               subState: config.darkMode,
-              child: (setting) => Switch(
-                value: ~setting,
-                onChanged: (next) => setting | next,
-              ),
+              child: (setting) =>
+                  Switch(value: ~setting, onChanged: (next) => setting | next),
             ),
           ),
         ),
@@ -904,7 +958,8 @@ void main() {
       expect(
         tester.widget<Switch>(find.byType(Switch)).value,
         isTrue,
-        reason: 'the widget observes the setting itself, so writing through '
+        reason:
+            'the widget observes the setting itself, so writing through '
             'the setting must repaint it',
       );
       expect(~config.darkMode, isTrue);
@@ -964,10 +1019,7 @@ void main() {
         neutral.TomFileClientConfigurationStore('/wherever/client_config.json');
         fail('expected the neutral store to throw');
       } on TomClientConfigurationException catch (error) {
-        expect(
-          error.parameters?['path'],
-          '/wherever/client_config.json',
-        );
+        expect(error.parameters?['path'], '/wherever/client_config.json');
       }
     });
   });

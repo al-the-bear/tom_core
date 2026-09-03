@@ -89,7 +89,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'an example whose header names no runnable suite leaves the '
+      reason:
+          'an example whose header names no runnable suite leaves the '
           'reader to guess:\n${offenders.join('\n')}',
     );
   });
@@ -113,14 +114,17 @@ void main() {
       if (!source.contains("import '$importPath' as example;")) {
         offenders.add('${suite.path}: does not import ${file.path}');
       } else if (!source.contains('example.run()')) {
-        offenders.add('${suite.path}: imports ${file.path} but never calls '
-            'example.run()');
+        offenders.add(
+          '${suite.path}: imports ${file.path} but never calls '
+          'example.run()',
+        );
       }
     }
     expect(
       offenders,
       isEmpty,
-      reason: 'an example is quoted as documentation, so the command its '
+      reason:
+          'an example is quoted as documentation, so the command its '
           'header names has to execute it:\n${offenders.join('\n')}',
     );
   });
@@ -133,7 +137,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: '`flutter test example/...` runs the example and then exits 79 '
+      reason:
+          '`flutter test example/...` runs the example and then exits 79 '
           '("No tests were found") whether it succeeded or not, so the '
           'instruction hands the reader a failing command:\n'
           '${offenders.join('\n')}',

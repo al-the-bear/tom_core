@@ -504,7 +504,8 @@ void main() {
       expect(
         silent,
         isEmpty,
-        reason: 'These documents explain `location` without showing that it is '
+        reason:
+            'These documents explain `location` without showing that it is '
             'what separates two accounts, which is the one thing an '
             'application can get wrong here without noticing: $silent',
       );
@@ -524,7 +525,8 @@ void main() {
       expect(
         unqualified,
         isEmpty,
-        reason: 'These documents show a per-account location without saying '
+        reason:
+            'These documents show a per-account location without saying '
             'that the segment must be single and stable: $unqualified',
       );
     });
@@ -541,7 +543,8 @@ void main() {
       expect(
         headings.where((h) => h.startsWith('Scope')),
         hasLength(1),
-        reason: 'doc/preferences.md must state the scope rule under a heading '
+        reason:
+            'doc/preferences.md must state the scope rule under a heading '
             'of its own; its headings are $headings',
       );
     });
@@ -570,27 +573,32 @@ void main() {
         expect(
           plainTextOf(artefact),
           contains('belongs to the store'),
-          reason: '$artefact does not say who owns the list read() returns, '
+          reason:
+              '$artefact does not say who owns the list read() returns, '
               'which is what tells a backend author they need no defensive copy '
               'and tells a caller they may not modify it',
         );
       }
     });
 
-    test('every artefact says the list given to write() belongs to the caller', () {
-      // The half that is easy to leave out, because every shipped backend
-      // copies anyway. `clear()` is what makes it real: it passes `const []`,
-      // so a store that modified or retained its argument would fail on the
-      // module's own call.
-      for (final artefact in artefacts) {
-        expect(
-          plainTextOf(artefact),
-          contains('belongs to the caller'),
-          reason: '$artefact states only half of the ownership rule; a half '
-              'rule implies the other side behaves conventionally',
-        );
-      }
-    });
+    test(
+      'every artefact says the list given to write() belongs to the caller',
+      () {
+        // The half that is easy to leave out, because every shipped backend
+        // copies anyway. `clear()` is what makes it real: it passes `const []`,
+        // so a store that modified or retained its argument would fail on the
+        // module's own call.
+        for (final artefact in artefacts) {
+          expect(
+            plainTextOf(artefact),
+            contains('belongs to the caller'),
+            reason:
+                '$artefact states only half of the ownership rule; a half '
+                'rule implies the other side behaves conventionally',
+          );
+        }
+      },
+    );
   });
 
   group('TomDevicePreferenceJson', () {
@@ -627,7 +635,8 @@ void main() {
     // updatedAt with no zone would be read as the *importing* device's local
     // time — silently, and differently on each one.
     test('rejects an updatedAt that names no time zone', () {
-      const content = '[{"key":"device.theme","valueType":"String",'
+      const content =
+          '[{"key":"device.theme","valueType":"String",'
           '"value":"\\"dark\\"","updatedAt":"2026-03-14T09:26:53"}]';
 
       expect(
@@ -643,7 +652,8 @@ void main() {
     });
 
     test('accepts an updatedAt written with an explicit offset', () {
-      const content = '[{"key":"device.theme","valueType":"String",'
+      const content =
+          '[{"key":"device.theme","valueType":"String",'
           '"value":"\\"dark\\"","updatedAt":"2026-03-14T10:26:53+01:00"}]';
 
       expect(
@@ -1187,10 +1197,7 @@ void main() {
     const summaryPath = 'doc/api_reference/api_summary_preferences.md';
 
     test('every variant agrees about const', () {
-      expectVariantsAgreeOnConst(
-        variantPaths: variants,
-        className: className,
-      );
+      expectVariantsAgreeOnConst(variantPaths: variants, className: className);
     });
 
     test('all three variants declare the same public members', () {
@@ -1304,13 +1311,15 @@ void main() {
       );
     });
 
-    test('every parameter type matches the kernel constructor it comes from',
-        () {
-      expectSummaryTypesMatchKernel(
-        summaryPath: summaryPath,
-        classNames: classNames,
-      );
-    });
+    test(
+      'every parameter type matches the kernel constructor it comes from',
+      () {
+        expectSummaryTypesMatchKernel(
+          summaryPath: summaryPath,
+          classNames: classNames,
+        );
+      },
+    );
   });
 
   group('the shipped example runs', () {

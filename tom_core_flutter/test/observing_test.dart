@@ -28,8 +28,8 @@ void main() {
         MaterialApp(
           home: TomObservingWidget<TomBool>(
             subState: flag,
-            child: (state) => Text(~state ? 'ON' : 'OFF',
-                textDirection: TextDirection.ltr),
+            child: (state) =>
+                Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
           ),
         ),
       );
@@ -43,8 +43,8 @@ void main() {
         MaterialApp(
           home: TomObservingWidget<TomBool>(
             subState: flag,
-            child: (state) => Text(~state ? 'ON' : 'OFF',
-                textDirection: TextDirection.ltr),
+            child: (state) =>
+                Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
           ),
         ),
       );
@@ -69,15 +69,16 @@ void main() {
     // observer surfaces only as the framework throw on the post-unmount
     // notification; asserting that nothing was thrown is the deregistration
     // check.
-    testWidgets('deregisters on unmount — no setState after dispose',
-        (tester) async {
+    testWidgets('deregisters on unmount — no setState after dispose', (
+      tester,
+    ) async {
       final flag = TomBool(false);
       await tester.pumpWidget(
         MaterialApp(
           home: TomObservingWidget<TomBool>(
             subState: flag,
-            child: (state) => Text(~state ? 'ON' : 'OFF',
-                textDirection: TextDirection.ltr),
+            child: (state) =>
+                Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
           ),
         ),
       );
@@ -106,8 +107,9 @@ void main() {
     // stale registration shows up only as a rebuild that the old observable
     // should no longer be able to cause, which is what the build counter at the
     // end of the test measures.
-    testWidgets('swaps to a new subState — observes/renders new, ignores old',
-        (tester) async {
+    testWidgets('swaps to a new subState — observes/renders new, ignores old', (
+      tester,
+    ) async {
       final first = TomBool(false);
       final second = TomBool(false);
       var current = first;
@@ -123,8 +125,10 @@ void main() {
                 subState: current,
                 child: (state) {
                   builds++;
-                  return Text(~state ? 'ON' : 'OFF',
-                      textDirection: TextDirection.ltr);
+                  return Text(
+                    ~state ? 'ON' : 'OFF',
+                    textDirection: TextDirection.ltr,
+                  );
                 },
               );
             },
@@ -193,23 +197,29 @@ void main() {
     // consulted — which is why it cannot stand in for this one. The example
     // depends on the behaviour pinned here: it clears the adaptor by passing a
     // closure it never added.
-    test('removeListener ignores its argument — any closure clears the slot',
-        () {
-      final source = TomBool(false);
-      final adaptor = ValueListenableObserver<TomBool>(source);
+    test(
+      'removeListener ignores its argument — any closure clears the slot',
+      () {
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
 
-      var calls = 0;
-      adaptor.addListener(() => calls++);
-      source | true;
-      expect(calls, 1);
+        var calls = 0;
+        adaptor.addListener(() => calls++);
+        source | true;
+        expect(calls, 1);
 
-      adaptor.removeListener(() {}); // never registered
+        adaptor.removeListener(() {}); // never registered
 
-      source | false;
-      expect(calls, 1,
-          reason: 'there is one slot rather than a list, so there is nothing '
-              'to match the argument against and any argument clears it');
-    });
+        source | false;
+        expect(
+          calls,
+          1,
+          reason:
+              'there is one slot rather than a list, so there is nothing '
+              'to match the argument against and any argument clears it',
+        );
+      },
+    );
 
     test('addListener replaces the previous listener (single-listener)', () {
       final source = TomBool(false);
@@ -226,8 +236,9 @@ void main() {
     });
   });
 
-  testWidgets('ValueListenableObserver drives a ValueListenableBuilder',
-      (tester) async {
+  testWidgets('ValueListenableObserver drives a ValueListenableBuilder', (
+    tester,
+  ) async {
     final source = TomBool(false);
     final adaptor = ValueListenableObserver<TomBool>(source);
 
@@ -235,8 +246,8 @@ void main() {
       MaterialApp(
         home: ValueListenableBuilder<TomBool>(
           valueListenable: adaptor,
-          builder: (context, value, _) => Text(~value ? 'ON' : 'OFF',
-              textDirection: TextDirection.ltr),
+          builder: (context, value, _) =>
+              Text(~value ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
         ),
       ),
     );
@@ -270,8 +281,9 @@ void main() {
       expect(observer.calls, 2, reason: 'removal is what stops notifications');
     });
 
-    testWidgets('the widget holds its observable, not the other way round',
-        (tester) async {
+    testWidgets('the widget holds its observable, not the other way round', (
+      tester,
+    ) async {
       // The strong reference runs widget → observable, through the plain
       // `final T subState` field. Reading it back off the mounted widget is
       // the observable part of "the widget keeps the observable alive": the
@@ -313,7 +325,10 @@ void main() {
       'lib/src/tomclient/observing/tom_observing_widget.dart',
     ];
 
-    final deregisters = RegExp(r'deregister|removeObserver', caseSensitive: false);
+    final deregisters = RegExp(
+      r'deregister|removeObserver',
+      caseSensitive: false,
+    );
 
     test('every documented file exists and describes the deregistration', () {
       // Without this the two tests below are satisfiable by deleting the
@@ -323,9 +338,16 @@ void main() {
         final file = File(path);
         expect(file.existsSync(), isTrue, reason: '$path is missing');
         final text = file.readAsStringSync();
-        expect(text, contains('dispose'), reason: '$path never mentions dispose');
-        expect(deregisters.hasMatch(text), isTrue,
-            reason: '$path no longer says that dispose deregisters');
+        expect(
+          text,
+          contains('dispose'),
+          reason: '$path never mentions dispose',
+        );
+        expect(
+          deregisters.hasMatch(text),
+          isTrue,
+          reason: '$path no longer says that dispose deregisters',
+        );
       }
     });
 
@@ -351,7 +373,10 @@ void main() {
     });
 
     test('the retired claim has not come back', () {
-      final retired = RegExp(r'not retained|neither leaks', caseSensitive: false);
+      final retired = RegExp(
+        r'not retained|neither leaks',
+        caseSensitive: false,
+      );
       final offenders = <String>[
         for (final path in lifecycleFiles)
           if (retired.hasMatch(File(path).readAsStringSync()))
@@ -386,8 +411,11 @@ void main() {
       for (final path in calloutFiles) {
         final file = File(path);
         expect(file.existsSync(), isTrue, reason: '$path is missing');
-        expect(file.readAsStringSync(), contains('addListener'),
-            reason: '$path no longer describes the listener slot');
+        expect(
+          file.readAsStringSync(),
+          contains('addListener'),
+          reason: '$path no longer describes the listener slot',
+        );
       }
     });
 
@@ -412,20 +440,29 @@ void main() {
       expect(offenders, isEmpty);
     });
 
-    test('the API summary\'s removeListener row says the argument is ignored',
-        () {
-      // The row is checked on its own because the file-wide check above passes
-      // as soon as the callout paragraph says "ignores". The table is what a
-      // reader scanning for the signature actually reads, and it used to say
-      // "Clears the registered listener" — wording that means *that* listener,
-      // which is the assumption the implementation breaks.
-      final summary =
-          File('doc/api_reference/api_summary_observing.md').readAsStringSync();
-      final row = RegExp(r'^\| `removeListener` \|.*$', multiLine: true)
-          .firstMatch(summary);
-      expect(row, isNotNull, reason: 'no removeListener row in the method table');
-      expect(row!.group(0)!.toLowerCase(), contains('ignor'));
-    });
+    test(
+      'the API summary\'s removeListener row says the argument is ignored',
+      () {
+        // The row is checked on its own because the file-wide check above passes
+        // as soon as the callout paragraph says "ignores". The table is what a
+        // reader scanning for the signature actually reads, and it used to say
+        // "Clears the registered listener" — wording that means *that* listener,
+        // which is the assumption the implementation breaks.
+        final summary = File(
+          'doc/api_reference/api_summary_observing.md',
+        ).readAsStringSync();
+        final row = RegExp(
+          r'^\| `removeListener` \|.*$',
+          multiLine: true,
+        ).firstMatch(summary);
+        expect(
+          row,
+          isNotNull,
+          reason: 'no removeListener row in the method table',
+        );
+        expect(row!.group(0)!.toLowerCase(), contains('ignor'));
+      },
+    );
   });
 
   group('the shipped example runs', () {

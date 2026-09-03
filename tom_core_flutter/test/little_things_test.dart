@@ -148,7 +148,11 @@ void main() {
       // A presentable error rethrows; a non-presentable one is wrapped.
       TomException surface(TomException e) {
         if (e is TomClientUIException) return e;
-        return TomClientUIException('wrapped', 'Unexpected error', rootException: e);
+        return TomClientUIException(
+          'wrapped',
+          'Unexpected error',
+          rootException: e,
+        );
       }
 
       final presentable = TomClientUIException('ui.error', 'Shown to user');
@@ -221,8 +225,10 @@ void main() {
     test('a general clause alone swallows the presentable subtype', () {
       // The point of the pair: identical input, and the message the user was
       // supposed to see does not appear in the result at all.
-      final presentable =
-          TomClientUIException('login.failed', 'Could not sign you in.');
+      final presentable = TomClientUIException(
+        'login.failed',
+        'Could not sign you in.',
+      );
       expect(route(presentable), 'banner: Could not sign you in.');
       expect(routeGeneralOnly(presentable), 'logged: login.failed');
     });
@@ -315,7 +321,8 @@ void main() {
       expect(
         paragraphs().join(' '),
         contains('cross-cutting'),
-        reason: 'the readme must describe the module by the role it plays, '
+        reason:
+            'the readme must describe the module by the role it plays, '
             'not only by the two classes currently in it',
       );
     });
@@ -327,7 +334,8 @@ void main() {
       expect(
         describing,
         isNotEmpty,
-        reason: 'no paragraph of $readmePath describes the exception family; '
+        reason:
+            'no paragraph of $readmePath describes the exception family; '
             'this guard has lost the text it was written to watch',
       );
 
@@ -340,7 +348,8 @@ void main() {
       expect(
         describing.where(qualified.hasMatch),
         isNotEmpty,
-        reason: 'the paragraph introducing the exception family must mark it '
+        reason:
+            'the paragraph introducing the exception family must mark it '
             'as the module\'s present contents — otherwise the readme reads '
             'as though `little_things` means "exceptions" on the client, and '
             'the next cross-cutting helper goes somewhere else',
@@ -372,13 +381,15 @@ void main() {
       );
     });
 
-    test('every parameter type matches the kernel constructor it comes from',
-        () {
-      expectSummaryTypesMatchKernel(
-        summaryPath: summaryPath,
-        classNames: classNames,
-      );
-    });
+    test(
+      'every parameter type matches the kernel constructor it comes from',
+      () {
+        expectSummaryTypesMatchKernel(
+          summaryPath: summaryPath,
+          classNames: classNames,
+        );
+      },
+    );
 
     test('the kernel constructor parser reports the types it should', () {
       // Without this the two tests above pass just as happily on an empty
@@ -400,8 +411,9 @@ void main() {
       // ever inserted or removed, this fails rather than silently blessing a
       // diagram that no longer describes anything.
       final summary = File(summaryPath).readAsStringSync();
-      final hierarchy = RegExp(r'## Class Hierarchy\n+```\n([\s\S]*?)```')
-          .firstMatch(summary);
+      final hierarchy = RegExp(
+        r'## Class Hierarchy\n+```\n([\s\S]*?)```',
+      ).firstMatch(summary);
       expect(hierarchy, isNotNull, reason: 'no class hierarchy block');
 
       final bases = <String>[];
@@ -410,9 +422,9 @@ void main() {
           final source = type.startsWith('TomClient')
               ? File(sourcePath).readAsStringSync()
               : kernel;
-          final extends_ = RegExp('class $type extends (\\w+)')
-              .firstMatch(source)
-              ?.group(1);
+          final extends_ = RegExp(
+            'class $type extends (\\w+)',
+          ).firstMatch(source)?.group(1);
           if (extends_ == null) break;
           bases.add(extends_);
           type = extends_;
@@ -428,7 +440,8 @@ void main() {
         expect(
           hierarchy!.group(1),
           contains(name),
-          reason: '`$name` is in the chain above TomClientUIException but is '
+          reason:
+              '`$name` is in the chain above TomClientUIException but is '
               'missing from the hierarchy diagram',
         );
       }
@@ -458,7 +471,11 @@ void main() {
       expect(start, isNot(-1), reason: 'no TomClientException constructor');
       final open = source.indexOf('{', start);
       final close = source.indexOf('}', open);
-      expect(open, isNot(-1), reason: 'the constructor takes no named arguments');
+      expect(
+        open,
+        isNot(-1),
+        reason: 'the constructor takes no named arguments',
+      );
       return RegExp(r'super\.(\w+)')
           .allMatches(source.substring(open, close))
           .map((m) => m.group(1)!)
@@ -484,7 +501,8 @@ void main() {
       expect(
         advertised,
         isNotEmpty,
-        reason: 'the example no longer describes the forwarded payload at all, '
+        reason:
+            'the example no longer describes the forwarded payload at all, '
             'so this guard has lost the text it was written to watch',
       );
       final unpassed = advertised
@@ -493,7 +511,8 @@ void main() {
       expect(
         unpassed,
         isEmpty,
-        reason: 'the example introduces ${unpassed.join(', ')} in a comment '
+        reason:
+            'the example introduces ${unpassed.join(', ')} in a comment '
             'and never passes it — an example that narrates instead of '
             'demonstrating compiles, runs, and proves nothing',
       );
@@ -524,13 +543,15 @@ void main() {
       expect(
         code,
         contains('on TomException catch'),
-        reason: 'the boundary wrap catches the kernel type rather than the '
+        reason:
+            'the boundary wrap catches the kernel type rather than the '
             'client one, and that choice is the whole point of it',
       );
       expect(
         code.indexOf('on TomClientUIException catch'),
         lessThan(code.indexOf('on TomClientException catch')),
-        reason: 'the specific clause has to come first — a reader copying this '
+        reason:
+            'the specific clause has to come first — a reader copying this '
             'takes the order from the code, not from the prose beside it',
       );
     });

@@ -99,7 +99,11 @@ T coerceSettingValue<T>(String key, Object? raw) {
     'client_configuration.value.type_mismatch',
     "Configuration key '$key' holds a value of type "
         '${raw.runtimeType} which cannot be read as $T.',
-    parameters: {'key': key, 'expectedType': '$T', 'actualType': '${raw.runtimeType}'},
+    parameters: {
+      'key': key,
+      'expectedType': '$T',
+      'actualType': '${raw.runtimeType}',
+    },
   );
 }
 
@@ -204,7 +208,7 @@ abstract class TomBaseClientConfiguration extends TomObservable
   /// [load] and [save] throw `client_configuration.store.not_configured`
   /// until it is.
   TomBaseClientConfiguration({TomClientConfigurationStore? store})
-      : _store = store {
+    : _store = store {
     declareSettings();
   }
 

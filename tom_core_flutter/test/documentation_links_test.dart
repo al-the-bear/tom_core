@@ -82,9 +82,12 @@ void main() {
   Iterable<RegExpMatch> linksIn(String file) {
     final text = File(file).readAsStringSync().replaceAll(fencedCode, '');
     final quoted = inlineCode.allMatches(text);
-    return linkPattern.allMatches(text).where(
-      (link) => !quoted.any((q) => q.start < link.start && link.start < q.end),
-    );
+    return linkPattern
+        .allMatches(text)
+        .where(
+          (link) =>
+              !quoted.any((q) => q.start < link.start && link.start < q.end),
+        );
   }
 
   /// The on-disk path a link target resolves to, or `null` when the target is
@@ -122,7 +125,11 @@ void main() {
   /// how this was found.
   String anchorOf(String heading) {
     var text = heading.toLowerCase();
-    for (final entity in const {'&lt;': '<', '&gt;': '>', '&amp;': '&'}.entries) {
+    for (final entity in const {
+      '&lt;': '<',
+      '&gt;': '>',
+      '&amp;': '&',
+    }.entries) {
       text = text.replaceAll(entity.key, entity.value);
     }
     text = text.replaceAll(RegExp(r'[^\w\s-]'), '');
@@ -145,8 +152,10 @@ void main() {
   /// Empty when the document has no contents block.
   String contentsBlockOf(String file) {
     final prose = proseOf(file);
-    final start = RegExp(r'^## Table of Contents$', multiLine: true)
-        .firstMatch(prose);
+    final start = RegExp(
+      r'^## Table of Contents$',
+      multiLine: true,
+    ).firstMatch(prose);
     if (start == null) return '';
     final rest = prose.substring(start.end);
     final next = RegExp(r'^## ', multiLine: true).firstMatch(rest);
@@ -257,7 +266,8 @@ void main() {
       expect(
         dead,
         isEmpty,
-        reason: 'These anchors name no heading in their own document, so they '
+        reason:
+            'These anchors name no heading in their own document, so they '
             'render as links that go nowhere:\n${dead.join('\n')}',
       );
     });
@@ -286,7 +296,8 @@ void main() {
       expect(
         dead,
         isEmpty,
-        reason: 'These links name a heading their target document does not '
+        reason:
+            'These links name a heading their target document does not '
             'have, so they land at the top of it instead:\n${dead.join('\n')}',
       );
     });
@@ -356,7 +367,8 @@ void main() {
       expect(
         mismatched,
         isEmpty,
-        reason: 'These contents blocks disagree with the sections they '
+        reason:
+            'These contents blocks disagree with the sections they '
             'describe:\n${mismatched.join('\n')}',
       );
       // Pins that the walk still finds the documents — the check above is
@@ -381,8 +393,10 @@ void main() {
     /// and reached three collaborators away.
     String dependencyBulletsOf(String file) {
       final prose = proseOf(file);
-      final start = RegExp(r'^## Dependencies$', multiLine: true)
-          .firstMatch(prose);
+      final start = RegExp(
+        r'^## Dependencies$',
+        multiLine: true,
+      ).firstMatch(prose);
       if (start == null) return '';
       var rest = prose.substring(start.end);
       final next = RegExp(r'^## ', multiLine: true).firstMatch(rest);
@@ -393,7 +407,9 @@ void main() {
       for (final line in rest.split('\n')) {
         if (line.startsWith('- ')) {
           started = true;
-        } else if (started && !line.startsWith('  ') && line.trim().isNotEmpty) {
+        } else if (started &&
+            !line.startsWith('  ') &&
+            line.trim().isNotEmpty) {
           break; // the list ended and prose began
         }
         if (started) bullets.add(line);
@@ -428,7 +444,10 @@ void main() {
       for (final file in markdownFiles()) {
         if (p.dirname(file) != 'doc') continue;
         final module = p.join(
-          'lib', 'src', 'tomclient', p.basenameWithoutExtension(file),
+          'lib',
+          'src',
+          'tomclient',
+          p.basenameWithoutExtension(file),
         );
         if (!Directory(module).existsSync()) continue;
         final bullets = dependencyBulletsOf(file);
@@ -455,7 +474,8 @@ void main() {
       expect(
         unrelated,
         isEmpty,
-        reason: 'These documents list a dependency the module has no '
+        reason:
+            'These documents list a dependency the module has no '
             'relationship with, so a reader who acts on the line acts on '
             'nothing:\n${unrelated.join('\n')}',
       );

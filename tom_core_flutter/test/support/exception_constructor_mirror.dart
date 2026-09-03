@@ -43,10 +43,14 @@ String constructorBody(String source, String name) {
   final close = source.indexOf(RegExp(r'^\}?\)', multiLine: true), open);
   // The declaration sites are indented, the summary's code fence is not, so
   // match either and take whichever terminator comes first.
-  final closeIndented = source.indexOf(RegExp(r'^\s+\}?\)', multiLine: true), open);
-  final end = [close, closeIndented].where((i) => i >= 0).reduce(
-        (a, b) => a < b ? a : b,
-      );
+  final closeIndented = source.indexOf(
+    RegExp(r'^\s+\}?\)', multiLine: true),
+    open,
+  );
+  final end = [
+    close,
+    closeIndented,
+  ].where((i) => i >= 0).reduce((a, b) => a < b ? a : b);
   return source.substring(open, end);
 }
 
@@ -129,9 +133,10 @@ List<String> exceptionClassesIn(Iterable<String> sourcePaths) {
   final names = <String>[];
   for (final path in sourcePaths) {
     final source = File(path).readAsStringSync();
-    for (final match
-        in RegExp(r'^class (\w+Exception) extends \w+', multiLine: true)
-            .allMatches(source)) {
+    for (final match in RegExp(
+      r'^class (\w+Exception) extends \w+',
+      multiLine: true,
+    ).allMatches(source)) {
       names.add(match.group(1)!);
     }
   }
@@ -150,7 +155,8 @@ void expectSummaryListsForwardedParameters({
     expect(
       parseParameters(constructorBody(summary, className)).keys,
       parseParameters(constructorBodyFrom(sourcePaths, className)).keys,
-      reason: '$className\'s summary block lists different parameters, or lists '
+      reason:
+          '$className\'s summary block lists different parameters, or lists '
           'them in a different order, than the source forwards',
     );
   }

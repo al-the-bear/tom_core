@@ -213,14 +213,19 @@ void main() {
     for (final variant in ['flutter_io', 'neutral', 'web']) {
       final path = 'lib/src/tomclient/runtime/platform_detection_$variant.dart';
       final source = File(path).readAsStringSync();
-      final declared = RegExp(r'^class (\w+)', multiLine: true)
-          .firstMatch(source)
-          ?.group(1);
-      final rendered = RegExp(r'String toString\(\) => "([^"]*)"')
-          .firstMatch(source)
-          ?.group(1);
+      final declared = RegExp(
+        r'^class (\w+)',
+        multiLine: true,
+      ).firstMatch(source)?.group(1);
+      final rendered = RegExp(
+        r'String toString\(\) => "([^"]*)"',
+      ).firstMatch(source)?.group(1);
       expect(declared, isNotNull, reason: '$path declares no class');
-      expect(rendered, isNotNull, reason: '$path has no single-literal toString');
+      expect(
+        rendered,
+        isNotNull,
+        reason: '$path has no single-literal toString',
+      );
       expect(
         rendered,
         startsWith('$declared: '),
@@ -270,7 +275,8 @@ void main() {
       expect(
         inherited[method],
         isNotNull,
-        reason: 'TomFallbackPlatformUtils no longer declares $method; the '
+        reason:
+            'TomFallbackPlatformUtils no longer declares $method; the '
             'variants inherit it and the summary describes it',
       );
     }
@@ -382,14 +388,16 @@ void main() {
         contains(
           "export 'src/tomclient/runtime/platform_detection_client.dart';",
         ),
-        reason: 'the runtime module is no longer exported through its entry '
+        reason:
+            'the runtime module is no longer exported through its entry '
             'point; the documented surface has to be re-derived',
       );
       for (final variant in ['flutter_io', 'neutral', 'web']) {
         expect(
           barrel,
           isNot(contains('platform_detection_$variant.dart')),
-          reason: 'the barrel now reaches past the entry point into the '
+          reason:
+              'the barrel now reaches past the entry point into the '
               '$variant variant; its symbols became public',
         );
       }
@@ -405,7 +413,8 @@ void main() {
       expect(
         RegExp(r'^\s*export\s', multiLine: true).hasMatch(entry),
         isFalse,
-        reason: 'the entry point now re-exports the selected variant; the '
+        reason:
+            'the entry point now re-exports the selected variant; the '
             'documents call its symbols internal and need revisiting',
       );
     });
@@ -424,7 +433,8 @@ void main() {
       expect(
         importPath,
         isNotNull,
-        reason: 'this suite no longer imports the variant directly; the '
+        reason:
+            'this suite no longer imports the variant directly; the '
             'documented path has nothing left to match',
       );
 
@@ -434,7 +444,8 @@ void main() {
       expect(
         summary,
         contains(importPath!),
-        reason: 'the API summary does not give the import path a test needs '
+        reason:
+            'the API summary does not give the import path a test needs '
             'for the symbols the barrel withholds',
       );
       for (final symbol in [
@@ -484,7 +495,8 @@ void main() {
           expect(
             qualified.hasMatch(line),
             isTrue,
-            reason: '$path:${i + 1} lists a symbol the barrel withholds as '
+            reason:
+                '$path:${i + 1} lists a symbol the barrel withholds as '
                 'though it were part of the exported surface:\n  $line',
           );
         }
@@ -512,7 +524,8 @@ void main() {
           r'public API',
         ).hasMatch(runtimeDoc),
         isTrue,
-        reason: 'doc/runtime.md no longer says the hook is outside the '
+        reason:
+            'doc/runtime.md no longer says the hook is outside the '
             'exported surface; it and the API summary would disagree',
       );
     });
@@ -544,7 +557,8 @@ void main() {
       expect(
         byName.values.every((byVariant) => byVariant.length == variants.length),
         isTrue,
-        reason: 'a member is not overridden in all three variants; the '
+        reason:
+            'a member is not overridden in all three variants; the '
             'document describes a set where every member is',
       );
       return byName;
@@ -561,7 +575,9 @@ void main() {
 
     /// The sentence in [path] that enumerates the per-variant differences.
     String differenceSentence(String path) {
-      final text = File(path).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+      final text = File(
+        path,
+      ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
       final sentence = RegExp(r'differ in [^.]*\.').firstMatch(text)?.group(0);
       expect(
         sentence,
@@ -592,7 +608,8 @@ void main() {
             // happens to contain it, and silently pass a document that never
             // mentions the member.
             matches(RegExp(r'\b' + name + r'\b')),
-            reason: '$path: `$name` differs between the variants but is not '
+            reason:
+                '$path: `$name` differs between the variants but is not '
                 'listed among the differences',
           );
         }
@@ -600,7 +617,8 @@ void main() {
           expect(
             sentence,
             isNot(matches(RegExp(r'\b' + name + r'\b'))),
-            reason: '$path: `$name` is identical in all three variants but is '
+            reason:
+                '$path: `$name` is identical in all three variants but is '
                 'listed as a per-variant difference',
           );
         }
@@ -616,9 +634,27 @@ void main() {
       // Spelled out, because that is how the documents write it, and the point
       // of the check is that the sentence a reader sees agrees with the source.
       const words = [
-        'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
-        'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
-        'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
+        'zero',
+        'one',
+        'two',
+        'three',
+        'four',
+        'five',
+        'six',
+        'seven',
+        'eight',
+        'nine',
+        'ten',
+        'eleven',
+        'twelve',
+        'thirteen',
+        'fourteen',
+        'fifteen',
+        'sixteen',
+        'seventeen',
+        'eighteen',
+        'nineteen',
+        'twenty',
       ];
       expect(
         members.length,
@@ -632,17 +668,21 @@ void main() {
       // from fifteen to thirteen at the same moment as it took the duplicate
       // count from eleven to nine.
       for (final path in documents) {
-        final text = File(path).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+        final text = File(
+          path,
+        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
         expect(
           text,
           contains('${words[members.length]} members'),
-          reason: '$path: each variant overrides ${members.length} members; '
+          reason:
+              '$path: each variant overrides ${members.length} members; '
               'the document states another number',
         );
         expect(
           text,
           contains('${words[shared]} members'),
-          reason: '$path: the sources duplicate $shared members verbatim '
+          reason:
+              '$path: the sources duplicate $shared members verbatim '
               'across the three variants; the document states another number',
         );
       }
@@ -659,13 +699,16 @@ void main() {
       // different forms, `=> print(s);` here against `{ print(s); }` there, so
       // only a comparison that reduces both to their expression sees it.
       final base = File.fromUri(
-        packageLibUri('tom_basics').resolve('src/runtime/platform_neutral.dart'),
+        packageLibUri(
+          'tom_basics',
+        ).resolve('src/runtime/platform_neutral.dart'),
       ).readAsStringSync();
       final inherited = overrideBodies(base, 'TomFallbackPlatformUtils');
       expect(
         inherited,
         isNotEmpty,
-        reason: 'no members were read out of TomFallbackPlatformUtils; the '
+        reason:
+            'no members were read out of TomFallbackPlatformUtils; the '
             'comparison below would pass by finding nothing to compare',
       );
 
@@ -677,7 +720,8 @@ void main() {
           expect(
             body,
             isNot(equals(inherited[name])),
-            reason: '$variant overrides `$name` with the body it already '
+            reason:
+                '$variant overrides `$name` with the body it already '
                 'inherits from TomFallbackPlatformUtils; delete the override',
           );
         });
@@ -719,7 +763,8 @@ void main() {
       expect(
         error,
         isNot(isA<UnimplementedError>()),
-        reason: 'UnimplementedError says the operation is still to be written; '
+        reason:
+            'UnimplementedError says the operation is still to be written; '
             'this one is permanently unavailable on such a target',
       );
     });
@@ -760,10 +805,13 @@ void main() {
         expect(
           row,
           hasLength(1),
-          reason: '$path has no single variant-table row saying the neutral '
+          reason:
+              '$path has no single variant-table row saying the neutral '
               'fallback throws',
         );
-        final named = RegExp(r'throws `(\w+)`').firstMatch(row.single)?.group(1);
+        final named = RegExp(
+          r'throws `(\w+)`',
+        ).firstMatch(row.single)?.group(1);
         expect(
           named,
           thrown,
@@ -794,7 +842,8 @@ void main() {
       expect(
         identical(first, second),
         isFalse,
-        reason: 'the getter returned the same object twice; it has started '
+        reason:
+            'the getter returned the same object twice; it has started '
             'caching, and both documents still describe a fresh instance '
             'per read',
       );
@@ -810,9 +859,7 @@ void main() {
       // exactly why which of the two it is belongs in a test rather than in a
       // reader's assumption.
       final alreadyRegistered = TomPlatformUtils.current;
-      addTearDown(
-        () => TomPlatformUtils.setCurrentPlatform(alreadyRegistered),
-      );
+      addTearDown(() => TomPlatformUtils.setCurrentPlatform(alreadyRegistered));
 
       final atStartup = clientPlatformUtils;
       TomPlatformUtils.setCurrentPlatform(atStartup);
@@ -820,7 +867,8 @@ void main() {
       expect(
         clientPlatformUtils,
         isNot(same(atStartup)),
-        reason: 'a later read now yields the registered instance; code that '
+        reason:
+            'a later read now yields the registered instance; code that '
             'compares platform-utils identities changes meaning',
       );
     });
@@ -850,7 +898,8 @@ void main() {
       expect(
         utils.getTomEnvVars()[key],
         sentinel,
-        reason: 'getTomEnvVars no longer exposes the shared map, so the '
+        reason:
+            'getTomEnvVars no longer exposes the shared map, so the '
             'overwrite says nothing about what a second construction does',
       );
 
@@ -858,7 +907,8 @@ void main() {
       expect(
         reconstructed.getTomEnvVars()[key],
         real,
-        reason: 'constructing the utils a second time did not re-import the '
+        reason:
+            'constructing the utils a second time did not re-import the '
             'process environment; the getter is no longer doing the work '
             'per read',
       );
@@ -909,7 +959,8 @@ void main() {
       expect(
         printed,
         contains('$defaultTargetPlatform'),
-        reason: 'the example prints platform predicates without naming the '
+        reason:
+            'the example prints platform predicates without naming the '
             'Flutter target that decided them; on a desktop host the answer '
             'reads as a bug in the module',
       );
@@ -934,7 +985,8 @@ void main() {
       expect(
         reported!.group(1),
         '$targetIsMobile',
-        reason: 'the example reports isMobile=${reported.group(1)} while the '
+        reason:
+            'the example reports isMobile=${reported.group(1)} while the '
             'target it prints, $defaultTargetPlatform, says otherwise',
       );
     });
@@ -949,7 +1001,8 @@ void main() {
       expect(
         exampleOutput(),
         contains('${client.runtimeType}'),
-        reason: 'the example never obtains an HTTP client, so the member the '
+        reason:
+            'the example never obtains an HTTP client, so the member the '
             'module document opens with is demonstrated nowhere executable',
       );
     });

@@ -55,8 +55,8 @@ String sourceWithoutComments(String source) {
 /// Whether [file] *declares* [className]'s constructor `const` — as code, not
 /// as prose in a comment.
 bool declaresConstConstructor(String file, String className) => RegExp(
-      '\\bconst\\s+$className\\s*\\(',
-    ).hasMatch(sourceWithoutComments(File(file).readAsStringSync()));
+  '\\bconst\\s+$className\\s*\\(',
+).hasMatch(sourceWithoutComments(File(file).readAsStringSync()));
 
 /// The contents of [markdown]'s fenced ` ```dart ` blocks, joined.
 ///
@@ -64,25 +64,27 @@ bool declaresConstConstructor(String file, String className) => RegExp(
 /// around one. Reading only the fences is what lets the prose quote the very
 /// expression a check is looking for without the check mistaking the warning
 /// for the thing warned about.
-String fencedDartOf(String markdown) =>
-    RegExp(r'```dart\n([\s\S]*?)```', multiLine: true)
-        .allMatches(markdown)
-        .map((m) => m.group(1)!)
-        .join('\n');
+String fencedDartOf(String markdown) => RegExp(
+  r'```dart\n([\s\S]*?)```',
+  multiLine: true,
+).allMatches(markdown).map((m) => m.group(1)!).join('\n');
 
 /// Whether the API summary at [summaryPath] *states* [className]'s constructor
 /// `const`, judged by its signature blocks alone.
 bool summaryDeclaresConstConstructor(String summaryPath, String className) =>
-    RegExp('\\bconst\\s+$className\\s*\\(')
-        .hasMatch(fencedDartOf(File(summaryPath).readAsStringSync()));
+    RegExp(
+      '\\bconst\\s+$className\\s*\\(',
+    ).hasMatch(fencedDartOf(File(summaryPath).readAsStringSync()));
 
 /// The public member names [file] declares at class level.
 Set<String> publicMembersOf(String file) {
   // `(?! )` pins the match to exactly one indent level — a class member.
   // Without it the character class swallows the deeper indentation of a method
   // body and every local variable reads as a member.
-  return RegExp(r'^  (?! )(?:final |const )?[\w<>?, ]*\b(\w+)\s*[(;=]',
-          multiLine: true)
+  return RegExp(
+        r'^  (?! )(?:final |const )?[\w<>?, ]*\b(\w+)\s*[(;=]',
+        multiLine: true,
+      )
       .allMatches(sourceWithoutComments(File(file).readAsStringSync()))
       .map((m) => m.group(1)!)
       .where((name) => !name.startsWith('_'))
@@ -111,7 +113,8 @@ void expectVariantsAgreeOnConst({
   expect(
     choices,
     hasLength(1),
-    reason: 'a `const $className(...)` expression must compile on every target '
+    reason:
+        'a `const $className(...)` expression must compile on every target '
         'or on none, and these variants disagree: '
         '${choices[true] ?? const []} declare it const, '
         '${choices[false] ?? const []} do not',
@@ -129,7 +132,8 @@ void expectVariantsDeclareSameMembers(Iterable<String> variantPaths) {
     expect(
       publicMembersOf(path),
       publicMembersOf(reference),
-      reason: 'the variants are interchangeable by name, so a member present '
+      reason:
+          'the variants are interchangeable by name, so a member present '
           'on one and absent on another is a compile error waiting for a '
           'platform switch ($path vs $reference)',
     );

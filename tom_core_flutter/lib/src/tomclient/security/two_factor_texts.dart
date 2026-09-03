@@ -83,7 +83,8 @@ class Tom2FATexts {
   static const String totpEnrolSubmit = '$scope.totp.enrol.submit';
 
   /// Label of the field that answers a TOTP challenge.
-  static const String totpChallengeCodeLabel = '$scope.totp.challenge.codeLabel';
+  static const String totpChallengeCodeLabel =
+      '$scope.totp.challenge.codeLabel';
 
   /// Label of the challenge panel's submit button.
   static const String totpChallengeSubmit = '$scope.totp.challenge.submit';

@@ -72,15 +72,13 @@ class TomTotp2FAClientMechanism extends Tom2FAClientMechanism {
   Widget buildEnrolmentPanel(
     BuildContext context,
     Tom2FAEnrolmentPanelContext data,
-  ) =>
-      _TotpEnrolmentPanel(data: data);
+  ) => _TotpEnrolmentPanel(data: data);
 
   @override
   Widget buildChallengePanel(
     BuildContext context,
     Tom2FAChallengePanelContext data,
-  ) =>
-      _TotpChallengePanel(data: data);
+  ) => _TotpChallengePanel(data: data);
 
   /// The code width declared in [clientData], or the RFC's six.
   ///
@@ -145,8 +143,7 @@ class _TotpEnrolmentPanelState extends State<_TotpEnrolmentPanel> {
     return raw is String ? raw : '';
   }
 
-  int get _digits =>
-      TomTotp2FAClientMechanism.digitsOf(widget.data.clientData);
+  int get _digits => TomTotp2FAClientMechanism.digitsOf(widget.data.clientData);
 
   @override
   Widget build(BuildContext context) {
@@ -233,8 +230,7 @@ class _TotpChallengePanelState extends State<_TotpChallengePanel> {
   @override
   Widget build(BuildContext context) {
     final busy = widget.data.busy;
-    final digits =
-        TomTotp2FAClientMechanism.digitsOf(widget.data.clientData);
+    final digits = TomTotp2FAClientMechanism.digitsOf(widget.data.clientData);
     return Column(
       key: const Key('tom-2fa-totp-challenge'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -255,8 +251,9 @@ class _TotpChallengePanelState extends State<_TotpChallengePanel> {
         TomFilledButton(
           key: const Key('tom-2fa-totp-challenge-submit'),
           onPressed: busy ? null : () => widget.data.onSubmit(_code.text),
-          child:
-              TomText(text: Tom2FATexts.text(Tom2FATexts.totpChallengeSubmit)),
+          child: TomText(
+            text: Tom2FATexts.text(Tom2FATexts.totpChallengeSubmit),
+          ),
         ),
       ],
     );

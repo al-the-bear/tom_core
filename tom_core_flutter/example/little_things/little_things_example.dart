@@ -46,7 +46,10 @@ class _RecordingLogOutput extends TomLogOutput {
 
 void run() {
   // Example 1: a user-facing error carries a presentable message.
-  final uiError = TomClientUIException('login.failed', 'Could not sign you in.');
+  final uiError = TomClientUIException(
+    'login.failed',
+    'Could not sign you in.',
+  );
   print('ui error: ${uiError.key} -> ${uiError.defaultUserMessage}');
 
   // Example 2: an internal client error that should not be shown verbatim.
@@ -56,13 +59,19 @@ void run() {
   // Example 3: surface presentable errors, wrap the rest.
   TomClientUIException surface(TomException e) {
     if (e is TomClientUIException) return e;
-    return TomClientUIException('app.error', 'Unexpected error', rootException: e);
+    return TomClientUIException(
+      'app.error',
+      'Unexpected error',
+      rootException: e,
+    );
   }
 
   final surfacedUi = surface(uiError);
   final surfacedInternal = surface(internal);
   print('surfaced ui identical: ${identical(surfacedUi, uiError)}');
-  print('surfaced internal wraps root: ${surfacedInternal.rootException == internal}');
+  print(
+    'surfaced internal wraps root: ${surfacedInternal.rootException == internal}',
+  );
 
   // Example 4: the client exceptions forward the kernel's diagnostic payload —
   // `parameters` for context that must not reach the user, and `stack` for a
@@ -102,14 +111,18 @@ void run() {
     tomLog.logOutput = previousOutput;
   }
   print('autoLog off — records written on construction: $quietCount');
-  print('autoLog on  — records written on construction: '
-      '${recorder.messages.length}');
+  print(
+    'autoLog on  — records written on construction: '
+    '${recorder.messages.length}',
+  );
   for (final message in recorder.messages) {
     // First line only: the stack-trace record runs to many frames.
     print('  ${message.split('\n').first}');
   }
-  print('both records carry ${logged.uuid}, so a trace can be joined back to '
-      'the failure it came from');
+  print(
+    'both records carry ${logged.uuid}, so a trace can be joined back to '
+    'the failure it came from',
+  );
 
   // Example 6: discriminating with `on` clauses rather than an `is` check.
   //
@@ -146,8 +159,10 @@ void run() {
     }
   }
 
-  print('routeGeneralOnly(ui) -> ${routeGeneralOnly(uiError)} '
-      '(the presentable message was swallowed)');
+  print(
+    'routeGeneralOnly(ui) -> ${routeGeneralOnly(uiError)} '
+    '(the presentable message was swallowed)',
+  );
 
   // Example 7: wrapping a lower-layer failure at a boundary.
   //
@@ -170,7 +185,9 @@ void run() {
 
   final unavailable = loadTasks();
   print('wrapped: ${unavailable.key} -> ${unavailable.defaultUserMessage}');
-  print('cause preserved: ${identical(unavailable.rootException, serverFailure)}');
+  print(
+    'cause preserved: ${identical(unavailable.rootException, serverFailure)}',
+  );
 
   // Assertions
   assert(internal is! TomClientUIException);

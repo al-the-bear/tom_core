@@ -64,9 +64,7 @@ class TomFileClientConfigurationStore extends TomClientConfigurationStore {
         parameters: {'path': path},
       );
     }
-    return {
-      for (final entry in decoded.entries) '${entry.key}': entry.value,
-    };
+    return {for (final entry in decoded.entries) '${entry.key}': entry.value};
   }
 
   @override

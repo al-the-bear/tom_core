@@ -188,8 +188,9 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
     // Only mechanisms this build can actually render: a server upgraded ahead
     // of its clients offers keys we have no panel for, and listing one would
     // strand the user on a blank step they cannot back out of.
-    final renderable =
-        enrolment.offeredTypes.where(Tom2FAClientRegistry.has).toList();
+    final renderable = enrolment.offeredTypes
+        .where(Tom2FAClientRegistry.has)
+        .toList();
 
     if (renderable.isEmpty) {
       return _frame(
@@ -240,7 +241,9 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
       titleText: Tom2FATexts.text(descriptor.displayNameKey),
       subtitle: TomText(text: Tom2FATexts.text(descriptor.descriptionKey)),
       enabled: !_busy,
-      onTap: _busy ? null : () => _run(() => widget.controller.chooseMethod(type)),
+      onTap: _busy
+          ? null
+          : () => _run(() => widget.controller.chooseMethod(type)),
     );
   }
 
@@ -378,7 +381,9 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
           const SizedBox(height: 12),
           TomTextButton(
             key: const Key('tom-2fa-skip'),
-            onPressed: _busy ? null : () => _run(widget.controller.skipEnrolment),
+            onPressed: _busy
+                ? null
+                : () => _run(widget.controller.skipEnrolment),
             child: TomText(text: Tom2FATexts.text(Tom2FATexts.skip)),
           ),
           if (enrolment.skipSpendsGrace)
@@ -399,12 +404,12 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
   }
 
   Widget _attemptsLine(int remaining) => TomText(
-        key: const Key('tom-2fa-attempts'),
-        text: Tom2FATexts.textWith(
-          Tom2FATexts.attemptsRemaining,
-          'count',
-          remaining,
-        ),
-        style: Theme.of(context).textTheme.bodySmall,
-      );
+    key: const Key('tom-2fa-attempts'),
+    text: Tom2FATexts.textWith(
+      Tom2FATexts.attemptsRemaining,
+      'count',
+      remaining,
+    ),
+    style: Theme.of(context).textTheme.bodySmall,
+  );
 }

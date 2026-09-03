@@ -38,8 +38,10 @@ void run() {
   final retries = TomIntProperty('app.retries');
   final ratio = TomDoubleProperty('app.ratio');
   final flag = TomBoolProperty('app.flag');
-  print('title=${~title} retries=${retries.get()} '
-      'ratio=${~ratio} flag=${~flag}');
+  print(
+    'title=${~title} retries=${retries.get()} '
+    'ratio=${~ratio} flag=${~flag}',
+  );
 
   // Example 2: a default fills in when the key is absent.
   final timeout = TomIntProperty.withDefault('app.timeout', 30);

@@ -33,7 +33,11 @@ void main() {
   /// The `## Target Modules` section, up to the horizontal rule that ends it.
   String targetModulesSection() {
     final start = guide.indexOf('## Target Modules');
-    expect(start, isNot(-1), reason: '$guidePath has no Target Modules section');
+    expect(
+      start,
+      isNot(-1),
+      reason: '$guidePath has no Target Modules section',
+    );
     final end = guide.indexOf('\n---', start);
     return guide.substring(start, end == -1 ? guide.length : end);
   }
@@ -42,14 +46,15 @@ void main() {
     // The table's own caption is "keep in sync with the folder", so it states
     // the contract this asserts. It is the inventory a reader meets first, and
     // the one that named `forms/` for four weeks after `forms/` was deleted.
-    final tabled = RegExp(r'^\| `([a-z_]+)/` \|', multiLine: true)
-        .allMatches(targetModulesSection())
-        .map((m) => m.group(1)!)
-        .toSet();
+    final tabled = RegExp(
+      r'^\| `([a-z_]+)/` \|',
+      multiLine: true,
+    ).allMatches(targetModulesSection()).map((m) => m.group(1)!).toSet();
     expect(
       tabled,
       liveModules(),
-      reason: 'the Target Modules table in $guidePath must list exactly the '
+      reason:
+          'the Target Modules table in $guidePath must list exactly the '
           'directories under lib/src/tomclient/',
     );
   });
@@ -61,15 +66,15 @@ void main() {
     // that no longer exists is therefore history and correct. A live module
     // with no entry is the fault — it reads as never having been visited,
     // which is what `configuration` read as until tcinc1111.
-    final listed = RegExp(r'Per-module pass — `([a-z_]+)/`')
-        .allMatches(guide)
-        .map((m) => m.group(1)!)
-        .toSet();
+    final listed = RegExp(
+      r'Per-module pass — `([a-z_]+)/`',
+    ).allMatches(guide).map((m) => m.group(1)!).toSet();
     final missing = liveModules().difference(listed);
     expect(
       missing,
       isEmpty,
-      reason: 'these modules exist but no per-module checklist step in '
+      reason:
+          'these modules exist but no per-module checklist step in '
           '$guidePath mentions them, so they read as unvisited: $missing',
     );
   });
@@ -84,7 +89,8 @@ void main() {
     expect(
       expected,
       isNotNull,
-      reason: 'no spelled-out form for ${liveModules().length} modules — extend '
+      reason:
+          'no spelled-out form for ${liveModules().length} modules — extend '
           '_numberWords',
     );
     final claimed = RegExp(
@@ -93,7 +99,8 @@ void main() {
     expect(
       claimed,
       anyOf(isEmpty, equals({expected})),
-      reason: 'a bolded number in $guidePath is a claim about the package as '
+      reason:
+          'a bolded number in $guidePath is a claim about the package as '
           'it is now, and there are ${liveModules().length} modules. Either '
           'correct it to "$expected", or — if it is a historical figure — '
           'unbold it and anchor it to its date, as "six at OT2" is.',
@@ -109,10 +116,10 @@ void main() {
     // Anchored to the line start, so a *commented-out* export does not count
     // as one — which is how a module most plausibly drops out of the barrel,
     // and which an unanchored pattern reads as still present.
-    final exported = RegExp(r"^export 'src/tomclient/([a-z_]+)/", multiLine: true)
-        .allMatches(barrel)
-        .map((m) => m.group(1)!)
-        .toSet();
+    final exported = RegExp(
+      r"^export 'src/tomclient/([a-z_]+)/",
+      multiLine: true,
+    ).allMatches(barrel).map((m) => m.group(1)!).toSet();
     expect(
       exported,
       liveModules(),
@@ -143,7 +150,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'every module ships a readme, a doc page, an API summary, an '
+      reason:
+          'every module ships a readme, a doc page, an API summary, an '
           'example folder and a suite; these are missing:\n'
           '${offenders.join('\n')}',
     );
@@ -165,11 +173,11 @@ void main() {
       if (!name.endsWith('.md') || _nonModuleDocs.contains(name)) continue;
       check('doc/$name', name.substring(0, name.length - 3));
     }
-    for (final file
-        in Directory('doc/api_reference').listSync().whereType<File>()) {
+    for (final file in Directory(
+      'doc/api_reference',
+    ).listSync().whereType<File>()) {
       final name = file.uri.pathSegments.last;
-      if (!name.startsWith('api_summary_') ||
-          _nonModuleDocs.contains(name)) {
+      if (!name.startsWith('api_summary_') || _nonModuleDocs.contains(name)) {
         continue;
       }
       check(
@@ -185,17 +193,15 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'these document a module that no longer exists:\n'
+      reason:
+          'these document a module that no longer exists:\n'
           '${offenders.join('\n')}',
     );
   });
 }
 
 /// Documents under `doc/` that describe the package rather than one module.
-const _nonModuleDocs = <String>{
-  'review_findings.md',
-  'api_summary_index.md',
-};
+const _nonModuleDocs = <String>{'review_findings.md', 'api_summary_index.md'};
 
 /// Spelled-out counts, for checking the guide's prose against the folder.
 const _numberWords = <int, String>{

@@ -44,8 +44,7 @@ void main() {
       // The documented capability: a runtime enumerates 2FA adaptors by reading
       // the @TomClient2FAAdaptor metadata off annotated classes. A regression in
       // the @tomReflector registration would make this metadata vanish.
-      final mirror =
-          tomReflector.reflectType(AnnotatedAdaptor) as ClassMirror;
+      final mirror = tomReflector.reflectType(AnnotatedAdaptor) as ClassMirror;
       final adaptors = mirror.metadata.whereType<TomClient2FAAdaptor>();
       expect(adaptors, isNotEmpty);
       expect(adaptors.first.type, 'totp');

@@ -122,7 +122,9 @@ Future<void> run() async {
   // of the old one but keeps the settings — a swap is not a load. So the first
   // store's foreign keys are not deposited into the second, and the second's
   // own are left alone. Call load() to adopt the new store's overrides.
-  final otherStore = TomMemoryClientConfigurationStore({'client.other': 'kept'});
+  final otherStore = TomMemoryClientConfigurationStore({
+    'client.other': 'kept',
+  });
   config.store = otherStore;
   await config.save();
   final swapped = await otherStore.read();
@@ -131,7 +133,9 @@ Future<void> run() async {
   assert(swapped['client.other'] == 'kept'); // its own key survives
   assert(swapped['client.refresh.seconds'] == 15); // this holder's override
 
-  print('field notifications=$darkModeChanges holder notifications=$anyChanges');
+  print(
+    'field notifications=$darkModeChanges holder notifications=$anyChanges',
+  );
 
   config.darkMode.removeObserver(fieldObserver);
   config.removeObserver(holderObserver);

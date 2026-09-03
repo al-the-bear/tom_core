@@ -186,8 +186,7 @@ abstract class Tom2FAClientMechanism {
   /// Only the label and the description are load-bearing. A build with no icon
   /// bundle entry, or no adapter installed, renders the row without a leading
   /// icon and loses nothing else.
-  Tom2FAMethodDescriptor get descriptor =>
-      Tom2FAMethodDescriptor.scoped(type);
+  Tom2FAMethodDescriptor get descriptor => Tom2FAMethodDescriptor.scoped(type);
 }
 
 /// The mechanism catalog the second-factor flow dispatches through.

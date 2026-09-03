@@ -107,10 +107,9 @@ void main() {
           'db': <String, dynamic>{'host': 'localhost'},
         },
       });
-      expect(
-        TomProperty<Map<String, dynamic>>('app.db').get(),
-        {'host': 'localhost'},
-      );
+      expect(TomProperty<Map<String, dynamic>>('app.db').get(), {
+        'host': 'localhost',
+      });
     });
 
     test('a nested path whose leaf is missing is absent, not an error', () {
@@ -147,8 +146,10 @@ void main() {
     test('falls back to the default when the key is absent', () {
       installConfig({});
       expect(TomIntProperty.withDefault('app.retries', 5).get(), 5);
-      expect(TomStringProperty.withDefault('app.title', 'Fallback').get(),
-          'Fallback');
+      expect(
+        TomStringProperty.withDefault('app.title', 'Fallback').get(),
+        'Fallback',
+      );
     });
 
     // Full-surface: every typed subclass exposes a `withDefault` named
@@ -180,14 +181,18 @@ void main() {
 
     test('all four typed subclasses fall back when the key is absent', () {
       installConfig({});
-      expect(TomStringProperty.withDefault('app.title', 'Fallback').get(),
-          'Fallback');
+      expect(
+        TomStringProperty.withDefault('app.title', 'Fallback').get(),
+        'Fallback',
+      );
       expect(TomIntProperty.withDefault('app.retries', 5).get(), 5);
       expect(TomDoubleProperty.withDefault('app.ratio', 1.25).get(), 1.25);
       expect(TomBoolProperty.withDefault('app.flag', true).get(), isTrue);
 
-      expect(~TomStringProperty.withDefault('app.title', 'Fallback'),
-          'Fallback');
+      expect(
+        ~TomStringProperty.withDefault('app.title', 'Fallback'),
+        'Fallback',
+      );
       expect(~TomIntProperty.withDefault('app.retries', 5), 5);
       expect(~TomDoubleProperty.withDefault('app.ratio', 1.25), 1.25);
       expect(~TomBoolProperty.withDefault('app.flag', true), isTrue);
@@ -199,20 +204,22 @@ void main() {
     // construction rather than resolving to anything. The report names both
     // the key and the value that could not be cast, which are the two facts a
     // reader needs to find the offending line in a configuration file.
-    test('a present value of the wrong type throws a descriptive Exception',
-        () {
-      installConfig({'app.title': 'not-an-int'});
-      expect(
-        () => TomIntProperty('app.title'),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            allOf(contains('app.title'), contains('not-an-int')),
+    test(
+      'a present value of the wrong type throws a descriptive Exception',
+      () {
+        installConfig({'app.title': 'not-an-int'});
+        expect(
+          () => TomIntProperty('app.title'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              allOf(contains('app.title'), contains('not-an-int')),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('a default does not rescue a present value of the wrong type', () {
       // The asymmetry a reader is most likely to get wrong: `withDefault`
@@ -263,20 +270,22 @@ void main() {
     // own descriptive one and that it names the key — a report that says only
     // "not configured" leaves the reader to work out which of a config file's
     // properties is the missing one.
-    test('no-default constructor throws the descriptive obligatory-key error',
-        () {
-      installConfig({});
-      expect(
-        () => TomStringProperty('app.missing'),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            allOf(contains('Obligatory'), contains('app.missing')),
+    test(
+      'no-default constructor throws the descriptive obligatory-key error',
+      () {
+        installConfig({});
+        expect(
+          () => TomStringProperty('app.missing'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              allOf(contains('Obligatory'), contains('app.missing')),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('a key configured as null counts as absent', () {
       // `getObjectOrNull` returns null both for a key that was never written
@@ -305,34 +314,36 @@ void main() {
       );
     });
 
-    test('a key configured as null takes the default rather than staying null',
-        () {
-      // The other half of the collapse, and the more surprising half: over a
-      // nullable `T` a caller can write `null` as a deliberate default, but
-      // they cannot write it as a deliberate *value* — a configured `null` is
-      // read as no value at all and the fallback wins. So an explicit `null` in
-      // the config file can never override a non-null default, whatever the
-      // author of that file intended by writing it.
-      installConfig({'app.region': null});
-      expect(
-        TomStringProperty.withDefault('app.region', 'fallback').get(),
-        'fallback',
-      );
-      expect(
-        TomProperty<String?>.withDefault('app.region', 'fallback').get(),
-        'fallback',
-      );
+    test(
+      'a key configured as null takes the default rather than staying null',
+      () {
+        // The other half of the collapse, and the more surprising half: over a
+        // nullable `T` a caller can write `null` as a deliberate default, but
+        // they cannot write it as a deliberate *value* — a configured `null` is
+        // read as no value at all and the fallback wins. So an explicit `null` in
+        // the config file can never override a non-null default, whatever the
+        // author of that file intended by writing it.
+        installConfig({'app.region': null});
+        expect(
+          TomStringProperty.withDefault('app.region', 'fallback').get(),
+          'fallback',
+        );
+        expect(
+          TomProperty<String?>.withDefault('app.region', 'fallback').get(),
+          'fallback',
+        );
 
-      // Nested spelling, same answer — the collapse is in the resolver, not in
-      // the flat-key leg.
-      installConfig({
-        'app': <String, dynamic>{'region': null},
-      });
-      expect(
-        TomStringProperty.withDefault('app.region', 'fallback').get(),
-        'fallback',
-      );
-    });
+        // Nested spelling, same answer — the collapse is in the resolver, not in
+        // the flat-key leg.
+        installConfig({
+          'app': <String, dynamic>{'region': null},
+        });
+        expect(
+          TomStringProperty.withDefault('app.region', 'fallback').get(),
+          'fallback',
+        );
+      },
+    );
 
     test('the provider map is the recourse when the distinction matters', () {
       // The escape hatch the module itself does not offer. `resources` is
@@ -344,17 +355,20 @@ void main() {
       // while every other test in this file still passed.
       installConfig({'app.region': null});
       expect(
-        TomConfigResourceProvider.getAppConfig().resources
-            .containsKey('app.region'),
+        TomConfigResourceProvider.getAppConfig().resources.containsKey(
+          'app.region',
+        ),
         isTrue,
-        reason: 'a key present with a null value is not visible in the map, so '
+        reason:
+            'a key present with a null value is not visible in the map, so '
             'nothing can distinguish it from one that was never written',
       );
 
       installConfig({});
       expect(
-        TomConfigResourceProvider.getAppConfig().resources
-            .containsKey('app.region'),
+        TomConfigResourceProvider.getAppConfig().resources.containsKey(
+          'app.region',
+        ),
         isFalse,
       );
     });
@@ -427,7 +441,8 @@ void main() {
         expect(
           plainTextOf(artefact),
           contains('subclass'),
-          reason: '$artefact no longer points the reader at the typed '
+          reason:
+              '$artefact no longer points the reader at the typed '
               'subclasses, which are the intended form for the four '
               'non-nullable value types',
         );
@@ -442,7 +457,8 @@ void main() {
         expect(
           plainTextOf(artefact),
           contains('nullable'),
-          reason: '$artefact states the subclass recommendation without its '
+          reason:
+              '$artefact states the subclass recommendation without its '
               'exception, so a reader who needs an optional property is told '
               'their only correct option is the one to avoid',
         );
@@ -461,7 +477,8 @@ void main() {
         expect(
           plainTextOf(doc),
           contains(construction),
-          reason: '$doc names the nullable-T exception but does not show it; '
+          reason:
+              '$doc names the nullable-T exception but does not show it; '
               'the qualification is only actionable with the construction '
               'beside it',
         );
@@ -472,7 +489,8 @@ void main() {
       expect(
         region.get(),
         isNull,
-        reason: 'the documents print this construction as the way to hold an '
+        reason:
+            'the documents print this construction as the way to hold an '
             'optional value; it no longer yields the absent value',
       );
     });
@@ -496,17 +514,16 @@ void main() {
     /// point: a message split across adjacent literals is one string in the
     /// log and several in the source, so the search that finds it in one does
     /// not find it in the other.
-    List<String> thrownMessagesOf(String file) =>
-        RegExp('''throw TomPropertyException\\(\\s*'[^']*',\\s*"([^"]*)"''')
-            .allMatches(File(file).readAsStringSync())
-            .map((m) => m[1]!)
-            .toList();
+    List<String> thrownMessagesOf(String file) => RegExp(
+      '''throw TomPropertyException\\(\\s*'[^']*',\\s*"([^"]*)"''',
+    ).allMatches(File(file).readAsStringSync()).map((m) => m[1]!).toList();
 
     /// [text] with runs of whitespace collapsed, so a document may re-wrap a
     /// long line without breaking a match. Code and emphasis markers go too,
     /// leaving the words themselves.
-    String flattened(String text) =>
-        text.replaceAll(RegExp(r'[*`\[\]]'), '').replaceAll(RegExp(r'\s+'), ' ');
+    String flattened(String text) => text
+        .replaceAll(RegExp(r'[*`\[\]]'), '')
+        .replaceAll(RegExp(r'\s+'), ' ');
 
     /// The body of [heading] in [file], up to the next `## `.
     String sectionOf(String file, String heading) {
@@ -533,7 +550,8 @@ void main() {
           expect(
             summaryText,
             contains(flattened(fragment)),
-            reason: '$summary does not carry the wording of a message this '
+            reason:
+                '$summary does not carry the wording of a message this '
                 'module throws, so a reader who greps their log for it finds '
                 'nothing:\n  $message',
           );
@@ -554,7 +572,8 @@ void main() {
       expect(
         rows - 1, // the header row
         thrownMessagesOf(source).length,
-        reason: '$summary documents a different number of failures than '
+        reason:
+            '$summary documents a different number of failures than '
             '$source throws',
       );
     });
@@ -597,7 +616,8 @@ void main() {
       expect(
         provider.reads,
         1,
-        reason: 'the type-mismatch report read the store again to quote the '
+        reason:
+            'the type-mismatch report read the store again to quote the '
             'value it had already been given',
       );
     });
@@ -613,14 +633,10 @@ void main() {
       // `try` down to the single cast, is what makes that true structurally
       // rather than by care.
       TomConfigResourceProvider.setAppConfigProvider(_UnreadableProvider());
-      expect(
-        () => TomStringProperty('app.title'),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => TomStringProperty('app.title'), throwsA(isA<StateError>()));
     });
 
-    test('a second read failing does not replace the type-mismatch report',
-        () {
+    test('a second read failing does not replace the type-mismatch report', () {
       // A map-backed provider always answers, so a description built by
       // reading the value a second time looks harmless. A provider over a
       // file, a remote store or a lazily-decrypted bundle does not have that
@@ -704,8 +720,7 @@ class _UnreadableProvider extends TomConfigResourceProvider {
   bool exists(String s) => throw StateError('configuration is unreadable');
 
   @override
-  Object getObject(String s) =>
-      throw StateError('configuration is unreadable');
+  Object getObject(String s) => throw StateError('configuration is unreadable');
 
   @override
   Object? getObjectOrNull(String s) =>
