@@ -8,13 +8,20 @@
 ///   [RepositoryAppReadStore] is the live query-backed store over the step-14
 ///   `app_db` repository singletons; [InMemoryAppReadStore] is a seeded,
 ///   database-free store for tests.
-/// - [AppReadService] is the pure read logic over an [AppReadStore]: it filters
-///   every listed row through the step-17 [ResourceRoleResolver]
-///   (ownership-or-share → effective [ProjectRole], `null` = invisible) and
-///   projects an item's per-field grades through the step-18 [FieldGradeResolver].
-///   It has no server/zone dependency (only the resolvers' own seams), so the
-///   visibility filter and the field-state matrix are unit-tested directly
-///   against seeded stores — no server, no MariaDB.
+/// - [AppReadService] is the pure read logic over an [AppReadStore]. Every list
+///   endpoint filters against the principal's visible id-set from
+///   [VisibleResourceResolver] (owned ∪ shared, per entity type — the same set
+///   the async `@TomDbScope` pushes to the database, so the service-layer and
+///   database answers cannot diverge), and [AppReadService.resourceRoles]
+///   expands the step-17 [ResourceRoleResolver]'s effective grants down each
+///   containment subtree into the flat `resourceKey → roleName` map the client
+///   grades its own fields from. **Reads never grade a field.** Per-field grades
+///   are a write-time and file-column concern, resolved by the step-18
+///   [FieldGradeResolver] on behalf of [AppWriteService] and
+///   `ItemAttachmentGradeResolver`; [AppReadService] holds no grade resolver at
+///   all. It has no server/zone dependency either (only the resolvers' own
+///   seams), so the visibility filter and the role-map expansion are unit-tested
+///   directly against seeded stores — no server, no MariaDB.
 /// - [AppWriteStore] / [AppWriteService] are the write counterpart (step 20):
 ///   the service gates each mutation by the principal's resolved [ProjectRole]
 ///   (role minimums for create/delete/comment) and, for item writes, enforces

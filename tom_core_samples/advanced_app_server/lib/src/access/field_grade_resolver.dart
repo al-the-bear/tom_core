@@ -1,13 +1,30 @@
 /// Field-level grade resolution: given a principal's effective [ProjectRole]
 /// (from the step-17 resource-access resolver), load that role's
 /// [TomResourceGrant]s and fold them into the per-field [TomAuthState] grades
-/// the client renders each form field through.
+/// the server enforces against.
 ///
 /// This is the app server's **second** authorization layer. The first
 /// (resource access) answers "*may this principal touch this object, and as what
 /// role?*"; this one answers "*for that role, which fields may they see/edit?*"
 /// by resolving each gradable [TodoItem] field key to one of `full` / `read` /
 /// `disabled` / `none`.
+///
+/// These grades are **enforcement, not rendering.**
+/// `AppWriteService._enforceFieldWrites` rejects a write that changes any field
+/// the caller is not `full` on, and `ItemAttachmentGradeResolver` grades an
+/// item's file column the same way for `saveFile` / `openFile` / `describeFile`.
+/// No JSON read endpoint resolves them at all: `AppReadService` holds no
+/// [FieldGradeResolver].
+///
+/// The client never receives them either. Since RCC2 it grades its own form
+/// fields locally, from the flat `resourceKey → roleName` map it fetches once at
+/// login folded against the shared domain's [projectRoleFieldGrades]. So the
+/// matrix exists twice, and the duality is deliberate: the client's copy is
+/// cooperation, this one is the decision. The two must *start* equal —
+/// `advanced_auth_server`'s `grant_matrix_key_consistency_test.dart` pins the
+/// seed SQL to that map offline, so changing a grade on one side alone fails
+/// there — but only this copy moves when an administrator edits a grant, and
+/// only this copy can refuse a tampered client.
 ///
 /// The grant matrix is **data**, owned by the auth server's `auth_db`
 /// `tom_resource_grant` table and managed through the authadmin client. The app
