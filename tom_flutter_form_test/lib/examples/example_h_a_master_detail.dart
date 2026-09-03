@@ -16,10 +16,10 @@ import 'shared/example_scaffold.dart';
 // a master-detail customer editor that:
 //
 //   * Pulls field labels and panel titles from a static resource map
-//     (`example.customer.*`, see `shared/example_resources.dart`)
+//     (`exampleCustomer.*`, see `shared/example_resources.dart`)
 //   * Resolves per-field authorization through a static auth map
-//     (`example.customer.email` is read-only, `example.customer.tier` is
-//     disabled — see `shared/example_authorization.dart`)
+//     (`exampleCustomer.tier` is disabled — see
+//     `shared/example_authorization.dart`)
 //   * Reflows the layout at the 700 px breakpoint:
 //       - The detail pane stacks `phone` + `company` vertically when narrow
 //         and lays them out side-by-side when wide (driven by an

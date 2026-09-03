@@ -1,5 +1,28 @@
 ## Unreleased — cleanup pass
 
+- Fix: the suite is green — `+491 -0`, from `+433 -22`. The 21 scope-id
+  failures are gone because the `examples/` forms no longer spell their ids
+  with a `.`: `example.customer` is now `exampleCustomer`, and likewise for
+  `exampleOrder`, `exampleOrderItem` and `exampleAddress`. A form id is handed
+  to `TomScope.withScope` and joined into the form's `basePath`, so it *is* a
+  scope id, and the kernel refuses one containing the separator that scope
+  paths are joined with — `example.customer` rendered identically to the
+  unrelated chain `example` → `customer`, which is how a form named from data
+  could reach another scope's resources. The `example` prefix therefore moved
+  *inside* the id rather than staying a level above it, and the paths that
+  follow the ids moved with them: `shared/example_resources.dart` now has five
+  prefixed top-level keys where it had one nested `example` key, and the ACL
+  entry in `shared/example_authorization.dart` is keyed `exampleCustomer.tier`.
+  `form_ids_are_usable_scope_ids_test.dart` now holds every id in the package
+  to the rule, by handing it to the kernel rather than by restating it.
+- Fix: the 22nd failure had a cause of its own and is fixed in `tom_flutter_ui`
+  — "Discard all" on a root form blanked the detail pane of any
+  `TomMasterDetailListForm` below it. `TomListForm` rebuilds its sub-forms
+  between `onBeforeClear` and `onAfterReset`, and each step of that rebuild was
+  forwarded to its observers, so the master-detail widget heard that the list
+  had emptied, cleared its selection accordingly, and had nothing to restore it
+  when the rows came back. The rebuild is now one notification, as
+  `TomList.resetWith` already promised its own observers.
 - Documentation: `pubspec.yaml` and `analysis_options.yaml` stripped of their
   `flutter create` scaffolding — 95 lines down to 45 and 33 down to 6. The
   pubspec's `description` said "A new Flutter project."; it now states what the

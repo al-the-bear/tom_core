@@ -406,6 +406,38 @@ void main() {
 
       expect(notifications, greaterThan(0));
     });
+
+    test('a structural reset never reports a length the list is only '
+        'transiently at', () {
+      // `TomList.resetWith` is documented as atomic, and observers of the
+      // list form are entitled to the same guarantee: the sub-forms are torn
+      // down and rebuilt between `onBeforeClear` and `onAfterReset`, and the
+      // half-built states in between are not states the list is ever *in*.
+      //
+      // This is not academic. `TomMasterDetailListForm` clamps its selection
+      // when it hears the list has shrunk past the selected row — correct
+      // behaviour, given a truthful notification. A forwarded notification
+      // from the empty moment inside a reset tells it the list has zero rows,
+      // it drops the selection, and the detail pane goes blank and stays
+      // blank: the rebuilt rows arrive, but nothing restores the selection.
+      // That is what "Discard all" on a root form looked like from the UI.
+      final order = orderWith(['Bolt', 'Nut', 'Washer']);
+      final list = OrderItemListForm()..bind(order.items);
+
+      final observedLengths = <int>[];
+      list >> (_) => observedLengths.add(list.length);
+
+      list.discard();
+
+      expect(
+        observedLengths,
+        isNot(contains(0)),
+        reason: 'the list held three rows before the reset and three after, '
+            'so no observer may be told it held none. Notifications raised '
+            'while the sub-forms are being rebuilt have to be withheld until '
+            'the structure is whole again.',
+      );
+    });
   });
 
   // =========================================================================

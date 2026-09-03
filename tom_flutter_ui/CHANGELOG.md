@@ -2,6 +2,30 @@
 
 ### Fixed
 
+- **A structural reset told observers the list was empty, and
+  `TomMasterDetailListForm` believed it.** `TomListForm` tears its sub-forms
+  down in `onBeforeClear` and rebuilds them one at a time in `onAfterReset`,
+  and the forwarder installed in its constructor turned every one of those
+  steps into a notification of its own — so an observer watching a three-row
+  list through a reset saw the lengths `0, 1, 2, 3`. `TomList.resetWith`
+  guarantees *its* observers a single notification once every element is
+  installed; observers of the list form were getting the half-built states in
+  between, and none of those is a state the list is ever really in.
+
+  The visible symptom was "Discard all". A root form's discard resets every
+  list below it, and `TomMasterDetailListForm` clears its selection when it
+  hears the list has shrunk past the selected row — right for a real removal,
+  wrong for the empty moment inside a reset. The rows came back; the selection
+  did not, and the detail pane stayed blank. Discarding the *nested* form
+  directly never showed it, because that reset lands on a different list than
+  the one holding the selection.
+
+  `onBeforeClear` now mutes the list form and `onAfterReset` unmutes it in a
+  `finally`, so the whole rebuild surfaces as the one notification the reset
+  always claimed to be. Holding the mute across the two callbacks is safe
+  because `TomClass._setListMember` type-checks the entire payload before
+  clearing anything, precisely so a reset that starts, finishes.
+
 - **`tom_observable_state_management.md` Part 5 pointed at a directory deleted
   two refactors ago.** The part header gave its source as
   `lib/src/tomclient/observing/ and lib/src/tomclient/forms/` under

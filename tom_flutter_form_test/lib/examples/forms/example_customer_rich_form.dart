@@ -18,6 +18,13 @@ import '../state/example_state.dart';
 // form classes render natively in both Material and Cupertino — only the
 // `family` parameter passed at construction time changes between the two
 // example screens.
+//
+// Form and list ids are single camelCase segments — `exampleCustomer`, not
+// `example.customer`. A form id is used directly as a scope id, and a scope
+// id may not contain the '.' that scope paths are joined with: an id that
+// forged a path segment would let a form address another scope's resources.
+// The `example` prefix therefore lives inside the id, and the resource keys
+// in `shared/example_resources.dart` are prefixed to match.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -27,7 +34,7 @@ import '../state/example_state.dart';
 class ExampleOrderItemForm extends TomForm<ExampleOrderItem> {
   ExampleOrderItemForm({required FormFieldFamily family})
       : _f = family,
-        super(formId: 'example.orderItem');
+        super(formId: 'exampleOrderItem');
 
   final FormFieldFamily _f;
 
@@ -75,7 +82,7 @@ class ExampleOrderItemListForm
     extends TomListForm<ExampleOrderItem, ExampleOrderItemForm> {
   ExampleOrderItemListForm({required FormFieldFamily family, super.parentForm})
       : super(
-          listId: 'example.orderItem',
+          listId: 'exampleOrderItem',
           formFactory: (_) => ExampleOrderItemForm(family: family),
         );
 
@@ -96,7 +103,7 @@ class ExampleOrderItemListForm
 class ExampleOrderForm extends TomForm<ExampleOrder> {
   ExampleOrderForm({required FormFieldFamily family})
       : _f = family,
-        super(formId: 'example.order');
+        super(formId: 'exampleOrder');
 
   final FormFieldFamily _f;
 
@@ -166,7 +173,7 @@ class ExampleOrderListForm
     extends TomListForm<ExampleOrder, ExampleOrderForm> {
   ExampleOrderListForm({required FormFieldFamily family, super.parentForm})
       : super(
-          listId: 'example.order',
+          listId: 'exampleOrder',
           formFactory: (_) => ExampleOrderForm(family: family),
         );
 
@@ -189,7 +196,7 @@ class ExampleOrderListForm
 class ExampleAddressForm extends TomForm<ExampleAddress> {
   ExampleAddressForm({required FormFieldFamily family})
       : _f = family,
-        super(formId: 'example.address');
+        super(formId: 'exampleAddress');
 
   final FormFieldFamily _f;
 
@@ -234,7 +241,7 @@ class ExampleAddressListForm
     extends TomListForm<ExampleAddress, ExampleAddressForm> {
   ExampleAddressListForm({required FormFieldFamily family, super.parentForm})
       : super(
-          listId: 'example.address',
+          listId: 'exampleAddress',
           formFactory: (_) => ExampleAddressForm(family: family),
         );
 
@@ -264,7 +271,7 @@ class ExampleAddressListForm
 class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
   ExampleCustomerRichForm({required FormFieldFamily family})
       : _f = family,
-        super(formId: 'example.customer');
+        super(formId: 'exampleCustomer');
 
   final FormFieldFamily _f;
 

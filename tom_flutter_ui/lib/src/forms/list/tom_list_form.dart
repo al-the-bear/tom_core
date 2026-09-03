@@ -277,8 +277,26 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// Disposes all current sub-forms so they are not left orphaned after the
   /// list contents are replaced (e.g. when an outer `TomForm.discard()`
   /// writes its snapshot back via `binding.setValues()`).
+  ///
+  /// Also opens the mute that [onAfterReset] closes. `TomList.resetWith` is
+  /// atomic to *its* observers — one notification, after every element is
+  /// installed — and observers of this list-form are owed the same. Without
+  /// the mute they are not: `_forms` is emptied here and refilled one element
+  /// at a time in [onAfterReset], and the forwarder installed in the
+  /// constructor turns each of those steps into a notification, so an
+  /// observer sees the list count up from zero and can act on a length the
+  /// list is never really at. [TomMasterDetailListForm] does act on it — it
+  /// clears its selection when the list shrinks past the selected row, which
+  /// is right for a real removal and wrong for the empty moment inside a
+  /// reset, and leaves the detail pane blank with nothing to restore it.
+  ///
+  /// Holding a mute across two callbacks is safe here because a reset that
+  /// starts, finishes: `TomClass._setListMember` type-checks the whole
+  /// payload before anything is cleared, precisely so the swap cannot fail
+  /// half-done. [onAfterReset] releases in a `finally` regardless.
   @override
   void onBeforeClear(TomList list) {
+    mute();
     for (final f in _forms) {
       f.unbind();
       f.dispose();
@@ -290,17 +308,27 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// installed. Creates and binds fresh sub-forms for every element now in
   /// the list. Resets [_initialOrder] to the new contents so [isDirty] and
   /// [hasStructuralChanges] start from the correct baseline.
+  ///
+  /// Closes the mute [onBeforeClear] opened, which is what turns the whole
+  /// teardown-and-rebuild into the single notification an observer sees. The
+  /// release is in a `finally` so the unbound early return — the one path
+  /// that reaches the end of this method without rebuilding anything —
+  /// cannot leave the list-form permanently silent.
   @override
   void onAfterReset(TomList list) {
-    final binding = _binding;
-    if (binding == null) return;
-    for (var i = 0; i < binding.length; i++) {
-      final form = _instantiate(i);
-      form.bind(binding[i]);
-      _forms.add(form);
+    try {
+      final binding = _binding;
+      if (binding == null) return;
+      for (var i = 0; i < binding.length; i++) {
+        final form = _instantiate(i);
+        form.bind(binding[i]);
+        _forms.add(form);
+      }
+      _initialOrder = List<TItem>.from(binding.toList());
+      notifyObservers();
+    } finally {
+      unmute();
     }
-    _initialOrder = List<TItem>.from(binding.toList());
-    notifyObservers();
   }
 
   // --- Lifecycle propagation ---

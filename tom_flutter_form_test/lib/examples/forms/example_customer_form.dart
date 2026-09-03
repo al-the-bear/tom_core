@@ -9,15 +9,21 @@ import '../../state/phase2a_state.dart';
 /// form class works for both Material and Cupertino — the only difference
 /// between the two example screens is the `family` value passed in here.
 ///
-/// Resource paths follow the `example.customer.*` convention so the static
+/// Resource paths follow the `exampleCustomer.*` convention so the static
 /// resource map in `examples/shared/example_resources.dart` and the static
 /// authorization map in `examples/shared/example_authorization.dart` resolve
 /// labels and per-field auth automatically.
+///
+/// The `example` prefix is part of the id rather than a scope above it
+/// because a form id *is* a scope id, and a scope id may not contain the
+/// '.' that scope paths are joined with — `TomScopeBase(scopeId: 'a.b')`
+/// would otherwise address the same resources as the unrelated chain
+/// 'a' → 'b'.
 @tomReflector
 class ExampleCustomerForm extends TomForm<Customer> {
   ExampleCustomerForm({required FormFieldFamily family})
       : _family = family,
-        super(formId: 'example.customer');
+        super(formId: 'exampleCustomer');
 
   final FormFieldFamily _family;
 
@@ -81,7 +87,7 @@ class ExampleCustomerListForm
     extends TomListForm<Customer, ExampleCustomerForm> {
   ExampleCustomerListForm({required FormFieldFamily family})
       : super(
-          listId: 'example.customer',
+          listId: 'exampleCustomer',
           formFactory: (_) => ExampleCustomerForm(family: family),
         );
 

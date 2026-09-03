@@ -6,9 +6,9 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// Here we use a simple `Map<String, TomAuthState>` lookup so each example
 /// can demonstrate per-resource auth without any backend.
 ///
-/// Key matching uses prefix semantics: looking up `example.customer.email`
+/// Key matching uses prefix semantics: looking up `exampleCustomer.email`
 /// returns the closest registered ancestor — e.g. an entry for
-/// `example.customer.*` covers all customer fields.
+/// `exampleCustomer` covers all customer fields.
 ///
 /// Unknown keys default to [TomAuthState.full].
 class ExampleAuthAdapter implements TomAuthorizationAdapter {
@@ -43,11 +43,15 @@ class ExampleAuthAdapter implements TomAuthorizationAdapter {
 
 /// The static authorization table the Examples section installs at startup.
 ///
-/// - `example.customer.tier`  → disabled (visible but greyed — demonstrates
+/// - `exampleCustomer.tier` → disabled (visible but greyed — demonstrates
 ///   the `disabled` auth state so the examples show a real auth scenario)
-/// - everything else          → fully authorized (default)
+/// - everything else        → fully authorized (default)
+///
+/// The keys are the forms' scope paths, so they follow the form ids in
+/// `examples/forms/`: single camelCase segments, because a form id is a
+/// scope id and a scope id may not contain a '.'.
 final Map<String, TomAuthState> exampleAuthMap = <String, TomAuthState>{
-  'example.customer.tier': TomAuthState.disabled,
+  'exampleCustomer.tier': TomAuthState.disabled,
 };
 
 /// Installs the example authorization adapter as the global adapter.
