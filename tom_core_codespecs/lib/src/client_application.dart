@@ -50,6 +50,6 @@ class TomClientApplication {
     this.entryRoute = '',
     List<String>? screenIds,
     this.serverBaseUrl = '',
-  })  : platforms = platforms ?? <String>[],
-        screenIds = screenIds ?? <String>[];
+  }) : platforms = platforms ?? <String>[],
+       screenIds = screenIds ?? <String>[];
 }

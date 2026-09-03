@@ -392,11 +392,7 @@ class TomReportChart {
     this.seriesColumn,
   }) {
     if (chartId.isEmpty) {
-      throw ArgumentError.value(
-        chartId,
-        'chartId',
-        'A chart must have an id.',
-      );
+      throw ArgumentError.value(chartId, 'chartId', 'A chart must have an id.');
     }
     if (valueColumns.isEmpty) {
       throw ArgumentError.value(
@@ -427,10 +423,10 @@ class TomReportChart {
 
   /// Every column name this chart refers to.
   Iterable<String> get referencedColumns => [
-        categoryColumn,
-        ...valueColumns,
-        ?seriesColumn,
-      ];
+    categoryColumn,
+    ...valueColumns,
+    ?seriesColumn,
+  ];
 
   @override
   String toString() => 'TomReportChart($chartId, ${kind.name})';
@@ -700,14 +696,13 @@ class TomReportResult {
     required TomReportResultSection section,
     List<TomReportChart> charts = const [],
     Map<String, String> metadata = const {},
-  }) =>
-      TomReportResult(
-        reportId: reportId,
-        title: title,
-        sections: [section],
-        charts: charts,
-        metadata: metadata,
-      );
+  }) => TomReportResult(
+    reportId: reportId,
+    title: title,
+    sections: [section],
+    charts: charts,
+    metadata: metadata,
+  );
 
   /// The [TomReportDefinition.reportId] this result came from.
   final String reportId;

@@ -95,8 +95,8 @@ class TomLayoutContainerNode extends TomLayoutNode {
     this.kind = TomLayoutContainerKind.column,
     Map<String, Object?>? properties,
     List<TomLayoutNode>? children,
-  })  : properties = properties ?? <String, Object?>{},
-        children = children ?? <TomLayoutNode>[];
+  }) : properties = properties ?? <String, Object?>{},
+       children = children ?? <TomLayoutNode>[];
 }
 
 /// A leaf node that *places* an element which is defined elsewhere.

@@ -128,8 +128,11 @@ void main() {
       final warnings = model.reconcileWarnings();
       expect(warnings, hasLength(1));
       expect(warnings.single, contains('removed_field'));
-      expect(model.overrides, hasLength(2),
-          reason: 'the delta is reported, never removed');
+      expect(
+        model.overrides,
+        hasLength(2),
+        reason: 'the delta is reported, never removed',
+      );
     });
 
     test('an insert-container delta resolves against its parent id', () {
@@ -152,12 +155,15 @@ void main() {
     });
 
     test('an empty model reports every delta as unresolved', () {
-      final model = TomLayoutModel(layoutId: 'l', overrides: [
-        TomLayoutOverrideDelta(
-          op: TomLayoutDeltaOp.removeContainer,
-          targetNodeId: 'gone',
-        ),
-      ]);
+      final model = TomLayoutModel(
+        layoutId: 'l',
+        overrides: [
+          TomLayoutOverrideDelta(
+            op: TomLayoutDeltaOp.removeContainer,
+            targetNodeId: 'gone',
+          ),
+        ],
+      );
       expect(model.nodeIds, isEmpty);
       expect(model.reconcileWarnings(), hasLength(1));
     });
@@ -173,23 +179,33 @@ void main() {
         TomMessageRole.report,
         TomMessageRole.generic,
       ]);
-      expect(TomMessageCategory.values,
-          [TomMessageCategory.uiCopy, TomMessageCategory.errorCopy]);
+      expect(TomMessageCategory.values, [
+        TomMessageCategory.uiCopy,
+        TomMessageCategory.errorCopy,
+      ]);
     });
 
-    test('a missing per-locale entry falls back to base copy, never the key', () {
-      final registry = TomMessageKeyRegistry(baseLocale: 'en')
-        ..register(TomMessageKey(
-          key: 'app.order.placed',
-          baseCopy: 'Order placed',
-          role: TomMessageRole.notification,
-          category: TomMessageCategory.uiCopy,
-          localeCopy: {'de': 'Bestellung aufgegeben'},
-        ));
-      expect(registry.resolve('app.order.placed', 'de'), 'Bestellung aufgegeben');
-      expect(registry.resolve('app.order.placed', 'fr'), 'Order placed');
-      expect(registry.resolve('app.order.placed', 'en'), 'Order placed');
-    });
+    test(
+      'a missing per-locale entry falls back to base copy, never the key',
+      () {
+        final registry = TomMessageKeyRegistry(baseLocale: 'en')
+          ..register(
+            TomMessageKey(
+              key: 'app.order.placed',
+              baseCopy: 'Order placed',
+              role: TomMessageRole.notification,
+              category: TomMessageCategory.uiCopy,
+              localeCopy: {'de': 'Bestellung aufgegeben'},
+            ),
+          );
+        expect(
+          registry.resolve('app.order.placed', 'de'),
+          'Bestellung aufgegeben',
+        );
+        expect(registry.resolve('app.order.placed', 'fr'), 'Order placed');
+        expect(registry.resolve('app.order.placed', 'en'), 'Order placed');
+      },
+    );
 
     // `codespecs_mapping.md` §5.21: the MSGKR is the closed key vocabulary, so
     // an unresolved key is a generation-time spec error — never a silent
@@ -202,19 +218,23 @@ void main() {
 
     test('registering the same key twice is rejected', () {
       final registry = TomMessageKeyRegistry(baseLocale: 'en')
-        ..register(TomMessageKey(
-          key: 'app.a',
-          baseCopy: 'A',
-          role: TomMessageRole.generic,
-          category: TomMessageCategory.uiCopy,
-        ));
+        ..register(
+          TomMessageKey(
+            key: 'app.a',
+            baseCopy: 'A',
+            role: TomMessageRole.generic,
+            category: TomMessageCategory.uiCopy,
+          ),
+        );
       expect(
-        () => registry.register(TomMessageKey(
-          key: 'app.a',
-          baseCopy: 'A again',
-          role: TomMessageRole.generic,
-          category: TomMessageCategory.uiCopy,
-        )),
+        () => registry.register(
+          TomMessageKey(
+            key: 'app.a',
+            baseCopy: 'A again',
+            role: TomMessageRole.generic,
+            category: TomMessageCategory.uiCopy,
+          ),
+        ),
         throwsArgumentError,
       );
     });
@@ -223,16 +243,20 @@ void main() {
     // namespace — each code has exactly one MSGKR entry.
     test('error copy is keyed by its CE-ER error code', () {
       final registry = TomMessageKeyRegistry(baseLocale: 'en')
-        ..register(TomMessageKey(
-          key: 'app.error.amount.tooLarge',
-          baseCopy: 'Amount may not exceed {max}.',
-          role: TomMessageRole.error,
-          category: TomMessageCategory.errorCopy,
-          errorCode: 'amount.tooLarge',
-          parameters: ['max'],
-        ));
-      expect(registry.forErrorCode('amount.tooLarge')?.key,
-          'app.error.amount.tooLarge');
+        ..register(
+          TomMessageKey(
+            key: 'app.error.amount.tooLarge',
+            baseCopy: 'Amount may not exceed {max}.',
+            role: TomMessageRole.error,
+            category: TomMessageCategory.errorCopy,
+            errorCode: 'amount.tooLarge',
+            parameters: ['max'],
+          ),
+        );
+      expect(
+        registry.forErrorCode('amount.tooLarge')?.key,
+        'app.error.amount.tooLarge',
+      );
       expect(registry.forErrorCode('nope'), isNull);
       expect(registry.keys.single.parameters, ['max']);
     });
@@ -240,23 +264,26 @@ void main() {
     test('an error-copy entry without an error code is rejected', () {
       final registry = TomMessageKeyRegistry(baseLocale: 'en');
       expect(
-        () => registry.register(TomMessageKey(
-          key: 'app.error.loose',
-          baseCopy: 'Something failed',
-          role: TomMessageRole.error,
-          category: TomMessageCategory.errorCopy,
-        )),
+        () => registry.register(
+          TomMessageKey(
+            key: 'app.error.loose',
+            baseCopy: 'Something failed',
+            role: TomMessageRole.error,
+            category: TomMessageCategory.errorCopy,
+          ),
+        ),
         throwsArgumentError,
       );
     });
   });
 
   group('csra2: CE-NV TomRouteRegistry', () {
-    test(
-        'the presentation and outcome sets are the closed '
+    test('the presentation and outcome sets are the closed '
         'codespecs_mapping.md §5.11 sets', () {
-      expect(TomScreenPresentation.values,
-          [TomScreenPresentation.replace, TomScreenPresentation.popup]);
+      expect(TomScreenPresentation.values, [
+        TomScreenPresentation.replace,
+        TomScreenPresentation.popup,
+      ]);
       expect(TomFlowOutcome.values, [
         TomFlowOutcome.success,
         TomFlowOutcome.error,
@@ -280,13 +307,17 @@ void main() {
     test('a form is assigned to a screen as replace or popup overlay', () {
       final registry = TomRouteRegistry()
         ..registerRoute(TomRouteDefinition(routeId: 'payment'))
-        ..assignForm(TomFormScreenAssignment(
-          formId: 'payment_form',
-          routeId: 'payment',
-          presentation: TomScreenPresentation.popup,
-        ));
-      expect(registry.assignmentFor('payment_form')?.presentation,
-          TomScreenPresentation.popup);
+        ..assignForm(
+          TomFormScreenAssignment(
+            formId: 'payment_form',
+            routeId: 'payment',
+            presentation: TomScreenPresentation.popup,
+          ),
+        );
+      expect(
+        registry.assignmentFor('payment_form')?.presentation,
+        TomScreenPresentation.popup,
+      );
       expect(registry.assignmentFor('nope'), isNull);
     });
 
@@ -297,19 +328,23 @@ void main() {
         ..registerRoute(TomRouteDefinition(routeId: 'payment'))
         ..registerRoute(TomRouteDefinition(routeId: 'confirmation'))
         ..registerRoute(TomRouteDefinition(routeId: 'error_display'))
-        ..addFlowEdge(TomScreenFlowEdge(
-          sourceRouteId: 'payment',
-          actionId: 'submit_payment',
-          outcome: TomFlowOutcome.success,
-          targetRouteId: 'confirmation',
-        ))
-        ..addFlowEdge(TomScreenFlowEdge(
-          sourceRouteId: 'payment',
-          actionId: 'submit_payment',
-          outcome: TomFlowOutcome.error,
-          targetRouteId: 'error_display',
-          presentation: TomScreenPresentation.popup,
-        ));
+        ..addFlowEdge(
+          TomScreenFlowEdge(
+            sourceRouteId: 'payment',
+            actionId: 'submit_payment',
+            outcome: TomFlowOutcome.success,
+            targetRouteId: 'confirmation',
+          ),
+        )
+        ..addFlowEdge(
+          TomScreenFlowEdge(
+            sourceRouteId: 'payment',
+            actionId: 'submit_payment',
+            outcome: TomFlowOutcome.error,
+            targetRouteId: 'error_display',
+            presentation: TomScreenPresentation.popup,
+          ),
+        );
       expect(
         registry.targetFor('payment', 'submit_payment', TomFlowOutcome.success),
         'confirmation',
@@ -320,7 +355,10 @@ void main() {
       );
       expect(
         registry.targetFor(
-            'payment', 'submit_payment', TomFlowOutcome.validationError),
+          'payment',
+          'submit_payment',
+          TomFlowOutcome.validationError,
+        ),
         isNull,
       );
     });
@@ -328,17 +366,21 @@ void main() {
     test('edges and assignments naming an unregistered route are reported', () {
       final registry = TomRouteRegistry()
         ..registerRoute(TomRouteDefinition(routeId: 'payment'))
-        ..addFlowEdge(TomScreenFlowEdge(
-          sourceRouteId: 'payment',
-          actionId: 'submit',
-          outcome: TomFlowOutcome.success,
-          targetRouteId: 'ghost',
-        ))
-        ..assignForm(TomFormScreenAssignment(
-          formId: 'f',
-          routeId: 'phantom',
-          presentation: TomScreenPresentation.replace,
-        ));
+        ..addFlowEdge(
+          TomScreenFlowEdge(
+            sourceRouteId: 'payment',
+            actionId: 'submit',
+            outcome: TomFlowOutcome.success,
+            targetRouteId: 'ghost',
+          ),
+        )
+        ..assignForm(
+          TomFormScreenAssignment(
+            formId: 'f',
+            routeId: 'phantom',
+            presentation: TomScreenPresentation.replace,
+          ),
+        );
       final dangling = registry.danglingRouteReferences();
       expect(dangling, containsAll(<String>['ghost', 'phantom']));
       expect(dangling, hasLength(2));
@@ -415,8 +457,10 @@ void main() {
       final job = TomJobDeclaration(jobId: 'j');
       expect(job.environments, isEmpty);
       expect(job.runsIn('prod'), isTrue);
-      expect(TomJobDeclaration(jobId: 'j', environments: ['dev']).runsIn('prod'),
-          isFalse);
+      expect(
+        TomJobDeclaration(jobId: 'j', environments: ['dev']).runsIn('prod'),
+        isFalse,
+      );
     });
 
     test('a disabled job runs nowhere', () {
@@ -496,8 +540,10 @@ void main() {
     // place, so no caller can define it differently.
     test('a mandatory channel makes a type essential', () {
       expect(
-        TomNotificationType(typeId: 't', mandatoryChannelIds: ['email'])
-            .isEssential,
+        TomNotificationType(
+          typeId: 't',
+          mandatoryChannelIds: ['email'],
+        ).isEssential,
         isTrue,
       );
     });
@@ -519,13 +565,12 @@ void main() {
       List<String>? defaults,
       List<String>? mandatory,
       bool configurable = true,
-    }) =>
-        TomNotificationType(
-          typeId: 'order.shipped',
-          defaultChannelIds: defaults ?? ['email', 'push'],
-          mandatoryChannelIds: mandatory ?? const [],
-          userConfigurable: configurable,
-        );
+    }) => TomNotificationType(
+      typeId: 'order.shipped',
+      defaultChannelIds: defaults ?? ['email', 'push'],
+      mandatoryChannelIds: mandatory ?? const [],
+      userConfigurable: configurable,
+    );
 
     test('no preferences yields the declared defaults', () {
       expect(shipped().channelsFor(null), ['email', 'push']);
@@ -545,7 +590,7 @@ void main() {
         globalOptOut: true,
         mutedTypeIds: {'order.shipped'},
         channelsByTypeId: {
-          'order.shipped': ['sms']
+          'order.shipped': ['sms'],
         },
       );
       expect(type.channelsFor(prefs), ['email', 'push']);
@@ -563,10 +608,10 @@ void main() {
       final type = shipped(mandatory: ['email']);
       final muted = TomNotificationPreferences(mutedTypeIds: {'order.shipped'});
       expect(type.channelsFor(muted), ['email', 'push']);
-      expect(
-        type.channelsFor(TomNotificationPreferences(globalOptOut: true)),
-        ['email', 'push'],
-      );
+      expect(type.channelsFor(TomNotificationPreferences(globalOptOut: true)), [
+        'email',
+        'push',
+      ]);
     });
 
     test('a global opt-out silences non-essential types only', () {
@@ -578,75 +623,95 @@ void main() {
     // Rule 4: a recorded selection REPLACES the defaults; no selection keeps
     // them — which is why an empty list must not be conflated with absence.
     test('a recorded selection replaces the defaults', () {
-      final prefs = TomNotificationPreferences(channelsByTypeId: {
-        'order.shipped': ['sms']
-      });
+      final prefs = TomNotificationPreferences(
+        channelsByTypeId: {
+          'order.shipped': ['sms'],
+        },
+      );
       expect(shipped().channelsFor(prefs), ['sms']);
     });
 
     test('an empty selection is a choice, not an absence', () {
-      final prefs = TomNotificationPreferences(channelsByTypeId: {
-        'order.shipped': <String>[]
-      });
+      final prefs = TomNotificationPreferences(
+        channelsByTypeId: {'order.shipped': <String>[]},
+      );
       expect(shipped().channelsFor(prefs), isEmpty);
-      expect(shipped().channelsFor(TomNotificationPreferences()),
-          ['email', 'push'],
-          reason: 'no entry at all falls back to the declared defaults');
+      expect(
+        shipped().channelsFor(TomNotificationPreferences()),
+        ['email', 'push'],
+        reason: 'no entry at all falls back to the declared defaults',
+      );
     });
 
     test('a selection cannot drop a mandatory channel', () {
       final type = shipped(mandatory: ['email']);
-      final prefs = TomNotificationPreferences(channelsByTypeId: {
-        'order.shipped': ['sms']
-      });
+      final prefs = TomNotificationPreferences(
+        channelsByTypeId: {
+          'order.shipped': ['sms'],
+        },
+      );
       expect(type.channelsFor(prefs), ['email', 'sms']);
     });
   });
 
   group('csra7: CE-NT catalogue', () {
     TomNotificationCatalog catalog() => TomNotificationCatalog(
-          channels: [
-            TomNotificationChannelDeclaration(
-                channelId: 'push', fallbackChannelId: 'email'),
-            TomNotificationChannelDeclaration(channelId: 'email'),
-            TomNotificationChannelDeclaration(
-              channelId: 'sms',
-              urgencyLevels: {TomNotificationUrgency.critical},
-            ),
-          ],
-          types: [
-            TomNotificationType(
-              typeId: 'order.shipped',
-              defaultChannelIds: ['email', 'sms'],
-            ),
-          ],
-        );
+      channels: [
+        TomNotificationChannelDeclaration(
+          channelId: 'push',
+          fallbackChannelId: 'email',
+        ),
+        TomNotificationChannelDeclaration(channelId: 'email'),
+        TomNotificationChannelDeclaration(
+          channelId: 'sms',
+          urgencyLevels: {TomNotificationUrgency.critical},
+        ),
+      ],
+      types: [
+        TomNotificationType(
+          typeId: 'order.shipped',
+          defaultChannelIds: ['email', 'sms'],
+        ),
+      ],
+    );
 
     test('a fallback chain includes its own start, nearest first', () {
       expect(catalog().fallbackChainFrom('push'), ['push', 'email']);
     });
 
     test('a declaration cycle terminates instead of hanging', () {
-      final looping = TomNotificationCatalog(channels: [
-        TomNotificationChannelDeclaration(
-            channelId: 'a', fallbackChannelId: 'b'),
-        TomNotificationChannelDeclaration(
-            channelId: 'b', fallbackChannelId: 'a'),
-      ]);
+      final looping = TomNotificationCatalog(
+        channels: [
+          TomNotificationChannelDeclaration(
+            channelId: 'a',
+            fallbackChannelId: 'b',
+          ),
+          TomNotificationChannelDeclaration(
+            channelId: 'b',
+            fallbackChannelId: 'a',
+          ),
+        ],
+      );
       expect(looping.fallbackChainFrom('a'), ['a', 'b']);
     });
 
     // A dangling fallback is a spec defect for the validator to report — not a
     // crash at delivery time.
-    test('an unknown channel id yields an empty chain rather than throwing', () {
-      expect(catalog().fallbackChainFrom('carrier-pigeon'), isEmpty);
-    });
+    test(
+      'an unknown channel id yields an empty chain rather than throwing',
+      () {
+        expect(catalog().fallbackChainFrom('carrier-pigeon'), isEmpty);
+      },
+    );
 
     // The whole CE-NT resolution in one call: type constraints, then user
     // preference, then the channel's own urgency ceiling.
     test('delivery filters out channels that cannot carry the urgency', () {
-      expect(catalog().deliveryChannelsFor('order.shipped', null), ['email'],
-          reason: 'sms only carries critical; the type is medium');
+      expect(
+        catalog().deliveryChannelsFor('order.shipped', null),
+        ['email'],
+        reason: 'sms only carries critical; the type is medium',
+      );
     });
 
     test('a critical type reaches the restricted channel', () {
@@ -673,7 +738,9 @@ void main() {
         channels: [TomNotificationChannelDeclaration(channelId: 'email')],
         types: [
           TomNotificationType(
-              typeId: 't', defaultChannelIds: ['email', 'telegram']),
+            typeId: 't',
+            defaultChannelIds: ['email', 'telegram'],
+          ),
         ],
       );
       expect(dangling.deliveryChannelsFor('t', null), ['email']);
@@ -716,16 +783,19 @@ void main() {
       );
     });
 
-    test('distinct is a modifier on the measure, not a function of its own', () {
-      final m = TomReportMeasure(
-        key: 'customers',
-        function: TomReportMeasureFunction.count,
-        columnName: 'customer_id',
-        distinct: true,
-      );
-      expect(m.distinct, isTrue);
-      expect(m.function, TomReportMeasureFunction.count);
-    });
+    test(
+      'distinct is a modifier on the measure, not a function of its own',
+      () {
+        final m = TomReportMeasure(
+          key: 'customers',
+          function: TomReportMeasureFunction.count,
+          columnName: 'customer_id',
+          distinct: true,
+        );
+        expect(m.distinct, isTrue);
+        expect(m.function, TomReportMeasureFunction.count);
+      },
+    );
   });
 
   group('csra8: CE-RP parameters', () {
@@ -782,61 +852,64 @@ void main() {
       List<TomReportMeasure>? measures,
       List<TomReportColumn>? columns,
       List<TomReportChart> charts = const [],
-    }) =>
-        TomReportDefinition(
-          reportId: 'sales_by_region',
-          sourceEntity: _Order,
-          dimensions: dimensions ??
-              [
-                TomReportDimension(
-                  key: 'region',
-                  columnName: 'customer_region',
-                  valueKind: TomReportValueKind.string,
-                ),
-              ],
-          measures: measures ??
-              [
-                TomReportMeasure(
-                  key: 'revenue',
-                  function: TomReportMeasureFunction.sum,
-                  columnName: 'total',
-                  valueKind: TomReportValueKind.currency,
-                ),
-              ],
-          columns: columns ??
-              [
-                TomReportColumn(
-                  name: 'region',
-                  sourceKey: 'region',
-                  valueKind: TomReportValueKind.string,
-                ),
-                TomReportColumn(
-                  name: 'revenue',
-                  sourceKey: 'revenue',
-                  valueKind: TomReportValueKind.currency,
-                ),
-              ],
-          charts: charts,
-        );
+    }) => TomReportDefinition(
+      reportId: 'sales_by_region',
+      sourceEntity: _Order,
+      dimensions:
+          dimensions ??
+          [
+            TomReportDimension(
+              key: 'region',
+              columnName: 'customer_region',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+      measures:
+          measures ??
+          [
+            TomReportMeasure(
+              key: 'revenue',
+              function: TomReportMeasureFunction.sum,
+              columnName: 'total',
+              valueKind: TomReportValueKind.currency,
+            ),
+          ],
+      columns:
+          columns ??
+          [
+            TomReportColumn(
+              name: 'region',
+              sourceKey: 'region',
+              valueKind: TomReportValueKind.string,
+            ),
+            TomReportColumn(
+              name: 'revenue',
+              sourceKey: 'revenue',
+              valueKind: TomReportValueKind.currency,
+            ),
+          ],
+      charts: charts,
+    );
 
     test('a consistent grouped projection is accepted', () {
       final report = build();
       expect(report.isAggregated, isTrue);
-      expect(report.deliveryChannels,
-          [TomReportDeliveryChannel.apiResponse]);
+      expect(report.deliveryChannels, [TomReportDeliveryChannel.apiResponse]);
     });
 
     // The load-bearing invariant: a column displays a dimension or a measure,
     // it never introduces data of its own.
     test('a column displaying an undeclared key is rejected', () {
       expect(
-        () => build(columns: [
-          TomReportColumn(
-            name: 'margin',
-            sourceKey: 'margin',
-            valueKind: TomReportValueKind.decimal,
-          ),
-        ]),
+        () => build(
+          columns: [
+            TomReportColumn(
+              name: 'margin',
+              sourceKey: 'margin',
+              valueKind: TomReportValueKind.decimal,
+            ),
+          ],
+        ),
         throwsArgumentError,
       );
     });
@@ -857,14 +930,16 @@ void main() {
 
     test('a chart plotting an unprojected column is rejected', () {
       expect(
-        () => build(charts: [
-          TomReportChart(
-            chartId: 'trend',
-            kind: TomReportChartKind.line,
-            categoryColumn: 'quarter',
-            valueColumns: ['revenue'],
-          ),
-        ]),
+        () => build(
+          charts: [
+            TomReportChart(
+              chartId: 'trend',
+              kind: TomReportChartKind.line,
+              categoryColumn: 'quarter',
+              valueColumns: ['revenue'],
+            ),
+          ],
+        ),
         throwsArgumentError,
       );
     });
@@ -894,18 +969,20 @@ void main() {
 
     test('duplicate column names are rejected', () {
       expect(
-        () => build(columns: [
-          TomReportColumn(
-            name: 'region',
-            sourceKey: 'region',
-            valueKind: TomReportValueKind.string,
-          ),
-          TomReportColumn(
-            name: 'region',
-            sourceKey: 'revenue',
-            valueKind: TomReportValueKind.currency,
-          ),
-        ]),
+        () => build(
+          columns: [
+            TomReportColumn(
+              name: 'region',
+              sourceKey: 'region',
+              valueKind: TomReportValueKind.string,
+            ),
+            TomReportColumn(
+              name: 'region',
+              sourceKey: 'revenue',
+              valueKind: TomReportValueKind.currency,
+            ),
+          ],
+        ),
         throwsArgumentError,
       );
     });
@@ -944,38 +1021,42 @@ void main() {
 
     test('duplicate dimension keys are rejected', () {
       expect(
-        () => build(dimensions: [
-          TomReportDimension(
-            key: 'region',
-            columnName: 'customer_region',
-            valueKind: TomReportValueKind.string,
-          ),
-          TomReportDimension(
-            key: 'region',
-            columnName: 'billing_region',
-            valueKind: TomReportValueKind.string,
-          ),
-        ]),
+        () => build(
+          dimensions: [
+            TomReportDimension(
+              key: 'region',
+              columnName: 'customer_region',
+              valueKind: TomReportValueKind.string,
+            ),
+            TomReportDimension(
+              key: 'region',
+              columnName: 'billing_region',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+        ),
         throwsDuplicate('dimension key'),
       );
     });
 
     test('duplicate measure keys are rejected', () {
       expect(
-        () => build(measures: [
-          TomReportMeasure(
-            key: 'revenue',
-            function: TomReportMeasureFunction.sum,
-            columnName: 'total',
-            valueKind: TomReportValueKind.currency,
-          ),
-          TomReportMeasure(
-            key: 'revenue',
-            function: TomReportMeasureFunction.avg,
-            columnName: 'total',
-            valueKind: TomReportValueKind.currency,
-          ),
-        ]),
+        () => build(
+          measures: [
+            TomReportMeasure(
+              key: 'revenue',
+              function: TomReportMeasureFunction.sum,
+              columnName: 'total',
+              valueKind: TomReportValueKind.currency,
+            ),
+            TomReportMeasure(
+              key: 'revenue',
+              function: TomReportMeasureFunction.avg,
+              columnName: 'total',
+              valueKind: TomReportValueKind.currency,
+            ),
+          ],
+        ),
         throwsDuplicate('measure key'),
       );
     });
@@ -1016,20 +1097,22 @@ void main() {
 
     test('duplicate chart ids are rejected', () {
       expect(
-        () => build(charts: [
-          TomReportChart(
-            chartId: 'by_region',
-            kind: TomReportChartKind.bar,
-            categoryColumn: 'region',
-            valueColumns: const ['revenue'],
-          ),
-          TomReportChart(
-            chartId: 'by_region',
-            kind: TomReportChartKind.line,
-            categoryColumn: 'region',
-            valueColumns: const ['revenue'],
-          ),
-        ]),
+        () => build(
+          charts: [
+            TomReportChart(
+              chartId: 'by_region',
+              kind: TomReportChartKind.bar,
+              categoryColumn: 'region',
+              valueColumns: const ['revenue'],
+            ),
+            TomReportChart(
+              chartId: 'by_region',
+              kind: TomReportChartKind.line,
+              categoryColumn: 'region',
+              valueColumns: const ['revenue'],
+            ),
+          ],
+        ),
         throwsDuplicate('chart id'),
       );
     });
@@ -1091,66 +1174,67 @@ void main() {
       );
     });
 
-    test('requiredParameters selects only the parameters that need a value',
-        () {
-      final report = TomReportDefinition(
-        reportId: 'r',
-        sourceEntity: _Order,
-        dimensions: [
-          TomReportDimension(
-            key: 'k',
-            columnName: 'c',
-            valueKind: TomReportValueKind.string,
-          ),
-        ],
-        columns: [
-          TomReportColumn(
-            name: 'k',
-            sourceKey: 'k',
-            valueKind: TomReportValueKind.string,
-          ),
-        ],
-        parameters: [
-          TomReportParameter(
-            name: 'from',
-            valueKind: TomReportValueKind.date,
-            required: true,
-          ),
-          TomReportParameter(
-            name: 'detail',
-            valueKind: TomReportValueKind.boolean,
-          ),
-        ],
-      );
-      expect(report.requiredParameters.map((p) => p.name), ['from']);
-    });
+    test(
+      'requiredParameters selects only the parameters that need a value',
+      () {
+        final report = TomReportDefinition(
+          reportId: 'r',
+          sourceEntity: _Order,
+          dimensions: [
+            TomReportDimension(
+              key: 'k',
+              columnName: 'c',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+          columns: [
+            TomReportColumn(
+              name: 'k',
+              sourceKey: 'k',
+              valueKind: TomReportValueKind.string,
+            ),
+          ],
+          parameters: [
+            TomReportParameter(
+              name: 'from',
+              valueKind: TomReportValueKind.date,
+              required: true,
+            ),
+            TomReportParameter(
+              name: 'detail',
+              valueKind: TomReportValueKind.boolean,
+            ),
+          ],
+        );
+        expect(report.requiredParameters.map((p) => p.name), ['from']);
+      },
+    );
   });
 
   group('csrc3: CE-RP cross-part targets', () {
     TomReportDefinition build({
       String? scheduleExpression,
       String? drillThroughRouteId,
-    }) =>
-        TomReportDefinition(
-          reportId: 'sales_by_region',
-          sourceEntity: _Order,
-          scheduleExpression: scheduleExpression,
-          dimensions: [
-            TomReportDimension(
-              key: 'region',
-              columnName: 'customer_region',
-              valueKind: TomReportValueKind.string,
-            ),
-          ],
-          columns: [
-            TomReportColumn(
-              name: 'region',
-              sourceKey: 'region',
-              valueKind: TomReportValueKind.string,
-              drillThroughRouteId: drillThroughRouteId,
-            ),
-          ],
-        );
+    }) => TomReportDefinition(
+      reportId: 'sales_by_region',
+      sourceEntity: _Order,
+      scheduleExpression: scheduleExpression,
+      dimensions: [
+        TomReportDimension(
+          key: 'region',
+          columnName: 'customer_region',
+          valueKind: TomReportValueKind.string,
+        ),
+      ],
+      columns: [
+        TomReportColumn(
+          name: 'region',
+          sourceKey: 'region',
+          valueKind: TomReportValueKind.string,
+          drillThroughRouteId: drillThroughRouteId,
+        ),
+      ],
+    );
 
     // `codespecs_mapping.md` §5.23: an entity is already a Dart type, so it is
     // cited as a `Type` literal and gets no `Cs*Ref` const. A renamed entity is
@@ -1165,8 +1249,10 @@ void main() {
     // carried is the recurrence expression the specification authored, verbatim
     // — never a job id, which would be the second source that rule forbids.
     test('the schedule is a recurrence expression carried verbatim', () {
-      expect(build(scheduleExpression: '0 6 1 * *').scheduleExpression,
-          '0 6 1 * *');
+      expect(
+        build(scheduleExpression: '0 6 1 * *').scheduleExpression,
+        '0 6 1 * *',
+      );
     });
 
     test('an unscheduled report simply has no schedule', () {
@@ -1185,18 +1271,18 @@ void main() {
 
   group('csra8: CE-RP result envelope', () {
     TomReportResultSection section() => TomReportResultSection(
-          columns: [
-            TomReportColumn(
-              name: 'region',
-              sourceKey: 'region',
-              valueKind: TomReportValueKind.string,
-            ),
-          ],
-          rows: Stream.fromIterable([
-            ['north'],
-            ['south'],
-          ]),
-        );
+      columns: [
+        TomReportColumn(
+          name: 'region',
+          sourceKey: 'region',
+          valueKind: TomReportValueKind.string,
+        ),
+      ],
+      rows: Stream.fromIterable([
+        ['north'],
+        ['south'],
+      ]),
+    );
 
     test('rows stay streamable rather than materialised', () async {
       expect(await section().rows.toList(), [
@@ -1241,25 +1327,25 @@ void main() {
       expect(result.metadata['asOf'], '2026-07-28');
     });
 
-    test('metadata is unmodifiable so a renderer cannot rewrite provenance',
-        () {
-      final result = TomReportResult.single(
-        reportId: 'r',
-        title: 't',
-        section: section(),
-        metadata: {'ranBy': 'alexis'},
-      );
-      expect(() => result.metadata['ranBy'] = 'someone else',
-          throwsUnsupportedError);
-    });
+    test(
+      'metadata is unmodifiable so a renderer cannot rewrite provenance',
+      () {
+        final result = TomReportResult.single(
+          reportId: 'r',
+          title: 't',
+          section: section(),
+          metadata: {'ranBy': 'alexis'},
+        );
+        expect(
+          () => result.metadata['ranBy'] = 'someone else',
+          throwsUnsupportedError,
+        );
+      },
+    );
 
     test('a result with no sections is rejected', () {
       expect(
-        () => TomReportResult(
-          reportId: 'r',
-          title: 't',
-          sections: const [],
-        ),
+        () => TomReportResult(reportId: 'r', title: 't', sections: const []),
         throwsArgumentError,
       );
     });
@@ -1292,12 +1378,12 @@ void main() {
 /// The test would then still pass with `_rejectDuplicates` deleted. Pinning
 /// the message ties each test to the check it names.
 Matcher throwsDuplicate(String what) => throwsA(
-      isA<ArgumentError>().having(
-        (e) => e.message,
-        'message',
-        contains('Duplicate $what'),
-      ),
-    );
+  isA<ArgumentError>().having(
+    (e) => e.message,
+    'message',
+    contains('Duplicate $what'),
+  ),
+);
 
 /// Stand-in CE-DB entity types for the CE-JB and CE-RP target tests.
 ///

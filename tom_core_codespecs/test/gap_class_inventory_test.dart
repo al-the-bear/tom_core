@@ -33,8 +33,7 @@ const Map<String, String> _expectedGapClassFiles = {
 };
 
 void main() {
-  group('csrb2: the gap-class inventory is pinned to its §1.1 justifications',
-      () {
+  group('csrb2: the gap-class inventory is pinned to its §1.1 justifications', () {
     test('lib/src holds exactly the justified gap-class files', () {
       final files = Directory('lib/src')
           .listSync()
@@ -46,7 +45,8 @@ void main() {
       expect(
         files,
         equals(_expectedGapClassFiles.keys.toSet()),
-        reason: 'A gap class exists only where tom_core lacks a holder. Adding '
+        reason:
+            'A gap class exists only where tom_core lacks a holder. Adding '
             'or removing one means a part changed its reuse verdict — state '
             'the part in _expectedGapClassFiles and update '
             'codespecs_mapping.md §4.1 to match.',
@@ -68,28 +68,35 @@ void main() {
       // reuse verdict (codespecs_mapping.md §4.1, §5.16): the (client app,
       // machine) holder is tom_core_flutter's TomBaseClientConfiguration with
       // TomSetting<T> and TomClientConfigurationStore.
-      expect(_expectedGapClassFiles.keys, isNot(contains('client_configuration.dart')));
+      expect(
+        _expectedGapClassFiles.keys,
+        isNot(contains('client_configuration.dart')),
+      );
       expect(
         File('lib/tom_core_codespecs.dart').readAsStringSync(),
         isNot(contains("export 'src/client_configuration.dart';")),
       );
     });
 
-    test('csrb7: domain enums have no gap class — they are a plain Dart enum',
-        () {
-      // codespecs_mapping.md §4.1 realises the domainEnum member kind as a
-      // plain Dart `enum`, so there is no class to build on. A holder would
-      // also give value labels a second home; they are CE-TX copy (§1.2
-      // consequence 1, §5.21).
-      expect(_expectedGapClassFiles.keys, isNot(contains('domain_enum.dart')));
-      expect(
-        File('lib/tom_core_codespecs.dart').readAsStringSync(),
-        isNot(contains('TomDomainEnum')),
-      );
-    });
+    test(
+      'csrb7: domain enums have no gap class — they are a plain Dart enum',
+      () {
+        // codespecs_mapping.md §4.1 realises the domainEnum member kind as a
+        // plain Dart `enum`, so there is no class to build on. A holder would
+        // also give value labels a second home; they are CE-TX copy (§1.2
+        // consequence 1, §5.21).
+        expect(
+          _expectedGapClassFiles.keys,
+          isNot(contains('domain_enum.dart')),
+        );
+        expect(
+          File('lib/tom_core_codespecs.dart').readAsStringSync(),
+          isNot(contains('TomDomainEnum')),
+        );
+      },
+    );
 
-    test('tspcmp2: CE-UP has no gap class — it reuses the preferences plane',
-        () {
+    test('tspcmp2: CE-UP has no gap class — it reuses the preferences plane', () {
       // The second drift of the same shape as CE-CC's. A TomUserSettings
       // holder and a TomUserSettingsStore seam were authored here on the
       // premise that tom_core had neither; tom_core_server's
@@ -97,7 +104,10 @@ void main() {
       // is the seam, and the holder was never needed — §5.16 puts a setting's
       // type and default on the annotated member and its key on
       // @CsUserSetting's own argument.
-      expect(_expectedGapClassFiles.keys, isNot(contains('user_settings.dart')));
+      expect(
+        _expectedGapClassFiles.keys,
+        isNot(contains('user_settings.dart')),
+      );
       final barrel = File('lib/tom_core_codespecs.dart').readAsStringSync();
       expect(barrel, isNot(contains("export 'src/user_settings.dart';")));
       expect(barrel, isNot(contains('TomUserSettingsStore')));
@@ -122,7 +132,8 @@ void main() {
       expect(
         pubspec,
         contains(RegExp(r'^dependencies:\s*\{\}\s*$', multiLine: true)),
-        reason: 'Adding a dependency retracts the TomReportResult and '
+        reason:
+            'Adding a dependency retracts the TomReportResult and '
             'TomJobDeclaration placement decisions. Move the class that '
             'needs the type into the package that owns it instead.',
       );
@@ -142,7 +153,8 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason: 'dart:core is implicit, so a dependency-free package has no '
+        reason:
+            'dart:core is implicit, so a dependency-free package has no '
             'import directive at all. Each entry above is a retraction of '
             'the placement decisions this invariant carries.',
       );
@@ -188,7 +200,8 @@ void main() {
       expect(
         missing,
         isEmpty,
-        reason: 'Each symbol above is exported but absent from the README '
+        reason:
+            'Each symbol above is exported but absent from the README '
             'inventory. Add it to its part row, next to the symbols it '
             'relates to, rather than to the end of the list.',
       );

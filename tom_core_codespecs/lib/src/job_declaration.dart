@@ -91,9 +91,9 @@ class TomJobDeclaration {
     this.serviceUnitId,
     List<Type>? readEntities,
     List<Type>? writtenEntities,
-  })  : environments = environments ?? <String>[],
-        readEntities = readEntities ?? <Type>[],
-        writtenEntities = writtenEntities ?? <Type>[];
+  }) : environments = environments ?? <String>[],
+       readEntities = readEntities ?? <Type>[],
+       writtenEntities = writtenEntities ?? <Type>[];
 
   /// Every entity the job touches, read or written, without duplicates.
   ///

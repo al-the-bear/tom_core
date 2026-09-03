@@ -175,8 +175,8 @@ class TomNotificationType {
     this.triggerEvent,
     this.contentTemplateKey,
     this.localized = false,
-  })  : defaultChannelIds = defaultChannelIds ?? <String>[],
-        mandatoryChannelIds = mandatoryChannelIds ?? <String>[];
+  }) : defaultChannelIds = defaultChannelIds ?? <String>[],
+       mandatoryChannelIds = mandatoryChannelIds ?? <String>[];
 
   /// Whether this type survives a blanket opt-out.
   ///
@@ -207,7 +207,8 @@ class TomNotificationType {
     if (preferences == null || !userConfigurable) {
       return _ordered(mandatoryChannelIds, defaultChannelIds);
     }
-    if (preferences.silences(this)) return _ordered(mandatoryChannelIds, const []);
+    if (preferences.silences(this))
+      return _ordered(mandatoryChannelIds, const []);
     final chosen = preferences.channelsByTypeId[typeId] ?? defaultChannelIds;
     return _ordered(mandatoryChannelIds, chosen);
   }
@@ -255,8 +256,8 @@ class TomNotificationPreferences {
     this.globalOptOut = false,
     Set<String>? mutedTypeIds,
     Map<String, List<String>>? channelsByTypeId,
-  })  : mutedTypeIds = mutedTypeIds ?? <String>{},
-        channelsByTypeId = channelsByTypeId ?? <String, List<String>>{};
+  }) : mutedTypeIds = mutedTypeIds ?? <String>{},
+       channelsByTypeId = channelsByTypeId ?? <String, List<String>>{};
 
   /// Whether these preferences silence [type]'s optional channels.
   ///
@@ -285,10 +286,10 @@ class TomNotificationCatalog {
   TomNotificationCatalog({
     List<TomNotificationChannelDeclaration>? channels,
     List<TomNotificationType>? types,
-  })  : channels = {
-          for (final channel in channels ?? const []) channel.channelId: channel,
-        },
-        types = {for (final type in types ?? const []) type.typeId: type};
+  }) : channels = {
+         for (final channel in channels ?? const []) channel.channelId: channel,
+       },
+       types = {for (final type in types ?? const []) type.typeId: type};
 
   /// The fallback chain starting at [channelId], nearest first.
   ///

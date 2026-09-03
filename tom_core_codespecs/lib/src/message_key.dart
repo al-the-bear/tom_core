@@ -72,8 +72,8 @@ class TomMessageKey {
     this.errorCode,
     List<String>? parameters,
     Map<String, String>? localeCopy,
-  })  : parameters = parameters ?? <String>[],
-        localeCopy = localeCopy ?? <String, String>{};
+  }) : parameters = parameters ?? <String>[],
+       localeCopy = localeCopy ?? <String, String>{};
 }
 
 /// The message-key catalogue a CodeSpec's `@CsMessage` (CE-TX) is built on.

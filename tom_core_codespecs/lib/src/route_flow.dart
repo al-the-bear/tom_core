@@ -119,7 +119,8 @@ class TomScreenFlowEdge {
 /// part (`codespecs_mapping.md` §4.2), so the registry lives in the client
 /// project of the three-project output trio.
 class TomRouteRegistry {
-  final Map<String, TomRouteDefinition> _routes = <String, TomRouteDefinition>{};
+  final Map<String, TomRouteDefinition> _routes =
+      <String, TomRouteDefinition>{};
   final Map<String, TomFormScreenAssignment> _assignments =
       <String, TomFormScreenAssignment>{};
   final List<TomScreenFlowEdge> _edges = <TomScreenFlowEdge>[];
