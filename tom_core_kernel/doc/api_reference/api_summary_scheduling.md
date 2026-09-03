@@ -710,6 +710,14 @@ forgiving of corruption, would otherwise read back as an *empty* queue. The
 process id in the staging name keeps two nodes on a shared mount from publishing
 each other's partial writes; strays are ignored on load.
 
+A file that is damaged anyway — by an older build, a failing disk, a hand-edit —
+never makes the constructor throw, because the store is built during startup
+wiring. It is instead reported at error level through `tomLog`, moved aside to
+`<path>.corrupt`, and whatever decoded is written back. Partial damage is
+handled the same way and the dropped runs are counted, since a queue that lost
+half its entries otherwise reads as one that had been drained. There is a single
+`.corrupt` file; a second corruption replaces it and the report says so.
+
 - **Extends:** `TomMemoryJobStore`
 
 #### Constructors
@@ -718,7 +726,9 @@ each other's partial writes; strays are ignored on load.
 TomFileJobStore(String path)
 ```
 
-Loads any previously persisted runs at construction.
+Loads any previously persisted runs at construction. Writes to `path` only when
+what it finds there is damaged — the one case where constructing a store has an
+effect on disk, and the price of a salvage that survives the next restart.
 
 #### Properties
 

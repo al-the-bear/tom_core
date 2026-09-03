@@ -1138,23 +1138,159 @@ void main() {
       expect(await store.all(), isEmpty);
     });
 
-    test('starts empty rather than throwing on a corrupt file', () async {
-      final path = '${makeTempDir().path}/queue.json';
-      File(path).writeAsStringSync('{ not json at all');
-      expect(await TomFileJobStore(path).all(), isEmpty);
-    });
+    // -----------------------------------------------------------------------
+    // A corrupt queue used to load as an empty one, which is indistinguishable
+    // from a first start — the durable queue's whole purpose failing in the one
+    // way nobody would notice. Loading must still not throw (the store is built
+    // during startup wiring, so throwing turns a past crash into a boot
+    // failure), but the loss is now reported and the evidence kept.
+    // -----------------------------------------------------------------------
+    group('corrupt file recovery', () {
+      late _CapturingLogOutput captured;
+      late TomLogOutput previousOutput;
+      late String path;
 
-    test('skips a single corrupt record and keeps the rest', () async {
-      final path = '${makeTempDir().path}/queue.json';
-      File(path).writeAsStringSync(
-        '['
-        '{"id":"bad"},'
-        '{"id":"good","jobName":"job",'
-        '"scheduledFor":"2026-03-01T10:00:00.000Z",'
-        '"runAt":"2026-03-01T10:00:00.000Z","state":"pending","attempt":1}'
-        ']',
-      );
-      expect((await TomFileJobStore(path).all()).map((r) => r.id), ['good']);
+      setUp(() {
+        captured = _CapturingLogOutput();
+        previousOutput = tomLog.logOutput;
+        tomLog.logOutput = captured;
+        path = '${makeTempDir().path}/queue.json';
+      });
+
+      tearDown(() => tomLog.logOutput = previousOutput);
+
+      /// The file the store moves unreadable content aside to.
+      File quarantine() => File('$path.corrupt');
+
+      String goodRecord(String id) =>
+          '{"id":"$id","jobName":"job",'
+          '"scheduledFor":"2026-03-01T10:00:00.000Z",'
+          '"runAt":"2026-03-01T10:00:00.000Z","state":"pending","attempt":1}';
+
+      test('starts empty rather than throwing on a corrupt file', () async {
+        File(path).writeAsStringSync('{ not json at all');
+
+        expect(await TomFileJobStore(path).all(), isEmpty);
+      });
+
+      test('reports the loss and keeps the evidence', () async {
+        File(path).writeAsStringSync('{ not json at all');
+
+        await TomFileJobStore(path).all();
+
+        // Named file, named cause: an operator who greps the log has to be
+        // able to tell which queue died and why.
+        final reported = captured.messages.join('\n');
+        expect(reported, contains(path));
+        expect(reported, contains('could not be read'));
+        // The unreadable bytes are the only record of what was queued, so they
+        // outlive the next persist rather than being overwritten by it.
+        expect(quarantine().readAsStringSync(), equals('{ not json at all'));
+      });
+
+      test('reports a truncated array left by a crash', () async {
+        File(path).writeAsStringSync('[${goodRecord('a')},');
+
+        expect(await TomFileJobStore(path).all(), isEmpty);
+        expect(captured.messages.join('\n'), contains('could not be read'));
+        expect(quarantine().existsSync(), isTrue);
+      });
+
+      test('reports a top level that is not a list', () async {
+        File(path).writeAsStringSync('{"not":"a list"}');
+
+        expect(await TomFileJobStore(path).all(), isEmpty);
+        expect(captured.messages.join('\n'), contains('could not be read'));
+        expect(quarantine().existsSync(), isTrue);
+      });
+
+      test('skips a single corrupt record and keeps the rest', () async {
+        File(path).writeAsStringSync('[{"id":"bad"},${goodRecord('good')}]');
+
+        expect((await TomFileJobStore(path).all()).map((r) => r.id), ['good']);
+      });
+
+      test('counts the skipped records rather than dropping them in '
+          'silence', () async {
+        File(
+          path,
+        ).writeAsStringSync('[{"id":"bad"},${goodRecord('good')},"nonsense"]');
+
+        await TomFileJobStore(path).all();
+
+        // Partial corruption used to present as a shorter queue, which reads
+        // exactly like a queue that had been drained.
+        final reported = captured.messages.join('\n');
+        expect(reported, contains(path));
+        expect(reported, contains('2'));
+        expect(quarantine().existsSync(), isTrue);
+      });
+
+      test('re-persists what it salvaged so a restart sees it', () async {
+        File(path).writeAsStringSync('[{"id":"bad"},${goodRecord('good')}]');
+
+        expect((await TomFileJobStore(path).all()).single.id, 'good');
+
+        // Recovery is only real if it survives: the damaged original has been
+        // renamed away, so a salvage that stayed in memory would be lost here.
+        expect((await TomFileJobStore(path).all()).single.id, 'good');
+        expect(quarantine().existsSync(), isTrue);
+      });
+
+      test('says so when a second corruption replaces the first '
+          'evidence', () async {
+        File(path).writeAsStringSync('first damage');
+        TomFileJobStore(path);
+        captured.messages.clear();
+
+        File(path).writeAsStringSync('second damage');
+        TomFileJobStore(path);
+
+        // One `.corrupt` file by design, so the second corruption overwrites
+        // the first. That is only acceptable if the log says it happened —
+        // otherwise the evidence disappears as quietly as the queue did.
+        expect(quarantine().readAsStringSync(), equals('second damage'));
+        expect(
+          captured.messages.join('\n'),
+          contains('replacing the evidence'),
+        );
+      });
+
+      test('reports nothing and quarantines nothing for a healthy '
+          'file', () async {
+        final store = TomFileJobStore(path);
+        await store.enqueue(
+          TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+        captured.messages.clear();
+
+        expect((await TomFileJobStore(path).all()).single.id, 'a');
+        expect(captured.messages, isEmpty);
+        expect(quarantine().existsSync(), isFalse);
+      });
+
+      test('an empty file is not treated as corruption', () async {
+        // What `touch` or a create-then-crash leaves: no records, but nothing
+        // was lost either.
+        File(path).writeAsStringSync('   ');
+
+        expect(await TomFileJobStore(path).all(), isEmpty);
+        expect(captured.messages, isEmpty);
+        expect(quarantine().existsSync(), isFalse);
+      });
+
+      test('a failing log output never escapes the constructor', () async {
+        tomLog.logOutput = _ThrowingLogOutput();
+        File(path).writeAsStringSync('{ not json at all');
+
+        // Reporting a loss must not become a second, larger failure: the
+        // scheduler still has a queue to drain. `tomLog` absorbs the throw
+        // itself today, so this pins the end-to-end property rather than the
+        // store's own catch — which is the property worth pinning, since it
+        // must hold however the logger below is rearranged.
+        expect(await TomFileJobStore(path).all(), isEmpty);
+        expect(quarantine().existsSync(), isTrue);
+      });
     });
 
     test('a purge is mirrored to disk', () async {
@@ -4394,4 +4530,42 @@ void main() {
       expect(node.heldLeases, isEmpty);
     });
   });
+}
+
+// =============================================================================
+// Log capture
+// =============================================================================
+
+/// Collects what the store reports, so a test can assert on the message rather
+/// than only on the state that survived.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (logLevel.matches(loggerLevel)) messages.add(convertToString(message));
+  }
+}
+
+/// A log output that is itself broken, used to prove that reporting a corrupt
+/// queue cannot turn a recoverable loss into a failure to start.
+class _ThrowingLogOutput extends TomLogOutput {
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) => throw StateError('log output is broken');
 }

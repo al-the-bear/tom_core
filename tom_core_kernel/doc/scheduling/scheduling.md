@@ -24,6 +24,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [Job Definitions](#job-definitions)
 - [The Job Store](#the-job-store)
   - [The on-disk format](#the-on-disk-format)
+  - [When the file is damaged](#when-the-file-is-damaged)
 - [The Scheduler](#the-scheduler)
 - [Missed Windows](#missed-windows)
 - [Recovering an Interrupted Run](#recovering-an-interrupted-run)
@@ -508,7 +509,8 @@ the file is still good. It is rewritten in full every time, so there is no such
 thing as losing only the last record: either the file parses and the whole queue
 is there, or it does not and the loader treats it as empty (deliberately — one
 bad byte must not stop a scheduler from starting, since starting is how the rest
-of the queue gets drained).
+of the queue gets drained) — after moving it aside and saying so, which is the
+subject of [When the file is damaged](#when-the-file-is-damaged) below.
 
 The whole-file rewrite is the deliberate choice. The queue is small — one record
 per schedule window, purged once terminal — so rewriting it costs less than the
@@ -519,10 +521,46 @@ in a sibling `<queue>.<pid>.tmp` and renamed over the target, a rename being
 atomic within a directory. A process killed mid-write — or one that hits a full
 disk — therefore leaves the previous queue on disk, not a truncated one. Without
 that, the two properties above would compose badly: a torn write would not lose
-the run being recorded, it would lose *every* run, silently. The staging file
-carries the process id so that two nodes on a shared mount cannot publish each
-other's half-written files; a stray one left by a crash is ignored by the loader
-and overwritten by that process's next write.
+the run being recorded, it would lose *every* run. The staging file carries the
+process id so that two nodes on a shared mount cannot publish each other's
+half-written files; a stray one left by a crash is ignored by the loader and
+overwritten by that process's next write.
+
+### When the file is damaged
+
+The atomic write stops this process from *producing* a torn file. It can do
+nothing about one that is already damaged — written by an older build, mangled
+by a failing disk, or hand-edited by someone debugging an incident — so the
+loader has to have an answer for finding one.
+
+That answer is never to throw. `TomFileJobStore` is built during startup wiring,
+so a constructor that refused a bad byte would turn a past crash into a failure
+to boot: the durable queue would take down the process it exists to protect.
+Loading therefore salvages what it can and carries on. Three things follow:
+
+- **The damage is reported at error level** through `tomLog`, naming the file
+  and the reason. An empty queue and a destroyed queue are otherwise identical
+  at startup, which made losing one indistinguishable from a first start.
+- **The unreadable content is moved to `<queue>.corrupt`** before anything is
+  written back, so the next persist cannot overwrite the only surviving record
+  of what was queued.
+- **What survived is written back**, which is what makes a partial recovery
+  real. The original has just been renamed away, so a salvage kept only in
+  memory would be lost again at the next restart.
+
+Partial damage is treated the same way as total damage, and for the same reason:
+a file whose entries mostly decode loads as a *shorter* queue, which reads
+exactly like a queue that had been drained. The count of dropped runs goes into
+the message.
+
+There is one `.corrupt` file, not one per incident, so a queue that keeps being
+damaged does not fill the directory. A second corruption therefore overwrites
+the first, and the report says so explicitly — discarding the evidence quietly
+would repeat the fault the quarantine exists to fix.
+
+An empty or whitespace-only file is *not* corruption: it is what a
+create-then-crash leaves behind. It holds no runs, but nothing was lost either,
+so it loads silently.
 
 ## The Scheduler
 

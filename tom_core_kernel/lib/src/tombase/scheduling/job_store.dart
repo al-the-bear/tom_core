@@ -43,6 +43,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:tom_basics/tom_basics.dart';
+
 import '../little_things/atomic_file.dart';
 import 'schedule.dart';
 
@@ -690,6 +692,13 @@ class TomFileJobStore extends TomMemoryJobStore {
   final File file;
 
   /// Creates a store backed by [path], loading any previously persisted runs.
+  ///
+  /// Writes to [path] if — and only if — what it finds there is damaged: the
+  /// unreadable content is moved to [_corruptPath] and whatever could be
+  /// salvaged is written back. That is the one case where constructing a store
+  /// has an effect on disk, and it is deliberate. A salvage that lived only in
+  /// memory would be undone by the next restart, and the original has just been
+  /// renamed away, so not rewriting would lose the runs a second time.
   TomFileJobStore(String path) : file = File(path) {
     _load();
   }
@@ -697,33 +706,131 @@ class TomFileJobStore extends TomMemoryJobStore {
   @override
   void onMutated() => _persist();
 
+  /// Where damaged content is moved so the next [_persist] cannot overwrite the
+  /// evidence of what was lost.
+  ///
+  /// One fixed name, so a queue that keeps being corrupted does not litter the
+  /// directory. The cost is that a second corruption overwrites the first, and
+  /// [_recoverFrom] says so explicitly when it happens — silently discarding
+  /// the evidence would repeat the very fault this quarantine exists to fix.
+  String get _corruptPath => '${file.path}.corrupt';
+
   /// Reads runs from [file] if it exists, leaving the queue empty when the file
   /// is missing, empty, or not a JSON array.
   ///
   /// A record that fails to decode is skipped rather than aborting the load: a
   /// single corrupt entry must not stop the scheduler from starting, since
-  /// starting is how the rest of the queue gets drained.
+  /// starting is how the rest of the queue gets drained. For the same reason
+  /// this method never throws — the store is built during startup wiring, so a
+  /// throw here would turn a past crash into a boot failure, taking down the
+  /// process the durable queue exists to protect.
+  ///
+  /// What it does not do is stay quiet. Every unreadable state degrades to
+  /// "carry on with what could be salvaged, and say what was lost", because an
+  /// empty queue and a destroyed queue otherwise look identical at startup.
   void _load() {
     if (!file.existsSync()) return;
-    final raw = file.readAsStringSync();
+
+    final String raw;
+    try {
+      raw = file.readAsStringSync();
+    } catch (error) {
+      // Unreadable bytes (permissions, invalid UTF-8) — nothing to salvage.
+      _recoverFrom('could not be read ($error)');
+      return;
+    }
+    // A zero-byte file is what a create-then-crash leaves behind. It holds no
+    // runs, but nothing was lost either, so it is not corruption.
     if (raw.trim().isEmpty) return;
+
     final Object? decoded;
     try {
       decoded = jsonDecode(raw);
-    } on FormatException {
+    } catch (error) {
+      _recoverFrom('could not be read (invalid JSON: $error)');
       return;
     }
-    if (decoded is! List) return;
+    if (decoded is! List) {
+      _recoverFrom(
+        'could not be read (expected a JSON array, got ${decoded.runtimeType})',
+      );
+      return;
+    }
+
     final runs = <TomJobRun>[];
+    var skipped = 0;
     for (final entry in decoded) {
-      if (entry is! Map) continue;
+      if (entry is! Map) {
+        skipped++;
+        continue;
+      }
       try {
         runs.add(TomJobRun.fromJson(Map<String, Object?>.from(entry)));
       } catch (_) {
-        continue;
+        skipped++;
       }
     }
     replaceAll(runs);
+    if (skipped > 0) {
+      // Partial corruption presents as a shorter queue, which reads exactly
+      // like a queue that had been drained. Count what was dropped.
+      _recoverFrom(
+        'contained $skipped unreadable ${skipped == 1 ? 'run' : 'runs'} which '
+        'were dropped (${runs.length} recovered)',
+      );
+    }
+  }
+
+  /// Reports the loss described by [detail], moves the damaged file aside to
+  /// [_corruptPath], and writes whatever was salvaged back to [file].
+  ///
+  /// Called only after the salvaged runs are already in the queue, since the
+  /// rewrite persists exactly what [snapshotSync] holds.
+  void _recoverFrom(String detail) {
+    // Checked before the rename, which overwrites without complaint.
+    final replaced = File(_corruptPath).existsSync();
+    String outcome;
+    try {
+      // rename, not delete: the unreadable content is the only surviving record
+      // of what was queued, and it is worth more than the disk space.
+      file.renameSync(_corruptPath);
+      outcome = 'its previous content was moved to $_corruptPath';
+      if (replaced) {
+        outcome = '$outcome, replacing the evidence of an earlier corruption';
+      }
+    } catch (error) {
+      // Say why. "Could not be moved aside" on its own leaves the reader unable
+      // to tell a permissions problem from a full disk.
+      outcome = 'its previous content could not be moved aside ($error)';
+    }
+    try {
+      _persist();
+    } catch (error) {
+      outcome =
+          '$outcome, and the salvaged runs could not be written back ($error)';
+    }
+    _report('Job queue file ${file.path} $detail; $outcome');
+  }
+
+  /// Logs [message] as an error — the channel an operator actually watches.
+  ///
+  /// Never throws. The store is constructed during startup wiring, and a broken
+  /// log output must not be what stops the scheduler from starting: reporting a
+  /// recoverable loss cannot be allowed to become an unrecoverable one.
+  ///
+  /// `tomLog` already guards the sink it writes to, so the catch below is not
+  /// what makes the common case safe. It is here because "loading never throws"
+  /// is this store's own contract, and resting that on another package's
+  /// internal `try` would make a refactor there a boot failure here.
+  void _report(String message) {
+    try {
+      // Collapsed to one line: a decoder's complaint carries the offending text
+      // and its caret on separate lines, and an error split over four lines is
+      // one a reader cannot grep for.
+      tomLog.error(message.replaceAll(RegExp(r'\s+'), ' ').trim());
+    } catch (_) {
+      // Nothing left to report to.
+    }
   }
 
   /// Writes the current queue to [file], creating parent directories as needed
