@@ -4,6 +4,16 @@
 
 Comprehensive listing of all Flutter SDK widgets relevant to the Tom UI framework, organized by family. Scanned from **Flutter 3.41.4** using transitive subclass analysis across `widgets/`, `material/`, and `cupertino/` libraries.
 
+> **This is a snapshot, and the SDK has moved since.** The workspace now builds
+> against Flutter 3.44.6; the scan behind these tables has not been re-run, so
+> a widget added or deprecated after 3.41.4 will be missing from them. Rows are
+> corrected against the source as they are checked — the `Radio` rows carry the
+> `RadioGroup` ancestor the 3.41.4 scan predates — but absence from a family
+> table is not evidence that the SDK lacks the widget. The one section that is
+> *not* a snapshot is [Custom Tom Widgets](#custom-tom-widgets-non-form), which
+> describes this package rather than the SDK and is checked against `lib/` by
+> `tool/check_unimplemented_claims.py`.
+
 ## Column Legend
 
 | Column | Meaning |
@@ -82,7 +92,7 @@ Widgets currently wrapped (or planned as core) in `tom_flutter_ui`.
 | `SwitchListTile` | Yes | Yes | `secondary` (Widget) | `title` (Widget), `subtitle` (Widget) | Yes | — | Phase 3 | Switch with list tile. Auth/resources for label texts. |
 | `Checkbox` | Yes | Yes | — | `semanticLabel` | Yes | — | Phase 3 | Boolean checkbox. Auth for readonly/hidden. |
 | `CheckboxListTile` | Yes | Yes | `secondary` (Widget) | `title` (Widget), `subtitle` (Widget) | Yes | — | Phase 3 | Checkbox with list tile. Auth/resources for labels. |
-| `Radio` | Yes | Yes | — | — | Yes | — | Phase 3 | Radio option. Auth for readonly/hidden. |
+| `Radio` | Yes | Yes | — | — | Yes | — | Phase 3 | Radio option. Auth for readonly/hidden. Selection comes from an enclosing `RadioGroup<T>`, not from a `groupValue` of its own — without that ancestor `TomRadio` renders but cannot be selected, which is Flutter's behaviour and not a Tom restriction. |
 | `RadioListTile` | Yes | Yes | `secondary` (Widget) | `title` (Widget), `subtitle` (Widget) | Yes | — | Phase 3 | Radio with list tile. Auth/resources for labels. |
 | `CupertinoSwitch` | Yes | Yes | — | — | Yes | — | Phase 3 | Cupertino switch. Same auth needs as Material Switch. |
 | `ToggleButtons` | Yes | Yes | `children` (List\<Widget\>) | — | Yes | — | Phase 3 | Row of toggle buttons. Auth per button visibility. |
@@ -286,7 +296,7 @@ Remaining Flutter SDK widgets not yet wrapped, sorted by family. Scanned using t
 | Class Name | Wrapped | Is Widget | Has Child(ren) | Has Text(s) | Should Wrap | Wrapping Problems | Resource Migrated | Description & Verdict |
 |-----------|---------|-----------|----------------|-------------|-------------|-------------------|-------------------|----------------------|
 | `CupertinoCheckbox` | Yes | Yes | — | `semanticLabel` | Yes | — | Phase 3 | Cupertino-styled checkbox. Auth for readonly/hidden; Cupertino parity with Material Checkbox. |
-| `CupertinoRadio` | Yes | Yes | — | — | Yes | — | Phase 3 | Cupertino-styled radio button. Auth for readonly/hidden; Cupertino parity with Material Radio. |
+| `CupertinoRadio` | Yes | Yes | — | — | Yes | — | Phase 3 | Cupertino-styled radio button. Auth for readonly/hidden; Cupertino parity with Material Radio, including the `RadioGroup<T>` ancestor that carries its selection. |
 
 ### Container Family
 
@@ -568,19 +578,29 @@ These widgets need special wrapper patterns (extension types, delegation, or wra
 
 Custom widgets that don't wrap Flutter SDK classes. Form-related custom widgets (e.g., `FormRadioGroup`, `FormTextField`) are tracked separately in form field documentation.
 
-| Widget | Implemented | Description |
-|--------|-------------|-------------|
-| `TomRadioGroup` | No | Radio group container for grouping `TomRadio` widgets. Auth on entire selection group; group-level control. |
-| `TomTreeView` | No | Custom hierarchical tree view with `TomTreeNode` children. Auth per node; expand/collapse state. |
-| `TomTreeNode` | No | Data model for tree nodes with nested children and auth metadata. |
-| `TomAuthGuard` | No | Wrapper that hides/disables content based on authorization context. |
-| `TomResourceText` | No | Text widget with built-in resource lookup by key. |
-| `TomPermissionBadge` | No | Visual badge indicating permission level or role. |
-| `TomLoadingOverlay` | No | Overlay that shows loading state with optional message. |
-| `TomErrorBoundary` | No | Error boundary that catches widget errors and shows fallback UI. |
-| `TomEmptyState` | No | Placeholder widget for empty lists/grids with icon, title, and action. |
-| `TomSkeletonLoader` | No | Shimmer/skeleton loading placeholder matching content shape. |
-| `TomInfiniteScroll` | No | List/grid wrapper with pagination and infinite scroll support. |
+Unlike the survey above, **this table is not a plan**: every row states what is
+in `lib/` today and names the document that owns the detail. It is deliberately
+thin, because a fuller description here would be a second, unchecked copy of
+[custom.md](custom.md) and [widgets.md](widgets.md).
+
+Nine of the eleven widgets proposed in the original version of this table now
+ship. The two that do not are kept as rows rather than deleted, because each was
+**subsumed** by something that does ship — and a proposal that is quietly
+removed is a proposal that gets made again.
+
+| Widget | Ships | Documented in | What it is |
+|--------|-------|---------------|------------|
+| `TomRadioGroup` / `TomRadioGroupItem` | Yes — `lib/src/custom/tom_radio_group.dart` | [custom.md](custom.md) | Radio selection whose **whole** group is gated by one resource key. It renders `Radio<T>` + `InkWell` rows beneath a `RadioGroup<T>` ancestor; it does not group `TomRadio` widgets, and never did. |
+| `TomTreeView` / `TomTreeNode` | Yes — `lib/src/widgets/trees/tom_trees.dart` | [widgets.md](widgets.md) | Hierarchical tree with expand/collapse state, authorized at the widget level. `TomTreeNode` is its plain data model. This is the pair the Tree Family row in section I already records as `Yes (custom)`. |
+| `TomAuthTreeView` / `TomAuthTreeNode` | Yes — `lib/src/custom/tom_auth_tree.dart` | [custom.md](custom.md) | The **per-node**-auth tree: each node resolves its own `TomAuthState`, and a `disabled` node caps its entire subtree. Reach for it when the grant varies *within* the tree, and for `TomTreeView` when it does not. |
+| `TomAuthGuard` | Yes — `lib/src/custom/tom_auth_guard.dart` | [custom.md](custom.md) | Hides or disables a `child` by the auth state resolved from a `tomId`. |
+| `TomLoadingOverlay` | Yes — `lib/src/custom/tom_loading_overlay.dart` | [custom.md](custom.md) | Translucent scrim and spinner, with an optional message, layered over a subtree. |
+| `TomErrorBoundary` | Yes — `lib/src/custom/tom_error_boundary.dart` | [custom.md](custom.md) | Catches build errors raised inside a subtree and renders a fallback instead of propagating. |
+| `TomEmptyState` | Yes — `lib/src/custom/tom_empty_state.dart` | [custom.md](custom.md) | Icon, title, description and optional action for "no data" surfaces. Resolves its strings through the resource provider when given a `tomId`. |
+| `TomSkeletonLoader` | Yes — `lib/src/custom/tom_skeleton_loader.dart` | [custom.md](custom.md) | Shimmer placeholder for a loading surface; static when `enabled: false`. |
+| `TomInfiniteScroll` | Yes — `lib/src/custom/tom_infinite_scroll.dart` | [custom.md](custom.md) | Paginated list over a `PageFetcher`, reusing the three placeholders above for its empty / loading / error states. |
+| `TomResourceText` | **No — subsumed by `TomText`** | [widgets.md](widgets.md) | Proposed as "text with built-in resource lookup by key", which is what `TomText` already is: `TomText(tomId: 'app.greeting')` resolves its content, style, `maxLines` and semantics from resources. Resource lookup is a property every `Tom*` widget gets from its `tomId`, not the distinguishing feature of one text class, so a second one would only duplicate `TomText`. |
+| `TomPermissionBadge` | **No — application content** | [widgets.md](widgets.md) | Proposed as a "badge indicating permission level or role". The badge itself ships as `TomBadge` (Label Family, section I). What remains is deciding which role maps to which colour and wording — and the framework has no permission vocabulary to render, because roles are named by the application. |
 
 ---
 

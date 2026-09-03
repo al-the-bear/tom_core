@@ -78,6 +78,11 @@
     "check_test_inventories": {
       "faults": 0,
       "measured": "2026-09-03"
+    },
+    "check_unimplemented_claims": {
+      "faults": 0,
+      "measured": "2026-09-03",
+      "note": "Lands at zero because the nine faults it was written for were repaired in the same pass: two copies of one `Implemented: No` table, in tom_ui_flutter_widgets.md and tom_ui_widgets_forms.md, each denying nine widgets that had shipped months earlier."
     }
   }
 }

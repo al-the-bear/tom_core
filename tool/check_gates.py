@@ -9,9 +9,9 @@ Run from anywhere::
 
 Exits non-zero when any gate disagrees with its baseline, in either direction.
 
-**What this is for.** The eighteen checkers beside this file were each written
-to hold a documentation invariant, and until this runner existed *nothing ran
-any of them*. Grepping the repository for their names found them in the README,
+**What this is for.** Every checker beside this file was written to hold a
+documentation invariant, and until this runner existed *nothing ran any of
+them*. Grepping the repository for their names found them in the README,
 in two changelogs, and in one Dart comment -- no test, no hook, no CI step. The
 predictable thing had happened: five were failing, one had silently drifted from
 zero to one dangling reference, and that single regression was found only

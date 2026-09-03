@@ -1,5 +1,38 @@
 ## Unreleased
 
+### Fixed
+
+- **Two documents said nine shipped widgets did not exist.** A planning table
+  headed `Implemented` listed eleven custom widgets as `No`, and a verbatim copy
+  of it sat in a second document. Nine of the eleven ship — seven of them with
+  their own section in `custom.md` — and one row denied `TomTreeView` three
+  hundred lines below the row in the *same* document recording it as wrapped.
+
+  This kind of claim rots in a way review cannot catch. It was true when
+  written; the moment it stopped being true left no trace in the diff of either
+  file, because building `TomEmptyState` does not touch the document saying
+  `TomEmptyState` does not exist. There is no edit to review, so only
+  re-checking finds it — hence `tool/check_unimplemented_claims.py`, which fails
+  when a table denies the existence of a `Tom*` type that `lib/` declares. It
+  reports 9 against the previous revision and 0 now.
+
+  The duplicate table is gone rather than corrected twice: `tom_ui_widgets_forms`
+  §23 now points at the one in `tom_ui_flutter_widgets`, because two copies is
+  what turned one stale fact into two. The two widgets that genuinely were never
+  built are kept as rows saying **why** — `TomResourceText` is what `TomText`
+  already does via `tomId`, and `TomPermissionBadge` is `TomBadge` plus a
+  role vocabulary only an application can supply. A proposal deleted in silence
+  is a proposal that gets made again.
+
+  Corrected alongside them: the `TomRadioGroup` row, which described a widget
+  that groups `TomRadio` children (it renders `Radio<T>` under a `RadioGroup<T>`
+  ancestor, and never did group the wrappers); the `Radio` and `CupertinoRadio`
+  survey rows, which predate `RadioGroup` and omitted that selection comes from
+  an ancestor; the roadmap's Phase 6, which called the same nine widgets
+  unscheduled when all of them ship — its demos Q and R are the part that really
+  is outstanding; and the survey header, which now says outright that it is a
+  Flutter 3.41.4 snapshot while the workspace builds against 3.44.6.
+
 ### Changed
 
 - **`TomCtr.defaultText` / `defaultTextOrEmpty` are now `TomText.defaultFor` /

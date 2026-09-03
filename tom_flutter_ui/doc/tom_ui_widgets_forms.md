@@ -3999,17 +3999,27 @@ class OrderForm extends TomForm<Order> {
 
 Custom widgets that don't wrap Flutter SDK classes. Purpose-built for Tom's authorization, resource, and state binding systems.
 
-| Widget | Implemented | Description |
-|--------|-------------|-------------|
-| `TomRadioGroup` | No | Radio group container with auth on entire selection group |
-| `TomTreeView` | No | Hierarchical tree view with per-node auth |
-| `TomTreeNode` | No | Data model for tree nodes |
-| `TomAuthGuard` | No | Wrapper that hides/disables content based on authorization |
-| `TomLoadingOverlay` | No | Overlay with loading indicator and optional message |
-| `TomErrorBoundary` | No | Catches widget errors, shows fallback UI |
-| `TomEmptyState` | No | Placeholder for empty data views |
-| `TomSkeletonLoader` | No | Shimmer/skeleton loading placeholders |
-| `TomInfiniteScroll` | No | List/grid wrapper with pagination |
+**These widgets ship, and this section no longer tables them.** It used to carry
+a nine-row copy of the table in
+[tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md#custom-tom-widgets-non-form),
+`Implemented` column and all, and the two copies rotted in step: every one of
+the nine was built, and neither table was revisited. Two documents holding the
+same table is what made a single stale fact into two, so there is now one table,
+it is the one in `tom_ui_flutter_widgets.md`, and it is checked against `lib/` by
+`tool/check_unimplemented_claims.py`.
+
+Where to read about them:
+
+- [custom.md](custom.md) — the module document for the eight widgets in
+  `lib/src/custom/`: `TomAuthGuard`, `TomAuthTreeView`, `TomRadioGroup`,
+  `TomEmptyState`, `TomLoadingOverlay`, `TomSkeletonLoader`, `TomErrorBoundary`
+  and `TomInfiniteScroll`.
+- [widgets.md](widgets.md) — the Tree family, where `TomTreeView` /
+  `TomTreeNode` live. That pair is the *widget-level*-auth tree;
+  `TomAuthTreeView` in `custom/` is the per-node one.
+
+None of them is a form field, and none binds a form value — which is why they
+are described elsewhere and only referenced from a forms specification.
 
 ---
 
@@ -5031,11 +5041,21 @@ Mirrors Phase 4 on the Cupertino side. Closes the complete spec.
 
 ### Phase 6 — Non-Form Custom Widgets
 
-**Goal:** Ship the custom Tom widgets catalogued in §23 that exist on paper but have never been scheduled. None are fields, so they sit outside the Phase 1–5 field rollout, but they are documented as first-class framework pieces and several of the form demos (and downstream apps) want them — especially `TomLoadingOverlay`, `TomEmptyState`, and `TomAuthGuard`.
+**Goal:** Ship the custom Tom widgets referenced in §23. None are fields, so they sit outside the Phase 1–5 field rollout, but they are documented as first-class framework pieces and several of the form demos (and downstream apps) want them — especially `TomLoadingOverlay`, `TomEmptyState`, and `TomAuthGuard`.
+
+**Status: the widgets are delivered; the demos are not.** All eight deliverables
+below ship — the seven in `lib/src/custom/` plus the `TomTreeView` /
+`TomTreeNode` pair in `lib/src/widgets/trees/` — with a module document
+([custom.md](custom.md)), an example under `example/custom/`, and five
+`testWidgets` suites under `test/custom/`. `lib/src/custom/` additionally
+carries `TomAuthTreeView` / `TomAuthTreeNode`, the per-node-auth tree that was
+not part of the original eight. **Demos Q and R below were never built**, so the
+validation criterion at the end of this phase — every widget consumed by at
+least one demo — is the part still outstanding.
 
 **Scope note:** These widgets consume the same authorization, resource, and state-binding systems used by fields. No new upstream changes are expected.
 
-**Deliverables:**
+**Deliverables (all shipped):**
 
 | # | Widget | Description |
 |---|---|---|
@@ -5048,7 +5068,8 @@ Mirrors Phase 4 on the Cupertino side. Closes the complete spec.
 | 7 | `TomSkeletonLoader` | Shimmer / skeleton placeholder for async-loading surfaces. |
 | 8 | `TomInfiniteScroll` | List / grid wrapper with pagination, observable page fetcher, and empty / error / loading-state hooks that reuse the widgets above. |
 
-**Demo application for Phase 6** — one page per cluster:
+**Demo application for Phase 6** — one page per cluster. Neither page exists
+yet; this is the outstanding half of the phase:
 
 **Demo Q — Auth / Empty / Overlay**
 
@@ -5060,7 +5081,7 @@ Mirrors Phase 4 on the Cupertino side. Closes the complete spec.
 
 **Demo R — Tree, Radio Group, Infinite Scroll**
 
-- `TomTreeView` with per-node auth (some nodes read-only, some hidden).
+- `TomAuthTreeView` with per-node auth (some nodes read-only, some hidden). This is the widget that resolves a `TomAuthState` per node; `TomTreeView` authorizes at the widget level and would not show the behaviour.
 - `TomRadioGroup` with a group-level auth override.
 - `TomInfiniteScroll` paging through a synthetic 10k-row source, with `TomSkeletonLoader` for the in-flight page and `TomErrorBoundary` around the tile builder.
 

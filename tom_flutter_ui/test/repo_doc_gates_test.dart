@@ -1,9 +1,11 @@
 /// Runs the repository's documentation gates and holds each to its baseline.
 ///
-/// `tom_ai/core/tool/` holds eighteen checkers, each written to keep one
-/// documentation invariant true — that a `[name]` in a dartdoc resolves, that
-/// a table of contents lists the sections its document has, that a `Kind`
-/// column names something Dart declares. Until this file existed **nothing ran
+/// `tom_ai/core/tool/` holds a checker per documentation invariant — that a
+/// `[name]` in a dartdoc resolves, that a table of contents lists the sections
+/// its document has, that a `Kind` column names something Dart declares, that
+/// no table calls a shipped type unimplemented. How many there are is a number
+/// `check_gates.py` prints; repeating it here would be one more unchecked copy
+/// of a fact, which is the shape of fault these gates exist to catch. Until this file existed **nothing ran
 /// any of them**. Searching the repository for their names found the README,
 /// two changelogs and one Dart comment: no test, no hook, no CI step.
 ///
@@ -80,7 +82,8 @@ const _pythonLaunchers = <List<String>>[
 /// Throws rather than skips when Python is absent. A skip would mean the gates
 /// stop being enforced on precisely the machine where nobody notices, which is
 /// the failure this file exists to end; and a repository whose documentation
-/// verification *is* eighteen Python scripts already requires Python to work on.
+/// verification *is* a folder of Python scripts already requires Python to work
+/// on.
 Map<String, dynamic> _runGates() {
   final failures = <String>[];
   for (final launcher in _pythonLaunchers) {
@@ -126,8 +129,8 @@ void main() {
     };
   });
 
-  // The eighteen gates walk every Dart file and every document in the
-  // repository. Together they take about fifteen seconds — once, in setUpAll,
+  // The gates walk every Dart file and every document in the repository.
+  // Together they take about fifteen seconds — once, in setUpAll,
   // whose cost the test that triggers it is charged for. So every test here
   // carries the longer timeout rather than the group, which in `flutter_test`
   // cannot take one.
