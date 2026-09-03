@@ -110,13 +110,13 @@ void run() {
   };
   TomConfigResourceProvider.setAppConfigProvider(TomConfigResourceProvider());
   final appConfig = TomConfigResourceProvider.getAppConfig();
-  final timeout = appConfig.getText('api.timeout');
+  final timeout = appConfig.getObject('api.timeout');
   final sameConfigSingleton = identical(
     appConfig,
     TomConfigResourceProvider.getAppConfig(),
   );
 
-  print('   getAppConfig().getText("api.timeout"): $timeout');
+  print('   getAppConfig().getObject("api.timeout"): $timeout');
   print('   getAppConfig() returns the same instance: $sameConfigSingleton');
   print('');
 
@@ -129,7 +129,7 @@ void run() {
   final textStillCustom = TomTextResourceProvider.getAppResources().getText(
     'app.title',
   );
-  final configStillTimeout = TomConfigResourceProvider.getAppConfig().getText(
+  final configStillTimeout = TomConfigResourceProvider.getAppConfig().getObject(
     'api.timeout',
   );
 

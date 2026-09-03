@@ -716,36 +716,36 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // getText() Tests (returns Object for config)
+    // getObject() Tests (returns Object for config)
     // -------------------------------------------------------------------------
-    group('getText', () {
+    group('getObject', () {
       test('should return string value for flat key', () {
         final provider = TomConfigResourceProvider.from({
           'baseUrl': 'https://api.example.com',
         });
-        expect(provider.getText('baseUrl'), equals('https://api.example.com'));
+        expect(provider.getObject('baseUrl'), equals('https://api.example.com'));
       });
 
       test('should return integer value for flat key', () {
         final provider = TomConfigResourceProvider.from({'port': 8080});
-        expect(provider.getText('port'), equals(8080));
+        expect(provider.getObject('port'), equals(8080));
       });
 
       test('should return boolean value for flat key', () {
         final provider = TomConfigResourceProvider.from({'enabled': true});
-        expect(provider.getText('enabled'), equals(true));
+        expect(provider.getObject('enabled'), equals(true));
       });
 
       test('should return double value for flat key', () {
         final provider = TomConfigResourceProvider.from({'rate': 0.05});
-        expect(provider.getText('rate'), equals(0.05));
+        expect(provider.getObject('rate'), equals(0.05));
       });
 
       test('should return list value for flat key', () {
         final provider = TomConfigResourceProvider.from({
           'hosts': ['host1.com', 'host2.com'],
         });
-        expect(provider.getText('hosts'), equals(['host1.com', 'host2.com']));
+        expect(provider.getObject('hosts'), equals(['host1.com', 'host2.com']));
       });
 
       test('should return map value for flat key', () {
@@ -753,14 +753,14 @@ void main() {
           'database': {'host': 'localhost', 'port': 5432},
         });
         expect(
-          provider.getText('database'),
+          provider.getObject('database'),
           equals({'host': 'localhost', 'port': 5432}),
         );
       });
 
       test('should return key itself when key does not exist', () {
         final provider = TomConfigResourceProvider.from({});
-        expect(provider.getText('missing.key'), equals('missing.key'));
+        expect(provider.getObject('missing.key'), equals('missing.key'));
       });
 
       test('should return value for nested key using dot notation', () {
@@ -769,7 +769,7 @@ void main() {
             'connection': {'maxPoolSize': 25},
           },
         });
-        expect(provider.getText('database.connection.maxPoolSize'), equals(25));
+        expect(provider.getObject('database.connection.maxPoolSize'), equals(25));
       });
 
       test('should return key when nested path does not exist', () {
@@ -777,7 +777,7 @@ void main() {
           'database': {'connection': {}},
         });
         expect(
-          provider.getText('database.connection.missing'),
+          provider.getObject('database.connection.missing'),
           equals('database.connection.missing'),
         );
       });
@@ -787,7 +787,7 @@ void main() {
           'database': 'not a map',
         });
         expect(
-          provider.getText('database.connection.pool'),
+          provider.getObject('database.connection.pool'),
           equals('database.connection.pool'),
         );
       });
@@ -801,11 +801,11 @@ void main() {
           },
         });
         expect(
-          provider.getText('settings.features.experimental.enabled'),
+          provider.getObject('settings.features.experimental.enabled'),
           equals(false),
         );
         expect(
-          provider.getText('settings.features.experimental.version'),
+          provider.getObject('settings.features.experimental.version'),
           equals(2),
         );
       });
@@ -817,7 +817,7 @@ void main() {
           },
         });
         expect(
-          provider.getText('api.v1'),
+          provider.getObject('api.v1'),
           equals({'baseUrl': 'https://v1.api.com'}),
         );
       });
@@ -827,7 +827,7 @@ void main() {
     // Casting a Config Value
     // -------------------------------------------------------------------------
     //
-    // `getText` returns `Object` and echoes the key back on a miss, so the
+    // `getObject` returns `Object` and echoes the key back on a miss, so the
     // direct `as int` that reads so naturally throws on exactly the case the
     // lenient fallback exists to survive — and throws a `TypeError` that names
     // `String` and `int` and never names the key that was missing.
@@ -842,12 +842,12 @@ void main() {
       });
 
       test('a direct cast succeeds when the key is present', () {
-        expect(provider.getText('api.timeout') as int, equals(30000));
+        expect(provider.getObject('api.timeout') as int, equals(30000));
       });
 
       test('a direct cast throws when the key is absent', () {
         expect(
-          () => provider.getText('api.retries') as int,
+          () => provider.getObject('api.retries') as int,
           throwsA(isA<TypeError>()),
         );
       });
@@ -858,7 +858,7 @@ void main() {
           // The obvious defensive move does not work, which is why the guarded
           // forms below are the documented ones.
           expect(
-            () => provider.getText('api.retries') as int?,
+            () => provider.getObject('api.retries') as int?,
             throwsA(isA<TypeError>()),
           );
         },
@@ -878,7 +878,7 @@ void main() {
 
       test('guarding with exists() is the two-lookup equivalent', () {
         int read(String key, int fallback) =>
-            provider.exists(key) ? provider.getText(key) as int : fallback;
+            provider.exists(key) ? provider.getObject(key) as int : fallback;
 
         expect(read('api.timeout', 5000), equals(30000));
         expect(read('api.retries', 5000), equals(5000));
@@ -892,19 +892,19 @@ void main() {
       test('should be modifiable after creation', () {
         final provider = TomConfigResourceProvider.from({});
         provider.resources['new'] = 42;
-        expect(provider.getText('new'), equals(42));
+        expect(provider.getObject('new'), equals(42));
       });
 
       test('should support adding nested structures after creation', () {
         final provider = TomConfigResourceProvider.from({});
         provider.resources['section'] = {'key': 100};
-        expect(provider.getText('section.key'), equals(100));
+        expect(provider.getObject('section.key'), equals(100));
       });
 
       test('should support updating existing values', () {
         final provider = TomConfigResourceProvider.from({'value': 1});
         provider.resources['value'] = 2;
-        expect(provider.getText('value'), equals(2));
+        expect(provider.getObject('value'), equals(2));
       });
     });
   });
@@ -1265,7 +1265,7 @@ void main() {
             equals('Text Label'),
           );
           expect(
-            TomConfigResourceProvider.getAppConfig().getText('setting'),
+            TomConfigResourceProvider.getAppConfig().getObject('setting'),
             equals(42),
           );
         },
@@ -1342,16 +1342,16 @@ void main() {
         final config = TomConfigResourceProvider.from(map);
         final text = TomTextResourceProvider.from(map);
 
-        // exists / existsObject and getText / getObject share the object rule.
+        // exists / existsObject and getObject share the object rule on both.
         expect(
           config.exists('api.timeout'),
           equals(text.existsObject('api.timeout')),
         );
         expect(config.exists('missing'), equals(text.existsObject('missing')));
-        expect(config.getText('flag'), equals(text.getObject('flag')));
-        expect(config.getText('missing'), equals(text.getObject('missing')));
+        expect(config.getObject('flag'), equals(text.getObject('flag')));
+        expect(config.getObject('missing'), equals(text.getObject('missing')));
         // Both echo the key back on a miss.
-        expect(config.getText('missing'), equals('missing'));
+        expect(config.getObject('missing'), equals('missing'));
       });
 
       // -----------------------------------------------------------------------
@@ -1412,7 +1412,7 @@ void main() {
               isNull,
               reason: 'getObjectOrNull($path)',
             );
-            expect(provider.getText(path), equals(path));
+            expect(provider.getObject(path), equals(path));
           }
         },
       );
@@ -1536,7 +1536,7 @@ void main() {
           'text.getObject': () => text.getObject('corrupt.leaf'),
           'text.getObjectOrNull': () => text.getObjectOrNull('corrupt.leaf'),
           'text.existsObject': () => text.existsObject('corrupt.leaf'),
-          'config.getText': () => config.getText('corrupt.leaf'),
+          'config.getObject': () => config.getObject('corrupt.leaf'),
           'config.getObjectOrNull': () =>
               config.getObjectOrNull('corrupt.leaf'),
           'config.exists': () => config.exists('corrupt.leaf'),
@@ -1609,7 +1609,7 @@ void main() {
         );
 
         final local = TomConfigResourceProvider();
-        expect(local.getText('origin'), equals('staticLoader'));
+        expect(local.getObject('origin'), equals('staticLoader'));
         expect(TomConfigResourceProvider.loader, isNotNull);
       });
 
@@ -1636,18 +1636,18 @@ void main() {
         };
         final provider = TomConfigResourceProvider();
         expect(
-          provider.getText('database.primary.host'),
+          provider.getObject('database.primary.host'),
           equals('db1.example.com'),
         );
         expect(
-          provider.getText('database.primary.credentials.user'),
+          provider.getObject('database.primary.credentials.user'),
           equals('admin'),
         );
         expect(
-          provider.getText('database.replica.hosts'),
+          provider.getObject('database.replica.hosts'),
           equals(['db2.example.com', 'db3.example.com']),
         );
-        expect(provider.getText('cache.enabled'), equals(true));
+        expect(provider.getObject('cache.enabled'), equals(true));
       });
     });
 

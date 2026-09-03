@@ -120,7 +120,7 @@ class TomProperty<T> {
 
   void _getValue() {
     // One lookup, not two. `getObjectOrNull` answers "is it there" and "what
-    // is it" together, where the older `exists`-then-`getText` pair asked the
+    // is it" together, where the older `exists`-then-`getObject` pair asked the
     // store the same question twice and the failure report asked a third time
     // — on the path whose premise is that the store has already answered.
     // Anything more expensive than a map behind the provider makes that

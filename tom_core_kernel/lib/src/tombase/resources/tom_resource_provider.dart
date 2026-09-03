@@ -549,8 +549,8 @@ class TomTextResourceProvider {
 /// final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
 /// ```
 ///
-/// [getObjectOrNull] rather than [getText] here because [getText] echoes the
-/// key back as a `String` on a miss, so `as int` throws — see [getText].
+/// [getObjectOrNull] rather than [getObject] here because [getObject] echoes
+/// the key back as a `String` on a miss, so `as int` throws — see [getObject].
 ///
 /// ### Setting up from an asynchronous source
 ///
@@ -719,10 +719,10 @@ class TomConfigResourceProvider {
   /// wanted an `int` or a `bool`, so a direct cast throws.
   ///
   /// ```dart
-  /// config.getText('api.timeout') as int   // 30000 when present
-  /// config.getText('api.retries') as int   // throws: String is not int
-  /// config.getText('api.retries') as int?  // throws too — the miss value is
-  ///                                        // a non-null String, not null
+  /// config.getObject('api.timeout') as int   // 30000 when present
+  /// config.getObject('api.retries') as int   // throws: String is not int
+  /// config.getObject('api.retries') as int?  // throws too — the miss value is
+  ///                                          // a non-null String, not null
   /// ```
   ///
   /// The `TypeError` names `String` and `int` and never names the key, so it
@@ -733,18 +733,18 @@ class TomConfigResourceProvider {
   /// final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
   /// ```
   ///
-  /// Cast [getText] directly only where a miss is genuinely impossible, or
+  /// Cast [getObject] directly only where a miss is genuinely impossible, or
   /// behind an [exists] guard.
   ///
   /// [s] - The configuration key or path to retrieve.
   ///
   /// Returns the value if found (can be any type), or the key [s] if not found.
-  Object getText(String s) => _resolveObjectOrNull(resources, s) ?? s;
+  Object getObject(String s) => _resolveObjectOrNull(resources, s) ?? s;
 
   /// Retrieves the configuration value at the given path, or `null` when it is
   /// absent.
   ///
-  /// The presence-reporting counterpart to [getText], mirroring
+  /// The presence-reporting counterpart to [getObject], mirroring
   /// [TomTextResourceProvider.getObjectOrNull]. Prefer it whenever the value is
   /// going to be cast: because a miss is `null` rather than the echoed key, a
   /// nullable cast with a default expresses "use the configured value, else

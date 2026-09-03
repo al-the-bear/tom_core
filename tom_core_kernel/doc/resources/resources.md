@@ -22,7 +22,7 @@ The module consists of two main providers:
 | Provider | Holds | Accessors | Observable |
 |----------|-------|-----------|------------|
 | `TomTextResourceProvider` | Everything the user sees: localized strings, UI labels, messages — and the non-String values that travel with them, such as TextStyles and Colors | String family (`getText`, `getTextOrNull`, `exists`) **and** object family (`getObject`, `getObjectOrNull`, `existsObject`) | Yes — `appResourcesRevision` |
-| `TomConfigResourceProvider` | How the application is set up: API endpoints, feature flags, timeouts | Object family only (`getText` returns `Object`, plus `getObjectOrNull` and `exists`) | No |
+| `TomConfigResourceProvider` | How the application is set up: API endpoints, feature flags, timeouts | Object family only (`getObject`, `getObjectOrNull` and `exists`) | No |
 
 **Both bundles are `Map<String, dynamic>` and both hold values of any type.**
 The split is by *purpose*, not by value type: a Color belonging to the theme is
@@ -172,15 +172,15 @@ if (config.exists('features.experimental')) {
 
 #### Reading a typed configuration value
 
-`getText` returns `Object` and, on a miss, echoes the key back **as a
+`getObject` returns `Object` and, on a miss, echoes the key back **as a
 `String`**. That lenient fallback is right for text — a label renders as its key
 instead of crashing — but configuration is cast, so the miss lands on the cast:
 
 ```dart
-config.getText('api.timeout') as int;   // 30000 when present
-config.getText('api.retries') as int;   // throws: String is not a subtype of int
-config.getText('api.retries') as int?;  // throws too — the miss value is a
-                                        // non-null String, not null
+config.getObject('api.timeout') as int;   // 30000 when present
+config.getObject('api.retries') as int;   // throws: String is not a subtype of int
+config.getObject('api.retries') as int?;  // throws too — the miss value is a
+                                          // non-null String, not null
 ```
 
 The `TypeError` names `String` and `int` and never names the key, so it does not
@@ -192,11 +192,11 @@ final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
 
 // Equivalent, two lookups — use when the branch does more than pick a default.
 final retries = config.exists('api.retries')
-    ? config.getText('api.retries') as int
+    ? config.getObject('api.retries') as int
     : 3;
 ```
 
-Cast `getText` directly only where a miss is genuinely impossible.
+Cast `getObject` directly only where a miss is genuinely impossible.
 
 ### 5. Easy client integration
 
@@ -211,7 +211,7 @@ extension TomResourceExtension on Object {
   bool Function(String) get translationExists =>
       TomTextResourceProvider.getAppResources().exists;
   Object Function(String) get c =>
-      TomConfigResourceProvider.getAppConfig().getText;
+      TomConfigResourceProvider.getAppConfig().getObject;
   bool Function(String) get configExists =>
       TomConfigResourceProvider.getAppConfig().exists;
 
@@ -300,17 +300,18 @@ rendered, so it carries no revision counter and no String-specific accessors.
 | Method | Return Type | Description |
 |--------|-------------|-------------|
 | `exists(key)` | `bool` | Checks if any value exists at the path |
-| `getText(key)` | `Object` | Returns the value (any type), or the **key itself** if not found |
+| `getObject(key)` | `Object` | Returns the value (any type), or the **key itself** if not found |
 | `getObjectOrNull(key)` | `Object?` | Returns the value (any type), or **`null`** if not found |
 
 > **Note:** both accessors return `Object`, so callers cast. Cast
 > `getObjectOrNull` with a default — `config.getObjectOrNull('api.timeout') as
-> int? ?? 5000` — not `getText`, whose echoed key is a `String` that makes the
+> int? ?? 5000` — not `getObject`, whose echoed key is a `String` that makes the
 > cast throw. See [Reading a typed configuration value](#reading-a-typed-configuration-value).
 > The three accessors here are the whole surface. `getTextOrNull` — the only
 > genuinely String-specific accessor in the module — lives on
-> [`TomTextResourceProvider`](#tomtextresourceprovider), as do `getObject` and
-> `existsObject`, whose roles are filled here by `getText` and `exists`.
+> [`TomTextResourceProvider`](#tomtextresourceprovider), as does `existsObject`,
+> whose role is filled here by `exists`. `getObject` is named identically on
+> both providers, and does the same thing on both.
 
 ### Fallback: key vs. null
 
@@ -338,7 +339,7 @@ final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
 ```
 
 On the config provider this is not merely tidier — it is the difference between
-a default and a crash, because `getText`'s echoed key is a `String` and the
+a default and a crash, because `getObject`'s echoed key is a `String` and the
 cast that follows it is not.
 
 #### A key that is present and holds null

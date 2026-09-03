@@ -160,15 +160,15 @@ class ConfigResourceExample {
       'features': {'darkMode': true},
     });
 
-    apiBaseUrl = configProvider.getText('api.baseUrl') as String?;
-    apiTimeout = configProvider.getText('api.timeout').toString();
-    darkModeEnabled = configProvider.getText('features.darkMode').toString();
+    apiBaseUrl = configProvider.getObject('api.baseUrl') as String?;
+    apiTimeout = configProvider.getObject('api.timeout').toString();
+    darkModeEnabled = configProvider.getObject('features.darkMode').toString();
     configLoaded = true;
 
     print('5. TomConfigResourceProvider for configuration values:');
-    print('   getText("api.baseUrl"): $apiBaseUrl');
-    print('   getText("api.timeout"): $apiTimeout');
-    print('   getText("features.darkMode"): $darkModeEnabled');
+    print('   getObject("api.baseUrl"): $apiBaseUrl');
+    print('   getObject("api.timeout"): $apiTimeout');
+    print('   getObject("features.darkMode"): $darkModeEnabled');
     print('');
 
     assert(
@@ -200,14 +200,14 @@ class ConfigLoaderExample {
 
     final envConfig = TomConfigResourceProvider.load(loadEnvironmentConfig);
 
-    environment = envConfig.getText('environment') as String?;
-    logLevel = envConfig.getText('logging.level') as String?;
+    environment = envConfig.getObject('environment') as String?;
+    logLevel = envConfig.getObject('logging.level') as String?;
 
     configLoaderWorks = environment == 'development' && logLevel == 'debug';
 
     print('6. Config provider built from a loader function:');
-    print('   getText("environment"): $environment');
-    print('   getText("logging.level"): $logLevel');
+    print('   getObject("environment"): $environment');
+    print('   getObject("logging.level"): $logLevel');
     print('');
 
     assert(environment == 'development', 'Environment should be development');

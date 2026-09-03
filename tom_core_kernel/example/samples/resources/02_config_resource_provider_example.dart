@@ -8,7 +8,7 @@
 /// - Using loader functions to build a provider from a computed map
 /// - Hierarchical key access with dot notation
 /// - Typed configuration values (int, bool, nested objects), and why they are
-///   read through `getObjectOrNull` rather than a direct `getText` cast
+///   read through `getObjectOrNull` rather than a direct `getObject` cast
 /// - Environment-specific configuration
 ///
 /// Every provider here is a local instance. The application-wide singleton —
@@ -53,8 +53,8 @@ class ConfigResourceProviderExample {
 
     // Access configuration values.
     //
-    // `getObjectOrNull` rather than `getText` for the non-String values:
-    // `getText` echoes the key back as a `String` when the key is absent, so
+    // `getObjectOrNull` rather than `getObject` for the non-String values:
+    // `getObject` echoes the key back as a `String` when the key is absent, so
     // `as int` throws on a miss (and so does `as int?`). `getObjectOrNull`
     // returns null on a miss, which `?? default` then absorbs. See example 3.
     apiBaseUrl = config.getObjectOrNull('api.baseUrl') as String? ?? '';
@@ -67,7 +67,7 @@ class ConfigResourceProviderExample {
     print('   - Timeout: $timeout ms');
     print('   - Dark mode enabled: $darkModeEnabled');
     print('   - Max items: $maxItems');
-    print('   - Simple key: ${config.getText('simpleKey')}');
+    print('   - Simple key: ${config.getObject('simpleKey')}');
 
     // Assertions
     assert(apiBaseUrl == 'https://api.example.com', 'API URL should match');
@@ -114,14 +114,14 @@ class ConfigResourceProviderExample {
     final config = TomConfigResourceProvider.from({'existing': 'value'});
 
     // Missing keys return the key itself
-    final existingValue = config.getText('existing');
-    final missingValue = config.getText('missing.key.path');
+    final existingValue = config.getObject('existing');
+    final missingValue = config.getObject('missing.key.path');
 
     print('   - Existing key returns: $existingValue');
     print('   - Missing key returns: $missingValue (the key itself)');
 
     // This is useful for development - you can easily spot missing config
-    final debugMessage = 'Config value: ${config.getText('debug.level')}';
+    final debugMessage = 'Config value: ${config.getObject('debug.level')}';
     print('   - Debug message shows key: $debugMessage');
 
     // The sharp edge of that fallback: the echoed key is a String, so casting
@@ -133,17 +133,17 @@ class ConfigResourceProviderExample {
     var directCastThrew = false;
     try {
       // ignore: unused_local_variable
-      final retries = typed.getText('api.retries') as int;
+      final retries = typed.getObject('api.retries') as int;
     } on TypeError {
       directCastThrew = true;
     }
-    print('   - getText(...) as int on a missing key threw: $directCastThrew');
+    print('   - getObject(...) as int on a missing key threw: $directCastThrew');
 
     // Two ways to read a typed value without that risk. Prefer the first: one
     // lookup, one line, and it cannot throw on an absent key.
     final retries = typed.getObjectOrNull('api.retries') as int? ?? 3;
     final timeoutMs = typed.exists('api.timeout')
-        ? typed.getText('api.timeout') as int
+        ? typed.getObject('api.timeout') as int
         : 5000;
 
     print('   - Retries (absent, defaulted): $retries');
@@ -174,9 +174,9 @@ class ConfigResourceProviderExample {
     });
 
     // Access configuration
-    final dbHost = config.getText('database.host');
-    final dbPort = config.getText('database.port');
-    final cacheTtl = config.getText('cache.ttl');
+    final dbHost = config.getObject('database.host');
+    final dbPort = config.getObject('database.port');
+    final cacheTtl = config.getObject('cache.ttl');
 
     print('   - Database host: $dbHost');
     print('   - Database port: $dbPort');
@@ -230,20 +230,20 @@ class ConfigResourceProviderExample {
     final devConfig = createConfigForEnv('dev');
     final prodConfig = createConfigForEnv('prod');
 
-    devApiUrl = devConfig.getText('api.baseUrl') as String;
-    prodApiUrl = prodConfig.getText('api.baseUrl') as String;
+    devApiUrl = devConfig.getObject('api.baseUrl') as String;
+    prodApiUrl = prodConfig.getObject('api.baseUrl') as String;
 
     print('   - Dev API URL: $devApiUrl');
-    print('   - Dev debug: ${devConfig.getText('api.debug')}');
+    print('   - Dev debug: ${devConfig.getObject('api.debug')}');
     print('   - Prod API URL: $prodApiUrl');
-    print('   - Prod debug: ${prodConfig.getText('api.debug')}');
+    print('   - Prod debug: ${prodConfig.getObject('api.debug')}');
 
     // Assertions
     assert(devApiUrl.contains('localhost'), 'Dev should use localhost');
     assert(prodApiUrl.contains('api.example.com'), 'Prod should use real API');
-    assert(devConfig.getText('api.debug') == true, 'Dev should have debug');
+    assert(devConfig.getObject('api.debug') == true, 'Dev should have debug');
     assert(
-      prodConfig.getText('api.debug') == false,
+      prodConfig.getObject('api.debug') == false,
       'Prod should not have debug',
     );
   }
@@ -266,18 +266,18 @@ class ConfigResourceProviderExample {
     });
 
     // Deep nested access
-    final primaryHost = config.getText('database.primary.host');
-    final primaryUsername = config.getText(
+    final primaryHost = config.getObject('database.primary.host');
+    final primaryUsername = config.getObject(
       'database.primary.credentials.username',
     );
-    final replicaPort = config.getText('database.replica.port');
+    final replicaPort = config.getObject('database.replica.port');
 
     print('   - Primary host: $primaryHost');
     print('   - Primary username: $primaryUsername');
     print('   - Replica port: $replicaPort');
 
     // Access entire nested object
-    final primaryCredentials = config.getText('database.primary.credentials');
+    final primaryCredentials = config.getObject('database.primary.credentials');
     print('   - Credentials object type: ${primaryCredentials.runtimeType}');
     if (primaryCredentials is Map) {
       print('   - Credentials map: $primaryCredentials');
@@ -317,9 +317,9 @@ class ConfigResourceProviderExample {
     });
 
     // Access list configuration
-    final origins = config.getText('allowedOrigins');
-    final enabledFlags = config.getText('features.enabledFlags');
-    final rateLimits = config.getText('limits.rateLimits');
+    final origins = config.getObject('allowedOrigins');
+    final enabledFlags = config.getObject('features.enabledFlags');
+    final rateLimits = config.getObject('limits.rateLimits');
 
     print('   - Allowed origins: $origins');
     print('   - Enabled flags: $enabledFlags');
@@ -333,11 +333,11 @@ class ConfigResourceProviderExample {
     // text, like any other miss). Fetching the list whole and indexing it in
     // Dart is not a stylistic choice here; it is the only way in.
     assert(
-      config.getText('allowedOrigins.0') == 'allowedOrigins.0',
+      config.getObject('allowedOrigins.0') == 'allowedOrigins.0',
       'Dotted paths do not index lists — the key is echoed back',
     );
     assert(
-      config.getText('limits.rateLimits.0.endpoint') ==
+      config.getObject('limits.rateLimits.0.endpoint') ==
           'limits.rateLimits.0.endpoint',
       'This holds at any depth past the list',
     );

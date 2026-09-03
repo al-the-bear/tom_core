@@ -680,9 +680,9 @@ class _CountingConfigProvider extends TomConfigResourceProvider {
   }
 
   @override
-  Object getText(String s) {
+  Object getObject(String s) {
     reads++;
-    return super.getText(s);
+    return super.getObject(s);
   }
 
   @override
@@ -704,7 +704,8 @@ class _UnreadableProvider extends TomConfigResourceProvider {
   bool exists(String s) => throw StateError('configuration is unreadable');
 
   @override
-  Object getText(String s) => throw StateError('configuration is unreadable');
+  Object getObject(String s) =>
+      throw StateError('configuration is unreadable');
 
   @override
   Object? getObjectOrNull(String s) =>
@@ -729,7 +730,7 @@ class _FailsAfterFirstReadProvider extends TomConfigResourceProvider {
   }
 
   @override
-  Object getText(String s) => _read(s) ?? s;
+  Object getObject(String s) => _read(s) ?? s;
 
   @override
   Object? getObjectOrNull(String s) => _read(s);

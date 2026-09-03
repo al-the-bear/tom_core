@@ -291,7 +291,7 @@ abstract class TomBaseClientConfiguration extends TomObservable
     }
     final config = TomConfigResourceProvider.getAppConfig();
     final baseline = config.exists(key)
-        ? coerceSettingValue<T>(key, config.getText(key))
+        ? coerceSettingValue<T>(key, config.getObject(key))
         : declaredDefault;
     final setting = TomSetting<T>._(key, declaredDefault, baseline);
     // A setting declared after load() must still see its persisted override —
