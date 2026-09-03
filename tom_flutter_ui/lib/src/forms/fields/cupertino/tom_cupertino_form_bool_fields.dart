@@ -255,7 +255,7 @@ class _CupertinoBoolToggleWidgetState
 // TomCupertinoFormNullableBoolToggle — tristate segmented control
 // ===========================================================================
 
-/// The Cupertino face of the tristate boolean (CE-EL `Toggle` + `tristate`).
+/// The Cupertino face of the tristate boolean field.
 ///
 /// Cupertino has no indeterminate checkbox, so the third state gets its own
 /// segment: Off / — / On. When `tristate` is `false` the middle segment is

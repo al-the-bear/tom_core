@@ -1,4 +1,4 @@
-/// Tristate boolean fields — the CE-EL `Toggle` kind's `tristate` attribute.
+/// Tristate boolean fields — a bound toggle whose third state is "unanswered".
 ///
 /// `TomFormBoolField` binds a `bool` and therefore cannot represent the
 /// third, indeterminate state at all: it is a value-type limitation, not a
@@ -8,7 +8,10 @@
 ///
 /// The split is additive on purpose. Every existing `TomField<bool>` consumer
 /// keeps its non-nullable value; a form that wants "yes / no / not answered"
-/// declares the nullable field instead.
+/// declares the nullable field instead. That third state is what lets a form
+/// generated from a declarative field description honour a toggle the
+/// description marks as tristate, without the generator having to model the
+/// unanswered case itself.
 ///
 /// Concretes:
 ///   * [TomFormNullableBoolCheckbox] — Material [Checkbox] with `tristate`.

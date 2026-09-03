@@ -125,8 +125,8 @@ void main() {
       );
     });
 
-    // CSEXB1 — the MultiChoice selection bounds are declarable by name, so a
-    // spec's minSelections/maxSelections reach a field through its resource
+    // The selection bounds are declarable by name, so a field description's
+    // minimum and maximum selection counts reach a field through its resource
     // bundle without any per-field constructor argument.
     test('minItems enforces its integer argument on a selection', () async {
       final v = TomValidatorRegistry().resolveSpec('minItems:2');
@@ -250,9 +250,9 @@ void main() {
 
     test('a multi-choice field enforces resource-declared selection bounds',
         () async {
-      // CSEXB1 done-bar: a spec declaring minSelections: 2 / maxSelections: 3
-      // on a MultiChoice element lands here — as a validator declaration on
-      // the field's resource bundle, with no per-field constructor argument.
+      // A field description's minimum and maximum selection counts land here:
+      // as a validator declaration on the field's resource bundle, with no
+      // per-field constructor argument.
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from({
           'toppings.validators': 'minItems:2,maxItems:3',

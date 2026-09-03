@@ -5,7 +5,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
-// CSEXB1 — the CE-EL Toggle kind's `tristate` attribute.
+// The tristate boolean field — a toggle whose third state is "unanswered".
 //
 // TomFormBoolField binds a `bool` and so cannot express the indeterminate
 // state at all. These tests pin the nullable sibling: that `null` is a real,

@@ -180,9 +180,9 @@ void main() {
     });
 
     // -----------------------------------------------------------------
-    // CSEXB1 — the CE-EL MultiChoice kind's selection bounds. The element
-    // declares minSelections/maxSelections; they desugar to these rules
-    // exactly as a numeric field's minValue desugars to min().
+    // Selection bounds for a multi-select field. A field description that
+    // states a minimum or maximum number of selections desugars to these two
+    // rules, exactly as a numeric field's minimum desugars to min().
     // -----------------------------------------------------------------
 
     group('minItems()', () {
