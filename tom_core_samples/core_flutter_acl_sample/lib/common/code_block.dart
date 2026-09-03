@@ -1,6 +1,6 @@
 /// A monospace, selectable, copy-to-clipboard code view.
 ///
-/// This is the "code" half of a [ShowcaseCell]: it presents the verbatim
+/// This is the "code" half of a [ShowcaseCell]: it presents the curated
 /// instantiation snippet for a widget so a reader can copy it straight into
 /// their own project. The chrome is styled to stay visually neutral — a
 /// monospace [TomSelectableText] inside a bordered panel with a [TomIconButton]
@@ -23,7 +23,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 class CodeBlock extends TomStatelessWidget {
   CodeBlock(this.code, {super.key});
 
-  /// The verbatim Dart source that produced the sibling widget.
+  /// The curated Dart snippet illustrating the sibling widget — see
+  /// [ShowcaseCell.code] for what it may and may not abridge.
   final String code;
 
   @override

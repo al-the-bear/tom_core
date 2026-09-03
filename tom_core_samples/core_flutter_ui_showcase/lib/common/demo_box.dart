@@ -6,7 +6,7 @@
 /// the boxes. It is public, and named, precisely so the snippets can call it:
 /// a `ShowcaseCell.code` must name only things the reader can look up, so a
 /// private `_box` — or a bare `boxA` that exists nowhere — would break the
-/// verbatim contract the cell's own dartdoc states.
+/// snippet contract the cell's own dartdoc states.
 ///
 /// Shared in shape with `core_flutter_acl_sample` / `core_flutter_acl_responsive`.
 library;

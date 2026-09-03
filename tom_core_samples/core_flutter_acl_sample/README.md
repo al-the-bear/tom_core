@@ -70,28 +70,52 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 | Entry point | `lib/main.dart` | Installs the `chromeTexts` resource bundle then `runApp` |
 | Chrome bundle | `lib/common/chrome_texts.dart` | The tour's own interactive-chrome strings |
 | App shell | `lib/acl_app.dart` | `MaterialApp` + a home index listing every capability group |
-| The teaching cell | `lib/common/showcase_cell.dart` | A `ShowcaseCell` shows a verbatim snippet beside the live layout |
+| The teaching cell | `lib/common/showcase_cell.dart` | A `ShowcaseCell` shows a curated snippet beside the live layout |
 | Code block | `lib/common/code_block.dart` | Monospace, copy-to-clipboard source rendering |
 | Group model | `lib/common/showcase_section.dart` | `ShowcaseGroup` + `GroupScreen` |
 | Demo box | `lib/common/demo_box.dart` | The generic coloured box arranged by every layout |
 | Capability groups | `lib/groups/*.dart` | One file per ACL capability |
 
 The one idea this sample adds over the `acl_demos/` harness is `ShowcaseCell`: it
-pairs a **hand-curated, verbatim instantiation snippet** with the rendered layout.
-The snippets are kept in lock-step with the live `child` by hand (an article wants
-trimmed, copy-paste-ready code), and `test/showcase_cell_test.dart` asserts both
-halves are always present so an empty snippet can never slip through.
+pairs a **hand-curated instantiation snippet** with the rendered layout, so the
+chain and the arrangement it produces are read together.
 
-**What "trimmed" is allowed to mean.** Exactly one thing: a `demoBox` tint is
-written bare (`green`, `teal`, `purple`) where the `child` says `Colors.green`.
-That shorthand is uniform across every group, and it elides nothing a reader
-needs — the chain's shape is identical and the qualifier restores itself. It may
-**never** stretch to eliding a builder chain behind a name the snippet does not
-define. A cell that composes sub-layouts spells them out as locals the snippet
-itself declares (`nesting_group.dart`, `reference_group.dart`), because a name
-like `leftPanel` would hide precisely the construction — the border and title
-calls — that the cell exists to teach. `showcase_cell_test.dart` checks only that
-a snippet is non-empty, so this boundary is a review obligation, not a gated one.
+### The snippet contract
+
+A cell's `code` is a **curated snippet of the API the cell teaches**, not a
+transcript of the live `child`. Transcribing would defeat the purpose: the child
+is wrapped in gallery harness — width pins, toggles and badge rows that exist to
+make the behaviour observable and testable — which would bury the one chain the
+cell is about.
+
+So a snippet **may**:
+
+- drop the harness and show only the chain under discussion;
+- write a `demoBox` tint bare (`green`, `teal`, `purple`) where the `child` says
+  `Colors.green` — a shorthand used uniformly across every group, which elides
+  nothing a reader needs because the qualifier restores itself;
+- elide repetition behind a `// …` comment, so the reader can see that something
+  was left out.
+
+A snippet **may not name an API that does not exist**. That is the line between
+an abridgement and a lie, and it is the half a reader actually leans on when they
+lift a line into their own project. `showcase_cell_test.dart` enforces it: every
+`name(` a snippet contains must also be called by the *live* code in
+`lib/groups/<group id>_group.dart`, which is where the `child` is built — so the
+file name must match the group id. The test strips comments and string literals
+from that file before looking, otherwise it would find each name inside the
+snippet's own literal and pass unconditionally; it strips string literals from
+the *snippet* too, because a label like `demoBox('Anchor field (wide)', …)` is
+data, not a call to a non-existent `field(...)`. A snippet that invents a
+convenient `ctrl.buildInventedThing()` fails the suite; so does one that names
+something the file merely mentions in a comment.
+
+The related rule the test cannot gate is **eliding a chain behind a name the
+snippet does not define**. A cell that composes sub-layouts spells them out as
+locals the snippet itself declares (`nesting_group.dart`,
+`reference_group.dart`), because a name like `leftPanel` would hide precisely the
+construction — the border and title calls — the cell exists to teach. That one
+stays a review obligation.
 
 > The `common/` framework (`ShowcaseCell` / `CodeBlock` / `ShowcaseGroup`) is the
 > same one used by [`core_flutter_ui_showcase`](../core_flutter_ui_showcase); this
@@ -398,7 +422,7 @@ screen. *Source: `widget_demos/demo_28_authorization` +
 | File | Asserts |
 | --- | --- |
 | `test/acl_smoke_test.dart` | Every capability group builds and pumps without throwing; the home index lists every group |
-| `test/showcase_cell_test.dart` | A `ShowcaseCell` shows both the code text and the rendered child; no cell has an empty snippet |
+| `test/showcase_cell_test.dart` | A `ShowcaseCell` shows both the code text and the rendered child; no cell has an empty snippet; no snippet names an API its group's live code never calls |
 | `test/authorization_states_test.dart` | The four state cells render; `none` collapses the gated button while `full`/`read`/`disabled` keep it |
 
 All green serial: `flutter test --concurrency=1`.

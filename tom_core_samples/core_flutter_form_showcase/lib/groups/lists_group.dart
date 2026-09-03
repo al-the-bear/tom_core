@@ -128,7 +128,7 @@ final ShowcaseGroup listsGroup = ShowcaseGroup(
           "                ? Theme.of(context).colorScheme.surfaceContainerHighest\n"
           "                : null,\n"
           "            child: TomInkWell(\n"
-          "              onTap: () => select(index),\n"
+          "              onTap: () => _select(index),\n"
           "              child: TomPadding(\n"
           "                padding: const EdgeInsets.all(8),\n"
           "                child: TomRow(\n"
@@ -152,7 +152,7 @@ final ShowcaseGroup listsGroup = ShowcaseGroup(
           "    TomListFormToolbar<OrderItem, OrderItemForm>(\n"
           "      listForm: listForm,\n"
           "      selectedIndex: selectedIndex,\n"
-          "      onSelectionChanged: (i) async => select(i),\n"
+          "      onSelectionChanged: (i) async => _select(i),\n"
           "    ),\n"
           "  ],\n"
           ")",

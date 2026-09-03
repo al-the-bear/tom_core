@@ -1,10 +1,15 @@
 // Cell-contract tests: a [ShowcaseCell] always shows BOTH halves of the
-// teaching pair — the verbatim code snippet and the rendered child.
+// teaching pair — a curated code snippet and the rendered child.
 //
-// The whole point of the showcase over `tom_flutter_ui_test` is that the
-// source that produced a widget is displayed beside the widget. These tests
-// make that contract enforceable: an empty snippet, a cell that silently drops
-// its child, or a snippet naming something that exists nowhere, fails here.
+// The contract has two halves and only one of them is machine-checkable. A
+// snippet **may abridge** — dropping the gallery harness, standing in for a
+// whole StatefulWidget with `_value` and `setState`, eliding repetition behind
+// a `…` comment — and judging whether an abridgement is honest is an editorial
+// call no test can make. A snippet **may not invent**, and that half is exactly
+// checkable. These tests hold the checkable parts: an empty snippet, a cell
+// that silently drops its child, a snippet naming something that exists
+// nowhere, or one that quotes a construct and under-configures it, all fail
+// here.
 
 import 'dart:io';
 
@@ -104,8 +109,8 @@ void main() {
     }
   });
 
-  // The other half of "verbatim", and the half proofreading kept missing: a
-  // snippet may only name things that exist. Placeholder stand-ins (`boxA`,
+  // The invention half of the contract, and the half proofreading kept missing:
+  // a snippet may only name things that exist. Placeholder stand-ins (`boxA`,
   // `chipA`) and leaked locals (`scheme`, which lived in showcase_cell.dart,
   // not in the cell's own file) both read as real code and neither compiles
   // for a reader who copies it. Every identifier a snippet uses must therefore

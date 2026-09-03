@@ -1,9 +1,9 @@
 # Tom Flutter UI — Forms Showcase
 
 A **code-beside-form** tour of the `tom_flutter_ui` forms framework. Every cell
-in this sample renders a live, bound `TomForm` field **next to the verbatim Dart
-that declared it** — so you read the API and see its result at the same time,
-feature by feature.
+in this sample renders a live, bound `TomForm` field **next to a curated snippet
+of the Dart that declared it** — so you read the API and see its result at the
+same time, feature by feature.
 
 Where the sibling [`core_flutter_ui_showcase`](../core_flutter_ui_showcase) is a
 pure *widget* gallery, this one is about the thing that makes Tom forms a
@@ -178,7 +178,7 @@ file size: a form that cannot bind is not a form.
 
 Two small types under [`lib/common/`](lib/common) carry the whole presentation:
 
-- **`ShowcaseCell`** — one teaching entry: a `title`, the verbatim `code`
+- **`ShowcaseCell`** — one teaching entry: a `title`, a curated `code`
   snippet, the live `child` widget, an optional `note`, and an optional
   `previewMinWidth`. It renders `code | rendered` side-by-side on wide viewports
   and stacked on narrow ones. Both halves are asserted present by the cell test,
@@ -572,9 +572,8 @@ TomColumn(
 ```
 
 Every layout primitive above is the Tom one, because that is the rule the sample
-follows everywhere (G-UI-1) — and because the snippet claims to be verbatim, so
-naming `Row` or `Expanded` here would both misdescribe the child and teach the
-opposite of what the code does. `widget_convention_test.dart` enforces this in
+follows everywhere (G-UI-1) — and naming `Row` or `Expanded` here would both
+misdescribe the child and teach the opposite of what the code does. `widget_convention_test.dart` enforces this in
 every library file and across every cell in every group.
 
 The scroll view is part of the pattern: `TomInlineListForm` shrink-wraps its
@@ -682,18 +681,20 @@ All five suites call `initializeReflection()` in `setUpAll`:
 - **`showcase_smoke_test.dart`** — pumps each group and the home screen at a
   large size, asserting the group title renders and `takeException` is null.
 - **`showcase_cell_test.dart`** — asserts every cell shows both its code snippet
-  and its live child, that no cell's snippet is empty, and that a snippet
-  quoting a configurable construct shows its whole configuration. The last is
-  one machine-checkable half of the "verbatim" promise: a snippet that quotes
+  and its live child, that no cell's snippet is empty, that no snippet names an
+  API the sample never calls, and that a snippet quoting a configurable
+  construct shows its whole configuration. The last two are the machine-checkable
+  parts of the snippet contract (§18): a snippet that invents
+  `form.buildColumn()` names something a reader cannot use, and one that quotes
   `TomAclBuilder` or a list scaffold but drops a call the child makes would
   render differently if copied.
 - **`widget_convention_test.dart`** — enforces G-UI-1 on both surfaces a reader
   learns from. No library file may build a raw Flutter widget that has a Tom
   counterpart (`MaterialApp` is the sole exemption — there is no
   `TomMaterialApp`, because Tom widgets live inside an app rather than replacing
-  its root), and no snippet may name one either. That second rule is the other
-  machine-checkable half of "verbatim": a snippet saying `Row` cannot be
-  reproducing a child built from `TomRow`. Both rules read one shared list of
+  its root), and no snippet may name one either. That second rule is the third
+  machine-checkable part of the contract: a snippet saying `Row` cannot be
+  illustrating a child built from `TomRow`. Both rules read one shared list of
   widget names, which is what stops the two halves drifting apart.
 - **`list_form_host_test.dart`** — asserts the two list-bearing groups really
   bind their seeded items, which the smoke test cannot see (an unbound list form
@@ -722,14 +723,44 @@ form, annotate it `@tomReflector`, add it to `reflection_seed.dart`, and run
 Lay the group out with Tom widgets, not raw Flutter ones — `widget_convention_test.dart`
 will fail the build otherwise, and it reads your snippets too.
 
-Keep each cell's `code` snippet in lock-step with its `child` by hand — the
-article wants curated snippets. The tests gate what a machine can see: neither
-half empty, no raw Flutter layout widget in the source or in a snippet, and no
-under-configured quote of `TomAclBuilder` or a list scaffold. A snippet may
-still legitimately *abstract* — the theming cells stand in for the whole layout
-with `formLayout` — but the moment it names a construct, it owes that
-construct's full configuration, and everything the gates cannot see is still on
-you.
+### The snippet contract
+
+A cell's `code` is a **curated snippet of the API the cell teaches**, not a
+transcript of the live `child`. In this sample it usually cannot be a transcript:
+what a cell teaches is a field *declaration* — `TomFormStringInput('name', …,
+validators: [...])` — which lives in `lib/forms/`, while the group file beside it
+holds only the `FormHost` scaffolding and width pins that make the bound field
+observable and testable.
+
+So a snippet **may**:
+
+- drop the harness and show only the declaration under discussion;
+- *abstract* — the theming cells stand in for a whole layout with `formLayout`;
+- elide repetition behind a `// …` comment, so the reader can see that something
+  was left out;
+- use a short stand-in where the live code threads a gallery-specific id.
+
+Three rules bound that freedom, and each is gated:
+
+1. **A snippet may not name an API that does not exist.** That is the line
+   between an abridgement and a lie, and it is the half a reader leans on when
+   they lift a line into their own project. `showcase_cell_test.dart` requires
+   every `name(` in a snippet to be called somewhere in the sample's own `lib/`
+   — the whole package rather than one file, because the declaration a snippet
+   quotes lives in `lib/forms/` while the snippet itself sits in `lib/groups/`.
+   The test strips comments and string literals from both sides first, otherwise
+   it would find each name inside the snippet's own literal and pass
+   unconditionally. If the name is a **private** helper of the sample, spell it
+   with its underscore — `_MasterPane`, not `MasterPane` — so a reader does not
+   go looking for it in `tom_flutter_ui`.
+2. **Naming a construct owes that construct's full configuration.** A snippet
+   quoting `TomAclBuilder` or a list scaffold but dropping a call the child makes
+   would render differently if copied.
+3. **No raw Flutter widget that has a Tom counterpart**, in the source or in a
+   snippet (`widget_convention_test.dart`).
+
+Everything the gates cannot see — whether an abridgement is *honest* — is still
+a review obligation.
 
 ---
 

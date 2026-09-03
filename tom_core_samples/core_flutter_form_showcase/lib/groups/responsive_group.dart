@@ -17,8 +17,8 @@ import '../forms/company_form.dart';
 
 Widget _breakpointForm(String scopeId, double width) {
   // Why: TomSizedBox, not SizedBox — the sample lays out exclusively with Tom
-  // widgets (G-UI-1), and this box is quoted verbatim by the narrow cell's
-  // snippet, so a raw one would teach the rule's opposite.
+  // widgets (G-UI-1), and this box is quoted by the narrow cell's snippet, so
+  // a raw one would teach the rule's opposite.
   return TomSizedBox(
     width: width,
     child: FormHost<CompanyForm>(

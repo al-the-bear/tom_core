@@ -3,7 +3,7 @@
 /// A showcase deliberately splits its user-facing text into two categories:
 ///
 /// - **Teaching text is intentionally hardcoded** — group titles/summaries and
-///   the verbatim code-snippet bodies (`ShowcaseCell.code`) plus the
+///   the code-snippet bodies ([ShowcaseCell.code]) plus the
 ///   direct-parameter demo widgets they render (`label:`/`text:`/`tooltip:`
 ///   inside a snippet). These are a documented copy-paste exemption: a reader
 ///   must be able to lift a snippet into their own project with nothing to wire

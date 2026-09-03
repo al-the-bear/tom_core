@@ -18,8 +18,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'code_block.dart';
 
-/// A single showcase entry: a [title], the verbatim [code] snippet, and the
-/// live [child] widget the snippet produces. An optional [note] surfaces a
+/// A single showcase entry: a [title], a curated [code] snippet, and the live
+/// [child] widget that snippet illustrates. An optional [note] surfaces a
 /// caveat (e.g. a state that depends on a specific feature).
 // Why: extends [TomStatelessWidget] (not raw StatelessWidget) so the chrome
 // itself conforms to G-UI-1/G-UI-2 — the sample's own UI is built from Tom*
@@ -40,9 +40,23 @@ class ShowcaseCell extends TomStatelessWidget {
   /// Human-readable label for the component being shown.
   final String title;
 
-  /// The verbatim Dart that produced [child]. Kept in lock-step with [child]
-  /// by hand (the article wants curated snippets); `showcase_cell_test.dart`
-  /// asserts both halves are present so an empty snippet can't slip through.
+  /// A curated Dart snippet of the API [child] demonstrates, kept in step with
+  /// [child] by hand.
+  ///
+  /// It is deliberately **not** a transcript of the live source. The child is
+  /// wrapped in gallery harness — width pins, stateful demo wrappers, badge
+  /// rows that make the behaviour observable and testable — which would bury
+  /// the one widget the cell is about. So a snippet may drop scaffolding, elide
+  /// repetition behind a `…` comment, and stand in for a whole StatefulWidget
+  /// with a bare `_value` and `setState`.
+  ///
+  /// What it may not do is **name something that does not exist**. That is the
+  /// line between an abridgement and a lie, and it is the half a reader relies
+  /// on when they lift a line into their own project.
+  /// `showcase_cell_test.dart` holds that half: every identifier a snippet uses
+  /// must also appear in the live, non-snippet source of the group file that
+  /// renders it — which is why [demoBox] is public and named rather than a
+  /// private `_box`.
   final String code;
 
   /// The live widget rendered from [code].

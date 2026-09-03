@@ -1,16 +1,19 @@
 // Cell-contract tests: a [ShowcaseCell] always shows BOTH halves of the
-// teaching pair — the verbatim code snippet and the rendered child.
+// teaching pair — a curated code snippet and the rendered child.
 //
-// The whole point of the showcase is that the source that produced a live form
-// is displayed beside it, so these tests make that contract enforceable: both
-// halves render, no group ships a cell with an empty snippet, and a snippet
-// that quotes a configurable construct shows that construct's whole
-// configuration rather than a partial one.
+// The contract has two halves and only one of them is machine-checkable. A
+// snippet **may abridge**: it drops the `FormHost` scaffolding and width pins,
+// elides repetition behind a `…` comment, and stands in for gallery-specific
+// ids. Judging whether an abridgement is honest is an editorial call no test
+// can make. A snippet **may not invent** — naming an API that does not exist —
+// and that half is exactly checkable. These tests hold the checkable parts:
+// both halves render, no group ships an empty snippet, no snippet names an API
+// the sample never calls, and a snippet quoting a configurable construct shows
+// that construct's whole configuration rather than a partial one.
 //
-// The other machine-checkable part of "verbatim" — that a snippet names the Tom
-// widget the child actually builds — lives in `widget_convention_test.dart`,
-// beside the source-level half of the same rule and the one vocabulary both
-// share.
+// The remaining machine-checkable rule — that a snippet names the Tom widget
+// the child actually builds — lives in `widget_convention_test.dart`, beside
+// the source-level half of the same rule and the one vocabulary both share.
 
 import 'dart:io';
 
@@ -82,6 +85,57 @@ void main() {
     }
   });
 
+  // The invention half of the contract. Its scope is the sample's whole `lib/`,
+  // and that is the one place this sample's guard differs from the siblings':
+  // there, a cell's `child` is built inline in `lib/groups/<id>_group.dart`, so
+  // the group file *is* the thing the snippet illustrates. Here it is not. What
+  // a forms cell teaches is a field *declaration* — `TomFormStringInput('name',
+  // …, validators: [...])` — which lives in `lib/forms/company_form.dart`,
+  // while the group file holds only the `FormHost` that mounts it. Scoping to
+  // the group file would fail ~30 snippets that are entirely honest.
+  //
+  // Widening trades a little precision for the right question: a name must
+  // exist *in this sample*, rather than in this file. The failure mode that
+  // matters is untouched — an invented `form.buildColumn()` is nowhere in
+  // `lib/`, so it still fails.
+  testWidgets('no snippet names an API the sample never calls', (tester) async {
+    late BuildContext capturedContext;
+    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) {
+      capturedContext = context;
+      return const SizedBox.shrink();
+    })));
+
+    // Why the stripping matters: the snippets are themselves string literals
+    // inside `lib/groups/`, so searching the raw text would find every name in
+    // its own snippet and pass unconditionally. Generated reflection output is
+    // excluded — it is the generator's, not the sample's, and it names far more
+    // than the sample writes.
+    final live = Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .where((f) => !f.path.endsWith('.reflection.dart'))
+        .map((f) => _executableSource(f.readAsStringSync()))
+        .join('\n');
+    expect(live, isNotEmpty,
+        reason: 'tests must run from the package root');
+
+    for (final group in showcaseGroups) {
+      for (final cell in group.cells(capturedContext)) {
+        for (final name in _calledNames(cell.code)) {
+          expect(live, contains(RegExp('\\b${RegExp.escape(name)}\\s*\\(')),
+              reason: 'group ${group.id}, cell "${cell.title}": the snippet '
+                  'calls `$name(...)`, which nothing in lib/ calls. A snippet '
+                  'may abridge the live child, but it may not name an API that '
+                  'does not exist. If the name is a private helper of the '
+                  'sample, spell it with its underscore — `_MasterPane`, not '
+                  '`MasterPane` — so a reader does not go looking for it in '
+                  'tom_flutter_ui.');
+        }
+      }
+    }
+  });
+
   test('a snippet quoting a configurable construct shows its whole '
       'configuration', () {
     // The recurring snippet defect is not a wrong line, it is a *missing* one:
@@ -140,6 +194,88 @@ void main() {
     expect(aclChecked, greaterThanOrEqualTo(2));
     expect(scaffoldChecked, greaterThanOrEqualTo(2));
   });
+}
+
+/// A library file reduced to the code that actually runs: comments and string
+/// literals removed, everything else left in place.
+///
+/// This is what makes the invention check non-circular. A cell's snippet is a
+/// string literal *inside `lib/groups/`*, so searching the raw sources for a
+/// name the snippet uses always succeeds — including for a name the snippet
+/// invented. Dropping the literals leaves only live code, which is the thing
+/// the snippet claims to illustrate. Comments go first and in the same pass, so
+/// an apostrophe in prose ("the cell's width") cannot open a phantom string and
+/// swallow the rest of the file.
+String _executableSource(String dart) {
+  final out = StringBuffer();
+  var i = 0;
+  while (i < dart.length) {
+    final c = dart[i];
+    final next = i + 1 < dart.length ? dart[i + 1] : '';
+
+    if (c == '/' && next == '/') {
+      while (i < dart.length && dart[i] != '\n') {
+        i++;
+      }
+      continue;
+    }
+    if (c == '/' && next == '*') {
+      i += 2;
+      while (i + 1 < dart.length && !(dart[i] == '*' && dart[i + 1] == '/')) {
+        i++;
+      }
+      i += 2;
+      continue;
+    }
+    if (c == '"' || c == "'") {
+      final triple = dart.startsWith(c * 3, i);
+      final close = triple ? c * 3 : c;
+      i += close.length;
+      while (i < dart.length && !dart.startsWith(close, i)) {
+        i += dart[i] == r'\' ? 2 : 1;
+      }
+      i += close.length;
+      // Emit a separator so `a'x'b` cannot fuse into the identifier `ab`.
+      out.write(' ');
+      continue;
+    }
+    out.write(c);
+    i++;
+  }
+  return out.toString();
+}
+
+/// Every identifier a snippet invokes — the `foo` of any `foo(`.
+///
+/// Two kinds of text are removed before looking, and both are load-bearing.
+/// Comments go so an elision marker (`// …validators / style overrides…`)
+/// cannot smuggle a name past the reader's eye and into the check. **String
+/// literals go because a snippet's strings are data — labels, ids — not
+/// references**, and a label that happens to end in a word before a bracket
+/// reads exactly like a call.
+///
+/// Language keywords that can legally precede `(` are dropped too: they are
+/// Dart syntax, not API surface, and a snippet is free to use control flow the
+/// live child spells differently.
+Set<String> _calledNames(String code) {
+  var withoutComments = code.split('\n').map((line) {
+    final marker = line.indexOf('//');
+    return marker == -1 ? line : line.substring(0, marker);
+  }).join('\n');
+  withoutComments = withoutComments
+      .replaceAll(RegExp(r"'(?:[^'\\]|\\.)*'"), "''")
+      .replaceAll(RegExp(r'"(?:[^"\\]|\\.)*"'), '""');
+
+  const keywords = {
+    'if', 'for', 'while', 'switch', 'return', 'catch', 'assert', 'super',
+    'this', 'new', 'await', 'in', 'is', 'as', 'else', 'do', 'throw', 'yield',
+  };
+
+  return RegExp(r'([A-Za-z_$][A-Za-z0-9_$]*)\s*\(')
+      .allMatches(withoutComments)
+      .map((m) => m.group(1)!)
+      .where((name) => !keywords.contains(name))
+      .toSet();
 }
 
 final _doubleQuoted = RegExp(r'"((?:[^"\\]|\\.)*)"');

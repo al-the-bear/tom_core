@@ -183,19 +183,28 @@ String _executableSource(String dart) {
 
 /// Every identifier a snippet invokes — the `foo` of any `foo(`.
 ///
-/// Comments are stripped first so an elision marker (`// …gaps / errorIcon
-/// overrides…`) cannot smuggle a name past the reader's eye and into the check.
-/// Language keywords that can legally precede `(` are dropped: they are Dart
+/// Two kinds of text are removed before looking, and both are load-bearing.
+/// Comments go so an elision marker (`// …gaps / errorIcon overrides…`) cannot
+/// smuggle a name past the reader's eye and into the check. **String literals go
+/// because a snippet's strings are data — labels, ids — not references**, and a
+/// label that happens to end in a word before a bracket reads exactly like a
+/// call: `demoBox('Anchor field (wide)', …)` would otherwise be reported as
+/// calling a non-existent `field(...)`.
+///
+/// Language keywords that can legally precede `(` are dropped too: they are Dart
 /// syntax, not API surface, and a snippet is free to use control flow the live
 /// child spells differently.
 Set<String> _calledNames(String code) {
-  final withoutComments = code
+  var withoutComments = code
       .split('\n')
       .map((line) {
         final marker = line.indexOf('//');
         return marker == -1 ? line : line.substring(0, marker);
       })
       .join('\n');
+  withoutComments = withoutComments
+      .replaceAll(RegExp(r"'(?:[^'\\]|\\.)*'"), "''")
+      .replaceAll(RegExp(r'"(?:[^"\\]|\\.)*"'), '""');
 
   const keywords = {
     'if', 'for', 'while', 'switch', 'return', 'catch', 'assert', 'super',

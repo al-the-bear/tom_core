@@ -23,33 +23,52 @@ flutter test --concurrency=1   # smoke + cell-contract tests; serial
 | Entry point | `lib/main.dart` | Installs the `chromeTexts` resource bundle then `runApp` |
 | Chrome bundle | `lib/common/chrome_texts.dart` | The showcase's own interactive-chrome strings |
 | App shell | `lib/showcase_app.dart` | `MaterialApp` + a home index listing every group |
-| The teaching cell | `lib/common/showcase_cell.dart` | A `ShowcaseCell` shows a verbatim snippet beside the live widget |
+| The teaching cell | `lib/common/showcase_cell.dart` | A `ShowcaseCell` shows a curated snippet beside the live widget |
 | Code block | `lib/common/code_block.dart` | Monospace, copy-to-clipboard source rendering |
 | Group model | `lib/common/showcase_section.dart` | `ShowcaseGroup` + `GroupScreen` |
 | Demo filler | `lib/common/demo_box.dart` | `demoBox(label, color)` — the generic box the layouts arrange |
 | Component groups | `lib/groups/*.dart` | One file per component family |
 
 The single new idea over `tom_flutter_ui_test` is `ShowcaseCell`: it pairs a
-**hand-curated, verbatim instantiation snippet** with the rendered widget. The
-snippets are kept in lock-step with the live `child` by hand (an article wants
-trimmed, copy-paste-ready code), and `test/showcase_cell_test.dart` asserts both
-halves are always present so an empty snippet can never slip through.
+**hand-curated instantiation snippet** with the rendered widget, so the API and
+its result are read together.
 
-Trimming has a floor: **a snippet may only name identifiers that exist.** It may
-leave out detail the reader does not need, but it may not stand in a placeholder
-(`boxA`) or borrow a local from another file (`scheme`) — both read as real code
-and neither compiles when copied. `showcase_cell_test.dart` checks that every
-identifier a snippet names also appears in the file that renders it. That is why
-the layout and ACL cells build their filler with the public
+### The snippet contract
+
+A cell's `code` is a **curated snippet of the API the cell teaches**, not a
+transcript of the live `child`. Transcribing would defeat the purpose: the child
+is wrapped in gallery harness — width pins, stateful demo wrappers, badge rows
+that exist to make the behaviour observable and testable — which would bury the
+one widget the cell is about.
+
+So a snippet **may** drop the harness, elide repetition behind a `// …` comment,
+and abstract: standing in for a whole `StatefulWidget` with `_value` and
+`setState` is fair.
+
+Trimming has a floor, and it is two rules the suite gates rather than a review
+obligation.
+
+**A snippet may only name identifiers that exist.** It may leave out detail the
+reader does not need, but it may not stand in a placeholder (`boxA`) or borrow a
+local from another file (`scheme`) — both read as real code and neither compiles
+when copied. `showcase_cell_test.dart` checks that every identifier a snippet
+names also appears in the *live, non-snippet* source of the file that renders it
+— it strips the snippets and comments from that file first, otherwise it would
+find each name inside the snippet's own literal and pass unconditionally. That
+is why the layout and ACL cells build their filler with the public
 `demoBox(label, color)` rather than a private helper: the snippet and the child
 then say exactly the same thing, and a reader can look up what they say.
 
-The floor has a second half, and it catches snippets that pass the first: **a
-snippet may abstract, but it may not quote a construct and then
-under-configure it.** Standing in for a whole `StatefulWidget` with `_value` and
-`setState` is fair — a `TomColumn` shown without the
-`mainAxisSize: MainAxisSize.min` the child passes is not, because the copy then
-takes the full height while the preview beside it does not. The same goes for
+(This is a stricter form of the rule the sibling samples state as "a snippet may
+not name an API that does not exist". They check the names a snippet *calls*;
+this one checks every identifier it mentions, which the gallery's placeholder
+history made necessary.)
+
+**A snippet may abstract, but it may not quote a construct and then
+under-configure it.** Abstracting away a stateful wrapper is fair; a `TomColumn`
+shown without the `mainAxisSize: MainAxisSize.min` the child passes is not,
+because the copy then takes the full height while the preview beside it does
+not. The same goes for
 what a snippet drops *around* a widget: `TomSlider` and
 `TomLinearProgressIndicator` have no intrinsic width, so the `TomSizedBox` that
 constrains them is part of the lesson and appears in the snippet.
@@ -244,9 +263,9 @@ library — display, input, layout, the ACL engine, and the authorization model.
 selects). Adding a group is mechanical:
 
 1. Create `lib/groups/<family>_group.dart` exposing a `final ShowcaseGroup`.
-2. Give each component a `ShowcaseCell(title:, code:, child:)` — keep `code`
-   verbatim with `child`: name only identifiers the file defines or imports,
-   and pass through every argument and constraint the child carries
+2. Give each component a `ShowcaseCell(title:, code:, child:)` under the snippet
+   contract above: name only identifiers the file defines or imports, and pass
+   through every argument and constraint the child carries
    (`showcase_cell_test.dart` rejects the rest).
 3. Add the group to `showcaseGroups` in `lib/showcase_app.dart`.
 

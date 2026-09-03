@@ -169,9 +169,9 @@ final ShowcaseGroup masterDetailGroup = ShowcaseGroup(
           "  draggableSplitter: true,\n"
           "  initialSelectedIndex: 0,\n"
           "  masterBuilder: (context, listForm, selected, selectIndex) =>\n"
-          "      MasterPane(...),\n"
+          "      _MasterPane(...),\n"
           "  detailBuilder: (context, _, rowForm) =>\n"
-          "      DetailPane(form: rowForm),\n"
+          "      _DetailPane(form: rowForm),\n"
           ")",
       // The master pane is a fixed 220px; below ~560 the detail pane has no
       // room left for its field column, so the cell stacks rather than split.

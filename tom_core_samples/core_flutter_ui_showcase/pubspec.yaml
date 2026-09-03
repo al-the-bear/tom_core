@@ -1,8 +1,8 @@
 name: core_flutter_ui_showcase
 description: >-
   Tom Core sample — a code-beside-widget showcase of the tom_flutter_ui widget
-  kit. Every cell renders a live widget next to the verbatim Dart that produced
-  it, grouped by component family.
+  kit. Every cell renders a live widget next to a curated snippet of the Dart
+  that produced it, grouped by component family.
 publish_to: 'none'
 version: 1.0.0+1
 

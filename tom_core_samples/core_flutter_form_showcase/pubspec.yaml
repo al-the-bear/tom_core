@@ -1,9 +1,9 @@
 name: core_flutter_form_showcase
 description: >-
   Tom Core sample — a code-beside-form showcase of the tom_flutter_ui forms
-  framework. Every cell renders a live, bound TomForm field next to the verbatim
-  Dart that declared it, grouped by forms feature (field types, validation,
-  layout, theming, master-detail, lists, authorization, responsive).
+  framework. Every cell renders a live, bound TomForm field next to a curated
+  snippet of the Dart that declared it, grouped by forms feature (field types,
+  validation, layout, theming, master-detail, lists, authorization, responsive).
 publish_to: 'none'
 version: 1.0.0+1
 

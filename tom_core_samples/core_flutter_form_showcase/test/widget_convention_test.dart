@@ -5,9 +5,9 @@
 // The rule has real teaching weight here. This sample's documented job includes
 // modelling the convention, so one raw `SizedBox` in `lib/` is not a style nit:
 // it is the sample contradicting the thing it is demonstrating, in the file a
-// reader is most likely to copy. And because every snippet claims to be
-// verbatim, a snippet naming `Row` is wrong twice — it misdescribes the child it
-// stands beside, and it teaches against the surrounding code.
+// reader is most likely to copy. And a snippet naming `Row` is wrong twice — it
+// misdescribes the child it stands beside, and it teaches against the
+// surrounding code.
 //
 // Both surfaces are checked against ONE vocabulary ([rawFlutterWidgets] below).
 // Splitting the list in two is how the two halves would drift apart.

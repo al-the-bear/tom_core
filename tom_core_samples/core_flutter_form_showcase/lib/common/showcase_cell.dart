@@ -20,8 +20,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'code_block.dart';
 
-/// A single showcase entry: a [title], the verbatim [code] snippet, and the
-/// live [child] widget the snippet produces. An optional [note] surfaces a
+/// A single showcase entry: a [title], a curated [code] snippet, and the live
+/// [child] widget that snippet illustrates. An optional [note] surfaces a
 /// caveat (e.g. a state that depends on a specific feature).
 // Why: extends [TomStatelessWidget] (not raw StatelessWidget) so the chrome
 // itself conforms to G-UI-1/G-UI-2 — the sample's own UI is built from Tom*
@@ -43,9 +43,23 @@ class ShowcaseCell extends TomStatelessWidget {
   /// Human-readable label for the forms capability being shown.
   final String title;
 
-  /// The verbatim Dart that produced [child]. Kept in lock-step with [child]
-  /// by hand (the article wants curated snippets); `showcase_cell_test.dart`
-  /// asserts both halves are present so an empty snippet can't slip through.
+  /// A curated Dart snippet of the API [child] demonstrates, kept in step with
+  /// [child] by hand.
+  ///
+  /// It is deliberately **not** a transcript of the live source, and in this
+  /// sample it usually cannot be: what a cell teaches is a *field declaration*
+  /// living in `lib/forms/`, while the group file beside it holds only the
+  /// `FormHost` scaffolding and width pins that make the bound field
+  /// observable. So a snippet shows the declaration, drops the harness, elides
+  /// repetition behind a `…` comment, and uses a short stand-in where the live
+  /// code threads a gallery-specific id.
+  ///
+  /// What it may not do is **name an API that does not exist**. That is the
+  /// line between an abridgement and a lie, and it is the half a reader relies
+  /// on when they lift a line into their own project.
+  /// `showcase_cell_test.dart` holds both halves: every snippet is non-empty,
+  /// and every constructor or method a snippet calls is also called somewhere
+  /// in the sample's own `lib/`.
   final String code;
 
   /// The live widget rendered from [code].
