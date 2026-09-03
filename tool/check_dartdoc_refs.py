@@ -41,9 +41,9 @@ would spend most of its output being wrong.
 
 Private names carry no such ambiguity. ``_foo`` can only ever resolve inside its
 own library, so "does it exist?" is answerable from the library alone, with no
-import question to get wrong. That makes this check total for the one case the
-lint cannot express: a reference that names *nothing at all*, which is what a
-renamed member leaves behind.
+import question to get wrong. The third check below extends the same *existence*
+question -- and only that question -- to public names, which is what a renamed
+member leaves behind.
 
 **One package does turn the lint on, and the exception proves the rule.**
 ``tom_core_samples/advanced_todo_domain`` enables ``comment_references`` in its
@@ -124,6 +124,77 @@ The framing vocabulary earns its entries the same way. Adding ``replaces`` and
 ``retires`` took the judged population from 3 names to 21 and surfaced a second
 genuine fault (``ShareRecord`` in ``share_delegation_store.dart``) with no new
 false positive. A word that cannot show that ledger does not belong in the list.
+
+**Third check: a bracketed public name that exists nowhere at all.** The first
+section rules out judging whether a public reference *resolves from here*, and
+none of that argument is retracted. This check asks a strictly narrower
+question: does the name exist *anywhere*? A name whose identifier appears in no
+Dart code in the tree cannot be fixed by any import, so there is no
+architectural judgement to make and no backlog to triage -- it is decidable, and
+it is always a defect. ``[describeAnchoring]`` in ``ops_anchoring.dart`` was
+exactly that: a member renamed to ``describe()``, left pointing at nothing, in a
+package green on all eleven gates (tcinc989).
+
+Nor is ``dart doc`` a substitute. It reports 0 warnings on
+``advanced_ops_server`` *with that reference present*, because the dangling name
+sat in the ``library;`` comment of ``lib/src/ops_anchoring.dart`` and dartdoc
+renders only the canonical library -- the barrel. The library comments under
+``lib/src/**`` are never rendered and so never checked. Verified by grepping the
+generated HTML: the sentence around the reference appears nowhere in the output,
+while the identically-worded sentence in the barrel's own comment does.
+
+**Ownership of the head is what makes the question decidable, and that is the
+whole SDK story.** A dotted ``[Head.member]`` asks whether ``member`` exists *on
+Head*. When ``Head`` is somebody else's type that needs a resolved type index --
+precisely the dependency this gate declines to acquire -- so those references are
+skipped. When ``Head`` is a type this repo declares, the member is ours and the
+same existence question applies. An undotted ``[name]`` is always judged: it asks
+only whether the token exists anywhere, and an SDK name we actually use is all
+over our code already, so it cannot fail.
+
+Measured on this tree: of 14 649 public references, **14 498 are judged** (12 749
+undotted plus 1 749 whose head is one of the 3 443 types declared here) and 151
+are skipped. Four named nothing anywhere, and **all four were genuine** --
+``[setToken]`` (renamed to ``setTokens``), ``[ShareDialog]`` (the class is
+private; the entry point is ``showShareDialog``), ``[tomChildren]`` (a
+constructor that never existed), and ``[ModalBottomSheet]`` (Flutter's class is
+``BottomSheet``; ``ModalBottomSheet`` is private to the framework). The exclusion
+earns its place on the same evidence: **the only two skipped names that would
+have failed the test are both correct SDK API** --
+``[RandomAccessFile.lockSync]`` and
+``[CupertinoActivityIndicator.partiallyRevealed]``. Reporting them would be the
+wolf-crying the first check was built to avoid. Note that
+``CupertinoActivityIndicator`` *does* appear in our code, so "is the head a name
+we use" would have reported it; only "is the head a type we declare" does not.
+
+Judging owned heads is not free scope -- it closes the shape the exemplar now
+sits in. tcinc989's own fix rewrote ``[describeAnchoring]`` to
+``[OpsAnchoring.describe]``, so an undotted-only rule would not have caught a
+*second* rename of that very member. Over the 1 749 owned-head references the
+extension adds, it reports 0 faults today: it costs one regex pass and buys the
+blind spot's closure.
+
+The obvious alternative -- restrict the rule to workspace-shaped names, a
+``Tom*``/``ops*`` prefix -- was measured and is worse. It keeps **0 of the 4**
+genuine faults case-sensitively and 1 of 4 case-insensitively (``tomChildren``
+alone), because the defect a rename leaves behind is spelled however the member
+was spelled: ``setToken`` carries no convention marker. Shape of the *question*
+separates the populations; spelling of the *name* does not. Re-measure before
+widening this to unowned heads -- the numbers are here so they stay checkable
+rather than becoming folklore.
+
+Scope is this repo (``tom_ai/core``). Across the whole of ``tom_ai`` the same
+scan finds more, but the surplus includes ``tom_ai/xternal/`` -- vendored
+upstream forks whose doc comments are not ours to edit -- so widening the gate
+means acquiring an allowlist before it can ever be green.
+
+**The three checks are guarded by a fixture that runs on every invocation**
+(``self_test``). A gate whose own extraction quietly breaks reports zero faults
+and looks like success, which is the failure mode a ratchet cannot see; running
+the assertions inline means they cannot rot in a test file nobody executes, and
+they cost microseconds. A fixture failure exits 2 with no fault line, so
+``check_gates.py`` records it as ``no-count`` -- a broken gate fails the suite
+rather than passing it.
 """
 
 from __future__ import annotations
@@ -146,6 +217,18 @@ PART = re.compile(r"""^\s*part\s+['"]([^'"]+)['"]\s*;""", re.M)
 IDENTIFIER = re.compile(r"\b_\w+")
 INLINE_CODE = re.compile(r"`[^`]*`")
 CAPITALISED = re.compile(r"\b[A-Z]\w*")
+# Any identifier, capitalised or not. The third check needs this where the
+# second does not: `setToken` and `tomChildren` are invisible to CAPITALISED.
+ANY_IDENTIFIER = re.compile(r"\b[A-Za-z_]\w*")
+# A dotted or undotted run of identifiers and nothing else -- what a judgeable
+# reference must be once `new`/`const` and any argument list are stripped.
+DOTTED_NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+# A type declaration, so the gate can tell a head it owns from one it does not.
+DECLARATION = re.compile(
+    r"^\s*(?:abstract\s+|sealed\s+|final\s+|base\s+|interface\s+|mixin\s+)*"
+    r"(?:class|enum|mixin|extension|typedef)\s+(\w+)",
+    re.M,
+)
 # Words that frame a backticked name as something that *was* -- the framing is
 # what turns "a name in backticks" into a checkable claim about existence.
 PAST_FRAMING = re.compile(
@@ -238,6 +321,66 @@ def code_names(text: str) -> set[str]:
     return set(CAPITALISED.findall("\n".join(lines)))
 
 
+def code_words(text: str) -> set[str]:
+    """Every identifier appearing outside a doc comment, capitalised or not."""
+    lines = [ln for ln in text.split("\n") if not DOC_LINE.match(ln)]
+    return set(ANY_IDENTIFIER.findall("\n".join(lines)))
+
+
+def declared_types(text: str) -> set[str]:
+    """Every type this file declares -- the heads whose members are ours to judge."""
+    return set(DECLARATION.findall(text))
+
+
+def public_references(text: str) -> list[tuple[int, str, str, str]]:
+    """``(line, reference, head, leaf)`` for every public dartdoc reference."""
+    found = []
+    in_fence = False
+    for number, line in enumerate(text.split("\n"), start=1):
+        doc = DOC_LINE.match(line)
+        if not doc:
+            in_fence = False
+            continue
+        if FENCE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        body = INLINE_CODE.sub("", doc.group(1))
+        for match in REFERENCE.finditer(body):
+            name = match.group(1).strip()
+            name = re.sub(r"^(new|const)\s+", "", name)
+            name = name.split("(")[0].strip()
+            if name.startswith("_"):
+                continue  # the first check's territory
+            if not DOTTED_NAME.fullmatch(name):
+                continue  # an operator, prose, or an argument list
+            segments = name.split(".")
+            found.append((number, name, segments[0], segments[-1]))
+    return found
+
+
+def judge_public(
+    text: str, known_words: set[str], declared: set[str]
+) -> tuple[int, list[tuple[int, str]]]:
+    """``(judged, hits)`` for the public references whose existence is decidable.
+
+    A dotted ``[Head.member]`` is only judged when ``Head`` is a type this repo
+    declares. Where it is not, the question is whether a member exists on
+    somebody else's type, which needs a resolved type index this gate
+    deliberately does not have. See the module docstring's third-check section.
+    """
+    judged = 0
+    hits = []
+    for number, name, head, leaf in public_references(text):
+        if "." in name and head not in declared:
+            continue
+        judged += 1
+        if leaf not in known_words:
+            hits.append((number, name))
+    return judged, hits
+
+
 def past_framed_names(text: str) -> list[tuple[int, str]]:
     """``(line number, name)`` for backticked types framed as superseded."""
     found = []
@@ -258,7 +401,108 @@ def past_framed_names(text: str) -> list[tuple[int, str]]:
     return found
 
 
+# A library shaped like the fault this gate exists to catch: a member renamed
+# from `describeAnchoring` to `describe`, leaving the old name pointing at
+# nothing. Around it sit the cases each check must *not* report -- a name that
+# does exist, a dotted SDK member, a markdown link, inline code, and a fenced
+# block -- so the fixture pins the exclusions as firmly as the detection.
+SELF_TEST_SOURCE = """\
+/// Anchoring, described by [describe].
+///
+/// Renamed from [describeAnchoring], which now names nothing at all.
+/// The private helper [_fold] is here; [_gone] is not.
+/// A member of a type we declare is judged: [OpsAnchoring.describe] resolves,
+/// [OpsAnchoring.describeAnchoring] does not.
+/// A member of a type we do not declare is not judged, however it is
+/// spelled: [RandomAccessFile.lockSync], [RandomAccessFile.lockNothing].
+/// A markdown [link](https://example.com) is not a reference.
+/// Inline `[notARef]` is code, not a reference.
+/// The legacy `AnchorSink` was replaced by `TomAuditAnchor`.
+///
+/// ```dart
+/// [alsoNotARef]
+/// ```
+library;
+
+class OpsAnchoring {
+  String describe() => _fold('x');
+}
+
+String _fold(String s) => s;
+TomAuditAnchor? anchor;
+"""
+
+
+def self_test() -> list[str]:
+    """Check the three extractors against [SELF_TEST_SOURCE].
+
+    Run on every invocation. A gate whose extraction silently stops matching
+    reports zero faults and is indistinguishable from a clean tree, so these
+    assertions live where they cannot be skipped.
+    """
+    failures = []
+
+    def expect(label: str, actual, wanted) -> None:
+        if actual != wanted:
+            failures.append(f"{label}: expected {wanted!r}, got {actual!r}")
+
+    text = SELF_TEST_SOURCE
+    words = code_words(text)
+    names = code_names(text)
+    private = code_identifiers(text)
+    declared = declared_types(text)
+
+    expect("declared types", sorted(declared), ["OpsAnchoring"])
+    expect(
+        "public references",
+        [(number, name) for number, name, _, _ in public_references(text)],
+        [
+            (1, "describe"),
+            (3, "describeAnchoring"),
+            (5, "OpsAnchoring.describe"),
+            (6, "OpsAnchoring.describeAnchoring"),
+            (8, "RandomAccessFile.lockSync"),
+            (8, "RandomAccessFile.lockNothing"),
+        ],
+    )
+    judged, hits = judge_public(text, words, declared)
+    # The two RandomAccessFile members are excluded, so the count is 4 -- and
+    # `lockNothing` names nothing yet is still not reported, which is the point
+    # of the exclusion rather than an accident of the fixture's spelling.
+    expect("public references judged", judged, 4)
+    expect(
+        "public names that exist nowhere",
+        hits,
+        [(3, "describeAnchoring"), (6, "OpsAnchoring.describeAnchoring")],
+    )
+
+    refs = private_references(text)
+    expect("private references", refs, [(4, "_fold"), (4, "_gone")])
+    expect(
+        "private names that exist nowhere",
+        [name for _, name in refs if name not in private],
+        ["_gone"],
+    )
+
+    framed = past_framed_names(text)
+    expect("past-framed names", framed, [(11, "AnchorSink"), (11, "TomAuditAnchor")])
+    expect(
+        "past-framed names that exist nowhere",
+        [name for _, name in framed if name not in names],
+        ["AnchorSink"],
+    )
+    return failures
+
+
 def main(argv: list[str]) -> int:
+    broken = self_test()
+    if broken:
+        for failure in broken:
+            print(f"self-test failure: {failure}", file=sys.stderr)
+        print("this gate's own extraction is broken; its fault count means "
+              "nothing until it is fixed", file=sys.stderr)
+        return 2
+
     root = REPO_ROOT / argv[0] if argv else REPO_ROOT
     if not root.exists():
         print(f"no such path: {root}", file=sys.stderr)
@@ -270,16 +514,23 @@ def main(argv: list[str]) -> int:
     dangling: list[tuple[Path, int, str]] = []
     framed = 0
     vanished: list[tuple[Path, int, str]] = []
+    judged = 0
+    missing: list[tuple[Path, int, str]] = []
 
-    # The second check judges a name against the *whole* repo's code, so the
-    # vocabulary has to be complete before any line can be judged. Scanning the
-    # repo rather than `root` keeps a subtree run honest: narrowing the search
-    # must not turn a name that exists elsewhere into a reported fault.
+    # The second and third checks judge a name against the *whole* repo's code,
+    # so the vocabulary has to be complete before any line can be judged.
+    # Scanning the repo rather than `root` keeps a subtree run honest: narrowing
+    # the search must not turn a name that exists elsewhere into a reported
+    # fault.
     sources = [(p, p.read_text(encoding="utf-8", errors="replace"))
                for p in source_files(REPO_ROOT)]
     known_names: set[str] = set()
+    known_words: set[str] = set()
+    declared: set[str] = set()
     for _, text in sources:
         known_names |= code_names(text)
+        known_words |= code_words(text)
+        declared |= declared_types(text)
 
     for path, text in sources:
         if root != REPO_ROOT and root not in path.parents and path != root:
@@ -296,6 +547,9 @@ def main(argv: list[str]) -> int:
             framed += 1
             if name not in known_names:
                 vanished.append((path, number, name))
+        count, hits = judge_public(text, known_words, declared)
+        judged += count
+        missing.extend((path, number, name) for number, name in hits)
 
     for path, number, name in dangling:
         rel = path.relative_to(REPO_ROOT)
@@ -304,6 +558,10 @@ def main(argv: list[str]) -> int:
         rel = path.relative_to(REPO_ROOT)
         print(f"{rel}:{number}: `{name}` is framed as superseded but appears in "
               f"no code in this repo -- the reader cannot look it up")
+    for path, number, name in missing:
+        rel = path.relative_to(REPO_ROOT)
+        print(f"{rel}:{number}: [{name}] names nothing in this repo -- no import "
+              f"can fix it, so the name is wrong")
 
     print()
     print(f"files with private dartdoc references : {checked}")
@@ -311,7 +569,9 @@ def main(argv: list[str]) -> int:
     print(f"references resolving to nothing       : {len(dangling)}")
     print(f"backticked names framed as superseded : {framed}")
     print(f"  of those, naming nothing in the repo: {len(vanished)}")
-    return report_faults(len(dangling) + len(vanished))
+    print(f"public references checked             : {judged}")
+    print(f"  of those, naming nothing in the repo: {len(missing)}")
+    return report_faults(len(dangling) + len(vanished) + len(missing))
 
 
 if __name__ == "__main__":

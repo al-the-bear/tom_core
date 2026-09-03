@@ -1951,8 +1951,8 @@ class TomExpansionPanel {
 /// Tom wrapper for [ExpansionPanelList].
 ///
 /// Adds ID, group, authorization, and resource resolution.
-/// Accepts either raw [ExpansionPanel] or [TomExpansionPanel] via the
-/// [tomChildren] constructor.
+/// Takes raw [ExpansionPanel] children; build them from [TomExpansionPanel]
+/// via [TomExpansionPanel.toPanel] to give a panel its own Tom semantics.
 class TomExpansionPanelList extends TomContainerBase {
   final List<ExpansionPanel> children;
   final ExpansionPanelCallback? expansionCallback;

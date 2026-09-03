@@ -100,7 +100,7 @@ class TomBearerAuthentication {
   /// Global singleton instance for bearer authentication.
   ///
   /// Assignable on purpose, and not `final`: every static accessor on this
-  /// class — [token], [principal], [setToken] and the rest — reads through
+  /// class — [token], [getPrincipal], [setTokens] and the rest — reads through
   /// this field, so replacing it swaps the whole of the cached client-side
   /// authentication state in one move. That is the isolation seam tests use,
   /// in `setUp`/`tearDown`, to stop one test's login leaking into the next.

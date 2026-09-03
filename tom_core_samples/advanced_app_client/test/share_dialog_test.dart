@@ -1,5 +1,5 @@
-/// Widget tests for the share dialog ([ShareDialog]): granting another user a
-/// [ProjectRole] on the selected project, driven from the board.
+/// Widget tests for the share dialog ([showShareDialog]): granting another user
+/// a [ProjectRole] on the selected project, driven from the board.
 ///
 /// This is the cross-user half of the four-state model — sharing is how `carol`
 /// gains viewer access to a project alice owns. Socket-free: the board and

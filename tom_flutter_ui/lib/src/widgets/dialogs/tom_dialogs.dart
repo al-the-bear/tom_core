@@ -871,7 +871,8 @@ class TomCupertinoActionSheet extends TomDialogBase {
   }
 }
 
-/// Tom wrapper for [ModalBottomSheet] via [showModalBottomSheet].
+/// Tom wrapper for the material modal bottom sheet shown by
+/// [showModalBottomSheet].
 ///
 /// This widget wraps the modal bottom sheet content for use when
 /// building the child widget for a modal display.
