@@ -1,5 +1,5 @@
 /// The signed-in session: who is logged in, the token pair, and the principal's
-/// per-resource role grants (step 27, RCC2).
+/// per-resource role grants (RCC2).
 ///
 /// A [ChangeNotifier] so the app shell ([AdvancedTodoApp]) rebuilds the home on
 /// every login/logout — navigation between "signed out" and "signed in" is a

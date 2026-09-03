@@ -1,4 +1,4 @@
-/// The end-user app's backend seam and its two implementations (step 26).
+/// The end-user app's backend seam and its two implementations.
 ///
 /// Import this barrel to bind a screen against the transport-independent
 /// [AppBackend]: the seeded [InMemoryAppBackend] for offline use and widget

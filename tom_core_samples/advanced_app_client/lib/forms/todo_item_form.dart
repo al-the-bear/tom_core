@@ -1,4 +1,4 @@
-/// The item editor — a `TomForm` bound to a [TodoItem] (step 30), carrying **no**
+/// The item editor — a `TomForm` bound to a [TodoItem], carrying **no**
 /// authorization knowledge of its own.
 ///
 /// This is where the four-state authorization model meets a real editing form.

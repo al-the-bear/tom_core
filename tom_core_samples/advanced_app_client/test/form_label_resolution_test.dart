@@ -1,14 +1,14 @@
-/// Render-level proof that the realigned forms source their field labels/hints
-/// from the installed resource bundle, not from hard-coded overrides (todo 10).
+/// Render-level proof that the app's forms source their field labels/hints
+/// from the installed resource bundle, not from hard-coded overrides.
 ///
-/// Todo 10 dropped every `labelTextOverride`/`hintTextOverride` from the
-/// realigned forms and removed the screen-level scope wrappers, so each field's
-/// `basePath` now equals its wire resource key (`login.username`,
+/// [LoginForm] and [TodoItemForm] carry no `labelTextOverride`/`hintTextOverride`
+/// and the screens build them without a screen-level scope wrapper, so each
+/// field's `basePath` equals its wire resource key (`login.username`,
 /// `todo.item.title`, …). A field with no override resolves its label through
 /// `TomCtr.textOrNull(basePath, 'label')` — i.e. straight from the installed
 /// [TomTextResourceProvider]. These tests install a **sentinel** bundle whose
-/// values are deliberately distinct from the strings the old overrides carried
-/// (the `[srv]` suffix), then assert the sentinels render. That proves two
+/// values are deliberately distinct from the plain strings an override would
+/// carry (the `[srv]` suffix), then assert the sentinels render. That proves two
 /// things at once: the label came from the bundle (a leftover override would
 /// short-circuit the lookup and render the bare string instead), and the field
 /// addresses the right key (a scope/formId drift would miss the bundle entry).
@@ -94,7 +94,7 @@ void main() {
       'todo.item.estimate.label': 'Estimate [srv]',
       'todo.item.description.label': 'Description [srv]',
     });
-    // Built under the gradable scope (todo 4), so basePath is todo.item and each
+    // Built under the gradable scope, so basePath is todo.item and each
     // field self-addresses as its `todo.item.<field>` key.
     final form = TomScope.withScope('todo', TodoItemForm.new);
     expect(form.basePath, 'todo.item');

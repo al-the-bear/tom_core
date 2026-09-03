@@ -1,6 +1,6 @@
 /// The item-detail screen the board opens when a card is tapped — a bound
 /// `TomForm<TodoItem>` whose per-field controls are graded through the framework
-/// authorization registry (step 30, RCC2).
+/// authorization registry (RCC2).
 ///
 /// This is where the authorization model becomes visible end-to-end. On open the
 /// screen resolves the item's **resource-level** state through the framework —

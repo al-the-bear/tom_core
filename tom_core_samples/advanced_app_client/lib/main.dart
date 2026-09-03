@@ -1,5 +1,5 @@
 /// Entry point for `advanced_app_client` — the end-user task board for the
-/// advanced Tom Core full-stack sample (step 27).
+/// advanced Tom Core full-stack sample.
 ///
 /// Five registrations run before the first frame, in this order:
 ///

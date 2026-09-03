@@ -1,5 +1,4 @@
-/// The share dialog: grant another user a [ProjectRole] on the selected project
-/// (step 31).
+/// The share dialog: grant another user a [ProjectRole] on the selected project.
 ///
 /// Sharing is the cross-user half of the four-state model — it is how `bob`
 /// becomes an editor and `carol` a viewer on a project they do not own. The dialog
@@ -7,8 +6,8 @@
 /// [AppSession.guard]; the in-memory fake records the share (so the grantee's
 /// next read sees the project), and the live stack `POST`s `/share`.
 ///
-/// **Grantee is entered as a user id, not picked from a list.** The frozen
-/// step-26 [AppBackend] seam has no "list users" operation (and [share] speaks
+/// **Grantee is entered as a user id, not picked from a list.** The
+/// [AppBackend] seam has no "list users" operation (and [share] speaks
 /// `granteeUserId`, matching the live wire), so the dialog takes the id
 /// directly. Offline the five seeded ids are `u-alice`, `u-bob`, `u-carol`,
 /// `u-dave` and `u-erin`; on the live stack the grantee is the numeric

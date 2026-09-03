@@ -43,7 +43,7 @@ void main() {
   setUpAll(initializeReflection);
 
   setUp(() {
-    // The screen chrome is server-delivered (todo 8): install the same canned
+    // The screen chrome is server-delivered: install the same canned
     // login bundle the in-memory backend serves, which carries both this app's
     // `twoFactor.title` and the framework flow's own `two_factor.*` keys.
     TomTextResourceProvider.setAppResourceProvider(

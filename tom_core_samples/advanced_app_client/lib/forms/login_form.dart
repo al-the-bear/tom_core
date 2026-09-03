@@ -1,5 +1,4 @@
-/// The login form — a `TomForm` bound to the client-local [LoginCredentials]
-/// (step 28).
+/// The login form — a `TomForm` bound to the client-local [LoginCredentials].
 ///
 /// Field member names match the entity's (`username`, `password`) so the
 /// reflection round-trip `bind`/`save` writes straight into the bound

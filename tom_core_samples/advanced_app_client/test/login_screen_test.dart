@@ -1,12 +1,11 @@
-/// Widget tests for the bound login screen (step 28): the `TomForm` over
+/// Widget tests for the bound login screen ([LoginScreen]): the `TomForm` over
 /// credentials driving [AppSession.login] through the seeded in-memory backend.
 ///
 /// Socket-free — the screen runs over [InMemoryAppBackend]. The fake builds the
 /// reflected domain tree and the form binds reflected credentials, so the app's
 /// own `initializeReflection()` runs once in [setUpAll] and the resource
-/// provider is installed per test. The contract is the step's done bar: a valid
-/// login proceeds to the board; a rejected login shows an inline error without
-/// leaving the page.
+/// provider is installed per test. The contract: a valid login proceeds to the
+/// board; a rejected login shows an inline error without leaving the page.
 library;
 
 import 'package:advanced_app_client/app/app.dart';
@@ -20,8 +19,8 @@ void main() {
   setUpAll(initializeReflection);
 
   setUp(() {
-    // The screen chrome (title/intro/submit) is server-delivered (todo 8): install
-    // the same canned login bundle the in-memory backend serves so the rendered
+    // The screen chrome (title/intro/submit) is server-delivered: install the
+    // same canned login bundle the in-memory backend serves so the rendered
     // texts match what the live auth server would deliver.
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(

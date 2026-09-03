@@ -1,8 +1,8 @@
-/// The backend contract the end-user app talks to, independent of transport
-/// (step 26).
+/// The backend contract the end-user app talks to, independent of transport.
 ///
-/// Every screen (steps 27–31) is written against this seam, not a concrete
-/// backend, so the same widgets drive either the seeded [InMemoryAppBackend]
+/// Every screen under `lib/screens/` is written against this seam, not a
+/// concrete backend, so the same widgets drive either the seeded
+/// [InMemoryAppBackend]
 /// (the offline teaching default — and what the widget tests bind, never
 /// touching a socket) or the [LiveAppBackend], which delegates to
 /// `advanced_client_core` over HTTP. Keeping the seam here is what makes the

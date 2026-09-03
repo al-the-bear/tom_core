@@ -1,5 +1,5 @@
 /// The login screen: a bound [LoginForm] over [LoginCredentials], driving
-/// [AppSession.login] (step 28) — and, when the account owes one, the second
+/// [AppSession.login] — and, when the account owes one, the second
 /// factor that completes it.
 ///
 /// The form is built unscoped, so its `formId: 'login'` *is* its base path and

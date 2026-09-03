@@ -1,4 +1,4 @@
-/// The app shell barrel (step 27): the [AppSession] and the [AdvancedTodoApp]
+/// The app shell barrel: the [AppSession] and the [AdvancedTodoApp]
 /// root that swaps between the login and board screens on session state, plus
 /// the two seams the shell hands to the framework — [AppResourceRoleAdapter]
 /// for authorization and [SessionTwoFactorController] for the second factor.

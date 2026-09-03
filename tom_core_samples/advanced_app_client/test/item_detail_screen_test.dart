@@ -1,4 +1,4 @@
-/// Widget tests for the item-detail screen (step 30, RCC2): the bound
+/// Widget tests for the item-detail screen ([ItemDetailScreen], RCC2): the bound
 /// `TomForm<TodoItem>` whose per-field controls are graded through the framework
 /// authorization registry.
 ///
@@ -123,7 +123,7 @@ void main() {
     }
 
     await session.login(login(user));
-    // Login installs the full server bundle (todo 9); a test may replace it with
+    // Login installs the full server bundle; a test may replace it with
     // a sentinel bundle to prove labels are provider-driven end-to-end.
     if (bundleOverride != null) {
       TomTextResourceProvider.setAppResourceProvider(
@@ -160,7 +160,7 @@ void main() {
     // floating label more than once during its animation, so assert presence,
     // not an exact count). These strings are the *server bundle* values
     // (`InMemoryAppBackend.fullTexts`) the session installs on login — with the
-    // form's `labelTextOverride`s gone (todo 10) they can only come from the
+    // form carrying no `labelTextOverride`s they can only come from the
     // installed provider, and each differs from the bare tomId fallback
     // (`title`, `status`, …), so their presence is the bundle-sourced proof.
     expect(find.text('Title'), findsWidgets);
@@ -258,8 +258,8 @@ void main() {
       (tester) async {
     // Sign in as the owner (every field `full`, so all seven render), but
     // replace the installed full bundle with sentinel label values distinct from
-    // both the canned strings and the bare tomId fallback. With the form's
-    // overrides removed (todo 10) the only source of a field's label is this
+    // both the canned strings and the bare tomId fallback. With the form
+    // carrying no overrides the only source of a field's label is this
     // provider, so the sentinels rendering proves the labels are bundle-driven.
     await openDetail(tester, 'alice', bundleOverride: {
       'todo.item.title.label': 'Title [srv]',
@@ -288,7 +288,7 @@ void main() {
   // ---------------------------------------------------------------------------
   // The two child sections (tcca21): the comment thread and the checklist.
   //
-  // These prove the half of the item screen that the step-30 seam could not
+  // These prove the half of the item screen the field matrix above does not
   // reach: reading a thread and a checklist back, and writing to them under a
   // gate one step *stronger* than the comment composer's. The seed puts one
   // comment and two subtasks (one already done) on `i-1`, so an assertion about

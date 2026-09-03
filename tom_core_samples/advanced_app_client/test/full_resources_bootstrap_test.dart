@@ -1,4 +1,4 @@
-/// Done-when for todo 9 (app client): right after sign-in the **authenticated
+/// Resource bootstrap for the signed-in app client: right after sign-in the **authenticated
 /// full bundle** is installed over the login bundle, so post-login screen chrome
 /// renders server-delivered texts; logout resets the provider to the login
 /// bundle.

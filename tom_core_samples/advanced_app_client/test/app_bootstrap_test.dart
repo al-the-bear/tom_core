@@ -1,12 +1,11 @@
-/// Widget tests for the app shell (step 27): the bootstrap-wired [AppSession]
-/// driving the login↔board switch in [AdvancedTodoApp].
+/// Widget tests for the app shell: the bootstrap-wired [AppSession] driving the
+/// login↔board switch in [AdvancedTodoApp].
 ///
 /// These are socket-free — the shell runs over the seeded [InMemoryAppBackend]
 /// (one test subclasses it to force a post-refresh `401`). The fake builds the
 /// reflected domain tree in its constructor, so `initializeReflection()` runs
-/// once in [setUpAll]. The contract here is the step's done bar: a successful
-/// login flips the home onto the board, and a dropped session routes back to
-/// login.
+/// once in [setUpAll]. The contract here: a successful login flips the home onto
+/// the board, and a dropped session routes back to login.
 library;
 
 import 'package:advanced_app_client/app/app.dart';

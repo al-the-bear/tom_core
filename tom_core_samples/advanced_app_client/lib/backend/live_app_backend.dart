@@ -1,7 +1,6 @@
-/// The live [AppBackend]: delegates to `advanced_client_core` over HTTP
-/// (step 26).
+/// The live [AppBackend]: delegates to `advanced_client_core` over HTTP.
 ///
-/// This is the production wiring the app bootstrap (step 27) installs: an
+/// This is the production wiring `main.dart` installs: an
 /// [AuthClient] against `advanced_auth_server` for login/logout/token storage,
 /// and an [AppApiClient] (over the shared [AuthorizedHttp]) against
 /// `advanced_app_server` for the board operations. Both share one

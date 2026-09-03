@@ -1,5 +1,5 @@
 /// The application shell: a [MaterialApp] that swaps between the login and board
-/// screens as a pure function of [AppSession.isLoggedIn] (step 27).
+/// screens as a pure function of [AppSession.isLoggedIn].
 ///
 /// The session is a [ChangeNotifier]; a [ListenableBuilder] rebuilds the home on
 /// every login/logout, so "signed out → signed in" (and a dropped session

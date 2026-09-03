@@ -1,4 +1,4 @@
-/// The default backend: a seeded, fully working in-memory [AppBackend] (step 26).
+/// The default backend: a seeded, fully working in-memory [AppBackend].
 ///
 /// It mirrors what `advanced_app_server` exposes — the same demo accounts, a
 /// small workspace→project→list→item tree, and the **same per-resource role

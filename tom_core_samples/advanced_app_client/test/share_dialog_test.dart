@@ -1,12 +1,12 @@
-/// Widget tests for the share dialog (step 31): granting another user a
+/// Widget tests for the share dialog ([ShareDialog]): granting another user a
 /// [ProjectRole] on the selected project, driven from the board.
 ///
 /// This is the cross-user half of the four-state model — sharing is how `carol`
 /// gains viewer access to a project alice owns. Socket-free: the board and
 /// dialog read/write through [AppSession.guard] against the seeded
 /// [InMemoryAppBackend], which records the share, so the grantee's next read
-/// sees the project. The contract is the step's done bar: sharing adds the
-/// grantee (and the owner-only rule surfaces inline for a non-owner).
+/// sees the project. The contract: sharing adds the grantee (and the owner-only
+/// rule surfaces inline for a non-owner).
 library;
 
 import 'package:advanced_app_client/app/app.dart';

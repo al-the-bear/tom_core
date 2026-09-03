@@ -1,4 +1,4 @@
-/// Bootstrap done-when for todo 8: the login screen renders **server-delivered**
+/// Resource bootstrap for the signed-out login screen: it renders **server-delivered**
 /// chrome, with no client-side string and no override.
 ///
 /// Socket-free — the bundle is fetched through the backend seam against the

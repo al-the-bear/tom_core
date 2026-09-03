@@ -249,7 +249,7 @@ selected) opens it; on a granted share a snackbar confirms it and the grantee's
 next read sees the project.
 
 The grantee is entered as a **user id** (keyed `share-grantee-input`, e.g.
-`u-carol`), not picked from a list — the frozen step-26 `AppBackend` seam has no
+`u-carol`), not picked from a list — the `AppBackend` seam has no
 "list users" operation and `share` speaks `granteeUserId`, matching the live
 wire. A role drop-down (keyed `share-role-picker`, default `viewer`) and a
 **Share** button (keyed `share-submit-button`) submit a `ShareRequest` through

@@ -1,6 +1,6 @@
-/// Unit tests for [TodoItemForm]'s scope realignment (todo 4).
+/// Unit tests for [TodoItemForm]'s scope alignment.
 ///
-/// After the realignment the form runs under scope `'todo'` with `formId`
+/// The form runs under scope `'todo'` with `formId`
 /// `'item'` and each field's `tomId` is the plain field name, so every gradable
 /// field's `basePath` equals its wire resource key (`todo.item.<field>`). That
 /// is the precondition for the detail screen to stamp each field with a fixed
@@ -19,8 +19,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// The gradable item keys in display order — the wire resource keys the form's
-/// fields self-address as. Steps 21/24/26 derive this set from reflection/the
-/// resource bundle; here it is the inline expectation.
+/// fields self-address as. The running app derives this set from reflection and
+/// the server-delivered resource bundle; here it is the inline expectation.
 const _gradableItemKeys = <String>[
   'todo.item.title',
   'todo.item.status',
@@ -37,7 +37,7 @@ void main() {
   // Build the form the way the detail screen does: under the gradable scope.
   TodoItemForm buildForm() => TomScope.withScope('todo', TodoItemForm.new);
 
-  group('TodoItemForm scope realignment (todo 4)', () {
+  group('TodoItemForm scope alignment', () {
     test('the form runs under todo.item', () {
       final form = buildForm();
       expect(form.basePath, 'todo.item');

@@ -1,11 +1,11 @@
-/// Widget tests for the board screen (step 29): the workspace/project picker
-/// and the status-column item board over the seeded [InMemoryAppBackend].
+/// Widget tests for the board screen ([BoardScreen]): the workspace/project
+/// picker and the status-column item board over the seeded [InMemoryAppBackend].
 ///
 /// Socket-free — the board reads through [AppSession.guard] against the in-memory
 /// fake, which builds the reflected domain tree, so the app's own
 /// `initializeReflection()` runs once in [setUpAll] and the resource provider is
-/// installed per test. The contract is the step's done bar: items render grouped
-/// by `status`, and tapping a card opens its detail.
+/// installed per test. The contract: items render grouped by `status`, and
+/// tapping a card opens its detail.
 library;
 
 import 'package:advanced_app_client/app/app.dart';

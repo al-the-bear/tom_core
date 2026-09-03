@@ -1,5 +1,5 @@
 /// The one client-local reflected entity: the username/password pair the
-/// [LoginForm] binds (step 28).
+/// [LoginForm] binds.
 ///
 /// Every other entity the app edits comes from the shared `advanced_todo_domain`
 /// package — one model across the tier. Credentials are the exception: they

@@ -1,12 +1,11 @@
-/// The board screen the app shell shows while [AppSession.isLoggedIn] is true
-/// (step 29).
+/// The board screen the app shell shows while [AppSession.isLoggedIn] is true.
 ///
 /// It is the signed-in home: a workspace/project picker over the principal's
 /// visible tree and a status-column board of the selected project's items,
 /// grouped into one column per [TodoStatus]. Every read flows through
 /// [AppSession.guard], so a dropped session clears the principal and the shell
 /// routes back to login without this screen handling it. Tapping a card opens
-/// the [ItemDetailScreen] (the bound editor lands in step 30).
+/// the [ItemDetailScreen], which is where the bound editor lives.
 ///
 /// ## Attachments
 ///

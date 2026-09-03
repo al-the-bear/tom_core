@@ -1,5 +1,5 @@
 /// The end-user app's mutating operations, modelled as `TomAction`s with
-/// action-level authorization (step 27, G-ACT-1/2).
+/// action-level authorization (G-ACT-1/2).
 ///
 /// Every write the app performs — saving an item, posting a comment, adding or
 /// ticking a checklist step, sharing a project — runs through a [TomAction] here
