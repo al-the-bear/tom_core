@@ -10,8 +10,7 @@ Run from anywhere::
 Exits non-zero when any measurement disagrees with the tree.
 
 Two shapes are audited. Most documents open by naming the module's directory
-and how much is in it -- ``N source files, M lines`` -- and then tabulate the
-directory a file at a time::
+and how much is in it, and then tabulate the directory a file at a time::
 
     | File | Lines | Carries |
     | ---- | ----- | ------- |
@@ -60,7 +59,7 @@ Seven faults are reported:
     A file in the directory that the table does not list. An inventory that
     silently drops a file misleads exactly as much as one with bad arithmetic.
 ``HEADER``
-    The opening ``N source files, M lines`` claim, or the ``readme.md (K
+    The opening paragraph's file count or line total, or the ``readme.md (K
     lines)`` aside beside it, disagreeing with the directory.
 ``COUNT``
     A sub-folder map row whose ``Types`` count is not the number of ``Tom``
@@ -75,24 +74,52 @@ Seven faults are reported:
     or ``test/``, and the hand-written line totals -- disagreeing with the
     package.
 
-``PKGINV`` exists because the opening inventory was the one measurement in
-these documents that nothing checked. ``HEADER`` looks for the literal words
-``N source files``, which a *module* document writes and a *package* document
-never does, so every ``advanced_*`` package opened with a hand-maintained
-census that no gate could see. It drifted exactly as the docstring above
-predicts: ``advanced_todo_domain`` claimed 24 files when it had 23, and its
-line total went stale the next time anyone edited a dartdoc -- a one-line
-comment change silently falsifies the paragraph a reader trusts most, because
-it is the first one they read.
+``PKGINV`` exists because the opening inventory of a *package* document was
+the one measurement in these documents that nothing checked. It drifted
+exactly as the docstring above predicts: ``advanced_todo_domain`` claimed 24
+files when it had 23, and its line total went stale the next time anyone
+edited a dartdoc -- a one-line comment change silently falsifies the paragraph
+a reader trusts most, because it is the first one they read.
 
-The atoms are deliberately narrow. Only a directory carrying a ``pubspec.yaml``
-is treated as a package, and a number counts only where it sits immediately
-beside the noun it measures (``— 23 files``, ``of which 17 are Dart``,
-``14 under `lib/```). Prose that merely contains a number near a noun -- ``14
-hand-written library files``, ``10 test suites and 1 shared test fixture`` --
-is left alone. That is what keeps the check free of false positives across the
-43 documents whose opening line it inspects while still covering the 8 it can
-measure exactly; a wider pattern would flag the other 35 and be turned off.
+``HEADER`` reads the module header as a sentence rather than as a template,
+because the template was the fault. It once required the literal ``N source
+files, M lines``, and a header that stated the same two numbers in any other
+words was not merely mis-parsed but *invisible*: ``audit`` returned "measures
+nothing", ``main`` dropped the document, and the run reported it as passing.
+Four module documents wrote their size in prose (``two files (the wire
+constants plus the sub-barrel), 50 lines``) and were audited by nothing at
+all; a fifth, ``tomclient/runtime``, wrote ``4 source files (227 lines)`` and
+lost its header to a missing space. A silent skip is the worst failure mode a
+gate has -- a defective measurement at least appears in the fault count, while
+an unparsed one inflates the *pass* rate -- so the count of documents that
+measure nothing is now printed beside the count that were audited. Widening
+recognition took coverage from 41 documents to 69 and surfaced six stale
+figures, two of which had been stale across two consecutive edits apiece.
+
+What a header counts is read from the header. ``N source files`` and ``N Dart
+files`` say the readme is not in the figure. A bare ``N files`` is settled by
+whether the parenthetical that follows it breaks the figure down and names the
+readme among the parts -- ``11 files (10 Dart, 1 readme)`` counts it, while
+``14 source files plus a readme`` sets it beside the count and does not. That
+distinction is not a guess: it agrees with all 59 module headers in this set,
+the two that count a readme included.
+The line total always counts the sources, since no header here totals a readme
+in with them and several give its length separately. A count is recursed only
+when the module has sub-folders, which is when its header describes a tree
+(``25 files (24 Dart across 20 sub-folders, ...)``) rather than a directory.
+A rounded figure -- ``~23 000 lines`` -- is skipped, because demanding an
+approximation be exact reports a fault on every run.
+
+The atoms are still deliberately narrow, and the widening did not relax them.
+Only a directory carrying a ``pubspec.yaml`` is treated as a package; a number
+counts only where it sits immediately beside the noun it measures (``— 23
+files``, ``of which 17 are Dart``, ``14 under `lib/```); and the header is read
+only within the paragraph its module path opens, because a later paragraph
+will eventually say ``4 files`` about something else. Prose that merely
+contains a number near a noun -- ``14 hand-written library files``, ``10 test
+suites and 1 shared test fixture`` -- is left alone. That is what keeps the
+check free of false positives; a pattern loose enough to read any sentence
+would flag the documents it cannot understand and be turned off.
 
 ``BARREL`` is the one measurement here that has twice hidden a defect rather
 than merely gone stale. ``advanced_app_client``'s ``lib/app/app.dart`` was
@@ -216,9 +243,47 @@ def declared_types(folder: Path) -> set[str]:
         names |= {m.group(1) for m in DECLARATION.finditer(text)}
     return names
 
-# Both claims allow `\s+` between their words rather than a single space: the
-# documents are hard-wrapped, so either one routinely straddles a line break.
-HEADER_CLAIM = re.compile(r"(\d+)\s+source\s+files?(?:,|\s+\()\s+([\d,]+)\s+lines")
+#: Number-words, as the prose headers write small counts -- `two files`, `six
+#: files`. A count spelled out is the same measurement as one in digits, and
+#: reading only digits is what let four module headers go unaudited.
+NUMBER_WORDS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+    "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16,
+    "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20,
+}
+
+#: Longest first, so `six` cannot win against `sixteen`.
+_WORDS = "|".join(sorted(NUMBER_WORDS, key=len, reverse=True))
+
+#: A module header's file count, in whichever words the header used. Taken only
+#: where the figure sits directly after the em dash that opens the header and
+#: immediately in front of `files` -- the same discipline the package atoms
+#: use, and what keeps `nine of the ten callers` out of the measurement.
+#:
+#: The noun matters: `source files` and `Dart files` say the readme is not in
+#: the figure. A bare `files` leaves it open, and `counts_readme` settles it.
+MODULE_FILES = re.compile(
+    r"—\s*(" + NUMBER + r"|" + _WORDS + r")\s+(source\s+|Dart\s+)?files?\b",
+    re.I,
+)
+
+#: A parenthetical that breaks the file count down and names the readme among
+#: its parts -- `(10 Dart, 1 readme)`, `(24 Dart across 20 sub-folders, plus
+#: the module readme)`. Its presence is the one signal that separates a bare
+#: `N files` counting the readme from one counting only the sources, which the
+#: documents otherwise write identically. A readme mentioned *outside* the
+#: parenthetical is the opposite claim -- `14 source files plus a readme` sets
+#: it beside the figure, not inside it -- so the match is anchored to the
+#: parenthetical that immediately follows the count.
+BREAKDOWN_README = re.compile(r"\s*\([^()]*readme[^()]*\)", re.I)
+
+#: The module's line total. `~23 000 lines` is a rounded figure and is skipped:
+#: a gate that demands an approximation be exact reports a fault every time.
+MODULE_LINES = re.compile(r"(~\s*)?(" + NUMBER + r")\s+lines\b")
+
+# Allows `\s+` between its words rather than a single space: the documents are
+# hard-wrapped, so the claim routinely straddles a line break.
 README_CLAIM = re.compile(r"`readme\.md`\s+\((\d+)\s+lines\)")
 
 
@@ -267,11 +332,17 @@ class Report:
 def audit(path: Path) -> Report | None:
     """Return a Report, or None if the document measures nothing.
 
-    Three independent audits, any of which may find nothing to say: a document
-    carries a file inventory, a sub-folder map, a layout block, or none of
-    them. The barrel audit runs first and on its own terms, because a package
-    document has a layout block and no module directory to resolve -- the two
-    shapes describe different things and neither implies the other.
+    Four independent audits, any of which may find nothing to say: a document
+    carries an opening header, a file inventory, a sub-folder map, a layout
+    block, or none of them. The barrel audit runs first and on its own terms,
+    because a package document has a layout block and no module directory to
+    resolve -- the two shapes describe different things and neither implies
+    the other.
+
+    The header audit stands beside the table audit rather than inside it, which
+    is where it used to sit. A document whose header states its size and whose
+    body tabulates nothing -- four of them do -- was audited by nothing at all,
+    and a document audited by nothing is reported as passing.
     """
     text = path.read_text(encoding="utf-8", errors="replace")
 
@@ -283,6 +354,7 @@ def audit(path: Path) -> Report | None:
     if module_match is not None:
         module = REPO_ROOT / module_match.group(1)
         if module.is_dir():
+            measured |= audit_module_header(text, module, report)
             measured |= audit_file_inventory(text, module, report)
             measured |= audit_subfolder_map(text, module, report)
 
@@ -393,6 +465,102 @@ def like(written: str, value: int) -> str:
     head = len(digits) % 3 or 3
     rest = [digits[i:i + 3] for i in range(head, len(digits), 3)]
     return separator.join([digits[:head], *rest])
+
+
+def as_count(written: str) -> int:
+    """Read a header's file count, written either as digits or as a word."""
+    word = NUMBER_WORDS.get(written.strip().lower())
+    return as_number(written) if word is None else word
+
+
+def as_written(written: str, value: int) -> str:
+    """Render `value` the way `written` was written.
+
+    A figure keeps its grouping. A count spelled out becomes digits: `--fix`
+    can say the module holds three files, but not that it holds `three`
+    without knowing the case and the grammar around it.
+    """
+    if written.strip().lower() in NUMBER_WORDS:
+        return str(value)
+    return like(written, value)
+
+
+def module_files(module: Path) -> list[Path]:
+    """The files a module header counts.
+
+    Recursed only when the module has sub-folders. A module whose sources sit
+    in one directory is counted flat; one that groups them -- `widgets/` across
+    20 sub-folders, `forms/` across nine -- is counted through, because that is
+    what its header says it holds.
+    """
+    if any(p.is_dir() for p in module.iterdir()):
+        return sorted(p for p in module.rglob("*") if p.is_file())
+    return sorted(p for p in module.iterdir() if p.is_file())
+
+
+def audit_module_header(text: str, module: Path, report: Report) -> bool:
+    """Check the opening paragraph's file and line counts against the module.
+
+    Returns whether the header makes a countable claim at all.
+
+    Bounded to the paragraph the module path opens, for the reason the package
+    inventory is: later paragraphs describe the same module in prose full of
+    numbers, and one of them will eventually read `4 files` about something
+    else.
+    """
+    path_match = MODULE_PATH.search(text)
+    if path_match is None:
+        return False
+    start = text.rfind("\n\n", 0, path_match.start()) + 2
+    blank = text.find("\n\n", path_match.start())
+    end = len(text) if blank < 0 else blank
+
+    files = MODULE_FILES.search(text, start, end)
+    if files is None:
+        return False
+
+    on_disk = module_files(module)
+    dart = [p for p in on_disk if p.suffix == ".dart"]
+
+    qualified = (files.group(2) or "").strip()
+    counts_readme = not qualified and (
+        BREAKDOWN_README.match(text, files.end(), end) is not None
+    )
+    counted = on_disk if counts_readme else dart
+    noun = "files" if counts_readme else "source files"
+
+    written = files.group(1)
+    if as_count(written) != len(counted):
+        report.faults.append(
+            f"HEADER   says {written.strip()} {noun}; is {len(counted)}"
+        )
+        report.edits.append(
+            rewrite_groups(files, {1: as_written(written, len(counted))})
+        )
+
+    # The line total always counts the sources: no header in this set totals
+    # its readme in with them, and several name the readme's length separately.
+    lines = MODULE_LINES.search(text, files.end(), end)
+    if lines is not None and not lines.group(1):
+        total = lines.group(2)
+        measured = sum(line_count(p) for p in dart)
+        if as_number(total) != measured:
+            report.faults.append(
+                f"HEADER   says {total.strip()} lines; is {measured}"
+            )
+            report.edits.append(rewrite_groups(lines, {2: like(total, measured)}))
+
+    readme = README_CLAIM.search(text, start, end)
+    on_disk_readme = next((p for p in on_disk if p.name == "readme.md"), None)
+    if readme is not None and on_disk_readme is not None:
+        measured = line_count(on_disk_readme)
+        if int(readme.group(1)) != measured:
+            report.faults.append(
+                f"HEADER   says readme.md is {readme.group(1)} lines; is {measured}"
+            )
+            report.edits.append(rewrite_groups(readme, {1: str(measured)}))
+
+    return True
 
 
 def audit_package_inventory(text: str, report: Report) -> bool:
@@ -509,7 +677,7 @@ def audit_subfolder_map(text: str, module: Path, report: Report) -> bool:
 
 
 def audit_file_inventory(text: str, module: Path, report: Report) -> bool:
-    """Check the `| File | Lines |` table and the header claims beside it.
+    """Check the `| File | Lines |` table against the module directory.
 
     Returns whether the document has such a table at all.
     """
@@ -551,29 +719,6 @@ def audit_file_inventory(text: str, module: Path, report: Report) -> bool:
         if name not in rows:
             report.faults.append(f"ABSENT   `{name}` is on disk, not in the table")
 
-    dart = [p for name, p in on_disk.items() if name.endswith(".dart")]
-    header = HEADER_CLAIM.search(text)
-    if header:
-        count, total = int(header.group(1)), int(header.group(2).replace(",", ""))
-        measured = sum(line_count(p) for p in dart)
-        if count != len(dart) or total != measured:
-            report.faults.append(
-                f"HEADER   says {count} source files, {total} lines; "
-                f"is {len(dart)}, {measured}"
-            )
-            report.edits.append(
-                rewrite_groups(header, {1: str(len(dart)), 2: str(measured)})
-            )
-
-    readme = README_CLAIM.search(text)
-    if readme and "readme.md" in on_disk:
-        measured = line_count(on_disk["readme.md"])
-        if int(readme.group(1)) != measured:
-            report.faults.append(
-                f"HEADER   says readme.md is {readme.group(1)} lines; is {measured}"
-            )
-            report.edits.append(rewrite_groups(readme, {1: str(measured)}))
-
     return True
 
 
@@ -604,10 +749,16 @@ def main(argv: list[str]) -> int:
 
     total = sum(len(r.faults) for r in defective)
     remaining = sum(len(r.faults) - len(r.edits) for r in defective)
+    # The unaudited count is reported because its absence is what let this
+    # check overstate its own coverage: a document it cannot parse is silently
+    # dropped, so a shrinking numerator reads exactly like a clean tree. The
+    # number does not fail the run -- a document may legitimately measure
+    # nothing -- but it is the figure to look at before trusting the other two.
     print(
         f"\n{len(reports)} documents audited, "
         f"{len(defective)} defective, {total} faults"
     )
+    print(f"{len(documents) - len(reports)} of {len(documents)} measure nothing")
     if fix:
         print(f"rewrote {total - remaining}; {remaining} need a hand")
         return report_faults(remaining)
