@@ -76,8 +76,7 @@ class _TomRowErrorStripState extends State<TomRowErrorStrip> {
     if (errors.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-    final isCenter =
-        widget.crossAxisAlignment == CrossAxisAlignment.center;
+    final isCenter = widget.crossAxisAlignment == CrossAxisAlignment.center;
     final count = errors.length;
 
     return Container(
@@ -87,9 +86,11 @@ class _TomRowErrorStripState extends State<TomRowErrorStrip> {
         color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
         border: Border(
           top: BorderSide(
-              color: theme.colorScheme.error.withValues(alpha: 0.4)),
+            color: theme.colorScheme.error.withValues(alpha: 0.4),
+          ),
           bottom: BorderSide(
-              color: theme.colorScheme.error.withValues(alpha: 0.4)),
+            color: theme.colorScheme.error.withValues(alpha: 0.4),
+          ),
         ),
       ),
       child: Column(
@@ -100,17 +101,16 @@ class _TomRowErrorStripState extends State<TomRowErrorStrip> {
             // one/many split is a key per plural form rather than a count
             // interpolated into a single English template.
             TomFormLabels.rowErrors(null, count),
-            textAlign:
-                isCenter ? TextAlign.center : TextAlign.start,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(fontWeight: FontWeight.w600),
+            textAlign: isCenter ? TextAlign.center : TextAlign.start,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 4),
           for (final f in errors)
             Text(
               '• ${f.resolvedLabel}: ${f.resolvedErrorMessage}',
-              textAlign:
-                  isCenter ? TextAlign.center : TextAlign.start,
+              textAlign: isCenter ? TextAlign.center : TextAlign.start,
               style: theme.textTheme.bodySmall,
             ),
         ],

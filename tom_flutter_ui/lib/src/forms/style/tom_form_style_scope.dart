@@ -45,8 +45,9 @@ class _OverlayTextStyle {
 
   TextStyle? resolve(ColorScheme cs) {
     if (isEmpty) return null;
-    final color =
-        colorRaw == null ? null : resolveAnyColor(colorRaw!, cs, TomUIColors.resolveColor);
+    final color = colorRaw == null
+        ? null
+        : resolveAnyColor(colorRaw!, cs, TomUIColors.resolveColor);
     return TextStyle(
       fontSize: fontSize,
       fontWeight: fontWeight,
@@ -99,7 +100,7 @@ class _OverlayBorder {
     final color = colorRaw == null
         ? Colors.black
         : (resolveAnyColor(colorRaw!, cs, TomUIColors.resolveColor) ??
-            Colors.black);
+              Colors.black);
     final side = BorderSide(color: color, width: width);
     switch (kind.toLowerCase()) {
       case 'none':
@@ -236,11 +237,11 @@ class _StyleOverlay {
             descriptionPlacement ?? base.defaults.descriptionPlacement,
         actionIconPlacement:
             actionIconPlacement ?? base.defaults.actionIconPlacement,
-        requiredIndicator:
-            requiredIndicator ?? base.defaults.requiredIndicator,
+        requiredIndicator: requiredIndicator ?? base.defaults.requiredIndicator,
         requiredIndicatorOnHint:
             requiredIndicatorOnHint ?? base.defaults.requiredIndicatorOnHint,
-        requiredIndicatorOnDescription: requiredIndicatorOnDescription ??
+        requiredIndicatorOnDescription:
+            requiredIndicatorOnDescription ??
             base.defaults.requiredIndicatorOnDescription,
         labelFieldGap: labelFieldGap ?? base.defaults.labelFieldGap,
         errorFieldGap: errorFieldGap ?? base.defaults.errorFieldGap,
@@ -327,8 +328,10 @@ class _StyleOverlay {
       labelStyle: _OverlayTextStyle.fromResources(block, 'labelStyle'),
       hintStyle: _OverlayTextStyle.fromResources(block, 'hintStyle'),
       errorStyle: _OverlayTextStyle.fromResources(block, 'errorStyle'),
-      descriptionStyle:
-          _OverlayTextStyle.fromResources(block, 'descriptionStyle'),
+      descriptionStyle: _OverlayTextStyle.fromResources(
+        block,
+        'descriptionStyle',
+      ),
       hintFontWeight: _parseFontWeight(hintWeightRaw),
       hintFontWeightSet: hintWeightRaw != null,
       hintOpacity: hintOpacityRaw,
@@ -384,8 +387,30 @@ class _ResourceOverlay {
     }
 
     const ladder = <int>[
-      0, 240, 320, 360, 400, 480, 540, 600, 640, 720, 768, 840, 900, 960,
-      1024, 1152, 1200, 1280, 1366, 1440, 1536, 1600, 1920, 2560,
+      0,
+      240,
+      320,
+      360,
+      400,
+      480,
+      540,
+      600,
+      640,
+      720,
+      768,
+      840,
+      900,
+      960,
+      1024,
+      1152,
+      1200,
+      1280,
+      1366,
+      1440,
+      1536,
+      1600,
+      1920,
+      2560,
     ];
     for (final w in ladder) {
       final block = '$path.@bp.$w';
@@ -420,8 +445,7 @@ final Expando<Map<String, _ResourceOverlay>> _cachePerProvider =
 
 _ResourceOverlay _getOrParse(String path) {
   final provider = TomTextResourceProvider.getAppResources();
-  final perPath =
-      _cachePerProvider[provider] ??= <String, _ResourceOverlay>{};
+  final perPath = _cachePerProvider[provider] ??= <String, _ResourceOverlay>{};
   return perPath[path] ??= _ResourceOverlay.parse(path);
 }
 
@@ -546,8 +570,7 @@ class TomFormStyleScope extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedPath = TomCtr.resolvePath(tomId, scope);
-    final pack =
-        resolvedPath == null ? null : _getOrParse(resolvedPath);
+    final pack = resolvedPath == null ? null : _getOrParse(resolvedPath);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -564,13 +587,12 @@ class TomFormStyleScope extends StatelessWidget {
 
         // Use the resolved theme's colorscheme for cs.* token resolution,
         // falling back to the ambient theme when no override is active.
-        final cs =
-            themeData?.colorScheme ?? Theme.of(context).colorScheme;
+        final cs = themeData?.colorScheme ?? Theme.of(context).colorScheme;
 
         // --- Style ---
         var resolved = _pickProgrammaticStyle(context, width);
         if (pack != null) {
-            resolved = pack.base.apply(resolved, cs);
+          resolved = pack.base.apply(resolved, cs);
           if (matchingBp != null) {
             resolved = matchingBp.overlay.apply(resolved, cs);
           }

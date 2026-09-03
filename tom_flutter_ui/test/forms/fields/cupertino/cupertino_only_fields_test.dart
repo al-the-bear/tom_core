@@ -24,17 +24,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-Widget _app(Widget child) =>
-    CupertinoApp(home: CupertinoPageScaffold(child: Center(child: child)));
+Widget _app(Widget child) => CupertinoApp(
+  home: CupertinoPageScaffold(child: Center(child: child)),
+);
 
 TomUIStateController get _readOnly =>
     TomUIStateController(resolve: (_, _) => TomAuthState.read);
 
-TomSelectableSource<String> _cities() =>
-    StaticSelectableSource<String>(const [
-      SelectableItem(value: 'oslo', label: 'Oslo'),
-      SelectableItem(value: 'lima', label: 'Lima'),
-    ]);
+TomSelectableSource<String> _cities() => StaticSelectableSource<String>(const [
+  SelectableItem(value: 'oslo', label: 'Oslo'),
+  SelectableItem(value: 'lima', label: 'Lima'),
+]);
 
 enum Priority { low, high }
 
@@ -67,8 +67,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('TomCupertinoFormBoolToggle', () {
-    testWidgets('renders an Off / On pair and selects the current value',
-        (tester) async {
+    testWidgets('renders an Off / On pair and selects the current value', (
+      tester,
+    ) async {
       final field = TomCupertinoFormBoolToggle('active', false);
       await tester.pumpWidget(_app(field.widget));
 
@@ -108,8 +109,11 @@ void main() {
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from({'active.onLabel': 'Enabled'}),
       );
-      final field =
-          TomCupertinoFormBoolToggle('active', false, onLabelOverride: 'Yes');
+      final field = TomCupertinoFormBoolToggle(
+        'active',
+        false,
+        onLabelOverride: 'Yes',
+      );
       await tester.pumpWidget(_app(field.widget));
 
       expect(find.text('Yes'), findsOneWidget);
@@ -158,8 +162,9 @@ void main() {
       expect(field.get(), Priority.high);
     });
 
-    testWidgets('renders a placeholder until the source resolves',
-        (tester) async {
+    testWidgets('renders a placeholder until the source resolves', (
+      tester,
+    ) async {
       final field = TomCupertinoFormEnumSegmented<Priority>(
         'prio',
         Priority.low,
@@ -174,10 +179,14 @@ void main() {
   });
 
   group('TomCupertinoFormStringSegmented', () {
-    testWidgets('renders the source labels, not the raw values',
-        (tester) async {
-      final field =
-          TomCupertinoFormStringSegmented('city', 'oslo', source: _cities());
+    testWidgets('renders the source labels, not the raw values', (
+      tester,
+    ) async {
+      final field = TomCupertinoFormStringSegmented(
+        'city',
+        'oslo',
+        source: _cities(),
+      );
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -185,10 +194,14 @@ void main() {
       expect(find.text('oslo'), findsNothing);
     });
 
-    testWidgets('tapping a segment stores the value behind the label',
-        (tester) async {
-      final field =
-          TomCupertinoFormStringSegmented('city', 'oslo', source: _cities());
+    testWidgets('tapping a segment stores the value behind the label', (
+      tester,
+    ) async {
+      final field = TomCupertinoFormStringSegmented(
+        'city',
+        'oslo',
+        source: _cities(),
+      );
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -197,22 +210,27 @@ void main() {
       expect(field.get(), 'lima');
     });
 
-    testWidgets('a value outside the source selects nothing rather than throwing',
-        (tester) async {
-      // CupertinoSlidingSegmentedControl asserts its groupValue is one of the
-      // children's keys — so an unknown bound value must become null, not be
-      // passed through.
-      final field =
-          TomCupertinoFormStringSegmented('city', 'kyiv', source: _cities());
-      await tester.pumpWidget(_app(field.widget));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'a value outside the source selects nothing rather than throwing',
+      (tester) async {
+        // CupertinoSlidingSegmentedControl asserts its groupValue is one of the
+        // children's keys — so an unknown bound value must become null, not be
+        // passed through.
+        final field = TomCupertinoFormStringSegmented(
+          'city',
+          'kyiv',
+          source: _cities(),
+        );
+        await tester.pumpWidget(_app(field.widget));
+        await tester.pumpAndSettle();
 
-      final control = tester.widget<CupertinoSlidingSegmentedControl<String>>(
-        find.byType(CupertinoSlidingSegmentedControl<String>),
-      );
-      expect(control.groupValue, isNull);
-      expect(tester.takeException(), isNull);
-    });
+        final control = tester.widget<CupertinoSlidingSegmentedControl<String>>(
+          find.byType(CupertinoSlidingSegmentedControl<String>),
+        );
+        expect(control.groupValue, isNull);
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -221,14 +239,24 @@ void main() {
 
   group('TomCupertinoFormIntPicker', () {
     test('enumerates its values from min, max and step', () {
-      final field =
-          TomCupertinoFormIntPicker('qty', 0, min: 0, max: 10, step: 5);
+      final field = TomCupertinoFormIntPicker(
+        'qty',
+        0,
+        min: 0,
+        max: 10,
+        step: 5,
+      );
       expect(field.values, [0, 5, 10]);
     });
 
     test('a step that overshoots max stops at the last reachable value', () {
-      final field =
-          TomCupertinoFormIntPicker('qty', 0, min: 0, max: 10, step: 4);
+      final field = TomCupertinoFormIntPicker(
+        'qty',
+        0,
+        min: 0,
+        max: 10,
+        step: 4,
+      );
       expect(field.values, [0, 4, 8]);
     });
 
@@ -255,34 +283,46 @@ void main() {
         '2',
       );
       expect(
-        TomCupertinoFormIntPicker('qty', 0, min: 0, max: 3,
-                format: (v) => '$v pcs')
-            .renderLabel(2),
+        TomCupertinoFormIntPicker(
+          'qty',
+          0,
+          min: 0,
+          max: 3,
+          format: (v) => '$v pcs',
+        ).renderLabel(2),
         '2 pcs',
       );
     });
 
-    testWidgets('renders the formatted current value in the tile',
-        (tester) async {
-      final field = TomCupertinoFormIntPicker('qty', 2,
-          min: 0, max: 10, format: (v) => '$v pcs');
+    testWidgets('renders the formatted current value in the tile', (
+      tester,
+    ) async {
+      final field = TomCupertinoFormIntPicker(
+        'qty',
+        2,
+        min: 0,
+        max: 10,
+        format: (v) => '$v pcs',
+      );
       await tester.pumpWidget(_app(field.widget));
       expect(find.text('2 pcs'), findsOneWidget);
     });
 
-    testWidgets('opens a Cancel / Done sheet on tap and Cancel keeps the value',
-        (tester) async {
-      final field = TomCupertinoFormIntPicker('qty', 2, min: 0, max: 10);
-      await tester.pumpWidget(_app(field.widget));
+    testWidgets(
+      'opens a Cancel / Done sheet on tap and Cancel keeps the value',
+      (tester) async {
+        final field = TomCupertinoFormIntPicker('qty', 2, min: 0, max: 10);
+        await tester.pumpWidget(_app(field.widget));
 
-      await tester.tap(find.text('2'));
-      await tester.pumpAndSettle();
-      expect(find.text('Done'), findsOneWidget);
+        await tester.tap(find.text('2'));
+        await tester.pumpAndSettle();
+        expect(find.text('Done'), findsOneWidget);
 
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(field.get(), 2);
-    });
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(field.get(), 2);
+      },
+    );
 
     testWidgets('a read-only field does not open the sheet', (tester) async {
       final field = TomCupertinoFormIntPicker(
@@ -302,31 +342,38 @@ void main() {
 
   group('TomCupertinoFormStringPicker', () {
     testWidgets('shows the label of the bound value', (tester) async {
-      final field =
-          TomCupertinoFormStringPicker('city', 'lima', source: _cities());
+      final field = TomCupertinoFormStringPicker(
+        'city',
+        'lima',
+        source: _cities(),
+      );
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
       expect(find.text('Lima'), findsOneWidget);
     });
 
-    testWidgets('falls back to the hint when nothing is selected',
-        (tester) async {
+    testWidgets('falls back to the hint when nothing is selected', (
+      tester,
+    ) async {
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from({'city.hint': 'Pick a city'}),
       );
-      final field =
-          TomCupertinoFormStringPicker('city', '', source: _cities());
+      final field = TomCupertinoFormStringPicker('city', '', source: _cities());
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
       expect(find.text('Pick a city'), findsOneWidget);
     });
 
-    testWidgets('shows the raw value when the source does not know it',
-        (tester) async {
-      final field =
-          TomCupertinoFormStringPicker('city', 'kyiv', source: _cities());
+    testWidgets('shows the raw value when the source does not know it', (
+      tester,
+    ) async {
+      final field = TomCupertinoFormStringPicker(
+        'city',
+        'kyiv',
+        source: _cities(),
+      );
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -334,8 +381,11 @@ void main() {
     });
 
     testWidgets('Done commits the highlighted row', (tester) async {
-      final field =
-          TomCupertinoFormStringPicker('city', 'oslo', source: _cities());
+      final field = TomCupertinoFormStringPicker(
+        'city',
+        'oslo',
+        source: _cities(),
+      );
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -366,21 +416,22 @@ void main() {
   });
 
   group('TomCupertinoFormStringListCheckedPicker', () {
-    testWidgets('joins the selected labels into the closed tile',
-        (tester) async {
-      final field = TomCupertinoFormStringListCheckedPicker(
-        'cities',
-        const ['oslo', 'lima'],
-        source: _cities(),
-      );
+    testWidgets('joins the selected labels into the closed tile', (
+      tester,
+    ) async {
+      final field = TomCupertinoFormStringListCheckedPicker('cities', const [
+        'oslo',
+        'lima',
+      ], source: _cities());
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
       expect(find.text('Oslo, Lima'), findsOneWidget);
     });
 
-    testWidgets('shows the placeholder when nothing is selected',
-        (tester) async {
+    testWidgets('shows the placeholder when nothing is selected', (
+      tester,
+    ) async {
       final field = TomCupertinoFormStringListCheckedPicker(
         'cities',
         const [],
@@ -393,15 +444,15 @@ void main() {
       expect(find.text('Any city'), findsOneWidget);
     });
 
-    testWidgets('prunes a selection the source no longer offers',
-        (tester) async {
+    testWidgets('prunes a selection the source no longer offers', (
+      tester,
+    ) async {
       // A stored value whose option disappeared must not linger in the bound
       // list — the user cannot see it, so they cannot remove it either.
-      final field = TomCupertinoFormStringListCheckedPicker(
-        'cities',
-        const ['oslo', 'atlantis'],
-        source: _cities(),
-      );
+      final field = TomCupertinoFormStringListCheckedPicker('cities', const [
+        'oslo',
+        'atlantis',
+      ], source: _cities());
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -409,13 +460,12 @@ void main() {
       await _settle(tester);
     });
 
-    testWidgets('toggling a row in the sheet updates the selection',
-        (tester) async {
-      final field = TomCupertinoFormStringListCheckedPicker(
-        'cities',
-        const ['oslo'],
-        source: _cities(),
-      );
+    testWidgets('toggling a row in the sheet updates the selection', (
+      tester,
+    ) async {
+      final field = TomCupertinoFormStringListCheckedPicker('cities', const [
+        'oslo',
+      ], source: _cities());
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -489,8 +539,10 @@ void main() {
         'span',
         const Duration(hours: 2, minutes: 5),
       );
-      expect(field.formatDuration(const Duration(hours: 2, minutes: 5)),
-          '02h 05m');
+      expect(
+        field.formatDuration(const Duration(hours: 2, minutes: 5)),
+        '02h 05m',
+      );
     });
 
     test('the ms mode drops hours and shows seconds', () {
@@ -499,8 +551,10 @@ void main() {
         Duration.zero,
         mode: CupertinoTimerPickerMode.ms,
       );
-      expect(field.formatDuration(const Duration(minutes: 3, seconds: 9)),
-          '03m 09s');
+      expect(
+        field.formatDuration(const Duration(minutes: 3, seconds: 9)),
+        '03m 09s',
+      );
     });
 
     test('the hms mode shows all three components', () {
@@ -517,11 +571,15 @@ void main() {
 
     test('hours accumulate past a day rather than wrapping', () {
       final field = TomCupertinoFormDurationPicker('span', Duration.zero);
-      expect(field.formatDuration(const Duration(days: 1, hours: 3)), '27h 00m');
+      expect(
+        field.formatDuration(const Duration(days: 1, hours: 3)),
+        '27h 00m',
+      );
     });
 
-    testWidgets('renders the formatted duration and opens a sheet on tap',
-        (tester) async {
+    testWidgets('renders the formatted duration and opens a sheet on tap', (
+      tester,
+    ) async {
       final field = TomCupertinoFormDurationPicker(
         'span',
         const Duration(hours: 2, minutes: 5),
@@ -553,8 +611,9 @@ void main() {
   });
 
   group('TomCupertinoFormDateRangePicker', () {
-    testWidgets('mounts and keeps the range across a cancelled sheet',
-        (tester) async {
+    testWidgets('mounts and keeps the range across a cancelled sheet', (
+      tester,
+    ) async {
       final range = DateTimeRange(
         start: DateTime(2024, 1, 1),
         end: DateTime(2024, 1, 31),
@@ -584,8 +643,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('TomCupertinoFormStringSearchInput', () {
-    testWidgets('renders a CupertinoSearchTextField seeded with the value',
-        (tester) async {
+    testWidgets('renders a CupertinoSearchTextField seeded with the value', (
+      tester,
+    ) async {
       final field = TomCupertinoFormStringSearchInput('q', 'oslo');
       await tester.pumpWidget(_app(field.widget));
 
@@ -618,8 +678,9 @@ void main() {
       expect(search.controller!.text, 'oslo');
     });
 
-    testWidgets('a read-only field is disabled and rejects input',
-        (tester) async {
+    testWidgets('a read-only field is disabled and rejects input', (
+      tester,
+    ) async {
       final field = TomCupertinoFormStringSearchInput(
         'q',
         'oslo',
@@ -663,12 +724,16 @@ void main() {
       final text = tester.widget<CupertinoTextField>(
         find.byType(CupertinoTextField),
       );
-      expect(text.controller!.text, isNot(contains(field.formatProfile.symbol)));
+      expect(
+        text.controller!.text,
+        isNot(contains(field.formatProfile.symbol)),
+      );
       expect(find.text(field.formatProfile.symbol), findsOneWidget);
     });
 
-    testWidgets('groups thousands and keeps the profile decimals',
-        (tester) async {
+    testWidgets('groups thousands and keeps the profile decimals', (
+      tester,
+    ) async {
       final field = TomCupertinoFormCurrencyDoubleInput(
         'price',
         1234.5,
@@ -681,12 +746,15 @@ void main() {
       final text = tester.widget<CupertinoTextField>(
         find.byType(CupertinoTextField),
       );
-      expect(text.controller!.text,
-          '1${profile.groupSeparator}234${profile.decimalSeparator}50');
+      expect(
+        text.controller!.text,
+        '1${profile.groupSeparator}234${profile.decimalSeparator}50',
+      );
     });
 
-    testWidgets('a typed amount parses back into the bound double',
-        (tester) async {
+    testWidgets('a typed amount parses back into the bound double', (
+      tester,
+    ) async {
       final field = TomCupertinoFormCurrencyDoubleInput(
         'price',
         0,
@@ -700,8 +768,9 @@ void main() {
       expect(field.get(), closeTo(12.75, 0.001));
     });
 
-    testWidgets('unparseable input leaves the last good value in place',
-        (tester) async {
+    testWidgets('unparseable input leaves the last good value in place', (
+      tester,
+    ) async {
       final field = TomCupertinoFormCurrencyDoubleInput(
         'price',
         9.99,

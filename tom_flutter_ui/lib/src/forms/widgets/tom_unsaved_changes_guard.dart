@@ -49,18 +49,15 @@ Future<UnsavedChangesChoice> guardUnsavedChanges({
       content: Text(message ?? TomFormLabels.unsavedMessage(path)),
       actions: [
         TextButton(
-          onPressed: () =>
-              Navigator.of(ctx).pop(UnsavedChangesChoice.cancel),
+          onPressed: () => Navigator.of(ctx).pop(UnsavedChangesChoice.cancel),
           child: Text(cancelLabel ?? TomFormLabels.cancel(path)),
         ),
         TextButton(
-          onPressed: () =>
-              Navigator.of(ctx).pop(UnsavedChangesChoice.discard),
+          onPressed: () => Navigator.of(ctx).pop(UnsavedChangesChoice.discard),
           child: Text(discardLabel ?? TomFormLabels.discard(path)),
         ),
         FilledButton(
-          onPressed: () =>
-              Navigator.of(ctx).pop(UnsavedChangesChoice.save),
+          onPressed: () => Navigator.of(ctx).pop(UnsavedChangesChoice.save),
           child: Text(saveLabel ?? TomFormLabels.save(path)),
         ),
       ],
@@ -107,8 +104,7 @@ class TomUnsavedChangesGuard extends StatefulWidget {
   final String? message;
 
   @override
-  State<TomUnsavedChangesGuard> createState() =>
-      _TomUnsavedChangesGuardState();
+  State<TomUnsavedChangesGuard> createState() => _TomUnsavedChangesGuardState();
 }
 
 class _TomUnsavedChangesGuardState extends State<TomUnsavedChangesGuard> {

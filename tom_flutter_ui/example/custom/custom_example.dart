@@ -110,12 +110,12 @@ void run() {
   final tree = TomAuthTreeNode(
     tomId: 'root',
     title: const Text('Root'),
-    children: [
-      TomAuthTreeNode(tomId: 'child', title: const Text('Child')),
-    ],
+    children: [TomAuthTreeNode(tomId: 'child', title: const Text('Child'))],
   );
-  print('tree root "${(tree.title as Text).data}" has '
-      '${tree.children.length} child(ren)');
+  print(
+    'tree root "${(tree.title as Text).data}" has '
+    '${tree.children.length} child(ren)',
+  );
 
   // ---------------------------------------------------------------------------
   // 4. The one resource consumer. TomEmptyState resolves its strings in the
@@ -126,8 +126,10 @@ void run() {
   // call that needs the provider — with none installed it throws
   // `resources.text_provider.not_installed`.
   final fromResources = TomEmptyState(tomId: 'reports.empty');
-  print('resource-driven empty state: tomId=${fromResources.tomId}, '
-      'title parameter=${fromResources.title}'); // title parameter=null
+  print(
+    'resource-driven empty state: tomId=${fromResources.tomId}, '
+    'title parameter=${fromResources.title}',
+  ); // title parameter=null
 
   // Neither a resource nor a literal: rejected at construction rather than
   // becoming a wordless icon, or an error card in an enclosing
@@ -145,8 +147,11 @@ void run() {
   //    covered by the testWidgets cases.
   // ---------------------------------------------------------------------------
   const guard = TomAuthGuard(tomId: 'reports.export', child: SizedBox());
-  const overlay =
-      TomLoadingOverlay(isLoading: true, message: 'Saving…', child: SizedBox());
+  const overlay = TomLoadingOverlay(
+    isLoading: true,
+    message: 'Saving…',
+    child: SizedBox(),
+  );
   final empty = TomEmptyState(title: 'No items', description: 'Nothing yet.');
   const skeleton = TomSkeletonLoader(width: 120, height: 16, enabled: false);
   const group = TomRadioGroup<String>(
@@ -154,16 +159,17 @@ void run() {
     items: items,
     selected: 'eur',
   );
-  print('guard.tomId=${guard.tomId}, overlay.isLoading=${overlay.isLoading}, '
-      'empty.title=${empty.title}, skeleton.enabled=${skeleton.enabled}, '
-      'group.selected=${group.selected}');
+  print(
+    'guard.tomId=${guard.tomId}, overlay.isLoading=${overlay.isLoading}, '
+    'empty.title=${empty.title}, skeleton.enabled=${skeleton.enabled}, '
+    'group.selected=${group.selected}',
+  );
 
   // ---------------------------------------------------------------------------
   // Assertions
   // ---------------------------------------------------------------------------
   assert(TomAuthorization.resolveAuth('reports.export') == TomAuthState.none);
-  assert(
-      TomAuthorization.resolveAuth('reports.edit') == TomAuthState.disabled);
+  assert(TomAuthorization.resolveAuth('reports.edit') == TomAuthState.disabled);
   assert(TomAuthorization.resolveAuth('reports.view') == TomAuthState.read);
   assert(TomAuthorization.resolveAuth('reports.open') == TomAuthState.full);
 

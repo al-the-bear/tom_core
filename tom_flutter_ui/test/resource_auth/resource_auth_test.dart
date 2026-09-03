@@ -42,10 +42,14 @@ void main() {
       expect(TomUIColors.resolveColor('#F53'), const Color(0xFFFF5533));
       expect(TomUIColors.resolveColor('#80FF5733'), const Color(0x80FF5733));
       expect(TomUIColors.resolveColor('#8F53'), const Color(0x88FF5533));
-      expect(TomUIColors.resolveColor('rgb(0, 128, 255)'),
-          const Color(0xFF0080FF));
-      expect(TomUIColors.resolveColor('rgba(255, 0, 0, 0.5)'),
-          const Color(0x80FF0000));
+      expect(
+        TomUIColors.resolveColor('rgb(0, 128, 255)'),
+        const Color(0xFF0080FF),
+      );
+      expect(
+        TomUIColors.resolveColor('rgba(255, 0, 0, 0.5)'),
+        const Color(0x80FF0000),
+      );
     });
 
     // Both alpha-carrying hex forms put alpha FIRST, matching Dart's
@@ -62,7 +66,11 @@ void main() {
         expect(c, const Color(0x80FF5733));
         // Spelled out channel by channel, so a reordering cannot pass by
         // matching some other literal that happens to be equal.
-        expect(c.a, closeTo(0x80 / 0xFF, 0.001), reason: 'alpha is the first pair');
+        expect(
+          c.a,
+          closeTo(0x80 / 0xFF, 0.001),
+          reason: 'alpha is the first pair',
+        );
         expect(c.r, closeTo(1.0, 0.001), reason: 'red is the second pair');
         expect(c.g, closeTo(0x57 / 0xFF, 0.001));
         expect(c.b, closeTo(0x33 / 0xFF, 0.001));
@@ -72,7 +80,11 @@ void main() {
         final adapter = AllColorsAdapter();
         final c = adapter.resolveColor('#8F53')!;
         expect(c, const Color(0x88FF5533));
-        expect(c.a, closeTo(0x88 / 0xFF, 0.001), reason: 'alpha is the first digit');
+        expect(
+          c.a,
+          closeTo(0x88 / 0xFF, 0.001),
+          reason: 'alpha is the first digit',
+        );
         expect(c.r, closeTo(1.0, 0.001));
         expect(c.g, closeTo(0x55 / 0xFF, 0.001));
         expect(c.b, closeTo(0x33 / 0xFF, 0.001));
@@ -89,7 +101,11 @@ void main() {
       test('colorExists agrees with resolveColor on every hex width', () {
         final adapter = AllColorsAdapter();
         for (final name in ['#F53', '#8F53', '#FF5733', '#80FF5733']) {
-          expect(adapter.colorExists(name), isTrue, reason: '$name should exist');
+          expect(
+            adapter.colorExists(name),
+            isTrue,
+            reason: '$name should exist',
+          );
           expect(adapter.resolveColor(name), isNotNull, reason: name);
         }
         // Widths between and beyond the four remain unknown rather than
@@ -103,8 +119,7 @@ void main() {
 
     test('rgb values are clamped to valid ranges', () {
       final adapter = AllColorsAdapter();
-      expect(adapter.resolveColor('rgb(999, 128, 0)'),
-          const Color(0xFFFF8000));
+      expect(adapter.resolveColor('rgb(999, 128, 0)'), const Color(0xFFFF8000));
     });
 
     test('colorExists recognises hex, rgb and named', () {
@@ -176,11 +191,16 @@ void main() {
         CupertinoOnlyColorAdapter(),
       ]) {
         final what = adapter.runtimeType;
-        expect(adapter.resolveColor('#80FF5733'), const Color(0x80FF5733),
-            reason: '$what cannot parse hex');
-        expect(adapter.resolveColor('rgba(255, 0, 0, 0.5)'),
-            const Color(0x80FF0000),
-            reason: '$what cannot parse rgba');
+        expect(
+          adapter.resolveColor('#80FF5733'),
+          const Color(0x80FF5733),
+          reason: '$what cannot parse hex',
+        );
+        expect(
+          adapter.resolveColor('rgba(255, 0, 0, 0.5)'),
+          const Color(0x80FF0000),
+          reason: '$what cannot parse rgba',
+        );
         expect(adapter.colorExists('#F53'), isTrue, reason: '$what');
       }
     });
@@ -195,17 +215,25 @@ void main() {
         MaterialOnlyColorAdapter(),
         CupertinoOnlyColorAdapter(),
       ]) {
-        expect(adapter.resolveColor('zBrand'), const Color(0xFF112233),
-            reason: '${adapter.runtimeType} lost the registration');
-        expect(adapter.colorExists('zBrand'), isTrue,
-            reason: '${adapter.runtimeType} denies the registration exists');
+        expect(
+          adapter.resolveColor('zBrand'),
+          const Color(0xFF112233),
+          reason: '${adapter.runtimeType} lost the registration',
+        );
+        expect(
+          adapter.colorExists('zBrand'),
+          isTrue,
+          reason: '${adapter.runtimeType} denies the registration exists',
+        );
       }
     });
 
     test('a colour registration overrides a built-in for every adapter', () {
       AllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
-      expect(MaterialOnlyColorAdapter().resolveColor('mRed'),
-          const Color(0xFF112233));
+      expect(
+        MaterialOnlyColorAdapter().resolveColor('mRed'),
+        const Color(0xFF112233),
+      );
       expect(AllColorsAdapter().resolveColor('mRed'), const Color(0xFF112233));
     });
 
@@ -246,12 +274,15 @@ void main() {
   // claimed "60+" Cupertino colours against 46, and carried a wall-clock
   // stamp for a file no tool had ever written.
   group('tom_colors_generated.dart header', () {
-    final source =
-        File('lib/src/resource_auth/tom_colors_generated.dart').readAsStringSync();
+    final source = File(
+      'lib/src/resource_auth/tom_colors_generated.dart',
+    ).readAsStringSync();
 
     int declaredCount(String label) {
-      final match = RegExp('^// $label: (\\d+)\$', multiLine: true)
-          .firstMatch(source);
+      final match = RegExp(
+        '^// $label: (\\d+)\$',
+        multiLine: true,
+      ).firstMatch(source);
       expect(match, isNotNull, reason: 'no "$label:" line in the header');
       return int.parse(match!.group(1)!);
     }
@@ -328,10 +359,16 @@ void main() {
         MaterialOnlyIconAdapter(),
         CupertinoOnlyIconAdapter(),
       ]) {
-        expect(adapter.resolveIcon('zBrandLogo'), Icons.abc,
-            reason: '${adapter.runtimeType} lost the registration');
-        expect(adapter.iconExists('zBrandLogo'), isTrue,
-            reason: '${adapter.runtimeType} denies the registration exists');
+        expect(
+          adapter.resolveIcon('zBrandLogo'),
+          Icons.abc,
+          reason: '${adapter.runtimeType} lost the registration',
+        );
+        expect(
+          adapter.iconExists('zBrandLogo'),
+          isTrue,
+          reason: '${adapter.runtimeType} denies the registration exists',
+        );
       }
     });
 
@@ -458,19 +495,21 @@ void main() {
       expect(TomUIColors.resolveColor('cSystemBlue'), isNotNull);
     });
 
-    test('a narrow icon adapter can be installed and the wide one put back',
-        () {
-      final wide = AllIconsAdapter();
-      TomUIIcons.adapter = wide;
-      final saved = TomUIIcons.adapter;
+    test(
+      'a narrow icon adapter can be installed and the wide one put back',
+      () {
+        final wide = AllIconsAdapter();
+        TomUIIcons.adapter = wide;
+        final saved = TomUIIcons.adapter;
 
-      TomUIIcons.adapter = CupertinoOnlyIconAdapter();
-      expect(TomUIIcons.resolveIcon('mSave'), isNull);
+        TomUIIcons.adapter = CupertinoOnlyIconAdapter();
+        expect(TomUIIcons.resolveIcon('mSave'), isNull);
 
-      TomUIIcons.adapter = saved;
-      expect(TomUIIcons.adapter, same(wide));
-      expect(TomUIIcons.resolveIcon('mSave'), Icons.save);
-    });
+        TomUIIcons.adapter = saved;
+        expect(TomUIIcons.adapter, same(wide));
+        expect(TomUIIcons.resolveIcon('mSave'), Icons.save);
+      },
+    );
 
     // The reason the setter accepts null. Restoring "nothing was installed"
     // through reset() would take the caller's registrations with it — so the
@@ -507,11 +546,13 @@ void main() {
     });
 
     test('exposes environment, platform and flags', () {
-      TomConfigProvider.initialize(TomConfigProvider.create(
-        environment: TomEnvironment.staging,
-        platform: TomPlatform.desktop,
-        flags: {'beta': true, 'limit': 10, 'name': 'x'},
-      ));
+      TomConfigProvider.initialize(
+        TomConfigProvider.create(
+          environment: TomEnvironment.staging,
+          platform: TomPlatform.desktop,
+          flags: {'beta': true, 'limit': 10, 'name': 'x'},
+        ),
+      );
       final cfg = TomConfigProvider.current;
       expect(cfg.environment, TomEnvironment.staging);
       expect(cfg.platform, TomPlatform.desktop);
@@ -521,11 +562,13 @@ void main() {
     });
 
     test('feature returns null on type mismatch or missing', () {
-      TomConfigProvider.initialize(TomConfigProvider.create(
-        environment: TomEnvironment.development,
-        platform: TomPlatform.mobile,
-        flags: {'limit': 10},
-      ));
+      TomConfigProvider.initialize(
+        TomConfigProvider.create(
+          environment: TomEnvironment.development,
+          platform: TomPlatform.mobile,
+          flags: {'limit': 10},
+        ),
+      );
       final cfg = TomConfigProvider.current;
       expect(cfg.feature<String>('limit'), isNull);
       expect(cfg.feature<int>('missing'), isNull);
@@ -601,9 +644,12 @@ void main() {
 
   group('authorization types', () {
     test('TomAuthState ordering and predicates', () {
-      expect(TomAuthState.values,
-          [TomAuthState.none, TomAuthState.disabled, TomAuthState.read,
-            TomAuthState.full]);
+      expect(TomAuthState.values, [
+        TomAuthState.none,
+        TomAuthState.disabled,
+        TomAuthState.read,
+        TomAuthState.full,
+      ]);
       expect(TomAuthState.none.isVisible, isFalse);
       expect(TomAuthState.read.isVisible, isTrue);
       expect(TomAuthState.read.isInteractive, isFalse);

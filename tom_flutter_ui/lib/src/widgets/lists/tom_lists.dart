@@ -79,8 +79,8 @@ class TomListView extends TomListBase {
     this.addAutomaticKeepAlives = true,
     this.addRepaintBoundaries = true,
     this.addSemanticIndexes = true,
-  })  : _children = children,
-        _childrenDelegate = null {
+  }) : _children = children,
+       _childrenDelegate = null {
     _initResolvedFields();
   }
 
@@ -116,14 +116,14 @@ class TomListView extends TomListBase {
     this.addAutomaticKeepAlives = true,
     this.addRepaintBoundaries = true,
     this.addSemanticIndexes = true,
-  })  : _children = null,
-        _childrenDelegate = SliverChildBuilderDelegate(
-          InScopeBuilder(scope: scope).wrap2(itemBuilder),
-          childCount: itemCount,
-          addAutomaticKeepAlives: addAutomaticKeepAlives,
-          addRepaintBoundaries: addRepaintBoundaries,
-          addSemanticIndexes: addSemanticIndexes,
-        ) {
+  }) : _children = null,
+       _childrenDelegate = SliverChildBuilderDelegate(
+         InScopeBuilder(scope: scope).wrap2(itemBuilder),
+         childCount: itemCount,
+         addAutomaticKeepAlives: addAutomaticKeepAlives,
+         addRepaintBoundaries: addRepaintBoundaries,
+         addSemanticIndexes: addSemanticIndexes,
+       ) {
     _initResolvedFields();
   }
 
@@ -154,23 +154,23 @@ class TomListView extends TomListBase {
     this.addAutomaticKeepAlives = true,
     this.addRepaintBoundaries = true,
     this.addSemanticIndexes = true,
-  })  : itemExtent = null,
-        prototypeItem = null,
-        semanticChildCount = itemCount,
-        _children = null,
-        _childrenDelegate = SliverChildBuilderDelegate(
-          InScopeBuilder(scope: scope).wrap2((BuildContext context, int index) {
-            final int itemIndex = index ~/ 2;
-            if (index.isEven) {
-              return itemBuilder(context, itemIndex);
-            }
-            return separatorBuilder(context, itemIndex);
-          }),
-          childCount: _computeActualChildCount(itemCount),
-          addAutomaticKeepAlives: addAutomaticKeepAlives,
-          addRepaintBoundaries: addRepaintBoundaries,
-          addSemanticIndexes: addSemanticIndexes,
-        ) {
+  }) : itemExtent = null,
+       prototypeItem = null,
+       semanticChildCount = itemCount,
+       _children = null,
+       _childrenDelegate = SliverChildBuilderDelegate(
+         InScopeBuilder(scope: scope).wrap2((BuildContext context, int index) {
+           final int itemIndex = index ~/ 2;
+           if (index.isEven) {
+             return itemBuilder(context, itemIndex);
+           }
+           return separatorBuilder(context, itemIndex);
+         }),
+         childCount: _computeActualChildCount(itemCount),
+         addAutomaticKeepAlives: addAutomaticKeepAlives,
+         addRepaintBoundaries: addRepaintBoundaries,
+         addSemanticIndexes: addSemanticIndexes,
+       ) {
     _initResolvedFields();
   }
 
@@ -201,8 +201,8 @@ class TomListView extends TomListBase {
     this.addAutomaticKeepAlives = true,
     this.addRepaintBoundaries = true,
     this.addSemanticIndexes = true,
-  })  : _children = null,
-        _childrenDelegate = childrenDelegate {
+  }) : _children = null,
+       _childrenDelegate = childrenDelegate {
     _initResolvedFields();
   }
 
@@ -211,14 +211,25 @@ class TomListView extends TomListBase {
     _resolvedPrimary = primary ?? TomCtr.boolVal(basePath, 'primary');
     _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
-    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
-    final cacheExtentPixels = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
-    _resolvedCacheExtent = cacheExtentPixels == null ? null : ScrollCacheExtent.pixels(cacheExtentPixels);
-    _resolvedSemanticChildCount = semanticChildCount ?? TomCtr.intVal(basePath, 'semanticChildCount');
-    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
-    _resolvedAddAutomaticKeepAlives = TomCtr.boolVal(basePath, 'addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
-    _resolvedAddRepaintBoundaries = TomCtr.boolVal(basePath, 'addRepaintBoundaries') ?? addRepaintBoundaries;
-    _resolvedAddSemanticIndexes = TomCtr.boolVal(basePath, 'addSemanticIndexes') ?? addSemanticIndexes;
+    _resolvedItemExtent =
+        itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
+    final cacheExtentPixels =
+        cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedCacheExtent = cacheExtentPixels == null
+        ? null
+        : ScrollCacheExtent.pixels(cacheExtentPixels);
+    _resolvedSemanticChildCount =
+        semanticChildCount ?? TomCtr.intVal(basePath, 'semanticChildCount');
+    _resolvedRestorationId =
+        restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
+    _resolvedAddAutomaticKeepAlives =
+        TomCtr.boolVal(basePath, 'addAutomaticKeepAlives') ??
+        addAutomaticKeepAlives;
+    _resolvedAddRepaintBoundaries =
+        TomCtr.boolVal(basePath, 'addRepaintBoundaries') ??
+        addRepaintBoundaries;
+    _resolvedAddSemanticIndexes =
+        TomCtr.boolVal(basePath, 'addSemanticIndexes') ?? addSemanticIndexes;
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
   }
 
@@ -320,7 +331,8 @@ class TomAnimatedList extends TomListBase {
     this.padding,
     this.clipBehavior = Clip.hardEdge,
   }) : itemBuilder = InScopeBuilder(scope: scope).wrap3(itemBuilder) {
-    _resolvedInitialItemCount = TomCtr.intVal(basePath, 'initialItemCount') ?? initialItemCount;
+    _resolvedInitialItemCount =
+        TomCtr.intVal(basePath, 'initialItemCount') ?? initialItemCount;
     _resolvedReverse = TomCtr.boolVal(basePath, 'reverse') ?? reverse;
     _resolvedPrimary = primary ?? TomCtr.boolVal(basePath, 'primary');
     _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
@@ -393,11 +405,14 @@ class TomDismissible extends TomListBase {
     this.crossAxisEndOffset,
     this.dragStartBehavior = DragStartBehavior.start,
     this.behavior = HitTestBehavior.opaque,
-  })  : confirmDismiss = InScopeBuilder(scope: scope).wrap1n(confirmDismiss),
-        onResize = InScopeBuilder(scope: scope).wrap0n(onResize),
-        onUpdate = InScopeBuilder(scope: scope).wrap1n(onUpdate),
-        onDismissed = InScopeBuilder(scope: scope).wrap1n(onDismissed) {
-    _resolvedCrossAxisEndOffset = crossAxisEndOffset ?? TomCtr.doubleVal(basePath, 'crossAxisEndOffset') ?? 0.0;
+  }) : confirmDismiss = InScopeBuilder(scope: scope).wrap1n(confirmDismiss),
+       onResize = InScopeBuilder(scope: scope).wrap0n(onResize),
+       onUpdate = InScopeBuilder(scope: scope).wrap1n(onUpdate),
+       onDismissed = InScopeBuilder(scope: scope).wrap1n(onDismissed) {
+    _resolvedCrossAxisEndOffset =
+        crossAxisEndOffset ??
+        TomCtr.doubleVal(basePath, 'crossAxisEndOffset') ??
+        0.0;
   }
 
   @override
@@ -478,17 +493,35 @@ class TomListWheelScrollView extends TomListBase {
     this.restorationId,
     this.scrollBehavior,
     required this.childDelegate,
-  })  : onSelectedItemChanged = InScopeBuilder(scope: scope).wrap1n(onSelectedItemChanged) {
-    _resolvedDiameterRatio = diameterRatio ?? TomCtr.doubleVal(basePath, 'diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
-    _resolvedPerspective = perspective ?? TomCtr.doubleVal(basePath, 'perspective') ?? RenderListWheelViewport.defaultPerspective;
-    _resolvedOffAxisFraction = offAxisFraction ?? TomCtr.doubleVal(basePath, 'offAxisFraction') ?? 0.0;
-    _resolvedMagnification = magnification ?? TomCtr.doubleVal(basePath, 'magnification') ?? 1.0;
-    _resolvedOverAndUnderCenterOpacity = overAndUnderCenterOpacity ?? TomCtr.doubleVal(basePath, 'overAndUnderCenterOpacity') ?? 1.0;
-    _resolvedItemExtent = itemExtent ?? TomCtr.doubleOrFail(basePath, 'itemExtent');
+  }) : onSelectedItemChanged = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onSelectedItemChanged) {
+    _resolvedDiameterRatio =
+        diameterRatio ??
+        TomCtr.doubleVal(basePath, 'diameterRatio') ??
+        RenderListWheelViewport.defaultDiameterRatio;
+    _resolvedPerspective =
+        perspective ??
+        TomCtr.doubleVal(basePath, 'perspective') ??
+        RenderListWheelViewport.defaultPerspective;
+    _resolvedOffAxisFraction =
+        offAxisFraction ?? TomCtr.doubleVal(basePath, 'offAxisFraction') ?? 0.0;
+    _resolvedMagnification =
+        magnification ?? TomCtr.doubleVal(basePath, 'magnification') ?? 1.0;
+    _resolvedOverAndUnderCenterOpacity =
+        overAndUnderCenterOpacity ??
+        TomCtr.doubleVal(basePath, 'overAndUnderCenterOpacity') ??
+        1.0;
+    _resolvedItemExtent =
+        itemExtent ?? TomCtr.doubleOrFail(basePath, 'itemExtent');
     _resolvedSqueeze = squeeze ?? TomCtr.doubleVal(basePath, 'squeeze') ?? 1.0;
-    _resolvedUseMagnifier = TomCtr.boolVal(basePath, 'useMagnifier') ?? useMagnifier;
-    _resolvedRenderChildrenOutsideViewport = TomCtr.boolVal(basePath, 'renderChildrenOutsideViewport') ?? renderChildrenOutsideViewport;
-    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
+    _resolvedUseMagnifier =
+        TomCtr.boolVal(basePath, 'useMagnifier') ?? useMagnifier;
+    _resolvedRenderChildrenOutsideViewport =
+        TomCtr.boolVal(basePath, 'renderChildrenOutsideViewport') ??
+        renderChildrenOutsideViewport;
+    _resolvedRestorationId =
+        restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
   }
 
   @override
@@ -556,12 +589,18 @@ class TomCupertinoListTile extends TomListBase {
     this.padding,
     this.leadingSize,
     this.leadingToTitle,
-  })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
-    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
+    _resolvedTitle =
+        titleText ??
+        TomCtr.textOrNull(basePath, 'titleText') ??
+        TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
-    _resolvedLeadingSize = leadingSize ?? TomCtr.doubleVal(basePath, 'leadingSize') ?? 28.0;
-    _resolvedLeadingToTitle = leadingToTitle ?? TomCtr.doubleVal(basePath, 'leadingToTitle') ?? 12.0;
+    _resolvedLeadingSize =
+        leadingSize ?? TomCtr.doubleVal(basePath, 'leadingSize') ?? 28.0;
+    _resolvedLeadingToTitle =
+        leadingToTitle ?? TomCtr.doubleVal(basePath, 'leadingToTitle') ?? 12.0;
   }
 
   @override
@@ -631,11 +670,20 @@ class TomCupertinoListSection extends TomListBase {
     this.decoration,
     this.separatorColor,
   }) {
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor') ?? CupertinoColors.systemBackground;
+    _resolvedBackgroundColor =
+        backgroundColor ??
+        TomCtr.color(basePath, 'backgroundColor') ??
+        CupertinoColors.systemBackground;
     _resolvedTopMargin = topMargin ?? TomCtr.doubleVal(basePath, 'topMargin');
-    _resolvedHasLeading = hasLeading ?? TomCtr.boolVal(basePath, 'hasLeading') ?? true;
-    _resolvedAdditionalDividerMargin = additionalDividerMargin != 0.0 ? additionalDividerMargin : TomCtr.doubleVal(basePath, 'additionalDividerMargin') ?? 0.0;
-    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin') ?? const EdgeInsets.only(bottom: 8.0);
+    _resolvedHasLeading =
+        hasLeading ?? TomCtr.boolVal(basePath, 'hasLeading') ?? true;
+    _resolvedAdditionalDividerMargin = additionalDividerMargin != 0.0
+        ? additionalDividerMargin
+        : TomCtr.doubleVal(basePath, 'additionalDividerMargin') ?? 0.0;
+    _resolvedMargin =
+        margin ??
+        TomCtr.edgeInsets(basePath, 'margin') ??
+        const EdgeInsets.only(bottom: 8.0);
   }
 
   @override
@@ -715,15 +763,22 @@ class TomReorderableList extends TomListBase {
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
-  })  : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
-        onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
-        onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
-    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
-    _resolvedShrinkWrap = shrinkWrap ?? TomCtr.boolVal(basePath, 'shrinkWrap') ?? false;
+  }) : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
+       onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
+       onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
+    _resolvedItemExtent =
+        itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
+    _resolvedShrinkWrap =
+        shrinkWrap ?? TomCtr.boolVal(basePath, 'shrinkWrap') ?? false;
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
-    _resolvedAnchor = anchor != 0.0 ? anchor : TomCtr.doubleVal(basePath, 'anchor') ?? 0.0;
-    final cacheExtentPixels = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
-    _resolvedCacheExtent = cacheExtentPixels == null ? null : ScrollCacheExtent.pixels(cacheExtentPixels);
+    _resolvedAnchor = anchor != 0.0
+        ? anchor
+        : TomCtr.doubleVal(basePath, 'anchor') ?? 0.0;
+    final cacheExtentPixels =
+        cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedCacheExtent = cacheExtentPixels == null
+        ? null
+        : ScrollCacheExtent.pixels(cacheExtentPixels);
   }
 
   @override
@@ -736,8 +791,8 @@ class TomReorderableList extends TomListBase {
     final Widget Function(BuildContext, int) resolvedItemBuilder;
     final int resolvedItemCount;
     if (delegate is SliverChildBuilderDelegate) {
-      resolvedItemBuilder =
-          (context, index) => delegate.builder(context, index)!;
+      resolvedItemBuilder = (context, index) =>
+          delegate.builder(context, index)!;
       resolvedItemCount = delegate.childCount ?? 0;
     } else if (delegate is SliverChildListDelegate) {
       final children = delegate.children;
@@ -810,10 +865,11 @@ class TomSliverReorderableList extends TomListBase {
     this.itemExtentBuilder,
     this.prototypeItem,
     this.proxyDecorator,
-  })  : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
-        onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
-        onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
-    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
+  }) : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
+       onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
+       onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
+    _resolvedItemExtent =
+        itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
   }
 
   @override

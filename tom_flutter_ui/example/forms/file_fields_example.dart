@@ -39,18 +39,19 @@ Future<void> run() async {
   // a handful of fields into TomPickedFile. Nothing in tom_flutter_ui names
   // either package, which is why it does not depend on them.
   TomFilePickerRegistry.register((request) async {
-    print('picker asked for kind=${request.kind.name} '
-        'extensions=${request.allowedExtensions} '
-        'maxSize=${request.maxSizeBytes}');
+    print(
+      'picker asked for kind=${request.kind.name} '
+      'extensions=${request.allowedExtensions} '
+      'maxSize=${request.maxSizeBytes}',
+    );
     return [
       TomPickedFile(
         name: 'quarterly-report.pdf',
         sizeBytes: 40,
         // A re-openable stream, not a Stream: the upload must be able to read
         // the file again when a retry needs it.
-        open: () => Stream.fromIterable(
-          List.generate(4, (_) => List.filled(10, 7)),
-        ),
+        open: () =>
+            Stream.fromIterable(List.generate(4, (_) => List.filled(10, 7))),
       ),
     ];
   });
@@ -65,16 +66,20 @@ Future<void> run() async {
       maxSizeBytes: 1024 * 1024,
     ),
   );
-  print('picked: ${picked!.name} ${picked.sizeBytes} B '
-      'mime=${picked.mimeType} streamed=${picked.source != null}');
+  print(
+    'picked: ${picked!.name} ${picked.sizeBytes} B '
+    'mime=${picked.mimeType} streamed=${picked.source != null}',
+  );
 
   // A picker that read the file eagerly gives bytes instead; both are a
   // FileRef, and both can produce the TomFileSource an upload needs.
   final small = TomFilePickers.toFileRef(
     TomPickedFile(name: 'note.txt', bytes: Uint8List.fromList([1, 2, 3])),
   );
-  print('small: ${small.name} bytes=${small.bytes?.length} '
-      'streamed=${small.source != null}');
+  print(
+    'small: ${small.name} bytes=${small.bytes?.length} '
+    'streamed=${small.source != null}',
+  );
 
   // ---------------------------------------------------------------------------
   // 3. Uploading, with progress
@@ -115,15 +120,19 @@ Future<void> run() async {
   // its error key, and leaves the controller ready to repeat the attempt.
   final missing = TomFileTransferController(client: client, slot: 'nope');
   await missing.download();
-  print('failed with: ${missing.value.errorKey} '
-      '→ "${tomTransferErrorMessage(missing.value)}" retryable=${missing.canRetry}');
+  print(
+    'failed with: ${missing.value.errorKey} '
+    '→ "${tomTransferErrorMessage(missing.value)}" retryable=${missing.canRetry}',
+  );
   missing.dispose();
 
   // ---------------------------------------------------------------------------
   // 5. Downloading
   // ---------------------------------------------------------------------------
   final bytes = await controller.download();
-  print('downloaded ${bytes!.length} B in phase ${controller.value.phase.name}');
+  print(
+    'downloaded ${bytes!.length} B in phase ${controller.value.phase.name}',
+  );
 
   // The streaming form never holds the whole file: a preview accumulates, a
   // file writer does not.
@@ -139,7 +148,9 @@ Future<void> run() async {
   final described = await controller.describe();
   print('described: ${described!.fileName} (${described.byteCount} B)');
   final restored = FileRef.stored(described);
-  print('restored value: ${restored.name} localContent=${restored.hasLocalContent}');
+  print(
+    'restored value: ${restored.name} localContent=${restored.hasLocalContent}',
+  );
 
   final removed = await controller.remove();
   print('removed=$removed slots left=${client.slots.length}');
@@ -157,9 +168,9 @@ Future<void> run() async {
     labelTextOverride: 'Quarterly report',
   );
   print('field canPick=${field.canPick} canTransfer=${field.canTransfer}');
-  print('field rejects a .png: ${field.checkFile(
-    const FileRef(name: 'photo.png', sizeBytes: 10),
-  )}');
+  print(
+    'field rejects a .png: ${field.checkFile(const FileRef(name: 'photo.png', sizeBytes: 10))}',
+  );
 
   // ---------------------------------------------------------------------------
   // Assertions
@@ -199,8 +210,10 @@ Future<void> run() async {
 
   assert(field.canPick); // via the registered picker, with no picker argument
   assert(field.canTransfer);
-  assert(field.checkFile(const FileRef(name: 'photo.png', sizeBytes: 10)) ==
-      'error.fileExtension');
+  assert(
+    field.checkFile(const FileRef(name: 'photo.png', sizeBytes: 10)) ==
+        'error.fileExtension',
+  );
 
   controller.dispose();
   TomFilePickerRegistry.clear();

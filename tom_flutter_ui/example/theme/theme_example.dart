@@ -23,8 +23,10 @@ void run() {
     name: 'dimmed',
     readonlyStyle: const TomStateStyle(opacity: 0.5),
   );
-  print('base="${base.name}" dimmed="${dimmed.name}" '
-      'opacity=${dimmed.readonlyStyle.opacity}');
+  print(
+    'base="${base.name}" dimmed="${dimmed.name}" '
+    'opacity=${dimmed.readonlyStyle.opacity}',
+  );
 
   // Example 2: the default readonly treatment wraps content in an
   // AbsorbPointer (over an Opacity). apply() needs no BuildContext.
@@ -39,9 +41,11 @@ void run() {
   final strictDisabled = base.copyWith(
     disabledStyle: const TomStateStyle(opacity: 0.2),
   );
-  print('disabled default=${base.disabledStyle.opacity} '
-      'restyled=${strictDisabled.disabledStyle.opacity} '
-      '(readonly untouched: ${strictDisabled.readonlyStyle.opacity})');
+  print(
+    'disabled default=${base.disabledStyle.opacity} '
+    'restyled=${strictDisabled.disabledStyle.opacity} '
+    '(readonly untouched: ${strictDisabled.readonlyStyle.opacity})',
+  );
 
   // Example 4: applyAuthState is the single mapping from authorization state
   // to appearance. Both enforcement points — TomPolicyNodeBase's default
@@ -57,8 +61,10 @@ void run() {
   final hidden = strictDisabled.applyAuthState(TomAuthState.none, field);
   final inert = strictDisabled.applyAuthState(TomAuthState.disabled, field);
   final editable = strictDisabled.applyAuthState(TomAuthState.full, field);
-  print('none -> ${hidden.runtimeType} (content built $builds times), '
-      'disabled -> ${inert.runtimeType}, full -> ${editable.runtimeType}');
+  print(
+    'none -> ${hidden.runtimeType} (content built $builds times), '
+    'disabled -> ${inert.runtimeType}, full -> ${editable.runtimeType}',
+  );
 
   // Example 5: a fully permissive style returns the content untouched.
   const passthrough = TomStateStyle(opacity: 1.0, absorbPointers: false);
@@ -79,10 +85,10 @@ void run() {
   // Example 7: semantic button variants derived from a ColorScheme.
   const scheme = ColorScheme.light();
   final variants = TomButtonVariants.fromColorScheme(scheme);
-  final primaryBg =
-      variants.primary.backgroundColor?.resolve(<WidgetState>{});
-  final destructiveBg =
-      variants.destructive.backgroundColor?.resolve(<WidgetState>{});
+  final primaryBg = variants.primary.backgroundColor?.resolve(<WidgetState>{});
+  final destructiveBg = variants.destructive.backgroundColor?.resolve(
+    <WidgetState>{},
+  );
   print('primary bg=$primaryBg destructive bg=$destructiveBg');
 
   // Example 8: themes and styles are values, which is what lets a
@@ -102,8 +108,10 @@ void run() {
   final hoistedB = TomStateStyle(builder: readOnlyBanner);
   final inlineA = TomStateStyle(builder: (child) => child);
   final inlineB = TomStateStyle(builder: (child) => child);
-  print('hoisted builders equal -> ${hoistedA == hoistedB}   '
-      'inline builders equal -> ${inlineA == inlineB}');
+  print(
+    'hoisted builders equal -> ${hoistedA == hoistedB}   '
+    'inline builders equal -> ${inlineA == inlineB}',
+  );
 
   // Assertions
   assert(base.name == 'default');
@@ -144,8 +152,9 @@ void run() {
   assert(base.copyWith() == base);
   assert(dimmed != base);
   // Both nested styles count too.
-  assert(base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5)) !=
-      base);
+  assert(
+    base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5)) != base,
+  );
   assert(strictDisabled != base);
 
   // Hoisted builders compare equal; inline ones never do — which is why a
@@ -156,10 +165,7 @@ void run() {
 
 /// A hoisted read-only builder: naming the function is what lets two
 /// [TomStateStyle]s that use it compare equal across rebuilds.
-Widget readOnlyBanner(Widget child) => Banner(
-      message: 'read-only',
-      location: BannerLocation.topEnd,
-      child: child,
-    );
+Widget readOnlyBanner(Widget child) =>
+    Banner(message: 'read-only', location: BannerLocation.topEnd, child: child);
 
 void main() => run();

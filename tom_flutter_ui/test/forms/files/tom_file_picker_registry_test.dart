@@ -105,7 +105,10 @@ void main() {
 
     test('a cancelled pick — an empty list — becomes null', () async {
       TomFilePickerRegistry.register((_) async => const []);
-      expect(await TomFilePickerRegistry.pick(const TomFilePickRequest()), isNull);
+      expect(
+        await TomFilePickerRegistry.pick(const TomFilePickRequest()),
+        isNull,
+      );
     });
 
     test('the first picked file is converted to a FileRef', () async {
@@ -154,7 +157,9 @@ void main() {
       TomFilePickerRegistry.register(
         (_) async => [const TomPickedFile(name: 'via-registry.txt')],
       );
-      final picker = TomFilePickers.registered(allowedExtensions: const ['txt']);
+      final picker = TomFilePickers.registered(
+        allowedExtensions: const ['txt'],
+      );
 
       late BuildContext captured;
       await tester.pumpWidget(

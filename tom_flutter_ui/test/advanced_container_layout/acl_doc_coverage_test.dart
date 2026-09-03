@@ -62,21 +62,14 @@ const _featureSections = <String, List<String>>{
     'AclTitlePosition',
     'AclTitleBorderAlign',
   ],
-  'Container borders': [
-    'setAclBorderStyle',
-    'AclBorderStyle',
-    'AclBorderKind',
-  ],
+  'Container borders': ['setAclBorderStyle', 'AclBorderStyle', 'AclBorderKind'],
   'Gap rows and separators': [
     'gapRow',
     'AclSeparator',
     'AclSeparatorStyle',
     'AclSeparatorAlignment',
   ],
-  'Scrolling': [
-    'setAclScrollableX',
-    'setAclScrollableY',
-  ],
+  'Scrolling': ['setAclScrollableX', 'setAclScrollableY'],
   'Layout direction — LTR and RTL': [
     'setAclDirection',
     'AclDirection',
@@ -132,10 +125,10 @@ Set<String> _exportedPublicFunctions() {
 }
 
 /// The `## ` headings of the document, in order, as written.
-List<String> _headings() => RegExp(r'^## (.+)$', multiLine: true)
-    .allMatches(_doc())
-    .map((m) => m.group(1)!.trim())
-    .toList();
+List<String> _headings() => RegExp(
+  r'^## (.+)$',
+  multiLine: true,
+).allMatches(_doc()).map((m) => m.group(1)!.trim()).toList();
 
 /// The link titles of the table of contents, in order.
 List<String> _tocEntries() {
@@ -172,7 +165,9 @@ List<String> _indexedSymbols(String section) {
     final trimmed = line.trim();
     if (!trimmed.startsWith('|')) continue;
     final firstCell = trimmed.split('|')[1];
-    for (final m in RegExp(r'`([A-Za-z_][A-Za-z0-9_]*)').allMatches(firstCell)) {
+    for (final m in RegExp(
+      r'`([A-Za-z_][A-Za-z0-9_]*)',
+    ).allMatches(firstCell)) {
       symbols.add(m.group(1)!);
     }
   }
@@ -185,17 +180,24 @@ void main() {
       // The drift that actually happened, and the one the reader notices: a
       // type exists, works, is exported — and the reference never says so.
       final overview = _section(_overviewHeading);
-      expect(overview, isNotEmpty,
-          reason: '$_docPath has no "## $_overviewHeading" section');
+      expect(
+        overview,
+        isNotEmpty,
+        reason: '$_docPath has no "## $_overviewHeading" section',
+      );
 
       final indexed = _indexedSymbols(overview).toSet();
       final missing = _exportedPublicTypes().difference(indexed).toList()
         ..sort();
-      expect(missing, isEmpty,
-          reason: 'these public types are exported by the module barrel but '
-              'are not named in the overview, so a reader working from the '
-              'document cannot learn they exist:\n'
-              '${missing.map((t) => '  $t').join('\n')}');
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'these public types are exported by the module barrel but '
+            'are not named in the overview, so a reader working from the '
+            'document cannot learn they exist:\n'
+            '${missing.map((t) => '  $t').join('\n')}',
+      );
     });
 
     test('the overview names nothing that does not exist', () {
@@ -204,11 +206,15 @@ void main() {
       final symbols = _indexedSymbols(_section(_overviewHeading)).toSet();
       final known = _exportedPublicTypes().union(_exportedPublicFunctions());
       final invented = symbols.difference(known).toList()..sort();
-      expect(invented, isEmpty,
-          reason: 'the overview names these symbols, which the module barrel '
-              'exports neither as a public type nor as a public top-level '
-              'function — they were renamed or removed:\n'
-              '${invented.map((t) => '  $t').join('\n')}');
+      expect(
+        invented,
+        isEmpty,
+        reason:
+            'the overview names these symbols, which the module barrel '
+            'exports neither as a public type nor as a public top-level '
+            'function — they were renamed or removed:\n'
+            '${invented.map((t) => '  $t').join('\n')}',
+      );
     });
   });
 
@@ -219,21 +225,30 @@ void main() {
       final heading = entry.key;
 
       test('"$heading" has a section', () {
-        expect(_headings(), contains(heading),
-            reason: '$_docPath has no "## $heading" section, so the feature '
-                'is undiscoverable to a reader of the reference');
+        expect(
+          _headings(),
+          contains(heading),
+          reason:
+              '$_docPath has no "## $heading" section, so the feature '
+              'is undiscoverable to a reader of the reference',
+        );
       });
 
       test('"$heading" says how to configure it', () {
         // A section that describes a feature without naming the call that
         // switches it on leaves the reader exactly where they started.
         final body = _section(heading);
-        final unmentioned =
-            entry.value.where((id) => !body.contains(id)).toList();
-        expect(unmentioned, isEmpty,
-            reason: 'the "$heading" section never mentions '
-                '${unmentioned.join(', ')} — the reader is told the feature '
-                'exists but not how to reach it');
+        final unmentioned = entry.value
+            .where((id) => !body.contains(id))
+            .toList();
+        expect(
+          unmentioned,
+          isEmpty,
+          reason:
+              'the "$heading" section never mentions '
+              '${unmentioned.join(', ')} — the reader is told the feature '
+              'exists but not how to reach it',
+        );
       });
     }
   });
@@ -246,18 +261,27 @@ void main() {
       final unlisted = _headings()
           .where((h) => h != 'Table of Contents' && !listed.contains(h))
           .toList();
-      expect(unlisted, isEmpty,
-          reason: 'these sections are missing from the table of contents: '
-              '${unlisted.join(', ')}');
+      expect(
+        unlisted,
+        isEmpty,
+        reason:
+            'these sections are missing from the table of contents: '
+            '${unlisted.join(', ')}',
+      );
     });
 
     test('every contents entry has a section', () {
       final headings = _headings().toSet();
-      final dangling =
-          _tocEntries().where((e) => !headings.contains(e)).toList();
-      expect(dangling, isEmpty,
-          reason: 'these contents entries point at sections that do not '
-              'exist: ${dangling.join(', ')}');
+      final dangling = _tocEntries()
+          .where((e) => !headings.contains(e))
+          .toList();
+      expect(
+        dangling,
+        isEmpty,
+        reason:
+            'these contents entries point at sections that do not '
+            'exist: ${dangling.join(', ')}',
+      );
     });
   });
 }

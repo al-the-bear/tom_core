@@ -62,9 +62,9 @@ final _bareTomType = RegExp(r'^Tom[A-Z]\w*$');
 /// README alone names twenty-five kernel types, and a hand-kept list of them
 /// would rot exactly like the table it is meant to guard.
 Directory _packageLib(String name) {
-  final config = jsonDecode(
-    File('.dart_tool/package_config.json').readAsStringSync(),
-  ) as Map<String, dynamic>;
+  final config =
+      jsonDecode(File('.dart_tool/package_config.json').readAsStringSync())
+          as Map<String, dynamic>;
   final entry = (config['packages'] as List)
       .cast<Map<String, dynamic>>()
       .firstWhere((p) => p['name'] == name);
@@ -102,12 +102,12 @@ Set<String> _typesDeclaredIn(Directory root) {
 /// already telling the truth, and a check that failed it would be pressuring
 /// a correct document to stop saying something useful.
 List<File> _surfaceDocuments() => [
-      File('README.md'),
-      ...Directory('lib/src')
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((f) => f.path.endsWith('readme.md')),
-    ]..sort((a, b) => a.path.compareTo(b.path));
+  File('README.md'),
+  ...Directory('lib/src')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('readme.md')),
+]..sort((a, b) => a.path.compareTo(b.path));
 
 /// The source of every file the module's barrel re-exports.
 ///
@@ -139,14 +139,23 @@ void main() {
 
       test('$module/readme.md names every public type', () {
         final types = _publicNames(sources, _declaration);
-        expect(types, isNotEmpty,
-            reason: 'found no public types in $module — the barrel parse or '
-                'the declaration pattern is broken, not the readme');
+        expect(
+          types,
+          isNotEmpty,
+          reason:
+              'found no public types in $module — the barrel parse or '
+              'the declaration pattern is broken, not the readme',
+        );
 
-        final missing = types.where((t) => !readme.contains(t)).toList()..sort();
-        expect(missing, isEmpty,
-            reason: 'lib/src/$module/$module.dart exports these public types '
-                'and lib/src/$module/readme.md never names them: $missing');
+        final missing = types.where((t) => !readme.contains(t)).toList()
+          ..sort();
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              'lib/src/$module/$module.dart exports these public types '
+              'and lib/src/$module/readme.md never names them: $missing',
+        );
       });
 
       test('$module/readme.md names every public static entry point', () {
@@ -155,11 +164,15 @@ void main() {
         // `reset` and the `clearCustom…` pair — none of which a table of
         // types has a row for, and all of which are what authors get wrong.
         final statics = _publicNames(sources, _staticMember);
-        final missing =
-            statics.where((s) => !readme.contains(s)).toList()..sort();
-        expect(missing, isEmpty,
-            reason: 'lib/src/$module declares these public statics and '
-                'lib/src/$module/readme.md never names them: $missing');
+        final missing = statics.where((s) => !readme.contains(s)).toList()
+          ..sort();
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              'lib/src/$module declares these public statics and '
+              'lib/src/$module/readme.md never names them: $missing',
+        );
       });
     }
   });
@@ -177,8 +190,9 @@ void main() {
   // inventory tables, because naming a type costs nothing and all of them
   // do it.
   group('surface documents name only types that exist', () {
-    final declared = _typesDeclaredIn(Directory('lib/src'))
-        .union(_typesDeclaredIn(_packageLib('tom_core_kernel')));
+    final declared = _typesDeclaredIn(
+      Directory('lib/src'),
+    ).union(_typesDeclaredIn(_packageLib('tom_core_kernel')));
     final documents = _surfaceDocuments();
 
     test('tccg1-01: the scan finds documents and declarations to compare', () {
@@ -187,34 +201,50 @@ void main() {
       // the check below pass by having no input to disagree with. That is the
       // failure mode that makes a derived test worthless exactly when it is
       // needed.
-      expect(documents.length, greaterThanOrEqualTo(10),
-          reason: 'found ${documents.length} surface documents — the scan is '
-              'broken, not the documents');
-      expect(declared.length, greaterThan(500),
-          reason: 'found only ${declared.length} declarations — the pattern '
-              'or the package-config resolution is broken');
+      expect(
+        documents.length,
+        greaterThanOrEqualTo(10),
+        reason:
+            'found ${documents.length} surface documents — the scan is '
+            'broken, not the documents',
+      );
+      expect(
+        declared.length,
+        greaterThan(500),
+        reason:
+            'found only ${declared.length} declarations — the pattern '
+            'or the package-config resolution is broken',
+      );
       expect(declared, contains('TomText'), reason: 'local types missing');
-      expect(declared, contains('TomAuthState'),
-          reason: 'kernel types missing — package-config resolution broke');
+      expect(
+        declared,
+        contains('TomAuthState'),
+        reason: 'kernel types missing — package-config resolution broke',
+      );
     });
 
     test('tccg1-02: every bare Tom type a document names is declared', () {
       final faults = <String>[];
       for (final document in documents) {
         final prose = document.readAsStringSync().replaceAll(_fencedBlock, '');
-        final phantom = _inlineCode
-            .allMatches(prose)
-            .map((m) => m.group(1)!)
-            .where(_bareTomType.hasMatch)
-            .toSet()
-            .difference(declared)
-            .toList()
-          ..sort();
+        final phantom =
+            _inlineCode
+                .allMatches(prose)
+                .map((m) => m.group(1)!)
+                .where(_bareTomType.hasMatch)
+                .toSet()
+                .difference(declared)
+                .toList()
+              ..sort();
         faults.addAll(phantom.map((t) => '${document.path}: $t'));
       }
-      expect(faults, isEmpty,
-          reason: 'these documents name a type that is declared neither in '
-              'this package nor in tom_core_kernel: $faults');
+      expect(
+        faults,
+        isEmpty,
+        reason:
+            'these documents name a type that is declared neither in '
+            'this package nor in tom_core_kernel: $faults',
+      );
     });
   });
 }

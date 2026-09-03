@@ -26,8 +26,10 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // ---------------------------------------------------------------------------
 
 Widget _app(Widget child) => MaterialApp(
-      home: Scaffold(body: Center(child: SizedBox(width: 400, child: child))),
-    );
+  home: Scaffold(
+    body: Center(child: SizedBox(width: 400, child: child)),
+  ),
+);
 
 TomUIStateController get _readOnly =>
     TomUIStateController(resolve: (_, _) => TomAuthState.read);
@@ -107,8 +109,11 @@ void main() {
 
     test('reports its disabled state when described', () {
       expect(
-        const SelectableItem(value: 1, label: 'Alpha', enabled: false)
-            .toString(),
+        const SelectableItem(
+          value: 1,
+          label: 'Alpha',
+          enabled: false,
+        ).toString(),
         contains('disabled'),
       );
       expect(
@@ -127,11 +132,9 @@ void main() {
       // The field compares old against new to decide whether anything changed;
       // mutating the held list in place would make every comparison see equal
       // values and swallow the notification.
-      final field = TomFormEnumFilterChips<int>(
-        'grades',
-        const [1],
-        source: _grades(),
-      );
+      final field = TomFormEnumFilterChips<int>('grades', const [
+        1,
+      ], source: _grades());
       final before = field.get();
       field.toggleItem(2, true);
 
@@ -141,11 +144,9 @@ void main() {
     });
 
     test('is idempotent in both directions', () {
-      final field = TomFormEnumFilterChips<int>(
-        'grades',
-        const [1],
-        source: _grades(),
-      );
+      final field = TomFormEnumFilterChips<int>('grades', const [
+        1,
+      ], source: _grades());
       field.toggleItem(1, true);
       expect(field.get(), const [1]);
 
@@ -170,11 +171,9 @@ void main() {
     });
 
     test('the object variant keys off value equality, not identity', () {
-      final field = TomFormObjectFilterChips<_Country>(
-        'visited',
-        const [_de],
-        source: _countries(),
-      );
+      final field = TomFormObjectFilterChips<_Country>('visited', const [
+        _de,
+      ], source: _countries());
       // A distinct instance that compares equal must be recognised as already
       // present, and must be removable.
       field.toggleItem(const _Country('DE', 'Deutschland'), true);
@@ -191,21 +190,22 @@ void main() {
 
   group('TomFormEnumDropdown', () {
     testWidgets('offers one menu entry per source item', (tester) async {
-      final field =
-          TomFormEnumDropdown<int>('grade', 1, source: _grades());
+      final field = TomFormEnumDropdown<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       // `DropdownButtonFormField` does not expose its items; the menu it
       // builds lives on the inner `DropdownButton`, which is what the user
       // actually interacts with.
-      final dd =
-          tester.widget<DropdownButton<int>>(find.byType(DropdownButton<int>));
+      final dd = tester.widget<DropdownButton<int>>(
+        find.byType(DropdownButton<int>),
+      );
       expect(dd.items, hasLength(3));
       expect(dd.value, 1);
     });
 
-    testWidgets('carries the source item disabled flag into the menu',
-        (tester) async {
+    testWidgets('carries the source item disabled flag into the menu', (
+      tester,
+    ) async {
       final field = TomFormEnumDropdown<int>(
         'grade',
         1,
@@ -213,23 +213,25 @@ void main() {
       );
       await _pumpLoaded(tester, field.widget);
 
-      final dd =
-          tester.widget<DropdownButton<int>>(find.byType(DropdownButton<int>));
+      final dd = tester.widget<DropdownButton<int>>(
+        find.byType(DropdownButton<int>),
+      );
       expect(dd.items!.map((i) => i.enabled), [true, false, true]);
     });
 
-    testWidgets('snaps to the first enabled item when the value is not offered',
-        (tester) async {
-      // A single-pick widget cannot render a value the source does not know,
-      // so it rewrites the model rather than showing an empty box. Pinned
-      // because it is a silent write — surprising, but deliberate.
-      final field =
-          TomFormEnumDropdown<int>('grade', 99, source: _grades());
-      await _pumpLoaded(tester, field.widget);
+    testWidgets(
+      'snaps to the first enabled item when the value is not offered',
+      (tester) async {
+        // A single-pick widget cannot render a value the source does not know,
+        // so it rewrites the model rather than showing an empty box. Pinned
+        // because it is a silent write — surprising, but deliberate.
+        final field = TomFormEnumDropdown<int>('grade', 99, source: _grades());
+        await _pumpLoaded(tester, field.widget);
 
-      expect(field.get(), 1);
-      await _drainDebounce(tester);
-    });
+        expect(field.get(), 1);
+        await _drainDebounce(tester);
+      },
+    );
 
     testWidgets('skips a disabled item when snapping', (tester) async {
       final field = TomFormEnumDropdown<int>(
@@ -258,7 +260,8 @@ void main() {
       expect(
         tester
             .widget<DropdownButtonFormField<int>>(
-                find.byType(DropdownButtonFormField<int>))
+              find.byType(DropdownButtonFormField<int>),
+            )
             .onChanged,
         isNull,
       );
@@ -270,13 +273,13 @@ void main() {
   // =========================================================================
 
   group('TomFormEnumSegmented', () {
-    testWidgets('renders a placeholder until the source resolves',
-        (tester) async {
+    testWidgets('renders a placeholder until the source resolves', (
+      tester,
+    ) async {
       // Deliberately no settling pump: this is the first frame, before the
       // source future completes. A SegmentedButton with zero segments asserts,
       // so the widget must render something else entirely.
-      final field =
-          TomFormEnumSegmented<int>('grade', 1, source: _grades());
+      final field = TomFormEnumSegmented<int>('grade', 1, source: _grades());
       await tester.pumpWidget(_app(field.widget));
 
       expect(find.byType(SegmentedButton<int>), findsNothing);
@@ -286,40 +289,38 @@ void main() {
       expect(find.byType(SegmentedButton<int>), findsOneWidget);
     });
 
-    testWidgets('renders one segment per item and selects the bound value',
-        (tester) async {
-      final field =
-          TomFormEnumSegmented<int>('grade', 2, source: _grades());
+    testWidgets('renders one segment per item and selects the bound value', (
+      tester,
+    ) async {
+      final field = TomFormEnumSegmented<int>('grade', 2, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
-      final sb = tester
-          .widget<SegmentedButton<int>>(find.byType(SegmentedButton<int>));
+      final sb = tester.widget<SegmentedButton<int>>(
+        find.byType(SegmentedButton<int>),
+      );
       expect(sb.segments, hasLength(3));
       expect(sb.selected, {2});
     });
 
-    testWidgets('falls back to the first segment when the value is unknown',
-        (tester) async {
+    testWidgets('falls back to the first segment when the value is unknown', (
+      tester,
+    ) async {
       // Belt and braces against the SegmentedButton assert: even if the snap
       // in `_resetIfMissing` were ever removed, the selection passed to the
       // widget still has to name a real segment.
-      final field = TomFormEnumSegmented<int>(
-        'grade',
-        99,
-        source: _grades(),
-      );
+      final field = TomFormEnumSegmented<int>('grade', 99, source: _grades());
       await tester.pumpWidget(_app(field.widget));
       await tester.pump();
 
-      final sb = tester
-          .widget<SegmentedButton<int>>(find.byType(SegmentedButton<int>));
+      final sb = tester.widget<SegmentedButton<int>>(
+        find.byType(SegmentedButton<int>),
+      );
       expect(sb.selected, {1});
       await _drainDebounce(tester);
     });
 
     testWidgets('writes the tapped segment back to the field', (tester) async {
-      final field =
-          TomFormEnumSegmented<int>('grade', 1, source: _grades());
+      final field = TomFormEnumSegmented<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       await tester.tap(find.text('Gamma'));
@@ -352,8 +353,7 @@ void main() {
 
   group('TomFormEnumRadioGroup', () {
     testWidgets('renders one labelled row per item', (tester) async {
-      final field =
-          TomFormEnumRadioGroup<int>('grade', 2, source: _grades());
+      final field = TomFormEnumRadioGroup<int>('grade', 2, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       expect(find.text('Alpha'), findsOneWidget);
@@ -362,16 +362,16 @@ void main() {
     });
 
     testWidgets('selects the row whose value is bound', (tester) async {
-      final field =
-          TomFormEnumRadioGroup<int>('grade', 2, source: _grades());
+      final field = TomFormEnumRadioGroup<int>('grade', 2, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       // The bound value lives on the `RadioGroup` the field renders around
       // the rows, not on each row: that is where a radio's selection comes
       // from now, and asserting it here is what catches a field that stops
       // supplying the ancestor.
-      final group =
-          tester.widget<RadioGroup<int>>(find.byType(RadioGroup<int>));
+      final group = tester.widget<RadioGroup<int>>(
+        find.byType(RadioGroup<int>),
+      );
       expect(group.groupValue, 2);
 
       final radios = tester.widgetList<Radio<int>>(find.byType(Radio<int>));
@@ -379,8 +379,7 @@ void main() {
     });
 
     testWidgets('writes the tapped row back to the field', (tester) async {
-      final field =
-          TomFormEnumRadioGroup<int>('grade', 1, source: _grades());
+      final field = TomFormEnumRadioGroup<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       await tester.tap(find.text('Gamma'));
@@ -400,8 +399,9 @@ void main() {
       // A single row opts out through `enabled`. Withholding `onChanged` no
       // longer expresses it — the shared ancestor supplies one callback for
       // every row, so the per-row lever is the only one left.
-      final radios =
-          tester.widgetList<Radio<int>>(find.byType(Radio<int>)).toList();
+      final radios = tester
+          .widgetList<Radio<int>>(find.byType(Radio<int>))
+          .toList();
       expect(radios[1].enabled, isFalse);
       expect(radios[0].enabled, isTrue);
     });
@@ -425,13 +425,13 @@ void main() {
   // =========================================================================
 
   group('TomFormEnumFilterChips', () {
-    testWidgets('renders one chip per item with the bound selection',
-        (tester) async {
-      final field = TomFormEnumFilterChips<int>(
-        'grades',
-        const [1, 3],
-        source: _grades(),
-      );
+    testWidgets('renders one chip per item with the bound selection', (
+      tester,
+    ) async {
+      final field = TomFormEnumFilterChips<int>('grades', const [
+        1,
+        3,
+      ], source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       final chips = tester.widgetList<FilterChip>(find.byType(FilterChip));
@@ -440,11 +440,9 @@ void main() {
     });
 
     testWidgets('tapping a chip toggles it in both directions', (tester) async {
-      final field = TomFormEnumFilterChips<int>(
-        'grades',
-        const [1],
-        source: _grades(),
-      );
+      final field = TomFormEnumFilterChips<int>('grades', const [
+        1,
+      ], source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       await tester.tap(find.text('Beta'));
@@ -457,15 +455,15 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('prunes a selection the source no longer offers',
-        (tester) async {
+    testWidgets('prunes a selection the source no longer offers', (
+      tester,
+    ) async {
       // The multi-select counterpart of the single-pick snap: rather than
       // rewrite to something else, it drops what it cannot show.
-      final field = TomFormEnumFilterChips<int>(
-        'grades',
-        const [1, 99],
-        source: _grades(),
-      );
+      final field = TomFormEnumFilterChips<int>('grades', const [
+        1,
+        99,
+      ], source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       expect(field.get(), const [1]);
@@ -480,8 +478,9 @@ void main() {
       );
       await _pumpLoaded(tester, field.widget);
 
-      final chips =
-          tester.widgetList<FilterChip>(find.byType(FilterChip)).toList();
+      final chips = tester
+          .widgetList<FilterChip>(find.byType(FilterChip))
+          .toList();
       expect(chips[1].onSelected, isNull);
       expect(chips[0].onSelected, isNotNull);
     });
@@ -496,9 +495,9 @@ void main() {
       await _pumpLoaded(tester, field.widget);
 
       expect(
-        tester.widgetList<FilterChip>(find.byType(FilterChip)).map(
-              (c) => c.onSelected,
-            ),
+        tester
+            .widgetList<FilterChip>(find.byType(FilterChip))
+            .map((c) => c.onSelected),
         everyElement(isNull),
       );
     });
@@ -522,13 +521,15 @@ void main() {
 
       expect(field.get(), _fr);
       final dd = tester.widget<DropdownButtonFormField<_Country>>(
-          find.byType(DropdownButtonFormField<_Country>));
+        find.byType(DropdownButtonFormField<_Country>),
+      );
       expect(dd.initialValue, _fr);
       await _drainDebounce(tester);
     });
 
-    testWidgets('snaps to the first item when the object is not offered',
-        (tester) async {
+    testWidgets('snaps to the first item when the object is not offered', (
+      tester,
+    ) async {
       final field = TomFormObjectDropdown<_Country>(
         'country',
         const _Country('ZZ', 'Nowhere'),
@@ -543,11 +544,10 @@ void main() {
 
   group('TomFormObjectFilterChips', () {
     testWidgets('prunes objects the source no longer offers', (tester) async {
-      final field = TomFormObjectFilterChips<_Country>(
-        'visited',
-        const [_de, _Country('ZZ', 'Nowhere')],
-        source: _countries(),
-      );
+      final field = TomFormObjectFilterChips<_Country>('visited', const [
+        _de,
+        _Country('ZZ', 'Nowhere'),
+      ], source: _countries());
       await _pumpLoaded(tester, field.widget);
 
       expect(field.get(), const [_de]);
@@ -574,29 +574,30 @@ void main() {
   // =========================================================================
 
   group('TomFormSearchInput', () {
-    testWidgets('shows the source label for the bound value, not its toString',
-        (tester) async {
-      // The source resolves a frame after the first build, so anything that
-      // reads a label during that first frame gets `value.toString()`. For a
-      // non-String value type that is a visibly wrong display which never
-      // corrects itself unless the text field is rebuilt.
-      final field =
-          TomFormSearchInput<int>('grade', 2, source: _grades());
-      await _pumpLoaded(tester, field.widget);
+    testWidgets(
+      'shows the source label for the bound value, not its toString',
+      (tester) async {
+        // The source resolves a frame after the first build, so anything that
+        // reads a label during that first frame gets `value.toString()`. For a
+        // non-String value type that is a visibly wrong display which never
+        // corrects itself unless the text field is rebuilt.
+        final field = TomFormSearchInput<int>('grade', 2, source: _grades());
+        await _pumpLoaded(tester, field.widget);
 
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        'Beta',
-      );
-    });
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          'Beta',
+        );
+      },
+    );
 
-    testWidgets('a programmatic write reaches the display text',
-        (tester) async {
+    testWidgets('a programmatic write reaches the display text', (
+      tester,
+    ) async {
       // Same seeding problem from the other end: the controller is built
       // once, so a `setValue` that does not go through the option list
       // has to re-seed it too.
-      final field =
-          TomFormSearchInput<int>('grade', 1, source: _grades());
+      final field = TomFormSearchInput<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       field.setValue(3);
@@ -608,8 +609,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('prefers an explicit labelOf over the source label',
-        (tester) async {
+    testWidgets('prefers an explicit labelOf over the source label', (
+      tester,
+    ) async {
       final field = TomFormSearchInput<int>(
         'grade',
         2,
@@ -624,10 +626,10 @@ void main() {
       );
     });
 
-    testWidgets('offers a default search hint when none is configured',
-        (tester) async {
-      final field =
-          TomFormSearchInput<int>('grade', 1, source: _grades());
+    testWidgets('offers a default search hint when none is configured', (
+      tester,
+    ) async {
+      final field = TomFormSearchInput<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       expect(
@@ -657,10 +659,10 @@ void main() {
       expect(build(override: 'Find a grade').hintText, 'Find a grade');
     });
 
-    testWidgets('filters the options by a case-insensitive substring',
-        (tester) async {
-      final field =
-          TomFormSearchInput<int>('grade', 1, source: _grades());
+    testWidgets('filters the options by a case-insensitive substring', (
+      tester,
+    ) async {
+      final field = TomFormSearchInput<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       await tester.tap(find.byType(TextField));
@@ -695,8 +697,7 @@ void main() {
     });
 
     testWidgets('picking an option writes the value back', (tester) async {
-      final field =
-          TomFormSearchInput<int>('grade', 1, source: _grades());
+      final field = TomFormSearchInput<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       await tester.tap(find.byType(TextField));
@@ -746,10 +747,10 @@ void main() {
   // =========================================================================
 
   group('TomFormLookupDialog', () {
-    testWidgets('mirrors the source label into its read-only display',
-        (tester) async {
-      final field =
-          TomFormLookupDialog<int>('grade', 2, source: _grades());
+    testWidgets('mirrors the source label into its read-only display', (
+      tester,
+    ) async {
+      final field = TomFormLookupDialog<int>('grade', 2, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       expect(
@@ -774,8 +775,7 @@ void main() {
     });
 
     testWidgets('follows a programmatic write', (tester) async {
-      final field =
-          TomFormLookupDialog<int>('grade', 2, source: _grades());
+      final field = TomFormLookupDialog<int>('grade', 2, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       field.setValue(3);
@@ -787,8 +787,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('honours labelTextOverride despite the decoration mixin',
-        (tester) async {
+    testWidgets('honours labelTextOverride despite the decoration mixin', (
+      tester,
+    ) async {
       // `TomDropdownDecorationMixin` declares `labelText => null`, and a
       // mixin applied over a superclass wins over that superclass — so
       // this class has to re-declare the getter or the constructor
@@ -806,8 +807,9 @@ void main() {
       expect(find.text('Grade'), findsOneWidget);
     });
 
-    testWidgets('titles the dialog from the field label when none is given',
-        (tester) async {
+    testWidgets('titles the dialog from the field label when none is given', (
+      tester,
+    ) async {
       final field = TomFormLookupDialog<int>(
         'grade',
         1,
@@ -831,8 +833,9 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('browsing and picking writes the chosen value back',
-        (tester) async {
+    testWidgets('browsing and picking writes the chosen value back', (
+      tester,
+    ) async {
       final field = TomFormLookupDialog<int>(
         'grade',
         1,
@@ -852,8 +855,7 @@ void main() {
     });
 
     testWidgets('cancelling the dialog leaves the value alone', (tester) async {
-      final field =
-          TomFormLookupDialog<int>('grade', 1, source: _grades());
+      final field = TomFormLookupDialog<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       await tester.tap(find.byIcon(Icons.search));
@@ -865,8 +867,7 @@ void main() {
     });
 
     testWidgets('the dialog filter narrows the candidate list', (tester) async {
-      final field =
-          TomFormLookupDialog<int>('grade', 1, source: _grades());
+      final field = TomFormLookupDialog<int>('grade', 1, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       await tester.tap(find.byIcon(Icons.search));
@@ -880,9 +881,9 @@ void main() {
       // shows the bound value's label ("Alpha") behind the barrier, and
       // an unscoped finder would pick that up.
       Finder inDialog(String text) => find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.text(text),
-          );
+        of: find.byType(AlertDialog),
+        matching: find.text(text),
+      );
       expect(inDialog('Gamma'), findsOneWidget);
       expect(inDialog('Alpha'), findsNothing);
 
@@ -890,8 +891,9 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('titles the dialog from dialogTitle, then the label',
-        (tester) async {
+    testWidgets('titles the dialog from dialogTitle, then the label', (
+      tester,
+    ) async {
       final field = TomFormLookupDialog<int>(
         'grade',
         1,
@@ -923,10 +925,12 @@ void main() {
           hintTextOverride: hint,
         );
 
-    test('falls back to a visible sentinel so null is distinguishable from ""',
-        () {
-      expect(build().resolveNullDisplay(), '— null —');
-    });
+    test(
+      'falls back to a visible sentinel so null is distinguishable from ""',
+      () {
+        expect(build().resolveNullDisplay(), '— null —');
+      },
+    );
 
     test('uses the hint when one is configured', () {
       expect(build(hint: 'optional').resolveNullDisplay(), 'optional');
@@ -948,14 +952,12 @@ void main() {
         'None',
       );
       // Empty is a real choice — "render nothing" — not an absent override.
-      expect(
-        build(nullDisplay: '', hint: 'optional').resolveNullDisplay(),
-        '',
-      );
+      expect(build(nullDisplay: '', hint: 'optional').resolveNullDisplay(), '');
     });
 
-    testWidgets('an empty null display pins the label into the floating slot',
-        (tester) async {
+    testWidgets('an empty null display pins the label into the floating slot', (
+      tester,
+    ) async {
       // With both the value and the hint empty, Material drops the label into
       // the field area as a stand-in placeholder — which would defeat the
       // documented "render nothing" mode.
@@ -967,8 +969,9 @@ void main() {
       expect(dec.floatingLabelBehavior, FloatingLabelBehavior.always);
     });
 
-    testWidgets('a non-empty null display leaves the label behaviour default',
-        (tester) async {
+    testWidgets('a non-empty null display leaves the label behaviour default', (
+      tester,
+    ) async {
       final field = build();
       await tester.pumpWidget(_app(field.widget));
 
@@ -983,8 +986,9 @@ void main() {
   // =========================================================================
 
   group('TomFormNStringInput', () {
-    testWidgets('renders null as empty text, not as the word "null"',
-        (tester) async {
+    testWidgets('renders null as empty text, not as the word "null"', (
+      tester,
+    ) async {
       final field = TomFormNStringInput('note', null);
       await tester.pumpWidget(_app(field.widget));
       expect(
@@ -1006,8 +1010,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('the clear button appears only when there is a value',
-        (tester) async {
+    testWidgets('the clear button appears only when there is a value', (
+      tester,
+    ) async {
       final field = TomFormNStringInput('note', null);
       await tester.pumpWidget(_app(field.widget));
       expect(find.byIcon(Icons.clear), findsNothing);
@@ -1071,8 +1076,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('a half-typed token does not flip the value to null',
-        (tester) async {
+    testWidgets('a half-typed token does not flip the value to null', (
+      tester,
+    ) async {
       // A lone '-' is unparseable but is not the user saying "empty" — the
       // widget skips it rather than reading it as a clear.
       final field = TomFormNIntInput('qty', 42);
@@ -1110,8 +1116,9 @@ void main() {
   });
 
   group('TomFormNDoubleInput', () {
-    testWidgets('fixes the rendered precision when decimals are set',
-        (tester) async {
+    testWidgets('fixes the rendered precision when decimals are set', (
+      tester,
+    ) async {
       final field = TomFormNDoubleInput('rate', 1.5, decimals: 3);
       await tester.pumpWidget(_app(field.widget));
       expect(
@@ -1120,8 +1127,9 @@ void main() {
       );
     });
 
-    testWidgets('renders verbatim when no precision is configured',
-        (tester) async {
+    testWidgets('renders verbatim when no precision is configured', (
+      tester,
+    ) async {
       final field = TomFormNDoubleInput('rate', 1.5);
       await tester.pumpWidget(_app(field.widget));
       expect(
@@ -1130,8 +1138,9 @@ void main() {
       );
     });
 
-    testWidgets('a bare decimal point does not flip the value to null',
-        (tester) async {
+    testWidgets('a bare decimal point does not flip the value to null', (
+      tester,
+    ) async {
       final field = TomFormNDoubleInput('rate', 1.5);
       await tester.pumpWidget(_app(field.widget));
 
@@ -1195,8 +1204,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('the clear button appears only when a date is set',
-        (tester) async {
+    testWidgets('the clear button appears only when a date is set', (
+      tester,
+    ) async {
       final field = TomFormNDateInput(
         'due',
         DateTime(2026, 5, 7),
@@ -1213,8 +1223,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('a read-only field offers neither picker nor clear',
-        (tester) async {
+    testWidgets('a read-only field offers neither picker nor clear', (
+      tester,
+    ) async {
       final field = TomFormNDateInput(
         'due',
         DateTime(2026, 5, 7),
@@ -1238,19 +1249,20 @@ void main() {
 
   group('TomFormNEnumDropdown', () {
     testWidgets('prepends a null entry to the source items', (tester) async {
-      final field =
-          TomFormNEnumDropdown<int>('grade', null, source: _grades());
+      final field = TomFormNEnumDropdown<int>('grade', null, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
-      final dd = tester
-          .widget<DropdownButton<int?>>(find.byType(DropdownButton<int?>));
+      final dd = tester.widget<DropdownButton<int?>>(
+        find.byType(DropdownButton<int?>),
+      );
       expect(dd.items, hasLength(4));
       expect(dd.items!.first.value, isNull);
       expect(dd.value, isNull);
     });
 
-    testWidgets('labels the null entry from the resolution chain',
-        (tester) async {
+    testWidgets('labels the null entry from the resolution chain', (
+      tester,
+    ) async {
       final field = TomFormNEnumDropdown<int>(
         'grade',
         null,
@@ -1262,18 +1274,19 @@ void main() {
       expect(find.text('Any grade'), findsWidgets);
     });
 
-    testWidgets('does not snap away from a value the source does not offer',
-        (tester) async {
+    testWidgets('does not snap away from a value the source does not offer', (
+      tester,
+    ) async {
       // Unlike the non-nullable dropdown there is always a valid entry to fall
       // back on — the null one — so the widget shows that instead of rewriting
       // the model.
-      final field =
-          TomFormNEnumDropdown<int>('grade', 99, source: _grades());
+      final field = TomFormNEnumDropdown<int>('grade', 99, source: _grades());
       await _pumpLoaded(tester, field.widget);
 
       expect(field.get(), 99);
       final dd = tester.widget<DropdownButtonFormField<int?>>(
-          find.byType(DropdownButtonFormField<int?>));
+        find.byType(DropdownButtonFormField<int?>),
+      );
       expect(dd.initialValue, isNull);
     });
 
@@ -1289,7 +1302,8 @@ void main() {
       expect(
         tester
             .widget<DropdownButtonFormField<int?>>(
-                find.byType(DropdownButtonFormField<int?>))
+              find.byType(DropdownButtonFormField<int?>),
+            )
             .onChanged,
         isNull,
       );

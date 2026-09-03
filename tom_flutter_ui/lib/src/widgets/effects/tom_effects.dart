@@ -34,7 +34,10 @@ class TomBackdropFilter extends TomEffectBase {
     this.blendMode,
     this.child,
   }) {
-    _resolvedBlendMode = blendMode ?? _resolveBlendMode(TomCtr.textOrNull(basePath, 'blendMode')) ?? BlendMode.srcOver;
+    _resolvedBlendMode =
+        blendMode ??
+        _resolveBlendMode(TomCtr.textOrNull(basePath, 'blendMode')) ??
+        BlendMode.srcOver;
   }
 
   @override
@@ -67,10 +70,7 @@ class TomColorFiltered extends TomEffectBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return ColorFiltered(
-      colorFilter: colorFilter,
-      child: child,
-    );
+    return ColorFiltered(colorFilter: colorFilter, child: child);
   }
 }
 
@@ -96,7 +96,10 @@ class TomShaderMask extends TomEffectBase {
     this.blendMode,
     this.child,
   }) {
-    _resolvedBlendMode = blendMode ?? _resolveBlendMode(TomCtr.textOrNull(basePath, 'blendMode')) ?? BlendMode.modulate;
+    _resolvedBlendMode =
+        blendMode ??
+        _resolveBlendMode(TomCtr.textOrNull(basePath, 'blendMode')) ??
+        BlendMode.modulate;
   }
 
   @override
@@ -198,7 +201,9 @@ class TomSelectableRegion extends TomEffectBase {
     ValueChanged<SelectedContent?>? onSelectionChanged,
     this.contextMenuBuilder,
     this.magnifierConfiguration = TextMagnifierConfiguration.disabled,
-  }) : onSelectionChanged = InScopeBuilder(scope: scope).wrap1n(onSelectionChanged);
+  }) : onSelectionChanged = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onSelectionChanged);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -237,7 +242,9 @@ class TomSelectionArea extends TomEffectBase {
     this.magnifierConfiguration,
     ValueChanged<SelectedContent?>? onSelectionChanged,
     required this.child,
-  }) : onSelectionChanged = InScopeBuilder(scope: scope).wrap1n(onSelectionChanged);
+  }) : onSelectionChanged = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onSelectionChanged);
 
   static Widget _defaultContextMenuBuilder(
     BuildContext context,
@@ -282,15 +289,17 @@ class TomSensitiveContent extends TomEffectBase {
     this.sensitivity,
     required this.child,
   }) {
-    _resolvedSensitivity = sensitivity ?? _resolveContentSensitivity(TomCtr.textOrNull(basePath, 'sensitivity')) ?? ContentSensitivity.autoSensitive;
+    _resolvedSensitivity =
+        sensitivity ??
+        _resolveContentSensitivity(
+          TomCtr.textOrNull(basePath, 'sensitivity'),
+        ) ??
+        ContentSensitivity.autoSensitive;
   }
 
   @override
   Widget buildContent(BuildContext context) {
-    return SensitiveContent(
-      sensitivity: _resolvedSensitivity,
-      child: child,
-    );
+    return SensitiveContent(sensitivity: _resolvedSensitivity, child: child);
   }
 }
 

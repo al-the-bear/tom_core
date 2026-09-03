@@ -62,7 +62,8 @@ void main() {
       expect(
         modules.difference(exported),
         isEmpty,
-        reason: 'a module under lib/src is not reachable through '
+        reason:
+            'a module under lib/src is not reachable through '
             'package:tom_flutter_ui/tom_flutter_ui.dart, so every import in '
             'the documentation for it is broken',
       );
@@ -93,9 +94,9 @@ void main() {
     const exempt = <String, String>{
       'test/forms/files/file_opener_test.dart':
           'asserts that the two halves of a conditional import agree with the '
-              'half actually resolved, which needs all three by path; the '
-              'file_opener trio is deliberately not exported, being internal '
-              'plumbing behind TomFilePickers.toFileRef',
+          'half actually resolved, which needs all three by path; the '
+          'file_opener trio is deliberately not exported, being internal '
+          'plumbing behind TomFilePickers.toFileRef',
     };
 
     /// Every `.dart` file under `test/`, generated output aside.
@@ -115,25 +116,29 @@ void main() {
     /// Anchored to the start of a line because a directive can only appear at
     /// top level: matching the bare string would flag this file, whose own
     /// pattern and failure message have to name the thing they forbid.
-    final srcImport =
-        RegExp('^import [\'"]package:tom_flutter_ui/src/', multiLine: true);
+    final srcImport = RegExp(
+      '^import [\'"]package:tom_flutter_ui/src/',
+      multiLine: true,
+    );
 
     test('no test file imports past the barrel', () {
       final sources = testSources().toList();
       // Guards the guard: a wrong root would scan nothing and pass.
       expect(sources, isNotEmpty, reason: 'test/ should hold dart files');
 
-      final offenders = sources
-          .map((f) => f.path)
-          .where((p) => !exempt.containsKey(p))
-          .where((p) => srcImport.hasMatch(File(p).readAsStringSync()))
-          .toList()
-        ..sort();
+      final offenders =
+          sources
+              .map((f) => f.path)
+              .where((p) => !exempt.containsKey(p))
+              .where((p) => srcImport.hasMatch(File(p).readAsStringSync()))
+              .toList()
+            ..sort();
 
       expect(
         offenders,
         isEmpty,
-        reason: 'these tests reach into lib/src, so they would stay green if '
+        reason:
+            'these tests reach into lib/src, so they would stay green if '
             'the symbol they use were dropped from the module barrel or the '
             'package barrel — the break would surface in a consumer instead. '
             'Import package:tom_flutter_ui/tom_flutter_ui.dart. If the barrel '
@@ -151,13 +156,15 @@ void main() {
         expect(
           file.existsSync(),
           isTrue,
-          reason: '${entry.key} is exempted from the barrel rule but does not '
+          reason:
+              '${entry.key} is exempted from the barrel rule but does not '
               'exist; drop the entry',
         );
         expect(
           srcImport.hasMatch(file.readAsStringSync()),
           isTrue,
-          reason: '${entry.key} no longer imports lib/src, so its exemption '
+          reason:
+              '${entry.key} no longer imports lib/src, so its exemption '
               'is stale; drop the entry',
         );
         expect(entry.value, isNotEmpty);

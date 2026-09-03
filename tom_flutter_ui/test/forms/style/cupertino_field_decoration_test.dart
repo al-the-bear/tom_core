@@ -66,8 +66,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('the fill', () {
-    testWidgets('is the colour the caller supplied, when it supplies one',
-        (tester) async {
+    testWidgets('is the colour the caller supplied, when it supplies one', (
+      tester,
+    ) async {
       const chosen = Color(0xFFAABBCC);
 
       final result = await _decorate(tester, fillColor: chosen);
@@ -75,8 +76,9 @@ void main() {
       expect(result.decoration.color, chosen);
     });
 
-    testWidgets('falls back to the system fill when the caller supplies none',
-        (tester) async {
+    testWidgets('falls back to the system fill when the caller supplies none', (
+      tester,
+    ) async {
       final result = await _decorate(tester);
 
       expect(
@@ -85,8 +87,9 @@ void main() {
       );
     });
 
-    testWidgets('resolves that fallback against the ambient brightness',
-        (tester) async {
+    testWidgets('resolves that fallback against the ambient brightness', (
+      tester,
+    ) async {
       // The differential that a missing `resolveFrom` fails: an unresolved
       // dynamic colour is the same object in both modes.
       final light = await _decorate(tester);
@@ -95,14 +98,18 @@ void main() {
       expect(dark.decoration.color, isNot(light.decoration.color));
     });
 
-    testWidgets('a supplied fill is used verbatim in dark mode too',
-        (tester) async {
+    testWidgets('a supplied fill is used verbatim in dark mode too', (
+      tester,
+    ) async {
       // The caller's colour is its own business — the fallback resolution
       // must not be applied to it.
       const chosen = Color(0xFFAABBCC);
 
-      final result =
-          await _decorate(tester, fillColor: chosen, brightness: Brightness.dark);
+      final result = await _decorate(
+        tester,
+        fillColor: chosen,
+        brightness: Brightness.dark,
+      );
 
       expect(result.decoration.color, chosen);
     });
@@ -119,8 +126,9 @@ void main() {
       expect(result.decoration.borderRadius, BorderRadius.circular(14));
     });
 
-    testWidgets('follows the argument rather than a house default',
-        (tester) async {
+    testWidgets('follows the argument rather than a house default', (
+      tester,
+    ) async {
       final tight = await _decorate(tester, borderRadius: 2);
       final round = await _decorate(tester, borderRadius: 24);
 
@@ -134,8 +142,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('the border', () {
-    testWidgets('is a hairline separator while the field is unfocused',
-        (tester) async {
+    testWidgets('is a hairline separator while the field is unfocused', (
+      tester,
+    ) async {
       final result = await _decorate(tester);
 
       expect(
@@ -145,33 +154,44 @@ void main() {
       expect(_side(result.decoration).width, 0.5);
     });
 
-    testWidgets('takes the theme\'s primary colour once focused',
-        (tester) async {
+    testWidgets('takes the theme\'s primary colour once focused', (
+      tester,
+    ) async {
       const accent = Color(0xFFD81B60);
 
-      final result =
-          await _decorate(tester, focused: true, primaryColor: accent);
+      final result = await _decorate(
+        tester,
+        focused: true,
+        primaryColor: accent,
+      );
 
       expect(_side(result.decoration).color, accent);
     });
 
-    testWidgets('thickens on focus, so the change survives a colour-blind eye',
-        (tester) async {
-      final resting = await _decorate(tester);
-      final focused = await _decorate(tester, focused: true);
+    testWidgets(
+      'thickens on focus, so the change survives a colour-blind eye',
+      (tester) async {
+        final resting = await _decorate(tester);
+        final focused = await _decorate(tester, focused: true);
 
-      expect(_side(resting.decoration).width, lessThan(
-        _side(focused.decoration).width,
-      ));
-      expect(_side(focused.decoration).width, 1.5);
-    });
+        expect(
+          _side(resting.decoration).width,
+          lessThan(_side(focused.decoration).width),
+        );
+        expect(_side(focused.decoration).width, 1.5);
+      },
+    );
 
-    testWidgets('resolves the resting separator against the brightness',
-        (tester) async {
+    testWidgets('resolves the resting separator against the brightness', (
+      tester,
+    ) async {
       final light = await _decorate(tester);
       final dark = await _decorate(tester, brightness: Brightness.dark);
 
-      expect(_side(dark.decoration).color, isNot(_side(light.decoration).color));
+      expect(
+        _side(dark.decoration).color,
+        isNot(_side(light.decoration).color),
+      );
     });
   });
 
@@ -184,8 +204,9 @@ void main() {
     // there is no CupertinoTheme of their own. `CupertinoTheme.of` derives one
     // from the Material theme, and the focused border has to follow it — a
     // hard-coded `activeBlue` would pass every test above and be wrong here.
-    testWidgets('the focused border follows the Material primary colour',
-        (tester) async {
+    testWidgets('the focused border follows the Material primary colour', (
+      tester,
+    ) async {
       final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF6A1B9A));
       late BoxDecoration decoration;
 

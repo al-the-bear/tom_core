@@ -100,10 +100,14 @@ void run() {
   // ---------------------------------------------------------------------------
   // 4. The three AuthGroupMode behaviours via applyMode.
   // ---------------------------------------------------------------------------
-  final billing =
-      TomAuthorizationGroup('billing', mode: AuthGroupMode.controlsAll);
-  final contact =
-      TomAuthorizationGroup('contact', mode: AuthGroupMode.controlsNarrowest);
+  final billing = TomAuthorizationGroup(
+    'billing',
+    mode: AuthGroupMode.controlsAll,
+  );
+  final contact = TomAuthorizationGroup(
+    'contact',
+    mode: AuthGroupMode.controlsNarrowest,
+  );
 
   final widest = shipping.applyMode(TomAuthState.full); // ceiling → read
   final all = billing.applyMode(TomAuthState.full); // replace → disabled

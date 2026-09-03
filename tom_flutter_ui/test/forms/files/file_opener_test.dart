@@ -69,8 +69,7 @@ void main() {
   }
 
   /// A path inside the temp directory with nothing written to it.
-  String absent(String name) =>
-      '${temp.path}${Platform.pathSeparator}$name';
+  String absent(String name) => '${temp.path}${Platform.pathSeparator}$name';
 
   // -------------------------------------------------------------------------
   // The branch this platform compiles
@@ -99,22 +98,26 @@ void main() {
       expect(await _drain(open), [7, 8, 9]);
     });
 
-    test('a path with nothing at it yields null, not an empty stream',
-        () async {
-      // Null is the caller's signal to fall back to the picker's bytes. An
-      // empty stream would look like a successful upload of nothing.
-      expect(resolved.openFilePath(absent('gone.bin')), isNull);
-    });
+    test(
+      'a path with nothing at it yields null, not an empty stream',
+      () async {
+        // Null is the caller's signal to fall back to the picker's bytes. An
+        // empty stream would look like a successful upload of nothing.
+        expect(resolved.openFilePath(absent('gone.bin')), isNull);
+      },
+    );
 
-    test('an empty file still opens — it is a file, just a short one',
-        () async {
-      final path = write('empty.bin', const []);
+    test(
+      'an empty file still opens — it is a file, just a short one',
+      () async {
+        final path = write('empty.bin', const []);
 
-      final open = resolved.openFilePath(path);
+        final open = resolved.openFilePath(path);
 
-      expect(open, isNotNull);
-      expect(await _drain(open!), isEmpty);
-    });
+        expect(open, isNotNull);
+        expect(await _drain(open!), isEmpty);
+      },
+    );
 
     test('fileLengthAt measures the file without reading it', () {
       final path = write('sized.bin', List<int>.filled(1234, 0));
@@ -122,10 +125,12 @@ void main() {
       expect(resolved.fileLengthAt(path), 1234);
     });
 
-    test('fileLengthAt returns null rather than throwing on a missing path',
-        () {
-      expect(resolved.fileLengthAt(absent('never-written.bin')), isNull);
-    });
+    test(
+      'fileLengthAt returns null rather than throwing on a missing path',
+      () {
+        expect(resolved.fileLengthAt(absent('never-written.bin')), isNull);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -201,18 +206,20 @@ void main() {
       expect(await _drain(ref.toSource().open), [104, 105]);
     });
 
-    test('takes its size from the filesystem when the picker gave none',
-        () async {
-      final path = write('sized.bin', List<int>.filled(64, 1));
+    test(
+      'takes its size from the filesystem when the picker gave none',
+      () async {
+        final path = write('sized.bin', List<int>.filled(64, 1));
 
-      final ref = TomFilePickers.toFileRef(
-        TomPickedFile(name: 'sized.bin', path: path),
-      );
+        final ref = TomFilePickers.toFileRef(
+          TomPickedFile(name: 'sized.bin', path: path),
+        );
 
-      expect(ref.sizeBytes, 64);
-      expect(ref.source!.byteCount, 64);
-      expect(ref.source!.hasKnownSize, isTrue);
-    });
+        expect(ref.sizeBytes, 64);
+        expect(ref.source!.byteCount, 64);
+        expect(ref.source!.hasKnownSize, isTrue);
+      },
+    );
 
     test('keeps the size the picker reported over the one on disk', () {
       // The picker is the more authoritative source: it may be describing a
@@ -267,16 +274,18 @@ void main() {
       expect(ref.sizeBytes, 2);
     });
 
-    test('and there are no bytes either, the ref is named but content-less',
-        () {
-      final ref = TomFilePickers.toFileRef(
-        TomPickedFile(name: 'nothing.bin', path: absent('nothing.bin')),
-      );
+    test(
+      'and there are no bytes either, the ref is named but content-less',
+      () {
+        final ref = TomFilePickers.toFileRef(
+          TomPickedFile(name: 'nothing.bin', path: absent('nothing.bin')),
+        );
 
-      expect(ref.hasLocalContent, isFalse);
-      expect(ref.name, 'nothing.bin');
-      expect(ref.sizeBytes, 0);
-    });
+        expect(ref.hasLocalContent, isFalse);
+        expect(ref.name, 'nothing.bin');
+        expect(ref.sizeBytes, 0);
+      },
+    );
   });
 
   group('a picked file that carries both a stream and a path', () {

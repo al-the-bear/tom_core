@@ -48,9 +48,13 @@ void main() {
       final section = doc.substring(start, end == -1 ? doc.length : end);
 
       final missing = names.where((n) => !section.contains('`$n`')).toList();
-      expect(missing, isEmpty,
-          reason: 'the bridge shows these names, but the "The list" section '
-              'of doc/kernel_types.md never mentions them: $missing');
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'the bridge shows these names, but the "The list" section '
+            'of doc/kernel_types.md never mentions them: $missing',
+      );
     });
   });
 }

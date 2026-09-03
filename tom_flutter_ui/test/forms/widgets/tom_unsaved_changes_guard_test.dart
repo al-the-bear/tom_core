@@ -75,29 +75,32 @@ Future<void> _pumpGuardHost(
   String? discardLabel,
   String? cancelLabel,
 }) async {
-  await tester.pumpWidget(MaterialApp(
-    home: Scaffold(
-      body: Builder(
-        builder: (context) => TextButton(
-          onPressed: () async {
-            final choice = await guardUnsavedChanges(
-              context: context,
-              form: form,
-              action: () async => log.add('action'),
-              title: title ?? 'Unsaved changes',
-              message: message ??
-                  'You have unsaved edits. What would you like to do?',
-              saveLabel: saveLabel ?? 'Save',
-              discardLabel: discardLabel ?? 'Discard',
-              cancelLabel: cancelLabel ?? 'Cancel',
-            );
-            log.add('choice:${choice.name}');
-          },
-          child: const Text('go'),
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              final choice = await guardUnsavedChanges(
+                context: context,
+                form: form,
+                action: () async => log.add('action'),
+                title: title ?? 'Unsaved changes',
+                message:
+                    message ??
+                    'You have unsaved edits. What would you like to do?',
+                saveLabel: saveLabel ?? 'Save',
+                discardLabel: discardLabel ?? 'Discard',
+                cancelLabel: cancelLabel ?? 'Cancel',
+              );
+              log.add('choice:${choice.name}');
+            },
+            child: const Text('go'),
+          ),
         ),
       ),
     ),
-  ));
+  );
 }
 
 /// Pushes a second route whose body is wrapped in a [TomUnsavedChangesGuard],
@@ -106,39 +109,43 @@ Future<void> _pumpGuardedRoute(
   WidgetTester tester, {
   required TomForm form,
 }) async {
-  await tester.pumpWidget(MaterialApp(
-    home: Scaffold(
-      body: Builder(
-        builder: (context) => TextButton(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => Scaffold(
-                body: TomUnsavedChangesGuard(
-                  form: form,
-                  child: Builder(
-                    builder: (inner) => TextButton(
-                      onPressed: () => Navigator.of(inner).maybePop(),
-                      child: const Text('leave'),
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => Scaffold(
+                  body: TomUnsavedChangesGuard(
+                    form: form,
+                    child: Builder(
+                      builder: (inner) => TextButton(
+                        onPressed: () => Navigator.of(inner).maybePop(),
+                        child: const Text('leave'),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
+            child: const Text('open'),
           ),
-          child: const Text('open'),
         ),
       ),
     ),
-  ));
+  );
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
 }
 
 bool _canPop(WidgetTester tester) => tester
-    .widgetList(find.descendant(
-      of: find.byType(TomUnsavedChangesGuard),
-      matching: find.byWidgetPredicate((w) => w is PopScope),
-    ))
+    .widgetList(
+      find.descendant(
+        of: find.byType(TomUnsavedChangesGuard),
+        matching: find.byWidgetPredicate((w) => w is PopScope),
+      ),
+    )
     .whereType<PopScope>()
     .first
     .canPop;
@@ -188,8 +195,11 @@ void main() {
       );
       expect(find.widgetWithText(TextButton, 'Cancel'), findsOneWidget);
       expect(find.widgetWithText(TextButton, 'Discard'), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget,
-          reason: 'Save is the affirmative action and carries the emphasis');
+      expect(
+        find.widgetWithText(FilledButton, 'Save'),
+        findsOneWidget,
+        reason: 'Save is the affirmative action and carries the emphasis',
+      );
       expect(log, isEmpty, reason: 'nothing happens until the user answers');
     });
 
@@ -234,8 +244,9 @@ void main() {
 
   // -------------------------------------------------------------------------
   group('guardUnsavedChanges choices', () {
-    testWidgets('Cancel leaves both the action and the edit untouched',
-        (tester) async {
+    testWidgets('Cancel leaves both the action and the edit untouched', (
+      tester,
+    ) async {
       final form = _form();
       final log = <String>[];
       await _pumpGuardHost(tester, form: form, log: log);
@@ -264,8 +275,10 @@ void main() {
 
       expect(form.product.get(), 'A');
       expect(form.isDirty, isFalse);
-      expect(log, ['action', 'choice:discard'],
-          reason: 'the rollback happens before the action runs');
+      expect(log, [
+        'action',
+        'choice:discard',
+      ], reason: 'the rollback happens before the action runs');
     });
 
     testWidgets('Save commits to the binding, then proceeds', (tester) async {
@@ -284,8 +297,9 @@ void main() {
       expect(log, ['action', 'choice:save']);
     });
 
-    testWidgets('a Save the form refuses does not run the action',
-        (tester) async {
+    testWidgets('a Save the form refuses does not run the action', (
+      tester,
+    ) async {
       final form = _strictForm();
       final log = <String>[];
       await _pumpGuardHost(tester, form: form, log: log);
@@ -298,8 +312,11 @@ void main() {
 
       expect(log, ['choice:save'], reason: 'no action — the save failed');
       expect(form.isDirty, isTrue);
-      expect(form.currentBinding?.quantity.get(), '1',
-          reason: 'a refused save writes nothing back');
+      expect(
+        form.currentBinding?.quantity.get(),
+        '1',
+        reason: 'a refused save writes nothing back',
+      );
     });
   });
 
@@ -312,7 +329,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Unsaved changes'), findsNothing);
-      expect(find.text('open'), findsOneWidget, reason: 'back on the first route');
+      expect(
+        find.text('open'),
+        findsOneWidget,
+        reason: 'back on the first route',
+      );
     });
 
     testWidgets('canPop tracks the form becoming dirty', (tester) async {
@@ -327,8 +348,9 @@ void main() {
       expect(_canPop(tester), isFalse);
     });
 
-    testWidgets('canPop returns to true once the edit is rolled back',
-        (tester) async {
+    testWidgets('canPop returns to true once the edit is rolled back', (
+      tester,
+    ) async {
       final form = _form();
       await _pumpGuardedRoute(tester, form: form);
       await _edit(tester, form.product, 'X');
@@ -412,34 +434,32 @@ void main() {
       final first = _form();
       final second = _form();
       Widget host(TomForm form) => MaterialApp(
-            home: Scaffold(
-              body: TomUnsavedChangesGuard(
-                form: form,
-                child: const Text('body'),
-              ),
-            ),
-          );
+        home: Scaffold(
+          body: TomUnsavedChangesGuard(form: form, child: const Text('body')),
+        ),
+      );
 
       await tester.pumpWidget(host(first));
       await tester.pumpWidget(host(second));
       await _edit(tester, second.product, 'X');
 
-      expect(_canPop(tester), isFalse,
-          reason: 'the new form drives canPop after the swap');
+      expect(
+        _canPop(tester),
+        isFalse,
+        reason: 'the new form drives canPop after the swap',
+      );
     });
 
-    testWidgets('the old form stops driving the guard after a swap',
-        (tester) async {
+    testWidgets('the old form stops driving the guard after a swap', (
+      tester,
+    ) async {
       final first = _form();
       final second = _form();
       Widget host(TomForm form) => MaterialApp(
-            home: Scaffold(
-              body: TomUnsavedChangesGuard(
-                form: form,
-                child: const Text('body'),
-              ),
-            ),
-          );
+        home: Scaffold(
+          body: TomUnsavedChangesGuard(form: form, child: const Text('body')),
+        ),
+      );
 
       await tester.pumpWidget(host(first));
       await tester.pumpWidget(host(second));
@@ -448,14 +468,17 @@ void main() {
       expect(_canPop(tester), isTrue);
     });
 
-    testWidgets('a form outliving the guard fires without throwing',
-        (tester) async {
+    testWidgets('a form outliving the guard fires without throwing', (
+      tester,
+    ) async {
       final form = _form();
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: TomUnsavedChangesGuard(form: form, child: const Text('body')),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TomUnsavedChangesGuard(form: form, child: const Text('body')),
+          ),
         ),
-      ));
+      );
 
       await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
 

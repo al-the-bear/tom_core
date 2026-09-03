@@ -14,17 +14,19 @@ void main() {
       final event = TomFormEvent(source: 's', description: 'd');
       final after = DateTime.now();
 
-      expect(event.timestamp.isAfter(before.subtract(const Duration(seconds: 1))), isTrue);
-      expect(event.timestamp.isBefore(after.add(const Duration(seconds: 1))), isTrue);
+      expect(
+        event.timestamp.isAfter(before.subtract(const Duration(seconds: 1))),
+        isTrue,
+      );
+      expect(
+        event.timestamp.isBefore(after.add(const Duration(seconds: 1))),
+        isTrue,
+      );
     });
 
     test('accepts explicit timestamp', () {
       final ts = DateTime(2025, 1, 1);
-      final event = TomFormEvent(
-        source: 's',
-        description: 'd',
-        timestamp: ts,
-      );
+      final event = TomFormEvent(source: 's', description: 'd', timestamp: ts);
       expect(event.timestamp, ts);
     });
 
@@ -138,8 +140,14 @@ void main() {
   group('event hierarchy', () {
     test('all events are TomFormEvent subtypes', () {
       expect(FieldValueChangedEvent(source: 's'), isA<TomFormEvent>());
-      expect(FieldValidatedEvent(source: 's', result: 'ok'), isA<TomFormEvent>());
-      expect(FieldAuthChangedEvent(source: 's', oldState: 'a', newState: 'b'), isA<TomFormEvent>());
+      expect(
+        FieldValidatedEvent(source: 's', result: 'ok'),
+        isA<TomFormEvent>(),
+      );
+      expect(
+        FieldAuthChangedEvent(source: 's', oldState: 'a', newState: 'b'),
+        isA<TomFormEvent>(),
+      );
       expect(FieldBoundEvent(source: 's'), isA<TomFormEvent>());
       expect(FieldCommittedEvent(source: 's'), isA<TomFormEvent>());
       expect(FormBoundEvent(source: 's'), isA<TomFormEvent>());

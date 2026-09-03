@@ -53,10 +53,8 @@ void main() {
   group('TomFormStyleScope — programmatic styleBpOverrides', () {
     testWidgets('picks highest minWidth <= width', (tester) async {
       const base = TomFormStyle();
-      const narrow = TomFormStyle(
-          defaults: TomFieldStyle(labelFieldGap: 2));
-      const wide = TomFormStyle(
-          defaults: TomFieldStyle(labelFieldGap: 16));
+      const narrow = TomFormStyle(defaults: TomFieldStyle(labelFieldGap: 2));
+      const wide = TomFormStyle(defaults: TomFieldStyle(labelFieldGap: 16));
 
       final atNarrow = await _resolve(
         tester,
@@ -113,10 +111,7 @@ void main() {
                 'labelFieldGap': 10,
                 'inputStyle': {'fontSize': 16},
               },
-              '1024': {
-                'labelPlacement': 'inline',
-                'labelFieldGap': 14,
-              },
+              '1024': {'labelPlacement': 'inline', 'labelFieldGap': 14},
             },
           },
         }),
@@ -134,15 +129,16 @@ void main() {
       expect(resolved.defaults.labelFieldGap, 6);
       expect(resolved.defaults.hintFontWeight, FontWeight.w700);
       expect(resolved.defaults.hintOpacity, 0.5);
-      expect(resolved.defaults.fieldContentPadding,
-          const EdgeInsets.fromLTRB(14, 10, 14, 10));
+      expect(
+        resolved.defaults.fieldContentPadding,
+        const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      );
       expect(resolved.defaults.fieldBorder, isA<OutlineInputBorder>());
       expect(resolved.defaults.labelStyle?.fontSize, 13);
       expect(resolved.defaults.inputStyle?.fontSize, 14);
     });
 
-    testWidgets('@bp 600 overrides the base when width >= 600',
-        (tester) async {
+    testWidgets('@bp 600 overrides the base when width >= 600', (tester) async {
       final resolved = await _resolve(
         tester,
         width: 700,
@@ -156,8 +152,9 @@ void main() {
       expect(resolved.defaults.hintOpacity, 0.5);
     });
 
-    testWidgets('@bp 1024 wins over @bp 600 when width >= 1024',
-        (tester) async {
+    testWidgets('@bp 1024 wins over @bp 600 when width >= 1024', (
+      tester,
+    ) async {
       final resolved = await _resolve(
         tester,
         width: 1280,
@@ -188,8 +185,9 @@ void main() {
       );
     });
 
-    testWidgets('resolves mobile/tablet/desktop via TomBreakpoint',
-        (tester) async {
+    testWidgets('resolves mobile/tablet/desktop via TomBreakpoint', (
+      tester,
+    ) async {
       final atNarrow = await _resolve(
         tester,
         width: 400,
@@ -223,8 +221,9 @@ void main() {
       expect(atDesktop.defaults.labelFieldGap, 16);
     });
 
-    testWidgets('retuning TomBreakpoint flows through without cache bust',
-        (tester) async {
+    testWidgets('retuning TomBreakpoint flows through without cache bust', (
+      tester,
+    ) async {
       // Push tablet up to 1500; width=1000 should no longer reach tablet
       // (falls back to mobile) — the cached entry's minWidth is
       // re-resolved at query time.
@@ -250,7 +249,9 @@ void main() {
           home: TomFormStyleScope(
             style: const TomFormStyle(),
             theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF00FF)),
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFFFF00FF),
+              ),
               useMaterial3: true,
             ),
             child: Builder(
@@ -268,14 +269,12 @@ void main() {
       );
     });
 
-    testWidgets('themeSpec inherits component themes from ambient base',
-        (tester) async {
+    testWidgets('themeSpec inherits component themes from ambient base', (
+      tester,
+    ) async {
       // Custom cardTheme on the ambient theme — the spec should NOT wipe it.
       final customCard = CardThemeData(elevation: 42, margin: EdgeInsets.zero);
-      final ambient = ThemeData(
-        useMaterial3: true,
-        cardTheme: customCard,
-      );
+      final ambient = ThemeData(useMaterial3: true, cardTheme: customCard);
       final spec = TomThemeSpec(seed: const Color(0xFFFF00FF));
 
       ThemeData? seen;
@@ -294,8 +293,11 @@ void main() {
           ),
         ),
       );
-      expect(seen!.cardTheme.elevation, 42,
-          reason: 'ambient component themes must survive spec application');
+      expect(
+        seen!.cardTheme.elevation,
+        42,
+        reason: 'ambient component themes must survive spec application',
+      );
     });
 
     testWidgets('themeSpecTheme overrides ambient as the base', (tester) async {
@@ -323,12 +325,16 @@ void main() {
           ),
         ),
       );
-      expect(seen!.cardTheme.elevation, 7,
-          reason: 'themeSpecTheme should shadow the ambient Material theme');
+      expect(
+        seen!.cardTheme.elevation,
+        7,
+        reason: 'themeSpecTheme should shadow the ambient Material theme',
+      );
     });
 
-    testWidgets('themeSpec from resources materialises into theme',
-        (tester) async {
+    testWidgets('themeSpec from resources materialises into theme', (
+      tester,
+    ) async {
       TomFormStyleScope.invalidateResourceCache();
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from(<String, dynamic>{
@@ -364,8 +370,9 @@ void main() {
   });
 
   group('TomFormStyleScope — cache', () {
-    testWidgets('resource reads happen once per tomId across every build',
-        (tester) async {
+    testWidgets('resource reads happen once per tomId across every build', (
+      tester,
+    ) async {
       int readCount = 0;
       TomTextResourceProvider.setAppResourceProvider(
         _CountingProvider(
@@ -378,18 +385,18 @@ void main() {
       TomFormStyleScope.invalidateResourceCache();
 
       Widget build(double width) => MaterialApp(
-            home: Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(
-                width: width,
-                child: TomFormStyleScope(
-                  tomId: 'myForm',
-                  style: const TomFormStyle(),
-                  child: const SizedBox.shrink(),
-                ),
-              ),
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: width,
+            child: TomFormStyleScope(
+              tomId: 'myForm',
+              style: const TomFormStyle(),
+              child: const SizedBox.shrink(),
             ),
-          );
+          ),
+        ),
+      );
       tester.view.physicalSize = const Size(2000, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -403,240 +410,257 @@ void main() {
       for (final w in [600.0, 700.0, 800.0, 900.0]) {
         await tester.pumpWidget(build(w));
       }
-      expect(readCount, afterInit,
-          reason: 'cache should serve every follow-up scope with same tomId');
-    });
-
-  group('TomColorTokens — cs.* resolution', () {
-    test('resolves primary, onSurface, error, outline', () {
-      final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
-      expect(resolveColorSchemeToken('cs.primary', cs), cs.primary);
-      expect(resolveColorSchemeToken('cs.onSurface', cs), cs.onSurface);
-      expect(resolveColorSchemeToken('cs.error', cs), cs.error);
-      expect(resolveColorSchemeToken('cs.outline', cs), cs.outline);
-    });
-
-    test('case-insensitive and normalises camelCase', () {
-      final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF5E35B1));
       expect(
-        resolveColorSchemeToken('cs.onSurfaceVariant', cs),
-        cs.onSurfaceVariant,
-      );
-      expect(
-        resolveColorSchemeToken('CS.ONSURFACEVARIANT', cs),
-        cs.onSurfaceVariant,
-      );
-      expect(
-        resolveColorSchemeToken('cs.on_surface_variant', cs),
-        cs.onSurfaceVariant,
+        readCount,
+        afterInit,
+        reason: 'cache should serve every follow-up scope with same tomId',
       );
     });
 
-    test('returns null for unknown token', () {
-      final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF5E35B1));
-      expect(resolveColorSchemeToken('cs.nope', cs), isNull);
-    });
-
-    test('isColorSchemeToken detects prefix', () {
-      expect(isColorSchemeToken('cs.primary'), isTrue);
-      expect(isColorSchemeToken('CS.primary'), isTrue);
-      expect(isColorSchemeToken('#FF0000'), isFalse);
-      expect(isColorSchemeToken('mRed'), isFalse);
-    });
-
-    // resolveAnyColor is the entry point the style scope actually calls; the
-    // two functions above are the branches it chooses between. What matters
-    // is which branch a given string takes, and that the choice is exclusive
-    // — a `cs.` string is never offered to the fallback and a non-`cs.`
-    // string is never looked up in the scheme.
-    group('resolveAnyColor picks a branch and commits to it', () {
-      final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
-
-      test('a cs.* token resolves from the scheme', () {
-        var fallbackCalls = 0;
-        Color? fallback(String raw) {
-          fallbackCalls++;
-          return const Color(0xFFFFFFFF);
-        }
-
-        expect(resolveAnyColor('cs.primary', cs, fallback), cs.primary);
-        expect(fallbackCalls, 0,
-            reason: 'the fallback must not get a look at a cs.* token');
+    group('TomColorTokens — cs.* resolution', () {
+      test('resolves primary, onSurface, error, outline', () {
+        final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
+        expect(resolveColorSchemeToken('cs.primary', cs), cs.primary);
+        expect(resolveColorSchemeToken('cs.onSurface', cs), cs.onSurface);
+        expect(resolveColorSchemeToken('cs.error', cs), cs.error);
+        expect(resolveColorSchemeToken('cs.outline', cs), cs.outline);
       });
 
-      test('anything else is handed to the fallback, verbatim', () {
-        final seen = <String>[];
-        Color? fallback(String raw) {
-          seen.add(raw);
-          return const Color(0xFFFF0000);
-        }
-
-        expect(resolveAnyColor('#FF0000', cs, fallback),
-            const Color(0xFFFF0000));
-        expect(seen, ['#FF0000'],
-            reason: 'the raw string is passed through untouched');
-      });
-
-      test('an unknown cs.* name yields null rather than falling through', () {
-        // The prefix is a commitment: `cs.` says "this is a scheme token", so
-        // a misspelt one is an error to surface, not a name to try elsewhere.
-        var fallbackCalls = 0;
-        Color? fallback(String raw) {
-          fallbackCalls++;
-          return const Color(0xFFFFFFFF);
-        }
-
-        expect(resolveAnyColor('cs.nope', cs, fallback), isNull);
-        expect(fallbackCalls, 0);
-      });
-
-      test('a fallback that declines leaves the result null', () {
-        expect(resolveAnyColor('mRed', cs, (_) => null), isNull);
-      });
-
-      test('the branch is chosen case-insensitively, like the token itself',
-          () {
+      test('case-insensitive and normalises camelCase', () {
+        final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF5E35B1));
         expect(
-          resolveAnyColor('CS.PRIMARY', cs, (_) => const Color(0xFFFFFFFF)),
-          cs.primary,
+          resolveColorSchemeToken('cs.onSurfaceVariant', cs),
+          cs.onSurfaceVariant,
+        );
+        expect(
+          resolveColorSchemeToken('CS.ONSURFACEVARIANT', cs),
+          cs.onSurfaceVariant,
+        );
+        expect(
+          resolveColorSchemeToken('cs.on_surface_variant', cs),
+          cs.onSurfaceVariant,
+        );
+      });
+
+      test('returns null for unknown token', () {
+        final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF5E35B1));
+        expect(resolveColorSchemeToken('cs.nope', cs), isNull);
+      });
+
+      test('isColorSchemeToken detects prefix', () {
+        expect(isColorSchemeToken('cs.primary'), isTrue);
+        expect(isColorSchemeToken('CS.primary'), isTrue);
+        expect(isColorSchemeToken('#FF0000'), isFalse);
+        expect(isColorSchemeToken('mRed'), isFalse);
+      });
+
+      // resolveAnyColor is the entry point the style scope actually calls; the
+      // two functions above are the branches it chooses between. What matters
+      // is which branch a given string takes, and that the choice is exclusive
+      // — a `cs.` string is never offered to the fallback and a non-`cs.`
+      // string is never looked up in the scheme.
+      group('resolveAnyColor picks a branch and commits to it', () {
+        final cs = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
+
+        test('a cs.* token resolves from the scheme', () {
+          var fallbackCalls = 0;
+          Color? fallback(String raw) {
+            fallbackCalls++;
+            return const Color(0xFFFFFFFF);
+          }
+
+          expect(resolveAnyColor('cs.primary', cs, fallback), cs.primary);
+          expect(
+            fallbackCalls,
+            0,
+            reason: 'the fallback must not get a look at a cs.* token',
+          );
+        });
+
+        test('anything else is handed to the fallback, verbatim', () {
+          final seen = <String>[];
+          Color? fallback(String raw) {
+            seen.add(raw);
+            return const Color(0xFFFF0000);
+          }
+
+          expect(
+            resolveAnyColor('#FF0000', cs, fallback),
+            const Color(0xFFFF0000),
+          );
+          expect(seen, [
+            '#FF0000',
+          ], reason: 'the raw string is passed through untouched');
+        });
+
+        test('an unknown cs.* name yields null rather than falling through', () {
+          // The prefix is a commitment: `cs.` says "this is a scheme token", so
+          // a misspelt one is an error to surface, not a name to try elsewhere.
+          var fallbackCalls = 0;
+          Color? fallback(String raw) {
+            fallbackCalls++;
+            return const Color(0xFFFFFFFF);
+          }
+
+          expect(resolveAnyColor('cs.nope', cs, fallback), isNull);
+          expect(fallbackCalls, 0);
+        });
+
+        test('a fallback that declines leaves the result null', () {
+          expect(resolveAnyColor('mRed', cs, (_) => null), isNull);
+        });
+
+        test(
+          'the branch is chosen case-insensitively, like the token itself',
+          () {
+            expect(
+              resolveAnyColor('CS.PRIMARY', cs, (_) => const Color(0xFFFFFFFF)),
+              cs.primary,
+            );
+          },
         );
       });
     });
-  });
 
-  group('TomFormStyleScope — cs.* tokens in resource overlay', () {
-    testWidgets('labelStyle color resolves to active cs.primary',
-        (tester) async {
-      TomFormStyleScope.invalidateResourceCache();
-      TomTextResourceProvider.setAppResourceProvider(
-        TomTextResourceProvider.from(<String, dynamic>{
-          'myForm': {
-            'labelStyle': {'fontSize': 14, 'color': 'cs.primary'},
-            'focusedBorder': {
-              'kind': 'outline',
-              'width': 2,
-              'color': 'cs.primary'
-            },
-          },
-        }),
-      );
-
-      final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
-
-      TomFormStyle? resolvedStyle;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(colorScheme: scheme, useMaterial3: true),
-          home: TomFormStyleScope(
-            tomId: 'myForm',
-            style: const TomFormStyle(),
-            child: Builder(
-              builder: (ctx) {
-                resolvedStyle = TomFormStyleScope.of(ctx);
-                return const SizedBox.shrink();
-              },
-            ),
-          ),
-        ),
-      );
-
-      expect(resolvedStyle!.defaults.labelStyle?.color, scheme.primary);
-      final focused = resolvedStyle!.defaults.focusedBorder;
-      expect(focused, isA<OutlineInputBorder>());
-      final side = (focused! as OutlineInputBorder).borderSide;
-      expect(side.color, scheme.primary);
-    });
-
-    testWidgets('tokens re-resolve when theme changes between breakpoints',
-        (tester) async {
-      TomFormStyleScope.invalidateResourceCache();
-      final purple =
-          ColorScheme.fromSeed(seedColor: const Color(0xFF5E35B1));
-      final teal = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
-
-      TomTextResourceProvider.setAppResourceProvider(
-        TomTextResourceProvider.from(<String, dynamic>{
-          'myForm': {
-            'labelStyle': {'color': 'cs.primary'},
-            '@bp': {
-              '600': {
-                'labelStyle': {'color': 'cs.primary'},
-                'theme': {'seed': '#00897B'},
+    group('TomFormStyleScope — cs.* tokens in resource overlay', () {
+      testWidgets('labelStyle color resolves to active cs.primary', (
+        tester,
+      ) async {
+        TomFormStyleScope.invalidateResourceCache();
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from(<String, dynamic>{
+            'myForm': {
+              'labelStyle': {'fontSize': 14, 'color': 'cs.primary'},
+              'focusedBorder': {
+                'kind': 'outline',
+                'width': 2,
+                'color': 'cs.primary',
               },
             },
-          },
-        }),
-      );
+          }),
+        );
 
-      late TomFormStyle styleAt300, styleAt700;
-      final controller = ScrollController();
-      addTearDown(controller.dispose);
+        final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
 
-      Future<TomFormStyle> probe(WidgetTester t, double w) async {
-        TomFormStyle? s;
-        t.view.physicalSize = Size(w + 200, 2000);
-        t.view.devicePixelRatio = 1.0;
-        await t.pumpWidget(MaterialApp(
-          theme: ThemeData(colorScheme: purple, useMaterial3: true),
-          home: Align(
-            alignment: Alignment.topLeft,
-            child: SizedBox(
-              width: w,
-              child: TomFormStyleScope(
-                tomId: 'myForm',
-                style: const TomFormStyle(),
-                child: Builder(builder: (ctx) {
-                  s = TomFormStyleScope.of(ctx);
+        TomFormStyle? resolvedStyle;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(colorScheme: scheme, useMaterial3: true),
+            home: TomFormStyleScope(
+              tomId: 'myForm',
+              style: const TomFormStyle(),
+              child: Builder(
+                builder: (ctx) {
+                  resolvedStyle = TomFormStyleScope.of(ctx);
                   return const SizedBox.shrink();
-                }),
+                },
               ),
             ),
           ),
-        ));
-        return s!;
-      }
+        );
 
-      styleAt300 = await probe(tester, 300);
-      styleAt700 = await probe(tester, 700);
-      addTearDown(tester.view.resetPhysicalSize);
+        expect(resolvedStyle!.defaults.labelStyle?.color, scheme.primary);
+        final focused = resolvedStyle!.defaults.focusedBorder;
+        expect(focused, isA<OutlineInputBorder>());
+        final side = (focused! as OutlineInputBorder).borderSide;
+        expect(side.color, scheme.primary);
+      });
 
-      // At 300: no bp, theme = purple → cs.primary = purple.primary
-      expect(styleAt300.defaults.labelStyle?.color, purple.primary);
-      // At 700: @bp.600 active, theme spec = teal → cs.primary = teal.primary
-      expect(styleAt700.defaults.labelStyle?.color, teal.primary);
-    });
-  });
+      testWidgets('tokens re-resolve when theme changes between breakpoints', (
+        tester,
+      ) async {
+        TomFormStyleScope.invalidateResourceCache();
+        final purple = ColorScheme.fromSeed(seedColor: const Color(0xFF5E35B1));
+        final teal = ColorScheme.fromSeed(seedColor: const Color(0xFF00897B));
 
-    testWidgets(
-        'invalidateResourceCache reparses on next scope instantiation',
-        (tester) async {
-      int readCount = 0;
-      TomTextResourceProvider.setAppResourceProvider(
-        _CountingProvider(
-          map: <String, dynamic>{
-            'myForm': {'labelFieldGap': 6},
-          },
-          onRead: () => readCount++,
-        ),
-      );
-      TomFormStyleScope.invalidateResourceCache();
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from(<String, dynamic>{
+            'myForm': {
+              'labelStyle': {'color': 'cs.primary'},
+              '@bp': {
+                '600': {
+                  'labelStyle': {'color': 'cs.primary'},
+                  'theme': {'seed': '#00897B'},
+                },
+              },
+            },
+          }),
+        );
 
-      Widget build() => const MaterialApp(
-            home: TomFormStyleScope(
-              tomId: 'myForm',
-              style: TomFormStyle(),
-              child: SizedBox.shrink(),
+        late TomFormStyle styleAt300, styleAt700;
+        final controller = ScrollController();
+        addTearDown(controller.dispose);
+
+        Future<TomFormStyle> probe(WidgetTester t, double w) async {
+          TomFormStyle? s;
+          t.view.physicalSize = Size(w + 200, 2000);
+          t.view.devicePixelRatio = 1.0;
+          await t.pumpWidget(
+            MaterialApp(
+              theme: ThemeData(colorScheme: purple, useMaterial3: true),
+              home: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: w,
+                  child: TomFormStyleScope(
+                    tomId: 'myForm',
+                    style: const TomFormStyle(),
+                    child: Builder(
+                      builder: (ctx) {
+                        s = TomFormStyleScope.of(ctx);
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                ),
+              ),
             ),
           );
+          return s!;
+        }
 
-      await tester.pumpWidget(build());
-      final afterFirst = readCount;
+        styleAt300 = await probe(tester, 300);
+        styleAt700 = await probe(tester, 700);
+        addTearDown(tester.view.resetPhysicalSize);
 
-      TomFormStyleScope.invalidateResourceCache();
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpWidget(build());
-      expect(readCount, greaterThan(afterFirst));
+        // At 300: no bp, theme = purple → cs.primary = purple.primary
+        expect(styleAt300.defaults.labelStyle?.color, purple.primary);
+        // At 700: @bp.600 active, theme spec = teal → cs.primary = teal.primary
+        expect(styleAt700.defaults.labelStyle?.color, teal.primary);
+      });
     });
+
+    testWidgets(
+      'invalidateResourceCache reparses on next scope instantiation',
+      (tester) async {
+        int readCount = 0;
+        TomTextResourceProvider.setAppResourceProvider(
+          _CountingProvider(
+            map: <String, dynamic>{
+              'myForm': {'labelFieldGap': 6},
+            },
+            onRead: () => readCount++,
+          ),
+        );
+        TomFormStyleScope.invalidateResourceCache();
+
+        Widget build() => const MaterialApp(
+          home: TomFormStyleScope(
+            tomId: 'myForm',
+            style: TomFormStyle(),
+            child: SizedBox.shrink(),
+          ),
+        );
+
+        await tester.pumpWidget(build());
+        final afterFirst = readCount;
+
+        TomFormStyleScope.invalidateResourceCache();
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(build());
+        expect(readCount, greaterThan(afterFirst));
+      },
+    );
   });
 }
 
@@ -644,10 +668,8 @@ void main() {
 class _CountingProvider extends TomTextResourceProvider {
   final void Function() onRead;
 
-  _CountingProvider({
-    required Map<String, dynamic> map,
-    required this.onRead,
-  }) : super.from(map);
+  _CountingProvider({required Map<String, dynamic> map, required this.onRead})
+    : super.from(map);
 
   @override
   String? getTextOrNull(String s) {

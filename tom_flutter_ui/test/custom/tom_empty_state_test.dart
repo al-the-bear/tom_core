@@ -54,8 +54,11 @@ void main() {
 
   group('TomEmptyState headline contract', () {
     test('neither a title nor a tomId throws', () {
-      expect(TomEmptyState.new, throwsStateError,
-          reason: 'the dartdoc calls the headline required, so it is');
+      expect(
+        TomEmptyState.new,
+        throwsStateError,
+        reason: 'the dartdoc calls the headline required, so it is',
+      );
     });
 
     test('an explicit title suffices', () {
@@ -91,63 +94,80 @@ void main() {
       // because enforcing the requirement meant touching this exact chain,
       // and flipping it while doing so would have been invisible.
       _resources({'reports.empty.title': 'From resources'});
-      await tester.pumpWidget(_host(
-        TomEmptyState(tomId: 'reports.empty', title: 'From the call site'),
-      ));
+      await tester.pumpWidget(
+        _host(
+          TomEmptyState(tomId: 'reports.empty', title: 'From the call site'),
+        ),
+      );
       expect(find.text('From resources'), findsOneWidget);
       expect(find.text('From the call site'), findsNothing);
     });
 
     testWidgets('an explicit title covers a missing resource', (tester) async {
-      await tester.pumpWidget(_host(
-        TomEmptyState(tomId: 'reports.empty', title: 'From the call site'),
-      ));
+      await tester.pumpWidget(
+        _host(
+          TomEmptyState(tomId: 'reports.empty', title: 'From the call site'),
+        ),
+      );
       expect(find.text('From the call site'), findsOneWidget);
     });
 
-    testWidgets('a tomId with no resource shows the key, not silence',
-        (tester) async {
+    testWidgets('a tomId with no resource shows the key, not silence', (
+      tester,
+    ) async {
       // The half of this that is not about the "Required" claim at all. The
       // old resolver returned `null` here and the headline simply vanished,
       // so a mistyped `tomId` was indistinguishable from a correct one on a
       // screen nobody had translated yet.
       await tester.pumpWidget(_host(TomEmptyState(tomId: 'typo.path')));
-      expect(find.text('typo.path.title'), findsOneWidget,
-          reason: 'an unresolved resource is a development signal, and every '
-              'other Tom widget renders its key');
+      expect(
+        find.text('typo.path.title'),
+        findsOneWidget,
+        reason:
+            'an unresolved resource is a development signal, and every '
+            'other Tom widget renders its key',
+      );
     });
   });
 
   group('TomEmptyState failure reaches the caller', () {
-    testWidgets('a build-time throw is turned into a card by TomErrorBoundary',
-        (tester) async {
-      // The control. Without it the next test proves nothing: "constructing
-      // throws" is unremarkable unless the alternative is shown to be worse.
-      await tester.pumpWidget(_host(
-        const TomErrorBoundary(child: _ThrowsInBuild()),
-      ));
-      // Two deferred frames — see `tom_error_boundary_test.dart`'s
-      // `_settleError` for why a fixed pump count is brittle here.
-      await tester.pumpAndSettle();
+    testWidgets(
+      'a build-time throw is turned into a card by TomErrorBoundary',
+      (tester) async {
+        // The control. Without it the next test proves nothing: "constructing
+        // throws" is unremarkable unless the alternative is shown to be worse.
+        await tester.pumpWidget(
+          _host(const TomErrorBoundary(child: _ThrowsInBuild())),
+        );
+        // Two deferred frames — see `tom_error_boundary_test.dart`'s
+        // `_settleError` for why a fixed pump count is brittle here.
+        await tester.pumpAndSettle();
 
-      expect(find.text('Something went wrong'), findsOneWidget,
-          reason: 'the boundary converted the failure into UI — working as '
+        expect(
+          find.text('Something went wrong'),
+          findsOneWidget,
+          reason:
+              'the boundary converted the failure into UI — working as '
               'designed, and precisely why a misconfiguration must not '
-              'travel this route');
-      // The framework still records the original throw; draining it is the
-      // package idiom, not a way of hiding anything.
-      tester.takeException();
-    });
+              'travel this route',
+        );
+        // The framework still records the original throw; draining it is the
+        // package idiom, not a way of hiding anything.
+        tester.takeException();
+      },
+    );
 
-    testWidgets('a misconfigured empty state throws before any boundary sees it',
-        (tester) async {
-      // Constructing the child happens in the caller's own expression, so the
-      // boundary is never reached — it cannot guard against a widget that
-      // could not be built in the first place.
-      expect(
-        () => TomErrorBoundary(child: TomEmptyState()),
-        throwsStateError,
-      );
-    });
+    testWidgets(
+      'a misconfigured empty state throws before any boundary sees it',
+      (tester) async {
+        // Constructing the child happens in the caller's own expression, so the
+        // boundary is never reached — it cannot guard against a widget that
+        // could not be built in the first place.
+        expect(
+          () => TomErrorBoundary(child: TomEmptyState()),
+          throwsStateError,
+        );
+      },
+    );
   });
 }

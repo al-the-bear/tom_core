@@ -37,10 +37,7 @@ void main() {
       });
 
       test('stores params', () {
-        const result = ValidationError(
-          'error.minLength',
-          params: {'min': 5},
-        );
+        const result = ValidationError('error.minLength', params: {'min': 5});
         expect(result.params, {'min': 5});
       });
 
@@ -131,10 +128,7 @@ void main() {
       });
 
       test('ValidationError is not ValidationPending', () {
-        expect(
-          const ValidationError('e'),
-          isNot(isA<ValidationPending>()),
-        );
+        expect(const ValidationError('e'), isNot(isA<ValidationPending>()));
       });
 
       test('ValidationPending is not ValidationSuccess', () {

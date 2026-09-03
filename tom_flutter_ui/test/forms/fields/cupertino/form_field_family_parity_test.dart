@@ -23,8 +23,12 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // ---------------------------------------------------------------------------
 
 Widget _shell(FormFieldFamily family, Widget child) => family.isCupertino
-    ? CupertinoApp(home: CupertinoPageScaffold(child: Center(child: child)))
-    : MaterialApp(home: Scaffold(body: Center(child: child)));
+    ? CupertinoApp(
+        home: CupertinoPageScaffold(child: Center(child: child)),
+      )
+    : MaterialApp(
+        home: Scaffold(body: Center(child: child)),
+      );
 
 /// One factory method of [FormFieldFamily], reduced to the four things the
 /// shared body needs: how to build it, how to move its value, and which
@@ -56,7 +60,8 @@ class _Case {
   /// share — the whole point of the factory.
   final void Function(TomField<dynamic> field) sharedBase;
 
-  Type expected(FormFieldFamily f) => f.isCupertino ? cupertinoType : materialType;
+  Type expected(FormFieldFamily f) =>
+      f.isCupertino ? cupertinoType : materialType;
 }
 
 /// Builds a [_Case] while keeping `T` visible to the value closure, so
@@ -68,18 +73,17 @@ _Case _case<T>(
   required Type material,
   required Type cupertino,
   required void Function(TomField<T> field) sharedBase,
-}) =>
-    _Case._(
-      name: name,
-      build: build,
-      mutate: (f) {
-        final typed = f as TomField<T>;
-        typed.setValue(nextValue(typed));
-      },
-      materialType: material,
-      cupertinoType: cupertino,
-      sharedBase: (f) => sharedBase(f as TomField<T>),
-    );
+}) => _Case._(
+  name: name,
+  build: build,
+  mutate: (f) {
+    final typed = f as TomField<T>;
+    typed.setValue(nextValue(typed));
+  },
+  materialType: material,
+  cupertinoType: cupertino,
+  sharedBase: (f) => sharedBase(f as TomField<T>),
+);
 
 // ---------------------------------------------------------------------------
 // Fixtures for the selection-backed cases
@@ -103,228 +107,222 @@ final DateTime _first = DateTime(2020);
 final DateTime _last = DateTime(2030);
 
 List<_Case> _cases() => [
-      _case<String>(
-        'stringInput',
-        build: (f) => f.stringInput('name', 'Ada'),
-        nextValue: (_) => 'Grace',
-        material: TomFormStringInput,
-        cupertino: TomCupertinoFormStringInput,
-        sharedBase: (f) => expect(f, isA<TomFormStringField>()),
-      ),
-      _case<int>(
-        'intInput',
-        build: (f) => f.intInput('age', 30),
-        nextValue: (_) => 41,
-        material: TomFormIntInput,
-        cupertino: TomCupertinoFormIntInput,
-        sharedBase: (f) => expect(f, isA<TomFormIntField>()),
-      ),
-      _case<double>(
-        'doubleInput',
-        build: (f) => f.doubleInput('ratio', 1.5),
-        nextValue: (_) => 2.25,
-        material: TomFormDoubleInput,
-        cupertino: TomCupertinoFormDoubleInput,
-        sharedBase: (f) => expect(f, isA<TomFormDoubleField>()),
-      ),
-      _case<bool>(
-        'boolSwitch',
-        build: (f) => f.boolSwitch('active', false),
-        nextValue: (_) => true,
-        material: TomFormBoolSwitch,
-        cupertino: TomCupertinoFormBoolSwitch,
-        sharedBase: (f) => expect(f, isA<TomFormBoolField>()),
-      ),
-      _case<bool?>(
-        'nullableBoolToggle',
-        build: (f) => f.nullableBoolToggle('answer', null),
-        nextValue: (_) => true,
-        material: TomFormNullableBoolCheckbox,
-        cupertino: TomCupertinoFormNullableBoolToggle,
-        sharedBase: (f) => expect(f, isA<TomFormNullableBoolField>()),
-      ),
-      _case<DateTime>(
-        'datePicker',
-        build: (f) => f.datePicker(
-          'due',
-          DateTime(2024, 3, 4),
-          firstDate: _first,
-          lastDate: _last,
-        ),
-        nextValue: (_) => DateTime(2025, 6, 7),
-        material: TomFormDatePicker,
-        cupertino: TomCupertinoFormDatePicker,
-        sharedBase: (f) => expect(f, isA<TomFormDateField>()),
-      ),
-      _case<TimeOfDay>(
-        'timePicker',
-        build: (f) => f.timePicker('at', const TimeOfDay(hour: 9, minute: 0)),
-        nextValue: (_) => const TimeOfDay(hour: 17, minute: 30),
-        material: TomFormTimePicker,
-        cupertino: TomCupertinoFormTimePicker,
-        sharedBase: (f) => expect(f, isA<TomFormTimeField>()),
-      ),
-      _case<Priority>(
-        'enumPicker',
-        build: (f) =>
-            f.enumPicker<Priority>('prio', Priority.low, source: _prioritySource()),
-        nextValue: (_) => Priority.high,
-        material: TomFormEnumDropdown<Priority>,
-        cupertino: TomCupertinoFormEnumPicker<Priority>,
-        sharedBase: (f) => expect(f, isA<TomFormEnumField<Priority>>()),
-      ),
-      _case<String>(
-        'objectPicker',
-        build: (f) => f.objectPicker<String>('city', 'oslo', source: _citySource()),
-        nextValue: (_) => 'lima',
-        material: TomFormObjectDropdown<String>,
-        cupertino: TomCupertinoFormObjectPicker<String>,
-        sharedBase: (f) => expect(f, isA<TomFormObjectField<String>>()),
-      ),
-      _case<String>(
-        'searchInput',
-        build: (f) => f.searchInput<String>('city', 'oslo', source: _citySource()),
-        nextValue: (_) => 'lima',
-        material: TomFormSearchInput<String>,
-        cupertino: TomCupertinoFormSearchInput<String>,
-        sharedBase: (f) => expect(f, isA<TomFormSearchField<String>>()),
-      ),
-      _case<String>(
-        'lookup',
-        build: (f) => f.lookup<String>('city', 'oslo', source: _citySource()),
-        nextValue: (_) => 'lima',
-        material: TomFormLookupDialog<String>,
-        cupertino: TomCupertinoFormLookupSheet<String>,
-        sharedBase: (f) => expect(f, isA<TomFormLookupField<String>>()),
-      ),
-      _case<String?>(
-        'nStringInput',
-        build: (f) => f.nStringInput('note', null),
-        nextValue: (_) => 'hello',
-        material: TomFormNStringInput,
-        cupertino: TomCupertinoFormNStringInput,
-        sharedBase: (f) => expect(f, isA<TomField<String?>>()),
-      ),
-      _case<int?>(
-        'nIntInput',
-        build: (f) => f.nIntInput('count', null),
-        nextValue: (_) => 7,
-        material: TomFormNIntInput,
-        cupertino: TomCupertinoFormNIntInput,
-        sharedBase: (f) => expect(f, isA<TomField<int?>>()),
-      ),
-      _case<double?>(
-        'nDoubleInput',
-        build: (f) => f.nDoubleInput('score', null),
-        nextValue: (_) => 3.5,
-        material: TomFormNDoubleInput,
-        cupertino: TomCupertinoFormNDoubleInput,
-        sharedBase: (f) => expect(f, isA<TomField<double?>>()),
-      ),
-      _case<DateTime?>(
-        'nDateInput',
-        build: (f) => f.nDateInput(
-          'seen',
-          null,
-          firstDate: _first,
-          lastDate: _last,
-        ),
-        nextValue: (_) => DateTime(2026, 1, 1),
-        material: TomFormNDateInput,
-        cupertino: TomCupertinoFormNDateInput,
-        sharedBase: (f) => expect(f, isA<TomField<DateTime?>>()),
-      ),
-      _case<String>(
-        'stringPicker',
-        build: (f) => f.stringPicker('city', 'oslo', source: _citySource()),
-        nextValue: (_) => 'lima',
-        material: TomFormStringDropdown,
-        cupertino: TomCupertinoFormStringPicker,
-        sharedBase: (f) => expect(f, isA<TomFormStringField>()),
-      ),
-      _case<String>(
-        'stringSegmented',
-        build: (f) => f.stringSegmented('city', 'oslo', source: _citySource()),
-        nextValue: (_) => 'lima',
-        material: TomFormStringSegmented,
-        cupertino: TomCupertinoFormStringSegmented,
-        sharedBase: (f) => expect(f, isA<TomFormStringField>()),
-      ),
-      _case<List<String>>(
-        'stringMultiSelect',
-        build: (f) =>
-            f.stringMultiSelect('cities', const ['oslo'], source: _citySource()),
-        nextValue: (_) => const ['lima'],
-        material: TomFormStringFilterChips,
-        cupertino: TomCupertinoFormStringListCheckedPicker,
-        sharedBase: (f) => expect(f, isA<TomFormStringListField>()),
-      ),
-      _case<double>(
-        'currencyInput',
-        build: (f) => f.currencyInput('price', 9.99, currencyCode: 'EUR'),
-        nextValue: (_) => 19.5,
-        material: TomFormCurrencyDoubleInput,
-        cupertino: TomCupertinoFormCurrencyDoubleInput,
-        sharedBase: (f) => expect(f, isA<TomFormDoubleField>()),
-      ),
-      _case<bool>(
-        'boolToggle',
-        build: (f) => f.boolToggle('active', false),
-        nextValue: (_) => true,
-        material: TomFormBoolToggle,
-        cupertino: TomCupertinoFormBoolToggle,
-        sharedBase: (f) => expect(f, isA<TomFormBoolField>()),
-      ),
-      _case<DateTime>(
-        'dateTimePicker',
-        build: (f) => f.dateTimePicker(
-          'startsAt',
-          DateTime(2024, 3, 4, 9, 30),
-          firstDate: _first,
-          lastDate: _last,
-        ),
-        nextValue: (_) => DateTime(2025, 6, 7, 17, 45),
-        material: TomFormDateTimePicker,
-        cupertino: TomCupertinoFormDateTimePicker,
-        sharedBase: (f) => expect(f, isA<TomFormDateTimeField>()),
-      ),
-      _case<DateTimeRange>(
-        'dateRangePicker',
-        build: (f) => f.dateRangePicker(
-          'span',
-          DateTimeRange(start: DateTime(2024, 3, 4), end: DateTime(2024, 3, 8)),
-          firstDate: _first,
-          lastDate: _last,
-        ),
-        nextValue: (_) => DateTimeRange(
-          start: DateTime(2025, 1, 1),
-          end: DateTime(2025, 1, 9),
-        ),
-        material: TomFormDateRangePicker,
-        cupertino: TomCupertinoFormDateRangePicker,
-        sharedBase: (f) => expect(f, isA<TomFormDateRangeField>()),
-      ),
-      _case<Duration>(
-        'durationPicker',
-        build: (f) => f.durationPicker('takes', const Duration(minutes: 30)),
-        nextValue: (_) => const Duration(hours: 2, minutes: 15),
-        material: TomFormDurationInput,
-        cupertino: TomCupertinoFormDurationPicker,
-        sharedBase: (f) => expect(f, isA<TomFormDurationField>()),
-      ),
-      _case<Priority>(
-        'enumSegmented',
-        build: (f) => f.enumSegmented<Priority>(
-          'prio',
-          Priority.low,
-          source: _prioritySource(),
-        ),
-        nextValue: (_) => Priority.high,
-        material: TomFormEnumSegmented<Priority>,
-        cupertino: TomCupertinoFormEnumSegmented<Priority>,
-        sharedBase: (f) => expect(f, isA<TomFormEnumField<Priority>>()),
-      ),
-    ];
+  _case<String>(
+    'stringInput',
+    build: (f) => f.stringInput('name', 'Ada'),
+    nextValue: (_) => 'Grace',
+    material: TomFormStringInput,
+    cupertino: TomCupertinoFormStringInput,
+    sharedBase: (f) => expect(f, isA<TomFormStringField>()),
+  ),
+  _case<int>(
+    'intInput',
+    build: (f) => f.intInput('age', 30),
+    nextValue: (_) => 41,
+    material: TomFormIntInput,
+    cupertino: TomCupertinoFormIntInput,
+    sharedBase: (f) => expect(f, isA<TomFormIntField>()),
+  ),
+  _case<double>(
+    'doubleInput',
+    build: (f) => f.doubleInput('ratio', 1.5),
+    nextValue: (_) => 2.25,
+    material: TomFormDoubleInput,
+    cupertino: TomCupertinoFormDoubleInput,
+    sharedBase: (f) => expect(f, isA<TomFormDoubleField>()),
+  ),
+  _case<bool>(
+    'boolSwitch',
+    build: (f) => f.boolSwitch('active', false),
+    nextValue: (_) => true,
+    material: TomFormBoolSwitch,
+    cupertino: TomCupertinoFormBoolSwitch,
+    sharedBase: (f) => expect(f, isA<TomFormBoolField>()),
+  ),
+  _case<bool?>(
+    'nullableBoolToggle',
+    build: (f) => f.nullableBoolToggle('answer', null),
+    nextValue: (_) => true,
+    material: TomFormNullableBoolCheckbox,
+    cupertino: TomCupertinoFormNullableBoolToggle,
+    sharedBase: (f) => expect(f, isA<TomFormNullableBoolField>()),
+  ),
+  _case<DateTime>(
+    'datePicker',
+    build: (f) => f.datePicker(
+      'due',
+      DateTime(2024, 3, 4),
+      firstDate: _first,
+      lastDate: _last,
+    ),
+    nextValue: (_) => DateTime(2025, 6, 7),
+    material: TomFormDatePicker,
+    cupertino: TomCupertinoFormDatePicker,
+    sharedBase: (f) => expect(f, isA<TomFormDateField>()),
+  ),
+  _case<TimeOfDay>(
+    'timePicker',
+    build: (f) => f.timePicker('at', const TimeOfDay(hour: 9, minute: 0)),
+    nextValue: (_) => const TimeOfDay(hour: 17, minute: 30),
+    material: TomFormTimePicker,
+    cupertino: TomCupertinoFormTimePicker,
+    sharedBase: (f) => expect(f, isA<TomFormTimeField>()),
+  ),
+  _case<Priority>(
+    'enumPicker',
+    build: (f) =>
+        f.enumPicker<Priority>('prio', Priority.low, source: _prioritySource()),
+    nextValue: (_) => Priority.high,
+    material: TomFormEnumDropdown<Priority>,
+    cupertino: TomCupertinoFormEnumPicker<Priority>,
+    sharedBase: (f) => expect(f, isA<TomFormEnumField<Priority>>()),
+  ),
+  _case<String>(
+    'objectPicker',
+    build: (f) => f.objectPicker<String>('city', 'oslo', source: _citySource()),
+    nextValue: (_) => 'lima',
+    material: TomFormObjectDropdown<String>,
+    cupertino: TomCupertinoFormObjectPicker<String>,
+    sharedBase: (f) => expect(f, isA<TomFormObjectField<String>>()),
+  ),
+  _case<String>(
+    'searchInput',
+    build: (f) => f.searchInput<String>('city', 'oslo', source: _citySource()),
+    nextValue: (_) => 'lima',
+    material: TomFormSearchInput<String>,
+    cupertino: TomCupertinoFormSearchInput<String>,
+    sharedBase: (f) => expect(f, isA<TomFormSearchField<String>>()),
+  ),
+  _case<String>(
+    'lookup',
+    build: (f) => f.lookup<String>('city', 'oslo', source: _citySource()),
+    nextValue: (_) => 'lima',
+    material: TomFormLookupDialog<String>,
+    cupertino: TomCupertinoFormLookupSheet<String>,
+    sharedBase: (f) => expect(f, isA<TomFormLookupField<String>>()),
+  ),
+  _case<String?>(
+    'nStringInput',
+    build: (f) => f.nStringInput('note', null),
+    nextValue: (_) => 'hello',
+    material: TomFormNStringInput,
+    cupertino: TomCupertinoFormNStringInput,
+    sharedBase: (f) => expect(f, isA<TomField<String?>>()),
+  ),
+  _case<int?>(
+    'nIntInput',
+    build: (f) => f.nIntInput('count', null),
+    nextValue: (_) => 7,
+    material: TomFormNIntInput,
+    cupertino: TomCupertinoFormNIntInput,
+    sharedBase: (f) => expect(f, isA<TomField<int?>>()),
+  ),
+  _case<double?>(
+    'nDoubleInput',
+    build: (f) => f.nDoubleInput('score', null),
+    nextValue: (_) => 3.5,
+    material: TomFormNDoubleInput,
+    cupertino: TomCupertinoFormNDoubleInput,
+    sharedBase: (f) => expect(f, isA<TomField<double?>>()),
+  ),
+  _case<DateTime?>(
+    'nDateInput',
+    build: (f) =>
+        f.nDateInput('seen', null, firstDate: _first, lastDate: _last),
+    nextValue: (_) => DateTime(2026, 1, 1),
+    material: TomFormNDateInput,
+    cupertino: TomCupertinoFormNDateInput,
+    sharedBase: (f) => expect(f, isA<TomField<DateTime?>>()),
+  ),
+  _case<String>(
+    'stringPicker',
+    build: (f) => f.stringPicker('city', 'oslo', source: _citySource()),
+    nextValue: (_) => 'lima',
+    material: TomFormStringDropdown,
+    cupertino: TomCupertinoFormStringPicker,
+    sharedBase: (f) => expect(f, isA<TomFormStringField>()),
+  ),
+  _case<String>(
+    'stringSegmented',
+    build: (f) => f.stringSegmented('city', 'oslo', source: _citySource()),
+    nextValue: (_) => 'lima',
+    material: TomFormStringSegmented,
+    cupertino: TomCupertinoFormStringSegmented,
+    sharedBase: (f) => expect(f, isA<TomFormStringField>()),
+  ),
+  _case<List<String>>(
+    'stringMultiSelect',
+    build: (f) =>
+        f.stringMultiSelect('cities', const ['oslo'], source: _citySource()),
+    nextValue: (_) => const ['lima'],
+    material: TomFormStringFilterChips,
+    cupertino: TomCupertinoFormStringListCheckedPicker,
+    sharedBase: (f) => expect(f, isA<TomFormStringListField>()),
+  ),
+  _case<double>(
+    'currencyInput',
+    build: (f) => f.currencyInput('price', 9.99, currencyCode: 'EUR'),
+    nextValue: (_) => 19.5,
+    material: TomFormCurrencyDoubleInput,
+    cupertino: TomCupertinoFormCurrencyDoubleInput,
+    sharedBase: (f) => expect(f, isA<TomFormDoubleField>()),
+  ),
+  _case<bool>(
+    'boolToggle',
+    build: (f) => f.boolToggle('active', false),
+    nextValue: (_) => true,
+    material: TomFormBoolToggle,
+    cupertino: TomCupertinoFormBoolToggle,
+    sharedBase: (f) => expect(f, isA<TomFormBoolField>()),
+  ),
+  _case<DateTime>(
+    'dateTimePicker',
+    build: (f) => f.dateTimePicker(
+      'startsAt',
+      DateTime(2024, 3, 4, 9, 30),
+      firstDate: _first,
+      lastDate: _last,
+    ),
+    nextValue: (_) => DateTime(2025, 6, 7, 17, 45),
+    material: TomFormDateTimePicker,
+    cupertino: TomCupertinoFormDateTimePicker,
+    sharedBase: (f) => expect(f, isA<TomFormDateTimeField>()),
+  ),
+  _case<DateTimeRange>(
+    'dateRangePicker',
+    build: (f) => f.dateRangePicker(
+      'span',
+      DateTimeRange(start: DateTime(2024, 3, 4), end: DateTime(2024, 3, 8)),
+      firstDate: _first,
+      lastDate: _last,
+    ),
+    nextValue: (_) =>
+        DateTimeRange(start: DateTime(2025, 1, 1), end: DateTime(2025, 1, 9)),
+    material: TomFormDateRangePicker,
+    cupertino: TomCupertinoFormDateRangePicker,
+    sharedBase: (f) => expect(f, isA<TomFormDateRangeField>()),
+  ),
+  _case<Duration>(
+    'durationPicker',
+    build: (f) => f.durationPicker('takes', const Duration(minutes: 30)),
+    nextValue: (_) => const Duration(hours: 2, minutes: 15),
+    material: TomFormDurationInput,
+    cupertino: TomCupertinoFormDurationPicker,
+    sharedBase: (f) => expect(f, isA<TomFormDurationField>()),
+  ),
+  _case<Priority>(
+    'enumSegmented',
+    build: (f) => f.enumSegmented<Priority>(
+      'prio',
+      Priority.low,
+      source: _prioritySource(),
+    ),
+    nextValue: (_) => Priority.high,
+    material: TomFormEnumSegmented<Priority>,
+    cupertino: TomCupertinoFormEnumSegmented<Priority>,
+    sharedBase: (f) => expect(f, isA<TomFormEnumField<Priority>>()),
+  ),
+];
 
 void main() {
   setUp(() {
@@ -357,8 +355,11 @@ void main() {
           test('tracks dirtiness against the committed baseline', () {
             final field = c.build(family);
             final initial = field.get();
-            expect(field.isDirty, isFalse,
-                reason: 'a freshly built field is clean');
+            expect(
+              field.isDirty,
+              isFalse,
+              reason: 'a freshly built field is clean',
+            );
 
             c.mutate(field);
             expect(field.get(), isNot(initial));
@@ -370,11 +371,17 @@ void main() {
 
             c.mutate(field);
             field.commit();
-            expect(field.isDirty, isFalse,
-                reason: 'commit moves the baseline to the current value');
+            expect(
+              field.isDirty,
+              isFalse,
+              reason: 'commit moves the baseline to the current value',
+            );
             expect(field.initialValue, field.get());
-            expect(field.validationState, isA<ValidationPristine>(),
-                reason: 'commit clears validation — no errors after a save');
+            expect(
+              field.validationState,
+              isA<ValidationPristine>(),
+              reason: 'commit clears validation — no errors after a save',
+            );
           });
 
           test('is editable and visible with no authorization narrowing', () {
@@ -409,8 +416,11 @@ void main() {
       for (final c in _cases()) {
         final m = c.build(FormFieldFamily.material);
         final cup = c.build(FormFieldFamily.cupertino);
-        expect(m.runtimeType, isNot(cup.runtimeType),
-            reason: '${c.name}: the families must not collapse to one class');
+        expect(
+          m.runtimeType,
+          isNot(cup.runtimeType),
+          reason: '${c.name}: the families must not collapse to one class',
+        );
         c.sharedBase(m);
         c.sharedBase(cup);
       }
@@ -446,8 +456,11 @@ void main() {
           '',
           validators: [Validators.required()],
         );
-        expect(await field.validate(), isA<ValidationError>(),
-            reason: 'an empty required field is invalid in either family');
+        expect(
+          await field.validate(),
+          isA<ValidationError>(),
+          reason: 'an empty required field is invalid in either family',
+        );
 
         field.setValue('Ada');
         expect(await field.validate(), isA<ValidationSuccess>());
@@ -462,33 +475,36 @@ void main() {
         final field = family.stringInput(
           'name',
           '',
-          uiStateController:
-              TomUIStateController(resolve: (_, _) => TomAuthState.read),
+          uiStateController: TomUIStateController(
+            resolve: (_, _) => TomAuthState.read,
+          ),
         );
         expect(field.isEditable, isFalse);
         expect(field.isVisible, isTrue);
       }
     });
 
-    test('enumPickerFor labels its options from resources in either family',
-        () async {
-      TomTextResourceProvider.setAppResourceProvider(
-        TomTextResourceProvider.from({
-          'Priority': {'low': 'Niedrig', 'high': 'Hoch'},
-        }),
-      );
-      for (final family in const [
-        FormFieldFamily.material,
-        FormFieldFamily.cupertino,
-      ]) {
-        final field = family.enumPickerFor<Priority>(
-          'prio',
-          Priority.low,
-          values: Priority.values,
+    test(
+      'enumPickerFor labels its options from resources in either family',
+      () async {
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from({
+            'Priority': {'low': 'Niedrig', 'high': 'Hoch'},
+          }),
         );
-        expect(field, isA<TomFormEnumField<Priority>>());
-        expect(field.get(), Priority.low);
-      }
-    });
+        for (final family in const [
+          FormFieldFamily.material,
+          FormFieldFamily.cupertino,
+        ]) {
+          final field = family.enumPickerFor<Priority>(
+            'prio',
+            Priority.low,
+            values: Priority.values,
+          );
+          expect(field, isA<TomFormEnumField<Priority>>());
+          expect(field.get(), Priority.low);
+        }
+      },
+    );
   });
 }

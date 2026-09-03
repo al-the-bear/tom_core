@@ -21,11 +21,11 @@ class _DropdownField extends TomField<String>
 
   @override
   Widget get widget => Builder(
-        builder: (context) => decorateField(
-          context,
-          const SizedBox(width: 10, height: 10, key: ValueKey('inner')),
-        ),
-      );
+    builder: (context) => decorateField(
+      context,
+      const SizedBox(width: 10, height: 10, key: ValueKey('inner')),
+    ),
+  );
 }
 
 Widget _wrap(Widget child, {TomFormStyle? style}) {
@@ -42,46 +42,54 @@ void main() {
   group('TomDropdownDecorationMixin', () {
     testWidgets('dropdownStyle override wins over defaults', (tester) async {
       final field = _DropdownField('city', '', labelText: 'City');
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(labelPlacement: LabelPlacement.above),
-          dropdownStyle: TomDropdownStyle(
-            labelPlacement: LabelPlacement.hidden,
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(labelPlacement: LabelPlacement.above),
+            dropdownStyle: TomDropdownStyle(
+              labelPlacement: LabelPlacement.hidden,
+            ),
           ),
         ),
-      ));
+      );
       expect(find.text('City'), findsNothing);
     });
 
-    testWidgets('falls back to defaults when dropdownStyle is null',
-        (tester) async {
+    testWidgets('falls back to defaults when dropdownStyle is null', (
+      tester,
+    ) async {
       final field = _DropdownField('city', '', labelText: 'City');
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(labelPlacement: LabelPlacement.above),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(labelPlacement: LabelPlacement.above),
+          ),
         ),
-      ));
+      );
       expect(find.text('City'), findsOneWidget);
     });
 
-    testWidgets('required indicator respects dropdownStyle override',
-        (tester) async {
+    testWidgets('required indicator respects dropdownStyle override', (
+      tester,
+    ) async {
       final field = _DropdownField(
         'city',
         '',
         labelText: 'City',
         validators: [Validators.requiredInstance],
       );
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          dropdownStyle: TomDropdownStyle(
-            requiredIndicator: RequiredIndicator.text,
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            dropdownStyle: TomDropdownStyle(
+              requiredIndicator: RequiredIndicator.text,
+            ),
           ),
         ),
-      ));
+      );
       expect(find.text(' (required)'), findsOneWidget);
       expect(find.text(' *'), findsNothing);
     });

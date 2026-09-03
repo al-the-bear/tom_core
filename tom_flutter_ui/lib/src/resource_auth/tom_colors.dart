@@ -189,10 +189,7 @@ abstract class _RegistryFirstColorAdapter implements TomUIColorAdapter {
     // ARGB -> AARRGGBB. Doubling preserves channel order, so the alpha-first
     // reading below applies to the 4-digit form for free.
     if (value.length == 3 || value.length == 4) {
-      value = value
-          .split('')
-          .map((c) => '$c$c')
-          .join();
+      value = value.split('').map((c) => '$c$c').join();
     }
 
     // Six digits carry no alpha, so the colour is opaque.
@@ -230,7 +227,6 @@ abstract class _RegistryFirstColorAdapter implements TomUIColorAdapter {
 
     return Color.fromARGB(alpha, red, green, blue);
   }
-
 }
 
 /// Default adapter using all generated Flutter colors (Material + Cupertino).

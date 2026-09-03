@@ -62,13 +62,9 @@ void main() {
     });
 
     test('over value null falls back to base pair', () {
-      final result = s.pickPair<double>(
-        700,
-        null,
-        const [],
-        4.0,
-        const [(600, 8.0)],
-      );
+      final result = s.pickPair<double>(700, null, const [], 4.0, const [
+        (600, 8.0),
+      ]);
       expect(result, 8.0);
     });
 

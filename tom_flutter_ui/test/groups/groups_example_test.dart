@@ -54,8 +54,7 @@ void main() {
     });
 
     test('controlsWidest narrows a member to the group ceiling', () {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'g': TomAuthState.read});
+      TomAuthorization.adapter = _PathAuthAdapter({'g': TomAuthState.read});
       final g = TomAuthorizationGroup('g'); // controlsWidest
       expect(g.applyMode(TomAuthState.full), TomAuthState.read);
       // A member already narrower than the ceiling is unaffected.
@@ -63,17 +62,18 @@ void main() {
     });
 
     test('controlsAll replaces the member state', () {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'g': TomAuthState.disabled});
+      TomAuthorization.adapter = _PathAuthAdapter({'g': TomAuthState.disabled});
       final g = TomAuthorizationGroup('g', mode: AuthGroupMode.controlsAll);
       expect(g.applyMode(TomAuthState.full), TomAuthState.disabled);
       expect(g.applyMode(TomAuthState.none), TomAuthState.disabled);
     });
 
     test('controlsNarrowest lifts a restrictive member to the group floor', () {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'g': TomAuthState.read});
-      final g = TomAuthorizationGroup('g', mode: AuthGroupMode.controlsNarrowest);
+      TomAuthorization.adapter = _PathAuthAdapter({'g': TomAuthState.read});
+      final g = TomAuthorizationGroup(
+        'g',
+        mode: AuthGroupMode.controlsNarrowest,
+      );
       expect(g.applyMode(TomAuthState.disabled), TomAuthState.read);
       // A member already wider than the floor is unaffected.
       expect(g.applyMode(TomAuthState.full), TomAuthState.full);
@@ -173,8 +173,11 @@ void main() {
       installRules();
       final g = TomAuthorizationGroup('shipping');
 
-      final field = _GroupedField('street', tomGroup: g,
-          scope: detachedCheckout());
+      final field = _GroupedField(
+        'street',
+        tomGroup: g,
+        scope: detachedCheckout(),
+      );
 
       expect(field.basePath, 'checkout.street');
       expect(field.getAuth(), TomAuthState.read);
@@ -184,9 +187,11 @@ void main() {
       installRules();
       final g = TomAuthorizationGroup('shipping');
 
-      final explicit =
-          _GroupedField('street', tomGroup: g, scope: detachedCheckout())
-              .getAuth();
+      final explicit = _GroupedField(
+        'street',
+        tomGroup: g,
+        scope: detachedCheckout(),
+      ).getAuth();
       final ambient = TomScope.withScope(
         'checkout',
         () => _GroupedField('street', tomGroup: g).getAuth(),
@@ -201,8 +206,11 @@ void main() {
       installRules();
       final g = TomAuthorizationGroup('shipping');
 
-      final node =
-          _PolicyProbe(tomId: 'street', tomGroup: g, scope: detachedCheckout());
+      final node = _PolicyProbe(
+        tomId: 'street',
+        tomGroup: g,
+        scope: detachedCheckout(),
+      );
 
       expect(node.basePath, 'checkout.street');
       expect(node.resolveEffectiveAuth(), TomAuthState.read);
@@ -220,8 +228,11 @@ void main() {
       });
       final g = TomAuthorizationGroup('shipping');
 
-      final node =
-          _PolicyProbe(tomId: 'street', tomGroup: g, scope: detachedCheckout());
+      final node = _PolicyProbe(
+        tomId: 'street',
+        tomGroup: g,
+        scope: detachedCheckout(),
+      );
       g.register(node);
 
       expect(g.members, isEmpty);

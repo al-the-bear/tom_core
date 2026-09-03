@@ -84,9 +84,9 @@ class TomCupertinoFormStringInput extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoStringInputWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoStringInputWidget(field: this),
+  );
 }
 
 class _CupertinoStringInputWidget extends StatefulWidget {
@@ -112,13 +112,15 @@ class _CupertinoStringInputWidgetState
     super.initState();
     _controller = TextEditingController(text: field.get());
     _focusNode = FocusNode();
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final next = (observable as TomObject<String>).get();
-        if (_controller.text != next) _controller.text = next;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final next = (observable as TomObject<String>).get();
+            if (_controller.text != next) _controller.text = next;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -209,9 +211,9 @@ class TomCupertinoFormStringSearchInput extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoSearchInputWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoSearchInputWidget(field: this),
+  );
 }
 
 class _CupertinoSearchInputWidget extends StatefulWidget {
@@ -235,13 +237,15 @@ class _CupertinoSearchInputWidgetState
   void initState() {
     super.initState();
     _controller = TextEditingController(text: field.get());
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final next = (observable as TomObject<String>).get();
-        if (_controller.text != next) _controller.text = next;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final next = (observable as TomObject<String>).get();
+            if (_controller.text != next) _controller.text = next;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -337,9 +341,9 @@ class TomCupertinoFormStringPicker extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoStringPickerWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoStringPickerWidget(field: this),
+  );
 }
 
 class _CupertinoStringPickerWidget extends StatefulWidget {
@@ -363,9 +367,11 @@ class _CupertinoStringPickerWidgetState
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -429,8 +435,9 @@ class _CupertinoStringPickerWidgetState
                 Expanded(
                   child: CupertinoPicker(
                     itemExtent: 32,
-                    scrollController:
-                        FixedExtentScrollController(initialItem: initialIndex),
+                    scrollController: FixedExtentScrollController(
+                      initialItem: initialIndex,
+                    ),
                     onSelectedItemChanged: (i) => tempIndex = i,
                     children: [
                       for (final item in _items)
@@ -448,9 +455,12 @@ class _CupertinoStringPickerWidgetState
 
   String _displayLabel() {
     final v = field.get();
-    if (v.isEmpty) return field.hintText ?? TomFormLabels.choose(field.basePath);
-    final found =
-        _items.where((i) => i.value == v).map((i) => i.label).firstOrNull;
+    if (v.isEmpty)
+      return field.hintText ?? TomFormLabels.choose(field.basePath);
+    final found = _items
+        .where((i) => i.value == v)
+        .map((i) => i.label)
+        .firstOrNull;
     return found ?? v;
   }
 
@@ -535,9 +545,9 @@ class TomCupertinoFormStringSegmented extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoStringSegmentedWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoStringSegmentedWidget(field: this),
+  );
 }
 
 class _CupertinoStringSegmentedWidget extends StatefulWidget {
@@ -561,9 +571,11 @@ class _CupertinoStringSegmentedWidgetState
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 

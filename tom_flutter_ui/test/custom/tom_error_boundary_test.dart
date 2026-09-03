@@ -65,7 +65,9 @@ void main() {
   // -------------------------------------------------------------------------
   group('TomErrorBoundary happy path', () {
     testWidgets('renders the child untouched', (tester) async {
-      await tester.pumpWidget(_app(const TomErrorBoundary(child: Text('safe'))));
+      await tester.pumpWidget(
+        _app(const TomErrorBoundary(child: Text('safe'))),
+      );
 
       expect(find.text('safe'), findsOneWidget);
       expect(find.text('Something went wrong'), findsNothing);
@@ -74,10 +76,11 @@ void main() {
     testWidgets('does not invoke onError', (tester) async {
       var calls = 0;
 
-      await tester.pumpWidget(_app(TomErrorBoundary(
-        onError: (_) => calls++,
-        child: const Text('safe'),
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(onError: (_) => calls++, child: const Text('safe')),
+        ),
+      );
 
       expect(calls, 0);
     });
@@ -85,14 +88,18 @@ void main() {
 
   // -------------------------------------------------------------------------
   group('TomErrorBoundary catching', () {
-    testWidgets('a throwing child is replaced by the default fallback',
-        (tester) async {
+    testWidgets('a throwing child is replaced by the default fallback', (
+      tester,
+    ) async {
       await tester.pumpWidget(_app(const TomErrorBoundary(child: _Boom())));
       await _settleError(tester);
 
       expect(find.text('Something went wrong'), findsOneWidget);
-      expect(find.textContaining('boom'), findsOneWidget,
-          reason: 'the exception text is shown, not swallowed');
+      expect(
+        find.textContaining('boom'),
+        findsOneWidget,
+        reason: 'the exception text is shown, not swallowed',
+      );
       expect(find.widgetWithText(TextButton, 'Retry'), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
       tester.takeException();
@@ -101,10 +108,14 @@ void main() {
     testWidgets('onError receives the details', (tester) async {
       FlutterErrorDetails? seen;
 
-      await tester.pumpWidget(_app(TomErrorBoundary(
-        onError: (d) => seen = d,
-        child: const _Boom(message: 'kaboom'),
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(
+            onError: (d) => seen = d,
+            child: const _Boom(message: 'kaboom'),
+          ),
+        ),
+      );
       await _settleError(tester);
 
       expect(seen, isNotNull);
@@ -114,12 +125,15 @@ void main() {
     });
 
     testWidgets('a custom fallback replaces the default card', (tester) async {
-      await tester.pumpWidget(_app(TomErrorBoundary(
-        fallbackBuilder: (context, details, retry) => Text(
-          'custom:${details.exceptionAsString().contains('boom')}',
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(
+            fallbackBuilder: (context, details, retry) =>
+                Text('custom:${details.exceptionAsString().contains('boom')}'),
+            child: const _Boom(),
+          ),
         ),
-        child: const _Boom(),
-      )));
+      );
       await _settleError(tester);
 
       expect(find.text('custom:true'), findsOneWidget);
@@ -146,8 +160,9 @@ void main() {
       fail.dispose();
     });
 
-    testWidgets('a retry into a still-broken child falls back again',
-        (tester) async {
+    testWidgets('a retry into a still-broken child falls back again', (
+      tester,
+    ) async {
       final fail = ValueNotifier(true);
       await tester.pumpWidget(_app(TomErrorBoundary(child: _Flaky(fail))));
       await _settleError(tester);
@@ -163,11 +178,15 @@ void main() {
 
     testWidgets('the custom fallback gets a working retry', (tester) async {
       final fail = ValueNotifier(true);
-      await tester.pumpWidget(_app(TomErrorBoundary(
-        fallbackBuilder: (context, details, retry) =>
-            TextButton(onPressed: retry, child: const Text('again')),
-        child: _Flaky(fail),
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(
+            fallbackBuilder: (context, details, retry) =>
+                TextButton(onPressed: retry, child: const Text('again')),
+            child: _Flaky(fail),
+          ),
+        ),
+      );
       await _settleError(tester);
       tester.takeException();
 
@@ -188,18 +207,24 @@ void main() {
       final outerErrors = <FlutterErrorDetails>[];
       final innerErrors = <FlutterErrorDetails>[];
 
-      await tester.pumpWidget(_app(TomErrorBoundary(
-        onError: outerErrors.add,
-        fallbackBuilder: (_, _, _) => const Text('outer-fallback'),
-        child: Column(children: [
-          const Text('outer-ok'),
+      await tester.pumpWidget(
+        _app(
           TomErrorBoundary(
-            onError: innerErrors.add,
-            fallbackBuilder: (_, _, _) => const Text('inner-fallback'),
-            child: const _Boom(),
+            onError: outerErrors.add,
+            fallbackBuilder: (_, _, _) => const Text('outer-fallback'),
+            child: Column(
+              children: [
+                const Text('outer-ok'),
+                TomErrorBoundary(
+                  onError: innerErrors.add,
+                  fallbackBuilder: (_, _, _) => const Text('inner-fallback'),
+                  child: const _Boom(),
+                ),
+              ],
+            ),
           ),
-        ]),
-      )));
+        ),
+      );
       await _settleError(tester);
 
       expect(innerErrors, hasLength(1));
@@ -210,31 +235,47 @@ void main() {
     });
 
     testWidgets('the surviving siblings keep rendering', (tester) async {
-      await tester.pumpWidget(_app(TomErrorBoundary(
-        child: Column(children: [
-          const Text('outer-ok'),
+      await tester.pumpWidget(
+        _app(
           TomErrorBoundary(
-            fallbackBuilder: (_, _, _) => const Text('inner-fallback'),
-            child: const _Boom(),
+            child: Column(
+              children: [
+                const Text('outer-ok'),
+                TomErrorBoundary(
+                  fallbackBuilder: (_, _, _) => const Text('inner-fallback'),
+                  child: const _Boom(),
+                ),
+              ],
+            ),
           ),
-        ]),
-      )));
+        ),
+      );
       await _settleError(tester);
 
-      expect(find.text('outer-ok'), findsOneWidget,
-          reason: 'containment: one broken row does not take the list with it');
+      expect(
+        find.text('outer-ok'),
+        findsOneWidget,
+        reason: 'containment: one broken row does not take the list with it',
+      );
       tester.takeException();
     });
 
-    testWidgets('two sibling boundaries are contained independently',
-        (tester) async {
-      await tester.pumpWidget(_app(Column(children: [
-        TomErrorBoundary(
-          fallbackBuilder: (_, _, _) => const Text('first-fallback'),
-          child: const _Boom(),
+    testWidgets('two sibling boundaries are contained independently', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          Column(
+            children: [
+              TomErrorBoundary(
+                fallbackBuilder: (_, _, _) => const Text('first-fallback'),
+                child: const _Boom(),
+              ),
+              const TomErrorBoundary(child: Text('second-ok')),
+            ],
+          ),
         ),
-        const TomErrorBoundary(child: Text('second-ok')),
-      ])));
+      );
       await _settleError(tester);
 
       expect(find.text('first-fallback'), findsOneWidget);
@@ -252,24 +293,33 @@ void main() {
       expect(ErrorWidget.builder, isNot(same(original)));
 
       await tester.pumpWidget(_app(const SizedBox.shrink()));
-      expect(ErrorWidget.builder, same(original),
-          reason: 'the last boundary out restores what the first one found');
+      expect(
+        ErrorWidget.builder,
+        same(original),
+        reason: 'the last boundary out restores what the first one found',
+      );
     });
 
-    testWidgets('the inner boundary mounting does not stomp the saved builder',
-        (tester) async {
-      // Ref-counting, not last-writer-wins: an inner boundary mounting and
-      // unmounting must leave the original builder recoverable.
-      final original = ErrorWidget.builder;
+    testWidgets(
+      'the inner boundary mounting does not stomp the saved builder',
+      (tester) async {
+        // Ref-counting, not last-writer-wins: an inner boundary mounting and
+        // unmounting must leave the original builder recoverable.
+        final original = ErrorWidget.builder;
 
-      await tester.pumpWidget(_app(const TomErrorBoundary(
-        child: TomErrorBoundary(child: Text('nested')),
-      )));
-      await tester.pumpWidget(_app(const TomErrorBoundary(child: Text('a'))));
-      expect(ErrorWidget.builder, isNot(same(original)));
+        await tester.pumpWidget(
+          _app(
+            const TomErrorBoundary(
+              child: TomErrorBoundary(child: Text('nested')),
+            ),
+          ),
+        );
+        await tester.pumpWidget(_app(const TomErrorBoundary(child: Text('a'))));
+        expect(ErrorWidget.builder, isNot(same(original)));
 
-      await tester.pumpWidget(_app(const SizedBox.shrink()));
-      expect(ErrorWidget.builder, same(original));
-    });
+        await tester.pumpWidget(_app(const SizedBox.shrink()));
+        expect(ErrorWidget.builder, same(original));
+      },
+    );
   });
 }

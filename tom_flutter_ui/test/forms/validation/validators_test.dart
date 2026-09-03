@@ -228,12 +228,14 @@ void main() {
     group('maxItems()', () {
       final validator = Validators.maxItems(2);
 
-      test('returns success when the selection is within the maximum',
-          () async {
-        expect(await validator(const <String>[]), isA<ValidationSuccess>());
-        expect(await validator(['a']), isA<ValidationSuccess>());
-        expect(await validator(['a', 'b']), isA<ValidationSuccess>());
-      });
+      test(
+        'returns success when the selection is within the maximum',
+        () async {
+          expect(await validator(const <String>[]), isA<ValidationSuccess>());
+          expect(await validator(['a']), isA<ValidationSuccess>());
+          expect(await validator(['a', 'b']), isA<ValidationSuccess>());
+        },
+      );
 
       test('returns error when too many items are selected', () async {
         final result = await validator(['a', 'b', 'c']);
@@ -279,10 +281,7 @@ void main() {
 
         final result = await validator('abc');
         expect(result, isA<ValidationError>());
-        expect(
-          (result as ValidationError).errorKey,
-          'error.minLength',
-        );
+        expect((result as ValidationError).errorKey, 'error.minLength');
       });
 
       test('returns success for empty validator list', () async {
@@ -310,10 +309,7 @@ void main() {
 
         final errorResult = await validator('noatsign');
         expect(errorResult, isA<ValidationError>());
-        expect(
-          (errorResult as ValidationError).errorKey,
-          'error.needsAt',
-        );
+        expect((errorResult as ValidationError).errorKey, 'error.needsAt');
       });
 
       // The short-circuit is on "not success", which is wider than "error" —

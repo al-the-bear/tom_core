@@ -26,10 +26,10 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// the documentation invites.
 Acl buildWithVariant() {
   return AclBuilder(
-    title: 'Outer',
-    padding: const EdgeInsets.all(11),
-    backgroundColor: const Color(0xFF123456),
-  )
+        title: 'Outer',
+        padding: const EdgeInsets.all(11),
+        backgroundColor: const Color(0xFF123456),
+      )
       .setAclDefaultAppendGap(40)
       .setAclDefaultRowGap(20)
       .setAclDefaultRowHeight(50)
@@ -69,8 +69,10 @@ void main() {
       expect(base[1].gapBefore, 20.0);
       expect(base[0].height, 50.0);
       expect(base[0].alignment, RowAlignment.right);
-      expect(base[0].components[0].rowCrossAlignment,
-          AclRowCrossAlignment.bottom);
+      expect(
+        base[0].components[0].rowCrossAlignment,
+        AclRowCrossAlignment.bottom,
+      );
       expect(base[0].components[0].flags, AclFlags.expandX);
       expect(base[0].components[0].preferredSize, const Size(222, 33));
       expect(base[0].components[0].minimumSize, const Size(44, 55));
@@ -112,8 +114,10 @@ void main() {
     });
 
     test('the vertical alignment falls back to top', () {
-      expect(variant[0].components[0].rowCrossAlignment,
-          AclRowCrossAlignment.top);
+      expect(
+        variant[0].components[0].rowCrossAlignment,
+        AclRowCrossAlignment.top,
+      );
     });
 
     test('the flags register falls back to empty', () {
@@ -121,8 +125,10 @@ void main() {
     });
 
     test('the unknown preferred size falls back to 150 x 0', () {
-      expect(variant[0].components[0].preferredSize,
-          const Size(AclBuilder.defaultPreferredWidth, 0));
+      expect(
+        variant[0].components[0].preferredSize,
+        const Size(AclBuilder.defaultPreferredWidth, 0),
+      );
     });
 
     test('the unknown minimum size falls back to none', () {

@@ -20,7 +20,10 @@ void main() {
       expect(ErrorPlacement.values, contains(ErrorPlacement.above));
       expect(ErrorPlacement.values, contains(ErrorPlacement.tooltip));
       expect(ErrorPlacement.values, contains(ErrorPlacement.both));
-      expect(ErrorPlacement.values, contains(ErrorPlacement.replaceDescription));
+      expect(
+        ErrorPlacement.values,
+        contains(ErrorPlacement.replaceDescription),
+      );
     });
   });
 
@@ -53,10 +56,7 @@ void main() {
         ActionIconPlacement.values,
         contains(ActionIconPlacement.trailing),
       );
-      expect(
-        ActionIconPlacement.values,
-        contains(ActionIconPlacement.leading),
-      );
+      expect(ActionIconPlacement.values, contains(ActionIconPlacement.leading));
       expect(ActionIconPlacement.values, contains(ActionIconPlacement.above));
     });
   });

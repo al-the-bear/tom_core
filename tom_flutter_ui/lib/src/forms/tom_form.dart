@@ -156,8 +156,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// Nested forms discovered via TomClass reflection. Populated on first
   /// access so bind / isDirty / isValid / save / discard / validate can
   /// fan out without every caller having to enumerate children by hand.
-  Iterable<TomForm> get nestedForms =>
-      getMembers().values.whereType<TomForm>();
+  Iterable<TomForm> get nestedForms => getMembers().values.whereType<TomForm>();
 
   /// Non-`TomForm` lifecycle children (today: `TomListForm`). Unlike
   /// [nestedForms] these can't be discovered through `getMembers()` —
@@ -459,11 +458,13 @@ abstract class TomForm<T extends TomClass> extends TomClass
       final result = fieldResults.elementAt(i);
       if (result is ValidationError) {
         final field = fields.values.elementAt(i);
-        errors.add(FormValidationError(
-          errorKey: result.errorKey,
-          params: result.params,
-          fields: [field],
-        ));
+        errors.add(
+          FormValidationError(
+            errorKey: result.errorKey,
+            params: result.params,
+            fields: [field],
+          ),
+        );
       }
     }
 
@@ -501,14 +502,12 @@ abstract class TomForm<T extends TomClass> extends TomClass
   Map<String, dynamic>? get initialSnapshot => _initialSnapshot;
 
   /// All fields that currently have validation errors.
-  List<TomField> get fieldsWithErrors => fields.values
-      .where((f) => f.validationState is ValidationError)
-      .toList();
+  List<TomField> get fieldsWithErrors =>
+      fields.values.where((f) => f.validationState is ValidationError).toList();
 
   /// All fields whose values differ from initial.
-  List<TomField> get dirtyFields => fields.values
-      .where((f) => f.isDirty)
-      .toList();
+  List<TomField> get dirtyFields =>
+      fields.values.where((f) => f.isDirty).toList();
 
   // --- Lifecycle hooks ---
 
@@ -604,8 +603,8 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     this.actionIcon,
     this.actionIconTooltip,
     this.onActionIconPressed,
-  })  : _codeValidators = validators,
-        super(_initialValue) {
+  }) : _codeValidators = validators,
+       super(_initialValue) {
     // When the field knows its form, derive scope from the form's
     // basePath — so a field can be instantiated at its declaration site
     // (e.g. `late final x = TomFormStringInput('x', '', form: this)`)
@@ -613,9 +612,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     // regardless of whatever TomScope.current happens to carry when the
     // late initializer fires (typically during reflection-driven member
     // enumeration, where only the outer scope is pushed).
-    scope = form != null
-        ? form!.basePath
-        : TomScope.current.getScopePath();
+    scope = form != null ? form!.basePath : TomScope.current.getScopePath();
     basePath = TomScopePath.join(scope, tomId);
     tomGroup?.register(this);
   }
@@ -673,11 +670,13 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     final oldValue = get();
     if (newValue == oldValue) return;
     set(newValue);
-    form?._fireEvent(FieldValueChangedEvent(
-      source: tomId,
-      oldValue: oldValue,
-      newValue: newValue,
-    ));
+    form?._fireEvent(
+      FieldValueChangedEvent(
+        source: tomId,
+        oldValue: oldValue,
+        newValue: newValue,
+      ),
+    );
     // Transition out of pristine — clear to success for UX responsiveness.
     _slowValidationPending = false;
     _validationNotifier.value = const ValidationSuccess();
@@ -699,10 +698,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
         _slowValidationPending = false;
         _slowDebounceTimer?.cancel();
         _validationNotifier.value = result;
-        form?._fireEvent(FieldValidatedEvent(
-          source: tomId,
-          result: result,
-        ));
+        form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
         return;
       }
     }
@@ -711,10 +707,9 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       // No slow validators or they haven't started yet — mark success for now
       if (!hasSlowValidators) {
         _validationNotifier.value = const ValidationSuccess();
-        form?._fireEvent(FieldValidatedEvent(
-          source: tomId,
-          result: _validationNotifier.value,
-        ));
+        form?._fireEvent(
+          FieldValidatedEvent(source: tomId, result: _validationNotifier.value),
+        );
       }
     }
   }
@@ -728,10 +723,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       if (result is ValidationError) {
         _slowValidationPending = false;
         _validationNotifier.value = result;
-        form?._fireEvent(FieldValidatedEvent(
-          source: tomId,
-          result: result,
-        ));
+        form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
         return;
       }
     }
@@ -745,19 +737,15 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       if (result is ValidationError) {
         _slowValidationPending = false;
         _validationNotifier.value = result;
-        form?._fireEvent(FieldValidatedEvent(
-          source: tomId,
-          result: result,
-        ));
+        form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
         return;
       }
     }
     _slowValidationPending = false;
     _validationNotifier.value = const ValidationSuccess();
-    form?._fireEvent(FieldValidatedEvent(
-      source: tomId,
-      result: _validationNotifier.value,
-    ));
+    form?._fireEvent(
+      FieldValidatedEvent(source: tomId, result: _validationNotifier.value),
+    );
   }
 
   /// Commit current value as the new initial value.
@@ -854,8 +842,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Subclasses that carry an explicit label-text override (e.g.
   /// [TomFormStringField]) should override this to surface that override
   /// at the highest priority, before the resource lookup.
-  String get resolvedLabel =>
-      TomCtr.textOrNull(basePath, 'label') ?? tomId;
+  String get resolvedLabel => TomCtr.textOrNull(basePath, 'label') ?? tomId;
 
   /// Translates the field's current [ValidationError] to a human-readable
   /// string, or returns an empty string when the field has no error.
@@ -871,7 +858,8 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   String get resolvedErrorMessage {
     final state = validationState;
     if (state is! ValidationError) return '';
-    final template = TomCtr.textOrNull(basePath, state.errorKey) ??
+    final template =
+        TomCtr.textOrNull(basePath, state.errorKey) ??
         TomCtr.textOrNull(state.errorKey) ??
         state.errorKey;
     return state.interpolate(template);
@@ -924,8 +912,9 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Backed by a [ValueNotifier] so UI rebuilds are driven independently
   /// from value-change observers. Validation transitions must NOT call
   /// [notifyObservers] — that channel is for value changes only.
-  final ValueNotifier<ValidationResult> _validationNotifier =
-      ValueNotifier(const ValidationPristine());
+  final ValueNotifier<ValidationResult> _validationNotifier = ValueNotifier(
+    const ValidationPristine(),
+  );
 
   /// Listenable fired when the validation state changes. UI code (field
   /// widgets, `TomFormInspector`, …) should subscribe here rather than
@@ -977,10 +966,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       if (result is ValidationError) {
         _slowValidationPending = false;
         _validationNotifier.value = result;
-        form?._fireEvent(FieldValidatedEvent(
-          source: tomId,
-          result: result,
-        ));
+        form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
         return result;
       }
     }
@@ -997,10 +983,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
         if (result is ValidationError) {
           _slowValidationPending = false;
           _validationNotifier.value = result;
-          form?._fireEvent(FieldValidatedEvent(
-            source: tomId,
-            result: result,
-          ));
+          form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
           return result;
         }
       }
@@ -1010,10 +993,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     const success = ValidationSuccess();
     if (_disposed) return success;
     _validationNotifier.value = success;
-    form?._fireEvent(FieldValidatedEvent(
-      source: tomId,
-      result: success,
-    ));
+    form?._fireEvent(FieldValidatedEvent(source: tomId, result: success));
     return success;
   }
 
@@ -1070,7 +1050,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 class TomTextFormFieldBase<T> extends TomField<T> {
   /// Returns translated text with scope prefix applied.
   String t(String key) => TomCtr.text(scope, key);
-  
+
   /// Returns translated text or `null` if no resource exists.
   String? tOrNull(String key) => TomCtr.textOrNull(scope, key);
 
@@ -1226,9 +1206,12 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   @override
   Widget get widget {
     // Parameter → resource → null
-    final resolvedLabel = labelText ?? TomCtr.textOrNull(scope, '$tomId.label') ?? tomId;
-    final resolvedHelper = helperText ?? TomCtr.textOrNull(scope, '$tomId.helperText');
-    final resolvedHint = hintText ?? TomCtr.textOrNull(scope, '$tomId.hintText');
+    final resolvedLabel =
+        labelText ?? TomCtr.textOrNull(scope, '$tomId.label') ?? tomId;
+    final resolvedHelper =
+        helperText ?? TomCtr.textOrNull(scope, '$tomId.helperText');
+    final resolvedHint =
+        hintText ?? TomCtr.textOrNull(scope, '$tomId.hintText');
     final resolvedPrefixIcon = prefixIcon ?? _resolveIconOrNull('prefixIcon');
     final resolvedSuffixIcon = suffixIcon ?? _resolveIconOrNull('suffixIcon');
 
@@ -1374,9 +1357,9 @@ class TomFormIntInputClassic extends TomTextFormFieldBase<int> {
     super.inputValidator,
     super.valueValidator,
   }) : super(
-          valueConverter: (s) => int.tryParse(s) ?? 0,
-          valueToTextConverter: (v) => v.toString(),
-        ) {
+         valueConverter: (s) => int.tryParse(s) ?? 0,
+         valueToTextConverter: (v) => v.toString(),
+       ) {
     // Add input validator to only allow digits and optional leading minus
     _inputValidators.add((value) {
       if (value.isEmpty) return null;
@@ -1424,9 +1407,9 @@ class TomFormDoubleInputClassic extends TomTextFormFieldBase<double> {
     super.inputValidator,
     super.valueValidator,
   }) : super(
-          valueConverter: (s) => double.tryParse(s) ?? 0.0,
-          valueToTextConverter: (v) => v.toString(),
-        ) {
+         valueConverter: (s) => double.tryParse(s) ?? 0.0,
+         valueToTextConverter: (v) => v.toString(),
+       ) {
     // Add input validator to only allow valid decimal numbers
     _inputValidators.add((value) {
       if (value.isEmpty) return null;
@@ -1480,6 +1463,12 @@ class TestFormClassic extends TomForm<TomClass> {
     // ignore: deprecated_member_use_from_same_package
     age = TomFormIntInputClassic('age', 0, form: this, min: 0, max: 150);
     // ignore: deprecated_member_use_from_same_package
-    rating = TomFormDoubleInputClassic('rating', 0.0, form: this, min: 0.0, max: 5.0);
+    rating = TomFormDoubleInputClassic(
+      'rating',
+      0.0,
+      form: this,
+      min: 0.0,
+      max: 5.0,
+    );
   }
 }

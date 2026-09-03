@@ -11,5 +11,4 @@
 /// the caller's signal to fall back to whatever bytes the picker supplied.
 library;
 
-export 'file_opener_stub.dart'
-    if (dart.library.io) 'file_opener_io.dart';
+export 'file_opener_stub.dart' if (dart.library.io) 'file_opener_io.dart';

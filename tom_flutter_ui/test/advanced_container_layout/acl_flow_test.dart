@@ -69,10 +69,10 @@ void main() {
     });
 
     test('a component wider than the line still gets a row, never dropped', () {
-      final rows = aclWrapRows(
-        [_item('narrow', width: 50), _item('huge', width: 900)],
-        availableWidth: 200,
-      );
+      final rows = aclWrapRows([
+        _item('narrow', width: 50),
+        _item('huge', width: 900),
+      ], availableWidth: 200);
 
       expect(rows.length, 2);
       expect(rows[1].components.single.child, isA<Text>());
@@ -168,10 +168,7 @@ void main() {
     });
 
     test('rejects a non-positive column count', () {
-      expect(
-        () => aclGridRows([_item('c0')], columns: 0),
-        throwsArgumentError,
-      );
+      expect(() => aclGridRows([_item('c0')], columns: 0), throwsArgumentError);
     });
 
     test('an empty child list produces no rows', () {
@@ -180,8 +177,9 @@ void main() {
   });
 
   group('AclFlowContainer — wrap kind renders through the ACL engine', () {
-    testWidgets('renders every child and breaks rows at the host width',
-        (tester) async {
+    testWidgets('renders every child and breaks rows at the host width', (
+      tester,
+    ) async {
       final container = AclFlowContainer(
         kind: AclFlowKind.wrap,
         aclId: 'chips',
@@ -198,10 +196,7 @@ void main() {
       // Three fit on the first line, so the fourth sits lower down.
       final firstRowY = tester.getTopLeft(find.text('chip0')).dy;
       expect(tester.getTopLeft(find.text('chip2')).dy, firstRowY);
-      expect(
-        tester.getTopLeft(find.text('chip3')).dy,
-        greaterThan(firstRowY),
-      );
+      expect(tester.getTopLeft(find.text('chip3')).dy, greaterThan(firstRowY));
     });
 
     testWidgets('a narrower host wraps earlier', (tester) async {
@@ -238,10 +233,7 @@ void main() {
       }
       final firstRowY = tester.getTopLeft(find.text('cell0')).dy;
       expect(tester.getTopLeft(find.text('cell1')).dy, firstRowY);
-      expect(
-        tester.getTopLeft(find.text('cell2')).dy,
-        greaterThan(firstRowY),
-      );
+      expect(tester.getTopLeft(find.text('cell2')).dy, greaterThan(firstRowY));
     });
 
     testWidgets('breakpoint overrides change the column count', (tester) async {

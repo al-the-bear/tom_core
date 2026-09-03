@@ -33,8 +33,9 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _app(Widget child) =>
-    MaterialApp(home: Scaffold(body: Center(child: child)));
+Widget _app(Widget child) => MaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
 TomUIStateController get _readOnly =>
     TomUIStateController(resolve: (_, _) => TomAuthState.read);
@@ -72,26 +73,27 @@ void main() {
   group('TomDateTimeFormat formatting', () {
     final d = DateTime(2026, 5, 7, 9, 3, 4);
 
-    test('pads the two-character date tokens and not the one-character ones',
-        () {
-      expect(TomDateTimeFormat('YYYY-MM-DD').formatDate(d), '2026-05-07');
-      expect(TomDateTimeFormat('YYYY-M-D').formatDate(d), '2026-5-7');
-    });
+    test(
+      'pads the two-character date tokens and not the one-character ones',
+      () {
+        expect(TomDateTimeFormat('YYYY-MM-DD').formatDate(d), '2026-05-07');
+        expect(TomDateTimeFormat('YYYY-M-D').formatDate(d), '2026-5-7');
+      },
+    );
 
     test('YY renders the last two digits of the year', () {
       expect(TomDateTimeFormat('YY-MM-DD').formatDate(d), '26-05-07');
-      expect(
-        TomDateTimeFormat('YY').formatDate(DateTime(2005, 1, 1)),
-        '05',
-      );
+      expect(TomDateTimeFormat('YY').formatDate(DateTime(2005, 1, 1)), '05');
     });
 
-    test('pads the two-character time tokens and not the one-character ones',
-        () {
-      const t = TimeOfDay(hour: 9, minute: 3);
-      expect(TomDateTimeFormat('HH:mm').formatTime(t), '09:03');
-      expect(TomDateTimeFormat('H:m').formatTime(t), '9:3');
-    });
+    test(
+      'pads the two-character time tokens and not the one-character ones',
+      () {
+        const t = TimeOfDay(hour: 9, minute: 3);
+        expect(TomDateTimeFormat('HH:mm').formatTime(t), '09:03');
+        expect(TomDateTimeFormat('H:m').formatTime(t), '9:3');
+      },
+    );
 
     test('formatDateTime renders date and time tokens from one value', () {
       expect(
@@ -101,10 +103,7 @@ void main() {
     });
 
     test('non-token characters pass through as literal separators', () {
-      expect(
-        TomDateTimeFormat('DD.MM.YYYY').formatDate(d),
-        '07.05.2026',
-      );
+      expect(TomDateTimeFormat('DD.MM.YYYY').formatDate(d), '07.05.2026');
       expect(
         TomDateTimeFormat('on DD/MM/YYYY').formatDate(d),
         // `o` and `n` are not tokens; `D` and `M` inside them are — which is
@@ -119,8 +118,9 @@ void main() {
       // not missing. Before this was fixed, the shipped `time24WithSeconds`
       // preset rendered `09:03:ss`, which then failed to parse back.
       expect(
-        TomDateTimeFormat.time24WithSeconds
-            .formatTime(const TimeOfDay(hour: 9, minute: 3)),
+        TomDateTimeFormat.time24WithSeconds.formatTime(
+          const TimeOfDay(hour: 9, minute: 3),
+        ),
         '09:03:00',
       );
     });
@@ -141,8 +141,9 @@ void main() {
       // Pinned because it is the visible symptom of pairing a date pattern
       // with a time field.
       expect(
-        TomDateTimeFormat('YYYY-MM-DD HH:mm')
-            .formatTime(const TimeOfDay(hour: 9, minute: 3)),
+        TomDateTimeFormat(
+          'YYYY-MM-DD HH:mm',
+        ).formatTime(const TimeOfDay(hour: 9, minute: 3)),
         'YYYY-MM-DD 09:03',
       );
     });
@@ -192,8 +193,11 @@ void main() {
         TomDateTimeFormat.time24,
         TomDateTimeFormat.time24WithSeconds,
       ]) {
-        expect(f.parseTime(f.formatTime(t)), t,
-            reason: 'round-trip failed for ${f.pattern}');
+        expect(
+          f.parseTime(f.formatTime(t)),
+          t,
+          reason: 'round-trip failed for ${f.pattern}',
+        );
       }
     });
 
@@ -203,42 +207,57 @@ void main() {
       // notices.
       const text = '05/07/2026';
       expect(
-        TomDateTimeFormat.europeanDate
-            .parseDate(text, firstDate: _first, lastDate: _last),
+        TomDateTimeFormat.europeanDate.parseDate(
+          text,
+          firstDate: _first,
+          lastDate: _last,
+        ),
         DateTime(2026, 7, 5),
       );
       expect(
-        TomDateTimeFormat.usDate
-            .parseDate(text, firstDate: _first, lastDate: _last),
+        TomDateTimeFormat.usDate.parseDate(
+          text,
+          firstDate: _first,
+          lastDate: _last,
+        ),
         DateTime(2026, 5, 7),
       );
     });
 
     test('YY expands into the 2000s', () {
       expect(
-        TomDateTimeFormat('YY-MM-DD')
-            .parseDate('26-05-07', firstDate: _first, lastDate: _last),
+        TomDateTimeFormat(
+          'YY-MM-DD',
+        ).parseDate('26-05-07', firstDate: _first, lastDate: _last),
         DateTime(2026, 5, 7),
       );
       expect(
-        TomDateTimeFormat('YY-MM-DD')
-            .parseDate('99-01-01', firstDate: _first, lastDate: _last),
+        TomDateTimeFormat(
+          'YY-MM-DD',
+        ).parseDate('99-01-01', firstDate: _first, lastDate: _last),
         DateTime(2099, 1, 1),
       );
     });
 
     test('single-character tokens accept one or two digits', () {
       final f = TomDateTimeFormat('YYYY-M-D');
-      expect(f.parseDate('2026-5-7', firstDate: _first, lastDate: _last),
-          DateTime(2026, 5, 7));
-      expect(f.parseDate('2026-05-07', firstDate: _first, lastDate: _last),
-          DateTime(2026, 5, 7));
+      expect(
+        f.parseDate('2026-5-7', firstDate: _first, lastDate: _last),
+        DateTime(2026, 5, 7),
+      );
+      expect(
+        f.parseDate('2026-05-07', firstDate: _first, lastDate: _last),
+        DateTime(2026, 5, 7),
+      );
     });
 
     test('surrounding whitespace is trimmed before matching', () {
       expect(
-        TomDateTimeFormat.isoDate
-            .parseDate('  2026-05-07  ', firstDate: _first, lastDate: _last),
+        TomDateTimeFormat.isoDate.parseDate(
+          '  2026-05-07  ',
+          firstDate: _first,
+          lastDate: _last,
+        ),
         DateTime(2026, 5, 7),
       );
     });
@@ -246,8 +265,11 @@ void main() {
     test('text that does not match the pattern parses to null', () {
       final f = TomDateTimeFormat.isoDate;
       for (final bad in ['', '2026', '2026/05/07', '07-05-2026', 'nope']) {
-        expect(f.parseDate(bad, firstDate: _first, lastDate: _last), isNull,
-            reason: '"$bad" should not parse as ${f.pattern}');
+        expect(
+          f.parseDate(bad, firstDate: _first, lastDate: _last),
+          isNull,
+          reason: '"$bad" should not parse as ${f.pattern}',
+        );
       }
     });
 
@@ -255,46 +277,70 @@ void main() {
       // The compiled regex is `^...$`. Without the anchors "2026-05-07xyz"
       // would parse, and every half-typed entry would silently commit.
       expect(
-        TomDateTimeFormat.isoDate
-            .parseDate('2026-05-07xyz', firstDate: _first, lastDate: _last),
+        TomDateTimeFormat.isoDate.parseDate(
+          '2026-05-07xyz',
+          firstDate: _first,
+          lastDate: _last,
+        ),
         isNull,
       );
     });
 
     test('impossible calendar values parse to null', () {
       final f = TomDateTimeFormat.isoDate;
-      expect(f.parseDate('2026-13-01', firstDate: _first, lastDate: _last),
-          isNull);
-      expect(f.parseDate('2026-00-01', firstDate: _first, lastDate: _last),
-          isNull);
-      expect(f.parseDate('2026-01-32', firstDate: _first, lastDate: _last),
-          isNull);
-      expect(f.parseDate('2026-01-00', firstDate: _first, lastDate: _last),
-          isNull);
+      expect(
+        f.parseDate('2026-13-01', firstDate: _first, lastDate: _last),
+        isNull,
+      );
+      expect(
+        f.parseDate('2026-00-01', firstDate: _first, lastDate: _last),
+        isNull,
+      );
+      expect(
+        f.parseDate('2026-01-32', firstDate: _first, lastDate: _last),
+        isNull,
+      );
+      expect(
+        f.parseDate('2026-01-00', firstDate: _first, lastDate: _last),
+        isNull,
+      );
     });
 
     test('a date outside firstDate..lastDate parses to null', () {
       final f = TomDateTimeFormat.isoDate;
       final first = DateTime(2026, 1, 1);
       final last = DateTime(2026, 12, 31);
-      expect(f.parseDate('2026-06-15', firstDate: first, lastDate: last),
-          DateTime(2026, 6, 15));
       expect(
-          f.parseDate('2025-12-31', firstDate: first, lastDate: last), isNull);
+        f.parseDate('2026-06-15', firstDate: first, lastDate: last),
+        DateTime(2026, 6, 15),
+      );
       expect(
-          f.parseDate('2027-01-01', firstDate: first, lastDate: last), isNull);
+        f.parseDate('2025-12-31', firstDate: first, lastDate: last),
+        isNull,
+      );
+      expect(
+        f.parseDate('2027-01-01', firstDate: first, lastDate: last),
+        isNull,
+      );
       // The bounds are inclusive.
-      expect(f.parseDate('2026-01-01', firstDate: first, lastDate: last), first);
+      expect(
+        f.parseDate('2026-01-01', firstDate: first, lastDate: last),
+        first,
+      );
       expect(f.parseDate('2026-12-31', firstDate: first, lastDate: last), last);
     });
 
     test('out-of-range clock values parse to null', () {
       expect(TomDateTimeFormat.time24.parseTime('24:00'), isNull);
       expect(TomDateTimeFormat.time24.parseTime('12:60'), isNull);
-      expect(TomDateTimeFormat.time24.parseTime('23:59'),
-          const TimeOfDay(hour: 23, minute: 59));
-      expect(TomDateTimeFormat.time24WithSeconds.parseTime('00:00:00'),
-          const TimeOfDay(hour: 0, minute: 0));
+      expect(
+        TomDateTimeFormat.time24.parseTime('23:59'),
+        const TimeOfDay(hour: 23, minute: 59),
+      );
+      expect(
+        TomDateTimeFormat.time24WithSeconds.parseTime('00:00:00'),
+        const TimeOfDay(hour: 0, minute: 0),
+      );
     });
 
     test('parseTime on a date-only pattern yields null', () {
@@ -309,16 +355,22 @@ void main() {
       // midnight — here the omission is in the *pattern*, so zero is a
       // faithful reading rather than an invention.
       expect(
-        TomDateTimeFormat.isoDate
-            .parseDateTime('2026-05-07', firstDate: _first, lastDate: _last),
+        TomDateTimeFormat.isoDate.parseDateTime(
+          '2026-05-07',
+          firstDate: _first,
+          lastDate: _last,
+        ),
         DateTime(2026, 5, 7),
       );
     });
 
     test('parseDate on a time-only pattern yields null', () {
       expect(
-        TomDateTimeFormat.time24
-            .parseDate('09:30', firstDate: _first, lastDate: _last),
+        TomDateTimeFormat.time24.parseDate(
+          '09:30',
+          firstDate: _first,
+          lastDate: _last,
+        ),
         isNull,
       );
     });
@@ -340,11 +392,13 @@ void main() {
   // =========================================================================
 
   group('TomDateTimeFormat.hintText', () {
-    test('falls back to the machine pattern when no display pattern is set',
-        () {
-      expect(TomDateTimeFormat.isoDate.hintText, 'YYYY-MM-DD');
-      expect(TomDateTimeFormat.time24.hintText, 'HH:mm');
-    });
+    test(
+      'falls back to the machine pattern when no display pattern is set',
+      () {
+        expect(TomDateTimeFormat.isoDate.hintText, 'YYYY-MM-DD');
+        expect(TomDateTimeFormat.time24.hintText, 'HH:mm');
+      },
+    );
 
     test('prefers the localised display pattern when one is set', () {
       // The German preset parses `DD.MM.YYYY` but shows Tag/Monat/Jahr — the
@@ -417,8 +471,9 @@ void main() {
       expect(field.get(), DateTime(2026, 6, 1));
     });
 
-    testWidgets('renders the bound date through the abstract formatter',
-        (tester) async {
+    testWidgets('renders the bound date through the abstract formatter', (
+      tester,
+    ) async {
       final field = TomFormDatePicker(
         'due',
         DateTime(2026, 5, 7),
@@ -465,8 +520,9 @@ void main() {
   // =========================================================================
 
   group('TomFormDateCalendar', () {
-    testWidgets('re-keys the calendar so the highlight follows the model',
-        (tester) async {
+    testWidgets('re-keys the calendar so the highlight follows the model', (
+      tester,
+    ) async {
       // CalendarDatePicker captures `initialDate` on first mount and never
       // reconsults it, so the widget is keyed by the current value. Without
       // that key the selection sticks on the original date after an external
@@ -479,23 +535,26 @@ void main() {
       );
       await tester.pumpWidget(_app(field.widget));
 
-      final before =
-          tester.widget<CalendarDatePicker>(find.byType(CalendarDatePicker));
+      final before = tester.widget<CalendarDatePicker>(
+        find.byType(CalendarDatePicker),
+      );
       expect(before.key, isNotNull);
       expect(before.initialDate, DateTime(2026, 5, 7));
 
       field.setValue(DateTime(2026, 8, 20));
       await tester.pump();
 
-      final after =
-          tester.widget<CalendarDatePicker>(find.byType(CalendarDatePicker));
+      final after = tester.widget<CalendarDatePicker>(
+        find.byType(CalendarDatePicker),
+      );
       expect(after.initialDate, DateTime(2026, 8, 20));
       expect(after.key, isNot(before.key));
       await _drainDebounce(tester);
     });
 
-    testWidgets('writes back the tapped day, stripped of any time component',
-        (tester) async {
+    testWidgets('writes back the tapped day, stripped of any time component', (
+      tester,
+    ) async {
       final field = TomFormDateCalendar(
         'day',
         DateTime(2026, 5, 7),
@@ -541,15 +600,19 @@ void main() {
 
   group('TomFormTimePicker', () {
     testWidgets('renders the bound time zero-padded', (tester) async {
-      final field =
-          TomFormTimePicker('start', const TimeOfDay(hour: 9, minute: 3));
+      final field = TomFormTimePicker(
+        'start',
+        const TimeOfDay(hour: 9, minute: 3),
+      );
       await tester.pumpWidget(_app(field.widget));
       expect(find.text('09:03'), findsOneWidget);
     });
 
     testWidgets('follows a programmatic write', (tester) async {
-      final field =
-          TomFormTimePicker('start', const TimeOfDay(hour: 9, minute: 3));
+      final field = TomFormTimePicker(
+        'start',
+        const TimeOfDay(hour: 9, minute: 3),
+      );
       await tester.pumpWidget(_app(field.widget));
 
       field.setValue(const TimeOfDay(hour: 17, minute: 45));
@@ -559,8 +622,10 @@ void main() {
     });
 
     test('dirtiness tracks TimeOfDay equality, not identity', () {
-      final field =
-          TomFormTimePicker('start', const TimeOfDay(hour: 9, minute: 3));
+      final field = TomFormTimePicker(
+        'start',
+        const TimeOfDay(hour: 9, minute: 3),
+      );
       field.setValue(const TimeOfDay(hour: 9, minute: 3));
       expect(field.isDirty, isFalse);
 
@@ -646,8 +711,9 @@ void main() {
       );
     });
 
-    testWidgets('renders both endpoints with an arrow between them',
-        (tester) async {
+    testWidgets('renders both endpoints with an arrow between them', (
+      tester,
+    ) async {
       final field = TomFormDateRangePicker(
         'span',
         range(DateTime(2026, 5, 7), DateTime(2026, 5, 20)),
@@ -696,12 +762,18 @@ void main() {
   group('TimeRange', () {
     test('is equal by endpoints, so an observer sees a real change only when '
         'one moves', () {
-      const a = TimeRange(TimeOfDay(hour: 9, minute: 0),
-          TimeOfDay(hour: 17, minute: 0));
-      const b = TimeRange(TimeOfDay(hour: 9, minute: 0),
-          TimeOfDay(hour: 17, minute: 0));
-      const c = TimeRange(TimeOfDay(hour: 9, minute: 0),
-          TimeOfDay(hour: 18, minute: 0));
+      const a = TimeRange(
+        TimeOfDay(hour: 9, minute: 0),
+        TimeOfDay(hour: 17, minute: 0),
+      );
+      const b = TimeRange(
+        TimeOfDay(hour: 9, minute: 0),
+        TimeOfDay(hour: 17, minute: 0),
+      );
+      const c = TimeRange(
+        TimeOfDay(hour: 9, minute: 0),
+        TimeOfDay(hour: 18, minute: 0),
+      );
 
       expect(a, b);
       expect(a.hashCode, b.hashCode);
@@ -710,7 +782,9 @@ void main() {
 
     test('stringifies as a pair', () {
       const r = TimeRange(
-          TimeOfDay(hour: 9, minute: 0), TimeOfDay(hour: 17, minute: 30));
+        TimeOfDay(hour: 9, minute: 0),
+        TimeOfDay(hour: 17, minute: 30),
+      );
       expect(r.toString(), '(TimeOfDay(09:00), TimeOfDay(17:30))');
     });
   });
@@ -729,14 +803,19 @@ void main() {
           format: format,
         );
 
-    test('resolves the format from the constructor when no resource exists',
-        () {
-      expect(build().resolvedFormat.pattern, TomDateTimeFormat.isoDate.pattern);
-      expect(
-        build(format: TomDateTimeFormat.germanDate).resolvedFormat.pattern,
-        'DD.MM.YYYY',
-      );
-    });
+    test(
+      'resolves the format from the constructor when no resource exists',
+      () {
+        expect(
+          build().resolvedFormat.pattern,
+          TomDateTimeFormat.isoDate.pattern,
+        );
+        expect(
+          build(format: TomDateTimeFormat.germanDate).resolvedFormat.pattern,
+          'DD.MM.YYYY',
+        );
+      },
+    );
 
     test('a dateFormat resource outranks the constructor parameter', () {
       TomTextResourceProvider.setAppResourceProvider(
@@ -775,8 +854,9 @@ void main() {
       expect(_soleTextField(tester).decoration!.hintText, 'TT.MM.JJJJ');
     });
 
-    testWidgets('typed text that parses writes through to the field',
-        (tester) async {
+    testWidgets('typed text that parses writes through to the field', (
+      tester,
+    ) async {
       final field = build();
       await tester.pumpWidget(_app(field.widget));
 
@@ -786,8 +866,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('typed text that does not parse leaves the last good value',
-        (tester) async {
+    testWidgets('typed text that does not parse leaves the last good value', (
+      tester,
+    ) async {
       // This is the whole reason parse returns null instead of throwing: the
       // user is mid-keystroke, and "2026-1" must not wipe the model.
       final field = build();
@@ -799,8 +880,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('an out-of-range date is refused rather than stored',
-        (tester) async {
+    testWidgets('an out-of-range date is refused rather than stored', (
+      tester,
+    ) async {
       // Unlike the numeric text fields, a date field's bounds are structural —
       // the picker throws on an out-of-range value — so here refusing is the
       // correct behaviour rather than storing and flagging.
@@ -818,8 +900,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('losing focus on unparseable text surfaces the format hint',
-        (tester) async {
+    testWidgets('losing focus on unparseable text surfaces the format hint', (
+      tester,
+    ) async {
       final field = build(format: TomDateTimeFormat.germanDate);
       await tester.pumpWidget(_app(field.widget));
 
@@ -833,7 +916,10 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
 
-      expect(_soleTextField(tester).decoration!.errorText, 'Format: TT.MM.JJJJ');
+      expect(
+        _soleTextField(tester).decoration!.errorText,
+        'Format: TT.MM.JJJJ',
+      );
       await _drainDebounce(tester);
     });
 
@@ -901,9 +987,9 @@ void main() {
     test('resolves the format from resource → constructor → 24 h default', () {
       expect(build().resolvedFormat.pattern, 'HH:mm');
       expect(
-        build(format: TomDateTimeFormat.time24WithSeconds)
-            .resolvedFormat
-            .pattern,
+        build(
+          format: TomDateTimeFormat.time24WithSeconds,
+        ).resolvedFormat.pattern,
         'HH:mm:ss',
       );
 
@@ -911,9 +997,9 @@ void main() {
         TomTextResourceProvider.from({'start.timeFormat': 'H:mm'}),
       );
       expect(
-        build(format: TomDateTimeFormat.time24WithSeconds)
-            .resolvedFormat
-            .pattern,
+        build(
+          format: TomDateTimeFormat.time24WithSeconds,
+        ).resolvedFormat.pattern,
         'H:mm',
       );
     });
@@ -933,8 +1019,9 @@ void main() {
       expect(_soleTextField(tester).controller!.text, '09:03');
     });
 
-    testWidgets('typed text that parses writes through to the field',
-        (tester) async {
+    testWidgets('typed text that parses writes through to the field', (
+      tester,
+    ) async {
       final field = build();
       await tester.pumpWidget(_app(field.widget));
 
@@ -944,8 +1031,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('an impossible clock value leaves the last good time',
-        (tester) async {
+    testWidgets('an impossible clock value leaves the last good time', (
+      tester,
+    ) async {
       final field = build();
       await tester.pumpWidget(_app(field.widget));
 
@@ -955,8 +1043,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('losing focus on unparseable text surfaces the format hint',
-        (tester) async {
+    testWidgets('losing focus on unparseable text surfaces the format hint', (
+      tester,
+    ) async {
       final field = build();
       await tester.pumpWidget(_app(field.widget));
 
@@ -1041,8 +1130,9 @@ void main() {
       expect(_soleTextField(tester).controller!.text, '2026-05-07 09:03');
     });
 
-    testWidgets('typed text that parses writes through to the field',
-        (tester) async {
+    testWidgets('typed text that parses writes through to the field', (
+      tester,
+    ) async {
       final field = build();
       await tester.pumpWidget(_app(field.widget));
 
@@ -1052,8 +1142,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('a date without the time half leaves the last good value',
-        (tester) async {
+    testWidgets('a date without the time half leaves the last good value', (
+      tester,
+    ) async {
       final field = build();
       await tester.pumpWidget(_app(field.widget));
 
@@ -1063,8 +1154,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('losing focus on unparseable text surfaces the format hint',
-        (tester) async {
+    testWidgets('losing focus on unparseable text surfaces the format hint', (
+      tester,
+    ) async {
       final field = build();
       await tester.pumpWidget(_app(field.widget));
 
@@ -1074,8 +1166,10 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
 
-      expect(_soleTextField(tester).decoration!.errorText,
-          'Format: YYYY-MM-DD HH:mm');
+      expect(
+        _soleTextField(tester).decoration!.errorText,
+        'Format: YYYY-MM-DD HH:mm',
+      );
       await _drainDebounce(tester);
     });
 

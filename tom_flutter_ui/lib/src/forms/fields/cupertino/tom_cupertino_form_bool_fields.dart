@@ -70,9 +70,9 @@ class TomCupertinoFormBoolSwitch extends TomFormBoolField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoBoolSwitchWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoBoolSwitchWidget(field: this),
+  );
 }
 
 class _CupertinoBoolSwitchWidget extends StatefulWidget {
@@ -93,9 +93,11 @@ class _CupertinoBoolSwitchWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -183,9 +185,9 @@ class TomCupertinoFormBoolToggle extends TomFormBoolField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoBoolToggleWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoBoolToggleWidget(field: this),
+  );
 }
 
 class _CupertinoBoolToggleWidget extends StatefulWidget {
@@ -206,9 +208,11 @@ class _CupertinoBoolToggleWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -322,9 +326,9 @@ class TomCupertinoFormNullableBoolToggle extends TomFormNullableBoolField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoNullableBoolToggleWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoNullableBoolToggleWidget(field: this),
+  );
 }
 
 /// Segment keys — `CupertinoSlidingSegmentedControl` needs a non-null key
@@ -349,9 +353,11 @@ class _CupertinoNullableBoolToggleWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -367,9 +373,9 @@ class _CupertinoNullableBoolToggleWidgetState
   }
 
   Widget _segment(String text, TextStyle? style) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Text(text, style: style),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    child: Text(text, style: style),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -395,10 +401,10 @@ class _CupertinoNullableBoolToggleWidgetState
         },
         onValueChanged: field.isEditable
             ? (segment) => field.setValue(switch (segment) {
-                  _TriSegment.on => true,
-                  _TriSegment.off => false,
-                  _ => null,
-                })
+                _TriSegment.on => true,
+                _TriSegment.off => false,
+                _ => null,
+              })
             : (_) {},
       ),
     );

@@ -48,15 +48,11 @@ void main() {
     });
 
     test('ofType filters by event type', () {
-      inspector.onFieldValueChanged(
-        FieldValueChangedEvent(source: 'f1'),
-      );
+      inspector.onFieldValueChanged(FieldValueChangedEvent(source: 'f1'));
       inspector.onFieldValidated(
         FieldValidatedEvent(source: 'f1', result: 'ok'),
       );
-      inspector.onFieldValueChanged(
-        FieldValueChangedEvent(source: 'f2'),
-      );
+      inspector.onFieldValueChanged(FieldValueChangedEvent(source: 'f2'));
       inspector.onFormSaved(FormSavedEvent(source: 'form'));
 
       final valueChanges = inspector.ofType<FieldValueChangedEvent>();
@@ -69,9 +65,7 @@ void main() {
     });
 
     test('ofType returns empty for unrecorded types', () {
-      inspector.onFieldValueChanged(
-        FieldValueChangedEvent(source: 'f1'),
-      );
+      inspector.onFieldValueChanged(FieldValueChangedEvent(source: 'f1'));
 
       expect(inspector.ofType<FormDiscardedEvent>(), isEmpty);
     });
@@ -98,9 +92,7 @@ void main() {
     });
 
     test('clear removes all events', () {
-      inspector.onFieldValueChanged(
-        FieldValueChangedEvent(source: 'f1'),
-      );
+      inspector.onFieldValueChanged(FieldValueChangedEvent(source: 'f1'));
       inspector.onFormSaved(FormSavedEvent(source: 'form'));
       expect(inspector.length, 2);
 

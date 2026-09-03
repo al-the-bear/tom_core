@@ -147,8 +147,11 @@ class TomCompositeStep<TContext extends TomActionContext> {
 /// `TomCompositeStep<CtxB>` side by side — the type parameter is covariant,
 /// and each step pairs its own action with its own builder — so a composite
 /// covers that case too.
-class TomDualAction<TCtx1 extends TomActionContext,
-    TCtx2 extends TomActionContext> extends TomAction<TomActionContext, TomActionUndo> {
+class TomDualAction<
+  TCtx1 extends TomActionContext,
+  TCtx2 extends TomActionContext
+>
+    extends TomAction<TomActionContext, TomActionUndo> {
   final TomAction<TCtx1, TomActionUndo> first;
 
   /// Builds the context for [first]. Called by [canExecute] as well as by

@@ -54,11 +54,8 @@ import 'tom_skeleton_loader.dart';
 typedef PageFetcher<T> = Future<List<T>> Function(int page, int pageSize);
 
 /// Builds a single list tile from an item.
-typedef InfiniteScrollItemBuilder<T> = Widget Function(
-  BuildContext context,
-  T item,
-  int index,
-);
+typedef InfiniteScrollItemBuilder<T> =
+    Widget Function(BuildContext context, T item, int index);
 
 /// List wrapper with pagination, observable page fetcher, and
 /// empty / error / loading-state hooks.
@@ -100,7 +97,7 @@ class TomInfiniteScroll<T> extends StatefulWidget {
   /// Optional builder for the error-state slot. Receives the error
   /// object plus a `retry` closure.
   final Widget Function(BuildContext context, Object error, VoidCallback retry)?
-      errorBuilder;
+  errorBuilder;
 
   /// Optional padding around the inner [ListView].
   final EdgeInsetsGeometry? padding;
@@ -234,8 +231,7 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
     );
   }
 
-  Widget _defaultError(
-      BuildContext context, Object error, VoidCallback retry) {
+  Widget _defaultError(BuildContext context, Object error, VoidCallback retry) {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
@@ -243,11 +239,13 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                color: theme.colorScheme.error, size: 32),
+            Icon(Icons.error_outline, color: theme.colorScheme.error, size: 32),
             const SizedBox(height: 8),
-            Text('Failed to load: $error',
-                style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
+            Text(
+              'Failed to load: $error',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 12),
             ElevatedButton(onPressed: retry, child: const Text('Retry')),
           ],

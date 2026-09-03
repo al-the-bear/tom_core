@@ -67,12 +67,16 @@ void main() {
 
   group('TomCtr.inputBorder', () {
     test('returns null without kind', () {
-      _installResources({'b': {'width': 2}});
+      _installResources({
+        'b': {'width': 2},
+      });
       expect(TomCtr.inputBorder('b'), isNull);
     });
 
     test('kind=none returns InputBorder.none', () {
-      _installResources({'b': {'kind': 'none'}});
+      _installResources({
+        'b': {'kind': 'none'},
+      });
       expect(TomCtr.inputBorder('b'), InputBorder.none);
     });
 
@@ -87,11 +91,14 @@ void main() {
     });
 
     test('kind=outline uses radius default 4.0', () {
-      _installResources({'b': {'kind': 'outline'}});
+      _installResources({
+        'b': {'kind': 'outline'},
+      });
       final border = TomCtr.inputBorder('b');
       expect(border, isA<OutlineInputBorder>());
-      final radius =
-          (border as OutlineInputBorder).borderRadius.resolve(TextDirection.ltr);
+      final radius = (border as OutlineInputBorder).borderRadius.resolve(
+        TextDirection.ltr,
+      );
       expect(radius.topLeft.x, 4.0);
     });
 
@@ -101,8 +108,9 @@ void main() {
       });
       final border = TomCtr.inputBorder('b');
       expect(border, isA<OutlineInputBorder>());
-      final radius =
-          (border as OutlineInputBorder).borderRadius.resolve(TextDirection.ltr);
+      final radius = (border as OutlineInputBorder).borderRadius.resolve(
+        TextDirection.ltr,
+      );
       expect(radius.topLeft.x, 12.0);
       expect(border.borderSide.color, const Color(0xFF0000FF));
     });
@@ -131,10 +139,8 @@ void main() {
       final prop = TomCtr.widgetStateColor('fill');
       expect(prop, isNotNull);
       expect(prop!.resolve({}), const Color(0xFF111111));
-      expect(prop.resolve({WidgetState.selected}),
-          const Color(0xFF222222));
-      expect(prop.resolve({WidgetState.disabled}),
-          const Color(0xFF333333));
+      expect(prop.resolve({WidgetState.selected}), const Color(0xFF222222));
+      expect(prop.resolve({WidgetState.disabled}), const Color(0xFF333333));
     });
 
     test('works with only state keys, no default', () {
@@ -214,26 +220,31 @@ void main() {
         expect(
           prop!.resolve({precedence[higher]!, precedence[lower]!}),
           colorFor(i),
-          reason: '$higher outranks $lower, so a control in both states '
+          reason:
+              '$higher outranks $lower, so a control in both states '
               'must paint the $higher colour',
         );
       }
     });
 
-    test('a pointer resting on a disabled control keeps the disabled colour',
-        () {
-      // The case that motivated the ranking, spelled out rather than left to
-      // the adjacent-pair loop: `hovered` and `disabled` are the two states
-      // most likely to co-occur, and they sit at opposite ends of the order.
-      _installResources({
-        'fill': '#111111',
-        'fill.states.hovered': '#AAAAAA',
-        'fill.states.disabled': '#DDDDDD',
-      });
-      final prop = TomCtr.widgetStateColor('fill');
-      expect(prop!.resolve({WidgetState.hovered, WidgetState.disabled}),
-          const Color(0xFFDDDDDD));
-    });
+    test(
+      'a pointer resting on a disabled control keeps the disabled colour',
+      () {
+        // The case that motivated the ranking, spelled out rather than left to
+        // the adjacent-pair loop: `hovered` and `disabled` are the two states
+        // most likely to co-occur, and they sit at opposite ends of the order.
+        _installResources({
+          'fill': '#111111',
+          'fill.states.hovered': '#AAAAAA',
+          'fill.states.disabled': '#DDDDDD',
+        });
+        final prop = TomCtr.widgetStateColor('fill');
+        expect(
+          prop!.resolve({WidgetState.hovered, WidgetState.disabled}),
+          const Color(0xFFDDDDDD),
+        );
+      },
+    );
 
     test('an invalid control that gains focus keeps the error colour', () {
       _installResources({
@@ -242,8 +253,10 @@ void main() {
         'fill.states.error': '#FF0000',
       });
       final prop = TomCtr.widgetStateColor('fill');
-      expect(prop!.resolve({WidgetState.error, WidgetState.focused}),
-          const Color(0xFFFF0000));
+      expect(
+        prop!.resolve({WidgetState.error, WidgetState.focused}),
+        const Color(0xFFFF0000),
+      );
     });
 
     test('the highest rank wins out of the whole set at once', () {
@@ -262,13 +275,12 @@ void main() {
       // colour — the higher rank is absent, not silently defaulted. Without
       // this the ranking would read as "disabled always wins", which would be
       // wrong at the call site that matters most.
-      _installResources({
-        'fill': '#111111',
-        'fill.states.hovered': '#AAAAAA',
-      });
+      _installResources({'fill': '#111111', 'fill.states.hovered': '#AAAAAA'});
       final prop = TomCtr.widgetStateColor('fill');
-      expect(prop!.resolve({WidgetState.hovered, WidgetState.disabled}),
-          const Color(0xFFAAAAAA));
+      expect(
+        prop!.resolve({WidgetState.hovered, WidgetState.disabled}),
+        const Color(0xFFAAAAAA),
+      );
     });
   });
 
@@ -329,7 +341,7 @@ void main() {
     test('works with breakpoints only (no default)', () {
       _installResources({
         'gap.breakpoints': [
-          [600, 8]
+          [600, 8],
         ],
       });
       final r = TomCtr.breakpointed<double>(
@@ -392,11 +404,10 @@ void main() {
       final source = File(
         'lib/src/widget_base/tom_construction_helpers.dart',
       ).readAsStringSync();
-      final declared =
-          RegExp(r'^  static\s+[\w<>?,\s]+?\s(\w+)\(', multiLine: true)
-              .allMatches(source)
-              .map((m) => m.group(1)!)
-              .toSet();
+      final declared = RegExp(
+        r'^  static\s+[\w<>?,\s]+?\s(\w+)\(',
+        multiLine: true,
+      ).allMatches(source).map((m) => m.group(1)!).toSet();
 
       test('exactly five accessors have a throwing variant', () {
         expect(
@@ -408,7 +419,8 @@ void main() {
             'intOrFail',
             'textOrFail',
           ],
-          reason: 'the …OrFail family changed; if that was deliberate, the '
+          reason:
+              'the …OrFail family changed; if that was deliberate, the '
               'rule above and the table in doc/widget_base.md both state which '
               'accessors have one and why, and both need to say so too',
         );
@@ -430,7 +442,8 @@ void main() {
           expect(
             declared,
             containsAll(<String>[variant, plain]),
-            reason: '$variant has no $plain to fall back to, so a caller who '
+            reason:
+                '$variant has no $plain to fall back to, so a caller who '
                 'can live without the value has nowhere to go',
           );
         });
@@ -444,7 +457,8 @@ void main() {
             'list',
             'map',
           ]),
-          reason: 'the accessors the rule deliberately leaves unpartnered are '
+          reason:
+              'the accessors the rule deliberately leaves unpartnered are '
               'no longer all present, so the rule now excludes nothing',
         );
       });
@@ -517,7 +531,10 @@ void main() {
         });
       });
 
-      test('textOrFail', () => expect(TomCtr.textOrFail('w', 'label'), 'Submit'));
+      test(
+        'textOrFail',
+        () => expect(TomCtr.textOrFail('w', 'label'), 'Submit'),
+      );
 
       test('colorOrFail', () {
         expect(TomCtr.colorOrFail('w', 'color'), const Color(0xFFFF0000));
@@ -527,7 +544,10 @@ void main() {
         expect(TomCtr.iconOrFail('w', 'icon'), Icons.save);
       });
 
-      test('doubleOrFail', () => expect(TomCtr.doubleOrFail('w', 'size'), 12.0));
+      test(
+        'doubleOrFail',
+        () => expect(TomCtr.doubleOrFail('w', 'size'), 12.0),
+      );
 
       test('intOrFail', () => expect(TomCtr.intOrFail('w', 'count'), 3));
     });

@@ -41,8 +41,11 @@ void main() {
           .map((b) => b.substring('Tom'.length, b.length - 'Base'.length))
           .map((n) => n.toLowerCase())
           .toSet();
-      final demonstrated =
-          example.oneWidgetPerFamily().keys.map((f) => f.name).toSet();
+      final demonstrated = example
+          .oneWidgetPerFamily()
+          .keys
+          .map((f) => f.name)
+          .toSet();
       expect(demonstrated, declared);
     });
 
@@ -69,8 +72,10 @@ void main() {
     });
 
     test('isFamily / families reflect the primary family', () {
-      final btn =
-          TomElevatedButton(onPressed: () {}, child: TomText(text: 'x'));
+      final btn = TomElevatedButton(
+        onPressed: () {},
+        child: TomText(text: 'x'),
+      );
       expect(btn.isFamily(TomWidgetFamily.button), isTrue);
       expect(btn.isFamily(TomWidgetFamily.label), isFalse);
       expect(btn.families, contains(TomWidgetFamily.button));
@@ -84,16 +89,17 @@ void main() {
 
     test('basePath is scope-prefixed inside a TomScope', () {
       TomScope.withScope('settings', () {
-        expect(TomText(tomId: 'greeting', text: 'x').basePath,
-            'settings.greeting');
+        expect(
+          TomText(tomId: 'greeting', text: 'x').basePath,
+          'settings.greeting',
+        );
       });
     });
   });
 
   group('effectiveAuthState resolution (no BuildContext)', () {
     test('resolves from resource auth and defaults to full', () {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'save': TomAuthState.read});
+      TomAuthorization.adapter = _PathAuthAdapter({'save': TomAuthState.read});
       final saveBtn = TomElevatedButton(
         tomId: 'save',
         onPressed: () {},
@@ -105,8 +111,7 @@ void main() {
     });
 
     test('a group narrows the member to its ceiling', () {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'tools': TomAuthState.read});
+      TomAuthorization.adapter = _PathAuthAdapter({'tools': TomAuthState.read});
       final tools = TomAuthorizationGroup('tools'); // controlsWidest
       final grouped = TomContainer(
         tomId: 'panel',

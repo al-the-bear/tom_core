@@ -100,9 +100,9 @@ class TomFormIntRangeSlider extends TomFormIntRangeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormIntRangeSliderWidget(field: this),
-      );
+    field: this,
+    child: _TomFormIntRangeSliderWidget(field: this),
+  );
 }
 
 class _TomFormIntRangeSliderWidget extends StatefulWidget {
@@ -123,9 +123,11 @@ class _TomFormIntRangeSliderWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -229,9 +231,9 @@ class TomFormDoubleRangeSlider extends TomFormDoubleRangeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDoubleRangeSliderWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDoubleRangeSliderWidget(field: this),
+  );
 }
 
 class _TomFormDoubleRangeSliderWidget extends StatefulWidget {
@@ -252,9 +254,11 @@ class _TomFormDoubleRangeSliderWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 

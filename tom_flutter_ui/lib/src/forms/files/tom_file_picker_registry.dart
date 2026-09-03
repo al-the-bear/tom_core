@@ -233,13 +233,14 @@ class TomFilePickers {
     List<String>? allowedExtensions,
     int? maxSizeBytes,
     TomFilePickKind kind = TomFilePickKind.any,
-  }) => (BuildContext context) => TomFilePickerRegistry.pick(
-    TomFilePickRequest(
-      allowedExtensions: allowedExtensions,
-      maxSizeBytes: maxSizeBytes,
-      kind: kind,
-    ),
-  );
+  }) =>
+      (BuildContext context) => TomFilePickerRegistry.pick(
+        TomFilePickRequest(
+          allowedExtensions: allowedExtensions,
+          maxSizeBytes: maxSizeBytes,
+          kind: kind,
+        ),
+      );
 
   /// A picker that always returns [ref] — for demos, tests and previews.
   static FilePicker fixed(FileRef? ref) =>
@@ -252,7 +253,8 @@ class TomFilePickers {
   /// exists to enable. A path is opened lazily, so a large file is never read
   /// here.
   static FileRef toFileRef(TomPickedFile picked) {
-    final mimeType = picked.mimeType ?? TomFileSource.guessMediaType(picked.name);
+    final mimeType =
+        picked.mimeType ?? TomFileSource.guessMediaType(picked.name);
 
     final open = picked.open ?? _openerForPath(picked.path);
     if (open != null) {

@@ -67,7 +67,8 @@ abstract interface class TomScreenElementsProvider {
 /// With the outer zone scope "demo23", the resulting resource paths are:
 /// - `demo23.order.submit`
 /// - `demo23.order.details.name`
-class TomScreenElementsProviderBase with TomScopeMixin
+class TomScreenElementsProviderBase
+    with TomScopeMixin
     implements TomScreenElementsProvider {
   /// Creates a scoped element provider.
   ///
@@ -79,8 +80,10 @@ class TomScreenElementsProviderBase with TomScopeMixin
   /// [parent] — optional parent provider. When given, this provider's scope
   /// nests under `parent.scope`. When omitted, nests under the current zone
   /// scope ([TomScope.current]).
-  TomScreenElementsProviderBase([String? scopeId,
-      TomScreenElementsProvider? parent]) {
+  TomScreenElementsProviderBase([
+    String? scopeId,
+    TomScreenElementsProvider? parent,
+  ]) {
     final parentScope = parent?.scope ?? TomScope.current;
     if (scopeId != null) {
       initScope(scopeId: scopeId, parentScope: parentScope);

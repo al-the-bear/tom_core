@@ -83,8 +83,10 @@ void main() {
 
     test('resolves resource auth at basePath', () {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.read});
-      expect(_MixinWidget(tomId: 'w', child: const Text('x')).getAuth(),
-          TomAuthState.read);
+      expect(
+        _MixinWidget(tomId: 'w', child: const Text('x')).getAuth(),
+        TomAuthState.read,
+      );
     });
 
     test('authorizer replaces resource auth', () {
@@ -105,8 +107,9 @@ void main() {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.full});
       final widget = _MixinWidget(
         tomId: 'w',
-        uiStateController:
-            TomUIStateController(resolve: (_, _) => TomAuthState.read),
+        uiStateController: TomUIStateController(
+          resolve: (_, _) => TomAuthState.read,
+        ),
         child: const Text('x'),
       );
       expect(widget.getAuth(), TomAuthState.read);
@@ -150,8 +153,9 @@ void main() {
       final widget = _MixinWidget(
         tomId: 'w',
         authorizer: TomAuthorizer.fixed(TomAuthState.full),
-        uiStateController:
-            TomUIStateController(resolve: (_, _) => TomAuthState.disabled),
+        uiStateController: TomUIStateController(
+          resolve: (_, _) => TomAuthState.disabled,
+        ),
         child: const Text('x'),
       );
       // read → authorizer decides full (widening) → controller narrows to
@@ -170,8 +174,9 @@ void main() {
         tomId: 'w',
         tomGroup: TomAuthorizationGroup('grp', mode: AuthGroupMode.controlsAll),
         authorizer: TomAuthorizer.fixed(TomAuthState.full),
-        uiStateController:
-            TomUIStateController(resolve: (_, _) => TomAuthState.read),
+        uiStateController: TomUIStateController(
+          resolve: (_, _) => TomAuthState.read,
+        ),
         child: const Text('x'),
       );
       // full → group replaces with disabled → authorizer decides full →
@@ -185,11 +190,15 @@ void main() {
   group('TomWidgetMixin.checkHidden', () {
     test('returns SizedBox.shrink when none, null otherwise', () {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.none});
-      expect(_MixinWidget(tomId: 'w', child: const Text('x')).checkHidden(),
-          isA<SizedBox>());
+      expect(
+        _MixinWidget(tomId: 'w', child: const Text('x')).checkHidden(),
+        isA<SizedBox>(),
+      );
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.full});
-      expect(_MixinWidget(tomId: 'w', child: const Text('x')).checkHidden(),
-          isNull);
+      expect(
+        _MixinWidget(tomId: 'w', child: const Text('x')).checkHidden(),
+        isNull,
+      );
     });
   });
 
@@ -204,27 +213,35 @@ void main() {
     testWidgets('none → SizedBox.shrink, child removed', (tester) async {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.none});
       await tester.pumpWidget(
-          _host(_MixinWidget(tomId: 'w', child: const Text('x'))));
+        _host(_MixinWidget(tomId: 'w', child: const Text('x'))),
+      );
       expect(find.text('x'), findsNothing);
     });
 
     testWidgets('disabled → AbsorbPointer + 0.38 opacity', (tester) async {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.disabled});
       await tester.pumpWidget(
-          _host(_MixinWidget(tomId: 'w', child: const Text('x'))));
+        _host(_MixinWidget(tomId: 'w', child: const Text('x'))),
+      );
       expect(find.byType(AbsorbPointer), findsOneWidget);
-      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
-          closeTo(0.38, 0.001));
+      expect(
+        tester.widget<Opacity>(find.byType(Opacity)).opacity,
+        closeTo(0.38, 0.001),
+      );
     });
 
-    testWidgets('read → default readonly AbsorbPointer + 0.6 opacity',
-        (tester) async {
+    testWidgets('read → default readonly AbsorbPointer + 0.6 opacity', (
+      tester,
+    ) async {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.read});
       await tester.pumpWidget(
-          _host(_MixinWidget(tomId: 'w', child: const Text('x'))));
+        _host(_MixinWidget(tomId: 'w', child: const Text('x'))),
+      );
       expect(find.byType(AbsorbPointer), findsOneWidget);
-      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
-          closeTo(0.6, 0.001));
+      expect(
+        tester.widget<Opacity>(find.byType(Opacity)).opacity,
+        closeTo(0.6, 0.001),
+      );
     });
 
     // The counterpart of the same test in
@@ -233,28 +250,31 @@ void main() {
     // pins that one theme reaches both. They used to switch over the four
     // states independently, with the disabled opacity written out as a literal
     // in each — restyling it moved neither.
-    testWidgets('the disabled treatment follows the scoped theme',
-        (tester) async {
+    testWidgets('the disabled treatment follows the scoped theme', (
+      tester,
+    ) async {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.disabled});
       await tester.pumpWidget(
         _host(
           TomThemeScope(
-            theme: const TomTheme(
-              disabledStyle: TomStateStyle(opacity: 0.2),
-            ),
+            theme: const TomTheme(disabledStyle: TomStateStyle(opacity: 0.2)),
             child: _MixinWidget(tomId: 'w', child: const Text('x')),
           ),
         ),
       );
-      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
-          closeTo(0.2, 0.001));
+      expect(
+        tester.widget<Opacity>(find.byType(Opacity)).opacity,
+        closeTo(0.2, 0.001),
+      );
     });
   });
 
   group('TomWidgetMixin.debugLabel', () {
     test('names the runtime type and the id', () {
-      expect(_MixinWidget(tomId: 'w', child: const Text('x')).debugLabel,
-          '_MixinWidget(id: w)');
+      expect(
+        _MixinWidget(tomId: 'w', child: const Text('x')).debugLabel,
+        '_MixinWidget(id: w)',
+      );
     });
 
     test('appends the group id when the widget is a member', () {
@@ -292,17 +312,28 @@ void main() {
           label.substring(label.indexOf('(') + 1, label.length - 1);
       final grp = TomAuthorizationGroup('grp');
 
-      expect(args(_MixinWidget(tomId: 'w', child: const Text('x')).debugLabel),
-          args(_NodeWidget(tomId: 'w').debugLabel));
-      expect(args(_MixinWidget(child: const Text('x')).debugLabel),
-          args(_NodeWidget().debugLabel));
       expect(
-          args(_MixinWidget(
-                  tomId: 'w', tomGroup: grp, child: const Text('x'))
-              .debugLabel),
-          args(_NodeWidget(tomId: 'w', tomGroup: grp).debugLabel));
-      expect(args(_MixinWidget(tomGroup: grp, child: const Text('x')).debugLabel),
-          args(_NodeWidget(tomGroup: grp).debugLabel));
+        args(_MixinWidget(tomId: 'w', child: const Text('x')).debugLabel),
+        args(_NodeWidget(tomId: 'w').debugLabel),
+      );
+      expect(
+        args(_MixinWidget(child: const Text('x')).debugLabel),
+        args(_NodeWidget().debugLabel),
+      );
+      expect(
+        args(
+          _MixinWidget(
+            tomId: 'w',
+            tomGroup: grp,
+            child: const Text('x'),
+          ).debugLabel,
+        ),
+        args(_NodeWidget(tomId: 'w', tomGroup: grp).debugLabel),
+      );
+      expect(
+        args(_MixinWidget(tomGroup: grp, child: const Text('x')).debugLabel),
+        args(_NodeWidget(tomGroup: grp).debugLabel),
+      );
     });
   });
 }

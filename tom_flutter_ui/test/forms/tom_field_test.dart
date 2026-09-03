@@ -219,9 +219,10 @@ void main() {
         'name',
         'ab',
         validators: [
-          Validators.compose<String>(
-            [Validators.required(), Validators.minLength(3)],
-          ),
+          Validators.compose<String>([
+            Validators.required(),
+            Validators.minLength(3),
+          ]),
         ],
       );
 
@@ -375,10 +376,16 @@ void main() {
           () => _TestField<String>('email', ''),
         ),
       );
-      expect(field.tomId, 'email',
-          reason: 'tomId is the short id that was passed to the constructor.');
-      expect(field.basePath, 'checkout.customer.email',
-          reason: 'basePath is the full scope-prefixed path.');
+      expect(
+        field.tomId,
+        'email',
+        reason: 'tomId is the short id that was passed to the constructor.',
+      );
+      expect(
+        field.basePath,
+        'checkout.customer.email',
+        reason: 'basePath is the full scope-prefixed path.',
+      );
     });
 
     test('tomGroup is null by default', () {
@@ -388,11 +395,7 @@ void main() {
 
     test('tomGroup can be set via constructor', () {
       final group = TomAuthorizationGroup('shipping');
-      final field = _TestField<String>(
-        'street',
-        '',
-        tomGroup: group,
-      );
+      final field = _TestField<String>('street', '', tomGroup: group);
       expect(field.tomGroup, same(group));
     });
   });
@@ -578,8 +581,8 @@ void main() {
         mode: AuthGroupMode.controlsWidest,
       );
       _TestField<String>('street', '', tomGroup: group); // full -> read
-      _TestField<String>('city', '', tomGroup: group);   // read -> read
-      _TestField<String>('zip', '', tomGroup: group);    // disabled -> disabled
+      _TestField<String>('city', '', tomGroup: group); // read -> read
+      _TestField<String>('zip', '', tomGroup: group); // disabled -> disabled
 
       // Most restrictive is disabled (zip)
       expect(group.mostRestrictive, TomAuthState.disabled);
@@ -606,7 +609,4 @@ void main() {
       expect(group.mostRestrictive, TomAuthState.none);
     });
   });
-
 }
-
-

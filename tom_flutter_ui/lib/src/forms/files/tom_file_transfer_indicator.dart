@@ -179,7 +179,11 @@ class TomFileTransferIndicator extends StatelessWidget {
     final fraction = state.fraction;
     return fraction == null
         ? TomFileLabels.progressBusy(basePath, isDownload)
-        : TomFileLabels.progress(basePath, isDownload, (fraction * 100).round());
+        : TomFileLabels.progress(
+            basePath,
+            isDownload,
+            (fraction * 100).round(),
+          );
   }
 
   String _successLabel(TomFileTransferState state) => switch (state.kind) {
@@ -198,10 +202,7 @@ class TomFileTransferIndicator extends StatelessWidget {
 /// line without anyone declaring a second vocabulary for it. [basePath] scopes
 /// the lookup to a field; anything unrecognised falls back to the exception's
 /// own text.
-String tomTransferErrorMessage(
-  TomFileTransferState state, {
-  String? basePath,
-}) {
+String tomTransferErrorMessage(TomFileTransferState state, {String? basePath}) {
   final fallback = switch (state.errorKey) {
     'file_transfer.not_found' => 'The file is no longer available.',
     'file_transfer.rejected' => 'The server rejected the transfer.',

@@ -69,33 +69,36 @@ class _PathAuthAdapter extends TomAuthorizationAdapter {
 /// short to construct. The point of the map is coverage of the *families*,
 /// which is what the kit is organised by.
 Map<TomWidgetFamily, TomFamilyBase> oneWidgetPerFamily() => {
-      TomWidgetFamily.button: TomElevatedButton(tomId: 'button'),
-      TomWidgetFamily.input: TomTextField(tomId: 'input'),
-      TomWidgetFamily.select: TomDropdownButton<int>(tomId: 'select'),
-      TomWidgetFamily.toggle: TomCheckbox(tomId: 'toggle', value: false),
-      TomWidgetFamily.slider: TomSlider(tomId: 'slider', value: 0),
-      TomWidgetFamily.container: TomCard(tomId: 'container'),
-      TomWidgetFamily.dialog: TomAlertDialog(tomId: 'dialog'),
-      TomWidgetFamily.table: TomTable(tomId: 'table'),
-      TomWidgetFamily.label: TomText(tomId: 'label', text: 'Hello'),
-      TomWidgetFamily.image: TomIcon(tomId: 'image'),
-      TomWidgetFamily.navigation: TomDrawer(tomId: 'navigation'),
-      TomWidgetFamily.progress:
-          TomCircularProgressIndicator(tomId: 'progress'),
-      TomWidgetFamily.chip: TomActionChip(tomId: 'chip'),
-      TomWidgetFamily.list: TomListView(tomId: 'list'),
-      TomWidgetFamily.tree: TomTreeView(tomId: 'tree', nodes: const []),
-      TomWidgetFamily.sliver:
-          TomSliverPadding(tomId: 'sliver', sliver: const SizedBox()),
-      TomWidgetFamily.animated: TomAnimatedContainer(tomId: 'animated'),
-      TomWidgetFamily.effect:
-          TomSelectionArea(tomId: 'effect', child: const SizedBox()),
-      TomWidgetFamily.interaction: TomInkWell(tomId: 'interaction'),
-      TomWidgetFamily.builder: TomLayoutBuilder(
-        tomId: 'builder',
-        builder: (_, _) => const SizedBox(),
-      ),
-    };
+  TomWidgetFamily.button: TomElevatedButton(tomId: 'button'),
+  TomWidgetFamily.input: TomTextField(tomId: 'input'),
+  TomWidgetFamily.select: TomDropdownButton<int>(tomId: 'select'),
+  TomWidgetFamily.toggle: TomCheckbox(tomId: 'toggle', value: false),
+  TomWidgetFamily.slider: TomSlider(tomId: 'slider', value: 0),
+  TomWidgetFamily.container: TomCard(tomId: 'container'),
+  TomWidgetFamily.dialog: TomAlertDialog(tomId: 'dialog'),
+  TomWidgetFamily.table: TomTable(tomId: 'table'),
+  TomWidgetFamily.label: TomText(tomId: 'label', text: 'Hello'),
+  TomWidgetFamily.image: TomIcon(tomId: 'image'),
+  TomWidgetFamily.navigation: TomDrawer(tomId: 'navigation'),
+  TomWidgetFamily.progress: TomCircularProgressIndicator(tomId: 'progress'),
+  TomWidgetFamily.chip: TomActionChip(tomId: 'chip'),
+  TomWidgetFamily.list: TomListView(tomId: 'list'),
+  TomWidgetFamily.tree: TomTreeView(tomId: 'tree', nodes: const []),
+  TomWidgetFamily.sliver: TomSliverPadding(
+    tomId: 'sliver',
+    sliver: const SizedBox(),
+  ),
+  TomWidgetFamily.animated: TomAnimatedContainer(tomId: 'animated'),
+  TomWidgetFamily.effect: TomSelectionArea(
+    tomId: 'effect',
+    child: const SizedBox(),
+  ),
+  TomWidgetFamily.interaction: TomInkWell(tomId: 'interaction'),
+  TomWidgetFamily.builder: TomLayoutBuilder(
+    tomId: 'builder',
+    builder: (_, _) => const SizedBox(),
+  ),
+};
 
 void run() {
   // Construction resolves display values from Tom resources, so install an
@@ -138,8 +141,10 @@ void run() {
   for (final widget in kit.values) {
     assert(widget.basePath == widget.tomId);
   }
-  print('label.tomId / basePath: ${kit[TomWidgetFamily.label]!.tomId} / '
-      '${kit[TomWidgetFamily.label]!.basePath}');
+  print(
+    'label.tomId / basePath: ${kit[TomWidgetFamily.label]!.tomId} / '
+    '${kit[TomWidgetFamily.label]!.basePath}',
+  );
 
   // Inside a scope, the same construction addresses a different resource.
   TomScope.withScope('settings', () {
@@ -147,8 +152,10 @@ void run() {
     for (final MapEntry(key: family, value: widget) in scoped.entries) {
       assert(widget.basePath == 'settings.${family.name}');
     }
-    print('scoped label basePath:  '
-        '${scoped[TomWidgetFamily.label]!.basePath}');
+    print(
+      'scoped label basePath:  '
+      '${scoped[TomWidgetFamily.label]!.basePath}',
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -163,8 +170,8 @@ void run() {
     'tools': TomAuthState.read, // group ceiling, used in section 4
   });
 
-  for (final MapEntry(key: family, value: widget) in oneWidgetPerFamily()
-      .entries) {
+  for (final MapEntry(key: family, value: widget)
+      in oneWidgetPerFamily().entries) {
     final expected = switch (family) {
       TomWidgetFamily.button => TomAuthState.read,
       TomWidgetFamily.dialog => TomAuthState.none,
@@ -173,10 +180,14 @@ void run() {
     };
     assert(widget.effectiveAuthState == expected);
   }
-  print('button auth (rule: read):     '
-      '${oneWidgetPerFamily()[TomWidgetFamily.button]!.effectiveAuthState}');
-  print('label auth (no rule → full):  '
-      '${oneWidgetPerFamily()[TomWidgetFamily.label]!.effectiveAuthState}');
+  print(
+    'button auth (rule: read):     '
+    '${oneWidgetPerFamily()[TomWidgetFamily.button]!.effectiveAuthState}',
+  );
+  print(
+    'label auth (no rule → full):  '
+    '${oneWidgetPerFamily()[TomWidgetFamily.label]!.effectiveAuthState}',
+  );
 
   // ---------------------------------------------------------------------------
   // 4. A group narrows its members to the group's ceiling: full ⊓ read = read.
@@ -196,8 +207,10 @@ void run() {
   //    `family` lives on `TomFamilyBase`.
   // ---------------------------------------------------------------------------
   final expanded = TomExpanded(tomId: 'button');
-  print('TomExpanded basePath / auth:  '
-      '${expanded.basePath} / ${expanded.effectiveAuthState}');
+  print(
+    'TomExpanded basePath / auth:  '
+    '${expanded.basePath} / ${expanded.effectiveAuthState}',
+  );
   assert(expanded is! TomFamilyBase);
   assert(expanded.basePath == 'button');
   assert(expanded.effectiveAuthState == TomAuthState.read);

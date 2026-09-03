@@ -36,8 +36,9 @@ void main() {
       expect(find.byType(Opacity), findsNothing);
     });
 
-    testWidgets('none → SizedBox.shrink, content removed from layout',
-        (tester) async {
+    testWidgets('none → SizedBox.shrink, content removed from layout', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _host(_GatedNode(uiStateController: _forceState(TomAuthState.none))),
       );
@@ -49,21 +50,26 @@ void main() {
       expect(box.height, 0);
     });
 
-    testWidgets('disabled → AbsorbPointer + 0.38 opacity over content',
-        (tester) async {
+    testWidgets('disabled → AbsorbPointer + 0.38 opacity over content', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _host(
-            _GatedNode(uiStateController: _forceState(TomAuthState.disabled))),
+          _GatedNode(uiStateController: _forceState(TomAuthState.disabled)),
+        ),
       );
 
       expect(find.text('content'), findsOneWidget);
       expect(find.byType(AbsorbPointer), findsOneWidget);
-      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
-          closeTo(0.38, 0.001));
+      expect(
+        tester.widget<Opacity>(find.byType(Opacity)).opacity,
+        closeTo(0.38, 0.001),
+      );
     });
 
-    testWidgets('read → AbsorbPointer + default 0.6 readonly opacity',
-        (tester) async {
+    testWidgets('read → AbsorbPointer + default 0.6 readonly opacity', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _host(_GatedNode(uiStateController: _forceState(TomAuthState.read))),
       );
@@ -71,8 +77,10 @@ void main() {
       expect(find.text('content'), findsOneWidget);
       expect(find.byType(AbsorbPointer), findsOneWidget);
       // Distinguishes read (0.6) from disabled (0.38).
-      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
-          closeTo(0.6, 0.001));
+      expect(
+        tester.widget<Opacity>(find.byType(Opacity)).opacity,
+        closeTo(0.6, 0.001),
+      );
     });
 
     // The two treatments above are theme *defaults*, not fixed values. The
@@ -82,25 +90,30 @@ void main() {
     // and `tom_widget_mixin_test.dart` asserts the same 0.2 through the other
     // enforcement point — the same number in both places is what pins that the
     // two agree.
-    testWidgets('both treatments follow the scoped theme, not a literal',
-        (tester) async {
+    testWidgets('both treatments follow the scoped theme, not a literal', (
+      tester,
+    ) async {
       Widget scoped(TomAuthState state) => _host(
-            TomThemeScope(
-              theme: const TomTheme(
-                readonlyStyle: TomStateStyle(opacity: 0.7),
-                disabledStyle: TomStateStyle(opacity: 0.2),
-              ),
-              child: _GatedNode(uiStateController: _forceState(state)),
-            ),
-          );
+        TomThemeScope(
+          theme: const TomTheme(
+            readonlyStyle: TomStateStyle(opacity: 0.7),
+            disabledStyle: TomStateStyle(opacity: 0.2),
+          ),
+          child: _GatedNode(uiStateController: _forceState(state)),
+        ),
+      );
 
       await tester.pumpWidget(scoped(TomAuthState.disabled));
-      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
-          closeTo(0.2, 0.001));
+      expect(
+        tester.widget<Opacity>(find.byType(Opacity)).opacity,
+        closeTo(0.2, 0.001),
+      );
 
       await tester.pumpWidget(scoped(TomAuthState.read));
-      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity,
-          closeTo(0.7, 0.001));
+      expect(
+        tester.widget<Opacity>(find.byType(Opacity)).opacity,
+        closeTo(0.7, 0.001),
+      );
     });
   });
 }

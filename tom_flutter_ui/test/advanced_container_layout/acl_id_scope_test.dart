@@ -33,8 +33,7 @@ class _RecordingAdapter implements TomAuthorizationAdapter {
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -59,7 +58,9 @@ void main() {
     adapter.paths.clear();
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: SizedBox(width: width, child: layout)),
+        home: Scaffold(
+          body: SizedBox(width: width, child: layout),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -158,7 +159,10 @@ void main() {
         tester,
         buildOrder(aclIdScope: true, rowIdScope: true),
       );
-      expect(paths, containsAll(<String>['order.actions', 'order.actions.save']));
+      expect(
+        paths,
+        containsAll(<String>['order.actions', 'order.actions.save']),
+      );
     });
 
     testWidgets('each flag is independently load-bearing', (tester) async {
@@ -233,28 +237,25 @@ void main() {
   });
 
   group('generated flow rows', () {
-    testWidgets(
-      'a generated row is addressable as <aclId>.r<n> and does not '
-      'double the container id',
-      (tester) async {
-        final paths = await pathsOf(
-          tester,
-          const AclFlowContainer(
-            kind: AclFlowKind.wrap,
-            aclId: 'tags',
-            idScope: true,
-            components: [
-              AclComponent(child: Text('a'), id: 'one'),
-              AclComponent(child: Text('b'), id: 'two'),
-            ],
-          ),
-        );
-        // The generated row id already reads `tags.r0`; the container must
-        // not prepend `tags` a second time.
-        expect(paths, contains('tags.r0'));
-        expect(paths, isNot(contains('tags.tags.r0')));
-      },
-    );
+    testWidgets('a generated row is addressable as <aclId>.r<n> and does not '
+        'double the container id', (tester) async {
+      final paths = await pathsOf(
+        tester,
+        const AclFlowContainer(
+          kind: AclFlowKind.wrap,
+          aclId: 'tags',
+          idScope: true,
+          components: [
+            AclComponent(child: Text('a'), id: 'one'),
+            AclComponent(child: Text('b'), id: 'two'),
+          ],
+        ),
+      );
+      // The generated row id already reads `tags.r0`; the container must
+      // not prepend `tags` a second time.
+      expect(paths, contains('tags.r0'));
+      expect(paths, isNot(contains('tags.tags.r0')));
+    });
 
     testWidgets(
       'generated rows are layout rows, so they add no segment to their '

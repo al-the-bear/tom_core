@@ -21,7 +21,8 @@ class SelectableItem<T> {
   int get hashCode => value.hashCode;
 
   @override
-  String toString() => 'SelectableItem($label: $value${!enabled ? ', disabled' : ''})';
+  String toString() =>
+      'SelectableItem($label: $value${!enabled ? ', disabled' : ''})';
 }
 
 /// Abstract source of selectable items for selection-based form fields.

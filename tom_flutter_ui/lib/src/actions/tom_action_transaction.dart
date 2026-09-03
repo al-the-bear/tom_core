@@ -31,10 +31,7 @@ class TomActionTransaction {
   /// Records an undo entry for a sub-action.
   ///
   /// Called automatically by the action trigger mechanism.
-  void record<TUndo extends TomActionUndo>(
-    TomAction action,
-    TUndo undoState,
-  ) {
+  void record<TUndo extends TomActionUndo>(TomAction action, TUndo undoState) {
     if (_committed) {
       throw StateError('Cannot record into a committed transaction');
     }
@@ -101,7 +98,8 @@ class TomActionTransaction {
   int get entryCount => _entries.length;
 
   @override
-  String toString() => 'TomActionTransaction($label, entries: ${_entries.length})';
+  String toString() =>
+      'TomActionTransaction($label, entries: ${_entries.length})';
 }
 
 class _UndoEntry {

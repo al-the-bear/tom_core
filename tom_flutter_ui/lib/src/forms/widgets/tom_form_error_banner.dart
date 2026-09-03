@@ -127,9 +127,8 @@ class _TomFormErrorBannerState extends State<TomFormErrorBanner>
               padding: const EdgeInsets.only(left: 28, bottom: 4),
               child: Text(
                 error.errorKey,
-                style:
-                    (style.errorStyle ?? theme.textTheme.bodySmall)
-                        ?.copyWith(color: onErrorContainer),
+                style: (style.errorStyle ?? theme.textTheme.bodySmall)
+                    ?.copyWith(color: onErrorContainer),
               ),
             ),
           ),

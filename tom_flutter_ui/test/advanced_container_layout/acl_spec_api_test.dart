@@ -103,14 +103,16 @@ String _canonical(String params) {
   }
   flush();
 
-  return parts.map((p) {
-    var body = p.text;
-    final isRequired = body.startsWith('required ');
-    body = body.replaceFirst(RegExp(r'^required\s+'), '');
-    // Drop the parameter name — the trailing identifier.
-    body = body.replaceFirst(RegExp(r'\s+\w+$'), '').trim();
-    return '${p.mode}${isRequired ? '!' : ''}:${body.replaceAll(' ', '')}';
-  }).join(',');
+  return parts
+      .map((p) {
+        var body = p.text;
+        final isRequired = body.startsWith('required ');
+        body = body.replaceFirst(RegExp(r'^required\s+'), '');
+        // Drop the parameter name — the trailing identifier.
+        body = body.replaceFirst(RegExp(r'\s+\w+$'), '').trim();
+        return '${p.mode}${isRequired ? '!' : ''}:${body.replaceAll(' ', '')}';
+      })
+      .join(',');
 }
 
 /// Every declaration in [text] whose header matches [header], with its
@@ -154,8 +156,10 @@ Map<String, _Signature> _specSignatures() {
   final spec = File(_specPath).readAsStringSync();
   final header = RegExp(r'^\s*(?:AclBuilder|Acl)\s+(\w+)\(', multiLine: true);
   final signatures = <String, _Signature>{};
-  for (final fence
-      in RegExp(r'```dart\n(.*?)```', dotAll: true).allMatches(spec)) {
+  for (final fence in RegExp(
+    r'```dart\n(.*?)```',
+    dotAll: true,
+  ).allMatches(spec)) {
     for (final signature in _declarations(fence.group(1)!, header)) {
       signatures.putIfAbsent(signature.name, () => signature);
     }
@@ -171,8 +175,10 @@ Map<String, _Signature> _specSignatures() {
 /// return type, so no space before its name).
 Map<String, _Signature> _sourceSignatures() {
   final source = File(_builderPath).readAsStringSync();
-  final header = RegExp(r'^  (?:[A-Za-z_][\w<>?, ]*?)\s+(\w+)\(',
-      multiLine: true);
+  final header = RegExp(
+    r'^  (?:[A-Za-z_][\w<>?, ]*?)\s+(\w+)\(',
+    multiLine: true,
+  );
   return {for (final s in _declarations(source, header)) s.name: s};
 }
 
@@ -204,12 +210,20 @@ void main() {
     // vacuously against a parser that has silently stopped matching — which
     // is exactly what a refactor of either file could cause.
     test('both sides parse to a plausible number of methods', () {
-      expect(spec.length, greaterThan(80),
-          reason: 'only ${spec.length} signatures found in $_specPath — the '
-              'fence or declaration parsing is probably broken');
-      expect(fluent.length, greaterThan(80),
-          reason: 'only ${fluent.length} fluent methods found in '
-              '$_builderPath — the declaration parsing is probably broken');
+      expect(
+        spec.length,
+        greaterThan(80),
+        reason:
+            'only ${spec.length} signatures found in $_specPath — the '
+            'fence or declaration parsing is probably broken',
+      );
+      expect(
+        fluent.length,
+        greaterThan(80),
+        reason:
+            'only ${fluent.length} fluent methods found in '
+            '$_builderPath — the declaration parsing is probably broken',
+      );
       // Anchors: two methods carrying breakpoint-override lists, one
       // no-argument convenience wrapper, and `build` itself.
       expect(source.keys, contains('setRowHeight'));
@@ -221,10 +235,14 @@ void main() {
     test('every documented method exists', () {
       final phantom = spec.keys.where((n) => !source.containsKey(n)).toList()
         ..sort();
-      expect(phantom, isEmpty,
-          reason: '$_specPath documents methods that $_builderPath does not '
-              'declare — a reader following it writes code that will not '
-              'compile:\n${phantom.map((n) => '  $n').join('\n')}');
+      expect(
+        phantom,
+        isEmpty,
+        reason:
+            '$_specPath documents methods that $_builderPath does not '
+            'declare — a reader following it writes code that will not '
+            'compile:\n${phantom.map((n) => '  $n').join('\n')}',
+      );
     });
 
     test('every documented signature matches on type and optionality', () {
@@ -235,24 +253,34 @@ void main() {
         final documented = _canonical(spec[name]!.params);
         final actual = _canonical(declared.params);
         if (documented != actual) {
-          drifted.add('  $name\n'
-              '      spec: ($documented)\n'
-              '      src : ($actual)');
+          drifted.add(
+            '  $name\n'
+            '      spec: ($documented)\n'
+            '      src : ($actual)',
+          );
         }
       }
-      expect(drifted, isEmpty,
-          reason: 'signatures in $_specPath no longer match $_builderPath '
-              '(parameter names are deliberately not compared):\n'
-              '${drifted.join('\n')}');
+      expect(
+        drifted,
+        isEmpty,
+        reason:
+            'signatures in $_specPath no longer match $_builderPath '
+            '(parameter names are deliberately not compared):\n'
+            '${drifted.join('\n')}',
+      );
     });
 
     test('every fluent builder method is documented', () {
-      final undocumented =
-          fluent.where((n) => !spec.containsKey(n)).toList()..sort();
-      expect(undocumented, isEmpty,
-          reason: '§17 of $_specPath undertakes to list the complete public '
-              'API, but these methods have no entry, so a reader cannot '
-              'learn they exist:\n${undocumented.map((n) => '  $n').join('\n')}');
+      final undocumented = fluent.where((n) => !spec.containsKey(n)).toList()
+        ..sort();
+      expect(
+        undocumented,
+        isEmpty,
+        reason:
+            '§17 of $_specPath undertakes to list the complete public '
+            'API, but these methods have no entry, so a reader cannot '
+            'learn they exist:\n${undocumented.map((n) => '  $n').join('\n')}',
+      );
     });
   });
 }

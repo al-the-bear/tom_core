@@ -16,9 +16,9 @@ void main() {
   // revert re-enters `_onTextChanged`, which re-validates the now valid
   // reverted text and wipes the error it had just set.
   group('TomTextFormFieldBase — input-validator revert', () {
-    testWidgets(
-        'keeps the input error after reverting an invalid keystroke',
-        (tester) async {
+    testWidgets('keeps the input error after reverting an invalid keystroke', (
+      tester,
+    ) async {
       // ignore: deprecated_member_use
       final field = TomFormStringInputClassic(
         'amount',
@@ -41,17 +41,24 @@ void main() {
       await tester.pump();
 
       final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.controller!.text, '123',
-          reason: 'invalid input should revert to the last valid value');
-      expect(field.errorText, isNotNull,
-          reason: 'the input error must not be wiped by the revert');
+      expect(
+        textField.controller!.text,
+        '123',
+        reason: 'invalid input should revert to the last valid value',
+      );
+      expect(
+        field.errorText,
+        isNotNull,
+        reason: 'the input error must not be wiped by the revert',
+      );
       // `t()` resolves the validator's resource key (here through the empty
       // scope), so assert the key survives rather than pinning its prefix.
       expect(field.errorText, contains('error.onlyDigits'));
     });
 
-    testWidgets('clears the error once a valid value is entered again',
-        (tester) async {
+    testWidgets('clears the error once a valid value is entered again', (
+      tester,
+    ) async {
       // ignore: deprecated_member_use
       final field = TomFormStringInputClassic(
         'amount',

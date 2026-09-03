@@ -7,8 +7,7 @@ class StaticSelectableSource<T> extends TomSelectableSource<T> {
   StaticSelectableSource(this._items);
 
   @override
-  Future<List<SelectableItem<T>>> getItems() async =>
-      List.unmodifiable(_items);
+  Future<List<SelectableItem<T>>> getItems() async => List.unmodifiable(_items);
 
   @override
   Stream<List<SelectableItem<T>>>? get itemsStream => null;

@@ -50,14 +50,14 @@ Widget _host(Widget child, {required double width, double height = 200}) {
 /// sum of its children, so a tight width smaller than that is an overflow
 /// rather than a clip.
 Widget _wideRow() => Row(
-      key: _wideKey,
-      mainAxisSize: MainAxisSize.min,
-      children: const [
-        SizedBox(width: 200, height: 24),
-        SizedBox(width: 160, height: 24),
-        SizedBox(width: 160, height: 24),
-      ],
-    );
+  key: _wideKey,
+  mainAxisSize: MainAxisSize.min,
+  children: const [
+    SizedBox(width: 200, height: 24),
+    SizedBox(width: 160, height: 24),
+    SizedBox(width: 160, height: 24),
+  ],
+);
 
 /// Collects rendering-library overflow reports raised while the test runs.
 ///
@@ -92,7 +92,8 @@ void main() {
       expect(
         overflows,
         isEmpty,
-        reason: 'A child appended without a size hint must not overflow the '
+        reason:
+            'A child appended without a size hint must not overflow the '
             'auto-applied default width',
       );
       // The default is a floor: with 600px available the component takes the
@@ -117,7 +118,8 @@ void main() {
       expect(
         overflows,
         isEmpty,
-        reason: 'Too little space must clip the content, not paint the '
+        reason:
+            'Too little space must clip the content, not paint the '
             'striped overflow banner',
       );
       // Clipped *without relayout*: the child keeps the width it needs, so

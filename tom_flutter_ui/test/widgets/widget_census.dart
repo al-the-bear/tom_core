@@ -58,12 +58,12 @@ String? parentIn(String? clause) =>
 /// copy of the catalogue it is guarding — adding a family base makes it a
 /// family base here too, with no edit.
 Set<String> familyBases() {
-  final source =
-      File('lib/src/widget_base/tom_family_base.dart').readAsStringSync();
-  return RegExp(r'class\s+(Tom\w+Base)\s+extends\s+TomFamilyBase')
-      .allMatches(source)
-      .map((m) => m.group(1)!)
-      .toSet();
+  final source = File(
+    'lib/src/widget_base/tom_family_base.dart',
+  ).readAsStringSync();
+  return RegExp(
+    r'class\s+(Tom\w+Base)\s+extends\s+TomFamilyBase',
+  ).allMatches(source).map((m) => m.group(1)!).toSet();
 }
 
 /// The types under `widgets/` that are not widgets: a route, a static facade,

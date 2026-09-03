@@ -33,8 +33,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// Both classes are flat — every member sits at one indent level and no nested
 /// declaration exists — so a body reliably runs from the declaration to the
 /// next line that closes at that same indent.
-final _declaration =
-    RegExp(r'^  static\s+[\w<>?,\s]+?\s(\w+)\(', multiLine: true);
+final _declaration = RegExp(
+  r'^  static\s+[\w<>?,\s]+?\s(\w+)\(',
+  multiLine: true,
+);
 
 /// Maps every static member name in [source] to the text of its body.
 Map<String, String> _membersOf(String source) {
@@ -77,21 +79,26 @@ String _numberWord(int n) {
   };
   final word = words[n];
   if (word == null) {
-    fail('no English word registered for $n, so the count claims in the '
-        'TomStyleResolvers dartdoc cannot be checked; extend this map and '
-        're-read the comment while you are there');
+    fail(
+      'no English word registered for $n, so the count claims in the '
+      'TomStyleResolvers dartdoc cannot be checked; extend this map and '
+      're-read the comment while you are there',
+    );
   }
   return word;
 }
 
 void main() {
   group('TomStyleResolvers layering', () {
-    final source =
-        File('lib/src/widget_base/tom_style_resolvers.dart').readAsStringSync();
+    final source = File(
+      'lib/src/widget_base/tom_style_resolvers.dart',
+    ).readAsStringSync();
 
     final bodies = _membersOf(source);
 
-    final resolvers = bodies.keys.where((n) => n.startsWith('resolve')).toList();
+    final resolvers = bodies.keys
+        .where((n) => n.startsWith('resolve'))
+        .toList();
     final parsers = bodies.keys.where((n) => n.startsWith('parse')).toList();
 
     test('the source scan found the members it is meant to check', () {
@@ -118,11 +125,11 @@ void main() {
       return body.substring(0, body.indexOf('{'));
     }
 
-    final rawParsers =
-        parsers.where((p) => rawParameter.hasMatch(signatureOf(p))).toList();
+    final rawParsers = parsers
+        .where((p) => rawParameter.hasMatch(signatureOf(p)))
+        .toList();
 
-    test('the parsers accepting a raw value are the seven that document one',
-        () {
+    test('the parsers accepting a raw value are the seven that document one', () {
       // Guards the guard twice over: it pins the derived split so a signature
       // change cannot silently move a resolver out from under the rule below,
       // and it names the seven so the failure is legible.
@@ -130,18 +137,15 @@ void main() {
       // Five of them have a `resolve…` partner in this class and so fall under
       // that rule; parseEdgeInsets and parseFontWeight are resolved by TomCtr,
       // which reads the raw value for the same reason.
-      expect(
-        rawParsers..sort(),
-        <String>[
-          'parseAlignment',
-          'parseBorderRadius',
-          'parseEdgeInsets',
-          'parseFontWeight',
-          'parseOffset',
-          'parseScrollPhysics',
-          'parseVisualDensity',
-        ],
-      );
+      expect(rawParsers..sort(), <String>[
+        'parseAlignment',
+        'parseBorderRadius',
+        'parseEdgeInsets',
+        'parseFontWeight',
+        'parseOffset',
+        'parseScrollPhysics',
+        'parseVisualDensity',
+      ]);
     });
 
     test('the class dartdoc counts its own members correctly', () {
@@ -155,16 +159,19 @@ void main() {
       // enough to check, so it is checked — otherwise the twentieth parser
       // gets added, `hasLength(19)` above gets corrected, and the comment is
       // left saying nineteen, which is the same drift in a shorter form.
-      final classDoc =
-          source.substring(0, source.indexOf('class TomStyleResolvers {'));
+      final classDoc = source.substring(
+        0,
+        source.indexOf('class TomStyleResolvers {'),
+      );
 
       // Every parser that does not take a bare `dynamic` takes a map, and
       // every raw parser either has its resolver here or in TomCtr — so all
       // four counts follow from the two lists, and none is written twice.
       final mapParsers = parsers.length - rawParsers.length;
       final rawResolvedHere = rawParsers
-          .where((p) =>
-              resolvers.contains('resolve${p.substring('parse'.length)}'))
+          .where(
+            (p) => resolvers.contains('resolve${p.substring('parse'.length)}'),
+          )
           .length;
 
       final claims = <String>[
@@ -179,7 +186,8 @@ void main() {
         expect(
           classDoc.toLowerCase(),
           contains(claim),
-          reason: 'the class dartdoc no longer says "$claim", so a count it '
+          reason:
+              'the class dartdoc no longer says "$claim", so a count it '
               'states about its own members has drifted from them',
         );
       }
@@ -190,15 +198,15 @@ void main() {
         expect(
           'TomCtr.'.allMatches(bodies[resolver]!).length,
           1,
-          reason: '$resolver does not make exactly one TomCtr call, so it is '
+          reason:
+              '$resolver does not make exactly one TomCtr call, so it is '
               'either reaching the provider from somewhere other than TomCtr '
               'or reading it twice for one value',
         );
       }
     });
 
-    test('a resolver reads the raw value exactly when its parser accepts one',
-        () {
+    test('a resolver reads the raw value exactly when its parser accepts one', () {
       for (final resolver in resolvers) {
         final parser = 'parse${resolver.substring('resolve'.length)}';
         final takesRaw = rawParsers.contains(parser);
@@ -207,11 +215,11 @@ void main() {
           contains(takesRaw ? 'TomCtr.value(' : 'TomCtr.map('),
           reason: takesRaw
               ? '$parser accepts a scalar or a list, but $resolver reads '
-                  'TomCtr.map, which yields null for anything that is not a '
-                  'map — so those documented forms are unreachable from a '
-                  'resource'
+                    'TomCtr.map, which yields null for anything that is not a '
+                    'map — so those documented forms are unreachable from a '
+                    'resource'
               : '$parser only accepts a map, so $resolver must read TomCtr.map '
-                  'rather than hand it a raw value it has no signature for',
+                    'rather than hand it a raw value it has no signature for',
         );
       }
     });
@@ -227,7 +235,8 @@ void main() {
         expect(
           bodies[resolver],
           contains('$parser('),
-          reason: '$resolver builds its object itself instead of delegating to '
+          reason:
+              '$resolver builds its object itself instead of delegating to '
               '$parser, so the composition it performs cannot be tested '
               'without installed resources',
         );
@@ -240,7 +249,8 @@ void main() {
         expect(
           bodies[member],
           isNot(contains('TomCtr')),
-          reason: '$member reaches the resource provider, so it can no longer '
+          reason:
+              '$member reaches the resource provider, so it can no longer '
               'be called with a plain map and the parse half stops being '
               'testable without resources',
         );
@@ -262,10 +272,12 @@ void main() {
   /// than bodies also catches the case the comment could not — copies that have
   /// already diverged.
   group('TomCtr and TomStyleResolvers do not each hold their own helper', () {
-    final helpers = File('lib/src/widget_base/tom_construction_helpers.dart')
-        .readAsStringSync();
-    final resolvers =
-        File('lib/src/widget_base/tom_style_resolvers.dart').readAsStringSync();
+    final helpers = File(
+      'lib/src/widget_base/tom_construction_helpers.dart',
+    ).readAsStringSync();
+    final resolvers = File(
+      'lib/src/widget_base/tom_style_resolvers.dart',
+    ).readAsStringSync();
 
     final inTomCtr = _membersOf(helpers).keys.toSet();
     final inResolvers = _membersOf(resolvers).keys.toSet();
@@ -281,7 +293,8 @@ void main() {
       expect(
         (inTomCtr.intersection(inResolvers).toList()..sort()),
         isEmpty,
-        reason: 'a name declared in both classes is the same question answered '
+        reason:
+            'a name declared in both classes is the same question answered '
             'twice; move the implementation to TomStyleResolvers, which owns '
             'the value-to-object parsers, and have TomCtr call it after '
             'reading the resource',

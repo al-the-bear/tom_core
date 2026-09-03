@@ -467,29 +467,40 @@ class GeneratedIcons {
     'mAirlineSeatFlatAngledRounded': Icons.airline_seat_flat_angled_rounded,
     'mAirlineSeatFlatAngledOutlined': Icons.airline_seat_flat_angled_outlined,
     'mAirlineSeatIndividualSuite': Icons.airline_seat_individual_suite,
-    'mAirlineSeatIndividualSuiteSharp': Icons.airline_seat_individual_suite_sharp,
-    'mAirlineSeatIndividualSuiteRounded': Icons.airline_seat_individual_suite_rounded,
-    'mAirlineSeatIndividualSuiteOutlined': Icons.airline_seat_individual_suite_outlined,
+    'mAirlineSeatIndividualSuiteSharp':
+        Icons.airline_seat_individual_suite_sharp,
+    'mAirlineSeatIndividualSuiteRounded':
+        Icons.airline_seat_individual_suite_rounded,
+    'mAirlineSeatIndividualSuiteOutlined':
+        Icons.airline_seat_individual_suite_outlined,
     'mAirlineSeatLegroomExtra': Icons.airline_seat_legroom_extra,
     'mAirlineSeatLegroomExtraSharp': Icons.airline_seat_legroom_extra_sharp,
     'mAirlineSeatLegroomExtraRounded': Icons.airline_seat_legroom_extra_rounded,
-    'mAirlineSeatLegroomExtraOutlined': Icons.airline_seat_legroom_extra_outlined,
+    'mAirlineSeatLegroomExtraOutlined':
+        Icons.airline_seat_legroom_extra_outlined,
     'mAirlineSeatLegroomNormal': Icons.airline_seat_legroom_normal,
     'mAirlineSeatLegroomNormalSharp': Icons.airline_seat_legroom_normal_sharp,
-    'mAirlineSeatLegroomNormalRounded': Icons.airline_seat_legroom_normal_rounded,
-    'mAirlineSeatLegroomNormalOutlined': Icons.airline_seat_legroom_normal_outlined,
+    'mAirlineSeatLegroomNormalRounded':
+        Icons.airline_seat_legroom_normal_rounded,
+    'mAirlineSeatLegroomNormalOutlined':
+        Icons.airline_seat_legroom_normal_outlined,
     'mAirlineSeatLegroomReduced': Icons.airline_seat_legroom_reduced,
     'mAirlineSeatLegroomReducedSharp': Icons.airline_seat_legroom_reduced_sharp,
-    'mAirlineSeatLegroomReducedRounded': Icons.airline_seat_legroom_reduced_rounded,
-    'mAirlineSeatLegroomReducedOutlined': Icons.airline_seat_legroom_reduced_outlined,
+    'mAirlineSeatLegroomReducedRounded':
+        Icons.airline_seat_legroom_reduced_rounded,
+    'mAirlineSeatLegroomReducedOutlined':
+        Icons.airline_seat_legroom_reduced_outlined,
     'mAirlineSeatReclineExtra': Icons.airline_seat_recline_extra,
     'mAirlineSeatReclineExtraSharp': Icons.airline_seat_recline_extra_sharp,
     'mAirlineSeatReclineExtraRounded': Icons.airline_seat_recline_extra_rounded,
-    'mAirlineSeatReclineExtraOutlined': Icons.airline_seat_recline_extra_outlined,
+    'mAirlineSeatReclineExtraOutlined':
+        Icons.airline_seat_recline_extra_outlined,
     'mAirlineSeatReclineNormal': Icons.airline_seat_recline_normal,
     'mAirlineSeatReclineNormalSharp': Icons.airline_seat_recline_normal_sharp,
-    'mAirlineSeatReclineNormalRounded': Icons.airline_seat_recline_normal_rounded,
-    'mAirlineSeatReclineNormalOutlined': Icons.airline_seat_recline_normal_outlined,
+    'mAirlineSeatReclineNormalRounded':
+        Icons.airline_seat_recline_normal_rounded,
+    'mAirlineSeatReclineNormalOutlined':
+        Icons.airline_seat_recline_normal_outlined,
     'mAirlineStops': Icons.airline_stops,
     'mAirlineStopsSharp': Icons.airline_stops_sharp,
     'mAirlineStopsRounded': Icons.airline_stops_rounded,
@@ -2300,7 +2311,8 @@ class GeneratedIcons {
     'mDirectionsRailwayFilled': Icons.directions_railway_filled,
     'mDirectionsRailwayFilledSharp': Icons.directions_railway_filled_sharp,
     'mDirectionsRailwayFilledRounded': Icons.directions_railway_filled_rounded,
-    'mDirectionsRailwayFilledOutlined': Icons.directions_railway_filled_outlined,
+    'mDirectionsRailwayFilledOutlined':
+        Icons.directions_railway_filled_outlined,
     'mDirectionsRun': Icons.directions_run,
     'mDirectionsRunSharp': Icons.directions_run_sharp,
     'mDirectionsRunRounded': Icons.directions_run_rounded,
@@ -2324,7 +2336,8 @@ class GeneratedIcons {
     'mDirectionsTransitFilled': Icons.directions_transit_filled,
     'mDirectionsTransitFilledSharp': Icons.directions_transit_filled_sharp,
     'mDirectionsTransitFilledRounded': Icons.directions_transit_filled_rounded,
-    'mDirectionsTransitFilledOutlined': Icons.directions_transit_filled_outlined,
+    'mDirectionsTransitFilledOutlined':
+        Icons.directions_transit_filled_outlined,
     'mDirectionsWalk': Icons.directions_walk,
     'mDirectionsWalkSharp': Icons.directions_walk_sharp,
     'mDirectionsWalkRounded': Icons.directions_walk_rounded,
@@ -2410,9 +2423,12 @@ class GeneratedIcons {
     'mDoNotDisturbOnRounded': Icons.do_not_disturb_on_rounded,
     'mDoNotDisturbOnOutlined': Icons.do_not_disturb_on_outlined,
     'mDoNotDisturbOnTotalSilence': Icons.do_not_disturb_on_total_silence,
-    'mDoNotDisturbOnTotalSilenceSharp': Icons.do_not_disturb_on_total_silence_sharp,
-    'mDoNotDisturbOnTotalSilenceRounded': Icons.do_not_disturb_on_total_silence_rounded,
-    'mDoNotDisturbOnTotalSilenceOutlined': Icons.do_not_disturb_on_total_silence_outlined,
+    'mDoNotDisturbOnTotalSilenceSharp':
+        Icons.do_not_disturb_on_total_silence_sharp,
+    'mDoNotDisturbOnTotalSilenceRounded':
+        Icons.do_not_disturb_on_total_silence_rounded,
+    'mDoNotDisturbOnTotalSilenceOutlined':
+        Icons.do_not_disturb_on_total_silence_outlined,
     'mDoNotStep': Icons.do_not_step,
     'mDoNotStepSharp': Icons.do_not_step_sharp,
     'mDoNotStepRounded': Icons.do_not_step_rounded,
@@ -3431,12 +3447,16 @@ class GeneratedIcons {
     'mFormatStrikethroughOutlined': Icons.format_strikethrough_outlined,
     'mFormatTextdirectionLToR': Icons.format_textdirection_l_to_r,
     'mFormatTextdirectionLToRSharp': Icons.format_textdirection_l_to_r_sharp,
-    'mFormatTextdirectionLToRRounded': Icons.format_textdirection_l_to_r_rounded,
-    'mFormatTextdirectionLToROutlined': Icons.format_textdirection_l_to_r_outlined,
+    'mFormatTextdirectionLToRRounded':
+        Icons.format_textdirection_l_to_r_rounded,
+    'mFormatTextdirectionLToROutlined':
+        Icons.format_textdirection_l_to_r_outlined,
     'mFormatTextdirectionRToL': Icons.format_textdirection_r_to_l,
     'mFormatTextdirectionRToLSharp': Icons.format_textdirection_r_to_l_sharp,
-    'mFormatTextdirectionRToLRounded': Icons.format_textdirection_r_to_l_rounded,
-    'mFormatTextdirectionRToLOutlined': Icons.format_textdirection_r_to_l_outlined,
+    'mFormatTextdirectionRToLRounded':
+        Icons.format_textdirection_r_to_l_rounded,
+    'mFormatTextdirectionRToLOutlined':
+        Icons.format_textdirection_r_to_l_outlined,
     'mFormatUnderline': Icons.format_underline,
     'mFormatUnderlineSharp': Icons.format_underline_sharp,
     'mFormatUnderlineRounded': Icons.format_underline_rounded,
@@ -4204,15 +4224,19 @@ class GeneratedIcons {
     'mKeyboardDoubleArrowDown': Icons.keyboard_double_arrow_down,
     'mKeyboardDoubleArrowDownSharp': Icons.keyboard_double_arrow_down_sharp,
     'mKeyboardDoubleArrowDownRounded': Icons.keyboard_double_arrow_down_rounded,
-    'mKeyboardDoubleArrowDownOutlined': Icons.keyboard_double_arrow_down_outlined,
+    'mKeyboardDoubleArrowDownOutlined':
+        Icons.keyboard_double_arrow_down_outlined,
     'mKeyboardDoubleArrowLeft': Icons.keyboard_double_arrow_left,
     'mKeyboardDoubleArrowLeftSharp': Icons.keyboard_double_arrow_left_sharp,
     'mKeyboardDoubleArrowLeftRounded': Icons.keyboard_double_arrow_left_rounded,
-    'mKeyboardDoubleArrowLeftOutlined': Icons.keyboard_double_arrow_left_outlined,
+    'mKeyboardDoubleArrowLeftOutlined':
+        Icons.keyboard_double_arrow_left_outlined,
     'mKeyboardDoubleArrowRight': Icons.keyboard_double_arrow_right,
     'mKeyboardDoubleArrowRightSharp': Icons.keyboard_double_arrow_right_sharp,
-    'mKeyboardDoubleArrowRightRounded': Icons.keyboard_double_arrow_right_rounded,
-    'mKeyboardDoubleArrowRightOutlined': Icons.keyboard_double_arrow_right_outlined,
+    'mKeyboardDoubleArrowRightRounded':
+        Icons.keyboard_double_arrow_right_rounded,
+    'mKeyboardDoubleArrowRightOutlined':
+        Icons.keyboard_double_arrow_right_outlined,
     'mKeyboardDoubleArrowUp': Icons.keyboard_double_arrow_up,
     'mKeyboardDoubleArrowUpSharp': Icons.keyboard_double_arrow_up_sharp,
     'mKeyboardDoubleArrowUpRounded': Icons.keyboard_double_arrow_up_rounded,
@@ -5281,8 +5305,10 @@ class GeneratedIcons {
     'mNoEncryptionOutlined': Icons.no_encryption_outlined,
     'mNoEncryptionGmailerrorred': Icons.no_encryption_gmailerrorred,
     'mNoEncryptionGmailerrorredSharp': Icons.no_encryption_gmailerrorred_sharp,
-    'mNoEncryptionGmailerrorredRounded': Icons.no_encryption_gmailerrorred_rounded,
-    'mNoEncryptionGmailerrorredOutlined': Icons.no_encryption_gmailerrorred_outlined,
+    'mNoEncryptionGmailerrorredRounded':
+        Icons.no_encryption_gmailerrorred_rounded,
+    'mNoEncryptionGmailerrorredOutlined':
+        Icons.no_encryption_gmailerrorred_outlined,
     'mNoFlash': Icons.no_flash,
     'mNoFlashSharp': Icons.no_flash_sharp,
     'mNoFlashRounded': Icons.no_flash_rounded,
@@ -5552,16 +5578,20 @@ class GeneratedIcons {
     'mPanoramaHorizontalOutlined': Icons.panorama_horizontal_outlined,
     'mPanoramaHorizontalSelect': Icons.panorama_horizontal_select,
     'mPanoramaHorizontalSelectSharp': Icons.panorama_horizontal_select_sharp,
-    'mPanoramaHorizontalSelectRounded': Icons.panorama_horizontal_select_rounded,
-    'mPanoramaHorizontalSelectOutlined': Icons.panorama_horizontal_select_outlined,
+    'mPanoramaHorizontalSelectRounded':
+        Icons.panorama_horizontal_select_rounded,
+    'mPanoramaHorizontalSelectOutlined':
+        Icons.panorama_horizontal_select_outlined,
     'mPanoramaPhotosphere': Icons.panorama_photosphere,
     'mPanoramaPhotosphereSharp': Icons.panorama_photosphere_sharp,
     'mPanoramaPhotosphereRounded': Icons.panorama_photosphere_rounded,
     'mPanoramaPhotosphereOutlined': Icons.panorama_photosphere_outlined,
     'mPanoramaPhotosphereSelect': Icons.panorama_photosphere_select,
     'mPanoramaPhotosphereSelectSharp': Icons.panorama_photosphere_select_sharp,
-    'mPanoramaPhotosphereSelectRounded': Icons.panorama_photosphere_select_rounded,
-    'mPanoramaPhotosphereSelectOutlined': Icons.panorama_photosphere_select_outlined,
+    'mPanoramaPhotosphereSelectRounded':
+        Icons.panorama_photosphere_select_rounded,
+    'mPanoramaPhotosphereSelectOutlined':
+        Icons.panorama_photosphere_select_outlined,
     'mPanoramaVertical': Icons.panorama_vertical,
     'mPanoramaVerticalSharp': Icons.panorama_vertical_sharp,
     'mPanoramaVerticalRounded': Icons.panorama_vertical_rounded,
@@ -5577,7 +5607,8 @@ class GeneratedIcons {
     'mPanoramaWideAngleSelect': Icons.panorama_wide_angle_select,
     'mPanoramaWideAngleSelectSharp': Icons.panorama_wide_angle_select_sharp,
     'mPanoramaWideAngleSelectRounded': Icons.panorama_wide_angle_select_rounded,
-    'mPanoramaWideAngleSelectOutlined': Icons.panorama_wide_angle_select_outlined,
+    'mPanoramaWideAngleSelectOutlined':
+        Icons.panorama_wide_angle_select_outlined,
     'mParagliding': Icons.paragliding,
     'mParaglidingSharp': Icons.paragliding_sharp,
     'mParaglidingRounded': Icons.paragliding_rounded,
@@ -6135,8 +6166,10 @@ class GeneratedIcons {
     'mPrivateConnectivityOutlined': Icons.private_connectivity_outlined,
     'mProductionQuantityLimits': Icons.production_quantity_limits,
     'mProductionQuantityLimitsSharp': Icons.production_quantity_limits_sharp,
-    'mProductionQuantityLimitsRounded': Icons.production_quantity_limits_rounded,
-    'mProductionQuantityLimitsOutlined': Icons.production_quantity_limits_outlined,
+    'mProductionQuantityLimitsRounded':
+        Icons.production_quantity_limits_rounded,
+    'mProductionQuantityLimitsOutlined':
+        Icons.production_quantity_limits_outlined,
     'mPropane': Icons.propane,
     'mPropaneSharp': Icons.propane_sharp,
     'mPropaneRounded': Icons.propane_rounded,
@@ -6848,8 +6881,10 @@ class GeneratedIcons {
     'mSentimentSatisfiedAltOutlined': Icons.sentiment_satisfied_alt_outlined,
     'mSentimentVeryDissatisfied': Icons.sentiment_very_dissatisfied,
     'mSentimentVeryDissatisfiedSharp': Icons.sentiment_very_dissatisfied_sharp,
-    'mSentimentVeryDissatisfiedRounded': Icons.sentiment_very_dissatisfied_rounded,
-    'mSentimentVeryDissatisfiedOutlined': Icons.sentiment_very_dissatisfied_outlined,
+    'mSentimentVeryDissatisfiedRounded':
+        Icons.sentiment_very_dissatisfied_rounded,
+    'mSentimentVeryDissatisfiedOutlined':
+        Icons.sentiment_very_dissatisfied_outlined,
     'mSentimentVerySatisfied': Icons.sentiment_very_satisfied,
     'mSentimentVerySatisfiedSharp': Icons.sentiment_very_satisfied_sharp,
     'mSentimentVerySatisfiedRounded': Icons.sentiment_very_satisfied_rounded,
@@ -7059,14 +7094,22 @@ class GeneratedIcons {
     'mSignalCellularAlt2BarSharp': Icons.signal_cellular_alt_2_bar_sharp,
     'mSignalCellularAlt2BarRounded': Icons.signal_cellular_alt_2_bar_rounded,
     'mSignalCellularAlt2BarOutlined': Icons.signal_cellular_alt_2_bar_outlined,
-    'mSignalCellularConnectedNoInternet0Bar': Icons.signal_cellular_connected_no_internet_0_bar,
-    'mSignalCellularConnectedNoInternet0BarSharp': Icons.signal_cellular_connected_no_internet_0_bar_sharp,
-    'mSignalCellularConnectedNoInternet0BarRounded': Icons.signal_cellular_connected_no_internet_0_bar_rounded,
-    'mSignalCellularConnectedNoInternet0BarOutlined': Icons.signal_cellular_connected_no_internet_0_bar_outlined,
-    'mSignalCellularConnectedNoInternet4Bar': Icons.signal_cellular_connected_no_internet_4_bar,
-    'mSignalCellularConnectedNoInternet4BarSharp': Icons.signal_cellular_connected_no_internet_4_bar_sharp,
-    'mSignalCellularConnectedNoInternet4BarRounded': Icons.signal_cellular_connected_no_internet_4_bar_rounded,
-    'mSignalCellularConnectedNoInternet4BarOutlined': Icons.signal_cellular_connected_no_internet_4_bar_outlined,
+    'mSignalCellularConnectedNoInternet0Bar':
+        Icons.signal_cellular_connected_no_internet_0_bar,
+    'mSignalCellularConnectedNoInternet0BarSharp':
+        Icons.signal_cellular_connected_no_internet_0_bar_sharp,
+    'mSignalCellularConnectedNoInternet0BarRounded':
+        Icons.signal_cellular_connected_no_internet_0_bar_rounded,
+    'mSignalCellularConnectedNoInternet0BarOutlined':
+        Icons.signal_cellular_connected_no_internet_0_bar_outlined,
+    'mSignalCellularConnectedNoInternet4Bar':
+        Icons.signal_cellular_connected_no_internet_4_bar,
+    'mSignalCellularConnectedNoInternet4BarSharp':
+        Icons.signal_cellular_connected_no_internet_4_bar_sharp,
+    'mSignalCellularConnectedNoInternet4BarRounded':
+        Icons.signal_cellular_connected_no_internet_4_bar_rounded,
+    'mSignalCellularConnectedNoInternet4BarOutlined':
+        Icons.signal_cellular_connected_no_internet_4_bar_outlined,
     'mSignalCellularNoSim': Icons.signal_cellular_no_sim,
     'mSignalCellularNoSimSharp': Icons.signal_cellular_no_sim_sharp,
     'mSignalCellularNoSimRounded': Icons.signal_cellular_no_sim_rounded,
@@ -7099,26 +7142,37 @@ class GeneratedIcons {
     'mSignalWifiBadSharp': Icons.signal_wifi_bad_sharp,
     'mSignalWifiBadRounded': Icons.signal_wifi_bad_rounded,
     'mSignalWifiBadOutlined': Icons.signal_wifi_bad_outlined,
-    'mSignalWifiConnectedNoInternet4': Icons.signal_wifi_connected_no_internet_4,
-    'mSignalWifiConnectedNoInternet4Sharp': Icons.signal_wifi_connected_no_internet_4_sharp,
-    'mSignalWifiConnectedNoInternet4Rounded': Icons.signal_wifi_connected_no_internet_4_rounded,
-    'mSignalWifiConnectedNoInternet4Outlined': Icons.signal_wifi_connected_no_internet_4_outlined,
+    'mSignalWifiConnectedNoInternet4':
+        Icons.signal_wifi_connected_no_internet_4,
+    'mSignalWifiConnectedNoInternet4Sharp':
+        Icons.signal_wifi_connected_no_internet_4_sharp,
+    'mSignalWifiConnectedNoInternet4Rounded':
+        Icons.signal_wifi_connected_no_internet_4_rounded,
+    'mSignalWifiConnectedNoInternet4Outlined':
+        Icons.signal_wifi_connected_no_internet_4_outlined,
     'mSignalWifiOff': Icons.signal_wifi_off,
     'mSignalWifiOffSharp': Icons.signal_wifi_off_sharp,
     'mSignalWifiOffRounded': Icons.signal_wifi_off_rounded,
     'mSignalWifiOffOutlined': Icons.signal_wifi_off_outlined,
     'mSignalWifiStatusbar4Bar': Icons.signal_wifi_statusbar_4_bar,
     'mSignalWifiStatusbar4BarSharp': Icons.signal_wifi_statusbar_4_bar_sharp,
-    'mSignalWifiStatusbar4BarRounded': Icons.signal_wifi_statusbar_4_bar_rounded,
-    'mSignalWifiStatusbar4BarOutlined': Icons.signal_wifi_statusbar_4_bar_outlined,
-    'mSignalWifiStatusbarConnectedNoInternet4': Icons.signal_wifi_statusbar_connected_no_internet_4,
-    'mSignalWifiStatusbarConnectedNoInternet4Sharp': Icons.signal_wifi_statusbar_connected_no_internet_4_sharp,
-    'mSignalWifiStatusbarConnectedNoInternet4Rounded': Icons.signal_wifi_statusbar_connected_no_internet_4_rounded,
-    'mSignalWifiStatusbarConnectedNoInternet4Outlined': Icons.signal_wifi_statusbar_connected_no_internet_4_outlined,
+    'mSignalWifiStatusbar4BarRounded':
+        Icons.signal_wifi_statusbar_4_bar_rounded,
+    'mSignalWifiStatusbar4BarOutlined':
+        Icons.signal_wifi_statusbar_4_bar_outlined,
+    'mSignalWifiStatusbarConnectedNoInternet4':
+        Icons.signal_wifi_statusbar_connected_no_internet_4,
+    'mSignalWifiStatusbarConnectedNoInternet4Sharp':
+        Icons.signal_wifi_statusbar_connected_no_internet_4_sharp,
+    'mSignalWifiStatusbarConnectedNoInternet4Rounded':
+        Icons.signal_wifi_statusbar_connected_no_internet_4_rounded,
+    'mSignalWifiStatusbarConnectedNoInternet4Outlined':
+        Icons.signal_wifi_statusbar_connected_no_internet_4_outlined,
     'mSignalWifiStatusbarNull': Icons.signal_wifi_statusbar_null,
     'mSignalWifiStatusbarNullSharp': Icons.signal_wifi_statusbar_null_sharp,
     'mSignalWifiStatusbarNullRounded': Icons.signal_wifi_statusbar_null_rounded,
-    'mSignalWifiStatusbarNullOutlined': Icons.signal_wifi_statusbar_null_outlined,
+    'mSignalWifiStatusbarNullOutlined':
+        Icons.signal_wifi_statusbar_null_outlined,
     'mSignpost': Icons.signpost,
     'mSignpostSharp': Icons.signpost_sharp,
     'mSignpostRounded': Icons.signpost_rounded,
@@ -7697,7 +7751,8 @@ class GeneratedIcons {
     'mSwitchAccessShortcutAdd': Icons.switch_access_shortcut_add,
     'mSwitchAccessShortcutAddSharp': Icons.switch_access_shortcut_add_sharp,
     'mSwitchAccessShortcutAddRounded': Icons.switch_access_shortcut_add_rounded,
-    'mSwitchAccessShortcutAddOutlined': Icons.switch_access_shortcut_add_outlined,
+    'mSwitchAccessShortcutAddOutlined':
+        Icons.switch_access_shortcut_add_outlined,
     'mSwitchAccount': Icons.switch_account,
     'mSwitchAccountSharp': Icons.switch_account_sharp,
     'mSwitchAccountRounded': Icons.switch_account_rounded,
@@ -7748,12 +7803,17 @@ class GeneratedIcons {
     'mSystemSecurityUpdateOutlined': Icons.system_security_update_outlined,
     'mSystemSecurityUpdateGood': Icons.system_security_update_good,
     'mSystemSecurityUpdateGoodSharp': Icons.system_security_update_good_sharp,
-    'mSystemSecurityUpdateGoodRounded': Icons.system_security_update_good_rounded,
-    'mSystemSecurityUpdateGoodOutlined': Icons.system_security_update_good_outlined,
+    'mSystemSecurityUpdateGoodRounded':
+        Icons.system_security_update_good_rounded,
+    'mSystemSecurityUpdateGoodOutlined':
+        Icons.system_security_update_good_outlined,
     'mSystemSecurityUpdateWarning': Icons.system_security_update_warning,
-    'mSystemSecurityUpdateWarningSharp': Icons.system_security_update_warning_sharp,
-    'mSystemSecurityUpdateWarningRounded': Icons.system_security_update_warning_rounded,
-    'mSystemSecurityUpdateWarningOutlined': Icons.system_security_update_warning_outlined,
+    'mSystemSecurityUpdateWarningSharp':
+        Icons.system_security_update_warning_sharp,
+    'mSystemSecurityUpdateWarningRounded':
+        Icons.system_security_update_warning_rounded,
+    'mSystemSecurityUpdateWarningOutlined':
+        Icons.system_security_update_warning_outlined,
     'mSystemUpdate': Icons.system_update,
     'mSystemUpdateSharp': Icons.system_update_sharp,
     'mSystemUpdateRounded': Icons.system_update_rounded,
@@ -8750,8 +8810,10 @@ class GeneratedIcons {
     'mWifiTetheringErrorRounded': Icons.wifi_tethering_error_rounded,
     'mWifiTetheringErrorOutlined': Icons.wifi_tethering_error_outlined,
     'mWifiTetheringErrorRoundedSharp': Icons.wifi_tethering_error_rounded_sharp,
-    'mWifiTetheringErrorRoundedRounded': Icons.wifi_tethering_error_rounded_rounded,
-    'mWifiTetheringErrorRoundedOutlined': Icons.wifi_tethering_error_rounded_outlined,
+    'mWifiTetheringErrorRoundedRounded':
+        Icons.wifi_tethering_error_rounded_rounded,
+    'mWifiTetheringErrorRoundedOutlined':
+        Icons.wifi_tethering_error_rounded_outlined,
     'mWifiTetheringOff': Icons.wifi_tethering_off,
     'mWifiTetheringOffSharp': Icons.wifi_tethering_off_sharp,
     'mWifiTetheringOffRounded': Icons.wifi_tethering_off_rounded,
@@ -9005,7 +9067,8 @@ class GeneratedIcons {
     'cArchiveboxFill': CupertinoIcons.archivebox_fill,
     'cArrow2Circlepath': CupertinoIcons.arrow_2_circlepath,
     'cArrow2CirclepathCircle': CupertinoIcons.arrow_2_circlepath_circle,
-    'cArrow2CirclepathCircleFill': CupertinoIcons.arrow_2_circlepath_circle_fill,
+    'cArrow2CirclepathCircleFill':
+        CupertinoIcons.arrow_2_circlepath_circle_fill,
     'cArrow2Squarepath': CupertinoIcons.arrow_2_squarepath,
     'cArrow3Trianglepath': CupertinoIcons.arrow_3_trianglepath,
     'cArrowBranch': CupertinoIcons.arrow_branch,
@@ -9013,8 +9076,10 @@ class GeneratedIcons {
     'cArrowClockwiseCircle': CupertinoIcons.arrow_clockwise_circle,
     'cArrowClockwiseCircleFill': CupertinoIcons.arrow_clockwise_circle_fill,
     'cArrowCounterclockwise': CupertinoIcons.arrow_counterclockwise,
-    'cArrowCounterclockwiseCircle': CupertinoIcons.arrow_counterclockwise_circle,
-    'cArrowCounterclockwiseCircleFill': CupertinoIcons.arrow_counterclockwise_circle_fill,
+    'cArrowCounterclockwiseCircle':
+        CupertinoIcons.arrow_counterclockwise_circle,
+    'cArrowCounterclockwiseCircleFill':
+        CupertinoIcons.arrow_counterclockwise_circle_fill,
     'cArrowDown': CupertinoIcons.arrow_down,
     'cArrowDownCircle': CupertinoIcons.arrow_down_circle,
     'cArrowDownCircleFill': CupertinoIcons.arrow_down_circle_fill,
@@ -9051,9 +9116,11 @@ class GeneratedIcons {
     'cArrowRight': CupertinoIcons.arrow_right,
     'cArrowRightArrowLeft': CupertinoIcons.arrow_right_arrow_left,
     'cArrowRightArrowLeftCircle': CupertinoIcons.arrow_right_arrow_left_circle,
-    'cArrowRightArrowLeftCircleFill': CupertinoIcons.arrow_right_arrow_left_circle_fill,
+    'cArrowRightArrowLeftCircleFill':
+        CupertinoIcons.arrow_right_arrow_left_circle_fill,
     'cArrowRightArrowLeftSquare': CupertinoIcons.arrow_right_arrow_left_square,
-    'cArrowRightArrowLeftSquareFill': CupertinoIcons.arrow_right_arrow_left_square_fill,
+    'cArrowRightArrowLeftSquareFill':
+        CupertinoIcons.arrow_right_arrow_left_square_fill,
     'cArrowRightCircle': CupertinoIcons.arrow_right_circle,
     'cArrowRightCircleFill': CupertinoIcons.arrow_right_circle_fill,
     'cArrowRightSquare': CupertinoIcons.arrow_right_square,
@@ -9072,9 +9139,11 @@ class GeneratedIcons {
     'cArrowUp': CupertinoIcons.arrow_up,
     'cArrowUpArrowDown': CupertinoIcons.arrow_up_arrow_down,
     'cArrowUpArrowDownCircle': CupertinoIcons.arrow_up_arrow_down_circle,
-    'cArrowUpArrowDownCircleFill': CupertinoIcons.arrow_up_arrow_down_circle_fill,
+    'cArrowUpArrowDownCircleFill':
+        CupertinoIcons.arrow_up_arrow_down_circle_fill,
     'cArrowUpArrowDownSquare': CupertinoIcons.arrow_up_arrow_down_square,
-    'cArrowUpArrowDownSquareFill': CupertinoIcons.arrow_up_arrow_down_square_fill,
+    'cArrowUpArrowDownSquareFill':
+        CupertinoIcons.arrow_up_arrow_down_square_fill,
     'cArrowUpBin': CupertinoIcons.arrow_up_bin,
     'cArrowUpBinFill': CupertinoIcons.arrow_up_bin_fill,
     'cArrowUpCircle': CupertinoIcons.arrow_up_circle,
@@ -9126,31 +9195,41 @@ class GeneratedIcons {
     'cArrowshapeTurnUpLeft': CupertinoIcons.arrowshape_turn_up_left,
     'cArrowshapeTurnUpLeft2': CupertinoIcons.arrowshape_turn_up_left_2,
     'cArrowshapeTurnUpLeft2Fill': CupertinoIcons.arrowshape_turn_up_left_2_fill,
-    'cArrowshapeTurnUpLeftCircle': CupertinoIcons.arrowshape_turn_up_left_circle,
-    'cArrowshapeTurnUpLeftCircleFill': CupertinoIcons.arrowshape_turn_up_left_circle_fill,
+    'cArrowshapeTurnUpLeftCircle':
+        CupertinoIcons.arrowshape_turn_up_left_circle,
+    'cArrowshapeTurnUpLeftCircleFill':
+        CupertinoIcons.arrowshape_turn_up_left_circle_fill,
     'cArrowshapeTurnUpLeftFill': CupertinoIcons.arrowshape_turn_up_left_fill,
     'cArrowshapeTurnUpRight': CupertinoIcons.arrowshape_turn_up_right,
-    'cArrowshapeTurnUpRightCircle': CupertinoIcons.arrowshape_turn_up_right_circle,
-    'cArrowshapeTurnUpRightCircleFill': CupertinoIcons.arrowshape_turn_up_right_circle_fill,
+    'cArrowshapeTurnUpRightCircle':
+        CupertinoIcons.arrowshape_turn_up_right_circle,
+    'cArrowshapeTurnUpRightCircleFill':
+        CupertinoIcons.arrowshape_turn_up_right_circle_fill,
     'cArrowshapeTurnUpRightFill': CupertinoIcons.arrowshape_turn_up_right_fill,
     'cArrowtriangleDown': CupertinoIcons.arrowtriangle_down,
     'cArrowtriangleDownCircle': CupertinoIcons.arrowtriangle_down_circle,
-    'cArrowtriangleDownCircleFill': CupertinoIcons.arrowtriangle_down_circle_fill,
+    'cArrowtriangleDownCircleFill':
+        CupertinoIcons.arrowtriangle_down_circle_fill,
     'cArrowtriangleDownFill': CupertinoIcons.arrowtriangle_down_fill,
     'cArrowtriangleDownSquare': CupertinoIcons.arrowtriangle_down_square,
-    'cArrowtriangleDownSquareFill': CupertinoIcons.arrowtriangle_down_square_fill,
+    'cArrowtriangleDownSquareFill':
+        CupertinoIcons.arrowtriangle_down_square_fill,
     'cArrowtriangleLeft': CupertinoIcons.arrowtriangle_left,
     'cArrowtriangleLeftCircle': CupertinoIcons.arrowtriangle_left_circle,
-    'cArrowtriangleLeftCircleFill': CupertinoIcons.arrowtriangle_left_circle_fill,
+    'cArrowtriangleLeftCircleFill':
+        CupertinoIcons.arrowtriangle_left_circle_fill,
     'cArrowtriangleLeftFill': CupertinoIcons.arrowtriangle_left_fill,
     'cArrowtriangleLeftSquare': CupertinoIcons.arrowtriangle_left_square,
-    'cArrowtriangleLeftSquareFill': CupertinoIcons.arrowtriangle_left_square_fill,
+    'cArrowtriangleLeftSquareFill':
+        CupertinoIcons.arrowtriangle_left_square_fill,
     'cArrowtriangleRight': CupertinoIcons.arrowtriangle_right,
     'cArrowtriangleRightCircle': CupertinoIcons.arrowtriangle_right_circle,
-    'cArrowtriangleRightCircleFill': CupertinoIcons.arrowtriangle_right_circle_fill,
+    'cArrowtriangleRightCircleFill':
+        CupertinoIcons.arrowtriangle_right_circle_fill,
     'cArrowtriangleRightFill': CupertinoIcons.arrowtriangle_right_fill,
     'cArrowtriangleRightSquare': CupertinoIcons.arrowtriangle_right_square,
-    'cArrowtriangleRightSquareFill': CupertinoIcons.arrowtriangle_right_square_fill,
+    'cArrowtriangleRightSquareFill':
+        CupertinoIcons.arrowtriangle_right_square_fill,
     'cArrowtriangleUp': CupertinoIcons.arrowtriangle_up,
     'cArrowtriangleUpCircle': CupertinoIcons.arrowtriangle_up_circle,
     'cArrowtriangleUpCircleFill': CupertinoIcons.arrowtriangle_up_circle_fill,
@@ -9304,7 +9383,8 @@ class GeneratedIcons {
     'cChevronLeft2': CupertinoIcons.chevron_left_2,
     'cChevronLeftCircle': CupertinoIcons.chevron_left_circle,
     'cChevronLeftCircleFill': CupertinoIcons.chevron_left_circle_fill,
-    'cChevronLeftSlashChevronRight': CupertinoIcons.chevron_left_slash_chevron_right,
+    'cChevronLeftSlashChevronRight':
+        CupertinoIcons.chevron_left_slash_chevron_right,
     'cChevronLeftSquare': CupertinoIcons.chevron_left_square,
     'cChevronLeftSquareFill': CupertinoIcons.chevron_left_square_fill,
     'cChevronRight': CupertinoIcons.chevron_right,
@@ -9465,7 +9545,8 @@ class GeneratedIcons {
     'cExclamationmarkSquare': CupertinoIcons.exclamationmark_square,
     'cExclamationmarkSquareFill': CupertinoIcons.exclamationmark_square_fill,
     'cExclamationmarkTriangle': CupertinoIcons.exclamationmark_triangle,
-    'cExclamationmarkTriangleFill': CupertinoIcons.exclamationmark_triangle_fill,
+    'cExclamationmarkTriangleFill':
+        CupertinoIcons.exclamationmark_triangle_fill,
     'cEyeFill': CupertinoIcons.eye_fill,
     'cEyeSlash': CupertinoIcons.eye_slash,
     'cEyeSlashFill': CupertinoIcons.eye_slash_fill,
@@ -9615,8 +9696,10 @@ class GeneratedIcons {
     'cLightbulbSlashFill': CupertinoIcons.lightbulb_slash_fill,
     'cLineHorizontal3': CupertinoIcons.line_horizontal_3,
     'cLineHorizontal3Decrease': CupertinoIcons.line_horizontal_3_decrease,
-    'cLineHorizontal3DecreaseCircle': CupertinoIcons.line_horizontal_3_decrease_circle,
-    'cLineHorizontal3DecreaseCircleFill': CupertinoIcons.line_horizontal_3_decrease_circle_fill,
+    'cLineHorizontal3DecreaseCircle':
+        CupertinoIcons.line_horizontal_3_decrease_circle,
+    'cLineHorizontal3DecreaseCircleFill':
+        CupertinoIcons.line_horizontal_3_decrease_circle_fill,
     'cLink': CupertinoIcons.link,
     'cLinkCircle': CupertinoIcons.link_circle,
     'cLinkCircleFill': CupertinoIcons.link_circle_fill,
@@ -9749,17 +9832,26 @@ class GeneratedIcons {
     'cPersonCircle': CupertinoIcons.person_circle,
     'cPersonCircleFill': CupertinoIcons.person_circle_fill,
     'cPersonCropCircle': CupertinoIcons.person_crop_circle,
-    'cPersonCropCircleBadgeCheckmark': CupertinoIcons.person_crop_circle_badge_checkmark,
-    'cPersonCropCircleBadgeExclam': CupertinoIcons.person_crop_circle_badge_exclam,
-    'cPersonCropCircleBadgeMinus': CupertinoIcons.person_crop_circle_badge_minus,
+    'cPersonCropCircleBadgeCheckmark':
+        CupertinoIcons.person_crop_circle_badge_checkmark,
+    'cPersonCropCircleBadgeExclam':
+        CupertinoIcons.person_crop_circle_badge_exclam,
+    'cPersonCropCircleBadgeMinus':
+        CupertinoIcons.person_crop_circle_badge_minus,
     'cPersonCropCircleBadgePlus': CupertinoIcons.person_crop_circle_badge_plus,
-    'cPersonCropCircleBadgeXmark': CupertinoIcons.person_crop_circle_badge_xmark,
+    'cPersonCropCircleBadgeXmark':
+        CupertinoIcons.person_crop_circle_badge_xmark,
     'cPersonCropCircleFill': CupertinoIcons.person_crop_circle_fill,
-    'cPersonCropCircleFillBadgeCheckmark': CupertinoIcons.person_crop_circle_fill_badge_checkmark,
-    'cPersonCropCircleFillBadgeExclam': CupertinoIcons.person_crop_circle_fill_badge_exclam,
-    'cPersonCropCircleFillBadgeMinus': CupertinoIcons.person_crop_circle_fill_badge_minus,
-    'cPersonCropCircleFillBadgePlus': CupertinoIcons.person_crop_circle_fill_badge_plus,
-    'cPersonCropCircleFillBadgeXmark': CupertinoIcons.person_crop_circle_fill_badge_xmark,
+    'cPersonCropCircleFillBadgeCheckmark':
+        CupertinoIcons.person_crop_circle_fill_badge_checkmark,
+    'cPersonCropCircleFillBadgeExclam':
+        CupertinoIcons.person_crop_circle_fill_badge_exclam,
+    'cPersonCropCircleFillBadgeMinus':
+        CupertinoIcons.person_crop_circle_fill_badge_minus,
+    'cPersonCropCircleFillBadgePlus':
+        CupertinoIcons.person_crop_circle_fill_badge_plus,
+    'cPersonCropCircleFillBadgeXmark':
+        CupertinoIcons.person_crop_circle_fill_badge_xmark,
     'cPersonCropRectangle': CupertinoIcons.person_crop_rectangle,
     'cPersonCropRectangleFill': CupertinoIcons.person_crop_rectangle_fill,
     'cPersonCropSquare': CupertinoIcons.person_crop_square,
@@ -9810,12 +9902,14 @@ class GeneratedIcons {
     'cPlusCircleFill': CupertinoIcons.plus_circle_fill,
     'cPlusRectangle': CupertinoIcons.plus_rectangle,
     'cPlusRectangleFill': CupertinoIcons.plus_rectangle_fill,
-    'cPlusRectangleFillOnRectangleFill': CupertinoIcons.plus_rectangle_fill_on_rectangle_fill,
+    'cPlusRectangleFillOnRectangleFill':
+        CupertinoIcons.plus_rectangle_fill_on_rectangle_fill,
     'cPlusRectangleOnRectangle': CupertinoIcons.plus_rectangle_on_rectangle,
     'cPlusSlashMinus': CupertinoIcons.plus_slash_minus,
     'cPlusSquare': CupertinoIcons.plus_square,
     'cPlusSquareFill': CupertinoIcons.plus_square_fill,
-    'cPlusSquareFillOnSquareFill': CupertinoIcons.plus_square_fill_on_square_fill,
+    'cPlusSquareFillOnSquareFill':
+        CupertinoIcons.plus_square_fill_on_square_fill,
     'cPlusSquareOnSquare': CupertinoIcons.plus_square_on_square,
     'cPlusminus': CupertinoIcons.plusminus,
     'cPlusminusCircle': CupertinoIcons.plusminus_circle,
@@ -9845,18 +9939,23 @@ class GeneratedIcons {
     'cRectangle': CupertinoIcons.rectangle,
     'cRectangle3Offgrid': CupertinoIcons.rectangle_3_offgrid,
     'cRectangle3OffgridFill': CupertinoIcons.rectangle_3_offgrid_fill,
-    'cRectangleArrowUpRightArrowDownLeft': CupertinoIcons.rectangle_arrow_up_right_arrow_down_left,
-    'cRectangleArrowUpRightArrowDownLeftSlash': CupertinoIcons.rectangle_arrow_up_right_arrow_down_left_slash,
+    'cRectangleArrowUpRightArrowDownLeft':
+        CupertinoIcons.rectangle_arrow_up_right_arrow_down_left,
+    'cRectangleArrowUpRightArrowDownLeftSlash':
+        CupertinoIcons.rectangle_arrow_up_right_arrow_down_left_slash,
     'cRectangleBadgeCheckmark': CupertinoIcons.rectangle_badge_checkmark,
     'cRectangleBadgeXmark': CupertinoIcons.rectangle_badge_xmark,
     'cRectangleCompressVertical': CupertinoIcons.rectangle_compress_vertical,
     'cRectangleDock': CupertinoIcons.rectangle_dock,
     'cRectangleExpandVertical': CupertinoIcons.rectangle_expand_vertical,
     'cRectangleFill': CupertinoIcons.rectangle_fill,
-    'cRectangleFillBadgeCheckmark': CupertinoIcons.rectangle_fill_badge_checkmark,
+    'cRectangleFillBadgeCheckmark':
+        CupertinoIcons.rectangle_fill_badge_checkmark,
     'cRectangleFillBadgeXmark': CupertinoIcons.rectangle_fill_badge_xmark,
-    'cRectangleFillOnRectangleAngledFill': CupertinoIcons.rectangle_fill_on_rectangle_angled_fill,
-    'cRectangleFillOnRectangleFill': CupertinoIcons.rectangle_fill_on_rectangle_fill,
+    'cRectangleFillOnRectangleAngledFill':
+        CupertinoIcons.rectangle_fill_on_rectangle_angled_fill,
+    'cRectangleFillOnRectangleFill':
+        CupertinoIcons.rectangle_fill_on_rectangle_fill,
     'cRectangleGrid1x2': CupertinoIcons.rectangle_grid_1x2,
     'cRectangleGrid1x2Fill': CupertinoIcons.rectangle_grid_1x2_fill,
     'cRectangleGrid2x2': CupertinoIcons.rectangle_grid_2x2,
@@ -9872,14 +9971,19 @@ class GeneratedIcons {
     'cRectangleSplit3x3Fill': CupertinoIcons.rectangle_split_3x3_fill,
     'cRectangleStack': CupertinoIcons.rectangle_stack,
     'cRectangleStackBadgeMinus': CupertinoIcons.rectangle_stack_badge_minus,
-    'cRectangleStackBadgePersonCrop': CupertinoIcons.rectangle_stack_badge_person_crop,
+    'cRectangleStackBadgePersonCrop':
+        CupertinoIcons.rectangle_stack_badge_person_crop,
     'cRectangleStackBadgePlus': CupertinoIcons.rectangle_stack_badge_plus,
     'cRectangleStackFill': CupertinoIcons.rectangle_stack_fill,
-    'cRectangleStackFillBadgeMinus': CupertinoIcons.rectangle_stack_fill_badge_minus,
-    'cRectangleStackFillBadgePersonCrop': CupertinoIcons.rectangle_stack_fill_badge_person_crop,
-    'cRectangleStackFillBadgePlus': CupertinoIcons.rectangle_stack_fill_badge_plus,
+    'cRectangleStackFillBadgeMinus':
+        CupertinoIcons.rectangle_stack_fill_badge_minus,
+    'cRectangleStackFillBadgePersonCrop':
+        CupertinoIcons.rectangle_stack_fill_badge_person_crop,
+    'cRectangleStackFillBadgePlus':
+        CupertinoIcons.rectangle_stack_fill_badge_plus,
     'cRectangleStackPersonCrop': CupertinoIcons.rectangle_stack_person_crop,
-    'cRectangleStackPersonCropFill': CupertinoIcons.rectangle_stack_person_crop_fill,
+    'cRectangleStackPersonCropFill':
+        CupertinoIcons.rectangle_stack_person_crop_fill,
     'cRepeat': CupertinoIcons.repeat,
     'cRepeat1': CupertinoIcons.repeat_1,
     'cResize': CupertinoIcons.resize,
@@ -9916,7 +10020,8 @@ class GeneratedIcons {
     'cSlashCircle': CupertinoIcons.slash_circle,
     'cSlashCircleFill': CupertinoIcons.slash_circle_fill,
     'cSliderHorizontal3': CupertinoIcons.slider_horizontal_3,
-    'cSliderHorizontalBelowRectangle': CupertinoIcons.slider_horizontal_below_rectangle,
+    'cSliderHorizontalBelowRectangle':
+        CupertinoIcons.slider_horizontal_below_rectangle,
     'cSlowmo': CupertinoIcons.slowmo,
     'cSmallcircleCircle': CupertinoIcons.smallcircle_circle,
     'cSmallcircleCircleFill': CupertinoIcons.smallcircle_circle_fill,
@@ -9957,7 +10062,8 @@ class GeneratedIcons {
     'cSquareArrowDown': CupertinoIcons.square_arrow_down,
     'cSquareArrowDownFill': CupertinoIcons.square_arrow_down_fill,
     'cSquareArrowDownOnSquare': CupertinoIcons.square_arrow_down_on_square,
-    'cSquareArrowDownOnSquareFill': CupertinoIcons.square_arrow_down_on_square_fill,
+    'cSquareArrowDownOnSquareFill':
+        CupertinoIcons.square_arrow_down_on_square_fill,
     'cSquareArrowLeft': CupertinoIcons.square_arrow_left,
     'cSquareArrowLeftFill': CupertinoIcons.square_arrow_left_fill,
     'cSquareArrowRight': CupertinoIcons.square_arrow_right,
@@ -9971,8 +10077,10 @@ class GeneratedIcons {
     'cSquareFavoritesAltFill': CupertinoIcons.square_favorites_alt_fill,
     'cSquareFavoritesFill': CupertinoIcons.square_favorites_fill,
     'cSquareFill': CupertinoIcons.square_fill,
-    'cSquareFillLineVerticalSquare': CupertinoIcons.square_fill_line_vertical_square,
-    'cSquareFillLineVerticalSquareFill': CupertinoIcons.square_fill_line_vertical_square_fill,
+    'cSquareFillLineVerticalSquare':
+        CupertinoIcons.square_fill_line_vertical_square,
+    'cSquareFillLineVerticalSquareFill':
+        CupertinoIcons.square_fill_line_vertical_square_fill,
     'cSquareFillOnCircleFill': CupertinoIcons.square_fill_on_circle_fill,
     'cSquareFillOnSquareFill': CupertinoIcons.square_fill_on_square_fill,
     'cSquareGrid2x2': CupertinoIcons.square_grid_2x2,
@@ -9982,7 +10090,8 @@ class GeneratedIcons {
     'cSquareGrid4x3Fill': CupertinoIcons.square_grid_4x3_fill,
     'cSquareLefthalfFill': CupertinoIcons.square_lefthalf_fill,
     'cSquareLineVerticalSquare': CupertinoIcons.square_line_vertical_square,
-    'cSquareLineVerticalSquareFill': CupertinoIcons.square_line_vertical_square_fill,
+    'cSquareLineVerticalSquareFill':
+        CupertinoIcons.square_line_vertical_square_fill,
     'cSquareList': CupertinoIcons.square_list,
     'cSquareListFill': CupertinoIcons.square_list_fill,
     'cSquareOnCircle': CupertinoIcons.square_on_circle,
@@ -9997,9 +10106,11 @@ class GeneratedIcons {
     'cSquareSplit2x2': CupertinoIcons.square_split_2x2,
     'cSquareSplit2x2Fill': CupertinoIcons.square_split_2x2_fill,
     'cSquareStack': CupertinoIcons.square_stack,
-    'cSquareStack3dDownDottedline': CupertinoIcons.square_stack_3d_down_dottedline,
+    'cSquareStack3dDownDottedline':
+        CupertinoIcons.square_stack_3d_down_dottedline,
     'cSquareStack3dDownRight': CupertinoIcons.square_stack_3d_down_right,
-    'cSquareStack3dDownRightFill': CupertinoIcons.square_stack_3d_down_right_fill,
+    'cSquareStack3dDownRightFill':
+        CupertinoIcons.square_stack_3d_down_right_fill,
     'cSquareStack3dUp': CupertinoIcons.square_stack_3d_up,
     'cSquareStack3dUpFill': CupertinoIcons.square_stack_3d_up_fill,
     'cSquareStack3dUpSlash': CupertinoIcons.square_stack_3d_up_slash,
@@ -10073,7 +10184,8 @@ class GeneratedIcons {
     'cTextformat': CupertinoIcons.textformat,
     'cTextformat123': CupertinoIcons.textformat_123,
     'cTextformatAbc': CupertinoIcons.textformat_abc,
-    'cTextformatAbcDottedunderline': CupertinoIcons.textformat_abc_dottedunderline,
+    'cTextformatAbcDottedunderline':
+        CupertinoIcons.textformat_abc_dottedunderline,
     'cTextformatAlt': CupertinoIcons.textformat_alt,
     'cTextformatSize': CupertinoIcons.textformat_size,
     'cTextformatSubscript': CupertinoIcons.textformat_subscript,

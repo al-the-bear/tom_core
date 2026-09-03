@@ -38,13 +38,15 @@ abstract class TomFormDateField extends TomField<DateTime> {
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  })  : assert(!firstDate.isAfter(lastDate),
-            'TomFormDateField: firstDate must be on or before lastDate'),
-        assert(
-            !initialValue.isBefore(firstDate) &&
-                !initialValue.isAfter(lastDate),
-            'TomFormDateField: initialValue must be within '
-            '[firstDate, lastDate]; otherwise the picker throws on open');
+  }) : assert(
+         !firstDate.isAfter(lastDate),
+         'TomFormDateField: firstDate must be on or before lastDate',
+       ),
+       assert(
+         !initialValue.isBefore(firstDate) && !initialValue.isAfter(lastDate),
+         'TomFormDateField: initialValue must be within '
+         '[firstDate, lastDate]; otherwise the picker throws on open',
+       );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -103,9 +105,9 @@ class TomFormDatePicker extends TomFormDateField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDatePickerWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDatePickerWidget(field: this),
+  );
 }
 
 class _TomFormDatePickerWidget extends StatefulWidget {
@@ -125,9 +127,11 @@ class _TomFormDatePickerWidgetState extends State<_TomFormDatePickerWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -213,9 +217,9 @@ class TomFormDateCalendar extends TomFormDateField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDateCalendarWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDateCalendarWidget(field: this),
+  );
 }
 
 class _TomFormDateCalendarWidget extends StatefulWidget {
@@ -236,9 +240,11 @@ class _TomFormDateCalendarWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -350,9 +356,9 @@ class TomFormTimePicker extends TomFormTimeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormTimePickerWidget(field: this),
-      );
+    field: this,
+    child: _TomFormTimePickerWidget(field: this),
+  );
 }
 
 class _TomFormTimePickerWidget extends StatefulWidget {
@@ -372,9 +378,11 @@ class _TomFormTimePickerWidgetState extends State<_TomFormTimePickerWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -403,8 +411,10 @@ class _TomFormTimePickerWidgetState extends State<_TomFormTimePickerWidget> {
     final inner = OutlinedButton.icon(
       onPressed: field.isEditable ? _open : null,
       icon: const Icon(Icons.access_time, size: 16),
-      label: Text(field.formatTime(field.get()),
-          style: theme.textTheme.bodyMedium),
+      label: Text(
+        field.formatTime(field.get()),
+        style: theme.textTheme.bodyMedium,
+      ),
     );
     return field.decorateField(context, inner);
   }
@@ -436,13 +446,15 @@ abstract class TomFormDateTimeField extends TomField<DateTime> {
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  })  : assert(!firstDate.isAfter(lastDate),
-            'TomFormDateTimeField: firstDate must be on or before lastDate'),
-        assert(
-            !initialValue.isBefore(firstDate) &&
-                !initialValue.isAfter(lastDate),
-            'TomFormDateTimeField: initialValue must be within '
-            '[firstDate, lastDate]');
+  }) : assert(
+         !firstDate.isAfter(lastDate),
+         'TomFormDateTimeField: firstDate must be on or before lastDate',
+       ),
+       assert(
+         !initialValue.isBefore(firstDate) && !initialValue.isAfter(lastDate),
+         'TomFormDateTimeField: initialValue must be within '
+         '[firstDate, lastDate]',
+       );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -497,9 +509,9 @@ class TomFormDateTimePicker extends TomFormDateTimeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDateTimePickerWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDateTimePickerWidget(field: this),
+  );
 }
 
 class _TomFormDateTimePickerWidget extends StatefulWidget {
@@ -520,9 +532,11 @@ class _TomFormDateTimePickerWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -551,13 +565,15 @@ class _TomFormDateTimePickerWidgetState
       initialTime: TimeOfDay(hour: current.hour, minute: current.minute),
     );
     if (pickedTime == null) return;
-    field.setValue(DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    ));
+    field.setValue(
+      DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      ),
+    );
   }
 
   @override
@@ -566,8 +582,10 @@ class _TomFormDateTimePickerWidgetState
     final inner = OutlinedButton.icon(
       onPressed: field.isEditable ? _open : null,
       icon: const Icon(Icons.event, size: 16),
-      label: Text(field.formatDateTime(field.get()),
-          style: theme.textTheme.bodyMedium),
+      label: Text(
+        field.formatDateTime(field.get()),
+        style: theme.textTheme.bodyMedium,
+      ),
     );
     return field.decorateField(context, inner);
   }
@@ -599,13 +617,16 @@ abstract class TomFormDateRangeField extends TomField<DateTimeRange> {
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  })  : assert(!firstDate.isAfter(lastDate),
-            'TomFormDateRangeField: firstDate must be on or before lastDate'),
-        assert(
-            !initialValue.start.isBefore(firstDate) &&
-                !initialValue.end.isAfter(lastDate),
-            'TomFormDateRangeField: initialValue range must fit within '
-            '[firstDate, lastDate]');
+  }) : assert(
+         !firstDate.isAfter(lastDate),
+         'TomFormDateRangeField: firstDate must be on or before lastDate',
+       ),
+       assert(
+         !initialValue.start.isBefore(firstDate) &&
+             !initialValue.end.isAfter(lastDate),
+         'TomFormDateRangeField: initialValue range must fit within '
+         '[firstDate, lastDate]',
+       );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -661,9 +682,9 @@ class TomFormDateRangePicker extends TomFormDateRangeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDateRangePickerWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDateRangePickerWidget(field: this),
+  );
 }
 
 class _TomFormDateRangePickerWidget extends StatefulWidget {
@@ -684,9 +705,11 @@ class _TomFormDateRangePickerWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -717,8 +740,10 @@ class _TomFormDateRangePickerWidgetState
     final inner = OutlinedButton.icon(
       onPressed: field.isEditable ? _open : null,
       icon: const Icon(Icons.date_range, size: 16),
-      label: Text(field.formatRange(field.get()),
-          style: theme.textTheme.bodyMedium),
+      label: Text(
+        field.formatRange(field.get()),
+        style: theme.textTheme.bodyMedium,
+      ),
     );
     return field.decorateField(context, inner);
   }
@@ -902,9 +927,9 @@ class TomFormDateTextInput extends TomFormDateField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDateTextInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDateTextInputWidget(field: this),
+  );
 }
 
 class _TomFormDateTextInputWidget extends StatefulWidget {
@@ -930,22 +955,25 @@ class _TomFormDateTextInputWidgetState
   void initState() {
     super.initState();
     _ctrl = TextEditingController(
-        text: field.resolvedFormat.formatDate(field.get()));
+      text: field.resolvedFormat.formatDate(field.get()),
+    );
     _focus = FocusNode()..addListener(_onFocusChange);
     _subscribe(field);
   }
 
   void _subscribe(TomFormDateTextInput target) {
-    _observer = target >> (_) {
-      if (!_updatingFromField) {
-        final text = target.resolvedFormat.formatDate(target.get());
-        if (_ctrl.text != text) {
-          _ctrl.text = text;
-          _parseError = null;
-        }
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        target >>
+        (_) {
+          if (!_updatingFromField) {
+            final text = target.resolvedFormat.formatDate(target.get());
+            if (_ctrl.text != text) {
+              _ctrl.text = text;
+              _parseError = null;
+            }
+          }
+          if (mounted) setState(() {});
+        };
     target.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -1006,11 +1034,11 @@ class _TomFormDateTextInputWidgetState
       lastDate: field.lastDate,
     );
     if (mounted) {
-      setState(() => _parseError =
-          parsed == null
-              ? TomFormLabels.formatHint(
-                  field.basePath, field.resolvedHintText)
-              : null);
+      setState(
+        () => _parseError = parsed == null
+            ? TomFormLabels.formatHint(field.basePath, field.resolvedHintText)
+            : null,
+      );
     }
   }
 
@@ -1118,9 +1146,9 @@ class TomFormTimeTextInput extends TomFormTimeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormTimeTextInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormTimeTextInputWidget(field: this),
+  );
 }
 
 class _TomFormTimeTextInputWidget extends StatefulWidget {
@@ -1146,22 +1174,25 @@ class _TomFormTimeTextInputWidgetState
   void initState() {
     super.initState();
     _ctrl = TextEditingController(
-        text: field.resolvedFormat.formatTime(field.get()));
+      text: field.resolvedFormat.formatTime(field.get()),
+    );
     _focus = FocusNode()..addListener(_onFocusChange);
     _subscribe(field);
   }
 
   void _subscribe(TomFormTimeTextInput target) {
-    _observer = target >> (_) {
-      if (!_updatingFromField) {
-        final text = target.resolvedFormat.formatTime(target.get());
-        if (_ctrl.text != text) {
-          _ctrl.text = text;
-          _parseError = null;
-        }
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        target >>
+        (_) {
+          if (!_updatingFromField) {
+            final text = target.resolvedFormat.formatTime(target.get());
+            if (_ctrl.text != text) {
+              _ctrl.text = text;
+              _parseError = null;
+            }
+          }
+          if (mounted) setState(() {});
+        };
     target.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -1214,11 +1245,11 @@ class _TomFormTimeTextInputWidgetState
   void _validateText() {
     final parsed = field.resolvedFormat.parseTime(_ctrl.text);
     if (mounted) {
-      setState(() => _parseError =
-          parsed == null
-              ? TomFormLabels.formatHint(
-                  field.basePath, field.resolvedHintText)
-              : null);
+      setState(
+        () => _parseError = parsed == null
+            ? TomFormLabels.formatHint(field.basePath, field.resolvedHintText)
+            : null,
+      );
     }
   }
 
@@ -1326,9 +1357,9 @@ class TomFormDateTimeTextInput extends TomFormDateTimeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDateTimeTextInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDateTimeTextInputWidget(field: this),
+  );
 }
 
 class _TomFormDateTimeTextInputWidget extends StatefulWidget {
@@ -1354,22 +1385,25 @@ class _TomFormDateTimeTextInputWidgetState
   void initState() {
     super.initState();
     _ctrl = TextEditingController(
-        text: field.resolvedFormat.formatDateTime(field.get()));
+      text: field.resolvedFormat.formatDateTime(field.get()),
+    );
     _focus = FocusNode()..addListener(_onFocusChange);
     _subscribe(field);
   }
 
   void _subscribe(TomFormDateTimeTextInput target) {
-    _observer = target >> (_) {
-      if (!_updatingFromField) {
-        final text = target.resolvedFormat.formatDateTime(target.get());
-        if (_ctrl.text != text) {
-          _ctrl.text = text;
-          _parseError = null;
-        }
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        target >>
+        (_) {
+          if (!_updatingFromField) {
+            final text = target.resolvedFormat.formatDateTime(target.get());
+            if (_ctrl.text != text) {
+              _ctrl.text = text;
+              _parseError = null;
+            }
+          }
+          if (mounted) setState(() {});
+        };
     target.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -1384,8 +1418,9 @@ class _TomFormDateTimeTextInputWidgetState
     if (!identical(oldWidget.field, widget.field)) {
       _unsubscribe(oldWidget.field);
       _subscribe(widget.field);
-      final text =
-          widget.field.resolvedFormat.formatDateTime(widget.field.get());
+      final text = widget.field.resolvedFormat.formatDateTime(
+        widget.field.get(),
+      );
       if (_ctrl.text != text) {
         _ctrl.text = text;
         _parseError = null;
@@ -1431,11 +1466,11 @@ class _TomFormDateTimeTextInputWidgetState
       lastDate: field.lastDate,
     );
     if (mounted) {
-      setState(() => _parseError =
-          parsed == null
-              ? TomFormLabels.formatHint(
-                  field.basePath, field.resolvedHintText)
-              : null);
+      setState(
+        () => _parseError = parsed == null
+            ? TomFormLabels.formatHint(field.basePath, field.resolvedHintText)
+            : null,
+      );
     }
   }
 

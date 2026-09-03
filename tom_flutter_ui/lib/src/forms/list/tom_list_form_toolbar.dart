@@ -84,8 +84,8 @@ import 'tom_list_form.dart';
 /// Per-row authorization is not supported by design — the same toolbar
 /// auth applies to every row of the list. Authorize individual fields
 /// of the row sub-form via the field widgets themselves.
-class TomListFormToolbar<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends TomContainerBase {
+class TomListFormToolbar<TItem extends TomClass, TForm extends TomForm<TItem>>
+    extends TomContainerBase {
   TomListFormToolbar({
     super.key,
     super.tomId,
@@ -128,31 +128,32 @@ class TomListFormToolbar<TItem extends TomClass,
     final moveUpBase = _childKey(basePath, 'moveUp');
     final moveDownBase = _childKey(basePath, 'moveDown');
 
-    _resolvedAddLabel = addLabel ?? TomCtr.textOrNull(addBase, 'label') ?? 'Add';
+    _resolvedAddLabel =
+        addLabel ?? TomCtr.textOrNull(addBase, 'label') ?? 'Add';
     _resolvedRemoveLabel =
         removeLabel ?? TomCtr.textOrNull(removeBase, 'label') ?? 'Remove';
-    _resolvedMoveUpLabel = moveUpLabel ?? TomCtr.textOrNull(moveUpBase, 'label');
+    _resolvedMoveUpLabel =
+        moveUpLabel ?? TomCtr.textOrNull(moveUpBase, 'label');
     _resolvedMoveDownLabel =
         moveDownLabel ?? TomCtr.textOrNull(moveDownBase, 'label');
 
     _resolvedAddTooltip = addTooltip ?? TomCtr.textOrNull(addBase, 'tooltip');
     _resolvedRemoveTooltip =
         removeTooltip ?? TomCtr.textOrNull(removeBase, 'tooltip');
-    _resolvedMoveUpTooltip = moveUpTooltip ??
-        TomCtr.textOrNull(moveUpBase, 'tooltip') ??
-        'Move up';
-    _resolvedMoveDownTooltip = moveDownTooltip ??
+    _resolvedMoveUpTooltip =
+        moveUpTooltip ?? TomCtr.textOrNull(moveUpBase, 'tooltip') ?? 'Move up';
+    _resolvedMoveDownTooltip =
+        moveDownTooltip ??
         TomCtr.textOrNull(moveDownBase, 'tooltip') ??
         'Move down';
 
     _resolvedAddIcon = addIcon ?? TomCtr.icon(addBase, 'icon') ?? Icons.add;
-    _resolvedRemoveIcon = removeIcon ??
-        TomCtr.icon(removeBase, 'icon') ??
-        Icons.delete_outline;
-    _resolvedMoveUpIcon = moveUpIcon ??
-        TomCtr.icon(moveUpBase, 'icon') ??
-        Icons.arrow_upward;
-    _resolvedMoveDownIcon = moveDownIcon ??
+    _resolvedRemoveIcon =
+        removeIcon ?? TomCtr.icon(removeBase, 'icon') ?? Icons.delete_outline;
+    _resolvedMoveUpIcon =
+        moveUpIcon ?? TomCtr.icon(moveUpBase, 'icon') ?? Icons.arrow_upward;
+    _resolvedMoveDownIcon =
+        moveDownIcon ??
         TomCtr.icon(moveDownBase, 'icon') ??
         Icons.arrow_downward;
 
@@ -296,8 +297,12 @@ class TomListFormToolbar<TItem extends TomClass,
     return action;
   }
 
-  Widget _filledButton(IconData icon, String label, VoidCallback? onPressed,
-      {String? tooltip}) {
+  Widget _filledButton(
+    IconData icon,
+    String label,
+    VoidCallback? onPressed, {
+    String? tooltip,
+  }) {
     final button = dense
         ? FilledButton.tonalIcon(
             icon: Icon(icon, size: iconSize),
@@ -334,8 +339,7 @@ class TomListFormToolbar<TItem extends TomClass,
   Widget buildContent(BuildContext context) {
     final hasSelection = selectedIndex != null;
     final canMoveUp = hasSelection && selectedIndex! > 0;
-    final canMoveDown =
-        hasSelection && selectedIndex! < listForm.length - 1;
+    final canMoveDown = hasSelection && selectedIndex! < listForm.length - 1;
 
     // Build the individual reorder buttons first; we'll bundle them into
     // an inner Row so the outer Wrap sees them as a single atomic child
@@ -379,11 +383,7 @@ class TomListFormToolbar<TItem extends TomClass,
           mainAxisSize: MainAxisSize.min,
           children: moveButtons.length == 1
               ? moveButtons
-              : [
-                  moveButtons[0],
-                  SizedBox(width: spacing),
-                  moveButtons[1],
-                ],
+              : [moveButtons[0], SizedBox(width: spacing), moveButtons[1]],
         ),
       ...?afterActions,
     ];

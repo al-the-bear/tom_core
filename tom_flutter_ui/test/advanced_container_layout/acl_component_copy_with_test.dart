@@ -87,10 +87,9 @@ void main() {
     source = file.readAsStringSync();
 
     final ctor = _sliceAfter(source, 'const AclComponent(', '{');
-    declaredFields = RegExp(r'this\.(\w+)')
-        .allMatches(ctor)
-        .map((m) => m.group(1)!)
-        .toSet();
+    declaredFields = RegExp(
+      r'this\.(\w+)',
+    ).allMatches(ctor).map((m) => m.group(1)!).toSet();
   });
 
   group('copyWith covers every declared field', () {
@@ -104,10 +103,9 @@ void main() {
 
     test('copyWith accepts a parameter for each one', () {
       final params = _sliceAfter(source, 'AclComponent copyWith(', '{');
-      final names = RegExp(r'(\w+)\s*,')
-          .allMatches(params)
-          .map((m) => m.group(1)!)
-          .toSet();
+      final names = RegExp(
+        r'(\w+)\s*,',
+      ).allMatches(params).map((m) => m.group(1)!).toSet();
 
       expect(names, declaredFields);
     });
@@ -121,8 +119,9 @@ void main() {
       final body = _balanced(source, source.indexOf('(', bodyOpen + 19));
 
       final forwarded = <String>{};
-      for (final m
-          in RegExp(r'(\w+):\s*(\w+)\s*\?\?\s*this\.(\w+)').allMatches(body)) {
+      for (final m in RegExp(
+        r'(\w+):\s*(\w+)\s*\?\?\s*this\.(\w+)',
+      ).allMatches(body)) {
         final [name, argument, fallback] = [
           m.group(1)!,
           m.group(2)!,
@@ -144,7 +143,8 @@ void main() {
       expect(
         match,
         isNotNull,
-        reason: 'copyWith\'s dartdoc no longer sizes the class; either restore '
+        reason:
+            'copyWith\'s dartdoc no longer sizes the class; either restore '
             'the phrase or drop this test with it',
       );
       expect(int.parse(match!.group(1)!), declaredFields.length);
@@ -155,23 +155,23 @@ void main() {
     /// A component whose every inspected field differs from its default, so a
     /// dropped field shows up as a reverted value rather than a coincidence.
     AclComponent populated() => AclComponent(
-          child: const Text('original'),
-          flags: AclFlags.expandX,
-          gapBefore: 12,
-          gapBeforeIsDefault: true,
-          gapWeight: 3,
-          preferredSize: const Size(120, 40),
-          preferredWidthIsDefault: true,
-          minimumSize: const Size(60, 20),
-          maximumSize: const Size(400, 80),
-          alignXGap: 7,
-          alignYGap: 9,
-          rowCrossAlignment: AclRowCrossAlignment.bottom,
-          id: 'save',
-          group: 'actions',
-          inlineVariant: true,
-          hideUnauthorized: true,
-        );
+      child: const Text('original'),
+      flags: AclFlags.expandX,
+      gapBefore: 12,
+      gapBeforeIsDefault: true,
+      gapWeight: 3,
+      preferredSize: const Size(120, 40),
+      preferredWidthIsDefault: true,
+      minimumSize: const Size(60, 20),
+      maximumSize: const Size(400, 80),
+      alignXGap: 7,
+      alignYGap: 9,
+      rowCrossAlignment: AclRowCrossAlignment.bottom,
+      id: 'save',
+      group: 'actions',
+      inlineVariant: true,
+      hideUnauthorized: true,
+    );
 
     void expectSameExceptGap(AclComponent copy, AclComponent original) {
       expect(copy.child, original.child);

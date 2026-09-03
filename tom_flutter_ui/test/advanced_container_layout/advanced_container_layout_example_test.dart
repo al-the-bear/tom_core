@@ -30,12 +30,14 @@ void main() {
     test('resolveDensity averages the visual density axes', () {
       expect(
         AclDeviceContext.resolveDensity(
-            const VisualDensity(horizontal: -2, vertical: -2)),
+          const VisualDensity(horizontal: -2, vertical: -2),
+        ),
         AclDensity.compact,
       );
       expect(
         AclDeviceContext.resolveDensity(
-            const VisualDensity(horizontal: -1, vertical: -1)),
+          const VisualDensity(horizontal: -1, vertical: -1),
+        ),
         AclDensity.comfortable,
       );
       expect(
@@ -45,17 +47,22 @@ void main() {
     });
 
     test('resolveInputMode maps mobile to touch, desktop to pointer', () {
-      expect(AclDeviceContext.resolveInputMode(TargetPlatform.android),
-          AclInputMode.touch);
-      expect(AclDeviceContext.resolveInputMode(TargetPlatform.linux),
-          AclInputMode.pointer);
+      expect(
+        AclDeviceContext.resolveInputMode(TargetPlatform.android),
+        AclInputMode.touch,
+      );
+      expect(
+        AclDeviceContext.resolveInputMode(TargetPlatform.linux),
+        AclInputMode.pointer,
+      );
     });
 
     test('buildConvenienceDetector returns null only for an empty spec', () {
       expect(AclDeviceContext.buildConvenienceDetector(), isNull);
       expect(
         AclDeviceContext.buildConvenienceDetector(
-            formFactor: AclFormFactor.phone),
+          formFactor: AclFormFactor.phone,
+        ),
         isNotNull,
       );
     });

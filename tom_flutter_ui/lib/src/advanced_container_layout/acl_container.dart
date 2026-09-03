@@ -333,10 +333,7 @@ class AclComponent {
     double newGap, {
     bool gapBeforeIsDefault = false,
   }) {
-    return copyWith(
-      gapBefore: newGap,
-      gapBeforeIsDefault: gapBeforeIsDefault,
-    );
+    return copyWith(gapBefore: newGap, gapBeforeIsDefault: gapBeforeIsDefault);
   }
 
   bool get expandX => (flags & AclFlags.expandX) != 0;
@@ -448,10 +445,7 @@ class AclRow {
   /// hide-unauthorized pass when it rewrites a row that has had some of
   /// its components dropped or when the row itself inherits a reduced
   /// gap because the previous row was elided.
-  AclRow copyWith({
-    List<AclComponent>? components,
-    double? gapBefore,
-  }) {
+  AclRow copyWith({List<AclComponent>? components, double? gapBefore}) {
     return AclRow(
       components: components ?? this.components,
       alignment: alignment,
@@ -516,11 +510,7 @@ double aclEffectiveGapBefore(
 
 /// Resolves a breakpointed row height. Returns null if no height is set.
 double? aclResolveRowHeight(AclRow row, double? availableWidth) =>
-    aclResolveBreakpointed(
-      row.height,
-      row.heightBpOverrides,
-      availableWidth,
-    );
+    aclResolveBreakpointed(row.height, row.heightBpOverrides, availableWidth);
 
 // ── Pre-calculation data structures ──────────────────────────────────────────
 
@@ -776,8 +766,7 @@ class _AclContainerState extends State<AclContainer> {
         if (newKey == null) continue;
         final sz = oldKey != null ? _naturalSizeCache[oldKey] : null;
         if (sz != null) newCache[newKey] = sz;
-        final measured =
-            oldKey != null ? _measuredDefaultWidths[oldKey] : null;
+        final measured = oldKey != null ? _measuredDefaultWidths[oldKey] : null;
         if (measured != null) newMeasured[newKey] = measured;
       }
     }
@@ -856,8 +845,9 @@ class _AclContainerState extends State<AclContainer> {
     // An author-declared maximum still caps the widening — the auto-applied
     // default is the only thing this pass is allowed to overrule.
     final cap = component.maximumSize?.width;
-    final width =
-        (cap != null && cap.isFinite) ? math.min(measured, cap) : measured;
+    final width = (cap != null && cap.isFinite)
+        ? math.min(measured, cap)
+        : measured;
     if (width <= declared + _geometryEpsilon) return null;
     return component.copyWith(
       preferredSize: Size(width, component.preferredSize!.height),
@@ -1068,9 +1058,7 @@ class _AclContainerState extends State<AclContainer> {
     if (scopePath.isNotEmpty) segments.add(scopePath);
 
     // Add container self-segment if this ACL is an identity container.
-    if (widget.idScope &&
-        widget.aclId != null &&
-        widget.aclId!.isNotEmpty) {
+    if (widget.idScope && widget.aclId != null && widget.aclId!.isNotEmpty) {
       segments.add(widget.aclId!);
     }
 
@@ -1099,9 +1087,7 @@ class _AclContainerState extends State<AclContainer> {
 
     if (scopePath.isNotEmpty) segments.add(scopePath);
 
-    if (widget.idScope &&
-        widget.aclId != null &&
-        widget.aclId!.isNotEmpty) {
+    if (widget.idScope && widget.aclId != null && widget.aclId!.isNotEmpty) {
       segments.add(widget.aclId!);
     }
 
@@ -1326,10 +1312,11 @@ class _AclContainerState extends State<AclContainer> {
       // fall through to minimumSize or natural height.  The auto-default
       // Size(150, 0) sets height to 0 which must NOT suppress intrinsic height.
       final prefH = comp.preferredSize?.height;
-      final h = (prefH != null && prefH > 0
-              ? prefH
-              : (comp.minimumSize?.height ?? _naturalHeight(comp) ?? 0))
-          .clamp(0.0, double.infinity);
+      final h =
+          (prefH != null && prefH > 0
+                  ? prefH
+                  : (comp.minimumSize?.height ?? _naturalHeight(comp) ?? 0))
+              .clamp(0.0, double.infinity);
       final shiftedLeft = plannedX + (delta < 0 ? delta : 0);
       minHX = math.min(minHX, shiftedLeft);
       maxHX = math.max(maxHX, shiftedLeft + pref);
@@ -1360,7 +1347,8 @@ class _AclContainerState extends State<AclContainer> {
           comp.child is Spacer) {
         continue;
       }
-      final pref = comp.preferredSize?.width ??
+      final pref =
+          comp.preferredSize?.width ??
           comp.minimumSize?.width ??
           _naturalWidth(comp) ??
           0.0;
@@ -1423,7 +1411,8 @@ class _AclContainerState extends State<AclContainer> {
               comp.child is Spacer) {
             continue;
           }
-          final pref = comp.preferredSize?.width ??
+          final pref =
+              comp.preferredSize?.width ??
               comp.minimumSize?.width ??
               _naturalWidth(comp) ??
               0.0;
@@ -1471,8 +1460,10 @@ class _AclContainerState extends State<AclContainer> {
         // of the weighted pool; the remainder keeps sharing the leftover.
         final unclamped = {...growable};
         while (surplus >= 1 && unclamped.isNotEmpty) {
-          final weightSum = unclamped.fold<double>(0.0,
-              (s, i) => s + weights[i]!);
+          final weightSum = unclamped.fold<double>(
+            0.0,
+            (s, i) => s + weights[i]!,
+          );
           if (weightSum <= 0) break;
           var distributedThisRound = 0.0;
           // Snapshot to avoid mutating during iteration.
@@ -1517,10 +1508,7 @@ class _AclContainerState extends State<AclContainer> {
       if (skipForShrink(comp)) continue;
       if (comp.useOtherDimX) continue;
       final pref = expandXPrefs[i] ?? prefWidths[i] ?? 0.0;
-      shrinkCap += math.max(
-        0.0,
-        pref - (comp.minimumSize?.width ?? 0),
-      );
+      shrinkCap += math.max(0.0, pref - (comp.minimumSize?.width ?? 0));
     }
     if (shrinkCap < 1) return null;
 
@@ -1697,10 +1685,12 @@ class _AclContainerState extends State<AclContainer> {
           continue;
         }
         if (inheritNextGap) {
-          keepers.add(comp.copyWithGapBefore(
-            pendingGap,
-            gapBeforeIsDefault: pendingGapIsDefault,
-          ));
+          keepers.add(
+            comp.copyWithGapBefore(
+              pendingGap,
+              gapBeforeIsDefault: pendingGapIsDefault,
+            ),
+          );
           inheritNextGap = false;
           pendingGap = 0;
           pendingGapIsDefault = false;
@@ -1720,8 +1710,7 @@ class _AclContainerState extends State<AclContainer> {
         continue;
       }
 
-      final rowGap =
-          inheritNextRowGap ? pendingRowGap : row.gapBefore;
+      final rowGap = inheritNextRowGap ? pendingRowGap : row.gapBefore;
       inheritNextRowGap = false;
       pendingRowGap = 0;
       out.add(row.copyWith(components: keepers, gapBefore: rowGap));
@@ -1738,8 +1727,7 @@ class _AclContainerState extends State<AclContainer> {
     if (!effective) return false;
     final child = comp.child;
     if (child is TomAuthorizable) {
-      return (child as TomAuthorizable).effectiveAuthState ==
-          TomAuthState.none;
+      return (child as TomAuthorizable).effectiveAuthState == TomAuthState.none;
     }
     return false;
   }
@@ -2130,13 +2118,13 @@ class _AclContainerState extends State<AclContainer> {
     // narrower than natural) — they're shrinking proportionally toward
     // their minimum via `fittedWidths`, not growing.
     final rowIsShrinking = row.components.any(
-      (c) => c.expandX && !c.isGap && fittedWidths.containsKey(
-            row.components.indexOf(c),
-          ),
+      (c) =>
+          c.expandX &&
+          !c.isGap &&
+          fittedWidths.containsKey(row.components.indexOf(c)),
     );
     final expandXWidths = <int, double>{};
-    if (!rowIsShrinking &&
-        availableWidth != null && availableWidth.isFinite) {
+    if (!rowIsShrinking && availableWidth != null && availableWidth.isFinite) {
       double fixedWidth = 0;
       double totalExpandXFlex = 0;
       final expandXCompIndices = <int>[];
@@ -2154,12 +2142,12 @@ class _AclContainerState extends State<AclContainer> {
           // when both M and P are explicitly set with min < pref, or a
           // small positive fallback so callers who just mark expandX
           // without also configuring M/P still participate in the row.
-          final minW =
-              (comp.minimumSize?.width ?? linkedWidths[i] ?? 0)
-                  .clamp(0.0, double.maxFinite);
-          final prefW =
-              (fittedWidths[i] ?? comp.preferredSize?.width ?? minW)
-                  .clamp(minW, double.maxFinite);
+          final minW = (comp.minimumSize?.width ?? linkedWidths[i] ?? 0).clamp(
+            0.0,
+            double.maxFinite,
+          );
+          final prefW = (fittedWidths[i] ?? comp.preferredSize?.width ?? minW)
+              .clamp(minW, double.maxFinite);
           double flex;
           if (minW > 0 && prefW > minW) {
             flex = prefW / minW - 1.0;
@@ -2176,7 +2164,8 @@ class _AclContainerState extends State<AclContainer> {
           // Count the preferred width as the minimum allocation.
           fixedWidth += aclEffectiveGapBefore(comp, row, availableWidth);
         } else {
-          final w = fittedWidths[i] ??
+          final w =
+              fittedWidths[i] ??
               linkedWidths[i] ??
               comp.preferredSize?.width ??
               _naturalWidth(comp) ??
@@ -2271,8 +2260,8 @@ class _AclContainerState extends State<AclContainer> {
 
       // For expandX components, use the pre-computed expanded width so that
       // subsequent components (and cross-row references) see correct offsets.
-      final estimatedW = expandXWidths[i] ??
-          _estimateW(comp, linkedW, fittedWidths[i]);
+      final estimatedW =
+          expandXWidths[i] ?? _estimateW(comp, linkedW, fittedWidths[i]);
       final estimatedH = _estimateH(comp, linkedH);
 
       rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedH);
@@ -2417,10 +2406,10 @@ class _AclContainerState extends State<AclContainer> {
     // intrinsic height for labels and other unsized components.
     final prefH = comp.preferredSize?.height;
     if (prefH != null && prefH > 0) return prefH;
-    return (comp.minimumSize?.height ??
-            _naturalHeight(comp) ??
-            0)
-        .clamp(0, double.infinity);
+    return (comp.minimumSize?.height ?? _naturalHeight(comp) ?? 0).clamp(
+      0,
+      double.infinity,
+    );
   }
 
   // ── Horizontal delta (pure Dart) ──────────────────────────────────────────
@@ -2456,7 +2445,8 @@ class _AclContainerState extends State<AclContainer> {
     //   self.left → ref.right : self is right of ref → +gap pushes right
     //   self.right → ref.left : self is left of ref → +gap pushes left
     //   same-ordinal alignments keep the historical -gap convention.
-    final signedGap = _gapSignX(comp.alignXFrom!, comp.alignXTo!) * comp.alignXGap;
+    final signedGap =
+        _gapSignX(comp.alignXFrom!, comp.alignXTo!) * comp.alignXGap;
     return (targetPoint + signedGap) - selfPoint;
   }
 
@@ -2652,8 +2642,9 @@ class _AclContainerState extends State<AclContainer> {
       // input win, and rendered through the theme. Folding first is what stops
       // a row and a component that both withhold from stacking their
       // treatments into a doubly-dimmed component.
-      var effectiveAuth = (rowAuthState ?? TomAuthState.full)
-          .narrow(authState ?? TomAuthState.full);
+      var effectiveAuth = (rowAuthState ?? TomAuthState.full).narrow(
+        authState ?? TomAuthState.full,
+      );
       if (visMode == AclGroupVisibilityMode.disabled) {
         effectiveAuth = effectiveAuth.narrow(TomAuthState.disabled);
       }
@@ -2661,7 +2652,11 @@ class _AclContainerState extends State<AclContainer> {
       // local binding keeps the callback from closing over `child` while
       // `child` is the very thing being reassigned.
       final laidOut = child;
-      child = TomThemeScope.applyAuthState(context, effectiveAuth, () => laidOut);
+      child = TomThemeScope.applyAuthState(
+        context,
+        effectiveAuth,
+        () => laidOut,
+      );
 
       // ── Auto-defaulted width: measure, and never overflow ────────────────
       // Innermost wrapper, so it sees the component's own content and receives
@@ -2688,7 +2683,8 @@ class _AclContainerState extends State<AclContainer> {
                 component.minimumSize?.width ??
                 component.preferredSize?.width)
           : (component.minimumSize?.width ?? component.preferredSize?.width);
-      final safePrefH = (component.preferredSize?.height != null &&
+      final safePrefH =
+          (component.preferredSize?.height != null &&
               component.preferredSize!.height > 0)
           ? component.preferredSize!.height
           : null;
@@ -2711,10 +2707,8 @@ class _AclContainerState extends State<AclContainer> {
       // them.  After the natural-size cache populates, linkedHeight becomes
       // the real rendered height and the constraint is correct.
       final maxHeight = component.useOtherDimY
-          ? ((linkedHeight != null && linkedHeight > 0
-                  ? linkedHeight
-                  : null) ??
-              component.maximumSize?.height)
+          ? ((linkedHeight != null && linkedHeight > 0 ? linkedHeight : null) ??
+                component.maximumSize?.height)
           : component.maximumSize?.height;
 
       if (!isFlexNativeChild &&
@@ -2787,9 +2781,8 @@ class _AclContainerState extends State<AclContainer> {
       // rest of this method's expandX-only path over to Flexible, which
       // would pull the component below its minimum whenever the row is
       // tighter than the sum of shrunken widths.
-      final expandXShrinking = component.expandX &&
-          canExpandHorizontally &&
-          fittedWidth != null;
+      final expandXShrinking =
+          component.expandX && canExpandHorizontally && fittedWidth != null;
       if (!isFlexNativeChild &&
           (!component.expandX || !canExpandHorizontally || expandXShrinking)) {
         final effectiveWidth =
@@ -2854,9 +2847,8 @@ class _AclContainerState extends State<AclContainer> {
         baseTopInRow = switch (row.defaultRowCrossAlignment) {
           AclRowCrossAlignment.top => 0.0,
           AclRowCrossAlignment.center =>
-              (rowEstimatedHeight - estimatedHeight) / 2,
-          AclRowCrossAlignment.bottom =>
-              rowEstimatedHeight - estimatedHeight,
+            (rowEstimatedHeight - estimatedHeight) / 2,
+          AclRowCrossAlignment.bottom => rowEstimatedHeight - estimatedHeight,
         };
       }
       final shiftedTopInRow = baseTopInRow + verticalAlignmentOffset;
@@ -3448,7 +3440,10 @@ enum AclTitleBorderAlign { top, middle, bottom }
 ///   shows a clean edge rather than the striped overflow banner, and the child
 ///   keeps the size it laid out at instead of reflowing.
 class _AclFloorWidthBox extends SingleChildRenderObjectWidget {
-  const _AclFloorWidthBox({required this.onMinWidth, required Widget super.child});
+  const _AclFloorWidthBox({
+    required this.onMinWidth,
+    required Widget super.child,
+  });
 
   /// Called during layout with the child's minimum intrinsic width.
   final ValueChanged<double> onMinWidth;
@@ -3485,8 +3480,9 @@ class _RenderAclFloorWidthBox extends RenderProxyBox {
     // The width this component was allocated by the ACL arithmetic. Unbounded
     // only happens outside a sizing wrapper, where the content's own width is
     // the honest answer.
-    final allocated =
-        constraints.hasBoundedWidth ? constraints.maxWidth : minWidth;
+    final allocated = constraints.hasBoundedWidth
+        ? constraints.maxWidth
+        : minWidth;
     // Why max(): giving the child less than its minimum is precisely what
     // produces a RenderFlex overflow. Give it the minimum and clip in paint
     // instead — the overflow becomes invisible *and* harmless, and the child's
@@ -3546,7 +3542,8 @@ class _RenderAclFloorWidthBox extends RenderProxyBox {
       needsCompositing,
       offset,
       Offset.zero & size,
-      (innerContext, innerOffset) => innerContext.paintChild(child, innerOffset),
+      (innerContext, innerOffset) =>
+          innerContext.paintChild(child, innerOffset),
       oldLayer: _clipLayer.layer,
     );
   }

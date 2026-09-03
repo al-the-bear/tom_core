@@ -35,12 +35,12 @@ import '../../support/list_form_fixtures.dart';
 const double _viewport = 600;
 
 Widget _app(Widget child) => MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: SizedBox(width: _viewport, height: 400, child: child),
-        ),
-      ),
-    );
+  home: Scaffold(
+    body: Center(
+      child: SizedBox(width: _viewport, height: 400, child: child),
+    ),
+  ),
+);
 
 OrderItemListForm _listWith(List<String> products) {
   final order = orderWith(products);
@@ -58,26 +58,22 @@ Widget _master(
   TomListForm<OrderItem, OrderItemForm> list,
   int? selected,
   Future<void> Function(int?) selectIndex,
-) =>
-    Container(
-      key: _masterKey,
-      alignment: Alignment.topLeft,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('sel:${selected ?? '-'}'),
-          for (var i = 0; i < list.length; i++)
-            TextButton(
-              onPressed: () => selectIndex(i),
-              child: Text('pick-$i'),
-            ),
-          TextButton(
-            onPressed: () => selectIndex(null),
-            child: const Text('clear'),
-          ),
-        ],
+) => Container(
+  key: _masterKey,
+  alignment: Alignment.topLeft,
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text('sel:${selected ?? '-'}'),
+      for (var i = 0; i < list.length; i++)
+        TextButton(onPressed: () => selectIndex(i), child: Text('pick-$i')),
+      TextButton(
+        onPressed: () => selectIndex(null),
+        child: const Text('clear'),
       ),
-    );
+    ],
+  ),
+);
 
 /// The detail pane, rebuilt from the row form's own change notifier.
 ///
@@ -119,21 +115,20 @@ void main() {
     double? minMasterPaneWidth,
     double? maxMasterPaneWidth,
     Widget Function(BuildContext, int, OrderItemForm)? detailBuilder,
-  }) =>
-      TomMasterDetailListForm<OrderItem, OrderItemForm>(
-        listForm: list,
-        masterBuilder: _master,
-        detailBuilder: detailBuilder ?? _detail,
-        emptyDetailBuilder: emptyDetailBuilder,
-        initialSelectedIndex: initialSelectedIndex,
-        guardUnsavedSelectionChange: guard,
-        masterPaneWidth: masterPaneWidth,
-        gap: gap,
-        padding: padding,
-        draggableSplitter: draggableSplitter,
-        minMasterPaneWidth: minMasterPaneWidth,
-        maxMasterPaneWidth: maxMasterPaneWidth,
-      );
+  }) => TomMasterDetailListForm<OrderItem, OrderItemForm>(
+    listForm: list,
+    masterBuilder: _master,
+    detailBuilder: detailBuilder ?? _detail,
+    emptyDetailBuilder: emptyDetailBuilder,
+    initialSelectedIndex: initialSelectedIndex,
+    guardUnsavedSelectionChange: guard,
+    masterPaneWidth: masterPaneWidth,
+    gap: gap,
+    padding: padding,
+    draggableSplitter: draggableSplitter,
+    minMasterPaneWidth: minMasterPaneWidth,
+    maxMasterPaneWidth: maxMasterPaneWidth,
+  );
 
   Future<void> pick(WidgetTester tester, int index) async {
     await tester.tap(find.text('pick-$index'));
@@ -142,13 +137,16 @@ void main() {
 
   // -------------------------------------------------------------------------
   group('TomMasterDetailListForm selection', () {
-    testWidgets('starts with nothing selected and the empty detail',
-        (tester) async {
+    testWidgets('starts with nothing selected and the empty detail', (
+      tester,
+    ) async {
       await tester.pumpWidget(_app(scaffold(_listWith(['A', 'B']))));
 
       expect(find.text('sel:-'), findsOneWidget);
-      expect(find.text('Select an item from the list to edit it.'),
-          findsOneWidget);
+      expect(
+        find.text('Select an item from the list to edit it.'),
+        findsOneWidget,
+      );
       expect(find.textContaining('detail-'), findsNothing);
     });
 
@@ -159,24 +157,31 @@ void main() {
 
       expect(find.text('detail-1:B'), findsOneWidget);
       expect(find.text('sel:1'), findsOneWidget);
-      expect(find.text('Select an item from the list to edit it.'),
-          findsNothing);
+      expect(
+        find.text('Select an item from the list to edit it.'),
+        findsNothing,
+      );
     });
 
-    testWidgets("the detail builder receives the list's own sub-form",
-        (tester) async {
+    testWidgets("the detail builder receives the list's own sub-form", (
+      tester,
+    ) async {
       // The whole point of the no-sibling-form architecture: the detail edits
       // the very form the list owns, so its dirty state rolls up without any
       // reconciliation step.
       final list = _listWith(['A', 'B']);
       OrderItemForm? given;
-      await tester.pumpWidget(_app(scaffold(
-        list,
-        detailBuilder: (ctx, i, f) {
-          given = f;
-          return Text('detail-$i');
-        },
-      )));
+      await tester.pumpWidget(
+        _app(
+          scaffold(
+            list,
+            detailBuilder: (ctx, i, f) {
+              given = f;
+              return Text('detail-$i');
+            },
+          ),
+        ),
+      );
 
       await pick(tester, 1);
 
@@ -195,32 +200,43 @@ void main() {
       expect(find.textContaining('detail-'), findsNothing);
     });
 
-    testWidgets('initialSelectedIndex opens that row on the first frame',
-        (tester) async {
+    testWidgets('initialSelectedIndex opens that row on the first frame', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-          _app(scaffold(_listWith(['A', 'B']), initialSelectedIndex: 1)));
+        _app(scaffold(_listWith(['A', 'B']), initialSelectedIndex: 1)),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('detail-1:B'), findsOneWidget);
     });
 
-    testWidgets('a custom empty detail replaces the built-in hint',
-        (tester) async {
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        emptyDetailBuilder: (_) => const Text('Pick something'),
-      )));
+    testWidgets('a custom empty detail replaces the built-in hint', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          scaffold(
+            _listWith(['A']),
+            emptyDetailBuilder: (_) => const Text('Pick something'),
+          ),
+        ),
+      );
 
       expect(find.text('Pick something'), findsOneWidget);
-      expect(find.text('Select an item from the list to edit it.'),
-          findsNothing);
+      expect(
+        find.text('Select an item from the list to edit it.'),
+        findsNothing,
+      );
     });
 
     testWidgets('an empty list shows the empty detail', (tester) async {
       await tester.pumpWidget(_app(scaffold(_listWith([]))));
 
-      expect(find.text('Select an item from the list to edit it.'),
-          findsOneWidget);
+      expect(
+        find.text('Select an item from the list to edit it.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('re-picking the selected row is a no-op', (tester) async {
@@ -262,8 +278,11 @@ void main() {
       expect(find.text('Unsaved changes'), findsOneWidget);
       // The detail pane shows the *edited* value — the point of the assertion
       // is the row index, not the value: row 0 is still the selected one.
-      expect(find.text('detail-0:X'), findsOneWidget,
-          reason: 'still on row 0 until the user answers');
+      expect(
+        find.text('detail-0:X'),
+        findsOneWidget,
+        reason: 'still on row 0 until the user answers',
+      );
     });
 
     testWidgets('Cancel keeps both the selection and the edit', (tester) async {
@@ -312,8 +331,9 @@ void main() {
       expect(find.text('detail-1:B'), findsOneWidget);
     });
 
-    testWidgets('a Save that fails validation keeps the user on the row',
-        (tester) async {
+    testWidgets('a Save that fails validation keeps the user on the row', (
+      tester,
+    ) async {
       // Sending the user away from a row they could not save would strand the
       // error where they can no longer see it.
       final list = _listWith(['A', 'B']);
@@ -331,8 +351,9 @@ void main() {
       expect(list[0].isDirty, isTrue, reason: 'the edit is still unsaved');
     });
 
-    testWidgets('the prompt cannot be dismissed by tapping the barrier',
-        (tester) async {
+    testWidgets('the prompt cannot be dismissed by tapping the barrier', (
+      tester,
+    ) async {
       final list = _listWith(['A', 'B']);
       await tester.pumpWidget(_app(scaffold(list)));
       await pick(tester, 0);
@@ -346,8 +367,9 @@ void main() {
       expect(find.text('Unsaved changes'), findsOneWidget);
     });
 
-    testWidgets('guardUnsavedSelectionChange: false switches silently',
-        (tester) async {
+    testWidgets('guardUnsavedSelectionChange: false switches silently', (
+      tester,
+    ) async {
       final list = _listWith(['A', 'B']);
       await tester.pumpWidget(_app(scaffold(list, guard: false)));
       await pick(tester, 0);
@@ -357,7 +379,11 @@ void main() {
 
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.text('detail-1:B'), findsOneWidget);
-      expect(list[0].product.get(), 'X', reason: 'the edit is merely left as-is');
+      expect(
+        list[0].product.get(),
+        'X',
+        reason: 'the edit is merely left as-is',
+      );
     });
   });
 
@@ -373,8 +399,9 @@ void main() {
       expect(find.text('pick-1'), findsOneWidget);
     });
 
-    testWidgets('removing the selected row clears the selection',
-        (tester) async {
+    testWidgets('removing the selected row clears the selection', (
+      tester,
+    ) async {
       // Otherwise the detail builder is handed an index past the end.
       final list = _listWith(['A', 'B']);
       await tester.pumpWidget(_app(scaffold(list)));
@@ -385,12 +412,15 @@ void main() {
       await tester.pump();
 
       expect(find.text('sel:-'), findsOneWidget);
-      expect(find.text('Select an item from the list to edit it.'),
-          findsOneWidget);
+      expect(
+        find.text('Select an item from the list to edit it.'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('a removal above the selection leaves the index in range',
-        (tester) async {
+    testWidgets('a removal above the selection leaves the index in range', (
+      tester,
+    ) async {
       // The selection is positional, so row 1 now shows what used to be row 2.
       final list = _listWith(['A', 'B', 'C']);
       await tester.pumpWidget(_app(scaffold(list)));
@@ -413,8 +443,9 @@ void main() {
       expect(find.text('detail-0:Z'), findsOneWidget);
     });
 
-    testWidgets('swapping in another list clears the stale selection',
-        (tester) async {
+    testWidgets('swapping in another list clears the stale selection', (
+      tester,
+    ) async {
       final first = _listWith(['A', 'B']);
       final second = _listWith(['X']);
       await tester.pumpWidget(_app(scaffold(first)));
@@ -445,23 +476,26 @@ void main() {
     double masterWidth(WidgetTester tester) =>
         tester.getSize(find.byKey(_masterKey)).width;
 
-    testWidgets('the master pane defaults to 280 logical pixels',
-        (tester) async {
+    testWidgets('the master pane defaults to 280 logical pixels', (
+      tester,
+    ) async {
       await tester.pumpWidget(_app(scaffold(_listWith(['A']))));
 
       expect(masterWidth(tester), 280.0);
     });
 
     testWidgets('honours an explicit master pane width', (tester) async {
-      await tester
-          .pumpWidget(_app(scaffold(_listWith(['A']), masterPaneWidth: 150)));
+      await tester.pumpWidget(
+        _app(scaffold(_listWith(['A']), masterPaneWidth: 150)),
+      );
 
       expect(masterWidth(tester), 150.0);
     });
 
     testWidgets('the gap separates the two panes', (tester) async {
-      await tester.pumpWidget(_app(
-          scaffold(_listWith(['A']), masterPaneWidth: 200, gap: 40)));
+      await tester.pumpWidget(
+        _app(scaffold(_listWith(['A']), masterPaneWidth: 200, gap: 40)),
+      );
 
       final masterRight = tester.getBottomRight(find.byKey(_masterKey)).dx;
       final detailLeft = tester
@@ -471,21 +505,26 @@ void main() {
     });
 
     testWidgets('applies the configured padding', (tester) async {
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        padding: const EdgeInsets.all(20),
-      )));
+      await tester.pumpWidget(
+        _app(scaffold(_listWith(['A']), padding: const EdgeInsets.all(20))),
+      );
 
-      expect(tester.getTopLeft(find.byKey(_masterKey)).dx,
-          tester.getTopLeft(find.byType(Scaffold)).dx + (800 - _viewport) / 2 + 20);
+      expect(
+        tester.getTopLeft(find.byKey(_masterKey)).dx,
+        tester.getTopLeft(find.byType(Scaffold)).dx +
+            (800 - _viewport) / 2 +
+            20,
+      );
     });
 
     testWidgets('a fixed scaffold has no resize handle', (tester) async {
       await tester.pumpWidget(_app(scaffold(_listWith(['A']))));
 
       expect(
-        find.byWidgetPredicate((w) =>
-            w is MouseRegion && w.cursor == SystemMouseCursors.resizeColumn),
+        find.byWidgetPredicate(
+          (w) =>
+              w is MouseRegion && w.cursor == SystemMouseCursors.resizeColumn,
+        ),
         findsNothing,
       );
     });
@@ -496,22 +535,28 @@ void main() {
     double masterWidth(WidgetTester tester) =>
         tester.getSize(find.byKey(_masterKey)).width;
 
-    Finder handle() => find.byWidgetPredicate((w) =>
-        w is MouseRegion && w.cursor == SystemMouseCursors.resizeColumn);
+    Finder handle() => find.byWidgetPredicate(
+      (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeColumn,
+    );
 
     testWidgets('renders a resize handle', (tester) async {
       await tester.pumpWidget(
-          _app(scaffold(_listWith(['A']), draggableSplitter: true)));
+        _app(scaffold(_listWith(['A']), draggableSplitter: true)),
+      );
 
       expect(handle(), findsOneWidget);
     });
 
     testWidgets('dragging right widens the master pane', (tester) async {
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        draggableSplitter: true,
-        masterPaneWidth: 200,
-      )));
+      await tester.pumpWidget(
+        _app(
+          scaffold(
+            _listWith(['A']),
+            draggableSplitter: true,
+            masterPaneWidth: 200,
+          ),
+        ),
+      );
       expect(masterWidth(tester), 200.0);
 
       await tester.drag(handle(), const Offset(50, 0));
@@ -521,11 +566,15 @@ void main() {
     });
 
     testWidgets('dragging left narrows the master pane', (tester) async {
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        draggableSplitter: true,
-        masterPaneWidth: 250,
-      )));
+      await tester.pumpWidget(
+        _app(
+          scaffold(
+            _listWith(['A']),
+            draggableSplitter: true,
+            masterPaneWidth: 250,
+          ),
+        ),
+      );
 
       await tester.drag(handle(), const Offset(-60, 0));
       await tester.pump();
@@ -534,12 +583,16 @@ void main() {
     });
 
     testWidgets('the pane never narrows past the minimum', (tester) async {
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        draggableSplitter: true,
-        masterPaneWidth: 200,
-        minMasterPaneWidth: 120,
-      )));
+      await tester.pumpWidget(
+        _app(
+          scaffold(
+            _listWith(['A']),
+            draggableSplitter: true,
+            masterPaneWidth: 200,
+            minMasterPaneWidth: 120,
+          ),
+        ),
+      );
 
       await tester.drag(handle(), const Offset(-400, 0));
       await tester.pump();
@@ -547,28 +600,39 @@ void main() {
       expect(masterWidth(tester), 120.0);
     });
 
-    testWidgets('without an explicit maximum the pane stops at half the width',
-        (tester) async {
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        draggableSplitter: true,
-        masterPaneWidth: 200,
-      )));
+    testWidgets(
+      'without an explicit maximum the pane stops at half the width',
+      (tester) async {
+        await tester.pumpWidget(
+          _app(
+            scaffold(
+              _listWith(['A']),
+              draggableSplitter: true,
+              masterPaneWidth: 200,
+            ),
+          ),
+        );
 
-      await tester.drag(handle(), const Offset(400, 0));
-      await tester.pump();
+        await tester.drag(handle(), const Offset(400, 0));
+        await tester.pump();
 
-      expect(masterWidth(tester), _viewport / 2);
-    });
+        expect(masterWidth(tester), _viewport / 2);
+      },
+    );
 
-    testWidgets('an explicit maximum wins over the half-width default',
-        (tester) async {
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        draggableSplitter: true,
-        masterPaneWidth: 200,
-        maxMasterPaneWidth: 240,
-      )));
+    testWidgets('an explicit maximum wins over the half-width default', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          scaffold(
+            _listWith(['A']),
+            draggableSplitter: true,
+            masterPaneWidth: 200,
+            maxMasterPaneWidth: 240,
+          ),
+        ),
+      );
 
       await tester.drag(handle(), const Offset(400, 0));
       await tester.pump();
@@ -576,31 +640,41 @@ void main() {
       expect(masterWidth(tester), 240.0);
     });
 
-    testWidgets('a maximum below the minimum collapses to the minimum',
-        (tester) async {
+    testWidgets('a maximum below the minimum collapses to the minimum', (
+      tester,
+    ) async {
       // A contradictory configuration must still produce a usable pane rather
       // than a negative-width one.
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        draggableSplitter: true,
-        masterPaneWidth: 200,
-        minMasterPaneWidth: 150,
-        maxMasterPaneWidth: 100,
-      )));
+      await tester.pumpWidget(
+        _app(
+          scaffold(
+            _listWith(['A']),
+            draggableSplitter: true,
+            masterPaneWidth: 200,
+            minMasterPaneWidth: 150,
+            maxMasterPaneWidth: 100,
+          ),
+        ),
+      );
       await tester.pump();
 
       expect(masterWidth(tester), 150.0);
     });
 
-    testWidgets('the starting width is clamped before any drag',
-        (tester) async {
+    testWidgets('the starting width is clamped before any drag', (
+      tester,
+    ) async {
       // The clamp runs on every build, so an over-wide starting value is
       // corrected immediately instead of on first interaction.
-      await tester.pumpWidget(_app(scaffold(
-        _listWith(['A']),
-        draggableSplitter: true,
-        masterPaneWidth: 590,
-      )));
+      await tester.pumpWidget(
+        _app(
+          scaffold(
+            _listWith(['A']),
+            draggableSplitter: true,
+            masterPaneWidth: 590,
+          ),
+        ),
+      );
 
       expect(masterWidth(tester), _viewport / 2);
     });

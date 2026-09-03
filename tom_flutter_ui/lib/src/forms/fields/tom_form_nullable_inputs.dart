@@ -82,9 +82,7 @@ mixin _NullableFieldLabels<T> on TomField<T> {
 
 @tomReflector
 class TomFormNStringInput extends TomField<String?>
-    with
-        TomStringInputDecorationMixin<String?>,
-        _NullableFieldLabels<String?> {
+    with TomStringInputDecorationMixin<String?>, _NullableFieldLabels<String?> {
   @override
   final String? labelTextOverride;
   @override
@@ -117,19 +115,19 @@ class TomFormNStringInput extends TomField<String?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _NullableTextInputWidget<String?>(
-          field: this,
-          decorationField: this,
-          nullDisplay: resolveNullDisplay,
-          format: (v) => v ?? '',
-          parse: (text) => text.isEmpty ? null : text,
-          keyboardType: TextInputType.text,
-          inputFormatters: const [],
-          maxLength: maxLength,
-          prefixIcon: prefixIcon,
-        ),
-      );
+    field: this,
+    child: _NullableTextInputWidget<String?>(
+      field: this,
+      decorationField: this,
+      nullDisplay: resolveNullDisplay,
+      format: (v) => v ?? '',
+      parse: (text) => text.isEmpty ? null : text,
+      keyboardType: TextInputType.text,
+      inputFormatters: const [],
+      maxLength: maxLength,
+      prefixIcon: prefixIcon,
+    ),
+  );
 }
 
 // ===========================================================================
@@ -138,9 +136,7 @@ class TomFormNStringInput extends TomField<String?>
 
 @tomReflector
 class TomFormNIntInput extends TomField<int?>
-    with
-        TomStringInputDecorationMixin<int?>,
-        _NullableFieldLabels<int?> {
+    with TomStringInputDecorationMixin<int?>, _NullableFieldLabels<int?> {
   @override
   final String? labelTextOverride;
   @override
@@ -170,24 +166,21 @@ class TomFormNIntInput extends TomField<int?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _NullableTextInputWidget<int?>(
-          field: this,
-          decorationField: this,
-          nullDisplay: resolveNullDisplay,
-          format: (v) => v?.toString() ?? '',
-          parse: (text) => text.isEmpty ? null : int.tryParse(text),
-          keyboardType:
-              const TextInputType.numberWithOptions(signed: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'-?\d*')),
-          ],
-          prefixIcon: prefixIcon,
-          // Skip parse-failed text (e.g. mid-typing "-") so the field
-          // doesn't flip to null while the user is still composing.
-          skipUnparseableNonEmpty: true,
-        ),
-      );
+    field: this,
+    child: _NullableTextInputWidget<int?>(
+      field: this,
+      decorationField: this,
+      nullDisplay: resolveNullDisplay,
+      format: (v) => v?.toString() ?? '',
+      parse: (text) => text.isEmpty ? null : int.tryParse(text),
+      keyboardType: const TextInputType.numberWithOptions(signed: true),
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))],
+      prefixIcon: prefixIcon,
+      // Skip parse-failed text (e.g. mid-typing "-") so the field
+      // doesn't flip to null while the user is still composing.
+      skipUnparseableNonEmpty: true,
+    ),
+  );
 }
 
 // ===========================================================================
@@ -196,9 +189,7 @@ class TomFormNIntInput extends TomField<int?>
 
 @tomReflector
 class TomFormNDoubleInput extends TomField<double?>
-    with
-        TomStringInputDecorationMixin<double?>,
-        _NullableFieldLabels<double?> {
+    with TomStringInputDecorationMixin<double?>, _NullableFieldLabels<double?> {
   @override
   final String? labelTextOverride;
   @override
@@ -234,21 +225,23 @@ class TomFormNDoubleInput extends TomField<double?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _NullableTextInputWidget<double?>(
-          field: this,
-          decorationField: this,
-          nullDisplay: resolveNullDisplay,
-          format: _format,
-          parse: (text) => text.isEmpty ? null : double.tryParse(text),
-          keyboardType: const TextInputType.numberWithOptions(
-              decimal: true, signed: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'-?\d*\.?\d*')),
-          ],
-          skipUnparseableNonEmpty: true,
-        ),
-      );
+    field: this,
+    child: _NullableTextInputWidget<double?>(
+      field: this,
+      decorationField: this,
+      nullDisplay: resolveNullDisplay,
+      format: _format,
+      parse: (text) => text.isEmpty ? null : double.tryParse(text),
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'-?\d*\.?\d*')),
+      ],
+      skipUnparseableNonEmpty: true,
+    ),
+  );
 }
 
 // ===========================================================================
@@ -323,13 +316,15 @@ class _NullableTextInputWidgetState<T>
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.format(field.get()));
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final v = widget.format((observable as TomObject<T>).get());
-        if (_controller.text != v) _controller.text = v;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final v = widget.format((observable as TomObject<T>).get());
+            if (_controller.text != v) _controller.text = v;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -452,14 +447,17 @@ class TomFormNDateInput extends TomField<DateTime?>
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
-  })  : assert(!firstDate.isAfter(lastDate),
-            'TomFormNDateInput: firstDate must be on or before lastDate'),
-        assert(
-            initialValue == null ||
-                (!initialValue.isBefore(firstDate) &&
-                    !initialValue.isAfter(lastDate)),
-            'TomFormNDateInput: initialValue (when non-null) must be within '
-            '[firstDate, lastDate]');
+  }) : assert(
+         !firstDate.isAfter(lastDate),
+         'TomFormNDateInput: firstDate must be on or before lastDate',
+       ),
+       assert(
+         initialValue == null ||
+             (!initialValue.isBefore(firstDate) &&
+                 !initialValue.isAfter(lastDate)),
+         'TomFormNDateInput: initialValue (when non-null) must be within '
+         '[firstDate, lastDate]',
+       );
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -475,9 +473,9 @@ class TomFormNDateInput extends TomField<DateTime?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _NDateInputWidget(field: this),
-      );
+    field: this,
+    child: _NDateInputWidget(field: this),
+  );
 }
 
 class _NDateInputWidget extends StatefulWidget {
@@ -496,9 +494,11 @@ class _NDateInputWidgetState extends State<_NDateInputWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -568,9 +568,7 @@ class _NDateInputWidgetState extends State<_NDateInputWidget> {
 
 @tomReflector
 class TomFormNEnumDropdown<T> extends TomField<T?>
-    with
-        TomDropdownDecorationMixin<T?>,
-        _NullableFieldLabels<T?> {
+    with TomDropdownDecorationMixin<T?>, _NullableFieldLabels<T?> {
   final TomSelectableSource<T> source;
 
   @override
@@ -613,9 +611,9 @@ class TomFormNEnumDropdown<T> extends TomField<T?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _NEnumDropdownWidget<T>(field: this),
-      );
+    field: this,
+    child: _NEnumDropdownWidget<T>(field: this),
+  );
 }
 
 class _NEnumDropdownWidget<T> extends StatefulWidget {
@@ -638,9 +636,11 @@ class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -715,8 +715,7 @@ class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
     final dropdown = DropdownButtonFormField<T?>(
       // The leading null item is always present; if `current` isn't in
       // the source we still pass it through (rendered as null fallback).
-      initialValue: current == null ||
-              _items.any((i) => i.value == current)
+      initialValue: current == null || _items.any((i) => i.value == current)
           ? current
           : null,
       isExpanded: f.dropdownFillsColumnWidth,

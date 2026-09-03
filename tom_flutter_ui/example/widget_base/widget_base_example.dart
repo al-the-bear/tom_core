@@ -30,11 +30,7 @@ void run() {
         'title': 'Sign in',
         'accent': '#2196F3',
         'gap': 12,
-        'heading': {
-          'fontSize': 20,
-          'fontWeight': 'w600',
-          'color': '#1565C0',
-        },
+        'heading': {'fontSize': 20, 'fontWeight': 'w600', 'color': '#1565C0'},
       },
     }),
   );

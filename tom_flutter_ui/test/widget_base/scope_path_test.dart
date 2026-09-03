@@ -39,13 +39,14 @@ const _rawScopePathReaders = <String, int>{
 };
 
 /// Every `.dart` file under `lib/`, as workspace-relative paths.
-List<String> _libSources() => Directory('lib')
-    .listSync(recursive: true)
-    .whereType<File>()
-    .map((f) => f.path)
-    .where((p) => p.endsWith('.dart'))
-    .toList()
-  ..sort();
+List<String> _libSources() =>
+    Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .map((f) => f.path)
+        .where((p) => p.endsWith('.dart'))
+        .toList()
+      ..sort();
 
 /// Counts `getScopePath()` calls in [path], ignoring comment lines.
 ///

@@ -27,8 +27,10 @@ import 'tom_undo_history.dart';
 ///   ).trigger,
 /// )
 /// ```
-class TomActionTrigger<TContext extends TomActionContext,
-    TUndo extends TomActionUndo> {
+class TomActionTrigger<
+  TContext extends TomActionContext,
+  TUndo extends TomActionUndo
+> {
   /// The action to trigger.
   final TomAction<TContext, TUndo> action;
 

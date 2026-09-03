@@ -29,9 +29,7 @@ void main() async {
   }
 
   // Extract icon names
-  final materialIcons = _extractIconNames(
-    materialIconsFile.readAsStringSync(),
-  );
+  final materialIcons = _extractIconNames(materialIconsFile.readAsStringSync());
   final cupertinoIcons = _extractIconNames(
     cupertinoIconsFile.readAsStringSync(),
   );
@@ -81,10 +79,15 @@ String _capitalize(String s) {
   if (s.isEmpty) return s;
   // Handle snake_case: ten_k -> TenK
   final parts = s.split('_');
-  return parts.map((p) => p.isEmpty ? '' : p[0].toUpperCase() + p.substring(1)).join();
+  return parts
+      .map((p) => p.isEmpty ? '' : p[0].toUpperCase() + p.substring(1))
+      .join();
 }
 
-String _generateOutput(List<String> materialIcons, List<String> cupertinoIcons) {
+String _generateOutput(
+  List<String> materialIcons,
+  List<String> cupertinoIcons,
+) {
   final buffer = StringBuffer();
 
   buffer.writeln('// GENERATED FILE - DO NOT EDIT');
@@ -100,11 +103,19 @@ String _generateOutput(List<String> materialIcons, List<String> cupertinoIcons) 
   buffer.writeln();
   buffer.writeln('/// Generated icon mappings for all Flutter icons.');
   buffer.writeln('///');
-  buffer.writeln('/// Material icons are prefixed with `m` (e.g., `mAdd`, `mSave`).');
-  buffer.writeln('/// Cupertino icons are prefixed with `c` (e.g., `cShare`, `cBook`).');
+  buffer.writeln(
+    '/// Material icons are prefixed with `m` (e.g., `mAdd`, `mSave`).',
+  );
+  buffer.writeln(
+    '/// Cupertino icons are prefixed with `c` (e.g., `cShare`, `cBook`).',
+  );
   buffer.writeln('///');
-  buffer.writeln('/// The original snake_case names are converted to PascalCase after the prefix.');
-  buffer.writeln('/// Example: `arrow_back` -> `mArrowBack`, `left_chevron` -> `cLeftChevron`');
+  buffer.writeln(
+    '/// The original snake_case names are converted to PascalCase after the prefix.',
+  );
+  buffer.writeln(
+    '/// Example: `arrow_back` -> `mArrowBack`, `left_chevron` -> `cLeftChevron`',
+  );
   buffer.writeln('class GeneratedIcons {');
   buffer.writeln('  GeneratedIcons._();');
   buffer.writeln();
@@ -138,7 +149,9 @@ String _generateOutput(List<String> materialIcons, List<String> cupertinoIcons) 
   buffer.writeln();
   buffer.writeln('  /// Whether an icon with [name] exists.');
   buffer.writeln('  static bool exists(String name) {');
-  buffer.writeln('    return materialIcons.containsKey(name) || cupertinoIcons.containsKey(name);');
+  buffer.writeln(
+    '    return materialIcons.containsKey(name) || cupertinoIcons.containsKey(name);',
+  );
   buffer.writeln('  }');
   buffer.writeln('}');
 

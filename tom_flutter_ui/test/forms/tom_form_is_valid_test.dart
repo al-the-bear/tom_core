@@ -82,13 +82,15 @@ void main() {
     // Why gating on isDirty rather than isValid is safe: save() runs a full
     // validate() of its own before committing anything, so it neither needs a
     // prior validate() nor trusts a stale isValid.
-    test('succeeds on a never-validated form, because it validates first',
-        () async {
-      final form = OrderItemForm()..bind(_validItem());
+    test(
+      'succeeds on a never-validated form, because it validates first',
+      () async {
+        final form = OrderItemForm()..bind(_validItem());
 
-      expect(form.isValid, isFalse);
-      expect(await form.save(), isTrue);
-    });
+        expect(form.isValid, isFalse);
+        expect(await form.save(), isTrue);
+      },
+    );
 
     test('still refuses a never-validated form whose data is bad', () async {
       final item = OrderItem();
@@ -100,8 +102,7 @@ void main() {
       expect(form.isValid, isFalse);
     });
 
-    test('returns the form to pristine, so isValid goes false again',
-        () async {
+    test('returns the form to pristine, so isValid goes false again', () async {
       // commit() clears validation state so no errors linger after a save —
       // which means isValid is false again the moment the save succeeds. A
       // Save button reading isValid would flicker; one reading isDirty does
@@ -118,22 +119,26 @@ void main() {
   });
 
   group('the aggregate', () {
-    test('a pristine parent is invalid even though its child list is bound',
-        () {
-      final form = OrderForm()..bind(orderWith(const ['Bolt']));
+    test(
+      'a pristine parent is invalid even though its child list is bound',
+      () {
+        final form = OrderForm()..bind(orderWith(const ['Bolt']));
 
-      expect(form.isValid, isFalse);
-      expect(form.items.isValid, isFalse);
-    });
+        expect(form.isValid, isFalse);
+        expect(form.items.isValid, isFalse);
+      },
+    );
 
-    test('validate() reaches the parent, the fields and the child list',
-        () async {
-      final form = OrderForm()..bind(orderWith(const ['Bolt']));
+    test(
+      'validate() reaches the parent, the fields and the child list',
+      () async {
+        final form = OrderForm()..bind(orderWith(const ['Bolt']));
 
-      await form.validate();
+        await form.validate();
 
-      expect(form.isValid, isTrue);
-      expect(form.items.isValid, isTrue);
-    });
+        expect(form.isValid, isTrue);
+        expect(form.items.isValid, isTrue);
+      },
+    );
   });
 }

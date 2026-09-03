@@ -65,22 +65,16 @@ class _Source {
 const double _tileHeight = 50;
 const double _viewportHeight = 200;
 
-Widget _tile(BuildContext _, int item, int index) => SizedBox(
-      height: _tileHeight,
-      child: Text('item-$item'),
-    );
+Widget _tile(BuildContext _, int item, int index) =>
+    SizedBox(height: _tileHeight, child: Text('item-$item'));
 
 Widget _app(Widget child) => MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: SizedBox(
-            width: 300,
-            height: _viewportHeight,
-            child: child,
-          ),
-        ),
-      ),
-    );
+  home: Scaffold(
+    body: Center(
+      child: SizedBox(width: 300, height: _viewportHeight, child: child),
+    ),
+  ),
+);
 
 /// Scrolls the list to its very bottom, which is what arms `_maybeFetch`.
 Future<void> _scrollToBottom(WidgetTester tester) async {
@@ -91,15 +85,20 @@ Future<void> _scrollToBottom(WidgetTester tester) async {
 void main() {
   // -------------------------------------------------------------------------
   group('TomInfiniteScroll initial load', () {
-    testWidgets('shows the skeleton while the first page is in flight',
-        (tester) async {
+    testWidgets('shows the skeleton while the first page is in flight', (
+      tester,
+    ) async {
       final source = _Source()..gate = Completer<void>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pump(); // let the post-frame fetch start
 
       expect(find.byType(TomSkeletonLoader), findsWidgets);
@@ -113,12 +112,16 @@ void main() {
     testWidgets('a custom skeleton replaces the default', (tester) async {
       final source = _Source()..gate = Completer<void>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-        skeletonBuilder: (_) => const Text('loading…'),
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+            skeletonBuilder: (_) => const Text('loading…'),
+          ),
+        ),
+      );
       await tester.pump();
 
       expect(find.text('loading…'), findsOneWidget);
@@ -131,11 +134,15 @@ void main() {
     testWidgets('requests page 0 at the configured page size', (tester) async {
       final source = _Source();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 7,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 7,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(source.calls, [(0, 7)]);
@@ -144,11 +151,15 @@ void main() {
     testWidgets('renders the first page', (tester) async {
       final source = _Source();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('item-0'), findsOneWidget);
@@ -161,11 +172,15 @@ void main() {
     testWidgets('falls back to the default empty state', (tester) async {
       final source = _Source(total: 0);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(TomEmptyState), findsOneWidget);
@@ -175,12 +190,16 @@ void main() {
     testWidgets('a custom empty builder replaces it', (tester) async {
       final source = _Source(total: 0);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-        emptyBuilder: (_) => const Text('nothing here'),
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+            emptyBuilder: (_) => const Text('nothing here'),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('nothing here'), findsOneWidget);
@@ -192,12 +211,16 @@ void main() {
       final source = _Source(total: 0);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(key.currentState!.isExhausted, isTrue);
@@ -210,11 +233,15 @@ void main() {
     testWidgets('reaching the bottom asks for the next page', (tester) async {
       final source = _Source(total: 25);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(source.calls, [(0, 10)]);
 
@@ -228,12 +255,16 @@ void main() {
       final source = _Source(total: 25);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(key.currentState!.loadedCount, 10);
 
@@ -242,15 +273,20 @@ void main() {
       expect(key.currentState!.loadedCount, 20);
     });
 
-    testWidgets('a fetch in flight suppresses a second request',
-        (tester) async {
+    testWidgets('a fetch in flight suppresses a second request', (
+      tester,
+    ) async {
       final source = _Source(total: 100);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       source.gate = Completer<void>();
@@ -260,8 +296,11 @@ void main() {
       await tester.drag(find.byType(ListView), const Offset(0, -2000));
       await tester.pump();
 
-      expect(source.callCount, duringFirstDrag,
-          reason: 'the pending gate absorbs every further scroll notification');
+      expect(
+        source.callCount,
+        duringFirstDrag,
+        reason: 'the pending gate absorbs every further scroll notification',
+      );
       source.gate!.complete();
       await tester.pumpAndSettle();
     });
@@ -270,12 +309,16 @@ void main() {
       final source = _Source(total: 15);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       await _scrollToBottom(tester);
       expect(key.currentState!.isExhausted, isTrue);
@@ -283,23 +326,31 @@ void main() {
       final callsAtEnd = source.callCount;
       await _scrollToBottom(tester);
 
-      expect(source.callCount, callsAtEnd,
-          reason: 'an exhausted source is never polled again');
+      expect(
+        source.callCount,
+        callsAtEnd,
+        reason: 'an exhausted source is never polled again',
+      );
     });
 
-    testWidgets('a full last page still stops at the empty page that follows',
-        (tester) async {
+    testWidgets('a full last page still stops at the empty page that follows', (
+      tester,
+    ) async {
       // 20 items at a page size of 10 means page 1 is *full*, so exhaustion is
       // only discovered by page 2 coming back empty.
       final source = _Source(total: 20);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       await _scrollToBottom(tester);
       expect(key.currentState!.isExhausted, isFalse);
@@ -314,11 +365,15 @@ void main() {
     testWidgets('a trailing spinner marks the load-more state', (tester) async {
       final source = _Source(total: 100);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       source.gate = Completer<void>();
@@ -330,32 +385,44 @@ void main() {
       // before it appeared. So it is built and off-stage, and only a further
       // scroll brings it on screen. Both halves are asserted: the tile exists,
       // and scrolling the last stretch reveals it.
-      expect(find.byType(CircularProgressIndicator, skipOffstage: false),
-          findsOneWidget);
+      expect(
+        find.byType(CircularProgressIndicator, skipOffstage: false),
+        findsOneWidget,
+      );
       await tester.drag(find.byType(ListView), const Offset(0, -200));
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(source.calls, hasLength(2),
-          reason: 'the extra drag does not stack a second request');
+      expect(
+        source.calls,
+        hasLength(2),
+        reason: 'the extra drag does not stack a second request',
+      );
 
       source.gate!.complete();
       await tester.pumpAndSettle();
-      expect(find.byType(CircularProgressIndicator, skipOffstage: false),
-          findsNothing);
+      expect(
+        find.byType(CircularProgressIndicator, skipOffstage: false),
+        findsNothing,
+      );
     });
   });
 
   // -------------------------------------------------------------------------
   group('TomInfiniteScroll errors', () {
-    testWidgets('a failing first page shows the default error slot',
-        (tester) async {
+    testWidgets('a failing first page shows the default error slot', (
+      tester,
+    ) async {
       final source = _Source(failFrom: 0);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Failed to load'), findsOneWidget);
@@ -366,15 +433,17 @@ void main() {
     testWidgets('a custom error builder replaces it', (tester) async {
       final source = _Source(failFrom: 0);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-        errorBuilder: (_, error, retry) => TextButton(
-          onPressed: retry,
-          child: Text('boom: $error'),
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+            errorBuilder: (_, error, retry) =>
+                TextButton(onPressed: retry, child: Text('boom: $error')),
+          ),
         ),
-      )));
+      );
       await tester.pumpAndSettle();
 
       expect(find.textContaining('boom:'), findsOneWidget);
@@ -384,39 +453,53 @@ void main() {
     testWidgets('the error latches until the user retries', (tester) async {
       final source = _Source(failFrom: 0);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       final callsAfterFailure = source.callCount;
 
       await tester.pump(const Duration(seconds: 1));
 
-      expect(source.callCount, callsAfterFailure,
-          reason: 'a latched error stops the auto-fetch loop');
+      expect(
+        source.callCount,
+        callsAfterFailure,
+        reason: 'a latched error stops the auto-fetch loop',
+      );
     });
 
     testWidgets('Retry re-issues the same page', (tester) async {
       final source = _Source(failFrom: 0);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Retry'));
       await tester.pumpAndSettle();
 
-      expect(source.calls, [(0, 10), (0, 10)],
-          reason: 'the failed page is retried, not skipped');
+      expect(source.calls, [
+        (0, 10),
+        (0, 10),
+      ], reason: 'the failed page is retried, not skipped');
     });
 
-    testWidgets('a mid-list failure hides the loaded items but keeps them',
-        (tester) async {
+    testWidgets('a mid-list failure hides the loaded items but keeps them', (
+      tester,
+    ) async {
       // The error slot replaces the whole list, so the retry has to bring the
       // already-loaded items back rather than start from nothing.
       //
@@ -429,24 +512,38 @@ void main() {
       final source = _Source(total: 100, failFrom: 1);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
-      expect(find.textContaining('item-'), findsWidgets,
-          reason: 'items must be on screen first, or the check below is '
-              'vacuous — a first-page failure cannot tell a panel from a tile');
+      expect(
+        find.textContaining('item-'),
+        findsWidgets,
+        reason:
+            'items must be on screen first, or the check below is '
+            'vacuous — a first-page failure cannot tell a panel from a tile',
+      );
 
       await _scrollToBottom(tester);
       expect(find.textContaining('Failed to load'), findsOneWidget);
 
-      expect(find.textContaining('item-'), findsNothing,
-          reason: 'the error slot took the surface; no row survives beside it');
-      expect(key.currentState!.loadedCount, 10,
-          reason: 'the first page is still held, only hidden');
+      expect(
+        find.textContaining('item-'),
+        findsNothing,
+        reason: 'the error slot took the surface; no row survives beside it',
+      );
+      expect(
+        key.currentState!.loadedCount,
+        10,
+        reason: 'the first page is still held, only hidden',
+      );
     });
   });
 
@@ -456,12 +553,16 @@ void main() {
       final source = _Source(total: 15)..gate = Completer<void>();
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pump();
       expect(key.currentState!.isPending, isTrue);
       expect(key.currentState!.loadedCount, 0);
@@ -478,12 +579,16 @@ void main() {
       final source = _Source(total: 25);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       await _scrollToBottom(tester);
       expect(key.currentState!.loadedCount, 20);
@@ -496,28 +601,38 @@ void main() {
       // duplicate is the point: page 0 is fetched, then fetched again. The
       // `last` form is true of a fetcher called once per page too, so it
       // could not have caught the dartdoc that claimed exactly that.
-      expect(source.calls, [(0, 10), (1, 10), (0, 10)],
-          reason: 'refresh re-requests a page that was already fetched');
+      expect(
+        source.calls,
+        [(0, 10), (1, 10), (0, 10)],
+        reason: 'refresh re-requests a page that was already fetched',
+      );
     });
 
     testWidgets('refresh clears a latched error', (tester) async {
       final source = _Source(failFrom: 0);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.textContaining('Failed to load'), findsOneWidget);
 
       await key.currentState!.refresh();
       await tester.pumpAndSettle();
 
-      expect(source.calls, hasLength(2),
-          reason: 'refresh re-attempts rather than staying latched');
+      expect(
+        source.calls,
+        hasLength(2),
+        reason: 'refresh re-attempts rather than staying latched',
+      );
     });
 
     // The fetcher is re-entrant, not merely re-called. Three paths re-issue a
@@ -528,17 +643,22 @@ void main() {
     // already covered; this one is the reason `PageFetcher` needs a
     // generation fence rather than just the `_pending` gate, because
     // `refresh` clears `_pending` in order to start immediately.
-    testWidgets('a refresh during an in-flight fetch discards its result',
-        (tester) async {
+    testWidgets('a refresh during an in-flight fetch discards its result', (
+      tester,
+    ) async {
       final source = _Source(total: 100);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        key: key,
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(key.currentState!.loadedCount, 10);
 
@@ -552,9 +672,13 @@ void main() {
 
       final refreshed = key.currentState!.refresh();
       await tester.pump();
-      expect(source.calls, [(0, 10), (1, 10), (0, 10)],
-          reason: 'refresh does not wait for the in-flight page — the two '
-              'calls overlap, so the fetcher must tolerate re-entry');
+      expect(
+        source.calls,
+        [(0, 10), (1, 10), (0, 10)],
+        reason:
+            'refresh does not wait for the in-flight page — the two '
+            'calls overlap, so the fetcher must tolerate re-entry',
+      );
 
       source.gate!.complete();
       await refreshed;
@@ -562,8 +686,11 @@ void main() {
 
       // Without the fence the abandoned page 1 lands on top of the restarted
       // sequence, giving 20 items whose first row is `item-10`.
-      expect(key.currentState!.loadedCount, 10,
-          reason: 'the abandoned page must not be appended to the new list');
+      expect(
+        key.currentState!.loadedCount,
+        10,
+        reason: 'the abandoned page must not be appended to the new list',
+      );
       expect(find.text('item-0'), findsOneWidget);
       expect(find.text('item-10'), findsNothing);
     });
@@ -572,36 +699,44 @@ void main() {
       final source = _Source(total: 25);
       const padding = EdgeInsets.all(9);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-        padding: padding,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+            padding: padding,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      expect(
-        tester.widget<ListView>(find.byType(ListView)).padding,
-        padding,
-      );
+      expect(tester.widget<ListView>(find.byType(ListView)).padding, padding);
     });
 
     testWidgets('a fetch completing after dispose is dropped', (tester) async {
       final source = _Source()..gate = Completer<void>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pump();
 
       await tester.pumpWidget(_app(const SizedBox.shrink()));
       source.gate!.complete();
 
       await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull,
-          reason: 'no setState after dispose');
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'no setState after dispose',
+      );
     });
   });
 
@@ -650,23 +785,35 @@ void main() {
       expect(markers.keys, contains(slot), reason: 'unknown slot name');
       markers.forEach((name, finder) {
         if (name == slot) return;
-        expect(finder(), findsNothing,
-            reason: 'in the $slot state, $name must not be painted too — '
-                'each of these slots owns the whole surface');
+        expect(
+          finder(),
+          findsNothing,
+          reason:
+              'in the $slot state, $name must not be painted too — '
+              'each of these slots owns the whole surface',
+        );
       });
-      expect(markers[slot]!(), findsWidgets,
-          reason: 'the $slot slot must be painted');
+      expect(
+        markers[slot]!(),
+        findsWidgets,
+        reason: 'the $slot slot must be painted',
+      );
     }
 
-    testWidgets('the initial-load skeleton is alone on the surface',
-        (tester) async {
+    testWidgets('the initial-load skeleton is alone on the surface', (
+      tester,
+    ) async {
       final source = _Source(total: 25)..gate = Completer<void>();
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pump();
 
       expectOnly('skeleton');
@@ -677,45 +824,60 @@ void main() {
     testWidgets('the empty state is alone on the surface', (tester) async {
       final source = _Source(total: 0);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expectOnly('empty');
     });
 
-    testWidgets('the error slot is alone on the surface, items and all',
-        (tester) async {
+    testWidgets('the error slot is alone on the surface, items and all', (
+      tester,
+    ) async {
       final source = _Source(total: 100, failFrom: 1);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       await _scrollToBottom(tester);
 
       expectOnly('error');
-      expect(find.byType(ListView), findsNothing,
-          reason: 'no list is mounted at all, so nothing can be a tile in it');
+      expect(
+        find.byType(ListView),
+        findsNothing,
+        reason: 'no list is mounted at all, so nothing can be a tile in it',
+      );
     });
 
     testWidgets('the loaded list is alone on the surface', (tester) async {
       final source = _Source(total: 25);
 
-      await tester.pumpWidget(_app(TomInfiniteScroll<int>(
-        pageSize: 10,
-        fetcher: source.fetch,
-        itemBuilder: _tile,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expectOnly('items');
     });
-
   });
 }

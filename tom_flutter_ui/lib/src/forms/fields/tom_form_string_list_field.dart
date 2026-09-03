@@ -94,9 +94,11 @@ mixin _SourceBackedStringListWidgetStateMixin<TWidget extends StatefulWidget>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -179,9 +181,9 @@ class TomFormStringFilterChips extends TomFormStringListField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormStringFilterChipsWidget(field: this),
-      );
+    field: this,
+    child: _TomFormStringFilterChipsWidget(field: this),
+  );
 }
 
 class _TomFormStringFilterChipsWidget extends StatefulWidget {
@@ -195,8 +197,10 @@ class _TomFormStringFilterChipsWidget extends StatefulWidget {
 
 class _TomFormStringFilterChipsWidgetState
     extends State<_TomFormStringFilterChipsWidget>
-    with _SourceBackedStringListWidgetStateMixin<
-        _TomFormStringFilterChipsWidget> {
+    with
+        _SourceBackedStringListWidgetStateMixin<
+          _TomFormStringFilterChipsWidget
+        > {
   @override
   TomFormStringListField get field => widget.field;
 
@@ -223,8 +227,9 @@ class _TomFormStringFilterChipsWidgetState
           onSelected: f.isEditable && item.enabled
               ? (sel) => f.toggleItem(item.value, sel)
               : null,
-          selectedColor:
-              override?.selectedColor?.resolve(const {WidgetState.selected}),
+          selectedColor: override?.selectedColor?.resolve(const {
+            WidgetState.selected,
+          }),
           visualDensity: VisualDensity.compact,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );
@@ -270,9 +275,9 @@ class TomFormStringMultiCheckbox extends TomFormStringListField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormStringMultiCheckboxWidget(field: this),
-      );
+    field: this,
+    child: _TomFormStringMultiCheckboxWidget(field: this),
+  );
 }
 
 class _TomFormStringMultiCheckboxWidget extends StatefulWidget {
@@ -286,8 +291,10 @@ class _TomFormStringMultiCheckboxWidget extends StatefulWidget {
 
 class _TomFormStringMultiCheckboxWidgetState
     extends State<_TomFormStringMultiCheckboxWidget>
-    with _SourceBackedStringListWidgetStateMixin<
-        _TomFormStringMultiCheckboxWidget> {
+    with
+        _SourceBackedStringListWidgetStateMixin<
+          _TomFormStringMultiCheckboxWidget
+        > {
   @override
   TomFormStringListField get field => widget.field;
 
@@ -324,8 +331,9 @@ class _TomFormStringMultiCheckboxWidgetState
                         }
                       : null,
                   fillColor: override?.fillColor,
-                  checkColor: override?.checkColor
-                      ?.resolve(const {WidgetState.selected}),
+                  checkColor: override?.checkColor?.resolve(const {
+                    WidgetState.selected,
+                  }),
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),

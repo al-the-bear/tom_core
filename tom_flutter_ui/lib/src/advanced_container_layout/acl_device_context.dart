@@ -21,11 +21,12 @@ enum AclDensity { compact, comfortable, standard }
 /// Returns `true` when the variant should be shown for the current context.
 /// The [acl] parameter is the nearest ancestor [Acl] widget, or `null` if
 /// the layout was created via [AclLayout] directly.
-typedef AclVariantDetector = bool Function(
-  AclDeviceContext deviceContext,
-  Acl? acl,
-  BuildContext context,
-);
+typedef AclVariantDetector =
+    bool Function(
+      AclDeviceContext deviceContext,
+      Acl? acl,
+      BuildContext context,
+    );
 
 // ── AclDeviceContext ─────────────────────────────────────────────────────────
 
@@ -195,7 +196,8 @@ class AclDeviceContext {
     TextDirection? textDirection,
     double? minAccessibilityScale,
   }) {
-    final hasAny = width != null ||
+    final hasAny =
+        width != null ||
         height != null ||
         input != null ||
         formFactor != null ||
@@ -210,8 +212,7 @@ class AclDeviceContext {
 
     return (AclDeviceContext dc, Acl? acl, BuildContext context) {
       if (width != null && dc.width >= width) return false;
-      if (height != null &&
-          (dc.height == null || dc.height! >= height)) {
+      if (height != null && (dc.height == null || dc.height! >= height)) {
         return false;
       }
       if (input != null && dc.inputMode != input) return false;

@@ -75,8 +75,11 @@ import 'tom_list_form.dart';
 /// **not** supported by design — every row of a list shares the list's
 /// auth state. Authorize the *fields* of the row sub-form via the field
 /// widgets themselves; the same field auth applies to every row.
-class TomMasterDetailListForm<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends TomListBase {
+class TomMasterDetailListForm<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
+    extends TomListBase {
   TomMasterDetailListForm({
     super.key,
     super.tomId,
@@ -96,22 +99,24 @@ class TomMasterDetailListForm<TItem extends TomClass,
     this.draggableSplitter = false,
     double? minMasterPaneWidth,
     double? maxMasterPaneWidth,
-  })  : _masterPaneWidth = masterPaneWidth,
-        _gap = gap,
-        _padding = padding,
-        _minMasterPaneWidth = minMasterPaneWidth,
-        _maxMasterPaneWidth = maxMasterPaneWidth {
-    _resolvedMasterPaneWidth = _masterPaneWidth ??
+  }) : _masterPaneWidth = masterPaneWidth,
+       _gap = gap,
+       _padding = padding,
+       _minMasterPaneWidth = minMasterPaneWidth,
+       _maxMasterPaneWidth = maxMasterPaneWidth {
+    _resolvedMasterPaneWidth =
+        _masterPaneWidth ??
         TomCtr.doubleVal(basePath, 'masterPaneWidth') ??
         280.0;
     _resolvedGap = _gap ?? TomCtr.doubleVal(basePath, 'gap') ?? 16.0;
     _resolvedPadding = _padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedEmptyText = TomCtr.textOrNull(basePath, 'empty');
-    _resolvedMinMasterPaneWidth = _minMasterPaneWidth ??
+    _resolvedMinMasterPaneWidth =
+        _minMasterPaneWidth ??
         TomCtr.doubleVal(basePath, 'minMasterPaneWidth') ??
         120.0;
-    _resolvedMaxMasterPaneWidth = _maxMasterPaneWidth ??
-        TomCtr.doubleVal(basePath, 'maxMasterPaneWidth');
+    _resolvedMaxMasterPaneWidth =
+        _maxMasterPaneWidth ?? TomCtr.doubleVal(basePath, 'maxMasterPaneWidth');
   }
 
   /// The list whose rows feed both panes.
@@ -134,7 +139,8 @@ class TomMasterDetailListForm<TItem extends TomClass,
     TomListForm<TItem, TForm> listForm,
     int? selectedIndex,
     Future<void> Function(int? index) selectIndex,
-  ) masterBuilder;
+  )
+  masterBuilder;
 
   /// Builds the detail pane. The provided [rowForm] is the row's own
   /// sub-form (`listForm[selectedIndex]`) — bind any field widgets,
@@ -142,11 +148,8 @@ class TomMasterDetailListForm<TItem extends TomClass,
   ///
   /// When nothing is selected (or the index is out of range) this
   /// builder is NOT called — [emptyDetailBuilder] runs instead.
-  final Widget Function(
-    BuildContext context,
-    int selectedIndex,
-    TForm rowForm,
-  ) detailBuilder;
+  final Widget Function(BuildContext context, int selectedIndex, TForm rowForm)
+  detailBuilder;
 
   /// Optional widget shown when nothing is selected. Defaults to a
   /// centred italic hint (resolved from `<basePath>.empty` if set,
@@ -202,8 +205,11 @@ class TomMasterDetailListForm<TItem extends TomClass,
 /// resolves resources up-front and delegates to this widget so the auth
 /// / resource pipeline (which is StatelessWidget-shaped) and the live
 /// observer chain don't fight each other.
-class _TomMasterDetailListFormImpl<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends StatefulWidget {
+class _TomMasterDetailListFormImpl<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
+    extends StatefulWidget {
   const _TomMasterDetailListFormImpl({
     super.key,
     required this.listForm,
@@ -227,7 +233,8 @@ class _TomMasterDetailListFormImpl<TItem extends TomClass,
     TomListForm<TItem, TForm> listForm,
     int? selectedIndex,
     Future<void> Function(int? index) selectIndex,
-  ) masterBuilder;
+  )
+  masterBuilder;
   final Widget Function(BuildContext, int, TForm) detailBuilder;
   final WidgetBuilder? emptyDetailBuilder;
   final String? emptyText;
@@ -245,8 +252,10 @@ class _TomMasterDetailListFormImpl<TItem extends TomClass,
       _TomMasterDetailListFormImplState<TItem, TForm>();
 }
 
-class _TomMasterDetailListFormImplState<TItem extends TomClass,
-        TForm extends TomForm<TItem>>
+class _TomMasterDetailListFormImplState<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
     extends State<_TomMasterDetailListFormImpl<TItem, TForm>>
     implements TomObserver {
   final TomNInt _selectedIndex = TomNInt(null);
@@ -274,7 +283,8 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
 
   @override
   void didUpdateWidget(
-      covariant _TomMasterDetailListFormImpl<TItem, TForm> old) {
+    covariant _TomMasterDetailListFormImpl<TItem, TForm> old,
+  ) {
     super.didUpdateWidget(old);
     if (!identical(old.listForm, widget.listForm)) {
       old.listForm.removeObserver(this);
@@ -329,11 +339,7 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
         current >= 0 &&
         current < widget.listForm.length) {
       final rowForm = widget.listForm[current];
-      await guardUnsavedChanges(
-        context: context,
-        form: rowForm,
-        action: apply,
-      );
+      await guardUnsavedChanges(context: context, form: rowForm, action: apply);
     } else {
       await apply();
     }

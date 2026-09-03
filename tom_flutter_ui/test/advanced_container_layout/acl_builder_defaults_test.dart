@@ -29,7 +29,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// exercise them. Paths are package-relative; `flutter test` runs with the
 /// package root as its working directory.
 const _builderSource = 'lib/src/advanced_container_layout/acl_builder.dart';
-const _thisTest = 'test/advanced_container_layout/acl_builder_defaults_test.dart';
+const _thisTest =
+    'test/advanced_container_layout/acl_builder_defaults_test.dart';
 
 void main() {
   group('documented builder defaults', () {
@@ -66,8 +67,10 @@ void main() {
 
     test('the default row vertical alignment is top', () {
       final acl = AclBuilder().append(const Text('A')).build();
-      expect(acl.rows[0].components[0].rowCrossAlignment,
-          AclRowCrossAlignment.top);
+      expect(
+        acl.rows[0].components[0].rowCrossAlignment,
+        AclRowCrossAlignment.top,
+      );
     });
 
     test('the default row horizontal alignment is left', () {
@@ -77,8 +80,10 @@ void main() {
 
     test('the default unknown preferred size is 150 x 0', () {
       final acl = AclBuilder().append(const Text('A')).build();
-      expect(acl.rows[0].components[0].preferredSize,
-          const Size(AclBuilder.defaultPreferredWidth, 0));
+      expect(
+        acl.rows[0].components[0].preferredSize,
+        const Size(AclBuilder.defaultPreferredWidth, 0),
+      );
     });
 
     test('no default unknown minimum size is applied', () {
@@ -135,8 +140,10 @@ void main() {
           .append(const Text('A'))
           .build();
 
-      expect(acl.rows[0].components[0].preferredSize,
-          const Size(AclBuilder.defaultPreferredWidth, 24));
+      expect(
+        acl.rows[0].components[0].preferredSize,
+        const Size(AclBuilder.defaultPreferredWidth, 24),
+      );
     });
 
     test('a non-zero width replaces it', () {
@@ -157,8 +164,10 @@ void main() {
           .append(const Text('A'))
           .build();
 
-      expect(acl.rows[0].components[0].preferredSize,
-          const Size(AclBuilder.defaultPreferredWidth, 24));
+      expect(
+        acl.rows[0].components[0].preferredSize,
+        const Size(AclBuilder.defaultPreferredWidth, 24),
+      );
     });
 
     test('a 0 minimum dimension is stored as 0, not skipped', () {
@@ -189,42 +198,44 @@ void main() {
     });
   });
 
-  group('0 on a per-component size setter does preserve the previous value',
-      () {
-    // The contrast that makes the builder-wide behaviour above legible: the
-    // per-component setters really do implement "leave that dimension alone",
-    // because they have a previous per-component value to leave alone. The
-    // builder-wide setters have none, which is why they cannot.
-    test('setMSize(0, h) keeps the width set by the earlier call', () {
-      final acl = AclBuilder()
-          .append(const Text('A'))
-          .setMSize(40, 8)
-          .setMSize(0, 12)
-          .build();
+  group(
+    '0 on a per-component size setter does preserve the previous value',
+    () {
+      // The contrast that makes the builder-wide behaviour above legible: the
+      // per-component setters really do implement "leave that dimension alone",
+      // because they have a previous per-component value to leave alone. The
+      // builder-wide setters have none, which is why they cannot.
+      test('setMSize(0, h) keeps the width set by the earlier call', () {
+        final acl = AclBuilder()
+            .append(const Text('A'))
+            .setMSize(40, 8)
+            .setMSize(0, 12)
+            .build();
 
-      expect(acl.rows[0].components[0].minimumSize, const Size(40, 12));
-    });
+        expect(acl.rows[0].components[0].minimumSize, const Size(40, 12));
+      });
 
-    test('setPSize(0, h) keeps the width set by the earlier call', () {
-      final acl = AclBuilder()
-          .append(const Text('A'))
-          .setPSize(60, 8)
-          .setPSize(0, 12)
-          .build();
+      test('setPSize(0, h) keeps the width set by the earlier call', () {
+        final acl = AclBuilder()
+            .append(const Text('A'))
+            .setPSize(60, 8)
+            .setPSize(0, 12)
+            .build();
 
-      expect(acl.rows[0].components[0].preferredSize, const Size(60, 12));
-    });
+        expect(acl.rows[0].components[0].preferredSize, const Size(60, 12));
+      });
 
-    test('setXSize(0, h) keeps the width set by the earlier call', () {
-      final acl = AclBuilder()
-          .append(const Text('A'))
-          .setXSize(80, 8)
-          .setXSize(0, 12)
-          .build();
+      test('setXSize(0, h) keeps the width set by the earlier call', () {
+        final acl = AclBuilder()
+            .append(const Text('A'))
+            .setXSize(80, 8)
+            .setXSize(0, 12)
+            .build();
 
-      expect(acl.rows[0].components[0].maximumSize, const Size(80, 12));
-    });
-  });
+        expect(acl.rows[0].components[0].maximumSize, const Size(80, 12));
+      });
+    },
+  );
 
   group('an omitted maximum leaves its axis unconstrained, not at zero', () {
     // 0 means "leave this axis alone" on all three setters, but what it falls
@@ -243,8 +254,11 @@ void main() {
 
       final max = acl.rows[0].components[0].maximumSize!;
       expect(max.width, 200.0);
-      expect(max.height, double.infinity,
-          reason: 'an omitted height must not cap the component at 0 high');
+      expect(
+        max.height,
+        double.infinity,
+        reason: 'an omitted height must not cap the component at 0 high',
+      );
     });
 
     test('setXSize(0, height) leaves the width unconstrained', () {
@@ -257,18 +271,27 @@ void main() {
       expect(max.height, 44.0);
     });
 
-    test('setXSize and setXWidthInChars agree on the missing-height fallback',
-        () {
-      // The two set the same field and had two different answers. Derive both
-      // rather than restating the constant, so they stay agreed rather than
-      // merely being equal today.
-      final bySize = AclBuilder().append(const Text('A')).setXSize(80).build();
-      final byChars =
-          AclBuilder().append(const Text('A')).setXWidthInChars(10).build();
+    test(
+      'setXSize and setXWidthInChars agree on the missing-height fallback',
+      () {
+        // The two set the same field and had two different answers. Derive both
+        // rather than restating the constant, so they stay agreed rather than
+        // merely being equal today.
+        final bySize = AclBuilder()
+            .append(const Text('A'))
+            .setXSize(80)
+            .build();
+        final byChars = AclBuilder()
+            .append(const Text('A'))
+            .setXWidthInChars(10)
+            .build();
 
-      expect(bySize.rows[0].components[0].maximumSize!.height,
-          byChars.rows[0].components[0].maximumSize!.height);
-    });
+        expect(
+          bySize.rows[0].components[0].maximumSize!.height,
+          byChars.rows[0].components[0].maximumSize!.height,
+        );
+      },
+    );
 
     testWidgets('capping the width does not change the rendered height', (
       tester,
@@ -283,26 +306,33 @@ void main() {
       // touching". Before the fix the capped `Text` rendered 0.0 against the
       // uncapped 20.0.
       Future<double> heightOf(AclBuilder builder) async {
-        await tester.pumpWidget(MaterialApp(
-          home: Scaffold(
-            body: SizedBox(width: 500, child: builder.build()),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: SizedBox(width: 500, child: builder.build())),
           ),
-        ));
+        );
         await tester.pump();
         return tester.getRect(find.byKey(const ValueKey('x-capped'))).height;
       }
 
       const child = Text('A', key: ValueKey('x-capped'));
       final uncapped = await heightOf(AclBuilder().append(child));
-      final capped =
-          await heightOf(AclBuilder().append(child).setXSize(200));
+      final capped = await heightOf(AclBuilder().append(child).setXSize(200));
 
-      expect(uncapped, greaterThan(0),
-          reason: 'the subject must have an intrinsic height, or this test '
-              'cannot detect the collapse it exists to catch');
-      expect(capped, uncapped,
-          reason: 'setXSize(200) caps the width and must say nothing about '
-              'the height');
+      expect(
+        uncapped,
+        greaterThan(0),
+        reason:
+            'the subject must have an intrinsic height, or this test '
+            'cannot detect the collapse it exists to catch',
+      );
+      expect(
+        capped,
+        uncapped,
+        reason:
+            'setXSize(200) caps the width and must say nothing about '
+            'the height',
+      );
     });
   });
 
@@ -344,8 +374,10 @@ void main() {
           .append(const Text('A'))
           .build();
 
-      expect(acl.rows[0].components[0].rowCrossAlignment,
-          AclRowCrossAlignment.center);
+      expect(
+        acl.rows[0].components[0].rowCrossAlignment,
+        AclRowCrossAlignment.center,
+      );
     });
 
     test('setAclDefaultRowHorizontalAlignment reaches the rows', () {
@@ -368,23 +400,30 @@ void main() {
           .allMatches(File(_builderSource).readAsStringSync())
           .map((m) => m.group(1)!)
           .toSet();
-      expect(declared, isNotEmpty,
-          reason: 'no setAclDefault* declarations found in $_builderSource — '
-              'the check below would pass vacuously');
+      expect(
+        declared,
+        isNotEmpty,
+        reason:
+            'no setAclDefault* declarations found in $_builderSource — '
+            'the check below would pass vacuously',
+      );
 
       // Comments stripped: a setter merely *named* in prose is not a setter
       // this file exercises, and accepting the mention would make the rule
       // satisfiable by writing its name in a comment.
       final exercised = _withoutComments(File(_thisTest).readAsStringSync());
-      final uncovered = declared
-          .where((name) => !exercised.contains('.$name('))
-          .toList()
-        ..sort();
+      final uncovered =
+          declared.where((name) => !exercised.contains('.$name(')).toList()
+            ..sort();
 
-      expect(uncovered, isEmpty,
-          reason: 'these AclBuilder setters are never called in $_thisTest, so '
-              'the defaults their dartdoc names are unpinned:\n'
-              '${uncovered.map((s) => '  $s').join('\n')}');
+      expect(
+        uncovered,
+        isEmpty,
+        reason:
+            'these AclBuilder setters are never called in $_thisTest, so '
+            'the defaults their dartdoc names are unpinned:\n'
+            '${uncovered.map((s) => '  $s').join('\n')}',
+      );
     });
   });
 }

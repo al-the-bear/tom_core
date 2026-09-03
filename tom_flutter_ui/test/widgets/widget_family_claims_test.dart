@@ -72,20 +72,23 @@ void main() {
 
     test('tccf1-02: 273 of them extend one of the 20 family bases', () {
       expect(bases.length, 20);
-      final extenders =
-          classes.keys.where((n) => bases.contains(parentOf(n))).toList();
+      final extenders = classes.keys
+          .where((n) => bases.contains(parentOf(n)))
+          .toList();
       expect(extenders.length, 273);
     });
 
-    test('tccf1-03: 17 widgets mix TomWidgetMixin instead of a family base',
-        () {
-      final mixers = classes.entries
-          .where((e) => !bases.contains(parentOf(e.key)))
-          .where((e) => e.value.contains('TomWidgetMixin'))
-          .map((e) => e.key)
-          .toSet();
-      expect(mixers, mixinSurfaceWidgets);
-    });
+    test(
+      'tccf1-03: 17 widgets mix TomWidgetMixin instead of a family base',
+      () {
+        final mixers = classes.entries
+            .where((e) => !bases.contains(parentOf(e.key)))
+            .where((e) => e.value.contains('TomWidgetMixin'))
+            .map((e) => e.key)
+            .toSet();
+        expect(mixers, mixinSurfaceWidgets);
+      },
+    );
 
     test('tccf1-04: the remaining 9 types are not widgets at all', () {
       final rest = classes.keys
@@ -95,46 +98,55 @@ void main() {
       expect(rest, nonWidgetTypes);
     });
 
-    test('tccf1-05: every family-base extender reaches TomFamilyBase directly',
-        () {
-      // No widget extends `TomFamilyBase`, `TomPolicyNodeBase` or
-      // `TomNodeBase` itself: the family tag always comes from a branch base,
-      // which is what makes "the row's base" a complete answer.
-      final direct = classes.keys.where((n) => const [
+    test(
+      'tccf1-05: every family-base extender reaches TomFamilyBase directly',
+      () {
+        // No widget extends `TomFamilyBase`, `TomPolicyNodeBase` or
+        // `TomNodeBase` itself: the family tag always comes from a branch base,
+        // which is what makes "the row's base" a complete answer.
+        final direct = classes.keys.where(
+          (n) => const [
             'TomFamilyBase',
             'TomPolicyNodeBase',
             'TomNodeBase',
-          ].contains(parentOf(n)));
-      expect(direct, isEmpty);
-    });
+          ].contains(parentOf(n)),
+        );
+        expect(direct, isEmpty);
+      },
+    );
   });
 
-  group('tccf1: the family catalogue names only widgets that report its family',
-      () {
-    final doc = File('doc/widgets.md').readAsStringSync();
-    final rows = _catalogueRow.allMatches(doc).toList();
+  group(
+    'tccf1: the family catalogue names only widgets that report its family',
+    () {
+      final doc = File('doc/widgets.md').readAsStringSync();
+      final rows = _catalogueRow.allMatches(doc).toList();
 
-    test('tccf1-06: the catalogue has one row per family base', () {
-      expect(rows.length, bases.length);
-      expect(rows.map((m) => m.group(2)!).toSet(), bases);
-    });
+      test('tccf1-06: the catalogue has one row per family base', () {
+        expect(rows.length, bases.length);
+        expect(rows.map((m) => m.group(2)!).toSet(), bases);
+      });
 
-    test('tccf1-07: every representative extends the base its row claims', () {
-      final wrong = <String>[];
-      for (final row in rows) {
-        final base = row.group(2)!;
-        for (final m in RegExp(r'`(Tom\w+)`').allMatches(row.group(3)!)) {
-          final name = m.group(1)!;
-          if (!classes.containsKey(name)) {
-            wrong.add('$name (row $base): not declared under widgets/');
-          } else if (parentOf(name) != base) {
-            wrong.add('$name (row $base): extends ${parentOf(name)}');
+      test(
+        'tccf1-07: every representative extends the base its row claims',
+        () {
+          final wrong = <String>[];
+          for (final row in rows) {
+            final base = row.group(2)!;
+            for (final m in RegExp(r'`(Tom\w+)`').allMatches(row.group(3)!)) {
+              final name = m.group(1)!;
+              if (!classes.containsKey(name)) {
+                wrong.add('$name (row $base): not declared under widgets/');
+              } else if (parentOf(name) != base) {
+                wrong.add('$name (row $base): extends ${parentOf(name)}');
+              }
+            }
           }
-        }
-      }
-      expect(wrong, isEmpty, reason: wrong.join('\n'));
-    });
-  });
+          expect(wrong, isEmpty, reason: wrong.join('\n'));
+        },
+      );
+    },
+  );
 
   group('tccf1: TomAppBar is a container-family policy node', () {
     tearDown(TomAuthorization.reset);
@@ -148,16 +160,24 @@ void main() {
 
     testWidgets('tccf1-09: a none TomAppBar renders nothing', (tester) async {
       TomAuthorization.adapter = _MapAuthAdapter({'bar': TomAuthState.none});
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(appBar: TomAppBar(tomId: 'bar', titleText: 'Title')),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: TomAppBar(tomId: 'bar', titleText: 'Title'),
+          ),
+        ),
+      );
       expect(find.text('Title'), findsNothing);
     });
 
     testWidgets('tccf1-10: a full TomAppBar renders its title', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(appBar: TomAppBar(tomId: 'bar', titleText: 'Title')),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: TomAppBar(tomId: 'bar', titleText: 'Title'),
+          ),
+        ),
+      );
       expect(find.text('Title'), findsOneWidget);
     });
   });
@@ -176,8 +196,10 @@ void main() {
       // `CircularProgressIndicator.adaptive` are Flutter's own opt-in, and a
       // wrapper delegating to one would make the readme's claim true again
       // without anyone editing the readme.
-      final probes = RegExp(r'defaultTargetPlatform|Platform\.is|'
-          r'CupertinoUserInterfaceLevel|\.adaptive\(');
+      final probes = RegExp(
+        r'defaultTargetPlatform|Platform\.is|'
+        r'CupertinoUserInterfaceLevel|\.adaptive\(',
+      );
       final faults = <String>[];
       final files = Directory('lib/src/widgets')
           .listSync(recursive: true)
@@ -191,10 +213,14 @@ void main() {
           }
         }
       }
-      expect(faults, isEmpty,
-          reason: 'a wrapper now varies its rendering by platform, so '
-              'lib/src/widgets/readme.md is wrong to say the design language '
-              'is the call site\'s choice: $faults');
+      expect(
+        faults,
+        isEmpty,
+        reason:
+            'a wrapper now varies its rendering by platform, so '
+            'lib/src/widgets/readme.md is wrong to say the design language '
+            'is the call site\'s choice: $faults',
+      );
     });
 
     test('tccf1-12: the readme states the Cupertino census source gives', () {
@@ -243,9 +269,13 @@ void main() {
           }
         }
       }
-      expect(faults, isEmpty,
-          reason: 'nothing in this package is published, so a deprecated type '
-              'has no migration to support — delete it instead: $faults');
+      expect(
+        faults,
+        isEmpty,
+        reason:
+            'nothing in this package is published, so a deprecated type '
+            'has no migration to support — delete it instead: $faults',
+      );
     });
   });
 
@@ -260,8 +290,9 @@ void main() {
   // that no compiler and no reader can check. So it is checked here, for every
   // document at once, against the scan.
   group('tccf1: no document quotes a census the source disagrees with', () {
-    final extenders =
-        classes.keys.where((n) => bases.contains(parentOf(n))).length;
+    final extenders = classes.keys
+        .where((n) => bases.contains(parentOf(n)))
+        .length;
     // Derived, so the guard cannot itself go stale: adding a widget moves the
     // permitted values with it, and the documents that quoted the old ones
     // fail until they are updated.
@@ -300,10 +331,10 @@ void main() {
       // family row lost a widget — so the row sum is asserted too, and a
       // totals row patched without its rows fails.
       final doc = File('doc/tom_ui_flutter_widgets.md').readAsStringSync();
-      final rows = RegExp(r'^\|\s*\*\*([^*]+)\*\*\s*\|\s*\*{0,2}(\d+)\*{0,2}',
-              multiLine: true)
-          .allMatches(doc)
-          .toList();
+      final rows = RegExp(
+        r'^\|\s*\*\*([^*]+)\*\*\s*\|\s*\*{0,2}(\d+)\*{0,2}',
+        multiLine: true,
+      ).allMatches(doc).toList();
       final totals = rows.where((m) => m.group(1)!.trim() == 'Totals');
       expect(totals, hasLength(1), reason: 'no Totals row to check');
 
@@ -312,8 +343,11 @@ void main() {
           .where((m) => m.group(1)!.trim() != 'Totals')
           .fold(0, (sum, m) => sum + int.parse(m.group(2)!));
       expect(summed, stated, reason: 'the family rows do not sum to the total');
-      expect(stated, classes.length - nonWidgetTypes.length,
-          reason: 'the table counts wrapped widgets, so its total is the kit');
+      expect(
+        stated,
+        classes.length - nonWidgetTypes.length,
+        reason: 'the table counts wrapped widgets, so its total is the kit',
+      );
     });
   });
 }

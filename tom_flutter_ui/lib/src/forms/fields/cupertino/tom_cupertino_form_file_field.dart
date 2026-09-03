@@ -134,9 +134,7 @@ class _CupertinoFileUploadWidgetState extends State<_CupertinoFileUploadWidget>
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            v == null
-                ? TomFileLabels.none(f.basePath)
-                : selectedCaption(v),
+            v == null ? TomFileLabels.none(f.basePath) : selectedCaption(v),
             style: style.inputStyle,
             overflow: TextOverflow.ellipsis,
           ),
@@ -479,7 +477,11 @@ class _CupertinoTransferStatus extends StatelessWidget {
     final fraction = state.fraction;
     return fraction == null
         ? TomFileLabels.progressBusy(basePath, isDownload)
-        : TomFileLabels.progress(basePath, isDownload, (fraction * 100).round());
+        : TomFileLabels.progress(
+            basePath,
+            isDownload,
+            (fraction * 100).round(),
+          );
   }
 
   Widget _row({required Widget child}) =>

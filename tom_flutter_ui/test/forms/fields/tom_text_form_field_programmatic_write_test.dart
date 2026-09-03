@@ -54,8 +54,11 @@ void main() {
 
       field.set('b');
 
-      expect(seen, isEmpty,
-          reason: 'input validators judge keystrokes, not programmatic writes');
+      expect(
+        seen,
+        isEmpty,
+        reason: 'input validators judge keystrokes, not programmatic writes',
+      );
       expect(field.get(), 'b');
     });
 
@@ -92,8 +95,9 @@ void main() {
       field.set('b');
 
       expect(observer, isNotNull);
-      expect(observed, ['b'],
-          reason: 'the text round trip ("B") must never reach observers');
+      expect(observed, [
+        'b',
+      ], reason: 'the text round trip ("B") must never reach observers');
       expect(field.get(), 'b', reason: 'byte-identical after the round trip');
     });
 
@@ -113,25 +117,33 @@ void main() {
     });
 
     testWidgets(
-        'set() leaves the controller showing the value, even when an input '
-        'validator would have rejected it', (tester) async {
-      final field = _digitsField('');
-      addTearDown(field.dispose);
-      await tester.pumpWidget(_wrap(field.widget));
+      'set() leaves the controller showing the value, even when an input '
+      'validator would have rejected it',
+      (tester) async {
+        final field = _digitsField('');
+        addTearDown(field.dispose);
+        await tester.pumpWidget(_wrap(field.widget));
 
-      field.set('abc');
-      await tester.pump();
+        field.set('abc');
+        await tester.pump();
 
-      expect(field.get(), 'abc');
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        expect(field.get(), 'abc');
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
           'abc',
-          reason: 'the controller must not diverge from the value');
-      expect(field.errorText, isNull,
-          reason: 'a programmatic write is not a keystroke');
-    });
+          reason: 'the controller must not diverge from the value',
+        );
+        expect(
+          field.errorText,
+          isNull,
+          reason: 'a programmatic write is not a keystroke',
+        );
+      },
+    );
 
-    testWidgets('set() clears an error left by an earlier keystroke',
-        (tester) async {
+    testWidgets('set() clears an error left by an earlier keystroke', (
+      tester,
+    ) async {
       final field = _digitsField('');
       addTearDown(field.dispose);
       await tester.pumpWidget(_wrap(field.widget));
@@ -143,14 +155,20 @@ void main() {
       field.set('99');
       await tester.pump();
 
-      expect(field.errorText, isNull,
-          reason: 'the displayed error refers to text that is no longer shown');
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          '99');
+      expect(
+        field.errorText,
+        isNull,
+        reason: 'the displayed error refers to text that is no longer shown',
+      );
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '99',
+      );
     });
 
-    testWidgets('a rejected keystroke reverts to the last programmatic value',
-        (tester) async {
+    testWidgets('a rejected keystroke reverts to the last programmatic value', (
+      tester,
+    ) async {
       // Guards the fix: suppressing the listener means the programmatic write
       // must itself record the last-good raw text, or the revert path falls
       // back to a stale one.
@@ -164,15 +182,19 @@ void main() {
       await tester.enterText(find.byType(TextField), '456a');
       await tester.pump();
 
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          '456',
-          reason: 'the revert target is the last valid text, however it got '
-              'there');
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '456',
+        reason:
+            'the revert target is the last valid text, however it got '
+            'there',
+      );
       expect(field.errorText, isNotNull);
     });
 
-    testWidgets('reset() restores the controller to the initial text',
-        (tester) async {
+    testWidgets('reset() restores the controller to the initial text', (
+      tester,
+    ) async {
       final field = _digitsField('12');
       addTearDown(field.dispose);
       await tester.pumpWidget(_wrap(field.widget));
@@ -185,8 +207,10 @@ void main() {
       await tester.pump();
 
       expect(field.get(), '12');
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          '12');
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '12',
+      );
       expect(field.errorText, isNull);
     });
   });

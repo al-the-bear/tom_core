@@ -54,8 +54,10 @@ class TomStateStyle {
     this.absorbPointers = true,
     this.colorOverlay,
     this.builder,
-  }) : assert(opacity >= 0.0 && opacity <= 1.0,
-            'opacity must be within 0.0..1.0 (a fraction, not a percentage)');
+  }) : assert(
+         opacity >= 0.0 && opacity <= 1.0,
+         'opacity must be within 0.0..1.0 (a fraction, not a percentage)',
+       );
 
   /// The framework default for `read` — AbsorbPointer + 0.6 opacity.
   static const readonly = TomStateStyle();

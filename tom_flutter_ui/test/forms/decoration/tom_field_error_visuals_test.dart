@@ -14,11 +14,10 @@ void main() {
   /// `style.borderRadius` so they visually line up with the field's normal
   /// corners. The canonical default is 8 — assertions compare against the
   /// same reshaping to keep them future-proof if the default moves.
-  OutlineInputBorder errorOutlineAt(double radius) =>
-      OutlineInputBorder(
-        borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
-        borderRadius: BorderRadius.circular(radius),
-      );
+  OutlineInputBorder errorOutlineAt(double radius) => OutlineInputBorder(
+    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+    borderRadius: BorderRadius.circular(radius),
+  );
   const defaultBorderRadius = 8.0;
   final errorOutlineRadiused = errorOutlineAt(defaultBorderRadius);
 
@@ -144,8 +143,9 @@ void main() {
   });
 
   group('applyErrorVisuals — errorIcon toggle', () {
-    testWidgets('appends red error icon to trailing slot when enabled',
-        (tester) async {
+    testWidgets('appends red error icon to trailing slot when enabled', (
+      tester,
+    ) async {
       const decoration = InputDecoration();
       const style = TomFieldStyle(
         errorBorderEnabled: false,
@@ -170,13 +170,12 @@ void main() {
       expect(icon.color, const Color(0xFFD32F2F));
     });
 
-    testWidgets('preserves existing suffixIcon and appends error icon',
-        (tester) async {
+    testWidgets('preserves existing suffixIcon and appends error icon', (
+      tester,
+    ) async {
       const existing = Icon(Icons.search, key: ValueKey('search'));
       const decoration = InputDecoration(suffixIcon: existing);
-      const style = TomFieldStyle(
-        errorIconEnabled: true,
-      );
+      const style = TomFieldStyle(errorIconEnabled: true);
 
       final result = applyErrorVisuals(
         decoration: decoration,
@@ -212,8 +211,9 @@ void main() {
   });
 
   group('applyErrorVisuals — combined', () {
-    testWidgets('applies both border swap and icon when both enabled',
-        (tester) async {
+    testWidgets('applies both border swap and icon when both enabled', (
+      tester,
+    ) async {
       const decoration = InputDecoration(
         border: fieldOutline,
         enabledBorder: fieldOutline,

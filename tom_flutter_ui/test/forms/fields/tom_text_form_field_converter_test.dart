@@ -46,8 +46,11 @@ void main() {
         throwsA(
           isA<ArgumentError>()
               .having((e) => e.name, 'name', 'valueConverter')
-              .having((e) => e.message.toString(), 'message',
-                  allOf(contains('valueConverter'), isNot(contains('_value')))),
+              .having(
+                (e) => e.message.toString(),
+                'message',
+                allOf(contains('valueConverter'), isNot(contains('_value'))),
+              ),
         ),
       );
     });
@@ -55,8 +58,13 @@ void main() {
     test('says which T it could not convert to', () {
       expect(
         () => TomTextFormFieldBase<double>('rating', 0.0),
-        throwsA(isA<ArgumentError>().having(
-            (e) => e.message.toString(), 'message', contains('double'))),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message.toString(),
+            'message',
+            contains('double'),
+          ),
+        ),
       );
     });
 
@@ -64,8 +72,11 @@ void main() {
       // valueToTextConverter covers T -> text. It says nothing about how to
       // get back, so supplying it does not satisfy the requirement.
       expect(
-        () => TomTextFormFieldBase<int>('age', 0,
-            valueToTextConverter: (v) => v.toString()),
+        () => TomTextFormFieldBase<int>(
+          'age',
+          0,
+          valueToTextConverter: (v) => v.toString(),
+        ),
         throwsA(isA<ArgumentError>()),
       );
     });
@@ -84,8 +95,11 @@ void main() {
     });
 
     test('a non-String field with a converter builds', () {
-      final field = TomTextFormFieldBase<int>('age', 7,
-          valueConverter: (s) => int.tryParse(s) ?? 0);
+      final field = TomTextFormFieldBase<int>(
+        'age',
+        7,
+        valueConverter: (s) => int.tryParse(s) ?? 0,
+      );
       addTearDown(field.dispose);
 
       expect(field.get(), 7);
@@ -97,13 +111,18 @@ void main() {
       // the int rendered as text — that is the outbound default doing its job
       // for a T it was never told about, which is why only one of the two
       // converters is mandatory.
-      final field = TomTextFormFieldBase<int>('age', 42,
-          valueConverter: (s) => int.tryParse(s) ?? 0);
+      final field = TomTextFormFieldBase<int>(
+        'age',
+        42,
+        valueConverter: (s) => int.tryParse(s) ?? 0,
+      );
       addTearDown(field.dispose);
       await tester.pumpWidget(_wrap(field.widget));
 
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          '42');
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '42',
+      );
     });
   });
 
@@ -113,8 +132,11 @@ void main() {
 
   group('typing into a converted field', () {
     testWidgets('parses the text through valueConverter', (tester) async {
-      final field = TomTextFormFieldBase<int>('age', 0,
-          valueConverter: (s) => int.tryParse(s) ?? 0);
+      final field = TomTextFormFieldBase<int>(
+        'age',
+        0,
+        valueConverter: (s) => int.tryParse(s) ?? 0,
+      );
       addTearDown(field.dispose);
       await tester.pumpWidget(_wrap(field.widget));
 
@@ -139,10 +161,14 @@ void main() {
       expect(field.get(), 42);
     });
 
-    testWidgets('TomFormDoubleInputClassic converts to double',
-        (tester) async {
+    testWidgets('TomFormDoubleInputClassic converts to double', (tester) async {
       // ignore: deprecated_member_use
-      final field = TomFormDoubleInputClassic('rating', 0.0, min: 0.0, max: 5.0);
+      final field = TomFormDoubleInputClassic(
+        'rating',
+        0.0,
+        min: 0.0,
+        max: 5.0,
+      );
       addTearDown(field.dispose);
       await tester.pumpWidget(_wrap(field.widget));
 

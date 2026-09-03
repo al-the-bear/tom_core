@@ -278,17 +278,12 @@ void main() {
 
       await tester.pumpWidget(_wrap(field.widget));
 
-      final textField =
-          tester.widget<TextField>(find.byType(TextField));
+      final textField = tester.widget<TextField>(find.byType(TextField));
       expect(textField.controller!.text, 'John Doe');
     });
 
     testWidgets('typing updates field value', (tester) async {
-      final field = TomFormStringInput(
-        'name',
-        '',
-        labelTextOverride: 'Name',
-      );
+      final field = TomFormStringInput('name', '', labelTextOverride: 'Name');
 
       await tester.pumpWidget(_wrap(field.widget));
       await tester.enterText(find.byType(TextField), 'Hello');
@@ -339,19 +334,25 @@ void main() {
         authorizer: TomAuthorizer.fixed(TomAuthState.read),
       );
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: TomFormStyle(
-          defaults: TomFieldStyle(
-            readOnlyBackground:
-                WidgetStatePropertyAll(const Color(0xFFEEEEEE)),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: TomFormStyle(
+            defaults: TomFieldStyle(
+              readOnlyBackground: WidgetStatePropertyAll(
+                const Color(0xFFEEEEEE),
+              ),
+            ),
           ),
         ),
-      ));
+      );
 
-      expect(find.byWidgetPredicate(
-        (w) => w is ColoredBox && w.color == const Color(0xFFEEEEEE),
-      ), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is ColoredBox && w.color == const Color(0xFFEEEEEE),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows validation error text', (tester) async {
@@ -591,7 +592,12 @@ void main() {
 
     test('TomFormDoubleInputClassic exists and works', () {
       // ignore: deprecated_member_use
-      final field = TomFormDoubleInputClassic('rating', 0.0, min: 0.0, max: 5.0);
+      final field = TomFormDoubleInputClassic(
+        'rating',
+        0.0,
+        min: 0.0,
+        max: 5.0,
+      );
       expect(field, isNotNull);
     });
   });
@@ -674,45 +680,44 @@ void main() {
       expect(find.byIcon(Icons.error), findsNothing);
     });
 
-    testWidgets(
-      'shows red error icon when in error and errorIconEnabled',
-      (tester) async {
-        final field = TomFormStringInput(
-          'name',
-          '',
-          labelTextOverride: 'Name',
-          validators: [Validators.requiredInstance],
-        );
-        await field.validate();
+    testWidgets('shows red error icon when in error and errorIconEnabled', (
+      tester,
+    ) async {
+      final field = TomFormStringInput(
+        'name',
+        '',
+        labelTextOverride: 'Name',
+        validators: [Validators.requiredInstance],
+      );
+      await field.validate();
 
-        await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
+      await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
 
-        final iconFinder = find.byIcon(Icons.error);
-        expect(iconFinder, findsOneWidget);
-        final icon = tester.widget<Icon>(iconFinder);
-        expect(icon.color, const Color(0xFFD32F2F));
-      },
-    );
+      final iconFinder = find.byIcon(Icons.error);
+      expect(iconFinder, findsOneWidget);
+      final icon = tester.widget<Icon>(iconFinder);
+      expect(icon.color, const Color(0xFFD32F2F));
+    });
 
-    testWidgets(
-      'suppresses error icon when errorIconEnabled is false',
-      (tester) async {
-        final field = TomFormStringInput(
-          'name',
-          '',
-          labelTextOverride: 'Name',
-          validators: [Validators.requiredInstance],
-        );
-        await field.validate();
+    testWidgets('suppresses error icon when errorIconEnabled is false', (
+      tester,
+    ) async {
+      final field = TomFormStringInput(
+        'name',
+        '',
+        labelTextOverride: 'Name',
+        validators: [Validators.requiredInstance],
+      );
+      await field.validate();
 
-        await tester.pumpWidget(_wrap(field.widget, style: styleNoVisuals));
+      await tester.pumpWidget(_wrap(field.widget, style: styleNoVisuals));
 
-        expect(find.byIcon(Icons.error), findsNothing);
-      },
-    );
+      expect(find.byIcon(Icons.error), findsNothing);
+    });
 
-    testWidgets('swaps border to errorBorder when in error and enabled',
-        (tester) async {
+    testWidgets('swaps border to errorBorder when in error and enabled', (
+      tester,
+    ) async {
       final field = TomFormStringInput(
         'name',
         '',
@@ -742,32 +747,35 @@ void main() {
       }
     });
 
-    testWidgets(
-      'keeps original border when errorBorderEnabled is false',
-      (tester) async {
-        final field = TomFormStringInput(
-          'name',
-          '',
-          labelTextOverride: 'Name',
-          validators: [Validators.requiredInstance],
-        );
-        await field.validate();
+    testWidgets('keeps original border when errorBorderEnabled is false', (
+      tester,
+    ) async {
+      final field = TomFormStringInput(
+        'name',
+        '',
+        labelTextOverride: 'Name',
+        validators: [Validators.requiredInstance],
+      );
+      await field.validate();
 
-        await tester.pumpWidget(_wrap(field.widget, style: styleNoVisuals));
+      await tester.pumpWidget(_wrap(field.widget, style: styleNoVisuals));
 
-        final textField = tester.widget<TextField>(find.byType(TextField));
-        final decoration = textField.decoration!;
-        // Error border disabled — enabled and focused borders keep the
-        // field border (width 1) rather than the error border (width 2).
-        for (final border in [decoration.enabledBorder, decoration.focusedBorder]) {
-          expect(border, isA<OutlineInputBorder>());
-          expect((border! as OutlineInputBorder).borderSide.width, 1);
-        }
-      },
-    );
+      final textField = tester.widget<TextField>(find.byType(TextField));
+      final decoration = textField.decoration!;
+      // Error border disabled — enabled and focused borders keep the
+      // field border (width 1) rather than the error border (width 2).
+      for (final border in [
+        decoration.enabledBorder,
+        decoration.focusedBorder,
+      ]) {
+        expect(border, isA<OutlineInputBorder>());
+        expect((border! as OutlineInputBorder).borderSide.width, 1);
+      }
+    });
 
-    testWidgets('preserves existing suffix icon alongside error icon',
-        (tester) async {
+    testWidgets('preserves existing suffix icon alongside error icon', (
+      tester,
+    ) async {
       final field = TomFormStringInput(
         'name',
         '',
@@ -802,9 +810,9 @@ void main() {
     );
 
     TomSelectableSource<String> twoOptions() => StaticSelectableSource([
-          const SelectableItem(value: 'a', label: 'Apple'),
-          const SelectableItem(value: 'b', label: 'Banana'),
-        ]);
+      const SelectableItem(value: 'a', label: 'Apple'),
+      const SelectableItem(value: 'b', label: 'Banana'),
+    ]);
 
     testWidgets('shows error icon when in error and enabled', (tester) async {
       final field = TomFormStringDropdown(

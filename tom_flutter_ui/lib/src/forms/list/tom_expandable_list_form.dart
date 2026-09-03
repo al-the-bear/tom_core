@@ -33,9 +33,8 @@ enum TomExpansionPolicy {
 /// have an `onBeforeChange` veto that runs validation or shows
 /// confirmation dialogs.
 class TomExpandableListFormController extends ChangeNotifier {
-  TomExpandableListFormController({
-    Set<int>? initialExpanded,
-  }) : _expanded = {...?initialExpanded};
+  TomExpandableListFormController({Set<int>? initialExpanded})
+    : _expanded = {...?initialExpanded};
 
   final Set<int> _expanded;
 
@@ -50,8 +49,10 @@ class TomExpandableListFormController extends ChangeNotifier {
   /// driven flows ("after save, open the new row") where bypassing the
   /// veto is the intended behaviour. For user-driven toggles, let the
   /// widget call its internal toggle so the veto runs.
-  void expand(int index,
-      {TomExpansionPolicy policy = TomExpansionPolicy.singleOpen}) {
+  void expand(
+    int index, {
+    TomExpansionPolicy policy = TomExpansionPolicy.singleOpen,
+  }) {
     _applyExpand(index, policy);
   }
 
@@ -140,8 +141,11 @@ class TomExpandableListFormController extends ChangeNotifier {
 /// supported by design — every row of a list shares the list's auth
 /// state. Authorize the *fields* of the row sub-form via the field
 /// widgets themselves; the same field auth applies to every row.
-class TomExpandableListForm<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends TomListBase {
+class TomExpandableListForm<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
+    extends TomListBase {
   TomExpandableListForm({
     super.key,
     super.tomId,
@@ -167,8 +171,8 @@ class TomExpandableListForm<TItem extends TomClass,
     this.reorderable = false,
     this.onReorder,
     this.proxyDecorator,
-  })  : _policy = policy,
-        _padding = padding {
+  }) : _policy = policy,
+       _padding = padding {
     _resolvedPadding = _padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedEmptyText = TomCtr.textOrNull(basePath, 'empty');
     _resolvedPolicy = _policy ?? _resolvePolicyResource(basePath);
@@ -181,33 +185,36 @@ class TomExpandableListForm<TItem extends TomClass,
   /// states both render this). The whole row reacts to taps on the
   /// summary to toggle expansion.
   final Widget Function(BuildContext context, int index, TForm rowForm)
-      summaryBuilder;
+  summaryBuilder;
 
   /// Builds the editor body shown when the row is expanded. The
   /// provided [rowForm] is the same instance reachable via
   /// `listForm[index]`.
   final Widget Function(BuildContext context, int index, TForm rowForm)
-      bodyBuilder;
+  bodyBuilder;
 
   /// Optional header rendered above all rows. Use for column titles,
   /// dirty chips, totals.
   final Widget Function(
     BuildContext context,
     TomListForm<TItem, TForm> listForm,
-  )? headerBuilder;
+  )?
+  headerBuilder;
 
   /// Optional footer rendered below all rows.
   final Widget Function(
     BuildContext context,
     TomListForm<TItem, TForm> listForm,
-  )? footerBuilder;
+  )?
+  footerBuilder;
 
   /// Optional toolbar rendered after [footerBuilder]. Conventionally
   /// hosts Add / Bulk-action buttons.
   final Widget Function(
     BuildContext context,
     TomListForm<TItem, TForm> listForm,
-  )? toolbarBuilder;
+  )?
+  toolbarBuilder;
 
   /// Optional widget shown in place of any rows when the list is empty.
   /// Header / footer / toolbar still render around it. When omitted,
@@ -243,7 +250,7 @@ class TomExpandableListForm<TItem extends TomClass,
   /// }
   /// ```
   final Future<bool> Function(int index, TForm rowForm, bool willOpen)?
-      onBeforeChange;
+  onBeforeChange;
 
   /// Notified after every expansion state change. Receives the
   /// post-change set of expanded indices.
@@ -275,7 +282,7 @@ class TomExpandableListForm<TItem extends TomClass,
   /// [reorderable] is true. Use to style the floating row that follows
   /// the user's pointer during a drag.
   final Widget Function(Widget child, int index, Animation<double> animation)?
-      proxyDecorator;
+  proxyDecorator;
 
   static TomExpansionPolicy _resolvePolicyResource(String? basePath) {
     final raw = TomCtr.textOrNull(basePath, 'policy');
@@ -319,8 +326,11 @@ class TomExpandableListForm<TItem extends TomClass,
 /// [TomExpandableListForm] resolves resources up-front and delegates to
 /// this widget so the auth / resource pipeline (StatelessWidget-shaped)
 /// and the live observer / controller chain don't fight each other.
-class _TomExpandableListFormImpl<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends StatefulWidget {
+class _TomExpandableListFormImpl<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
+    extends StatefulWidget {
   const _TomExpandableListFormImpl({
     super.key,
     required this.listForm,
@@ -350,7 +360,7 @@ class _TomExpandableListFormImpl<TItem extends TomClass,
   final Widget Function(BuildContext, TomListForm<TItem, TForm>)? headerBuilder;
   final Widget Function(BuildContext, TomListForm<TItem, TForm>)? footerBuilder;
   final Widget Function(BuildContext, TomListForm<TItem, TForm>)?
-      toolbarBuilder;
+  toolbarBuilder;
   final Widget Function(BuildContext)? emptyBuilder;
   final String? emptyText;
   final Widget Function(BuildContext, int)? rowSeparatorBuilder;
@@ -370,8 +380,10 @@ class _TomExpandableListFormImpl<TItem extends TomClass,
       _TomExpandableListFormImplState<TItem, TForm>();
 }
 
-class _TomExpandableListFormImplState<TItem extends TomClass,
-        TForm extends TomForm<TItem>>
+class _TomExpandableListFormImplState<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
     extends State<_TomExpandableListFormImpl<TItem, TForm>>
     implements TomObserver {
   late TomExpandableListFormController _controller;
@@ -380,8 +392,12 @@ class _TomExpandableListFormImplState<TItem extends TomClass,
   @override
   void initState() {
     super.initState();
-    _attachController(widget.controller ??
-        TomExpandableListFormController(initialExpanded: widget.initialExpanded));
+    _attachController(
+      widget.controller ??
+          TomExpandableListFormController(
+            initialExpanded: widget.initialExpanded,
+          ),
+    );
     _ownsController = widget.controller == null;
     widget.listForm.addObserver(this);
   }
@@ -395,8 +411,11 @@ class _TomExpandableListFormImplState<TItem extends TomClass,
         _attachController(widget.controller!);
         _ownsController = false;
       } else {
-        _attachController(TomExpandableListFormController(
-            initialExpanded: widget.initialExpanded));
+        _attachController(
+          TomExpandableListFormController(
+            initialExpanded: widget.initialExpanded,
+          ),
+        );
         _ownsController = true;
       }
     }
@@ -500,71 +519,79 @@ class _TomExpandableListFormImplState<TItem extends TomClass,
       final empty = _buildEmpty(context);
       if (empty != null) children.add(empty);
     } else if (widget.reorderable) {
-      children.add(ReorderableListView.builder(
-        shrinkWrap: true,
-        buildDefaultDragHandles: false,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: list.length,
-        proxyDecorator: widget.proxyDecorator,
-        onReorderItem: (from, to) {
-          // onReorderItem already delivers `to` adjusted for the removed
-          // item, so it is the final destination index directly.
-          final adjusted = to;
-          if (adjusted == from) return;
-          // Recompute expansion state after the move so the dragged
-          // row stays in its previous open/closed state at the new
-          // index.
-          final wasExpanded = _controller.isExpanded(from);
-          // Build a new expansion set with each index remapped to its
-          // post-reorder position. (singleOpen vs multipleOpen treated
-          // identically — we're moving rows, not toggling them.)
-          final remapped = <int>{};
-          for (final idx in _controller.expanded) {
-            remapped.add(_remapIndexAfterMove(idx, from, adjusted));
-          }
-          _controller._expanded
-            ..clear()
-            ..addAll(remapped);
-          // Make sure the dragged row's state is preserved at its new
-          // index in case the remap ate it (e.g. drag from collapsed
-          // sibling).
-          if (wasExpanded) {
-            _controller._expanded.add(adjusted);
-          }
-          list.reorder(from, adjusted);
-          widget.onReorder?.call(from, adjusted);
-        },
-        itemBuilder: (context, i) {
-          return _TomExpandableRow<TItem, TForm>(
-            key: ValueKey('tom-expandable-row-${list[i].hashCode}-$i-'
-                '${_controller.isExpanded(i) ? 'open' : 'closed'}'),
+      children.add(
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          buildDefaultDragHandles: false,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: list.length,
+          proxyDecorator: widget.proxyDecorator,
+          onReorderItem: (from, to) {
+            // onReorderItem already delivers `to` adjusted for the removed
+            // item, so it is the final destination index directly.
+            final adjusted = to;
+            if (adjusted == from) return;
+            // Recompute expansion state after the move so the dragged
+            // row stays in its previous open/closed state at the new
+            // index.
+            final wasExpanded = _controller.isExpanded(from);
+            // Build a new expansion set with each index remapped to its
+            // post-reorder position. (singleOpen vs multipleOpen treated
+            // identically — we're moving rows, not toggling them.)
+            final remapped = <int>{};
+            for (final idx in _controller.expanded) {
+              remapped.add(_remapIndexAfterMove(idx, from, adjusted));
+            }
+            _controller._expanded
+              ..clear()
+              ..addAll(remapped);
+            // Make sure the dragged row's state is preserved at its new
+            // index in case the remap ate it (e.g. drag from collapsed
+            // sibling).
+            if (wasExpanded) {
+              _controller._expanded.add(adjusted);
+            }
+            list.reorder(from, adjusted);
+            widget.onReorder?.call(from, adjusted);
+          },
+          itemBuilder: (context, i) {
+            return _TomExpandableRow<TItem, TForm>(
+              key: ValueKey(
+                'tom-expandable-row-${list[i].hashCode}-$i-'
+                '${_controller.isExpanded(i) ? 'open' : 'closed'}',
+              ),
+              index: i,
+              rowForm: list[i],
+              isExpanded: _controller.isExpanded(i),
+              summaryBuilder: widget.summaryBuilder,
+              bodyBuilder: widget.bodyBuilder,
+              onTap: () => _toggle(i),
+            );
+          },
+        ),
+      );
+    } else {
+      for (var i = 0; i < list.length; i++) {
+        if (i > 0 && widget.rowSeparatorBuilder != null) {
+          children.add(widget.rowSeparatorBuilder!(context, i - 1));
+        }
+        children.add(
+          _TomExpandableRow<TItem, TForm>(
+            // The key embeds the row's expansion state so the row's State
+            // is rebuilt cleanly when controller-driven changes flip the
+            // open flag from outside (avoids stale Material InkWell etc.).
+            key: ValueKey(
+              'tom-expandable-row-$i-'
+              '${_controller.isExpanded(i) ? 'open' : 'closed'}',
+            ),
             index: i,
             rowForm: list[i],
             isExpanded: _controller.isExpanded(i),
             summaryBuilder: widget.summaryBuilder,
             bodyBuilder: widget.bodyBuilder,
             onTap: () => _toggle(i),
-          );
-        },
-      ));
-    } else {
-      for (var i = 0; i < list.length; i++) {
-        if (i > 0 && widget.rowSeparatorBuilder != null) {
-          children.add(widget.rowSeparatorBuilder!(context, i - 1));
-        }
-        children.add(_TomExpandableRow<TItem, TForm>(
-          // The key embeds the row's expansion state so the row's State
-          // is rebuilt cleanly when controller-driven changes flip the
-          // open flag from outside (avoids stale Material InkWell etc.).
-          key: ValueKey('tom-expandable-row-$i-'
-              '${_controller.isExpanded(i) ? 'open' : 'closed'}'),
-          index: i,
-          rowForm: list[i],
-          isExpanded: _controller.isExpanded(i),
-          summaryBuilder: widget.summaryBuilder,
-          bodyBuilder: widget.bodyBuilder,
-          onTap: () => _toggle(i),
-        ));
+          ),
+        );
       }
     }
 

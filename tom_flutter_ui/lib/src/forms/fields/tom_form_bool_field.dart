@@ -93,9 +93,9 @@ class TomFormBoolCheckbox extends TomFormBoolField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormBoolCheckboxWidget(field: this),
-      );
+    field: this,
+    child: _TomFormBoolCheckboxWidget(field: this),
+  );
 }
 
 class _TomFormBoolCheckboxWidget extends StatefulWidget {
@@ -116,9 +116,11 @@ class _TomFormBoolCheckboxWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -149,9 +151,7 @@ class _TomFormBoolCheckboxWidgetState
       // Checkbox's checkColor is a plain Color?, while our style uses
       // WidgetStateProperty<Color>? to match the rest of the palette —
       // pull the selected-state colour out for Checkbox-specific use.
-      checkColor: override?.checkColor?.resolve(
-        const {WidgetState.selected},
-      ),
+      checkColor: override?.checkColor?.resolve(const {WidgetState.selected}),
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
@@ -201,9 +201,9 @@ class TomFormBoolSwitch extends TomFormBoolField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormBoolSwitchWidget(field: this),
-      );
+    field: this,
+    child: _TomFormBoolSwitchWidget(field: this),
+  );
 }
 
 class _TomFormBoolSwitchWidget extends StatefulWidget {
@@ -223,9 +223,11 @@ class _TomFormBoolSwitchWidgetState extends State<_TomFormBoolSwitchWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -316,9 +318,9 @@ class TomFormBoolToggle extends TomFormBoolField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormBoolToggleWidget(field: this),
-      );
+    field: this,
+    child: _TomFormBoolToggleWidget(field: this),
+  );
 }
 
 class _TomFormBoolToggleWidget extends StatefulWidget {
@@ -338,9 +340,11 @@ class _TomFormBoolToggleWidgetState extends State<_TomFormBoolToggleWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 

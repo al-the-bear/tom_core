@@ -44,43 +44,75 @@ void main() {
 
   group('a scalar or list resource reaches its parser', () {
     test('resolveBorderRadius reads a bare number', () {
-      install({'w': {'radius': 8}});
-      expect(TomStyleResolvers.resolveBorderRadius('w', 'radius'),
-          TomStyleResolvers.parseBorderRadius(8));
-      expect(TomStyleResolvers.resolveBorderRadius('w', 'radius'),
-          BorderRadius.circular(8));
+      install({
+        'w': {'radius': 8},
+      });
+      expect(
+        TomStyleResolvers.resolveBorderRadius('w', 'radius'),
+        TomStyleResolvers.parseBorderRadius(8),
+      );
+      expect(
+        TomStyleResolvers.resolveBorderRadius('w', 'radius'),
+        BorderRadius.circular(8),
+      );
     });
 
     test('resolveAlignment reads a name', () {
-      install({'w': {'alignment': 'bottomRight'}});
-      expect(TomStyleResolvers.resolveAlignment('w', 'alignment'),
-          TomStyleResolvers.parseAlignment('bottomRight'));
-      expect(TomStyleResolvers.resolveAlignment('w', 'alignment'),
-          Alignment.bottomRight);
+      install({
+        'w': {'alignment': 'bottomRight'},
+      });
+      expect(
+        TomStyleResolvers.resolveAlignment('w', 'alignment'),
+        TomStyleResolvers.parseAlignment('bottomRight'),
+      );
+      expect(
+        TomStyleResolvers.resolveAlignment('w', 'alignment'),
+        Alignment.bottomRight,
+      );
     });
 
     test('resolveOffset reads a two-element list', () {
-      install({'w': {'offset': [3, 4]}});
-      expect(TomStyleResolvers.resolveOffset('w', 'offset'),
-          TomStyleResolvers.parseOffset([3, 4]));
-      expect(TomStyleResolvers.resolveOffset('w', 'offset'),
-          const Offset(3, 4));
+      install({
+        'w': {
+          'offset': [3, 4],
+        },
+      });
+      expect(
+        TomStyleResolvers.resolveOffset('w', 'offset'),
+        TomStyleResolvers.parseOffset([3, 4]),
+      );
+      expect(
+        TomStyleResolvers.resolveOffset('w', 'offset'),
+        const Offset(3, 4),
+      );
     });
 
     test('resolveVisualDensity reads a name', () {
-      install({'w': {'visualDensity': 'compact'}});
-      expect(TomStyleResolvers.resolveVisualDensity('w', 'visualDensity'),
-          TomStyleResolvers.parseVisualDensity('compact'));
-      expect(TomStyleResolvers.resolveVisualDensity('w', 'visualDensity'),
-          VisualDensity.compact);
+      install({
+        'w': {'visualDensity': 'compact'},
+      });
+      expect(
+        TomStyleResolvers.resolveVisualDensity('w', 'visualDensity'),
+        TomStyleResolvers.parseVisualDensity('compact'),
+      );
+      expect(
+        TomStyleResolvers.resolveVisualDensity('w', 'visualDensity'),
+        VisualDensity.compact,
+      );
     });
 
     test('resolveScrollPhysics reads a name', () {
-      install({'w': {'physics': 'bouncing'}});
-      expect(TomStyleResolvers.resolveScrollPhysics('w', 'physics'),
-          isA<BouncingScrollPhysics>());
-      expect(TomStyleResolvers.parseScrollPhysics('bouncing'),
-          isA<BouncingScrollPhysics>());
+      install({
+        'w': {'physics': 'bouncing'},
+      });
+      expect(
+        TomStyleResolvers.resolveScrollPhysics('w', 'physics'),
+        isA<BouncingScrollPhysics>(),
+      );
+      expect(
+        TomStyleResolvers.parseScrollPhysics('bouncing'),
+        isA<BouncingScrollPhysics>(),
+      );
     });
   });
 
@@ -90,39 +122,67 @@ void main() {
         'w': {
           'corners': {'topLeft': 2, 'bottomRight': 4},
           'uniform': {'all': 6},
-        }
+        },
       });
-      expect(TomStyleResolvers.resolveBorderRadius('w', 'corners'),
-          const BorderRadius.only(
-            topLeft: Radius.circular(2),
-            bottomRight: Radius.circular(4),
-          ));
-      expect(TomStyleResolvers.resolveBorderRadius('w', 'uniform'),
-          BorderRadius.circular(6));
+      expect(
+        TomStyleResolvers.resolveBorderRadius('w', 'corners'),
+        const BorderRadius.only(
+          topLeft: Radius.circular(2),
+          bottomRight: Radius.circular(4),
+        ),
+      );
+      expect(
+        TomStyleResolvers.resolveBorderRadius('w', 'uniform'),
+        BorderRadius.circular(6),
+      );
     });
 
     test('resolveAlignment reads {x, y}', () {
-      install({'w': {'alignment': {'x': 0.5, 'y': -0.5}}});
-      expect(TomStyleResolvers.resolveAlignment('w', 'alignment'),
-          const Alignment(0.5, -0.5));
+      install({
+        'w': {
+          'alignment': {'x': 0.5, 'y': -0.5},
+        },
+      });
+      expect(
+        TomStyleResolvers.resolveAlignment('w', 'alignment'),
+        const Alignment(0.5, -0.5),
+      );
     });
 
     test('resolveOffset reads {dx, dy}', () {
-      install({'w': {'offset': {'dx': 1, 'dy': 2}}});
-      expect(TomStyleResolvers.resolveOffset('w', 'offset'),
-          const Offset(1, 2));
+      install({
+        'w': {
+          'offset': {'dx': 1, 'dy': 2},
+        },
+      });
+      expect(
+        TomStyleResolvers.resolveOffset('w', 'offset'),
+        const Offset(1, 2),
+      );
     });
 
     test('resolveVisualDensity reads {horizontal, vertical}', () {
-      install({'w': {'d': {'horizontal': 1.0, 'vertical': 2.0}}});
-      expect(TomStyleResolvers.resolveVisualDensity('w', 'd'),
-          const VisualDensity(horizontal: 1.0, vertical: 2.0));
+      install({
+        'w': {
+          'd': {'horizontal': 1.0, 'vertical': 2.0},
+        },
+      });
+      expect(
+        TomStyleResolvers.resolveVisualDensity('w', 'd'),
+        const VisualDensity(horizontal: 1.0, vertical: 2.0),
+      );
     });
 
     test('resolveScrollPhysics reads {type}', () {
-      install({'w': {'p': {'type': 'clamping'}}});
-      expect(TomStyleResolvers.resolveScrollPhysics('w', 'p'),
-          isA<ClampingScrollPhysics>());
+      install({
+        'w': {
+          'p': {'type': 'clamping'},
+        },
+      });
+      expect(
+        TomStyleResolvers.resolveScrollPhysics('w', 'p'),
+        isA<ClampingScrollPhysics>(),
+      );
     });
   });
 
@@ -131,27 +191,48 @@ void main() {
     // own name, so a resource can group it with siblings. Widening the input
     // must not consume that map as a value in its own right.
     test('resolveBorderRadius unwraps {radius}', () {
-      install({'w': {'br': {'radius': 12}}});
-      expect(TomStyleResolvers.resolveBorderRadius('w', 'br'),
-          BorderRadius.circular(12));
+      install({
+        'w': {
+          'br': {'radius': 12},
+        },
+      });
+      expect(
+        TomStyleResolvers.resolveBorderRadius('w', 'br'),
+        BorderRadius.circular(12),
+      );
     });
 
     test('resolveAlignment unwraps {alignment}', () {
-      install({'w': {'a': {'alignment': 'topCenter'}}});
-      expect(TomStyleResolvers.resolveAlignment('w', 'a'),
-          Alignment.topCenter);
+      install({
+        'w': {
+          'a': {'alignment': 'topCenter'},
+        },
+      });
+      expect(TomStyleResolvers.resolveAlignment('w', 'a'), Alignment.topCenter);
     });
 
     test('resolveVisualDensity unwraps {visualDensity}', () {
-      install({'w': {'d': {'visualDensity': 'comfortable'}}});
-      expect(TomStyleResolvers.resolveVisualDensity('w', 'd'),
-          VisualDensity.comfortable);
+      install({
+        'w': {
+          'd': {'visualDensity': 'comfortable'},
+        },
+      });
+      expect(
+        TomStyleResolvers.resolveVisualDensity('w', 'd'),
+        VisualDensity.comfortable,
+      );
     });
 
     test('resolveScrollPhysics unwraps {physics}', () {
-      install({'w': {'p': {'physics': 'never'}}});
-      expect(TomStyleResolvers.resolveScrollPhysics('w', 'p'),
-          isA<NeverScrollableScrollPhysics>());
+      install({
+        'w': {
+          'p': {'physics': 'never'},
+        },
+      });
+      expect(
+        TomStyleResolvers.resolveScrollPhysics('w', 'p'),
+        isA<NeverScrollableScrollPhysics>(),
+      );
     });
   });
 
@@ -175,7 +256,7 @@ void main() {
           'o': [1, 2, 3],
           'd': 'roomy',
           'p': 'springy',
-        }
+        },
       });
       expect(TomStyleResolvers.resolveBorderRadius('w', 'r'), isNull);
       expect(TomStyleResolvers.resolveAlignment('w', 'a'), isNull);
@@ -190,14 +271,20 @@ void main() {
     // whose parser only accepts a map, where it would let a scalar through to
     // a signature that cannot take one.
     test('resolveTextStyle reads its map', () {
-      install({'w': {'s': {'fontSize': 14, 'fontWeight': 'bold'}}});
+      install({
+        'w': {
+          's': {'fontSize': 14, 'fontWeight': 'bold'},
+        },
+      });
       final style = TomStyleResolvers.resolveTextStyle('w', 's');
       expect(style!.fontSize, 14);
       expect(style.fontWeight, FontWeight.bold);
     });
 
     test('resolveTextStyle ignores a scalar resource', () {
-      install({'w': {'s': 14}});
+      install({
+        'w': {'s': 14},
+      });
       expect(TomStyleResolvers.resolveTextStyle('w', 's'), isNull);
     });
   });
@@ -224,71 +311,78 @@ void main() {
     /// `resolve` is called as `(basePath, suffix)`; `parse` gets the identical
     /// map directly. Both are typed loosely because the parse halves vary
     /// between `Map<String, dynamic>?` and `dynamic`.
-    final cases = <String, (Map<String, dynamic>, Object? Function(String,
-        String), Object? Function(Map<String, dynamic>))>{
-      'TextStyle': (
-        {'fontSize': 16, 'fontWeight': 'bold', 'color': '#FF0000'},
-        TomStyleResolvers.resolveTextStyle,
-        TomStyleResolvers.parseTextStyle,
-      ),
-      'ButtonStyle': (
-        {'backgroundColor': '#123456', 'elevation': 6},
-        TomStyleResolvers.resolveButtonStyle,
-        TomStyleResolvers.parseButtonStyle,
-      ),
-      'InputDecoration': (
-        {'labelText': 'Name', 'filled': true, 'fillColor': '#EEEEEE'},
-        TomStyleResolvers.resolveInputDecoration,
-        TomStyleResolvers.parseInputDecoration,
-      ),
-      'MenuStyle': (
-        {'backgroundColor': '#123456', 'elevation': 4},
-        TomStyleResolvers.resolveMenuStyle,
-        TomStyleResolvers.parseMenuStyle,
-      ),
-      'ShapeBorder': (
-        {'type': 'stadium'},
-        TomStyleResolvers.resolveShapeBorder,
-        TomStyleResolvers.parseShapeBorder,
-      ),
-      'BorderSide': (
-        {'width': 2, 'color': '#FF0000'},
-        TomStyleResolvers.resolveBorderSide,
-        TomStyleResolvers.parseBorderSide,
-      ),
-      'Decoration': (
-        {'color': '#ABCDEF', 'borderRadius': 4},
-        TomStyleResolvers.resolveDecoration,
-        TomStyleResolvers.parseDecoration,
-      ),
-      'BoxConstraints': (
-        {'minWidth': 10, 'maxHeight': 50},
-        TomStyleResolvers.resolveBoxConstraints,
-        TomStyleResolvers.parseBoxConstraints,
-      ),
-      'TableBorder': (
-        {
-          'all': {'color': '#FF0000', 'width': 2},
-        },
-        TomStyleResolvers.resolveTableBorder,
-        TomStyleResolvers.parseTableBorder,
-      ),
-      'IconThemeData': (
-        {'color': '#00FF00', 'size': 24, 'opacity': 0.5},
-        TomStyleResolvers.resolveIconThemeData,
-        TomStyleResolvers.parseIconThemeData,
-      ),
-      'StrutStyle': (
-        {'fontSize': 14, 'height': 1.4, 'forceStrutHeight': true},
-        TomStyleResolvers.resolveStrutStyle,
-        TomStyleResolvers.parseStrutStyle,
-      ),
-      'TextHeightBehavior': (
-        {'applyHeightToFirstAscent': false, 'leadingDistribution': 'even'},
-        TomStyleResolvers.resolveTextHeightBehavior,
-        TomStyleResolvers.parseTextHeightBehavior,
-      ),
-    };
+    final cases =
+        <
+          String,
+          (
+            Map<String, dynamic>,
+            Object? Function(String, String),
+            Object? Function(Map<String, dynamic>),
+          )
+        >{
+          'TextStyle': (
+            {'fontSize': 16, 'fontWeight': 'bold', 'color': '#FF0000'},
+            TomStyleResolvers.resolveTextStyle,
+            TomStyleResolvers.parseTextStyle,
+          ),
+          'ButtonStyle': (
+            {'backgroundColor': '#123456', 'elevation': 6},
+            TomStyleResolvers.resolveButtonStyle,
+            TomStyleResolvers.parseButtonStyle,
+          ),
+          'InputDecoration': (
+            {'labelText': 'Name', 'filled': true, 'fillColor': '#EEEEEE'},
+            TomStyleResolvers.resolveInputDecoration,
+            TomStyleResolvers.parseInputDecoration,
+          ),
+          'MenuStyle': (
+            {'backgroundColor': '#123456', 'elevation': 4},
+            TomStyleResolvers.resolveMenuStyle,
+            TomStyleResolvers.parseMenuStyle,
+          ),
+          'ShapeBorder': (
+            {'type': 'stadium'},
+            TomStyleResolvers.resolveShapeBorder,
+            TomStyleResolvers.parseShapeBorder,
+          ),
+          'BorderSide': (
+            {'width': 2, 'color': '#FF0000'},
+            TomStyleResolvers.resolveBorderSide,
+            TomStyleResolvers.parseBorderSide,
+          ),
+          'Decoration': (
+            {'color': '#ABCDEF', 'borderRadius': 4},
+            TomStyleResolvers.resolveDecoration,
+            TomStyleResolvers.parseDecoration,
+          ),
+          'BoxConstraints': (
+            {'minWidth': 10, 'maxHeight': 50},
+            TomStyleResolvers.resolveBoxConstraints,
+            TomStyleResolvers.parseBoxConstraints,
+          ),
+          'TableBorder': (
+            {
+              'all': {'color': '#FF0000', 'width': 2},
+            },
+            TomStyleResolvers.resolveTableBorder,
+            TomStyleResolvers.parseTableBorder,
+          ),
+          'IconThemeData': (
+            {'color': '#00FF00', 'size': 24, 'opacity': 0.5},
+            TomStyleResolvers.resolveIconThemeData,
+            TomStyleResolvers.parseIconThemeData,
+          ),
+          'StrutStyle': (
+            {'fontSize': 14, 'height': 1.4, 'forceStrutHeight': true},
+            TomStyleResolvers.resolveStrutStyle,
+            TomStyleResolvers.parseStrutStyle,
+          ),
+          'TextHeightBehavior': (
+            {'applyHeightToFirstAscent': false, 'leadingDistribution': 'even'},
+            TomStyleResolvers.resolveTextHeightBehavior,
+            TomStyleResolvers.parseTextHeightBehavior,
+          ),
+        };
 
     test('all twelve are covered here', () {
       // The group name makes a completeness claim; this keeps it honest when a
@@ -307,8 +401,11 @@ void main() {
         // Guards the assertion below: two nulls compare equal, so without this
         // a resolver that read nothing at all would pass against a parser that
         // also returned null.
-        expect(resolved, isNotNull,
-            reason: 'resolve${entry.key} read nothing from the resource tree');
+        expect(
+          resolved,
+          isNotNull,
+          reason: 'resolve${entry.key} read nothing from the resource tree',
+        );
         expect(resolved, parse(map));
       });
 

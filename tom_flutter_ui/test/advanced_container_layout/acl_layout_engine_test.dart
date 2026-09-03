@@ -38,7 +38,9 @@ void main() {
       expect(find.text('Address'), findsOneWidget);
     });
 
-    testWidgets('expandX component absorbs the row slack width', (tester) async {
+    testWidgets('expandX component absorbs the row slack width', (
+      tester,
+    ) async {
       const fixedKey = Key('fixed');
       const growKey = Key('grow');
 
@@ -63,8 +65,9 @@ void main() {
       expect(growWidth, greaterThan(fixedWidth));
     });
 
-    testWidgets('row horizontal alignment is honoured end-to-end',
-        (tester) async {
+    testWidgets('row horizontal alignment is honoured end-to-end', (
+      tester,
+    ) async {
       // Two narrow components in a wide row, right-aligned: their combined
       // right edge should sit near the container's right edge.
       const aKey = Key('a');
@@ -111,8 +114,9 @@ void main() {
         )
         .build();
 
-    testWidgets('above the threshold the default rows are used',
-        (tester) async {
+    testWidgets('above the threshold the default rows are used', (
+      tester,
+    ) async {
       await tester.pumpWidget(_host(variantAcl(), width: 400));
       await tester.pumpAndSettle();
 
@@ -120,8 +124,9 @@ void main() {
       expect(find.text('narrow layout'), findsNothing);
     });
 
-    testWidgets('below the threshold the variant rows replace them',
-        (tester) async {
+    testWidgets('below the threshold the variant rows replace them', (
+      tester,
+    ) async {
       await tester.pumpWidget(_host(variantAcl(), width: 250));
       await tester.pumpAndSettle();
 
@@ -129,8 +134,9 @@ void main() {
       expect(find.text('wide layout'), findsNothing);
     });
 
-    testWidgets('exactly at the threshold the default rows still win',
-        (tester) async {
+    testWidgets('exactly at the threshold the default rows still win', (
+      tester,
+    ) async {
       // `availableWidth < atWidth` is strict, so 300 is not "below 300".
       await tester.pumpWidget(_host(variantAcl(), width: 300));
       await tester.pumpAndSettle();
@@ -146,12 +152,16 @@ void main() {
       // exceeded and the more specific (narrower) one must be chosen.
       final acl = AclBuilder()
           .append(const Text('wide layout'))
-          .addVariant('medium',
-              atWidth: 500,
-              builder: (b) => b.append(const Text('medium layout')))
-          .addVariant('narrow',
-              atWidth: 300,
-              builder: (b) => b.append(const Text('narrow layout')))
+          .addVariant(
+            'medium',
+            atWidth: 500,
+            builder: (b) => b.append(const Text('medium layout')),
+          )
+          .addVariant(
+            'narrow',
+            atWidth: 300,
+            builder: (b) => b.append(const Text('narrow layout')),
+          )
           .build();
 
       await tester.pumpWidget(_host(acl, width: 250));
@@ -245,8 +255,9 @@ void main() {
       expect(b.dy, closeTo(a.dy + rowH + splitDist, 0.01));
     });
 
-    testWidgets('exactly at the threshold the row is not split',
-        (tester) async {
+    testWidgets('exactly at the threshold the row is not split', (
+      tester,
+    ) async {
       await tester.pumpWidget(_host(splitAcl(), width: 300));
       await tester.pumpAndSettle();
 
@@ -257,8 +268,9 @@ void main() {
       expect(b.dx, closeTo(a.dx + compW + appendGap, 0.01));
     });
 
-    testWidgets('two breakpoints split one row into three fragments',
-        (tester) async {
+    testWidgets('two breakpoints split one row into three fragments', (
+      tester,
+    ) async {
       final acl = AclBuilder()
           .setAclDefaultRowHeight(rowH)
           .append(Container(key: aKey, color: Colors.red))
@@ -285,8 +297,9 @@ void main() {
       expect(c.dy, closeTo(b.dy + rowH + splitDist, 0.01));
     });
 
-    testWidgets('a breakpoint only splits the row that declares it',
-        (tester) async {
+    testWidgets('a breakpoint only splits the row that declares it', (
+      tester,
+    ) async {
       const otherKey = Key('bp-other');
       final acl = AclBuilder()
           .setAclDefaultRowHeight(rowH)

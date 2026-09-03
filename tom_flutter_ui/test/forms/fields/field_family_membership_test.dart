@@ -15,11 +15,10 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-TomSelectableSource<String> _cities() =>
-    StaticSelectableSource<String>(const [
-      SelectableItem(value: 'oslo', label: 'Oslo'),
-      SelectableItem(value: 'lima', label: 'Lima'),
-    ]);
+TomSelectableSource<String> _cities() => StaticSelectableSource<String>(const [
+  SelectableItem(value: 'oslo', label: 'Oslo'),
+  SelectableItem(value: 'lima', label: 'Lima'),
+]);
 
 void main() {
   group('TomFormNEnumDropdown is a nullable input, not an enum field', () {

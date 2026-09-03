@@ -127,9 +127,9 @@ class TomFormNullableBoolCheckbox extends TomFormNullableBoolField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormNullableBoolCheckboxWidget(field: this),
-      );
+    field: this,
+    child: _TomFormNullableBoolCheckboxWidget(field: this),
+  );
 }
 
 class _TomFormNullableBoolCheckboxWidget extends StatefulWidget {
@@ -150,9 +150,11 @@ class _TomFormNullableBoolCheckboxWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -183,9 +185,7 @@ class _TomFormNullableBoolCheckboxWidgetState
       // TomFormBoolCheckbox, which has to drop the null.
       onChanged: field.isEditable ? field.setValue : null,
       fillColor: override?.fillColor,
-      checkColor: override?.checkColor?.resolve(
-        const {WidgetState.selected},
-      ),
+      checkColor: override?.checkColor?.resolve(const {WidgetState.selected}),
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );

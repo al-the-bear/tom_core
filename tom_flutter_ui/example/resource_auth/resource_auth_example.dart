@@ -36,18 +36,24 @@ void run() {
   // Example 2: custom colour registration overrides/extends the palette.
   AllColorsAdapter.registerColors({'brandPrimary': const Color(0xFF123456)});
   final brand = TomUIColors.resolveColor('brandPrimary');
-  print('brandPrimary=$brand  exists=${TomUIColors.colorExists('brandPrimary')}');
+  print(
+    'brandPrimary=$brand  exists=${TomUIColors.colorExists('brandPrimary')}',
+  );
 
   // Example 3: single-family colour adapters — one palette instead of both.
   // Registrations and hex/rgb literals still resolve through them; only the
   // other family's table is gone.
   final materialColors = MaterialOnlyColorAdapter();
   final cupertinoColors = CupertinoOnlyColorAdapter();
-  print('materialColors cSystemBlue -> '
-      '${materialColors.resolveColor('cSystemBlue')}');
+  print(
+    'materialColors cSystemBlue -> '
+    '${materialColors.resolveColor('cSystemBlue')}',
+  );
   print('cupertinoColors mRed -> ${cupertinoColors.resolveColor('mRed')}');
-  print('materialColors brandPrimary -> '
-      '${materialColors.resolveColor('brandPrimary')}');
+  print(
+    'materialColors brandPrimary -> '
+    '${materialColors.resolveColor('brandPrimary')}',
+  );
 
   // Example 4: icon resolution across families and the single-family adapters.
   TomUIIcons.adapter = AllIconsAdapter();
@@ -64,21 +70,25 @@ void run() {
   // The three enabled flags below are spelled the three ways the sources
   // flags come from can spell them: Dart hands over a bool, YAML a number,
   // and --dart-define nothing but text. All three mean the same thing.
-  TomConfigProvider.initialize(TomConfigProvider.create(
-    environment: TomEnvironment.production,
-    platform: TomPlatform.web,
-    flags: {
-      'newCheckout': true,
-      'compactRows': 1,
-      'betaBanner': 'TRUE',
-      'legacyGrid': 'yes', // not the vocabulary — disabled, not enabled
-      'maxItems': 50,
-    },
-  ));
+  TomConfigProvider.initialize(
+    TomConfigProvider.create(
+      environment: TomEnvironment.production,
+      platform: TomPlatform.web,
+      flags: {
+        'newCheckout': true,
+        'compactRows': 1,
+        'betaBanner': 'TRUE',
+        'legacyGrid': 'yes', // not the vocabulary — disabled, not enabled
+        'maxItems': 50,
+      },
+    ),
+  );
   final cfg = TomConfigProvider.current;
-  print('env=${cfg.environment} platform=${cfg.platform} '
-      'newCheckout=${cfg.isEnabled('newCheckout')} '
-      'maxItems=${cfg.feature<int>('maxItems')}');
+  print(
+    'env=${cfg.environment} platform=${cfg.platform} '
+    'newCheckout=${cfg.isEnabled('newCheckout')} '
+    'maxItems=${cfg.feature<int>('maxItems')}',
+  );
 
   // Example 6: the re-exported authorization state ordering.
   print('auth states (restrictive→full): ${TomAuthState.values}');
@@ -96,10 +106,14 @@ void run() {
   // the module-wide registrations and the hex/rgb syntax.
   assert(materialColors.resolveColor('cSystemBlue') == null);
   assert(materialColors.resolveColor('mRed') == Colors.red);
-  assert(materialColors.resolveColor('brandPrimary') == const Color(0xFF123456));
+  assert(
+    materialColors.resolveColor('brandPrimary') == const Color(0xFF123456),
+  );
   assert(materialColors.resolveColor('#FF5733') == const Color(0xFFFF5733));
   assert(cupertinoColors.resolveColor('mRed') == null);
-  assert(cupertinoColors.resolveColor('cTransparent') == const Color(0x00000000));
+  assert(
+    cupertinoColors.resolveColor('cTransparent') == const Color(0x00000000),
+  );
 
   assert(save == Icons.save);
   assert(share == CupertinoIcons.share);

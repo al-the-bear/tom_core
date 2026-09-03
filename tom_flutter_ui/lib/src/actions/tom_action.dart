@@ -58,8 +58,11 @@ abstract interface class TomActionUndo {}
 ///   }
 /// }
 /// ```
-abstract class TomAction<TContext extends TomActionContext,
-    TUndo extends TomActionUndo> implements TomAuthorizable {
+abstract class TomAction<
+  TContext extends TomActionContext,
+  TUndo extends TomActionUndo
+>
+    implements TomAuthorizable {
   /// Unique action ID within its controller.
   final String actionId;
 
@@ -123,9 +126,8 @@ abstract class TomAction<TContext extends TomActionContext,
   /// Creates a [TomAuthorizer] backed by this action's authorization.
   ///
   /// Applies the default pattern: widget full + action none = disabled.
-  TomAuthorizer get authorizer => TomAuthorizer.fromAction(
-        actionAuth: () => authState,
-      );
+  TomAuthorizer get authorizer =>
+      TomAuthorizer.fromAction(actionAuth: () => authState);
 
   // ===========================================================================
   // Resource resolution
@@ -173,4 +175,3 @@ abstract class TomSimpleAction<TContext extends TomActionContext>
     return null;
   }
 }
-

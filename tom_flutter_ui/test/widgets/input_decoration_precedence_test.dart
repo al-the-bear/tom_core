@@ -37,111 +37,141 @@ InputDecoration _rendered(WidgetTester tester) =>
 
 void main() {
   group('tccc1: an explicit decoration suffices and is honoured', () {
-    testWidgets('tccc1-01: TomTextField keeps decoration.labelText',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        TomTextField(decoration: const InputDecoration(labelText: 'Name')),
-      ));
+    testWidgets('tccc1-01: TomTextField keeps decoration.labelText', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          TomTextField(decoration: const InputDecoration(labelText: 'Name')),
+        ),
+      );
       expect(_rendered(tester).labelText, 'Name');
     });
 
-    testWidgets('tccc1-02: TomTextField keeps decoration.hintText',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        TomTextField(
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            hintText: 'e.g. Ada',
+    testWidgets('tccc1-02: TomTextField keeps decoration.hintText', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          TomTextField(
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              hintText: 'e.g. Ada',
+            ),
           ),
         ),
-      ));
+      );
       expect(_rendered(tester).hintText, 'e.g. Ada');
     });
 
-    testWidgets('tccc1-03: TomTextField label beats decoration.labelText',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        TomTextField(
-          label: 'Explicit',
-          decoration: const InputDecoration(labelText: 'From decoration'),
+    testWidgets('tccc1-03: TomTextField label beats decoration.labelText', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          TomTextField(
+            label: 'Explicit',
+            decoration: const InputDecoration(labelText: 'From decoration'),
+          ),
         ),
-      ));
+      );
       expect(_rendered(tester).labelText, 'Explicit');
     });
 
-    testWidgets('tccc1-04: TomTextFormField keeps decoration.labelText',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        TomTextFormField(decoration: const InputDecoration(labelText: 'Name')),
-      ));
+    testWidgets('tccc1-04: TomTextFormField keeps decoration.labelText', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          TomTextFormField(
+            decoration: const InputDecoration(labelText: 'Name'),
+          ),
+        ),
+      );
       expect(_rendered(tester).labelText, 'Name');
     });
 
-    testWidgets('tccc1-05: TomTextFormField keeps decoration.hintText',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        TomTextFormField(
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            hintText: 'e.g. Ada',
+    testWidgets('tccc1-05: TomTextFormField keeps decoration.hintText', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          TomTextFormField(
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              hintText: 'e.g. Ada',
+            ),
           ),
         ),
-      ));
+      );
       expect(_rendered(tester).hintText, 'e.g. Ada');
     });
 
-    testWidgets('tccc1-06: TomTextFormField label beats decoration.labelText',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        TomTextFormField(
-          label: 'Explicit',
-          decoration: const InputDecoration(labelText: 'From decoration'),
+    testWidgets('tccc1-06: TomTextFormField label beats decoration.labelText', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          TomTextFormField(
+            label: 'Explicit',
+            decoration: const InputDecoration(labelText: 'From decoration'),
+          ),
         ),
-      ));
+      );
       expect(_rendered(tester).labelText, 'Explicit');
     });
 
     testWidgets(
-        'tccc1-07: TomInputDatePickerFormField needs no label/hint resource',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        TomInputDatePickerFormField(
-          initialDate: DateTime(2026, 1, 1),
-          firstDate: DateTime(2020),
-          lastDate: DateTime(2030),
-        ),
-      ));
-      // Flutter falls back to MaterialLocalizations.dateInputLabel.
-      expect(_rendered(tester).labelText, isNotNull);
-    });
+      'tccc1-07: TomInputDatePickerFormField needs no label/hint resource',
+      (tester) async {
+        await tester.pumpWidget(
+          _host(
+            TomInputDatePickerFormField(
+              initialDate: DateTime(2026, 1, 1),
+              firstDate: DateTime(2020),
+              lastDate: DateTime(2030),
+            ),
+          ),
+        );
+        // Flutter falls back to MaterialLocalizations.dateInputLabel.
+        expect(_rendered(tester).labelText, isNotNull);
+      },
+    );
 
     testWidgets(
-        'tccc1-08: TomInputDatePickerFormField honours its own field strings',
-        (tester) async {
-      await tester.pumpWidget(_host(
-        TomInputDatePickerFormField(
-          initialDate: DateTime(2026, 1, 1),
-          firstDate: DateTime(2020),
-          lastDate: DateTime(2030),
-          fieldLabelText: 'Due',
-          fieldHintText: 'dd/mm/yyyy',
-        ),
-      ));
-      expect(_rendered(tester).labelText, 'Due');
-      expect(_rendered(tester).hintText, 'dd/mm/yyyy');
-    });
+      'tccc1-08: TomInputDatePickerFormField honours its own field strings',
+      (tester) async {
+        await tester.pumpWidget(
+          _host(
+            TomInputDatePickerFormField(
+              initialDate: DateTime(2026, 1, 1),
+              firstDate: DateTime(2020),
+              lastDate: DateTime(2030),
+              fieldLabelText: 'Due',
+              fieldHintText: 'dd/mm/yyyy',
+            ),
+          ),
+        );
+        expect(_rendered(tester).labelText, 'Due');
+        expect(_rendered(tester).hintText, 'dd/mm/yyyy');
+      },
+    );
   });
 
   group('tccc1: no label source still fails loudly', () {
-    test('tccc1-09: TomTextField without label, decoration or tomId throws',
-        () {
-      expect(() => TomTextField(), throwsStateError);
-    });
+    test(
+      'tccc1-09: TomTextField without label, decoration or tomId throws',
+      () {
+        expect(() => TomTextField(), throwsStateError);
+      },
+    );
 
-    test('tccc1-10: TomTextFormField without label, decoration or tomId throws',
-        () {
-      expect(() => TomTextFormField(), throwsStateError);
-    });
+    test(
+      'tccc1-10: TomTextFormField without label, decoration or tomId throws',
+      () {
+        expect(() => TomTextFormField(), throwsStateError);
+      },
+    );
 
     test('tccc1-11: TomTextField with a labelless decoration throws', () {
       expect(

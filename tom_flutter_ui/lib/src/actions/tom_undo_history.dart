@@ -124,10 +124,8 @@ class TomUndoHistory {
 class TomUndoAction extends TomSimpleAction<TomUndoRedoContext> {
   final TomUndoHistory history;
 
-  TomUndoAction({
-    required super.controller,
-    required this.history,
-  }) : super(actionId: 'undo');
+  TomUndoAction({required super.controller, required this.history})
+    : super(actionId: 'undo');
 
   @override
   bool canExecute(TomUndoRedoContext context) => history.canUndo;
@@ -144,10 +142,8 @@ class TomUndoAction extends TomSimpleAction<TomUndoRedoContext> {
 class TomRedoAction extends TomSimpleAction<TomUndoRedoContext> {
   final TomUndoHistory history;
 
-  TomRedoAction({
-    required super.controller,
-    required this.history,
-  }) : super(actionId: 'redo');
+  TomRedoAction({required super.controller, required this.history})
+    : super(actionId: 'redo');
 
   @override
   bool canExecute(TomUndoRedoContext context) => history.canRedo;

@@ -29,8 +29,9 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _app(Widget child) =>
-    MaterialApp(home: Scaffold(body: Center(child: child)));
+Widget _app(Widget child) => MaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
 TomUIStateController get _readOnly =>
     TomUIStateController(resolve: (_, _) => TomAuthState.read);
@@ -105,8 +106,9 @@ void main() {
       expect(field.get(), 9, reason: 'reset falls back to the new baseline');
     });
 
-    testWidgets('renders the bound value and writes typed digits back',
-        (tester) async {
+    testWidgets('renders the bound value and writes typed digits back', (
+      tester,
+    ) async {
       final field = TomFormIntInput('qty', 5);
       await tester.pumpWidget(_app(field.widget));
 
@@ -132,8 +134,11 @@ void main() {
       await tester.pumpWidget(_app(field.widget));
 
       await tester.enterText(find.byType(TextField), '99');
-      expect(field.get(), 99,
-          reason: 'the user must see their typo to be able to fix it');
+      expect(
+        field.get(),
+        99,
+        reason: 'the user must see their typo to be able to fix it',
+      );
       expect(await field.validate(), isA<ValidationError>());
       await _drainDebounce(tester);
     });
@@ -149,8 +154,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('a read-only field is disabled and rejects input',
-        (tester) async {
+    testWidgets('a read-only field is disabled and rejects input', (
+      tester,
+    ) async {
       final field = TomFormIntInput('qty', 5, uiStateController: _readOnly);
       await tester.pumpWidget(_app(field.widget));
 
@@ -184,12 +190,15 @@ void main() {
     });
 
     test('rejects a degenerate range', () {
-      expect(() => TomFormIntSlider('level', 0, min: 5, max: 5),
-          throwsA(isA<AssertionError>()));
+      expect(
+        () => TomFormIntSlider('level', 0, min: 5, max: 5),
+        throwsA(isA<AssertionError>()),
+      );
     });
 
-    testWidgets('divisions default to the span and the label shows the value',
-        (tester) async {
+    testWidgets('divisions default to the span and the label shows the value', (
+      tester,
+    ) async {
       final field = TomFormIntSlider('level', 3, min: 0, max: 10);
       await tester.pumpWidget(_app(field.widget));
 
@@ -200,20 +209,29 @@ void main() {
     });
 
     testWidgets('showValueLabel false drops the thumb label', (tester) async {
-      final field =
-          TomFormIntSlider('level', 3, min: 0, max: 10, showValueLabel: false);
+      final field = TomFormIntSlider(
+        'level',
+        3,
+        min: 0,
+        max: 10,
+        showValueLabel: false,
+      );
       await tester.pumpWidget(_app(field.widget));
       expect(tester.widget<Slider>(find.byType(Slider)).label, isNull);
     });
 
-    testWidgets('a value outside the range is clamped for display only',
-        (tester) async {
+    testWidgets('a value outside the range is clamped for display only', (
+      tester,
+    ) async {
       final field = TomFormIntSlider('level', 3, min: 0, max: 10);
       field.setValue(50);
       await tester.pumpWidget(_app(field.widget));
 
-      expect(tester.widget<Slider>(find.byType(Slider)).value, 10.0,
-          reason: 'the Slider asserts on out-of-range values');
+      expect(
+        tester.widget<Slider>(find.byType(Slider)).value,
+        10.0,
+        reason: 'the Slider asserts on out-of-range values',
+      );
       expect(field.get(), 50, reason: 'the field itself keeps the real value');
       await _drainDebounce(tester);
     });
@@ -229,8 +247,13 @@ void main() {
     });
 
     testWidgets('a read-only field has no onChanged', (tester) async {
-      final field = TomFormIntSlider('level', 3,
-          min: 0, max: 10, uiStateController: _readOnly);
+      final field = TomFormIntSlider(
+        'level',
+        3,
+        min: 0,
+        max: 10,
+        uiStateController: _readOnly,
+      );
       await tester.pumpWidget(_app(field.widget));
       expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNull);
     });
@@ -262,10 +285,16 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('a bound disables the button that would overshoot it',
-        (tester) async {
-      final field =
-          TomFormIntStepper('count', 9, step: 2, minValue: 0, maxValue: 10);
+    testWidgets('a bound disables the button that would overshoot it', (
+      tester,
+    ) async {
+      final field = TomFormIntStepper(
+        'count',
+        9,
+        step: 2,
+        minValue: 0,
+        maxValue: 10,
+      );
       await tester.pumpWidget(_app(field.widget));
 
       final buttons = tester.widgetList<IconButton>(find.byType(IconButton));
@@ -273,8 +302,7 @@ void main() {
       expect(buttons.last.onPressed, isNull, reason: '9 + 2 > 10');
     });
 
-    testWidgets('an unbounded stepper never disables a button',
-        (tester) async {
+    testWidgets('an unbounded stepper never disables a button', (tester) async {
       final field = TomFormIntStepper('count', 0);
       await tester.pumpWidget(_app(field.widget));
 
@@ -310,8 +338,7 @@ void main() {
       expect(_textFieldAt(tester, 0).controller!.text, '1.5');
     });
 
-    testWidgets('typed text parses back into the bound double',
-        (tester) async {
+    testWidgets('typed text parses back into the bound double', (tester) async {
       final field = TomFormDoubleInput('rate', 1.5);
       await tester.pumpWidget(_app(field.widget));
 
@@ -320,8 +347,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('a bare decimal point leaves the last good value',
-        (tester) async {
+    testWidgets('a bare decimal point leaves the last good value', (
+      tester,
+    ) async {
       final field = TomFormDoubleInput('rate', 1.5);
       await tester.pumpWidget(_app(field.widget));
 
@@ -331,8 +359,12 @@ void main() {
     });
 
     test('bounds desugar into validators here too', () async {
-      final field =
-          TomFormDoubleInput('rate', 0.5, minValue: 0.0, maxValue: 1.0);
+      final field = TomFormDoubleInput(
+        'rate',
+        0.5,
+        minValue: 0.0,
+        maxValue: 1.0,
+      );
       field.setValue(1.5);
       final result = await field.validate();
       expect((result as ValidationError).errorKey, 'error.max');
@@ -389,8 +421,11 @@ void main() {
     test('parse is the inverse of format for every profile', () {
       for (final code in const ['USD', 'EUR', 'GBP']) {
         final p = CurrencyFormatProfile.resolve(code: code);
-        expect(p.parse(p.format(9876.54)), closeTo(9876.54, 1e-9),
-            reason: '$code must round-trip');
+        expect(
+          p.parse(p.format(9876.54)),
+          closeTo(9876.54, 1e-9),
+          reason: '$code must round-trip',
+        );
       }
     });
 
@@ -408,21 +443,30 @@ void main() {
 
   group('TomFormCurrencyDoubleInput', () {
     testWidgets('a leading-symbol currency uses prefixText', (tester) async {
-      final field =
-          TomFormCurrencyDoubleInput('amount', 1234.5, currencyCode: 'USD');
+      final field = TomFormCurrencyDoubleInput(
+        'amount',
+        1234.5,
+        currencyCode: 'USD',
+      );
       expect(field.symbolIsLeading, isTrue);
 
       await tester.pumpWidget(_app(field.widget));
       final decoration = _textFieldAt(tester, 0).decoration!;
       expect(decoration.prefixText, r'$');
       expect(decoration.suffixText, isNull);
-      expect(_textFieldAt(tester, 0).controller!.text, '1,234.50',
-          reason: 'the symbol lives outside the editable text');
+      expect(
+        _textFieldAt(tester, 0).controller!.text,
+        '1,234.50',
+        reason: 'the symbol lives outside the editable text',
+      );
     });
 
     testWidgets('a trailing-symbol currency uses suffixText', (tester) async {
-      final field =
-          TomFormCurrencyDoubleInput('amount', 1234.5, currencyCode: 'EUR');
+      final field = TomFormCurrencyDoubleInput(
+        'amount',
+        1234.5,
+        currencyCode: 'EUR',
+      );
       expect(field.symbolIsLeading, isFalse);
 
       await tester.pumpWidget(_app(field.widget));
@@ -432,10 +476,14 @@ void main() {
       expect(_textFieldAt(tester, 0).controller!.text, '1.234,50');
     });
 
-    testWidgets('typing a grouped amount parses back into the double',
-        (tester) async {
-      final field =
-          TomFormCurrencyDoubleInput('amount', 0, currencyCode: 'USD');
+    testWidgets('typing a grouped amount parses back into the double', (
+      tester,
+    ) async {
+      final field = TomFormCurrencyDoubleInput(
+        'amount',
+        0,
+        currencyCode: 'USD',
+      );
       await tester.pumpWidget(_app(field.widget));
 
       await tester.enterText(find.byType(TextField), '2,500.75');
@@ -443,10 +491,12 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('unparseable input leaves the last good value',
-        (tester) async {
-      final field =
-          TomFormCurrencyDoubleInput('amount', 42.0, currencyCode: 'USD');
+    testWidgets('unparseable input leaves the last good value', (tester) async {
+      final field = TomFormCurrencyDoubleInput(
+        'amount',
+        42.0,
+        currencyCode: 'USD',
+      );
       await tester.pumpWidget(_app(field.widget));
 
       await tester.enterText(find.byType(TextField), 'abc');
@@ -466,8 +516,9 @@ void main() {
       expect(field.maxValue, 1.0);
     });
 
-    testWidgets('a fraction is displayed as a percent with a % suffix',
-        (tester) async {
+    testWidgets('a fraction is displayed as a percent with a % suffix', (
+      tester,
+    ) async {
       final field = TomFormPercentDoubleInput('share', 0.1234, decimals: 2);
       await tester.pumpWidget(_app(field.widget));
 
@@ -484,8 +535,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('over 100 % is stored and reported, not clamped',
-        (tester) async {
+    testWidgets('over 100 % is stored and reported, not clamped', (
+      tester,
+    ) async {
       final field = TomFormPercentDoubleInput('share', 0.0);
       await tester.pumpWidget(_app(field.widget));
 
@@ -502,14 +554,20 @@ void main() {
 
   group('TomFormDoubleSlider', () {
     testWidgets('the thumb label honours valueLabelDecimals', (tester) async {
-      final field = TomFormDoubleSlider('gain', 0.5,
-          min: 0, max: 1, valueLabelDecimals: 3);
+      final field = TomFormDoubleSlider(
+        'gain',
+        0.5,
+        min: 0,
+        max: 1,
+        valueLabelDecimals: 3,
+      );
       await tester.pumpWidget(_app(field.widget));
       expect(tester.widget<Slider>(find.byType(Slider)).label, '0.500');
     });
 
-    testWidgets('an out-of-range value is clamped for display only',
-        (tester) async {
+    testWidgets('an out-of-range value is clamped for display only', (
+      tester,
+    ) async {
       final field = TomFormDoubleSlider('gain', 0.5, min: 0, max: 1);
       field.setValue(4.0);
       await tester.pumpWidget(_app(field.widget));
@@ -537,14 +595,19 @@ void main() {
   group('NumRange', () {
     test('equality is by endpoints so observers see real movement only', () {
       expect(const NumRange<int>(1, 5), const NumRange<int>(1, 5));
-      expect(const NumRange<int>(1, 5).hashCode,
-          const NumRange<int>(1, 5).hashCode);
+      expect(
+        const NumRange<int>(1, 5).hashCode,
+        const NumRange<int>(1, 5).hashCode,
+      );
       expect(const NumRange<int>(1, 5), isNot(const NumRange<int>(1, 6)));
     });
 
     test('the type parameter is part of the identity', () {
-      expect(const NumRange<int>(1, 5) == const NumRange<double>(1, 5), isFalse,
-          reason: 'an int range and a double range are different values');
+      expect(
+        const NumRange<int>(1, 5) == const NumRange<double>(1, 5),
+        isFalse,
+        reason: 'an int range and a double range are different values',
+      );
     });
 
     test('toString renders the pair', () {
@@ -559,16 +622,25 @@ void main() {
   group('TomFormIntRangeSlider', () {
     test('rejects a degenerate range', () {
       expect(
-        () => TomFormIntRangeSlider('band', const NumRange<int>(1, 2),
-            min: 5, max: 5),
+        () => TomFormIntRangeSlider(
+          'band',
+          const NumRange<int>(1, 2),
+          min: 5,
+          max: 5,
+        ),
         throwsA(isA<AssertionError>()),
       );
     });
 
-    testWidgets('renders both endpoints and defaults divisions to the span',
-        (tester) async {
-      final field = TomFormIntRangeSlider('band', const NumRange<int>(2, 8),
-          min: 0, max: 10);
+    testWidgets('renders both endpoints and defaults divisions to the span', (
+      tester,
+    ) async {
+      final field = TomFormIntRangeSlider(
+        'band',
+        const NumRange<int>(2, 8),
+        min: 0,
+        max: 10,
+      );
       await tester.pumpWidget(_app(field.widget));
 
       final slider = tester.widget<RangeSlider>(find.byType(RangeSlider));
@@ -577,20 +649,31 @@ void main() {
       expect(slider.labels, const RangeLabels('2', '8'));
     });
 
-    testWidgets('endpoints outside the range are clamped for display',
-        (tester) async {
-      final field = TomFormIntRangeSlider('band', const NumRange<int>(-5, 50),
-          min: 0, max: 10);
+    testWidgets('endpoints outside the range are clamped for display', (
+      tester,
+    ) async {
+      final field = TomFormIntRangeSlider(
+        'band',
+        const NumRange<int>(-5, 50),
+        min: 0,
+        max: 10,
+      );
       await tester.pumpWidget(_app(field.widget));
 
-      expect(tester.widget<RangeSlider>(find.byType(RangeSlider)).values,
-          const RangeValues(0, 10));
+      expect(
+        tester.widget<RangeSlider>(find.byType(RangeSlider)).values,
+        const RangeValues(0, 10),
+      );
       expect(field.get(), const NumRange<int>(-5, 50));
     });
 
     testWidgets('dragging rounds both endpoints to ints', (tester) async {
-      final field = TomFormIntRangeSlider('band', const NumRange<int>(2, 8),
-          min: 0, max: 10);
+      final field = TomFormIntRangeSlider(
+        'band',
+        const NumRange<int>(2, 8),
+        min: 0,
+        max: 10,
+      );
       await tester.pumpWidget(_app(field.widget));
 
       tester.widget<RangeSlider>(find.byType(RangeSlider)).onChanged!(
@@ -602,11 +685,18 @@ void main() {
     });
 
     testWidgets('a read-only field has no onChanged', (tester) async {
-      final field = TomFormIntRangeSlider('band', const NumRange<int>(2, 8),
-          min: 0, max: 10, uiStateController: _readOnly);
+      final field = TomFormIntRangeSlider(
+        'band',
+        const NumRange<int>(2, 8),
+        min: 0,
+        max: 10,
+        uiStateController: _readOnly,
+      );
       await tester.pumpWidget(_app(field.widget));
-      expect(tester.widget<RangeSlider>(find.byType(RangeSlider)).onChanged,
-          isNull);
+      expect(
+        tester.widget<RangeSlider>(find.byType(RangeSlider)).onChanged,
+        isNull,
+      );
     });
   });
 
@@ -625,8 +715,10 @@ void main() {
       );
       await tester.pumpWidget(_app(field.widget));
 
-      expect(tester.widget<RangeSlider>(find.byType(RangeSlider)).labels,
-          const RangeLabels('0.3', '0.8'));
+      expect(
+        tester.widget<RangeSlider>(find.byType(RangeSlider)).labels,
+        const RangeLabels('0.3', '0.8'),
+      );
     });
 
     testWidgets('dragging writes the raw doubles through', (tester) async {
@@ -652,28 +744,37 @@ void main() {
   // =========================================================================
 
   group('TomFormDurationInput', () {
-    testWidgets('seeds an hours box and a zero-padded minutes box',
-        (tester) async {
+    testWidgets('seeds an hours box and a zero-padded minutes box', (
+      tester,
+    ) async {
       final field = TomFormDurationInput(
-          'span', const Duration(hours: 2, minutes: 5));
+        'span',
+        const Duration(hours: 2, minutes: 5),
+      );
       await tester.pumpWidget(_app(field.widget));
 
       expect(_textFieldAt(tester, 0).controller!.text, '2');
       expect(_textFieldAt(tester, 1).controller!.text, '05');
     });
 
-    testWidgets('hours accumulate past a day rather than wrapping',
-        (tester) async {
-      final field =
-          TomFormDurationInput('span', const Duration(days: 1, hours: 3));
+    testWidgets('hours accumulate past a day rather than wrapping', (
+      tester,
+    ) async {
+      final field = TomFormDurationInput(
+        'span',
+        const Duration(days: 1, hours: 3),
+      );
       await tester.pumpWidget(_app(field.widget));
       expect(_textFieldAt(tester, 0).controller!.text, '27');
     });
 
-    testWidgets('editing a segment recomposes the whole Duration',
-        (tester) async {
+    testWidgets('editing a segment recomposes the whole Duration', (
+      tester,
+    ) async {
       final field = TomFormDurationInput(
-          'span', const Duration(hours: 2, minutes: 5));
+        'span',
+        const Duration(hours: 2, minutes: 5),
+      );
       await tester.pumpWidget(_app(field.widget));
 
       await tester.enterText(find.byType(TextField).at(1), '45');
@@ -681,8 +782,9 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('minutes above 59 clamp — the widget cannot express them',
-        (tester) async {
+    testWidgets('minutes above 59 clamp — the widget cannot express them', (
+      tester,
+    ) async {
       final field = TomFormDurationInput('span', Duration.zero);
       await tester.pumpWidget(_app(field.widget));
 
@@ -702,7 +804,9 @@ void main() {
 
     testWidgets('an emptied segment reads as zero', (tester) async {
       final field = TomFormDurationInput(
-          'span', const Duration(hours: 2, minutes: 5));
+        'span',
+        const Duration(hours: 2, minutes: 5),
+      );
       await tester.pumpWidget(_app(field.widget));
 
       await tester.enterText(find.byType(TextField).at(0), '');
@@ -722,8 +826,11 @@ void main() {
     });
 
     testWidgets('a read-only field disables both segments', (tester) async {
-      final field = TomFormDurationInput('span', Duration.zero,
-          uiStateController: _readOnly);
+      final field = TomFormDurationInput(
+        'span',
+        Duration.zero,
+        uiStateController: _readOnly,
+      );
       await tester.pumpWidget(_app(field.widget));
 
       expect(_textFieldAt(tester, 0).enabled, isFalse);
@@ -737,14 +844,15 @@ void main() {
 
   group('TomFormIntFilterChips', () {
     TomSelectableSource<int> years() => StaticSelectableSource<int>(const [
-          SelectableItem(value: 2023, label: '2023'),
-          SelectableItem(value: 2024, label: '2024'),
-          SelectableItem(value: 2025, label: '2025'),
-        ]);
+      SelectableItem(value: 2023, label: '2023'),
+      SelectableItem(value: 2024, label: '2024'),
+      SelectableItem(value: 2025, label: '2025'),
+    ]);
 
     test('toggleItem allocates a fresh list so change detection fires', () {
-      final field =
-          TomFormIntFilterChips('years', const [2023], source: years());
+      final field = TomFormIntFilterChips('years', const [
+        2023,
+      ], source: years());
       final before = field.get();
 
       field.toggleItem(2024, true);
@@ -756,18 +864,21 @@ void main() {
     });
 
     test('toggleItem is idempotent in both directions', () {
-      final field =
-          TomFormIntFilterChips('years', const [2023], source: years());
+      final field = TomFormIntFilterChips('years', const [
+        2023,
+      ], source: years());
       field.toggleItem(2023, true);
       expect(field.get(), [2023]);
       field.toggleItem(2099, false);
       expect(field.get(), [2023]);
     });
 
-    testWidgets('renders one chip per item with the right selection',
-        (tester) async {
-      final field =
-          TomFormIntFilterChips('years', const [2024], source: years());
+    testWidgets('renders one chip per item with the right selection', (
+      tester,
+    ) async {
+      final field = TomFormIntFilterChips('years', const [
+        2024,
+      ], source: years());
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -776,10 +887,8 @@ void main() {
       expect(chips.map((c) => c.selected), [false, true, false]);
     });
 
-    testWidgets('tapping a chip toggles it into the selection',
-        (tester) async {
-      final field =
-          TomFormIntFilterChips('years', const [], source: years());
+    testWidgets('tapping a chip toggles it into the selection', (tester) async {
+      final field = TomFormIntFilterChips('years', const [], source: years());
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -789,13 +898,13 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('a selection the source no longer offers is pruned',
-        (tester) async {
-      final field = TomFormIntFilterChips(
-        'years',
-        const [2024, 1999],
-        source: years(),
-      );
+    testWidgets('a selection the source no longer offers is pruned', (
+      tester,
+    ) async {
+      final field = TomFormIntFilterChips('years', const [
+        2024,
+        1999,
+      ], source: years());
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 
@@ -803,10 +912,15 @@ void main() {
       await _drainDebounce(tester);
     });
 
-    testWidgets('a read-only field renders chips that cannot be selected',
-        (tester) async {
-      final field = TomFormIntFilterChips('years', const [],
-          source: years(), uiStateController: _readOnly);
+    testWidgets('a read-only field renders chips that cannot be selected', (
+      tester,
+    ) async {
+      final field = TomFormIntFilterChips(
+        'years',
+        const [],
+        source: years(),
+        uiStateController: _readOnly,
+      );
       await tester.pumpWidget(_app(field.widget));
       await tester.pumpAndSettle();
 

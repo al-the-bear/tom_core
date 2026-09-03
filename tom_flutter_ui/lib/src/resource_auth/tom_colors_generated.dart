@@ -405,8 +405,10 @@ class GeneratedColors {
     'cSecondarySystemBackground': CupertinoColors.secondarySystemBackground,
     'cTertiarySystemBackground': CupertinoColors.tertiarySystemBackground,
     'cSystemGroupedBackground': CupertinoColors.systemGroupedBackground,
-    'cSecondarySystemGroupedBackground': CupertinoColors.secondarySystemGroupedBackground,
-    'cTertiarySystemGroupedBackground': CupertinoColors.tertiarySystemGroupedBackground,
+    'cSecondarySystemGroupedBackground':
+        CupertinoColors.secondarySystemGroupedBackground,
+    'cTertiarySystemGroupedBackground':
+        CupertinoColors.tertiarySystemGroupedBackground,
     'cSeparator': CupertinoColors.separator,
     'cOpaqueSeparator': CupertinoColors.opaqueSeparator,
     'cLink': CupertinoColors.link,
@@ -422,6 +424,7 @@ class GeneratedColors {
 
   /// Whether a color with [name] exists.
   static bool exists(String name) {
-    return materialColors.containsKey(name) || cupertinoColors.containsKey(name);
+    return materialColors.containsKey(name) ||
+        cupertinoColors.containsKey(name);
   }
 }

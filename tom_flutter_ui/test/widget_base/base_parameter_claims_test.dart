@@ -32,10 +32,9 @@ List<String> constructorParameters(String source, String className) {
   final close = source.indexOf('})', open.end);
   if (close < 0) throw StateError('unterminated `$className({`');
   final body = source.substring(open.end, close);
-  return RegExp(r'(?:super|this)\.(\w+)')
-      .allMatches(body)
-      .map((m) => m.group(1)!)
-      .toList();
+  return RegExp(
+    r'(?:super|this)\.(\w+)',
+  ).allMatches(body).map((m) => m.group(1)!).toList();
 }
 
 /// The bare `` `name` `` cells in the first column of the first markdown table
@@ -94,10 +93,9 @@ void main() {
     });
 
     test('tcinc807-02: every branch base forwards exactly the same list', () {
-      final branches = RegExp(r'class\s+(Tom\w+Base)\s+extends\s+TomFamilyBase')
-          .allMatches(familyBaseSource)
-          .map((m) => m.group(1)!)
-          .toList();
+      final branches = RegExp(
+        r'class\s+(Tom\w+Base)\s+extends\s+TomFamilyBase',
+      ).allMatches(familyBaseSource).map((m) => m.group(1)!).toList();
 
       expect(branches, hasLength(20), reason: 'the twenty family branches');
       for (final branch in branches) {
@@ -161,11 +159,12 @@ void main() {
         caseSensitive: false,
       );
       var found = 0;
-      for (final file in Directory('.')
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.md'))
-          .where((f) => !f.path.contains('/build/'))) {
+      for (final file
+          in Directory('.')
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((f) => f.path.endsWith('.md'))
+              .where((f) => !f.path.contains('/build/'))) {
         for (final m in claim.allMatches(file.readAsStringSync())) {
           found++;
           expect(

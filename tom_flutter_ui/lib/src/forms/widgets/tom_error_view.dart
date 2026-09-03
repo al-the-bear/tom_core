@@ -57,8 +57,7 @@ class TomErrorView extends StatefulWidget {
   State<TomErrorView> createState() => _TomErrorViewState();
 }
 
-class _TomErrorViewState extends State<TomErrorView>
-    with TomFormEventListener {
+class _TomErrorViewState extends State<TomErrorView> with TomFormEventListener {
   List<FormValidationError> _errors = [];
 
   @override
@@ -170,16 +169,18 @@ class _TomErrorViewState extends State<TomErrorView>
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.title != null) ...[
-            Row(children: [
-              Icon(Icons.error_outline, color: errorColor, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                widget.title!,
-                style: (style.defaults.errorStyle ??
-                        theme.textTheme.titleSmall)
-                    ?.copyWith(color: onErrorContainer),
-              ),
-            ]),
+            Row(
+              children: [
+                Icon(Icons.error_outline, color: errorColor, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  widget.title!,
+                  style:
+                      (style.defaults.errorStyle ?? theme.textTheme.titleSmall)
+                          ?.copyWith(color: onErrorContainer),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
           ],
           ..._errors.map((error) {
@@ -191,26 +192,27 @@ class _TomErrorViewState extends State<TomErrorView>
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Icon(Icons.warning_amber_rounded,
-                        color: errorColor, size: 16),
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      color: errorColor,
+                      size: 16,
+                    ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       message,
-                      style: (style.defaults.errorStyle ??
-                              theme.textTheme.bodySmall)
-                          ?.copyWith(color: onErrorContainer),
+                      style:
+                          (style.defaults.errorStyle ??
+                                  theme.textTheme.bodySmall)
+                              ?.copyWith(color: onErrorContainer),
                     ),
                   ),
                 ],
               ),
             );
             if (widget.onErrorTap == null) return row;
-            return InkWell(
-              onTap: () => widget.onErrorTap!(error),
-              child: row,
-            );
+            return InkWell(onTap: () => widget.onErrorTap!(error), child: row);
           }),
         ],
       ),

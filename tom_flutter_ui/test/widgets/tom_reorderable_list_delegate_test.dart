@@ -10,36 +10,44 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // render through a real pump.
 
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(
-        body: SizedBox(height: 400, width: 300, child: child),
-      ),
-    );
+  home: Scaffold(body: SizedBox(height: 400, width: 300, child: child)),
+);
 
 void main() {
-  testWidgets('renders from a SliverChildListDelegate (bug §34)',
-      (tester) async {
-    await tester.pumpWidget(_host(TomReorderableList(
-      childrenDelegate: SliverChildListDelegate([
-        const ListTile(key: ValueKey('a'), title: Text('item-a')),
-        const ListTile(key: ValueKey('b'), title: Text('item-b')),
-      ]),
-      onReorderItem: (_, _) {},
-    )));
+  testWidgets('renders from a SliverChildListDelegate (bug §34)', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        TomReorderableList(
+          childrenDelegate: SliverChildListDelegate([
+            const ListTile(key: ValueKey('a'), title: Text('item-a')),
+            const ListTile(key: ValueKey('b'), title: Text('item-b')),
+          ]),
+          onReorderItem: (_, _) {},
+        ),
+      ),
+    );
 
     expect(find.text('item-a'), findsOneWidget);
     expect(find.text('item-b'), findsOneWidget);
   });
 
-  testWidgets('still renders from a SliverChildBuilderDelegate',
-      (tester) async {
-    await tester.pumpWidget(_host(TomReorderableList(
-      childrenDelegate: SliverChildBuilderDelegate(
-        (context, index) =>
-            ListTile(key: ValueKey(index), title: Text('row-$index')),
-        childCount: 3,
+  testWidgets('still renders from a SliverChildBuilderDelegate', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        TomReorderableList(
+          childrenDelegate: SliverChildBuilderDelegate(
+            (context, index) =>
+                ListTile(key: ValueKey(index), title: Text('row-$index')),
+            childCount: 3,
+          ),
+          onReorderItem: (_, _) {},
+        ),
       ),
-      onReorderItem: (_, _) {},
-    )));
+    );
 
     expect(find.text('row-0'), findsOneWidget);
     expect(find.text('row-1'), findsOneWidget);
@@ -52,8 +60,9 @@ void main() {
   // `if (newIndex > oldIndex) newIndex -= 1` fixup. This pins that the
   // TomReorderableListView wrapper forwards onReorderItem with those adjusted
   // semantics: dragging the first row down one slot yields [b, a, c].
-  testWidgets('onReorderItem delivers adjusted index (move down one slot)',
-      (tester) async {
+  testWidgets('onReorderItem delivers adjusted index (move down one slot)', (
+    tester,
+  ) async {
     // On desktop platforms ReorderableListView reorders via explicit drag
     // handles; force a mobile platform so a long-press on the row body picks
     // it up, keeping the drag simple. (Reset before the test body returns so

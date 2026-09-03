@@ -374,7 +374,9 @@ class TomStyleResolvers {
 
   /// Resolves an [InputDecoration] from resources at [basePath].[suffix].
   static InputDecoration? resolveInputDecoration(
-      String basePath, String suffix) {
+    String basePath,
+    String suffix,
+  ) {
     final map = TomCtr.map(basePath, suffix);
     return parseInputDecoration(map);
   }
@@ -611,8 +613,9 @@ class TomStyleResolvers {
     final isCircle = shape == 'circle';
 
     final color = _parseColor(map['color']);
-    final borderRadius =
-        isCircle ? null : parseBorderRadius(map['borderRadius']);
+    final borderRadius = isCircle
+        ? null
+        : parseBorderRadius(map['borderRadius']);
     final border = _parseBoxBorder(map['border']);
     final boxShadow = _parseBoxShadowList(map['boxShadow']);
 
@@ -816,13 +819,19 @@ class TomStyleResolvers {
     final right = parseBorderSide(_asStringMap(map['right']));
     final bottom = parseBorderSide(_asStringMap(map['bottom']));
     final left = parseBorderSide(_asStringMap(map['left']));
-    final horizontalInside =
-        parseBorderSide(_asStringMap(map['horizontalInside']));
-    final verticalInside =
-        parseBorderSide(_asStringMap(map['verticalInside']));
+    final horizontalInside = parseBorderSide(
+      _asStringMap(map['horizontalInside']),
+    );
+    final verticalInside = parseBorderSide(_asStringMap(map['verticalInside']));
 
-    if (_nothingContributed(
-        [top, right, bottom, left, horizontalInside, verticalInside])) {
+    if (_nothingContributed([
+      top,
+      right,
+      bottom,
+      left,
+      horizontalInside,
+      verticalInside,
+    ])) {
       return null;
     }
 
@@ -922,8 +931,15 @@ class TomStyleResolvers {
     final grade = _parseDouble(map['grade']);
     final opticalSize = _parseDouble(map['opticalSize']);
 
-    if (_nothingContributed(
-        [color, opacity, size, fill, weight, grade, opticalSize])) {
+    if (_nothingContributed([
+      color,
+      opacity,
+      size,
+      fill,
+      weight,
+      grade,
+      opticalSize,
+    ])) {
       return null;
     }
 
@@ -966,8 +982,9 @@ class TomStyleResolvers {
     if (map == null || map.isEmpty) return null;
 
     final fontFamily = _asString(map['fontFamily']);
-    final fontFamilyFallback =
-        _asList(map['fontFamilyFallback'])?.whereType<String>().toList();
+    final fontFamilyFallback = _asList(
+      map['fontFamilyFallback'],
+    )?.whereType<String>().toList();
     final fontSize = _parseDouble(map['fontSize']);
     final height = _parseDouble(map['height']);
     final leading = _parseDouble(map['leading']);
@@ -1020,7 +1037,8 @@ class TomStyleResolvers {
   /// Returns `null` if the map is absent, empty, or contains no key this
   /// parser can use — never a default-constructed object.
   static TextHeightBehavior? parseTextHeightBehavior(
-      Map<String, dynamic>? map) {
+    Map<String, dynamic>? map,
+  ) {
     if (map == null || map.isEmpty) return null;
 
     TextLeadingDistribution? leadingDistribution;
@@ -1057,7 +1075,9 @@ class TomStyleResolvers {
 
   /// Resolves a [TextHeightBehavior] from resources at [basePath].[suffix].
   static TextHeightBehavior? resolveTextHeightBehavior(
-      String basePath, String suffix) {
+    String basePath,
+    String suffix,
+  ) {
     final map = TomCtr.map(basePath, suffix);
     return parseTextHeightBehavior(map);
   }
@@ -1081,7 +1101,9 @@ class TomStyleResolvers {
   static ScrollPhysics? parseScrollPhysics(dynamic value) {
     if (value == null) return null;
 
-    final name = (value is String) ? value : (value is Map<String, dynamic>)
+    final name = (value is String)
+        ? value
+        : (value is Map<String, dynamic>)
         ? _asString(value['type'])
         : null;
     if (name == null) return null;
@@ -1227,8 +1249,14 @@ class TomStyleResolvers {
       final bottom = _asNum(value['bottom']);
       final horizontal = _asNum(value['horizontal']);
       final vertical = _asNum(value['vertical']);
-      if (_nothingContributed(
-          [left, top, right, bottom, horizontal, vertical])) {
+      if (_nothingContributed([
+        left,
+        top,
+        right,
+        bottom,
+        horizontal,
+        vertical,
+      ])) {
         return null;
       }
       return EdgeInsets.only(
@@ -1470,8 +1498,7 @@ class TomStyleResolvers {
       // Per-side borders
       return Border(
         top: parseBorderSide(_asStringMap(value['top'])) ?? BorderSide.none,
-        right:
-            parseBorderSide(_asStringMap(value['right'])) ?? BorderSide.none,
+        right: parseBorderSide(_asStringMap(value['right'])) ?? BorderSide.none,
         bottom:
             parseBorderSide(_asStringMap(value['bottom'])) ?? BorderSide.none,
         left: parseBorderSide(_asStringMap(value['left'])) ?? BorderSide.none,
@@ -1486,13 +1513,14 @@ class TomStyleResolvers {
 
     return value
         .whereType<Map<String, dynamic>>()
-        .map((shadow) => BoxShadow(
-              color: _parseColor(shadow['color']) ??
-                  const Color(0xFF000000),
-              blurRadius: _parseDouble(shadow['blurRadius']) ?? 0.0,
-              spreadRadius: _parseDouble(shadow['spreadRadius']) ?? 0.0,
-              offset: parseOffset(shadow['offset']) ?? Offset.zero,
-            ))
+        .map(
+          (shadow) => BoxShadow(
+            color: _parseColor(shadow['color']) ?? const Color(0xFF000000),
+            blurRadius: _parseDouble(shadow['blurRadius']) ?? 0.0,
+            spreadRadius: _parseDouble(shadow['spreadRadius']) ?? 0.0,
+            offset: parseOffset(shadow['offset']) ?? Offset.zero,
+          ),
+        )
         .toList();
   }
 
@@ -1537,7 +1565,8 @@ class TomStyleResolvers {
   }
 
   static WidgetStateProperty<EdgeInsetsGeometry?>? _wrapEdgeInsets(
-      dynamic value) {
+    dynamic value,
+  ) {
     final insets = parseEdgeInsets(value);
     if (insets == null) return null;
     return WidgetStatePropertyAll<EdgeInsetsGeometry?>(insets);

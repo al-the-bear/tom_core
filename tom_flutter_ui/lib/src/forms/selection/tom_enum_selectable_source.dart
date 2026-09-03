@@ -19,9 +19,9 @@ abstract class _BundleLabelledEnumSource<E extends Enum, V>
     List<E> values, {
     TomScope? scope,
     bool Function(E value)? isEnabled,
-  })  : values = List<E>.unmodifiable(values),
-        scope = scope ?? TomScope.current,
-        _isEnabled = isEnabled;
+  }) : values = List<E>.unmodifiable(values),
+       scope = scope ?? TomScope.current,
+       _isEnabled = isEnabled;
 
   /// The offered enum values, in declaration order. Unmodifiable.
   final List<E> values;
@@ -50,21 +50,21 @@ abstract class _BundleLabelledEnumSource<E extends Enum, V>
       (_controller ??= StreamController<List<SelectableItem<V>>>.broadcast(
         onListen: _observeBundle,
         onCancel: _stopObservingBundle,
-      ))
-          .stream;
+      )).stream;
 
   /// Builds the current option list, resolving every label from the bundle.
   List<SelectableItem<V>> buildItems() => List.unmodifiable([
-        for (final value in values)
-          SelectableItem<V>(
-            value: valueOf(value),
-            label: TomObservableEnum.resolveText(value, scope: scope),
-            enabled: _isEnabled?.call(value) ?? true,
-          ),
-      ]);
+    for (final value in values)
+      SelectableItem<V>(
+        value: valueOf(value),
+        label: TomObservableEnum.resolveText(value, scope: scope),
+        enabled: _isEnabled?.call(value) ?? true,
+      ),
+  ]);
 
   void _observeBundle() {
-    _observer ??= TomTextResourceProvider.appResourcesRevision >>
+    _observer ??=
+        TomTextResourceProvider.appResourcesRevision >>
         (_) {
           final controller = _controller;
           if (controller != null && !controller.isClosed) {
@@ -125,10 +125,8 @@ class TomEnumSelectableSource<E extends Enum>
   ///
   /// Use this when the bound value is already a [TomObservableEnum] so that
   /// the picker and the cell resolve their labels identically.
-  TomEnumSelectableSource.of(
-    TomObservableEnum<E> cell, {
-    super.isEnabled,
-  }) : super(cell.values, scope: cell.scope);
+  TomEnumSelectableSource.of(TomObservableEnum<E> cell, {super.isEnabled})
+    : super(cell.values, scope: cell.scope);
 
   @override
   E valueOf(E value) => value;

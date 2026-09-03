@@ -77,9 +77,9 @@ class TomCupertinoFormIntInput extends TomFormIntField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoIntInputWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoIntInputWidget(field: this),
+  );
 }
 
 class _CupertinoIntInputWidget extends StatefulWidget {
@@ -104,13 +104,15 @@ class _CupertinoIntInputWidgetState extends State<_CupertinoIntInputWidget> {
     super.initState();
     _controller = TextEditingController(text: field.get().toString());
     _focusNode = FocusNode()..addListener(_onFocus);
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final next = (observable as TomObject<int>).get().toString();
-        if (_controller.text != next) _controller.text = next;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final next = (observable as TomObject<int>).get().toString();
+            if (_controller.text != next) _controller.text = next;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -153,8 +155,7 @@ class _CupertinoIntInputWidgetState extends State<_CupertinoIntInputWidget> {
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))],
       placeholder: hint == null
           ? null
-          : hint +
-              field.requiredIndicatorSuffix(style.requiredIndicatorOnHint),
+          : hint + field.requiredIndicatorSuffix(style.requiredIndicatorOnHint),
       placeholderStyle: composeHintStyle(style, Theme.of(context)),
       style: style.inputStyle,
       onChanged: field.isEditable ? _onChanged : null,
@@ -215,9 +216,9 @@ class TomCupertinoFormIntPicker extends TomFormIntField
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  })  : assert(max > min, 'TomCupertinoFormIntPicker: max must be > min'),
-        assert(step >= 1, 'TomCupertinoFormIntPicker: step must be >= 1'),
-        super(minValue: min, maxValue: max);
+  }) : assert(max > min, 'TomCupertinoFormIntPicker: max must be > min'),
+       assert(step >= 1, 'TomCupertinoFormIntPicker: step must be >= 1'),
+       super(minValue: min, maxValue: max);
 
   // The mixin's `labelText` / `descriptionText` getters return null by
   // default; concrete classes have to delegate to the abstract
@@ -252,9 +253,9 @@ class TomCupertinoFormIntPicker extends TomFormIntField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoIntPickerWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoIntPickerWidget(field: this),
+  );
 }
 
 class _CupertinoIntPickerWidget extends StatefulWidget {
@@ -274,9 +275,11 @@ class _CupertinoIntPickerWidgetState extends State<_CupertinoIntPickerWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -329,8 +332,9 @@ class _CupertinoIntPickerWidgetState extends State<_CupertinoIntPickerWidget> {
                 Expanded(
                   child: CupertinoPicker(
                     itemExtent: 32,
-                    scrollController:
-                        FixedExtentScrollController(initialItem: initialIndex),
+                    scrollController: FixedExtentScrollController(
+                      initialItem: initialIndex,
+                    ),
                     onSelectedItemChanged: (i) => tempIndex = i,
                     children: [
                       for (final v in values)
@@ -424,9 +428,9 @@ class TomCupertinoFormDoubleInput extends TomFormDoubleField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoDoubleInputWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoDoubleInputWidget(field: this),
+  );
 }
 
 class _CupertinoDoubleInputWidget extends StatefulWidget {
@@ -452,13 +456,15 @@ class _CupertinoDoubleInputWidgetState
     super.initState();
     _controller = TextEditingController(text: _formatValue(field.get()));
     _focusNode = FocusNode()..addListener(_onFocus);
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final next = _formatValue((observable as TomObject<double>).get());
-        if (_controller.text != next) _controller.text = next;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final next = _formatValue((observable as TomObject<double>).get());
+            if (_controller.text != next) _controller.text = next;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -506,15 +512,16 @@ class _CupertinoDoubleInputWidgetState
     final input = CupertinoTextField(
       controller: _controller,
       focusNode: _focusNode,
-      keyboardType:
-          const TextInputType.numberWithOptions(decimal: true, signed: true),
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'-?\d*\.?\d*')),
       ],
       placeholder: hint == null
           ? null
-          : hint +
-              field.requiredIndicatorSuffix(style.requiredIndicatorOnHint),
+          : hint + field.requiredIndicatorSuffix(style.requiredIndicatorOnHint),
       placeholderStyle: composeHintStyle(style, Theme.of(context)),
       style: style.inputStyle,
       onChanged: field.isEditable ? _onChanged : null,
@@ -586,9 +593,9 @@ class TomCupertinoFormCurrencyDoubleInput extends TomFormDoubleField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoCurrencyDoubleInputWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoCurrencyDoubleInputWidget(field: this),
+  );
 }
 
 class _CupertinoCurrencyDoubleInputWidget extends StatefulWidget {
@@ -621,13 +628,15 @@ class _CupertinoCurrencyDoubleInputWidgetState
     // concat at the end.
     _controller = TextEditingController(text: _amount(field.get()));
     _focusNode = FocusNode()..addListener(_onFocus);
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final next = _amount((observable as TomObject<double>).get());
-        if (_controller.text != next) _controller.text = next;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final next = _amount((observable as TomObject<double>).get());
+            if (_controller.text != next) _controller.text = next;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -694,8 +703,10 @@ class _CupertinoCurrencyDoubleInputWidgetState
     // This mirrors the Material `prefixText` behaviour where the symbol
     // is part of the in-field decoration row, not glued to the border.
     final basePad = style.fieldContentPadding;
-    final symbolText =
-        Text(field.formatProfile.symbol, style: style.inputStyle);
+    final symbolText = Text(
+      field.formatProfile.symbol,
+      style: style.inputStyle,
+    );
     final symbolPrefix = field.symbolIsLeading
         ? Padding(
             padding: EdgeInsets.only(left: basePad.left),
@@ -721,12 +732,13 @@ class _CupertinoCurrencyDoubleInputWidgetState
     final input = CupertinoTextField(
       controller: _controller,
       focusNode: _focusNode,
-      keyboardType:
-          const TextInputType.numberWithOptions(decimal: true, signed: true),
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
       placeholder: hint == null
           ? null
-          : hint +
-              field.requiredIndicatorSuffix(style.requiredIndicatorOnHint),
+          : hint + field.requiredIndicatorSuffix(style.requiredIndicatorOnHint),
       placeholderStyle: composeHintStyle(style, Theme.of(context)),
       style: style.inputStyle,
       onChanged: field.isEditable ? _onChanged : null,

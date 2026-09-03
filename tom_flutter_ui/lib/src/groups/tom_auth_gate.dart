@@ -95,15 +95,14 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
     TomScope? scope,
     TomAuthorizer? authorizer,
     TomUIStateController? uiStateController,
-  }) =>
-      TomAuthGate(
-        tomId: tomId,
-        tomGroup: tomGroup,
-        scope: scope,
-        authorizer: authorizer,
-        uiStateController: uiStateController,
-        child: const SizedBox.shrink(),
-      ).getAuth();
+  }) => TomAuthGate(
+    tomId: tomId,
+    tomGroup: tomGroup,
+    scope: scope,
+    authorizer: authorizer,
+    uiStateController: uiStateController,
+    child: const SizedBox.shrink(),
+  ).getAuth();
 
   @override
   Widget build(BuildContext context) {

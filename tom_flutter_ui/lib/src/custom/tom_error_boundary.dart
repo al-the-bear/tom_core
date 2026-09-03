@@ -24,11 +24,12 @@ import 'package:flutter/material.dart';
 /// Builder signature for the fallback UI rendered when an error is
 /// caught. Receives the captured [FlutterErrorDetails] plus a
 /// `retry` closure that resets the boundary and re-attempts the build.
-typedef TomErrorBoundaryFallbackBuilder = Widget Function(
-  BuildContext context,
-  FlutterErrorDetails details,
-  VoidCallback retry,
-);
+typedef TomErrorBoundaryFallbackBuilder =
+    Widget Function(
+      BuildContext context,
+      FlutterErrorDetails details,
+      VoidCallback retry,
+    );
 
 /// Inline error boundary — catches build errors inside [child] and
 /// renders a fallback UI.
@@ -184,7 +185,8 @@ class _ErrorReporterState extends State<_ErrorReporter> {
     // response) would trip the lifecycle assertion.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final boundary = context.findAncestorStateOfType<_TomErrorBoundaryState>();
+      final boundary = context
+          .findAncestorStateOfType<_TomErrorBoundaryState>();
       // Routing the error to the nearest enclosing boundary is the
       // whole point of this widget — see the class doc on
       // [_ErrorBoundaryHost] for why.
@@ -216,24 +218,31 @@ class _DefaultErrorFallback extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(children: [
-            Icon(Icons.warning_amber_rounded,
-                color: theme.colorScheme.error, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Something went wrong',
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(color: theme.colorScheme.onErrorContainer),
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: theme.colorScheme.error,
+                size: 20,
               ),
-            ),
-            TextButton(onPressed: onRetry, child: const Text('Retry')),
-          ]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Something went wrong',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+              ),
+              TextButton(onPressed: onRetry, child: const Text('Retry')),
+            ],
+          ),
           const SizedBox(height: 6),
           Text(
             details.exceptionAsString(),
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onErrorContainer),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onErrorContainer,
+            ),
           ),
         ],
       ),

@@ -162,8 +162,10 @@ class TomFieldStyle {
     this.errorFieldGapBpOverrides = const [],
     this.descriptionFieldGap = 4.0,
     this.descriptionFieldGapBpOverrides = const [],
-    this.fieldContentPadding =
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    this.fieldContentPadding = const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 8,
+    ),
     this.borderRadius = 8.0,
     this.borderWidth,
     this.focusedBorderWidth,
@@ -199,11 +201,7 @@ class TomFieldStyle {
   ///
   /// Overrides are treated as sorted ascending by `minWidth`; the highest
   /// `minWidth <= width` wins. If none matches, [defaultValue] is returned.
-  T resolveForBp<T>(
-    double width,
-    T defaultValue,
-    List<(double, T)> overrides,
-  ) {
+  T resolveForBp<T>(double width, T defaultValue, List<(double, T)> overrides) {
     if (overrides.isEmpty) return defaultValue;
     T current = defaultValue;
     double best = double.negativeInfinity;
@@ -294,10 +292,9 @@ class TomFieldStyle {
       requiredIndicator: requiredIndicator ?? this.requiredIndicator,
       requiredIndicatorOnHint:
           requiredIndicatorOnHint ?? this.requiredIndicatorOnHint,
-      requiredIndicatorOnDescription: requiredIndicatorOnDescription ??
-          this.requiredIndicatorOnDescription,
-      descriptionPlacement:
-          descriptionPlacement ?? this.descriptionPlacement,
+      requiredIndicatorOnDescription:
+          requiredIndicatorOnDescription ?? this.requiredIndicatorOnDescription,
+      descriptionPlacement: descriptionPlacement ?? this.descriptionPlacement,
       actionIconPlacement: actionIconPlacement ?? this.actionIconPlacement,
       labelFieldGap: labelFieldGap ?? this.labelFieldGap,
       labelFieldGapBpOverrides:
@@ -306,13 +303,14 @@ class TomFieldStyle {
       errorFieldGapBpOverrides:
           errorFieldGapBpOverrides ?? this.errorFieldGapBpOverrides,
       descriptionFieldGap: descriptionFieldGap ?? this.descriptionFieldGap,
-      descriptionFieldGapBpOverrides: descriptionFieldGapBpOverrides ??
-          this.descriptionFieldGapBpOverrides,
+      descriptionFieldGapBpOverrides:
+          descriptionFieldGapBpOverrides ?? this.descriptionFieldGapBpOverrides,
       fieldContentPadding: fieldContentPadding ?? this.fieldContentPadding,
       borderRadius: borderRadius ?? this.borderRadius,
       borderWidth: borderWidthSet ? borderWidth : this.borderWidth,
-      focusedBorderWidth:
-          focusedBorderWidthSet ? focusedBorderWidth : this.focusedBorderWidth,
+      focusedBorderWidth: focusedBorderWidthSet
+          ? focusedBorderWidth
+          : this.focusedBorderWidth,
       fieldBorder: fieldBorder ?? this.fieldBorder,
       focusedBorder: focusedBorder ?? this.focusedBorder,
       errorBorder: errorBorder ?? this.errorBorder,
@@ -321,12 +319,10 @@ class TomFieldStyle {
       labelStyleBpOverrides:
           labelStyleBpOverrides ?? this.labelStyleBpOverrides,
       hintStyle: hintStyle ?? this.hintStyle,
-      hintStyleBpOverrides:
-          hintStyleBpOverrides ?? this.hintStyleBpOverrides,
+      hintStyleBpOverrides: hintStyleBpOverrides ?? this.hintStyleBpOverrides,
       // Explicit-null semantics: a caller passing `hintFontWeight: null` with
       // `hintFontWeightSet: true` clears the default (inherit theme weight).
-      hintFontWeight:
-          hintFontWeightSet ? hintFontWeight : this.hintFontWeight,
+      hintFontWeight: hintFontWeightSet ? hintFontWeight : this.hintFontWeight,
       hintOpacity: hintOpacitySet ? hintOpacity : this.hintOpacity,
       errorStyle: errorStyle ?? this.errorStyle,
       descriptionStyle: descriptionStyle ?? this.descriptionStyle,
@@ -335,8 +331,8 @@ class TomFieldStyle {
       readOnlyBackground: readOnlyBackground ?? this.readOnlyBackground,
       focusedBackground: focusedBackground ?? this.focusedBackground,
       errorBorderEnabled: errorBorderEnabled ?? this.errorBorderEnabled,
-      errorBorderEnabledBpOverrides: errorBorderEnabledBpOverrides ??
-          this.errorBorderEnabledBpOverrides,
+      errorBorderEnabledBpOverrides:
+          errorBorderEnabledBpOverrides ?? this.errorBorderEnabledBpOverrides,
       errorIconEnabled: errorIconEnabled ?? this.errorIconEnabled,
       errorIconEnabledBpOverrides:
           errorIconEnabledBpOverrides ?? this.errorIconEnabledBpOverrides,
@@ -1152,8 +1148,7 @@ class TomFormStyle {
   // --- Presets -------------------------------------------------------------
 
   /// Material-3 defaults.
-  static const TomFormStyle material3 =
-      TomFormStyle(defaults: TomFieldStyle());
+  static const TomFormStyle material3 = TomFormStyle(defaults: TomFieldStyle());
 
   /// Compact style — floating labels, reduced gaps.
   static const TomFormStyle compact = TomFormStyle(
@@ -1167,7 +1162,8 @@ class TomFormStyle {
   /// Bordered style — floating labels on an outlined border; error visuals
   /// enabled (error-border recolour + trailing error icon).
   static TomFormStyle get bordered => TomFormStyle(
-        defaults: const TomFieldStyle(
+    defaults:
+        const TomFieldStyle(
           labelPlacement: LabelPlacement.floating,
           errorBorderEnabled: true,
           errorIconEnabled: true,
@@ -1180,7 +1176,7 @@ class TomFormStyle {
             borderSide: BorderSide(color: Color(0xFFBA1A1A)),
           ),
         ),
-      );
+  );
 
   // --- Per-pair atomic resolution ------------------------------------------
 
@@ -1209,12 +1205,12 @@ class TomFormStyle {
       requiredIndicator: over.requiredIndicator ?? base.requiredIndicator,
       requiredIndicatorOnHint:
           over.requiredIndicatorOnHint ?? base.requiredIndicatorOnHint,
-      requiredIndicatorOnDescription: over.requiredIndicatorOnDescription ??
+      requiredIndicatorOnDescription:
+          over.requiredIndicatorOnDescription ??
           base.requiredIndicatorOnDescription,
       descriptionPlacement:
           over.descriptionPlacement ?? base.descriptionPlacement,
-      actionIconPlacement:
-          over.actionIconPlacement ?? base.actionIconPlacement,
+      actionIconPlacement: over.actionIconPlacement ?? base.actionIconPlacement,
       labelFieldGap: base.pickPair<double>(
         width,
         over.labelFieldGap,
@@ -1245,12 +1241,10 @@ class TomFormStyle {
       descriptionFieldGapBpOverrides: over.descriptionFieldGap != null
           ? over.descriptionFieldGapBpOverrides
           : base.descriptionFieldGapBpOverrides,
-      fieldContentPadding:
-          over.fieldContentPadding ?? base.fieldContentPadding,
+      fieldContentPadding: over.fieldContentPadding ?? base.fieldContentPadding,
       borderRadius: over.borderRadius ?? base.borderRadius,
       borderWidth: over.borderWidth ?? base.borderWidth,
-      focusedBorderWidth:
-          over.focusedBorderWidth ?? base.focusedBorderWidth,
+      focusedBorderWidth: over.focusedBorderWidth ?? base.focusedBorderWidth,
       fieldBorder: over.fieldBorder ?? base.fieldBorder,
       focusedBorder: over.focusedBorder ?? base.focusedBorder,
       errorBorder: over.errorBorder ?? base.errorBorder,
@@ -1373,8 +1367,11 @@ class TomFormStyle {
     final tt = theme.textTheme;
     const origin = TomFieldStyle(); // the canonical untouched defaults
 
-    TextStyle? pickTextStyle(TextStyle? current, TextStyle? originValue,
-        TextStyle? themed) {
+    TextStyle? pickTextStyle(
+      TextStyle? current,
+      TextStyle? originValue,
+      TextStyle? themed,
+    ) {
       return identical(current, originValue) ? themed : current;
     }
 

@@ -19,8 +19,7 @@ class TomFormInspector with TomFormEventListener {
   List<TomFormEvent> get events => List.unmodifiable(_events);
 
   /// Events filtered by type.
-  List<T> ofType<T extends TomFormEvent>() =>
-      _events.whereType<T>().toList();
+  List<T> ofType<T extends TomFormEvent>() => _events.whereType<T>().toList();
 
   /// Events filtered by source.
   List<TomFormEvent> fromSource(String source) =>

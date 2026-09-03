@@ -143,7 +143,8 @@ String? resolveFieldValidationMessage({
 }) {
   if (validationState is! ValidationError) return null;
   final key = validationState.errorKey;
-  final template = TomCtr.textOrNull(basePath, key) ??
+  final template =
+      TomCtr.textOrNull(basePath, key) ??
       TomCtr.textOrNull(scope, key) ??
       TomCtr.textOrNull(key) ??
       key;
@@ -209,10 +210,7 @@ InputDecoration applyErrorVisuals({
     final existing = updated.prefixIcon;
     final composed = existing == null
         ? leading
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [leading, existing],
-          );
+        : Row(mainAxisSize: MainAxisSize.min, children: [leading, existing]);
     updated = updated.copyWith(prefixIcon: composed);
   }
 
@@ -228,10 +226,7 @@ InputDecoration applyErrorVisuals({
     final existing = updated.suffixIcon;
     final composed = existing == null
         ? trailing
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [existing, trailing],
-          );
+        : Row(mainAxisSize: MainAxisSize.min, children: [existing, trailing]);
     updated = updated.copyWith(suffixIcon: composed);
   }
 
@@ -345,13 +340,18 @@ Widget _anatomyColumn({
   // rows; that dwarfs any SizedBox we can reasonably use between them. We
   // override to 1.15 to reclaim most of that leading while still leaving a
   // little room for ascenders/descenders.
-  final bool tightHeader = style.labelPlacement == LabelPlacement.above &&
+  final bool tightHeader =
+      style.labelPlacement == LabelPlacement.above &&
       style.descriptionPlacement == DescriptionPlacement.above;
   const double headerBlockHeight = 1.15;
   final double? headerHeightOverride = tightHeader ? headerBlockHeight : null;
 
   final label = _labelRow(
-    style, theme, labelText, hasRequired, isEditable,
+    style,
+    theme,
+    labelText,
+    hasRequired,
+    isEditable,
     lineHeightOverride: headerHeightOverride,
   );
 
@@ -363,19 +363,27 @@ Widget _anatomyColumn({
   // message replaces the description slot's text (rendered in error color).
   final replacingDesc =
       style.errorPlacement == ErrorPlacement.replaceDescription &&
-          errorMessage != null;
+      errorMessage != null;
   final descAbove = style.descriptionPlacement == DescriptionPlacement.above
-      ? _description(style, theme, descriptionText,
+      ? _description(
+          style,
+          theme,
+          descriptionText,
           hasRequired: hasRequired,
           isEditable: isEditable,
           errorOverride: replacingDesc ? errorMessage : null,
-          lineHeightOverride: headerHeightOverride)
+          lineHeightOverride: headerHeightOverride,
+        )
       : null;
   final descBelow = style.descriptionPlacement == DescriptionPlacement.below
-      ? _description(style, theme, descriptionText,
+      ? _description(
+          style,
+          theme,
+          descriptionText,
           hasRequired: hasRequired,
           isEditable: isEditable,
-          errorOverride: replacingDesc ? errorMessage : null)
+          errorOverride: replacingDesc ? errorMessage : null,
+        )
       : null;
 
   Widget? errorAbove;
@@ -411,7 +419,9 @@ Widget _anatomyColumn({
             label,
             SizedBox(width: style.labelFieldGap * 2),
           ],
-          Expanded(child: _inputRow(style, innerWidget, isSlowPending, actionIcon)),
+          Expanded(
+            child: _inputRow(style, innerWidget, isSlowPending, actionIcon),
+          ),
         ],
       ),
     );
@@ -458,8 +468,7 @@ Widget _anatomyColumn({
     children: children,
   );
 
-  if (effectiveAuth == TomAuthState.read &&
-      style.readOnlyBackground != null) {
+  if (effectiveAuth == TomAuthState.read && style.readOnlyBackground != null) {
     final color = style.readOnlyBackground!.resolve(const <WidgetState>{});
     column = ColoredBox(color: color, child: column);
   }
@@ -482,7 +491,9 @@ Widget? _labelRow(
 
   final baseTextStyle = style.labelStyle ?? theme.textTheme.bodyMedium;
   final effectiveStyle = lineHeightOverride != null
-      ? (baseTextStyle ?? const TextStyle()).copyWith(height: lineHeightOverride)
+      ? (baseTextStyle ?? const TextStyle()).copyWith(
+          height: lineHeightOverride,
+        )
       : baseTextStyle;
   final labelWidget = Text(
     labelText,
@@ -500,7 +511,10 @@ Widget? _labelRow(
 
   return Row(
     mainAxisSize: MainAxisSize.min,
-    children: [Flexible(child: labelWidget), indicator],
+    children: [
+      Flexible(child: labelWidget),
+      indicator,
+    ],
   );
 }
 
@@ -513,18 +527,18 @@ Widget? _requiredIndicatorWidget(
   if (!hasRequired || !isEditable) return null;
   return switch (style.requiredIndicator) {
     RequiredIndicator.asterisk => Text(
-        ' *',
-        style: (style.errorStyle ?? theme.textTheme.bodySmall)?.copyWith(
-          color: theme.colorScheme.error,
-        ),
+      ' *',
+      style: (style.errorStyle ?? theme.textTheme.bodySmall)?.copyWith(
+        color: theme.colorScheme.error,
       ),
+    ),
     // Resolved globally rather than per field: the anatomy builder is style-
     // driven and carries no basePath, and the required marker is a form-wide
     // convention an application words once anyway.
     RequiredIndicator.text => Text(
-        TomFormLabels.requiredSuffix(null),
-        style: style.descriptionStyle ?? theme.textTheme.bodySmall,
-      ),
+      TomFormLabels.requiredSuffix(null),
+      style: style.descriptionStyle ?? theme.textTheme.bodySmall,
+    ),
     RequiredIndicator.none => null,
     RequiredIndicator.custom => null,
   };
@@ -554,16 +568,26 @@ Widget _inputRow(
   final Widget trailing = isSlowPending
       ? pendingIndicator
       : (actionIcon != null
-          ? Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: actionIcon,
-            )
-          : const SizedBox.shrink());
+            ? Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: actionIcon,
+              )
+            : const SizedBox.shrink());
 
   if (style.actionIconPlacement == ActionIconPlacement.leading) {
-    return Row(children: [trailing, Expanded(child: innerWidget)]);
+    return Row(
+      children: [
+        trailing,
+        Expanded(child: innerWidget),
+      ],
+    );
   }
-  return Row(children: [Expanded(child: innerWidget), trailing]);
+  return Row(
+    children: [
+      Expanded(child: innerWidget),
+      trailing,
+    ],
+  );
 }
 
 Widget? _error(TomFieldStyle style, ThemeData theme, String? message) {

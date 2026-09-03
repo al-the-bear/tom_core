@@ -65,8 +65,9 @@ Future<BuildContext> _someContext(WidgetTester tester) async {
 
 void main() {
   group('the height facet, probed directly', () {
-    testWidgets('matches when the device is shorter than the bound',
-        (tester) async {
+    testWidgets('matches when the device is shorter than the bound', (
+      tester,
+    ) async {
       final context = await _someContext(tester);
       final detector = AclDeviceContext.buildConvenienceDetector(height: 500)!;
       expect(detector(_dc(height: 400), null, context), isTrue);
@@ -78,29 +79,36 @@ void main() {
       expect(detector(_dc(height: 600), null, context), isFalse);
     });
 
-    testWidgets('the bound is exclusive — equal height does not match',
-        (tester) async {
+    testWidgets('the bound is exclusive — equal height does not match', (
+      tester,
+    ) async {
       final context = await _someContext(tester);
       final detector = AclDeviceContext.buildConvenienceDetector(height: 500)!;
       expect(detector(_dc(height: 500), null, context), isFalse);
     });
 
-    testWidgets('an unknown height does not match, whatever the bound',
-        (tester) async {
+    testWidgets('an unknown height does not match, whatever the bound', (
+      tester,
+    ) async {
       // The case this file exists for. `null` is not treated as "no
       // constraint on this axis" and does not fall back to a default height:
       // it fails the facet outright.
       final context = await _someContext(tester);
       for (final bound in <double>[1, 500, 100000]) {
-        final detector =
-            AclDeviceContext.buildConvenienceDetector(height: bound)!;
-        expect(detector(_dc(height: null), null, context), isFalse,
-            reason: 'height: $bound should not match an unknown device height');
+        final detector = AclDeviceContext.buildConvenienceDetector(
+          height: bound,
+        )!;
+        expect(
+          detector(_dc(height: null), null, context),
+          isFalse,
+          reason: 'height: $bound should not match an unknown device height',
+        );
       }
     });
 
-    testWidgets('an unknown height is irrelevant when no height is asked for',
-        (tester) async {
+    testWidgets('an unknown height is irrelevant when no height is asked for', (
+      tester,
+    ) async {
       // Establishes that the veto above comes from the *facet*, not from the
       // context being somehow malformed — the same context matches happily on
       // every other facet.
@@ -111,8 +119,9 @@ void main() {
       expect(detector(_dc(height: null), null, context), isTrue);
     });
 
-    testWidgets('an unknown height vetoes an otherwise matching spec',
-        (tester) async {
+    testWidgets('an unknown height vetoes an otherwise matching spec', (
+      tester,
+    ) async {
       // AND semantics: every other facet agrees, and the detector still
       // returns false. This is the shape of the surprise — the author sees a
       // spec that describes their device exactly, and no variant.
@@ -127,8 +136,9 @@ void main() {
   });
 
   group('the sibling bounds, for contrast', () {
-    testWidgets('width is an exclusive upper bound like height',
-        (tester) async {
+    testWidgets('width is an exclusive upper bound like height', (
+      tester,
+    ) async {
       final context = await _someContext(tester);
       final detector = AclDeviceContext.buildConvenienceDetector(width: 600)!;
       expect(detector(_dc(width: 599), null, context), isTrue);
@@ -136,8 +146,9 @@ void main() {
       expect(detector(_dc(width: 601), null, context), isFalse);
     });
 
-    testWidgets('minAccessibilityScale is an inclusive lower bound',
-        (tester) async {
+    testWidgets('minAccessibilityScale is an inclusive lower bound', (
+      tester,
+    ) async {
       // The opposite direction and the opposite inclusivity from width/height
       // — worth pinning, because the parameter list gives no hint that the
       // two numeric facets disagree about which way they point.
@@ -168,34 +179,44 @@ void main() {
           .build();
     }
 
-    testWidgets('a bounded, short container activates the height variant',
-        (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SizedBox(width: 400, height: 400, child: buildHeightGatedRow()),
+    testWidgets('a bounded, short container activates the height variant', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: 400,
+              child: buildHeightGatedRow(),
+            ),
+          ),
         ),
-      ));
+      );
       expect(find.text('SHORT'), findsOneWidget);
       expect(find.text('DEFAULT'), findsNothing);
     });
 
-    testWidgets('an unbounded container falls back to the default variant',
-        (tester) async {
+    testWidgets('an unbounded container falls back to the default variant', (
+      tester,
+    ) async {
       // A Column gives its non-flex children unbounded height, so the ACL
       // shrink-wraps and reports `height: null` — even though the rendered
       // result is only a line or two tall, and so "shorter than 500" by any
       // reading an author would apply.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [buildHeightGatedRow()],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [buildHeightGatedRow()],
+              ),
             ),
           ),
         ),
-      ));
+      );
       expect(find.text('DEFAULT'), findsOneWidget);
       expect(find.text('SHORT'), findsNothing);
     });

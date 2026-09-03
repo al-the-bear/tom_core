@@ -146,9 +146,9 @@ class TomFormStringInput extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormStringInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormStringInputWidget(field: this),
+  );
 }
 
 class _TomFormStringInputWidget extends StatefulWidget {
@@ -161,8 +161,7 @@ class _TomFormStringInputWidget extends StatefulWidget {
       _TomFormStringInputWidgetState();
 }
 
-class _TomFormStringInputWidgetState
-    extends State<_TomFormStringInputWidget> {
+class _TomFormStringInputWidgetState extends State<_TomFormStringInputWidget> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
   late TomFunctionObserver<TomObservable> _observer;
@@ -183,15 +182,17 @@ class _TomFormStringInputWidgetState
   /// reuses our element with a different field instance (master/detail
   /// row swap, or any other widget.field reassignment).
   void _subscribe(TomFormStringInput target) {
-    _observer = target >> (observable) {
-      if (!_updatingFromField) {
-        final newText = (observable as TomObject<String>).get();
-        if (_controller.text != newText) {
-          _controller.text = newText;
-        }
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        target >>
+        (observable) {
+          if (!_updatingFromField) {
+            final newText = (observable as TomObject<String>).get();
+            if (_controller.text != newText) {
+              _controller.text = newText;
+            }
+          }
+          if (mounted) setState(() {});
+        };
     target.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -240,11 +241,14 @@ class _TomFormStringInputWidgetState
     final style = field.resolveStyle(context);
 
     String? effectiveHint = field.hintText;
-    final TextStyle? effectiveHintStyle =
-        composeHintStyle(style, Theme.of(context));
+    final TextStyle? effectiveHintStyle = composeHintStyle(
+      style,
+      Theme.of(context),
+    );
     if (effectiveHint != null && effectiveHint.isNotEmpty) {
-      effectiveHint +=
-          field.requiredIndicatorSuffix(style.requiredIndicatorOnHint);
+      effectiveHint += field.requiredIndicatorSuffix(
+        style.requiredIndicatorOnHint,
+      );
     }
 
     // Floating label lives inside InputDecoration; the anatomy column does
@@ -373,9 +377,9 @@ class TomFormStringDropdown extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormStringDropdownWidget(field: this),
-      );
+    field: this,
+    child: _TomFormStringDropdownWidget(field: this),
+  );
 }
 
 class _TomFormStringDropdownWidget extends StatefulWidget {
@@ -408,9 +412,11 @@ class _TomFormStringDropdownWidgetState
   }
 
   void _subscribe(TomFormStringDropdown target) {
-    _observer = target >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        target >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     target.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -464,8 +470,7 @@ class _TomFormStringDropdownWidgetState
     if (current.isEmpty) return;
     final stillPresent = items.any((item) => item.value == current);
     if (!stillPresent) {
-      final firstValue =
-          items.where((i) => i.enabled).firstOrNull?.value ?? '';
+      final firstValue = items.where((i) => i.enabled).firstOrNull?.value ?? '';
       field.setValue(firstValue);
     }
   }
@@ -483,8 +488,9 @@ class _TomFormStringDropdownWidgetState
 
     String? effectiveHint = field.hintText;
     if (effectiveHint != null && effectiveHint.isNotEmpty) {
-      effectiveHint +=
-          field.requiredIndicatorSuffix(style.requiredIndicatorOnHint);
+      effectiveHint += field.requiredIndicatorSuffix(
+        style.requiredIndicatorOnHint,
+      );
     }
 
     String? floatingLabel;

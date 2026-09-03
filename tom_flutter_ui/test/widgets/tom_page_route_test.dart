@@ -21,16 +21,18 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Pushes an already-constructed [route] and settles, from outside any scope.
 Future<void> _pushAndSettle(WidgetTester tester, Route<void> route) async {
-  await tester.pumpWidget(MaterialApp(
-    home: Builder(
-      builder: (context) => Scaffold(
-        body: ElevatedButton(
-          onPressed: () => Navigator.of(context).push(route),
-          child: const Text('go'),
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: ElevatedButton(
+            onPressed: () => Navigator.of(context).push(route),
+            child: const Text('go'),
+          ),
         ),
       ),
     ),
-  ));
+  );
 
   await tester.tap(find.text('go'));
   await tester.pumpAndSettle();
@@ -39,9 +41,9 @@ Future<void> _pushAndSettle(WidgetTester tester, Route<void> route) async {
 /// A route builder that records the `basePath` a Tom widget resolves to when
 /// the route's child is built.
 WidgetBuilder _reportingBuilder(void Function(String) report) => (_) {
-      report(TomText(tomId: 'title', text: 'Title').basePath!);
-      return const Scaffold(body: Text('pushed'));
-    };
+  report(TomText(tomId: 'title', text: 'Title').basePath!);
+  return const Scaffold(body: Text('pushed'));
+};
 
 void main() {
   setUp(() {
@@ -52,8 +54,9 @@ void main() {
     TomAuthorization.reset();
   });
 
-  testWidgets('carries the push-time scope into the pushed screen',
-      (tester) async {
+  testWidgets('carries the push-time scope into the pushed screen', (
+    tester,
+  ) async {
     String? captured;
 
     // Constructed inside 'checkout' — TomPageRoute captures the scope here.
@@ -70,21 +73,23 @@ void main() {
   });
 
   testWidgets(
-      'a raw MaterialPageRoute loses the scope (why TomPageRoute exists)',
-      (tester) async {
-    String? captured;
+    'a raw MaterialPageRoute loses the scope (why TomPageRoute exists)',
+    (tester) async {
+      String? captured;
 
-    final route = TomScope.withScope(
-      'checkout',
-      () =>
-          MaterialPageRoute<void>(builder: _reportingBuilder((p) => captured = p)),
-    );
+      final route = TomScope.withScope(
+        'checkout',
+        () => MaterialPageRoute<void>(
+          builder: _reportingBuilder((p) => captured = p),
+        ),
+      );
 
-    await _pushAndSettle(tester, route);
+      await _pushAndSettle(tester, route);
 
-    // The builder ran under the default scope, so the prefix is gone.
-    expect(captured, 'title');
-  });
+      // The builder ran under the default scope, so the prefix is gone.
+      expect(captured, 'title');
+    },
+  );
 
   testWidgets('an explicit scope overrides the ambient one', (tester) async {
     String? captured;
@@ -103,8 +108,9 @@ void main() {
     expect(captured, 'admin.title');
   });
 
-  testWidgets('forwards the MaterialPageRoute settings it declares',
-      (tester) async {
+  testWidgets('forwards the MaterialPageRoute settings it declares', (
+    tester,
+  ) async {
     final route = TomPageRoute<void>(
       builder: (_) => const SizedBox.shrink(),
       settings: const RouteSettings(name: '/detail'),

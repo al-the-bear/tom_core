@@ -132,14 +132,15 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// `listForm[index]`. Bind any per-row controls (delete buttons, drag
   /// handles, dirty chips) to this form.
   final Widget Function(BuildContext context, int index, TForm rowForm)
-      rowBuilder;
+  rowBuilder;
 
   /// Optional header rendered above every row (and above the empty
   /// state). Use for column-title strips, dirty chips, totals.
   final Widget Function(
     BuildContext context,
     TomListForm<TItem, TForm> listForm,
-  )? headerBuilder;
+  )?
+  headerBuilder;
 
   /// Optional footer rendered below every row (and below the empty
   /// state). Use for grand totals, summary banners, cross-row error
@@ -147,14 +148,16 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   final Widget Function(
     BuildContext context,
     TomListForm<TItem, TForm> listForm,
-  )? footerBuilder;
+  )?
+  footerBuilder;
 
   /// Optional toolbar rendered after [footerBuilder]. Conventionally
   /// hosts the Add / Remove all / bulk-action buttons.
   final Widget Function(
     BuildContext context,
     TomListForm<TItem, TForm> listForm,
-  )? toolbarBuilder;
+  )?
+  toolbarBuilder;
 
   /// Optional widget shown in place of any rows when the list is empty.
   /// Header / footer / toolbar still render around it. When omitted,
@@ -198,7 +201,7 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// floating row that follows the user's finger / pointer during a
   /// drag.
   final Widget Function(Widget child, int index, Animation<double> animation)?
-      proxyDecorator;
+  proxyDecorator;
 
   /// When `true`, the inline list automatically prepends or appends a
   /// pair of [TomListRowMoveButtons] to every row built by [rowBuilder].
@@ -245,8 +248,11 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 /// [TomInlineListForm] resolves resources up-front and delegates to this
 /// widget so the auth / resource pipeline (which is StatelessWidget-
 /// shaped) and the live observer chain don't fight each other.
-class _TomInlineListFormImpl<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends StatefulWidget {
+class _TomInlineListFormImpl<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
+    extends StatefulWidget {
   const _TomInlineListFormImpl({
     super.key,
     required this.listForm,
@@ -271,7 +277,7 @@ class _TomInlineListFormImpl<TItem extends TomClass,
   final Widget Function(BuildContext, TomListForm<TItem, TForm>)? headerBuilder;
   final Widget Function(BuildContext, TomListForm<TItem, TForm>)? footerBuilder;
   final Widget Function(BuildContext, TomListForm<TItem, TForm>)?
-      toolbarBuilder;
+  toolbarBuilder;
   final Widget Function(BuildContext)? emptyBuilder;
   final String? emptyText;
   final Widget Function(BuildContext, int)? rowSeparatorBuilder;
@@ -280,7 +286,7 @@ class _TomInlineListFormImpl<TItem extends TomClass,
   final bool reorderable;
   final void Function(int from, int to)? onReorder;
   final Widget Function(Widget child, int index, Animation<double> animation)?
-      proxyDecorator;
+  proxyDecorator;
   final bool showRowMoveButtons;
   final TomRowMoveButtonsPosition rowMoveButtonsPosition;
 
@@ -289,8 +295,10 @@ class _TomInlineListFormImpl<TItem extends TomClass,
       _TomInlineListFormImplState<TItem, TForm>();
 }
 
-class _TomInlineListFormImplState<TItem extends TomClass,
-        TForm extends TomForm<TItem>>
+class _TomInlineListFormImplState<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
     extends State<_TomInlineListFormImpl<TItem, TForm>>
     implements TomObserver {
   @override
@@ -321,16 +329,20 @@ class _TomInlineListFormImplState<TItem extends TomClass,
 
   /// Wraps the user's row body with leading or trailing per-row move
   /// buttons when [TomInlineListForm.showRowMoveButtons] is enabled.
-  Widget _wrapRow(BuildContext context, int index, Widget rowBody,
-      TomListForm<TItem, TForm> list) {
+  Widget _wrapRow(
+    BuildContext context,
+    int index,
+    Widget rowBody,
+    TomListForm<TItem, TForm> list,
+  ) {
     if (!widget.showRowMoveButtons) return rowBody;
     final moveButtons = TomListRowMoveButtons<TItem, TForm>(
       listForm: list,
       index: index,
       onReorder: widget.onReorder,
     );
-    final children = widget.rowMoveButtonsPosition ==
-            TomRowMoveButtonsPosition.leading
+    final children =
+        widget.rowMoveButtonsPosition == TomRowMoveButtonsPosition.leading
         ? <Widget>[moveButtons, Expanded(child: rowBody)]
         : <Widget>[Expanded(child: rowBody), moveButtons];
     return Row(
@@ -365,7 +377,11 @@ class _TomInlineListFormImplState<TItem extends TomClass,
           return KeyedSubtree(
             key: ValueKey('tom-inline-row-${list[i].hashCode}-$i'),
             child: _wrapRow(
-                context, i, widget.rowBuilder(context, i, list[i]), list),
+              context,
+              i,
+              widget.rowBuilder(context, i, list[i]),
+              list,
+            ),
           );
         },
       );
@@ -376,8 +392,9 @@ class _TomInlineListFormImplState<TItem extends TomClass,
       if (i > 0 && widget.rowSeparatorBuilder != null) {
         rowChildren.add(widget.rowSeparatorBuilder!(context, i - 1));
       }
-      rowChildren
-          .add(_wrapRow(context, i, widget.rowBuilder(context, i, list[i]), list));
+      rowChildren.add(
+        _wrapRow(context, i, widget.rowBuilder(context, i, list[i]), list),
+      );
     }
     return Column(
       crossAxisAlignment: widget.crossAxisAlignment,

@@ -72,8 +72,10 @@ class TomValidatorRegistry {
 
   /// Resolves the validator [name] with optional [args], throwing
   /// [ArgumentError] (listing the known names) when [name] is unregistered.
-  Validator<Object?> resolveOrThrow(String name,
-      [List<String> args = const []]) {
+  Validator<Object?> resolveOrThrow(
+    String name, [
+    List<String> args = const [],
+  ]) {
     final factory = _factories[name];
     if (factory == null) {
       throw ArgumentError(
@@ -95,9 +97,9 @@ class TomValidatorRegistry {
   /// resource value, e.g. `required,minLength:8,strongPassword`) into the list
   /// of validators to run, in declaration order. Blank entries are ignored.
   List<Validator<Object?>> resolveDeclaration(String declaration) => [
-        for (final spec in declaration.split(','))
-          if (spec.trim().isNotEmpty) resolveSpec(spec.trim()),
-      ];
+    for (final spec in declaration.split(','))
+      if (spec.trim().isNotEmpty) resolveSpec(spec.trim()),
+  ];
 
   /// Splits a validator [spec] into its name and colon-separated arguments.
   ///
@@ -119,10 +121,14 @@ class TomValidatorRegistry {
     // bundle-declared `required` unmarked.
     register('required', (_) => Validators.requiredInstance);
     register('email', (_) => _wrapString(Validators.email()));
-    register('minLength',
-        (args) => _wrapString(Validators.minLength(_intArg(args, 'minLength'))));
-    register('maxLength',
-        (args) => _wrapString(Validators.maxLength(_intArg(args, 'maxLength'))));
+    register(
+      'minLength',
+      (args) => _wrapString(Validators.minLength(_intArg(args, 'minLength'))),
+    );
+    register(
+      'maxLength',
+      (args) => _wrapString(Validators.maxLength(_intArg(args, 'maxLength'))),
+    );
     register('pattern', (args) {
       final regex = _regexArg(args, 'pattern');
       return _wrapString(Validators.pattern(regex));
@@ -130,13 +136,13 @@ class TomValidatorRegistry {
     register('min', (args) => _wrapNum(Validators.min(_numArg(args, 'min'))));
     register('max', (args) => _wrapNum(Validators.max(_numArg(args, 'max'))));
     register(
-        'minItems',
-        (args) =>
-            _wrapIterable(Validators.minItems(_intArg(args, 'minItems'))));
+      'minItems',
+      (args) => _wrapIterable(Validators.minItems(_intArg(args, 'minItems'))),
+    );
     register(
-        'maxItems',
-        (args) =>
-            _wrapIterable(Validators.maxItems(_intArg(args, 'maxItems'))));
+      'maxItems',
+      (args) => _wrapIterable(Validators.maxItems(_intArg(args, 'maxItems'))),
+    );
   }
 
   /// Adapts a `Validator<String>` to `Validator<Object?>` by narrowing the
@@ -157,34 +163,44 @@ class TomValidatorRegistry {
 
   static int _intArg(List<String> args, String validatorName) {
     if (args.isEmpty) {
-      throw ArgumentError('Validator "$validatorName" requires an integer '
-          'argument (e.g. "$validatorName:8").');
+      throw ArgumentError(
+        'Validator "$validatorName" requires an integer '
+        'argument (e.g. "$validatorName:8").',
+      );
     }
     final parsed = int.tryParse(args.first);
     if (parsed == null) {
-      throw ArgumentError('Validator "$validatorName" argument "${args.first}" '
-          'is not an integer.');
+      throw ArgumentError(
+        'Validator "$validatorName" argument "${args.first}" '
+        'is not an integer.',
+      );
     }
     return parsed;
   }
 
   static num _numArg(List<String> args, String validatorName) {
     if (args.isEmpty) {
-      throw ArgumentError('Validator "$validatorName" requires a numeric '
-          'argument (e.g. "$validatorName:10").');
+      throw ArgumentError(
+        'Validator "$validatorName" requires a numeric '
+        'argument (e.g. "$validatorName:10").',
+      );
     }
     final parsed = num.tryParse(args.first);
     if (parsed == null) {
-      throw ArgumentError('Validator "$validatorName" argument "${args.first}" '
-          'is not a number.');
+      throw ArgumentError(
+        'Validator "$validatorName" argument "${args.first}" '
+        'is not a number.',
+      );
     }
     return parsed;
   }
 
   static RegExp _regexArg(List<String> args, String validatorName) {
     if (args.isEmpty) {
-      throw ArgumentError('Validator "$validatorName" requires a regular-'
-          'expression argument (e.g. "$validatorName:^[a-z]+\$").');
+      throw ArgumentError(
+        'Validator "$validatorName" requires a regular-'
+        'expression argument (e.g. "$validatorName:^[a-z]+\$").',
+      );
     }
     // Re-join on ':' so patterns containing colons survive parseSpec.
     return RegExp(args.join(':'));

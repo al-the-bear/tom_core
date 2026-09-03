@@ -95,19 +95,19 @@ class TomCupertinoFormNStringInput extends TomField<String?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoNullableTextWidget<String?>(
-          field: this,
-          decorationField: this,
-          nullDisplay: resolveNullDisplay(),
-          format: (v) => v ?? '',
-          parse: (text) => text.isEmpty ? null : text,
-          keyboardType: TextInputType.text,
-          inputFormatters: const [],
-          maxLength: maxLength,
-          prefix: prefix,
-        ),
-      );
+    field: this,
+    child: _CupertinoNullableTextWidget<String?>(
+      field: this,
+      decorationField: this,
+      nullDisplay: resolveNullDisplay(),
+      format: (v) => v ?? '',
+      parse: (text) => text.isEmpty ? null : text,
+      keyboardType: TextInputType.text,
+      inputFormatters: const [],
+      maxLength: maxLength,
+      prefix: prefix,
+    ),
+  );
 }
 
 // ===========================================================================
@@ -116,9 +116,7 @@ class TomCupertinoFormNStringInput extends TomField<String?>
 
 @tomReflector
 class TomCupertinoFormNIntInput extends TomField<int?>
-    with
-        TomStringInputDecorationMixin<int?>,
-        _CupertinoNullableLabels<int?> {
+    with TomStringInputDecorationMixin<int?>, _CupertinoNullableLabels<int?> {
   @override
   final String? labelTextOverride;
   @override
@@ -145,21 +143,19 @@ class TomCupertinoFormNIntInput extends TomField<int?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoNullableTextWidget<int?>(
-          field: this,
-          decorationField: this,
-          nullDisplay: resolveNullDisplay(),
-          format: (v) => v?.toString() ?? '',
-          parse: (text) => text.isEmpty ? null : int.tryParse(text),
-          keyboardType: const TextInputType.numberWithOptions(signed: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'-?\d*')),
-          ],
-          prefix: prefix,
-          skipUnparseableNonEmpty: true,
-        ),
-      );
+    field: this,
+    child: _CupertinoNullableTextWidget<int?>(
+      field: this,
+      decorationField: this,
+      nullDisplay: resolveNullDisplay(),
+      format: (v) => v?.toString() ?? '',
+      parse: (text) => text.isEmpty ? null : int.tryParse(text),
+      keyboardType: const TextInputType.numberWithOptions(signed: true),
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))],
+      prefix: prefix,
+      skipUnparseableNonEmpty: true,
+    ),
+  );
 }
 
 // ===========================================================================
@@ -203,21 +199,23 @@ class TomCupertinoFormNDoubleInput extends TomField<double?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoNullableTextWidget<double?>(
-          field: this,
-          decorationField: this,
-          nullDisplay: resolveNullDisplay(),
-          format: _format,
-          parse: (text) => text.isEmpty ? null : double.tryParse(text),
-          keyboardType: const TextInputType.numberWithOptions(
-              decimal: true, signed: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'-?\d*\.?\d*')),
-          ],
-          skipUnparseableNonEmpty: true,
-        ),
-      );
+    field: this,
+    child: _CupertinoNullableTextWidget<double?>(
+      field: this,
+      decorationField: this,
+      nullDisplay: resolveNullDisplay(),
+      format: _format,
+      parse: (text) => text.isEmpty ? null : double.tryParse(text),
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'-?\d*\.?\d*')),
+      ],
+      skipUnparseableNonEmpty: true,
+    ),
+  );
 }
 
 // ===========================================================================
@@ -274,13 +272,15 @@ class _CupertinoNullableTextWidgetState<T>
     super.initState();
     _controller = TextEditingController(text: widget.format(field.get()));
     _focusNode = FocusNode();
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final v = widget.format((observable as TomObject<T>).get());
-        if (_controller.text != v) _controller.text = v;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final v = widget.format((observable as TomObject<T>).get());
+            if (_controller.text != v) _controller.text = v;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -397,14 +397,17 @@ class TomCupertinoFormNDateInput extends TomField<DateTime?>
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
-  })  : assert(!firstDate.isAfter(lastDate),
-            'TomCupertinoFormNDateInput: firstDate must be on or before lastDate'),
-        assert(
-            initialValue == null ||
-                (!initialValue.isBefore(firstDate) &&
-                    !initialValue.isAfter(lastDate)),
-            'TomCupertinoFormNDateInput: initialValue (when non-null) must be '
-            'within [firstDate, lastDate]');
+  }) : assert(
+         !firstDate.isAfter(lastDate),
+         'TomCupertinoFormNDateInput: firstDate must be on or before lastDate',
+       ),
+       assert(
+         initialValue == null ||
+             (!initialValue.isBefore(firstDate) &&
+                 !initialValue.isAfter(lastDate)),
+         'TomCupertinoFormNDateInput: initialValue (when non-null) must be '
+         'within [firstDate, lastDate]',
+       );
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -420,9 +423,9 @@ class TomCupertinoFormNDateInput extends TomField<DateTime?>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoNDateInputWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoNDateInputWidget(field: this),
+  );
 }
 
 class _CupertinoNDateInputWidget extends StatefulWidget {
@@ -443,9 +446,11 @@ class _CupertinoNDateInputWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 

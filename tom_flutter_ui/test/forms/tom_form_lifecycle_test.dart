@@ -72,8 +72,7 @@ void main() {
       expect(form.currentBinding, same(item));
     });
 
-    test('snapshots the bound values, which is what discard restores from',
-        () {
+    test('snapshots the bound values, which is what discard restores from', () {
       final form = _boundTo(_item('Bolt'));
 
       expect(form.initialSnapshot, isNotNull);
@@ -143,15 +142,17 @@ void main() {
       expect(form.dirtyFields.single, same(form.product));
     });
 
-    test('is a comparison, not a flag — typing the old value back clears it',
-        () {
-      final form = _boundTo(_item('Bolt'));
+    test(
+      'is a comparison, not a flag — typing the old value back clears it',
+      () {
+        final form = _boundTo(_item('Bolt'));
 
-      form.product.setValue('Washer');
-      form.product.setValue('Bolt');
+        form.product.setValue('Washer');
+        form.product.setValue('Bolt');
 
-      expect(form.isDirty, isFalse);
-    });
+        expect(form.isDirty, isFalse);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -169,17 +170,19 @@ void main() {
       expect(item.product.get(), 'Washer');
     });
 
-    test('moves the baseline, so a later discard keeps the saved value',
-        () async {
-      final form = _boundTo(_item('Bolt'));
+    test(
+      'moves the baseline, so a later discard keeps the saved value',
+      () async {
+        final form = _boundTo(_item('Bolt'));
 
-      form.product.setValue('Washer');
-      await form.save();
-      form.discard();
+        form.product.setValue('Washer');
+        await form.save();
+        form.discard();
 
-      expect(form.product.get(), 'Washer');
-      expect(form.initialSnapshot!['product'], 'Washer');
-    });
+        expect(form.product.get(), 'Washer');
+        expect(form.initialSnapshot!['product'], 'Washer');
+      },
+    );
 
     test('leaves the bound object untouched when validation fails', () async {
       // save() validates before it writes, so a rejected save is not a
@@ -337,18 +340,20 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('changes', () {
-    test('fires on form events, which is what aggregate-state UI rebuilds on',
-        () {
-      // isValid and fieldsWithErrors move on validation transitions that the
-      // observable value channel never carries, so a Save button needs this
-      // notifier rather than a per-field listener.
-      final form = _boundTo(_item('Bolt'));
-      var notifications = 0;
-      form.changes.addListener(() => notifications++);
+    test(
+      'fires on form events, which is what aggregate-state UI rebuilds on',
+      () {
+        // isValid and fieldsWithErrors move on validation transitions that the
+        // observable value channel never carries, so a Save button needs this
+        // notifier rather than a per-field listener.
+        final form = _boundTo(_item('Bolt'));
+        var notifications = 0;
+        form.changes.addListener(() => notifications++);
 
-      form.discard();
+        form.discard();
 
-      expect(notifications, greaterThan(0));
-    });
+        expect(notifications, greaterThan(0));
+      },
+    );
   });
 }

@@ -102,9 +102,9 @@ class TomFormIntFilterChips extends TomFormIntListField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormIntFilterChipsWidget(field: this),
-      );
+    field: this,
+    child: _TomFormIntFilterChipsWidget(field: this),
+  );
 }
 
 class _TomFormIntFilterChipsWidget extends StatefulWidget {
@@ -128,9 +128,11 @@ class _TomFormIntFilterChipsWidgetState
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -191,8 +193,9 @@ class _TomFormIntFilterChipsWidgetState
           onSelected: f.isEditable && item.enabled
               ? (sel) => f.toggleItem(item.value, sel)
               : null,
-          selectedColor:
-              override?.selectedColor?.resolve(const {WidgetState.selected}),
+          selectedColor: override?.selectedColor?.resolve(const {
+            WidgetState.selected,
+          }),
           visualDensity: VisualDensity.compact,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );

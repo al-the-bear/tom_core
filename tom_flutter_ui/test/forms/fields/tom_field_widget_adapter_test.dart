@@ -109,8 +109,10 @@ void main() {
     test('reports the field\'s tomId', () {
       final wrapped = field('quantity');
 
-      final adapter =
-          TomFieldWidgetAdapter(field: wrapped, child: const SizedBox());
+      final adapter = TomFieldWidgetAdapter(
+        field: wrapped,
+        child: const SizedBox(),
+      );
 
       expect(adapter.tomId, 'quantity');
     });
@@ -120,13 +122,17 @@ void main() {
       final wrapped = TomFormStringInput('quantity', 'Bolt', tomGroup: group);
       addTearDown(wrapped.dispose);
 
-      final adapter =
-          TomFieldWidgetAdapter(field: wrapped, child: const SizedBox());
+      final adapter = TomFieldWidgetAdapter(
+        field: wrapped,
+        child: const SizedBox(),
+      );
 
       expect(adapter.tomGroup, same(group));
       expect(
-        TomFieldWidgetAdapter(field: field('other'), child: const SizedBox())
-            .tomGroup,
+        TomFieldWidgetAdapter(
+          field: field('other'),
+          child: const SizedBox(),
+        ).tomGroup,
         isNull,
       );
     });
@@ -135,8 +141,10 @@ void main() {
       authorization.denials['secret'] = TomAuthState.none;
       final wrapped = field('secret');
 
-      final adapter =
-          TomFieldWidgetAdapter(field: wrapped, child: const SizedBox());
+      final adapter = TomFieldWidgetAdapter(
+        field: wrapped,
+        child: const SizedBox(),
+      );
 
       expect(adapter.effectiveAuthState, TomAuthState.none);
     });
@@ -149,25 +157,30 @@ void main() {
       final open = field('open');
 
       expect(
-        TomFieldWidgetAdapter(field: readonly, child: const SizedBox())
-            .effectiveAuthState,
+        TomFieldWidgetAdapter(
+          field: readonly,
+          child: const SizedBox(),
+        ).effectiveAuthState,
         TomAuthState.read,
       );
       expect(
-        TomFieldWidgetAdapter(field: open, child: const SizedBox())
-            .effectiveAuthState,
+        TomFieldWidgetAdapter(
+          field: open,
+          child: const SizedBox(),
+        ).effectiveAuthState,
         TomAuthState.full,
       );
     });
 
-    test('asks the field again each time, so a later policy change is seen',
-        () {
+    test('asks the field again each time, so a later policy change is seen', () {
       // The adapter is `const`-constructible and long-lived; if it snapshotted
       // the state at construction, a policy that changed after login — or
       // after a group's mode was flipped — would never reach the UI.
       final wrapped = field('secret');
-      final adapter =
-          TomFieldWidgetAdapter(field: wrapped, child: const SizedBox());
+      final adapter = TomFieldWidgetAdapter(
+        field: wrapped,
+        child: const SizedBox(),
+      );
       expect(adapter.effectiveAuthState, TomAuthState.full);
 
       authorization.denials['secret'] = TomAuthState.none;
@@ -181,15 +194,15 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('the widget it was given', () {
-    testWidgets('is what gets rendered — the adapter adds no chrome',
-        (tester) async {
+    testWidgets('is what gets rendered — the adapter adds no chrome', (
+      tester,
+    ) async {
       final wrapped = field('quantity');
 
       await tester.pumpWidget(
-        _host(TomFieldWidgetAdapter(
-          field: wrapped,
-          child: const Text('payload'),
-        )),
+        _host(
+          TomFieldWidgetAdapter(field: wrapped, child: const Text('payload')),
+        ),
       );
 
       expect(find.text('payload'), findsOneWidget);
@@ -213,8 +226,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('State follows the field, not the slot', () {
-    testWidgets('a different field in the same slot gets a fresh State',
-        (tester) async {
+    testWidgets('a different field in the same slot gets a fresh State', (
+      tester,
+    ) async {
       // The master/detail row swap. A reused State keeps observing the
       // previous field: its controller never updates, the displayed value
       // goes stale, and edits land on the wrong record.
@@ -230,8 +244,11 @@ void main() {
       );
       await tester.pump();
 
-      expect(log.where((entry) => entry.startsWith('update')), isEmpty,
-          reason: 'no State may be carried over to the new field');
+      expect(
+        log.where((entry) => entry.startsWith('update')),
+        isEmpty,
+        reason: 'no State may be carried over to the new field',
+      );
       expect(log, contains('init b'));
       expect(log, contains('dispose a'));
     });
@@ -253,17 +270,22 @@ void main() {
       expect(log, ['init a', 'update a']);
     });
 
-    testWidgets('keys on the field instance, not on the field\'s id',
-        (tester) async {
+    testWidgets('keys on the field instance, not on the field\'s id', (
+      tester,
+    ) async {
       // Two fields can legitimately share a tomId — the same form rendered
       // for two rows of a list — so identity, not name, has to decide.
       final log = <String>[];
 
       await tester.pumpWidget(
-        _host(TomFieldWidgetAdapter(field: field('row'), child: _Probe('a', log))),
+        _host(
+          TomFieldWidgetAdapter(field: field('row'), child: _Probe('a', log)),
+        ),
       );
       await tester.pumpWidget(
-        _host(TomFieldWidgetAdapter(field: field('row'), child: _Probe('b', log))),
+        _host(
+          TomFieldWidgetAdapter(field: field('row'), child: _Probe('b', log)),
+        ),
       );
       await tester.pump();
 
@@ -300,9 +322,13 @@ void main() {
 
       await pump(tester, layout(field('secret')));
 
-      expect(find.byType(TextField), findsNothing,
-          reason: 'the pass reads the child widget, so the field only '
-              'disappears if the adapter presents its auth state');
+      expect(
+        find.byType(TextField),
+        findsNothing,
+        reason:
+            'the pass reads the child widget, so the field only '
+            'disappears if the adapter presents its auth state',
+      );
     });
 
     testWidgets('a permitted field is left alone', (tester) async {
@@ -311,8 +337,9 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
     });
 
-    testWidgets('only `none` hides — a read-only field still renders',
-        (tester) async {
+    testWidgets('only `none` hides — a read-only field still renders', (
+      tester,
+    ) async {
       // The pass tests for `none` exactly. A delegation that widened or
       // narrowed on the way through would show up here as a read-only field
       // vanishing.

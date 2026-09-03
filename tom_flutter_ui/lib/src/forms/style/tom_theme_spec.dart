@@ -79,7 +79,8 @@ class TomThemeSpec {
     );
     final density = _parseDensity(TomCtr.textOrNull(root, 'density'));
 
-    final anySet = brightness != null ||
+    final anySet =
+        brightness != null ||
         seed != null ||
         primary != null ||
         secondary != null ||

@@ -34,9 +34,13 @@ class _MapAuthAdapter implements TomAuthorizationAdapter {
 Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 Widget _table({List<DataColumn>? columns, List<DataRow>? rows}) => DataTable(
-      columns: columns ?? const [DataColumn(label: Text('c'))],
-      rows: rows ?? const [DataRow(cells: [DataCell(Text('v'))])],
-    );
+  columns: columns ?? const [DataColumn(label: Text('c'))],
+  rows:
+      rows ??
+      const [
+        DataRow(cells: [DataCell(Text('v'))]),
+      ],
+);
 
 /// The disabled treatment is an [AbsorbPointer] plus an [Opacity] below 1.0.
 /// Asserted structurally rather than by exact opacity so a theme that tunes
@@ -51,7 +55,8 @@ void _expectDisabledTreatment(WidgetTester tester, Finder content) {
   );
   final opacities = tester
       .widgetList<Opacity>(
-          find.ancestor(of: content, matching: find.byType(Opacity)))
+        find.ancestor(of: content, matching: find.byType(Opacity)),
+      )
       .where((o) => o.opacity < 1.0);
   expect(opacities, isNotEmpty, reason: 'disabled content must be dimmed');
 }
@@ -61,60 +66,95 @@ void main() {
   tearDown(TomAuthorization.reset);
 
   group('tcce2: disabled is a treatment, not a synonym for full', () {
-    testWidgets('tcce2-01: a disabled TomDataCell is dimmed and untouchable',
-        (tester) async {
-      TomAuthorization.adapter =
-          _MapAuthAdapter({'cell': TomAuthState.disabled});
-      await tester.pumpWidget(_host(_table(rows: [
-        DataRow(cells: [
-          TomDataCell(tomId: 'cell', child: const Text('amount')),
-        ]),
-      ])));
+    testWidgets('tcce2-01: a disabled TomDataCell is dimmed and untouchable', (
+      tester,
+    ) async {
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'cell': TomAuthState.disabled,
+      });
+      await tester.pumpWidget(
+        _host(
+          _table(
+            rows: [
+              DataRow(
+                cells: [
+                  TomDataCell(tomId: 'cell', child: const Text('amount')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
       _expectDisabledTreatment(tester, find.text('amount'));
     });
 
-    testWidgets('tcce2-02: a disabled TomDataColumn header is dimmed',
-        (tester) async {
-      TomAuthorization.adapter =
-          _MapAuthAdapter({'col': TomAuthState.disabled});
-      await tester.pumpWidget(_host(_table(
-        columns: [TomDataColumn(tomId: 'col', label: const Text('salary'))],
-      )));
+    testWidgets('tcce2-02: a disabled TomDataColumn header is dimmed', (
+      tester,
+    ) async {
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'col': TomAuthState.disabled,
+      });
+      await tester.pumpWidget(
+        _host(
+          _table(
+            columns: [TomDataColumn(tomId: 'col', label: const Text('salary'))],
+          ),
+        ),
+      );
       _expectDisabledTreatment(tester, find.text('salary'));
     });
 
-    testWidgets('tcce2-03: a full TomDataCell gets no treatment at all',
-        (tester) async {
+    testWidgets('tcce2-03: a full TomDataCell gets no treatment at all', (
+      tester,
+    ) async {
       // The guard for the other direction: if the gate dimmed everything,
       // tcce2-01 would pass for the wrong reason.
-      await tester.pumpWidget(_host(_table(rows: [
-        DataRow(cells: [
-          TomDataCell(tomId: 'cell', child: const Text('amount')),
-        ]),
-      ])));
+      await tester.pumpWidget(
+        _host(
+          _table(
+            rows: [
+              DataRow(
+                cells: [
+                  TomDataCell(tomId: 'cell', child: const Text('amount')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
       final dimmed = tester
-          .widgetList<Opacity>(find.ancestor(
-              of: find.text('amount'), matching: find.byType(Opacity)))
+          .widgetList<Opacity>(
+            find.ancestor(
+              of: find.text('amount'),
+              matching: find.byType(Opacity),
+            ),
+          )
           .where((o) => o.opacity < 1.0);
       expect(dimmed, isEmpty);
     });
 
-    testWidgets('tcce2-04: a disabled TomExpansionPanel body is dimmed',
-        (tester) async {
-      TomAuthorization.adapter =
-          _MapAuthAdapter({'panel': TomAuthState.disabled});
-      await tester.pumpWidget(_host(SingleChildScrollView(
-        child: ExpansionPanelList(
-          children: [
-            TomExpansionPanel(
-              tomId: 'panel',
-              isExpanded: true,
-              headerBuilder: (_, _) => const Text('head'),
-              body: const Text('body'),
-            ).toPanel(),
-          ],
+    testWidgets('tcce2-04: a disabled TomExpansionPanel body is dimmed', (
+      tester,
+    ) async {
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'panel': TomAuthState.disabled,
+      });
+      await tester.pumpWidget(
+        _host(
+          SingleChildScrollView(
+            child: ExpansionPanelList(
+              children: [
+                TomExpansionPanel(
+                  tomId: 'panel',
+                  isExpanded: true,
+                  headerBuilder: (_, _) => const Text('head'),
+                  body: const Text('body'),
+                ).toPanel(),
+              ],
+            ),
+          ),
         ),
-      )));
+      );
       _expectDisabledTreatment(tester, find.text('body'));
     });
   });
@@ -124,29 +164,42 @@ void main() {
     final disableAll = TomAuthorizer(resolve: (_) => TomAuthState.disabled);
 
     testWidgets('tcce2-05: an authorizer hides a TomDataCell', (tester) async {
-      await tester.pumpWidget(_host(_table(rows: [
-        DataRow(cells: [
-          TomDataCell(
-            tomId: 'cell',
-            authorizer: denyAll,
-            child: const Text('amount'),
+      await tester.pumpWidget(
+        _host(
+          _table(
+            rows: [
+              DataRow(
+                cells: [
+                  TomDataCell(
+                    tomId: 'cell',
+                    authorizer: denyAll,
+                    child: const Text('amount'),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ]),
-      ])));
+        ),
+      );
       expect(find.text('amount'), findsNothing);
     });
 
-    testWidgets('tcce2-06: an authorizer hides a TomDataColumn label',
-        (tester) async {
-      await tester.pumpWidget(_host(_table(
-        columns: [
-          TomDataColumn(
-            tomId: 'col',
-            authorizer: denyAll,
-            label: const Text('salary'),
+    testWidgets('tcce2-06: an authorizer hides a TomDataColumn label', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          _table(
+            columns: [
+              TomDataColumn(
+                tomId: 'col',
+                authorizer: denyAll,
+                label: const Text('salary'),
+              ),
+            ],
           ),
-        ],
-      )));
+        ),
+      );
       expect(find.text('salary'), findsNothing);
     });
 
@@ -159,53 +212,78 @@ void main() {
       expect(row.isVisible, isFalse);
     });
 
-    testWidgets('tcce2-08: an authorizer disables a TomSnackBar content',
-        (tester) async {
-      await tester.pumpWidget(_host(Builder(builder: (context) {
-        return TextButton(
-          onPressed: () => TomMessenger.showSnackBar(
-            context,
-            TomSnackBar(
-              tomId: 'bar',
-              authorizer: disableAll,
-              content: const Text('saved'),
-            ),
+    testWidgets('tcce2-08: an authorizer disables a TomSnackBar content', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          Builder(
+            builder: (context) {
+              return TextButton(
+                onPressed: () => TomMessenger.showSnackBar(
+                  context,
+                  TomSnackBar(
+                    tomId: 'bar',
+                    authorizer: disableAll,
+                    content: const Text('saved'),
+                  ),
+                ),
+                child: const Text('go'),
+              );
+            },
           ),
-          child: const Text('go'),
-        );
-      })));
+        ),
+      );
       await tester.tap(find.text('go'));
       await tester.pumpAndSettle();
       _expectDisabledTreatment(tester, find.text('saved'));
     });
 
-    testWidgets('tcce2-09: an authorizer hides a TomAnimatedPositioned child',
-        (tester) async {
-      await tester.pumpWidget(_host(Stack(children: [
-        TomAnimatedPositioned(
-          tomId: 'box',
-          authorizer: denyAll,
-          duration: const Duration(milliseconds: 1),
-          child: const Text('inner'),
+    testWidgets('tcce2-09: an authorizer hides a TomAnimatedPositioned child', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          Stack(
+            children: [
+              TomAnimatedPositioned(
+                tomId: 'box',
+                authorizer: denyAll,
+                duration: const Duration(milliseconds: 1),
+                child: const Text('inner'),
+              ),
+            ],
+          ),
         ),
-      ])));
+      );
       expect(find.text('inner'), findsNothing);
     });
 
-    testWidgets('tcce2-10: an authorizer that only narrows cannot widen',
-        (tester) async {
+    testWidgets('tcce2-10: an authorizer that only narrows cannot widen', (
+      tester,
+    ) async {
       // The default strategy is authorizerNarrowsOnly, so an authorizer that
       // answers `full` under a `none` resource rule must not open the cell.
       TomAuthorization.adapter = _MapAuthAdapter({'cell': TomAuthState.none});
-      await tester.pumpWidget(_host(_table(rows: [
-        DataRow(cells: [
-          TomDataCell(
-            tomId: 'cell',
-            authorizer: TomAuthorizer(resolve: (_) => TomAuthState.full),
-            child: const Text('amount'),
+      await tester.pumpWidget(
+        _host(
+          _table(
+            rows: [
+              DataRow(
+                cells: [
+                  TomDataCell(
+                    tomId: 'cell',
+                    authorizer: TomAuthorizer(
+                      resolve: (_) => TomAuthState.full,
+                    ),
+                    child: const Text('amount'),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ]),
-      ])));
+        ),
+      );
       expect(find.text('amount'), findsNothing);
     });
   });
@@ -214,33 +292,46 @@ void main() {
     final hide = TomUIStateController(resolve: (_, _) => TomAuthState.none);
 
     testWidgets('tcce2-11: a controller hides a TomDataCell', (tester) async {
-      await tester.pumpWidget(_host(_table(rows: [
-        DataRow(cells: [
-          TomDataCell(
-            tomId: 'cell',
-            uiStateController: hide,
-            child: const Text('amount'),
+      await tester.pumpWidget(
+        _host(
+          _table(
+            rows: [
+              DataRow(
+                cells: [
+                  TomDataCell(
+                    tomId: 'cell',
+                    uiStateController: hide,
+                    child: const Text('amount'),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ]),
-      ])));
+        ),
+      );
       expect(find.text('amount'), findsNothing);
     });
 
-    testWidgets('tcce2-12: a controller hides a TomExpansionPanel',
-        (tester) async {
-      await tester.pumpWidget(_host(SingleChildScrollView(
-        child: ExpansionPanelList(
-          children: [
-            TomExpansionPanel(
-              tomId: 'panel',
-              uiStateController: hide,
-              isExpanded: true,
-              headerBuilder: (_, _) => const Text('head'),
-              body: const Text('body'),
-            ).toPanel(),
-          ],
+    testWidgets('tcce2-12: a controller hides a TomExpansionPanel', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          SingleChildScrollView(
+            child: ExpansionPanelList(
+              children: [
+                TomExpansionPanel(
+                  tomId: 'panel',
+                  uiStateController: hide,
+                  isExpanded: true,
+                  headerBuilder: (_, _) => const Text('head'),
+                  body: const Text('body'),
+                ).toPanel(),
+              ],
+            ),
+          ),
         ),
-      )));
+      );
       expect(find.text('head'), findsNothing);
       expect(find.text('body'), findsNothing);
     });
@@ -254,26 +345,37 @@ void main() {
       expect(row.isVisible, isFalse);
     });
 
-    testWidgets('tcce2-14: a controller can only narrow, never widen',
-        (tester) async {
+    testWidgets('tcce2-14: a controller can only narrow, never widen', (
+      tester,
+    ) async {
       TomAuthorization.adapter = _MapAuthAdapter({'cell': TomAuthState.none});
-      await tester.pumpWidget(_host(_table(rows: [
-        DataRow(cells: [
-          TomDataCell(
-            tomId: 'cell',
-            uiStateController:
-                TomUIStateController(resolve: (_, _) => TomAuthState.full),
-            child: const Text('amount'),
+      await tester.pumpWidget(
+        _host(
+          _table(
+            rows: [
+              DataRow(
+                cells: [
+                  TomDataCell(
+                    tomId: 'cell',
+                    uiStateController: TomUIStateController(
+                      resolve: (_, _) => TomAuthState.full,
+                    ),
+                    child: const Text('amount'),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ]),
-      ])));
+        ),
+      );
       expect(find.text('amount'), findsNothing);
     });
   });
 
   group('tcce2: TomDataCell.empty resolves like every other cell', () {
-    testWidgets('tcce2-15: an empty cell still registers with its group',
-        (tester) async {
+    testWidgets('tcce2-15: an empty cell still registers with its group', (
+      tester,
+    ) async {
       // `TomDataCell.empty` renders nothing either way, so authorization has
       // no visible effect on it — but it accepts the same three fields as the
       // full constructor, so it must answer the same question with them

@@ -201,9 +201,9 @@ class _MultiFamily extends TomFamilyBase {
 
   @override
   Set<TomWidgetFamily> get families => {
-        TomWidgetFamily.formField,
-        TomWidgetFamily.dateTimePicker,
-      };
+    TomWidgetFamily.formField,
+    TomWidgetFamily.dateTimePicker,
+  };
 
   @override
   Widget buildContent(BuildContext context) => const SizedBox.shrink();
@@ -261,60 +261,66 @@ void main() {
       // The load-bearing assertion: no value is both, and none is neither.
       // A 27th enum value fails here even if it is added to neither set.
       expect(covered.union(_reservedFormFamilies), hasLength(26));
-      expect(TomWidgetFamily.values.toSet(), covered.union(
-        _reservedFormFamilies,
-      ));
-    });
-  });
-
-  group('TomWidgetFamily: each branch base claims the family it is named for',
-      () {
-    // Everything in the group above is a statement about *sets* — which
-    // families are covered, that they are distinct, that they partition the
-    // enum. None of it can see a permutation: swap the bodies of
-    // `TomListBase.family` and `TomChipBase.family` and the covered set is
-    // unchanged, still 20, still distinct, still disjoint from the reserved
-    // six. Every assertion above passes and two bases lie about what they are.
-    //
-    // The bases are near-identical boilerplate differing in one line, which is
-    // exactly the shape that invites a copy-paste slip, and neither the
-    // analyzer nor a consumer test can catch it: a widget reporting the wrong
-    // family builds and renders perfectly.
-
-    test('every row instantiates the base it names', () {
-      for (final binding in _bindings) {
-        expect(
-          binding.instanceMatchesBase,
-          isTrue,
-          reason: '${binding.instance.runtimeType} does not extend '
-              '${binding.base}, so this row asserts nothing about '
-              '${binding.base} and covers another base twice',
-        );
-      }
-    });
-
-    test('the table names each of the 20 branch bases exactly once', () {
-      expect(_bindings, hasLength(20));
       expect(
-        _bindings.map((b) => b.base).toSet(),
-        hasLength(20),
-        reason: 'a duplicated base type would leave another untested while '
-            'the length check still passed',
+        TomWidgetFamily.values.toSet(),
+        covered.union(_reservedFormFamilies),
       );
     });
-
-    test('each branch base reports the family its name claims', () {
-      for (final binding in _bindings) {
-        expect(
-          binding.instance.family,
-          binding.expected,
-          reason: '${binding.base} reports ${binding.instance.family}. The '
-              'name and the family must agree — every tool that switches on '
-              'TomWidgetFamily trusts that they do',
-        );
-      }
-    });
   });
+
+  group(
+    'TomWidgetFamily: each branch base claims the family it is named for',
+    () {
+      // Everything in the group above is a statement about *sets* — which
+      // families are covered, that they are distinct, that they partition the
+      // enum. None of it can see a permutation: swap the bodies of
+      // `TomListBase.family` and `TomChipBase.family` and the covered set is
+      // unchanged, still 20, still distinct, still disjoint from the reserved
+      // six. Every assertion above passes and two bases lie about what they are.
+      //
+      // The bases are near-identical boilerplate differing in one line, which is
+      // exactly the shape that invites a copy-paste slip, and neither the
+      // analyzer nor a consumer test can catch it: a widget reporting the wrong
+      // family builds and renders perfectly.
+
+      test('every row instantiates the base it names', () {
+        for (final binding in _bindings) {
+          expect(
+            binding.instanceMatchesBase,
+            isTrue,
+            reason:
+                '${binding.instance.runtimeType} does not extend '
+                '${binding.base}, so this row asserts nothing about '
+                '${binding.base} and covers another base twice',
+          );
+        }
+      });
+
+      test('the table names each of the 20 branch bases exactly once', () {
+        expect(_bindings, hasLength(20));
+        expect(
+          _bindings.map((b) => b.base).toSet(),
+          hasLength(20),
+          reason:
+              'a duplicated base type would leave another untested while '
+              'the length check still passed',
+        );
+      });
+
+      test('each branch base reports the family its name claims', () {
+        for (final binding in _bindings) {
+          expect(
+            binding.instance.family,
+            binding.expected,
+            reason:
+                '${binding.base} reports ${binding.instance.family}. The '
+                'name and the family must agree — every tool that switches on '
+                'TomWidgetFamily trusts that they do',
+          );
+        }
+      });
+    },
+  );
 
   group('TomFamilyBase: how family, families and isFamily relate', () {
     // `doc/widget_base.md` says `families` "allows it to report more than one"
@@ -356,7 +362,8 @@ void main() {
       expect(
         widget.isFamily(widget.family),
         isFalse,
-        reason: 'if this now passes, families composes in the primary and '
+        reason:
+            'if this now passes, families composes in the primary and '
             'the dartdoc warning about omitting it is obsolete',
       );
     });

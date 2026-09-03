@@ -73,10 +73,14 @@ Map<String, int> _declaredFlags() {
     var value = 0;
     for (final term in expr.split('|').map((t) => t.trim())) {
       final resolved = flags[term];
-      expect(resolved, isNotNull,
-          reason: '$_flagsSource declares `$name = $expr`, and `$term` is '
-              'neither an integer literal nor a flag declared above it — this '
-              'test cannot resolve the value the constant actually has');
+      expect(
+        resolved,
+        isNotNull,
+        reason:
+            '$_flagsSource declares `$name = $expr`, and `$term` is '
+            'neither an integer literal nor a flag declared above it — this '
+            'test cannot resolve the value the constant actually has',
+      );
       value |= resolved!;
     }
     flags[name] = value;
@@ -158,19 +162,21 @@ Map<String, int> _documentedFlags() {
     if (!trimmed.startsWith('|')) continue;
     final cells = trimmed.split('|');
     if (cells.length < 3) continue;
-    final names = RegExp(r'`([A-Za-z_][A-Za-z0-9_]*)`')
-        .allMatches(cells[1])
-        .map((m) => m.group(1)!)
-        .toList();
+    final names = RegExp(
+      r'`([A-Za-z_][A-Za-z0-9_]*)`',
+    ).allMatches(cells[1]).map((m) => m.group(1)!).toList();
     if (names.isEmpty) continue; // header or separator row
-    final bits = RegExp(r'\d+')
-        .allMatches(cells[2])
-        .map((m) => int.parse(m.group(0)!))
-        .toList();
-    expect(bits.length, names.length,
-        reason: 'the flag table row for ${names.join(" / ")} lists '
-            '${bits.length} bit value(s) for ${names.length} flag(s), so the '
-            'row cannot be read unambiguously');
+    final bits = RegExp(
+      r'\d+',
+    ).allMatches(cells[2]).map((m) => int.parse(m.group(0)!)).toList();
+    expect(
+      bits.length,
+      names.length,
+      reason:
+          'the flag table row for ${names.join(" / ")} lists '
+          '${bits.length} bit value(s) for ${names.length} flag(s), so the '
+          'row cannot be read unambiguously',
+    );
     for (var i = 0; i < names.length; i++) {
       documented[names[i]] = bits[i];
     }
@@ -184,16 +190,20 @@ void main() {
       // The defect that actually shipped: a flag a caller can set, whose
       // dartdoc and table entry describe behaviour, and which the layout
       // never consults.
-      final inert = _declaredFlags()
-          .keys
-          .where((name) => !_flagsReadByEngine().contains(name))
-          .toList()
-        ..sort();
-      expect(inert, isEmpty,
-          reason: 'these flags are declared in $_flagsSource but read nowhere '
-              'in $_libDir/, so setting one does nothing while both the '
-              'dartdoc and the reference table imply it works:\n'
-              '${inert.map((f) => '  $f').join('\n')}');
+      final inert =
+          _declaredFlags().keys
+              .where((name) => !_flagsReadByEngine().contains(name))
+              .toList()
+            ..sort();
+      expect(
+        inert,
+        isEmpty,
+        reason:
+            'these flags are declared in $_flagsSource but read nowhere '
+            'in $_libDir/, so setting one does nothing while both the '
+            'dartdoc and the reference table imply it works:\n'
+            '${inert.map((f) => '  $f').join('\n')}',
+      );
     });
   });
 
@@ -201,9 +211,13 @@ void main() {
     test('every declared flag is documented, with its real bit value', () {
       final declared = _declaredFlags();
       final documented = _documentedFlags();
-      expect(documented, isNotEmpty,
-          reason: '$_docPath has no readable flag table under '
-              '"## $_flagsHeading"');
+      expect(
+        documented,
+        isNotEmpty,
+        reason:
+            '$_docPath has no readable flag table under '
+            '"## $_flagsHeading"',
+      );
 
       final problems = <String>[];
       for (final entry in declared.entries) {
@@ -212,13 +226,18 @@ void main() {
           problems.add('${entry.key} (= ${entry.value}) is not in the table');
         } else if (shown != entry.value) {
           problems.add(
-              '${entry.key} is documented as $shown but declared as '
-              '${entry.value}');
+            '${entry.key} is documented as $shown but declared as '
+            '${entry.value}',
+          );
         }
       }
-      expect(problems, isEmpty,
-          reason: 'the flag table in $_docPath disagrees with $_flagsSource:\n'
-              '${problems.map((p) => '  $p').join('\n')}');
+      expect(
+        problems,
+        isEmpty,
+        reason:
+            'the flag table in $_docPath disagrees with $_flagsSource:\n'
+            '${problems.map((p) => '  $p').join('\n')}',
+      );
     });
 
     test('the table documents no flag that does not exist', () {
@@ -228,9 +247,13 @@ void main() {
       final invented =
           _documentedFlags().keys.where((f) => !declared.contains(f)).toList()
             ..sort();
-      expect(invented, isEmpty,
-          reason: 'the flag table names these flags, which $_flagsSource does '
-              'not declare:\n${invented.map((f) => '  $f').join('\n')}');
+      expect(
+        invented,
+        isEmpty,
+        reason:
+            'the flag table names these flags, which $_flagsSource does '
+            'not declare:\n${invented.map((f) => '  $f').join('\n')}',
+      );
     });
   });
 
@@ -241,19 +264,26 @@ void main() {
     // hands them back through AclComponent — and leaves the gap components
     // the documents describe unexplained.
     test('no flag dartdoc marks a public constant as internal', () {
-      final disclaimed = _flagDartdoc()
-          .entries
-          .where((e) => RegExp(r'\b(internal|private|do not use)\b',
-                  caseSensitive: false)
-              .hasMatch(e.value))
-          .map((e) => e.key)
-          .toList()
-        ..sort();
-      expect(disclaimed, isEmpty,
-          reason: 'these flags are exported publicly but their dartdoc warns '
-              'the reader off, which contradicts both the reference table and '
-              'the getters on AclComponent that read them back:\n'
-              '${disclaimed.map((f) => '  $f').join('\n')}');
+      final disclaimed =
+          _flagDartdoc().entries
+              .where(
+                (e) => RegExp(
+                  r'\b(internal|private|do not use)\b',
+                  caseSensitive: false,
+                ).hasMatch(e.value),
+              )
+              .map((e) => e.key)
+              .toList()
+            ..sort();
+      expect(
+        disclaimed,
+        isEmpty,
+        reason:
+            'these flags are exported publicly but their dartdoc warns '
+            'the reader off, which contradicts both the reference table and '
+            'the getters on AclComponent that read them back:\n'
+            '${disclaimed.map((f) => '  $f').join('\n')}',
+      );
     });
   });
 
@@ -261,17 +291,15 @@ void main() {
     test('gap() marks its slot with gapElement', () {
       // The link between the builder call and the flag. Without it, the
       // render test below could pass for some unrelated reason.
-      final acl = AclBuilder()
-          .append(const Text('content'))
-          .gap()
-          .build();
+      final acl = AclBuilder().append(const Text('content')).gap().build();
       final components = acl.rows.single.components;
       expect(components.map((c) => c.isGap), [false, true]);
       expect(components.last.flags & AclFlags.gapElement, AclFlags.gapElement);
     });
 
-    testWidgets('a component carrying gapElement does not render its child',
-        (tester) async {
+    testWidgets('a component carrying gapElement does not render its child', (
+      tester,
+    ) async {
       // The destructive part of the meaning, and the reason the dartdoc tells
       // callers to reach for gap() instead of setAttr.
       final acl = AclBuilder()
@@ -283,9 +311,13 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: Scaffold(body: acl)));
 
       expect(find.text('kept'), findsOneWidget);
-      expect(find.text('swallowed'), findsNothing,
-          reason: 'a component flagged gapElement is replaced by a spacer; '
-              'its child is never built');
+      expect(
+        find.text('swallowed'),
+        findsNothing,
+        reason:
+            'a component flagged gapElement is replaced by a spacer; '
+            'its child is never built',
+      );
     });
 
     testWidgets('a gap slot pushes content apart', (tester) async {
@@ -308,9 +340,13 @@ void main() {
 
       final left = tester.getTopLeft(find.text('left')).dx;
       final right = tester.getTopLeft(find.text('right')).dx;
-      expect(right - left, greaterThan(200),
-          reason: 'the gap slot should have absorbed the row surplus and '
-              'driven the two labels apart');
+      expect(
+        right - left,
+        greaterThan(200),
+        reason:
+            'the gap slot should have absorbed the row surplus and '
+            'driven the two labels apart',
+      );
     });
   });
 }

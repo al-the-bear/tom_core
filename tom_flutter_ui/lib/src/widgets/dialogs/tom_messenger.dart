@@ -35,13 +35,9 @@ abstract final class TomMessenger {
   /// Throws if no [ScaffoldMessenger] is in scope — use
   /// [showSnackBarIfPresent] when the messenger may be absent.
   static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
-      showSnackBar(
-    BuildContext context,
-    SnackBar snackBar,
-  ) =>
-          _isHidden(snackBar)
-              ? null
-              : ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  showSnackBar(BuildContext context, SnackBar snackBar) => _isHidden(snackBar)
+      ? null
+      : ScaffoldMessenger.of(context).showSnackBar(snackBar);
 
   /// Shows [snackBar] only if a [ScaffoldMessenger] is in scope; otherwise a
   /// no-op returning null. Use this from code paths that may run without a
@@ -49,13 +45,10 @@ abstract final class TomMessenger {
   ///
   /// Also returns null for a hidden [TomSnackBar], as [showSnackBar] does.
   static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
-      showSnackBarIfPresent(
-    BuildContext context,
-    SnackBar snackBar,
-  ) =>
-          _isHidden(snackBar)
-              ? null
-              : ScaffoldMessenger.maybeOf(context)?.showSnackBar(snackBar);
+  showSnackBarIfPresent(BuildContext context, SnackBar snackBar) =>
+      _isHidden(snackBar)
+      ? null
+      : ScaffoldMessenger.maybeOf(context)?.showSnackBar(snackBar);
 
   /// Whether [snackBar] carries Tom authorization that denies it outright.
   static bool _isHidden(SnackBar snackBar) =>
@@ -69,6 +62,5 @@ abstract final class TomMessenger {
   static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? showMessage(
     BuildContext context,
     String message,
-  ) =>
-      showSnackBar(context, TomSnackBar(content: TomText(text: message)));
+  ) => showSnackBar(context, TomSnackBar(content: TomText(text: message)));
 }

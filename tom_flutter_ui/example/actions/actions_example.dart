@@ -42,7 +42,7 @@ class IncrementUndo implements TomActionUndo {
 class IncrementAction extends TomAction<CounterContext, IncrementUndo> {
   final int step;
   IncrementAction({required super.controller, this.step = 1})
-      : super(actionId: 'increment');
+    : super(actionId: 'increment');
 
   @override
   IncrementUndo execute(CounterContext context, TomActionTransaction tx) {
@@ -109,7 +109,9 @@ void run() {
   );
   trigger.trigger();
   trigger.trigger();
-  print('after two triggers: ${counter.value} (undo stack: ${history.undoCount})');
+  print(
+    'after two triggers: ${counter.value} (undo stack: ${history.undoCount})',
+  );
 
   // Example 4: undo reverses the most recent transaction. redo restores the
   // stack position only — TomUndoHistory.redo does NOT re-apply the action's
@@ -127,8 +129,10 @@ void run() {
   final resetCanRun = controller.reset.canExecute(ctx());
   print('reset canExecute (positive): $resetCanRun');
   controller.reset.execute(ctx(), TomActionTransaction(label: 'reset'));
-  print('after reset: ${counter.value} '
-      '(canExecute now: ${controller.reset.canExecute(ctx())})');
+  print(
+    'after reset: ${counter.value} '
+    '(canExecute now: ${controller.reset.canExecute(ctx())})',
+  );
 
   // Example 6: a guarded composite runs only the steps whose guard passes.
   var gate = false;

@@ -61,12 +61,7 @@ class _Caption extends TomLabelBase {
 
 /// A leaf node in the `button` family. Same base class chain, different branch.
 class _ActionButton extends TomButtonBase {
-  _ActionButton({
-    super.tomId,
-    super.tomGroup,
-    super.scope,
-    super.authorizer,
-  });
+  _ActionButton({super.tomId, super.tomGroup, super.scope, super.authorizer});
 
   @override
   Widget buildContent(BuildContext context) => Text(TomCtr.text(basePath));
@@ -168,8 +163,9 @@ void run() {
   // member of `editing`, whose grant is `read`. The default mode
   // (`controlsWidest`) makes the group a ceiling, so the member narrows to it.
   print('save   auth        -> ${order.save.resolveEffectiveAuth()}');
-  assert(TomAuthorization.resolveAuth(order.save.basePath!) ==
-      TomAuthState.full);
+  assert(
+    TomAuthorization.resolveAuth(order.save.basePath!) == TomAuthState.full,
+  );
   assert(order.save.resolveEffectiveAuth() == TomAuthState.read);
 
   // Layer 3, the per-widget authorizer. `TomAuthorizer.fixed` uses the

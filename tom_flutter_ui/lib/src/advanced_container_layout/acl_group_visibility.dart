@@ -72,9 +72,9 @@ class AclCallbackVisibilityController<T> extends AclGroupVisibilityController {
   AclCallbackVisibilityController({
     required ValueListenable<T> valueListenable,
     required AclGroupVisibilityMode Function(T value) modeBuilder,
-  })  : _source = valueListenable,
-        _modeBuilder = modeBuilder,
-        _notifier = ValueNotifier(modeBuilder(valueListenable.value)) {
+  }) : _source = valueListenable,
+       _modeBuilder = modeBuilder,
+       _notifier = ValueNotifier(modeBuilder(valueListenable.value)) {
     _source.addListener(_onSourceChanged);
   }
 

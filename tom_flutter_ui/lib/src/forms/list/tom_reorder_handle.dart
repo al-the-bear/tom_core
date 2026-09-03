@@ -61,18 +61,19 @@ class TomReorderHandle extends TomImageBase {
     Color? color,
     String? tooltip,
     EdgeInsetsGeometry? padding,
-  })  : _icon = icon,
-        _size = size,
-        _color = color,
-        _tooltip = tooltip,
-        _padding = padding {
-    _resolvedIcon = _icon ?? TomCtr.icon(basePath, 'icon') ?? Icons.drag_indicator;
+  }) : _icon = icon,
+       _size = size,
+       _color = color,
+       _tooltip = tooltip,
+       _padding = padding {
+    _resolvedIcon =
+        _icon ?? TomCtr.icon(basePath, 'icon') ?? Icons.drag_indicator;
     _resolvedSize = _size ?? TomCtr.doubleVal(basePath, 'size') ?? 18.0;
     _resolvedColor = _color ?? TomCtr.color(basePath, 'color');
-    _resolvedTooltip = _tooltip ??
-        TomCtr.textOrNull(basePath, 'tooltip') ??
-        'Drag to reorder';
-    _resolvedPadding = _padding ??
+    _resolvedTooltip =
+        _tooltip ?? TomCtr.textOrNull(basePath, 'tooltip') ?? 'Drag to reorder';
+    _resolvedPadding =
+        _padding ??
         TomCtr.edgeInsets(basePath, 'padding') ??
         const EdgeInsets.symmetric(horizontal: 4, vertical: 6);
   }
@@ -107,10 +108,7 @@ class TomReorderHandle extends TomImageBase {
         : Tooltip(message: _resolvedTooltip, child: iconWidget);
     return ReorderableDragStartListener(
       index: index,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.grab,
-        child: wrapped,
-      ),
+      child: MouseRegion(cursor: SystemMouseCursors.grab, child: wrapped),
     );
   }
 }

@@ -87,13 +87,15 @@ List<_Reference> _referencesIn(String path) {
   final pattern = RegExp(r'§(\d+[a-z]?)');
   for (var i = 0; i < lines.length; i++) {
     for (final match in pattern.allMatches(lines[i])) {
-      references.add(_Reference(
-        path: path,
-        line: i + 1,
-        section: match.group(1)!,
-        lineText: lines[i].trim(),
-        block: blockOfLine[i],
-      ));
+      references.add(
+        _Reference(
+          path: path,
+          line: i + 1,
+          section: match.group(1)!,
+          lineText: lines[i].trim(),
+          block: blockOfLine[i],
+        ),
+      );
     }
   }
   return references;
@@ -160,9 +162,13 @@ void main() {
     // simply stopped citing the specification — and would keep passing after
     // someone deleted the last reference by accident.
     test('the unit still cites the specification', () {
-      expect(references, isNotEmpty,
-          reason: 'no §NN references found in $_sourcePaths — either the '
-              'unit stopped citing the spec, or the scan is broken');
+      expect(
+        references,
+        isNotEmpty,
+        reason:
+            'no §NN references found in $_sourcePaths — either the '
+            'unit stopped citing the spec, or the scan is broken',
+      );
       expect(sections, contains('24'));
       expect(sections, contains('26b'));
     });
@@ -174,27 +180,40 @@ void main() {
       // of them was a second place for the numbering to drift. Should the
       // habit return, it returns unqualified — so catch it here.
       final stray = references.where((r) => r.block == null).toList();
-      expect(stray, isEmpty,
-          reason: 'section references outside dartdoc:\n'
-              '${stray.map((r) => '  ${r.where}: ${r.lineText}').join('\n')}');
+      expect(
+        stray,
+        isEmpty,
+        reason:
+            'section references outside dartdoc:\n'
+            '${stray.map((r) => '  ${r.where}: ${r.lineText}').join('\n')}',
+      );
     });
 
     test('every reference names the document it points into', () {
       final bare = references
           .where((r) => r.block != null && !r.block!.contains(_specPath))
           .toList();
-      expect(bare, isEmpty,
-          reason: 'section references whose dartdoc never names $_specPath:\n'
-              '${bare.map((r) => '  ${r.where}: ${r.lineText}').join('\n')}');
+      expect(
+        bare,
+        isEmpty,
+        reason:
+            'section references whose dartdoc never names $_specPath:\n'
+            '${bare.map((r) => '  ${r.where}: ${r.lineText}').join('\n')}',
+      );
     });
 
     test('every reference resolves to a heading that exists', () {
-      final dangling =
-          references.where((r) => !sections.contains(r.section)).toList();
-      expect(dangling, isEmpty,
-          reason: 'section references with no matching heading in $_specPath '
-              '(it defines ${_sectionList(sections)}):\n'
-              '${dangling.map((r) => '  ${r.where}: §${r.section}').join('\n')}');
+      final dangling = references
+          .where((r) => !sections.contains(r.section))
+          .toList();
+      expect(
+        dangling,
+        isEmpty,
+        reason:
+            'section references with no matching heading in $_specPath '
+            '(it defines ${_sectionList(sections)}):\n'
+            '${dangling.map((r) => '  ${r.where}: §${r.section}').join('\n')}',
+      );
     });
   });
 
@@ -209,19 +228,28 @@ void main() {
     setUpAll(() => internal = _internalSpecReferences());
 
     test('the document cross-references itself at all', () {
-      expect(internal.length, greaterThan(10),
-          reason: 'only ${internal.length} internal §NN references found in '
-              '$_specPath — the scan is probably broken');
+      expect(
+        internal.length,
+        greaterThan(10),
+        reason:
+            'only ${internal.length} internal §NN references found in '
+            '$_specPath — the scan is probably broken',
+      );
     });
 
     test('every internal reference names a section that still exists', () {
-      final dangling =
-          internal.where((r) => !sections.contains(r.section)).toList();
-      expect(dangling, isEmpty,
-          reason: 'these point at sections $_specPath no longer defines — it '
-              'has ${_sectionList(sections)}:\n'
-              '${dangling.map((r) => '  line ${r.line}: §${r.section} — '
-                  '${r.text}').join('\n')}');
+      final dangling = internal
+          .where((r) => !sections.contains(r.section))
+          .toList();
+      expect(
+        dangling,
+        isEmpty,
+        reason:
+            'these point at sections $_specPath no longer defines — it '
+            'has ${_sectionList(sections)}:\n'
+            '${dangling.map((r) => '  line ${r.line}: §${r.section} — '
+                '${r.text}').join('\n')}',
+      );
     });
   });
 

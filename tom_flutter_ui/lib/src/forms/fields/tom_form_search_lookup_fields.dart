@@ -137,9 +137,9 @@ class TomFormSearchInput<T> extends TomFormSearchField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _SearchInputWidget<T>(field: this),
-      );
+    field: this,
+    child: _SearchInputWidget<T>(field: this),
+  );
 }
 
 class _SearchInputWidget<T> extends StatefulWidget {
@@ -161,9 +161,11 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -195,8 +197,7 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
     if (fn != null) return fn(v);
     final hit = _items.firstWhere(
       (it) => it.value == v,
-      orElse: () =>
-          SelectableItem<T>(value: v, label: v?.toString() ?? ''),
+      orElse: () => SelectableItem<T>(value: v, label: v?.toString() ?? ''),
     );
     return hit.label;
   }
@@ -321,10 +322,7 @@ class _SearchOptionsPopup<T> extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         borderRadius: const BorderRadius.all(Radius.circular(4)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxHeight: 240,
-            maxWidth: 480,
-          ),
+          constraints: const BoxConstraints(maxHeight: 240, maxWidth: 480),
           child: SingleChildScrollView(
             child: IntrinsicWidth(
               child: Column(
@@ -409,9 +407,9 @@ class TomFormLookupDialog<T> extends TomFormLookupField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _LookupDialogWidget<T>(field: this),
-      );
+    field: this,
+    child: _LookupDialogWidget<T>(field: this),
+  );
 }
 
 class _LookupDialogWidget<T> extends StatefulWidget {
@@ -441,12 +439,14 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     super.initState();
     _displayController = TextEditingController();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) {
-        _syncDisplay();
-        setState(() {});
-      }
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) {
+            _syncDisplay();
+            setState(() {});
+          }
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -490,8 +490,7 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     if (fn != null) return fn(v);
     final hit = _items.firstWhere(
       (it) => it.value == v,
-      orElse: () =>
-          SelectableItem<T>(value: v, label: v?.toString() ?? ''),
+      orElse: () => SelectableItem<T>(value: v, label: v?.toString() ?? ''),
     );
     return hit.label;
   }
@@ -505,7 +504,8 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     // `bodyMedium` (14 px) made the lookup row visibly smaller than a
     // sibling `TomFormStringInput` whose unspecified style resolved to
     // bodyLarge (16 px) via Flutter defaults.
-    final inputStyle = field.resolveStyle(context).inputStyle ??
+    final inputStyle =
+        field.resolveStyle(context).inputStyle ??
         Theme.of(context).textTheme.bodyLarge;
     final picked = await showDialog<T>(
       context: context,
@@ -516,13 +516,18 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
             final visible = filter.isEmpty
                 ? _items
                 : _items
-                    .where((it) =>
-                        it.label.toLowerCase().contains(filter.toLowerCase()))
-                    .toList();
+                      .where(
+                        (it) => it.label.toLowerCase().contains(
+                          filter.toLowerCase(),
+                        ),
+                      )
+                      .toList();
             return AlertDialog(
-              title: Text(field.dialogTitle ??
-                  field.labelText ??
-                  TomFormLabels.lookupTitle(field.basePath)),
+              title: Text(
+                field.dialogTitle ??
+                    field.labelText ??
+                    TomFormLabels.lookupTitle(field.basePath),
+              ),
               content: SizedBox(
                 width: 400,
                 height: 400,

@@ -54,8 +54,10 @@ Future<void> run() async {
     SelectableItem(value: 'jp', label: 'Japan', enabled: false),
   ]);
   final items = await countries.getItems();
-  print('countries: ${items.map((i) => i.label).join(', ')}  '
-      '(jp enabled=${items[2].enabled})');
+  print(
+    'countries: ${items.map((i) => i.label).join(', ')}  '
+    '(jp enabled=${items[2].enabled})',
+  );
 
   // ---------------------------------------------------------------------------
   // 3. Event bus — collect and filter typed events
@@ -63,16 +65,20 @@ Future<void> run() async {
   final inspector = TomFormInspector();
   inspector.handleEvent(FormBoundEvent(source: 'signupForm'));
   inspector.handleEvent(
-      FieldValueChangedEvent(source: 'user.name', oldValue: '', newValue: 'a'));
+    FieldValueChangedEvent(source: 'user.name', oldValue: '', newValue: 'a'),
+  );
   inspector.handleEvent(
-      FieldValueChangedEvent(source: 'user.age', oldValue: 0, newValue: 30));
+    FieldValueChangedEvent(source: 'user.age', oldValue: 0, newValue: 30),
+  );
   inspector.handleEvent(FormSavedEvent(source: 'signupForm'));
 
   final valueChanges = inspector.ofType<FieldValueChangedEvent>();
   final formEvents = inspector.fromSource('signupForm');
-  print('events collected: ${inspector.length}, '
-      'value-changes: ${valueChanges.length}, '
-      'from signupForm: ${formEvents.length}');
+  print(
+    'events collected: ${inspector.length}, '
+    'value-changes: ${valueChanges.length}, '
+    'from signupForm: ${formEvents.length}',
+  );
 
   // ---------------------------------------------------------------------------
   // 4. FormFieldFamily — same declaration, Material vs Cupertino concretes
@@ -92,8 +98,10 @@ Future<void> run() async {
   final dirtyAfterCommit = mName.isDirty;
   mName.set('Carol');
   mName.reset();
-  print('name dirty after set=$dirtyAfterSet, after commit=$dirtyAfterCommit, '
-      'after reset value=${mName.get()}');
+  print(
+    'name dirty after set=$dirtyAfterSet, after commit=$dirtyAfterCommit, '
+    'after reset value=${mName.get()}',
+  );
 
   // ---------------------------------------------------------------------------
   // 5. Cross-field validation error
@@ -109,10 +117,12 @@ Future<void> run() async {
   // ---------------------------------------------------------------------------
   // 6. Responsive breakpoints + anatomy enums
   // ---------------------------------------------------------------------------
-  print('breakpoints: mobile=${TomBreakpoint.resolve('mobile')} '
-      'tablet=${TomBreakpoint.resolve('tablet')} '
-      'desktop=${TomBreakpoint.resolve('desktop')} '
-      'unknown=${TomBreakpoint.resolve('watch')}');
+  print(
+    'breakpoints: mobile=${TomBreakpoint.resolve('mobile')} '
+    'tablet=${TomBreakpoint.resolve('tablet')} '
+    'desktop=${TomBreakpoint.resolve('desktop')} '
+    'unknown=${TomBreakpoint.resolve('watch')}',
+  );
   print('label placements: ${LabelPlacement.values}');
 
   // ---------------------------------------------------------------------------
@@ -124,9 +134,11 @@ Future<void> run() async {
   final answered = material.nullableBoolToggle('survey.optIn', null);
   final unsetToTrue = answered.get();
   answered.set(true);
-  print('optIn: initial=$unsetToTrue now=${answered.get()} '
-      'dirty=${answered.isDirty} tristate=${answered.tristate} '
-      'type=${answered.runtimeType}');
+  print(
+    'optIn: initial=$unsetToTrue now=${answered.get()} '
+    'dirty=${answered.isDirty} tristate=${answered.tristate} '
+    'type=${answered.runtimeType}',
+  );
 
   // minItems/maxItems bound the *size* of a selection rather than a value —
   // this is how a multi-select expresses its selection count.

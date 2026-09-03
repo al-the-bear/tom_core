@@ -62,13 +62,16 @@ class TomSlider extends TomSliderBase {
   }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
        onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
        onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd),
-       semanticFormatterCallback = InScopeBuilder(scope: scope).wrap1n(semanticFormatterCallback) {
+       semanticFormatterCallback = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(semanticFormatterCallback) {
     _resolvedLabel = label ?? TomCtr.textOrNull(basePath, 'label');
     _resolvedMin = TomCtr.doubleVal(basePath, 'min') ?? min;
     _resolvedMax = TomCtr.doubleVal(basePath, 'max') ?? max;
     _resolvedDivisions = divisions ?? TomCtr.intVal(basePath, 'divisions');
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
-    _resolvedInactiveColor = inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
+    _resolvedInactiveColor =
+        inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
     _resolvedThumbColor = thumbColor ?? TomCtr.color(basePath, 'thumbColor');
     _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
   }
@@ -142,12 +145,15 @@ class TomRangeSlider extends TomSliderBase {
   }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
        onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
        onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd),
-       semanticFormatterCallback = InScopeBuilder(scope: scope).wrap1n(semanticFormatterCallback) {
+       semanticFormatterCallback = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(semanticFormatterCallback) {
     _resolvedMin = TomCtr.doubleVal(basePath, 'min') ?? min;
     _resolvedMax = TomCtr.doubleVal(basePath, 'max') ?? max;
     _resolvedDivisions = divisions ?? TomCtr.intVal(basePath, 'divisions');
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
-    _resolvedInactiveColor = inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
+    _resolvedInactiveColor =
+        inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
   }
 
   @override

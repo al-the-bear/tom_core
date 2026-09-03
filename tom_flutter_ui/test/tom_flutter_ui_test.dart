@@ -596,49 +596,40 @@ void main() {
       },
     );
 
-    testWidgets(
-      'row alignment left center right is respected',
-      (tester) async {
-        final centerKey = GlobalKey(debugLabel: 'align-center');
+    testWidgets('row alignment left center right is respected', (tester) async {
+      final centerKey = GlobalKey(debugLabel: 'align-center');
 
-        // Test AclContainer row alignment
-        final acl = AclBuilder()
-            .append(SizedBox(key: centerKey, width: 100, height: 32))
-            .setPSize(100, 32)
-            .setRowHorizontalAlignment(RowAlignment.center)
-            .build();
+      // Test AclContainer row alignment
+      final acl = AclBuilder()
+          .append(SizedBox(key: centerKey, width: 100, height: 32))
+          .setPSize(100, 32)
+          .setRowHorizontalAlignment(RowAlignment.center)
+          .build();
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: Center(
-                child: SizedBox(
-                  width: 600,
-                  height: 200,
-                  child: acl,
-                ),
-              ),
-            ),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(child: SizedBox(width: 600, height: 200, child: acl)),
           ),
-        );
-        await tester.pump();
-        await tester.pump();
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
 
-        final centerRect = tester.getRect(find.byKey(centerKey));
-        final scaffold = tester.getRect(find.byType(Scaffold));
+      final centerRect = tester.getRect(find.byKey(centerKey));
+      final scaffold = tester.getRect(find.byType(Scaffold));
 
-        // The centered SizedBox should be at the center of the 600px container
-        final containerLeft = (scaffold.width - 600) / 2;
-        final expectedCenterLeft = containerLeft + (600 - 100) / 2;
+      // The centered SizedBox should be at the center of the 600px container
+      final containerLeft = (scaffold.width - 600) / 2;
+      final expectedCenterLeft = containerLeft + (600 - 100) / 2;
 
-        expect(
-          centerRect.left,
-          closeTo(expectedCenterLeft, 10),
-          reason:
-              'AclContainer center-aligned row should be at ~${expectedCenterLeft}px, got ${centerRect.left}',
-        );
-      },
-    );
+      expect(
+        centerRect.left,
+        closeTo(expectedCenterLeft, 10),
+        reason:
+            'AclContainer center-aligned row should be at ~${expectedCenterLeft}px, got ${centerRect.left}',
+      );
+    });
 
     testWidgets('single expandX child grows between fixed siblings', (
       tester,
@@ -728,8 +719,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('alignTopToBottom places follower edge-flush with no gap',
-        (tester) async {
+    testWidgets('alignTopToBottom places follower edge-flush with no gap', (
+      tester,
+    ) async {
       const anchorKey = ValueKey('acl-tb-anchor');
       const followerKey = ValueKey('acl-tb-follower');
       final anchor = Container(
@@ -755,9 +747,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: SizedBox(width: 500, height: 200, child: acl),
-          ),
+          home: Scaffold(body: SizedBox(width: 500, height: 200, child: acl)),
         ),
       );
       await tester.pump();
@@ -766,14 +756,17 @@ void main() {
       final anchorRect = tester.getRect(find.byKey(anchorKey));
       final followerRect = tester.getRect(find.byKey(followerKey));
 
-      expect(followerRect.top, closeTo(anchorRect.bottom, 0.5),
-          reason: 'follower.top should equal anchor.bottom (edge-flush)');
-      expect(tester.takeException(), isNull,
-          reason: 'no overflow expected');
+      expect(
+        followerRect.top,
+        closeTo(anchorRect.bottom, 0.5),
+        reason: 'follower.top should equal anchor.bottom (edge-flush)',
+      );
+      expect(tester.takeException(), isNull, reason: 'no overflow expected');
     });
 
-    testWidgets('alignBottomToTop places follower edge-flush with no gap',
-        (tester) async {
+    testWidgets('alignBottomToTop places follower edge-flush with no gap', (
+      tester,
+    ) async {
       const anchorKey = ValueKey('acl-bt-anchor');
       const followerKey = ValueKey('acl-bt-follower');
       final anchor = Container(
@@ -799,9 +792,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: SizedBox(width: 500, height: 200, child: acl),
-          ),
+          home: Scaffold(body: SizedBox(width: 500, height: 200, child: acl)),
         ),
       );
       await tester.pump();
@@ -810,10 +801,12 @@ void main() {
       final anchorRect = tester.getRect(find.byKey(anchorKey));
       final followerRect = tester.getRect(find.byKey(followerKey));
 
-      expect(followerRect.bottom, closeTo(anchorRect.top, 0.5),
-          reason: 'follower.bottom should equal anchor.top (edge-flush)');
-      expect(tester.takeException(), isNull,
-          reason: 'no overflow expected');
+      expect(
+        followerRect.bottom,
+        closeTo(anchorRect.top, 0.5),
+        reason: 'follower.bottom should equal anchor.top (edge-flush)',
+      );
+      expect(tester.takeException(), isNull, reason: 'no overflow expected');
     });
 
     // Why these two exist alongside the edge-flush pair above: an anchor
@@ -830,8 +823,9 @@ void main() {
     // content extent; get it wrong and a caller's first row renders clipped or
     // with dead space, under unbounded height, where nothing else would catch
     // it.
-    testWidgets('alignTopToBottom: the ACL wraps to its content extent',
-        (tester) async {
+    testWidgets('alignTopToBottom: the ACL wraps to its content extent', (
+      tester,
+    ) async {
       const anchorKey = ValueKey('acl-tb-wrap-anchor');
       const followerKey = ValueKey('acl-tb-wrap-follower');
       const aclKey = ValueKey('acl-tb-wrap');
@@ -877,170 +871,222 @@ void main() {
       final anchorRect = tester.getRect(find.byKey(anchorKey));
       final followerRect = tester.getRect(find.byKey(followerKey));
 
-      expect(aclRect.height, closeTo(100, 0.5),
-          reason: 'anchor 64 + follower 36 stacked edge-flush is a 100px '
-              'content extent; the ACL must be exactly that tall');
-      expect(anchorRect.top, closeTo(aclRect.top, 0.5),
-          reason: 'the topmost child starts at the ACL top — no dead space');
-      expect(followerRect.bottom, closeTo(aclRect.bottom, 0.5),
-          reason: 'the bottommost child ends at the ACL bottom — no overhang');
+      expect(
+        aclRect.height,
+        closeTo(100, 0.5),
+        reason:
+            'anchor 64 + follower 36 stacked edge-flush is a 100px '
+            'content extent; the ACL must be exactly that tall',
+      );
+      expect(
+        anchorRect.top,
+        closeTo(aclRect.top, 0.5),
+        reason: 'the topmost child starts at the ACL top — no dead space',
+      );
+      expect(
+        followerRect.bottom,
+        closeTo(aclRect.bottom, 0.5),
+        reason: 'the bottommost child ends at the ACL bottom — no overhang',
+      );
       expect(tester.takeException(), isNull);
     });
 
     testWidgets(
-        'alignBottomToTop: the ACL normalises the negative offset rather than '
-        'placing the follower above its own top edge', (tester) async {
-      const anchorKey = ValueKey('acl-bt-wrap-anchor');
-      const followerKey = ValueKey('acl-bt-wrap-follower');
-      const aclKey = ValueKey('acl-bt-wrap');
-      final anchor = Container(
-        key: anchorKey,
-        color: const Color(0xFF607D8B),
-        width: 160,
-        height: 64,
-      );
-      final follower = Container(
-        key: followerKey,
-        color: const Color(0xFF6A1B9A),
-        width: 160,
-        height: 36,
-      );
-      final acl = KeyedSubtree(
-        key: aclKey,
-        child: AclBuilder()
-            .append(anchor)
-            .setPSize(160, 64)
-            .append(const SizedBox(width: 24))
-            .append(follower)
-            .setPSize(160, 36)
-            .alignBottomToTop(anchor)
-            .build(),
-      );
+      'alignBottomToTop: the ACL normalises the negative offset rather than '
+      'placing the follower above its own top edge',
+      (tester) async {
+        const anchorKey = ValueKey('acl-bt-wrap-anchor');
+        const followerKey = ValueKey('acl-bt-wrap-follower');
+        const aclKey = ValueKey('acl-bt-wrap');
+        final anchor = Container(
+          key: anchorKey,
+          color: const Color(0xFF607D8B),
+          width: 160,
+          height: 64,
+        );
+        final follower = Container(
+          key: followerKey,
+          color: const Color(0xFF6A1B9A),
+          width: 160,
+          height: 36,
+        );
+        final acl = KeyedSubtree(
+          key: aclKey,
+          child: AclBuilder()
+              .append(anchor)
+              .setPSize(160, 64)
+              .append(const SizedBox(width: 24))
+              .append(follower)
+              .setPSize(160, 36)
+              .alignBottomToTop(anchor)
+              .build(),
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: SizedBox(width: 800, child: acl),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: SizedBox(width: 800, child: acl),
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
+        );
+        await tester.pump();
+        await tester.pump();
 
-      final aclRect = tester.getRect(find.byKey(aclKey));
-      final anchorRect = tester.getRect(find.byKey(anchorKey));
-      final followerRect = tester.getRect(find.byKey(followerKey));
+        final aclRect = tester.getRect(find.byKey(aclKey));
+        final anchorRect = tester.getRect(find.byKey(anchorKey));
+        final followerRect = tester.getRect(find.byKey(followerKey));
 
-      expect(aclRect.height, closeTo(100, 0.5),
-          reason: 'the content extent is still 100px, measured from the '
-              'follower top rather than the anchor top');
-      expect(followerRect.top, closeTo(aclRect.top, 0.5),
-          reason: 'the follower is the topmost child once the relation is '
+        expect(
+          aclRect.height,
+          closeTo(100, 0.5),
+          reason:
+              'the content extent is still 100px, measured from the '
+              'follower top rather than the anchor top',
+        );
+        expect(
+          followerRect.top,
+          closeTo(aclRect.top, 0.5),
+          reason:
+              'the follower is the topmost child once the relation is '
               'resolved, so the whole row shifts down to keep it at the ACL '
-              'top instead of at a negative offset');
-      expect(anchorRect.bottom, closeTo(aclRect.bottom, 0.5),
-          reason: 'the anchor, displaced downwards by the shift, ends flush '
-              'with the ACL bottom');
-      expect(tester.takeException(), isNull);
-    });
+              'top instead of at a negative offset',
+        );
+        expect(
+          anchorRect.bottom,
+          closeTo(aclRect.bottom, 0.5),
+          reason:
+              'the anchor, displaced downwards by the shift, ends flush '
+              'with the ACL bottom',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets(
-        'alignTopToBottom gap>0 pushes follower further down; gap<0 overlaps',
-        (tester) async {
-      const anchorKey = ValueKey('acl-tb-anchor-gap');
-      const pushKey = ValueKey('acl-tb-push');
-      const overlapKey = ValueKey('acl-tb-overlap');
-      final anchor = Container(
-        key: anchorKey, color: const Color(0xFFE64A19),
-        width: 160, height: 56,
-      );
-      final pushFollower = Container(
-        key: pushKey, color: const Color(0xFF2E7D32),
-        width: 160, height: 32,
-      );
-      final overlapFollower = Container(
-        key: overlapKey, color: const Color(0xFF00796B),
-        width: 160, height: 32,
-      );
-      final acl = AclBuilder()
-          .append(anchor).setPSize(160, 56)
-          .append(const SizedBox(width: 12))
-          .append(pushFollower).setPSize(160, 32)
-          .alignTopToBottom(anchor, gap: 12)
-          .append(const SizedBox(width: 12))
-          .append(overlapFollower).setPSize(160, 32)
-          .alignTopToBottom(anchor, gap: -12)
-          .build();
+      'alignTopToBottom gap>0 pushes follower further down; gap<0 overlaps',
+      (tester) async {
+        const anchorKey = ValueKey('acl-tb-anchor-gap');
+        const pushKey = ValueKey('acl-tb-push');
+        const overlapKey = ValueKey('acl-tb-overlap');
+        final anchor = Container(
+          key: anchorKey,
+          color: const Color(0xFFE64A19),
+          width: 160,
+          height: 56,
+        );
+        final pushFollower = Container(
+          key: pushKey,
+          color: const Color(0xFF2E7D32),
+          width: 160,
+          height: 32,
+        );
+        final overlapFollower = Container(
+          key: overlapKey,
+          color: const Color(0xFF00796B),
+          width: 160,
+          height: 32,
+        );
+        final acl = AclBuilder()
+            .append(anchor)
+            .setPSize(160, 56)
+            .append(const SizedBox(width: 12))
+            .append(pushFollower)
+            .setPSize(160, 32)
+            .alignTopToBottom(anchor, gap: 12)
+            .append(const SizedBox(width: 12))
+            .append(overlapFollower)
+            .setPSize(160, 32)
+            .alignTopToBottom(anchor, gap: -12)
+            .build();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(width: 700, height: 200, child: acl),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: SizedBox(width: 700, height: 200, child: acl)),
           ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
+        );
+        await tester.pump();
+        await tester.pump();
 
-      final anchorRect = tester.getRect(find.byKey(anchorKey));
-      final pushRect = tester.getRect(find.byKey(pushKey));
-      final overlapRect = tester.getRect(find.byKey(overlapKey));
+        final anchorRect = tester.getRect(find.byKey(anchorKey));
+        final pushRect = tester.getRect(find.byKey(pushKey));
+        final overlapRect = tester.getRect(find.byKey(overlapKey));
 
-      expect(pushRect.top, closeTo(anchorRect.bottom + 12, 0.5),
-          reason: 'gap: 12 should sit 12 px BELOW anchor bottom');
-      expect(overlapRect.top, closeTo(anchorRect.bottom - 12, 0.5),
-          reason: 'gap: -12 should overlap anchor bottom by 12 px');
-    });
+        expect(
+          pushRect.top,
+          closeTo(anchorRect.bottom + 12, 0.5),
+          reason: 'gap: 12 should sit 12 px BELOW anchor bottom',
+        );
+        expect(
+          overlapRect.top,
+          closeTo(anchorRect.bottom - 12, 0.5),
+          reason: 'gap: -12 should overlap anchor bottom by 12 px',
+        );
+      },
+    );
 
     testWidgets(
-        'alignBottomToTop gap>0 pushes follower further up; gap<0 overlaps',
-        (tester) async {
-      const anchorKey = ValueKey('acl-bt-anchor-gap');
-      const pushKey = ValueKey('acl-bt-push');
-      const overlapKey = ValueKey('acl-bt-overlap');
-      final anchor = Container(
-        key: anchorKey, color: const Color(0xFF607D8B),
-        width: 160, height: 56,
-      );
-      final pushFollower = Container(
-        key: pushKey, color: const Color(0xFF6A1B9A),
-        width: 160, height: 32,
-      );
-      final overlapFollower = Container(
-        key: overlapKey, color: const Color(0xFF4E342E),
-        width: 160, height: 32,
-      );
-      final acl = AclBuilder()
-          .append(anchor).setPSize(160, 56)
-          .append(const SizedBox(width: 12))
-          .append(pushFollower).setPSize(160, 32)
-          .alignBottomToTop(anchor, gap: 12)
-          .append(const SizedBox(width: 12))
-          .append(overlapFollower).setPSize(160, 32)
-          .alignBottomToTop(anchor, gap: -12)
-          .build();
+      'alignBottomToTop gap>0 pushes follower further up; gap<0 overlaps',
+      (tester) async {
+        const anchorKey = ValueKey('acl-bt-anchor-gap');
+        const pushKey = ValueKey('acl-bt-push');
+        const overlapKey = ValueKey('acl-bt-overlap');
+        final anchor = Container(
+          key: anchorKey,
+          color: const Color(0xFF607D8B),
+          width: 160,
+          height: 56,
+        );
+        final pushFollower = Container(
+          key: pushKey,
+          color: const Color(0xFF6A1B9A),
+          width: 160,
+          height: 32,
+        );
+        final overlapFollower = Container(
+          key: overlapKey,
+          color: const Color(0xFF4E342E),
+          width: 160,
+          height: 32,
+        );
+        final acl = AclBuilder()
+            .append(anchor)
+            .setPSize(160, 56)
+            .append(const SizedBox(width: 12))
+            .append(pushFollower)
+            .setPSize(160, 32)
+            .alignBottomToTop(anchor, gap: 12)
+            .append(const SizedBox(width: 12))
+            .append(overlapFollower)
+            .setPSize(160, 32)
+            .alignBottomToTop(anchor, gap: -12)
+            .build();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(width: 700, height: 200, child: acl),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: SizedBox(width: 700, height: 200, child: acl)),
           ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
+        );
+        await tester.pump();
+        await tester.pump();
 
-      final anchorRect = tester.getRect(find.byKey(anchorKey));
-      final pushRect = tester.getRect(find.byKey(pushKey));
-      final overlapRect = tester.getRect(find.byKey(overlapKey));
+        final anchorRect = tester.getRect(find.byKey(anchorKey));
+        final pushRect = tester.getRect(find.byKey(pushKey));
+        final overlapRect = tester.getRect(find.byKey(overlapKey));
 
-      expect(pushRect.bottom, closeTo(anchorRect.top - 12, 0.5),
-          reason: 'gap: 12 should sit 12 px ABOVE anchor top');
-      expect(overlapRect.bottom, closeTo(anchorRect.top + 12, 0.5),
-          reason: 'gap: -12 should overlap anchor top by 12 px');
-    });
+        expect(
+          pushRect.bottom,
+          closeTo(anchorRect.top - 12, 0.5),
+          reason: 'gap: 12 should sit 12 px ABOVE anchor top',
+        );
+        expect(
+          overlapRect.bottom,
+          closeTo(anchorRect.top + 12, 0.5),
+          reason: 'gap: -12 should overlap anchor top by 12 px',
+        );
+      },
+    );
   });
 
   group('AclBuilder row height (Phase 5)', () {

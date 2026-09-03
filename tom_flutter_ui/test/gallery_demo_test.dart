@@ -32,8 +32,9 @@ void main() {
     expect(find.text('Elevated'), findsOneWidget);
   });
 
-  testWidgets('navigating to the Custom tab renders the composites',
-      (tester) async {
+  testWidgets('navigating to the Custom tab renders the composites', (
+    tester,
+  ) async {
     await tester.pumpWidget(const demo.Phase1DemoApp());
     await tester.pump();
 

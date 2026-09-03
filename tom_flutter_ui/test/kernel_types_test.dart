@@ -26,8 +26,8 @@ class _DenyOne implements TomAuthorizationAdapter {
   @override
   TomAuthState resolveAuth(String resourceKeyPath) =>
       resourceKeyPath == 'settings.secret'
-          ? TomAuthState.none
-          : TomAuthState.full;
+      ? TomAuthState.none
+      : TomAuthState.full;
 }
 
 /// A consumer observer, naming the kernel's observation contract directly.
@@ -58,8 +58,9 @@ void main() {
 
     // The todo's DONE WHEN, spelled as code: declare a TomScope, construct a
     // widget with an explicit `scope:`, and read the resolved path back.
-    testWidgets('a consumer can declare a TomScope and pass it as scope:',
-        (tester) async {
+    testWidgets('a consumer can declare a TomScope and pass it as scope:', (
+      tester,
+    ) async {
       final TomScope scope = TomScopeBase(scopeId: 'settings');
       final widget = TomText(tomId: 'title', scope: scope, text: 'Settings');
 
@@ -73,7 +74,10 @@ void main() {
 
     test('a consumer can name the authorization types', () {
       TomAuthorization.adapter = _DenyOne();
-      expect(TomAuthorization.resolveAuth('settings.secret'), TomAuthState.none);
+      expect(
+        TomAuthorization.resolveAuth('settings.secret'),
+        TomAuthState.none,
+      );
       expect(TomAuthorization.resolveAuth('settings.title'), TomAuthState.full);
 
       const authorizer = TomAuthorizer(
@@ -83,8 +87,10 @@ void main() {
       expect(authorizer.effectiveAuth(TomAuthState.full), TomAuthState.read);
 
       const controller = TomUIStateController(resolve: _disableWhenFlagged);
-      expect(controller.apply(TomAuthState.full, data: true),
-          TomAuthState.disabled);
+      expect(
+        controller.apply(TomAuthState.full, data: true),
+        TomAuthState.disabled,
+      );
       expect(controller.apply(TomAuthState.full), TomAuthState.full);
 
       final group = TomAuthorizationGroup(

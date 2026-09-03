@@ -13,10 +13,10 @@ Widget _wrap(Widget child, {TomFormStyle? style}) {
 }
 
 TomSelectableSource<String> _threeOptions() => StaticSelectableSource([
-      const SelectableItem(value: 'a', label: 'Apple'),
-      const SelectableItem(value: 'b', label: 'Banana'),
-      const SelectableItem(value: 'c', label: 'Cherry'),
-    ]);
+  const SelectableItem(value: 'a', label: 'Apple'),
+  const SelectableItem(value: 'b', label: 'Banana'),
+  const SelectableItem(value: 'c', label: 'Cherry'),
+]);
 
 void main() {
   // -------------------------------------------------------------------------
@@ -167,8 +167,9 @@ void main() {
   });
 
   group('TomFormStringChoiceChips', () {
-    testWidgets('renders ChoiceChip per item with correct selection',
-        (tester) async {
+    testWidgets('renders ChoiceChip per item with correct selection', (
+      tester,
+    ) async {
       final field = TomFormStringChoiceChips(
         'fruit',
         'b',
@@ -177,8 +178,9 @@ void main() {
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pumpAndSettle();
 
-      final chips =
-          tester.widgetList<ChoiceChip>(find.byType(ChoiceChip)).toList();
+      final chips = tester
+          .widgetList<ChoiceChip>(find.byType(ChoiceChip))
+          .toList();
       expect(chips.length, 3);
       // Banana chip is selected.
       final bananaChip = chips.firstWhere((c) {
@@ -225,11 +227,9 @@ void main() {
     });
 
     test('toggleItem true is idempotent', () {
-      final field = TomFormStringFilterChips(
-        'fruits',
-        const ['a'],
-        source: _threeOptions(),
-      );
+      final field = TomFormStringFilterChips('fruits', const [
+        'a',
+      ], source: _threeOptions());
       field.toggleItem('a', true);
       expect(field.get(), ['a']);
     });
@@ -269,11 +269,9 @@ void main() {
 
   group('TomFormStringMultiCheckbox', () {
     test('toggleItem produces a fresh list', () {
-      final field = TomFormStringMultiCheckbox(
-        'fruits',
-        const ['a'],
-        source: _threeOptions(),
-      );
+      final field = TomFormStringMultiCheckbox('fruits', const [
+        'a',
+      ], source: _threeOptions());
       final before = field.get();
       field.toggleItem('b', true);
       final after = field.get();
@@ -281,18 +279,17 @@ void main() {
       expect(identical(before, after), isFalse);
     });
 
-    testWidgets('renders one Checkbox per item with correct state',
-        (tester) async {
-      final field = TomFormStringMultiCheckbox(
-        'fruits',
-        const ['a', 'c'],
-        source: _threeOptions(),
-      );
+    testWidgets('renders one Checkbox per item with correct state', (
+      tester,
+    ) async {
+      final field = TomFormStringMultiCheckbox('fruits', const [
+        'a',
+        'c',
+      ], source: _threeOptions());
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pumpAndSettle();
 
-      final boxes =
-          tester.widgetList<Checkbox>(find.byType(Checkbox)).toList();
+      final boxes = tester.widgetList<Checkbox>(find.byType(Checkbox)).toList();
       expect(boxes.length, 3);
       // Apple checked, Banana unchecked, Cherry checked (in source order).
       expect(boxes[0].value, isTrue);

@@ -72,14 +72,19 @@ void main() {
         },
         'w': {'size': 4.0},
       });
-      final scoped =
-          _ResourceWidget(tomId: 'w', scope: TomScopeBase(scopeId: 'checkout'));
+      final scoped = _ResourceWidget(
+        tomId: 'w',
+        scope: TomScopeBase(scopeId: 'checkout'),
+      );
 
       expect(scoped.basePath, 'checkout.w');
       expect(scoped.resolveDoubleOrNull('size'), 20.0);
       expect(scoped.resolveDoubleOrFail('size'), 20.0);
       // The unscoped widget reads the other value entirely.
-      expect(const _ResourceWidget(tomId: 'w').resolveDoubleOrNull('size'), 4.0);
+      expect(
+        const _ResourceWidget(tomId: 'w').resolveDoubleOrNull('size'),
+        4.0,
+      );
     });
   });
 
@@ -141,8 +146,13 @@ void main() {
       _installResources({});
       expect(
         () => const _ResourceWidget(tomId: 'w').resolveDoubleOrFail('size'),
-        throwsA(isA<StateError>().having((e) => e.message, 'message',
-            contains('numeric resource value at w.size'))),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('numeric resource value at w.size'),
+          ),
+        ),
       );
     });
 
@@ -152,12 +162,19 @@ void main() {
       _installResources({
         'w': {'size': 'not-a-number'},
       });
-      expect(const _ResourceWidget(tomId: 'w').resolveDoubleOrNull('size'),
-          isNull);
+      expect(
+        const _ResourceWidget(tomId: 'w').resolveDoubleOrNull('size'),
+        isNull,
+      );
       expect(
         () => const _ResourceWidget(tomId: 'w').resolveDoubleOrFail('size'),
-        throwsA(isA<StateError>()
-            .having((e) => e.message, 'message', contains('must be numeric'))),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('must be numeric'),
+          ),
+        ),
       );
     });
 
@@ -166,8 +183,13 @@ void main() {
       // tomId rather than for a value.
       expect(
         () => const _ResourceWidget().resolveDoubleOrFail('size'),
-        throwsA(isA<StateError>().having((e) => e.message, 'message',
-            contains('an explicit size or a tomId'))),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('an explicit size or a tomId'),
+          ),
+        ),
       );
     });
   });

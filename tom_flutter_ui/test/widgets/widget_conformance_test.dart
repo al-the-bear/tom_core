@@ -106,7 +106,8 @@ void main() {
       expect(
         expected.difference(actual),
         isEmpty,
-        reason: 'a widget was added to the kit but not to the conformance '
+        reason:
+            'a widget was added to the kit but not to the conformance '
             'registry, so nothing checks that it carries the Tom surface',
       );
       expect(actual, hasLength(290));
@@ -182,38 +183,40 @@ void main() {
     });
   });
 
-  group('tccm1: every widget reports a family, or is a documented exception',
-      () {
-    test('tccm1-07: the family reported is the one its base fixes', () {
-      // `family` is abstract on `TomFamilyBase` and given a single value by
-      // each of the twenty branch bases, so the source's `extends` clause
-      // predicts the runtime answer. Checking that it does is what makes the
-      // catalogue in `doc/widgets.md` — which is keyed by base — a true
-      // statement about instances rather than about text.
-      final faults = <String>[];
-      widgetConformanceRegistry.forEach((name, build) {
-        final widget = build('save', null);
-        final parent = parentIn(classes[name]);
-        if (!bases.contains(parent)) return;
-        if (widget is! TomFamilyBase) {
-          faults.add('$name: extends $parent but is no TomFamilyBase');
-          return;
-        }
-        if (!widget.isFamily(widget.family)) {
-          faults.add('$name: denies its own primary family ${widget.family}');
-        }
+  group(
+    'tccm1: every widget reports a family, or is a documented exception',
+    () {
+      test('tccm1-07: the family reported is the one its base fixes', () {
+        // `family` is abstract on `TomFamilyBase` and given a single value by
+        // each of the twenty branch bases, so the source's `extends` clause
+        // predicts the runtime answer. Checking that it does is what makes the
+        // catalogue in `doc/widgets.md` — which is keyed by base — a true
+        // statement about instances rather than about text.
+        final faults = <String>[];
+        widgetConformanceRegistry.forEach((name, build) {
+          final widget = build('save', null);
+          final parent = parentIn(classes[name]);
+          if (!bases.contains(parent)) return;
+          if (widget is! TomFamilyBase) {
+            faults.add('$name: extends $parent but is no TomFamilyBase');
+            return;
+          }
+          if (!widget.isFamily(widget.family)) {
+            faults.add('$name: denies its own primary family ${widget.family}');
+          }
+        });
+        expect(faults, isEmpty, reason: faults.join('\n'));
       });
-      expect(faults, isEmpty, reason: faults.join('\n'));
-    });
 
-    test('tccm1-08: exactly the 17 mixin users report no family', () {
-      final familyless = widgetConformanceRegistry.entries
-          .where((e) => e.value('save', null) is! TomFamilyBase)
-          .map((e) => e.key)
-          .toSet();
-      expect(familyless, mixinSurfaceWidgets);
-    });
-  });
+      test('tccm1-08: exactly the 17 mixin users report no family', () {
+        final familyless = widgetConformanceRegistry.entries
+            .where((e) => e.value('save', null) is! TomFamilyBase)
+            .map((e) => e.key)
+            .toSet();
+        expect(familyless, mixinSurfaceWidgets);
+      });
+    },
+  );
 
   group('tccm1: every widget resolves all four authorization states', () {
     // The four states are resolved lazily — `TomPolicyNodeBase` and
@@ -242,8 +245,9 @@ void main() {
       // the eight ungated wrappers on its own: a widget that ignores its path
       // and hard-codes `TomAuthState.full` passes every positive test in this
       // group, because `full` is also what an unmatched lookup returns.
-      TomAuthorization.adapter = 
-          _MapAuthAdapter({'settings.save': TomAuthState.none});
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'settings.save': TomAuthState.none,
+      });
       final faults = <String>[];
       widgetConformanceRegistry.forEach((name, build) {
         if (build('save', null).effectiveAuthState != TomAuthState.full) {

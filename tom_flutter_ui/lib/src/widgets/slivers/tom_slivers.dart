@@ -44,10 +44,7 @@ class TomDecoratedSliver extends TomSliverBase {
       );
     }
 
-    return DecoratedSliver(
-      decoration: _resolvedDecoration,
-      sliver: sliver,
-    );
+    return DecoratedSliver(decoration: _resolvedDecoration, sliver: sliver);
   }
 
   Decoration? _resolveDecoration(String suffix) {
@@ -74,9 +71,7 @@ class TomPinnedHeaderSliver extends TomSliverBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return PinnedHeaderSliver(
-      child: child,
-    );
+    return PinnedHeaderSliver(child: child);
   }
 }
 
@@ -100,7 +95,8 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
     this.maxExtent,
     required this.sliver,
   }) {
-    _resolvedMaxExtent = maxExtent ?? TomCtr.doubleOrFail(basePath, 'maxExtent');
+    _resolvedMaxExtent =
+        maxExtent ?? TomCtr.doubleOrFail(basePath, 'maxExtent');
   }
 
   @override
@@ -137,10 +133,7 @@ class TomSliverCrossAxisExpanded extends TomSliverBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return SliverCrossAxisExpanded(
-      flex: _resolvedFlex,
-      sliver: sliver,
-    );
+    return SliverCrossAxisExpanded(flex: _resolvedFlex, sliver: sliver);
   }
 }
 
@@ -162,9 +155,7 @@ class TomSliverCrossAxisGroup extends TomSliverBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return SliverCrossAxisGroup(
-      slivers: slivers,
-    );
+    return SliverCrossAxisGroup(slivers: slivers);
   }
 }
 
@@ -191,7 +182,10 @@ class TomSliverFillViewport extends TomSliverBase {
     this.viewportFraction,
     this.padEnds = true,
   }) {
-    _resolvedViewportFraction = viewportFraction ?? TomCtr.doubleVal(basePath, 'viewportFraction') ?? 1.0;
+    _resolvedViewportFraction =
+        viewportFraction ??
+        TomCtr.doubleVal(basePath, 'viewportFraction') ??
+        1.0;
     _resolvedPadEnds = TomCtr.boolVal(basePath, 'padEnds') ?? padEnds;
   }
 
@@ -225,7 +219,8 @@ class TomSliverFixedExtentList extends TomSliverBase {
     required this.delegate,
     this.itemExtent,
   }) {
-    _resolvedItemExtent = itemExtent ?? TomCtr.doubleOrFail(basePath, 'itemExtent');
+    _resolvedItemExtent =
+        itemExtent ?? TomCtr.doubleOrFail(basePath, 'itemExtent');
   }
 
   @override
@@ -255,9 +250,7 @@ class TomSliverFloatingHeader extends TomSliverBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return SliverFloatingHeader(
-      child: child,
-    );
+    return SliverFloatingHeader(child: child);
   }
 }
 
@@ -279,9 +272,7 @@ class TomSliverMainAxisGroup extends TomSliverBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return SliverMainAxisGroup(
-      slivers: slivers,
-    );
+    return SliverMainAxisGroup(slivers: slivers);
   }
 }
 
@@ -305,15 +296,13 @@ class TomSliverOffstage extends TomSliverBase {
     this.offstage,
     required this.sliver,
   }) {
-    _resolvedOffstage = offstage ?? TomCtr.boolVal(basePath, 'offstage') ?? true;
+    _resolvedOffstage =
+        offstage ?? TomCtr.boolVal(basePath, 'offstage') ?? true;
   }
 
   @override
   Widget buildContent(BuildContext context) {
-    return SliverOffstage(
-      offstage: _resolvedOffstage,
-      sliver: sliver,
-    );
+    return SliverOffstage(offstage: _resolvedOffstage, sliver: sliver);
   }
 }
 
@@ -341,7 +330,10 @@ class TomSliverOpacity extends TomSliverBase {
     required this.sliver,
   }) {
     _resolvedOpacity = opacity ?? TomCtr.doubleOrFail(basePath, 'opacity');
-    _resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ?? TomCtr.boolVal(basePath, 'alwaysIncludeSemantics') ?? false;
+    _resolvedAlwaysIncludeSemantics =
+        alwaysIncludeSemantics ??
+        TomCtr.boolVal(basePath, 'alwaysIncludeSemantics') ??
+        false;
   }
 
   @override
@@ -386,10 +378,7 @@ class TomSliverPadding extends TomSliverBase {
       );
     }
 
-    return SliverPadding(
-      padding: _resolvedPadding,
-      sliver: sliver,
-    );
+    return SliverPadding(padding: _resolvedPadding, sliver: sliver);
   }
 }
 
@@ -417,7 +406,8 @@ class TomSliverPersistentHeader extends TomSliverBase {
     this.floating,
   }) {
     _resolvedPinned = pinned ?? TomCtr.boolVal(basePath, 'pinned') ?? false;
-    _resolvedFloating = floating ?? TomCtr.boolVal(basePath, 'floating') ?? false;
+    _resolvedFloating =
+        floating ?? TomCtr.boolVal(basePath, 'floating') ?? false;
   }
 
   @override
@@ -530,7 +520,8 @@ class TomSliverSafeArea extends TomSliverBase {
     _resolvedTop = top ?? TomCtr.boolVal(basePath, 'top') ?? true;
     _resolvedRight = right ?? TomCtr.boolVal(basePath, 'right') ?? true;
     _resolvedBottom = bottom ?? TomCtr.boolVal(basePath, 'bottom') ?? true;
-    _resolvedMinimum = minimum ?? TomCtr.edgeInsets(basePath, 'minimum') ?? EdgeInsets.zero;
+    _resolvedMinimum =
+        minimum ?? TomCtr.edgeInsets(basePath, 'minimum') ?? EdgeInsets.zero;
   }
 
   @override
@@ -611,11 +602,22 @@ class TomSliverVisibility extends TomSliverBase {
     this.maintainInteractivity,
   }) {
     _resolvedVisible = visible ?? TomCtr.boolVal(basePath, 'visible') ?? true;
-    _resolvedMaintainState = maintainState ?? TomCtr.boolVal(basePath, 'maintainState') ?? false;
-    _resolvedMaintainAnimation = maintainAnimation ?? TomCtr.boolVal(basePath, 'maintainAnimation') ?? false;
-    _resolvedMaintainSize = maintainSize ?? TomCtr.boolVal(basePath, 'maintainSize') ?? false;
-    _resolvedMaintainSemantics = maintainSemantics ?? TomCtr.boolVal(basePath, 'maintainSemantics') ?? false;
-    _resolvedMaintainInteractivity = maintainInteractivity ?? TomCtr.boolVal(basePath, 'maintainInteractivity') ?? false;
+    _resolvedMaintainState =
+        maintainState ?? TomCtr.boolVal(basePath, 'maintainState') ?? false;
+    _resolvedMaintainAnimation =
+        maintainAnimation ??
+        TomCtr.boolVal(basePath, 'maintainAnimation') ??
+        false;
+    _resolvedMaintainSize =
+        maintainSize ?? TomCtr.boolVal(basePath, 'maintainSize') ?? false;
+    _resolvedMaintainSemantics =
+        maintainSemantics ??
+        TomCtr.boolVal(basePath, 'maintainSemantics') ??
+        false;
+    _resolvedMaintainInteractivity =
+        maintainInteractivity ??
+        TomCtr.boolVal(basePath, 'maintainInteractivity') ??
+        false;
   }
 
   @override

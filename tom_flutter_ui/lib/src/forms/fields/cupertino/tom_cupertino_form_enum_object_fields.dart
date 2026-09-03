@@ -78,12 +78,12 @@ Future<T?> _showCupertinoListPicker<T>({
               Expanded(
                 child: CupertinoPicker(
                   itemExtent: 32,
-                  scrollController:
-                      FixedExtentScrollController(initialItem: initialIndex),
+                  scrollController: FixedExtentScrollController(
+                    initialItem: initialIndex,
+                  ),
                   onSelectedItemChanged: (i) => tempIndex = i,
                   children: [
-                    for (final item in items)
-                      Center(child: Text(item.label)),
+                    for (final item in items) Center(child: Text(item.label)),
                   ],
                 ),
               ),
@@ -186,9 +186,9 @@ class TomCupertinoFormEnumPicker<T> extends TomFormEnumField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoEnumPickerWidget<T>(field: this),
-      );
+    field: this,
+    child: _CupertinoEnumPickerWidget<T>(field: this),
+  );
 }
 
 class _CupertinoEnumPickerWidget<T> extends StatefulWidget {
@@ -212,9 +212,11 @@ class _CupertinoEnumPickerWidgetState<T>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -246,7 +248,10 @@ class _CupertinoEnumPickerWidgetState<T>
       return field.placeholder ?? TomFormLabels.choose(field.basePath);
     }
     final v = field.get();
-    final hit = _items.where((i) => i.value == v).map((i) => i.label).firstOrNull;
+    final hit = _items
+        .where((i) => i.value == v)
+        .map((i) => i.label)
+        .firstOrNull;
     return hit ?? (field.placeholder ?? TomFormLabels.choose(field.basePath));
   }
 
@@ -284,7 +289,8 @@ class _CupertinoEnumPickerWidgetState<T>
 // ===========================================================================
 
 @tomReflector
-class TomCupertinoFormEnumSegmented<T extends Object> extends TomFormEnumField<T>
+class TomCupertinoFormEnumSegmented<T extends Object>
+    extends TomFormEnumField<T>
     with TomGenericFieldDecorationMixin<T> {
   final TomSelectableSource<T> source;
 
@@ -322,13 +328,12 @@ class TomCupertinoFormEnumSegmented<T extends Object> extends TomFormEnumField<T
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoEnumSegmentedWidget<T>(field: this),
-      );
+    field: this,
+    child: _CupertinoEnumSegmentedWidget<T>(field: this),
+  );
 }
 
-class _CupertinoEnumSegmentedWidget<T extends Object>
-    extends StatefulWidget {
+class _CupertinoEnumSegmentedWidget<T extends Object> extends StatefulWidget {
   final TomCupertinoFormEnumSegmented<T> field;
   const _CupertinoEnumSegmentedWidget({required this.field});
 
@@ -349,9 +354,11 @@ class _CupertinoEnumSegmentedWidgetState<T extends Object>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -382,14 +389,10 @@ class _CupertinoEnumSegmentedWidgetState<T extends Object>
   Widget build(BuildContext context) {
     final style = field.resolveStyle(context);
     if (_items.isEmpty) {
-      return field.decorateField(
-        context,
-        Text('…', style: style.inputStyle),
-      );
+      return field.decorateField(context, Text('…', style: style.inputStyle));
     }
     final v = field.get();
-    final groupValue =
-        _items.any((i) => i.value == v) ? v : _items.first.value;
+    final groupValue = _items.any((i) => i.value == v) ? v : _items.first.value;
     final segmented = CupertinoSlidingSegmentedControl<T>(
       groupValue: groupValue,
       onValueChanged: field.isEditable
@@ -400,8 +403,7 @@ class _CupertinoEnumSegmentedWidgetState<T extends Object>
       children: {
         for (final it in _items)
           it.value: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Text(it.label, style: style.inputStyle),
           ),
       },
@@ -458,9 +460,9 @@ class TomCupertinoFormObjectPicker<T> extends TomFormObjectField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoObjectPickerWidget<T>(field: this),
-      );
+    field: this,
+    child: _CupertinoObjectPickerWidget<T>(field: this),
+  );
 }
 
 class _CupertinoObjectPickerWidget<T> extends StatefulWidget {
@@ -484,9 +486,11 @@ class _CupertinoObjectPickerWidgetState<T>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -518,7 +522,10 @@ class _CupertinoObjectPickerWidgetState<T>
       return field.placeholder ?? TomFormLabels.choose(field.basePath);
     }
     final v = field.get();
-    final hit = _items.where((i) => i.value == v).map((i) => i.label).firstOrNull;
+    final hit = _items
+        .where((i) => i.value == v)
+        .map((i) => i.label)
+        .firstOrNull;
     return hit ?? (field.placeholder ?? TomFormLabels.choose(field.basePath));
   }
 

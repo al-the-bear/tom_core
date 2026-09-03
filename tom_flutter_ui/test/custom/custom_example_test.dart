@@ -20,9 +20,9 @@ Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
 /// only they add) in the `disabled` state — robust against the app shell's
 /// own `IgnorePointer`s.
 Finder _fadedAncestorOf(Finder child) => find.ancestor(
-      of: child,
-      matching: find.byWidgetPredicate((w) => w is Opacity && w.opacity == 0.4),
-    );
+  of: child,
+  matching: find.byWidgetPredicate((w) => w is Opacity && w.opacity == 0.4),
+);
 
 void main() {
   setUp(() {
@@ -52,8 +52,10 @@ void main() {
       });
       Widget c() => const SizedBox();
       expect(
-        const TomAuthGuard(tomId: 'reports.export', child: SizedBox())
-            .resolveAuthState(),
+        const TomAuthGuard(
+          tomId: 'reports.export',
+          child: SizedBox(),
+        ).resolveAuthState(),
         TomAuthState.none,
       );
       expect(
@@ -73,29 +75,31 @@ void main() {
 
   group('TomAuthGuard rendering', () {
     testWidgets('none collapses the child to SizedBox.shrink', (tester) async {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'secret': TomAuthState.none});
-      await tester.pumpWidget(_host(
-        const TomAuthGuard(tomId: 'secret', child: Text('hidden')),
-      ));
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'secret': TomAuthState.none,
+      });
+      await tester.pumpWidget(
+        _host(const TomAuthGuard(tomId: 'secret', child: Text('hidden'))),
+      );
       expect(find.text('hidden'), findsNothing);
     });
 
     testWidgets('disabled keeps the child but blocks pointers', (tester) async {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'locked': TomAuthState.disabled});
-      await tester.pumpWidget(_host(
-        const TomAuthGuard(tomId: 'locked', child: Text('shown')),
-      ));
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'locked': TomAuthState.disabled,
+      });
+      await tester.pumpWidget(
+        _host(const TomAuthGuard(tomId: 'locked', child: Text('shown'))),
+      );
       expect(find.text('shown'), findsOneWidget);
       // The disabled treatment fades the child to opacity 0.4.
       expect(_fadedAncestorOf(find.text('shown')), findsOneWidget);
     });
 
     testWidgets('full renders the child untouched', (tester) async {
-      await tester.pumpWidget(_host(
-        const TomAuthGuard(tomId: 'open', child: Text('content')),
-      ));
+      await tester.pumpWidget(
+        _host(const TomAuthGuard(tomId: 'open', child: Text('content'))),
+      );
       expect(find.text('content'), findsOneWidget);
       expect(_fadedAncestorOf(find.text('content')), findsNothing);
     });
@@ -108,19 +112,25 @@ void main() {
     ];
 
     testWidgets('none hides the entire group', (tester) async {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'choice': TomAuthState.none});
-      await tester.pumpWidget(_host(
-        const TomRadioGroup<String>(
-            tomId: 'choice', items: items, selected: 'a'),
-      ));
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'choice': TomAuthState.none,
+      });
+      await tester.pumpWidget(
+        _host(
+          const TomRadioGroup<String>(
+            tomId: 'choice',
+            items: items,
+            selected: 'a',
+          ),
+        ),
+      );
       expect(find.text('Alpha'), findsNothing);
     });
 
     testWidgets('full renders every item interactively', (tester) async {
-      await tester.pumpWidget(_host(
-        const TomRadioGroup<String>(items: items, selected: 'a'),
-      ));
+      await tester.pumpWidget(
+        _host(const TomRadioGroup<String>(items: items, selected: 'a')),
+      );
       expect(find.text('Alpha'), findsOneWidget);
       expect(find.text('Beta'), findsOneWidget);
       // The group is not faded at `full`.
@@ -130,15 +140,16 @@ void main() {
 
   group('TomEmptyState / TomLoadingOverlay / TomSkeletonLoader rendering', () {
     testWidgets('empty state shows title and description', (tester) async {
-      await tester.pumpWidget(_host(
-        TomEmptyState(title: 'Nothing here', description: 'Add one.'),
-      ));
+      await tester.pumpWidget(
+        _host(TomEmptyState(title: 'Nothing here', description: 'Add one.')),
+      );
       expect(find.text('Nothing here'), findsOneWidget);
       expect(find.text('Add one.'), findsOneWidget);
     });
 
-    testWidgets('a tomId reads the headline from the installed bundle',
-        (tester) async {
+    testWidgets('a tomId reads the headline from the installed bundle', (
+      tester,
+    ) async {
       // The module's only resource lookup, and so the only reason the example
       // and this suite install a provider at all.
       TomTextResourceProvider.setAppResourceProvider(
@@ -148,66 +159,75 @@ void main() {
           },
         }),
       );
-      await tester.pumpWidget(_host(
-        TomEmptyState(tomId: 'reports.empty', title: 'ignored'),
-      ));
+      await tester.pumpWidget(
+        _host(TomEmptyState(tomId: 'reports.empty', title: 'ignored')),
+      );
       // Resources win over the explicit parameter, which is the fallback.
       expect(find.text('No reports'), findsOneWidget);
       expect(find.text('ignored'), findsNothing);
       expect(find.text('Nothing yet.'), findsOneWidget);
     });
 
-    testWidgets('loading overlay shows scrim + spinner only when loading',
-        (tester) async {
+    testWidgets('loading overlay shows scrim + spinner only when loading', (
+      tester,
+    ) async {
       // The overlay is a Stack that sizes to its child, so give the child a
       // real size — the widget is meant to wrap a full-sized subtree.
-      await tester.pumpWidget(_host(
-        const TomLoadingOverlay(
-          isLoading: false,
-          child: SizedBox(width: 300, height: 300, child: Text('body')),
+      await tester.pumpWidget(
+        _host(
+          const TomLoadingOverlay(
+            isLoading: false,
+            child: SizedBox(width: 300, height: 300, child: Text('body')),
+          ),
         ),
-      ));
+      );
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
-      await tester.pumpWidget(_host(
-        const TomLoadingOverlay(
-          isLoading: true,
-          message: 'Working…',
-          child: SizedBox(width: 300, height: 300, child: Text('body')),
+      await tester.pumpWidget(
+        _host(
+          const TomLoadingOverlay(
+            isLoading: true,
+            message: 'Working…',
+            child: SizedBox(width: 300, height: 300, child: Text('body')),
+          ),
         ),
-      ));
+      );
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('Working…'), findsOneWidget);
     });
 
-    testWidgets('a disabled childless skeleton drops the shimmer mask',
-        (tester) async {
+    testWidgets('a disabled childless skeleton drops the shimmer mask', (
+      tester,
+    ) async {
       // Scoped to the childless form on purpose. "Disabled renders a static
       // placeholder" holds only here: with a `child`, disabling returns the
       // caller's widget in its own colours and paints no placeholder at all.
       // A ShaderMask check cannot tell those two apart — neither has a mask —
       // so the real distinction is pinned by pixels in
       // `tom_skeleton_loader_test.dart`.
-      await tester.pumpWidget(_host(
-        const TomSkeletonLoader(width: 80, height: 12, enabled: false),
-      ));
+      await tester.pumpWidget(
+        _host(const TomSkeletonLoader(width: 80, height: 12, enabled: false)),
+      );
       expect(find.byType(ShaderMask), findsNothing);
     });
   });
 
   group('TomErrorBoundary rendering', () {
     testWidgets('renders its child when no error is thrown', (tester) async {
-      await tester.pumpWidget(_host(
-        const TomErrorBoundary(child: Text('safe')),
-      ));
+      await tester.pumpWidget(
+        _host(const TomErrorBoundary(child: Text('safe'))),
+      );
       expect(find.text('safe'), findsOneWidget);
     });
   });
 
   group('data models', () {
     test('TomRadioGroupItem keeps value / label / description', () {
-      const item =
-          TomRadioGroupItem(value: 7, label: 'Seven', description: 'prime');
+      const item = TomRadioGroupItem(
+        value: 7,
+        label: 'Seven',
+        description: 'prime',
+      );
       expect(item.value, 7);
       expect(item.label, 'Seven');
       expect(item.description, 'prime');

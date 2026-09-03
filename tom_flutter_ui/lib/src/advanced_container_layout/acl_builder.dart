@@ -133,13 +133,13 @@ class _RowData {
       idScope: idScope,
       breakpoints: breakpoints,
       height: heightIsExplicit ? height : fallbackHeight,
-      heightBpOverrides:
-          heightIsExplicit ? heightBpOverrides : fallbackHeightBpOverrides,
+      heightBpOverrides: heightIsExplicit
+          ? heightBpOverrides
+          : fallbackHeightBpOverrides,
       defaultAppendGap: defaultAppendGap,
       defaultAppendGapBpOverrides: defaultAppendGapBpOverrides,
       // Per-row override beats the builder-wide default.
-      defaultRowCrossAlignment:
-          rowCrossAlignment ?? defaultRowCrossAlignment,
+      defaultRowCrossAlignment: rowCrossAlignment ?? defaultRowCrossAlignment,
     );
   }
 }
@@ -190,7 +190,8 @@ class AclBuilder {
   String? _activeGroupName;
 
   // Visibility
-  final Map<String, AclGroupVisibilityController> _groupVisibilityControllers = {};
+  final Map<String, AclGroupVisibilityController> _groupVisibilityControllers =
+      {};
 
   // Variants
   final List<AclVariant> _variants = [];
@@ -218,16 +219,16 @@ class AclBuilder {
     AclTitlePosition titlePosition = AclTitlePosition.topLeft,
     AclTitleBorderAlign titleBorderAlign = AclTitleBorderAlign.bottom,
     double titleVerticalOffset = 0.0,
-  })  : _title = title,
-        _titleWidget = titleWidget,
-        _borderStyle = borderStyle,
-        _focusedBorderStyle = focusedBorderStyle,
-        _padding = padding,
-        _backgroundColor = backgroundColor,
-        _titleStyle = titleStyle,
-        _titlePosition = titlePosition,
-        _titleBorderAlign = titleBorderAlign,
-        _titleVerticalOffset = titleVerticalOffset {
+  }) : _title = title,
+       _titleWidget = titleWidget,
+       _borderStyle = borderStyle,
+       _focusedBorderStyle = focusedBorderStyle,
+       _padding = padding,
+       _backgroundColor = backgroundColor,
+       _titleStyle = titleStyle,
+       _titlePosition = titlePosition,
+       _titleBorderAlign = titleBorderAlign,
+       _titleVerticalOffset = titleVerticalOffset {
     _currentRow.alignment = _defaultRowHorizontalAlignment;
     _rows.add(_currentRow);
   }
@@ -319,8 +320,9 @@ class AclBuilder {
     // component so the container can resolve the row's breakpoint-aware
     // default gap at render time instead of baking it in now.
     final usesDefaultGap = dist == 0;
-    final componentKey =
-        canAttachComponentKey ? _resolveReferenceKey(child) : null;
+    final componentKey = canAttachComponentKey
+        ? _resolveReferenceKey(child)
+        : null;
     _currentComponent = _ComponentData(
       child: child,
       flags: _defaultFlags,
@@ -382,8 +384,9 @@ class AclBuilder {
   }) {
     _finalizeCurrentComponent();
     // Apply default row gap if no explicit dist was specified.
-    final effectiveDist =
-        (dist == 0 && _defaultRowGap > 0) ? _defaultRowGap : dist;
+    final effectiveDist = (dist == 0 && _defaultRowGap > 0)
+        ? _defaultRowGap
+        : dist;
     _currentRow = _RowData()
       ..gapBefore = effectiveDist
       ..alignment = _defaultRowHorizontalAlignment;
@@ -408,7 +411,11 @@ class AclBuilder {
   /// * A [separator] gapRow renders at [minSize] height (minimum 9 px).
   /// * A pure spacing gapRow renders at [minSize] height, or collapses to
   ///   nothing if [minSize] is 0 (the default).
-  AclBuilder gapRow({double weight = 1, AclSeparator? separator, double minSize = 0}) {
+  AclBuilder gapRow({
+    double weight = 1,
+    AclSeparator? separator,
+    double minSize = 0,
+  }) {
     _finalizeCurrentComponent();
     final gapRowData = _RowData()
       ..isGapRow = true
@@ -509,7 +516,8 @@ class AclBuilder {
   AclBuilder setXWidthInChars(int chars, {double charWidth = 8}) {
     if (_currentComponent == null) return this;
     final width = (chars * charWidth).clamp(0.0, double.maxFinite);
-    final currentHeight = _currentComponent!.maximumSize?.height ?? double.infinity;
+    final currentHeight =
+        _currentComponent!.maximumSize?.height ?? double.infinity;
     _currentComponent!.maximumSize = Size(width, currentHeight);
     return this;
   }
@@ -549,7 +557,8 @@ class AclBuilder {
   AclBuilder sameHeightAs(Object reference) =>
       setComp(reference, AclFlags.otherDimY);
 
-  AclBuilder sameSize(Object reference) => setComp(reference, AclFlags.otherDim);
+  AclBuilder sameSize(Object reference) =>
+      setComp(reference, AclFlags.otherDim);
 
   // ── Per-component vertical alignment ──────────────────────────────────────
 
@@ -914,7 +923,8 @@ class AclBuilder {
   AclBuilder setHideUnauthorized(bool? value) {
     if (_currentComponent == null) {
       throw StateError(
-          'setHideUnauthorized must be called immediately after append().');
+        'setHideUnauthorized must be called immediately after append().',
+      );
     }
     _currentComponent!.hideUnauthorized = value;
     return this;
@@ -981,7 +991,10 @@ class AclBuilder {
   /// [expandX] components creates a "grow up to preferred, then distribute
   /// remainder to expandX" behaviour — see "Row Sizing — Three Phases" (§6)
   /// in `doc/acl_design_specification.md`.
-  AclBuilder setAclDefaultUnknownMinimumSize(double width, [double height = 0]) {
+  AclBuilder setAclDefaultUnknownMinimumSize(
+    double width, [
+    double height = 0,
+  ]) {
     _defaultUnknownMinimumSize = Size(width, height);
     return this;
   }
@@ -999,7 +1012,10 @@ class AclBuilder {
   /// This is the only 0-means-fall-back among the builder-wide setters;
   /// [setAclDefaultUnknownMinimumSize] stores its zeros, and the two gap
   /// setters read 0 as "off".
-  AclBuilder setAclDefaultUnknownPreferredSize(double width, [double height = 0]) {
+  AclBuilder setAclDefaultUnknownPreferredSize(
+    double width, [
+    double height = 0,
+  ]) {
     _defaultUnknownPreferredSize = Size(width, height);
     return this;
   }
@@ -1024,32 +1040,57 @@ class AclBuilder {
     return this;
   }
 
-  AclBuilder setAclPaddingPx(double left, double top, double right, double bottom) {
+  AclBuilder setAclPaddingPx(
+    double left,
+    double top,
+    double right,
+    double bottom,
+  ) {
     _padding = EdgeInsets.fromLTRB(left, top, right, bottom);
     return this;
   }
 
   AclBuilder setAclPaddingTop(double value) {
     final resolved = _padding.resolve(TextDirection.ltr);
-    _padding = EdgeInsets.fromLTRB(resolved.left, value, resolved.right, resolved.bottom);
+    _padding = EdgeInsets.fromLTRB(
+      resolved.left,
+      value,
+      resolved.right,
+      resolved.bottom,
+    );
     return this;
   }
 
   AclBuilder setAclPaddingBottom(double value) {
     final resolved = _padding.resolve(TextDirection.ltr);
-    _padding = EdgeInsets.fromLTRB(resolved.left, resolved.top, resolved.right, value);
+    _padding = EdgeInsets.fromLTRB(
+      resolved.left,
+      resolved.top,
+      resolved.right,
+      value,
+    );
     return this;
   }
 
   AclBuilder setAclPaddingLeft(double value) {
     final resolved = _padding.resolve(TextDirection.ltr);
-    _padding = EdgeInsets.fromLTRB(value, resolved.top, resolved.right, resolved.bottom);
+    _padding = EdgeInsets.fromLTRB(
+      value,
+      resolved.top,
+      resolved.right,
+      resolved.bottom,
+    );
     return this;
   }
 
   AclBuilder setAclPaddingRight(double value) {
     final resolved = _padding.resolve(TextDirection.ltr);
-    _padding = EdgeInsets.fromLTRB(resolved.left, resolved.top, value, resolved.bottom);
+    _padding = EdgeInsets.fromLTRB(
+      resolved.left,
+      resolved.top,
+      value,
+      resolved.bottom,
+    );
     return this;
   }
 
@@ -1224,11 +1265,13 @@ class AclBuilder {
     // unclipped on the first frame, before any measurement exists, and overflow
     // for exactly that frame.
     variantBuilder._finalizeCurrentComponent();
-    _variants.add(AclVariant(
-      name: name,
-      atWidth: atWidth,
-      rows: variantBuilder._rows
-          .map((r) => r.toRow(
+    _variants.add(
+      AclVariant(
+        name: name,
+        atWidth: atWidth,
+        rows: variantBuilder._rows
+            .map(
+              (r) => r.toRow(
                 defaultAppendGap: variantBuilder._defaultAppendGap,
                 defaultAppendGapBpOverrides:
                     variantBuilder._defaultAppendGapBpOverrides,
@@ -1237,9 +1280,11 @@ class AclBuilder {
                     variantBuilder._defaultRowHeightBpOverrides,
                 defaultRowCrossAlignment:
                     variantBuilder._defaultRowVerticalAlignment,
-              ))
-          .toList(),
-    ));
+              ),
+            )
+            .toList(),
+      ),
+    );
     return this;
   }
 
@@ -1254,11 +1299,13 @@ class AclBuilder {
     required double atWidth,
     double splitRowDist = 0,
   }) {
-    _currentRow.breakpoints.add(AclRowBreakpoint(
-      atWidth: atWidth,
-      splitAfter: _currentRow.components.length,
-      splitRowDist: splitRowDist,
-    ));
+    _currentRow.breakpoints.add(
+      AclRowBreakpoint(
+        atWidth: atWidth,
+        splitAfter: _currentRow.components.length,
+        splitRowDist: splitRowDist,
+      ),
+    );
     return this;
   }
 
@@ -1308,7 +1355,8 @@ class AclBuilder {
       );
     }
     _inVariantBlock = true;
-    _currentVariantDetector = detector ??
+    _currentVariantDetector =
+        detector ??
         AclDeviceContext.buildConvenienceDetector(
           width: width,
           height: height,
@@ -1370,13 +1418,15 @@ class AclBuilder {
 
     return Acl(
       rows: _rows
-          .map((row) => row.toRow(
-                defaultAppendGap: _defaultAppendGap,
-                defaultAppendGapBpOverrides: _defaultAppendGapBpOverrides,
-                fallbackHeight: _defaultRowHeight,
-                fallbackHeightBpOverrides: _defaultRowHeightBpOverrides,
-                defaultRowCrossAlignment: _defaultRowVerticalAlignment,
-              ))
+          .map(
+            (row) => row.toRow(
+              defaultAppendGap: _defaultAppendGap,
+              defaultAppendGapBpOverrides: _defaultAppendGapBpOverrides,
+              fallbackHeight: _defaultRowHeight,
+              fallbackHeightBpOverrides: _defaultRowHeightBpOverrides,
+              defaultRowCrossAlignment: _defaultRowVerticalAlignment,
+            ),
+          )
           .toList(),
       borderStyle: _borderStyle,
       focusedBorderStyle: _focusedBorderStyle,

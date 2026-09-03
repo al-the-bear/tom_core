@@ -89,11 +89,11 @@ Map<String, dynamic> _runGates() {
   for (final launcher in _pythonLaunchers) {
     final ProcessResult result;
     try {
-      result = Process.runSync(
-        launcher.first,
-        [...launcher.skip(1), 'tool/check_gates.py', '--json'],
-        workingDirectory: _repoRoot.path,
-      );
+      result = Process.runSync(launcher.first, [
+        ...launcher.skip(1),
+        'tool/check_gates.py',
+        '--json',
+      ], workingDirectory: _repoRoot.path);
     } on ProcessException catch (e) {
       failures.add('${launcher.join(' ')}: ${e.message}');
       continue;
@@ -141,7 +141,8 @@ void main() {
       expect(
         gates,
         isNotEmpty,
-        reason: 'no check_*.py was found in tool/. Either the folder moved or '
+        reason:
+            'no check_*.py was found in tool/. Either the folder moved or '
             'this test is looking in the wrong place; an empty gate list must '
             'not read as "everything passes".',
       );
@@ -153,7 +154,8 @@ void main() {
         expect(
           result,
           isNotNull,
-          reason: '$gate is a checker in tool/ that check_gates.py did not '
+          reason:
+              '$gate is a checker in tool/ that check_gates.py did not '
               'report on. It discovers gates by the same glob this test does, '
               'so the two disagreeing means one of them is wrong.',
         );

@@ -146,18 +146,9 @@ class _WidgetsGalleryState extends State<_WidgetsGallery> {
           spacing: 12,
           runSpacing: 8,
           children: [
-            TomElevatedButton(
-              onPressed: () {},
-              child: const Text('Elevated'),
-            ),
-            TomFilledButton(
-              onPressed: () {},
-              child: const Text('Filled'),
-            ),
-            TomOutlinedButton(
-              onPressed: () {},
-              child: const Text('Outlined'),
-            ),
+            TomElevatedButton(onPressed: () {}, child: const Text('Elevated')),
+            TomFilledButton(onPressed: () {}, child: const Text('Filled')),
+            TomOutlinedButton(onPressed: () {}, child: const Text('Outlined')),
           ],
         ),
 
@@ -200,12 +191,9 @@ class _WidgetsGalleryState extends State<_WidgetsGallery> {
   }
 
   Widget _section(String title) => Padding(
-        padding: const EdgeInsets.only(top: 20, bottom: 8),
-        child: Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      );
+    padding: const EdgeInsets.only(top: 20, bottom: 8),
+    child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +247,9 @@ class _CustomGallery extends StatelessWidget {
           child: TomLoadingOverlay(
             isLoading: true,
             message: 'Loading…',
-            child: SizedBox.expand(child: Card(child: Center(child: Text('content')))),
+            child: SizedBox.expand(
+              child: Card(child: Center(child: Text('content'))),
+            ),
           ),
         ),
         const Divider(height: 32),
@@ -442,10 +432,12 @@ class ProfileForm extends TomForm<UserProfile> {
   Future<List<FormValidationError>> validateForm() async {
     final errors = <FormValidationError>[];
     if (role.get() == 'admin' && !email.get().endsWith('@company.com')) {
-      errors.add(FormValidationError(
-        errorKey: 'error.adminEmailRequired',
-        fields: [email, role],
-      ));
+      errors.add(
+        FormValidationError(
+          errorKey: 'error.adminEmailRequired',
+          fields: [email, role],
+        ),
+      );
     }
     return errors;
   }
@@ -522,9 +514,9 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
     if (errors.isEmpty) {
       if (await form.save()) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile saved!')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Profile saved!')));
         }
       }
     }
@@ -565,7 +557,9 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
                   value: _formAuthState,
                   onChanged: (s) => s == null ? null : _setAuthState(s),
                   items: TomAuthState.values
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s.name)))
+                      .map(
+                        (s) => DropdownMenuItem(value: s, child: Text(s.name)),
+                      )
                       .toList(),
                 ),
               ],

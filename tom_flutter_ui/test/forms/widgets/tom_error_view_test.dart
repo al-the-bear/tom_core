@@ -33,8 +33,7 @@ class _TestEventSource implements TomFormEventSource {
   int get listenerCount => _listeners.length;
 }
 
-Widget _wrap(Widget child) =>
-    MaterialApp(home: Scaffold(body: child));
+Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
   final fieldA = _TestField<String>('a', '');
@@ -54,77 +53,92 @@ void main() {
     testWidgets('renders custom emptyState when provided', (tester) async {
       final form = _TestEventSource();
 
-      await tester.pumpWidget(_wrap(TomErrorView(
-        form: form,
-        emptyState: const Text('all good'),
-      )));
+      await tester.pumpWidget(
+        _wrap(TomErrorView(form: form, emptyState: const Text('all good'))),
+      );
 
       expect(find.text('all good'), findsOneWidget);
     });
   });
 
   group('TomErrorView — error display', () {
-    testWidgets('shows both field and cross-field errors by default',
-        (tester) async {
+    testWidgets('shows both field and cross-field errors by default', (
+      tester,
+    ) async {
       final form = _TestEventSource();
 
       await tester.pumpWidget(_wrap(TomErrorView(form: form)));
 
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(errorKey: 'error.required', fields: [fieldName]),
-          FormValidationError(
-            errorKey: 'error.mismatch',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.required',
+              fields: [fieldName],
+            ),
+            FormValidationError(
+              errorKey: 'error.mismatch',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
 
       expect(find.text('error.required'), findsOneWidget);
       expect(find.text('error.mismatch'), findsOneWidget);
     });
 
-    testWidgets('filters single-field errors when includeFieldErrors is false',
-        (tester) async {
-      final form = _TestEventSource();
+    testWidgets(
+      'filters single-field errors when includeFieldErrors is false',
+      (tester) async {
+        final form = _TestEventSource();
 
-      await tester.pumpWidget(_wrap(TomErrorView(
-        form: form,
-        includeFieldErrors: false,
-      )));
+        await tester.pumpWidget(
+          _wrap(TomErrorView(form: form, includeFieldErrors: false)),
+        );
 
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(errorKey: 'error.required', fields: [fieldName]),
-          FormValidationError(
-            errorKey: 'error.mismatch',
-            fields: [fieldA, fieldB],
+        form.fireEvent(
+          FormValidatedEvent(
+            source: 'testForm',
+            errors: [
+              FormValidationError(
+                errorKey: 'error.required',
+                fields: [fieldName],
+              ),
+              FormValidationError(
+                errorKey: 'error.mismatch',
+                fields: [fieldA, fieldB],
+              ),
+            ],
           ),
-        ],
-      ));
-      await tester.pump();
+        );
+        await tester.pump();
 
-      expect(find.text('error.required'), findsNothing);
-      expect(find.text('error.mismatch'), findsOneWidget);
-    });
+        expect(find.text('error.required'), findsNothing);
+        expect(find.text('error.mismatch'), findsOneWidget);
+      },
+    );
 
     testWidgets('renders the title when provided', (tester) async {
       final form = _TestEventSource();
 
-      await tester.pumpWidget(_wrap(TomErrorView(form: form, title: 'Problems')));
+      await tester.pumpWidget(
+        _wrap(TomErrorView(form: form, title: 'Problems')),
+      );
 
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.mismatch',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.mismatch',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
 
       expect(find.text('Problems'), findsOneWidget);
@@ -137,15 +151,17 @@ void main() {
 
       await tester.pumpWidget(_wrap(TomErrorView(form: form)));
 
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.mismatch',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.mismatch',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
       expect(find.text('error.mismatch'), findsOneWidget);
 
@@ -159,15 +175,17 @@ void main() {
 
       await tester.pumpWidget(_wrap(TomErrorView(form: form)));
 
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.mismatch',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.mismatch',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
       expect(find.text('error.mismatch'), findsOneWidget);
 

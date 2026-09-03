@@ -15,13 +15,17 @@ void main() {
       final b = TomObject<int>(10);
       var buildCount = 0;
 
-      await tester.pumpWidget(_wrap(TomMultiObservableBuilder(
-        observables: [a, b],
-        builder: (context) {
-          buildCount++;
-          return Text('${a.get()}+${b.get()}');
-        },
-      )));
+      await tester.pumpWidget(
+        _wrap(
+          TomMultiObservableBuilder(
+            observables: [a, b],
+            builder: (context) {
+              buildCount++;
+              return Text('${a.get()}+${b.get()}');
+            },
+          ),
+        ),
+      );
 
       expect(find.text('1+10'), findsOneWidget);
       final initialBuilds = buildCount;
@@ -37,18 +41,23 @@ void main() {
       expect(buildCount, greaterThan(initialBuilds));
     });
 
-    testWidgets('does not rebuild for an unchanged set() (no notify)',
-        (tester) async {
+    testWidgets('does not rebuild for an unchanged set() (no notify)', (
+      tester,
+    ) async {
       final a = TomObject<int>(1);
       var buildCount = 0;
 
-      await tester.pumpWidget(_wrap(TomMultiObservableBuilder(
-        observables: [a],
-        builder: (context) {
-          buildCount++;
-          return Text('${a.get()}');
-        },
-      )));
+      await tester.pumpWidget(
+        _wrap(
+          TomMultiObservableBuilder(
+            observables: [a],
+            builder: (context) {
+              buildCount++;
+              return Text('${a.get()}');
+            },
+          ),
+        ),
+      );
 
       final builds = buildCount;
       a.set(1); // same value → TomObject does not notify
@@ -59,10 +68,14 @@ void main() {
     testWidgets('deregisters listeners on dispose', (tester) async {
       final a = TomObject<int>(0);
 
-      await tester.pumpWidget(_wrap(TomMultiObservableBuilder(
-        observables: [a],
-        builder: (context) => Text('${a.get()}'),
-      )));
+      await tester.pumpWidget(
+        _wrap(
+          TomMultiObservableBuilder(
+            observables: [a],
+            builder: (context) => Text('${a.get()}'),
+          ),
+        ),
+      );
 
       // Replacing the widget disposes the builder; a later notify must not
       // throw (the listener was removed).
@@ -70,23 +83,29 @@ void main() {
       expect(() => a.set(99), returnsNormally);
     });
 
-    testWidgets('re-subscribes when the observable list changes',
-        (tester) async {
+    testWidgets('re-subscribes when the observable list changes', (
+      tester,
+    ) async {
       final a = TomObject<int>(1);
       final b = TomObject<int>(2);
 
       late StateSetter setOuter;
       var watchB = false;
 
-      await tester.pumpWidget(_wrap(StatefulBuilder(
-        builder: (context, setState) {
-          setOuter = setState;
-          return TomMultiObservableBuilder(
-            observables: watchB ? [b] : [a],
-            builder: (context) => Text(watchB ? 'b=${b.get()}' : 'a=${a.get()}'),
-          );
-        },
-      )));
+      await tester.pumpWidget(
+        _wrap(
+          StatefulBuilder(
+            builder: (context, setState) {
+              setOuter = setState;
+              return TomMultiObservableBuilder(
+                observables: watchB ? [b] : [a],
+                builder: (context) =>
+                    Text(watchB ? 'b=${b.get()}' : 'a=${a.get()}'),
+              );
+            },
+          ),
+        ),
+      );
 
       expect(find.text('a=1'), findsOneWidget);
 

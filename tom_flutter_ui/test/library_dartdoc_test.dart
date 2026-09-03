@@ -99,28 +99,29 @@ const _knownUndocumented = <String>{};
 const _rolloutMarkers = <String, String>{
   r'Phase[ -]\d':
       'a rollout phase — describe what the code does; for the steps of an '
-          'algorithm write "Step 1", which reads as structure rather than '
-          'schedule',
+      'algorithm write "Step 1", which reads as structure rather than '
+      'schedule',
   r'Round[ -]\d':
       'a review round — state the rule the code follows now, not the round '
-          'in which it changed',
+      'in which it changed',
   r'Demo [A-Z]\b':
       'a demo from the build plan — those letters resolve nowhere a reader '
-          'of the published documentation can look; name the example file, '
-          'or describe the arrangement',
+      'of the published documentation can look; name the example file, '
+      'or describe the arrangement',
 };
 
 /// Every Dart source file under `lib/`, as repo-relative paths.
 ///
 /// Walked rather than listed: a file added tomorrow is covered without anyone
 /// remembering this test exists.
-List<String> _allLibrarySources() => Directory('lib')
-    .listSync(recursive: true)
-    .whereType<File>()
-    .map((f) => f.path)
-    .where((p) => p.endsWith('.dart'))
-    .toList()
-  ..sort();
+List<String> _allLibrarySources() =>
+    Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .map((f) => f.path)
+        .where((p) => p.endsWith('.dart'))
+        .toList()
+      ..sort();
 
 /// A member dartdoc paired with the declaration it is attached to.
 typedef _DocumentedMember = ({String path, int line, String doc, String decl});
@@ -156,9 +157,10 @@ List<_DocumentedMember> _documentedMembers(String path) {
     }
     if (j >= lines.length) continue;
     final decl = lines[j].trim();
-    if (RegExp(r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|'
-            r'mixin\s+)*(?:class|enum|mixin|extension|typedef)\b')
-        .hasMatch(decl)) {
+    if (RegExp(
+      r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|'
+      r'mixin\s+)*(?:class|enum|mixin|extension|typedef)\b',
+    ).hasMatch(decl)) {
       continue;
     }
     if (decl.startsWith('library')) continue;
@@ -173,10 +175,10 @@ List<_DocumentedMember> _documentedMembers(String path) {
 /// Used to recognise an opening line that merely *names* the file's subject
 /// instead of describing it.
 Set<String> _declaredTypes(String source) => RegExp(
-      r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+)*'
-      r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
-      multiLine: true,
-    ).allMatches(source).map((m) => m.group(1)!).toSet();
+  r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+)*'
+  r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
+  multiLine: true,
+).allMatches(source).map((m) => m.group(1)!).toSet();
 
 /// The `export 'src/…';` targets of the package barrel, as repo-relative paths.
 ///
@@ -184,10 +186,10 @@ Set<String> _declaredTypes(String source) => RegExp(
 /// is exported instead of when someone remembers to update this file.
 List<String> _moduleBarrels() {
   final source = File(_packageBarrel).readAsStringSync();
-  return RegExp(r"^export '([^']+)';", multiLine: true)
-      .allMatches(source)
-      .map((m) => 'lib/${m.group(1)!}')
-      .toList();
+  return RegExp(
+    r"^export '([^']+)';",
+    multiLine: true,
+  ).allMatches(source).map((m) => 'lib/${m.group(1)!}').toList();
 }
 
 /// The unit a module barrel belongs to: its directory under `lib/src/`, or its
@@ -199,9 +201,7 @@ List<String> _moduleBarrels() {
 /// disagree, which is why this reads the directory rather than the basename).
 String _unitName(String barrelPath) {
   final parts = barrelPath.split('/'); // lib / src / … / <file>.dart
-  return parts.length > 3
-      ? parts[2]
-      : parts.last.replaceAll('.dart', '');
+  return parts.length > 3 ? parts[2] : parts.last.replaceAll('.dart', '');
 }
 
 /// The library dartdoc of [path] — the `///` run that precedes `library;` —
@@ -278,10 +278,10 @@ Map<String, String> _siblingTypes(String path) {
     final name = entity.uri.pathSegments.last;
     if (name == path.split(Platform.pathSeparator).last) continue;
     for (final m in RegExp(
-            r'^(?:abstract |base |final |sealed |interface |mixin )*'
-            r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
-            multiLine: true)
-        .allMatches(entity.readAsStringSync())) {
+      r'^(?:abstract |base |final |sealed |interface |mixin )*'
+      r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
+      multiLine: true,
+    ).allMatches(entity.readAsStringSync())) {
       types.putIfAbsent(m.group(1)!, () => name);
     }
   }
@@ -294,12 +294,9 @@ Map<String, String> _siblingTypes(String path) {
 /// entitled to name it in prose, and the point of this set is to stay silent
 /// wherever the reference is defensible.
 Set<String> _sameDirectoryLinks(String path) => RegExp(
-      r"^(?:import|export)\s+'([^'/:]+\.dart)'",
-      multiLine: true,
-    )
-        .allMatches(File(path).readAsStringSync())
-        .map((m) => m.group(1)!)
-        .toSet();
+  r"^(?:import|export)\s+'([^'/:]+\.dart)'",
+  multiLine: true,
+).allMatches(File(path).readAsStringSync()).map((m) => m.group(1)!).toSet();
 
 ({Set<String> topLevel, Set<String> members}) _declaredNames(String path) {
   final lines = File(path).readAsLinesSync();
@@ -311,18 +308,20 @@ Set<String> _sameDirectoryLinks(String path) => RegExp(
 
   final topLevel = <String>{
     for (final m in RegExp(
-            r'^(?:abstract |base |final |sealed |interface |mixin )*'
-            r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
-            multiLine: true)
-        .allMatches(body))
+      r'^(?:abstract |base |final |sealed |interface |mixin )*'
+      r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
+      multiLine: true,
+    ).allMatches(body))
       m.group(1)!,
-    for (final m
-        in RegExp(r'^(?:[\w<>,\s?]+\s+)?(\w+)\s*\(', multiLine: true)
-            .allMatches(body))
+    for (final m in RegExp(
+      r'^(?:[\w<>,\s?]+\s+)?(\w+)\s*\(',
+      multiLine: true,
+    ).allMatches(body))
       m.group(1)!,
-    for (final m in RegExp(r'^(?:const|final|var)\s+(?:[\w<>?]+\s+)?(\w+)\s*=',
-            multiLine: true)
-        .allMatches(body))
+    for (final m in RegExp(
+      r'^(?:const|final|var)\s+(?:[\w<>?]+\s+)?(\w+)\s*=',
+      multiLine: true,
+    ).allMatches(body))
       m.group(1)!,
   };
 
@@ -330,18 +329,19 @@ Set<String> _sameDirectoryLinks(String path) => RegExp(
     // `this.foo` in a constructor — how nearly every widget field arrives.
     for (final m in RegExp(r'\bthis\.(\w+)').allMatches(body)) m.group(1)!,
     for (final m in RegExp(
-            r'^\s+(?:final|const|late|static|var)\s[\w<>?,\s]*?(\w+)\s*[;=]',
-            multiLine: true)
-        .allMatches(body))
-      m.group(1)!,
-    for (final m
-        in RegExp(r'^\s+[\w<>?,\s]+\bget\s+(\w+)', multiLine: true)
-            .allMatches(body))
+      r'^\s+(?:final|const|late|static|var)\s[\w<>?,\s]*?(\w+)\s*[;=]',
+      multiLine: true,
+    ).allMatches(body))
       m.group(1)!,
     for (final m in RegExp(
-            r'^\s{2,}(?:[\w<>?,\s]+\s+)?(\w+)\s*\([^)]*\)\s*(?:\{|=>|async)',
-            multiLine: true)
-        .allMatches(body))
+      r'^\s+[\w<>?,\s]+\bget\s+(\w+)',
+      multiLine: true,
+    ).allMatches(body))
+      m.group(1)!,
+    for (final m in RegExp(
+      r'^\s{2,}(?:[\w<>?,\s]+\s+)?(\w+)\s*\([^)]*\)\s*(?:\{|=>|async)',
+      multiLine: true,
+    ).allMatches(body))
       m.group(1)!,
   };
 
@@ -357,17 +357,25 @@ void main() {
     setUpAll(() => doc = _libraryDartdoc(_packageBarrel));
 
     test('it has a library dartdoc at all', () {
-      expect(doc, isNotEmpty,
-          reason: '$_packageBarrel is the only library `dart doc` emits a '
-              'page for. Without a `///` run before `library;` that page has '
-              'no description whatsoever.');
+      expect(
+        doc,
+        isNotEmpty,
+        reason:
+            '$_packageBarrel is the only library `dart doc` emits a '
+            'page for. Without a `///` run before `library;` that page has '
+            'no description whatsoever.',
+      );
     });
 
     test('it opens with a statement of what the package is', () {
       final firstParagraph = doc.split('\n\n').first;
-      expect(firstParagraph.length, greaterThan(60),
-          reason: 'the opening paragraph is the whole of what a reader is '
-              'shown before the member list; one line is not enough');
+      expect(
+        firstParagraph.length,
+        greaterThan(60),
+        reason:
+            'the opening paragraph is the whole of what a reader is '
+            'shown before the member list; one line is not enough',
+      );
     });
 
     test('it names every unit it exports', () {
@@ -378,20 +386,29 @@ void main() {
       // deliberate: `widgets` and `widget_base` both occur in ordinary prose
       // about widgets, so a substring test would pass on a page that never
       // lists them.
-      final missing = _moduleBarrels()
-          .map(_unitName)
-          .where((unit) => !doc.contains('`$unit`'))
-          .toList()
-        ..sort();
-      expect(missing, isEmpty,
-          reason: 'these exported units are not named on the landing page, so '
-              'a reader cannot learn they exist: $missing');
+      final missing =
+          _moduleBarrels()
+              .map(_unitName)
+              .where((unit) => !doc.contains('`$unit`'))
+              .toList()
+            ..sort();
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'these exported units are not named on the landing page, so '
+            'a reader cannot learn they exist: $missing',
+      );
     });
 
     test('it points at the documentation set', () {
-      expect(doc, contains('doc/README.md'),
-          reason: 'the landing page should hand the reader on to the doc '
-              'index rather than being the end of the trail');
+      expect(
+        doc,
+        contains('doc/README.md'),
+        reason:
+            'the landing page should hand the reader on to the doc '
+            'index rather than being the end of the trail',
+      );
     });
   });
 
@@ -408,16 +425,22 @@ void main() {
 
     test('it states what the unit is in a paragraph', () {
       final firstParagraph = doc.split('\n\n').first;
-      expect(firstParagraph.length, greaterThan(60),
-          reason: 'a one-line summary does not tell a newcomer what ACL is');
+      expect(
+        firstParagraph.length,
+        greaterThan(60),
+        reason: 'a one-line summary does not tell a newcomer what ACL is',
+      );
     });
 
     test('it names the entry points', () {
       // Out of ~30 exported types, these are the two a newcomer should read
       // first — naming them is the difference between a barrel and a map.
       for (final entryPoint in ['[AclBuilder]', '[Acl]']) {
-        expect(doc, contains(entryPoint),
-            reason: '$_aclBarrel should name $entryPoint as an entry point');
+        expect(
+          doc,
+          contains(entryPoint),
+          reason: '$_aclBarrel should name $entryPoint as an entry point',
+        );
       }
     });
 
@@ -434,8 +457,11 @@ void main() {
         'doc/acl_design_specification.md',
         'lib/src/advanced_container_layout/readme.md',
       ]) {
-        expect(File(path).existsSync(), isTrue,
-            reason: '$_aclBarrel points at $path, which is not there');
+        expect(
+          File(path).existsSync(),
+          isTrue,
+          reason: '$_aclBarrel points at $path, which is not there',
+        );
       }
     });
   });
@@ -446,12 +472,16 @@ void main() {
       // without this the sweep is undone by a one-line edit that reads like
       // bookkeeping. Every module barrel is documented; keep it that way by
       // making the exemption unavailable rather than merely discouraged.
-      expect(_knownUndocumented, isEmpty,
-          reason: 'a module barrel was exempted from needing a library '
-              'dartdoc. Write the dartdoc instead — the shape is a paragraph '
-              'saying what the unit is, the two or three types to read first '
-              'as [] refs, and the unit\'s doc/ document named by path:\n'
-              '${_knownUndocumented.map((p) => '  $p').join('\n')}');
+      expect(
+        _knownUndocumented,
+        isEmpty,
+        reason:
+            'a module barrel was exempted from needing a library '
+            'dartdoc. Write the dartdoc instead — the shape is a paragraph '
+            'saying what the unit is, the two or three types to read first '
+            'as [] refs, and the unit\'s doc/ document named by path:\n'
+            '${_knownUndocumented.map((p) => '  $p').join('\n')}',
+      );
     });
 
     test('every module barrel is documented, or listed as a known gap', () {
@@ -461,11 +491,15 @@ void main() {
 
       final regressions = undocumented.difference(_knownUndocumented).toList()
         ..sort();
-      expect(regressions, isEmpty,
-          reason: 'these module barrels lost or never had a library dartdoc '
-              'and are not on the known-gap list. Document them, or — if the '
-              'gap is deliberate — add them to _knownUndocumented with a '
-              'reason:\n${regressions.map((p) => '  $p').join('\n')}');
+      expect(
+        regressions,
+        isEmpty,
+        reason:
+            'these module barrels lost or never had a library dartdoc '
+            'and are not on the known-gap list. Document them, or — if the '
+            'gap is deliberate — add them to _knownUndocumented with a '
+            'reason:\n${regressions.map((p) => '  $p').join('\n')}',
+      );
     });
 
     test('the known-gap list contains no stale entries', () {
@@ -473,15 +507,22 @@ void main() {
       // been documented, renamed or deleted must come off, so the set always
       // reads as the real outstanding work.
       final barrels = _moduleBarrels().toSet();
-      final stale = _knownUndocumented
-          .where((path) =>
-              !barrels.contains(path) || _libraryDartdoc(path).isNotEmpty)
-          .toList()
-        ..sort();
-      expect(stale, isEmpty,
-          reason: 'these entries in _knownUndocumented are no longer '
-              'undocumented module barrels — remove them:\n'
-              '${stale.map((p) => '  $p').join('\n')}');
+      final stale =
+          _knownUndocumented
+              .where(
+                (path) =>
+                    !barrels.contains(path) || _libraryDartdoc(path).isNotEmpty,
+              )
+              .toList()
+            ..sort();
+      expect(
+        stale,
+        isEmpty,
+        reason:
+            'these entries in _knownUndocumented are no longer '
+            'undocumented module barrels — remove them:\n'
+            '${stale.map((p) => '  $p').join('\n')}',
+      );
     });
   });
 
@@ -498,15 +539,21 @@ void main() {
         for (var i = 0; i < lines.length; i++) {
           for (final entry in _rolloutMarkers.entries) {
             if (!RegExp(entry.key).hasMatch(lines[i])) continue;
-            offences.add('$path:${i + 1}\n'
-                '    ${lines[i].trim()}\n'
-                '    → ${entry.value}');
+            offences.add(
+              '$path:${i + 1}\n'
+              '    ${lines[i].trim()}\n'
+              '    → ${entry.value}',
+            );
           }
         }
       }
-      expect(offences, isEmpty,
-          reason: 'these lines date the documentation to a schedule the '
-              'reader cannot see:\n\n${offences.join('\n\n')}');
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these lines date the documentation to a schedule the '
+            'reader cannot see:\n\n${offences.join('\n\n')}',
+      );
     });
 
     test('no library dartdoc opens by naming its own subject', () {
@@ -535,14 +582,20 @@ void main() {
 
         final declared = _declaredTypes(File(path).readAsStringSync());
         if (words.every(declared.contains)) {
-          offences.add('$path\n'
-              '    $opener\n'
-              '    → names the file\'s own types and nothing else');
+          offences.add(
+            '$path\n'
+            '    $opener\n'
+            '    → names the file\'s own types and nothing else',
+          );
         }
       }
-      expect(offences, isEmpty,
-          reason: 'these library dartdocs open with a label instead of a '
-              'statement of what the library is:\n\n${offences.join('\n\n')}');
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these library dartdocs open with a label instead of a '
+            'statement of what the library is:\n\n${offences.join('\n\n')}',
+      );
     });
 
     test('no published file is named after a build-plan position', () {
@@ -559,17 +612,25 @@ void main() {
         for (final file in Directory(dir).listSync(recursive: true)) {
           if (file is! File || !file.path.endsWith('.dart')) continue;
           final name = file.uri.pathSegments.last;
-          if (!RegExp(r'(phase|round|step)[ _-]?\d', caseSensitive: false)
-              .hasMatch(name)) {
+          if (!RegExp(
+            r'(phase|round|step)[ _-]?\d',
+            caseSensitive: false,
+          ).hasMatch(name)) {
             continue;
           }
-          offences.add('${file.path}\n'
-              '    → name it for what it shows, not for when it was built');
+          offences.add(
+            '${file.path}\n'
+            '    → name it for what it shows, not for when it was built',
+          );
         }
       }
-      expect(offences, isEmpty,
-          reason: 'these file names carry a schedule position:\n\n'
-              '${offences.join('\n\n')}');
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these file names carry a schedule position:\n\n'
+            '${offences.join('\n\n')}',
+      );
     });
   });
 
@@ -603,25 +664,33 @@ void main() {
           final name = RegExp(r'(\w+)\s*[({=]').firstMatch(member.decl);
           final setPrefixed = name?.group(1)?.startsWith('set') ?? false;
 
-          for (final m
-              in RegExp(r'\b(getter|setter|method)\b').allMatches(member.doc)) {
+          for (final m in RegExp(
+            r'\b(getter|setter|method)\b',
+          ).allMatches(member.doc)) {
             final word = m.group(1)!;
             final before = member.doc.substring(0, m.start).trimRight();
             if (before.endsWith('`') || before.endsWith(']')) continue;
             if (word == 'setter' && setPrefixed) continue;
 
-            final actual =
-                isGetter ? 'getter' : (isSetter ? 'setter' : 'method');
+            final actual = isGetter
+                ? 'getter'
+                : (isSetter ? 'setter' : 'method');
             if (word == actual) continue;
-            offences.add('${member.path}:${member.line}\n'
-                '    says "$word", but the declaration is a $actual:\n'
-                '    ${member.decl}');
+            offences.add(
+              '${member.path}:${member.line}\n'
+              '    says "$word", but the declaration is a $actual:\n'
+              '    ${member.decl}',
+            );
           }
         }
       }
-      expect(offences, isEmpty,
-          reason: 'these doc comments misstate how their member is called:\n\n'
-              '${offences.join('\n\n')}');
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these doc comments misstate how their member is called:\n\n'
+            '${offences.join('\n\n')}',
+      );
     });
 
     test('no prose calls a code span with a call signature a getter', () {
@@ -642,18 +711,24 @@ void main() {
       for (final file in docs) {
         // Soft wraps split these spans across lines, so match on the joined
         // text and report the file rather than a line that may not exist.
-        final joined = File(file.path)
-            .readAsStringSync()
-            .replaceAll(RegExp(r'\s*\n\s*'), ' ');
+        final joined = File(
+          file.path,
+        ).readAsStringSync().replaceAll(RegExp(r'\s*\n\s*'), ' ');
         for (final m in pattern.allMatches(joined)) {
-          offences.add('${file.path}\n'
-              '    `${m.group(1)}` ${m.group(2)}\n'
-              '    → the span shows a call signature, so it is a method');
+          offences.add(
+            '${file.path}\n'
+            '    `${m.group(1)}` ${m.group(2)}\n'
+            '    → the span shows a call signature, so it is a method',
+          );
         }
       }
-      expect(offences, isEmpty,
-          reason: 'these spans contradict the word beside them:\n\n'
-              '${offences.join('\n\n')}');
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these spans contradict the word beside them:\n\n'
+            '${offences.join('\n\n')}',
+      );
     });
   });
 
@@ -687,8 +762,9 @@ void main() {
         final declared = _declaredNames(path);
 
         for (final entry in doc) {
-          for (final m
-              in RegExp(r'\[([A-Za-z_][\w.]*)\]').allMatches(entry.text)) {
+          for (final m in RegExp(
+            r'\[([A-Za-z_][\w.]*)\]',
+          ).allMatches(entry.text)) {
             final name = m.group(1)!;
             // Already qualified — `[Foo.bar]` reaches `bar` through `Foo`.
             if (name.contains('.')) continue;
@@ -698,20 +774,25 @@ void main() {
             if (declared.topLevel.contains(name)) continue;
             if (!declared.members.contains(name)) continue;
 
-            offences.add('$path:${entry.line}\n'
-                '    [$name] is a member of this file, so it is out of scope '
-                'in a library dartdoc\n'
-                '    → qualify it: [<OwningClass>.$name]');
+            offences.add(
+              '$path:${entry.line}\n'
+              '    [$name] is a member of this file, so it is out of scope '
+              'in a library dartdoc\n'
+              '    → qualify it: [<OwningClass>.$name]',
+            );
           }
         }
       }
-      expect(offences, isEmpty,
-          reason: 'these library dartdocs link names that cannot resolve:\n\n'
-              '${offences.join('\n\n')}');
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these library dartdocs link names that cannot resolve:\n\n'
+            '${offences.join('\n\n')}',
+      );
     });
 
-    test('no library dartdoc links a same-directory sibling it never imports',
-        () {
+    test('no library dartdoc links a same-directory sibling it never imports', () {
       // `tom_infinite_scroll.dart` opened with "The default slot builders
       // render [TomEmptyState], [TomSkeletonLoader] and [TomErrorBoundary]".
       // Two of the three were real. The file imports exactly two siblings and
@@ -749,17 +830,23 @@ void main() {
             if (home == null) continue;
             if (linked.contains(home)) continue;
 
-            offences.add('$path:${entry.line}\n'
-                '    [$name] lives in $home, beside this file, but this file '
-                'never imports it\n'
-                '    → import $home, or write it as `$name` if the file does '
-                'not use it');
+            offences.add(
+              '$path:${entry.line}\n'
+              '    [$name] lives in $home, beside this file, but this file '
+              'never imports it\n'
+              '    → import $home, or write it as `$name` if the file does '
+              'not use it',
+            );
           }
         }
       }
-      expect(offences, isEmpty,
-          reason: 'these library dartdocs link uses they do not have:\n\n'
-              '${offences.join('\n\n')}');
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these library dartdocs link uses they do not have:\n\n'
+            '${offences.join('\n\n')}',
+      );
     });
   });
 
@@ -787,14 +874,20 @@ void main() {
         final source = File(path).readAsStringSync();
         for (final m in directive.allMatches(source)) {
           final package = m.group(2)!;
-          offences.add('$path\n'
-              '    ${m.group(1)} of package:$package/src/${m.group(3)}\n'
-              '    → name the public barrel, package:$package/$package.dart');
+          offences.add(
+            '$path\n'
+            '    ${m.group(1)} of package:$package/src/${m.group(3)}\n'
+            '    → name the public barrel, package:$package/$package.dart',
+          );
         }
       }
-      expect(offences, isEmpty,
-          reason: 'these directives reach into another package\'s private '
-              'source:\n\n${offences.join('\n\n')}');
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these directives reach into another package\'s private '
+            'source:\n\n${offences.join('\n\n')}',
+      );
     });
   });
 }

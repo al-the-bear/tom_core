@@ -25,8 +25,7 @@ import 'tom_widget_surface.dart';
 /// interface is what the conformance suite enumerates against; a base that
 /// dropped [basePath] would stop compiling here rather than stop gating in
 /// production.
-abstract class TomNodeBase extends StatelessWidget
-    implements TomWidgetSurface {
+abstract class TomNodeBase extends StatelessWidget implements TomWidgetSurface {
   @override
   final String? tomId;
 
@@ -65,9 +64,9 @@ abstract class TomNodeBase extends StatelessWidget
     this.scope,
     this.authorizer,
     this.uiStateController,
-  })  : constructionScope = scope ?? TomScope.current,
-        basePath = TomScopePath.resolve(tomId, scope) {
-      tomGroup?.register(this);
+  }) : constructionScope = scope ?? TomScope.current,
+       basePath = TomScopePath.resolve(tomId, scope) {
+    tomGroup?.register(this);
   }
 
   /// Debug description for this node.

@@ -77,9 +77,9 @@ class TomFormDurationInput extends TomFormDurationField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDurationInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDurationInputWidget(field: this),
+  );
 }
 
 class _TomFormDurationInputWidget extends StatefulWidget {
@@ -106,17 +106,20 @@ class _TomFormDurationInputWidgetState
     final d = field.get();
     _hours = TextEditingController(text: d.inHours.toString());
     _minutes = TextEditingController(
-        text: (d.inMinutes - d.inHours * 60).toString().padLeft(2, '0'));
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final v = (observable as TomObject<Duration>).get();
-        final h = v.inHours.toString();
-        final m = (v.inMinutes - v.inHours * 60).toString().padLeft(2, '0');
-        if (_hours.text != h) _hours.text = h;
-        if (_minutes.text != m) _minutes.text = m;
-      }
-      if (mounted) setState(() {});
-    };
+      text: (d.inMinutes - d.inHours * 60).toString().padLeft(2, '0'),
+    );
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final v = (observable as TomObject<Duration>).get();
+            final h = v.inHours.toString();
+            final m = (v.inMinutes - v.inHours * 60).toString().padLeft(2, '0');
+            if (_hours.text != h) _hours.text = h;
+            if (_minutes.text != m) _minutes.text = m;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -166,7 +169,10 @@ class _TomFormDurationInputWidgetState
         decoration: InputDecoration(
           isDense: true,
           suffixText: suffix,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 6,
+          ),
           border: style.fieldBorder,
           focusedBorder: style.focusedBorder,
           enabledBorder: style.fieldBorder,

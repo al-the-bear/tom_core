@@ -13,8 +13,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // resources, and that both families render it.
 // ---------------------------------------------------------------------------
 
-Widget _material(Widget child) =>
-    MaterialApp(home: Scaffold(body: child));
+Widget _material(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 Widget _cupertino(Widget child) =>
     CupertinoApp(home: CupertinoPageScaffold(child: child));
@@ -74,8 +73,11 @@ void main() {
     });
 
     test('an explicit override wins', () {
-      final field =
-          TomFormNullableBoolCheckbox('answer', null, tristateOverride: false);
+      final field = TomFormNullableBoolCheckbox(
+        'answer',
+        null,
+        tristateOverride: false,
+      );
       expect(field.tristate, isFalse);
     });
 
@@ -86,16 +88,20 @@ void main() {
       expect(TomFormNullableBoolCheckbox('answer', null).tristate, isFalse);
       // An override still beats the resource.
       expect(
-        TomFormNullableBoolCheckbox('answer', null, tristateOverride: true)
-            .tristate,
+        TomFormNullableBoolCheckbox(
+          'answer',
+          null,
+          tristateOverride: true,
+        ).tristate,
         isTrue,
       );
     });
   });
 
   group('TomFormNullableBoolCheckbox — rendering', () {
-    testWidgets('renders an indeterminate Checkbox for a null value',
-        (tester) async {
+    testWidgets('renders an indeterminate Checkbox for a null value', (
+      tester,
+    ) async {
       final field = TomFormNullableBoolCheckbox('answer', null);
       await tester.pumpWidget(_material(field.widget));
 
@@ -104,12 +110,16 @@ void main() {
       expect(checkbox.value, isNull);
     });
 
-    testWidgets('a two-state control renders an unset field as unchecked',
-        (tester) async {
+    testWidgets('a two-state control renders an unset field as unchecked', (
+      tester,
+    ) async {
       // Checkbox asserts `tristate || value != null`, so the widget must not
       // hand the raw null through — this would throw if it did.
-      final field =
-          TomFormNullableBoolCheckbox('answer', null, tristateOverride: false);
+      final field = TomFormNullableBoolCheckbox(
+        'answer',
+        null,
+        tristateOverride: false,
+      );
       await tester.pumpWidget(_material(field.widget));
 
       final checkbox = tester.widget<Checkbox>(find.byType(Checkbox));
@@ -142,8 +152,9 @@ void main() {
       final field = TomFormNullableBoolCheckbox(
         'answer',
         null,
-        uiStateController:
-            TomUIStateController(resolve: (_, _) => TomAuthState.read),
+        uiStateController: TomUIStateController(
+          resolve: (_, _) => TomAuthState.read,
+        ),
       );
       await tester.pumpWidget(_material(field.widget));
 
@@ -153,8 +164,9 @@ void main() {
   });
 
   group('TomCupertinoFormNullableBoolToggle — rendering', () {
-    testWidgets('offers three segments and selects the unset one',
-        (tester) async {
+    testWidgets('offers three segments and selects the unset one', (
+      tester,
+    ) async {
       final field = TomCupertinoFormNullableBoolToggle('answer', null);
       await tester.pumpWidget(_cupertino(field.widget));
 
@@ -176,8 +188,9 @@ void main() {
       expect(find.text('On'), findsOneWidget);
     });
 
-    testWidgets('tapping the unset segment returns the field to null',
-        (tester) async {
+    testWidgets('tapping the unset segment returns the field to null', (
+      tester,
+    ) async {
       final field = TomCupertinoFormNullableBoolToggle('answer', true);
       await tester.pumpWidget(_cupertino(field.widget));
 
@@ -205,10 +218,14 @@ void main() {
 
   group('FormFieldFamily.nullableBoolToggle', () {
     test('resolves to the Material or Cupertino concrete', () {
-      final material =
-          FormFieldFamily.material.nullableBoolToggle('answer', null);
-      final cupertino =
-          FormFieldFamily.cupertino.nullableBoolToggle('answer', null);
+      final material = FormFieldFamily.material.nullableBoolToggle(
+        'answer',
+        null,
+      );
+      final cupertino = FormFieldFamily.cupertino.nullableBoolToggle(
+        'answer',
+        null,
+      );
 
       expect(material, isA<TomFormNullableBoolCheckbox>());
       expect(cupertino, isA<TomCupertinoFormNullableBoolToggle>());

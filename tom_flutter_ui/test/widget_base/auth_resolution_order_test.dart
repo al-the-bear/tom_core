@@ -87,8 +87,10 @@ void main() {
       });
       final node = _GatedNode(
         tomId: 'w',
-        tomGroup:
-            TomAuthorizationGroup('grp', mode: AuthGroupMode.controlsNarrowest),
+        tomGroup: TomAuthorizationGroup(
+          'grp',
+          mode: AuthGroupMode.controlsNarrowest,
+        ),
         uiStateController: _narrowTo(TomAuthState.disabled),
       );
       // read widened to full by the group, then narrowed to disabled.
@@ -117,8 +119,10 @@ void main() {
           textDirection: TextDirection.ltr,
           child: _GatedNode(
             tomId: 'w',
-            tomGroup:
-                TomAuthorizationGroup('grp', mode: AuthGroupMode.controlsAll),
+            tomGroup: TomAuthorizationGroup(
+              'grp',
+              mode: AuthGroupMode.controlsAll,
+            ),
             uiStateController: _narrowTo(TomAuthState.none),
           ),
         ),

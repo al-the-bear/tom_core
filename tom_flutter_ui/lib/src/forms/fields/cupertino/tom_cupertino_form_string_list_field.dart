@@ -77,9 +77,9 @@ class TomCupertinoFormStringListCheckedPicker extends TomFormStringListField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoStringListCheckedPickerWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoStringListCheckedPickerWidget(field: this),
+  );
 }
 
 class _CupertinoStringListCheckedPickerWidget extends StatefulWidget {
@@ -103,9 +103,11 @@ class _CupertinoStringListCheckedPickerWidgetState
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -166,8 +168,7 @@ class _CupertinoStringListCheckedPickerWidgetState
           basePath: field.basePath,
           height: field.sheetHeight,
           initialSelection: field.get().toSet(),
-          onItemToggled: (value, include) =>
-              field.toggleItem(value, include),
+          onItemToggled: (value, include) => field.toggleItem(value, include),
         );
       },
     );
@@ -197,8 +198,9 @@ class _CupertinoStringListCheckedPickerWidgetState
                 style: hasSelection
                     ? style.inputStyle
                     : (style.inputStyle ?? const TextStyle()).copyWith(
-                        color: CupertinoColors.placeholderText
-                            .resolveFrom(context),
+                        color: CupertinoColors.placeholderText.resolveFrom(
+                          context,
+                        ),
                       ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
@@ -296,7 +298,9 @@ class _CheckedPickerSheetState extends State<_CheckedPickerSheet> {
                     onPressed: item.enabled ? () => _toggle(item.value) : null,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -305,8 +309,9 @@ class _CheckedPickerSheetState extends State<_CheckedPickerSheet> {
                               style: TextStyle(
                                 color: item.enabled
                                     ? CupertinoColors.label.resolveFrom(ctx)
-                                    : CupertinoColors.inactiveGray
-                                        .resolveFrom(ctx),
+                                    : CupertinoColors.inactiveGray.resolveFrom(
+                                        ctx,
+                                      ),
                               ),
                               textAlign: TextAlign.start,
                             ),
@@ -314,8 +319,7 @@ class _CheckedPickerSheetState extends State<_CheckedPickerSheet> {
                           if (isSelected)
                             Icon(
                               CupertinoIcons.check_mark,
-                              color:
-                                  CupertinoTheme.of(ctx).primaryColor,
+                              color: CupertinoTheme.of(ctx).primaryColor,
                               size: 20,
                             ),
                         ],

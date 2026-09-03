@@ -47,13 +47,20 @@ class TomCircularProgressIndicator extends TomProgressBase {
     this.semanticsValue,
     this.strokeCap,
   }) {
-    _resolvedLabel = semanticsLabel ?? TomCtr.textOrNull(basePath, 'semanticsLabel') ?? (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
-    _resolvedSemanticsValue = semanticsValue ?? TomCtr.textOrNull(basePath, 'semanticsValue');
+    _resolvedLabel =
+        semanticsLabel ??
+        TomCtr.textOrNull(basePath, 'semanticsLabel') ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
+    _resolvedSemanticsValue =
+        semanticsValue ?? TomCtr.textOrNull(basePath, 'semanticsValue');
     _resolvedValue = value ?? TomCtr.doubleVal(basePath, 'value');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
-    _resolvedStrokeWidth = strokeWidth ?? TomCtr.doubleVal(basePath, 'strokeWidth') ?? 4.0;
-    _resolvedStrokeAlign = TomCtr.doubleVal(basePath, 'strokeAlign') ?? strokeAlign;
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedStrokeWidth =
+        strokeWidth ?? TomCtr.doubleVal(basePath, 'strokeWidth') ?? 4.0;
+    _resolvedStrokeAlign =
+        TomCtr.doubleVal(basePath, 'strokeAlign') ?? strokeAlign;
   }
 
   @override
@@ -110,13 +117,19 @@ class TomLinearProgressIndicator extends TomProgressBase {
     this.semanticsValue,
     this.borderRadius,
   }) {
-    _resolvedLabel = semanticsLabel ?? TomCtr.textOrNull(basePath, 'semanticsLabel') ?? (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
-    _resolvedSemanticsValue = semanticsValue ?? TomCtr.textOrNull(basePath, 'semanticsValue');
+    _resolvedLabel =
+        semanticsLabel ??
+        TomCtr.textOrNull(basePath, 'semanticsLabel') ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
+    _resolvedSemanticsValue =
+        semanticsValue ?? TomCtr.textOrNull(basePath, 'semanticsValue');
     _resolvedValue = value ?? TomCtr.doubleVal(basePath, 'value');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedMinHeight = minHeight ?? TomCtr.doubleVal(basePath, 'minHeight');
-    _resolvedBorderRadius = (borderRadius ?? _resolveBorderRadius('borderRadius')) as BorderRadius?;
+    _resolvedBorderRadius =
+        (borderRadius ?? _resolveBorderRadius('borderRadius')) as BorderRadius?;
   }
 
   @override
@@ -183,13 +196,21 @@ class TomRefreshIndicator extends TomProgressBase {
     this.strokeWidth = RefreshProgressIndicator.defaultStrokeWidth,
     this.triggerMode = RefreshIndicatorTriggerMode.onEdge,
   }) : onRefresh = InScopeBuilder(scope: scope).wrap0(onRefresh) {
-    _resolvedLabel = semanticsLabel ?? TomCtr.textOrNull(basePath, 'semanticsLabel') ?? (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
-    _resolvedSemanticsValue = semanticsValue ?? TomCtr.textOrNull(basePath, 'semanticsValue');
-    _resolvedDisplacement = TomCtr.doubleVal(basePath, 'displacement') ?? displacement;
-    _resolvedEdgeOffset = TomCtr.doubleVal(basePath, 'edgeOffset') ?? edgeOffset;
+    _resolvedLabel =
+        semanticsLabel ??
+        TomCtr.textOrNull(basePath, 'semanticsLabel') ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
+    _resolvedSemanticsValue =
+        semanticsValue ?? TomCtr.textOrNull(basePath, 'semanticsValue');
+    _resolvedDisplacement =
+        TomCtr.doubleVal(basePath, 'displacement') ?? displacement;
+    _resolvedEdgeOffset =
+        TomCtr.doubleVal(basePath, 'edgeOffset') ?? edgeOffset;
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
-    _resolvedStrokeWidth = TomCtr.doubleVal(basePath, 'strokeWidth') ?? strokeWidth;
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedStrokeWidth =
+        TomCtr.doubleVal(basePath, 'strokeWidth') ?? strokeWidth;
   }
 
   @override
@@ -283,8 +304,10 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
     this.padding,
   }) {
     _resolvedValue = value ?? TomCtr.doubleVal(basePath, 'value') ?? 0.0;
-    _resolvedTrackHeight = trackHeight ?? TomCtr.doubleVal(basePath, 'trackHeight') ?? 4.0;
-    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding') ?? EdgeInsets.zero;
+    _resolvedTrackHeight =
+        trackHeight ?? TomCtr.doubleVal(basePath, 'trackHeight') ?? 4.0;
+    _resolvedPadding =
+        padding ?? TomCtr.edgeInsets(basePath, 'padding') ?? EdgeInsets.zero;
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
   }
 
@@ -292,8 +315,8 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
   Widget buildContent(BuildContext context) {
     // CupertinoActivityIndicator doesn't have a linear variant by default.
     // Using MaterialLinearProgressIndicator with Cupertino styling.
-    final resolvedColor = _resolvedColor ??
-        CupertinoTheme.of(context).primaryColor;
+    final resolvedColor =
+        _resolvedColor ?? CupertinoTheme.of(context).primaryColor;
 
     return Padding(
       padding: _resolvedPadding,
@@ -329,12 +352,19 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
     super.uiStateController,
     this.refreshTriggerPullDistance,
     this.refreshIndicatorExtent,
-    RefreshControlIndicatorBuilder? builder = CupertinoSliverRefreshControl.buildRefreshIndicator,
+    RefreshControlIndicatorBuilder? builder =
+        CupertinoSliverRefreshControl.buildRefreshIndicator,
     RefreshCallback? onRefresh,
   }) : builder = InScopeBuilder(scope: scope).wrap5n(builder),
        onRefresh = InScopeBuilder(scope: scope).wrap0n(onRefresh) {
-    _resolvedRefreshTriggerPullDistance = refreshTriggerPullDistance ?? TomCtr.doubleVal(basePath, 'refreshTriggerPullDistance') ?? 100.0;
-    _resolvedRefreshIndicatorExtent = refreshIndicatorExtent ?? TomCtr.doubleVal(basePath, 'refreshIndicatorExtent') ?? 60.0;
+    _resolvedRefreshTriggerPullDistance =
+        refreshTriggerPullDistance ??
+        TomCtr.doubleVal(basePath, 'refreshTriggerPullDistance') ??
+        100.0;
+    _resolvedRefreshIndicatorExtent =
+        refreshIndicatorExtent ??
+        TomCtr.doubleVal(basePath, 'refreshIndicatorExtent') ??
+        60.0;
   }
 
   @override
@@ -396,12 +426,21 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
     super.strokeCap,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
        super(
-          backgroundColor: backgroundColor ?? TomCtr.color(_p(tomId, scope, 'backgroundColor')),
-          color: color ?? TomCtr.color(_p(tomId, scope, 'color')),
-          strokeWidth: strokeWidth ?? TomCtr.doubleVal(_p(tomId, scope, 'strokeWidth')) ?? RefreshProgressIndicator.defaultStrokeWidth,
-          semanticsLabel: semanticsLabel ?? TomCtr.textOrNull(_p(tomId, scope, 'semanticsLabel')),
-          semanticsValue: semanticsValue ?? TomCtr.textOrNull(_p(tomId, scope, 'semanticsValue')),
-        ) {
+         backgroundColor:
+             backgroundColor ??
+             TomCtr.color(_p(tomId, scope, 'backgroundColor')),
+         color: color ?? TomCtr.color(_p(tomId, scope, 'color')),
+         strokeWidth:
+             strokeWidth ??
+             TomCtr.doubleVal(_p(tomId, scope, 'strokeWidth')) ??
+             RefreshProgressIndicator.defaultStrokeWidth,
+         semanticsLabel:
+             semanticsLabel ??
+             TomCtr.textOrNull(_p(tomId, scope, 'semanticsLabel')),
+         semanticsValue:
+             semanticsValue ??
+             TomCtr.textOrNull(_p(tomId, scope, 'semanticsValue')),
+       ) {
     tomGroup?.register(this);
   }
 

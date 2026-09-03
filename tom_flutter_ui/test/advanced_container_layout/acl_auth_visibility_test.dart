@@ -73,8 +73,7 @@ class _Adapter implements TomAuthorizationAdapter {
   final Map<String, TomAuthState> denials = <String, TomAuthState>{};
 
   @override
-  TomAuthState resolveAuth(String path) =>
-      denials[path] ?? TomAuthState.full;
+  TomAuthState resolveAuth(String path) => denials[path] ?? TomAuthState.full;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -96,15 +95,16 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: SizedBox(width: 1000, child: layout))),
+      MaterialApp(
+        home: Scaffold(body: SizedBox(width: 1000, child: layout)),
+      ),
     );
     await tester.pumpAndSettle();
   }
 
-  Offset originOf(WidgetTester tester, String label) =>
-      tester.renderObject<RenderBox>(find.text(label)).localToGlobal(
-            Offset.zero,
-          );
+  Offset originOf(WidgetTester tester, String label) => tester
+      .renderObject<RenderBox>(find.text(label))
+      .localToGlobal(Offset.zero);
 
   /// Three components in row 0 and one each in rows 1 and 2, every one of them
   /// carrying an id — so the render-time policy gates apply and the adapter
@@ -167,20 +167,27 @@ void main() {
   group('the undenied baseline', () {
     // Every later assertion is a displacement from these, so they are pinned
     // rather than assumed.
-    testWidgets('places the fixture where the gaps say it should',
-        (tester) async {
+    testWidgets('places the fixture where the gaps say it should', (
+      tester,
+    ) async {
       await pump(tester, policyLayout());
 
       expect(originOf(tester, 'a').dx, closeTo(_defaultGap, 0.5));
-      expect(originOf(tester, 'b').dx,
-          closeTo(_defaultGap + _size + _compGap, 0.5));
-      expect(originOf(tester, 'c').dx,
-          closeTo(_defaultGap + 2 * (_size + _compGap), 0.5));
+      expect(
+        originOf(tester, 'b').dx,
+        closeTo(_defaultGap + _size + _compGap, 0.5),
+      );
+      expect(
+        originOf(tester, 'c').dx,
+        closeTo(_defaultGap + 2 * (_size + _compGap), 0.5),
+      );
 
       expect(originOf(tester, 'a').dy, closeTo(0, 0.5));
       expect(originOf(tester, 'd').dy, closeTo(_size + _row1Gap, 0.5));
-      expect(originOf(tester, 'e').dy,
-          closeTo(2 * _size + _row1Gap + _row2Gap, 0.5));
+      expect(
+        originOf(tester, 'e').dy,
+        closeTo(2 * _size + _row1Gap + _row2Gap, 0.5),
+      );
     });
   });
 
@@ -191,8 +198,9 @@ void main() {
       expect(find.text('b'), findsNothing);
     });
 
-    testWidgets('the following component moves left by exactly the width',
-        (tester) async {
+    testWidgets('the following component moves left by exactly the width', (
+      tester,
+    ) async {
       // The gate replaces the child with a zero-size widget *after* the gap
       // has already been emitted, and the next component emits its own gap as
       // usual. So the two gaps end up adjacent and only the 40 of `b` is
@@ -205,22 +213,29 @@ void main() {
       await pump(tester, policyLayout());
       final after = originOf(tester, 'c').dx;
 
-      expect(before - after, closeTo(_size, 0.5),
-          reason: 'only the component\'s own width is reclaimed; its '
-              'gapBefore and the next component\'s gapBefore both survive');
+      expect(
+        before - after,
+        closeTo(_size, 0.5),
+        reason:
+            'only the component\'s own width is reclaimed; its '
+            'gapBefore and the next component\'s gapBefore both survive',
+      );
     });
 
-    testWidgets('no space is reserved for the denied component',
-        (tester) async {
+    testWidgets('no space is reserved for the denied component', (
+      tester,
+    ) async {
       // The other half of the same measurement: the geometry is *not* stable
       // across a grant change. A layout that must not reflow cannot rely on
       // this gate leaving a placeholder, because it leaves none.
       adapter.denials['b'] = TomAuthState.none;
       await pump(tester, policyLayout());
 
-      expect(originOf(tester, 'c').dx,
-          closeTo(_defaultGap + _size + 2 * _compGap, 0.5),
-          reason: 'c sits directly after the two collapsed gaps');
+      expect(
+        originOf(tester, 'c').dx,
+        closeTo(_defaultGap + _size + 2 * _compGap, 0.5),
+        reason: 'c sits directly after the two collapsed gaps',
+      );
     });
   });
 
@@ -231,8 +246,9 @@ void main() {
       expect(find.text('d'), findsNothing);
     });
 
-    testWidgets('the following row moves up by the row height plus its gap',
-        (tester) async {
+    testWidgets('the following row moves up by the row height plus its gap', (
+      tester,
+    ) async {
       // The row gate `continue`s *before* `gapBefore` is emitted, so unlike
       // the component case the gap dies with the element. The next row keeps
       // its own gap — which is again the opposite of `_applyAuthHiding`,
@@ -244,9 +260,13 @@ void main() {
       await pump(tester, policyLayout());
       final after = originOf(tester, 'e').dy;
 
-      expect(before - after, closeTo(_size + _row1Gap, 0.5),
-          reason: 'the row\'s height and its own gapBefore are both '
-              'reclaimed; the next row keeps its own gapBefore');
+      expect(
+        before - after,
+        closeTo(_size + _row1Gap, 0.5),
+        reason:
+            'the row\'s height and its own gapBefore are both '
+            'reclaimed; the next row keeps its own gapBefore',
+      );
     });
 
     testWidgets('the surviving row keeps its own gapBefore', (tester) async {
@@ -262,18 +282,22 @@ void main() {
     // what made "with it / without it" look like the axis that decides
     // whether space is reserved; it decides nothing here.
     for (final flag in [false, true]) {
-      testWidgets('a denied component is skipped with the flag $flag',
-          (tester) async {
+      testWidgets('a denied component is skipped with the flag $flag', (
+        tester,
+      ) async {
         adapter.denials['b'] = TomAuthState.none;
         await pump(tester, policyLayout(hideUnauthorized: flag));
 
         expect(find.text('b'), findsNothing);
-        expect(originOf(tester, 'c').dx,
-            closeTo(_defaultGap + _size + 2 * _compGap, 0.5));
+        expect(
+          originOf(tester, 'c').dx,
+          closeTo(_defaultGap + _size + 2 * _compGap, 0.5),
+        );
       });
 
-      testWidgets('a denied row is skipped with the flag $flag',
-          (tester) async {
+      testWidgets('a denied row is skipped with the flag $flag', (
+        tester,
+      ) async {
         adapter.denials['r1'] = TomAuthState.none;
         await pump(tester, policyLayout(hideUnauthorized: flag));
 
@@ -287,30 +311,40 @@ void main() {
     // Same geometry, same element removed, different arithmetic — because
     // this mechanism runs before layout and so can hand a gap to the next
     // survivor, which the render-time gate cannot.
-    testWidgets('a hidden component also takes the next component\'s gap',
-        (tester) async {
+    testWidgets('a hidden component also takes the next component\'s gap', (
+      tester,
+    ) async {
       await pump(tester, hidingLayout(const {}));
       final before = originOf(tester, 'c').dx;
 
       await pump(tester, hidingLayout(const {'b'}));
       final after = originOf(tester, 'c').dx;
 
-      expect(before - after, closeTo(_size + _compGap, 0.5),
-          reason: 'b\'s own gap carries onto c and c\'s own gap is dropped, '
-              'so 60 is reclaimed where the policy gate reclaims 40');
+      expect(
+        before - after,
+        closeTo(_size + _compGap, 0.5),
+        reason:
+            'b\'s own gap carries onto c and c\'s own gap is dropped, '
+            'so 60 is reclaimed where the policy gate reclaims 40',
+      );
     });
 
-    testWidgets('an elided row keeps its own gap and drops the next row\'s',
-        (tester) async {
+    testWidgets('an elided row keeps its own gap and drops the next row\'s', (
+      tester,
+    ) async {
       await pump(tester, hidingLayout(const {}));
       final before = originOf(tester, 'e').dy;
 
       await pump(tester, hidingLayout(const {'d'}));
       final after = originOf(tester, 'e').dy;
 
-      expect(before - after, closeTo(_size + _row2Gap, 0.5),
-          reason: 'row 1\'s gap of 50 survives onto e and e\'s own 30 is '
-              'dropped, so 70 is reclaimed where the policy gate reclaims 90');
+      expect(
+        before - after,
+        closeTo(_size + _row2Gap, 0.5),
+        reason:
+            'row 1\'s gap of 50 survives onto e and e\'s own 30 is '
+            'dropped, so 70 is reclaimed where the policy gate reclaims 90',
+      );
     });
   });
 
@@ -322,8 +356,10 @@ void main() {
       await pump(tester, policyLayout());
 
       expect(find.text('b'), findsOneWidget);
-      expect(originOf(tester, 'c').dx,
-          closeTo(_defaultGap + 2 * (_size + _compGap), 0.5));
+      expect(
+        originOf(tester, 'c').dx,
+        closeTo(_defaultGap + 2 * (_size + _compGap), 0.5),
+      );
     });
 
     testWidgets('disabled renders the component in place too', (tester) async {
@@ -337,8 +373,10 @@ void main() {
       await pump(tester, policyLayout());
 
       expect(find.text('b'), findsOneWidget);
-      expect(originOf(tester, 'c').dx,
-          closeTo(_defaultGap + 2 * (_size + _compGap), 0.5));
+      expect(
+        originOf(tester, 'c').dx,
+        closeTo(_defaultGap + 2 * (_size + _compGap), 0.5),
+      );
     });
   });
 
@@ -349,18 +387,22 @@ void main() {
       // is the condition that produced the "empty box" claim in the first
       // place. Comments are stripped so naming a state in prose does not
       // count as measuring it.
-      final source =
-          _withoutComments(File(_thisTest).readAsStringSync());
-      final unexercised = TomAuthState.values
-          .map((s) => s.name)
-          .where((name) => !source.contains('TomAuthState.$name'))
-          .toList()
-        ..sort();
+      final source = _withoutComments(File(_thisTest).readAsStringSync());
+      final unexercised =
+          TomAuthState.values
+              .map((s) => s.name)
+              .where((name) => !source.contains('TomAuthState.$name'))
+              .toList()
+            ..sort();
 
-      expect(unexercised, isEmpty,
-          reason: 'these TomAuthState values are never used in $_thisTest, so '
-              'what the ACL does with them is unmeasured:\n'
-              '${unexercised.map((s) => '  $s').join('\n')}');
+      expect(
+        unexercised,
+        isEmpty,
+        reason:
+            'these TomAuthState values are never used in $_thisTest, so '
+            'what the ACL does with them is unmeasured:\n'
+            '${unexercised.map((s) => '  $s').join('\n')}',
+      );
     });
   });
 }

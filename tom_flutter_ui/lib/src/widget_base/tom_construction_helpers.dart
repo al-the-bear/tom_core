@@ -461,10 +461,7 @@ class TomCtr {
     if (kind == null) return null;
     final width = doubleVal(key, 'width') ?? 1.0;
     final c = color(key, 'color');
-    final side = BorderSide(
-      color: c ?? const Color(0xFF000000),
-      width: width,
-    );
+    final side = BorderSide(color: c ?? const Color(0xFF000000), width: width);
     switch (kind) {
       case 'none':
         return InputBorder.none;
@@ -612,5 +609,4 @@ class TomCtr {
   static String? childTomId(String? tomId, String suffix) {
     return tomId != null ? '$tomId.$suffix' : null;
   }
-
 }

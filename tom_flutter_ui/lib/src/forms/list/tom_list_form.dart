@@ -54,14 +54,16 @@ import '../validation/form_validation_error.dart';
 /// only the application can instantiate a [TItem].
 class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     extends TomObservable
-    implements TomFormEventSource, TomFormChildContainer,
+    implements
+        TomFormEventSource,
+        TomFormChildContainer,
         TomListLifecycleListener {
   TomListForm({
     required this.listId,
     required TForm Function(int index) formFactory,
     TomForm? parentForm,
-  })  : _formFactory = formFactory,
-        _parentForm = parentForm {
+  }) : _formFactory = formFactory,
+       _parentForm = parentForm {
     // Auto-register so the parent's validate / save / discard / isDirty
     // / isValid / unbind fan out into this list. `TomListForm` extends
     // `TomObservable` (not `TomObject`), so the parent's reflectable
@@ -151,11 +153,9 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
       form.bind(item);
     }
     notifyObservers();
-    _fireEvent(ListItemAddedEvent(
-      source: listId,
-      index: index,
-      itemFormId: form.formId,
-    ));
+    _fireEvent(
+      ListItemAddedEvent(source: listId, index: index, itemFormId: form.formId),
+    );
     return form;
   }
 
@@ -170,11 +170,9 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
       form.bind(item);
     }
     notifyObservers();
-    _fireEvent(ListItemAddedEvent(
-      source: listId,
-      index: index,
-      itemFormId: form.formId,
-    ));
+    _fireEvent(
+      ListItemAddedEvent(source: listId, index: index, itemFormId: form.formId),
+    );
     return form;
   }
 
@@ -187,11 +185,13 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
       binding.removeAt(index);
     }
     notifyObservers();
-    _fireEvent(ListItemRemovedEvent(
-      source: listId,
-      index: index,
-      itemFormId: form.formId,
-    ));
+    _fireEvent(
+      ListItemRemovedEvent(
+        source: listId,
+        index: index,
+        itemFormId: form.formId,
+      ),
+    );
     form.dispose();
   }
 
@@ -219,12 +219,14 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
       binding.insert(to, item);
     }
     notifyObservers();
-    _fireEvent(ListItemReorderedEvent(
-      source: listId,
-      fromIndex: from,
-      toIndex: to,
-      itemFormId: form.formId,
-    ));
+    _fireEvent(
+      ListItemReorderedEvent(
+        source: listId,
+        fromIndex: from,
+        toIndex: to,
+        itemFormId: form.formId,
+      ),
+    );
   }
 
   /// Spec-canonical alias of [move] — `tom_ui_widgets_forms.md` §16 has
@@ -349,15 +351,9 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     }
     final listErrors = await validateList();
     for (final key in listErrors) {
-      errors.add(FormValidationError(
-        errorKey: key,
-        fields: const [],
-      ));
+      errors.add(FormValidationError(errorKey: key, fields: const []));
     }
-    _fireEvent(FormValidatedEvent(
-      source: listId,
-      errors: errors,
-    ));
+    _fireEvent(FormValidatedEvent(source: listId, errors: errors));
     return errors;
   }
 
@@ -443,8 +439,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// `true` when any sub-form is dirty OR the list membership / order has
   /// changed since the last [bind] / [save].
   @override
-  bool get isDirty =>
-      hasStructuralChanges || _forms.any((f) => f.isDirty);
+  bool get isDirty => hasStructuralChanges || _forms.any((f) => f.isDirty);
 
   /// `true` when at least one add / remove / reorder happened since the
   /// last [bind] / [save].
@@ -544,4 +539,3 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     _localListeners.clear();
   }
 }
-

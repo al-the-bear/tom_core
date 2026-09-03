@@ -37,24 +37,27 @@ void main() {
   tearDown(() => _installResources(<String, dynamic>{}));
 
   group('tcinc791: TomIconButton cannot render without an icon', () {
-    testWidgets('tcinc791-01: an explicit icon needs no resource',
-        (tester) async {
+    testWidgets('tcinc791-01: an explicit icon needs no resource', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _host(TomIconButton(icon: const Icon(Icons.add), onPressed: () {})),
       );
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
 
-    testWidgets('tcinc791-02: an icon resource is used when no icon is passed',
-        (tester) async {
-      _installResources(<String, dynamic>{
-        'save': {'icon': 'mSave'},
-      });
-      await tester.pumpWidget(
-        _host(TomIconButton(tomId: 'save', onPressed: () {})),
-      );
-      expect(find.byIcon(Icons.save), findsOneWidget);
-    });
+    testWidgets(
+      'tcinc791-02: an icon resource is used when no icon is passed',
+      (tester) async {
+        _installResources(<String, dynamic>{
+          'save': {'icon': 'mSave'},
+        });
+        await tester.pumpWidget(
+          _host(TomIconButton(tomId: 'save', onPressed: () {})),
+        );
+        expect(find.byIcon(Icons.save), findsOneWidget);
+      },
+    );
 
     test('tcinc791-03: no icon and no tomId throws', () {
       expect(() => TomIconButton(onPressed: () {}), throwsStateError);
@@ -99,30 +102,30 @@ void main() {
   });
 
   group('tcinc791: an icon beside a label stays optional', () {
-    testWidgets('tcinc791-07: an extended FAB builds with no icon resource',
-        (tester) async {
+    testWidgets('tcinc791-07: an extended FAB builds with no icon resource', (
+      tester,
+    ) async {
       _installResources(<String, dynamic>{
         'submit': {'label': 'Submit'},
       });
       await tester.pumpWidget(
-        _host(TomFloatingActionButton.extended(
-          tomId: 'submit',
-          onPressed: () {},
-        )),
+        _host(
+          TomFloatingActionButton.extended(tomId: 'submit', onPressed: () {}),
+        ),
       );
       expect(find.text('Submit'), findsOneWidget);
     });
 
-    testWidgets('tcinc791-08: an extended FAB still reads one when present',
-        (tester) async {
+    testWidgets('tcinc791-08: an extended FAB still reads one when present', (
+      tester,
+    ) async {
       _installResources(<String, dynamic>{
         'submit': {'label': 'Submit', 'icon': 'mSave'},
       });
       await tester.pumpWidget(
-        _host(TomFloatingActionButton.extended(
-          tomId: 'submit',
-          onPressed: () {},
-        )),
+        _host(
+          TomFloatingActionButton.extended(tomId: 'submit', onPressed: () {}),
+        ),
       );
       expect(find.byIcon(Icons.save), findsOneWidget);
     });
@@ -143,8 +146,9 @@ void main() {
 
     tearDown(AllIconsAdapter.clearCustomIcons);
 
-    testWidgets('tcinc791-09: a resource icon name is resolved',
-        (tester) async {
+    testWidgets('tcinc791-09: a resource icon name is resolved', (
+      tester,
+    ) async {
       _installResources(<String, dynamic>{
         'logo': {'icon': 'mSave'},
       });
@@ -152,23 +156,26 @@ void main() {
       expect(find.byIcon(Icons.save), findsOneWidget);
     });
 
-    testWidgets('tcinc791-10: an absent resource leaves no icon',
-        (tester) async {
+    testWidgets('tcinc791-10: an absent resource leaves no icon', (
+      tester,
+    ) async {
       _installResources(<String, dynamic>{});
       await tester.pumpWidget(_host(TomIcon(tomId: 'logo')));
       expect(tester.widget<Icon>(find.byType(Icon)).icon, isNull);
     });
 
-    testWidgets('tcinc791-11: an icon named like a key is not mistaken for one',
-        (tester) async {
-      AllIconsAdapter.registerIcons(<String, IconData>{
-        'brand.icon': Icons.star,
-      });
-      _installResources(<String, dynamic>{
-        'logo': {'icon': 'brand.icon'},
-      });
-      await tester.pumpWidget(_host(TomIcon(tomId: 'logo')));
-      expect(find.byIcon(Icons.star), findsOneWidget);
-    });
+    testWidgets(
+      'tcinc791-11: an icon named like a key is not mistaken for one',
+      (tester) async {
+        AllIconsAdapter.registerIcons(<String, IconData>{
+          'brand.icon': Icons.star,
+        });
+        _installResources(<String, dynamic>{
+          'logo': {'icon': 'brand.icon'},
+        });
+        await tester.pumpWidget(_host(TomIcon(tomId: 'logo')));
+        expect(find.byIcon(Icons.star), findsOneWidget);
+      },
+    );
   });
 }

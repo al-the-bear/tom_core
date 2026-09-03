@@ -15,30 +15,27 @@ Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 /// English bundle: a label for every [TodoStatus] value.
 Map<String, dynamic> englishBundle() => {
-      'global': {
-        'todostatus': {
-          'open': 'Open',
-          'inreview': 'In review',
-          'done': 'Done',
-        },
-      },
-    };
+  'global': {
+    'todostatus': {'open': 'Open', 'inreview': 'In review', 'done': 'Done'},
+  },
+};
 
 /// German bundle: the same keys, different text.
 Map<String, dynamic> germanBundle() => {
-      'global': {
-        'todostatus': {
-          'open': 'Offen',
-          'inreview': 'In Prüfung',
-          'done': 'Erledigt',
-        },
-      },
-    };
+  'global': {
+    'todostatus': {
+      'open': 'Offen',
+      'inreview': 'In Prüfung',
+      'done': 'Erledigt',
+    },
+  },
+};
 
 /// Installs [bundle] as the application-wide text resources.
 void installBundle(Map<String, dynamic> bundle) {
   TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(bundle));
+    TomTextResourceProvider.from(bundle),
+  );
 }
 
 void main() {
@@ -59,8 +56,8 @@ void main() {
     test('labels a value with no key as its raw enum name', () async {
       installBundle({
         'global': {
-          'todostatus': {'open': 'Open'}
-        }
+          'todostatus': {'open': 'Open'},
+        },
       });
       final source = TomEnumSelectableSource(TodoStatus.values);
       final items = await source.getItems();
@@ -90,10 +87,10 @@ void main() {
     test('resolves in the scope captured at construction', () async {
       installBundle({
         'global': {
-          'todostatus': {'open': 'Open'}
+          'todostatus': {'open': 'Open'},
         },
         'checkout': {
-          'todostatus': {'open': 'Not yet ordered'}
+          'todostatus': {'open': 'Not yet ordered'},
         },
       });
       late TomEnumSelectableSource<TodoStatus> source;
@@ -124,8 +121,10 @@ void main() {
 
       installBundle(germanBundle());
 
-      expect((await emissions).map((i) => i.label),
-          equals(['Offen', 'In Prüfung', 'Erledigt']));
+      expect(
+        (await emissions).map((i) => i.label),
+        equals(['Offen', 'In Prüfung', 'Erledigt']),
+      );
     });
   });
 
@@ -133,20 +132,25 @@ void main() {
   // Name-valued source
   // ===========================================================================
   group('TomEnumNameSelectableSource', () {
-    test('values each option by its enum name, labelled from the bundle',
-        () async {
-      final source = TomEnumNameSelectableSource(TodoStatus.values);
-      final items = await source.getItems();
+    test(
+      'values each option by its enum name, labelled from the bundle',
+      () async {
+        final source = TomEnumNameSelectableSource(TodoStatus.values);
+        final items = await source.getItems();
 
-      expect(items.map((i) => i.value), equals(['open', 'inReview', 'done']));
-      expect(items.map((i) => i.label), equals(['Open', 'In review', 'Done']));
-    });
+        expect(items.map((i) => i.value), equals(['open', 'inReview', 'done']));
+        expect(
+          items.map((i) => i.label),
+          equals(['Open', 'In review', 'Done']),
+        );
+      },
+    );
 
     test('labels a value with no key as its raw enum name', () async {
       installBundle({
         'global': {
-          'todostatus': {'open': 'Open'}
-        }
+          'todostatus': {'open': 'Open'},
+        },
       });
       final source = TomEnumNameSelectableSource(TodoStatus.values);
       final items = await source.getItems();
@@ -162,19 +166,18 @@ void main() {
       );
       final items = await source.getItems();
 
-      expect(
-        {for (final i in items) i.value: i.enabled},
-        equals({'open': true, 'inReview': true, 'done': false}),
-      );
+      expect({
+        for (final i in items) i.value: i.enabled,
+      }, equals({'open': true, 'inReview': true, 'done': false}));
     });
 
     test('resolves in the scope captured at construction', () async {
       installBundle({
         'global': {
-          'todostatus': {'open': 'Open'}
+          'todostatus': {'open': 'Open'},
         },
         'checkout': {
-          'todostatus': {'open': 'Not yet ordered'}
+          'todostatus': {'open': 'Not yet ordered'},
         },
       });
       late TomEnumNameSelectableSource<TodoStatus> source;
@@ -193,8 +196,10 @@ void main() {
       installBundle(germanBundle());
 
       final items = await emissions;
-      expect(items.map((i) => i.label),
-          equals(['Offen', 'In Prüfung', 'Erledigt']));
+      expect(
+        items.map((i) => i.label),
+        equals(['Offen', 'In Prüfung', 'Erledigt']),
+      );
       // Values are names, so a relabel never moves the bound value.
       expect(items.map((i) => i.value), equals(['open', 'inReview', 'done']));
     });
@@ -204,10 +209,12 @@ void main() {
   // Field wiring
   // ===========================================================================
   group('enum dropdown labels', () {
-    testWidgets('renders bundle labels rather than enum names',
-        (tester) async {
-      final field = FormFieldFamily.material
-          .enumPickerFor('status', TodoStatus.open, values: TodoStatus.values);
+    testWidgets('renders bundle labels rather than enum names', (tester) async {
+      final field = FormFieldFamily.material.enumPickerFor(
+        'status',
+        TodoStatus.open,
+        values: TodoStatus.values,
+      );
 
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pumpAndSettle();
@@ -216,11 +223,15 @@ void main() {
       expect(find.text('open'), findsNothing);
     });
 
-    testWidgets('renders the other locale when that bundle is installed',
-        (tester) async {
+    testWidgets('renders the other locale when that bundle is installed', (
+      tester,
+    ) async {
       installBundle(germanBundle());
-      final field = FormFieldFamily.material
-          .enumPickerFor('status', TodoStatus.open, values: TodoStatus.values);
+      final field = FormFieldFamily.material.enumPickerFor(
+        'status',
+        TodoStatus.open,
+        values: TodoStatus.values,
+      );
 
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pumpAndSettle();
@@ -229,10 +240,14 @@ void main() {
       expect(find.text('Open'), findsNothing);
     });
 
-    testWidgets('re-renders on a locale change without the caller rebuilding',
-        (tester) async {
-      final field = FormFieldFamily.material
-          .enumPickerFor('status', TodoStatus.open, values: TodoStatus.values);
+    testWidgets('re-renders on a locale change without the caller rebuilding', (
+      tester,
+    ) async {
+      final field = FormFieldFamily.material.enumPickerFor(
+        'status',
+        TodoStatus.open,
+        values: TodoStatus.values,
+      );
       final widget = _wrap(field.widget);
 
       await tester.pumpWidget(widget);
@@ -248,8 +263,9 @@ void main() {
       expect(find.text('Open'), findsNothing);
     });
 
-    testWidgets('a name-valued dropdown renders labels but holds the name',
-        (tester) async {
+    testWidgets('a name-valued dropdown renders labels but holds the name', (
+      tester,
+    ) async {
       final field = TomFormStringDropdown(
         'status',
         TodoStatus.open.name,
@@ -270,15 +286,17 @@ void main() {
       expect(field.get(), equals('open'));
     });
 
-    testWidgets('renders the raw enum name for a missing key',
-        (tester) async {
+    testWidgets('renders the raw enum name for a missing key', (tester) async {
       installBundle({
         'global': {
-          'todostatus': {'open': 'Open'}
-        }
+          'todostatus': {'open': 'Open'},
+        },
       });
-      final field = FormFieldFamily.material
-          .enumPickerFor('status', TodoStatus.done, values: TodoStatus.values);
+      final field = FormFieldFamily.material.enumPickerFor(
+        'status',
+        TodoStatus.done,
+        values: TodoStatus.values,
+      );
 
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pumpAndSettle();

@@ -36,12 +36,17 @@ import '../../support/list_form_fixtures.dart';
 // ---------------------------------------------------------------------------
 
 Widget _app(Widget child) => MaterialApp(
-      home: Scaffold(body: Center(child: SizedBox(width: 400, child: child))),
-    );
+  home: Scaffold(
+    body: Center(child: SizedBox(width: 400, child: child)),
+  ),
+);
 
 /// Binds a form to an item carrying the given values, so the fields start from
 /// a known baseline rather than from their declared defaults.
-TwoRequiredFieldsForm _boundForm({String product = 'A', String quantity = '1'}) {
+TwoRequiredFieldsForm _boundForm({
+  String product = 'A',
+  String quantity = '1',
+}) {
   final item = OrderItem();
   item.product | product;
   item.quantity | quantity;
@@ -50,21 +55,21 @@ TwoRequiredFieldsForm _boundForm({String product = 'A', String quantity = '1'}) 
 
 /// Drives a field into an error state the way the user does — a value change
 /// followed by the debounce the field arms in `setValue`.
-Future<void> _breakField(
-  WidgetTester tester,
-  TomField<String> field,
-) async {
+Future<void> _breakField(WidgetTester tester, TomField<String> field) async {
   field.setValue('');
   await tester.pump(const Duration(milliseconds: 400));
 }
 
 Finder _strip() => find.byType(TomRowErrorStrip);
 
-Column _column(WidgetTester tester) =>
-    tester.widget<Column>(find.descendant(of: _strip(), matching: find.byType(Column)));
+Column _column(WidgetTester tester) => tester.widget<Column>(
+  find.descendant(of: _strip(), matching: find.byType(Column)),
+);
 
 List<String> _lines(WidgetTester tester) => tester
-    .widgetList<Text>(find.descendant(of: _strip(), matching: find.byType(Text)))
+    .widgetList<Text>(
+      find.descendant(of: _strip(), matching: find.byType(Text)),
+    )
     .map((t) => t.data ?? '')
     .toList();
 
@@ -121,8 +126,9 @@ void main() {
       );
     });
 
-    testWidgets('an unresolved label falls back to the field id',
-        (tester) async {
+    testWidgets('an unresolved label falls back to the field id', (
+      tester,
+    ) async {
       // Without this fallback a missing translation would render "• : …",
       // leaving the user unable to tell which field is at fault.
       final form = _boundForm();
@@ -153,8 +159,11 @@ void main() {
 
       expect(container.constraints?.maxWidth, double.infinity);
       final decoration = container.decoration as BoxDecoration;
-      expect(decoration.border, isNotNull,
-          reason: 'the strip is fenced top and bottom');
+      expect(
+        decoration.border,
+        isNotNull,
+        reason: 'the strip is fenced top and bottom',
+      );
     });
   });
 
@@ -172,13 +181,18 @@ void main() {
       );
     });
 
-    testWidgets('centre alignment moves both the column and the text',
-        (tester) async {
+    testWidgets('centre alignment moves both the column and the text', (
+      tester,
+    ) async {
       final form = _boundForm();
-      await tester.pumpWidget(_app(TomRowErrorStrip(
-        form: form,
-        crossAxisAlignment: CrossAxisAlignment.center,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomRowErrorStrip(
+            form: form,
+            crossAxisAlignment: CrossAxisAlignment.center,
+          ),
+        ),
+      );
       await _breakField(tester, form.product);
 
       expect(_column(tester).crossAxisAlignment, CrossAxisAlignment.center);
@@ -198,10 +212,14 @@ void main() {
       await _breakField(tester, form.product);
       expect(_column(tester).crossAxisAlignment, CrossAxisAlignment.start);
 
-      await tester.pumpWidget(_app(TomRowErrorStrip(
-        form: form,
-        crossAxisAlignment: CrossAxisAlignment.center,
-      )));
+      await tester.pumpWidget(
+        _app(
+          TomRowErrorStrip(
+            form: form,
+            crossAxisAlignment: CrossAxisAlignment.center,
+          ),
+        ),
+      );
       await tester.pump();
 
       expect(_column(tester).crossAxisAlignment, CrossAxisAlignment.center);
@@ -210,8 +228,9 @@ void main() {
 
   // -------------------------------------------------------------------------
   group('TomRowErrorStrip subscription', () {
-    testWidgets('an error appearing after the host build shows up',
-        (tester) async {
+    testWidgets('an error appearing after the host build shows up', (
+      tester,
+    ) async {
       // Nothing rebuilds the host here; the repaint can only come from the
       // strip's own subscription to `form.changes`.
       final form = _boundForm();
@@ -232,48 +251,52 @@ void main() {
       form.product.setValue('B');
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(_lines(tester), isEmpty,
-          reason: 'the strip collapses again once the row is valid');
+      expect(
+        _lines(tester),
+        isEmpty,
+        reason: 'the strip collapses again once the row is valid',
+      );
     });
 
     testWidgets('the subscription follows a swapped-in form', (tester) async {
       final first = _boundForm(product: 'A');
       final second = _boundForm(product: 'B');
-      await tester.pumpWidget(_app(TomRowErrorStrip(
-        key: const ValueKey('strip'),
-        form: first,
-      )));
+      await tester.pumpWidget(
+        _app(TomRowErrorStrip(key: const ValueKey('strip'), form: first)),
+      );
 
-      await tester.pumpWidget(_app(TomRowErrorStrip(
-        key: const ValueKey('strip'),
-        form: second,
-      )));
+      await tester.pumpWidget(
+        _app(TomRowErrorStrip(key: const ValueKey('strip'), form: second)),
+      );
       await _breakField(tester, second.product);
 
       expect(find.text('Row has 1 validation error:'), findsOneWidget);
     });
 
-    testWidgets('the old form no longer drives the strip after a swap',
-        (tester) async {
+    testWidgets('the old form no longer drives the strip after a swap', (
+      tester,
+    ) async {
       final first = _boundForm(product: 'A');
       final second = _boundForm(product: 'B');
-      await tester.pumpWidget(_app(TomRowErrorStrip(
-        key: const ValueKey('strip'),
-        form: first,
-      )));
-      await tester.pumpWidget(_app(TomRowErrorStrip(
-        key: const ValueKey('strip'),
-        form: second,
-      )));
+      await tester.pumpWidget(
+        _app(TomRowErrorStrip(key: const ValueKey('strip'), form: first)),
+      );
+      await tester.pumpWidget(
+        _app(TomRowErrorStrip(key: const ValueKey('strip'), form: second)),
+      );
 
       await _breakField(tester, first.product);
 
-      expect(_lines(tester), isEmpty,
-          reason: 'errors on the detached form are not this row\'s business');
+      expect(
+        _lines(tester),
+        isEmpty,
+        reason: 'errors on the detached form are not this row\'s business',
+      );
     });
 
-    testWidgets('a form outliving the strip fires without throwing',
-        (tester) async {
+    testWidgets('a form outliving the strip fires without throwing', (
+      tester,
+    ) async {
       final form = _boundForm();
       await tester.pumpWidget(_app(TomRowErrorStrip(form: form)));
 

@@ -46,13 +46,17 @@ void run() {
   final desktop = AclDeviceContext.resolveFormFactor(1440);
   print('formFactor 420/800/1440 = $phone / $tablet / $desktop');
 
-  final compact =
-      AclDeviceContext.resolveDensity(const VisualDensity(horizontal: -2, vertical: -2));
-  final comfortable =
-      AclDeviceContext.resolveDensity(const VisualDensity(horizontal: -1, vertical: -1));
+  final compact = AclDeviceContext.resolveDensity(
+    const VisualDensity(horizontal: -2, vertical: -2),
+  );
+  final comfortable = AclDeviceContext.resolveDensity(
+    const VisualDensity(horizontal: -1, vertical: -1),
+  );
   final standard = AclDeviceContext.resolveDensity(VisualDensity.standard);
-  print('density compact/comfortable/standard = '
-      '$compact / $comfortable / $standard');
+  print(
+    'density compact/comfortable/standard = '
+    '$compact / $comfortable / $standard',
+  );
 
   final touch = AclDeviceContext.resolveInputMode(TargetPlatform.iOS);
   final pointer = AclDeviceContext.resolveInputMode(TargetPlatform.macOS);
@@ -61,8 +65,9 @@ void run() {
   // buildConvenienceDetector returns null for an empty spec (the default
   // variant) and a non-null AND-combined predicate when any field is set.
   final defaultDetector = AclDeviceContext.buildConvenienceDetector();
-  final phoneDetector =
-      AclDeviceContext.buildConvenienceDetector(formFactor: AclFormFactor.phone);
+  final phoneDetector = AclDeviceContext.buildConvenienceDetector(
+    formFactor: AclFormFactor.phone,
+  );
   print('default detector is null: ${defaultDetector == null}');
   print('phone detector is non-null: ${phoneDetector != null}');
 

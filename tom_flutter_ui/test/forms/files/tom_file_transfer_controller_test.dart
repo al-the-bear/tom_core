@@ -9,11 +9,18 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-FileRef _ref(String name, List<int> bytes) =>
-    FileRef(name: name, sizeBytes: bytes.length, bytes: Uint8List.fromList(bytes));
+FileRef _ref(String name, List<int> bytes) => FileRef(
+  name: name,
+  sizeBytes: bytes.length,
+  bytes: Uint8List.fromList(bytes),
+);
 
 /// A reference whose content arrives in [chunks] pieces of [chunkSize] bytes.
-FileRef _chunkedRef(String name, {required int chunks, required int chunkSize}) {
+FileRef _chunkedRef(
+  String name, {
+  required int chunks,
+  required int chunkSize,
+}) {
   final total = chunks * chunkSize;
   return FileRef(
     name: name,
@@ -69,7 +76,8 @@ class _FlakyClient extends TomFileTransferClient {
     String slot, {
     void Function(TomTransferProgress progress)? onProgress,
     TomTransferCancellation? cancellation,
-  }) => inner.download(slot, onProgress: onProgress, cancellation: cancellation);
+  }) =>
+      inner.download(slot, onProgress: onProgress, cancellation: cancellation);
 
   @override
   Future<TomFileMetadata?> describe(String slot) => inner.describe(slot);
@@ -147,25 +155,32 @@ void main() {
       expect(controller.value.fraction, isNull);
     });
 
-    test('errorKey is the transfer layer\'s key, and null for anything else', () {
-      final transferFailure = TomFileTransferState(
-        phase: TomTransferPhase.failed,
-        error: TomFileTransferException('file_transfer.not_found', 'gone'),
-      );
-      expect(transferFailure.errorKey, 'file_transfer.not_found');
+    test(
+      'errorKey is the transfer layer\'s key, and null for anything else',
+      () {
+        final transferFailure = TomFileTransferState(
+          phase: TomTransferPhase.failed,
+          error: TomFileTransferException('file_transfer.not_found', 'gone'),
+        );
+        expect(transferFailure.errorKey, 'file_transfer.not_found');
 
-      const otherFailure = TomFileTransferState(
-        phase: TomTransferPhase.failed,
-        error: FormatException('nope'),
-      );
-      expect(otherFailure.errorKey, isNull);
-    });
+        const otherFailure = TomFileTransferState(
+          phase: TomTransferPhase.failed,
+          error: FormatException('nope'),
+        );
+        expect(otherFailure.errorKey, isNull);
+      },
+    );
 
     test('copyWith clears rather than keeps when told to', () {
       const state = TomFileTransferState(
         phase: TomTransferPhase.failed,
         error: 'boom',
-        metadata: TomFileMetadata(key: 'k', mediaType: 'text/plain', byteCount: 1),
+        metadata: TomFileMetadata(
+          key: 'k',
+          mediaType: 'text/plain',
+          byteCount: 1,
+        ),
       );
       final cleared = state.copyWith(clearError: true, clearMetadata: true);
       expect(cleared.error, isNull);
@@ -297,16 +312,19 @@ void main() {
   });
 
   group('describe and remove', () {
-    test('describe publishes the stored descriptor without a transfer', () async {
-      await controller.upload(_ref('note.txt', [1, 2, 3]));
-      controller.reset();
+    test(
+      'describe publishes the stored descriptor without a transfer',
+      () async {
+        await controller.upload(_ref('note.txt', [1, 2, 3]));
+        controller.reset();
 
-      final described = await controller.describe();
-      expect(described, isNotNull);
-      expect(controller.value.metadata, described);
-      // Describing is not a transfer, so the phase stays idle.
-      expect(controller.value.phase, TomTransferPhase.idle);
-    });
+        final described = await controller.describe();
+        expect(described, isNotNull);
+        expect(controller.value.metadata, described);
+        // Describing is not a transfer, so the phase stays idle.
+        expect(controller.value.phase, TomTransferPhase.idle);
+      },
+    );
 
     test('describe of an empty slot clears the metadata', () async {
       final described = await controller.describe();

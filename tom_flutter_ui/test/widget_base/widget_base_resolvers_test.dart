@@ -76,10 +76,14 @@ void main() {
         'tapTargetSize': 'shrinkWrap',
       });
       expect(style, isNotNull);
-      expect(style!.backgroundColor!.resolve(<WidgetState>{}),
-          const Color(0xFF123456));
-      expect(style.foregroundColor!.resolve(<WidgetState>{}),
-          const Color(0xFF654321));
+      expect(
+        style!.backgroundColor!.resolve(<WidgetState>{}),
+        const Color(0xFF123456),
+      );
+      expect(
+        style.foregroundColor!.resolve(<WidgetState>{}),
+        const Color(0xFF654321),
+      );
       expect(style.elevation!.resolve(<WidgetState>{}), 6.0);
       expect(style.minimumSize!.resolve(<WidgetState>{}), const Size(100, 40));
       expect(style.tapTargetSize, MaterialTapTargetSize.shrinkWrap);
@@ -161,10 +165,7 @@ void main() {
       });
 
       test('a size that is not a map contributes nothing', () {
-        expect(
-          TomStyleResolvers.parseButtonStyle({'minimumSize': 40}),
-          isNull,
-        );
+        expect(TomStyleResolvers.parseButtonStyle({'minimumSize': 40}), isNull);
       });
     });
   });
@@ -173,20 +174,29 @@ void main() {
     test('defaults to rounded rectangle', () {
       final border = TomStyleResolvers.parseShapeBorder({'borderRadius': 8});
       expect(border, isA<RoundedRectangleBorder>());
-      final radius = (border as RoundedRectangleBorder).borderRadius
-          .resolve(TextDirection.ltr);
+      final radius = (border as RoundedRectangleBorder).borderRadius.resolve(
+        TextDirection.ltr,
+      );
       expect(radius.topLeft.x, 8.0);
     });
 
     test('parses stadium / circle / beveled / continuous', () {
-      expect(TomStyleResolvers.parseShapeBorder({'type': 'stadium'}),
-          isA<StadiumBorder>());
-      expect(TomStyleResolvers.parseShapeBorder({'type': 'circle'}),
-          isA<CircleBorder>());
-      expect(TomStyleResolvers.parseShapeBorder({'type': 'beveled'}),
-          isA<BeveledRectangleBorder>());
-      expect(TomStyleResolvers.parseShapeBorder({'type': 'continuous'}),
-          isA<ContinuousRectangleBorder>());
+      expect(
+        TomStyleResolvers.parseShapeBorder({'type': 'stadium'}),
+        isA<StadiumBorder>(),
+      );
+      expect(
+        TomStyleResolvers.parseShapeBorder({'type': 'circle'}),
+        isA<CircleBorder>(),
+      );
+      expect(
+        TomStyleResolvers.parseShapeBorder({'type': 'beveled'}),
+        isA<BeveledRectangleBorder>(),
+      );
+      expect(
+        TomStyleResolvers.parseShapeBorder({'type': 'continuous'}),
+        isA<ContinuousRectangleBorder>(),
+      );
     });
   });
 
@@ -234,11 +244,13 @@ void main() {
 
   group('TomStyleResolvers.parseDecoration', () {
     test('builds a BoxDecoration with colour, radius and border', () {
-      final dec = TomStyleResolvers.parseDecoration({
-        'color': '#ABCDEF',
-        'borderRadius': 4,
-        'border': {'color': '#000000', 'width': 2},
-      }) as BoxDecoration;
+      final dec =
+          TomStyleResolvers.parseDecoration({
+                'color': '#ABCDEF',
+                'borderRadius': 4,
+                'border': {'color': '#000000', 'width': 2},
+              })
+              as BoxDecoration;
       expect(dec.color, const Color(0xFFABCDEF));
       expect(dec.borderRadius, BorderRadius.circular(4));
       expect(dec.border, isNotNull);
@@ -246,7 +258,8 @@ void main() {
 
     test('circle shape drops the border radius', () {
       final dec =
-          TomStyleResolvers.parseDecoration({'shape': 'circle'}) as BoxDecoration;
+          TomStyleResolvers.parseDecoration({'shape': 'circle'})
+              as BoxDecoration;
       expect(dec.shape, BoxShape.circle);
       expect(dec.borderRadius, isNull);
     });
@@ -265,13 +278,17 @@ void main() {
     test('named alignments', () {
       expect(TomStyleResolvers.parseAlignment('topLeft'), Alignment.topLeft);
       expect(TomStyleResolvers.parseAlignment('center'), Alignment.center);
-      expect(TomStyleResolvers.parseAlignment('bottom_right'),
-          Alignment.bottomRight);
+      expect(
+        TomStyleResolvers.parseAlignment('bottom_right'),
+        Alignment.bottomRight,
+      );
     });
 
     test('custom {x, y}', () {
-      expect(TomStyleResolvers.parseAlignment({'x': 0.5, 'y': -0.5}),
-          const Alignment(0.5, -0.5));
+      expect(
+        TomStyleResolvers.parseAlignment({'x': 0.5, 'y': -0.5}),
+        const Alignment(0.5, -0.5),
+      );
     });
 
     test('null for unknown', () {
@@ -281,10 +298,14 @@ void main() {
 
   group('TomStyleResolvers.parseOffset', () {
     test('map and list forms', () {
-      expect(TomStyleResolvers.parseOffset({'dx': 1, 'dy': 2}),
-          const Offset(1, 2));
-      expect(TomStyleResolvers.parseOffset({'x': 3, 'y': 4}),
-          const Offset(3, 4));
+      expect(
+        TomStyleResolvers.parseOffset({'dx': 1, 'dy': 2}),
+        const Offset(1, 2),
+      );
+      expect(
+        TomStyleResolvers.parseOffset({'x': 3, 'y': 4}),
+        const Offset(3, 4),
+      );
       expect(TomStyleResolvers.parseOffset([5, 6]), const Offset(5, 6));
     });
   });
@@ -301,21 +322,31 @@ void main() {
 
   group('TomStyleResolvers.parseVisualDensity', () {
     test('named and custom', () {
-      expect(TomStyleResolvers.parseVisualDensity('compact'),
-          VisualDensity.compact);
-      expect(TomStyleResolvers.parseVisualDensity({'horizontal': 1, 'vertical': 2}),
-          const VisualDensity(horizontal: 1, vertical: 2));
+      expect(
+        TomStyleResolvers.parseVisualDensity('compact'),
+        VisualDensity.compact,
+      );
+      expect(
+        TomStyleResolvers.parseVisualDensity({'horizontal': 1, 'vertical': 2}),
+        const VisualDensity(horizontal: 1, vertical: 2),
+      );
     });
   });
 
   group('TomStyleResolvers.parseScrollPhysics', () {
     test('recognised names', () {
-      expect(TomStyleResolvers.parseScrollPhysics('bouncing'),
-          isA<BouncingScrollPhysics>());
-      expect(TomStyleResolvers.parseScrollPhysics('never'),
-          isA<NeverScrollableScrollPhysics>());
-      expect(TomStyleResolvers.parseScrollPhysics('page'),
-          isA<PageScrollPhysics>());
+      expect(
+        TomStyleResolvers.parseScrollPhysics('bouncing'),
+        isA<BouncingScrollPhysics>(),
+      );
+      expect(
+        TomStyleResolvers.parseScrollPhysics('never'),
+        isA<NeverScrollableScrollPhysics>(),
+      );
+      expect(
+        TomStyleResolvers.parseScrollPhysics('page'),
+        isA<PageScrollPhysics>(),
+      );
     });
 
     test('null for unknown', () {
@@ -420,7 +451,8 @@ void main() {
         expect(
           entry.value(unrecognised),
           isNull,
-          reason: '${entry.key} built an object out of a map it could read '
+          reason:
+              '${entry.key} built an object out of a map it could read '
               'nothing from, so a caller writing `?? fallback` silently gets '
               'the default object instead of its fallback',
         );

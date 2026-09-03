@@ -67,8 +67,10 @@ class TomDateTimeFormat {
 
   /// German/Austrian date: `DD.MM.YYYY` (e.g. `12.05.2026`)
   /// Hint shows `TT.MM.JJJJ` (Tag / Monat / Jahr).
-  static const germanDate =
-      TomDateTimeFormat('DD.MM.YYYY', displayPattern: 'TT.MM.JJJJ');
+  static const germanDate = TomDateTimeFormat(
+    'DD.MM.YYYY',
+    displayPattern: 'TT.MM.JJJJ',
+  );
 
   /// ISO 8601 datetime: `YYYY-MM-DD HH:mm` (e.g. `2026-05-12 09:30`)
   static const isoDateTime = TomDateTimeFormat('YYYY-MM-DD HH:mm');
@@ -98,8 +100,7 @@ class TomDateTimeFormat {
 
   // Alternation order is significant: longer tokens must precede shorter
   // ones so YYYY is matched before YY, MM before M, etc.
-  static final _tokenRe =
-      RegExp(r'YYYY|YY|MM|M|DD|D|HH|H|mm|m|ss|s|.');
+  static final _tokenRe = RegExp(r'YYYY|YY|MM|M|DD|D|HH|H|mm|m|ss|s|.');
 
   // ── Formatting ────────────────────────────────────────────────────────────
 
@@ -111,13 +112,13 @@ class TomDateTimeFormat {
   /// render the token names as literal text and produce output that cannot be
   /// parsed back. A pure date pattern is unaffected.
   String formatDate(DateTime d) => _render(
-        year: d.year,
-        month: d.month,
-        day: d.day,
-        hour: d.hour,
-        minute: d.minute,
-        second: d.second,
-      );
+    year: d.year,
+    month: d.month,
+    day: d.day,
+    hour: d.hour,
+    minute: d.minute,
+    second: d.second,
+  );
 
   /// Formats [t] using the time tokens in [pattern].
   ///
@@ -130,13 +131,13 @@ class TomDateTimeFormat {
 
   /// Formats [d] using all tokens in [pattern].
   String formatDateTime(DateTime d) => _render(
-        year: d.year,
-        month: d.month,
-        day: d.day,
-        hour: d.hour,
-        minute: d.minute,
-        second: d.second,
-      );
+    year: d.year,
+    month: d.month,
+    day: d.day,
+    hour: d.hour,
+    minute: d.minute,
+    second: d.second,
+  );
 
   String _render({
     int? year,
@@ -150,17 +151,13 @@ class TomDateTimeFormat {
     for (final tok in _tokenRe.allMatches(pattern)) {
       switch (tok.group(0)) {
         case 'YYYY':
-          buf.write(year != null
-              ? year.toString().padLeft(4, '0')
-              : 'YYYY');
+          buf.write(year != null ? year.toString().padLeft(4, '0') : 'YYYY');
         case 'YY':
-          buf.write(year != null
-              ? (year % 100).toString().padLeft(2, '0')
-              : 'YY');
+          buf.write(
+            year != null ? (year % 100).toString().padLeft(2, '0') : 'YY',
+          );
         case 'MM':
-          buf.write(month != null
-              ? month.toString().padLeft(2, '0')
-              : 'MM');
+          buf.write(month != null ? month.toString().padLeft(2, '0') : 'MM');
         case 'M':
           buf.write(month?.toString() ?? 'M');
         case 'DD':
@@ -172,15 +169,11 @@ class TomDateTimeFormat {
         case 'H':
           buf.write(hour?.toString() ?? 'H');
         case 'mm':
-          buf.write(minute != null
-              ? minute.toString().padLeft(2, '0')
-              : 'mm');
+          buf.write(minute != null ? minute.toString().padLeft(2, '0') : 'mm');
         case 'm':
           buf.write(minute?.toString() ?? 'm');
         case 'ss':
-          buf.write(second != null
-              ? second.toString().padLeft(2, '0')
-              : 'ss');
+          buf.write(second != null ? second.toString().padLeft(2, '0') : 'ss');
         case 's':
           buf.write(second?.toString() ?? 's');
         default:

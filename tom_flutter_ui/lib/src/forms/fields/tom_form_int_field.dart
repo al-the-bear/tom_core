@@ -53,12 +53,12 @@ abstract class TomFormIntField extends TomField<int> {
     super.actionIconTooltip,
     super.onActionIconPressed,
   }) : super(
-          validators: [
-            if (minValue != null) Validators.min(minValue),
-            if (maxValue != null) Validators.max(maxValue),
-            ...validators,
-          ],
-        );
+         validators: [
+           if (minValue != null) Validators.min(minValue),
+           if (maxValue != null) Validators.max(maxValue),
+           ...validators,
+         ],
+       );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -109,9 +109,9 @@ class TomFormIntInput extends TomFormIntField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormIntInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormIntInputWidget(field: this),
+  );
 }
 
 class _TomFormIntInputWidget extends StatefulWidget {
@@ -133,13 +133,15 @@ class _TomFormIntInputWidgetState extends State<_TomFormIntInputWidget> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: field.get().toString());
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final v = (observable as TomObject<int>).get().toString();
-        if (_controller.text != v) _controller.text = v;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final v = (observable as TomObject<int>).get().toString();
+            if (_controller.text != v) _controller.text = v;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -237,8 +239,8 @@ class TomFormIntSlider extends TomFormIntField
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  })  : assert(max > min, 'TomFormIntSlider: max must be greater than min'),
-        super(minValue: min, maxValue: max);
+  }) : assert(max > min, 'TomFormIntSlider: max must be greater than min'),
+       super(minValue: min, maxValue: max);
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -249,9 +251,9 @@ class TomFormIntSlider extends TomFormIntField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormIntSliderWidget(field: this),
-      );
+    field: this,
+    child: _TomFormIntSliderWidget(field: this),
+  );
 }
 
 class _TomFormIntSliderWidget extends StatefulWidget {
@@ -271,9 +273,11 @@ class _TomFormIntSliderWidgetState extends State<_TomFormIntSliderWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -298,9 +302,7 @@ class _TomFormIntSliderWidgetState extends State<_TomFormIntSliderWidget> {
       max: field.max.toDouble(),
       divisions: divisions > 0 ? divisions : null,
       label: field.showValueLabel ? field.get().toString() : null,
-      onChanged: field.isEditable
-          ? (v) => field.setValue(v.round())
-          : null,
+      onChanged: field.isEditable ? (v) => field.setValue(v.round()) : null,
     );
     return field.decorateField(context, slider);
   }
@@ -343,9 +345,9 @@ class TomFormIntStepper extends TomFormIntField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormIntStepperWidget(field: this),
-      );
+    field: this,
+    child: _TomFormIntStepperWidget(field: this),
+  );
 }
 
 class _TomFormIntStepperWidget extends StatefulWidget {
@@ -365,9 +367,11 @@ class _TomFormIntStepperWidgetState extends State<_TomFormIntStepperWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 

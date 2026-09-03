@@ -79,10 +79,7 @@ class _TomMultiObservableBuilderState extends State<TomMultiObservableBuilder> {
   }
 
   /// Identity-based list comparison (same objects in same order).
-  static bool _listEquals(
-    List<TomObservable> a,
-    List<TomObservable> b,
-  ) {
+  static bool _listEquals(List<TomObservable> a, List<TomObservable> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
       if (!identical(a[i], b[i])) return false;

@@ -49,12 +49,12 @@ abstract class TomFormDoubleField extends TomField<double> {
     super.actionIconTooltip,
     super.onActionIconPressed,
   }) : super(
-          validators: [
-            if (minValue != null) Validators.min(minValue),
-            if (maxValue != null) Validators.max(maxValue),
-            ...validators,
-          ],
-        );
+         validators: [
+           if (minValue != null) Validators.min(minValue),
+           if (maxValue != null) Validators.max(maxValue),
+           ...validators,
+         ],
+       );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -109,9 +109,9 @@ class TomFormDoubleInput extends TomFormDoubleField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDoubleInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDoubleInputWidget(field: this),
+  );
 }
 
 class _TomFormDoubleInputWidget extends StatefulWidget {
@@ -134,13 +134,15 @@ class _TomFormDoubleInputWidgetState extends State<_TomFormDoubleInputWidget> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: _format(field.get()));
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final v = _format((observable as TomObject<double>).get());
-        if (_controller.text != v) _controller.text = v;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final v = _format((observable as TomObject<double>).get());
+            if (_controller.text != v) _controller.text = v;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -190,9 +192,11 @@ class _TomFormDoubleInputWidgetState extends State<_TomFormDoubleInputWidget> {
     final textField = TextField(
       controller: _controller,
       keyboardType: const TextInputType.numberWithOptions(
-          decimal: true, signed: true),
+        decimal: true,
+        signed: true,
+      ),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'-?\d*\.?\d*'))
+        FilteringTextInputFormatter.allow(RegExp(r'-?\d*\.?\d*')),
       ],
       style: style.inputStyle,
       onChanged: field.isEditable ? _onChanged : null,
@@ -264,9 +268,9 @@ class TomFormCurrencyDoubleInput extends TomFormDoubleField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormCurrencyDoubleInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormCurrencyDoubleInputWidget(field: this),
+  );
 }
 
 class _TomFormCurrencyDoubleInputWidget extends StatefulWidget {
@@ -295,13 +299,15 @@ class _TomFormCurrencyDoubleInputWidgetState
     // therefore holds only the *amount* portion (grouped + decimals,
     // no symbol). See [_amount] / [_parseAmount] for the round-trip.
     _controller = TextEditingController(text: _amount(field.get()));
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final next = _amount((observable as TomObject<double>).get());
-        if (_controller.text != next) _controller.text = next;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final next = _amount((observable as TomObject<double>).get());
+            if (_controller.text != next) _controller.text = next;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -401,8 +407,10 @@ class _TomFormCurrencyDoubleInputWidgetState
 
     final textField = TextField(
       controller: _controller,
-      keyboardType:
-          const TextInputType.numberWithOptions(decimal: true, signed: true),
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
       style: style.inputStyle,
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
@@ -451,9 +459,9 @@ class TomFormPercentDoubleInput extends TomFormDoubleField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormPercentDoubleInputWidget(field: this),
-      );
+    field: this,
+    child: _TomFormPercentDoubleInputWidget(field: this),
+  );
 }
 
 class _TomFormPercentDoubleInputWidget extends StatefulWidget {
@@ -477,13 +485,15 @@ class _TomFormPercentDoubleInputWidgetState
   void initState() {
     super.initState();
     _controller = TextEditingController(text: _displayed(field.get()));
-    _observer = field >> (observable) {
-      if (!_updatingFromField) {
-        final next = _displayed((observable as TomObject<double>).get());
-        if (_controller.text != next) _controller.text = next;
-      }
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (observable) {
+          if (!_updatingFromField) {
+            final next = _displayed((observable as TomObject<double>).get());
+            if (_controller.text != next) _controller.text = next;
+          }
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -534,7 +544,7 @@ class _TomFormPercentDoubleInputWidgetState
       controller: _controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'\d*\.?\d*'))
+        FilteringTextInputFormatter.allow(RegExp(r'\d*\.?\d*')),
       ],
       style: style.inputStyle,
       onChanged: field.isEditable ? _onChanged : null,
@@ -576,8 +586,8 @@ class TomFormDoubleSlider extends TomFormDoubleField
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  })  : assert(max > min, 'TomFormDoubleSlider: max must be greater than min'),
-        super(minValue: min, maxValue: max);
+  }) : assert(max > min, 'TomFormDoubleSlider: max must be greater than min'),
+       super(minValue: min, maxValue: max);
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -588,9 +598,9 @@ class TomFormDoubleSlider extends TomFormDoubleField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormDoubleSliderWidget(field: this),
-      );
+    field: this,
+    child: _TomFormDoubleSliderWidget(field: this),
+  );
 }
 
 class _TomFormDoubleSliderWidget extends StatefulWidget {
@@ -611,9 +621,11 @@ class _TomFormDoubleSliderWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 

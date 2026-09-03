@@ -125,12 +125,15 @@ class _TomSkeletonLoaderState extends State<TomSkeletonLoader>
     final base = widget.baseColor ?? theme.colorScheme.surfaceContainerHighest;
     final highlight = widget.highlightColor ?? theme.colorScheme.surface;
 
-    final placeholder = widget.child ??
+    final placeholder =
+        widget.child ??
         Container(
           width: widget.width,
           height: widget.height,
-          decoration:
-              BoxDecoration(color: base, borderRadius: widget.borderRadius),
+          decoration: BoxDecoration(
+            color: base,
+            borderRadius: widget.borderRadius,
+          ),
         );
 
     if (!widget.enabled) return placeholder;

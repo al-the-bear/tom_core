@@ -243,9 +243,7 @@ class TomFileTransferController extends ValueNotifier<TomFileTransferState> {
   Future<TomFileMetadata?> describe() async {
     final stored = await client.describe(slot);
     if (!_disposed) {
-      _publish(
-        value.copyWith(metadata: stored, clearMetadata: stored == null),
-      );
+      _publish(value.copyWith(metadata: stored, clearMetadata: stored == null));
     }
     return stored;
   }
@@ -278,9 +276,7 @@ class TomFileTransferController extends ValueNotifier<TomFileTransferState> {
   /// Keeps [TomFileTransferState.metadata]: forgetting an error should not
   /// also forget that a file is stored.
   void reset() {
-    _publish(
-      const TomFileTransferState().copyWith(metadata: value.metadata),
-    );
+    _publish(const TomFileTransferState().copyWith(metadata: value.metadata));
   }
 
   /// Runs [body] as the controller's single in-flight transfer.
@@ -300,8 +296,10 @@ class TomFileTransferController extends ValueNotifier<TomFileTransferState> {
     final cancellation = TomTransferCancellation();
     _cancellation = cancellation;
     _publish(
-      TomFileTransferState(phase: TomTransferPhase.running, kind: kind)
-          .copyWith(metadata: value.metadata),
+      TomFileTransferState(
+        phase: TomTransferPhase.running,
+        kind: kind,
+      ).copyWith(metadata: value.metadata),
     );
     try {
       await body();

@@ -58,11 +58,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     validators: [Validators.required()],
   );
 
-  late final quantity = TomFormStringInput(
-    'quantity',
-    '1',
-    form: this,
-  );
+  late final quantity = TomFormStringInput('quantity', '1', form: this);
 
   @override
   void createFormElements() {}
@@ -73,7 +69,7 @@ class OrderItemForm extends TomForm<OrderItem> {
 @tomReflector
 class OrderItemListForm extends TomListForm<OrderItem, OrderItemForm> {
   OrderItemListForm({super.parentForm})
-      : super(listId: 'items', formFactory: (_) => OrderItemForm());
+    : super(listId: 'items', formFactory: (_) => OrderItemForm());
 
   /// Minimum number of rows the list must hold; `0` disables the check.
   int minRows = 0;
@@ -124,7 +120,7 @@ class TwoRequiredFieldsForm extends TomForm<OrderItem> {
 @tomReflector
 class BareItemListForm extends TomListForm<OrderItem, OrderItemForm> {
   BareItemListForm()
-      : super(listId: 'items', formFactory: (_) => OrderItemForm());
+    : super(listId: 'items', formFactory: (_) => OrderItemForm());
 }
 
 /// The enclosing form. The list registers itself as a child container from its

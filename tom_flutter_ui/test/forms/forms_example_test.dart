@@ -29,8 +29,10 @@ void main() {
       ]);
       final items = await source.getItems();
       expect(items, hasLength(2));
-      expect(() => items.add(const SelectableItem(value: 3, label: 'x')),
-          throwsUnsupportedError);
+      expect(
+        () => items.add(const SelectableItem(value: 3, label: 'x')),
+        throwsUnsupportedError,
+      );
       expect(source.itemsStream, isNull);
     });
 
@@ -38,7 +40,8 @@ void main() {
       final inspector = TomFormInspector();
       inspector.handleEvent(FormBoundEvent(source: 'f'));
       inspector.handleEvent(
-          FieldValueChangedEvent(source: 'f.x', oldValue: 1, newValue: 2));
+        FieldValueChangedEvent(source: 'f.x', oldValue: 1, newValue: 2),
+      );
       expect(inspector.length, 2);
       expect(inspector.ofType<FieldValueChangedEvent>(), hasLength(1));
       expect(inspector.fromSource('f'), hasLength(1));

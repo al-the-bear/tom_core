@@ -98,18 +98,20 @@ void main() {
       expect(heard.fromSource('quantity'), hasLength(1));
     });
 
-    test('does not report a verdict on the same turn — it only schedules one',
-        () {
-      // The optimistic transition: the field leaves pristine for success
-      // immediately so the UI stops showing a stale error, and the real
-      // validation lands after the debounce.
-      final (:form, :heard) = _bound('Bolt');
+    test(
+      'does not report a verdict on the same turn — it only schedules one',
+      () {
+        // The optimistic transition: the field leaves pristine for success
+        // immediately so the UI stops showing a stale error, and the real
+        // validation lands after the debounce.
+        final (:form, :heard) = _bound('Bolt');
 
-      form.product.setValue('');
+        form.product.setValue('');
 
-      expect(heard.ofType<FieldValidatedEvent>(), isEmpty);
-      expect(form.product.validationState, const ValidationSuccess());
-    });
+        expect(heard.ofType<FieldValidatedEvent>(), isEmpty);
+        expect(form.product.validationState, const ValidationSuccess());
+      },
+    );
 
     test('reports the scheduled verdict once the debounce elapses', () async {
       final (:form, :heard) = _bound('Bolt');
@@ -171,17 +173,19 @@ void main() {
       expect(heard.ofType<FieldCommittedEvent>().single.source, 'product');
     });
 
-    test('clears validation back to pristine, so no error survives a save',
-        () async {
-      final (:form, heard: _) = _bound('Bolt');
+    test(
+      'clears validation back to pristine, so no error survives a save',
+      () async {
+        final (:form, heard: _) = _bound('Bolt');
 
-      await form.product.validate();
-      expect(form.product.validationState, const ValidationSuccess());
+        await form.product.validate();
+        expect(form.product.validationState, const ValidationSuccess());
 
-      form.product.commit();
+        form.product.commit();
 
-      expect(form.product.validationState, const ValidationPristine());
-    });
+        expect(form.product.validationState, const ValidationPristine());
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -193,10 +197,10 @@ void main() {
     // were dropped the failure would be a null dereference in dozens of
     // unrelated suites, so it is pinned at the source instead.
     TomFormStringInput loose() => TomFormStringInput(
-          'loose',
-          'Bolt',
-          validators: [Validators.required()],
-        );
+      'loose',
+      'Bolt',
+      validators: [Validators.required()],
+    );
 
     test('changes value without a listener to tell', () {
       final field = loose();

@@ -11,8 +11,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// For Tom widgets with resource resolution, use [TomNodeBase] subclasses
 /// instead — they handle scope propagation automatically.
 abstract class TomStatelessWidget extends StatelessWidget {
-  TomStatelessWidget({super.key})
-      : _constructionScope = TomScope.current;
+  TomStatelessWidget({super.key}) : _constructionScope = TomScope.current;
 
   final TomScope _constructionScope;
 
@@ -32,8 +31,7 @@ abstract class TomStatelessWidget extends StatelessWidget {
 ///
 /// Pair with [TomState] to ensure scope propagation through stateful widgets.
 abstract class TomStatefulWidget extends StatefulWidget {
-  TomStatefulWidget({super.key})
-      : constructionScope = TomScope.current;
+  TomStatefulWidget({super.key}) : constructionScope = TomScope.current;
 
   /// The scope that was active when this widget was constructed.
   final TomScope constructionScope;

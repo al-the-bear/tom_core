@@ -44,11 +44,15 @@ class TomAnimatedAlign extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedHeightFactor = heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
-    _resolvedWidthFactor = widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+    _resolvedHeightFactor =
+        heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
+    _resolvedWidthFactor =
+        widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -63,10 +67,12 @@ class TomAnimatedAlign extends TomAnimatedBase {
       child: child,
     );
   }
+
   AlignmentGeometry? _resolveAlignment(String suffix) {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath!, suffix);
-  }}
+  }
+}
 
 /// Tom wrapper for [AnimatedBuilder].
 ///
@@ -91,9 +97,9 @@ class TomAnimatedBuilder extends TomAnimatedBase {
     Listenable? animation,
     required TransitionBuilder builder,
     this.child,
-  })  : _listenable = listenable,
-        _animation = animation,
-        builder = InScopeBuilder(scope: scope).wrap2(builder);
+  }) : _listenable = listenable,
+       _animation = animation,
+       builder = InScopeBuilder(scope: scope).wrap2(builder);
 
   Listenable get effectiveListenable {
     final anim = _animation ?? _listenable;
@@ -168,7 +174,7 @@ class TomAnimatedContainer extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
@@ -176,10 +182,14 @@ class TomAnimatedContainer extends TomAnimatedBase {
     _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
-    _resolvedForegroundDecoration = foregroundDecoration ?? _resolveDecoration('foregroundDecoration');
+    _resolvedForegroundDecoration =
+        foregroundDecoration ?? _resolveDecoration('foregroundDecoration');
     _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
-    _resolvedTransformAlignment = transformAlignment ?? _resolveAlignment('transformAlignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedTransformAlignment =
+        transformAlignment ?? _resolveAlignment('transformAlignment');
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -257,12 +267,18 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
     this.secondCurve = Curves.linear,
     this.sizeCurve = Curves.linear,
     this.alignment,
-    AnimatedCrossFadeBuilder layoutBuilder = AnimatedCrossFade.defaultLayoutBuilder,
+    AnimatedCrossFadeBuilder layoutBuilder =
+        AnimatedCrossFade.defaultLayoutBuilder,
     this.excludeBottomFocus,
   }) : layoutBuilder = InScopeBuilder(scope: scope).wrap4(layoutBuilder) {
-    _resolvedExcludeBottomFocus = excludeBottomFocus ?? TomCtr.boolVal(basePath, 'excludeBottomFocus') ?? true;
+    _resolvedExcludeBottomFocus =
+        excludeBottomFocus ??
+        TomCtr.boolVal(basePath, 'excludeBottomFocus') ??
+        true;
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -328,11 +344,14 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedStyle = _resolveTextStyle('style');
-    _resolvedSoftWrap = softWrap ?? TomCtr.boolVal(basePath, 'softWrap') ?? true;
+    _resolvedSoftWrap =
+        softWrap ?? TomCtr.boolVal(basePath, 'softWrap') ?? true;
     _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -390,11 +409,15 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedWidthFactor = widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
-    _resolvedHeightFactor = heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+    _resolvedWidthFactor =
+        widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
+    _resolvedHeightFactor =
+        heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -445,10 +468,15 @@ class TomAnimatedOpacity extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
     this.alwaysIncludeSemantics,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedOpacity = opacity ?? TomCtr.doubleOrFail(basePath, 'opacity');
-    _resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ?? TomCtr.boolVal(basePath, 'alwaysIncludeSemantics') ?? false;
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedAlwaysIncludeSemantics =
+        alwaysIncludeSemantics ??
+        TomCtr.boolVal(basePath, 'alwaysIncludeSemantics') ??
+        false;
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -490,9 +518,11 @@ class TomAnimatedPadding extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -559,14 +589,23 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedElevation = elevation ?? TomCtr.doubleOrFail(basePath, 'elevation');
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+    _resolvedElevation =
+        elevation ?? TomCtr.doubleOrFail(basePath, 'elevation');
     _resolvedColor = color ?? TomCtr.colorOrFail(basePath, 'color');
-    _resolvedAnimateColor = animateColor ?? TomCtr.boolVal(basePath, 'animateColor') ?? true;
-    _resolvedShadowColor = shadowColor ?? TomCtr.colorOrFail(basePath, 'shadowColor');
-    _resolvedAnimateShadowColor = animateShadowColor ?? TomCtr.boolVal(basePath, 'animateShadowColor') ?? true;
-    _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedAnimateColor =
+        animateColor ?? TomCtr.boolVal(basePath, 'animateColor') ?? true;
+    _resolvedShadowColor =
+        shadowColor ?? TomCtr.colorOrFail(basePath, 'shadowColor');
+    _resolvedAnimateShadowColor =
+        animateShadowColor ??
+        TomCtr.boolVal(basePath, 'animateShadowColor') ??
+        true;
+    _resolvedBorderRadius =
+        borderRadius ?? _resolveBorderRadius('borderRadius');
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -646,23 +685,27 @@ class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
     super.curve,
     super.onEnd,
   }) : super(
-          child: TomAuthGate(
-            tomId: tomId,
-            tomGroup: tomGroup,
-            scope: scope,
-            authorizer: authorizer,
-            uiStateController: uiStateController,
-            child: child ??
-                TomText.defaultOrEmpty(
-                    TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
-          ),
-          left: left ?? TomCtr.doubleVal(_p(tomId, scope, 'left')),
-          top: top ?? TomCtr.doubleVal(_p(tomId, scope, 'top')),
-          right: right ?? TomCtr.doubleVal(_p(tomId, scope, 'right')),
-          bottom: bottom ?? TomCtr.doubleVal(_p(tomId, scope, 'bottom')),
-          width: width ?? TomCtr.doubleVal(_p(tomId, scope, 'width')),
-          height: height ?? TomCtr.doubleVal(_p(tomId, scope, 'height')),
-        );
+         child: TomAuthGate(
+           tomId: tomId,
+           tomGroup: tomGroup,
+           scope: scope,
+           authorizer: authorizer,
+           uiStateController: uiStateController,
+           child:
+               child ??
+               TomText.defaultOrEmpty(
+                 TomCtr.childTomId(tomId, 'child'),
+                 scope,
+                 tomGroup,
+               ),
+         ),
+         left: left ?? TomCtr.doubleVal(_p(tomId, scope, 'left')),
+         top: top ?? TomCtr.doubleVal(_p(tomId, scope, 'top')),
+         right: right ?? TomCtr.doubleVal(_p(tomId, scope, 'right')),
+         bottom: bottom ?? TomCtr.doubleVal(_p(tomId, scope, 'bottom')),
+         width: width ?? TomCtr.doubleVal(_p(tomId, scope, 'width')),
+         height: height ?? TomCtr.doubleVal(_p(tomId, scope, 'height')),
+       );
 
   /// Helper to build full path with suffix (for value resolution).
   static String? _p(String? tomId, TomScope? scope, String suffix) {
@@ -722,23 +765,27 @@ class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
     super.curve,
     super.onEnd,
   }) : super(
-          child: TomAuthGate(
-            tomId: tomId,
-            tomGroup: tomGroup,
-            scope: scope,
-            authorizer: authorizer,
-            uiStateController: uiStateController,
-            child: child ??
-                TomText.defaultOrEmpty(
-                    TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
-          ),
-          start: start ?? TomCtr.doubleVal(_p(tomId, scope, 'start')),
-          top: top ?? TomCtr.doubleVal(_p(tomId, scope, 'top')),
-          end: end ?? TomCtr.doubleVal(_p(tomId, scope, 'end')),
-          bottom: bottom ?? TomCtr.doubleVal(_p(tomId, scope, 'bottom')),
-          width: width ?? TomCtr.doubleVal(_p(tomId, scope, 'width')),
-          height: height ?? TomCtr.doubleVal(_p(tomId, scope, 'height')),
-        );
+         child: TomAuthGate(
+           tomId: tomId,
+           tomGroup: tomGroup,
+           scope: scope,
+           authorizer: authorizer,
+           uiStateController: uiStateController,
+           child:
+               child ??
+               TomText.defaultOrEmpty(
+                 TomCtr.childTomId(tomId, 'child'),
+                 scope,
+                 tomGroup,
+               ),
+         ),
+         start: start ?? TomCtr.doubleVal(_p(tomId, scope, 'start')),
+         top: top ?? TomCtr.doubleVal(_p(tomId, scope, 'top')),
+         end: end ?? TomCtr.doubleVal(_p(tomId, scope, 'end')),
+         bottom: bottom ?? TomCtr.doubleVal(_p(tomId, scope, 'bottom')),
+         width: width ?? TomCtr.doubleVal(_p(tomId, scope, 'width')),
+         height: height ?? TomCtr.doubleVal(_p(tomId, scope, 'height')),
+       );
 
   /// Helper to build full path with suffix (for value resolution).
   static String? _p(String? tomId, TomScope? scope, String suffix) {
@@ -778,10 +825,12 @@ class TomAnimatedRotation extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedTurns = turns ?? TomCtr.doubleOrFail(basePath, 'turns');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -834,10 +883,12 @@ class TomAnimatedScale extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedScale = scale ?? TomCtr.doubleOrFail(basePath, 'scale');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -889,9 +940,11 @@ class TomAnimatedSize extends TomAnimatedBase {
     this.curve = Curves.linear,
     this.clipBehavior = Clip.hardEdge,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -939,9 +992,11 @@ class TomAnimatedSlide extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedOffset = offset ?? _resolveOffset('offset') ?? Offset.zero;
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -986,12 +1041,17 @@ class TomAnimatedSwitcher extends TomAnimatedBase {
     this.reverseDuration,
     this.switchInCurve = Curves.linear,
     this.switchOutCurve = Curves.linear,
-    AnimatedSwitcherTransitionBuilder transitionBuilder = AnimatedSwitcher.defaultTransitionBuilder,
-    AnimatedSwitcherLayoutBuilder layoutBuilder = AnimatedSwitcher.defaultLayoutBuilder,
-  }) : transitionBuilder = InScopeBuilder(scope: scope).wrap2(transitionBuilder),
+    AnimatedSwitcherTransitionBuilder transitionBuilder =
+        AnimatedSwitcher.defaultTransitionBuilder,
+    AnimatedSwitcherLayoutBuilder layoutBuilder =
+        AnimatedSwitcher.defaultLayoutBuilder,
+  }) : transitionBuilder = InScopeBuilder(
+         scope: scope,
+       ).wrap2(transitionBuilder),
        layoutBuilder = InScopeBuilder(scope: scope).wrap2(layoutBuilder) {
-
-    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
+    _resolvedDuration =
+        duration ??
+        Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -1035,9 +1095,16 @@ class TomHero extends TomAnimatedBase {
     HeroPlaceholderBuilder? placeholderBuilder,
     this.transitionOnUserGestures,
     required this.child,
-  }) : flightShuttleBuilder = flightShuttleBuilder != null ? InScopeBuilder(scope: scope).wrap5(flightShuttleBuilder) : null,
-       placeholderBuilder = placeholderBuilder != null ? InScopeBuilder(scope: scope).wrap3(placeholderBuilder) : null {
-    _resolvedTransitionOnUserGestures = transitionOnUserGestures ?? TomCtr.boolVal(basePath, 'transitionOnUserGestures') ?? false;
+  }) : flightShuttleBuilder = flightShuttleBuilder != null
+           ? InScopeBuilder(scope: scope).wrap5(flightShuttleBuilder)
+           : null,
+       placeholderBuilder = placeholderBuilder != null
+           ? InScopeBuilder(scope: scope).wrap3(placeholderBuilder)
+           : null {
+    _resolvedTransitionOnUserGestures =
+        transitionOnUserGestures ??
+        TomCtr.boolVal(basePath, 'transitionOnUserGestures') ??
+        false;
   }
 
   @override

@@ -35,9 +35,7 @@ class TomStatefulBuilder extends TomBuilderBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return StatefulBuilder(
-      builder: builder,
-    );
+    return StatefulBuilder(builder: builder);
   }
 }
 
@@ -228,7 +226,10 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
     this.child,
   }) : builder = InScopeBuilder(scope: scope).wrap3(builder),
        onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedCurve = curve ?? _resolveCurve(TomCtr.textOrNull(basePath, 'curve')) ?? Curves.linear;
+    _resolvedCurve =
+        curve ??
+        _resolveCurve(TomCtr.textOrNull(basePath, 'curve')) ??
+        Curves.linear;
   }
 
   /// The tween to animate.
@@ -286,9 +287,7 @@ class TomOrientationBuilder extends TomBuilderBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return OrientationBuilder(
-      builder: builder,
-    );
+    return OrientationBuilder(builder: builder);
   }
 }
 
@@ -316,9 +315,7 @@ class TomLayoutBuilder extends TomBuilderBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    return LayoutBuilder(
-      builder: builder,
-    );
+    return LayoutBuilder(builder: builder);
   }
 }
 

@@ -84,14 +84,14 @@ class ValidationError extends ValidationResult {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ValidationError &&
-          other.errorKey == errorKey;
+      other is ValidationError && other.errorKey == errorKey;
 
   @override
   int get hashCode => errorKey.hashCode;
 
   @override
-  String toString() => 'ValidationError($errorKey${params != null ? ', params: $params' : ''})';
+  String toString() =>
+      'ValidationError($errorKey${params != null ? ', params: $params' : ''})';
 }
 
 /// Indicates that an async validation is in progress.

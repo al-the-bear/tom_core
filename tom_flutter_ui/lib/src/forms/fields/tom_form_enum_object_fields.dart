@@ -182,9 +182,11 @@ mixin _SourceBackedSingleStateMixin<TWidget extends StatefulWidget, T>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -247,9 +249,11 @@ mixin _SourceBackedListStateMixin<TWidget extends StatefulWidget, T>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -319,9 +323,9 @@ class TomFormEnumDropdown<T> extends TomFormEnumField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _EnumDropdownWidget<T>(field: this),
-      );
+    field: this,
+    child: _EnumDropdownWidget<T>(field: this),
+  );
 }
 
 class _EnumDropdownWidget<T> extends StatefulWidget {
@@ -346,16 +350,17 @@ class _EnumDropdownWidgetState<T> extends State<_EnumDropdownWidget<T>>
     final style = f.resolveStyle(context);
     final current = f.get();
     final dropdown = DropdownButtonFormField<T>(
-      initialValue:
-          items.any((i) => i.value == current) ? current : null,
+      initialValue: items.any((i) => i.value == current) ? current : null,
       isExpanded: f.dropdownFillsColumnWidth,
       style: style.inputStyle,
       items: items
-          .map((it) => DropdownMenuItem<T>(
-                value: it.value,
-                enabled: it.enabled,
-                child: f.dropdownItemLabel(it.label, style.inputStyle),
-              ))
+          .map(
+            (it) => DropdownMenuItem<T>(
+              value: it.value,
+              enabled: it.enabled,
+              child: f.dropdownItemLabel(it.label, style.inputStyle),
+            ),
+          )
           .toList(),
       onChanged: f.isEditable
           ? (v) {
@@ -413,9 +418,9 @@ class TomFormEnumSegmented<T> extends TomFormEnumField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _EnumSegmentedWidget<T>(field: this),
-      );
+    field: this,
+    child: _EnumSegmentedWidget<T>(field: this),
+  );
 }
 
 class _EnumSegmentedWidget<T> extends StatefulWidget {
@@ -442,19 +447,18 @@ class _EnumSegmentedWidgetState<T> extends State<_EnumSegmentedWidget<T>>
     final v = f.get();
 
     if (items.isEmpty) {
-      return f.decorateField(
-        context,
-        Text('…', style: style.inputStyle),
-      );
+      return f.decorateField(context, Text('…', style: style.inputStyle));
     }
 
     final segmented = SegmentedButton<T>(
       segments: items
-          .map((it) => ButtonSegment<T>(
-                value: it.value,
-                label: Text(it.label, style: style.inputStyle),
-                enabled: it.enabled,
-              ))
+          .map(
+            (it) => ButtonSegment<T>(
+              value: it.value,
+              label: Text(it.label, style: style.inputStyle),
+              enabled: it.enabled,
+            ),
+          )
           .toList(),
       selected: items.any((i) => i.value == v) ? {v} : {items.first.value},
       showSelectedIcon: false,
@@ -504,9 +508,9 @@ class TomFormEnumRadioGroup<T> extends TomFormEnumField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _EnumRadioGroupWidget<T>(field: this),
-      );
+    field: this,
+    child: _EnumRadioGroupWidget<T>(field: this),
+  );
 }
 
 class _EnumRadioGroupWidget<T> extends StatefulWidget {
@@ -612,9 +616,9 @@ class TomFormEnumFilterChips<T> extends TomFormEnumListField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _EnumFilterChipsWidget<T>(field: this),
-      );
+    field: this,
+    child: _EnumFilterChipsWidget<T>(field: this),
+  );
 }
 
 class _EnumFilterChipsWidget<T> extends StatefulWidget {
@@ -635,8 +639,7 @@ class _EnumFilterChipsWidgetState<T> extends State<_EnumFilterChipsWidget<T>>
   TomSelectableSource<T> get source => widget.field.source;
 
   @override
-  void toggle(T value, bool include) =>
-      widget.field.toggleItem(value, include);
+  void toggle(T value, bool include) => widget.field.toggleItem(value, include);
 
   @override
   Widget build(BuildContext context) {
@@ -693,9 +696,9 @@ class TomFormObjectDropdown<T> extends TomFormObjectField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _ObjectDropdownWidget<T>(field: this),
-      );
+    field: this,
+    child: _ObjectDropdownWidget<T>(field: this),
+  );
 }
 
 class _ObjectDropdownWidget<T> extends StatefulWidget {
@@ -726,11 +729,13 @@ class _ObjectDropdownWidgetState<T> extends State<_ObjectDropdownWidget<T>>
       isExpanded: f.dropdownFillsColumnWidth,
       style: style.inputStyle,
       items: items
-          .map((it) => DropdownMenuItem<T>(
-                value: it.value,
-                enabled: it.enabled,
-                child: f.dropdownItemLabel(it.label, style.inputStyle),
-              ))
+          .map(
+            (it) => DropdownMenuItem<T>(
+              value: it.value,
+              enabled: it.enabled,
+              child: f.dropdownItemLabel(it.label, style.inputStyle),
+            ),
+          )
           .toList(),
       onChanged: f.isEditable
           ? (nv) {
@@ -790,9 +795,9 @@ class TomFormObjectFilterChips<T> extends TomFormObjectListField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _ObjectFilterChipsWidget<T>(field: this),
-      );
+    field: this,
+    child: _ObjectFilterChipsWidget<T>(field: this),
+  );
 }
 
 class _ObjectFilterChipsWidget<T> extends StatefulWidget {
@@ -814,8 +819,7 @@ class _ObjectFilterChipsWidgetState<T>
   TomSelectableSource<T> get source => widget.field.source;
 
   @override
-  void toggle(T value, bool include) =>
-      widget.field.toggleItem(value, include);
+  void toggle(T value, bool include) => widget.field.toggleItem(value, include);
 
   @override
   Widget build(BuildContext context) {

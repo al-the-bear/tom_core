@@ -10,11 +10,13 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _wrap(Widget child) =>
-    MaterialApp(home: Scaffold(body: Center(child: child)));
+Widget _wrap(Widget child) => MaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
-Widget _wrapCupertino(Widget child) =>
-    CupertinoApp(home: CupertinoPageScaffold(child: Center(child: child)));
+Widget _wrapCupertino(Widget child) => CupertinoApp(
+  home: CupertinoPageScaffold(child: Center(child: child)),
+);
 
 /// Installs [tree] as the application's resources, replacing whatever was
 /// there — the file widgets read their wording through this provider.
@@ -172,26 +174,32 @@ void main() {
 
     test('checkFile rejects a file over the size limit', () {
       final field = TomFormFileUpload('doc', null, maxSizeBytes: 10);
-      expect(field.checkFile(_localRef('a.txt', size: 11)), 'error.fileTooLarge');
+      expect(
+        field.checkFile(_localRef('a.txt', size: 11)),
+        'error.fileTooLarge',
+      );
       expect(field.checkFile(_localRef('a.txt', size: 10)), isNull);
     });
 
-    test('the same constraints are enforced on a programmatic setValue', () async {
-      final field = TomFormFileUpload(
-        'doc',
-        null,
-        allowedExtensions: const ['pdf'],
-        maxSizeBytes: 10,
-      );
-      field.setValue(_localRef('scan.png'));
-      expect(await field.validate(), isA<ValidationError>());
+    test(
+      'the same constraints are enforced on a programmatic setValue',
+      () async {
+        final field = TomFormFileUpload(
+          'doc',
+          null,
+          allowedExtensions: const ['pdf'],
+          maxSizeBytes: 10,
+        );
+        field.setValue(_localRef('scan.png'));
+        expect(await field.validate(), isA<ValidationError>());
 
-      field.setValue(_localRef('scan.pdf', size: 11));
-      expect(await field.validate(), isA<ValidationError>());
+        field.setValue(_localRef('scan.pdf', size: 11));
+        expect(await field.validate(), isA<ValidationError>());
 
-      field.setValue(_localRef('scan.pdf', size: 4));
-      expect(await field.validate(), isA<ValidationSuccess>());
-    });
+        field.setValue(_localRef('scan.pdf', size: 4));
+        expect(await field.validate(), isA<ValidationSuccess>());
+      },
+    );
 
     test('a pristine null value passes every built-in validator', () async {
       final field = TomFormFileUpload(
@@ -248,14 +256,15 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('TomFormFileUpload widget', () {
-    testWidgets('shows the empty caption and no transfer row when picker-only', (
-      tester,
-    ) async {
-      final field = TomFormFileUpload('doc', null);
-      await tester.pumpWidget(_wrap(field.widget));
-      expect(find.text('— no file selected'), findsOneWidget);
-      expect(find.byType(LinearProgressIndicator), findsNothing);
-    });
+    testWidgets(
+      'shows the empty caption and no transfer row when picker-only',
+      (tester) async {
+        final field = TomFormFileUpload('doc', null);
+        await tester.pumpWidget(_wrap(field.widget));
+        expect(find.text('— no file selected'), findsOneWidget);
+        expect(find.byType(LinearProgressIndicator), findsNothing);
+      },
+    );
 
     testWidgets('disables the button when nothing can pick', (tester) async {
       final field = TomFormFileUpload('doc', null);
@@ -465,11 +474,7 @@ void main() {
 
   group('tomFileIsRenderableImage', () {
     test('a reported image media type decides it', () {
-      final ref = FileRef(
-        name: 'scan',
-        sizeBytes: 1,
-        mimeType: 'image/jpeg',
-      );
+      final ref = FileRef(name: 'scan', sizeBytes: 1, mimeType: 'image/jpeg');
       expect(tomFileIsRenderableImage(ref, TomFilePickKind.any), isTrue);
     });
 

@@ -45,7 +45,10 @@ const _jargon = <(String, String)>[
   // Deliberately the bare token and not `D\d\d XDS`: the document number is
   // how it was written here, but the acronym alone is equally unresolvable and
   // matching both would report one site twice.
-  (r'\bXDS\b', "tom_specs' Experience Design Specification, cited as `D09 XDS`"),
+  (
+    r'\bXDS\b',
+    "tom_specs' Experience Design Specification, cited as `D09 XDS`",
+  ),
   // The suffix letter is matched case-insensitively on purpose. The first
   // version of this pattern wrote it `[a-z]?`, which matches `csexb2` but not
   // `CSEXB1` — and `CSEXB1` was exactly what the next occurrence turned out to
@@ -82,17 +85,23 @@ void main() {
       expect(names, contains('tom_form_nullable_bool_field.dart'));
       expect(names, contains('validator_registry_test.dart'));
       expect(names, isNot(contains(_selfName)));
-      expect(swept.length, greaterThan(100),
-          reason: 'only ${swept.length} files swept — the scan is probably '
-              'not running from the package root');
+      expect(
+        swept.length,
+        greaterThan(100),
+        reason:
+            'only ${swept.length} files swept — the scan is probably '
+            'not running from the package root',
+      );
     });
 
     // The patterns are as easy to get wrong as the text they police — one of
     // them already was. Pin each against the spelling that actually occurred.
     test('each pattern matches the occurrence it was written for', () {
       String meaningOf(String needle) => _jargon
-          .firstWhere((j) => RegExp(j.$1).hasMatch(needle),
-              orElse: () => throw StateError('no pattern matches "$needle"'))
+          .firstWhere(
+            (j) => RegExp(j.$1).hasMatch(needle),
+            orElse: () => throw StateError('no pattern matches "$needle"'),
+          )
           .$2;
 
       expect(meaningOf('CE-LO'), contains('CodeSpecs'));
@@ -114,10 +123,14 @@ void main() {
             }
           }
         }
-        expect(hits, isEmpty,
-            reason: 'this names $meaning, which a reader of this package '
-                'cannot resolve — state the fact it stood for instead:\n'
-                '${hits.join('\n')}');
+        expect(
+          hits,
+          isEmpty,
+          reason:
+              'this names $meaning, which a reader of this package '
+              'cannot resolve — state the fact it stood for instead:\n'
+              '${hits.join('\n')}',
+        );
       });
     }
   });

@@ -36,10 +36,10 @@ class _Taps {
   int count = 0;
 
   Widget get target => GestureDetector(
-        onTap: () => count++,
-        behavior: HitTestBehavior.opaque,
-        child: const SizedBox(width: _size, height: _size, child: Text('body')),
-      );
+    onTap: () => count++,
+    behavior: HitTestBehavior.opaque,
+    child: const SizedBox(width: _size, height: _size, child: Text('body')),
+  );
 }
 
 /// Grants everything except the paths it is told to withhold.
@@ -80,26 +80,30 @@ void main() {
 
   tearDown(TomAuthorization.reset);
 
-  Future<void> pump(WidgetTester tester, Widget layout,
-      {TomTheme? theme}) async {
+  Future<void> pump(
+    WidgetTester tester,
+    Widget layout, {
+    TomTheme? theme,
+  }) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     final body = SizedBox(width: 1000, child: layout);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: theme == null
-            ? body
-            : TomThemeScope(theme: theme, child: body),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: theme == null ? body : TomThemeScope(theme: theme, child: body),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
   /// The opacities applied above [content], nearest ancestor first.
   List<double> dimmingOf(WidgetTester tester, Finder content) => tester
       .widgetList<Opacity>(
-          find.ancestor(of: content, matching: find.byType(Opacity)))
+        find.ancestor(of: content, matching: find.byType(Opacity)),
+      )
       .map((o) => o.opacity)
       .where((o) => o < 1.0)
       .toList();
@@ -108,12 +112,18 @@ void main() {
   /// a tap — the three halves of "visible but not usable".
   Future<void> expectWithheld(WidgetTester tester, {String? reason}) async {
     expect(find.text('body'), findsOneWidget);
-    expect(dimmingOf(tester, find.text('body')), isNotEmpty,
-        reason: reason ?? 'withheld content must be dimmed');
+    expect(
+      dimmingOf(tester, find.text('body')),
+      isNotEmpty,
+      reason: reason ?? 'withheld content must be dimmed',
+    );
     await tester.tap(find.text('body'), warnIfMissed: false);
     await tester.pump();
-    expect(taps.count, 0,
-        reason: reason ?? 'withheld content must not receive pointer events');
+    expect(
+      taps.count,
+      0,
+      reason: reason ?? 'withheld content must not receive pointer events',
+    );
   }
 
   /// One identified component in one identified row.
@@ -141,9 +151,12 @@ void main() {
       adapter.denials['c0'] = TomAuthState.disabled;
       await pump(tester, layout());
 
-      await expectWithheld(tester,
-          reason: 'a component the policy resolved to disabled must be '
-              'rendered inert, not merely rendered');
+      await expectWithheld(
+        tester,
+        reason:
+            'a component the policy resolved to disabled must be '
+            'rendered inert, not merely rendered',
+      );
     });
 
     testWidgets('but a full component stays live', (tester) async {
@@ -167,8 +180,9 @@ void main() {
       await expectWithheld(tester);
     });
 
-    testWidgets('by the more restrictive of the row and the component',
-        (tester) async {
+    testWidgets('by the more restrictive of the row and the component', (
+      tester,
+    ) async {
       // Both levels resolve, and neither may widen the other. `read` on the
       // row with `disabled` on the component must render as `disabled` — the
       // narrower of the two — and the theme's two states are far enough apart
@@ -177,14 +191,19 @@ void main() {
       adapter.denials['c0'] = TomAuthState.disabled;
       await pump(tester, layout(), theme: _distinctTheme);
 
-      expect(dimmingOf(tester, find.text('body')), [0.23],
-          reason: 'the narrower grant wins, and it is applied once — a row '
-              'and a component that both withhold must not stack their '
-              'treatments into a doubly-dimmed component');
+      expect(
+        dimmingOf(tester, find.text('body')),
+        [0.23],
+        reason:
+            'the narrower grant wins, and it is applied once — a row '
+            'and a component that both withhold must not stack their '
+            'treatments into a doubly-dimmed component',
+      );
     });
 
-    testWidgets('leaving the geometry exactly where full leaves it',
-        (tester) async {
+    testWidgets('leaving the geometry exactly where full leaves it', (
+      tester,
+    ) async {
       // The treatment is a paint-time wrapper. If enforcing it moved anything,
       // a grant change would reflow the screen — which is the failure mode
       // `read` was already careful to avoid.
@@ -208,22 +227,24 @@ void main() {
     // the container as a whole. It handled `none` and `read` and let
     // `disabled` through untouched, which is the same defect one level up.
     Widget tomContainer() => Builder(
-          builder: (context) =>
-              TomAclBuilder(id: 'panel', elementProvider: _Elements(taps))
-                  .append((p) => p.box)
-                  .build(context),
-        );
+      builder: (context) => TomAclBuilder(
+        id: 'panel',
+        elementProvider: _Elements(taps),
+      ).append((p) => p.box).build(context),
+    );
 
-    testWidgets('a disabled container is dimmed and untouchable',
-        (tester) async {
+    testWidgets('a disabled container is dimmed and untouchable', (
+      tester,
+    ) async {
       adapter.denials['panel'] = TomAuthState.disabled;
       await pump(tester, tomContainer());
 
       await expectWithheld(tester);
     });
 
-    testWidgets('a disabled container takes its dimming from the theme',
-        (tester) async {
+    testWidgets('a disabled container takes its dimming from the theme', (
+      tester,
+    ) async {
       adapter.denials['panel'] = TomAuthState.disabled;
       await pump(tester, tomContainer(), theme: _distinctTheme);
 
@@ -256,22 +277,29 @@ void main() {
     testWidgets('a disabled group is dimmed and untouchable', (tester) async {
       await pump(
         tester,
-        groupedLayout(AclBinaryVisibilityController(
-            initialMode: AclGroupVisibilityMode.disabled)),
+        groupedLayout(
+          AclBinaryVisibilityController(
+            initialMode: AclGroupVisibilityMode.disabled,
+          ),
+        ),
       );
 
       await expectWithheld(tester);
     });
 
-    testWidgets('a disabled group absorbs pointers rather than ignoring them',
-        (tester) async {
+    testWidgets('a disabled group absorbs pointers rather than ignoring them', (
+      tester,
+    ) async {
       // `IgnorePointer` makes the component transparent to hit tests, so the
       // tap lands on whatever is underneath. In a Stack that is a live sibling;
       // "not usable" has to mean the event stops here.
       await pump(
         tester,
-        groupedLayout(AclBinaryVisibilityController(
-            initialMode: AclGroupVisibilityMode.disabled)),
+        groupedLayout(
+          AclBinaryVisibilityController(
+            initialMode: AclGroupVisibilityMode.disabled,
+          ),
+        ),
       );
 
       expect(
@@ -280,15 +308,19 @@ void main() {
       );
     });
 
-    testWidgets('a disabled group takes its dimming from the theme',
-        (tester) async {
+    testWidgets('a disabled group takes its dimming from the theme', (
+      tester,
+    ) async {
       // The point of routing it through the theme: an app that restyles the
       // withheld state restyles both axes at once, and cannot end up with two
       // shades of "off" in the same container.
       await pump(
         tester,
-        groupedLayout(AclBinaryVisibilityController(
-            initialMode: AclGroupVisibilityMode.disabled)),
+        groupedLayout(
+          AclBinaryVisibilityController(
+            initialMode: AclGroupVisibilityMode.disabled,
+          ),
+        ),
         theme: _distinctTheme,
       );
 
@@ -298,8 +330,11 @@ void main() {
     testWidgets('a visible group gets no treatment at all', (tester) async {
       await pump(
         tester,
-        groupedLayout(AclBinaryVisibilityController(
-            initialMode: AclGroupVisibilityMode.visible)),
+        groupedLayout(
+          AclBinaryVisibilityController(
+            initialMode: AclGroupVisibilityMode.visible,
+          ),
+        ),
       );
 
       expect(dimmingOf(tester, find.text('body')), isEmpty);
@@ -307,16 +342,18 @@ void main() {
   });
 
   group('the withheld states are resolved, not hard-coded', () {
-    testWidgets('a component grant uses the theme disabledStyle',
-        (tester) async {
+    testWidgets('a component grant uses the theme disabledStyle', (
+      tester,
+    ) async {
       adapter.denials['c0'] = TomAuthState.disabled;
       await pump(tester, layout(), theme: _distinctTheme);
 
       expect(dimmingOf(tester, find.text('body')), [0.23]);
     });
 
-    testWidgets('a component grant uses the theme readonlyStyle for read',
-        (tester) async {
+    testWidgets('a component grant uses the theme readonlyStyle for read', (
+      tester,
+    ) async {
       // The state that already worked, re-measured against the same theme —
       // so "disabled now resolves from the theme" is a statement about which
       // field, not merely about the fact that some field was consulted.
@@ -326,21 +363,28 @@ void main() {
       expect(dimmingOf(tester, find.text('body')), [0.71]);
     });
 
-    testWidgets('a theme with dimming switched off still blocks pointers',
-        (tester) async {
+    testWidgets('a theme with dimming switched off still blocks pointers', (
+      tester,
+    ) async {
       // `opacity: 1.0` is the documented way to turn dimming off. Enforcement
       // is not a styling choice, so it must survive that.
       adapter.denials['c0'] = TomAuthState.disabled;
-      await pump(tester, layout(),
-          theme: const TomTheme(
-              disabledStyle: TomStateStyle(opacity: 1.0)));
+      await pump(
+        tester,
+        layout(),
+        theme: const TomTheme(disabledStyle: TomStateStyle(opacity: 1.0)),
+      );
 
       expect(dimmingOf(tester, find.text('body')), isEmpty);
       await tester.tap(find.text('body'), warnIfMissed: false);
       await tester.pump();
-      expect(taps.count, 0,
-          reason: 'a theme may drop the dimming; it may not drop the '
-              'enforcement the dimming advertises');
+      expect(
+        taps.count,
+        0,
+        reason:
+            'a theme may drop the dimming; it may not drop the '
+            'enforcement the dimming advertises',
+      );
     });
   });
 }

@@ -79,13 +79,16 @@ class TomIcon extends TomImageBase {
     this.applyTextScaling,
   }) {
     _resolvedIcon = icon ?? _resolveIconFromResources();
-    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? TomCtr.textOrFail(basePath, 'alt') : null);
+    _resolvedSemanticLabel =
+        semanticLabel ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'alt') : null);
     _resolvedSize = size ?? TomCtr.doubleVal(basePath, 'size');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
     _resolvedFill = fill ?? TomCtr.doubleVal(basePath, 'fill');
     _resolvedWeight = weight ?? TomCtr.doubleVal(basePath, 'weight');
     _resolvedGrade = grade ?? TomCtr.doubleVal(basePath, 'grade');
-    _resolvedOpticalSize = opticalSize ?? TomCtr.doubleVal(basePath, 'opticalSize');
+    _resolvedOpticalSize =
+        opticalSize ?? TomCtr.doubleVal(basePath, 'opticalSize');
   }
 
   @override
@@ -167,14 +170,19 @@ class TomImage extends TomImageBase {
     this.filterQuality = FilterQuality.medium,
     this.semanticLabel,
   }) {
-    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? TomCtr.textOrFail(basePath, 'alt') : null);
+    _resolvedSemanticLabel =
+        semanticLabel ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'alt') : null);
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
     _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
-    _resolvedMatchTextDirection = TomCtr.boolVal(basePath, 'matchTextDirection') ?? matchTextDirection;
-    _resolvedGaplessPlayback = TomCtr.boolVal(basePath, 'gaplessPlayback') ?? gaplessPlayback;
-    _resolvedIsAntiAlias = TomCtr.boolVal(basePath, 'isAntiAlias') ?? isAntiAlias;
+    _resolvedMatchTextDirection =
+        TomCtr.boolVal(basePath, 'matchTextDirection') ?? matchTextDirection;
+    _resolvedGaplessPlayback =
+        TomCtr.boolVal(basePath, 'gaplessPlayback') ?? gaplessPlayback;
+    _resolvedIsAntiAlias =
+        TomCtr.boolVal(basePath, 'isAntiAlias') ?? isAntiAlias;
   }
 
   @override
@@ -242,10 +250,16 @@ class TomCircleAvatar extends TomImageBase {
     this.radius,
     this.minRadius,
     this.maxRadius,
-  })  : onBackgroundImageError = InScopeBuilder(scope: scope).wrap2n(onBackgroundImageError),
-        onForegroundImageError = InScopeBuilder(scope: scope).wrap2n(onForegroundImageError) {
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
-    _resolvedForegroundColor = foregroundColor ?? TomCtr.color(basePath, 'foregroundColor');
+  }) : onBackgroundImageError = InScopeBuilder(
+         scope: scope,
+       ).wrap2n(onBackgroundImageError),
+       onForegroundImageError = InScopeBuilder(
+         scope: scope,
+       ).wrap2n(onForegroundImageError) {
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedForegroundColor =
+        foregroundColor ?? TomCtr.color(basePath, 'foregroundColor');
     _resolvedRadius = radius ?? TomCtr.doubleVal(basePath, 'radius');
     _resolvedMinRadius = minRadius ?? TomCtr.doubleVal(basePath, 'minRadius');
     _resolvedMaxRadius = maxRadius ?? TomCtr.doubleVal(basePath, 'maxRadius');
@@ -329,15 +343,25 @@ class TomFadeInImage extends TomImageBase {
     this.placeholderColorBlendMode,
     ImageErrorWidgetBuilder? placeholderErrorBuilder,
     ImageErrorWidgetBuilder? imageErrorBuilder,
-  }) : placeholderErrorBuilder = placeholderErrorBuilder != null ? InScopeBuilder(scope: scope).wrap3(placeholderErrorBuilder) : null,
-       imageErrorBuilder = imageErrorBuilder != null ? InScopeBuilder(scope: scope).wrap3(imageErrorBuilder) : null {
-    _resolvedSemanticLabel = imageSemanticLabel ?? (tomId != null ? TomCtr.textOrFail(basePath, 'alt') : null);
+  }) : placeholderErrorBuilder = placeholderErrorBuilder != null
+           ? InScopeBuilder(scope: scope).wrap3(placeholderErrorBuilder)
+           : null,
+       imageErrorBuilder = imageErrorBuilder != null
+           ? InScopeBuilder(scope: scope).wrap3(imageErrorBuilder)
+           : null {
+    _resolvedSemanticLabel =
+        imageSemanticLabel ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'alt') : null);
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
-    _resolvedPlaceholderColor = placeholderColor ?? TomCtr.color(basePath, 'placeholderColor');
+    _resolvedPlaceholderColor =
+        placeholderColor ?? TomCtr.color(basePath, 'placeholderColor');
     _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
-    _resolvedMatchTextDirection = TomCtr.boolVal(basePath, 'matchTextDirection') ?? matchTextDirection;
-    _resolvedExcludeFromSemantics = TomCtr.boolVal(basePath, 'excludeFromSemantics') ?? excludeFromSemantics;
+    _resolvedMatchTextDirection =
+        TomCtr.boolVal(basePath, 'matchTextDirection') ?? matchTextDirection;
+    _resolvedExcludeFromSemantics =
+        TomCtr.boolVal(basePath, 'excludeFromSemantics') ??
+        excludeFromSemantics;
   }
 
   @override
@@ -397,7 +421,9 @@ class TomImageIcon extends TomImageBase {
     this.color,
     this.semanticLabel,
   }) {
-    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? TomCtr.textOrFail(basePath, 'semanticLabel') : null);
+    _resolvedSemanticLabel =
+        semanticLabel ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'semanticLabel') : null);
     _resolvedSize = size ?? TomCtr.doubleVal(basePath, 'size');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
   }
@@ -546,19 +572,31 @@ class TomNetworkImage extends TomImageBase {
     ImageFrameBuilder? frameBuilder,
     ImageLoadingBuilder? loadingBuilder,
     ImageErrorWidgetBuilder? errorBuilder,
-  }) : frameBuilder = frameBuilder != null ? InScopeBuilder(scope: scope).wrap4(frameBuilder) : null,
-       loadingBuilder = loadingBuilder != null ? InScopeBuilder(scope: scope).wrap3(loadingBuilder) : null,
-       errorBuilder = errorBuilder != null ? InScopeBuilder(scope: scope).wrap3(errorBuilder) : null {
-    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? TomCtr.textOrFail(basePath, 'semanticLabel') : null);
+  }) : frameBuilder = frameBuilder != null
+           ? InScopeBuilder(scope: scope).wrap4(frameBuilder)
+           : null,
+       loadingBuilder = loadingBuilder != null
+           ? InScopeBuilder(scope: scope).wrap3(loadingBuilder)
+           : null,
+       errorBuilder = errorBuilder != null
+           ? InScopeBuilder(scope: scope).wrap3(errorBuilder)
+           : null {
+    _resolvedSemanticLabel =
+        semanticLabel ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'semanticLabel') : null);
     _resolvedSrc = TomCtr.textOrNull(basePath, 'src') ?? src;
     _resolvedScale = TomCtr.doubleVal(basePath, 'scale') ?? scale;
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
     _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
-    _resolvedMatchTextDirection = TomCtr.boolVal(basePath, 'matchTextDirection') ?? matchTextDirection;
-    _resolvedGaplessPlayback = TomCtr.boolVal(basePath, 'gaplessPlayback') ?? gaplessPlayback;
+    _resolvedMatchTextDirection =
+        TomCtr.boolVal(basePath, 'matchTextDirection') ?? matchTextDirection;
+    _resolvedGaplessPlayback =
+        TomCtr.boolVal(basePath, 'gaplessPlayback') ?? gaplessPlayback;
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
-    _resolvedExcludeFromSemantics = TomCtr.boolVal(basePath, 'excludeFromSemantics') ?? excludeFromSemantics;
+    _resolvedExcludeFromSemantics =
+        TomCtr.boolVal(basePath, 'excludeFromSemantics') ??
+        excludeFromSemantics;
   }
 
   @override
@@ -656,14 +694,21 @@ class TomAssetImage extends TomImageBase {
     ImageErrorWidgetBuilder? errorBuilder,
     this.cacheWidth,
     this.cacheHeight,
-  }) : frameBuilder = frameBuilder != null ? InScopeBuilder(scope: scope).wrap4(frameBuilder) : null,
-       errorBuilder = errorBuilder != null ? InScopeBuilder(scope: scope).wrap3(errorBuilder) : null {
-    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? TomCtr.textOrFail(basePath, 'semanticLabel') : null);
+  }) : frameBuilder = frameBuilder != null
+           ? InScopeBuilder(scope: scope).wrap4(frameBuilder)
+           : null,
+       errorBuilder = errorBuilder != null
+           ? InScopeBuilder(scope: scope).wrap3(errorBuilder)
+           : null {
+    _resolvedSemanticLabel =
+        semanticLabel ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'semanticLabel') : null);
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
     _resolvedCacheWidth = cacheWidth ?? TomCtr.intVal(basePath, 'cacheWidth');
-    _resolvedCacheHeight = cacheHeight ?? TomCtr.intVal(basePath, 'cacheHeight');
+    _resolvedCacheHeight =
+        cacheHeight ?? TomCtr.intVal(basePath, 'cacheHeight');
   }
 
   @override
@@ -749,9 +794,15 @@ class TomFileImage extends TomImageBase {
     this.excludeFromSemantics = false,
     ImageFrameBuilder? frameBuilder,
     ImageErrorWidgetBuilder? errorBuilder,
-  }) : frameBuilder = frameBuilder != null ? InScopeBuilder(scope: scope).wrap4(frameBuilder) : null,
-       errorBuilder = errorBuilder != null ? InScopeBuilder(scope: scope).wrap3(errorBuilder) : null {
-    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? TomCtr.textOrFail(basePath, 'semanticLabel') : null);
+  }) : frameBuilder = frameBuilder != null
+           ? InScopeBuilder(scope: scope).wrap4(frameBuilder)
+           : null,
+       errorBuilder = errorBuilder != null
+           ? InScopeBuilder(scope: scope).wrap3(errorBuilder)
+           : null {
+    _resolvedSemanticLabel =
+        semanticLabel ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'semanticLabel') : null);
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
@@ -815,7 +866,8 @@ class TomAnimatedIcon extends TomImageBase {
     this.semanticLabel,
     this.textDirection,
   }) {
-    _resolvedSemanticLabel = semanticLabel ?? TomCtr.textOrNull(basePath, 'semanticLabel');
+    _resolvedSemanticLabel =
+        semanticLabel ?? TomCtr.textOrNull(basePath, 'semanticLabel');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
     _resolvedSize = size ?? TomCtr.doubleVal(basePath, 'size');
   }

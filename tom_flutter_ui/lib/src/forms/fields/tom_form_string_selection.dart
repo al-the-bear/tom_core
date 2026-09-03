@@ -33,9 +33,11 @@ mixin _SourceBackedStringWidgetStateMixin<TWidget extends StatefulWidget>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -115,9 +117,9 @@ class TomFormStringSegmented extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormStringSegmentedWidget(field: this),
-      );
+    field: this,
+    child: _TomFormStringSegmentedWidget(field: this),
+  );
 }
 
 class _TomFormStringSegmentedWidget extends StatefulWidget {
@@ -146,9 +148,7 @@ class _TomFormStringSegmentedWidgetState
     final override = full.segmentedStyle;
 
     final selected = f.get();
-    final selectionSet = <String>{
-      if (selected.isNotEmpty) selected,
-    };
+    final selectionSet = <String>{if (selected.isNotEmpty) selected};
 
     // SegmentedButton requires at least one segment; when items haven't
     // loaded yet render a disabled placeholder so the anatomy row stays
@@ -162,12 +162,14 @@ class _TomFormStringSegmentedWidgetState
             ),
           ]
         : items
-            .map((it) => ButtonSegment<String>(
+              .map(
+                (it) => ButtonSegment<String>(
                   value: it.value,
                   label: Text(it.label, style: style.inputStyle),
                   enabled: it.enabled,
-                ))
-            .toList();
+                ),
+              )
+              .toList();
 
     final segmented = SegmentedButton<String>(
       segments: segments,
@@ -228,9 +230,9 @@ class TomFormStringRadioGroup extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormStringRadioGroupWidget(field: this),
-      );
+    field: this,
+    child: _TomFormStringRadioGroupWidget(field: this),
+  );
 }
 
 class _TomFormStringRadioGroupWidget extends StatefulWidget {
@@ -341,9 +343,9 @@ class TomFormStringChoiceChips extends TomFormStringField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _TomFormStringChoiceChipsWidget(field: this),
-      );
+    field: this,
+    child: _TomFormStringChoiceChipsWidget(field: this),
+  );
 }
 
 class _TomFormStringChoiceChipsWidget extends StatefulWidget {
@@ -384,8 +386,9 @@ class _TomFormStringChoiceChipsWidgetState
                   if (sel) f.setValue(item.value);
                 }
               : null,
-          selectedColor:
-              override?.selectedColor?.resolve(const {WidgetState.selected}),
+          selectedColor: override?.selectedColor?.resolve(const {
+            WidgetState.selected,
+          }),
           visualDensity: VisualDensity.compact,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );

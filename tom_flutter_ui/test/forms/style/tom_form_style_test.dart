@@ -9,10 +9,7 @@ void main() {
         TomFormStyle.material3.defaults.labelPlacement,
         LabelPlacement.above,
       );
-      expect(
-        TomFormStyle.material3.defaults.errorBorderEnabled,
-        isFalse,
-      );
+      expect(TomFormStyle.material3.defaults.errorBorderEnabled, isFalse);
       expect(TomFormStyle.material3.stringInputStyle, isNull);
     });
 
@@ -38,10 +35,7 @@ void main() {
       final theme = ThemeData.light();
       final styled = TomFormStyle.material3.withTheme(theme);
       expect(styled.defaults.labelStyle, isNotNull);
-      expect(
-        styled.defaults.labelStyle,
-        theme.textTheme.bodyMedium,
-      );
+      expect(styled.defaults.labelStyle, theme.textTheme.bodyMedium);
       // fieldBorder is left as the preset had it — null stays null so
       // withTheme never adds a border where none was declared.
       expect(styled.defaults.fieldBorder, isNull);
@@ -82,10 +76,7 @@ void main() {
             ),
           )
           .withTheme(theme);
-      expect(
-        styled.stringInputStyle?.variant,
-        StringInputVariant.bordered,
-      );
+      expect(styled.stringInputStyle?.variant, StringInputVariant.bordered);
     });
   });
 
@@ -111,12 +102,18 @@ void main() {
     );
 
     test('labelPlacement resolves by width', () {
-      expect(style.resolveFieldStyle(null, 300).labelPlacement,
-          LabelPlacement.floating);
-      expect(style.resolveFieldStyle(null, 500).labelPlacement,
-          LabelPlacement.above);
-      expect(style.resolveFieldStyle(null, 900).labelPlacement,
-          LabelPlacement.inline);
+      expect(
+        style.resolveFieldStyle(null, 300).labelPlacement,
+        LabelPlacement.floating,
+      );
+      expect(
+        style.resolveFieldStyle(null, 500).labelPlacement,
+        LabelPlacement.above,
+      );
+      expect(
+        style.resolveFieldStyle(null, 900).labelPlacement,
+        LabelPlacement.inline,
+      );
     });
 
     test('labelStyle and hintStyle resolve by width', () {

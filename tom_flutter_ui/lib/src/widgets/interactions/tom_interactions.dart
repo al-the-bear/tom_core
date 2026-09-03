@@ -120,48 +120,90 @@ class TomGestureDetector extends TomInteractionBase {
     this.supportedDevices,
     this.trackpadScrollCausesScale,
     this.trackpadScrollToScaleFactor = kDefaultTrackpadScrollToScaleFactor,
-  })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-        onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
-        onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
-        onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
-        onSecondaryTap = InScopeBuilder(scope: scope).wrap0n(onSecondaryTap),
-        onSecondaryTapDown = InScopeBuilder(scope: scope).wrap1n(onSecondaryTapDown),
-        onSecondaryTapUp = InScopeBuilder(scope: scope).wrap1n(onSecondaryTapUp),
-        onSecondaryTapCancel = InScopeBuilder(scope: scope).wrap0n(onSecondaryTapCancel),
-        onTertiaryTapDown = InScopeBuilder(scope: scope).wrap1n(onTertiaryTapDown),
-        onTertiaryTapUp = InScopeBuilder(scope: scope).wrap1n(onTertiaryTapUp),
-        onTertiaryTapCancel = InScopeBuilder(scope: scope).wrap0n(onTertiaryTapCancel),
-        onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
-        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
-        onLongPressStart = InScopeBuilder(scope: scope).wrap1n(onLongPressStart),
-        onLongPressMoveUpdate = InScopeBuilder(scope: scope).wrap1n(onLongPressMoveUpdate),
-        onLongPressUp = InScopeBuilder(scope: scope).wrap0n(onLongPressUp),
-        onLongPressEnd = InScopeBuilder(scope: scope).wrap1n(onLongPressEnd),
-        onVerticalDragDown = InScopeBuilder(scope: scope).wrap1n(onVerticalDragDown),
-        onVerticalDragStart = InScopeBuilder(scope: scope).wrap1n(onVerticalDragStart),
-        onVerticalDragUpdate = InScopeBuilder(scope: scope).wrap1n(onVerticalDragUpdate),
-        onVerticalDragEnd = InScopeBuilder(scope: scope).wrap1n(onVerticalDragEnd),
-        onVerticalDragCancel = InScopeBuilder(scope: scope).wrap0n(onVerticalDragCancel),
-        onHorizontalDragDown = InScopeBuilder(scope: scope).wrap1n(onHorizontalDragDown),
-        onHorizontalDragStart = InScopeBuilder(scope: scope).wrap1n(onHorizontalDragStart),
-        onHorizontalDragUpdate = InScopeBuilder(scope: scope).wrap1n(onHorizontalDragUpdate),
-        onHorizontalDragEnd = InScopeBuilder(scope: scope).wrap1n(onHorizontalDragEnd),
-        onHorizontalDragCancel = InScopeBuilder(scope: scope).wrap0n(onHorizontalDragCancel),
-        onPanDown = InScopeBuilder(scope: scope).wrap1n(onPanDown),
-        onPanStart = InScopeBuilder(scope: scope).wrap1n(onPanStart),
-        onPanUpdate = InScopeBuilder(scope: scope).wrap1n(onPanUpdate),
-        onPanEnd = InScopeBuilder(scope: scope).wrap1n(onPanEnd),
-        onPanCancel = InScopeBuilder(scope: scope).wrap0n(onPanCancel),
-        onScaleStart = InScopeBuilder(scope: scope).wrap1n(onScaleStart),
-        onScaleUpdate = InScopeBuilder(scope: scope).wrap1n(onScaleUpdate),
-        onScaleEnd = InScopeBuilder(scope: scope).wrap1n(onScaleEnd),
-        onForcePressStart = InScopeBuilder(scope: scope).wrap1n(onForcePressStart),
-        onForcePressPeak = InScopeBuilder(scope: scope).wrap1n(onForcePressPeak),
-        onForcePressUpdate = InScopeBuilder(scope: scope).wrap1n(onForcePressUpdate),
-        onForcePressEnd = InScopeBuilder(scope: scope).wrap1n(onForcePressEnd) {
-    _resolvedExcludeFromSemantics = excludeFromSemantics ?? TomCtr.boolVal(basePath, 'excludeFromSemantics') ?? false;
-    _resolvedTrackpadScrollCausesScale = trackpadScrollCausesScale ?? TomCtr.boolVal(basePath, 'trackpadScrollCausesScale') ?? false;
-    _resolvedTrackpadScrollToScaleFactor = _resolveOffset('trackpadScrollToScaleFactor') ?? trackpadScrollToScaleFactor;
+  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
+       onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
+       onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
+       onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
+       onSecondaryTap = InScopeBuilder(scope: scope).wrap0n(onSecondaryTap),
+       onSecondaryTapDown = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onSecondaryTapDown),
+       onSecondaryTapUp = InScopeBuilder(scope: scope).wrap1n(onSecondaryTapUp),
+       onSecondaryTapCancel = InScopeBuilder(
+         scope: scope,
+       ).wrap0n(onSecondaryTapCancel),
+       onTertiaryTapDown = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onTertiaryTapDown),
+       onTertiaryTapUp = InScopeBuilder(scope: scope).wrap1n(onTertiaryTapUp),
+       onTertiaryTapCancel = InScopeBuilder(
+         scope: scope,
+       ).wrap0n(onTertiaryTapCancel),
+       onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
+       onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
+       onLongPressStart = InScopeBuilder(scope: scope).wrap1n(onLongPressStart),
+       onLongPressMoveUpdate = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onLongPressMoveUpdate),
+       onLongPressUp = InScopeBuilder(scope: scope).wrap0n(onLongPressUp),
+       onLongPressEnd = InScopeBuilder(scope: scope).wrap1n(onLongPressEnd),
+       onVerticalDragDown = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onVerticalDragDown),
+       onVerticalDragStart = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onVerticalDragStart),
+       onVerticalDragUpdate = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onVerticalDragUpdate),
+       onVerticalDragEnd = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onVerticalDragEnd),
+       onVerticalDragCancel = InScopeBuilder(
+         scope: scope,
+       ).wrap0n(onVerticalDragCancel),
+       onHorizontalDragDown = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onHorizontalDragDown),
+       onHorizontalDragStart = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onHorizontalDragStart),
+       onHorizontalDragUpdate = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onHorizontalDragUpdate),
+       onHorizontalDragEnd = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onHorizontalDragEnd),
+       onHorizontalDragCancel = InScopeBuilder(
+         scope: scope,
+       ).wrap0n(onHorizontalDragCancel),
+       onPanDown = InScopeBuilder(scope: scope).wrap1n(onPanDown),
+       onPanStart = InScopeBuilder(scope: scope).wrap1n(onPanStart),
+       onPanUpdate = InScopeBuilder(scope: scope).wrap1n(onPanUpdate),
+       onPanEnd = InScopeBuilder(scope: scope).wrap1n(onPanEnd),
+       onPanCancel = InScopeBuilder(scope: scope).wrap0n(onPanCancel),
+       onScaleStart = InScopeBuilder(scope: scope).wrap1n(onScaleStart),
+       onScaleUpdate = InScopeBuilder(scope: scope).wrap1n(onScaleUpdate),
+       onScaleEnd = InScopeBuilder(scope: scope).wrap1n(onScaleEnd),
+       onForcePressStart = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onForcePressStart),
+       onForcePressPeak = InScopeBuilder(scope: scope).wrap1n(onForcePressPeak),
+       onForcePressUpdate = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onForcePressUpdate),
+       onForcePressEnd = InScopeBuilder(scope: scope).wrap1n(onForcePressEnd) {
+    _resolvedExcludeFromSemantics =
+        excludeFromSemantics ??
+        TomCtr.boolVal(basePath, 'excludeFromSemantics') ??
+        false;
+    _resolvedTrackpadScrollCausesScale =
+        trackpadScrollCausesScale ??
+        TomCtr.boolVal(basePath, 'trackpadScrollCausesScale') ??
+        false;
+    _resolvedTrackpadScrollToScaleFactor =
+        _resolveOffset('trackpadScrollToScaleFactor') ??
+        trackpadScrollToScaleFactor;
   }
 
   @override
@@ -309,29 +351,41 @@ class TomInkWell extends TomInteractionBase {
     this.autofocus = false,
     this.statesController,
     this.hoverDuration,
-  })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-        onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
-        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
-        onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
-        onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
-        onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
-        onSecondaryTap = InScopeBuilder(scope: scope).wrap0n(onSecondaryTap),
-        onSecondaryTapUp = InScopeBuilder(scope: scope).wrap1n(onSecondaryTapUp),
-        onSecondaryTapDown = InScopeBuilder(scope: scope).wrap1n(onSecondaryTapDown),
-        onSecondaryTapCancel = InScopeBuilder(scope: scope).wrap0n(onSecondaryTapCancel),
-        onHighlightChanged = InScopeBuilder(scope: scope).wrap1n(onHighlightChanged),
-        onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
-        onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
+  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
+       onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
+       onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
+       onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
+       onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
+       onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
+       onSecondaryTap = InScopeBuilder(scope: scope).wrap0n(onSecondaryTap),
+       onSecondaryTapUp = InScopeBuilder(scope: scope).wrap1n(onSecondaryTapUp),
+       onSecondaryTapDown = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onSecondaryTapDown),
+       onSecondaryTapCancel = InScopeBuilder(
+         scope: scope,
+       ).wrap0n(onSecondaryTapCancel),
+       onHighlightChanged = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onHighlightChanged),
+       onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
+       onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
     _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
-    _resolvedHighlightColor = highlightColor ?? TomCtr.color(basePath, 'highlightColor');
+    _resolvedHighlightColor =
+        highlightColor ?? TomCtr.color(basePath, 'highlightColor');
     _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
     _resolvedRadius = radius ?? TomCtr.doubleVal(basePath, 'radius');
-    _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
+    _resolvedBorderRadius =
+        borderRadius ?? _resolveBorderRadius('borderRadius');
     _resolvedCustomBorder = customBorder ?? _resolveShapeBorder('customBorder');
-    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback') ?? true;
-    _resolvedExcludeFromSemantics = TomCtr.boolVal(basePath, 'excludeFromSemantics') ?? excludeFromSemantics;
-    _resolvedCanRequestFocus = TomCtr.boolVal(basePath, 'canRequestFocus') ?? canRequestFocus;
+    _resolvedEnableFeedback =
+        enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback') ?? true;
+    _resolvedExcludeFromSemantics =
+        TomCtr.boolVal(basePath, 'excludeFromSemantics') ??
+        excludeFromSemantics;
+    _resolvedCanRequestFocus =
+        TomCtr.boolVal(basePath, 'canRequestFocus') ?? canRequestFocus;
     _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
   }
 
@@ -467,26 +521,39 @@ class TomInkResponse extends TomInteractionBase {
     this.canRequestFocus,
     this.statesController,
     this.hoverDuration,
-  })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-        onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
-        onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
-        onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
-        onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
-        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
-        onHighlightChanged = InScopeBuilder(scope: scope).wrap1n(onHighlightChanged),
-        onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
-        onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedContainedInkWell = containedInkWell ?? TomCtr.boolVal(basePath, 'containedInkWell') ?? false;
+  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
+       onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
+       onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
+       onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
+       onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
+       onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
+       onHighlightChanged = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onHighlightChanged),
+       onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
+       onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
+    _resolvedContainedInkWell =
+        containedInkWell ??
+        TomCtr.boolVal(basePath, 'containedInkWell') ??
+        false;
     _resolvedRadius = radius ?? TomCtr.doubleVal(basePath, 'radius');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
     _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
-    _resolvedHighlightColor = highlightColor ?? TomCtr.color(basePath, 'highlightColor');
+    _resolvedHighlightColor =
+        highlightColor ?? TomCtr.color(basePath, 'highlightColor');
     _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
-    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback') ?? true;
-    _resolvedExcludeFromSemantics = excludeFromSemantics ?? TomCtr.boolVal(basePath, 'excludeFromSemantics') ?? false;
-    _resolvedAutofocus = autofocus ?? TomCtr.boolVal(basePath, 'autofocus') ?? false;
-    _resolvedCanRequestFocus = canRequestFocus ?? TomCtr.boolVal(basePath, 'canRequestFocus') ?? true;
-    _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
+    _resolvedEnableFeedback =
+        enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback') ?? true;
+    _resolvedExcludeFromSemantics =
+        excludeFromSemantics ??
+        TomCtr.boolVal(basePath, 'excludeFromSemantics') ??
+        false;
+    _resolvedAutofocus =
+        autofocus ?? TomCtr.boolVal(basePath, 'autofocus') ?? false;
+    _resolvedCanRequestFocus =
+        canRequestFocus ?? TomCtr.boolVal(basePath, 'canRequestFocus') ?? true;
+    _resolvedBorderRadius =
+        borderRadius ?? _resolveBorderRadius('borderRadius');
     _resolvedCustomBorder = customBorder ?? _resolveShapeBorder('customBorder');
   }
 
@@ -593,16 +660,27 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
     this.rootOverlay,
     this.hitTestBehavior = HitTestBehavior.deferToChild,
     this.allowedButtonsFilter = true,
-  })  : onDragStarted = InScopeBuilder(scope: scope).wrap0n(onDragStarted),
-        onDragUpdate = InScopeBuilder(scope: scope).wrap1n(onDragUpdate),
-        onDraggableCanceled = InScopeBuilder(scope: scope).wrap2n(onDraggableCanceled),
-        onDragEnd = InScopeBuilder(scope: scope).wrap1n(onDragEnd),
-        onDragCompleted = InScopeBuilder(scope: scope).wrap0n(onDragCompleted) {
-    _resolvedMaxSimultaneousDrags = maxSimultaneousDrags ?? TomCtr.intVal(basePath, 'maxSimultaneousDrags');
-    _resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ?? TomCtr.boolVal(basePath, 'ignoringFeedbackSemantics') ?? true;
-    _resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ?? TomCtr.boolVal(basePath, 'ignoringFeedbackPointer') ?? true;
-    _resolvedRootOverlay = rootOverlay ?? TomCtr.boolVal(basePath, 'rootOverlay') ?? false;
-    _resolvedFeedbackOffset = _resolveOffset('feedbackOffset') ?? feedbackOffset;
+  }) : onDragStarted = InScopeBuilder(scope: scope).wrap0n(onDragStarted),
+       onDragUpdate = InScopeBuilder(scope: scope).wrap1n(onDragUpdate),
+       onDraggableCanceled = InScopeBuilder(
+         scope: scope,
+       ).wrap2n(onDraggableCanceled),
+       onDragEnd = InScopeBuilder(scope: scope).wrap1n(onDragEnd),
+       onDragCompleted = InScopeBuilder(scope: scope).wrap0n(onDragCompleted) {
+    _resolvedMaxSimultaneousDrags =
+        maxSimultaneousDrags ?? TomCtr.intVal(basePath, 'maxSimultaneousDrags');
+    _resolvedIgnoringFeedbackSemantics =
+        ignoringFeedbackSemantics ??
+        TomCtr.boolVal(basePath, 'ignoringFeedbackSemantics') ??
+        true;
+    _resolvedIgnoringFeedbackPointer =
+        ignoringFeedbackPointer ??
+        TomCtr.boolVal(basePath, 'ignoringFeedbackPointer') ??
+        true;
+    _resolvedRootOverlay =
+        rootOverlay ?? TomCtr.boolVal(basePath, 'rootOverlay') ?? false;
+    _resolvedFeedbackOffset =
+        _resolveOffset('feedbackOffset') ?? feedbackOffset;
   }
 
   @override
@@ -663,11 +741,20 @@ class TomDragTarget<T extends Object> extends TomInteractionBase {
     DragTargetMove<T>? onMove,
     this.hitTestBehavior,
   }) : builder = InScopeBuilder(scope: scope).wrap3(builder),
-       onWillAcceptWithDetails = InScopeBuilder(scope: scope).wrap1n(onWillAcceptWithDetails),
-       onAcceptWithDetails = InScopeBuilder(scope: scope).wrap1n(onAcceptWithDetails),
+       onWillAcceptWithDetails = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onWillAcceptWithDetails),
+       onAcceptWithDetails = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onAcceptWithDetails),
        onLeave = InScopeBuilder(scope: scope).wrap1n(onLeave),
        onMove = InScopeBuilder(scope: scope).wrap1n(onMove) {
-    _resolvedHitTestBehavior = hitTestBehavior ?? _resolveHitTestBehavior(TomCtr.textOrNull(basePath, 'hitTestBehavior')) ?? HitTestBehavior.translucent;
+    _resolvedHitTestBehavior =
+        hitTestBehavior ??
+        _resolveHitTestBehavior(
+          TomCtr.textOrNull(basePath, 'hitTestBehavior'),
+        ) ??
+        HitTestBehavior.translucent;
   }
 
   @override
@@ -735,15 +822,27 @@ class TomLongPressDraggable<T extends Object> extends TomInteractionBase {
     this.ignoringFeedbackSemantics,
     this.ignoringFeedbackPointer,
     this.delay = kLongPressTimeout,
-  })  : onDragStarted = InScopeBuilder(scope: scope).wrap0n(onDragStarted),
-        onDragUpdate = InScopeBuilder(scope: scope).wrap1n(onDragUpdate),
-        onDraggableCanceled = InScopeBuilder(scope: scope).wrap2n(onDraggableCanceled),
-        onDragEnd = InScopeBuilder(scope: scope).wrap1n(onDragEnd),
-        onDragCompleted = InScopeBuilder(scope: scope).wrap0n(onDragCompleted) {
-    _resolvedMaxSimultaneousDrags = maxSimultaneousDrags ?? TomCtr.intVal(basePath, 'maxSimultaneousDrags');
-    _resolvedHapticFeedbackOnStart = hapticFeedbackOnStart ?? TomCtr.boolVal(basePath, 'hapticFeedbackOnStart') ?? true;
-    _resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ?? TomCtr.boolVal(basePath, 'ignoringFeedbackSemantics') ?? true;
-    _resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ?? TomCtr.boolVal(basePath, 'ignoringFeedbackPointer') ?? true;
+  }) : onDragStarted = InScopeBuilder(scope: scope).wrap0n(onDragStarted),
+       onDragUpdate = InScopeBuilder(scope: scope).wrap1n(onDragUpdate),
+       onDraggableCanceled = InScopeBuilder(
+         scope: scope,
+       ).wrap2n(onDraggableCanceled),
+       onDragEnd = InScopeBuilder(scope: scope).wrap1n(onDragEnd),
+       onDragCompleted = InScopeBuilder(scope: scope).wrap0n(onDragCompleted) {
+    _resolvedMaxSimultaneousDrags =
+        maxSimultaneousDrags ?? TomCtr.intVal(basePath, 'maxSimultaneousDrags');
+    _resolvedHapticFeedbackOnStart =
+        hapticFeedbackOnStart ??
+        TomCtr.boolVal(basePath, 'hapticFeedbackOnStart') ??
+        true;
+    _resolvedIgnoringFeedbackSemantics =
+        ignoringFeedbackSemantics ??
+        TomCtr.boolVal(basePath, 'ignoringFeedbackSemantics') ??
+        true;
+    _resolvedIgnoringFeedbackPointer =
+        ignoringFeedbackPointer ??
+        TomCtr.boolVal(basePath, 'ignoringFeedbackPointer') ??
+        true;
   }
 
   @override
@@ -790,15 +889,13 @@ class TomAbsorbPointer extends TomInteractionBase {
     this.absorbing,
     this.child,
   }) {
-    _resolvedAbsorbing = absorbing ?? TomCtr.boolVal(basePath, 'absorbing') ?? true;
+    _resolvedAbsorbing =
+        absorbing ?? TomCtr.boolVal(basePath, 'absorbing') ?? true;
   }
 
   @override
   Widget buildContent(BuildContext context) {
-    return AbsorbPointer(
-      absorbing: _resolvedAbsorbing,
-      child: child,
-    );
+    return AbsorbPointer(absorbing: _resolvedAbsorbing, child: child);
   }
 }
 
@@ -822,15 +919,13 @@ class TomIgnorePointer extends TomInteractionBase {
     this.ignoring,
     this.child,
   }) {
-    _resolvedIgnoring = ignoring ?? TomCtr.boolVal(basePath, 'ignoring') ?? true;
+    _resolvedIgnoring =
+        ignoring ?? TomCtr.boolVal(basePath, 'ignoring') ?? true;
   }
 
   @override
   Widget buildContent(BuildContext context) {
-    return IgnorePointer(
-      ignoring: _resolvedIgnoring,
-      child: child,
-    );
+    return IgnorePointer(ignoring: _resolvedIgnoring, child: child);
   }
 }
 
@@ -864,11 +959,13 @@ class TomMouseRegion extends TomInteractionBase {
     this.opaque,
     this.hitTestBehavior,
     this.child,
-  })  : onEnter = InScopeBuilder(scope: scope).wrap1n(onEnter),
-        onExit = InScopeBuilder(scope: scope).wrap1n(onExit),
-        onHover = InScopeBuilder(scope: scope).wrap1n(onHover) {
+  }) : onEnter = InScopeBuilder(scope: scope).wrap1n(onEnter),
+       onExit = InScopeBuilder(scope: scope).wrap1n(onExit),
+       onHover = InScopeBuilder(scope: scope).wrap1n(onHover) {
     _resolvedOpaque = opaque ?? TomCtr.boolVal(basePath, 'opaque') ?? true;
-    _resolvedHitTestBehavior = hitTestBehavior ?? _resolveHitTestBehavior(TomCtr.textOrNull(basePath, 'hitTestBehavior'));
+    _resolvedHitTestBehavior =
+        hitTestBehavior ??
+        _resolveHitTestBehavior(TomCtr.textOrNull(basePath, 'hitTestBehavior'));
   }
 
   @override

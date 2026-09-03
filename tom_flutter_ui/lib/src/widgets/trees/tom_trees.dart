@@ -40,7 +40,8 @@ class TomTreeView extends TomTreeBase {
     this.physics,
   }) {
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
-    _resolvedIndentation = indentation ?? TomCtr.doubleVal(basePath, 'indentation') ?? 24.0;
+    _resolvedIndentation =
+        indentation ?? TomCtr.doubleVal(basePath, 'indentation') ?? 24.0;
     _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
     _resolvedInitiallyExpanded = TomCtr.boolVal(basePath, 'initiallyExpanded');
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
@@ -112,7 +113,10 @@ class _TomTreeNodeWidgetState extends State<_TomTreeNodeWidget> {
   @override
   void initState() {
     super.initState();
-    _expanded = widget.node.initiallyExpanded ?? widget.initiallyExpandedDefault ?? false;
+    _expanded =
+        widget.node.initiallyExpanded ??
+        widget.initiallyExpandedDefault ??
+        false;
   }
 
   @override
@@ -210,9 +214,18 @@ class TomTreeSliver<T> extends TomTreeBase {
     this.addSemanticIndexes,
   }) : treeNodeBuilder = InScopeBuilder(scope: scope).wrap3(treeNodeBuilder),
        onNodeToggle = InScopeBuilder(scope: scope).wrap1n(onNodeToggle) {
-    _resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ?? TomCtr.boolVal(basePath, 'addAutomaticKeepAlives') ?? true;
-    _resolvedAddRepaintBoundaries = addRepaintBoundaries ?? TomCtr.boolVal(basePath, 'addRepaintBoundaries') ?? true;
-    _resolvedAddSemanticIndexes = addSemanticIndexes ?? TomCtr.boolVal(basePath, 'addSemanticIndexes') ?? true;
+    _resolvedAddAutomaticKeepAlives =
+        addAutomaticKeepAlives ??
+        TomCtr.boolVal(basePath, 'addAutomaticKeepAlives') ??
+        true;
+    _resolvedAddRepaintBoundaries =
+        addRepaintBoundaries ??
+        TomCtr.boolVal(basePath, 'addRepaintBoundaries') ??
+        true;
+    _resolvedAddSemanticIndexes =
+        addSemanticIndexes ??
+        TomCtr.boolVal(basePath, 'addSemanticIndexes') ??
+        true;
   }
 
   @override

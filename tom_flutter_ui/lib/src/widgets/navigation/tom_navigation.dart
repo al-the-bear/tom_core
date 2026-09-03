@@ -74,21 +74,35 @@ class TomNavigationRail extends TomNavigationBase {
     this.selectedIconTheme,
     this.unselectedIconTheme,
     this.extended = false,
-  }) : onDestinationSelected = InScopeBuilder(scope: scope).wrap1n(onDestinationSelected) {
-    _resolvedSelectedIndex = selectedIndex ?? TomCtr.intVal(basePath, 'selectedIndex');
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+  }) : onDestinationSelected = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onDestinationSelected) {
+    _resolvedSelectedIndex =
+        selectedIndex ?? TomCtr.intVal(basePath, 'selectedIndex');
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
-    _resolvedIndicatorColor = indicatorColor ?? TomCtr.color(basePath, 'indicatorColor');
+    _resolvedIndicatorColor =
+        indicatorColor ?? TomCtr.color(basePath, 'indicatorColor');
     _resolvedMinWidth = minWidth ?? TomCtr.doubleVal(basePath, 'minWidth');
-    _resolvedMinExtendedWidth = minExtendedWidth ?? TomCtr.doubleVal(basePath, 'minExtendedWidth');
-    _resolvedUseIndicator = useIndicator ?? TomCtr.boolVal(basePath, 'useIndicator');
-    _resolvedGroupAlignment = groupAlignment ?? TomCtr.doubleVal(basePath, 'groupAlignment');
+    _resolvedMinExtendedWidth =
+        minExtendedWidth ?? TomCtr.doubleVal(basePath, 'minExtendedWidth');
+    _resolvedUseIndicator =
+        useIndicator ?? TomCtr.boolVal(basePath, 'useIndicator');
+    _resolvedGroupAlignment =
+        groupAlignment ?? TomCtr.doubleVal(basePath, 'groupAlignment');
     _resolvedExtended = TomCtr.boolVal(basePath, 'extended') ?? extended;
-    _resolvedSelectedLabelTextStyle = selectedLabelTextStyle ?? _resolveTextStyle('selectedLabelTextStyle');
-    _resolvedUnselectedLabelTextStyle = unselectedLabelTextStyle ?? _resolveTextStyle('unselectedLabelTextStyle');
-    _resolvedIndicatorShape = indicatorShape ?? _resolveShapeBorder('indicatorShape');
-    _resolvedSelectedIconTheme = selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme');
-    _resolvedUnselectedIconTheme = unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
+    _resolvedSelectedLabelTextStyle =
+        selectedLabelTextStyle ?? _resolveTextStyle('selectedLabelTextStyle');
+    _resolvedUnselectedLabelTextStyle =
+        unselectedLabelTextStyle ??
+        _resolveTextStyle('unselectedLabelTextStyle');
+    _resolvedIndicatorShape =
+        indicatorShape ?? _resolveShapeBorder('indicatorShape');
+    _resolvedSelectedIconTheme =
+        selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme');
+    _resolvedUnselectedIconTheme =
+        unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
   }
 
   // Resolve TextStyle from resources
@@ -183,15 +197,22 @@ class TomNavigationBar extends TomNavigationBase {
     this.height,
     this.labelTextStyle,
     this.overlayColor,
-  }) : onDestinationSelected = InScopeBuilder(scope: scope).wrap1n(onDestinationSelected) {
-    _resolvedSelectedIndex = TomCtr.intVal(basePath, 'selectedIndex') ?? selectedIndex;
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
-    _resolvedIndicatorColor = indicatorColor ?? TomCtr.color(basePath, 'indicatorColor');
+  }) : onDestinationSelected = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onDestinationSelected) {
+    _resolvedSelectedIndex =
+        TomCtr.intVal(basePath, 'selectedIndex') ?? selectedIndex;
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedIndicatorColor =
+        indicatorColor ?? TomCtr.color(basePath, 'indicatorColor');
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedSurfaceTintColor =
+        surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
-    _resolvedIndicatorShape = indicatorShape ?? _resolveShapeBorder('indicatorShape');
+    _resolvedIndicatorShape =
+        indicatorShape ?? _resolveShapeBorder('indicatorShape');
   }
 
   @override
@@ -303,27 +324,38 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
     this.tabAlignment,
     this.textScaler,
   }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
-    _resolvedIsScrollable = TomCtr.boolVal(basePath, 'isScrollable') ?? isScrollable;
+    _resolvedIsScrollable =
+        TomCtr.boolVal(basePath, 'isScrollable') ?? isScrollable;
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
-    _resolvedIndicatorColor = indicatorColor ?? TomCtr.color(basePath, 'indicatorColor');
-    _resolvedIndicatorWeight = indicatorWeight ?? TomCtr.doubleVal(basePath, 'indicatorWeight');
-    _resolvedIndicatorPadding = indicatorPadding ?? TomCtr.edgeInsets(basePath, 'indicatorPadding');
-    _resolvedDividerColor = dividerColor ?? TomCtr.color(basePath, 'dividerColor');
-    _resolvedDividerHeight = dividerHeight ?? TomCtr.doubleVal(basePath, 'dividerHeight');
+    _resolvedIndicatorColor =
+        indicatorColor ?? TomCtr.color(basePath, 'indicatorColor');
+    _resolvedIndicatorWeight =
+        indicatorWeight ?? TomCtr.doubleVal(basePath, 'indicatorWeight');
+    _resolvedIndicatorPadding =
+        indicatorPadding ?? TomCtr.edgeInsets(basePath, 'indicatorPadding');
+    _resolvedDividerColor =
+        dividerColor ?? TomCtr.color(basePath, 'dividerColor');
+    _resolvedDividerHeight =
+        dividerHeight ?? TomCtr.doubleVal(basePath, 'dividerHeight');
     _resolvedLabelColor = labelColor ?? TomCtr.color(basePath, 'labelColor');
-    _resolvedUnselectedLabelColor = unselectedLabelColor ?? TomCtr.color(basePath, 'unselectedLabelColor');
-    _resolvedLabelPadding = labelPadding ?? TomCtr.edgeInsets(basePath, 'labelPadding');
-    _resolvedAutomaticIndicatorColorAdjustment = TomCtr.boolVal(basePath, 'automaticIndicatorColorAdjustment') ?? automaticIndicatorColorAdjustment;
+    _resolvedUnselectedLabelColor =
+        unselectedLabelColor ?? TomCtr.color(basePath, 'unselectedLabelColor');
+    _resolvedLabelPadding =
+        labelPadding ?? TomCtr.edgeInsets(basePath, 'labelPadding');
+    _resolvedAutomaticIndicatorColorAdjustment =
+        TomCtr.boolVal(basePath, 'automaticIndicatorColorAdjustment') ??
+        automaticIndicatorColorAdjustment;
     _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-    _resolvedUnselectedLabelStyle = unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
+    _resolvedUnselectedLabelStyle =
+        unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
     _resolvedIndicator = indicator ?? _resolveDecoration('indicator');
-    _resolvedSplashBorderRadius = splashBorderRadius ?? _resolveBorderRadius('splashBorderRadius');
+    _resolvedSplashBorderRadius =
+        splashBorderRadius ?? _resolveBorderRadius('splashBorderRadius');
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(
-        kToolbarHeight + (indicatorWeight ?? 2.0),
-      );
+  Size get preferredSize =>
+      Size.fromHeight(kToolbarHeight + (indicatorWeight ?? 2.0));
 
   // Resolve TextStyle from resources
   TextStyle? _resolveTextStyle(String suffix) {
@@ -352,7 +384,8 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
       unselectedLabelStyle: _resolvedUnselectedLabelStyle,
       overlayColor: overlayColor,
       onTap: onTap,
-      automaticIndicatorColorAdjustment: _resolvedAutomaticIndicatorColorAdjustment,
+      automaticIndicatorColorAdjustment:
+          _resolvedAutomaticIndicatorColorAdjustment,
       physics: physics,
       splashFactory: splashFactory,
       splashBorderRadius: _resolvedSplashBorderRadius,
@@ -414,15 +447,23 @@ class TomNavigationDrawer extends TomNavigationBase {
     this.indicatorColor,
     this.indicatorShape,
     this.tilePadding,
-  }) : onDestinationSelected = InScopeBuilder(scope: scope).wrap1n(onDestinationSelected) {
-    _resolvedSelectedIndex = selectedIndex ?? TomCtr.intVal(basePath, 'selectedIndex');
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+  }) : onDestinationSelected = InScopeBuilder(
+         scope: scope,
+       ).wrap1n(onDestinationSelected) {
+    _resolvedSelectedIndex =
+        selectedIndex ?? TomCtr.intVal(basePath, 'selectedIndex');
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedSurfaceTintColor =
+        surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
-    _resolvedIndicatorColor = indicatorColor ?? TomCtr.color(basePath, 'indicatorColor');
-    _resolvedTilePadding = tilePadding ?? TomCtr.edgeInsets(basePath, 'tilePadding');
-    _resolvedIndicatorShape = indicatorShape ?? _resolveShapeBorder('indicatorShape');
+    _resolvedIndicatorColor =
+        indicatorColor ?? TomCtr.color(basePath, 'indicatorColor');
+    _resolvedTilePadding =
+        tilePadding ?? TomCtr.edgeInsets(basePath, 'tilePadding');
+    _resolvedIndicatorShape =
+        indicatorShape ?? _resolveShapeBorder('indicatorShape');
   }
 
   @override
@@ -436,7 +477,8 @@ class TomNavigationDrawer extends TomNavigationBase {
       elevation: _resolvedElevation,
       indicatorColor: _resolvedIndicatorColor,
       indicatorShape: _resolvedIndicatorShape,
-      tilePadding: _resolvedTilePadding ?? const EdgeInsets.symmetric(horizontal: 12.0),
+      tilePadding:
+          _resolvedTilePadding ?? const EdgeInsets.symmetric(horizontal: 12.0),
       children: children,
     );
   }
@@ -487,10 +529,15 @@ class TomDrawer extends TomNavigationBase {
     this.clipBehavior,
     this.semanticLabel,
   }) {
-    _resolvedLabel = semanticLabel ?? TomCtr.textOrNull(basePath, 'semanticLabel') ?? (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedLabel =
+        semanticLabel ??
+        TomCtr.textOrNull(basePath, 'semanticLabel') ??
+        (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedSurfaceTintColor =
+        surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
@@ -584,16 +631,25 @@ class TomBottomNavigationBar extends TomNavigationBase {
     this.landscapeLayout,
     this.mouseCursor,
   }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
-    _resolvedCurrentIndex = TomCtr.intVal(basePath, 'currentIndex') ?? currentIndex;
+    _resolvedCurrentIndex =
+        TomCtr.intVal(basePath, 'currentIndex') ?? currentIndex;
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
-    _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'iconSize') ?? 24.0;
-    _resolvedSelectedItemColor = selectedItemColor ?? TomCtr.color(basePath, 'selectedItemColor');
-    _resolvedUnselectedItemColor = unselectedItemColor ?? TomCtr.color(basePath, 'unselectedItemColor');
-    _resolvedSelectedIconTheme = selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme');
-    _resolvedUnselectedIconTheme = unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
-    _resolvedSelectedLabelStyle = selectedLabelStyle ?? _resolveTextStyle('selectedLabelStyle');
-    _resolvedUnselectedLabelStyle = unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedIconSize =
+        iconSize ?? TomCtr.doubleVal(basePath, 'iconSize') ?? 24.0;
+    _resolvedSelectedItemColor =
+        selectedItemColor ?? TomCtr.color(basePath, 'selectedItemColor');
+    _resolvedUnselectedItemColor =
+        unselectedItemColor ?? TomCtr.color(basePath, 'unselectedItemColor');
+    _resolvedSelectedIconTheme =
+        selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme');
+    _resolvedUnselectedIconTheme =
+        unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
+    _resolvedSelectedLabelStyle =
+        selectedLabelStyle ?? _resolveTextStyle('selectedLabelStyle');
+    _resolvedUnselectedLabelStyle =
+        unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
   }
 
   @override
@@ -682,8 +738,10 @@ class TomStepper extends TomNavigationBase {
        controlsBuilder = InScopeBuilder(scope: scope).wrap2n(controlsBuilder) {
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
-    _resolvedConnectorThickness = connectorThickness ?? TomCtr.doubleVal(basePath, 'connectorThickness');
-    _resolvedConnectorColor = connectorColor ?? TomCtr.color(basePath, 'connectorColor');
+    _resolvedConnectorThickness =
+        connectorThickness ?? TomCtr.doubleVal(basePath, 'connectorThickness');
+    _resolvedConnectorColor =
+        connectorColor ?? TomCtr.color(basePath, 'connectorColor');
   }
 
   @override
@@ -699,7 +757,9 @@ class TomStepper extends TomNavigationBase {
       elevation: _resolvedElevation,
       margin: margin,
       connectorThickness: _resolvedConnectorThickness,
-      connectorColor: _resolvedConnectorColor != null ? WidgetStatePropertyAll<Color>(_resolvedConnectorColor) : null,
+      connectorColor: _resolvedConnectorColor != null
+          ? WidgetStatePropertyAll<Color>(_resolvedConnectorColor)
+          : null,
     );
   }
 
@@ -737,7 +797,10 @@ class TomTabBarView extends TomNavigationBase {
     this.viewportFraction,
     this.clipBehavior = Clip.hardEdge,
   }) {
-    _resolvedViewportFraction = viewportFraction ?? TomCtr.doubleVal(basePath, 'viewportFraction') ?? 1.0;
+    _resolvedViewportFraction =
+        viewportFraction ??
+        TomCtr.doubleVal(basePath, 'viewportFraction') ??
+        1.0;
   }
 
   @override
@@ -851,9 +914,11 @@ class TomCupertinoTabBar extends TomNavigationBase {
     this.height,
     this.border,
   }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
-    _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'iconSize') ?? 30.0;
+    _resolvedIconSize =
+        iconSize ?? TomCtr.doubleVal(basePath, 'iconSize') ?? 30.0;
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height') ?? 50.0;
   }
 
@@ -915,8 +980,10 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
     this.transitionBetweenRoutes = true,
     this.heroTag,
   }) {
-    _resolvedPreviousPageTitle = previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedPreviousPageTitle =
+        previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
   }
 
   @override
@@ -1075,8 +1142,7 @@ class TomTab extends Tab with TomWidgetMixin {
     final hidden = checkHidden();
     if (hidden != null) return hidden;
 
-    final resolvedText =
-        text ?? (tomId != null ? getText('text') : null);
+    final resolvedText = text ?? (tomId != null ? getText('text') : null);
 
     return applyAuthState(
       context,
@@ -1147,8 +1213,9 @@ class TomNavigationDestination extends NavigationDestination
     final hidden = checkHidden();
     if (hidden != null) return hidden;
 
-    final resolvedLabel =
-        label.isNotEmpty ? label : (tomId != null ? getText('label') : label);
+    final resolvedLabel = label.isNotEmpty
+        ? label
+        : (tomId != null ? getText('label') : label);
     final resolvedTooltip =
         tooltip ?? (tomId != null ? getText('tooltip') : null);
 
@@ -1288,8 +1355,10 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
     this.stretch = false,
     this.alwaysShowMiddle = true,
   }) {
-    _resolvedPreviousPageTitle = previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
-    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedPreviousPageTitle =
+        previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
+    _resolvedBackgroundColor =
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
   }
 
   static const Object _defaultHeroTag = 'TomCupertinoSliverNavigationBar';
@@ -1387,8 +1456,14 @@ class TomDrawerHeader extends TomNavigationBase {
     this.curve = Curves.fastOutSlowIn,
     this.child,
   }) {
-    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding') ?? const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0);
-    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin') ?? const EdgeInsets.only(bottom: 8.0);
+    _resolvedPadding =
+        padding ??
+        TomCtr.edgeInsets(basePath, 'padding') ??
+        const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0);
+    _resolvedMargin =
+        margin ??
+        TomCtr.edgeInsets(basePath, 'margin') ??
+        const EdgeInsets.only(bottom: 8.0);
   }
 
   @override
@@ -1439,8 +1514,11 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
     this.accountEmail,
     VoidCallback? onDetailsPressed,
     this.arrowColor,
-  }) : onDetailsPressed = InScopeBuilder(scope: scope).wrap0n(onDetailsPressed) {
-    _resolvedArrowColor = arrowColor ?? TomCtr.color(basePath, 'arrowColor') ?? Colors.white;
+  }) : onDetailsPressed = InScopeBuilder(
+         scope: scope,
+       ).wrap0n(onDetailsPressed) {
+    _resolvedArrowColor =
+        arrowColor ?? TomCtr.color(basePath, 'arrowColor') ?? Colors.white;
   }
 
   @override
@@ -1482,7 +1560,8 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
     this.previousPageTitle,
     VoidCallback? onPressed,
   }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedTitle = previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
+    _resolvedTitle =
+        previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
   }
 
   @override
@@ -1523,9 +1602,11 @@ class TomTabPageSelector extends TomNavigationBase {
     this.selectedColor,
     this.borderStyle,
   }) {
-    _resolvedIndicatorSize = indicatorSize ?? TomCtr.doubleVal(basePath, 'indicatorSize') ?? 12.0;
+    _resolvedIndicatorSize =
+        indicatorSize ?? TomCtr.doubleVal(basePath, 'indicatorSize') ?? 12.0;
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
-    _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
+    _resolvedSelectedColor =
+        selectedColor ?? TomCtr.color(basePath, 'selectedColor');
   }
 
   @override

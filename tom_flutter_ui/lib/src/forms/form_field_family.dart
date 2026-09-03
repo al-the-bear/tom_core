@@ -93,12 +93,14 @@ class FormFieldFamily {
   const FormFieldFamily(this.kind);
 
   /// Material family — emits `TomForm…` concretes.
-  static const FormFieldFamily material =
-      FormFieldFamily(FormFieldFamilyKind.material);
+  static const FormFieldFamily material = FormFieldFamily(
+    FormFieldFamilyKind.material,
+  );
 
   /// Cupertino family — emits `TomCupertinoForm…` concretes.
-  static const FormFieldFamily cupertino =
-      FormFieldFamily(FormFieldFamilyKind.cupertino);
+  static const FormFieldFamily cupertino = FormFieldFamily(
+    FormFieldFamilyKind.cupertino,
+  );
 
   /// Convenience: `true` when this family resolves to Cupertino concretes.
   bool get isCupertino => kind == FormFieldFamilyKind.cupertino;

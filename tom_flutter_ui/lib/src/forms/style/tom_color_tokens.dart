@@ -132,8 +132,7 @@ Color? resolveColorSchemeToken(String token, ColorScheme cs) {
 }
 
 /// Returns true when [raw] looks like a `cs.*` color-scheme token.
-bool isColorSchemeToken(String raw) =>
-    raw.toLowerCase().startsWith('cs.');
+bool isColorSchemeToken(String raw) => raw.toLowerCase().startsWith('cs.');
 
 /// Resolves [raw] using [cs] if it is a `cs.*` token, otherwise delegates
 /// to [fallback] (e.g. `TomUIColors.resolveColor`). Returns `null` when

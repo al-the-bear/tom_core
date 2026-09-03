@@ -19,8 +19,7 @@ import '../tom_form.dart';
 /// the underlying field so ACL (and any other `TomAuthorizable`-aware
 /// consumer) can treat a form-field widget identically to a regular
 /// `TomWidget`.
-class TomFieldWidgetAdapter extends StatelessWidget
-    implements TomAuthorizable {
+class TomFieldWidgetAdapter extends StatelessWidget implements TomAuthorizable {
   /// The field whose auth state this adapter exposes.
   final TomField field;
 
@@ -58,9 +57,6 @@ class TomFieldWidgetAdapter extends StatelessWidget
     // new field. For breakpoint-driven re-layouts the field instance
     // is the same → key is the same → State is preserved (focus,
     // selection, controller text are not flashed).
-    return KeyedSubtree(
-      key: ValueKey<TomField>(field),
-      child: child,
-    );
+    return KeyedSubtree(key: ValueKey<TomField>(field), child: child);
   }
 }

@@ -55,8 +55,11 @@ import 'tom_list_form.dart';
 /// readonly visual treatment. Per-button auth is resolved at
 /// `<basePath>.moveUp` and `<basePath>.moveDown` using the same rules
 /// as [TomListFormToolbar].
-class TomListRowMoveButtons<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends TomContainerBase {
+class TomListRowMoveButtons<
+  TItem extends TomClass,
+  TForm extends TomForm<TItem>
+>
+    extends TomContainerBase {
   TomListRowMoveButtons({
     super.key,
     super.tomId,
@@ -80,22 +83,20 @@ class TomListRowMoveButtons<TItem extends TomClass,
     final moveUpBase = _childKey(basePath, 'moveUp');
     final moveDownBase = _childKey(basePath, 'moveDown');
 
-    _resolvedMoveUpIcon = moveUpIcon ??
-        TomCtr.icon(moveUpBase, 'icon') ??
-        Icons.arrow_upward;
-    _resolvedMoveDownIcon = moveDownIcon ??
+    _resolvedMoveUpIcon =
+        moveUpIcon ?? TomCtr.icon(moveUpBase, 'icon') ?? Icons.arrow_upward;
+    _resolvedMoveDownIcon =
+        moveDownIcon ??
         TomCtr.icon(moveDownBase, 'icon') ??
         Icons.arrow_downward;
-    _resolvedMoveUpTooltip = moveUpTooltip ??
-        TomCtr.textOrNull(moveUpBase, 'tooltip') ??
-        'Move up';
-    _resolvedMoveDownTooltip = moveDownTooltip ??
+    _resolvedMoveUpTooltip =
+        moveUpTooltip ?? TomCtr.textOrNull(moveUpBase, 'tooltip') ?? 'Move up';
+    _resolvedMoveDownTooltip =
+        moveDownTooltip ??
         TomCtr.textOrNull(moveDownBase, 'tooltip') ??
         'Move down';
-    _resolvedIconSize =
-        iconSize ?? TomCtr.doubleVal(basePath, 'size') ?? 18.0;
-    _resolvedSpacing =
-        spacing ?? TomCtr.doubleVal(basePath, 'spacing') ?? 0.0;
+    _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'size') ?? 18.0;
+    _resolvedSpacing = spacing ?? TomCtr.doubleVal(basePath, 'spacing') ?? 0.0;
 
     _moveUpAuthState = _resolveButtonAuth(moveUpBase);
     _moveDownAuthState = _resolveButtonAuth(moveDownBase);
@@ -173,8 +174,7 @@ class TomListRowMoveButtons<TItem extends TomClass,
       tooltip: tooltip,
       icon: Icon(icon, size: _resolvedIconSize),
       onPressed: onPressed,
-      visualDensity:
-          dense ? VisualDensity.compact : VisualDensity.standard,
+      visualDensity: dense ? VisualDensity.compact : VisualDensity.standard,
     );
   }
 
@@ -194,7 +194,8 @@ class TomListRowMoveButtons<TItem extends TomClass,
             () => _move(index, index - 1),
           ),
         ),
-      if (_resolvedSpacing > 0 && _visible(_moveUpAuthState) &&
+      if (_resolvedSpacing > 0 &&
+          _visible(_moveUpAuthState) &&
           _visible(_moveDownAuthState))
         SizedBox(
           width: axis == Axis.horizontal ? _resolvedSpacing : 0,

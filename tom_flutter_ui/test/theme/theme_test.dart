@@ -66,10 +66,14 @@ void main() {
       expect(wrapped, isA<AbsorbPointer>());
       expect((wrapped as AbsorbPointer).child, isA<Opacity>());
       expect((wrapped.child as Opacity).opacity, 0.38);
-      expect(TomStateStyle.disabled.absorbPointers,
-          TomStateStyle.readonly.absorbPointers);
-      expect(TomStateStyle.disabled.opacity,
-          isNot(TomStateStyle.readonly.opacity));
+      expect(
+        TomStateStyle.disabled.absorbPointers,
+        TomStateStyle.readonly.absorbPointers,
+      );
+      expect(
+        TomStateStyle.disabled.opacity,
+        isNot(TomStateStyle.readonly.opacity),
+      );
     });
   });
 
@@ -89,13 +93,17 @@ void main() {
     double atRuntime(double value) => value;
 
     test('rejects a negative opacity at construction', () {
-      expect(() => TomStateStyle(opacity: atRuntime(-1.0)),
-          throwsA(isA<AssertionError>()));
+      expect(
+        () => TomStateStyle(opacity: atRuntime(-1.0)),
+        throwsA(isA<AssertionError>()),
+      );
     });
 
     test('rejects an opacity above 1.0 instead of ignoring it', () {
-      expect(() => TomStateStyle(opacity: atRuntime(5.0)),
-          throwsA(isA<AssertionError>()));
+      expect(
+        () => TomStateStyle(opacity: atRuntime(5.0)),
+        throwsA(isA<AssertionError>()),
+      );
     });
 
     // Pins the bounds as inclusive: 0.0 (fully transparent) and 1.0 (the
@@ -128,13 +136,15 @@ void main() {
     test('copyWith moves each style without disturbing the other', () {
       const base = TomTheme.defaultTheme;
 
-      final dimmerDisabled =
-          base.copyWith(disabledStyle: const TomStateStyle(opacity: 0.2));
+      final dimmerDisabled = base.copyWith(
+        disabledStyle: const TomStateStyle(opacity: 0.2),
+      );
       expect(dimmerDisabled.disabledStyle.opacity, 0.2);
       expect(dimmerDisabled.readonlyStyle, base.readonlyStyle);
 
-      final dimmerReadonly =
-          base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5));
+      final dimmerReadonly = base.copyWith(
+        readonlyStyle: const TomStateStyle(opacity: 0.5),
+      );
       expect(dimmerReadonly.readonlyStyle.opacity, 0.5);
       expect(dimmerReadonly.disabledStyle, base.disabledStyle);
     });
@@ -152,8 +162,10 @@ void main() {
 
     test('full renders the content untouched', () {
       expect(
-        identical(theme.applyAuthState(TomAuthState.full, () => content),
-            content),
+        identical(
+          theme.applyAuthState(TomAuthState.full, () => content),
+          content,
+        ),
         isTrue,
       );
     });
@@ -179,8 +191,10 @@ void main() {
 
     test('read and disabled each use their own style', () {
       final read = theme.applyAuthState(TomAuthState.read, () => content);
-      final disabled =
-          theme.applyAuthState(TomAuthState.disabled, () => content);
+      final disabled = theme.applyAuthState(
+        TomAuthState.disabled,
+        () => content,
+      );
       expect(((read as AbsorbPointer).child as Opacity).opacity, 0.5);
       expect(((disabled as AbsorbPointer).child as Opacity).opacity, 0.2);
     });
@@ -204,12 +218,11 @@ void main() {
     test('TomStateStyle: each field is part of the comparison', () {
       const base = TomStateStyle();
       expect(base, isNot(equals(const TomStateStyle(opacity: 0.5))));
-      expect(base,
-          isNot(equals(const TomStateStyle(absorbPointers: false))));
+      expect(base, isNot(equals(const TomStateStyle(absorbPointers: false))));
       expect(
-          base,
-          isNot(equals(
-              const TomStateStyle(colorOverlay: Color(0xFF112233)))));
+        base,
+        isNot(equals(const TomStateStyle(colorOverlay: Color(0xFF112233)))),
+      );
       expect(base, isNot(equals(TomStateStyle(builder: _dim))));
     });
 
@@ -220,10 +233,14 @@ void main() {
     // exactly the trap this group exists to close, so the dartdoc tells them
     // to hoist it.
     test('TomStateStyle: builders compare by reference, not behaviour', () {
-      expect(TomStateStyle(builder: _dim),
-          equals(TomStateStyle(builder: _dim)));
-      expect(TomStateStyle(builder: (c) => c),
-          isNot(equals(TomStateStyle(builder: (c) => c))));
+      expect(
+        TomStateStyle(builder: _dim),
+        equals(TomStateStyle(builder: _dim)),
+      );
+      expect(
+        TomStateStyle(builder: (c) => c),
+        isNot(equals(TomStateStyle(builder: (c) => c))),
+      );
     });
 
     test('TomTheme: copyWith with no overrides equals the original', () {
@@ -236,18 +253,20 @@ void main() {
       const base = TomTheme(name: 'a');
       expect(base.copyWith(name: 'b'), isNot(equals(base)));
       expect(
-          base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5)),
-          isNot(equals(base)));
+        base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5)),
+        isNot(equals(base)),
+      );
       // Omitting `disabledStyle` from `==` would make a theme that restyles
       // only the disabled state fail to reach its dependents.
       expect(
-          base.copyWith(disabledStyle: const TomStateStyle(opacity: 0.2)),
-          isNot(equals(base)));
+        base.copyWith(disabledStyle: const TomStateStyle(opacity: 0.2)),
+        isNot(equals(base)),
+      );
       // The nested style is compared by value too, not by identity.
       expect(
-          TomTheme(name: 'a', readonlyStyle: TomStateStyle(opacity: 0.5)),
-          equals(
-              TomTheme(name: 'a', readonlyStyle: TomStateStyle(opacity: 0.5))));
+        TomTheme(name: 'a', readonlyStyle: TomStateStyle(opacity: 0.5)),
+        equals(TomTheme(name: 'a', readonlyStyle: TomStateStyle(opacity: 0.5))),
+      );
     });
   });
 
@@ -255,14 +274,22 @@ void main() {
     test('fromColorScheme derives variant colours from the scheme', () {
       const scheme = ColorScheme.light();
       final v = TomButtonVariants.fromColorScheme(scheme);
-      expect(v.primary.backgroundColor?.resolve(<WidgetState>{}),
-          scheme.primary);
-      expect(v.destructive.backgroundColor?.resolve(<WidgetState>{}),
-          scheme.error);
-      expect(v.secondary.foregroundColor?.resolve(<WidgetState>{}),
-          scheme.primary);
-      expect(v.auxiliary.foregroundColor?.resolve(<WidgetState>{}),
-          scheme.onSurfaceVariant);
+      expect(
+        v.primary.backgroundColor?.resolve(<WidgetState>{}),
+        scheme.primary,
+      );
+      expect(
+        v.destructive.backgroundColor?.resolve(<WidgetState>{}),
+        scheme.error,
+      );
+      expect(
+        v.secondary.foregroundColor?.resolve(<WidgetState>{}),
+        scheme.primary,
+      );
+      expect(
+        v.auxiliary.foregroundColor?.resolve(<WidgetState>{}),
+        scheme.onSurfaceVariant,
+      );
     });
 
     // `of(context)` is the form every doc snippet uses and the only one that
@@ -275,22 +302,34 @@ void main() {
       final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF00695C));
       late TomButtonVariants seen;
 
-      await tester.pumpWidget(MaterialApp(
-        theme: ThemeData(colorScheme: scheme),
-        home: Builder(builder: (context) {
-          seen = TomButtonVariants.of(context);
-          return const SizedBox();
-        }),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(colorScheme: scheme),
+          home: Builder(
+            builder: (context) {
+              seen = TomButtonVariants.of(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
 
-      expect(seen.primary.backgroundColor?.resolve(<WidgetState>{}),
-          scheme.primary);
-      expect(seen.primary.foregroundColor?.resolve(<WidgetState>{}),
-          scheme.onPrimary);
-      expect(seen.destructive.backgroundColor?.resolve(<WidgetState>{}),
-          scheme.error);
-      expect(seen.auxiliary.foregroundColor?.resolve(<WidgetState>{}),
-          scheme.onSurfaceVariant);
+      expect(
+        seen.primary.backgroundColor?.resolve(<WidgetState>{}),
+        scheme.primary,
+      );
+      expect(
+        seen.primary.foregroundColor?.resolve(<WidgetState>{}),
+        scheme.onPrimary,
+      );
+      expect(
+        seen.destructive.backgroundColor?.resolve(<WidgetState>{}),
+        scheme.error,
+      );
+      expect(
+        seen.auxiliary.foregroundColor?.resolve(<WidgetState>{}),
+        scheme.onSurfaceVariant,
+      );
     });
 
     // The documented idiom puts `of(context).primary` inside `build`, so a
@@ -308,8 +347,9 @@ void main() {
   });
 
   group('TomThemeScope', () {
-    testWidgets('of and the two styleOf accessors return the scoped theme',
-        (tester) async {
+    testWidgets('of and the two styleOf accessors return the scoped theme', (
+      tester,
+    ) async {
       late TomTheme seen;
       late TomStateStyle seenReadonly;
       late TomStateStyle seenDisabled;
@@ -364,8 +404,9 @@ void main() {
     // rest of the app — a dialog that dims its withheld fields harder than the
     // page behind it, say. Nothing pinned that: every other case in the suite
     // pumps exactly one scope, which cannot tell "nearest" from "any".
-    testWidgets('a nested scope overrides its ancestor for its subtree only',
-        (tester) async {
+    testWidgets('a nested scope overrides its ancestor for its subtree only', (
+      tester,
+    ) async {
       late TomStateStyle outerSaw;
       late TomStateStyle innerSaw;
       late TomStateStyle innerSawDisabled;
@@ -382,13 +423,15 @@ void main() {
             builder: (outerContext) {
               outerSaw = TomThemeScope.readonlyStyleOf(outerContext);
               return TomThemeScope(
-                theme:
-                    const TomTheme(readonlyStyle: TomStateStyle(opacity: 0.25)),
+                theme: const TomTheme(
+                  readonlyStyle: TomStateStyle(opacity: 0.25),
+                ),
                 child: Builder(
                   builder: (innerContext) {
                     innerSaw = TomThemeScope.readonlyStyleOf(innerContext);
-                    innerSawDisabled =
-                        TomThemeScope.disabledStyleOf(innerContext);
+                    innerSawDisabled = TomThemeScope.disabledStyleOf(
+                      innerContext,
+                    );
                     return const SizedBox();
                   },
                 ),
@@ -419,8 +462,9 @@ void main() {
     // "something copied the opacity across". A scoped `builder` can: it
     // short-circuits the entire default treatment, so if it reaches the widget
     // the default wrappers are provably gone.
-    testWidgets('a scoped builder replaces the treatment of a rendered node',
-        (tester) async {
+    testWidgets('a scoped builder replaces the treatment of a rendered node', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         Directionality(
           textDirection: TextDirection.ltr,
@@ -451,8 +495,9 @@ void main() {
     // The child is `const` on purpose: that is what isolates the measurement.
     // Element.updateChild short-circuits on an identical widget, so the probe
     // can only rebuild by being notified — never by being re-created.
-    testWidgets('an unrelated ancestor rebuild does not reach dependents',
-        (tester) async {
+    testWidgets('an unrelated ancestor rebuild does not reach dependents', (
+      tester,
+    ) async {
       _DependentProbe.builds = 0;
       late StateSetter rebuildAncestor;
 
@@ -476,16 +521,21 @@ void main() {
 
       rebuildAncestor(() {});
       await tester.pump();
-      expect(_DependentProbe.builds, 1,
-          reason: 'the rebuilt theme compares equal, so the scope must not '
-              'notify its dependents');
+      expect(
+        _DependentProbe.builds,
+        1,
+        reason:
+            'the rebuilt theme compares equal, so the scope must not '
+            'notify its dependents',
+      );
     });
 
     // The control for the case above. Without it, an `updateShouldNotify`
     // that always returned false would pass — and a theme change would stop
     // reaching the widgets that render it.
-    testWidgets('a theme that actually differs still reaches dependents',
-        (tester) async {
+    testWidgets('a theme that actually differs still reaches dependents', (
+      tester,
+    ) async {
       _DependentProbe.builds = 0;
       var opacity = 0.5;
       late StateSetter rebuildAncestor;
@@ -523,8 +573,9 @@ void main() {
   // cannot be introduced without failing here, so the documentation has to
   // move with the code instead of drifting from it a second time.
   group('one theme, every family', () {
-    testWidgets('different families under one scope get one treatment',
-        (tester) async {
+    testWidgets('different families under one scope get one treatment', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         Directionality(
           textDirection: TextDirection.ltr,
@@ -549,10 +600,12 @@ void main() {
       );
 
       double opacityIn(Type node) => tester
-          .widget<Opacity>(find.descendant(
-            of: find.byType(node),
-            matching: find.byType(Opacity),
-          ))
+          .widget<Opacity>(
+            find.descendant(
+              of: find.byType(node),
+              matching: find.byType(Opacity),
+            ),
+          )
           .opacity;
 
       expect(opacityIn(_ButtonNode), closeTo(0.5, 0.001));

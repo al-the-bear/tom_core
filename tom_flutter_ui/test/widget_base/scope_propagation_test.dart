@@ -62,7 +62,7 @@ class _OrderProvider extends TomScreenElementsProviderBase {
 
 class _OrderDetailsProvider extends TomScreenElementsProviderBase {
   _OrderDetailsProvider(TomScreenElementsProvider parent)
-      : super('details', parent);
+    : super('details', parent);
 
   late final name = _ProbeNode(tomId: 'name', scope: this);
 }
@@ -119,45 +119,51 @@ void main() {
     test('an explicit scope overrides the ambient one', () {
       final explicit = TomScopeBase(scopeId: 'admin');
       TomScope.withScope('checkout', () {
-        expect(_ProbeNode(tomId: 'field', scope: explicit).basePath,
-            'admin.field');
+        expect(
+          _ProbeNode(tomId: 'field', scope: explicit).basePath,
+          'admin.field',
+        );
       });
     });
   });
 
   group('TomStatelessWidget scope capture', () {
-    testWidgets('a child constructed in build inherits the construction scope',
-        (tester) async {
-      // The host is constructed inside the zone; the child is constructed by
-      // Flutter later, outside it. Only the captured scope can bridge that.
-      final hosted = TomScope.withScope(
-        'checkout',
-        () => _ScopedHost(childId: 'field'),
-      );
+    testWidgets(
+      'a child constructed in build inherits the construction scope',
+      (tester) async {
+        // The host is constructed inside the zone; the child is constructed by
+        // Flutter later, outside it. Only the captured scope can bridge that.
+        final hosted = TomScope.withScope(
+          'checkout',
+          () => _ScopedHost(childId: 'field'),
+        );
 
-      await tester.pumpWidget(_host(hosted));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(_host(hosted));
+        await tester.pumpAndSettle();
 
-      expect(find.text('scoped value'), findsOneWidget);
-      expect(find.text('unscoped value'), findsNothing);
-    });
+        expect(find.text('scoped value'), findsOneWidget);
+        expect(find.text('unscoped value'), findsNothing);
+      },
+    );
 
-    testWidgets('without the capture the child falls back to the default scope',
-        (tester) async {
-      // The control: same construction site, same zone, no TomStatelessWidget.
-      // It resolves the unscoped key — which is precisely the silent wrong-
-      // bundle failure the capture exists to prevent.
-      final hosted = TomScope.withScope(
-        'checkout',
-        () => const _UnscopedHost(childId: 'field'),
-      );
+    testWidgets(
+      'without the capture the child falls back to the default scope',
+      (tester) async {
+        // The control: same construction site, same zone, no TomStatelessWidget.
+        // It resolves the unscoped key — which is precisely the silent wrong-
+        // bundle failure the capture exists to prevent.
+        final hosted = TomScope.withScope(
+          'checkout',
+          () => const _UnscopedHost(childId: 'field'),
+        );
 
-      await tester.pumpWidget(_host(hosted));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(_host(hosted));
+        await tester.pumpAndSettle();
 
-      expect(find.text('unscoped value'), findsOneWidget);
-      expect(find.text('scoped value'), findsNothing);
-    });
+        expect(find.text('unscoped value'), findsOneWidget);
+        expect(find.text('scoped value'), findsNothing);
+      },
+    );
 
     testWidgets('the captured scope survives a rebuild', (tester) async {
       final hosted = TomScope.withScope(
@@ -190,30 +196,34 @@ void main() {
 
     test('nesting providers chains their scope segments', () {
       TomScope.withScope('checkout', () {
-        expect(_OrderProvider().details.name.basePath,
-            'checkout.order.details.name');
+        expect(
+          _OrderProvider().details.name.basePath,
+          'checkout.order.details.name',
+        );
       });
     });
 
     test('a null scopeId adopts the ambient scope without nesting', () {
       TomScope.withScope('checkout', () {
-        expect(TomScreenElementsProviderBase().scope.getScopePath(),
-            'checkout');
+        expect(
+          TomScreenElementsProviderBase().scope.getScopePath(),
+          'checkout',
+        );
       });
     });
   });
 
   group('resource resolution against the inherited scope (G-RES-2/3)', () {
-    testWidgets('a provider-scoped widget reads the provider-scoped resource',
-        (tester) async {
+    testWidgets('a provider-scoped widget reads the provider-scoped resource', (
+      tester,
+    ) async {
       // The end-to-end assertion: zone scope → provider scope → base path →
       // resource key. Every link has to hold for this text to appear.
-      final provider =
-          TomScope.withScope('checkout', () => _OrderProvider());
+      final provider = TomScope.withScope('checkout', () => _OrderProvider());
 
-      await tester.pumpWidget(_host(Column(
-        children: [provider.submit, provider.details.name],
-      )));
+      await tester.pumpWidget(
+        _host(Column(children: [provider.submit, provider.details.name])),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Submit order'), findsOneWidget);
@@ -226,8 +236,7 @@ void main() {
       // 'checkout.order' must NOT find it — scope resolution is a prefix, not
       // a search path. Without this, a mis-scoped widget would keep working
       // by accident and the scope would stop being load-bearing.
-      final provider =
-          TomScope.withScope('checkout', () => _OrderProvider());
+      final provider = TomScope.withScope('checkout', () => _OrderProvider());
       final stray = TomScope.withScope(
         'checkout',
         () => _ProbeNode(tomId: 'field', scope: provider),

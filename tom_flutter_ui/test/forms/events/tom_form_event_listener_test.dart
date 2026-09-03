@@ -121,19 +121,18 @@ void main() {
 
     test('default handlers do not throw', () {
       final noOp = _NoOpListener();
-      expect(
-        () {
-          noOp.handleEvent(FieldValueChangedEvent(source: 'f'));
-          noOp.handleEvent(FieldValidatedEvent(source: 'f', result: 'ok'));
-          noOp.handleEvent(FieldAuthChangedEvent(source: 'f', oldState: 'a', newState: 'b'));
-          noOp.handleEvent(FieldBoundEvent(source: 'f'));
-          noOp.handleEvent(FieldCommittedEvent(source: 'f'));
-          noOp.handleEvent(FormBoundEvent(source: 'form'));
-          noOp.handleEvent(FormSavedEvent(source: 'form'));
-          noOp.handleEvent(FormDiscardedEvent(source: 'form'));
-        },
-        returnsNormally,
-      );
+      expect(() {
+        noOp.handleEvent(FieldValueChangedEvent(source: 'f'));
+        noOp.handleEvent(FieldValidatedEvent(source: 'f', result: 'ok'));
+        noOp.handleEvent(
+          FieldAuthChangedEvent(source: 'f', oldState: 'a', newState: 'b'),
+        );
+        noOp.handleEvent(FieldBoundEvent(source: 'f'));
+        noOp.handleEvent(FieldCommittedEvent(source: 'f'));
+        noOp.handleEvent(FormBoundEvent(source: 'form'));
+        noOp.handleEvent(FormSavedEvent(source: 'form'));
+        noOp.handleEvent(FormDiscardedEvent(source: 'form'));
+      }, returnsNormally);
     });
   });
 }

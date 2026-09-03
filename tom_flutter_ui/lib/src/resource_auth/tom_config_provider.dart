@@ -11,8 +11,10 @@ class TomConfigProvider {
   /// Throws if not initialized. Set during app startup.
   static TomConfigProvider get current {
     if (_current == null) {
-      throw StateError('TomConfigProvider has not been initialized. '
-          'Call TomConfigProvider.initialize() at app startup.');
+      throw StateError(
+        'TomConfigProvider has not been initialized. '
+        'Call TomConfigProvider.initialize() at app startup.',
+      );
     }
     return _current!;
   }

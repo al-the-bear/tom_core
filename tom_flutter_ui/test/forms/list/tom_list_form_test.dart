@@ -72,21 +72,23 @@ void main() {
       expect(list[1].product.get(), 'Nut');
     });
 
-    test('a row edit stages in the sub-form and reaches the item on save',
-        () async {
-      // The form is a staging buffer, not a live proxy: `setValue` moves the
-      // field, and only `save()` writes back through `setValues`. Everything
-      // about discard() depends on this — it restores by *not* having
-      // written, so a write-through model would make rollback impossible.
-      final order = orderWith(['Bolt']);
-      final list = OrderItemListForm()..bind(order.items);
+    test(
+      'a row edit stages in the sub-form and reaches the item on save',
+      () async {
+        // The form is a staging buffer, not a live proxy: `setValue` moves the
+        // field, and only `save()` writes back through `setValues`. Everything
+        // about discard() depends on this — it restores by *not* having
+        // written, so a write-through model would make rollback impossible.
+        final order = orderWith(['Bolt']);
+        final list = OrderItemListForm()..bind(order.items);
 
-      list[0].product.setValue('Screw');
-      expect(order.items[0].product.get(), 'Bolt');
+        list[0].product.setValue('Screw');
+        expect(order.items[0].product.get(), 'Bolt');
 
-      expect(await list.save(), isTrue);
-      expect(order.items[0].product.get(), 'Screw');
-    });
+        expect(await list.save(), isTrue);
+        expect(order.items[0].product.get(), 'Screw');
+      },
+    );
 
     test('re-binding discards the sub-forms of the previous binding', () {
       final list = OrderItemListForm();
@@ -125,10 +127,7 @@ void main() {
     test('an unmodifiable view is handed out rather than the live list', () {
       final list = OrderItemListForm()..bind(orderWith(['Bolt']).items);
 
-      expect(
-        () => list.forms.add(OrderItemForm()),
-        throwsUnsupportedError,
-      );
+      expect(() => list.forms.add(OrderItemForm()), throwsUnsupportedError);
     });
   });
 
@@ -331,31 +330,36 @@ void main() {
       expect(event.toIndex, 0);
     });
 
-    test('events bubble to the parent form rather than staying local', () async {
-      // The whole point of the parent wiring: one listener on the enclosing
-      // form sees the field events *and* the structural list events, so an
-      // inspector does not have to walk the tree looking for buses.
-      final form = OrderForm()..bind(orderWith(['Bolt']));
-      final recorder = _Recorder();
-      form.addListener(recorder);
+    test(
+      'events bubble to the parent form rather than staying local',
+      () async {
+        // The whole point of the parent wiring: one listener on the enclosing
+        // form sees the field events *and* the structural list events, so an
+        // inspector does not have to walk the tree looking for buses.
+        final form = OrderForm()..bind(orderWith(['Bolt']));
+        final recorder = _Recorder();
+        form.addListener(recorder);
 
-      form.items.add();
+        form.items.add();
 
-      expect(recorder.ofType<ListItemAddedEvent>(), hasLength(1));
-    });
+        expect(recorder.ofType<ListItemAddedEvent>(), hasLength(1));
+      },
+    );
 
-    test('a listener registered on a parented list lands on the parent bus',
-        () {
-      final form = OrderForm()..bind(orderWith(['Bolt']));
-      final recorder = _Recorder();
-      // Registering through the list must reach the same bus the list fires
-      // into — otherwise the listener is silently attached to nothing.
-      form.items.addListener(recorder);
+    test(
+      'a listener registered on a parented list lands on the parent bus',
+      () {
+        final form = OrderForm()..bind(orderWith(['Bolt']));
+        final recorder = _Recorder();
+        // Registering through the list must reach the same bus the list fires
+        // into — otherwise the listener is silently attached to nothing.
+        form.items.addListener(recorder);
 
-      form.items.add();
+        form.items.add();
 
-      expect(recorder.ofType<ListItemAddedEvent>(), hasLength(1));
-    });
+        expect(recorder.ofType<ListItemAddedEvent>(), hasLength(1));
+      },
+    );
 
     test('removeListener detaches from whichever bus was used', () {
       final list = OrderItemListForm()..bind(orderWith(['Bolt']).items);
@@ -432,7 +436,8 @@ void main() {
       expect(
         observedLengths,
         isNot(contains(0)),
-        reason: 'the list held three rows before the reset and three after, '
+        reason:
+            'the list held three rows before the reset and three after, '
             'so no observer may be told it held none. Notifications raised '
             'while the sub-forms are being rebuilt have to be withheld until '
             'the structure is whole again.',
@@ -545,18 +550,20 @@ void main() {
       expect(await list.validate(), isEmpty);
     });
 
-    test('validateList adds list-level errors alongside the row errors',
-        () async {
-      final list = OrderItemListForm()
-        ..minRows = 3
-        ..bind(orderWith(['', 'Nut']).items);
+    test(
+      'validateList adds list-level errors alongside the row errors',
+      () async {
+        final list = OrderItemListForm()
+          ..minRows = 3
+          ..bind(orderWith(['', 'Nut']).items);
 
-      final errors = await list.validate();
+        final errors = await list.validate();
 
-      expect(errors.map((e) => e.errorKey), contains('error.tooFewRows'));
-      // One blank product plus the list-level rule.
-      expect(errors, hasLength(2));
-    });
+        expect(errors.map((e) => e.errorKey), contains('error.tooFewRows'));
+        // One blank product plus the list-level rule.
+        expect(errors, hasLength(2));
+      },
+    );
 
     test('a list-level error carries no field references', () async {
       final list = OrderItemListForm()
@@ -568,8 +575,7 @@ void main() {
       expect(errors.single.fields, isEmpty);
     });
 
-    test('validation fires a FormValidatedEvent carrying the errors',
-        () async {
+    test('validation fires a FormValidatedEvent carrying the errors', () async {
       final list = OrderItemListForm()..bind(orderWith(['']).items);
       final recorder = _Recorder();
       list.addListener(recorder);
@@ -629,30 +635,34 @@ void main() {
       expect(await list.save(), isFalse);
     });
 
-    test('succeeds and re-baselines the structure when it may commit',
-        () async {
-      final list = OrderItemListForm()..bind(orderWith(['Bolt']).items);
-      list.add().product.setValue('Nut');
-      expect(list.hasStructuralChanges, isTrue);
+    test(
+      'succeeds and re-baselines the structure when it may commit',
+      () async {
+        final list = OrderItemListForm()..bind(orderWith(['Bolt']).items);
+        list.add().product.setValue('Nut');
+        expect(list.hasStructuralChanges, isTrue);
 
-      expect(await list.save(), isTrue);
+        expect(await list.save(), isTrue);
 
-      // The added row is now part of the baseline, so a later discard must
-      // not remove it.
-      expect(list.hasStructuralChanges, isFalse);
-    });
+        // The added row is now part of the baseline, so a later discard must
+        // not remove it.
+        expect(list.hasStructuralChanges, isFalse);
+      },
+    );
 
-    test('commitBaselines: false leaves the structural baseline alone',
-        () async {
-      // The explicit form of the nested-save policy: an outer transaction is
-      // still in flight, so the list must stay rollback-able.
-      final list = OrderItemListForm()..bind(orderWith(['Bolt']).items);
-      list.add().product.setValue('Nut');
+    test(
+      'commitBaselines: false leaves the structural baseline alone',
+      () async {
+        // The explicit form of the nested-save policy: an outer transaction is
+        // still in flight, so the list must stay rollback-able.
+        final list = OrderItemListForm()..bind(orderWith(['Bolt']).items);
+        list.add().product.setValue('Nut');
 
-      expect(await list.save(commitBaselines: false), isTrue);
+        expect(await list.save(commitBaselines: false), isTrue);
 
-      expect(list.hasStructuralChanges, isTrue);
-    });
+        expect(list.hasStructuralChanges, isTrue);
+      },
+    );
 
     test('a root-level list auto-detects that it may commit', () async {
       // OrderForm is standalone, so its list is the outermost transaction
@@ -746,18 +756,20 @@ void main() {
       expect(order.items[0].product.get(), 'Screw');
     });
 
-    test('discarding after a save rolls back only to the saved state',
-        () async {
-      final order = orderWith(['Bolt']);
-      final list = OrderItemListForm()..bind(order.items);
-      list.add().product.setValue('Nut');
-      await list.save();
+    test(
+      'discarding after a save rolls back only to the saved state',
+      () async {
+        final order = orderWith(['Bolt']);
+        final list = OrderItemListForm()..bind(order.items);
+        list.add().product.setValue('Nut');
+        await list.save();
 
-      list.add().product.setValue('Washer');
-      list.discard();
+        list.add().product.setValue('Washer');
+        list.discard();
 
-      expect(_boundProducts(order), ['Bolt', 'Nut']);
-    });
+        expect(_boundProducts(order), ['Bolt', 'Nut']);
+      },
+    );
 
     test('an unbound list still settles into a clean state', () {
       final list = BareItemListForm()..add();

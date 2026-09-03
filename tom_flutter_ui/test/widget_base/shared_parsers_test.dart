@@ -60,7 +60,8 @@ void main() {
         expect(
           TomCtr.edgeInsets('w', entry.key),
           TomStyleResolvers.parseEdgeInsets(entry.value),
-          reason: 'the ${entry.key} form differs between the resource route '
+          reason:
+              'the ${entry.key} form differs between the resource route '
               'and the direct parser call',
         );
       }
@@ -71,28 +72,40 @@ void main() {
       // are equally wrong could not satisfy the test above.
       install({'w': forms});
       expect(TomCtr.edgeInsets('w', 'number'), const EdgeInsets.all(8));
-      expect(TomCtr.edgeInsets('w', 'twoElements'),
-          const EdgeInsets.symmetric(horizontal: 4, vertical: 6));
-      expect(TomCtr.edgeInsets('w', 'fourElements'),
-          const EdgeInsets.fromLTRB(1, 2, 3, 4));
-      expect(TomCtr.edgeInsets('w', 'symmetric'),
-          const EdgeInsets.symmetric(horizontal: 3, vertical: 7));
+      expect(
+        TomCtr.edgeInsets('w', 'twoElements'),
+        const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      );
+      expect(
+        TomCtr.edgeInsets('w', 'fourElements'),
+        const EdgeInsets.fromLTRB(1, 2, 3, 4),
+      );
+      expect(
+        TomCtr.edgeInsets('w', 'symmetric'),
+        const EdgeInsets.symmetric(horizontal: 3, vertical: 7),
+      );
     });
 
     test('and is tolerant of a mistyped entry on both routes', () {
       install({
         'w': {
           'bad': <dynamic>[1, 'x', 3, 4],
-        }
+        },
       });
-      expect(TomCtr.edgeInsets('w', 'bad'),
-          const EdgeInsets.only(left: 1, top: 0, right: 3, bottom: 4));
-      expect(TomCtr.edgeInsets('w', 'bad'),
-          TomStyleResolvers.parseEdgeInsets(<dynamic>[1, 'x', 3, 4]));
+      expect(
+        TomCtr.edgeInsets('w', 'bad'),
+        const EdgeInsets.only(left: 1, top: 0, right: 3, bottom: 4),
+      );
+      expect(
+        TomCtr.edgeInsets('w', 'bad'),
+        TomStyleResolvers.parseEdgeInsets(<dynamic>[1, 'x', 3, 4]),
+      );
     });
 
     test('and yields null for a value no form reads', () {
-      install({'w': {'bad': 'eight'}});
+      install({
+        'w': {'bad': 'eight'},
+      });
       expect(TomCtr.edgeInsets('w', 'bad'), isNull);
       expect(TomStyleResolvers.parseEdgeInsets('eight'), isNull);
     });
@@ -104,7 +117,7 @@ void main() {
         'w': {
           'bold': {'fontWeight': 'bold'},
           'w300': {'fontWeight': 'w300'},
-        }
+        },
       });
       expect(TomCtr.textStyle('w', 'bold')!.fontWeight, FontWeight.bold);
       expect(TomCtr.textStyle('w', 'w300')!.fontWeight, FontWeight.w300);
@@ -118,7 +131,7 @@ void main() {
         'w': {
           'numeric': {'fontWeight': 400},
           'heavy': {'fontWeight': 900},
-        }
+        },
       });
       expect(TomCtr.textStyle('w', 'numeric')!.fontWeight, FontWeight.w400);
       expect(TomCtr.textStyle('w', 'heavy')!.fontWeight, FontWeight.w900);
@@ -130,7 +143,7 @@ void main() {
         'w': {
           'only': {'fontWeight': 'heavyish'},
           'beside': {'fontWeight': 'heavyish', 'fontSize': 12},
-        }
+        },
       });
       expect(TomCtr.textStyle('w', 'only'), isNull);
       expect(TomCtr.textStyle('w', 'beside')!.fontWeight, isNull);

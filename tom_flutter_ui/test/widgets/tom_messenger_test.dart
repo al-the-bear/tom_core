@@ -20,16 +20,18 @@ void main() {
   });
 
   testWidgets('showMessage renders the text in a snack bar', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => TomMessenger.showMessage(context, 'saved'),
-            child: const Text('go'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => TomMessenger.showMessage(context, 'saved'),
+              child: const Text('go'),
+            ),
           ),
         ),
       ),
-    ));
+    );
 
     expect(find.text('saved'), findsNothing);
     await tester.tap(find.text('go'));
@@ -39,23 +41,26 @@ void main() {
     expect(find.text('saved'), findsOneWidget);
   });
 
-  testWidgets('showSnackBar returns a controller for the shown bar',
-      (tester) async {
+  testWidgets('showSnackBar returns a controller for the shown bar', (
+    tester,
+  ) async {
     ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? controller;
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => controller = TomMessenger.showSnackBar(
-              context,
-              TomSnackBar(content: TomText(text: 'hello')),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => controller = TomMessenger.showSnackBar(
+                context,
+                TomSnackBar(content: TomText(text: 'hello')),
+              ),
+              child: const Text('go'),
             ),
-            child: const Text('go'),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.tap(find.text('go'));
     await tester.pump();
@@ -69,45 +74,51 @@ void main() {
     expect(find.text('hello'), findsNothing);
   });
 
-  testWidgets('showSnackBarIfPresent returns null with no messenger in scope',
-      (tester) async {
+  testWidgets('showSnackBarIfPresent returns null with no messenger in scope', (
+    tester,
+  ) async {
     Object? result = 'unset';
 
     // A bare WidgetsApp — no Scaffold, so no ScaffoldMessenger ancestor.
-    await tester.pumpWidget(Directionality(
-      textDirection: TextDirection.ltr,
-      child: Builder(
-        builder: (context) {
-          result = TomMessenger.showSnackBarIfPresent(
-            context,
-            TomSnackBar(content: TomText(text: 'ignored')),
-          );
-          return const SizedBox.shrink();
-        },
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Builder(
+          builder: (context) {
+            result = TomMessenger.showSnackBarIfPresent(
+              context,
+              TomSnackBar(content: TomText(text: 'ignored')),
+            );
+            return const SizedBox.shrink();
+          },
+        ),
       ),
-    ));
+    );
 
     expect(result, isNull);
     expect(find.byType(SnackBar), findsNothing);
   });
 
-  testWidgets('showSnackBarIfPresent shows when a messenger IS in scope',
-      (tester) async {
+  testWidgets('showSnackBarIfPresent shows when a messenger IS in scope', (
+    tester,
+  ) async {
     ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? controller;
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => controller = TomMessenger.showSnackBarIfPresent(
-              context,
-              TomSnackBar(content: TomText(text: 'present')),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => controller = TomMessenger.showSnackBarIfPresent(
+                context,
+                TomSnackBar(content: TomText(text: 'present')),
+              ),
+              child: const Text('go'),
             ),
-            child: const Text('go'),
           ),
         ),
       ),
-    ));
+    );
 
     await tester.tap(find.text('go'));
     await tester.pump();

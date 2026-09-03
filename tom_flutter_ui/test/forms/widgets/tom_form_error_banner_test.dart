@@ -65,23 +65,26 @@ void main() {
       expect(find.byType(SizedBox), findsWidgets);
     });
 
-    testWidgets('shows banner on cross-field validation errors',
-        (tester) async {
+    testWidgets('shows banner on cross-field validation errors', (
+      tester,
+    ) async {
       final form = _TestEventSource();
       final banner = TomFormErrorBanner(form: form);
 
       await tester.pumpWidget(_wrap(banner));
 
       // Fire a FormValidatedEvent with cross-field errors
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.passwordMismatch',
-            fields: [fieldPassword, fieldConfirmPassword],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.passwordMismatch',
+              fields: [fieldPassword, fieldConfirmPassword],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
 
       expect(find.text('Form Errors'), findsOneWidget);
@@ -94,19 +97,21 @@ void main() {
 
       await tester.pumpWidget(_wrap(banner));
 
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.passwordMismatch',
-            fields: [fieldPassword, fieldConfirmPassword],
-          ),
-          FormValidationError(
-            errorKey: 'error.dateRange',
-            fields: [fieldStartDate, fieldEndDate],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.passwordMismatch',
+              fields: [fieldPassword, fieldConfirmPassword],
+            ),
+            FormValidationError(
+              errorKey: 'error.dateRange',
+              fields: [fieldStartDate, fieldEndDate],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
 
       expect(find.text('error.passwordMismatch'), findsOneWidget);
@@ -119,21 +124,23 @@ void main() {
 
       await tester.pumpWidget(_wrap(banner));
 
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          // Single-field error — should NOT appear in banner
-          FormValidationError(
-            errorKey: 'error.required',
-            fields: [fieldName],
-          ),
-          // Cross-field error — should appear
-          FormValidationError(
-            errorKey: 'error.mismatch',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            // Single-field error — should NOT appear in banner
+            FormValidationError(
+              errorKey: 'error.required',
+              fields: [fieldName],
+            ),
+            // Cross-field error — should appear
+            FormValidationError(
+              errorKey: 'error.mismatch',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
 
       expect(find.text('error.required'), findsNothing);
@@ -149,15 +156,17 @@ void main() {
       await tester.pumpWidget(_wrap(banner));
 
       // Show errors
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.cross',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.cross',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
       expect(find.text('error.cross'), findsOneWidget);
 
@@ -175,15 +184,17 @@ void main() {
       await tester.pumpWidget(_wrap(banner));
 
       // Show errors
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.cross',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.cross',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
       expect(find.text('error.cross'), findsOneWidget);
 
@@ -193,31 +204,31 @@ void main() {
       expect(find.text('error.cross'), findsNothing);
     });
 
-    testWidgets('hides when validation succeeds (empty errors)',
-        (tester) async {
+    testWidgets('hides when validation succeeds (empty errors)', (
+      tester,
+    ) async {
       final form = _TestEventSource();
       final banner = TomFormErrorBanner(form: form);
 
       await tester.pumpWidget(_wrap(banner));
 
       // Show errors
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.cross',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.cross',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
       expect(find.text('error.cross'), findsOneWidget);
 
       // Validate again with no errors
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [],
-      ));
+      form.fireEvent(FormValidatedEvent(source: 'testForm', errors: []));
       await tester.pump();
       expect(find.text('Form Errors'), findsNothing);
     });
@@ -228,33 +239,34 @@ void main() {
       final form = _TestEventSource();
       final banner = TomFormErrorBanner(form: form);
 
-      await tester.pumpWidget(_wrap(
-        banner,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(borderRadius: 16.0),
+      await tester.pumpWidget(
+        _wrap(
+          banner,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(borderRadius: 16.0),
+          ),
         ),
-      ));
+      );
 
       // Show errors
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.cross',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.cross',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
 
       // Find the container with the border decoration
       final container = tester.widget<Container>(find.byType(Container).first);
       final decoration = container.decoration as BoxDecoration?;
       expect(decoration, isNotNull);
-      expect(
-        decoration!.borderRadius,
-        BorderRadius.circular(16.0),
-      );
+      expect(decoration!.borderRadius, BorderRadius.circular(16.0));
     });
 
     testWidgets('shows error icon', (tester) async {
@@ -263,15 +275,17 @@ void main() {
 
       await tester.pumpWidget(_wrap(banner));
 
-      form.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.cross',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.cross',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
 
       expect(find.byIcon(Icons.error_outline), findsOneWidget);
@@ -292,15 +306,17 @@ void main() {
 
       // Firing events after dispose should not throw
       expect(
-        () => form.fireEvent(FormValidatedEvent(
-          source: 'testForm',
-          errors: [
-            FormValidationError(
-              errorKey: 'error.cross',
-              fields: [fieldA, fieldB],
-            ),
-          ],
-        )),
+        () => form.fireEvent(
+          FormValidatedEvent(
+            source: 'testForm',
+            errors: [
+              FormValidationError(
+                errorKey: 'error.cross',
+                fields: [fieldA, fieldB],
+              ),
+            ],
+          ),
+        ),
         returnsNormally,
       );
     });
@@ -332,15 +348,17 @@ void main() {
       );
 
       // Fire event on form1
-      form1.fireEvent(FormValidatedEvent(
-        source: 'testForm',
-        errors: [
-          FormValidationError(
-            errorKey: 'error.from1',
-            fields: [fieldA, fieldB],
-          ),
-        ],
-      ));
+      form1.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.from1',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
       expect(find.text('error.from1'), findsOneWidget);
     });

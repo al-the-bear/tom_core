@@ -47,16 +47,18 @@ Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 /// Pumps [child] and taps a button that shows it as a snack bar.
 Future<void> _showSnackBar(WidgetTester tester, SnackBar bar) async {
-  await tester.pumpWidget(MaterialApp(
-    home: Scaffold(
-      body: Builder(
-        builder: (context) => ElevatedButton(
-          onPressed: () => TomMessenger.showSnackBar(context, bar),
-          child: const Text('show'),
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => TomMessenger.showSnackBar(context, bar),
+            child: const Text('show'),
+          ),
         ),
       ),
     ),
-  ));
+  );
   await tester.tap(find.text('show'));
   await tester.pumpAndSettle();
 }
@@ -65,57 +67,73 @@ void main() {
   tearDown(TomAuthorization.reset);
 
   group('tcce1: the four widgets whose Flutter State is private', () {
-    testWidgets('tcce1-01: a none TomAnimatedPositioned hides its child',
-        (tester) async {
+    testWidgets('tcce1-01: a none TomAnimatedPositioned hides its child', (
+      tester,
+    ) async {
       TomAuthorization.adapter = _MapAuthAdapter({'ap': TomAuthState.none});
-      await tester.pumpWidget(_host(Stack(
-        children: [
-          TomAnimatedPositioned(
-            tomId: 'ap',
-            duration: Duration.zero,
-            child: const Text('secret'),
+      await tester.pumpWidget(
+        _host(
+          Stack(
+            children: [
+              TomAnimatedPositioned(
+                tomId: 'ap',
+                duration: Duration.zero,
+                child: const Text('secret'),
+              ),
+            ],
           ),
-        ],
-      )));
+        ),
+      );
       expect(find.text('secret'), findsNothing);
     });
 
-    testWidgets('tcce1-02: a full TomAnimatedPositioned still shows its child',
-        (tester) async {
+    testWidgets('tcce1-02: a full TomAnimatedPositioned still shows its child', (
+      tester,
+    ) async {
       // The other half of the gate. A wrapper that hides everything passes the
       // test above and is useless, so both directions are pinned for one of
       // the four; the rest share the same `TomAuthGate` code path.
       TomAuthorization.adapter = _MapAuthAdapter({'ap': TomAuthState.full});
-      await tester.pumpWidget(_host(Stack(
-        children: [
-          TomAnimatedPositioned(
-            tomId: 'ap',
-            duration: Duration.zero,
-            child: const Text('secret'),
+      await tester.pumpWidget(
+        _host(
+          Stack(
+            children: [
+              TomAnimatedPositioned(
+                tomId: 'ap',
+                duration: Duration.zero,
+                child: const Text('secret'),
+              ),
+            ],
           ),
-        ],
-      )));
+        ),
+      );
       expect(find.text('secret'), findsOneWidget);
     });
 
     testWidgets(
-        'tcce1-03: a none TomAnimatedPositionedDirectional hides its child',
-        (tester) async {
-      TomAuthorization.adapter = _MapAuthAdapter({'apd': TomAuthState.none});
-      await tester.pumpWidget(_host(Stack(
-        children: [
-          TomAnimatedPositionedDirectional(
-            tomId: 'apd',
-            duration: Duration.zero,
-            child: const Text('secret'),
+      'tcce1-03: a none TomAnimatedPositionedDirectional hides its child',
+      (tester) async {
+        TomAuthorization.adapter = _MapAuthAdapter({'apd': TomAuthState.none});
+        await tester.pumpWidget(
+          _host(
+            Stack(
+              children: [
+                TomAnimatedPositionedDirectional(
+                  tomId: 'apd',
+                  duration: Duration.zero,
+                  child: const Text('secret'),
+                ),
+              ],
+            ),
           ),
-        ],
-      )));
-      expect(find.text('secret'), findsNothing);
-    });
+        );
+        expect(find.text('secret'), findsNothing);
+      },
+    );
 
-    testWidgets('tcce1-04: a none TomSnackBar hides its content',
-        (tester) async {
+    testWidgets('tcce1-04: a none TomSnackBar hides its content', (
+      tester,
+    ) async {
       TomAuthorization.adapter = _MapAuthAdapter({'sb': TomAuthState.none});
       await _showSnackBar(
         tester,
@@ -124,8 +142,9 @@ void main() {
       expect(find.text('secret'), findsNothing);
     });
 
-    testWidgets('tcce1-05: a none TomSnackBarAction hides its label',
-        (tester) async {
+    testWidgets('tcce1-05: a none TomSnackBarAction hides its label', (
+      tester,
+    ) async {
       // The one of the eight with no widget slot at all — `label` is a
       // `String`. It gates by building a delegate action inside its own state
       // instead, which is possible because the widget it must *be* is only
@@ -146,87 +165,116 @@ void main() {
       expect(find.text('Undo'), findsNothing);
     });
 
-    testWidgets('tcce1-06: a group narrows a wrapper that has no tomId',
-        (tester) async {
+    testWidgets('tcce1-06: a group narrows a wrapper that has no tomId', (
+      tester,
+    ) async {
       // `tomGroup` was the field most obviously doing nothing: declared on all
       // eight, read by none. A group with no tomId is still a real ceiling.
       TomAuthorization.adapter = _MapAuthAdapter({'admin': TomAuthState.none});
-      await tester.pumpWidget(_host(Stack(
-        children: [
-          TomAnimatedPositioned(
-            tomGroup: TomAuthorizationGroup(
-              'admin',
-              mode: AuthGroupMode.controlsAll,
-            ),
-            duration: Duration.zero,
-            child: const Text('secret'),
+      await tester.pumpWidget(
+        _host(
+          Stack(
+            children: [
+              TomAnimatedPositioned(
+                tomGroup: TomAuthorizationGroup(
+                  'admin',
+                  mode: AuthGroupMode.controlsAll,
+                ),
+                duration: Duration.zero,
+                child: const Text('secret'),
+              ),
+            ],
           ),
-        ],
-      )));
+        ),
+      );
       expect(find.text('secret'), findsNothing);
     });
   });
 
   group('tcce1: the four Flutter classes that are not widgets', () {
-    testWidgets('tcce1-07: a none TomDataCell hides its child',
-        (tester) async {
+    testWidgets('tcce1-07: a none TomDataCell hides its child', (tester) async {
       TomAuthorization.adapter = _MapAuthAdapter({'cell': TomAuthState.none});
-      await tester.pumpWidget(_host(DataTable(
-        columns: const [DataColumn(label: Text('col'))],
-        rows: [
-          DataRow(cells: [TomDataCell(tomId: 'cell', child: const Text('s'))]),
-        ],
-      )));
+      await tester.pumpWidget(
+        _host(
+          DataTable(
+            columns: const [DataColumn(label: Text('col'))],
+            rows: [
+              DataRow(
+                cells: [TomDataCell(tomId: 'cell', child: const Text('s'))],
+              ),
+            ],
+          ),
+        ),
+      );
       expect(find.text('s'), findsNothing);
     });
 
-    testWidgets('tcce1-08: a TomDataCell group narrows the cell',
-        (tester) async {
+    testWidgets('tcce1-08: a TomDataCell group narrows the cell', (
+      tester,
+    ) async {
       // Pinned because the helper this replaced accepted `tomGroup`, stored
       // it, and never read it — the cell rendered in full.
       TomAuthorization.adapter = _MapAuthAdapter({'g': TomAuthState.none});
-      await tester.pumpWidget(_host(DataTable(
-        columns: const [DataColumn(label: Text('col'))],
-        rows: [
-          DataRow(cells: [
-            TomDataCell(
-              tomGroup: TomAuthorizationGroup(
-                'g',
-                mode: AuthGroupMode.controlsAll,
+      await tester.pumpWidget(
+        _host(
+          DataTable(
+            columns: const [DataColumn(label: Text('col'))],
+            rows: [
+              DataRow(
+                cells: [
+                  TomDataCell(
+                    tomGroup: TomAuthorizationGroup(
+                      'g',
+                      mode: AuthGroupMode.controlsAll,
+                    ),
+                    child: const Text('s'),
+                  ),
+                ],
               ),
-              child: const Text('s'),
-            ),
-          ]),
-        ],
-      )));
+            ],
+          ),
+        ),
+      );
       expect(find.text('s'), findsNothing);
     });
 
-    testWidgets('tcce1-09: a none TomDataColumn hides its label',
-        (tester) async {
+    testWidgets('tcce1-09: a none TomDataColumn hides its label', (
+      tester,
+    ) async {
       TomAuthorization.adapter = _MapAuthAdapter({'col': TomAuthState.none});
-      await tester.pumpWidget(_host(DataTable(
-        columns: [TomDataColumn(tomId: 'col', label: const Text('secret'))],
-        rows: const [DataRow(cells: [DataCell(Text('v'))])],
-      )));
+      await tester.pumpWidget(
+        _host(
+          DataTable(
+            columns: [TomDataColumn(tomId: 'col', label: const Text('secret'))],
+            rows: const [
+              DataRow(cells: [DataCell(Text('v'))]),
+            ],
+          ),
+        ),
+      );
       expect(find.text('secret'), findsNothing);
     });
 
-    testWidgets('tcce1-10: a none TomExpansionPanel hides header and body',
-        (tester) async {
+    testWidgets('tcce1-10: a none TomExpansionPanel hides header and body', (
+      tester,
+    ) async {
       TomAuthorization.adapter = _MapAuthAdapter({'panel': TomAuthState.none});
-      await tester.pumpWidget(_host(SingleChildScrollView(
-        child: ExpansionPanelList(
-          children: [
-            TomExpansionPanel(
-              tomId: 'panel',
-              isExpanded: true,
-              headerBuilder: (_, _) => const Text('head'),
-              body: const Text('body'),
-            ).toPanel(),
-          ],
+      await tester.pumpWidget(
+        _host(
+          SingleChildScrollView(
+            child: ExpansionPanelList(
+              children: [
+                TomExpansionPanel(
+                  tomId: 'panel',
+                  isExpanded: true,
+                  headerBuilder: (_, _) => const Text('head'),
+                  body: const Text('body'),
+                ).toPanel(),
+              ],
+            ),
+          ),
         ),
-      )));
+      );
       expect(find.text('head'), findsNothing);
       expect(find.text('body'), findsNothing);
     });
@@ -252,8 +300,9 @@ void main() {
   });
 
   group('tcce1: a hidden snack bar is not shown at all', () {
-    testWidgets('tcce1-13: TomMessenger declines to show a none TomSnackBar',
-        (tester) async {
+    testWidgets('tcce1-13: TomMessenger declines to show a none TomSnackBar', (
+      tester,
+    ) async {
       // Gating the content alone would leave an empty bar sliding up, which
       // is a worse answer than either showing or not showing it. A snack bar
       // is presented imperatively, so the only place its visibility can be
@@ -266,8 +315,9 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets('tcce1-14: a visible TomSnackBar is still shown',
-        (tester) async {
+    testWidgets('tcce1-14: a visible TomSnackBar is still shown', (
+      tester,
+    ) async {
       TomAuthorization.adapter = _MapAuthAdapter({'sb': TomAuthState.full});
       await _showSnackBar(
         tester,
@@ -281,16 +331,12 @@ void main() {
       // be conditional on the argument's type. A plain bar has no tomId to
       // resolve and must pass through untouched.
       TomAuthorization.adapter = _MapAuthAdapter({'sb': TomAuthState.none});
-      await _showSnackBar(
-        tester,
-        const SnackBar(content: Text('plain')),
-      );
+      await _showSnackBar(tester, const SnackBar(content: Text('plain')));
       expect(find.text('plain'), findsOneWidget);
     });
   });
 
-  group('tcce1: no wrapper declares an authorization field it never reads',
-      () {
+  group('tcce1: no wrapper declares an authorization field it never reads', () {
     test('tcce1-16: every gated wrapper resolves through TomAuthGate', () {
       // The census that produced this file, reduced to the property that
       // matters: the eight all now route their slot through one resolver.
@@ -302,17 +348,19 @@ void main() {
       expect(gate.checkHidden(), isNotNull);
     });
 
-    testWidgets('tcce1-17: a gate with neither id nor group renders its child',
-        (tester) async {
-      // The wrappers pass `tomId` straight through, and it is nullable on all
-      // eight. An ungated slot must not be narrowed by a gate that has
-      // nothing to look up — including under an adapter that denies by
-      // default, which is what an app in lockdown looks like.
-      TomAuthorization.adapter = _MapAuthAdapter({});
-      await tester.pumpWidget(_host(
-        TomAuthGate(tomId: null, child: const Text('ungated')),
-      ));
-      expect(find.text('ungated'), findsOneWidget);
-    });
+    testWidgets(
+      'tcce1-17: a gate with neither id nor group renders its child',
+      (tester) async {
+        // The wrappers pass `tomId` straight through, and it is nullable on all
+        // eight. An ungated slot must not be narrowed by a gate that has
+        // nothing to look up — including under an adapter that denies by
+        // default, which is what an app in lockdown looks like.
+        TomAuthorization.adapter = _MapAuthAdapter({});
+        await tester.pumpWidget(
+          _host(TomAuthGate(tomId: null, child: const Text('ungated'))),
+        );
+        expect(find.text('ungated'), findsOneWidget);
+      },
+    );
   });
 }

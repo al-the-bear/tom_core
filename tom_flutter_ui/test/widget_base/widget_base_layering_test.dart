@@ -33,8 +33,10 @@ void main() {
     /// only the internal shape of this library is.
     List<String> relativeImportsOf(String file) {
       final source = File(file).readAsStringSync();
-      final matches =
-          RegExp(r"^import\s+'([^']+)'", multiLine: true).allMatches(source);
+      final matches = RegExp(
+        r"^import\s+'([^']+)'",
+        multiLine: true,
+      ).allMatches(source);
       return [
         for (final match in matches)
           if (!match.group(1)!.startsWith('package:') &&
@@ -43,13 +45,14 @@ void main() {
       ];
     }
 
-    final seeds = Directory(base)
-        .listSync()
-        .whereType<File>()
-        .map((f) => p.normalize(f.path))
-        .where((f) => f.endsWith('.dart'))
-        .toList()
-      ..sort();
+    final seeds =
+        Directory(base)
+            .listSync()
+            .whereType<File>()
+            .map((f) => p.normalize(f.path))
+            .where((f) => f.endsWith('.dart'))
+            .toList()
+          ..sort();
 
     test('the source scan found the files it is meant to check', () {
       // Guards the guard: a walk that started from nothing would report no
@@ -85,7 +88,8 @@ void main() {
       expect(
         offences,
         isEmpty,
-        reason: 'widget_base/ must not depend on widgets/, but these import '
+        reason:
+            'widget_base/ must not depend on widgets/, but these import '
             'chains do:\n${offences.map((trail) => '  '
                 '${trail.map((f) => p.relative(f, from: 'lib/src')).join(' -> ')}').join('\n')}\n'
             'A helper under widget_base/ that needs a widget is a helper in '

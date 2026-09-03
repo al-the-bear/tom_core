@@ -130,11 +130,7 @@ class TomThemeScope extends InheritedWidget {
   /// The theme for this scope.
   final TomTheme theme;
 
-  const TomThemeScope({
-    super.key,
-    required this.theme,
-    required super.child,
-  });
+  const TomThemeScope({super.key, required this.theme, required super.child});
 
   /// Returns the nearest [TomTheme], or [TomTheme.defaultTheme] if none.
   static TomTheme of(BuildContext context) {

@@ -137,8 +137,10 @@ List<AclRow> aclGridRows(
 
   final cellWidth = availableWidth == null
       ? null
-      : ((availableWidth - gutterWidth * (columns - 1)) / columns)
-          .clamp(0.0, double.infinity);
+      : ((availableWidth - gutterWidth * (columns - 1)) / columns).clamp(
+          0.0,
+          double.infinity,
+        );
 
   final rows = <AclRow>[];
   for (var start = 0; start < components.length; start += columns) {

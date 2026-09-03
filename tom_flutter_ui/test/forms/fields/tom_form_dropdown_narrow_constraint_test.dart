@@ -47,9 +47,9 @@ Widget _narrow(Widget child) {
 }
 
 StaticSelectableSource<String> _stringSource() => StaticSelectableSource([
-      for (var i = 0; i < _longLabels.length; i++)
-        SelectableItem(value: 'v$i', label: _longLabels[i]),
-    ]);
+  for (var i = 0; i < _longLabels.length; i++)
+    SelectableItem(value: 'v$i', label: _longLabels[i]),
+]);
 
 void main() {
   group('dropdown fields under a constraint narrower than their content', () {

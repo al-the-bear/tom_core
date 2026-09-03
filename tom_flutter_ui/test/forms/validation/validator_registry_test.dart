@@ -71,7 +71,8 @@ void main() {
       expect(registry.has('strongPassword'), isFalse);
       registry.register(
         'strongPassword',
-        (_) => (Object? value) => const ValidationSuccess(),
+        (_) =>
+            (Object? value) => const ValidationSuccess(),
       );
       expect(registry.has('strongPassword'), isTrue);
       expect(registry.names, contains('strongPassword'));
@@ -149,16 +150,20 @@ void main() {
   });
 
   group('TomValidatorRegistry — declaration resolution', () {
-    test('resolveDeclaration produces one validator per comma-separated spec',
-        () {
-      final validators =
-          TomValidatorRegistry().resolveDeclaration('required,minLength:8');
-      expect(validators, hasLength(2));
-    });
+    test(
+      'resolveDeclaration produces one validator per comma-separated spec',
+      () {
+        final validators = TomValidatorRegistry().resolveDeclaration(
+          'required,minLength:8',
+        );
+        expect(validators, hasLength(2));
+      },
+    );
 
     test('resolveDeclaration ignores blank entries', () {
-      final validators =
-          TomValidatorRegistry().resolveDeclaration('required, ,minLength:8,');
+      final validators = TomValidatorRegistry().resolveDeclaration(
+        'required, ,minLength:8,',
+      );
       expect(validators, hasLength(2));
     });
   });
@@ -166,7 +171,11 @@ void main() {
   group('TomValidatorRegistry — dependency injection', () {
     test('instance is swappable and resetInstance restores default', () {
       final custom = TomValidatorRegistry()
-        ..register('x', (_) => (Object? v) => const ValidationSuccess());
+        ..register(
+          'x',
+          (_) =>
+              (Object? v) => const ValidationSuccess(),
+        );
       TomValidatorRegistry.instance = custom;
       expect(TomValidatorRegistry.instance.has('x'), isTrue);
 
@@ -186,7 +195,8 @@ void main() {
       // 1. Register a custom validator by name.
       TomValidatorRegistry.instance.register(
         'strongPassword',
-        (_) => (Object? value) => (value as String).length >= 8
+        (_) =>
+            (Object? value) => (value as String).length >= 8
             ? const ValidationSuccess()
             : const ValidationError('error.weakPassword'),
       );
@@ -220,7 +230,8 @@ void main() {
     test('scoped error message overrides the global one', () async {
       TomValidatorRegistry.instance.register(
         'strongPassword',
-        (_) => (Object? value) => const ValidationError('error.weakPassword'),
+        (_) =>
+            (Object? value) => const ValidationError('error.weakPassword'),
       );
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from({
@@ -238,9 +249,7 @@ void main() {
 
     test('resource-declared built-in validator runs on the field', () async {
       TomTextResourceProvider.setAppResourceProvider(
-        TomTextResourceProvider.from({
-          'username.validators': 'required',
-        }),
+        TomTextResourceProvider.from({'username.validators': 'required'}),
       );
       final field = TomFormStringInput('username', '');
       expect(await field.validate(), isA<ValidationError>());
@@ -248,50 +257,50 @@ void main() {
       expect(await field.validate(), isA<ValidationSuccess>());
     });
 
-    test('a multi-choice field enforces resource-declared selection bounds',
-        () async {
-      // A field description's minimum and maximum selection counts land here:
-      // as a validator declaration on the field's resource bundle, with no
-      // per-field constructor argument.
-      TomTextResourceProvider.setAppResourceProvider(
-        TomTextResourceProvider.from({
-          'toppings.validators': 'minItems:2,maxItems:3',
-          'error.minItems': 'Pick at least 2.',
-        }),
-      );
-      final field = TomFormStringFilterChips(
-        'toppings',
-        const ['cheese'],
-        source: StaticSelectableSource<String>(const [
-          SelectableItem(value: 'cheese', label: 'Cheese'),
-          SelectableItem(value: 'basil', label: 'Basil'),
-          SelectableItem(value: 'olives', label: 'Olives'),
-          SelectableItem(value: 'chilli', label: 'Chilli'),
-        ]),
-      );
+    test(
+      'a multi-choice field enforces resource-declared selection bounds',
+      () async {
+        // A field description's minimum and maximum selection counts land here:
+        // as a validator declaration on the field's resource bundle, with no
+        // per-field constructor argument.
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from({
+            'toppings.validators': 'minItems:2,maxItems:3',
+            'error.minItems': 'Pick at least 2.',
+          }),
+        );
+        final field = TomFormStringFilterChips(
+          'toppings',
+          const ['cheese'],
+          source: StaticSelectableSource<String>(const [
+            SelectableItem(value: 'cheese', label: 'Cheese'),
+            SelectableItem(value: 'basil', label: 'Basil'),
+            SelectableItem(value: 'olives', label: 'Olives'),
+            SelectableItem(value: 'chilli', label: 'Chilli'),
+          ]),
+        );
 
-      // Below the lower bound.
-      final tooFew = await field.validate();
-      expect(tooFew, isA<ValidationError>());
-      expect((tooFew as ValidationError).errorKey, 'error.minItems');
-      expect(field.resolvedErrorMessage, 'Pick at least 2.');
+        // Below the lower bound.
+        final tooFew = await field.validate();
+        expect(tooFew, isA<ValidationError>());
+        expect((tooFew as ValidationError).errorKey, 'error.minItems');
+        expect(field.resolvedErrorMessage, 'Pick at least 2.');
 
-      // Inside the range.
-      field.setValue(const ['cheese', 'basil']);
-      expect(await field.validate(), isA<ValidationSuccess>());
+        // Inside the range.
+        field.setValue(const ['cheese', 'basil']);
+        expect(await field.validate(), isA<ValidationSuccess>());
 
-      // Above the upper bound.
-      field.setValue(const ['cheese', 'basil', 'olives', 'chilli']);
-      final tooMany = await field.validate();
-      expect(tooMany, isA<ValidationError>());
-      expect((tooMany as ValidationError).errorKey, 'error.maxItems');
-    });
+        // Above the upper bound.
+        field.setValue(const ['cheese', 'basil', 'olives', 'chilli']);
+        final tooMany = await field.validate();
+        expect(tooMany, isA<ValidationError>());
+        expect((tooMany as ValidationError).errorKey, 'error.maxItems');
+      },
+    );
 
     test('code validators and resource validators both apply', () async {
       TomTextResourceProvider.setAppResourceProvider(
-        TomTextResourceProvider.from({
-          'nickname.validators': 'minLength:3',
-        }),
+        TomTextResourceProvider.from({'nickname.validators': 'minLength:3'}),
       );
       // Code declares required; resource adds minLength:3.
       final field = TomFormStringInput(
@@ -306,20 +315,20 @@ void main() {
       expect((result as ValidationError).errorKey, 'error.minLength');
     });
 
-    test('a resource-declared required raises the required indicator',
-        () async {
-      TomTextResourceProvider.setAppResourceProvider(
-        TomTextResourceProvider.from({
-          'username.validators': 'required',
-        }),
-      );
-      final field = TomFormStringInput('username', '');
+    test(
+      'a resource-declared required raises the required indicator',
+      () async {
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from({'username.validators': 'required'}),
+        );
+        final field = TomFormStringInput('username', '');
 
-      // The anatomy decides whether to paint the required marker by looking
-      // for the shared required validator in the merged list — so the rule
-      // resolved from the bundle has to *be* that validator, not a wrapper
-      // around it, or a bundle-declared constraint renders unmarked.
-      expect(fieldHasRequiredValidator(field.validators), isTrue);
-    });
+        // The anatomy decides whether to paint the required marker by looking
+        // for the shared required validator in the merged list — so the rule
+        // resolved from the bundle has to *be* that validator, not a wrapper
+        // around it, or a bundle-declared constraint renders unmarked.
+        expect(fieldHasRequiredValidator(field.validators), isTrue);
+      },
+    );
   });
 }

@@ -595,7 +595,8 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// Builder-wide default for the **vertical** cross-axis placement of
   /// every row.
   TomAclBuilder<T> setAclDefaultRowVerticalAlignment(
-      AclRowCrossAlignment alignment) {
+    AclRowCrossAlignment alignment,
+  ) {
     _builder.setAclDefaultRowVerticalAlignment(alignment);
     return this;
   }
@@ -624,8 +625,10 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// Sets a default minimum size for components without an explicit minimum.
   /// Zeros are stored as zeros. See
   /// [AclBuilder.setAclDefaultUnknownMinimumSize].
-  TomAclBuilder<T> setAclDefaultUnknownMinimumSize(double width,
-      [double height = 0]) {
+  TomAclBuilder<T> setAclDefaultUnknownMinimumSize(
+    double width, [
+    double height = 0,
+  ]) {
     _builder.setAclDefaultUnknownMinimumSize(width, height);
     return this;
   }
@@ -633,8 +636,10 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// Sets a default preferred size for components without an explicit
   /// preferred size. A 0 width falls back to the built-in 150. See
   /// [AclBuilder.setAclDefaultUnknownPreferredSize].
-  TomAclBuilder<T> setAclDefaultUnknownPreferredSize(double width,
-      [double height = 0]) {
+  TomAclBuilder<T> setAclDefaultUnknownPreferredSize(
+    double width, [
+    double height = 0,
+  ]) {
     _builder.setAclDefaultUnknownPreferredSize(width, height);
     return this;
   }
@@ -746,17 +751,11 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       }
     }
     if (!_explicitPadding) {
-      final resPadding = TomCtr.edgeInsets(
-        containerPath,
-        'padding',
-      );
+      final resPadding = TomCtr.edgeInsets(containerPath, 'padding');
       if (resPadding != null) _builder.setAclPadding(resPadding);
     }
     if (!_explicitBackgroundColor) {
-      final resBg = TomCtr.color(
-        containerPath,
-        'backgroundColor',
-      );
+      final resBg = TomCtr.color(containerPath, 'backgroundColor');
       if (resBg != null) _builder.setAclBackgroundColor(resBg);
     }
     if (!_explicitTitleStyle) {
@@ -767,10 +766,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       if (resStyle != null) _builder.setAclTitleStyle(resStyle);
     }
     if (!_explicitTitleVerticalOffset) {
-      final resOffset = TomCtr.doubleVal(
-        containerPath,
-        'titleVerticalOffset',
-      );
+      final resOffset = TomCtr.doubleVal(containerPath, 'titleVerticalOffset');
       if (resOffset != null) _builder.setAclTitleVerticalOffset(resOffset);
     }
     if (!_explicitBorderStyle) {
@@ -804,18 +800,14 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].
   AclBorderStyle? _resolveBorderStyle(String basePath, String suffix) {
-    final map = TomCtr.map(basePath,suffix);
+    final map = TomCtr.map(basePath, suffix);
     if (map == null || map.isEmpty) return null;
     return AclBorderStyle(
       kind: _parseBorderKind(map['kind'] as String?) ?? AclBorderKind.none,
-      color:
-          TomCtr.color(basePath, '$suffix.color') ??
-          const Color(0x00000000),
-      lineWidth:
-          TomCtr.doubleVal(basePath, '$suffix.lineWidth') ?? 1.0,
+      color: TomCtr.color(basePath, '$suffix.color') ?? const Color(0x00000000),
+      lineWidth: TomCtr.doubleVal(basePath, '$suffix.lineWidth') ?? 1.0,
       rounded: TomCtr.boolVal(basePath, '$suffix.rounded') ?? false,
-      borderRadius:
-          TomCtr.doubleVal(basePath, '$suffix.borderRadius') ?? 0.0,
+      borderRadius: TomCtr.doubleVal(basePath, '$suffix.borderRadius') ?? 0.0,
       borderInsets:
           TomCtr.edgeInsets(basePath, '$suffix.borderInsets') ??
           EdgeInsets.zero,

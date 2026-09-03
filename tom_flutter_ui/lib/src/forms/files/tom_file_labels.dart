@@ -136,8 +136,7 @@ abstract final class TomFileLabels {
       _text(basePath, 'file.removed', 'Removed.');
 
   /// The confirmation for a completed transfer of no particular kind.
-  static String done(String? basePath) =>
-      _text(basePath, 'file.done', 'Done.');
+  static String done(String? basePath) => _text(basePath, 'file.done', 'Done.');
 
   /// The line shown after the user cancelled a transfer.
   static String cancelled(String? basePath) =>
@@ -158,17 +157,14 @@ abstract final class TomFileLabels {
   /// ones the auto-prepended validators raise, so an application that words its
   /// validation messages has already worded this one — the picker's immediate
   /// report and the form's later validation error cannot drift apart.
-  static String rejection(String? basePath, String errorKey) => resolve(
-    basePath,
-    errorKey,
-    switch (errorKey) {
-      'error.fileExtension' => 'That file type is not allowed.',
-      'error.fileTooLarge' => 'That file is too large.',
-      // An unknown key is more useful on screen than an empty line: it names
-      // the rule that fired and is greppable in a bug report.
-      _ => errorKey,
-    },
-  );
+  static String rejection(String? basePath, String errorKey) =>
+      resolve(basePath, errorKey, switch (errorKey) {
+        'error.fileExtension' => 'That file type is not allowed.',
+        'error.fileTooLarge' => 'That file is too large.',
+        // An unknown key is more useful on screen than an empty line: it names
+        // the rule that fired and is greppable in a bug report.
+        _ => errorKey,
+      });
 
   /// Resolves [key] scoped to [basePath], then globally, then [fallback],
   /// interpolating `{name}` placeholders from [params] at whichever level won.

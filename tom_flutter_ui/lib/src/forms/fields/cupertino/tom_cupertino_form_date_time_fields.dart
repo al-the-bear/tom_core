@@ -57,12 +57,9 @@ Widget _cupertinoTriggerTile({
       ),
       child: Row(
         children: [
-          Icon(icon,
-              size: 18, color: CupertinoColors.secondaryLabel),
+          Icon(icon, size: 18, color: CupertinoColors.secondaryLabel),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(label, style: style.inputStyle),
-          ),
+          Expanded(child: Text(label, style: style.inputStyle)),
           const Icon(
             CupertinoIcons.chevron_down,
             size: 18,
@@ -165,9 +162,9 @@ class TomCupertinoFormDatePicker extends TomFormDateField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoDatePickerWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoDatePickerWidget(field: this),
+  );
 }
 
 class _CupertinoDatePickerWidget extends StatefulWidget {
@@ -188,9 +185,11 @@ class _CupertinoDatePickerWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -217,8 +216,7 @@ class _CupertinoDatePickerWidgetState
         maximumDate: field.lastDate,
         onDateTimeChanged: (d) => temp = d,
       ),
-      onDone: () =>
-          field.setValue(DateTime(temp.year, temp.month, temp.day)),
+      onDone: () => field.setValue(DateTime(temp.year, temp.month, temp.day)),
     );
   }
 
@@ -277,9 +275,9 @@ class TomCupertinoFormTimePicker extends TomFormTimeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoTimePickerWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoTimePickerWidget(field: this),
+  );
 }
 
 class _CupertinoTimePickerWidget extends StatefulWidget {
@@ -300,9 +298,11 @@ class _CupertinoTimePickerWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -319,8 +319,7 @@ class _CupertinoTimePickerWidgetState
 
   void _open() {
     final t = field.get();
-    DateTime temp =
-        DateTime(2020, 1, 1, t.hour, t.minute);
+    DateTime temp = DateTime(2020, 1, 1, t.hour, t.minute);
     _showCupertinoPickerSheet(
       context: context,
       basePath: field.basePath,
@@ -391,9 +390,9 @@ class TomCupertinoFormDateTimePicker extends TomFormDateTimeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoDateTimePickerWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoDateTimePickerWidget(field: this),
+  );
 }
 
 class _CupertinoDateTimePickerWidget extends StatefulWidget {
@@ -414,9 +413,11 @@ class _CupertinoDateTimePickerWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -527,9 +528,9 @@ class TomCupertinoFormDurationPicker extends TomFormDurationField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoDurationPickerWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoDurationPickerWidget(field: this),
+  );
 }
 
 class _CupertinoDurationPickerWidget extends StatefulWidget {
@@ -550,9 +551,11 @@ class _CupertinoDurationPickerWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -639,9 +642,9 @@ class TomCupertinoFormDateRangePicker extends TomFormDateRangeField
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoDateRangePickerWidget(field: this),
-      );
+    field: this,
+    child: _CupertinoDateRangePickerWidget(field: this),
+  );
 }
 
 class _CupertinoDateRangePickerWidget extends StatefulWidget {
@@ -662,9 +665,11 @@ class _CupertinoDateRangePickerWidgetState
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -731,8 +736,8 @@ class _CupertinoDateRangePickerWidgetState
                     initialDateTime: current.start,
                     minimumDate: field.firstDate,
                     maximumDate: field.lastDate,
-                    onDateTimeChanged: (d) => tempStart =
-                        DateTime(d.year, d.month, d.day),
+                    onDateTimeChanged: (d) =>
+                        tempStart = DateTime(d.year, d.month, d.day),
                   ),
                 ),
                 Padding(

@@ -42,12 +42,17 @@ void main() {
     // case is what lets a caller pass a fully pre-resolved path, which is the
     // documented first of the two usage patterns.
     test('an empty suffix uses basePath verbatim', () {
-      install({'a.b': 'flat', 'a': {'b': 'tree'}});
+      install({
+        'a.b': 'flat',
+        'a': {'b': 'tree'},
+      });
       expect(TomCtr.value('a.b'), isNotNull);
     });
 
     test('a non-empty suffix is joined with a dot', () {
-      install({'w': {'label': 'Save'}});
+      install({
+        'w': {'label': 'Save'},
+      });
       expect(TomCtr.textOrNull('w', 'label'), 'Save');
       expect(TomCtr.textOrNull('w.label'), 'Save');
     });
@@ -94,7 +99,11 @@ void main() {
         'resolvePath': () => TomCtr.resolvePath(null),
       };
       for (final entry in lookups.entries) {
-        expect(entry.value(), isNull, reason: '${entry.key}(null) must be null');
+        expect(
+          entry.value(),
+          isNull,
+          reason: '${entry.key}(null) must be null',
+        );
       }
     });
   });
@@ -133,7 +142,11 @@ void main() {
     // the provider's String family, which filters by type; `value` speaks for
     // the object family, which does not; `exists` deliberately asks both, so
     // it answers for the union.
-    setUp(() => install({'w': {'n': 5}}));
+    setUp(
+      () => install({
+        'w': {'n': 5},
+      }),
+    );
 
     test('textOrNull reads nothing from a numeric resource', () {
       expect(TomCtr.textOrNull('w', 'n'), isNull);
@@ -157,28 +170,39 @@ void main() {
 
   group('TomCtr.color: names, hex, and packed ints', () {
     test('resolves a hex string', () {
-      install({'w': {'c': '#FF0000'}});
+      install({
+        'w': {'c': '#FF0000'},
+      });
       expect(TomCtr.color('w', 'c'), const Color(0xFFFF0000));
     });
 
     test('resolves an adapter colour name', () {
-      install({'w': {'c': 'mRed'}});
+      install({
+        'w': {'c': 'mRed'},
+      });
       expect(TomCtr.color('w', 'c'), TomUIColors.resolveColor('mRed'));
       expect(TomCtr.color('w', 'c'), isNotNull);
     });
 
     test('accepts a packed int', () {
-      install({'w': {'c': 0xFF00FF00}});
+      install({
+        'w': {'c': 0xFF00FF00},
+      });
       expect(TomCtr.color('w', 'c'), const Color(0xFF00FF00));
     });
 
     test('returns null for an unresolvable name', () {
-      install({'w': {'c': 'notAColour'}});
+      install({
+        'w': {'c': 'notAColour'},
+      });
       expect(TomCtr.color('w', 'c'), isNull);
     });
 
     test('returns null for a type it cannot read', () {
-      install({'w': {'c': 12.5}, 'x': {'c': <String>[]}});
+      install({
+        'w': {'c': 12.5},
+        'x': {'c': <String>[]},
+      });
       expect(TomCtr.color('w', 'c'), isNull);
       expect(TomCtr.color('x', 'c'), isNull);
     });
@@ -191,12 +215,16 @@ void main() {
 
   group('TomCtr.icon: names only', () {
     test('resolves an adapter icon name', () {
-      install({'w': {'i': 'mSave'}});
+      install({
+        'w': {'i': 'mSave'},
+      });
       expect(TomCtr.icon('w', 'i'), Icons.save);
     });
 
     test('returns null for an unresolvable name', () {
-      install({'w': {'i': 'notAnIcon'}});
+      install({
+        'w': {'i': 'notAnIcon'},
+      });
       expect(TomCtr.icon('w', 'i'), isNull);
     });
 
@@ -205,7 +233,9 @@ void main() {
       // An icon has no such self-describing integer form — a bare code point
       // is meaningless without the font family it belongs to — so a number
       // here is a bundle mistake rather than a second spelling.
-      install({'w': {'i': Icons.save.codePoint}});
+      install({
+        'w': {'i': Icons.save.codePoint},
+      });
       expect(TomCtr.icon('w', 'i'), isNull);
     });
 
@@ -230,12 +260,16 @@ void main() {
 
     for (final entry in numbers.entries) {
       test('doubleVal reads a ${entry.key}', () {
-        install({'w': {'n': entry.value}});
+        install({
+          'w': {'n': entry.value},
+        });
         expect(TomCtr.doubleVal('w', 'n'), 3.0);
       });
 
       test('intVal reads a ${entry.key}', () {
-        install({'w': {'n': entry.value}});
+        install({
+          'w': {'n': entry.value},
+        });
         expect(TomCtr.intVal('w', 'n'), 3);
       });
     }
@@ -243,19 +277,25 @@ void main() {
     test('intVal truncates a fractional value, however it is written', () {
       // The numeric route has always truncated. The string route must reach
       // the same answer or the two spellings of one resource disagree.
-      install({'w': {'a': 3.7, 'b': '3.7'}});
+      install({
+        'w': {'a': 3.7, 'b': '3.7'},
+      });
       expect(TomCtr.intVal('w', 'a'), 3);
       expect(TomCtr.intVal('w', 'b'), 3);
     });
 
     test('both return null for a non-numeric string', () {
-      install({'w': {'n': 'not-a-number'}});
+      install({
+        'w': {'n': 'not-a-number'},
+      });
       expect(TomCtr.doubleVal('w', 'n'), isNull);
       expect(TomCtr.intVal('w', 'n'), isNull);
     });
 
     test('both return null for a non-numeric type', () {
-      install({'w': {'n': true}});
+      install({
+        'w': {'n': true},
+      });
       expect(TomCtr.doubleVal('w', 'n'), isNull);
       expect(TomCtr.intVal('w', 'n'), isNull);
     });
@@ -269,7 +309,9 @@ void main() {
 
   group('TomCtr.boolVal: bools and their two spellings', () {
     test('reads a real bool', () {
-      install({'w': {'t': true, 'f': false}});
+      install({
+        'w': {'t': true, 'f': false},
+      });
       expect(TomCtr.boolVal('w', 't'), isTrue);
       expect(TomCtr.boolVal('w', 'f'), isFalse);
     });
@@ -289,13 +331,17 @@ void main() {
       // is authored, not scraped, and every format it is authored in has a
       // real boolean — so a number here is a mistake worth surfacing as null
       // rather than guessing which way it points.
-      install({'w': {'a': 1, 'b': 0}});
+      install({
+        'w': {'a': 1, 'b': 0},
+      });
       expect(TomCtr.boolVal('w', 'a'), isNull);
       expect(TomCtr.boolVal('w', 'b'), isNull);
     });
 
     test('rejects other words for yes and no', () {
-      install({'w': {'a': 'yes', 'b': 'off', 'c': ''}});
+      install({
+        'w': {'a': 'yes', 'b': 'off', 'c': ''},
+      });
       expect(TomCtr.boolVal('w', 'a'), isNull);
       expect(TomCtr.boolVal('w', 'b'), isNull);
       expect(TomCtr.boolVal('w', 'c'), isNull);
@@ -310,7 +356,9 @@ void main() {
       // The reason this method returns `bool?` and not `bool`. A caller that
       // applies `?? false` collapses the two, which is usually right and
       // occasionally the bug.
-      install({'w': {'f': false}});
+      install({
+        'w': {'f': false},
+      });
       expect(TomCtr.boolVal('w', 'f'), isFalse);
       expect(TomCtr.boolVal('w', 'missing'), isNull);
     });

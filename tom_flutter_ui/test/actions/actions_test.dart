@@ -24,8 +24,11 @@ class IncrementUndo implements TomActionUndo {
 
 class IncrementAction extends TomAction<CounterContext, IncrementUndo> {
   final int step;
-  IncrementAction({required super.controller, this.step = 1, String id = 'increment'})
-      : super(actionId: id);
+  IncrementAction({
+    required super.controller,
+    this.step = 1,
+    String id = 'increment',
+  }) : super(actionId: id);
 
   @override
   IncrementUndo execute(CounterContext context, TomActionTransaction tx) {
@@ -59,7 +62,7 @@ class ResetAction extends TomSimpleAction<CounterContext> {
 class UnrecordedIncrementAction
     extends TomAction<CounterContext, IncrementUndo> {
   UnrecordedIncrementAction({required super.controller})
-      : super(actionId: 'unrecordedIncrement');
+    : super(actionId: 'unrecordedIncrement');
 
   @override
   IncrementUndo execute(CounterContext context, TomActionTransaction tx) {
@@ -80,7 +83,7 @@ class LabelContext extends TomActionContext {
 
 class AppendLabelAction extends TomSimpleAction<LabelContext> {
   AppendLabelAction({required super.controller, required this.text})
-      : super(actionId: 'append');
+    : super(actionId: 'append');
 
   /// Not named `label` — [TomAction.label] is the resource-resolved caption.
   final String text;
@@ -142,8 +145,10 @@ void main() {
     test('actions list is unmodifiable', () {
       final controller = TomActionController(controllerId: 'c');
       IncrementAction(controller: controller);
-      expect(() => controller.actions.add(IncrementAction(controller: controller)),
-          throwsUnsupportedError);
+      expect(
+        () => controller.actions.add(IncrementAction(controller: controller)),
+        throwsUnsupportedError,
+      );
     });
   });
 
@@ -176,7 +181,9 @@ void main() {
       final reset = ResetAction(controller: controller);
       final counter = Counter()..value = 5;
       final undo = reset.execute(
-          CounterContext(counter), TomActionTransaction(label: 'reset'));
+        CounterContext(counter),
+        TomActionTransaction(label: 'reset'),
+      );
       expect(undo, isNull);
       expect(counter.value, 0);
     });
@@ -203,8 +210,10 @@ void main() {
       final controller = TomActionController(controllerId: 'c');
       final inc = IncrementAction(controller: controller);
       final tx = freshTx()..commit();
-      expect(() => tx.record(inc, IncrementUndo(Counter(), 0)),
-          throwsStateError);
+      expect(
+        () => tx.record(inc, IncrementUndo(Counter(), 0)),
+        throwsStateError,
+      );
     });
 
     test('rollback reverses recorded sub-actions', () {
@@ -251,8 +260,11 @@ void main() {
       final tx = freshTx();
       tx.run(action, CounterContext(counter));
       expect(counter.value, 1, reason: 'the action ran');
-      expect(tx.hasEntries, isFalse,
-          reason: 'isUndoable is false, so nothing is recorded');
+      expect(
+        tx.hasEntries,
+        isFalse,
+        reason: 'isUndoable is false, so nothing is recorded',
+      );
     });
 
     test('run after commit throws', () {
@@ -319,33 +331,35 @@ void main() {
       expect(history.undoCount, 2);
     });
 
-    test('redo restores the stack position and notifies, replaying nothing',
-        () {
-      var changes = 0;
-      final controller = TomActionController(controllerId: 'c');
-      final inc = IncrementAction(controller: controller);
-      final counter = Counter();
-      final history = TomUndoHistory(onChanged: () => changes++);
+    test(
+      'redo restores the stack position and notifies, replaying nothing',
+      () {
+        var changes = 0;
+        final controller = TomActionController(controllerId: 'c');
+        final inc = IncrementAction(controller: controller);
+        final counter = Counter();
+        final history = TomUndoHistory(onChanged: () => changes++);
 
-      history.push(committedTx(inc, counter)); // value 1
-      history.undo();
-      expect(counter.value, 0, reason: 'undo reverses the increment');
+        history.push(committedTx(inc, counter)); // value 1
+        history.undo();
+        expect(counter.value, 0, reason: 'undo reverses the increment');
 
-      final changesBeforeRedo = changes;
-      history.redo();
+        final changesBeforeRedo = changes;
+        history.redo();
 
-      // The stack position is restored in full...
-      expect(history.canUndo, isTrue);
-      expect(history.undoCount, 1);
-      expect(history.undoLabel, 'inc');
-      expect(history.canRedo, isFalse);
-      // ...listeners are told...
-      expect(changes, changesBeforeRedo + 1);
-      // ...but the action is not run forward again. The transaction holds the
-      // undo state, never the context execute would need, so there is nothing
-      // to replay. See TomUndoHistory.redo.
-      expect(counter.value, 0);
-    });
+        // The stack position is restored in full...
+        expect(history.canUndo, isTrue);
+        expect(history.undoCount, 1);
+        expect(history.undoLabel, 'inc');
+        expect(history.canRedo, isFalse);
+        // ...listeners are told...
+        expect(changes, changesBeforeRedo + 1);
+        // ...but the action is not run forward again. The transaction holds the
+        // undo state, never the context execute would need, so there is nothing
+        // to replay. See TomUndoHistory.redo.
+        expect(counter.value, 0);
+      },
+    );
 
     test('push clears the redo stack', () {
       final controller = TomActionController(controllerId: 'c');
@@ -459,12 +473,11 @@ void main() {
       TomAction<CounterContext, TomActionUndo> action,
       Counter counter, {
       bool Function()? guard,
-    }) =>
-        TomCompositeStep<CounterContext>(
-          action: action,
-          contextBuilder: () => CounterContext(counter),
-          guard: guard,
-        );
+    }) => TomCompositeStep<CounterContext>(
+      action: action,
+      contextBuilder: () => CounterContext(counter),
+      guard: guard,
+    );
 
     test('runs all passing steps and records undo into the transaction', () {
       final controller = TomActionController(controllerId: 'c');
@@ -494,7 +507,9 @@ void main() {
         ],
       );
       composite.execute(
-          CounterContext(counter), TomActionTransaction(label: 'x'));
+        CounterContext(counter),
+        TomActionTransaction(label: 'x'),
+      );
       expect(counter.value, 0);
     });
 
@@ -512,27 +527,33 @@ void main() {
         ],
       );
       composite.execute(
-          CounterContext(counter), TomActionTransaction(label: 'x'));
+        CounterContext(counter),
+        TomActionTransaction(label: 'x'),
+      );
       expect(counter.value, 1);
     });
 
-    test('a step whose action refuses canExecute stops the run, with no guard',
-        () {
-      final controller = TomActionController(controllerId: 'c');
-      final reset = ResetAction(controller: controller);
-      final inc = IncrementAction(controller: controller);
-      final counter = Counter(); // 0, so reset.canExecute is false
-      final composite = TomCompositeAction(
-        actionId: 'refused',
-        controller: controller,
-        // Note: no guard on either step. The stop is caused by the
-        // sub-action's own canExecute, not by a guard.
-        steps: [step(reset, counter), step(inc, counter)],
-      );
-      composite.execute(
-          CounterContext(counter), TomActionTransaction(label: 'x'));
-      expect(counter.value, 0, reason: 'step two never ran');
-    });
+    test(
+      'a step whose action refuses canExecute stops the run, with no guard',
+      () {
+        final controller = TomActionController(controllerId: 'c');
+        final reset = ResetAction(controller: controller);
+        final inc = IncrementAction(controller: controller);
+        final counter = Counter(); // 0, so reset.canExecute is false
+        final composite = TomCompositeAction(
+          actionId: 'refused',
+          controller: controller,
+          // Note: no guard on either step. The stop is caused by the
+          // sub-action's own canExecute, not by a guard.
+          steps: [step(reset, counter), step(inc, counter)],
+        );
+        composite.execute(
+          CounterContext(counter),
+          TomActionTransaction(label: 'x'),
+        );
+        expect(counter.value, 0, reason: 'step two never ran');
+      },
+    );
 
     test('without the flag, a canExecute refusal skips only its own step', () {
       final controller = TomActionController(controllerId: 'c');
@@ -546,7 +567,9 @@ void main() {
         steps: [step(reset, counter), step(inc, counter)],
       );
       composite.execute(
-          CounterContext(counter), TomActionTransaction(label: 'x'));
+        CounterContext(counter),
+        TomActionTransaction(label: 'x'),
+      );
       expect(counter.value, 1, reason: 'step two still ran');
     });
 
@@ -579,40 +602,44 @@ void main() {
       expect(composite.canExecute(CounterContext(counter)), isFalse);
     });
 
-    test('canExecute is false when a blocked first step would stop the run',
-        () {
-      final controller = TomActionController(controllerId: 'c');
-      final inc = IncrementAction(controller: controller);
-      final counter = Counter();
-      final composite = TomCompositeAction(
-        actionId: 'stops',
-        controller: controller,
-        // Default stopOnBlockedStep: true, so execute breaks at step one and
-        // step two is unreachable however runnable it looks in isolation.
-        steps: [
-          step(inc, counter, guard: () => false),
-          step(inc, counter),
-        ],
-      );
-      expect(composite.canExecute(CounterContext(counter)), isFalse);
-    });
+    test(
+      'canExecute is false when a blocked first step would stop the run',
+      () {
+        final controller = TomActionController(controllerId: 'c');
+        final inc = IncrementAction(controller: controller);
+        final counter = Counter();
+        final composite = TomCompositeAction(
+          actionId: 'stops',
+          controller: controller,
+          // Default stopOnBlockedStep: true, so execute breaks at step one and
+          // step two is unreachable however runnable it looks in isolation.
+          steps: [
+            step(inc, counter, guard: () => false),
+            step(inc, counter),
+          ],
+        );
+        expect(composite.canExecute(CounterContext(counter)), isFalse);
+      },
+    );
 
-    test('canExecute sees past a blocked step when blocked steps are skipped',
-        () {
-      final controller = TomActionController(controllerId: 'c');
-      final inc = IncrementAction(controller: controller);
-      final counter = Counter();
-      final composite = TomCompositeAction(
-        actionId: 'skips',
-        controller: controller,
-        stopOnBlockedStep: false, // step two is now reachable
-        steps: [
-          step(inc, counter, guard: () => false),
-          step(inc, counter),
-        ],
-      );
-      expect(composite.canExecute(CounterContext(counter)), isTrue);
-    });
+    test(
+      'canExecute sees past a blocked step when blocked steps are skipped',
+      () {
+        final controller = TomActionController(controllerId: 'c');
+        final inc = IncrementAction(controller: controller);
+        final counter = Counter();
+        final composite = TomCompositeAction(
+          actionId: 'skips',
+          controller: controller,
+          stopOnBlockedStep: false, // step two is now reachable
+          steps: [
+            step(inc, counter, guard: () => false),
+            step(inc, counter),
+          ],
+        );
+        expect(composite.canExecute(CounterContext(counter)), isTrue);
+      },
+    );
 
     test('canExecute is false for an empty step list', () {
       final controller = TomActionController(controllerId: 'c');
@@ -669,10 +696,16 @@ void main() {
           );
           final predicted = composite.canExecute(CounterContext(counter));
           composite.execute(
-              CounterContext(counter), TomActionTransaction(label: 'x'));
-          expect(predicted, counter.value > 0,
-              reason: 'firstBlocked=$firstBlocked '
-                  'stopOnBlockedStep=$stopOnBlocked');
+            CounterContext(counter),
+            TomActionTransaction(label: 'x'),
+          );
+          expect(
+            predicted,
+            counter.value > 0,
+            reason:
+                'firstBlocked=$firstBlocked '
+                'stopOnBlockedStep=$stopOnBlocked',
+          );
         }
       }
     });
@@ -721,11 +754,13 @@ void main() {
       return TomDualAction<CounterContext, CounterContext>(
         actionId: 'firstThenSecond',
         controller: controller,
-        first: first ??
+        first:
+            first ??
             IncrementAction(controller: controller, step: 1, id: 'first'),
         firstContextBuilder: () => CounterContext(counter),
         firstGuard: firstGuard,
-        second: second ??
+        second:
+            second ??
             IncrementAction(controller: controller, step: 10, id: 'second'),
         secondContextBuilder: () => CounterContext(counter),
         secondGuard: secondGuard,
@@ -743,8 +778,10 @@ void main() {
     test('skips the first action when firstGuard is false', () {
       final counter = Counter();
       final tx = TomActionTransaction(label: 'dual');
-      dual(counter, firstGuard: () => false)
-          .execute(CounterContext(counter), tx);
+      dual(
+        counter,
+        firstGuard: () => false,
+      ).execute(CounterContext(counter), tx);
       expect(counter.value, 10); // only second
       expect(tx.entryCount, 1);
     });
@@ -752,29 +789,40 @@ void main() {
     test('skips the second action when secondGuard is false', () {
       final counter = Counter();
       final tx = TomActionTransaction(label: 'dual');
-      dual(counter, secondGuard: () => false)
-          .execute(CounterContext(counter), tx);
+      dual(
+        counter,
+        secondGuard: () => false,
+      ).execute(CounterContext(counter), tx);
       expect(counter.value, 1); // only first
       expect(tx.entryCount, 1);
     });
 
-    test('canExecute is false when both guards pass but both actions refuse',
-        () {
-      final counter = Counter(); // 0, so both resets refuse
-      final controller = TomActionController(controllerId: 'refusing');
-      final action = dual(
-        counter,
-        first: ResetAction(controller: controller),
-        second: ResetAction(controller: controller),
-      );
-      expect(action.canExecute(CounterContext(counter)), isFalse);
-      action.execute(CounterContext(counter), TomActionTransaction(label: 'x'));
-      expect(counter.value, 0, reason: 'neither action ran');
-    });
+    test(
+      'canExecute is false when both guards pass but both actions refuse',
+      () {
+        final counter = Counter(); // 0, so both resets refuse
+        final controller = TomActionController(controllerId: 'refusing');
+        final action = dual(
+          counter,
+          first: ResetAction(controller: controller),
+          second: ResetAction(controller: controller),
+        );
+        expect(action.canExecute(CounterContext(counter)), isFalse);
+        action.execute(
+          CounterContext(counter),
+          TomActionTransaction(label: 'x'),
+        );
+        expect(counter.value, 0, reason: 'neither action ran');
+      },
+    );
 
     test('runs neither and canExecute is false when both guards fail', () {
       final counter = Counter();
-      final action = dual(counter, firstGuard: () => false, secondGuard: () => false);
+      final action = dual(
+        counter,
+        firstGuard: () => false,
+        secondGuard: () => false,
+      );
       expect(action.canExecute(CounterContext(counter)), isFalse);
       action.execute(CounterContext(counter), TomActionTransaction(label: 'x'));
       expect(counter.value, 0);
@@ -791,9 +839,11 @@ void main() {
 
           final dualCounter = Counter();
           final dualTx = TomActionTransaction(label: 'dual');
-          dual(dualCounter,
-                  firstGuard: () => firstOpen, secondGuard: () => secondOpen)
-              .execute(CounterContext(dualCounter), dualTx);
+          dual(
+            dualCounter,
+            firstGuard: () => firstOpen,
+            secondGuard: () => secondOpen,
+          ).execute(CounterContext(dualCounter), dualTx);
 
           final compCounter = Counter();
           final compTx = TomActionTransaction(label: 'composite');
@@ -805,13 +855,19 @@ void main() {
             steps: [
               TomCompositeStep<CounterContext>(
                 action: IncrementAction(
-                    controller: controller, step: 1, id: 'first'),
+                  controller: controller,
+                  step: 1,
+                  id: 'first',
+                ),
                 contextBuilder: () => CounterContext(compCounter),
                 guard: () => firstOpen,
               ),
               TomCompositeStep<CounterContext>(
                 action: IncrementAction(
-                    controller: controller, step: 10, id: 'second'),
+                  controller: controller,
+                  step: 10,
+                  id: 'second',
+                ),
                 contextBuilder: () => CounterContext(compCounter),
                 guard: () => secondOpen,
               ),
@@ -827,13 +883,19 @@ void main() {
     test('canExecute is true when only one guard passes (OR semantics)', () {
       final counter = Counter();
       expect(
-        dual(counter, firstGuard: () => true, secondGuard: () => false)
-            .canExecute(CounterContext(counter)),
+        dual(
+          counter,
+          firstGuard: () => true,
+          secondGuard: () => false,
+        ).canExecute(CounterContext(counter)),
         isTrue,
       );
       expect(
-        dual(counter, firstGuard: () => false, secondGuard: () => true)
-            .canExecute(CounterContext(counter)),
+        dual(
+          counter,
+          firstGuard: () => false,
+          secondGuard: () => true,
+        ).canExecute(CounterContext(counter)),
         isTrue,
       );
     });
@@ -846,8 +908,9 @@ void main() {
     tearDown(TomAuthorization.reset);
 
     test('authState resolves from the adapter at canonicalPath', () {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'sec.edit': TomAuthState.read});
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'sec.edit': TomAuthState.read,
+      });
       final controller = TomActionController(controllerId: 'sec');
       final action = IncrementAction(controller: controller, id: 'edit');
       expect(action.canonicalPath, 'sec.edit');
@@ -855,8 +918,9 @@ void main() {
     });
 
     test('effectiveAuthState equals authState without a group', () {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'sec.edit': TomAuthState.read});
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'sec.edit': TomAuthState.read,
+      });
       final controller = TomActionController(controllerId: 'sec');
       final action = IncrementAction(controller: controller, id: 'edit');
       expect(action.effectiveAuthState, TomAuthState.read);
@@ -871,8 +935,10 @@ void main() {
       final grouped = _GroupedIncrement(
         controller: controller,
         id: 'edit',
-        group: TomAuthorizationGroup('billing',
-            mode: AuthGroupMode.controlsWidest),
+        group: TomAuthorizationGroup(
+          'billing',
+          mode: AuthGroupMode.controlsWidest,
+        ),
       );
       // member full narrowed by group disabled → disabled.
       expect(grouped.effectiveAuthState, TomAuthState.disabled);
@@ -887,24 +953,31 @@ void main() {
       final grouped = _GroupedIncrement(
         controller: controller,
         id: 'edit',
-        group:
-            TomAuthorizationGroup('billing', mode: AuthGroupMode.controlsAll),
+        group: TomAuthorizationGroup(
+          'billing',
+          mode: AuthGroupMode.controlsAll,
+        ),
       );
       // controlsAll → group state replaces member state.
       expect(grouped.effectiveAuthState, TomAuthState.read);
     });
 
     test('authorizer applies the fromAction disabled pattern', () {
-      TomAuthorization.adapter =
-          _PathAuthAdapter({'sec.edit': TomAuthState.none});
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'sec.edit': TomAuthState.none,
+      });
       final controller = TomActionController(controllerId: 'sec');
       final action = IncrementAction(controller: controller, id: 'edit');
       // action auth none + widget resource full → disabled.
-      expect(action.authorizer.effectiveAuth(TomAuthState.full),
-          TomAuthState.disabled);
+      expect(
+        action.authorizer.effectiveAuth(TomAuthState.full),
+        TomAuthState.disabled,
+      );
       // widget hidden stays hidden.
-      expect(action.authorizer.effectiveAuth(TomAuthState.none),
-          TomAuthState.none);
+      expect(
+        action.authorizer.effectiveAuth(TomAuthState.none),
+        TomAuthState.none,
+      );
     });
   });
 
@@ -915,8 +988,14 @@ void main() {
       final counter = Counter();
       final history = TomUndoHistory();
 
-      final undoAction = TomUndoAction(controller: controller, history: history);
-      final redoAction = TomRedoAction(controller: controller, history: history);
+      final undoAction = TomUndoAction(
+        controller: controller,
+        history: history,
+      );
+      final redoAction = TomRedoAction(
+        controller: controller,
+        history: history,
+      );
       final undoCtx = TomUndoRedoContext();
 
       expect(undoAction.canExecute(undoCtx), isFalse);

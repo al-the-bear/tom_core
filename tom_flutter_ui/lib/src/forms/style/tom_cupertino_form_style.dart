@@ -66,21 +66,20 @@ class TomCupertinoFormStyle extends TomFormStyle {
   ///   * `labelPlacement: above` — same as Material default; Cupertino
   ///     concretes emit a placeholder *inside* the field independently.
   static TomCupertinoFormStyle get cupertino => const TomCupertinoFormStyle(
-        defaults: TomFieldStyle(
-          labelPlacement: LabelPlacement.above,
-          errorPlacement: ErrorPlacement.below,
-          descriptionPlacement: DescriptionPlacement.below,
-          actionIconPlacement: ActionIconPlacement.trailing,
-          labelFieldGap: 4.0,
-          errorFieldGap: 4.0,
-          descriptionFieldGap: 4.0,
-          fieldContentPadding:
-              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          borderRadius: 6.0,
-          errorBorderEnabled: false,
-          errorIconEnabled: false,
-        ),
-      );
+    defaults: TomFieldStyle(
+      labelPlacement: LabelPlacement.above,
+      errorPlacement: ErrorPlacement.below,
+      descriptionPlacement: DescriptionPlacement.below,
+      actionIconPlacement: ActionIconPlacement.trailing,
+      labelFieldGap: 4.0,
+      errorFieldGap: 4.0,
+      descriptionFieldGap: 4.0,
+      fieldContentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      borderRadius: 6.0,
+      errorBorderEnabled: false,
+      errorIconEnabled: false,
+    ),
+  );
 
   /// Returns a derivative populated from [theme]'s color scheme and text
   /// theme, then applies Cupertino-flavour error tinting.
@@ -123,7 +122,8 @@ BoxDecoration cupertinoFieldDecoration({
   bool focused = false,
 }) {
   final theme = CupertinoTheme.of(context);
-  final base = fillColor ?? CupertinoColors.tertiarySystemFill.resolveFrom(context);
+  final base =
+      fillColor ?? CupertinoColors.tertiarySystemFill.resolveFrom(context);
   return BoxDecoration(
     color: base,
     borderRadius: BorderRadius.circular(borderRadius),

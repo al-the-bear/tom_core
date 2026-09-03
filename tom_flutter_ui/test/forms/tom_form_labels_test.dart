@@ -8,11 +8,13 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _wrap(Widget child) =>
-    MaterialApp(home: Scaffold(body: Center(child: child)));
+Widget _wrap(Widget child) => MaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
-Widget _wrapCupertino(Widget child) =>
-    CupertinoApp(home: CupertinoPageScaffold(child: Center(child: child)));
+Widget _wrapCupertino(Widget child) => CupertinoApp(
+  home: CupertinoPageScaffold(child: Center(child: child)),
+);
 
 /// Installs [tree] as the application's resources, replacing whatever was
 /// there — the form widgets read their wording through this provider.
@@ -62,11 +64,17 @@ void main() {
       _installResources({
         'form': {'formatHint': 'Erwartet: {pattern}'},
       });
-      expect(TomFormLabels.formatHint(null, 'TT.MM.JJJJ'), 'Erwartet: TT.MM.JJJJ');
+      expect(
+        TomFormLabels.formatHint(null, 'TT.MM.JJJJ'),
+        'Erwartet: TT.MM.JJJJ',
+      );
       // The built-in fallback interpolates too, so an unconfigured
       // application still names the pattern rather than showing the brace.
       _installResources({});
-      expect(TomFormLabels.formatHint(null, 'YYYY-MM-DD'), 'Format: YYYY-MM-DD');
+      expect(
+        TomFormLabels.formatHint(null, 'YYYY-MM-DD'),
+        'Format: YYYY-MM-DD',
+      );
     });
 
     test('the row-error caption has a key per plural form', () {
@@ -87,9 +95,18 @@ void main() {
           'form': {'custom': 'scoped'},
         },
       });
-      expect(TomFormLabels.resolve('here', 'form.custom', 'fallback'), 'scoped');
-      expect(TomFormLabels.resolve('other', 'form.custom', 'fallback'), 'global');
-      expect(TomFormLabels.resolve(null, 'form.absent', 'fallback'), 'fallback');
+      expect(
+        TomFormLabels.resolve('here', 'form.custom', 'fallback'),
+        'scoped',
+      );
+      expect(
+        TomFormLabels.resolve('other', 'form.custom', 'fallback'),
+        'global',
+      );
+      expect(
+        TomFormLabels.resolve(null, 'form.absent', 'fallback'),
+        'fallback',
+      );
     });
   });
 
@@ -98,32 +115,33 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('Cupertino modal sheets read their buttons from resources', () {
-    testWidgets('an enum picker sheet says Cancel and Done in the app language', (
-      tester,
-    ) async {
-      _installResources({
-        'form': {'cancel': 'Abbrechen', 'done': 'Fertig'},
-      });
-      final field = TomCupertinoFormObjectPicker<String>(
-        'country',
-        'de',
-        source: StaticSelectableSource<String>(const [
-          SelectableItem(label: 'Deutschland', value: 'de'),
-          SelectableItem(label: 'Frankreich', value: 'fr'),
-        ]),
-      );
-      await tester.pumpWidget(_wrapCupertino(field.widget));
-      // The source loads asynchronously and a picker with no items refuses to
-      // open, so settle before tapping or the sheet never appears.
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(GestureDetector).first);
-      await tester.pumpAndSettle();
+    testWidgets(
+      'an enum picker sheet says Cancel and Done in the app language',
+      (tester) async {
+        _installResources({
+          'form': {'cancel': 'Abbrechen', 'done': 'Fertig'},
+        });
+        final field = TomCupertinoFormObjectPicker<String>(
+          'country',
+          'de',
+          source: StaticSelectableSource<String>(const [
+            SelectableItem(label: 'Deutschland', value: 'de'),
+            SelectableItem(label: 'Frankreich', value: 'fr'),
+          ]),
+        );
+        await tester.pumpWidget(_wrapCupertino(field.widget));
+        // The source loads asynchronously and a picker with no items refuses to
+        // open, so settle before tapping or the sheet never appears.
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(GestureDetector).first);
+        await tester.pumpAndSettle();
 
-      expect(find.text('Abbrechen'), findsOneWidget);
-      expect(find.text('Fertig'), findsOneWidget);
-      expect(find.text('Cancel'), findsNothing);
-      expect(find.text('Done'), findsNothing);
-    });
+        expect(find.text('Abbrechen'), findsOneWidget);
+        expect(find.text('Fertig'), findsOneWidget);
+        expect(find.text('Cancel'), findsNothing);
+        expect(find.text('Done'), findsNothing);
+      },
+    );
 
     testWidgets('a date picker sheet reads the same two keys', (tester) async {
       _installResources({
@@ -193,17 +211,18 @@ void main() {
   });
 
   group('the null sentinel is a resource on both families', () {
-    testWidgets('the Material nullable input falls through to form.nullDisplay', (
-      tester,
-    ) async {
-      _installResources({
-        'form': {'nullDisplay': '— nicht gesetzt —'},
-      });
-      final field = TomFormNStringInput('note', null);
+    testWidgets(
+      'the Material nullable input falls through to form.nullDisplay',
+      (tester) async {
+        _installResources({
+          'form': {'nullDisplay': '— nicht gesetzt —'},
+        });
+        final field = TomFormNStringInput('note', null);
 
-      expect(field.resolveNullDisplay(), '— nicht gesetzt —');
-      await tester.pumpWidget(_wrap(field.widget));
-    });
+        expect(field.resolveNullDisplay(), '— nicht gesetzt —');
+        await tester.pumpWidget(_wrap(field.widget));
+      },
+    );
 
     testWidgets('the Cupertino nullable input reads the same key', (
       tester,

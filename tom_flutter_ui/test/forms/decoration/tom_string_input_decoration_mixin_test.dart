@@ -23,11 +23,11 @@ class _DecoratedTestField extends TomField<String>
 
   @override
   Widget get widget => Builder(
-        builder: (context) => decorateField(
-          context,
-          const TextField(decoration: InputDecoration(hintText: 'inner')),
-        ),
-      );
+    builder: (context) => decorateField(
+      context,
+      const TextField(decoration: InputDecoration(hintText: 'inner')),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -59,11 +59,7 @@ Widget _wrap(Widget child, {TomFormStyle? style}) {
 void main() {
   group('TomStringInputDecorationMixin — label rendering', () {
     testWidgets('renders label text above field', (tester) async {
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Full Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Full Name');
 
       await tester.pumpWidget(_wrap(field.widget));
 
@@ -72,54 +68,49 @@ void main() {
     });
 
     testWidgets('hides label when labelPlacement is hidden', (tester) async {
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Full Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Full Name');
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(labelPlacement: LabelPlacement.hidden),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(labelPlacement: LabelPlacement.hidden),
+          ),
         ),
-      ));
+      );
 
       expect(find.text('Full Name'), findsNothing);
     });
 
     testWidgets('hides label when labelPlacement is floating', (tester) async {
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Full Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Full Name');
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(labelPlacement: LabelPlacement.floating),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(labelPlacement: LabelPlacement.floating),
+          ),
         ),
-      ));
+      );
 
       // Floating labels are handled by InputDecoration, not the mixin
       expect(find.text('Full Name'), findsNothing);
     });
 
-    testWidgets('renders label inline (same row) when inline placement',
-        (tester) async {
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Full Name',
-      );
+    testWidgets('renders label inline (same row) when inline placement', (
+      tester,
+    ) async {
+      final field = _DecoratedTestField('name', '', labelText: 'Full Name');
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(labelPlacement: LabelPlacement.inline),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(labelPlacement: LabelPlacement.inline),
+          ),
         ),
-      ));
+      );
 
       // Label and input should both be present
       expect(find.text('Full Name'), findsOneWidget);
@@ -140,7 +131,11 @@ void main() {
         }
         return true;
       });
-      expect(inlineRow, isNotNull, reason: 'Label and input share an inline Row');
+      expect(
+        inlineRow,
+        isNotNull,
+        reason: 'Label and input share an inline Row',
+      );
     });
 
     testWidgets('no label row when labelText is null', (tester) async {
@@ -168,11 +163,7 @@ void main() {
     });
 
     testWidgets('no asterisk for non-required field', (tester) async {
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Name');
 
       await tester.pumpWidget(_wrap(field.widget));
 
@@ -187,12 +178,14 @@ void main() {
         validators: [Validators.requiredInstance],
       );
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(requiredIndicator: RequiredIndicator.text),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(requiredIndicator: RequiredIndicator.text),
+          ),
         ),
-      ));
+      );
 
       expect(find.text(' (required)'), findsOneWidget);
     });
@@ -205,12 +198,14 @@ void main() {
         validators: [Validators.requiredInstance],
       );
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(requiredIndicator: RequiredIndicator.none),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(requiredIndicator: RequiredIndicator.none),
+          ),
         ),
-      ));
+      );
 
       expect(find.text(' *'), findsNothing);
       expect(find.text(' (required)'), findsNothing);
@@ -244,18 +239,21 @@ void main() {
 
       await field.validate();
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(errorPlacement: ErrorPlacement.above),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(errorPlacement: ErrorPlacement.above),
+          ),
         ),
-      ));
+      );
 
       expect(find.text('error.required'), findsOneWidget);
     });
 
-    testWidgets('shows error both above and below when configured',
-        (tester) async {
+    testWidgets('shows error both above and below when configured', (
+      tester,
+    ) async {
       final field = _DecoratedTestField(
         'name',
         '',
@@ -265,12 +263,14 @@ void main() {
 
       await field.validate();
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(errorPlacement: ErrorPlacement.both),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(errorPlacement: ErrorPlacement.both),
+          ),
         ),
-      ));
+      );
 
       // Should appear twice (above and below)
       expect(find.text('error.required'), findsNWidgets(2));
@@ -306,8 +306,9 @@ void main() {
       expect(find.text('Enter your full name'), findsOneWidget);
     });
 
-    testWidgets('shows description above field when configured',
-        (tester) async {
+    testWidgets('shows description above field when configured', (
+      tester,
+    ) async {
       final field = _DecoratedTestField(
         'name',
         '',
@@ -315,24 +316,22 @@ void main() {
         descriptionText: 'Enter your full name',
       );
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(
-            descriptionPlacement: DescriptionPlacement.above,
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(
+              descriptionPlacement: DescriptionPlacement.above,
+            ),
           ),
         ),
-      ));
+      );
 
       expect(find.text('Enter your full name'), findsOneWidget);
     });
 
     testWidgets('no description when descriptionText is null', (tester) async {
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Name');
 
       await tester.pumpWidget(_wrap(field.widget));
 
@@ -357,11 +356,7 @@ void main() {
 
     testWidgets('renders SizedBox.shrink when auth is none', (tester) async {
       adapter.setRule('name', TomAuthState.none);
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Name');
 
       await tester.pumpWidget(_wrap(field.widget));
 
@@ -369,14 +364,11 @@ void main() {
       expect(find.text('Name'), findsNothing);
     });
 
-    testWidgets('applies disabled opacity when auth is disabled',
-        (tester) async {
+    testWidgets('applies disabled opacity when auth is disabled', (
+      tester,
+    ) async {
       adapter.setRule('name', TomAuthState.disabled);
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Name');
 
       await tester.pumpWidget(_wrap(field.widget));
 
@@ -386,18 +378,16 @@ void main() {
 
     testWidgets('applies custom disabled opacity', (tester) async {
       adapter.setRule('name', TomAuthState.disabled);
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Name');
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: const TomFormStyle(
-          defaults: TomFieldStyle(disabledOpacity: 0.3),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(disabledOpacity: 0.3),
+          ),
         ),
-      ));
+      );
 
       final opacity = tester.widget<Opacity>(find.byType(Opacity));
       expect(opacity.opacity, 0.3);
@@ -405,11 +395,7 @@ void main() {
 
     testWidgets('applies readOnly opacity when auth is read', (tester) async {
       adapter.setRule('name', TomAuthState.read);
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Name');
 
       await tester.pumpWidget(_wrap(field.widget));
 
@@ -420,50 +406,50 @@ void main() {
       expect(opacity.opacity, 0.8);
     });
 
-    testWidgets(
-        'disabled and read render distinct opacities '
+    testWidgets('disabled and read render distinct opacities '
         '(disabled is not conflated with read-only)', (tester) async {
       // Four-state rendering regression: the four auth states must each
       // render distinctly. Historically `disabled` was conflated with `read-only`;
       // this pins the guarantee that the rendered dim differs between them.
       adapter.setRule('name', TomAuthState.disabled);
-      await tester.pumpWidget(_wrap(
-        _DecoratedTestField('name', '', labelText: 'Name').widget,
-      ));
-      final disabledOpacity =
-          tester.widget<Opacity>(find.byType(Opacity)).opacity;
+      await tester.pumpWidget(
+        _wrap(_DecoratedTestField('name', '', labelText: 'Name').widget),
+      );
+      final disabledOpacity = tester
+          .widget<Opacity>(find.byType(Opacity))
+          .opacity;
 
       adapter.setRule('name', TomAuthState.read);
-      await tester.pumpWidget(_wrap(
-        _DecoratedTestField('name', '', labelText: 'Name').widget,
-      ));
-      final readOpacity =
-          tester.widget<Opacity>(find.byType(Opacity)).opacity;
+      await tester.pumpWidget(
+        _wrap(_DecoratedTestField('name', '', labelText: 'Name').widget),
+      );
+      final readOpacity = tester.widget<Opacity>(find.byType(Opacity)).opacity;
 
       expect(disabledOpacity, 0.5);
       expect(readOpacity, 0.8);
-      expect(disabledOpacity, lessThan(readOpacity),
-          reason: 'disabled must dim more than read-only so the two states '
-              'are visually distinct (no conflation)');
+      expect(
+        disabledOpacity,
+        lessThan(readOpacity),
+        reason:
+            'disabled must dim more than read-only so the two states '
+            'are visually distinct (no conflation)',
+      );
     });
 
-    testWidgets('applies readOnlyBackground when auth is read',
-        (tester) async {
+    testWidgets('applies readOnlyBackground when auth is read', (tester) async {
       adapter.setRule('name', TomAuthState.read);
-      final field = _DecoratedTestField(
-        'name',
-        '',
-        labelText: 'Name',
-      );
+      final field = _DecoratedTestField('name', '', labelText: 'Name');
 
-      await tester.pumpWidget(_wrap(
-        field.widget,
-        style: TomFormStyle(
-          defaults: TomFieldStyle(
-            readOnlyBackground: WidgetStatePropertyAll(Colors.grey.shade200),
+      await tester.pumpWidget(
+        _wrap(
+          field.widget,
+          style: TomFormStyle(
+            defaults: TomFieldStyle(
+              readOnlyBackground: WidgetStatePropertyAll(Colors.grey.shade200),
+            ),
           ),
         ),
-      ));
+      );
 
       // Find the ColoredBox with our specific readOnlyBackground color
       final coloredBoxes = tester
@@ -490,11 +476,7 @@ void main() {
 
   group('TomStringInputDecorationMixin — pending spinner', () {
     testWidgets('no spinner when validation is not pending', (tester) async {
-      final field = _DecoratedTestField(
-        'name',
-        'Alice',
-        labelText: 'Name',
-      );
+      final field = _DecoratedTestField('name', 'Alice', labelText: 'Name');
 
       await tester.pumpWidget(_wrap(field.widget));
 

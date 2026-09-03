@@ -17,7 +17,8 @@ library;
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Autocomplete, Divider, Material, Theme;
+import 'package:flutter/material.dart'
+    show Autocomplete, Divider, Material, Theme;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../../widget_base/tom_construction_helpers.dart';
@@ -79,9 +80,9 @@ class TomCupertinoFormSearchInput<T> extends TomFormSearchField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoSearchInputWidget<T>(field: this),
-      );
+    field: this,
+    child: _CupertinoSearchInputWidget<T>(field: this),
+  );
 }
 
 class _CupertinoSearchInputWidget<T> extends StatefulWidget {
@@ -105,9 +106,11 @@ class _CupertinoSearchInputWidgetState<T>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -204,8 +207,10 @@ class _CupertinoSearchInputWidgetState<T>
                 itemBuilder: (ctx, i) {
                   final it = options.elementAt(i);
                   return CupertinoButton(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     alignment: Alignment.centerLeft,
                     onPressed: () => onSelected(it),
                     child: Text(
@@ -278,9 +283,9 @@ class TomCupertinoFormLookupSheet<T> extends TomFormLookupField<T>
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
-        field: this,
-        child: _CupertinoLookupSheetWidget<T>(field: this),
-      );
+    field: this,
+    child: _CupertinoLookupSheetWidget<T>(field: this),
+  );
 }
 
 class _CupertinoLookupSheetWidget<T> extends StatefulWidget {
@@ -304,9 +309,11 @@ class _CupertinoLookupSheetWidgetState<T>
   void initState() {
     super.initState();
     _loadItems();
-    _observer = field >> (_) {
-      if (mounted) setState(() {});
-    };
+    _observer =
+        field >>
+        (_) {
+          if (mounted) setState(() {});
+        };
     field.validationListenable.addListener(_onValidationChanged);
   }
 
@@ -431,9 +438,10 @@ class _CupertinoLookupSheetBodyState<T>
     final visible = _filter.isEmpty
         ? widget.items
         : widget.items
-            .where((it) =>
-                it.label.toLowerCase().contains(_filter.toLowerCase()))
-            .toList();
+              .where(
+                (it) => it.label.toLowerCase().contains(_filter.toLowerCase()),
+              )
+              .toList();
 
     final mediaHeight = MediaQuery.of(context).size.height;
     final sheetHeight = (mediaHeight * 0.7).clamp(320.0, 640.0);
@@ -458,9 +466,9 @@ class _CupertinoLookupSheetBodyState<T>
                   const Spacer(),
                   Text(
                     widget.title,
-                    style: CupertinoTheme.of(context)
-                        .textTheme
-                        .navTitleTextStyle,
+                    style: CupertinoTheme.of(
+                      context,
+                    ).textTheme.navTitleTextStyle,
                   ),
                   const Spacer(),
                   const SizedBox(width: 64),
@@ -486,7 +494,9 @@ class _CupertinoLookupSheetBodyState<T>
                   final it = visible[i];
                   return CupertinoButton(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     alignment: Alignment.centerLeft,
                     onPressed: it.enabled
                         ? () => Navigator.of(ctx).pop(it.value)
@@ -502,9 +512,9 @@ class _CupertinoLookupSheetBodyState<T>
                         if (it.description != null)
                           Text(
                             it.description!,
-                            style: CupertinoTheme.of(ctx)
-                                .textTheme
-                                .tabLabelTextStyle,
+                            style: CupertinoTheme.of(
+                              ctx,
+                            ).textTheme.tabLabelTextStyle,
                             overflow: TextOverflow.ellipsis,
                           ),
                       ],

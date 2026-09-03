@@ -67,8 +67,10 @@ class TomLoadingOverlay extends StatelessWidget {
                 if (message != null) ...[
                   const SizedBox(height: 12),
                   DefaultTextStyle.merge(
-                    style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onPrimary) ??
+                    style:
+                        theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onPrimary,
+                        ) ??
                         const TextStyle(color: Colors.white),
                     child: Text(message!),
                   ),

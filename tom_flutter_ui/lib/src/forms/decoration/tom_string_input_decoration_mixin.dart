@@ -21,8 +21,7 @@ mixin TomStringInputDecorationMixin<T> on TomField<T> {
   String? get descriptionText => null;
 
   /// Whether this field has a required validator.
-  bool get hasRequiredValidator =>
-      fieldHasRequiredValidator(validators);
+  bool get hasRequiredValidator => fieldHasRequiredValidator(validators);
 
   /// Resolves the per-width [TomFieldStyle] for this widget type.
   TomFieldStyle resolveStyle(BuildContext context) {

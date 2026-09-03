@@ -93,7 +93,8 @@ class TomEmptyState extends StatelessWidget {
     // always documented at [tomId], and the reverse of the button family's.
     // `textOrFail` closes the chain: it renders the key when a tomId was
     // given but its resource is absent, and throws when neither source was.
-    _resolvedTitle = TomCtr.textOrNull(basePath, 'title') ??
+    _resolvedTitle =
+        TomCtr.textOrNull(basePath, 'title') ??
         title ??
         TomCtr.textOrFail(basePath, 'title');
     _resolvedDescription =
@@ -113,20 +114,28 @@ class TomEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: iconSize,
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+            Icon(
+              icon,
+              size: iconSize,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+            ),
             const SizedBox(height: 12),
-            Text(_resolvedTitle,
-                style: theme.textTheme.titleMedium,
-                textAlign: TextAlign.center),
+            Text(
+              _resolvedTitle,
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
             if (body != null) ...[
               const SizedBox(height: 6),
-              Text(body,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                      color:
-                          theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8)),
-                  textAlign: TextAlign.center),
+              Text(
+                body,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.8,
+                  ),
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
             if (actionText != null && onActionPressed != null) ...[
               const SizedBox(height: 16),

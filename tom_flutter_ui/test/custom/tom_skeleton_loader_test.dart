@@ -36,12 +36,12 @@ const Key _boundary = Key('skeleton-boundary');
 /// Wraps [child] in a repaint boundary so the rendered result can be read
 /// back as pixels.
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: RepaintBoundary(key: _boundary, child: child),
-        ),
-      ),
-    );
+  home: Scaffold(
+    body: Center(
+      child: RepaintBoundary(key: _boundary, child: child),
+    ),
+  ),
+);
 
 /// The colour actually painted at the centre of the hosted widget.
 ///
@@ -74,57 +74,77 @@ Future<ui.Color> _centrePixel(WidgetTester tester) async {
 /// colour space and floating-point components that survived a different
 /// route.
 Matcher _sameColourAs(Color expected) => predicate<ui.Color>(
-      (actual) =>
-          (actual.r * 255).round() == (expected.r * 255).round() &&
-          (actual.g * 255).round() == (expected.g * 255).round() &&
-          (actual.b * 255).round() == (expected.b * 255).round(),
-      'the same RGB as $expected',
-    );
+  (actual) =>
+      (actual.r * 255).round() == (expected.r * 255).round() &&
+      (actual.g * 255).round() == (expected.g * 255).round() &&
+      (actual.b * 255).round() == (expected.b * 255).round(),
+  'the same RGB as $expected',
+);
 
 void main() {
   group('TomSkeletonLoader enabled: false', () {
-    testWidgets('without a child, the coloured rectangle remains',
-        (tester) async {
+    testWidgets('without a child, the coloured rectangle remains', (
+      tester,
+    ) async {
       // The half the old documentation described correctly.
-      await tester.pumpWidget(_host(const TomSkeletonLoader(
-        enabled: false,
-        width: 40,
-        height: 40,
-        baseColor: Colors.green,
-      )));
+      await tester.pumpWidget(
+        _host(
+          const TomSkeletonLoader(
+            enabled: false,
+            width: 40,
+            height: 40,
+            baseColor: Colors.green,
+          ),
+        ),
+      );
       await tester.pump();
 
-      expect(await _centrePixel(tester), _sameColourAs(Colors.green),
-          reason: 'the widget draws this rectangle itself, so dropping the '
-              'mask leaves it standing — a static placeholder');
+      expect(
+        await _centrePixel(tester),
+        _sameColourAs(Colors.green),
+        reason:
+            'the widget draws this rectangle itself, so dropping the '
+            'mask leaves it standing — a static placeholder',
+      );
       expect(find.byType(ShaderMask), findsNothing);
     });
 
-    testWidgets('with a child, the child keeps its own colours',
-        (tester) async {
+    testWidgets('with a child, the child keeps its own colours', (
+      tester,
+    ) async {
       // The half it did not. Nothing is painted over the child at all: it is
       // returned exactly as passed, which is a placeholder only if the caller
       // supplied one.
-      await tester.pumpWidget(_host(TomSkeletonLoader(
-        enabled: false,
-        child: Container(width: 40, height: 40, color: Colors.red),
-      )));
+      await tester.pumpWidget(
+        _host(
+          TomSkeletonLoader(
+            enabled: false,
+            child: Container(width: 40, height: 40, color: Colors.red),
+          ),
+        ),
+      );
       await tester.pump();
 
-      expect(await _centrePixel(tester), _sameColourAs(Colors.red),
-          reason: 'no grey box is drawn and no mask is applied — the caller '
-              "gets their own widget back, not a placeholder");
+      expect(
+        await _centrePixel(tester),
+        _sameColourAs(Colors.red),
+        reason:
+            'no grey box is drawn and no mask is applied — the caller '
+            "gets their own widget back, not a placeholder",
+      );
     });
 
-    testWidgets('a child that is real content is rendered as real content',
-        (tester) async {
+    testWidgets('a child that is real content is rendered as real content', (
+      tester,
+    ) async {
       // Stated separately from the colour case because this is the
       // consequence that matters to a reduced-motion caller: the setting
       // they reach for to stop the animation also stops the skeleton.
-      await tester.pumpWidget(_host(const TomSkeletonLoader(
-        enabled: false,
-        child: Text('real-content'),
-      )));
+      await tester.pumpWidget(
+        _host(
+          const TomSkeletonLoader(enabled: false, child: Text('real-content')),
+        ),
+      );
       await tester.pump();
 
       expect(find.text('real-content'), findsOneWidget);
@@ -133,35 +153,47 @@ void main() {
   });
 
   group('TomSkeletonLoader enabled: true', () {
-    testWidgets('the mask overpaints the child, hiding its colours',
-        (tester) async {
+    testWidgets('the mask overpaints the child, hiding its colours', (
+      tester,
+    ) async {
       // Without this, the test above is ambiguous: "the child is red when
       // disabled" could just mean the child is always red, making the
       // disabled case unremarkable. It is remarkable because the enabled
       // case is *not* red — which is also why the asymmetry stayed hidden.
-      await tester.pumpWidget(_host(TomSkeletonLoader(
-        child: Container(width: 40, height: 40, color: Colors.red),
-      )));
+      await tester.pumpWidget(
+        _host(
+          TomSkeletonLoader(
+            child: Container(width: 40, height: 40, color: Colors.red),
+          ),
+        ),
+      );
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.byType(ShaderMask), findsOneWidget);
-      expect(await _centrePixel(tester), isNot(_sameColourAs(Colors.red)),
-          reason: 'srcATop keeps the silhouette and replaces the colours, so '
-              'a red child shimmers grey like any other skeleton');
+      expect(
+        await _centrePixel(tester),
+        isNot(_sameColourAs(Colors.red)),
+        reason:
+            'srcATop keeps the silhouette and replaces the colours, so '
+            'a red child shimmers grey like any other skeleton',
+      );
     });
   });
 
   group('TomSkeletonLoader toggling', () {
-    testWidgets('disabling removes the mask rather than freezing it',
-        (tester) async {
+    testWidgets('disabling removes the mask rather than freezing it', (
+      tester,
+    ) async {
       // The dartdoc claims removal, not suspension. A frozen mask would keep
       // overpainting the child with whatever gradient phase it stopped on,
       // which is a different — and much less surprising — behaviour than the
       // one this widget actually has.
-      Widget at(bool enabled) => _host(TomSkeletonLoader(
-            enabled: enabled,
-            child: Container(width: 40, height: 40, color: Colors.red),
-          ));
+      Widget at(bool enabled) => _host(
+        TomSkeletonLoader(
+          enabled: enabled,
+          child: Container(width: 40, height: 40, color: Colors.red),
+        ),
+      );
 
       await tester.pumpWidget(at(true));
       await tester.pump(const Duration(milliseconds: 300));
@@ -172,9 +204,13 @@ void main() {
       await tester.pump();
 
       expect(find.byType(ShaderMask), findsNothing);
-      expect(await _centrePixel(tester), _sameColourAs(Colors.red),
-          reason: 'the colours come back, so the mask is gone and not merely '
-              'stopped');
+      expect(
+        await _centrePixel(tester),
+        _sameColourAs(Colors.red),
+        reason:
+            'the colours come back, so the mask is gone and not merely '
+            'stopped',
+      );
     });
   });
 }

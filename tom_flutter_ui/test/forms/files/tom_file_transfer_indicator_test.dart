@@ -60,11 +60,15 @@ class _GatedClient extends TomFileTransferClient {
   void close() {}
 }
 
-Widget _wrap(Widget child) =>
-    MaterialApp(home: Scaffold(body: Center(child: child)));
+Widget _wrap(Widget child) => MaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
-FileRef _ref() =>
-    FileRef(name: 'note.txt', sizeBytes: 4, bytes: Uint8List.fromList([1, 2, 3, 4]));
+FileRef _ref() => FileRef(
+  name: 'note.txt',
+  sizeBytes: 4,
+  bytes: Uint8List.fromList([1, 2, 3, 4]),
+);
 
 void main() {
   group('TomFileTransferIndicator', () {
@@ -176,9 +180,7 @@ void main() {
       addTearDown(controller.dispose);
 
       await tester.pumpWidget(
-        _wrap(
-          TomFileTransferIndicator(controller: controller, onRetry: () {}),
-        ),
+        _wrap(TomFileTransferIndicator(controller: controller, onRetry: () {})),
       );
 
       final running = controller.upload(_ref());

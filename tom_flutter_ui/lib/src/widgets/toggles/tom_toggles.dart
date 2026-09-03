@@ -63,12 +63,16 @@ class TomSwitch extends TomToggleBase {
     this.autofocus = false,
     this.overlayColor,
     this.splashRadius,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
-    _resolvedActiveTrackColor = activeTrackColor ?? TomCtr.color(basePath, 'activeTrackColor');
-    _resolvedInactiveThumbColor = inactiveThumbColor ?? TomCtr.color(basePath, 'inactiveThumbColor');
-    _resolvedInactiveTrackColor = inactiveTrackColor ?? TomCtr.color(basePath, 'inactiveTrackColor');
-    _resolvedSplashRadius = splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
+    _resolvedActiveTrackColor =
+        activeTrackColor ?? TomCtr.color(basePath, 'activeTrackColor');
+    _resolvedInactiveThumbColor =
+        inactiveThumbColor ?? TomCtr.color(basePath, 'inactiveThumbColor');
+    _resolvedInactiveTrackColor =
+        inactiveTrackColor ?? TomCtr.color(basePath, 'inactiveTrackColor');
+    _resolvedSplashRadius =
+        splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
     _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
   }
 
@@ -153,16 +157,18 @@ class TomCheckbox extends TomToggleBase {
     this.isError = false,
     this.focusNode,
     this.autofocus = false,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedCheckColor = checkColor ?? TomCtr.color(basePath, 'checkColor');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
     _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
-    _resolvedSplashRadius = splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
+    _resolvedSplashRadius =
+        splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
     _resolvedTristate = TomCtr.boolVal(basePath, 'tristate') ?? tristate;
     _resolvedIsError = TomCtr.boolVal(basePath, 'isError') ?? isError;
     _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
-    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+    _resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity('visualDensity');
     _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
     _resolvedSide = side ?? _resolveBorderSide('side');
   }
@@ -282,10 +288,12 @@ class TomRadio<T> extends TomToggleBase {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
     _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
-    _resolvedSplashRadius = splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
+    _resolvedSplashRadius =
+        splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
     _resolvedToggleable = TomCtr.boolVal(basePath, 'toggleable') ?? toggleable;
     _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
-    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+    _resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity('visualDensity');
   }
 
   @override
@@ -385,22 +393,33 @@ class TomSwitchListTile extends TomToggleBase {
     this.visualDensity,
     this.enableFeedback,
     this.hoverColor,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
-    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
-    _resolvedIsThreeLine = TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+    _resolvedTitle =
+        titleText ??
+        TomCtr.textOrNull(basePath, 'titleText') ??
+        TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    _resolvedIsThreeLine =
+        TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
-    _resolvedActiveTrackColor = activeTrackColor ?? TomCtr.color(basePath, 'activeTrackColor');
-    _resolvedInactiveThumbColor = inactiveThumbColor ?? TomCtr.color(basePath, 'inactiveThumbColor');
-    _resolvedInactiveTrackColor = inactiveTrackColor ?? TomCtr.color(basePath, 'inactiveTrackColor');
+    _resolvedActiveTrackColor =
+        activeTrackColor ?? TomCtr.color(basePath, 'activeTrackColor');
+    _resolvedInactiveThumbColor =
+        inactiveThumbColor ?? TomCtr.color(basePath, 'inactiveThumbColor');
+    _resolvedInactiveTrackColor =
+        inactiveTrackColor ?? TomCtr.color(basePath, 'inactiveTrackColor');
     _resolvedTileColor = tileColor ?? TomCtr.color(basePath, 'tileColor');
-    _resolvedSelectedTileColor = selectedTileColor ?? TomCtr.color(basePath, 'selectedTileColor');
+    _resolvedSelectedTileColor =
+        selectedTileColor ?? TomCtr.color(basePath, 'selectedTileColor');
     _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
     _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
-    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
-    _resolvedContentPadding = contentPadding ?? TomCtr.edgeInsets(basePath, 'contentPadding');
+    _resolvedEnableFeedback =
+        enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
+    _resolvedContentPadding =
+        contentPadding ?? TomCtr.edgeInsets(basePath, 'contentPadding');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
-    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+    _resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity('visualDensity');
   }
 
   @override
@@ -516,22 +535,32 @@ class TomCheckboxListTile extends TomToggleBase {
     this.autofocus = false,
     this.focusNode,
     this.checkboxShape,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
-    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
-    _resolvedIsThreeLine = TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+    _resolvedTitle =
+        titleText ??
+        TomCtr.textOrNull(basePath, 'titleText') ??
+        TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    _resolvedIsThreeLine =
+        TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
     _resolvedTristate = TomCtr.boolVal(basePath, 'tristate') ?? tristate;
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedCheckColor = checkColor ?? TomCtr.color(basePath, 'checkColor');
     _resolvedTileColor = tileColor ?? TomCtr.color(basePath, 'tileColor');
-    _resolvedSelectedTileColor = selectedTileColor ?? TomCtr.color(basePath, 'selectedTileColor');
-    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
+    _resolvedSelectedTileColor =
+        selectedTileColor ?? TomCtr.color(basePath, 'selectedTileColor');
+    _resolvedEnableFeedback =
+        enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
     _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
-    _resolvedContentPadding = contentPadding ?? TomCtr.edgeInsets(basePath, 'contentPadding');
+    _resolvedContentPadding =
+        contentPadding ?? TomCtr.edgeInsets(basePath, 'contentPadding');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
     _resolvedSide = side ?? _resolveBorderSide('side');
-    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
-    _resolvedCheckboxShape = checkboxShape ?? _resolveShapeBorder('checkboxShape') as OutlinedBorder?;
+    _resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity('visualDensity');
+    _resolvedCheckboxShape =
+        checkboxShape ??
+        _resolveShapeBorder('checkboxShape') as OutlinedBorder?;
   }
 
   @override
@@ -655,15 +684,21 @@ class TomRadioListTile<T> extends TomToggleBase {
     this.shape,
     this.fillColor,
   }) {
-    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    _resolvedTitle =
+        titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedTileColor = tileColor ?? TomCtr.color(basePath, 'tileColor');
-    _resolvedSelectedTileColor = selectedTileColor ?? TomCtr.color(basePath, 'selectedTileColor');
-    _resolvedContentPadding = contentPadding ?? TomCtr.edgeInsets(basePath, 'contentPadding');
+    _resolvedSelectedTileColor =
+        selectedTileColor ?? TomCtr.color(basePath, 'selectedTileColor');
+    _resolvedContentPadding =
+        contentPadding ?? TomCtr.edgeInsets(basePath, 'contentPadding');
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
-    _resolvedIsThreeLine = TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
-    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
-    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
+    _resolvedIsThreeLine =
+        TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
+    _resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity('visualDensity');
+    _resolvedEnableFeedback =
+        enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
     _resolvedToggleable = TomCtr.boolVal(basePath, 'toggleable') ?? toggleable;
     _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
@@ -777,19 +812,25 @@ class TomToggleButtons extends TomToggleBase {
     this.verticalDirection = VerticalDirection.down,
     this.constraints,
     this.textStyle,
-  })  : onPressed = InScopeBuilder(scope: scope).wrap1n(onPressed) {
+  }) : onPressed = InScopeBuilder(scope: scope).wrap1n(onPressed) {
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
-    _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
-    _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
+    _resolvedSelectedColor =
+        selectedColor ?? TomCtr.color(basePath, 'selectedColor');
+    _resolvedDisabledColor =
+        disabledColor ?? TomCtr.color(basePath, 'disabledColor');
     _resolvedFillColor = fillColor ?? TomCtr.color(basePath, 'fillColor');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
-    _resolvedHighlightColor = highlightColor ?? TomCtr.color(basePath, 'highlightColor');
+    _resolvedHighlightColor =
+        highlightColor ?? TomCtr.color(basePath, 'highlightColor');
     _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
     _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
     _resolvedBorderColor = borderColor ?? TomCtr.color(basePath, 'borderColor');
-    _resolvedSelectedBorderColor = selectedBorderColor ?? TomCtr.color(basePath, 'selectedBorderColor');
-    _resolvedDisabledBorderColor = disabledBorderColor ?? TomCtr.color(basePath, 'disabledBorderColor');
-    _resolvedBorderWidth = borderWidth ?? TomCtr.doubleVal(basePath, 'borderWidth');
+    _resolvedSelectedBorderColor =
+        selectedBorderColor ?? TomCtr.color(basePath, 'selectedBorderColor');
+    _resolvedDisabledBorderColor =
+        disabledBorderColor ?? TomCtr.color(basePath, 'disabledBorderColor');
+    _resolvedBorderWidth =
+        borderWidth ?? TomCtr.doubleVal(basePath, 'borderWidth');
   }
 
   @override
@@ -866,13 +907,16 @@ class TomCupertinoSwitch extends TomToggleBase {
     this.offLabelColor,
     this.focusNode,
     this.autofocus = false,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
-    _resolvedActiveTrackColor = activeTrackColor ?? TomCtr.color(basePath, 'activeTrackColor');
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+    _resolvedActiveTrackColor =
+        activeTrackColor ?? TomCtr.color(basePath, 'activeTrackColor');
     _resolvedThumbColor = thumbColor ?? TomCtr.color(basePath, 'thumbColor');
     _resolvedTrackColor = trackColor ?? TomCtr.color(basePath, 'trackColor');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
-    _resolvedOnLabelColor = onLabelColor ?? TomCtr.color(basePath, 'onLabelColor');
-    _resolvedOffLabelColor = offLabelColor ?? TomCtr.color(basePath, 'offLabelColor');
+    _resolvedOnLabelColor =
+        onLabelColor ?? TomCtr.color(basePath, 'onLabelColor');
+    _resolvedOffLabelColor =
+        offLabelColor ?? TomCtr.color(basePath, 'offLabelColor');
   }
 
   @override
@@ -943,12 +987,14 @@ class TomCupertinoCheckbox extends TomToggleBase {
     this.side,
     this.shape,
     this.semanticLabel,
-  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
-    _resolvedInactiveColor = inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
+    _resolvedInactiveColor =
+        inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
     _resolvedCheckColor = checkColor ?? TomCtr.color(basePath, 'checkColor');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
-    _resolvedSemanticLabel = semanticLabel ?? TomCtr.textOrNull(basePath, 'semanticLabel');
+    _resolvedSemanticLabel =
+        semanticLabel ?? TomCtr.textOrNull(basePath, 'semanticLabel');
     _resolvedSide = side ?? _resolveBorderSide('side');
     _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
   }
@@ -1033,7 +1079,8 @@ class TomCupertinoRadio<T> extends TomToggleBase {
     this.useCheckmarkStyle = false,
   }) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
-    _resolvedInactiveColor = inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
+    _resolvedInactiveColor =
+        inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
     _resolvedFillColor = fillColor ?? TomCtr.color(basePath, 'fillColor');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
   }

@@ -208,10 +208,7 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   /// Creates the controller for this field's slot, or `null` when the field is
   /// not wired for transfer.
   TomFileTransferController? createTransferController() => canTransfer
-      ? TomFileTransferController(
-          client: transferClient!,
-          slot: storageSlot!,
-        )
+      ? TomFileTransferController(client: transferClient!, slot: storageSlot!)
       : null;
 
   /// Validate the picked file against `allowedExtensions` / `maxSizeBytes`.
@@ -254,11 +251,13 @@ mixin TomFileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
   @override
   void initState() {
     super.initState();
-    _observer = field >> (_) {
-      if (!mounted) return;
-      setState(() {});
-      onFieldValueChanged();
-    };
+    _observer =
+        field >>
+        (_) {
+          if (!mounted) return;
+          setState(() {});
+          onFieldValueChanged();
+        };
     field.validationListenable.addListener(_onValidationChanged);
     transferController = field.createTransferController();
     if (transferController != null) {
@@ -599,8 +598,10 @@ class TomFormFileUpload extends TomFormFileField
   }
 
   @override
-  Widget get widget =>
-      TomFieldWidgetAdapter(field: this, child: _FileUploadWidget(field: this));
+  Widget get widget => TomFieldWidgetAdapter(
+    field: this,
+    child: _FileUploadWidget(field: this),
+  );
 }
 
 class _FileUploadWidget extends StatefulWidget {
@@ -644,9 +645,7 @@ class _FileUploadWidgetState extends State<_FileUploadWidget>
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                v == null
-                    ? TomFileLabels.none(f.basePath)
-                    : selectedCaption(v),
+                v == null ? TomFileLabels.none(f.basePath) : selectedCaption(v),
                 style: style.inputStyle,
                 overflow: TextOverflow.ellipsis,
               ),
