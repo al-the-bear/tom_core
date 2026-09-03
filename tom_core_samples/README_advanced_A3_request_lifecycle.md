@@ -76,7 +76,7 @@ is read by the app server through the framework's `main` datasource
 
 The user submits credentials; `AuthClient.login` POSTs them to the **public**
 `/auth/login` and, on success, stores the returned token pair
-(`advanced_client_core/lib/src/auth/auth_client.dart:68`):
+(`advanced_client_core/lib/src/auth/auth_client.dart`):
 
 ```dart
 final response = await _transport.send(
@@ -89,28 +89,30 @@ The request body is serialized by `dtoToJsonString` — the reflection-first DTO
 helper ([Part 04](README_advanced_04_wire_contracts_dtos.md)) that runs
 `LoginRequest` through the same kernel reflection path as every other DTO — not a
 hand-written `LoginRequest.toJson()`, which does not exist. Symmetrically,
-`_requireLogin` decodes the response with `dtoFromJson<LoginResult>`
-(`auth_client.dart:139`).
+`AuthClient._requireLogin` decodes the response with `dtoFromJson<LoginResult>`
+(`auth_client.dart`).
 
 On the server, `login` is one of the endpoints whose contract declares
 `TomPublicAccess()` (`TomApiEndpoint.access`) —
 it *must* be reachable without a bearer, because it is how a bearer is obtained
 (`advanced_todo_contracts/lib/src/api_registry.dart`, `authApi['authLogin']`). It
-delegates to `AuthTokenService.login` (`:59`), which verifies the password
-through `AdvancedAuthenticationService.authenticateUser` and then issues the
-**pair** of JWTs in `_issueFor` (`:95-121`): a public *authentication* token and
-an *authorization* token carrying the encrypted access-control payload, both with
-the 2-hour `tokenLifetime` (`:45`). A rejected login throws `TomLoginException`,
-which `LoginUnauthorizedErrorHandler` (`:148`) maps to a bare **401** carrying
-only the opaque key — never *which* of username/password was wrong (no
-account-existence leak).
+delegates to `AuthTokenService.login`
+(`advanced_auth_server/lib/src/endpoints/auth_endpoints.dart`), which verifies
+the password through `AdvancedAuthenticationService.authenticateUser` and then
+issues the **pair** of JWTs in `AuthTokenService._issueFor`: a public
+*authentication* token and an *authorization* token carrying the encrypted
+access-control payload, both with the 2-hour `AuthTokenService.tokenLifetime`.
+A rejected login throws `TomLoginException`, which
+`LoginUnauthorizedErrorHandler` maps to a bare **401** carrying only the opaque
+key — never *which* of username/password was wrong (no account-existence leak).
 
-The client stores the pair via `_store` → `TomBearerAuthentication.setTokens`
-(`auth_client.dart:145`). `decryptTokens` is `false` for this Flutter-free
-sample (`:62`): the authorization token is held as an **opaque bearer**, identity
-is read from `LoginResult.user`, and field grades come from the app API — so no
-RSA key is configured client-side. The bytes that matter downstream are now in
-the singleton token store.
+The client stores the pair via `AuthClient._store` →
+`TomBearerAuthentication.setTokens`. `decryptTokens` is `false` for this
+Flutter-free sample (the `AuthClient` constructor's default): the authorization
+token is held as an **opaque bearer**, identity is read from `LoginResult.user`,
+and field grades come from the app API — so no RSA key is configured
+client-side. The bytes that matter downstream are now in the singleton token
+store.
 
 > **The two stores are not the same store.** `TomBearerAuthentication` here is
 > the **client-side** token holder. The server never populates it; it recovers
@@ -152,29 +154,32 @@ signature against the shared key, decodes the principal, and places it in the
 there — never from the client singleton:
 
 ```dart
+// app_endpoints.dart — AdvancedAppApiService._principalId
 int get _principalId =>
-    int.tryParse('${getFromCurrentZone<TomPrincipal>()?.user.id}') ?? -1;   // :981
+    int.tryParse('${getFromCurrentZone<TomPrincipal>()?.user.id}') ?? -1;
 ```
 
-The library doc at `:973-979` is explicit about *why*: the zone value is
-request-scoped (safe under concurrency), whereas `TomBearerAuthentication`'s
-static singleton is a client-side store the server middleware never fills. If
-the bearer is missing or invalid, the pipeline rejects the request *before*
-invocation with `endpoint_handler.handle_method_call.access_denied`
-(`app_endpoints.dart:904`), which the server-level `appForbiddenOrNotFound`
-handler maps to **403** (`:935-939`). Past this point the principal id — `val`'s
-auth-user surrogate key — is the only identity the rest of the trace uses.
+The doc comment on `AdvancedAppApiService._principalId` is explicit about *why*:
+the zone value is request-scoped (safe under concurrency), whereas
+`TomBearerAuthentication`'s static singleton is a client-side store the server
+middleware never fills. If the bearer is missing or invalid, the pipeline
+rejects the request *before* invocation with
+`endpoint_handler.handle_method_call.access_denied`
+(`appEndpointAccessDeniedKey` in `app_endpoints.dart`), which the server-level
+`appForbiddenOrNotFound` handler maps to **403**. Past this point the principal
+id — `val`'s auth-user surrogate key — is the only identity the rest of the
+trace uses.
 
 ## 3. Ownership / share resolution
 
 At login the client also calls `AppReadService.resourceRoles(userId)`
 (via `GET /resource-roles`, `AppApiClient.resourceRoles()`,
-`advanced_client_core/lib/src/api/app_api_client.dart:247`), which folds the
+`advanced_client_core/lib/src/api/app_api_client.dart`), which folds the
 principal's ownership grants + share delegations and expands each down its
 containment subtree into a flat `resourceKey → roleName` map (a workspace/project
 grant surfaces on every contained list/item). That fold reuses the app server's
 resource-role authorization layer, `ResourceRoleResolver.resolveRole`
-(`advanced_app_server/lib/src/access/resource_role_resolver.dart:117`), whose
+(`advanced_app_server/lib/src/access/resource_role_resolver.dart`), whose
 per-item logic resolves *whether `val` may touch this item at all, and as what
 role*:
 
@@ -210,8 +215,9 @@ grades each field **locally**, from two pieces already in hand: the item's
 resource-level ceiling (resolved through the framework registry via the installed
 `AppResourceRoleAdapter`) and the shared per-role field-grade rows,
 `projectRoleFieldGrades[role]` — which live in the SHARED DOMAIN, not in the
-client. The item detail screen's `_resolveForm()` is fully **synchronous** (no
-backend round-trip, `advanced_app_client/lib/screens/item_detail_screen.dart:146-171`):
+client. The item detail screen's `_ItemDetailScreenState._resolveForm` is fully
+**synchronous** (no backend round-trip,
+`advanced_app_client/lib/screens/item_detail_screen.dart`):
 
 ```dart
 final itemKey = ResourceRoleKeys.item(_item.id.get());         // shared-domain builder
@@ -236,7 +242,7 @@ Three facts keep this closed-safe *and* keep the registry load-bearing:
 - **The narrow reproduces the matrix.** Because every role's field grades sit at
   or below its resource ceiling, `resourceState.narrow(grades[basePath] ?? none)`
   reproduces the §A.4 matrix exactly; a missing grade or a missing role collapses
-  the field to `none` (`:146-171`).
+  the field to `none` (`_ItemDetailScreenState._resolveForm`).
 
 **The server still computes per-field grades — but only to ENFORCE writes**
 (§"The write path", below), never as a read payload. For the `viewer` role the
@@ -251,7 +257,7 @@ The only authorization payload the app server ships on a read is the flat
 `GET /resource-roles` (`appResourceRoles`). It is a plain
 `Map<String, String>` — `resourceKey → roleName` — with no `GradedFieldDto`,
 no per-field grade, and no envelope. On the client, `AppApiClient.resourceRoles`
-decodes it (`advanced_client_core/lib/src/api/app_api_client.dart:247`):
+decodes it (`advanced_client_core/lib/src/api/app_api_client.dart`):
 
 ```dart
 Future<Map<String, String>> resourceRoles() async { … } // GET /resource-roles → resourceKey→roleName
@@ -271,15 +277,15 @@ enumerates, now resolved locally rather than over the wire.
 At login the session snapshots the principal's `resourceRoles` map (field
 `_resourceRoles`) and installs an `AppResourceRoleAdapter(resourceRoles)` as the
 **global** `TomAuthorization` adapter; on logout it resets the adapter
-(`advanced_app_client/lib/app/app_session.dart`, doc lines 10-14). The adapter
+(the `AppSession` class doc, `advanced_app_client/lib/app/app_session.dart`). The adapter
 (`advanced_app_client/lib/app/app_resource_role_adapter.dart`) wraps a
 `TomResourceRoleAdapter` over the map and the `TomResourceRoleRegistry`: it gates
 only `<type>:<id>` resource keys (those containing `:`); any dotted path
 (`todo.item.title`, `todo.item.save`, chrome) stays permissive (`full`), matching
 the pre-RCC2 no-adapter behaviour.
 
-When the item detail screen opens an item, `_resolveForm()`
-(`advanced_app_client/lib/screens/item_detail_screen.dart:146-171`) grades each
+When the item detail screen opens an item, `_ItemDetailScreenState._resolveForm`
+(`advanced_app_client/lib/screens/item_detail_screen.dart`) grades each
 gradable field **synchronously** — resolving the item's resource ceiling through
 the registry and narrowing it by the shared `projectRoleFieldGrades[role]` row
 (§4):
@@ -322,9 +328,9 @@ different matrix was installed (the TC-30 matrix proof,
 The read trace ends at a rendered grid; a **write** adds one more enforcement
 point that proves the grades are not merely cosmetic. When `val` (or a more
 privileged `bob`) saves, `AppApiClient.updateItem` PUTs the item
-(`app_api_client.dart:229`) and the server re-runs *both* layers, then enforces
+(`app_api_client.dart`) and the server re-runs *both* layers, then enforces
 the grade a second time in `AppWriteService.updateItem`
-(`app_endpoints.dart:564`) via `_enforceFieldWrites` (`:663`):
+(`app_endpoints.dart`) via `AppWriteService._enforceFieldWrites`:
 
 ```dart
 for (final field in _gradableItemFields) {
@@ -336,7 +342,8 @@ for (final field in _gradableItemFields) {
 ```
 
 A change to any field the caller is not `full` on rejects the **whole** write,
-and the persisted row overlays *only* the `full`-graded fields (`:677-683`). A
+and the persisted row overlays *only* the `full`-graded fields (onto the
+`AppWriteService._cloneItem` copy `_enforceFieldWrites` builds). A
 well-behaved client never sends a field its grade hides, so this never fires for
 the app client — but it is the backstop for a client that ignores its grade.
 **Authorization is enforced where the data lives, not only where it is drawn**
@@ -359,16 +366,16 @@ against sockets, not just on paper.
 
 ## Primary sources
 
-- `advanced_client_core/lib/src/auth/auth_client.dart:68`,`:145`;
-  `advanced_client_core/lib/src/http/authorized_http.dart:56`,`:82-99`
-- `advanced_auth_server/lib/src/endpoints/auth_endpoints.dart:59`,`:95-121`,`:193-200`,`:148`
-- `advanced_app_server/lib/src/endpoints/app_endpoints.dart:564`,`:663`,`:904`,`:981`
-- `advanced_app_server/lib/src/access/resource_role_resolver.dart:117`;
-  `advanced_app_server/lib/src/access/field_grade_resolver.dart:65`,`:73` (WRITE-path enforcement)
-- `advanced_client_core/lib/src/api/app_api_client.dart:229`,`:247` (`resourceRoles`);
+- `advanced_client_core/lib/src/auth/auth_client.dart` — `AuthClient.login`, `AuthClient._store`;
+  `advanced_client_core/lib/src/http/authorized_http.dart` — `AuthorizedHttp.send`, `AuthorizedHttp._sendWithBearer`
+- `advanced_auth_server/lib/src/endpoints/auth_endpoints.dart` — `AuthTokenService.login`, `AuthTokenService._issueFor`, `AuthTokenService.refresh`, `LoginUnauthorizedErrorHandler`
+- `advanced_app_server/lib/src/endpoints/app_endpoints.dart` — `AppWriteService.updateItem`, `AppWriteService._enforceFieldWrites`, `appEndpointAccessDeniedKey`, `AdvancedAppApiService._principalId`
+- `advanced_app_server/lib/src/access/resource_role_resolver.dart` — `ResourceRoleResolver.resolveRole`;
+  `advanced_app_server/lib/src/access/field_grade_resolver.dart` — `FieldGradeResolver.gradesForRole`, `FieldGradeResolver.resolveItemFieldStates` (WRITE-path enforcement)
+- `advanced_client_core/lib/src/api/app_api_client.dart` — `AppApiClient.updateItem`, `AppApiClient.resourceRoles`;
   `advanced_app_client/lib/app/app_session.dart` (`_resourceRoles`);
   `advanced_app_client/lib/app/app_resource_role_adapter.dart`;
-  `advanced_app_client/lib/screens/item_detail_screen.dart:146-171`
+  `advanced_app_client/lib/screens/item_detail_screen.dart` — `_ItemDetailScreenState._resolveForm`
 - `run_cross_tier_integration.sh` (the same loop, executed live)
 - Companions: [06](README_advanced_06_authentication.md) ·
   [07](README_advanced_07_authorization.md) ·

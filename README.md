@@ -204,7 +204,7 @@ reports and never gates.
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
 | [`tool/check_test_inventories.py`](tool/check_test_inventories.py) | Audits a document that claims to inventory a package's test files against the files the runner discovers |
-| [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments and SVG figures that cite a line number instead of naming the thing |
+| [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and sample guides that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
@@ -489,8 +489,9 @@ python3 tool/check_source_citations.py                 # the whole repository
 python3 tool/check_source_citations.py tom_flutter_ui  # one subtree
 ```
 
-It reports Dart comments — and every line of an SVG figure — that cite a line
-number rather than naming what they point at: `SELF` when no file is named, so
+It reports Dart comments — and every line of an SVG figure or a
+`tom_core_samples/` guide — that cite a line number rather than naming what they
+point at: `SELF` when no file is named, so
 the citation lands in its own file, and `CROSS` when one is. `// Per the class
 contract (lines 13-17)` was the case that prompted it. That citation was
 accurate the day it was written, and any insertion above it would have left it
@@ -506,18 +507,33 @@ its claims in both the comment and the drawing — and all three had rotted: one
 pointed a whole layer away from the layer it named, one named a path that no
 longer existed, one had a stale end line. Nothing reported any of it.
 
-The rule now fires **zero** times across 1486 Dart files and 9 figures, and
-that is the argument for it rather than against. A gate earns its place by
-whether the fault would be caught if it came back, not by how much it currently
-finds; this fault is invisible by construction, and a convention met once a
-year is one no reviewer can be asked to hold. Because the rule is silent on the
-existing tree it adds no triage burden — the opposite of the two rules declined
-nearby, at 353 and 519 violations of judgement. Markdown is left out on the
-same arithmetic: the pattern occurs 173 times across 18 files of guide prose,
-where a line citation in a paragraph of explanation is a normal thing to write.
-Naming the target is always possible, which is what keeps the rule fair: every
-line range sits inside a class, a member or a headed list that has a name, and
-the named form survives the edit that breaks the numbered one.
+The rule now fires **zero** times across 1502 Dart files, 9 figures and 39
+guide documents, and that is the argument for it rather than against. A gate
+earns its place by whether the fault would be caught if it came back, not by how
+much it currently finds; this fault is invisible by construction, and a
+convention met once a year is one no reviewer can be asked to hold. Because the
+rule is silent on the existing tree it adds no triage burden — the opposite of
+the two rules declined nearby, at 353 and 519 violations of judgement. Naming
+the target is always possible, which is what keeps the rule fair: every line
+range sits inside a class, a member or a headed list that has a name, and the
+named form survives the edit that breaks the numbered one.
+
+**The guides were the largest host, and are now scanned too.** Markdown was
+originally excluded on arithmetic — 173 occurrences across 18 files would have
+meant 173 judgement calls on day one. Those calls have since been made for
+`tom_core_samples/`: every anchor was resolved by hand and replaced with the
+name of the declaration it pointed at. Checking them first settled whether the
+fault was theoretical. It was not: *essentially every* anchor had drifted, and
+almost all of them still resolved — to real code that was simply not the code
+the sentence described. An anchor for the login JWT pair landed inside
+two-factor submission; one for the closed-safe grade default landed on a
+different method; several landed on blank lines and closing braces. Only two
+pointed past end of file, which is the sole variant a reader can detect
+unaided. The scan stops at that subtree on purpose: elsewhere — including this
+README two paragraphs above — the same shapes appear in prose that *quotes* the
+fault rather than commits it, and gating those would either need a suppression
+list this suite does not have or force the gate's own documentation to stop
+naming its own pattern.
 
 A citation must show it is one — a plural range, a parenthesis, or a pointing
 word — so `a line 2 pixels wide` is left alone, and URLs are skipped whole,

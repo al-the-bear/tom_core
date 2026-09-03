@@ -19,7 +19,7 @@ and resolves its label *from resources* keyed off that path. The resolution is a
 one-liner on `TomField`:
 
 ```dart
-// tom_flutter_ui/.../tom_form.dart:855
+// tom_flutter_ui/.../tom_form.dart — TomField.resolvedLabel
 String get resolvedLabel =>
     TomCtr.textOrNull(basePath, 'label') ?? tomId;
 ```
@@ -51,7 +51,7 @@ On the client, a bundle is installed as the process-wide singleton resource
 provider; the **one place** that swap happens is `AppSession._installResources`:
 
 ```dart
-// advanced_app_client/lib/app/app_session.dart:96
+// advanced_app_client/lib/app/app_session.dart
 void _installResources(Map<String, dynamic> texts) {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(texts),
@@ -60,7 +60,8 @@ void _installResources(Map<String, dynamic> texts) {
 ```
 
 Once installed, `TomCtr.text(basePath, suffix)` resolves through that singleton
-(`_provider.getText(...)`, `tom_construction_helpers.dart:61-70`), so every form
+(`_provider.getText(...)` inside `TomCtr.text`,
+`tom_construction_helpers.dart`), so every form
 field, screen title and button caption reads its words from the bundle the
 server sent. No screen reaches around the provider for a literal.
 
@@ -69,7 +70,7 @@ server sent. No screen reaches around the provider for a literal.
 `TomCtr` joins the field's `basePath` with a **suffix** to form the resource key:
 
 ```dart
-// tom_flutter_ui/.../tom_construction_helpers.dart:67
+// tom_flutter_ui/.../tom_construction_helpers.dart — TomCtr.textOrNull
 static String? textOrNull(String? basePath, [String suffix = '']) =>
     basePath == null ? null : _provider.getTextOrNull(_key(basePath, suffix));
 ```
@@ -158,7 +159,7 @@ install** (D-A9):
    resolvable again.
 
 ```dart
-// advanced_app_client/lib/app/app_session.dart:108
+// advanced_app_client/lib/app/app_session.dart
 Future<void> _installFullResources() async {
   final bundle = await backend.resources();
   final current = Map<String, dynamic>.of(
@@ -203,7 +204,7 @@ are byte-identical.
 - `advanced_todo_contracts/lib/src/resource_bundle_dto.dart` — `ResourceBundleDto`, `flattenResourceTree`
 - `advanced_app_server/lib/src/resources/app_resource_bundles.dart`, `advanced_auth_server/lib/src/resources/auth_resource_bundles.dart`; the `assets/resources_*.json` trees
 - `advanced_app_client/lib/app/app_session.dart` (`loadLoginResources` / `_installFullResources`, D-A9)
-- `tom_flutter_ui/.../tom_form.dart:855` (`resolvedLabel`); `tom_construction_helpers.dart:61-70` (`TomCtr.text`/`textOrNull`)
+- `TomField.resolvedLabel` in `tom_flutter_ui/.../tom_form.dart`; `TomCtr.text`/`TomCtr.textOrNull` in `tom_construction_helpers.dart`
 - `advanced_app_client/test/form_label_resolution_test.dart` (the `[srv]` sentinel proof)
 - Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 

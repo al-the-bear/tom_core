@@ -41,12 +41,12 @@ class LoginForm extends TomForm<LoginCredentials> {
 Two things are doing the work here:
 
 - **Each field is itself observable.** `TomField<T>` extends `TomObject<T>`
-  (`tom_flutter_ui/.../tom_form.dart:592`), so a field *holds* its value, its
+  (`tom_flutter_ui/.../tom_form.dart`), so a field *holds* its value, its
   validation state, and — via the authorization layer of part 07 — its resolved
   grade. A field renders itself: `field.widget` is a self-rebuilding widget
-  (a `ValueListenableBuilder` wrapped in a `TomFieldWidgetAdapter`,
-  `tom_form.dart:1163`) that the screen drops straight into its layout. The
-  screen never builds a `TextField` for the form's fields by hand.
+  (a `ValueListenableBuilder` wrapped in a `TomFieldWidgetAdapter`, in
+  `TomTextFormFieldBase.widget`) that the screen drops straight into its
+  layout. The screen never builds a `TextField` for the form's fields by hand.
 - **Fields are created in `createFormElements()`** (G-UI-5). The hook runs
   inside the form's own scope, *after* the form's `basePath` is set (it is
   called from `prepareForSelfObservation`, before the constructor body
@@ -66,12 +66,12 @@ those high-level verbs.
 A field's `basePath` is built in two hops, each a single line in `tom_form.dart`:
 
 1. **The form's `basePath`** = enclosing scope path + `formId`
-   (`tom_form.dart:146`):
+   (`TomForm.prepareForSelfObservation`):
    ```dart
    basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
    ```
 2. **The field's `basePath`** = the form's `basePath` + the field's `tomId`
-   (`tom_form.dart:614-617`):
+   (the `TomField` constructor):
    ```dart
    scope    = form != null ? form!.basePath : TomScope.current.getScopePath();
    basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
@@ -95,7 +95,8 @@ Whether a form is "scoped" is decided **at construction**, by whether a
   `user.email`, …; `LoginForm` gives `login.username`, `login.password`.
 - **Scoped** — the item editor *must* run under scope `todo` so its field paths
   equal the server's grade keys (`todo.item.<field>`). The screen constructs it
-  inside a pushed scope (`item_detail_screen.dart:161`):
+  inside a pushed scope (`_ItemDetailScreenState._resolveForm` in
+  `item_detail_screen.dart`):
   ```dart
   final form = TomScope.withScope('todo', TodoItemForm.new);
   ```
@@ -119,11 +120,11 @@ ways, driven by reflection over **member names** (not `tomId`s):
 
 - **`bind(target)`** snapshots the entity into the form:
   `setValues(target.getValues())` copies each entity member's value into the
-  form's matching member, then runs the bind lifecycle (`tom_form.dart:196`).
+  form's matching member, then runs the bind lifecycle (`TomForm.bind`).
 - **`save()`** validates, then writes back: `_binding?.setValues(getValues())`
   copies the form members' values into the bound entity by member name
-  (`tom_form.dart:315`/`:335`). Validation failures short-circuit the write and
-  surface inline.
+  (the write-back inside `TomForm.save`). Validation failures short-circuit the
+  write and surface inline.
 
 Because the round-trip keys on the **member** name, a field's `tomId` (which
 drives its `basePath`/grade/text) is free to differ from the entity member it
@@ -197,14 +198,14 @@ The two clients layer screens over these forms. The **app client**
   `TodoStatus`. Its app-bar carries the **Share** action.
 - **Item detail** (`item_detail_screen.dart`) — the bound `TodoItemForm`. It
   lays out the fields by rendering each `field.widget` and offers **Save** only
-  when at least one field is editable (`item_detail_screen.dart:181`):
+  when at least one field is editable (`_ItemDetailScreenState._buildBody`):
   ```dart
   final canSave = form.gradableFields.any((f) => f.isEditable);
   // …
   for (final field in form.gradableFields) ...[ field.widget, … ],
   ```
-  `isEditable` is `effectiveAuthState == TomAuthState.full` (`tom_form.dart:838`),
-  so the *same* form renders four ways by role with no per-screen branching —
+  `TomField.isEditable` is `effectiveAuthState == TomAuthState.full`, so the
+  *same* form renders four ways by role with no per-screen branching —
   the authorization mechanism of part 07 doing the gating, not the screen.
   Beneath the form sits the item's **attachment**: a `TomFormFileUpload` scoped
   under `board.item.attachment`, built outside the form because it holds a
@@ -244,7 +245,8 @@ The sample's reactivity has two layers, both pull-based:
 
 - **Session → shell.** Each client's `AppSession` / `AdminSession` is a
   `ChangeNotifier`; the app root wraps its home in a Flutter `ListenableBuilder`
-  (`app_root.dart:28`, `admin_root.dart:31`), so the login↔home swap is a pure
+  (`AdvancedTodoApp.build` in `app_root.dart`, `AdminConsoleApp.build` in
+  `admin_root.dart`), so the login↔home swap is a pure
   function of `session.isLoggedIn` — login, logout, and a guarded `401` all
   rebuild the shell by calling `notifyListeners()`.
 - **Field → widget.** Because `TomField` is a `TomObject` observable, its
@@ -258,9 +260,9 @@ The sample's reactivity has two layers, both pull-based:
 
 - [`advanced_app_client/README.md`](advanced_app_client/README.md), [`advanced_authadmin_client/README.md`](advanced_authadmin_client/README.md)
 - `advanced_app_client/lib/forms/{login_form,todo_item_form}.dart`; `advanced_authadmin_client/lib/forms/{user_form,role_form,group_form}.dart`
-- `advanced_app_client/lib/screens/item_detail_screen.dart:161` (`TomScope.withScope`), `:181-188` (`field.widget` / `isEditable` gate)
-- `tom_flutter_ui/.../tom_form.dart:24` (`TomForm`), `:146` (form `basePath`), `:592`/`:614-617` (`TomField` / field `basePath`), `:196` (`bind`), `:315`/`:335` (`save`), `:838` (`isEditable`), `:1163` (`field.widget`)
-- `advanced_app_client/lib/forms/todo_item_form.dart:39` (`super(formId: 'item')`), `advanced_app_client/lib/screens/item_detail_screen.dart:161` (`TomScope.withScope('todo', …)`) — the `formId`/scope literals, declared at use (no key catalogue)
+- `advanced_app_client/lib/screens/item_detail_screen.dart` — `_ItemDetailScreenState._resolveForm` (`TomScope.withScope`), `_ItemDetailScreenState._buildBody` (`field.widget` / `isEditable` gate)
+- `tom_flutter_ui/.../tom_form.dart` — `TomForm`, `TomForm.prepareForSelfObservation` (form `basePath`), `TomField` and its constructor (field `basePath`), `TomForm.bind`, `TomForm.save`, `TomField.isEditable`, `TomTextFormFieldBase.widget` (`field.widget`)
+- the `TodoItemForm` constructor in `advanced_app_client/lib/forms/todo_item_form.dart` (`super(formId: 'item')`), `_ItemDetailScreenState._resolveForm` in `advanced_app_client/lib/screens/item_detail_screen.dart` (`TomScope.withScope('todo', …)`) — the `formId`/scope literals, declared at use (no key catalogue)
 - Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 
 ---

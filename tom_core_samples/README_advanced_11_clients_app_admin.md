@@ -27,8 +27,9 @@ sample exists to teach.
 
 `AdvancedTodoApp` is a `MaterialApp` whose `home` is a `ListenableBuilder` over
 the session: signed out renders `LoginScreen`, signed in renders `BoardScreen`
-(`app_root.dart:28`). The login↔board swap is therefore a pure function of
-`session.isLoggedIn` — no imperative `Navigator.push` to enter the app, and a
+(`AdvancedTodoApp.build`, `app_root.dart`). The login↔board swap is therefore a
+pure function of `session.isLoggedIn` — no imperative `Navigator.push` to enter
+the app, and a
 dropped session routes back to login by the same mechanism.
 
 The signed-in surface is three screens (detailed in
@@ -55,8 +56,8 @@ the server will answer, never deciding it (part
 
 `AdminConsoleApp` mirrors the app shell exactly — a `MaterialApp` whose `home` is
 a `ListenableBuilder` swapping `AdminLoginScreen` for `AdminShellScreen` on
-`session.isLoggedIn` (`admin_root.dart:31`). The signed-in shell is a
-`NavigationRail` over an `IndexedStack` of five destinations:
+`session.isLoggedIn` (`AdminConsoleApp.build`, `admin_root.dart`). The signed-in
+shell is a `NavigationRail` over an `IndexedStack` of five destinations:
 
 - **Users / Roles / Groups** — three thin `StatelessWidget`s each configuring the
   generic `AdminCrudScreen<T>` (list / create / edit / delete), so the three CRUD
@@ -78,8 +79,8 @@ rest of the guide rests on.
 
 Both sessions are `ChangeNotifier`s that own the single injected backend and hold
 the principal + token pair; the shell rebuilds on every `notifyListeners`. They
-are near-identical (`app_session.dart:25`, `admin_session.dart:26`), with two
-differences worth calling out.
+are near-identical (`AppSession` in `app_session.dart`, `AdminSession` in
+`admin_session.dart`), with two differences worth calling out.
 
 **Two-phase admin login.** Because each `/admin/*` endpoint's contract declares
 `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) rather than gating login itself
@@ -109,7 +110,7 @@ token — are part [06](README_advanced_06_authentication.md#two-factor-login-th
 so "the session died" is handled in exactly one place: a backend failure keyed
 `auth.session_expired` (the live stack's post-refresh `401`) or
 `app.no_session`/`admin.no_session` clears the principal before rethrowing, so the
-next frame is the login screen (`app_session.dart:172`, `admin_session.dart:142`).
+next frame is the login screen (`AppSession.guard`, `AdminSession.guard`).
 
 The app session additionally holds the principal's `resourceRoles` map, fetched
 once at login (`GET /resource-roles`) and installed as the **global**
@@ -119,14 +120,15 @@ item detail screen then grades each gradable field **synchronously** — resolvi
 the item's resource ceiling through the registry
 (`TomAuthorization.resolveAuth(ResourceRoleKeys.item(id))`) and narrowing it by
 the shared `projectRoleFieldGrades[role]` row, stamped as a per-field
-`TomAuthorizer.fixed(...)` (`item_detail_screen.dart:146-171`). This is the bridge
+`TomAuthorizer.fixed(...)` (`_ItemDetailScreenState._resolveForm`,
+`item_detail_screen.dart`). This is the bridge
 between "the principal holds `viewer` on this item" and "the widget renders its
 `title` read-only."
 
 ## The in-memory vs live backend seam
 
 Each client defines a transport-independent backend interface — `AppBackend`
-(`app_backend.dart:51`), `AdminBackend` — that every screen is written against,
+(`app_backend.dart`), `AdminBackend` — that every screen is written against,
 never a concrete class. That single seam is what lets the widget tests run
 **socket-free**:
 
@@ -185,9 +187,9 @@ reached by forgetting a flag.
 **authenticated** full bundle and installs it merged over the current provider
 (full-bundle keys win), so every post-login screen resolves server texts while the
 login chrome stays valid; logout restores the captured pre-login provider exactly,
-so a re-login starts clean (`app_session.dart:108`/`:192`,
-`admin_session.dart:89`/`:170`). The admin console's full bundle is the
-**admin-gated** console bundle, reachable only *after* the role probe passes —
+so a re-login starts clean (`_installFullResources` and `_clearSession`, in both
+`app_session.dart` and `admin_session.dart`). The admin console's full bundle is
+the **admin-gated** console bundle, reachable only *after* the role probe passes —
 the two-phase login and the staged resources reinforce each other.
 
 ## The share flow and the grant-matrix editor

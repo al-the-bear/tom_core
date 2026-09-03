@@ -26,9 +26,9 @@ already provides, and do not build a parallel mechanism beside a Tom one.
 
 Each section states **rules** (numbered `G-<area>-<n>`), each rule is a single
 enforceable statement. Where a rule points at framework code, the anchor is
-given as `package/path.dart:line` so you can verify the contract against the
-source. Anchors are workspace-relative from `tom_ai/core/` unless another root
-is named.
+given as `package/path.dart` plus the name of the declaration, so you can
+verify the contract against the source. Anchors are workspace-relative from
+`tom_ai/core/` unless another root is named.
 
 Rules use RFC-2119 force: **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**.
 A **SHOULD** may be broken only with a `// Why:` comment at the break site.
@@ -73,7 +73,7 @@ acyclic dependency graph. The canonical shape is:
 ## 2. Dependency injection (`TomBean` / `TomBeanLocator`)
 
 Anchor: `tom_core_kernel/lib/src/tombase/beanlocator/bean_locator.dart`
-(`withName:253`, `withType:286`, `get:350`).
+(`TomBean.withName`, `TomBean.withType`, `TomBean.get`).
 
 **Rules**
 
@@ -124,7 +124,8 @@ Anchors: `tom_basics/lib/src/runtime/platform_environment_runtime.dart`,
 
 Anchors: endpoint annotations
 `tom_core_server/lib/src/tomserver/endpoints/endpoint_annotation.dart`; pipeline
-`endpoint_pipeline.dart:227` (path-param bind), `:277` (`jsonBodyData` merge).
+`endpoint_pipeline.dart` — `TomEndpointHandler.injectPathParameters` (path-param
+bind) and `TomEndpointHandler.bindParameters` (`jsonBodyData` merge).
 
 The contract layer declares, once, the **external API** that binds client calls
 to server implementations: a typed request type, a typed result type, an
@@ -214,8 +215,9 @@ round-trip via reflection.
 ## 6. Reflection strategy & generation
 
 Anchors: generator `tom_reflection_generator/bin/tom_reflection_generator.dart`,
-`lib/src/v2/reflection_generator_executor.dart:122` (reads `buildkit.yaml`
-then `build.yaml` `generate_for`).
+`lib/src/v2/reflection_generator_executor.dart`
+(`ReflectionGeneratorExecutor._resolveTargets` reads `buildkit.yaml` then
+`build.yaml` `generate_for`).
 
 **Rules**
 
@@ -260,7 +262,8 @@ Anchors:
 ## 8. Migrations
 
 Anchor: `tom_core_server/lib/src/tomserver/db_migration/db_migration.dart`
-(pattern `:140`, numeric sort `:168`). Filename pattern
+(pattern `TomDbMigrations._migrationNamePattern`, numeric sort
+`TomDbMigrations.orderMigrationNames`). Filename pattern
 `[<numericVersion>]-<description>.<ext>`; the initdb mount re-reads the same
 tree; applied versions are skipped (idempotent).
 
@@ -284,8 +287,9 @@ tree; applied versions are skipped (idempotent).
   read, G-ENV-1), defaulting production-safe when uninitialized, so a production
   apply omits every `@dev`/`@test`-tagged seed while all schema (untagged)
   migrations still run. Anchor:
-  `tom_core_server/.../db_migration/db_migration.dart:103`
-  (`appliesInEnvironment`), `:222` (`resolveActiveEnvironment`). This is the
+  `tom_core_server/.../db_migration/db_migration.dart` —
+  `TomMigrationFileName.appliesInEnvironment` and
+  `TomDbMigrations.resolveActiveEnvironment`. This is the
   mechanism that makes G-MIG-3's "production applies the admin seed without the
   demo users" enforceable — the admin seed is untagged, the demo seed is tagged.
 
@@ -293,8 +297,8 @@ tree; applied versions are skipped (idempotent).
 
 ## 9. Authentication, keys & token refresh
 
-Anchor:
-`tom_core_server/lib/src/tomserver/authentication/authentication_server.dart:209`.
+Anchor: the `TomAuthenticationServer` class in
+`tom_core_server/lib/src/tomserver/authentication/authentication_server.dart`.
 
 **Rules**
 
@@ -314,7 +318,7 @@ Anchor:
 
 Anchors: `TomAuthState` (`tom_core_kernel/.../security`); AclBuilder
 `tom_flutter_ui/lib/src/advanced_container_layout/acl_builder.dart`
-(`setAclDefaultHideUnauthorized:835`).
+(`AclBuilder.setAclDefaultHideUnauthorized`).
 
 The authorization model is **four-state** — `none < disabled < read < full`
 (`TomAuthState`) — resolved per (principal, resourceKey).
@@ -345,9 +349,10 @@ The authorization model is **four-state** — `none < disabled < read < full`
 ## 11. Resources & user-facing text
 
 Anchors: `tom_flutter_ui_test/lib/widget_demos/demo_21_resource_resolution.dart`
-+ `demo_resources.dart`; `TomCtr`
-`tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart:22`; scope
-`tom_core_kernel/lib/src/tombase/scope_ids/scope_ids.dart:24` (`withScope`).
++ `demo_resources.dart`; the `TomCtr` class in
+`tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart`; scope
+`tom_core_kernel/lib/src/tombase/scope_ids/scope_ids.dart`
+(`TomScope.withScope`).
 
 **Rules**
 
@@ -376,9 +381,9 @@ Anchors: `tom_flutter_ui_test/lib/widget_demos/demo_21_resource_resolution.dart`
 ## 12. Forms, UI & responsive layout
 
 Anchors: `TomForm`/`TomField`
-`tom_flutter_ui/lib/src/forms/tom_form.dart:593` (field), `:23` (form),
-error resolution `:868`; `ScreenElementsProvider`
-`.../widget_base/tom_screen_elements_provider.dart:28`; AclBuilder
+`tom_flutter_ui/lib/src/forms/tom_form.dart`, error resolution
+`TomField.resolvedErrorMessage`; `TomScreenElementsProvider`
+`.../widget_base/tom_screen_elements_provider.dart`; AclBuilder
 `.../advanced_container_layout/acl_builder.dart`; Tom base classes
 `.../widget_base/tom_family_base.dart`, `tom_node_base.dart`.
 
@@ -413,8 +418,8 @@ error resolution `:868`; `ScreenElementsProvider`
   `TomAuthState.none` components). Application code does not manually check auth
   state to decide whether to render.
 - **G-UI-4** — **Standard breakpoints** are supported and used: supply responsive
-  values as `(minWidth, value)` tuples / `AclRowBreakpoint`
-  (`acl_responsive.dart:19`). Do not hand-roll `MediaQuery` width branching.
+  values as `(minWidth, value)` tuples / `AclRowBreakpoint`. Do not hand-roll
+  `MediaQuery` width branching.
 - **G-UI-5** — A form separates **definition**, **implementation**, and
   **layout**. Fields are created in `createFormElements()` (called from the
   constructor). Fields need **not** be `late final` — plain fields typed by their
@@ -431,15 +436,16 @@ error resolution `:868`; `ScreenElementsProvider`
   `TomField` merges code-supplied and resource-declared validators. Validation
   **error messages are resources** (G-RES-1), resolved through the scoped→global
   resource path — never a hardcoded message string. Anchor:
-  `tom_flutter_ui/lib/src/forms/validation/validator_registry.dart:35`.
+  `TomValidatorRegistry` in
+  `tom_flutter_ui/lib/src/forms/validation/validator_registry.dart`.
 
 ---
 
 ## 13. Actions framework
 
 Anchor: `TomAction`
-`tom_flutter_ui/lib/src/actions/tom_action.dart:29`; example
-`.../actions/form_actions.dart:13`.
+`tom_flutter_ui/lib/src/actions/tom_action.dart`; example `SaveFormAction`
+`.../actions/form_actions.dart`.
 
 **Rules**
 
@@ -508,16 +514,16 @@ Anchor: `TomAction`
 | --- | --- |
 | DI | `bean_locator.dart` |
 | Environment / TEST_MODE | `platform_environment_runtime.dart` |
-| Contracts / endpoints | `endpoint_annotation.dart`, `endpoint_pipeline.dart:277` |
+| Contracts / endpoints | `endpoint_annotation.dart`, `endpoint_pipeline.dart` (`TomEndpointHandler.bindParameters`) |
 | DTOs / reflection | `@tomReflector` |
-| Reflection generation | `reflection_generator_executor.dart:122` |
+| Reflection generation | `reflection_generator_executor.dart` (`ReflectionGeneratorExecutor._resolveTargets`) |
 | Persistence | `persistence_annotations.dart`, `mariadb_datasource.dart` |
-| Migrations | `db_migration.dart:140` |
-| Auth / keys / refresh | `authentication_server.dart:209` |
-| Authorization | `TomAuthState`, `acl_builder.dart:835` |
-| Resources / text | `demo_21_resource_resolution.dart`, `scope_ids.dart:24` |
-| Forms / UI | `tom_form.dart:593`, `tom_family_base.dart` |
-| Actions | `tom_action.dart:29` |
+| Migrations | `db_migration.dart` (`TomDbMigrations`) |
+| Auth / keys / refresh | `authentication_server.dart` (`TomAuthenticationServer`) |
+| Authorization | `TomAuthState`, `acl_builder.dart` (`AclBuilder.setAclDefaultHideUnauthorized`) |
+| Resources / text | `demo_21_resource_resolution.dart`, `scope_ids.dart` (`TomScope.withScope`) |
+| Forms / UI | `tom_form.dart` (`TomForm`/`TomField`), `tom_family_base.dart` |
+| Actions | `tom_action.dart` (`TomAction`) |
 
 ## Appendix B — Reference implementations to study
 

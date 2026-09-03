@@ -14,7 +14,8 @@ doc 07 says *what*, this appendix says *exactly how, line by line*.
 
 `TomAuthState` is a four-value enum declared **most-to-least restrictive**, and
 that declaration order *is* the algebra
-(`tom_core_kernel/lib/src/tombase/security/tom_authorization.dart:29`):
+(the `TomAuthState` enum in
+`tom_core_kernel/lib/src/tombase/security/tom_authorization.dart`):
 
 ```
 none  <  disabled  <  read  <  full
@@ -22,13 +23,15 @@ none  <  disabled  <  read  <  full
 ```
 
 The ordering is load-bearing because two operations are defined directly on the
-index (`tom_authorization.dart:55`, `:62`):
+index:
 
-- **`narrow(other)`** → the **more** restrictive (lower index) of the two.
-- **`widen(other)`** → the **less** restrictive (higher index) of the two.
+- **`TomAuthState.narrow(other)`** → the **more** restrictive (lower index) of
+  the two.
+- **`TomAuthState.widen(other)`** → the **less** restrictive (higher index) of
+  the two.
 
-Three derived predicates read the same lattice (`:48`–`:52`): `isVisible`
-(`!= none`), `showsContent` (`read || full`), `isInteractive` (`== full`). So a
+Three derived predicates read the same lattice: `isVisible` (`!= none`),
+`showsContent` (`read || full`), `isInteractive` (`== full`). So a
 field maps to a control by its resolved state alone — `none` collapses it,
 `disabled` greys it, `read` shows it read-only, `full` makes it editable — with
 no separate visibility flag to keep in sync.
@@ -46,41 +49,47 @@ Two facts follow from the lattice that the rest of the system relies on:
 ## Resolution order: the five layers
 
 A field's effective state is computed by `TomField.resolveEffectiveAuth()`
-(`tom_flutter_ui/lib/src/forms/tom_form.dart:807`). The doc-comment and the
+(`tom_flutter_ui/lib/src/forms/tom_form.dart`). The doc-comment and the
 `CRITICAL` note there make the contract explicit: **all layers are evaluated;
-skipping one (group auth especially) is a severe bug.** Each layer takes the
-running `state` and narrows it:
+skipping one (group auth especially) is a severe bug.** All five layers below
+live in that one method; each takes the running `state` and narrows it:
 
-| # | Layer | Source line | What it contributes |
+| # | Layer | Expression | What it contributes |
 | --- | --- | --- | --- |
-| 1 | **Resource-based** | `:809` `TomAuthorization.resolveAuth(basePath)` | the field's own grade, keyed on its `basePath` |
-| 2 | **Group auth** | `:812` `tomGroup!.applyMode(state)` | a `TomAuthorizationGroup`'s collective ceiling/floor (`AuthGroupMode`) |
-| 3 | **Form narrow** | `:817` `state.narrow(resolveAuth(formPath))` | the form node's grade narrows every field (always `narrow`) |
-| 4 | **Per-field authorizer** | `:823` `authorizer!.effectiveAuth(state)` | an explicit `TomAuthorizer` (e.g. `TomAuthorizer.fixed`) |
-| 5 | **UI-state controller** | `:827` `uiStateController!.apply(state)` | a build-time `TomUIStateController` callback |
+| 1 | **Resource-based** | `TomAuthorization.resolveAuth(basePath)` | the field's own grade, keyed on its `basePath` |
+| 2 | **Group auth** | `tomGroup!.applyMode(state)` | a `TomAuthorizationGroup`'s collective ceiling/floor (`AuthGroupMode`) |
+| 3 | **Form narrow** | `state.narrow(resolveAuth(formPath))` | the form node's grade narrows every field (always `narrow`) |
+| 4 | **Per-field authorizer** | `authorizer!.effectiveAuth(state)` | an explicit `TomAuthorizer` (e.g. `TomAuthorizer.fixed`) |
+| 5 | **UI-state controller** | `uiStateController!.apply(state)` | a build-time `TomUIStateController` callback |
 
 Layer 1 seeds `state`; layers 2–5 each apply only if their hook is present, and
-each can only restrict. Because the sample installs **no** authorization adapter,
-layer 1 (`TomAuthorization.resolveAuth(basePath)`) returns the kernel's permissive
-no-adapter default (`full`) for every field — the grade a gradable item field
-renders at comes from **layer 4** instead: the item detail screen stamps each
-gradable field with `field.authorizer = TomAuthorizer.fixed(states[basePath] ??
-TomAuthState.none)` (`item_detail_screen.dart:99-102`). So for a graded item
-field the effective state is `layer1(full).narrow(layer3(full)).narrow(layer4)`,
-which reduces to the **layer-4 fixed grade** the server resolved. The admin
-user/role forms also add a **layer 4** `TomAuthorizer.fixed`, there for
-create-vs-edit shaping rather than a server matrix (see doc 07).
+each can only restrict. The sample *does* install a global adapter —
+`AppResourceRoleAdapter`, at login — but that adapter gates only `<type>:<id>`
+resource keys, so for a **dotted** `basePath` layer 1 still returns the
+permissive `full`. The grade a gradable item field renders at therefore comes
+from **layer 4**: the item detail screen stamps each gradable field with
+`field.authorizer = TomAuthorizer.fixed(resourceState.narrow(grades[field.basePath] ?? TomAuthState.none))`
+(`_ItemDetailScreenState._resolveForm` in
+`advanced_app_client/lib/screens/item_detail_screen.dart`), where `resourceState`
+is the item's own resource-level ceiling — `TomAuthorization.resolveAuth('item:<id>')`,
+resolved through that same adapter. So for a graded item field the effective
+state is `layer1(full).narrow(layer3(full)).narrow(layer4)`, which reduces to the
+**layer-4 fixed grade**: the server-resolved field grade, already capped by the
+resource ceiling. The admin user/role forms also add a **layer 4**
+`TomAuthorizer.fixed`, there for create-vs-edit shaping rather than a server
+matrix (see doc 07).
 
 > The skeleton called this "layers 1–4"; the live `resolveEffectiveAuth` has
 > **five** — the build-time `TomUIStateController` is the fifth. The sample's
-> forms exercise layers 3 and 4 (layer 1 stays at the permissive default since no
-> adapter is installed); layers 2 and 5 are framework capability the sample does
-> not need.
+> forms exercise layers 3 and 4 (layer 1 stays permissive for every dotted field
+> path, since the installed adapter gates only resource keys); layers 2 and 5 are
+> framework capability the sample does not need.
 
 ### Why `basePath` is the key
 
 Layer 1 keys on `basePath`, and `basePath` is derived structurally when the field
-is constructed (`tom_form.dart:614-617`): `scope = form!.basePath`, then
+is constructed (the `TomField` constructor in `tom_form.dart`):
+`scope = form!.basePath`, then
 `basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId`. Under
 `TomScope.withScope('todo', …)` with `formId: 'item'`, the `title` field
 self-addresses as `todo.item.title` — byte-identical to the `todo.item.title`
@@ -99,7 +108,7 @@ defaulting to `none`, so no single omission can leak an editable control:
    grant on resolves to `none`, so `TomAuthorization.resolveAuth('item:<id>')`
    returns `none` and the whole item's fields collapse. The kernel codec agrees —
    `TomAuthStateCodec.fromStored(null)` and `fromStored('bogus')` both return
-   `none` (`tom_core_server/test/graded_authorization_test.dart:33`,`:37`).
+   `none` (`tom_core_server/test/graded_authorization_test.dart`).
 2. **Missing role.** The installed `AppResourceRoleAdapter` resolves an
    ungranted `<type>:<id>` resource key to `none`
    (`app_resource_role_adapter.dart`), and a `roleName` with no matching
@@ -107,8 +116,10 @@ defaulting to `none`, so no single omission can leak an editable control:
    whenever the principal holds no role on it — the item's fields collapse.
 3. **Client per-field narrow.** The item screen stamps each gradable field with
    `TomAuthorizer.fixed(resourceState.narrow(projectRoleFieldGrades[role][field.basePath] ?? TomAuthState.none))`
-   (`item_detail_screen.dart:146-171`): a field with no grade in the shared row
-   falls to `none`, and the narrow keeps it at or below the resource ceiling.
+   (`_ItemDetailScreenState._resolveForm` in
+   `advanced_app_client/lib/screens/item_detail_screen.dart`): a field with no
+   grade in the shared row falls to `none`, and the narrow keeps it at or below
+   the resource ceiling.
 
 The same value at all three layers is what makes the lattice's "unknown =
 denied" property hold end-to-end.
@@ -162,7 +173,8 @@ C-5 ownership grants and C-6 `share`-mode delegations through the framework
 grant down its containment subtree `item → list → project → workspace`: an `owner`
 grant on the workspace surfaces on every contained item, else the **strongest**
 covering share wins (`ProjectRole` is declared `owner, editor, commenter, viewer`
-— most-to-least privileged, so the lowest index is strongest, `enums.dart:37`),
+— most-to-least privileged, so the lowest index is strongest, in
+`advanced_todo_domain/lib/src/enums.dart`),
 else the key is absent (no access → closed/safe 404). That flat map is the only
 authorization payload the app read ships; the per-role field grades themselves
 live in the SHARED DOMAIN (`projectRoleFieldGrades`), so the client narrows the
@@ -183,7 +195,9 @@ a gradable field renders at is the item's resource ceiling — layer 1
 (`TomAuthorization.resolveAuth(ResourceRoleKeys.item(id))`, resolved through the
 registry via the adapter) — **narrowed** by the shared `projectRoleFieldGrades[role]`
 row and stamped at **layer 4** by the per-field `TomAuthorizer.fixed` the item
-screen sets (`item_detail_screen.dart:146-171`). Two properties fall out:
+screen sets (`_ItemDetailScreenState._resolveForm` in
+`advanced_app_client/lib/screens/item_detail_screen.dart`). Two properties fall
+out:
 
 | Path | Resolves to | Why |
 | --- | --- | --- |
@@ -245,8 +259,8 @@ for a commenter still has its write rejected.
 ## Primary sources
 
 - `tom_core_kernel/lib/src/tombase/security/tom_authorization.dart` (the `TomAuthState` lattice + `narrow`/`widen`)
-- `tom_flutter_ui/lib/src/forms/tom_form.dart:614-617` (basePath), `:807` (`resolveEffectiveAuth` five layers)
-- `advanced_app_client/lib/screens/item_detail_screen.dart:99-102` (the per-field `TomAuthorizer.fixed` stamp)
+- `tom_flutter_ui/lib/src/forms/tom_form.dart` — the `TomField` constructor (basePath), `TomField.resolveEffectiveAuth` (the five layers)
+- `advanced_app_client/lib/screens/item_detail_screen.dart` — `_ItemDetailScreenState._resolveForm` (the per-field `TomAuthorizer.fixed` stamp)
 - `advanced_app_server/lib/src/access/{field_grade_resolver,resource_role_resolver}.dart`; `advanced_todo_contracts/lib/src/graded_field_dto.dart`
 - Companion: [07 · Authorization](README_advanced_07_authorization.md)
 

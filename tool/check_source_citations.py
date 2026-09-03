@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Find source comments that cite a line number instead of naming a thing.
+"""Find a comment, figure or guide that cites a line number instead of naming a thing.
 
 Run from anywhere::
 
@@ -62,14 +62,55 @@ So the scan covers ``.svg``, and there it reads **every line**, not just the
 comment: the citation a reader of the rendered figure sees is the drawn one, so
 checking only the comment would miss the copy that matters most.
 
-**Markdown is deliberately left out.** It is not an oversight and not a
-follow-up. The same pattern occurs 173 times across 18 files of guide prose,
-where a line citation in a paragraph of explanation is a normal and often useful
-thing to write, and switching the rule on there would mean 173 judgement calls
-on day one. That is the noise threshold this suite has twice declined to cross
-(353 for the cross-library dartdoc rule, 519 for "name every public type"), and
-the reason the figure case is different is arithmetic, not taste: nine files,
-and after this change zero violations.
+**Markdown was deliberately left out, and then let in for one subtree.** The
+original argument was arithmetic: the pattern occurred 173 times across 18 files
+of guide prose, and switching the rule on would have meant 173 judgement calls
+on day one -- the noise threshold this suite has twice declined to cross (353
+for the cross-library dartdoc rule, 519 for "name every public type"). What
+changed is that the judgement calls were *made*. Every one of those citations in
+``tom_core_samples/`` was resolved by hand and replaced with the name of the
+declaration it pointed at, so the subtree now sits where the figures already sat:
+zero violations, and a rule that costs nothing to switch on.
+
+That work also settled the empirical question. Sampling the anchors against the
+files they named found the failure was not occasional -- *essentially every* one
+had drifted, and drifted in the dangerous direction: still in range, so still
+resolving to real code, just not the code the sentence described. An anchor for
+the login JWT pair landed inside two-factor submission; one for the closed-safe
+grade default landed on a different method entirely; several landed on blank
+lines and bare closing braces. Two pointed past end of file, which is the only
+variant a reader can detect. This is the ``CROSS`` argument with a measurement
+attached: the guides are the sample's primary teaching artifact, so a reader
+following a citation into unrelated code is the worst place for this fault to
+live, and it is exactly where it had accumulated most.
+
+**The scope stays at ``tom_core_samples``, on principle rather than convenience.**
+Eighteen sites elsewhere in the repo match these patterns, and they are a
+different kind of sentence: ``README.md`` and this suite's own documentation
+*quote* the fault as the object under discussion, ``little_things.md`` shows a
+stack trace, and a CHANGELOG records the anchor a commit removed. Gating those
+would force the gate's documentation to stop naming its own pattern, or add the
+suppression list this suite does not have. ``check_doc_source_paths.py`` draws
+the same line: naming a thing in prose is not the same as pointing at it. Inside
+``tom_core_samples`` every ``file.dart:12`` is an instruction to go and read, so
+there the two coincide and the rule is unambiguous.
+
+**A bare ``:12`` is not matched, for the reason ``line 2`` is not.** The guides
+also carried about 77 bare backticked continuations (``` `:809` ``` after a full
+citation), and 23 backticked ``` `:N` ``` tokens that are TCP ports -- ``:8080``,
+``:3307``. Separating them needs a port allowlist, which is judgement of exactly
+the kind excluded above. The rewrite removed the continuations at the source
+(they only ever trail a named citation this rule *does* catch), so the gate does
+not need to see them.
+
+Falsified in five directions against the shipped function, not a
+reimplementation. It fires on a planted ``CROSS`` in guide prose, on a planted
+``SELF``, and on one hidden in a fenced ``dart`` block -- and stays silent on a
+pinned permalink that happens to end in ``.dart:807``, and on the same planted
+fault written *outside* ``tom_core_samples``, which is the scope boundary the
+paragraph above argues for. That last case is the one worth keeping: it is the
+difference between this rule and the repo-wide version that would have made the
+suite unable to document itself.
 
 **What is deliberately not matched.** A citation needs syntactic evidence that
 it *is* one: a plural range (``lines 13-17``), a parenthesis (``(line 12)``),
@@ -91,7 +132,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
 SKIP_SUFFIXES = (".reflection.dart", "_generated.dart", "_bridges.dart", ".g.dart")
-SUFFIXES = (".dart", ".svg")
+SUFFIXES = (".dart", ".svg", ".md")
+
+# Markdown is scanned only under here -- see the docstring. Outside this
+# subtree the same shapes appear in prose that is *about* the fault.
+GUIDE_ROOT = REPO_ROOT / "tom_core_samples"
 
 # A comment line, `//` or `///`, capturing the prose after the slashes.
 COMMENT = re.compile(r"^\s*///?(?!/)(.*)$")
@@ -119,6 +164,8 @@ def source_files(root: Path):
             continue
         if path.name.endswith(SKIP_SUFFIXES):
             continue
+        if path.suffix == ".md" and not path.is_relative_to(GUIDE_ROOT):
+            continue
         yield path
 
 
@@ -128,10 +175,13 @@ def citable_lines(path: Path, text: str) -> list[tuple[int, str]]:
     In Dart, only a comment can -- code is checked by the compiler. A figure has
     no code, so the whole file is prose, and the citation that reaches a reader
     is the one drawn in a `<text>` element rather than the one in the XML
-    comment. Reading only the comment would check the copy nobody sees.
+    comment. Reading only the comment would check the copy nobody sees. A guide
+    is prose throughout for the same reason, fenced blocks included: a comment
+    inside a fenced snippet is *displayed*, not compiled, so it rots exactly
+    like the paragraph around it.
     """
     numbered = list(enumerate(text.split("\n"), start=1))
-    if path.suffix == ".svg":
+    if path.suffix in (".svg", ".md"):
         return numbered
     return [
         (number, comment.group(1))
@@ -158,7 +208,7 @@ def main(argv: list[str]) -> int:
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
-    scanned = {".dart": 0, ".svg": 0}
+    scanned = {".dart": 0, ".svg": 0, ".md": 0}
     faults: list[tuple[Path, int, str, str]] = []
     for path in source_files(root):
         try:
@@ -181,9 +231,12 @@ def main(argv: list[str]) -> int:
 
     print()
     # Counted per kind: the figures are nine files among thousands, so a single
-    # total would hide the day the figure scan silently stops finding them.
+    # total would hide the day the figure scan silently stops finding them. The
+    # guide count is the same guard for a scan that is scoped to one subtree and
+    # would report a clean zero if that subtree ever moved.
     print(f"dart files scanned       : {scanned['.dart']}")
     print(f"figures scanned          : {scanned['.svg']}")
+    print(f"guide files scanned      : {scanned['.md']}")
     print(f"citations naming a line  : {len(faults)}")
     return report_faults(len(faults))
 

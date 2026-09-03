@@ -51,7 +51,7 @@ to them:
 - **UI authorization is driven by scope/form/field names**, not hand-wired: the
   screen fetches each field's DB-resolved four-state grade (keyed by `basePath`)
   and stamps it onto the field with a per-field `TomAuthorizer.fixed`; there is
-  no installed authorization adapter, and an unsent grade is closed-safe
+  no *per-field* installed adapter, and an unsent grade is closed-safe
   (`TomAuthState.none`). (Part [07](README_advanced_07_authorization.md),
   appendix [A1](README_advanced_A1_authorization_state_machine.md).)
 
@@ -130,10 +130,16 @@ back into the relevant parts.
   `README.md` with the depth. This guide explains the *cross-cutting concern and
   the rule*, then links the package README or the enforcing source file. It does
   not re-document a package's internals.
-- **Every rule is grounded in code.** Implementation rules name the live
-  enforcement point (kernel / `tom_flutter_ui` / server) and a sample usage
-  site, often with a file:line anchor (e.g. `tom_form.dart:807`), so you can
-  verify them.
+- **Every rule is grounded in code, by name.** Implementation rules name the
+  live enforcement point (kernel / `tom_flutter_ui` / server) and a sample usage
+  site, always as a **declaration you can search for** — a type, a member, a
+  top-level function — with the file that holds it (e.g.
+  `TomField.resolveEffectiveAuth` in `tom_form.dart`), so you can verify them.
+  Deliberately **never a line number**: a line moves on the next edit to a file
+  nobody reading this guide has open, and the citation then points at unrelated
+  code while still reading plausibly. A name survives that edit, and
+  `tool/check_source_citations.py` keeps line anchors out of these guides the
+  same way it keeps them out of the source.
 - **`basePath` notation.** A field's `basePath` is written
   `<scopePath>.<formId>.<tomId>` (e.g. `todo.item.title`). The same path is used
   two ways — as the authorization key, and (with a suffix) as the resource key

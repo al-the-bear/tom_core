@@ -19,16 +19,22 @@ uses" rule rests on, written down once.
 layer:
 
 1. **The form's `basePath`** = enclosing scope path + `formId`
-   (`tom_flutter_ui/lib/src/forms/tom_form.dart:146`):
+   (`TomForm.prepareForSelfObservation` in
+   `tom_flutter_ui/lib/src/forms/tom_form.dart`):
    ```dart
-   basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
+   scope    = TomScope.current;
+   basePath = TomScopePath.qualify(formId, scope);
    ```
 2. **The field's `basePath`** = the form's `basePath` + the field's `tomId`
-   (`tom_form.dart:614-617`):
+   (the `TomField` constructor in `tom_form.dart`):
    ```dart
    scope    = form != null ? form!.basePath : TomScope.current.getScopePath();
-   basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
+   basePath = TomScopePath.join(scope, tomId);
    ```
+
+Both hops go through `TomScopePath` (`tom_flutter_ui/lib/src/widget_base/tom_scope_path.dart`),
+whose `join` is the one place the dot is inserted and the empty-parent case
+handled — `qualify` is `join` applied to a scope's resolved path.
 
 So a field's full path is `<enclosing-scope>.<formId>.<tomId>`. The `title` field
 of an item form run under scope `todo` with `formId: 'item'` self-addresses as
@@ -58,8 +64,8 @@ only thing that distinguishes them:
 
 | Use | Key form | Lookup | Cited at |
 | --- | --- | --- | --- |
-| **Authorization** | `basePath` (**no suffix**) | `TomAuthorization.resolveAuth(basePath)` | `tom_form.dart:809` (layer 1 of `resolveEffectiveAuth`) |
-| **Text resources** | `basePath.<suffix>` | `TomCtr.textOrNull(basePath, 'label')` → `<basePath>.<suffix>` | `tom_form.dart:855` (`resolvedLabel`) |
+| **Authorization** | `basePath` (**no suffix**) | `TomAuthorization.resolveAuth(basePath)` | layer 1 of `TomField.resolveEffectiveAuth` (`tom_form.dart`) |
+| **Text resources** | `basePath.<suffix>` | `TomCtr.textOrNull(basePath, 'label')` → `<basePath>.<suffix>` | `TomField.resolvedLabel` (`tom_form.dart`) |
 
 The suffix-join is one helper (`TomCtr._key`,
 `tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart`): an empty
@@ -92,7 +98,9 @@ independent. The effort-estimate field:
 
 - binds the reflected entity member **`estimateHours`** — `bind`/`save`
   round-trips on the *member name*, so the value lands in `TodoItem.estimateHours`
-  (`todo_item_form.dart:104`, `TomFormNDoubleInput('estimate', …)`);
+  (`TodoItemForm.createFormElements` in
+  `advanced_app_client/lib/forms/todo_item_form.dart`,
+  `TomFormNDoubleInput('estimate', …)`);
 - carries `tomId` = **`estimate`**, so it self-addresses as `todo.item.estimate`
   — the graded/resourced key.
 
@@ -123,13 +131,16 @@ form declares:
   `LoginForm` gives `login.username`, `login.password`.
 - **Scoped.** The item editor **must** run under scope `todo` so its field paths
   equal the server's grade keys. The screen pushes the scope around the
-  constructor (`advanced_app_client/lib/screens/item_detail_screen.dart:161`):
+  constructor (`_ItemDetailScreenState._resolveForm` in
+  `advanced_app_client/lib/screens/item_detail_screen.dart`):
   ```dart
   final form = TomScope.withScope('todo', TodoItemForm.new);
   ```
-  `TodoItemForm` itself only declares `super(formId: 'item')`
-  (`todo_item_form.dart:39`); the `todo` scope comes from the **call site**, so
-  the field at `tomId: 'title'` lands at `todo.item.title`.
+  `TodoItemForm` itself only declares `super(formId: 'item')` (the
+  `TodoItemForm` constructor in
+  `advanced_app_client/lib/forms/todo_item_form.dart`); the `todo` scope comes
+  from the **call site**, so the field at `tomId: 'title'` lands at
+  `todo.item.title`.
 
 > **This is the one place the "one name, two uses" rule can silently break.** If
 > the item form were constructed *unscoped*, its fields would self-address as
@@ -157,10 +168,10 @@ describes (`advanced_app_server/assets/resources_app.json`):
 The nesting **is** the dotted key: `todo → item → title → label` *is*
 `todo.item.title.label`. The server loads the asset once and **flattens** it to
 the flat `<basePath>.<suffix>` map the wire bundle carries —
-`flattenResourceTree` (`advanced_todo_contracts/lib/src/resource_bundle_dto.dart:52`)
+`flattenResourceTree` (`advanced_todo_contracts/lib/src/resource_bundle_dto.dart`)
 walks the tree, joining each segment with `.`, descending only *map* nodes and
 terminating a key at the first non-map value (so a scalar leaf like
-`"board.title": "My Board"` flattens as written, `:112-124`). The flattened
+`"board.title": "My Board"` flattens as written). The flattened
 bundle is exactly the flat `<basePath>.<suffix>` map the wire contract
 specifies, so the resource-endpoint and sentinel tests assert against it
 directly (part [08](README_advanced_08_resources_texts.md), D-A9).
@@ -181,10 +192,10 @@ contract pins.
 ## Primary sources
 
 - The `scope`/`formId`/`tomId` convention (D-A1, D-A2): segments are plain string literals declared at use — `formId` in `super(formId: 'item')`, scope in `TomScope.withScope('todo', …)` — resolved by naming, not catalogued as constants (G-RES-2/6)
-- `tom_flutter_ui/lib/src/forms/tom_form.dart:146` (form `basePath`), `:614-617` (field `basePath`), `:809` (auth lookup), `:855` (`resolvedLabel`)
+- `tom_flutter_ui/lib/src/forms/tom_form.dart` — `TomForm.prepareForSelfObservation` (form `basePath`), the `TomField` constructor (field `basePath`), `TomField.resolveEffectiveAuth` (auth lookup), `TomField.resolvedLabel`
 - `tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart` (`TomCtr._key`/`textOrNull`)
-- `advanced_app_client/lib/forms/todo_item_form.dart:39`,`:104`; `advanced_app_client/lib/screens/item_detail_screen.dart:161`
-- `advanced_todo_contracts/lib/src/resource_bundle_dto.dart:52` (`flattenResourceTree`); `advanced_app_server/assets/resources_app.json`
+- `advanced_app_client/lib/forms/todo_item_form.dart` — the `TodoItemForm` constructor (`formId: 'item'`), `TodoItemForm.createFormElements`; `advanced_app_client/lib/screens/item_detail_screen.dart` — `_ItemDetailScreenState._resolveForm`
+- `advanced_todo_contracts/lib/src/resource_bundle_dto.dart` (`flattenResourceTree`); `advanced_app_server/assets/resources_app.json`
 - Companions [08](README_advanced_08_resources_texts.md) / [09](README_advanced_09_forms_ui.md)
 
 ---

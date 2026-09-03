@@ -26,7 +26,8 @@ install the identical keys (see [Boot order](#server-boot-order) below).
 The wire contract is declared once, in `advanced_todo_contracts`, as plain
 `TomApi`/`TomApiEndpoint` values — URI, HTTP method, request/response types — so
 it stays Flutter- and server-free and the client core can consume the very same
-definitions (`api_registry.dart:31`, `:83`, `:201`). Because `TomApiEndpoint`
+definitions (`api_registry.dart` — `authApi`, `adminApi`, `appApi`). Because
+`TomApiEndpoint`
 carries no server annotations, each server **re-declares** an implementing class
 against that registry. The implementation is a `@tomComponent` the bean container
 instantiates, and each method is bound to its registry endpoint by
@@ -109,8 +110,8 @@ the per-endpoint `try/catch`, so only a *server-level* error handler can see it.
 Both servers install one that maps exactly that key to **403 Forbidden** and
 returns `null` for everything else, composing it over the framework default so
 genuine faults still get the standard JSON error (`forbiddenOnAccessDenied`,
-`admin_endpoints.dart:615`; `authServerErrorHandler`, `auth_server_start.dart:113`;
-`appForbiddenOrNotFound`, `app_endpoints.dart:920`).
+`admin_endpoints.dart`; `authServerErrorHandler`, `auth_server_start.dart`;
+`appForbiddenOrNotFound`, `app_endpoints.dart`).
 
 ## Bearer validation on every request
 
@@ -119,7 +120,7 @@ Neither server sets `authenticationMiddleware` on its configuration, so
 `tomDefaultAuthenticationMiddleware`. It reads the request's bearer token, builds
 the `TomPrincipal`, and places it in the per-request **Dart zone** — which is what
 both the contract-declared `TomAuthenticatedAccess`/`TomRoleAccess` checks and
-the handlers read from (`auth_server_start.dart:18`).
+the handlers read from (the library doc comment on `auth_server_start.dart`).
 
 A handler that needs the caller's id reads it from the zone, **not** from the
 `TomBearerAuthentication` static singleton:
@@ -128,7 +129,7 @@ A handler that needs the caller's id reads it from the zone, **not** from the
 int get _principalId =>
     int.tryParse('${getFromCurrentZone<TomPrincipal>()?.user.id}') ?? -1;
 ```
-*(`app_endpoints.dart:980`)*
+*(`AdvancedAppApiService._principalId`, `app_endpoints.dart`)*
 
 The comment there is load-bearing and worth repeating: `TomBearerAuthentication`'s
 static singleton is a **client-side** token store the server middleware never
@@ -149,7 +150,7 @@ authorization is two resolvers the handlers consult per call (introduced in
   (RCC3), strongest role wins — then keeps the strongest role over the target's
   containment chain, climbing item → list → project → workspace. Every list
   endpoint filters each candidate row through it and drops the invisible ones
-  (`AppReadService._filterVisible`, `app_endpoints.dart:248`); `null` means the
+  (`AppReadService._filterByVisibility`, `app_endpoints.dart`); `null` means the
   resource is simply not in the response.
 - **`FieldGradeResolver`** — maps a resolved `ProjectRole` to the per-field
   `TomAuthState` matrix from the `tom_resource_grant` table (in `auth_db`, via the
@@ -166,17 +167,17 @@ gradable field
 the payload *changes* must be graded `full` for the caller, or the whole write is
 rejected with `app.item.field_forbidden`; the persisted row overlays only the
 permitted fields, so server-owned columns and non-`full` fields keep their stored
-value (`_enforceFieldWrites`, `app_endpoints.dart:663`). Sharing is **owner-only**
-— only an `owner` of the target may create or revoke a `share`-mode
-`TomPrincipalDelegation`, and a new share takes effect immediately because the
-resolver reads the delegation rows on the grantee's next request
-(`AppShareService`, `app_endpoints.dart:839`).
+value (`AppWriteService._enforceFieldWrites`, `app_endpoints.dart`). Sharing is
+**owner-only** — only an `owner` of the target may create or revoke a
+`share`-mode `TomPrincipalDelegation`, and a new share takes effect immediately
+because the resolver reads the delegation rows on the grantee's next request
+(`AppShareService`, `app_endpoints.dart`).
 
 The denials are **closed/safe**: a resource the caller cannot reach is reported as
 *not found* (404, `app.item.not_found` / `app.share.not_found`), never as
 forbidden — so existence is not leaked — while a genuine permission refusal is
 403 (`app.access.forbidden` / `app.item.field_forbidden`). The server-level
-`appForbiddenOrNotFound` maps those keys (`app_endpoints.dart:920`).
+`appForbiddenOrNotFound` maps those keys.
 
 ## The file endpoint
 
@@ -266,7 +267,8 @@ Two distinct probes, deliberately on different paths:
 
 `appHealth` uses `/status` rather than `/health` *because* the framework already
 owns `/health` — an app `/health` would be shadowed by the auto-mounted probe.
-The registry comment records exactly this (`api_registry.dart:209`).
+The registry comment records exactly this (`api_registry.dart`, the `appHealth`
+endpoint).
 
 ## Server boot order
 
@@ -278,8 +280,8 @@ platform → registry → reflection → runtime → config → datasource → b
 JWT signing → bean context → migrations → [seed] → file slots → TomServer.start()
 ```
 
-Reading `auth_server_start.dart:221` (the app server's `main` is identical bar the
-demo-password seed):
+Reading `main` in `auth_server_start.dart` (the app server's `main` is identical
+bar the demo-password seed):
 
 | Step | Call | Why here |
 | ---- | ---- | -------- |
@@ -302,7 +304,7 @@ demo-password seed):
 The cross-server trust hinges on two of these matching exactly: the **issuer**
 (`globalSettingJwtOrganization = 'tom'`) and the **JWT signing configuration**
 (the same HMAC + RSA sample keypair). `initializeJwtSigning()` is byte-for-byte
-identical in both boots (`auth_server_start.dart:184`,
+identical in both boots (`auth_server_start.dart`,
 `app_server_start.dart`) — reusing the framework's bundled sample keys rather than
 minting per-server keys is precisely what makes a token issued at 8081 verify at
 8080. Replace those keys before any real deployment.

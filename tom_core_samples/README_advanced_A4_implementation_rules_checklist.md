@@ -17,8 +17,9 @@ holds without re-reading the prose.
 
 > **How to read the anchors.** Paths are relative to `tom_core_samples/` unless
 > they name `tom_flutter_ui` / `tom_core_kernel` / `tom_core_server` (the
-> framework). A `file:line` is the enforcement or usage point as of this writing;
-> if a line drifts, the symbol name in the same cell still locates it.
+> framework). An anchor is the **named declaration** — a type, a member, or a
+> top-level function — that makes the rule true, given with its file, because a
+> name survives the edit that moves a line.
 
 ## The two headline rules (read these first)
 
@@ -27,24 +28,24 @@ is already "doing it the tom_core way":
 
 | # | Rule | Why | Framework anchor | Sample site |
 | --- | --- | --- | --- | --- |
-| **H1** | **Externalize every UI text.** A widget ships **no** hard-coded label/hint/error string; each resolves from a server-delivered bundle keyed by the field's `basePath`. | One name configures display *and* access; texts change without a client release; the no-strings property is testable. | `tom_flutter_ui` `tom_form.dart:855` — `resolvedLabel => TomCtr.textOrNull(basePath, 'label') ?? tomId` | `advanced_app_server/assets/resources_app.json`; install via `setAppResourceProvider` ([08](README_advanced_08_resources_texts.md)) |
-| **H2** | **Drive UI authorization by scope/form/field names**, not hand-wired widget logic. The item screen stamps each gradable field with a per-field `TomAuthorizer.fixed`, keyed on its `basePath`, from the server-resolved grade matrix; there is **no** installed authorization adapter. | The *same* widget renders differently per principal purely from the fetched matrix; grades come from the server, enforced where the data lives. | `tom_flutter_ui` `tom_form.dart:807` (`resolveEffectiveAuth`), `:823` (layer-4 `authorizer.effectiveAuth`) | `advanced_app_client/lib/screens/item_detail_screen.dart:99-102` |
+| **H1** | **Externalize every UI text.** A widget ships **no** hard-coded label/hint/error string; each resolves from a server-delivered bundle keyed by the field's `basePath`. | One name configures display *and* access; texts change without a client release; the no-strings property is testable. | `tom_flutter_ui` `tom_form.dart` — `TomField.resolvedLabel` (`TomCtr.textOrNull(basePath, 'label') ?? tomId`) | `advanced_app_server/assets/resources_app.json`; install via `setAppResourceProvider` ([08](README_advanced_08_resources_texts.md)) |
+| **H2** | **Drive UI authorization by scope/form/field names**, not hand-wired widget logic. The item screen stamps each gradable field with a per-field `TomAuthorizer.fixed`, keyed on its `basePath`, from the server-resolved grade matrix; there is **no** *per-field* installed adapter (the one global adapter gates `<type>:<id>` resource keys only). | The *same* widget renders differently per principal purely from the fetched matrix; grades come from the server, enforced where the data lives. | `tom_flutter_ui` `tom_form.dart` — `TomField.resolveEffectiveAuth` (layer 4 applies the field's `authorizer.effectiveAuth`) | `_ItemDetailScreenState._resolveForm` (`advanced_app_client/lib/screens/item_detail_screen.dart`) |
 
 ## Resources & texts
 
-- [ ] **No label/hint/error literal in any widget.** → H1; anchor `tom_form.dart:855`. Sample: `todo_item_form.dart` fields pass only a `tomId`, never a label.
-- [ ] **Resources are server-delivered, installed once** via `TomTextResourceProvider.setAppResourceProvider` at bootstrap — pre-login bundle first (public `loginResources`), full bundle after sign-in. → [08](README_advanced_08_resources_texts.md), D-A9; sample `app_session.dart:108`, the two `/resources` endpoints (`auth_endpoints.dart:235`, `app_endpoints.dart:1074`).
+- [ ] **No label/hint/error literal in any widget.** → H1; anchor `TomField.resolvedLabel` (`tom_form.dart`). Sample: `todo_item_form.dart` fields pass only a `tomId`, never a label.
+- [ ] **Resources are server-delivered, installed once** via `TomTextResourceProvider.setAppResourceProvider` at bootstrap — pre-login bundle first (public `loginResources`), full bundle after sign-in. → [08](README_advanced_08_resources_texts.md), D-A9; sample `AppSession._installResources` (`app_session.dart`), the two `/resources` endpoints (`AdvancedAuthApiService.loginResources` in `auth_endpoints.dart`, `AdvancedAppApiService.resources` in `app_endpoints.dart`).
 - [ ] **Key texts by `<basePath>.<suffix>`** (`.label` / `.hint` / `.error.<code>`). The join is one helper — `TomCtr._key` (`tom_flutter_ui` `tom_construction_helpers.dart`): empty suffix = `basePath` verbatim, else `'$basePath.$suffix'`. → [A2](README_advanced_A2_resource_scope_conventions.md).
-- [ ] **Author texts as a nested `scope → form → field → suffix` JSON tree**, flattened server-side to the flat wire map. Keep the flatten *pure* and web-safe — `flattenResourceTree` in `advanced_todo_contracts` (no `dart:io`); the `File` read lives in each **server**. → RC-24, [A2](README_advanced_A2_resource_scope_conventions.md); sample `resource_bundle_dto.dart:52`.
+- [ ] **Author texts as a nested `scope → form → field → suffix` JSON tree**, flattened server-side to the flat wire map. Keep the flatten *pure* and web-safe — `flattenResourceTree` in `advanced_todo_contracts` (no `dart:io`); the `File` read lives in each **server**. → RC-24, [A2](README_advanced_A2_resource_scope_conventions.md); sample `resource_bundle_dto.dart`.
 - [ ] **Prove it with the `[srv]` sentinel.** A test installs a bundle whose every value carries a `[srv]` suffix and asserts the suffixed strings render — a hard-coded label would fail it. → [12](README_advanced_12_testing_integration.md); sample `form_label_resolution_test.dart`.
 
 ## Authorization
 
-- [ ] **A field's `basePath` *is* its grade key** — `<scopePath>.<formId>.<tomId>`, no suffix. Authorization keys on the bare path; texts add a suffix. → H2; anchor `tom_form.dart:146` (form path), `:614-617` (field path), `:809` (auth lookup).
-- [ ] **Install the principal's `resourceRoles` as the global adapter at login, then narrow per field locally** — at login the app client fetches `GET /resource-roles` and installs `AppResourceRoleAdapter(resourceRoles)` as the global `TomAuthorization` adapter (gating only `<type>:<id>` keys; dotted chrome stays permissive). In the item screen set each gradable `field.authorizer = TomAuthorizer.fixed(resourceState.narrow(projectRoleFieldGrades[role][basePath] ?? none))` where `resourceState = TomAuthorization.resolveAuth(ResourceRoleKeys.item(id))`; there is **no** per-field installed adapter, and non-gradable chrome keeps the permissive default. → sample `item_detail_screen.dart:146-171`, `app_session.dart`, `app_resource_role_adapter.dart`.
+- [ ] **A field's `basePath` *is* its grade key** — `<scopePath>.<formId>.<tomId>`, no suffix. Authorization keys on the bare path; texts add a suffix. → H2; anchor `tom_form.dart` — `TomForm.prepareForSelfObservation` (form path), the `TomField` constructor (field path), `TomField.resolveEffectiveAuth` (auth lookup).
+- [ ] **Install the principal's `resourceRoles` as the global adapter at login, then narrow per field locally** — at login the app client fetches `GET /resource-roles` and installs `AppResourceRoleAdapter(resourceRoles)` as the global `TomAuthorization` adapter (gating only `<type>:<id>` keys; dotted chrome stays permissive). In the item screen set each gradable `field.authorizer = TomAuthorizer.fixed(resourceState.narrow(projectRoleFieldGrades[role][basePath] ?? none))` where `resourceState = TomAuthorization.resolveAuth(ResourceRoleKeys.item(id))`; there is **no** per-field installed adapter, and non-gradable chrome keeps the permissive default. → sample `_ItemDetailScreenState._resolveForm` (`item_detail_screen.dart`), `app_session.dart`, `app_resource_role_adapter.dart`.
 - [ ] **Per-field grades ride the layer-4 authorizer, closed-safe.** Composition can only *restrict* (`narrow`), never widen; an unsent grade or a missing role defaults to `none`. The item screen narrows the registry-resolved resource ceiling by the shared `projectRoleFieldGrades[role]` row; the admin forms use `TomAuthorizer.fixed` for create-vs-edit shaping. → [07](README_advanced_07_authorization.md) D-A5/D-A8, [A1](README_advanced_A1_authorization_state_machine.md).
-- [ ] **Default closed.** Unknown/absent grade ⇒ `TomAuthState.none` (hidden), enforced at three independent points: the resource adapter (an ungranted `<type>:<id>` key → `none`), a `roleName` with no matching `ProjectRole` → `none`, and the client per-field narrow (`projectRoleFieldGrades[role][basePath] ?? none`). The server WRITE-path resolver (`field_grade_resolver.dart:73-80`) defaults the same. → D-A4, [A1](README_advanced_A1_authorization_state_machine.md).
-- [ ] **Enforce writes on the server too.** Field grades are a UX convenience client-side; the server re-checks every changed field is `full` and rejects otherwise. → `app_endpoints.dart:663` (`_enforceFieldWrites`), [A3](README_advanced_A3_request_lifecycle.md).
+- [ ] **Default closed.** Unknown/absent grade ⇒ `TomAuthState.none` (hidden), enforced at three independent points: the resource adapter (an ungranted `<type>:<id>` key → `none`), a `roleName` with no matching `ProjectRole` → `none`, and the client per-field narrow (`projectRoleFieldGrades[role][basePath] ?? none`). The server WRITE-path resolver (`FieldGradeResolver.resolveItemFieldStates` in `field_grade_resolver.dart`) defaults the same. → D-A4, [A1](README_advanced_A1_authorization_state_machine.md).
+- [ ] **Enforce writes on the server too.** Field grades are a UX convenience client-side; the server re-checks every changed field is `full` and rejects otherwise. → `AppWriteService._enforceFieldWrites` (`app_endpoints.dart`), [A3](README_advanced_A3_request_lifecycle.md).
 - [ ] **Role-gate admin routes** by declaring `TomRoleAccess([...])` on the contract endpoint (`TomApiEndpoint.access`) — the pipeline extracts and enforces it *before* the method runs. → `tom_core_server`; sample `api_registry.dart` (`adminApi`, shared `adminAccess`).
 - [ ] **Register a per-row resolver for every graded file column** —
   `TomRowColumnAuthorization.register(authKey, resolver)` at boot, composed from
@@ -60,7 +61,7 @@ is already "doing it the tom_core way":
   one, and an admin's grant edit changes it without touching the client map. →
   [13](README_advanced_13_file_transfer.md); sample
   `item_detail_screen.dart` (`_buildAttachmentField`), `projectRoleAttachmentGrades`.
-- [ ] **Source the server principal from the request zone**, `getFromCurrentZone<TomPrincipal>()` — never the client-side `TomBearerAuthentication` singleton (not request-scoped). → sample `app_endpoints.dart:981`, `auth_endpoints.dart:206`.
+- [ ] **Source the server principal from the request zone**, `getFromCurrentZone<TomPrincipal>()` — never the client-side `TomBearerAuthentication` singleton (not request-scoped). → sample `AdvancedAppApiService._principalId` (`app_endpoints.dart`), `AdvancedAuthApiService.me` (`auth_endpoints.dart`).
 
 ## Domain & reflection
 
@@ -74,8 +75,8 @@ is already "doing it the tom_core way":
 
 - [ ] **Use bound reflected forms** (`TomForm<T>`/`TomField<T>`); fields self-render via `field.widget`, `createFormElements` stays empty. → [09](README_advanced_09_forms_ui.md); sample `todo_item_form.dart`, `user_form.dart`.
 - [ ] **Unscoped: `formId` *is* the base path.** A plainly-constructed `LoginForm` (`formId: 'login'`) gives `login.username`. Use this for login + admin editors. → [A2](README_advanced_A2_resource_scope_conventions.md).
-- [ ] **Scoped: push the scope at the *call site*** to make field paths equal the server's grade keys — `TomScope.withScope('todo', TodoItemForm.new)`. Constructing the item form unscoped silently breaks every grade/text lookup (renders empty, no throw). → [A2](README_advanced_A2_resource_scope_conventions.md) D-RC17-b; sample `item_detail_screen.dart:161`.
-- [ ] **`bind`/`save` round-trip on the reflected *member* name**, independent of `tomId`. The one deliberate divergence (`estimate` tomId ↔ `estimateHours` member) proves the decoupling. → [A2](README_advanced_A2_resource_scope_conventions.md) D-A2; sample `todo_item_form.dart:104`.
+- [ ] **Scoped: push the scope at the *call site*** to make field paths equal the server's grade keys — `TomScope.withScope('todo', TodoItemForm.new)`. Constructing the item form unscoped silently breaks every grade/text lookup (renders empty, no throw). → [A2](README_advanced_A2_resource_scope_conventions.md) D-RC17-b; sample `_ItemDetailScreenState._resolveForm` (`item_detail_screen.dart`).
+- [ ] **`bind`/`save` round-trip on the reflected *member* name**, independent of `tomId`. The one deliberate divergence (`estimate` tomId ↔ `estimateHours` member) proves the decoupling. → [A2](README_advanced_A2_resource_scope_conventions.md) D-A2; sample `TodoItemForm.estimateHours` (`todo_item_form.dart`).
 - [ ] **Observe state with the two-layer model** — `ListenableBuilder` over a `ChangeNotifier` session, `TomObject` fields for in-form reactivity. → [09](README_advanced_09_forms_ui.md), [11](README_advanced_11_clients_app_admin.md).
 
 ## Persistence & migrations
@@ -90,20 +91,21 @@ is already "doing it the tom_core way":
   `authKey` ⇒ the column falls back to the *permissive* process-global
   `TomAuthorization`. Pin them in a reflection-read declaration test. →
   [13](README_advanced_13_file_transfer.md), [05](README_advanced_05_persistence_database.md);
-  sample `app_persistence_model.dart:284-305`, `file_column_declarations_test.dart`.
+  sample `ItemRecord.attachment` (`app_persistence_model.dart`),
+  `file_column_declarations_test.dart`.
 - [ ] **Point each blob store at the database that owns the rows.** A
   `type: database` store names its datasource in `blobstores_default.yaml`; that
   name is what keeps one tier's blobs out of the other tier's database, and it
   must be initialised *after* the datasources. → [05](README_advanced_05_persistence_database.md);
   sample `*/assets/blobstores_default.yaml`.
-- [ ] **One datasource per logical DB**, configured in YAML (map-key = folder, literal-int port). Cross-DB references are *logical* (no cross-DB FK); the app server binds the framework `main` datasource to `auth_db` to read the shared grant table. → [05](README_advanced_05_persistence_database.md); sample `assets/datasources_*.yaml`, `field_grade_resolver.dart:30-39`.
+- [ ] **One datasource per logical DB**, configured in YAML (map-key = folder, literal-int port). Cross-DB references are *logical* (no cross-DB FK); the app server binds the framework `main` datasource to `auth_db` to read the shared grant table. → [05](README_advanced_05_persistence_database.md); sample `assets/datasources_*.yaml`, `GrantRepository` (`field_grade_resolver.dart`).
 
 ## Servers & endpoints
 
 - [ ] **The contract declares the access; the server enforces it** — set each endpoint's `TomApiEndpoint.access` (`TomPublicAccess` / `TomAuthenticatedAccess` / `TomRoleAccess`) in the registry, and the pipeline extracts it on first call (G-API-3/C-12). A handler-side `TomAccessControl` annotation is only a *local override* (`tea ?? ae.access`); the advanced servers declare nothing inline. → [10](README_advanced_10_servers_endpoints.md); sample `api_registry.dart` (`authApi`/`adminApi`/`appApi`).
-- [ ] **Validate the bearer on every non-public request** — the pipeline rejects pre-invocation with `endpoint_handler.handle_method_call.access_denied` → 403. → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart:904`/`:935-939` (`appForbiddenOrNotFound`).
-- [ ] **Fail closed/safe: 404 over 403 for unreachable resources.** A resource the caller cannot reach is reported *missing*, never leaking its existence. → [A1](README_advanced_A1_authorization_state_machine.md)/[A3](README_advanced_A3_request_lifecycle.md); sample `app_endpoints.dart:232-237` (`app.item.not_found`).
-- [ ] **Keep services server-/zone-free; map error keys at the boundary.** Services throw stable `TomEndpointHandlerException` keys; a server-level handler maps them to HTTP statuses. → sample `appForbiddenOrNotFound` (`app_endpoints.dart:920`), `LoginUnauthorizedErrorHandler` (`auth_endpoints.dart:148`).
+- [ ] **Validate the bearer on every non-public request** — the pipeline rejects pre-invocation with `endpoint_handler.handle_method_call.access_denied` → 403. → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart` — `appEndpointAccessDeniedKey`, mapped by `appForbiddenOrNotFound`.
+- [ ] **Fail closed/safe: 404 over 403 for unreachable resources.** A resource the caller cannot reach is reported *missing*, never leaking its existence. → [A1](README_advanced_A1_authorization_state_machine.md)/[A3](README_advanced_A3_request_lifecycle.md); sample `itemNotFound` (`app_endpoints.dart`, key `app.item.not_found`).
+- [ ] **Keep services server-/zone-free; map error keys at the boundary.** Services throw stable `TomEndpointHandlerException` keys; a server-level handler maps them to HTTP statuses. → sample `appForbiddenOrNotFound` (`app_endpoints.dart`), `LoginUnauthorizedErrorHandler` (`auth_endpoints.dart`).
 - [ ] **Publish file slots from the annotations, one line per entity** —
   `TomFileSlots.register(repository)` at boot (after reflection + stores, before
   serving) turns the *exposed* file columns into `/files/{entity}/{id}/{column}`
@@ -111,7 +113,7 @@ is already "doing it the tom_core way":
   nothing and answers **404** — the same answer a column that does not exist
   gets. → [13](README_advanced_13_file_transfer.md),
   [10](README_advanced_10_servers_endpoints.md); sample `app_server_start.dart`.
-- [ ] **Boot servers in dependency order** — the token-issuing auth server before the app server that trusts its key; reserve a distinct path for the typed status (`/status`) vs the framework liveness probe (`/health`). → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart:987` (`appHealth` at `/status`).
+- [ ] **Boot servers in dependency order** — the token-issuing auth server before the app server that trusts its key; reserve a distinct path for the typed status (`/status`) vs the framework liveness probe (`/health`). → [10](README_advanced_10_servers_endpoints.md); sample `AdvancedAppApiService.health` (`app_endpoints.dart`, the `appHealth` endpoint at `/status`).
 
 ## Testing
 
@@ -132,7 +134,7 @@ resources → authorization → forms → tests.
 ## Primary sources
 
 - All spine docs [00](README_advanced_00_introduction.md)–[13](README_advanced_13_file_transfer.md); appendices [A1](README_advanced_A1_authorization_state_machine.md)/[A2](README_advanced_A2_resource_scope_conventions.md)/[A3](README_advanced_A3_request_lifecycle.md)
-- Framework anchors: `tom_flutter_ui` `tom_form.dart:807`/`:855`; `tom_core_server` endpoint pipeline + `@TomRoleAccess`
+- Framework anchors: `tom_flutter_ui` `tom_form.dart` — `TomField.resolveEffectiveAuth` / `TomField.resolvedLabel`; `tom_core_server` endpoint pipeline + `@TomRoleAccess`
 
 ---
 

@@ -25,10 +25,10 @@ demonstrated from inside either one:
 
 | The claim | Where it is stated | Where it is now observable |
 | --- | --- | --- |
-| the anchor publisher must not be a scheduled job | `audit.md:496` | `ops_anchoring.dart`; `ops_anchor_test.dart` asserts no `@TomScheduledJob` declares it |
-| the outbox puts its retries on the job queue | `messaging.md:317` | a job composes; a *second* scheduler delivers; `ops_digest_test.dart` shows a failed send redelivered without recomposition |
-| an application mail names a template key, not a body | `messaging.md:435` | the digest holds no sentence a recipient reads; `assets/text_{en,de}.yaml` do, and `ops_digest_test.dart` renders one digest in two languages |
-| an export's only real seam is storage | `export.md:394` | the weekly report is rows in the same `tom_blob` pair as an item attachment |
+| the anchor publisher must not be a scheduled job | `audit.md` § *Why the publisher is not a scheduled job* | `ops_anchoring.dart`; `ops_anchor_test.dart` asserts no `@TomScheduledJob` declares it |
+| the outbox puts its retries on the job queue | `messaging.md` § *Delivery Semantics: One Retry Mechanism* | a job composes; a *second* scheduler delivers; `ops_digest_test.dart` shows a failed send redelivered without recomposition |
+| an application mail names a template key, not a body | `messaging.md` § *Application Email: A Template Key, Not a Body* | the digest holds no sentence a recipient reads; `assets/text_{en,de}.yaml` do, and `ops_digest_test.dart` renders one digest in two languages |
+| an export's only real seam is storage | `export.md` § *Storage: A Deliberately Narrow Seam* | the weekly report is rows in the same `tom_blob` pair as an item attachment |
 | the repository is the audit chokepoint | `audit.md` | a machine's 03:00 delete produces the same trail a human's would |
 
 The server runs four pieces of recurring work. Three are `@TomScheduledJob`s;

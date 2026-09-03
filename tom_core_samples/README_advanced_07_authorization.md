@@ -10,14 +10,16 @@ what the client form resolves against — so granting a role `read` on
 glue. This part covers the four-state grade model, how a field's `basePath`
 *becomes* its grade key, the grant matrix and the two server resolvers that
 compute it, how the item screen stamps each gradable field with a per-field
-`TomAuthorizer.fixed` (there is **no** installed authorization adapter), and the
+`TomAuthorizer.fixed` (there is **no** *per-field* installed adapter — the one
+global adapter gates resource keys only), and the
 route-level role gate that guards admin CRUD. The state machine itself is the
 deep dive in [A1](README_advanced_A1_authorization_state_machine.md).
 
 ## The four-state field authorization model
 
-Every gradable field resolves to one of four `TomAuthState` values
-(`tom_core_kernel/lib/src/tombase/security/tom_authorization.dart:29`),
+Every gradable field resolves to one of four `TomAuthState` values (the
+`TomAuthState` enum in
+`tom_core_kernel/lib/src/tombase/security/tom_authorization.dart`),
 declared **most-to-least restrictive** so the ordering itself drives `narrow`
 / `widen`:
 
@@ -37,11 +39,11 @@ field's reach, never raise it.
 
 The whole rule turns on one structural fact (stated once in
 [A2](README_advanced_A2_resource_scope_conventions.md), used everywhere). A
-field's **`basePath`** is `<scopePath>.<formId>.<tomId>`
-(`tom_flutter_ui/.../tom_form.dart:614-617`), and authorization keys on that
-**`basePath` alone, no suffix** — `TomAuthorization.resolveAuth(basePath)` is
-layer 1 of `TomField.resolveEffectiveAuth()` (`tom_form.dart:807`, the lookup
-itself at `:809`).
+field's **`basePath`** is `<scopePath>.<formId>.<tomId>` (derived in the
+`TomField` constructor, `tom_flutter_ui/.../tom_form.dart`), and authorization
+keys on that **`basePath` alone, no suffix** —
+`TomAuthorization.resolveAuth(basePath)` is layer 1 of
+`TomField.resolveEffectiveAuth`.
 
 So when the item form runs under `TomScope.withScope('todo', …)` with
 `formId: 'item'`, the field `title` (tomId `title`) self-addresses as
@@ -148,8 +150,9 @@ it resets the adapter. That adapter gates only `<type>:<id>` resource keys (thos
 containing `:`); any dotted path (`todo.item.title`, chrome) stays permissive
 (`full`), matching the pre-RCC2 no-adapter behaviour.
 
-When the item detail screen opens an item, `_resolveForm()` grades each gradable
-field **synchronously** (`advanced_app_client/lib/screens/item_detail_screen.dart:146-171`):
+When the item detail screen opens an item, `_ItemDetailScreenState._resolveForm`
+grades each gradable field **synchronously**
+(`advanced_app_client/lib/screens/item_detail_screen.dart`):
 
 ```dart
 final itemKey = ResourceRoleKeys.item(_item.id.get());       // shared-domain builder
@@ -192,8 +195,8 @@ The group form has neither, needing no shaping. Both uses — the item screen's
 DB-resolved grades and the admin forms' create/edit shaping — are the *correct*
 use of the layer-4 authorizer (D-A5).
 
-The full five-layer order is in `TomField.resolveEffectiveAuth()`
-(`tom_form.dart:807`): (1) resource-based via `basePath`, (2) group auth, (3)
+The full five-layer order is in `TomField.resolveEffectiveAuth`
+(`tom_form.dart`): (1) resource-based via `basePath`, (2) group auth, (3)
 form-path narrow, (4) per-field authorizer, (5) UI-state controller — each
 `narrow`s the running state, so a later layer can only restrict, never widen.
 
@@ -216,7 +219,7 @@ The endpoint pipeline and annotations are part
 
 ## Primary sources
 
-- `advanced_app_server/lib/src/access/{resource_role_resolver,field_grade_resolver}.dart`; `tom_flutter_ui/.../tom_form.dart:807`
+- `advanced_app_server/lib/src/access/{resource_role_resolver,field_grade_resolver}.dart`; `TomField.resolveEffectiveAuth` in `tom_flutter_ui/.../tom_form.dart`
 - `advanced_auth_server/database_migrations/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql` (the grant matrix); `advanced_auth_server/lib/src/endpoints/admin_endpoints.dart`
 - Appendix [A1](README_advanced_A1_authorization_state_machine.md)
 

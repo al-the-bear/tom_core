@@ -67,16 +67,16 @@ It is applied at both the login and the bound-form layer, in both clients:
 
 - `advanced_app_client/test/form_label_resolution_test.dart` installs
   `'login.username.label': 'Username [srv]'` (and the password/hint keys), pumps
-  the login screen, and asserts the sentinels render (`:65`, `:78`); a second
-  group does the same for all seven `todo.item.*` field labels (`:91`,
-  `:107`).
+  the login screen, and asserts the sentinels render (**TC-10-01**); a second
+  group does the same for all seven `todo.item.*` field labels (**TC-10-02**).
 - `advanced_app_client/test/item_detail_screen_test.dart` folds the same proof
-  into the bound detail form as **TC-30-05** (`:233`): the owner opens the
-  editor against a `[srv]`-suffixed field bundle and every field label resolves
-  from it (`:241`, `:250`).
-- The admin console mirrors it — `admin_login_form_test.dart:111` for the
-  `adminLogin.*` keys and `advanced_authadmin_client/test/form_label_resolution_test.dart`
-  for the user/role/group draft forms (`:64`, `:89`, `:108`).
+  into the bound detail form as **TC-30-05**: the owner opens the editor
+  against a `[srv]`-suffixed field bundle and every field label resolves from
+  it.
+- The admin console mirrors it — `admin_login_form_test.dart`'s `labels resolve
+  from the adminLogin.* login bundle, not overrides` case for the `adminLogin.*`
+  keys, and `advanced_authadmin_client/test/form_label_resolution_test.dart`
+  for the user/role/group draft forms (**TC-10-U**, **TC-10-R**, **TC-10-G**).
 
 ## The four-role render matrix
 
@@ -88,14 +88,14 @@ pushes the **same** `ItemDetailScreen` (the same bound `TodoItemForm`) four
 times, each as a different principal, and asserts the rendering differs purely
 because the session installed a different field matrix on the `TomAuthorization`
 singleton — the form holds no authorization state of its own (the regression
-guard for the per-field-authorizer removal, `:45`):
+guard for the per-field-authorizer removal):
 
 | Test | Principal (role) | What the matrix renders |
 | --- | --- | --- |
-| **TC-30-01** (`:131`) | `alice` (owner) | every gradable field is `full` — a complete editor with a Save |
-| **TC-30-02** (`:158`) | `val` (viewer, shared in) | read-only fields, a *disabled* status control, `estimate` hidden (`none` → field collapses), no Save |
-| **TC-30-03** (`:184`) | `bob` (editor) | can save, but `assigneeId` is `read`; editing the title and saving persists the title while the assignee stays put — the write-back carries only the editable fields |
-| **TC-30-04** (`:202`) | `val` (commenter) | both `priority` and `estimate` graded `none` (hidden), the rest read, no Save — distinct from the viewer matrix where `priority` stays visible |
+| **TC-30-01** | `alice` (owner) | every gradable field is `full` — a complete editor with a Save |
+| **TC-30-02** | `val` (viewer, shared in) | read-only fields, a *disabled* status control, `estimate` hidden (`none` → field collapses), no Save |
+| **TC-30-03** | `bob` (editor) | can save, but `assigneeId` is `read`; editing the title and saving persists the title while the assignee stays put — the write-back carries only the editable fields |
+| **TC-30-04** | `val` (commenter) | both `priority` and `estimate` graded `none` (hidden), the rest read, no Save — distinct from the viewer matrix where `priority` stays visible |
 
 TC-30-03 is the one that also proves *server-side* enforcement matters: the
 client only sends the fields its grade renders editable, so the read-only
