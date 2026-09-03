@@ -20,7 +20,6 @@ class CardPanelDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _CardPanelDemoContent();
-
   }
 }
 
@@ -120,10 +119,7 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
               padding: const EdgeInsets.all(16),
               child: TomRow(
                 children: [
-                  TomIcon(
-                    icon: Icons.layers,
-                    color: theme.colorScheme.primary,
-                  ),
+                  TomIcon(icon: Icons.layers, color: theme.colorScheme.primary),
                   TomSizedBox(width: 12),
                   TomExpanded(
                     child: TomColumn(
@@ -354,10 +350,16 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
                       TomRow(
                         children: [
                           for (int i = 0; i < 4; i++)
-                            Icon(Icons.star,
-                                size: 16, color: Colors.amber.shade600),
-                          Icon(Icons.star_half,
-                              size: 16, color: Colors.amber.shade600),
+                            Icon(
+                              Icons.star,
+                              size: 16,
+                              color: Colors.amber.shade600,
+                            ),
+                          Icon(
+                            Icons.star_half,
+                            size: 16,
+                            color: Colors.amber.shade600,
+                          ),
                           TomSizedBox(width: 4),
                           TomText(
                             tomId: 'productCard.rating',
@@ -471,8 +473,7 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
               leading: const Icon(Icons.inventory_2),
               titleText: 'Order Details',
               initiallyExpanded: _orderExpanded,
-              onExpansionChanged: (v) =>
-                  setState(() => _orderExpanded = v),
+              onExpansionChanged: (v) => setState(() => _orderExpanded = v),
               children: [
                 TomPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -502,8 +503,7 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
               leading: const Icon(Icons.location_on),
               titleText: 'Shipping Address',
               initiallyExpanded: _shippingExpanded,
-              onExpansionChanged: (v) =>
-                  setState(() => _shippingExpanded = v),
+              onExpansionChanged: (v) => setState(() => _shippingExpanded = v),
               children: [
                 TomPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -543,8 +543,7 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
               leading: const Icon(Icons.credit_card),
               titleText: 'Payment Method',
               initiallyExpanded: _paymentExpanded,
-              onExpansionChanged: (v) =>
-                  setState(() => _paymentExpanded = v),
+              onExpansionChanged: (v) => setState(() => _paymentExpanded = v),
               children: [
                 TomPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -640,14 +639,14 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
           TomText(
             text: label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           TomText(
             text: value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -772,8 +771,8 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
           child: TomText(
             text: header,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: isExpanded ? FontWeight.bold : FontWeight.normal,
-                ),
+              fontWeight: isExpanded ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
         );
       },
@@ -782,8 +781,8 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
         child: TomText(
           text: body,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
       isExpanded: _faqExpanded[index],
@@ -845,26 +844,10 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
             spacing: 12,
             runSpacing: 12,
             children: [
-              _buildMaterialTypeChip(
-                MaterialType.canvas,
-                'Canvas',
-                theme,
-              ),
-              _buildMaterialTypeChip(
-                MaterialType.card,
-                'Card',
-                theme,
-              ),
-              _buildMaterialTypeChip(
-                MaterialType.circle,
-                'Circle',
-                theme,
-              ),
-              _buildMaterialTypeChip(
-                MaterialType.button,
-                'Button',
-                theme,
-              ),
+              _buildMaterialTypeChip(MaterialType.canvas, 'Canvas', theme),
+              _buildMaterialTypeChip(MaterialType.card, 'Card', theme),
+              _buildMaterialTypeChip(MaterialType.circle, 'Circle', theme),
+              _buildMaterialTypeChip(MaterialType.button, 'Button', theme),
               _buildMaterialTypeChip(
                 MaterialType.transparency,
                 'Transparent',
@@ -928,10 +911,7 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
           : theme.colorScheme.surfaceContainerLow,
       child: TomPadding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: TomText(
-          text: label,
-          style: theme.textTheme.bodySmall,
-        ),
+        child: TomText(text: label, style: theme.textTheme.bodySmall),
       ),
     );
   }
@@ -1053,9 +1033,9 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
           .append(
             TomText(
               text: '${_aclElevation.round()}dp',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             dist: 8,
           )
@@ -1091,8 +1071,7 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
               leading: const Icon(Icons.info_outline),
               titleText: 'More Information',
               initiallyExpanded: _aclExpanded,
-              onExpansionChanged: (v) =>
-                  setState(() => _aclExpanded = v),
+              onExpansionChanged: (v) => setState(() => _aclExpanded = v),
               children: [
                 TomPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1120,10 +1099,7 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
           )
           .gap()
           .append(
-            TomFilledButton(
-              tomId: 'aclCard.apply',
-              onPressed: () {},
-            ),
+            TomFilledButton(tomId: 'aclCard.apply', onPressed: () {}),
             dist: 8,
           )
           .build(),
@@ -1139,9 +1115,7 @@ class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1185,10 +1159,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

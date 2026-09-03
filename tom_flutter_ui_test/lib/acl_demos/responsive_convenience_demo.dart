@@ -29,8 +29,10 @@ class ResponsiveConvenienceDemo extends StatelessWidget {
               .append(const DemoBox('Label', Colors.lightBlue))
               .setPSize(120, 48)
               .setMSize(80, 48)
-              .append(const DemoBox('Input [expandX]', Colors.lightGreen),
-                  dist: 8)
+              .append(
+                const DemoBox('Input [expandX]', Colors.lightGreen),
+                dist: 8,
+              )
               .setPSize(200, 48)
               .setMSize(100, 48)
               .setAttr(AclFlags.expandX)
@@ -110,4 +112,3 @@ double _measureWidthInChars(
   )..layout();
   return painter.width;
 }
-

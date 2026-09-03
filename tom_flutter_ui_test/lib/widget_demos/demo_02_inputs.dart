@@ -23,7 +23,6 @@ class InputsDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _InputsDemoContent();
-
   }
 }
 
@@ -92,9 +91,7 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Standard Text Fields
-            _SectionHeader(
-              tomId: 'section.standard',
-            ),
+            _SectionHeader(tomId: 'section.standard'),
             TomSizedBox(height: 16),
             _buildTextFieldSection(),
             TomSizedBox(height: 24),
@@ -102,9 +99,7 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
             TomSizedBox(height: 32),
 
             // Section 2: Search & Autocomplete
-            _SectionHeader(
-              tomId: 'section.search',
-            ),
+            _SectionHeader(tomId: 'section.search'),
             TomSizedBox(height: 16),
             _buildSearchBarSection(),
             TomSizedBox(height: 24),
@@ -112,9 +107,7 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
             TomSizedBox(height: 32),
 
             // Section 3: Cupertino Text Inputs
-            _SectionHeader(
-              tomId: 'section.cupertino',
-            ),
+            _SectionHeader(tomId: 'section.cupertino'),
             TomSizedBox(height: 16),
             _buildCupertinoTextFieldSection(),
             TomSizedBox(height: 24),
@@ -122,9 +115,7 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
             TomSizedBox(height: 32),
 
             // Section 4: Date & Time Pickers
-            _SectionHeader(
-              tomId: 'section.datetime',
-            ),
+            _SectionHeader(tomId: 'section.datetime'),
             TomSizedBox(height: 16),
             _buildCalendarSection(),
             TomSizedBox(height: 24),
@@ -132,9 +123,7 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
             TomSizedBox(height: 32),
 
             // Section 5: ACL Layout Demo (RTL/LTR)
-            _SectionHeader(
-              tomId: 'section.acl',
-            ),
+            _SectionHeader(tomId: 'section.acl'),
             TomSizedBox(height: 16),
             _buildAclTextFieldSection(),
             TomSizedBox(height: 24),
@@ -152,72 +141,66 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 
   Widget _buildTextFieldSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
         tomId: 'textfield',
         child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Basic text field
-          TomTextField(
-            tomId: 'textfield.basic',
-            controller: _nameController,
-          ),
-          TomSizedBox(height: 16),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Basic text field
+            TomTextField(tomId: 'textfield.basic', controller: _nameController),
+            TomSizedBox(height: 16),
 
-          // Text field with prefix and suffix
-          TomTextField(
-            tomId: 'textfield.price',
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              prefixText: '\$ ',
-              suffixText: 'USD',
-            ),
-          ),
-          TomSizedBox(height: 16),
-
-          // Password field with visibility toggle
-          TomTextField(
-            tomId: 'textfield.password',
-            controller: _passwordController,
-            obscureText: _obscurePassword,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.lock),
-              suffixIcon: TomIconButton(
-                tomId: 'textfield.passwordToggle',
-                onPressed: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
+            // Text field with prefix and suffix
+            TomTextField(
+              tomId: 'textfield.price',
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                prefixText: '\$ ',
+                suffixText: 'USD',
               ),
             ),
-          ),
-          TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
 
-          // Multiline text field
-          TomTextField(
-            tomId: 'textfield.multiline',
-            maxLines: 4,
-            minLines: 2,
-          ),
-          TomSizedBox(height: 16),
+            // Password field with visibility toggle
+            TomTextField(
+              tomId: 'textfield.password',
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.lock),
+                suffixIcon: TomIconButton(
+                  tomId: 'textfield.passwordToggle',
+                  onPressed: () {
+                    setState(() => _obscurePassword = !_obscurePassword);
+                  },
+                ),
+              ),
+            ),
+            TomSizedBox(height: 16),
 
-          // Disabled text field
-          TomTextField(
-            tomId: 'textfield.disabled',
-            enabled: false,
-          ),
+            // Multiline text field
+            TomTextField(
+              tomId: 'textfield.multiline',
+              maxLines: 4,
+              minLines: 2,
+            ),
+            TomSizedBox(height: 16),
 
-          TomSizedBox(height: 16),
+            // Disabled text field
+            TomTextField(tomId: 'textfield.disabled', enabled: false),
 
-          // Read-only text field
-          TomTextField(
-            tomId: 'textfield.readonly',
-            readOnly: true,
-          ),
-        ],
+            TomSizedBox(height: 16),
+
+            // Read-only text field
+            TomTextField(tomId: 'textfield.readonly', readOnly: true),
+          ],
         ),
       ),
     );
@@ -225,65 +208,66 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 
   Widget _buildTextFormFieldSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
         tomId: 'formfield',
         child: Form(
-        key: _formKey,
-        child: TomColumn(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Email validation
-            TomTextFormField(
-              tomId: 'formfield.email',
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Email is required';
-                }
-                if (!value.contains('@')) {
-                  return 'Please enter a valid email';
-                }
-                return null;
-              },
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-            ),
-            TomSizedBox(height: 16),
-
-            // Required field
-            TomTextFormField(
-              tomId: 'formfield.required',
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'This field is required';
-                }
-                return null;
-              },
-            ),
-            TomSizedBox(height: 16),
-
-            // Phone number with formatting
-            TomTextFormField(
-              tomId: 'formfield.phone',
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.phone),
+          key: _formKey,
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Email validation
+              TomTextFormField(
+                tomId: 'formfield.email',
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Email is required';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+                autovalidateMode: AutovalidateMode.onUserInteraction,
               ),
-            ),
-            TomSizedBox(height: 24),
+              TomSizedBox(height: 16),
 
-            // Validate button
-            TomElevatedButton(
-              tomId: 'formfield.validate',
-              onPressed: () {
-                _formKey.currentState?.validate();
-              },
-            ),
-          ],
+              // Required field
+              TomTextFormField(
+                tomId: 'formfield.required',
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'This field is required';
+                  }
+                  return null;
+                },
+              ),
+              TomSizedBox(height: 16),
+
+              // Phone number with formatting
+              TomTextFormField(
+                tomId: 'formfield.phone',
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.phone),
+                ),
+              ),
+              TomSizedBox(height: 24),
+
+              // Validate button
+              TomElevatedButton(
+                tomId: 'formfield.validate',
+                onPressed: () {
+                  _formKey.currentState?.validate();
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -296,58 +280,58 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 
   Widget _buildSearchBarSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
         tomId: 'searchbar',
         child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Basic search bar
-          TomSearchBar(
-            tomId: 'searchbar.basic',
-            controller: _searchController,
-            onChanged: (value) {
-              // Handle search
-            },
-            leading: const Icon(Icons.search),
-            trailing: [
-              TomIconButton(
-                tomId: 'searchbar.mic',
-                onPressed: () {},
-              ),
-            ],
-          ),
-          TomSizedBox(height: 24),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Basic search bar
+            TomSearchBar(
+              tomId: 'searchbar.basic',
+              controller: _searchController,
+              onChanged: (value) {
+                // Handle search
+              },
+              leading: const Icon(Icons.search),
+              trailing: [
+                TomIconButton(tomId: 'searchbar.mic', onPressed: () {}),
+              ],
+            ),
+            TomSizedBox(height: 24),
 
-          // Search anchor with suggestions
-          TomSearchAnchor(
-            tomId: 'searchbar.anchor',
-            suggestionsBuilder: (context, controller) {
-              final query = controller.text.toLowerCase();
-              final suggestions = _getCountries()
-                  .where((c) => c.toLowerCase().contains(query))
-                  .toList();
-              return suggestions.map((item) => ListTile(
+            // Search anchor with suggestions
+            TomSearchAnchor(
+              tomId: 'searchbar.anchor',
+              suggestionsBuilder: (context, controller) {
+                final query = controller.text.toLowerCase();
+                final suggestions = _getCountries()
+                    .where((c) => c.toLowerCase().contains(query))
+                    .toList();
+                return suggestions.map(
+                  (item) => ListTile(
                     title: Text(item),
                     onTap: () {
                       controller.closeView(item);
                     },
-                  ));
-            },
-            builder: (context, controller) {
-              return TomSearchBar(
-                tomId: 'searchbar.anchorBar',
-                controller: controller,
-                onTap: () => controller.openView(),
-                onChanged: (_) => controller.openView(),
-                leading: const Icon(Icons.search),
-              );
-            },
-          ),
-        ],
+                  ),
+                );
+              },
+              builder: (context, controller) {
+                return TomSearchBar(
+                  tomId: 'searchbar.anchorBar',
+                  controller: controller,
+                  onTap: () => controller.openView(),
+                  onChanged: (_) => controller.openView(),
+                  leading: const Icon(Icons.search),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -355,46 +339,50 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 
   Widget _buildAutocompleteSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
         tomId: 'autocomplete',
         child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Country autocomplete
-          TomAutocomplete<String>(
-            optionsBuilder: (textEditingValue) {
-              if (textEditingValue.text.isEmpty) {
-                return const Iterable<String>.empty();
-              }
-              final countries = _getCountries();
-              return countries.where((c) =>
-                  c.toLowerCase().contains(textEditingValue.text.toLowerCase()));
-            },
-            onSelected: (selection) {
-              setState(() => _selectedCountry = selection);
-            },
-            fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-              return TomTextField(
-                tomId: 'autocomplete.country',
-                controller: controller,
-                focusNode: focusNode,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.public),
-                ),
-              );
-            },
-          ),
-          TomSizedBox(height: 8),
-          if (_selectedCountry != null)
-            TomText(
-              text: 'Selected: $_selectedCountry',
-              style: Theme.of(context).textTheme.bodySmall,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Country autocomplete
+            TomAutocomplete<String>(
+              optionsBuilder: (textEditingValue) {
+                if (textEditingValue.text.isEmpty) {
+                  return const Iterable<String>.empty();
+                }
+                final countries = _getCountries();
+                return countries.where(
+                  (c) => c.toLowerCase().contains(
+                    textEditingValue.text.toLowerCase(),
+                  ),
+                );
+              },
+              onSelected: (selection) {
+                setState(() => _selectedCountry = selection);
+              },
+              fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                return TomTextField(
+                  tomId: 'autocomplete.country',
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.public),
+                  ),
+                );
+              },
             ),
-        ],
+            TomSizedBox(height: 8),
+            if (_selectedCountry != null)
+              TomText(
+                text: 'Selected: $_selectedCountry',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+          ],
         ),
       ),
     );
@@ -406,43 +394,44 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 
   Widget _buildCupertinoTextFieldSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
         tomId: 'cupertino',
         child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Basic Cupertino text field
-          TomCupertinoTextField(
-            tomId: 'cupertino.basic',
-            placeholder: 'Enter your name',
-          ),
-          TomSizedBox(height: 16),
-
-          // Cupertino text field with prefix and suffix
-          TomCupertinoTextField(
-            tomId: 'cupertino.decorated',
-            prefix: const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Icon(Icons.email, size: 20),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Basic Cupertino text field
+            TomCupertinoTextField(
+              tomId: 'cupertino.basic',
+              placeholder: 'Enter your name',
             ),
-            suffix: const Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: Icon(Icons.check_circle, size: 20, color: Colors.green),
-            ),
-            placeholder: 'Email address',
-          ),
-          TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
 
-          // Cupertino form field row
-          TomCupertinoTextFormFieldRow(
-            tomId: 'cupertino.formrow',
-            prefix: TomText(tomId: 'cupertino.formrowPrefix'),
-          ),
-        ],
+            // Cupertino text field with prefix and suffix
+            TomCupertinoTextField(
+              tomId: 'cupertino.decorated',
+              prefix: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(Icons.email, size: 20),
+              ),
+              suffix: const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: Icon(Icons.check_circle, size: 20, color: Colors.green),
+              ),
+              placeholder: 'Email address',
+            ),
+            TomSizedBox(height: 16),
+
+            // Cupertino form field row
+            TomCupertinoTextFormFieldRow(
+              tomId: 'cupertino.formrow',
+              prefix: TomText(tomId: 'cupertino.formrowPrefix'),
+            ),
+          ],
         ),
       ),
     );
@@ -450,8 +439,9 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 
   Widget _buildCupertinoSearchSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     // Wrap in NotificationListener to prevent CupertinoSearchTextField from
     // receiving scroll notifications that trigger size access during build.
     // This is a workaround for a Flutter bug where YearPicker.jumpTo dispatches
@@ -463,24 +453,24 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
         child: _DemoCard(
           tomId: 'cupertinoSearch',
           child: TomColumn(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cupertino search text field
-            TomCupertinoSearchTextField(
-              tomId: 'cupertinoSearch.basic',
-              onChanged: (value) {
-                // Handle search
-              },
-            ),
-            TomSizedBox(height: 16),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cupertino search text field
+              TomCupertinoSearchTextField(
+                tomId: 'cupertinoSearch.basic',
+                onChanged: (value) {
+                  // Handle search
+                },
+              ),
+              TomSizedBox(height: 16),
 
-            // Cupertino search with custom styling
-            TomCupertinoSearchTextField(
-              tomId: 'cupertinoSearch.styled',
-              backgroundColor: CupertinoColors.systemGrey6,
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ],
+              // Cupertino search with custom styling
+              TomCupertinoSearchTextField(
+                tomId: 'cupertinoSearch.styled',
+                backgroundColor: CupertinoColors.systemGrey6,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ],
           ),
         ),
       ),
@@ -493,70 +483,73 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 
   Widget _buildCalendarSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
         tomId: 'calendar',
         child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Calendar date picker
-          TomContainer(
-            constraints: const BoxConstraints(maxHeight: 350),
-            child: TomCalendarDatePicker(
-              tomId: 'calendar.picker',
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Calendar date picker
+            TomContainer(
+              constraints: const BoxConstraints(maxHeight: 350),
+              child: TomCalendarDatePicker(
+                tomId: 'calendar.picker',
+                initialDate: _selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                onDateChanged: (date) {
+                  setState(() => _selectedDate = date);
+                },
+              ),
+            ),
+            TomSizedBox(height: 16),
+
+            // Selected date display
+            TomRow(
+              children: [
+                TomIcon(tomId: 'calendar.selectedIcon'),
+                TomSizedBox(width: 8),
+                TomText(
+                  text: MaterialLocalizations.of(
+                    context,
+                  ).formatShortDate(_selectedDate),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+            TomSizedBox(height: 24),
+
+            // Input date picker form field
+            TomInputDatePickerFormField(
+              tomId: 'calendar.inputField',
               initialDate: _selectedDate,
               firstDate: DateTime(2020),
               lastDate: DateTime(2030),
-              onDateChanged: (date) {
+              onDateSubmitted: (date) {
                 setState(() => _selectedDate = date);
               },
             ),
-          ),
-          TomSizedBox(height: 16),
+            TomSizedBox(height: 24),
 
-          // Selected date display
-          TomRow(
-            children: [
-              TomIcon(tomId: 'calendar.selectedIcon'),
-              TomSizedBox(width: 8),
-              TomText(
-                text: MaterialLocalizations.of(context).formatShortDate(_selectedDate),
-                style: Theme.of(context).textTheme.titleMedium,
+            // Year picker
+            TomContainer(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: TomYearPicker(
+                tomId: 'calendar.yearPicker',
+                firstDate: DateTime(2010),
+                lastDate: DateTime(2030),
+                currentDate: DateTime.now(),
+                selectedDate: DateTime(_selectedYear),
+                onChanged: (date) {
+                  setState(() => _selectedYear = date.year);
+                },
               ),
-            ],
-          ),
-          TomSizedBox(height: 24),
-
-          // Input date picker form field
-          TomInputDatePickerFormField(
-            tomId: 'calendar.inputField',
-            initialDate: _selectedDate,
-            firstDate: DateTime(2020),
-            lastDate: DateTime(2030),
-            onDateSubmitted: (date) {
-              setState(() => _selectedDate = date);
-            },
-          ),
-          TomSizedBox(height: 24),
-
-          // Year picker
-          TomContainer(
-            constraints: const BoxConstraints(maxHeight: 200),
-            child: TomYearPicker(
-              tomId: 'calendar.yearPicker',
-              firstDate: DateTime(2010),
-              lastDate: DateTime(2030),
-              currentDate: DateTime.now(),
-              selectedDate: DateTime(_selectedYear),
-              onChanged: (date) {
-                setState(() => _selectedYear = date.year);
-              },
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -564,59 +557,60 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 
   Widget _buildCupertinoDateTimeSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
         tomId: 'cupertinoDateTime',
         child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Cupertino date picker
-          TomText(tomId: 'cupertinoDateTime.dateLabel'),
-          TomSizedBox(height: 8),
-          TomContainer(
-            height: 200,
-            child: TomCupertinoDatePicker(
-              tomId: 'cupertinoDateTime.datePicker',
-              mode: CupertinoDatePickerMode.date,
-              initialDateTime: _selectedDate,
-              onDateTimeChanged: (date) {
-                setState(() => _selectedDate = date);
-              },
-            ),
-          ),
-          TomSizedBox(height: 24),
-
-          // Cupertino timer picker
-          TomText(tomId: 'cupertinoDateTime.timerLabel'),
-          TomSizedBox(height: 8),
-          TomContainer(
-            height: 200,
-            child: TomCupertinoTimerPicker(
-              tomId: 'cupertinoDateTime.timerPicker',
-              mode: CupertinoTimerPickerMode.hms,
-              initialTimerDuration: _selectedDuration,
-              onTimerDurationChanged: (duration) {
-                setState(() => _selectedDuration = duration);
-              },
-            ),
-          ),
-          TomSizedBox(height: 16),
-
-          // Display selected duration
-          TomRow(
-            children: [
-              TomIcon(tomId: 'cupertinoDateTime.durationIcon'),
-              TomSizedBox(width: 8),
-              TomText(
-                text: _formatDuration(_selectedDuration),
-                style: Theme.of(context).textTheme.titleMedium,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cupertino date picker
+            TomText(tomId: 'cupertinoDateTime.dateLabel'),
+            TomSizedBox(height: 8),
+            TomContainer(
+              height: 200,
+              child: TomCupertinoDatePicker(
+                tomId: 'cupertinoDateTime.datePicker',
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: _selectedDate,
+                onDateTimeChanged: (date) {
+                  setState(() => _selectedDate = date);
+                },
               ),
-            ],
-          ),
-        ],
+            ),
+            TomSizedBox(height: 24),
+
+            // Cupertino timer picker
+            TomText(tomId: 'cupertinoDateTime.timerLabel'),
+            TomSizedBox(height: 8),
+            TomContainer(
+              height: 200,
+              child: TomCupertinoTimerPicker(
+                tomId: 'cupertinoDateTime.timerPicker',
+                mode: CupertinoTimerPickerMode.hms,
+                initialTimerDuration: _selectedDuration,
+                onTimerDurationChanged: (duration) {
+                  setState(() => _selectedDuration = duration);
+                },
+              ),
+            ),
+            TomSizedBox(height: 16),
+
+            // Display selected duration
+            TomRow(
+              children: [
+                TomIcon(tomId: 'cupertinoDateTime.durationIcon'),
+                TomSizedBox(width: 8),
+                TomText(
+                  text: _formatDuration(_selectedDuration),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -632,12 +626,7 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
       child: AclBuilder()
           // Row 1: Label + TextField side by side
           .append(TomText(tomId: 'aclTextField.nameLabel'))
-          .append(
-            TomTextField(
-              tomId: 'aclTextField.name',
-            ),
-            dist: 8,
-          )
+          .append(TomTextField(tomId: 'aclTextField.name'), dist: 8)
           .setPSize(200, 56)
           .expandX()
           .newRow(dist: 16)
@@ -654,18 +643,9 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
           .expandX()
           .newRow(dist: 16)
           // Row 3: Two text fields side by side
-          .append(
-            TomTextField(
-              tomId: 'aclTextField.city',
-            ),
-          )
+          .append(TomTextField(tomId: 'aclTextField.city'))
           .expandX()
-          .append(
-            TomTextField(
-              tomId: 'aclTextField.zip',
-            ),
-            dist: 16,
-          )
+          .append(TomTextField(tomId: 'aclTextField.zip'), dist: 16)
           .setPSize(120, 56)
           .build(),
     );
@@ -677,13 +657,12 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
       child: AclBuilder()
           // Row 1: Date label with formatted date display
           .append(TomIcon(tomId: 'aclDatePicker.icon'))
-          .append(
-            TomText(tomId: 'aclDatePicker.label'),
-            dist: 8,
-          )
+          .append(TomText(tomId: 'aclDatePicker.label'), dist: 8)
           .append(
             TomText(
-              text: MaterialLocalizations.of(context).formatShortDate(_selectedDate),
+              text: MaterialLocalizations.of(
+                context,
+              ).formatShortDate(_selectedDate),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             dist: 16,
@@ -692,10 +671,7 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
           .newRow(dist: 16)
           // Row 2: Duration label with formatted duration
           .append(TomIcon(tomId: 'aclDatePicker.timerIcon'))
-          .append(
-            TomText(tomId: 'aclDatePicker.durationLabel'),
-            dist: 8,
-          )
+          .append(TomText(tomId: 'aclDatePicker.durationLabel'), dist: 8)
           .append(
             TomText(
               text: _formatDuration(_selectedDuration),
@@ -734,9 +710,7 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -780,10 +754,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

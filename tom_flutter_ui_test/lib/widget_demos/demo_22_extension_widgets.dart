@@ -42,8 +42,7 @@ class _ExtensionWidgetsDemoContentState
   int _drawerIndex = 0;
 
   // Refresh state
-  final List<String> _refreshItems =
-      List.generate(5, (i) => 'Item ${i + 1}');
+  final List<String> _refreshItems = List.generate(5, (i) => 'Item ${i + 1}');
 
   @override
   Widget buildContent(BuildContext context) {
@@ -112,10 +111,7 @@ class _ExtensionWidgetsDemoContentState
                 tomId: 'appbar.basic',
                 titleText: 'Basic TomAppBar',
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: () {},
-                  ),
+                  IconButton(icon: const Icon(Icons.search), onPressed: () {}),
                   IconButton(
                     icon: const Icon(Icons.more_vert),
                     onPressed: () {},
@@ -123,8 +119,10 @@ class _ExtensionWidgetsDemoContentState
                 ],
               ),
               body: const Center(
-                child: Text('TomAppBar extends StatelessWidget + TomWidgetMixin\n'
-                    'and implements PreferredSizeWidget'),
+                child: Text(
+                  'TomAppBar extends StatelessWidget + TomWidgetMixin\n'
+                  'and implements PreferredSizeWidget',
+                ),
               ),
             ),
           ),
@@ -142,10 +140,10 @@ class _ExtensionWidgetsDemoContentState
                 titleText: 'Styled AppBar',
                 centerTitle: true,
                 elevation: 4,
-                backgroundColor:
-                    Theme.of(context).colorScheme.primaryContainer,
-                foregroundColor:
-                    Theme.of(context).colorScheme.onPrimaryContainer,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                foregroundColor: Theme.of(
+                  context,
+                ).colorScheme.onPrimaryContainer,
                 leading: IconButton(
                   icon: const Icon(Icons.menu),
                   onPressed: () {},
@@ -187,9 +185,7 @@ class _ExtensionWidgetsDemoContentState
                   ),
                 ),
               ),
-              body: const Center(
-                child: Text('Title as widget + custom shape'),
-              ),
+              body: const Center(child: Text('Title as widget + custom shape')),
             ),
           ),
         ),
@@ -351,26 +347,29 @@ class _ExtensionWidgetsDemoContentState
               // Header row
               TableRow(
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                 ),
                 children: [
                   TomTableCell(
                     tomId: 'header.id',
                     child: const Padding(
                       padding: EdgeInsets.all(12),
-                      child: Text('ID',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'ID',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   TomTableCell(
                     tomId: 'header.name',
                     child: const Padding(
                       padding: EdgeInsets.all(12),
-                      child: Text('Name',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Name',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   TomTableCell(
@@ -378,8 +377,10 @@ class _ExtensionWidgetsDemoContentState
                     verticalAlignment: TableCellVerticalAlignment.middle,
                     child: const Padding(
                       padding: EdgeInsets.all(12),
-                      child: Text('Status',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Status',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -406,8 +407,10 @@ class _ExtensionWidgetsDemoContentState
                     verticalAlignment: TableCellVerticalAlignment.middle,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Icon(Icons.check_circle,
-                          color: Colors.green.shade600),
+                      child: Icon(
+                        Icons.check_circle,
+                        color: Colors.green.shade600,
+                      ),
                     ),
                   ),
                 ],
@@ -433,8 +436,7 @@ class _ExtensionWidgetsDemoContentState
                     verticalAlignment: TableCellVerticalAlignment.middle,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child:
-                          Icon(Icons.pending, color: Colors.orange.shade600),
+                      child: Icon(Icons.pending, color: Colors.orange.shade600),
                     ),
                   ),
                 ],
@@ -554,10 +556,9 @@ class _ExtensionWidgetsDemoContentState
               TomContainer(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: Theme.of(context).colorScheme.outlineVariant,
@@ -568,15 +569,15 @@ class _ExtensionWidgetsDemoContentState
                   children: [
                     TomRow(
                       children: [
-                        Icon(Icons.info_outline,
-                            color: Theme.of(context).colorScheme.primary),
+                        Icon(
+                          Icons.info_outline,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         TomSizedBox(width: 8),
                         TomExpanded(
                           child: Text(
                             'TomCupertinoTabView',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -604,10 +605,7 @@ class _ExtensionWidgetsDemoContentState
                         '  tomId: \'myTab\',\n'
                         '  builder: (context) => const MyTabContent(),\n'
                         ')',
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(fontFamily: 'monospace', fontSize: 13),
                       ),
                     ),
                   ],
@@ -673,10 +671,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

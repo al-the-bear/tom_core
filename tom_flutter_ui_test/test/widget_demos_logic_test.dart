@@ -43,23 +43,32 @@ void main() {
     test('a child inherits the nearest ancestor rule', () {
       // Rule on the parent path; the child has no exact rule of its own.
       adapter.setRule('demo28.admin', TomAuthState.disabled);
-      expect(adapter.resolveAuth('demo28.admin.delete'), TomAuthState.disabled,
-          reason: 'demo28.admin.delete inherits the demo28.admin rule');
+      expect(
+        adapter.resolveAuth('demo28.admin.delete'),
+        TomAuthState.disabled,
+        reason: 'demo28.admin.delete inherits the demo28.admin rule',
+      );
     });
 
     test('exact match wins over an ancestor rule', () {
       adapter.setRule('demo28.admin', TomAuthState.disabled);
       adapter.setRule('demo28.admin.delete', TomAuthState.read);
-      expect(adapter.resolveAuth('demo28.admin.delete'), TomAuthState.read,
-          reason: 'the exact rule must beat the inherited ancestor rule');
+      expect(
+        adapter.resolveAuth('demo28.admin.delete'),
+        TomAuthState.read,
+        reason: 'the exact rule must beat the inherited ancestor rule',
+      );
     });
 
     test('the nearest ancestor wins when several ancestors have rules', () {
       adapter.setRule('demo28', TomAuthState.none);
       adapter.setRule('demo28.admin', TomAuthState.read);
       // Walking up from demo28.admin.delete hits demo28.admin before demo28.
-      expect(adapter.resolveAuth('demo28.admin.delete'), TomAuthState.read,
-          reason: 'the closest ancestor (demo28.admin) wins over demo28');
+      expect(
+        adapter.resolveAuth('demo28.admin.delete'),
+        TomAuthState.read,
+        reason: 'the closest ancestor (demo28.admin) wins over demo28',
+      );
     });
 
     test('a single top-level segment falls through to full', () {
@@ -90,9 +99,11 @@ void main() {
       expect(bytes, isA<Uint8List>());
 
       // PNG 8-byte signature.
-      expect(bytes.sublist(0, 8),
-          orderedEquals(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
-          reason: 'must start with the canonical PNG signature');
+      expect(
+        bytes.sublist(0, 8),
+        orderedEquals(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+        reason: 'must start with the canonical PNG signature',
+      );
 
       // IHDR declares a 1x1 image: width/height are the four bytes each
       // following the "IHDR" chunk-type tag.
@@ -105,9 +116,11 @@ void main() {
 
       // Ends with the mandatory IEND terminator chunk: the "IEND" type tag
       // sits in the 4 bytes before the trailing 4-byte chunk CRC.
-      expect(bytes.sublist(bytes.length - 8, bytes.length - 4),
-          orderedEquals(const [0x49, 0x45, 0x4E, 0x44]),
-          reason: 'a PNG must terminate with the IEND chunk');
+      expect(
+        bytes.sublist(bytes.length - 8, bytes.length - 4),
+        orderedEquals(const [0x49, 0x45, 0x4E, 0x44]),
+        reason: 'a PNG must terminate with the IEND chunk',
+      );
     });
 
     test('is a pure generator — repeated calls are byte-identical', () {

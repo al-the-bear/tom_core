@@ -68,10 +68,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
       hintTextOverride: 'TomFormStringInput — obscured, min 6 chars',
       prefixIcon: const Icon(Icons.lock),
       obscureText: true,
-      validators: [
-        Validators.required(),
-        Validators.minLength(6),
-      ],
+      validators: [Validators.required(), Validators.minLength(6)],
     );
 
     _username = TomFormStringInput(
@@ -125,9 +122,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
     await _validateAll();
     if (_formValid) {
       setState(() {
-        _savedValues = {
-          for (final field in _fields) field.tomId: field.get(),
-        };
+        _savedValues = {for (final field in _fields) field.tomId: field.get()};
         // Commit all fields (marks current value as initial)
         for (final field in _fields) {
           field.commit();
@@ -164,10 +159,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'TomForm Module',
-                    style: theme.textTheme.titleLarge,
-                  ),
+                  Text('TomForm Module', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 8),
                   Text(
                     'The forms module provides a reflection-based form '
@@ -244,10 +236,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
                     const SizedBox(height: 16),
                     const Divider(),
                     const SizedBox(height: 8),
-                    Text(
-                      'Saved Values:',
-                      style: theme.textTheme.titleSmall,
-                    ),
+                    Text('Saved Values:', style: theme.textTheme.titleSmall),
                     const SizedBox(height: 8),
                     ..._savedValues!.entries.map(
                       (e) => Padding(

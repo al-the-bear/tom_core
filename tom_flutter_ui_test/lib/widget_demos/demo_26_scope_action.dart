@@ -38,7 +38,7 @@ class Demo26Provider extends TomScreenElementsProviderBase {
 /// Scope path: demo26.basic
 class BasicSectionProvider extends TomScreenElementsProviderBase {
   BasicSectionProvider(TomScreenElementsProvider parent)
-      : super('basic', parent);
+    : super('basic', parent);
 
   late final title = TomText(
     tomId: 'title',
@@ -46,10 +46,7 @@ class BasicSectionProvider extends TomScreenElementsProviderBase {
     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
   );
 
-  late final description = TomText(
-    tomId: 'description',
-    scope: this,
-  );
+  late final description = TomText(tomId: 'description', scope: this);
 
   late final actionButton = TomElevatedButton(
     tomId: 'action',
@@ -72,17 +69,11 @@ class BasicSectionProvider extends TomScreenElementsProviderBase {
 /// Scope path: demo26.basic.details
 class DetailsSectionProvider extends TomScreenElementsProviderBase {
   DetailsSectionProvider(TomScreenElementsProvider parent)
-      : super('details', parent);
+    : super('details', parent);
 
-  late final label = TomText(
-    tomId: 'label',
-    scope: this,
-  );
+  late final label = TomText(tomId: 'label', scope: this);
 
-  late final statusChip = TomChip(
-    tomId: 'status',
-    scope: this,
-  );
+  late final statusChip = TomChip(tomId: 'status', scope: this);
 
   late final editButton = TomTextButton(
     tomId: 'edit',
@@ -99,17 +90,11 @@ class DetailsSectionProvider extends TomScreenElementsProviderBase {
 /// Scope path: demo26.basic.details.metadata
 class MetadataSectionProvider extends TomScreenElementsProviderBase {
   MetadataSectionProvider(TomScreenElementsProvider parent)
-      : super('metadata', parent);
+    : super('metadata', parent);
 
-  late final createdLabel = TomText(
-    tomId: 'created',
-    scope: this,
-  );
+  late final createdLabel = TomText(tomId: 'created', scope: this);
 
-  late final modifiedLabel = TomText(
-    tomId: 'modified',
-    scope: this,
-  );
+  late final modifiedLabel = TomText(tomId: 'modified', scope: this);
 }
 
 /// Provider for the "actions" section.
@@ -117,7 +102,7 @@ class MetadataSectionProvider extends TomScreenElementsProviderBase {
 /// Scope path: demo26.actions
 class ActionsSectionProvider extends TomScreenElementsProviderBase {
   ActionsSectionProvider(TomScreenElementsProvider parent)
-      : super('actions', parent);
+    : super('actions', parent);
 
   late final saveButton = TomElevatedButton(
     tomId: 'save',
@@ -143,7 +128,7 @@ class ActionsSectionProvider extends TomScreenElementsProviderBase {
 /// Scope path: demo26.composite
 class CompositeSectionProvider extends TomScreenElementsProviderBase {
   CompositeSectionProvider(TomScreenElementsProvider parent)
-      : super('composite', parent);
+    : super('composite', parent);
 
   late final header = TomText(
     tomId: 'header',
@@ -161,33 +146,21 @@ class CompositeSectionProvider extends TomScreenElementsProviderBase {
 /// Sub-provider: demo26.composite.address
 class AddressSubProvider extends TomScreenElementsProviderBase {
   AddressSubProvider(TomScreenElementsProvider parent)
-      : super('address', parent);
+    : super('address', parent);
 
-  late final streetField = TomTextField(
-    tomId: 'street',
-    scope: this,
-  );
+  late final streetField = TomTextField(tomId: 'street', scope: this);
 
-  late final cityField = TomTextField(
-    tomId: 'city',
-    scope: this,
-  );
+  late final cityField = TomTextField(tomId: 'city', scope: this);
 }
 
 /// Sub-provider: demo26.composite.contact
 class ContactSubProvider extends TomScreenElementsProviderBase {
   ContactSubProvider(TomScreenElementsProvider parent)
-      : super('contact', parent);
+    : super('contact', parent);
 
-  late final emailField = TomTextField(
-    tomId: 'email',
-    scope: this,
-  );
+  late final emailField = TomTextField(tomId: 'email', scope: this);
 
-  late final phoneField = TomTextField(
-    tomId: 'phone',
-    scope: this,
-  );
+  late final phoneField = TomTextField(tomId: 'phone', scope: this);
 }
 
 // =============================================================================
@@ -212,8 +185,7 @@ class _ScopeActionDemoContent extends TomStatefulWidget {
       _ScopeActionDemoContentState();
 }
 
-class _ScopeActionDemoContentState
-    extends TomState<_ScopeActionDemoContent> {
+class _ScopeActionDemoContentState extends TomState<_ScopeActionDemoContent> {
   // Single root provider — all sections nested as fields
   late final demo26 = Demo26Provider();
 
@@ -359,10 +331,10 @@ class _ScopeActionDemoContentState
           TomSizedBox(height: 16),
           // Address sub-section via TomAclBuilder
           TomAclBuilder<AddressSubProvider>(
-            id: 'addressAcl',
-            elementProvider: demo26.composite.address,
-            title: 'Address',
-          )
+                id: 'addressAcl',
+                elementProvider: demo26.composite.address,
+                title: 'Address',
+              )
               .append((p) => p.streetField)
               .newRow()
               .append((p) => p.cityField)
@@ -370,10 +342,10 @@ class _ScopeActionDemoContentState
           TomSizedBox(height: 16),
           // Contact sub-section via TomAclBuilder
           TomAclBuilder<ContactSubProvider>(
-            id: 'contactAcl',
-            elementProvider: demo26.composite.contact,
-            title: 'Contact',
-          )
+                id: 'contactAcl',
+                elementProvider: demo26.composite.contact,
+                title: 'Contact',
+              )
               .append((p) => p.emailField)
               .newRow()
               .append((p) => p.phoneField)
@@ -389,8 +361,7 @@ class _ScopeActionDemoContentState
       ('Demo26Provider', demo26.getScopePath()),
       ('BasicSectionProvider', demo26.basic.getScopePath()),
       ('DetailsSectionProvider', demo26.basic.details.getScopePath()),
-      ('MetadataSectionProvider',
-          demo26.basic.details.metadata.getScopePath()),
+      ('MetadataSectionProvider', demo26.basic.details.metadata.getScopePath()),
       ('ActionsSectionProvider', demo26.actions.getScopePath()),
       ('CompositeSectionProvider', demo26.composite.getScopePath()),
       ('AddressSubProvider', demo26.composite.address.getScopePath()),

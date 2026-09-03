@@ -23,7 +23,6 @@ class DialogModalGalleryDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _DialogDemoContent();
-
   }
 }
 
@@ -144,9 +143,9 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
             ),
             child: TomText(
               text: _alertResult,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           TomSizedBox(height: 16),
@@ -255,7 +254,8 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
               (i) => TomPadding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: TomText(
-                  text: 'Section ${i + 1}: Lorem ipsum dolor sit amet, '
+                  text:
+                      'Section ${i + 1}: Lorem ipsum dolor sit amet, '
                       'consectetur adipiscing elit. Sed do eiusmod tempor '
                       'incididunt ut labore et dolore magna aliqua.',
                 ),
@@ -303,9 +303,9 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
             ),
             child: TomText(
               text: _simpleDialogResult,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           TomSizedBox(height: 16),
@@ -369,9 +369,9 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
             ),
             child: TomText(
               text: _bottomSheetResult,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           TomSizedBox(height: 16),
@@ -391,9 +391,7 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Theme.of(ctx).colorScheme.surfaceContainerHigh,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: TomColumn(
           mainAxisSize: MainAxisSize.min,
@@ -412,9 +410,7 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
               style: Theme.of(ctx).textTheme.titleLarge,
             ),
             TomSizedBox(height: 8),
-            TomText(
-              text: 'This sheet stays visible until explicitly closed.',
-            ),
+            TomText(text: 'This sheet stays visible until explicitly closed.'),
             TomSizedBox(height: 16),
             TomRow(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -425,9 +421,7 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
                     label: option,
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      setState(
-                        () => _bottomSheetResult = 'Selected: $option',
-                      );
+                      setState(() => _bottomSheetResult = 'Selected: $option');
                     },
                   ),
               ],
@@ -458,9 +452,9 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
             ),
             child: TomText(
               text: _modalSheetResult,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           TomSizedBox(height: 16),
@@ -537,9 +531,7 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
             subtitle: TomText(text: 'Drag to expand or collapse'),
             onTap: () {
               Navigator.of(ctx).pop();
-              setState(
-                () => _modalSheetResult = 'Picked item ${i + 1}',
-              );
+              setState(() => _modalSheetResult = 'Picked item ${i + 1}');
             },
           ),
         ),
@@ -564,9 +556,9 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
           TomSizedBox(height: 4),
           TomText(
             text: 'Shown: $_snackBarCount',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           TomSizedBox(height: 16),
           TomRow(
@@ -595,9 +587,7 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
 
   void _showBasicSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      TomSnackBar(
-        content: TomText(text: 'This is a basic snack bar'),
-      ),
+      TomSnackBar(content: TomText(text: 'This is a basic snack bar')),
     );
     setState(() => _snackBarCount++);
   }
@@ -606,10 +596,7 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
     ScaffoldMessenger.of(context).showSnackBar(
       TomSnackBar(
         content: TomText(text: 'File deleted'),
-        action: SnackBarAction(
-          label: 'UNDO',
-          onPressed: () {},
-        ),
+        action: SnackBarAction(label: 'UNDO', onPressed: () {}),
         showCloseIcon: true,
       ),
     );
@@ -622,10 +609,7 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
         content: TomText(text: 'Floating snack bar with action'),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        action: SnackBarAction(
-          label: 'RETRY',
-          onPressed: () {},
-        ),
+        action: SnackBarAction(label: 'RETRY', onPressed: () {}),
       ),
     );
     setState(() => _snackBarCount++);
@@ -644,9 +628,9 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
           TomSizedBox(height: 4),
           TomText(
             text: _bannerVisible ? 'Banner visible' : 'Banner hidden',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           TomSizedBox(height: 16),
           TomRow(
@@ -666,16 +650,18 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
                               TomTextButton(
                                 label: 'DISMISS',
                                 onPressed: () {
-                                  ScaffoldMessenger.of(context)
-                                      .hideCurrentMaterialBanner();
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).hideCurrentMaterialBanner();
                                   setState(() => _bannerVisible = false);
                                 },
                               ),
                               TomTextButton(
                                 label: 'UPDATE',
                                 onPressed: () {
-                                  ScaffoldMessenger.of(context)
-                                      .hideCurrentMaterialBanner();
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).hideCurrentMaterialBanner();
                                   setState(() => _bannerVisible = false);
                                 },
                               ),
@@ -690,8 +676,9 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
                 tomId: 'banner.hide',
                 onPressed: _bannerVisible
                     ? () {
-                        ScaffoldMessenger.of(context)
-                            .hideCurrentMaterialBanner();
+                        ScaffoldMessenger.of(
+                          context,
+                        ).hideCurrentMaterialBanner();
                         setState(() => _bannerVisible = false);
                       }
                     : null,
@@ -868,8 +855,8 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
           TomText(
             tomId: 'cupertinoAlert.infoLabel',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           TomSizedBox(height: 16),
           TomRow(
@@ -952,8 +939,8 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
           TomText(
             tomId: 'cupertinoSheet.infoLabel',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           TomSizedBox(height: 16),
           TomFilledButton(
@@ -1040,11 +1027,12 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: TomText(
-                text: 'Type: $_aclDialogType | '
+                text:
+                    'Type: $_aclDialogType | '
                     'Dismissible: $_aclBarrierDismissible',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
               ),
             ),
           )
@@ -1146,9 +1134,7 @@ class _DialogDemoContentState extends TomState<_DialogDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1192,10 +1178,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

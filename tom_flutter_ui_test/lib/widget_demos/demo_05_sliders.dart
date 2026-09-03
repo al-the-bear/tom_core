@@ -19,7 +19,6 @@ class SliderDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _SliderDemoContent();
-
   }
 }
 
@@ -142,10 +141,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
           TomSizedBox(height: 8),
           TomRow(
             children: [
-              TomText(
-                text: '0',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              TomText(text: '0', style: Theme.of(context).textTheme.bodySmall),
               TomExpanded(
                 child: TomSlider(
                   value: _basicValue,
@@ -164,9 +160,9 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
             child: TomText(
               text: _basicValue.round().toString(),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
           ),
           TomSizedBox(height: 24),
@@ -247,9 +243,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
               thumbColor: Colors.teal.shade700,
               overlayColor: Colors.teal.withValues(alpha: 0.2),
               trackHeight: 6,
-              thumbShape: const RoundSliderThumbShape(
-                enabledThumbRadius: 10,
-              ),
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
             ),
             child: TomSlider(
               value: _customTrackValue,
@@ -259,9 +253,9 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
           TomCenter(
             child: TomText(
               text: '${(_customTrackValue * 100).round()}%',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.teal,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.teal),
             ),
           ),
 
@@ -270,10 +264,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
           // Disabled slider
           TomText(tomId: 'basicSlider.disabledLabel'),
           TomSizedBox(height: 8),
-          TomSlider(
-            value: 0.5,
-            onChanged: null,
-          ),
+          TomSlider(value: 0.5, onChanged: null),
         ],
       ),
     );
@@ -311,17 +302,17 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
                 TomText(
                   text: '\$${_priceRange.start.round()}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 TomText(tomId: 'rangeSlider.priceRangeLabel'),
                 TomText(
                   text: '\$${_priceRange.end.round()}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ],
             ),
@@ -408,8 +399,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
               TomExpanded(
                 child: TomCupertinoSlider(
                   value: _cupertinoBrightness,
-                  onChanged: (v) =>
-                      setState(() => _cupertinoBrightness = v),
+                  onChanged: (v) => setState(() => _cupertinoBrightness = v),
                 ),
               ),
               const Icon(CupertinoIcons.sun_max_fill, size: 20),
@@ -426,8 +416,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
               TomExpanded(
                 child: TomCupertinoSlider(
                   value: _cupertinoVolume,
-                  onChanged: (v) =>
-                      setState(() => _cupertinoVolume = v),
+                  onChanged: (v) => setState(() => _cupertinoVolume = v),
                 ),
               ),
               const Icon(CupertinoIcons.volume_up, size: 20),
@@ -447,8 +436,8 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
             child: TomText(
               text: '${(_cupertinoCustom * 100).round()}%',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: CupertinoColors.activeBlue,
-                  ),
+                color: CupertinoColors.activeBlue,
+              ),
             ),
           ),
           TomSizedBox(height: 20),
@@ -461,8 +450,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
               TomExpanded(
                 child: TomCupertinoSlider(
                   value: _cupertinoDisplay,
-                  onChanged: (v) =>
-                      setState(() => _cupertinoDisplay = v),
+                  onChanged: (v) => setState(() => _cupertinoDisplay = v),
                 ),
               ),
               TomSizedBox(width: 16),
@@ -470,9 +458,9 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
                 width: 50,
                 child: TomText(
                   text: '${(_cupertinoDisplay * 100).round()}%',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -501,16 +489,16 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
           // Now playing info
           TomText(
             tomId: 'audioPlayer.nowPlaying',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           TomSizedBox(height: 4),
           TomText(
             tomId: 'audioPlayer.trackInfo',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           TomSizedBox(height: 16),
 
@@ -527,8 +515,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TomText(
-                  text:
-                      '$currentMin:${currentSec.toString().padLeft(2, '0')}',
+                  text: '$currentMin:${currentSec.toString().padLeft(2, '0')}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 TomText(
@@ -624,12 +611,12 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
               TomText(
                 text:
                     '#${(previewColor.r * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
-                    '${(previewColor.g * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
-                    '${(previewColor.b * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
+                            '${(previewColor.g * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
+                            '${(previewColor.b * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
                         .toUpperCase(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
               ),
             ],
           ),
@@ -651,15 +638,12 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
           child: TomText(
             text: label,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
-        TomText(
-          text: '0',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        TomText(text: '0', style: Theme.of(context).textTheme.bodySmall),
         TomExpanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
@@ -678,10 +662,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
             ),
           ),
         ),
-        TomText(
-          text: '255',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        TomText(text: '255', style: Theme.of(context).textTheme.bodySmall),
         TomSizedBox(
           width: 50,
           child: TomCenter(
@@ -694,9 +675,9 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
               child: TomText(
                 text: '${value.round()}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ),
           ),
@@ -791,12 +772,10 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
         TomSizedBox(
           width: 50,
           child: TomText(
-            text: value >= 0
-                ? '+${value.round()}'
-                : '${value.round()}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            text: value >= 0 ? '+${value.round()}' : '${value.round()}',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -828,9 +807,9 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
           .append(
             TomText(
               text: '${_aclSlider.round()}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             dist: 8,
           )
@@ -866,9 +845,9 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
           .append(
             TomText(
               text: '${(_aclCupertino * 100).round()}%',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             dist: 8,
           )
@@ -888,10 +867,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
           )
           .gap()
           .append(
-            TomFilledButton(
-              tomId: 'aclSlider.apply',
-              onPressed: () {},
-            ),
+            TomFilledButton(tomId: 'aclSlider.apply', onPressed: () {}),
             dist: 8,
           )
           .build(),
@@ -907,9 +883,7 @@ class _SliderDemoContentState extends TomState<_SliderDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -953,10 +927,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

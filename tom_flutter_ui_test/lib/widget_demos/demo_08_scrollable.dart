@@ -17,11 +17,11 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 class _MouseDragScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.stylus,
-        PointerDeviceKind.trackpad,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.trackpad,
+  };
 }
 
 // =============================================================================
@@ -35,7 +35,6 @@ class ScrollableContainersDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _ScrollableDemoContent();
-
   }
 }
 
@@ -245,41 +244,39 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                 scrollDirection: Axis.horizontal,
                 controller: _horizontalScrollController,
                 child: TomRow(
-                children: List.generate(10, (i) {
-                  final colors = [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.secondary,
-                    theme.colorScheme.tertiary,
-                    theme.colorScheme.error,
-                  ];
-                  return TomPadding(
-                    padding: const EdgeInsets.all(8),
-                    child: TomContainer(
-                      width: 100,
-                      decoration: BoxDecoration(
-                        color: colors[i % colors.length].withValues(
-                          alpha: 0.2,
+                  children: List.generate(10, (i) {
+                    final colors = [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.secondary,
+                      theme.colorScheme.tertiary,
+                      theme.colorScheme.error,
+                    ];
+                    return TomPadding(
+                      padding: const EdgeInsets.all(8),
+                      child: TomContainer(
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: colors[i % colors.length].withValues(
+                            alpha: 0.2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: colors[i % colors.length]),
                         ),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: colors[i % colors.length],
-                        ),
-                      ),
-                      child: TomCenter(
-                        child: TomText(
-                          text: 'Item ${i + 1}',
-                          style: TextStyle(
-                            color: colors[i % colors.length],
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                        child: TomCenter(
+                          child: TomText(
+                            text: 'Item ${i + 1}',
+                            style: TextStyle(
+                              color: colors[i % colors.length],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+                ),
               ),
-            ),
             ),
           ),
         ],
@@ -321,7 +318,8 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                       return TomPadding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: TomText(
-                          text: 'Line ${i + 1}: Scrollbar content with visible thumb',
+                          text:
+                              'Line ${i + 1}: Scrollbar content with visible thumb',
                           style: theme.textTheme.bodyMedium,
                         ),
                       );
@@ -437,8 +435,8 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                     bottom: TabBar(
                       controller: _nestedTabController,
                       labelColor: theme.colorScheme.onPrimary,
-                      unselectedLabelColor:
-                          theme.colorScheme.onPrimary.withValues(alpha: 0.6),
+                      unselectedLabelColor: theme.colorScheme.onPrimary
+                          .withValues(alpha: 0.6),
                       indicatorColor: theme.colorScheme.onPrimary,
                       tabs: const [
                         Tab(text: 'Tab 1'),
@@ -463,8 +461,7 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                             child: Text('${i + 1}'),
                           ),
                           title: Text('Tab ${tabIndex + 1} - Item ${i + 1}'),
-                          subtitle:
-                              const Text('Scroll to collapse the header'),
+                          subtitle: const Text('Scroll to collapse the header'),
                         ),
                       );
                     },
@@ -512,8 +509,9 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                         TomIcon(
                           icon: Icons.swipe_vertical,
                           size: 48,
-                          color: theme.colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.3),
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
                         TomSizedBox(height: 8),
                         TomText(
@@ -555,50 +553,51 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                           controller: scrollController,
                           itemCount: 15,
                           itemBuilder: (context, i) {
-                          if (i == 0) {
-                            return TomColumn(
-                              children: [
-                                TomSizedBox(height: 8),
-                                TomCenter(
-                                  child: TomContainer(
-                                    width: 40,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: theme
-                                          .colorScheme.onSurfaceVariant
-                                          .withValues(alpha: 0.4),
-                                      borderRadius: BorderRadius.circular(2),
+                            if (i == 0) {
+                              return TomColumn(
+                                children: [
+                                  TomSizedBox(height: 8),
+                                  TomCenter(
+                                    child: TomContainer(
+                                      width: 40,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: theme
+                                            .colorScheme
+                                            .onSurfaceVariant
+                                            .withValues(alpha: 0.4),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                TomSizedBox(height: 12),
-                                TomPadding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  child: TomText(
-                                    tomId: 'draggableSheet.sheetTitle',
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
+                                  TomSizedBox(height: 12),
+                                  TomPadding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: TomText(
+                                      tomId: 'draggableSheet.sheetTitle',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                     ),
                                   ),
-                                ),
-                                TomSizedBox(height: 8),
-                              ],
+                                  TomSizedBox(height: 8),
+                                ],
+                              );
+                            }
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    theme.colorScheme.secondaryContainer,
+                                child: Text('$i'),
+                              ),
+                              title: Text('Sheet item $i'),
+                              subtitle: const Text('Drag handle to resize'),
                             );
-                          }
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.secondaryContainer,
-                              child: Text('$i'),
-                            ),
-                            title: Text('Sheet item $i'),
-                            subtitle: const Text('Drag handle to resize'),
-                          );
-                        },
-                      ),
+                          },
+                        ),
                       ),
                     );
                   },
@@ -735,38 +734,35 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                 onTap: (i) => setState(() => _carouselTapIndex = i),
                 children: List.generate(5, (i) {
                   return TomContainer(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        colors[i],
-                        colors[i].withValues(alpha: 0.6),
-                      ],
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [colors[i], colors[i].withValues(alpha: 0.6)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TomCenter(
-                    child: TomColumn(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.photo,
-                          size: 36,
-                          color: theme.colorScheme.onPrimary,
-                        ),
-                        TomSizedBox(height: 8),
-                        TomText(
-                          text: labels[i],
-                          style: TextStyle(
+                    child: TomCenter(
+                      child: TomColumn(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.photo,
+                            size: 36,
                             color: theme.colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
                           ),
-                        ),
-                      ],
+                          TomSizedBox(height: 8),
+                          TomText(
+                            text: labels[i],
+                            style: TextStyle(
+                              color: theme.colorScheme.onPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
               ),
             ),
           ),
@@ -800,16 +796,13 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                 label: 'Toggle Visibility',
                 tonal: _isVisible,
                 onPressed: () => setState(() => _isVisible = !_isVisible),
-                child: TomText(
-                  text: _isVisible ? 'Visible' : 'Hidden',
-                ),
+                child: TomText(text: _isVisible ? 'Visible' : 'Hidden'),
               ),
               TomSizedBox(width: 8),
               TomFilledButton(
                 label: 'Toggle Maintain Size',
                 tonal: _maintainSize,
-                onPressed: () =>
-                    setState(() => _maintainSize = !_maintainSize),
+                onPressed: () => setState(() => _maintainSize = !_maintainSize),
                 child: TomText(
                   text: _maintainSize ? 'Maintain Size' : 'Collapse',
                 ),
@@ -1008,9 +1001,9 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
           .append(
             TomText(
               text: '${(_aclSheetSize * 100).round()}%',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             dist: 8,
           )
@@ -1047,9 +1040,7 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: TomText(
                               text: 'Background row ${i + 1}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
+                              style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     color: Theme.of(context)
                                         .colorScheme
@@ -1079,9 +1070,9 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                               'Sheet: ${(_aclSheetSize * 100).round()}% '
                               '${_aclSnap ? "(snap)" : "(free)"}',
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
@@ -1109,10 +1100,7 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
           )
           .gap()
           .append(
-            TomFilledButton(
-              tomId: 'aclScroll.apply',
-              onPressed: () {},
-            ),
+            TomFilledButton(tomId: 'aclScroll.apply', onPressed: () {}),
             dist: 8,
           )
           .build(),
@@ -1128,9 +1116,7 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1174,10 +1160,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

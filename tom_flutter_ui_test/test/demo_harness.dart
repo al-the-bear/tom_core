@@ -219,15 +219,18 @@ Future<void> installDemoEnvironment(
   // truthful reply for the desktop host this harness runs on.
   binding.defaultBinaryMessenger.setMockMethodCallHandler(
     SystemChannels.sensitiveContent,
-    (call) async => call.method == 'SensitiveContent.isSupported' ? false : null,
+    (call) async =>
+        call.method == 'SensitiveContent.isSupported' ? false : null,
   );
 }
 
 /// Undo [installDemoEnvironment]. Call from `tearDownAll`.
 void restoreDemoEnvironment(TestWidgetsFlutterBinding binding) {
   HttpOverrides.global = null;
-  binding.defaultBinaryMessenger
-      .setMockMethodCallHandler(SystemChannels.sensitiveContent, null);
+  binding.defaultBinaryMessenger.setMockMethodCallHandler(
+    SystemChannels.sensitiveContent,
+    null,
+  );
 }
 
 /// A demo mounted at [viewport] and pumped to a steady frame.
@@ -261,7 +264,9 @@ Future<DemoMount> pumpDemo(WidgetTester tester, String slug) async {
   // The demo must be *constructed* inside its scope: TomNodeBase resolves its
   // resource base path in the constructor, not in build.
   final scopeId = scopeIdFor(slug);
-  final demo = scopeId == null ? factory() : TomScope.withScope(scopeId, factory);
+  final demo = scopeId == null
+      ? factory()
+      : TomScope.withScope(scopeId, factory);
 
   final captureKey = GlobalKey(debugLabel: 'demo-$slug');
   // A Scrollbar resolves the primary controller and asserts if it has no
@@ -346,8 +351,10 @@ Future<void> _loadSdkFonts() async {
       ? null
       : Directory('$root/bin/cache/artifacts/material_fonts');
   if (dir == null || !dir.existsSync()) {
-    debugPrint('demo harness: SDK fonts not found; mounting with the Ahem '
-        'placeholder font.');
+    debugPrint(
+      'demo harness: SDK fonts not found; mounting with the Ahem '
+      'placeholder font.',
+    );
     return;
   }
 
@@ -358,9 +365,9 @@ Future<void> _loadSdkFonts() async {
       final file = File('${dir.path}/$name');
       if (!file.existsSync()) continue;
       loader.addFont(
-        file
-            .readAsBytes()
-            .then((b) => ByteData.view(Uint8List.fromList(b).buffer)),
+        file.readAsBytes().then(
+          (b) => ByteData.view(Uint8List.fromList(b).buffer),
+        ),
       );
       added++;
     }

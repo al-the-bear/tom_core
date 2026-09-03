@@ -160,9 +160,7 @@ class MainTabsPage extends StatelessWidget {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [for (final tab in _mainTabs) tab.view],
-        ),
+        body: TabBarView(children: [for (final tab in _mainTabs) tab.view]),
       ),
     );
   }
@@ -354,149 +352,250 @@ class WidgetDemosTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         _buildCategoryHeader(context, 'Input & Actions', Icons.touch_app),
-        TomScope.withScope('demo01', () => DemoTile(
-          title: 'Buttons',
-          description: 'ElevatedButton, TextButton, IconButton, FAB, and more',
-          screen: ButtonsDemo(),
-        )),
-        TomScope.withScope('demo02', () => DemoTile(
-          title: 'Text Inputs',
-          description: 'TextField, SearchBar, Autocomplete, DatePickers, and more',
-          screen: InputsDemo(),
-        )),
-        TomScope.withScope('demo03', () => DemoTile(
-          title: 'Selection Controls',
-          description: 'Dropdowns, Popup Menus, Menu Anchors, Segmented Controls',
-          screen: SelectionDemo(),
-        )),
-        TomScope.withScope('demo04', () => DemoTile(
-          title: 'Toggles & Options',
-          description: 'Checkbox, Switch, Radio, ToggleButtons, ExpansionTile',
-          screen: ToggleDemo(),
-        )),
-        TomScope.withScope('demo05', () => DemoTile(
-          title: 'Sliders & Ranges',
-          description: 'Slider, RangeSlider, CupertinoSlider, Stepper',
-          screen: SliderDemo(),
-        )),
+        TomScope.withScope(
+          'demo01',
+          () => DemoTile(
+            title: 'Buttons',
+            description:
+                'ElevatedButton, TextButton, IconButton, FAB, and more',
+            screen: ButtonsDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo02',
+          () => DemoTile(
+            title: 'Text Inputs',
+            description:
+                'TextField, SearchBar, Autocomplete, DatePickers, and more',
+            screen: InputsDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo03',
+          () => DemoTile(
+            title: 'Selection Controls',
+            description:
+                'Dropdowns, Popup Menus, Menu Anchors, Segmented Controls',
+            screen: SelectionDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo04',
+          () => DemoTile(
+            title: 'Toggles & Options',
+            description:
+                'Checkbox, Switch, Radio, ToggleButtons, ExpansionTile',
+            screen: ToggleDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo05',
+          () => DemoTile(
+            title: 'Sliders & Ranges',
+            description: 'Slider, RangeSlider, CupertinoSlider, Stepper',
+            screen: SliderDemo(),
+          ),
+        ),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Layout & Structure', Icons.dashboard),
-        TomScope.withScope('demo06', () => DemoTile(
-          title: 'Cards & Panels',
-          description: 'Card, ExpansionPanel, ListTile variants, Material surfaces',
-          screen: CardPanelDemo(),
-        )),
-        TomScope.withScope('demo07', () => DemoTile(
-          title: 'Layout Widgets',
-          description: 'Row, Column, Stack, Wrap, Flow, Flex, Table',
-          screen: LayoutContainersDemo(),
-        )),
-        TomScope.withScope('demo08', () => DemoTile(
-          title: 'Scrollable Containers',
-          description: 'ListView, GridView, SingleChildScrollView, PageView',
-          screen: ScrollableContainersDemo(),
-        )),
-        TomScope.withScope('demo09', () => DemoTile(
-          title: 'Dialogs & Overlays',
-          description: 'AlertDialog, BottomSheet, SnackBar, Tooltip, Banner',
-          screen: DialogModalGalleryDemo(),
-        )),
-        TomScope.withScope('demo10', () => DemoTile(
-          title: 'Tables & Data',
-          description: 'DataTable, PaginatedDataTable, sorting and selection',
-          screen: DataTablesDemo(),
-        )),
+        TomScope.withScope(
+          'demo06',
+          () => DemoTile(
+            title: 'Cards & Panels',
+            description:
+                'Card, ExpansionPanel, ListTile variants, Material surfaces',
+            screen: CardPanelDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo07',
+          () => DemoTile(
+            title: 'Layout Widgets',
+            description: 'Row, Column, Stack, Wrap, Flow, Flex, Table',
+            screen: LayoutContainersDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo08',
+          () => DemoTile(
+            title: 'Scrollable Containers',
+            description: 'ListView, GridView, SingleChildScrollView, PageView',
+            screen: ScrollableContainersDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo09',
+          () => DemoTile(
+            title: 'Dialogs & Overlays',
+            description: 'AlertDialog, BottomSheet, SnackBar, Tooltip, Banner',
+            screen: DialogModalGalleryDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo10',
+          () => DemoTile(
+            title: 'Tables & Data',
+            description: 'DataTable, PaginatedDataTable, sorting and selection',
+            screen: DataTablesDemo(),
+          ),
+        ),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Display & Info', Icons.info),
-        TomScope.withScope('demo11', () => DemoTile(
-          title: 'Labels & Text',
-          description: 'Text, RichText, SelectableText, Badge, Chip',
-          screen: LabelsDemo(),
-        )),
-        TomScope.withScope('demo12', () => DemoTile(
-          title: 'Images & Media',
-          description: 'Image, Icon, CircleAvatar, FadeInImage, decorations',
-          screen: ImagesDemo(),
-        )),
-        TomScope.withScope('demo13', () => DemoTile(
-          title: 'Navigation',
-          description: 'AppBar, TabBar, BottomNavigationBar, Drawer, NavigationRail',
-          screen: NavigationDemo(),
-        )),
-        TomScope.withScope('demo14', () => DemoTile(
-          title: 'Progress Indicators',
-          description: 'CircularProgressIndicator, LinearProgressIndicator, RefreshIndicator',
-          screen: ProgressDemo(),
-        )),
-        TomScope.withScope('demo15', () => DemoTile(
-          title: 'Lists & Items',
-          description: 'ListTile, CheckboxListTile, SwitchListTile, Dismissible',
-          screen: ListsDemo(),
-        )),
+        TomScope.withScope(
+          'demo11',
+          () => DemoTile(
+            title: 'Labels & Text',
+            description: 'Text, RichText, SelectableText, Badge, Chip',
+            screen: LabelsDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo12',
+          () => DemoTile(
+            title: 'Images & Media',
+            description: 'Image, Icon, CircleAvatar, FadeInImage, decorations',
+            screen: ImagesDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo13',
+          () => DemoTile(
+            title: 'Navigation',
+            description:
+                'AppBar, TabBar, BottomNavigationBar, Drawer, NavigationRail',
+            screen: NavigationDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo14',
+          () => DemoTile(
+            title: 'Progress Indicators',
+            description:
+                'CircularProgressIndicator, LinearProgressIndicator, RefreshIndicator',
+            screen: ProgressDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo15',
+          () => DemoTile(
+            title: 'Lists & Items',
+            description:
+                'ListTile, CheckboxListTile, SwitchListTile, Dismissible',
+            screen: ListsDemo(),
+          ),
+        ),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Advanced', Icons.auto_awesome),
-        TomScope.withScope('demo16', () => DemoTile(
-          title: 'Trees & Hierarchies',
-          description: 'TreeView, expandable tree nodes, drag-and-drop trees',
-          screen: TreesDemo(),
-        )),
-        TomScope.withScope('demo17', () => DemoTile(
-          title: 'Slivers',
-          description: 'SliverAppBar, SliverList, SliverGrid, SliverPersistentHeader',
-          screen: SliversDemo(),
-        )),
-        TomScope.withScope('demo18', () => DemoTile(
-          title: 'Animated Widgets',
-          description: 'AnimatedContainer, AnimatedOpacity, Hero, AnimatedSwitcher',
-          screen: AnimatedDemo(),
-        )),
-        TomScope.withScope('demo19', () => DemoTile(
-          title: 'Visual Effects',
-          description: 'BackdropFilter, ShaderMask, ColorFiltered, ClipPath',
-          screen: EffectsDemo(),
-        )),
-        TomScope.withScope('demo20', () => DemoTile(
-          title: 'Interactions',
-          description: 'GestureDetector, Draggable, InkWell, MouseRegion',
-          screen: InteractionsDemo(),
-        )),
-        TomScope.withScope('demo21', () => DemoTile(
-          title: 'Resource Resolution',
-          description: 'How widgets resolve labels, icons, tooltips from resources',
-          screen: ResourceResolutionDemo(),
-        )),
-        TomScope.withScope('demo22', () => DemoTile(
-          title: 'Extension Widgets',
-          description: 'AppBar, NavigationDestination, TableCell, CupertinoTabView, RefreshProgressIndicator',
-          screen: ExtensionWidgetsDemo(),
-        )),
-        TomScope.withScope('demo23', () => DemoTile(
-          title: 'Builders, Clips & Base',
-          description: 'FutureBuilder, StreamBuilder, LayoutBuilder, Clips, Opacity, RawChip, EditableText',
-          screen: BuildersClipsDemo(),
-        )),
-        TomScope.withScope('demo24', () => DemoTile(
-          title: 'Containers & Layout',
-          description: 'Scaffold, DecoratedBox, Transform, Flow, CustomPaint, GridTile, Slivers',
-          screen: ContainersLayoutDemo(),
-        )),
-        TomScope.withScope('demo25', () => DemoTile(
-          title: 'Remaining Widgets',
-          description: 'Dialogs, Buttons, Navigation, Labels, Lists, Images',
-          screen: RemainingWidgetsDemo(),
-        )),
+        TomScope.withScope(
+          'demo16',
+          () => DemoTile(
+            title: 'Trees & Hierarchies',
+            description: 'TreeView, expandable tree nodes, drag-and-drop trees',
+            screen: TreesDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo17',
+          () => DemoTile(
+            title: 'Slivers',
+            description:
+                'SliverAppBar, SliverList, SliverGrid, SliverPersistentHeader',
+            screen: SliversDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo18',
+          () => DemoTile(
+            title: 'Animated Widgets',
+            description:
+                'AnimatedContainer, AnimatedOpacity, Hero, AnimatedSwitcher',
+            screen: AnimatedDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo19',
+          () => DemoTile(
+            title: 'Visual Effects',
+            description: 'BackdropFilter, ShaderMask, ColorFiltered, ClipPath',
+            screen: EffectsDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo20',
+          () => DemoTile(
+            title: 'Interactions',
+            description: 'GestureDetector, Draggable, InkWell, MouseRegion',
+            screen: InteractionsDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo21',
+          () => DemoTile(
+            title: 'Resource Resolution',
+            description:
+                'How widgets resolve labels, icons, tooltips from resources',
+            screen: ResourceResolutionDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo22',
+          () => DemoTile(
+            title: 'Extension Widgets',
+            description:
+                'AppBar, NavigationDestination, TableCell, CupertinoTabView, RefreshProgressIndicator',
+            screen: ExtensionWidgetsDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo23',
+          () => DemoTile(
+            title: 'Builders, Clips & Base',
+            description:
+                'FutureBuilder, StreamBuilder, LayoutBuilder, Clips, Opacity, RawChip, EditableText',
+            screen: BuildersClipsDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo24',
+          () => DemoTile(
+            title: 'Containers & Layout',
+            description:
+                'Scaffold, DecoratedBox, Transform, Flow, CustomPaint, GridTile, Slivers',
+            screen: ContainersLayoutDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo25',
+          () => DemoTile(
+            title: 'Remaining Widgets',
+            description: 'Dialogs, Buttons, Navigation, Labels, Lists, Images',
+            screen: RemainingWidgetsDemo(),
+          ),
+        ),
         const SizedBox(height: 16),
-        _buildCategoryHeader(context, 'Scope & Architecture', Icons.account_tree),
-        TomScope.withScope('demo26', () => DemoTile(
-          title: 'Scope & Action',
-          description: 'TomScreenElementsProviderBase, nested scopes, reusable widget trees',
-          screen: ScopeActionDemo(),
-        )),
-        TomScope.withScope('demo27', () => DemoTile(
-          title: 'Forms',
-          description: 'Form fields in scoped providers, validation, ACL form layout',
-          screen: FormsDemo(),
-        )),
+        _buildCategoryHeader(
+          context,
+          'Scope & Architecture',
+          Icons.account_tree,
+        ),
+        TomScope.withScope(
+          'demo26',
+          () => DemoTile(
+            title: 'Scope & Action',
+            description:
+                'TomScreenElementsProviderBase, nested scopes, reusable widget trees',
+            screen: ScopeActionDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo27',
+          () => DemoTile(
+            title: 'Forms',
+            description:
+                'Form fields in scoped providers, validation, ACL form layout',
+            screen: FormsDemo(),
+          ),
+        ),
       ],
     );
   }
@@ -515,9 +614,9 @@ class WidgetDemosTab extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -597,17 +696,24 @@ class AuthorizationResourcesTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        TomScope.withScope('demo21', () => DemoTile(
-          title: 'Resource Resolution',
-          description: 'How widgets resolve labels, icons, tooltips from resources',
-          screen: ResourceResolutionDemo(),
-        )),
-        TomScope.withScope('demo28', () => DemoTile(
-          title: 'Authorization',
-          description:
-              'Widget visibility, readonly state, group authorization, TomAuthorizationGroup',
-          screen: AuthorizationDemo(),
-        )),
+        TomScope.withScope(
+          'demo21',
+          () => DemoTile(
+            title: 'Resource Resolution',
+            description:
+                'How widgets resolve labels, icons, tooltips from resources',
+            screen: ResourceResolutionDemo(),
+          ),
+        ),
+        TomScope.withScope(
+          'demo28',
+          () => DemoTile(
+            title: 'Authorization',
+            description:
+                'Widget visibility, readonly state, group authorization, TomAuthorizationGroup',
+            screen: AuthorizationDemo(),
+          ),
+        ),
       ],
     );
   }

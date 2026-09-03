@@ -21,7 +21,6 @@ class ResourceResolutionDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _ResourceResolutionDemoContent();
-
   }
 }
 
@@ -485,7 +484,9 @@ class _ResourceResolutionDemoContentState
                       width: 60,
                       height: 60,
                       color: Theme.of(context).colorScheme.primary,
-                      child: TomCenter(child: TomText(tomId: 'opacity1.content')),
+                      child: TomCenter(
+                        child: TomText(tomId: 'opacity1.content'),
+                      ),
                     ),
                   ),
                   TomSizedBox(width: 16),
@@ -496,7 +497,9 @@ class _ResourceResolutionDemoContentState
                       width: 60,
                       height: 60,
                       color: Theme.of(context).colorScheme.primary,
-                      child: TomCenter(child: TomText(tomId: 'opacity2.content')),
+                      child: TomCenter(
+                        child: TomText(tomId: 'opacity2.content'),
+                      ),
                     ),
                   ),
                   TomSizedBox(width: 16),
@@ -507,7 +510,9 @@ class _ResourceResolutionDemoContentState
                       width: 60,
                       height: 60,
                       color: Theme.of(context).colorScheme.primary,
-                      child: TomCenter(child: TomText(tomId: 'opacity3.content')),
+                      child: TomCenter(
+                        child: TomText(tomId: 'opacity3.content'),
+                      ),
                     ),
                   ),
                 ],
@@ -684,10 +689,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

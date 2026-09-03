@@ -63,8 +63,9 @@ void main() {
         fail('Demo $slug threw: ${e.message}\nCaught: $messages');
       }
 
-      final boundary = mount.captureKey.currentContext!.findRenderObject()
-          as RenderRepaintBoundary;
+      final boundary =
+          mount.captureKey.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
       // Why: RenderRepaintBoundary.toImage() and Image.toByteData() complete
       // only once the engine's raster thread finishes the GPU work — real async
       // that the fake-async zone driving testWidgets never advances, so
@@ -84,8 +85,9 @@ void main() {
 
       final outDir = Directory('test/screenshots');
       if (!outDir.existsSync()) outDir.createSync(recursive: true);
-      File('${outDir.path}/$slug.png')
-          .writeAsBytesSync(byteData.buffer.asUint8List());
+      File(
+        '${outDir.path}/$slug.png',
+      ).writeAsBytesSync(byteData.buffer.asUint8List());
 
       for (final overflow in mount.overflows) {
         debugPrint('screenshot · $slug: $overflow (see the banner in the PNG)');

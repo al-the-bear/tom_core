@@ -21,7 +21,6 @@ class DataTablesDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _TablesDemoContent();
-
   }
 }
 
@@ -91,22 +90,32 @@ class _TablesDemoContentState extends TomState<_TablesDemoContent> {
       _sortAscending = ascending;
       switch (columnIndex) {
         case 0:
-          _products.sort((a, b) =>
-              ascending ? a.id.compareTo(b.id) : b.id.compareTo(a.id));
+          _products.sort(
+            (a, b) => ascending ? a.id.compareTo(b.id) : b.id.compareTo(a.id),
+          );
         case 1:
-          _products.sort((a, b) =>
-              ascending ? a.name.compareTo(b.name) : b.name.compareTo(a.name));
+          _products.sort(
+            (a, b) =>
+                ascending ? a.name.compareTo(b.name) : b.name.compareTo(a.name),
+          );
         case 2:
-          _products.sort((a, b) => ascending
-              ? a.category.compareTo(b.category)
-              : b.category.compareTo(a.category));
+          _products.sort(
+            (a, b) => ascending
+                ? a.category.compareTo(b.category)
+                : b.category.compareTo(a.category),
+          );
         case 3:
-          _products.sort((a, b) => ascending
-              ? a.price.compareTo(b.price)
-              : b.price.compareTo(a.price));
+          _products.sort(
+            (a, b) => ascending
+                ? a.price.compareTo(b.price)
+                : b.price.compareTo(a.price),
+          );
         case 4:
-          _products.sort((a, b) =>
-              ascending ? a.stock.compareTo(b.stock) : b.stock.compareTo(a.stock));
+          _products.sort(
+            (a, b) => ascending
+                ? a.stock.compareTo(b.stock)
+                : b.stock.compareTo(a.stock),
+          );
       }
     });
   }
@@ -222,9 +231,7 @@ class _TablesDemoContentState extends TomState<_TablesDemoContent> {
                   numeric: true,
                   onSort: (i, asc) => _sortData(i, asc),
                 ),
-                TomDataColumn(
-                  label: TomText(tomId: 'dataTable.col.status'),
-                ),
+                TomDataColumn(label: TomText(tomId: 'dataTable.col.status')),
               ],
               rows: _products.take(5).map((p) {
                 final isSelected = _selectedRows.contains(p.id);
@@ -242,9 +249,7 @@ class _TablesDemoContentState extends TomState<_TablesDemoContent> {
                   cells: [
                     TomDataCell(child: TomText(text: '${p.id}')),
                     TomDataCell(child: TomText(text: p.name)),
-                    TomDataCell(
-                      child: TomChip(label: Text(p.category)),
-                    ),
+                    TomDataCell(child: TomChip(label: Text(p.category))),
                     TomDataCell(
                       child: TomText(
                         text: '\$${p.price.toStringAsFixed(2)}',
@@ -254,10 +259,16 @@ class _TablesDemoContentState extends TomState<_TablesDemoContent> {
                     TomDataCell(child: TomText(text: '${p.stock}')),
                     TomDataCell(
                       child: p.inStock
-                          ? Icon(Icons.check_circle,
-                              color: theme.colorScheme.primary, size: 20)
-                          : Icon(Icons.cancel,
-                              color: theme.colorScheme.error, size: 20),
+                          ? Icon(
+                              Icons.check_circle,
+                              color: theme.colorScheme.primary,
+                              size: 20,
+                            )
+                          : Icon(
+                              Icons.cancel,
+                              color: theme.colorScheme.error,
+                              size: 20,
+                            ),
                     ),
                   ],
                 );
@@ -318,9 +329,7 @@ class _TablesDemoContentState extends TomState<_TablesDemoContent> {
                 label: TomText(tomId: 'paginatedTable.col.id'),
                 numeric: true,
               ),
-              TomDataColumn(
-                label: TomText(tomId: 'paginatedTable.col.name'),
-              ),
+              TomDataColumn(label: TomText(tomId: 'paginatedTable.col.name')),
               TomDataColumn(
                 label: TomText(tomId: 'paginatedTable.col.category'),
               ),
@@ -428,16 +437,19 @@ class _TablesDemoContentState extends TomState<_TablesDemoContent> {
     );
   }
 
-  Widget _tableCell(BuildContext context, String text, {bool isHeader = false}) {
+  Widget _tableCell(
+    BuildContext context,
+    String text, {
+    bool isHeader = false,
+  }) {
     return TomPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: TomText(
         text: text,
         style: isHeader
-            ? Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.bold)
+            ? Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)
             : Theme.of(context).textTheme.bodyMedium,
       ),
     );
@@ -648,10 +660,7 @@ class _GridItem extends TomStatelessWidget {
   final int index;
   final Color color;
 
-  _GridItem({
-    required this.index,
-    required this.color,
-  });
+  _GridItem({required this.index, required this.color});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -666,10 +675,7 @@ class _GridItem extends TomStatelessWidget {
             TomSizedBox(height: 4),
             TomText(
               text: 'Grid ${index + 1}',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -682,11 +688,7 @@ class _ReorderableItem extends TomStatelessWidget {
   final String title;
   final int index;
 
-  _ReorderableItem({
-    super.key,
-    required this.title,
-    required this.index,
-  });
+  _ReorderableItem({super.key, required this.title, required this.index});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -703,7 +705,10 @@ class _ReorderableItem extends TomStatelessWidget {
           ),
         ),
         subtitle: TomText(text: 'Drag to reorder'),
-        trailing: Icon(Icons.drag_handle, color: theme.colorScheme.onSurfaceVariant),
+        trailing: Icon(
+          Icons.drag_handle,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -713,9 +718,7 @@ class _ReorderableItem extends TomStatelessWidget {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -759,10 +762,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

@@ -50,8 +50,10 @@ class _RemainingWidgetsDemoContentState
   late TabController _tabPageController;
 
   // For reorderable list
-  final List<String> _reorderItems =
-      List.generate(5, (i) => 'Reorderable Item ${i + 1}');
+  final List<String> _reorderItems = List.generate(
+    5,
+    (i) => 'Reorderable Item ${i + 1}',
+  );
 
   // For DropdownMenuEntry demo
   String? _selectedColor;
@@ -155,8 +157,9 @@ class _RemainingWidgetsDemoContentState
                 label: 'Select color',
                 initialSelection: _selectedColor,
                 onSelected: (value) => setState(() => _selectedColor = value),
-                dropdownMenuEntries:
-                    entries.map((e) => e.toEntry(context)).toList(),
+                dropdownMenuEntries: entries
+                    .map((e) => e.toEntry(context))
+                    .toList(),
               );
             },
           ),
@@ -482,10 +485,9 @@ class _RemainingWidgetsDemoContentState
           child: TomContainer(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(8),
             ),
             child: TomColumn(
@@ -523,14 +525,8 @@ class _RemainingWidgetsDemoContentState
           child: TomBreadcrumb(
             tomId: 'breadcrumb.demo',
             items: [
-              TextButton(
-                onPressed: () {},
-                child: const Text('Home'),
-              ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Products'),
-              ),
+              TextButton(onPressed: () {}, child: const Text('Home')),
+              TextButton(onPressed: () {}, child: const Text('Products')),
               const Text('Widget Library'),
             ],
             separator: const Icon(Icons.chevron_right, size: 16),
@@ -583,8 +579,10 @@ class _RemainingWidgetsDemoContentState
                   pinned: true,
                   flexibleSpace: TomFlexibleSpaceBar(
                     tomId: 'flexibleSpace.demo',
-                    title: const Text('Flexible Space',
-                        style: TextStyle(fontSize: 14)),
+                    title: const Text(
+                      'Flexible Space',
+                      style: TextStyle(fontSize: 14),
+                    ),
                     background: TomContainer(
                       color: Theme.of(context).colorScheme.primaryContainer,
                       child: const Center(
@@ -595,8 +593,7 @@ class _RemainingWidgetsDemoContentState
                 ),
                 TomSliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) =>
-                        ListTile(title: Text('Item $index')),
+                    (context, index) => ListTile(title: Text('Item $index')),
                     childCount: 10,
                   ),
                 ),
@@ -680,10 +677,9 @@ class _RemainingWidgetsDemoContentState
       child: TomContainer(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context)
-              .colorScheme
-              .surfaceContainerHighest
-              .withValues(alpha: 0.5),
+          color: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: Theme.of(context).colorScheme.outlineVariant,
@@ -694,16 +690,14 @@ class _RemainingWidgetsDemoContentState
           children: [
             TomRow(
               children: [
-                Icon(Icons.image,
-                    color: Theme.of(context).colorScheme.primary),
+                Icon(Icons.image, color: Theme.of(context).colorScheme.primary),
                 TomSizedBox(width: 8),
                 TomExpanded(
                   child: Text(
                     'Image Widgets',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -742,7 +736,10 @@ class _RemainingWidgetsDemoContentState
   }
 
   Widget _buildImageInfoRow(
-      BuildContext context, String name, String description) {
+    BuildContext context,
+    String name,
+    String description,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: TomRow(
@@ -787,28 +784,22 @@ class _RemainingWidgetsDemoContentState
               TomCupertinoListTile(
                 tomId: 'cupertinoTile.1',
                 title: const Text('Wi-Fi'),
-                leading:
-                    const Icon(CupertinoIcons.wifi, color: Colors.blue),
-                trailing: const CupertinoSwitch(
-                  value: true,
-                  onChanged: null,
-                ),
+                leading: const Icon(CupertinoIcons.wifi, color: Colors.blue),
+                trailing: const CupertinoSwitch(value: true, onChanged: null),
               ),
               TomCupertinoListTile(
                 tomId: 'cupertinoTile.2',
                 title: const Text('Bluetooth'),
-                leading: const Icon(CupertinoIcons.bluetooth,
-                    color: Colors.blue),
-                trailing: const CupertinoSwitch(
-                  value: false,
-                  onChanged: null,
+                leading: const Icon(
+                  CupertinoIcons.bluetooth,
+                  color: Colors.blue,
                 ),
+                trailing: const CupertinoSwitch(value: false, onChanged: null),
               ),
               TomCupertinoListTile(
                 tomId: 'cupertinoTile.3',
                 title: const Text('Notifications'),
-                leading: const Icon(CupertinoIcons.bell,
-                    color: Colors.red),
+                leading: const Icon(CupertinoIcons.bell, color: Colors.red),
                 trailing: const CupertinoListTileChevron(),
               ),
             ],
@@ -830,11 +821,13 @@ class _RemainingWidgetsDemoContentState
                 });
               },
               children: _reorderItems
-                  .map((item) => ListTile(
-                        key: ValueKey(item),
-                        leading: const Icon(Icons.drag_handle),
-                        title: Text(item),
-                      ))
+                  .map(
+                    (item) => ListTile(
+                      key: ValueKey(item),
+                      leading: const Icon(Icons.drag_handle),
+                      title: Text(item),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -896,10 +889,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

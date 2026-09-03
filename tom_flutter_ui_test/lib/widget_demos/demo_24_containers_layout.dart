@@ -136,10 +136,7 @@ class _ContainersLayoutDemoContentState
                 child: TomRow(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.home),
-                      onPressed: () {},
-                    ),
+                    IconButton(icon: const Icon(Icons.home), onPressed: () {}),
                     const SizedBox(width: 48),
                     IconButton(
                       icon: const Icon(Icons.settings),
@@ -170,9 +167,7 @@ class _ContainersLayoutDemoContentState
               navigationBar: const CupertinoNavigationBar(
                 middle: Text('Cupertino Page'),
               ),
-              child: const Center(
-                child: Text('CupertinoPageScaffold content'),
-              ),
+              child: const Center(child: Text('CupertinoPageScaffold content')),
             ),
           ),
         ),
@@ -199,9 +194,8 @@ class _ContainersLayoutDemoContentState
               ),
               tabBuilder: (context, index) {
                 return CupertinoTabView(
-                  builder: (context) => Center(
-                    child: Text('Tab $index content'),
-                  ),
+                  builder: (context) =>
+                      Center(child: Text('Tab $index content')),
                 );
               },
             ),
@@ -378,8 +372,7 @@ class _ContainersLayoutDemoContentState
                         height: 40,
                         color: Colors.orange.shade300,
                         child: const Center(
-                          child:
-                              Text('Offset', style: TextStyle(fontSize: 10)),
+                          child: Text('Offset', style: TextStyle(fontSize: 10)),
                         ),
                       ),
                     ),
@@ -430,8 +423,7 @@ class _ContainersLayoutDemoContentState
                     height: 60,
                     color: Colors.cyan.shade200.withValues(alpha: 0.7),
                     child: const Center(
-                      child:
-                          Text('Overflow', style: TextStyle(fontSize: 10)),
+                      child: Text('Overflow', style: TextStyle(fontSize: 10)),
                     ),
                   ),
                 ),
@@ -457,22 +449,10 @@ class _ContainersLayoutDemoContentState
         spacing: 8,
         overflowSpacing: 8,
         children: [
-          TomElevatedButton(
-            onPressed: () {},
-            child: const Text('Action 1'),
-          ),
-          TomOutlinedButton(
-            onPressed: () {},
-            child: const Text('Action 2'),
-          ),
-          TomTextButton(
-            onPressed: () {},
-            child: const Text('Action 3'),
-          ),
-          TomFilledButton(
-            onPressed: () {},
-            child: const Text('Action 4'),
-          ),
+          TomElevatedButton(onPressed: () {}, child: const Text('Action 1')),
+          TomOutlinedButton(onPressed: () {}, child: const Text('Action 2')),
+          TomTextButton(onPressed: () {}, child: const Text('Action 3')),
+          TomFilledButton(onPressed: () {}, child: const Text('Action 4')),
         ],
       ),
     );
@@ -492,13 +472,14 @@ class _ContainersLayoutDemoContentState
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.primaries[i % Colors.primaries.length]
-                    .shade300,
+                color: Colors.primaries[i % Colors.primaries.length].shade300,
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: Text('${i + 1}',
-                    style: const TextStyle(color: Colors.white)),
+                child: Text(
+                  '${i + 1}',
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
             ),
           ),
@@ -521,9 +502,7 @@ class _ContainersLayoutDemoContentState
           painter: _GridPainter(
             color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
           ),
-          child: const Center(
-            child: Text('CustomPaint with grid painter'),
-          ),
+          child: const Center(child: Text('CustomPaint with grid painter')),
         ),
       ),
     );
@@ -613,9 +592,8 @@ class _ContainersLayoutDemoContentState
         children: [
           TomExpansionPanel(
             tomId: 'panel.1',
-            headerBuilder: (context, isExpanded) => const ListTile(
-              title: Text('Panel 1'),
-            ),
+            headerBuilder: (context, isExpanded) =>
+                const ListTile(title: Text('Panel 1')),
             body: const Padding(
               padding: EdgeInsets.all(16),
               child: Text('TomExpansionPanel body content for panel 1'),
@@ -624,9 +602,8 @@ class _ContainersLayoutDemoContentState
           ).toPanel(),
           TomExpansionPanel(
             tomId: 'panel.2',
-            headerBuilder: (context, isExpanded) => const ListTile(
-              title: Text('Panel 2'),
-            ),
+            headerBuilder: (context, isExpanded) =>
+                const ListTile(title: Text('Panel 2')),
             body: const Padding(
               padding: EdgeInsets.all(16),
               child: Text('TomExpansionPanel body content for panel 2'),
@@ -676,9 +653,8 @@ class _ContainersLayoutDemoContentState
                   offstage: _sliverOffstage,
                   sliver: TomSliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) => ListTile(
-                        title: Text('Sliver item $index'),
-                      ),
+                      (context, index) =>
+                          ListTile(title: Text('Sliver item $index')),
                       childCount: 10,
                     ),
                   ),
@@ -712,8 +688,7 @@ class _CircleFlowDelegate extends FlowDelegate {
   bool shouldRepaint(covariant FlowDelegate oldDelegate) => false;
 
   @override
-  Size getSize(BoxConstraints constraints) =>
-      Size(constraints.maxWidth, 100);
+  Size getSize(BoxConstraints constraints) => Size(constraints.maxWidth, 100);
 }
 
 /// A simple CustomPainter that draws a grid pattern.
@@ -810,10 +785,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

@@ -37,30 +37,45 @@ void main() {
   }
 
   testWidgets(
-      'SelectionVariantsDemo closes its shared source and observers on unmount',
-      (tester) async {
-    await pump(tester, const SelectionVariantsDemo());
+    'SelectionVariantsDemo closes its shared source and observers on unmount',
+    (tester) async {
+      await pump(tester, const SelectionVariantsDemo());
 
-    final state =
-        tester.state<SelectionVariantsDemoState>(find.byType(SelectionVariantsDemo));
+      final state = tester.state<SelectionVariantsDemoState>(
+        find.byType(SelectionVariantsDemo),
+      );
 
-    // While mounted: source open, all five field observers registered.
-    expect(state.debugSharedSource.isDisposed, isFalse,
-        reason: 'The shared source is live while the demo is mounted');
-    expect(state.debugObserverCount, 5,
-        reason: 'One >> observer is registered per selection field');
+      // While mounted: source open, all five field observers registered.
+      expect(
+        state.debugSharedSource.isDisposed,
+        isFalse,
+        reason: 'The shared source is live while the demo is mounted',
+      );
+      expect(
+        state.debugObserverCount,
+        5,
+        reason: 'One >> observer is registered per selection field',
+      );
 
-    // Replace the demo to trigger State.dispose().
-    await pump(tester, const SizedBox.shrink());
+      // Replace the demo to trigger State.dispose().
+      await pump(tester, const SizedBox.shrink());
 
-    expect(state.debugSharedSource.isDisposed, isTrue,
-        reason: 'dispose() must close the bespoke broadcast source');
-    expect(state.debugObserverCount, 0,
-        reason: 'dispose() must unregister every >> observer');
-  });
+      expect(
+        state.debugSharedSource.isDisposed,
+        isTrue,
+        reason: 'dispose() must close the bespoke broadcast source',
+      );
+      expect(
+        state.debugObserverCount,
+        0,
+        reason: 'dispose() must unregister every >> observer',
+      );
+    },
+  );
 
-  testWidgets('all forms demos mount and unmount twice without exceptions',
-      (tester) async {
+  testWidgets('all forms demos mount and unmount twice without exceptions', (
+    tester,
+  ) async {
     final demos = <Widget Function()>[
       () => const FormsOverviewDemo(),
       () => const SelectionVariantsDemo(),
@@ -76,8 +91,11 @@ void main() {
       await pump(tester, const SizedBox.shrink());
       await pump(tester, build());
       await pump(tester, const SizedBox.shrink());
-      expect(tester.takeException(), isNull,
-          reason: 'Mounting and disposing the demo must not throw');
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Mounting and disposing the demo must not throw',
+      );
     }
   });
 }

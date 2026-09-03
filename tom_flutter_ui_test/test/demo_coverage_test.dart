@@ -77,7 +77,8 @@ void main() {
         expect(
           missing,
           isEmpty,
-          reason: 'the "$label" tab opens ${missing.length} screen(s) that '
+          reason:
+              'the "$label" tab opens ${missing.length} screen(s) that '
               '`demos` in test/demo_harness.dart cannot construct: '
               '${missing.join(", ")}. Add a (slug, builder) pair for each, or '
               'the overflow gate and the screenshot harness will keep skipping '

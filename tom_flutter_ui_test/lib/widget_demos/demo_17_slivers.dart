@@ -24,7 +24,6 @@ class SliversDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _SliversDemoContent();
-
   }
 }
 
@@ -169,8 +168,12 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 // Basic SliverAppBar
                 TomSliverAppBar(
                   titleText: 'Basic CustomScrollView',
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onPrimaryContainer,
                   expandedHeight: 80,
                 ),
                 // Basic list content
@@ -181,15 +184,11 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
+                          color: Theme.of(context).colorScheme.primary
                               .withValues(alpha: 0.1 + index * 0.05),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Center(
-                          child: TomText(text: '${index + 1}'),
-                        ),
+                        child: Center(child: TomText(text: '${index + 1}')),
                       ),
                       titleText: 'List Item ${index + 1}',
                       subtitle: const Text('Basic sliver list item'),
@@ -204,9 +203,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'customScroll.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -288,9 +287,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'pinnedAppBar.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -324,8 +323,12 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                   titleText: 'Floating AppBar',
                   floating: true,
                   expandedHeight: 100,
-                  backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-                  foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.tertiaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onTertiaryContainer,
                   leading: const Icon(Icons.menu),
                   actions: [
                     IconButton(
@@ -354,9 +357,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'floatingAppBar.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -392,8 +395,12 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                   snap: true,
                   expandedHeight: 120,
                   stretch: true,
-                  backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                  foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.secondaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onSecondaryContainer,
                   flexibleSpace: FlexibleSpaceBar(
                     stretchModes: const [
                       StretchMode.zoomBackground,
@@ -401,9 +408,7 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                     ],
                     background: Container(
                       color: Theme.of(context).colorScheme.secondaryContainer,
-                      child: const Center(
-                        child: Icon(Icons.expand, size: 48),
-                      ),
+                      child: const Center(child: Icon(Icons.expand, size: 48)),
                     ),
                   ),
                 ),
@@ -427,9 +432,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'snapAppBar.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -467,7 +472,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 TomSliverToBoxAdapter(
                   child: Container(
                     padding: const EdgeInsets.all(12),
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     child: const Text(
                       'Regular SliverList',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -479,26 +486,23 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                     ListTile(
                       leading: const Icon(Icons.looks_one),
                       title: const Text('Static Item 1'),
-                      tileColor: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.3),
+                      tileColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                     ),
                     ListTile(
                       leading: const Icon(Icons.looks_two),
                       title: const Text('Static Item 2'),
-                      tileColor: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.3),
+                      tileColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                     ),
                     ListTile(
                       leading: const Icon(Icons.looks_3),
                       title: const Text('Static Item 3'),
-                      tileColor: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.3),
+                      tileColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                     ),
                   ]),
                 ),
@@ -507,7 +511,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 TomSliverToBoxAdapter(
                   child: Container(
                     padding: const EdgeInsets.all(12),
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     child: const Text(
                       'SliverFixedExtentList (50px each)',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -520,10 +526,8 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                     (context, index) => Container(
                       color: index.isEven
                           ? Theme.of(context).colorScheme.secondaryContainer
-                          : Theme.of(context)
-                              .colorScheme
-                              .secondaryContainer
-                              .withValues(alpha: 0.5),
+                          : Theme.of(context).colorScheme.secondaryContainer
+                                .withValues(alpha: 0.5),
                       alignment: Alignment.centerLeft,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text('Fixed Height Item ${index + 1}'),
@@ -536,7 +540,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 TomSliverToBoxAdapter(
                   child: Container(
                     padding: const EdgeInsets.all(12),
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     child: const Text(
                       'SliverPrototypeExtentList',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -551,8 +557,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => ListTile(
                       leading: CircleAvatar(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.tertiaryContainer,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.tertiaryContainer,
                         child: Text('${index + 1}'),
                       ),
                       title: Text('Prototype Item ${index + 1}'),
@@ -568,9 +575,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'sliverList.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -603,18 +610,21 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 TomSliverAppBar(
                   titleText: 'Grid Gallery',
                   backgroundColor: Theme.of(context).colorScheme.inverseSurface,
-                  foregroundColor: Theme.of(context).colorScheme.onInverseSurface,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onInverseSurface,
                   pinned: true,
                 ),
                 TomSliverPadding(
                   padding: const EdgeInsets.all(8),
                   sliver: TomSliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: 1.0,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          childAspectRatio: 1.0,
+                        ),
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => TomContainer(
                         decoration: BoxDecoration(
@@ -623,8 +633,8 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                             end: Alignment.bottomRight,
                             colors: [
                               Colors.primaries[index % Colors.primaries.length],
-                              Colors.primaries[
-                                  (index + 5) % Colors.primaries.length],
+                              Colors.primaries[(index + 5) %
+                                  Colors.primaries.length],
                             ],
                           ),
                           borderRadius: BorderRadius.circular(8),
@@ -632,9 +642,7 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                         child: Center(
                           child: Text(
                             '${index + 1}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(color: Colors.white),
                           ),
                         ),
@@ -650,9 +658,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'sliverGrid.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -710,9 +718,7 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                           const SizedBox(height: 8),
                           Text(
                             'Dashboard',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineMedium
+                            style: Theme.of(context).textTheme.headlineMedium
                                 ?.copyWith(color: Colors.white),
                           ),
                         ],
@@ -751,14 +757,30 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 // Activity list
                 TomSliverList(
                   delegate: SliverChildListDelegate([
-                    _buildActivityTile('New user registered', Icons.person_add,
-                        Colors.green, '2 min ago'),
-                    _buildActivityTile('Order completed', Icons.check_circle,
-                        Colors.blue, '5 min ago'),
-                    _buildActivityTile('Payment received', Icons.payment,
-                        Colors.orange, '12 min ago'),
-                    _buildActivityTile('Product updated', Icons.edit,
-                        Colors.purple, '1 hour ago'),
+                    _buildActivityTile(
+                      'New user registered',
+                      Icons.person_add,
+                      Colors.green,
+                      '2 min ago',
+                    ),
+                    _buildActivityTile(
+                      'Order completed',
+                      Icons.check_circle,
+                      Colors.blue,
+                      '5 min ago',
+                    ),
+                    _buildActivityTile(
+                      'Payment received',
+                      Icons.payment,
+                      Colors.orange,
+                      '12 min ago',
+                    ),
+                    _buildActivityTile(
+                      'Product updated',
+                      Icons.edit,
+                      Colors.purple,
+                      '1 hour ago',
+                    ),
                   ]),
                 ),
 
@@ -778,14 +800,17 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                   sliver: TomSliverGrid(
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 2.5,
-                    ),
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 2.5,
+                        ),
                     delegate: SliverChildListDelegate([
                       _buildQuickActionTile('Add User', Icons.person_add),
-                      _buildQuickActionTile('New Order', Icons.add_shopping_cart),
+                      _buildQuickActionTile(
+                        'New Order',
+                        Icons.add_shopping_cart,
+                      ),
                       _buildQuickActionTile('Reports', Icons.analytics),
                       _buildQuickActionTile('Settings', Icons.settings),
                     ]),
@@ -798,9 +823,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'mixedContent.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -821,14 +846,11 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
             const SizedBox(height: 4),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),
@@ -836,17 +858,18 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
   }
 
   Widget _buildActivityTile(
-      String title, IconData icon, Color color, String time) {
+    String title,
+    IconData icon,
+    Color color,
+    String time,
+  ) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.2),
         child: Icon(icon, color: color, size: 20),
       ),
       title: Text(title),
-      trailing: Text(
-        time,
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
+      trailing: Text(time, style: Theme.of(context).textTheme.bodySmall),
     );
   }
 
@@ -915,9 +938,7 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Theme.of(context)
-                              .colorScheme
-                              .secondaryContainer
+                          Theme.of(context).colorScheme.secondaryContainer
                               .withValues(alpha: 0.3),
                           Theme.of(context).colorScheme.secondaryContainer,
                         ],
@@ -954,9 +975,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'fillRemaining.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1001,9 +1022,7 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                         const SizedBox(width: 8),
                         Text(
                           'Pinned Header - Always Visible',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
+                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(color: Colors.white),
                         ),
                       ],
@@ -1016,10 +1035,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => ListTile(
                       title: Text('Section A - Item ${index + 1}'),
-                      tileColor: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.2),
+                      tileColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.2),
                     ),
                     childCount: 5,
                   ),
@@ -1032,13 +1050,14 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        const Icon(Icons.vertical_align_top, color: Colors.white),
+                        const Icon(
+                          Icons.vertical_align_top,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Floating Header - Scroll Up',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
+                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(color: Colors.white),
                         ),
                       ],
@@ -1051,10 +1070,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => ListTile(
                       title: Text('Section B - Item ${index + 1}'),
-                      tileColor: Theme.of(context)
-                          .colorScheme
-                          .secondaryContainer
-                          .withValues(alpha: 0.2),
+                      tileColor: Theme.of(
+                        context,
+                      ).colorScheme.secondaryContainer.withValues(alpha: 0.2),
                     ),
                     childCount: 5,
                   ),
@@ -1076,9 +1094,7 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                           const SizedBox(width: 8),
                           Text(
                             'Persistent Header (resizable)',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(color: Colors.white),
                           ),
                         ],
@@ -1092,10 +1108,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => ListTile(
                       title: Text('Section C - Item ${index + 1}'),
-                      tileColor: Theme.of(context)
-                          .colorScheme
-                          .tertiaryContainer
-                          .withValues(alpha: 0.2),
+                      tileColor: Theme.of(
+                        context,
+                      ).colorScheme.tertiaryContainer.withValues(alpha: 0.2),
                     ),
                     childCount: 8,
                   ),
@@ -1107,9 +1122,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'pinnedFloating.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1154,7 +1169,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 TomSliverToBoxAdapter(
                   child: Container(
                     padding: const EdgeInsets.all(12),
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     child: Text(
                       'SliverMainAxisGroup (sequential)',
                       style: Theme.of(context).textTheme.labelLarge,
@@ -1197,7 +1214,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                         minHeight: 40,
                         maxHeight: 40,
                         child: Container(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.secondaryContainer,
                           alignment: Alignment.centerLeft,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: const Text('Group B Header'),
@@ -1220,7 +1239,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 TomSliverToBoxAdapter(
                   child: Container(
                     padding: const EdgeInsets.all(12),
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     child: Text(
                       'SliverCrossAxisGroup (side-by-side)',
                       style: Theme.of(context).textTheme.labelLarge,
@@ -1238,8 +1259,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                             height: 50,
                             margin: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color:
-                                  Theme.of(context).colorScheme.primaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             alignment: Alignment.center,
@@ -1257,9 +1279,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                             height: 50,
                             margin: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .tertiaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.tertiaryContainer,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             alignment: Alignment.center,
@@ -1278,9 +1300,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'groups.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1345,10 +1367,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .shadow
-                              .withValues(alpha: 0.2),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.shadow.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -1420,9 +1441,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'decorated.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1499,16 +1520,17 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                         children: [
                           Icon(
                             Icons.looks_one,
-                            color:
-                                Theme.of(context).colorScheme.onPrimaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             'Sliver 1 - Toggleable',
                             style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onPrimaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
                             ),
                           ),
                         ],
@@ -1531,17 +1553,17 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                         children: [
                           Icon(
                             Icons.looks_two,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSecondaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSecondaryContainer,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             'Sliver 2 - Maintains state',
                             style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSecondaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSecondaryContainer,
                             ),
                           ),
                         ],
@@ -1567,7 +1589,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
                 TomSliverToBoxAdapter(
                   child: Container(
                     height: 60,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     alignment: Alignment.center,
                     child: const Text('Always Visible Footer'),
                   ),
@@ -1579,9 +1603,9 @@ class _SliversDemoContentState extends TomState<_SliversDemoContent>
           TomText(
             tomId: 'visibility.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1613,7 +1637,10 @@ class _PersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return SizedBox.expand(child: child);
   }
 
@@ -1632,9 +1659,7 @@ class _PersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1678,10 +1703,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

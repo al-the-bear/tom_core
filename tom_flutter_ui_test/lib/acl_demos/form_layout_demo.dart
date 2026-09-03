@@ -41,7 +41,8 @@ class FormLayoutDemo extends StatelessWidget {
                   ),
                 ),
               )
-              .setMSize(_fMin, 36).setPSize(240, 36)
+              .setMSize(_fMin, 36)
+              .setPSize(240, 36)
               .setAttr(AclFlags.expandX)
               // Name row
               .newRow(dist: 12)
@@ -54,7 +55,8 @@ class FormLayoutDemo extends StatelessWidget {
                   ),
                 ),
               )
-              .setMSize(_fMin, 36).setPSize(320, 36)
+              .setMSize(_fMin, 36)
+              .setPSize(320, 36)
               .setAttr(AclFlags.expandX)
               // Cost Center row
               .newRow(dist: 12)
@@ -68,7 +70,8 @@ class FormLayoutDemo extends StatelessWidget {
                   ),
                 ),
               )
-              .setMSize(_fMin, 36).setPSize(240, 36)
+              .setMSize(_fMin, 36)
+              .setPSize(240, 36)
               .setAttr(AclFlags.expandX)
               // Description row
               .newRow(dist: 12)
@@ -91,7 +94,8 @@ class FormLayoutDemo extends StatelessWidget {
                   ),
                 ),
               )
-              .setMSize(_fMin, 72).setPSize(320, 72)
+              .setMSize(_fMin, 72)
+              .setPSize(320, 72)
               .setAttr(AclFlags.expandX)
               // Buttons
               .newRow(dist: 20)
@@ -115,4 +119,3 @@ class FormLayoutDemo extends StatelessWidget {
     );
   }
 }
-

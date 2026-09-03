@@ -21,7 +21,6 @@ class ProgressDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _ProgressDemoContent();
-
   }
 }
 
@@ -49,23 +48,21 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
   @override
   void initState() {
     super.initState();
-    _circularController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..addListener(() {
-        setState(() {
-          _circularProgress = _circularController.value;
-        });
-      });
+    _circularController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..addListener(() {
+            setState(() {
+              _circularProgress = _circularController.value;
+            });
+          });
 
-    _linearController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..addListener(() {
-        setState(() {
-          _linearProgress = _linearController.value;
-        });
-      });
+    _linearController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..addListener(() {
+            setState(() {
+              _linearProgress = _linearController.value;
+            });
+          });
   }
 
   @override
@@ -84,33 +81,25 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Circular Progress
-            _SectionHeader(
-              tomId: 'section.circular',
-            ),
+            _SectionHeader(tomId: 'section.circular'),
             TomSizedBox(height: 16),
             _buildCircularProgressSection(),
             TomSizedBox(height: 32),
 
             // Section 2: Linear Progress
-            _SectionHeader(
-              tomId: 'section.linear',
-            ),
+            _SectionHeader(tomId: 'section.linear'),
             TomSizedBox(height: 16),
             _buildLinearProgressSection(),
             TomSizedBox(height: 32),
 
             // Section 3: Refresh Indicators
-            _SectionHeader(
-              tomId: 'section.refresh',
-            ),
+            _SectionHeader(tomId: 'section.refresh'),
             TomSizedBox(height: 16),
             _buildRefreshIndicatorSection(),
             TomSizedBox(height: 32),
 
             // Section 4: Cupertino Indicators
-            _SectionHeader(
-              tomId: 'section.cupertino',
-            ),
+            _SectionHeader(tomId: 'section.cupertino'),
             TomSizedBox(height: 16),
             _buildCupertinoActivitySection(),
             TomSizedBox(height: 24),
@@ -213,9 +202,7 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
               // Animated determinate
               TomColumn(
                 children: [
-                  TomCircularProgressIndicator(
-                    value: _circularProgress,
-                  ),
+                  TomCircularProgressIndicator(value: _circularProgress),
                   TomSizedBox(height: 8),
                   TomText(
                     text: '${(_circularProgress * 100).toInt()}%',
@@ -228,8 +215,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                 children: [
                   TomCircularProgressIndicator(
                     value: 0.25,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                   ),
                   TomSizedBox(height: 8),
                   TomText(
@@ -243,8 +231,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                 children: [
                   TomCircularProgressIndicator(
                     value: 0.5,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     color: Theme.of(context).colorScheme.secondary,
                   ),
                   TomSizedBox(height: 8),
@@ -259,8 +248,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                 children: [
                   TomCircularProgressIndicator(
                     value: 0.75,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     color: Theme.of(context).colorScheme.tertiary,
                   ),
                   TomSizedBox(height: 8),
@@ -275,8 +265,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                 children: [
                   TomCircularProgressIndicator(
                     value: 1.0,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     color: Colors.green,
                   ),
                   TomSizedBox(height: 8),
@@ -328,8 +319,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                     value: 0.7,
                     strokeWidth: 8,
                     strokeCap: StrokeCap.butt,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                   ),
                   TomSizedBox(height: 8),
                   TomText(
@@ -344,8 +336,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                     value: 0.7,
                     strokeWidth: 8,
                     strokeCap: StrokeCap.round,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                   ),
                   TomSizedBox(height: 8),
                   TomText(
@@ -360,8 +353,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                     value: 0.7,
                     strokeWidth: 8,
                     strokeCap: StrokeCap.square,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                   ),
                   TomSizedBox(height: 8),
                   TomText(
@@ -411,8 +405,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
           TomSizedBox(height: 8),
           TomLinearProgressIndicator(
             color: Theme.of(context).colorScheme.secondary,
-            backgroundColor:
-                Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.secondary.withValues(alpha: 0.2),
           ),
           TomSizedBox(height: 16),
 
@@ -425,8 +420,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
           TomLinearProgressIndicator(
             minHeight: 12,
             color: Theme.of(context).colorScheme.tertiary,
-            backgroundColor:
-                Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.tertiary.withValues(alpha: 0.2),
           ),
           TomSizedBox(height: 24),
 
@@ -443,10 +439,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
               TomExpanded(
                 child: TomLinearProgressIndicator(
                   value: _linearProgress,
-                  backgroundColor: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.2),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                 ),
               ),
               TomSizedBox(width: 12),
@@ -509,8 +504,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
             value: 0.6,
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
-            backgroundColor:
-                Theme.of(context).colorScheme.surfaceContainerHighest,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
           ),
           TomSizedBox(height: 12),
 
@@ -523,8 +519,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
             value: 0.6,
             minHeight: 16,
             borderRadius: BorderRadius.circular(8),
-            backgroundColor:
-                Theme.of(context).colorScheme.surfaceContainerHighest,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
             color: Theme.of(context).colorScheme.secondary,
           ),
           TomSizedBox(height: 12),
@@ -538,8 +535,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
             value: 0.6,
             minHeight: 24,
             borderRadius: BorderRadius.circular(12),
-            backgroundColor:
-                Theme.of(context).colorScheme.surfaceContainerHighest,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
             color: Theme.of(context).colorScheme.tertiary,
           ),
         ],
@@ -560,8 +558,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
         TomExpanded(
           child: TomLinearProgressIndicator(
             value: value,
-            backgroundColor:
-                Theme.of(context).colorScheme.surfaceContainerHighest,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
           ),
         ),
       ],
@@ -610,9 +609,7 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                 itemCount: _refreshItems.length,
                 itemBuilder: (context, index) {
                   return ListTile(
-                    leading: CircleAvatar(
-                      child: Text('${index + 1}'),
-                    ),
+                    leading: CircleAvatar(child: Text('${index + 1}')),
                     title: Text(_refreshItems[index]),
                     subtitle: const Text('Pull down to refresh'),
                   );
@@ -625,8 +622,8 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
             child: TomText(
               tomId: 'refresh.hint',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           TomSizedBox(height: 24),
@@ -787,8 +784,9 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
 
   Widget _buildCupertinoLinearSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -821,10 +819,7 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
               children: [
                 TomRow(
                   children: [
-                    TomSizedBox(
-                      width: 40,
-                      child: TomText(text: '25%'),
-                    ),
+                    TomSizedBox(width: 40, child: TomText(text: '25%')),
                     TomExpanded(
                       child: TomCupertinoLinearActivityIndicator(value: 0.25),
                     ),
@@ -833,10 +828,7 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                 TomSizedBox(height: 8),
                 TomRow(
                   children: [
-                    TomSizedBox(
-                      width: 40,
-                      child: TomText(text: '50%'),
-                    ),
+                    TomSizedBox(width: 40, child: TomText(text: '50%')),
                     TomExpanded(
                       child: TomCupertinoLinearActivityIndicator(value: 0.5),
                     ),
@@ -845,10 +837,7 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                 TomSizedBox(height: 8),
                 TomRow(
                   children: [
-                    TomSizedBox(
-                      width: 40,
-                      child: TomText(text: '75%'),
-                    ),
+                    TomSizedBox(width: 40, child: TomText(text: '75%')),
                     TomExpanded(
                       child: TomCupertinoLinearActivityIndicator(value: 0.75),
                     ),
@@ -857,10 +846,7 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
                 TomSizedBox(height: 8),
                 TomRow(
                   children: [
-                    TomSizedBox(
-                      width: 40,
-                      child: TomText(text: '100%'),
-                    ),
+                    TomSizedBox(width: 40, child: TomText(text: '100%')),
                     TomExpanded(
                       child: TomCupertinoLinearActivityIndicator(value: 1.0),
                     ),
@@ -902,9 +888,7 @@ class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -948,10 +932,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

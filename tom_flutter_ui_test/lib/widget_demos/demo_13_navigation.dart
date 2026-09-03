@@ -22,7 +22,6 @@ class NavigationDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _NavigationDemoContent();
-
   }
 }
 
@@ -79,9 +78,7 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Tab Navigation
-            _SectionHeader(
-              tomId: 'section.tabs',
-            ),
+            _SectionHeader(tomId: 'section.tabs'),
             TomSizedBox(height: 16),
             _buildTabBarSection(),
             TomSizedBox(height: 24),
@@ -89,9 +86,7 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
             TomSizedBox(height: 32),
 
             // Section 2: Bottom Navigation
-            _SectionHeader(
-              tomId: 'section.bottomNav',
-            ),
+            _SectionHeader(tomId: 'section.bottomNav'),
             TomSizedBox(height: 16),
             _buildNavigationBarSection(),
             TomSizedBox(height: 24),
@@ -101,9 +96,7 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
             TomSizedBox(height: 32),
 
             // Section 3: Rail & Drawer Navigation
-            _SectionHeader(
-              tomId: 'section.railDrawer',
-            ),
+            _SectionHeader(tomId: 'section.railDrawer'),
             TomSizedBox(height: 16),
             _buildNavigationRailSection(),
             TomSizedBox(height: 24),
@@ -113,9 +106,7 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
             TomSizedBox(height: 32),
 
             // Section 4: Sequential Navigation
-            _SectionHeader(
-              tomId: 'section.sequential',
-            ),
+            _SectionHeader(tomId: 'section.sequential'),
             TomSizedBox(height: 16),
             _buildStepperSection(),
             TomSizedBox(height: 24),
@@ -123,9 +114,7 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
             TomSizedBox(height: 32),
 
             // Section 5: iOS Navigation
-            _SectionHeader(
-              tomId: 'section.cupertino',
-            ),
+            _SectionHeader(tomId: 'section.cupertino'),
             TomSizedBox(height: 16),
             _buildCupertinoNavigationBarSection(),
             TomSizedBox(height: 48),
@@ -212,13 +201,11 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
               controller: _tabController,
               indicatorColor: Theme.of(context).colorScheme.primary,
               labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor:
-                  Theme.of(context).colorScheme.onPrimaryContainer,
+              unselectedLabelColor: Theme.of(
+                context,
+              ).colorScheme.onPrimaryContainer,
               tabs: [
-                TomTab(
-                  tomId: 'tabBar.iconTab.photos',
-                  icon: Icon(Icons.photo),
-                ),
+                TomTab(tomId: 'tabBar.iconTab.photos', icon: Icon(Icons.photo)),
                 TomTab(
                   tomId: 'tabBar.iconTab.videos',
                   icon: Icon(Icons.videocam),
@@ -257,11 +244,17 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
               isScrollable: true,
               tabs: [
                 TomTab(tomId: 'scrollableTabBar.tab.all', text: 'All'),
-                TomTab(tomId: 'scrollableTabBar.tab.documents', text: 'Documents'),
+                TomTab(
+                  tomId: 'scrollableTabBar.tab.documents',
+                  text: 'Documents',
+                ),
                 TomTab(tomId: 'scrollableTabBar.tab.images', text: 'Images'),
                 TomTab(tomId: 'scrollableTabBar.tab.videos', text: 'Videos'),
                 TomTab(tomId: 'scrollableTabBar.tab.audio', text: 'Audio'),
-                TomTab(tomId: 'scrollableTabBar.tab.archives', text: 'Archives'),
+                TomTab(
+                  tomId: 'scrollableTabBar.tab.archives',
+                  text: 'Archives',
+                ),
               ],
             ),
           ),
@@ -283,7 +276,7 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                   'Images',
                   'Videos',
                   'Audio',
-                  'Archives'
+                  'Archives',
                 ];
                 return Center(
                   child: TomText(
@@ -354,7 +347,8 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
           TomSizedBox(height: 8),
           Center(
             child: TomText(
-              text: 'Selected: ${['Home', 'Explore', 'Saved', 'Profile'][_navigationBarIndex]}',
+              text:
+                  'Selected: ${['Home', 'Explore', 'Saved', 'Profile'][_navigationBarIndex]}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
@@ -393,10 +387,7 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                   icon: Icon(Icons.inbox),
                   label: 'Inbox',
                 ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.send),
-                  label: 'Sent',
-                ),
+                BottomNavigationBarItem(icon: Icon(Icons.send), label: 'Sent'),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.drafts),
                   label: 'Drafts',
@@ -411,7 +402,8 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
           TomSizedBox(height: 8),
           Center(
             child: TomText(
-              text: 'Selected: ${['Inbox', 'Sent', 'Drafts', 'Trash'][_bottomNavIndex]}',
+              text:
+                  'Selected: ${['Inbox', 'Sent', 'Drafts', 'Trash'][_bottomNavIndex]}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
@@ -467,7 +459,8 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
           TomSizedBox(height: 8),
           Center(
             child: TomText(
-              text: 'Selected: ${['Home', 'Search', 'Alerts', 'Settings'][_cupertinoTabIndex]}',
+              text:
+                  'Selected: ${['Home', 'Search', 'Alerts', 'Settings'][_cupertinoTabIndex]}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
@@ -556,7 +549,12 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                 TomExpanded(
                   child: Center(
                     child: TomText(
-                      text: ['Dashboard', 'Analytics', 'Projects', 'Settings'][_railIndex],
+                      text: [
+                        'Dashboard',
+                        'Analytics',
+                        'Projects',
+                        'Settings',
+                      ][_railIndex],
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
@@ -653,7 +651,13 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                 TomExpanded(
                   child: Center(
                     child: TomText(
-                      text: ['Inbox', 'Outbox', 'Favorites', 'Settings', 'Help'][_drawerIndex.clamp(0, 4)],
+                      text: [
+                        'Inbox',
+                        'Outbox',
+                        'Favorites',
+                        'Settings',
+                        'Help',
+                      ][_drawerIndex.clamp(0, 4)],
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
@@ -694,15 +698,16 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                             children: [
                               DrawerHeader(
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.primaryContainer,
                                 ),
                                 child: Center(
                                   child: TomText(
                                     text: 'Drawer Demo',
-                                    style:
-                                        Theme.of(context).textTheme.titleLarge,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge,
                                   ),
                                 ),
                               ),
@@ -742,8 +747,8 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
             child: TomText(
               tomId: 'drawer.hint',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -771,59 +776,59 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
             height: 200,
             child: TomStepper(
               type: StepperType.horizontal,
-            currentStep: _currentStep,
-            onStepContinue: () {
-              if (_currentStep < 2) {
-                setState(() => _currentStep++);
-              }
-            },
-            onStepCancel: () {
-              if (_currentStep > 0) {
-                setState(() => _currentStep--);
-              }
-            },
-            steps: [
-              Step(
-                title: const Text('Account'),
-                content: TomContainer(
-                  height: 60,
-                  child: Center(
-                    child: TomText(
-                      text: 'Enter account details',
-                      style: Theme.of(context).textTheme.bodyMedium,
+              currentStep: _currentStep,
+              onStepContinue: () {
+                if (_currentStep < 2) {
+                  setState(() => _currentStep++);
+                }
+              },
+              onStepCancel: () {
+                if (_currentStep > 0) {
+                  setState(() => _currentStep--);
+                }
+              },
+              steps: [
+                Step(
+                  title: const Text('Account'),
+                  content: TomContainer(
+                    height: 60,
+                    child: Center(
+                      child: TomText(
+                        text: 'Enter account details',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     ),
                   ),
+                  isActive: _currentStep >= 0,
                 ),
-                isActive: _currentStep >= 0,
-              ),
-              Step(
-                title: const Text('Address'),
-                content: TomContainer(
-                  height: 60,
-                  child: Center(
-                    child: TomText(
-                      text: 'Enter shipping address',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                Step(
+                  title: const Text('Address'),
+                  content: TomContainer(
+                    height: 60,
+                    child: Center(
+                      child: TomText(
+                        text: 'Enter shipping address',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     ),
                   ),
+                  isActive: _currentStep >= 1,
                 ),
-                isActive: _currentStep >= 1,
-              ),
-              Step(
-                title: const Text('Confirm'),
-                content: TomContainer(
-                  height: 60,
-                  child: Center(
-                    child: TomText(
-                      text: 'Review and confirm',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                Step(
+                  title: const Text('Confirm'),
+                  content: TomContainer(
+                    height: 60,
+                    child: Center(
+                      child: TomText(
+                        text: 'Review and confirm',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     ),
                   ),
+                  isActive: _currentStep >= 2,
                 ),
-                isActive: _currentStep >= 2,
-              ),
-            ],
-          ),
+              ],
+            ),
           ),
           TomSizedBox(height: 24),
 
@@ -896,8 +901,9 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                     ),
                   ),
                   isActive: _verticalStep >= 3,
-                  state:
-                      _verticalStep > 3 ? StepState.complete : StepState.indexed,
+                  state: _verticalStep > 3
+                      ? StepState.complete
+                      : StepState.indexed,
                 ),
               ],
             ),
@@ -939,7 +945,12 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                   Colors.orange.shade100,
                   Colors.purple.shade100,
                 ];
-                final titles = ['Welcome', 'Features', 'Pricing', 'Get Started'];
+                final titles = [
+                  'Welcome',
+                  'Features',
+                  'Pricing',
+                  'Get Started',
+                ];
                 return TomContainer(
                   color: colors[index],
                   child: Center(
@@ -951,23 +962,20 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                             Icons.waving_hand,
                             Icons.star,
                             Icons.attach_money,
-                            Icons.rocket_launch
+                            Icons.rocket_launch,
                           ][index],
                           size: 48,
                         ),
                         TomSizedBox(height: 16),
                         TomText(
                           text: titles[index],
-                          style:
-                              Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    color: Colors.black87,
-                                  ),
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(color: Colors.black87),
                         ),
                         TomText(
                           text: 'Page ${index + 1} of 4',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.black54,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.black54),
                         ),
                       ],
                     ),
@@ -1037,8 +1045,9 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
 
   Widget _buildCupertinoNavigationBarSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -1123,10 +1132,7 @@ class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
                   padding: EdgeInsets.zero,
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(CupertinoIcons.back),
-                      Text('Back'),
-                    ],
+                    children: [Icon(CupertinoIcons.back), Text('Back')],
                   ),
                   onPressed: () {},
                 ),
@@ -1156,11 +1162,7 @@ class _TabContent extends TomStatelessWidget {
   final String label;
   final Color color;
 
-  _TabContent({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
+  _TabContent({required this.icon, required this.label, required this.color});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1184,9 +1186,7 @@ class _TabContent extends TomStatelessWidget {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1230,10 +1230,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

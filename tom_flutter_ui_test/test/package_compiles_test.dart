@@ -108,10 +108,11 @@ _Report _analyze() {
   for (final launcher in _dartLaunchers()) {
     final ProcessResult result;
     try {
-      result = Process.runSync(
-        launcher,
-        ['analyze', '--format=machine', ..._analyzedPaths],
-      );
+      result = Process.runSync(launcher, [
+        'analyze',
+        '--format=machine',
+        ..._analyzedPaths,
+      ]);
     } on ProcessException catch (e) {
       unreachable.add('$launcher: ${e.message}');
       continue;
@@ -146,12 +147,14 @@ void main() {
   setUpAll(() => report = _analyze());
 
   test('every file under lib/ and test/ compiles', () {
-    final errors =
-        report.diagnostics.where((d) => d.severity == 'ERROR').toList();
+    final errors = report.diagnostics
+        .where((d) => d.severity == 'ERROR')
+        .toList();
     expect(
       errors,
       isEmpty,
-      reason: 'The package does not compile, which means some suites did not '
+      reason:
+          'The package does not compile, which means some suites did not '
           'run at all — read the passing count as a lower bound, not a '
           'result.\n${errors.join('\n')}',
     );
@@ -168,12 +171,12 @@ void main() {
     // an exit code chosen by highest severity — and the two cannot be read off
     // the same mistake. Anything that silently stops the diagnostics arriving
     // shows up here as `3` with nothing parsed.
-    final foundErrors =
-        report.diagnostics.any((d) => d.severity == 'ERROR');
+    final foundErrors = report.diagnostics.any((d) => d.severity == 'ERROR');
     expect(
       foundErrors,
       report.exitCode == 3,
-      reason: 'the analyzer exited ${report.exitCode} but '
+      reason:
+          'the analyzer exited ${report.exitCode} but '
           '${report.diagnostics.length} diagnostic(s) were parsed from its '
           'output, of which ${foundErrors ? 'some' : 'none'} were errors — '
           'the two disagree, so the output is not being read as intended',

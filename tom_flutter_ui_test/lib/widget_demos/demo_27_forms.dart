@@ -24,10 +24,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 class LoginFormProvider extends TomScreenElementsProviderBase {
   LoginFormProvider() : super('login');
 
-  late final emailField = TomTextField(
-    tomId: 'email',
-    scope: this,
-  );
+  late final emailField = TomTextField(tomId: 'email', scope: this);
 
   late final passwordField = TomTextField(
     tomId: 'password',
@@ -82,53 +79,29 @@ class ContactFormProvider extends TomScreenElementsProviderBase {
 /// Personal info sub-section: demo27.contact.personal
 class PersonalSectionProvider extends TomScreenElementsProviderBase {
   PersonalSectionProvider(TomScreenElementsProvider parent)
-      : super('personal', parent);
+    : super('personal', parent);
 
-  late final firstNameField = TomTextField(
-    tomId: 'firstName',
-    scope: this,
-  );
+  late final firstNameField = TomTextField(tomId: 'firstName', scope: this);
 
-  late final lastNameField = TomTextField(
-    tomId: 'lastName',
-    scope: this,
-  );
+  late final lastNameField = TomTextField(tomId: 'lastName', scope: this);
 
-  late final emailField = TomTextField(
-    tomId: 'email',
-    scope: this,
-  );
+  late final emailField = TomTextField(tomId: 'email', scope: this);
 
-  late final phoneField = TomTextField(
-    tomId: 'phone',
-    scope: this,
-  );
+  late final phoneField = TomTextField(tomId: 'phone', scope: this);
 }
 
 /// Address sub-section: demo27.contact.address
 class AddressSectionProvider extends TomScreenElementsProviderBase {
   AddressSectionProvider(TomScreenElementsProvider parent)
-      : super('address', parent);
+    : super('address', parent);
 
-  late final streetField = TomTextField(
-    tomId: 'street',
-    scope: this,
-  );
+  late final streetField = TomTextField(tomId: 'street', scope: this);
 
-  late final cityField = TomTextField(
-    tomId: 'city',
-    scope: this,
-  );
+  late final cityField = TomTextField(tomId: 'city', scope: this);
 
-  late final zipField = TomTextField(
-    tomId: 'zip',
-    scope: this,
-  );
+  late final zipField = TomTextField(tomId: 'zip', scope: this);
 
-  late final countryField = TomTextField(
-    tomId: 'country',
-    scope: this,
-  );
+  late final countryField = TomTextField(tomId: 'country', scope: this);
 }
 
 /// Settings form provider with mixed input types.
@@ -137,16 +110,9 @@ class AddressSectionProvider extends TomScreenElementsProviderBase {
 class SettingsFormProvider extends TomScreenElementsProviderBase {
   SettingsFormProvider() : super('settings');
 
-  late final nameField = TomTextField(
-    tomId: 'displayName',
-    scope: this,
-  );
+  late final nameField = TomTextField(tomId: 'displayName', scope: this);
 
-  late final bioField = TomTextField(
-    tomId: 'bio',
-    scope: this,
-    maxLines: 3,
-  );
+  late final bioField = TomTextField(tomId: 'bio', scope: this, maxLines: 3);
 
   late final notificationsSwitch = TomSwitch(
     tomId: 'notifications',
@@ -263,10 +229,10 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
           TomSizedBox(height: 16),
           // Personal section via ACL
           TomAclBuilder<PersonalSectionProvider>(
-            id: 'personalAcl',
-            elementProvider: _contactProvider.personal,
-            title: 'Personal Information',
-          )
+                id: 'personalAcl',
+                elementProvider: _contactProvider.personal,
+                title: 'Personal Information',
+              )
               .append((p) => p.firstNameField, dist: 16)
               .setPWidthInChars(30)
               .append((p) => p.lastNameField, dist: 16)
@@ -280,10 +246,10 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
           TomSizedBox(height: 16),
           // Address section via ACL
           TomAclBuilder<AddressSectionProvider>(
-            id: 'addressAcl',
-            elementProvider: _contactProvider.address,
-            title: 'Address',
-          )
+                id: 'addressAcl',
+                elementProvider: _contactProvider.address,
+                title: 'Address',
+              )
               .append((p) => p.streetField, dist: 16)
               .setPWidthInChars(50)
               .newRow()
@@ -304,7 +270,6 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
               .setXWidthInChars(30)
               .build(context),
           TomSizedBox(height: 24),
-
         ],
       ),
     );
@@ -356,34 +321,35 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
   Widget _buildAclForm(BuildContext context) {
     return _DemoCard(
       tomId: 'card.aclForm',
-      child: TomAclBuilder<ContactFormProvider>(
-        id: 'contactAcl',
-        elementProvider: _contactProvider,
-        title: 'Contact (ACL Layout)',
-        padding: const EdgeInsets.all(8),
-      )
-          .append((p) => p.personal.firstNameField)
-          .setPWidthInChars(30)
-          .append((p) => p.personal.lastNameField, dist: 16)
-          .setPWidthInChars(30)
-          .newRow()
-          .append((p) => p.personal.emailField)
-          .setPWidthInChars(40)
-          .newRow()
-          .append((p) => p.address.streetField)
-          .setPWidthInChars(50)
-          .newRow()
-          .append((p) => p.address.cityField)
-          .setPWidthInChars(25)
-          .append((p) => p.address.zipField, dist: 16)
-          .setPWidthInChars(10)
-          .append((p) => p.address.countryField, dist: 16)
-          .setPWidthInChars(25)
-          .gapRow( minSize: 32)
-          .gap()
-          .append((p) => p.resetButton, dist: 16)
-          .append((p) => p.saveButton, dist: 16)
-          .build(context),
+      child:
+          TomAclBuilder<ContactFormProvider>(
+                id: 'contactAcl',
+                elementProvider: _contactProvider,
+                title: 'Contact (ACL Layout)',
+                padding: const EdgeInsets.all(8),
+              )
+              .append((p) => p.personal.firstNameField)
+              .setPWidthInChars(30)
+              .append((p) => p.personal.lastNameField, dist: 16)
+              .setPWidthInChars(30)
+              .newRow()
+              .append((p) => p.personal.emailField)
+              .setPWidthInChars(40)
+              .newRow()
+              .append((p) => p.address.streetField)
+              .setPWidthInChars(50)
+              .newRow()
+              .append((p) => p.address.cityField)
+              .setPWidthInChars(25)
+              .append((p) => p.address.zipField, dist: 16)
+              .setPWidthInChars(10)
+              .append((p) => p.address.countryField, dist: 16)
+              .setPWidthInChars(25)
+              .gapRow(minSize: 32)
+              .gap()
+              .append((p) => p.resetButton, dist: 16)
+              .append((p) => p.saveButton, dist: 16)
+              .build(context),
     );
   }
 }

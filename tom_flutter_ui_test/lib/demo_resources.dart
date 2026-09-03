@@ -20,7 +20,7 @@ class _DemoResources {
   /// - `label` - button/widget label text
   /// - `icon` - icon name for lookup via TomUIIcons
   /// - `title` - section/card title
-  /// - `subtitle` - section subtitle  
+  /// - `subtitle` - section subtitle
   /// - `description` - card description
   /// - `tooltip` - tooltip text
   /// - `alt` - semantic label for icons/images
@@ -394,8 +394,7 @@ class _DemoResources {
     // ==========================================================================
     'demo02.calendar.icon': 'mCalendarToday',
     'demo02.calendar.title.label': 'Calendar & Date Pickers',
-    'demo02.calendar.description.label':
-        'Calendar view and date input fields.',
+    'demo02.calendar.description.label': 'Calendar view and date input fields.',
     'demo02.calendar.picker.label': 'Select Date',
     'demo02.calendar.selectedIcon': 'mEvent',
     'demo02.calendar.inputField.label': 'Date',
@@ -569,12 +568,14 @@ class _DemoResources {
     'demo03.cupertinoSegmented.title.label': 'Cupertino Segmented Controls',
     'demo03.cupertinoSegmented.description.label':
         'iOS-style sliding and classic segmented controls.',
-    'demo03.cupertinoSegmented.slidingLabel.label': 'Sliding Segmented Control:',
+    'demo03.cupertinoSegmented.slidingLabel.label':
+        'Sliding Segmented Control:',
     'demo03.cupertinoSegmented.day.label': 'Day',
     'demo03.cupertinoSegmented.week.label': 'Week',
     'demo03.cupertinoSegmented.month.label': 'Month',
     'demo03.cupertinoSegmented.year.label': 'Year',
-    'demo03.cupertinoSegmented.classicLabel.label': 'Classic Segmented Control:',
+    'demo03.cupertinoSegmented.classicLabel.label':
+        'Classic Segmented Control:',
     'demo03.cupertinoSegmented.first.label': 'First',
     'demo03.cupertinoSegmented.second.label': 'Second',
     'demo03.cupertinoSegmented.third.label': 'Third',
@@ -733,8 +734,7 @@ class _DemoResources {
     'demo04.switchListTile.darkMode.label': 'Dark Mode',
     'demo04.switchListTile.darkMode.subtitle.label': 'Enable dark theme',
     'demo04.switchListTile.location.label': 'Location Services',
-    'demo04.switchListTile.location.subtitle.label':
-        'Allow location tracking',
+    'demo04.switchListTile.location.subtitle.label': 'Allow location tracking',
 
     // ==========================================================================
     // Demo 04: TomCupertinoSwitch Card
@@ -776,8 +776,7 @@ class _DemoResources {
     'demo04.checkboxListTile.business.label': 'Business',
     'demo04.checkboxListTile.business.subtitle.label':
         'Market updates and analysis',
-    'demo04.checkboxListTile.positionLabel.label':
-        'Leading checkbox position:',
+    'demo04.checkboxListTile.positionLabel.label': 'Leading checkbox position:',
     'demo04.checkboxListTile.leading.label': 'Leading checkbox',
 
     // ==========================================================================
@@ -835,8 +834,7 @@ class _DemoResources {
     'demo04.toggleButtons.title.label': 'TomToggleButtons',
     'demo04.toggleButtons.description.label':
         'Grouped toggle selection with single/multi-select and custom styling.',
-    'demo04.toggleButtons.singleLabel.label':
-        'Single select (exclusive):',
+    'demo04.toggleButtons.singleLabel.label': 'Single select (exclusive):',
     'demo04.toggleButtons.multiLabel.label':
         'Multi select (non-exclusive) \u2014 text formatting:',
     'demo04.toggleButtons.verticalLabel.label': 'Vertical layout:',
@@ -870,11 +868,9 @@ class _DemoResources {
     'demo05.section.range.subtitle.label':
         'Dual-value range selection controls',
     'demo05.section.cupertino.title.label': 'Cupertino Sliders',
-    'demo05.section.cupertino.subtitle.label':
-        'iOS-style slider controls',
+    'demo05.section.cupertino.subtitle.label': 'iOS-style slider controls',
     'demo05.section.applications.title.label': 'Slider Applications',
-    'demo05.section.applications.subtitle.label':
-        'Real-world slider use cases',
+    'demo05.section.applications.subtitle.label': 'Real-world slider use cases',
     'demo05.section.acl.title.label': 'ACL Layout',
     'demo05.section.acl.subtitle.label':
         'Slider controls with RTL/LTR adaptive layout',
@@ -887,12 +883,9 @@ class _DemoResources {
     'demo05.basicSlider.basicLabel.label': 'Basic continuous slider:',
     'demo05.basicSlider.volumeLabel.label': 'With label:',
     'demo05.basicSlider.volumeName.label': 'Volume',
-    'demo05.basicSlider.discreteLabel.label':
-        'With divisions (discrete):',
-    'demo05.basicSlider.valueLabelTitle.label':
-        'With value label overlay:',
-    'demo05.basicSlider.customLabel.label':
-        'Custom track and thumb styling:',
+    'demo05.basicSlider.discreteLabel.label': 'With divisions (discrete):',
+    'demo05.basicSlider.valueLabelTitle.label': 'With value label overlay:',
+    'demo05.basicSlider.customLabel.label': 'Custom track and thumb styling:',
     'demo05.basicSlider.disabledLabel.label': 'Disabled slider:',
 
     // Card: Range Sliders
@@ -922,8 +915,7 @@ class _DemoResources {
     'demo05.audioPlayer.description.label':
         'Music player with progress and volume sliders.',
     'demo05.audioPlayer.nowPlaying.label': 'Now Playing',
-    'demo05.audioPlayer.trackInfo.label':
-        'Summer Breeze — The Wanderers',
+    'demo05.audioPlayer.trackInfo.label': 'Summer Breeze — The Wanderers',
     'demo05.audioPlayer.volumeName.label': 'Volume:',
 
     // Card: Color Picker
@@ -987,12 +979,10 @@ class _DemoResources {
         'Card content with shadow elevation',
     'demo06.cardVariants.outlinedLabel.label': 'Outlined card:',
     'demo06.cardVariants.outlinedTitle.label': 'Outlined Card',
-    'demo06.cardVariants.outlinedDesc.label':
-        'Card with border outline',
+    'demo06.cardVariants.outlinedDesc.label': 'Card with border outline',
     'demo06.cardVariants.filledLabel.label': 'Filled card:',
     'demo06.cardVariants.filledTitle.label': 'Filled Card',
-    'demo06.cardVariants.filledDesc.label':
-        'Card with filled surface color',
+    'demo06.cardVariants.filledDesc.label': 'Card with filled surface color',
     'demo06.cardVariants.elevationLabel.label': 'Elevation comparison:',
 
     // Card: Product Card
@@ -1007,7 +997,8 @@ class _DemoResources {
         'Premium noise-cancelling wireless headphones with 30h battery.',
     'demo06.productCard.rating.label': '(4.2)',
     'demo06.productCard.addToCart.label': 'Add to Cart',
-    'demo06.productCard.actionCardLabel.label': 'Action card with horizontal layout:',
+    'demo06.productCard.actionCardLabel.label':
+        'Action card with horizontal layout:',
     'demo06.productCard.shippingTitle.label': 'Free Shipping',
     'demo06.productCard.shippingDesc.label':
         'Orders over \$50 ship free. Estimated delivery 3-5 days.',
@@ -1144,8 +1135,7 @@ class _DemoResources {
     // 7.2 - Stack
     'demo07.stack.icon.icon': 'layers',
     'demo07.stack.title.label': 'TomStack',
-    'demo07.stack.description.label':
-        'Layered children with z-order stacking.',
+    'demo07.stack.description.label': 'Layered children with z-order stacking.',
     'demo07.stack.layeredLabel.label': 'Layered stack with badge',
     'demo07.stack.centeredText.label': 'Centered Content',
 
@@ -1181,8 +1171,7 @@ class _DemoResources {
         'Applies min/max width and height constraints.',
     'demo07.constrainedBox.demoLabel.label':
         'minWidth: 100, maxWidth: 300, minHeight: 50',
-    'demo07.constrainedBox.contentText.label':
-        'Constrained to min/max bounds',
+    'demo07.constrainedBox.contentText.label': 'Constrained to min/max bounds',
 
     // 7.3 - FractionallySizedBox
     'demo07.fractionallySized.icon.icon': 'photo_size_select_large',
@@ -1201,8 +1190,7 @@ class _DemoResources {
     // 7.3 - FittedBox
     'demo07.fittedBox.icon.icon': 'fit_screen',
     'demo07.fittedBox.title.label': 'TomFittedBox',
-    'demo07.fittedBox.description.label':
-        'Scales child to fit within bounds.',
+    'demo07.fittedBox.description.label': 'Scales child to fit within bounds.',
     'demo07.fittedBox.demoLabel.label': 'BoxFit.contain vs .scaleDown',
 
     // 7.3 - Intrinsic
@@ -1214,8 +1202,7 @@ class _DemoResources {
     'demo07.intrinsic.shortText.label': 'Short',
     'demo07.intrinsic.tallText.label':
         'Taller content that sets the intrinsic height for the entire row',
-    'demo07.intrinsic.widthLabel.label':
-        'IntrinsicWidth (equal column width)',
+    'demo07.intrinsic.widthLabel.label': 'IntrinsicWidth (equal column width)',
     'demo07.intrinsic.wideText.label': 'This is wider content',
 
     // 7.3 - Misc constraints
@@ -1227,8 +1214,7 @@ class _DemoResources {
         'TomLimitedBox (maxWidth: 100, maxHeight: 40)',
     'demo07.miscConstraint.overflowLabel.label':
         'TomOverflowBox (overflows parent)',
-    'demo07.miscConstraint.overflowText.label':
-        'I overflow my parent bounds!',
+    'demo07.miscConstraint.overflowText.label': 'I overflow my parent bounds!',
 
     // 7.4 - Center & Align
     'demo07.centerAlign.icon.icon': 'center_focus_strong',
@@ -1245,8 +1231,7 @@ class _DemoResources {
     'demo07.padding.description.label':
         'Spacing wrapper using EdgeInsets patterns.',
     'demo07.padding.uniformLabel.label': 'EdgeInsets.all(16)',
-    'demo07.padding.symmetricLabel.label':
-        'EdgeInsets.symmetric(h: 32, v: 8)',
+    'demo07.padding.symmetricLabel.label': 'EdgeInsets.symmetric(h: 32, v: 8)',
     'demo07.padding.onlyLabel.label': 'EdgeInsets.only(left: 40, top: 20)',
 
     // 7.4 - Baseline
@@ -1334,8 +1319,7 @@ class _DemoResources {
     'demo08.nestedScroll.title.label': 'TomNestedScrollView',
     'demo08.nestedScroll.description.label':
         'Coordinated header collapse with tabbed body scrolling.',
-    'demo08.nestedScroll.label.label':
-        'Collapsible header with pinned tabs',
+    'demo08.nestedScroll.label.label': 'Collapsible header with pinned tabs',
 
     // 8.3 - DraggableScrollableSheet
     'demo08.draggableSheet.icon.icon': 'drag_handle',
@@ -1356,8 +1340,7 @@ class _DemoResources {
     'demo08.interactiveViewer.label.label':
         'Pinch to zoom, drag to pan (0.5x – 4x)',
     'demo08.interactiveViewer.contentText.label': 'Pan & Zoom Me',
-    'demo08.interactiveViewer.hintText.label':
-        'Pinch to zoom • Drag to pan',
+    'demo08.interactiveViewer.hintText.label': 'Pinch to zoom • Drag to pan',
     'demo08.interactiveViewer.resetButton.label': 'Reset View',
 
     // 8.4 - CarouselView
@@ -1374,8 +1357,7 @@ class _DemoResources {
         'Logical visibility control with size maintenance options.',
     'demo08.visibility.label.label': 'Toggle visibility and size behavior',
     'demo08.visibility.beforeText.label': 'Content before',
-    'demo08.visibility.targetText.label':
-        'This content can be hidden!',
+    'demo08.visibility.targetText.label': 'This content can be hidden!',
     'demo08.visibility.afterText.label': 'Content after',
 
     // 8.4 - Offstage
@@ -2250,7 +2232,8 @@ class _DemoResources {
     'demo17.customScroll.title.label': 'CustomScrollView Basics',
     'demo17.customScroll.description.label':
         'CustomScrollView is the foundation for sliver-based scrolling with composable sliver children.',
-    'demo17.customScroll.basicLabel.label': 'Basic CustomScrollView with SliverAppBar and SliverList',
+    'demo17.customScroll.basicLabel.label':
+        'Basic CustomScrollView with SliverAppBar and SliverList',
     'demo17.customScroll.hint.label':
         'CustomScrollView accepts slivers as children, not regular widgets',
 
@@ -2259,7 +2242,8 @@ class _DemoResources {
     'demo17.pinnedAppBar.title.label': 'Pinned SliverAppBar',
     'demo17.pinnedAppBar.description.label':
         'SliverAppBar with pinned=true stays visible at the top when scrolling.',
-    'demo17.pinnedAppBar.demoLabel.label': 'Pinned AppBar with gradient and actions',
+    'demo17.pinnedAppBar.demoLabel.label':
+        'Pinned AppBar with gradient and actions',
     'demo17.pinnedAppBar.hint.label':
         'The app bar shrinks but stays pinned at the top',
 
@@ -2268,7 +2252,8 @@ class _DemoResources {
     'demo17.floatingAppBar.title.label': 'Floating SliverAppBar',
     'demo17.floatingAppBar.description.label':
         'SliverAppBar with floating=true reappears immediately when scrolling up.',
-    'demo17.floatingAppBar.demoLabel.label': 'Floating AppBar - scrolls away, returns on scroll up',
+    'demo17.floatingAppBar.demoLabel.label':
+        'Floating AppBar - scrolls away, returns on scroll up',
     'demo17.floatingAppBar.hint.label':
         'Scroll down then up quickly to see floating behavior',
 
@@ -2286,7 +2271,8 @@ class _DemoResources {
     'demo17.sliverList.title.label': 'SliverList Types',
     'demo17.sliverList.description.label':
         'Different SliverList variants for various performance and sizing needs.',
-    'demo17.sliverList.typesLabel.label': 'Regular, Fixed Extent, and Prototype Extent lists',
+    'demo17.sliverList.typesLabel.label':
+        'Regular, Fixed Extent, and Prototype Extent lists',
     'demo17.sliverList.hint.label':
         'Use fixed/prototype extent for better performance with uniform items',
 
@@ -2304,7 +2290,8 @@ class _DemoResources {
     'demo17.mixedContent.title.label': 'Mixed Sliver Content',
     'demo17.mixedContent.description.label':
         'SliverToBoxAdapter wraps regular widgets for use in sliver contexts.',
-    'demo17.mixedContent.demoLabel.label': 'Dashboard with hero, stats, list, and grid sections',
+    'demo17.mixedContent.demoLabel.label':
+        'Dashboard with hero, stats, list, and grid sections',
     'demo17.mixedContent.hint.label':
         'Use SliverToBoxAdapter to insert non-sliver widgets',
 
@@ -2340,7 +2327,8 @@ class _DemoResources {
     'demo17.decorated.title.label': 'Decorated Slivers',
     'demo17.decorated.description.label':
         'DecoratedSliver adds decorations; SliverPadding adds spacing around slivers.',
-    'demo17.decorated.demoLabel.label': 'Gradient, border, and shadow decorations',
+    'demo17.decorated.demoLabel.label':
+        'Gradient, border, and shadow decorations',
     'demo17.decorated.hint.label':
         'Decorations apply to the entire sliver, not individual items',
 
@@ -2349,7 +2337,8 @@ class _DemoResources {
     'demo17.visibility.title.label': 'Sliver Visibility Control',
     'demo17.visibility.description.label':
         'SliverVisibility and SliverOpacity control sliver rendering.',
-    'demo17.visibility.demoLabel.label': 'Toggle visibility and opacity of slivers',
+    'demo17.visibility.demoLabel.label':
+        'Toggle visibility and opacity of slivers',
     'demo17.visibility.hint.label':
         'maintainState keeps widget state even when invisible',
 
@@ -2377,8 +2366,7 @@ class _DemoResources {
     'demo18.section.transform.subtitle.label':
         'Scale, slide, and rotation animations',
     'demo18.section.text.title.label': 'Text & Physical Model',
-    'demo18.section.text.subtitle.label':
-        'Text style and elevation animations',
+    'demo18.section.text.subtitle.label': 'Text style and elevation animations',
     'demo18.section.transitions.title.label': 'Transition Widgets',
     'demo18.section.transitions.subtitle.label':
         'Controller-driven transition animations',
@@ -2391,7 +2379,8 @@ class _DemoResources {
     'demo18.animatedContainer.title.label': 'AnimatedContainer',
     'demo18.animatedContainer.description.label':
         'Automatically animates changes to size, color, decoration, padding, and more.',
-    'demo18.animatedContainer.demoLabel.label': 'Tap the container to see animated property changes',
+    'demo18.animatedContainer.demoLabel.label':
+        'Tap the container to see animated property changes',
     'demo18.animatedContainer.hint.label':
         'AnimatedContainer interpolates between old and new values',
 
@@ -2418,7 +2407,8 @@ class _DemoResources {
     'demo18.switcher.title.label': 'AnimatedSwitcher',
     'demo18.switcher.description.label':
         'Automatically animates transitions when child widget changes.',
-    'demo18.switcher.demoLabel.label': 'Select an icon to see animated transition',
+    'demo18.switcher.demoLabel.label':
+        'Select an icon to see animated transition',
     'demo18.switcher.hint.label':
         'Use unique keys on children to trigger transitions',
 
@@ -2428,8 +2418,7 @@ class _DemoResources {
     'demo18.positioned.description.label':
         'Animates position changes within a Stack.',
     'demo18.positioned.demoLabel.label': 'Tap widget to animate position',
-    'demo18.positioned.hint.label':
-        'Must be a descendant of Stack widget',
+    'demo18.positioned.hint.label': 'Must be a descendant of Stack widget',
 
     // Align Card
     'demo18.align.icon.icon': 'mFormatAlignCenter',
@@ -2454,9 +2443,9 @@ class _DemoResources {
     'demo18.size.title.label': 'AnimatedSize',
     'demo18.size.description.label':
         'Automatically animates size changes of its child.',
-    'demo18.size.demoLabel.label': 'Expand/collapse to see smooth size animation',
-    'demo18.size.hint.label':
-        'Great for expandable sections and accordions',
+    'demo18.size.demoLabel.label':
+        'Expand/collapse to see smooth size animation',
+    'demo18.size.hint.label': 'Great for expandable sections and accordions',
 
     // Scale Card
     'demo18.scale.icon.icon': 'mZoomIn',
@@ -2464,8 +2453,7 @@ class _DemoResources {
     'demo18.scale.description.label':
         'Animates scale transformation of child widget.',
     'demo18.scale.demoLabel.label': 'Adjust slider to scale the widget',
-    'demo18.scale.hint.label':
-        'Scale uses center alignment by default',
+    'demo18.scale.hint.label': 'Scale uses center alignment by default',
 
     // Slide Card
     'demo18.slide.icon.icon': 'mSwipeRight',
@@ -2473,8 +2461,7 @@ class _DemoResources {
     'demo18.slide.description.label':
         'Animates position offset as a fraction of widget size.',
     'demo18.slide.demoLabel.label': 'Use arrows to slide the widget',
-    'demo18.slide.hint.label':
-        'Offset(1,0) moves widget by its full width',
+    'demo18.slide.hint.label': 'Offset(1,0) moves widget by its full width',
 
     // Rotation Card
     'demo18.rotation.icon.icon': 'mRotateRight',
@@ -2482,8 +2469,7 @@ class _DemoResources {
     'demo18.rotation.description.label':
         'Animates rotation in turns (1 turn = 360 degrees).',
     'demo18.rotation.demoLabel.label': 'Adjust slider or use preset angles',
-    'demo18.rotation.hint.label':
-        'Values greater than 1 rotate multiple times',
+    'demo18.rotation.hint.label': 'Values greater than 1 rotate multiple times',
 
     // TextStyle Card
     'demo18.textStyle.icon.icon': 'mTextFields',
@@ -2508,7 +2494,8 @@ class _DemoResources {
     'demo18.fadeTransition.title.label': 'FadeTransition',
     'demo18.fadeTransition.description.label':
         'Controller-driven fade animation for precise control.',
-    'demo18.fadeTransition.demoLabel.label': 'Use buttons to control fade animation',
+    'demo18.fadeTransition.demoLabel.label':
+        'Use buttons to control fade animation',
     'demo18.fadeTransition.hint.label':
         'Requires AnimationController for the opacity',
 
@@ -2517,7 +2504,8 @@ class _DemoResources {
     'demo18.scaleTransition.title.label': 'ScaleTransition',
     'demo18.scaleTransition.description.label':
         'Controller-driven scale animation with curves.',
-    'demo18.scaleTransition.demoLabel.label': 'Control scale with animation controller',
+    'demo18.scaleTransition.demoLabel.label':
+        'Control scale with animation controller',
     'demo18.scaleTransition.hint.label':
         'Elastic curves create bouncy scale effects',
 
@@ -2526,7 +2514,8 @@ class _DemoResources {
     'demo18.rotationTransition.title.label': 'RotationTransition',
     'demo18.rotationTransition.description.label':
         'Controller-driven rotation with loop support.',
-    'demo18.rotationTransition.demoLabel.label': 'Control rotation with precise timing',
+    'demo18.rotationTransition.demoLabel.label':
+        'Control rotation with precise timing',
     'demo18.rotationTransition.hint.label':
         'Use repeat() for continuous spinning',
 
@@ -2637,8 +2626,7 @@ class _DemoResources {
     'demo20.section.longpress.subtitle.label':
         'Long press activated drag and drop',
     'demo20.section.pointer.title.label': 'Pointer Blocking',
-    'demo20.section.pointer.subtitle.label':
-        'Absorb or ignore pointer events',
+    'demo20.section.pointer.subtitle.label': 'Absorb or ignore pointer events',
     'demo20.section.mouse.title.label': 'Mouse Region',
     'demo20.section.mouse.subtitle.label':
         'Track mouse position, hover, and cursor',
@@ -2715,19 +2703,26 @@ class _DemoResources {
 
     // --- Section Headers ---
     'demo21.section.intro.title.label': 'Resource Resolution',
-    'demo21.section.intro.subtitle.label': 'Visual styling parameters from resources',
+    'demo21.section.intro.subtitle.label':
+        'Visual styling parameters from resources',
     'demo21.section.container.title.label': 'Container Parameters',
-    'demo21.section.container.subtitle.label': 'padding, margin, width, height from resources',
+    'demo21.section.container.subtitle.label':
+        'padding, margin, width, height from resources',
     'demo21.section.textStyle.title.label': 'Text Style Parameters',
-    'demo21.section.textStyle.subtitle.label': 'fontSize, fontWeight, color from resources',
+    'demo21.section.textStyle.subtitle.label':
+        'fontSize, fontWeight, color from resources',
     'demo21.section.colors.title.label': 'Color Parameters',
-    'demo21.section.colors.subtitle.label': 'icon color, progress colors from resources',
+    'demo21.section.colors.subtitle.label':
+        'icon color, progress colors from resources',
     'demo21.section.numeric.title.label': 'Numeric Parameters',
-    'demo21.section.numeric.subtitle.label': 'elevation, size, opacity from resources',
+    'demo21.section.numeric.subtitle.label':
+        'elevation, size, opacity from resources',
     'demo21.section.toggle.title.label': 'Toggle Colors',
-    'demo21.section.toggle.subtitle.label': 'activeColor, checkColor from resources',
+    'demo21.section.toggle.subtitle.label':
+        'activeColor, checkColor from resources',
     'demo21.section.lookup.title.label': 'Lookup Type Coverage',
-    'demo21.section.lookup.subtitle.label': 'explicit checks for text/color/icon/double/int/bool/edgeInsets/list/map',
+    'demo21.section.lookup.subtitle.label':
+        'explicit checks for text/color/icon/double/int/bool/edgeInsets/list/map',
 
     // --- Introduction Card ---
     'demo21.intro.icon.icon': 'mAutoAwesome',
@@ -2752,13 +2747,15 @@ class _DemoResources {
     'demo21.sizeDemo.icon.icon': 'mAspectRatio',
     'demo21.sizeDemo.title.label': 'TomContainer with Dimensions',
     'demo21.sizeDemo.subtitle.label': 'width, height resolved from resources',
-    'demo21.sizeDemo.info.label': 'Resources: demo21.sizedBox.width → 150, height → 100',
+    'demo21.sizeDemo.info.label':
+        'Resources: demo21.sizedBox.width → 150, height → 100',
     'demo21.sizedBox.content.label': '150×100',
 
     'demo21.marginDemo.icon.icon': 'mMargin',
     'demo21.marginDemo.title.label': 'TomContainer with Margin',
     'demo21.marginDemo.subtitle.label': 'margin resolved from resources',
-    'demo21.marginDemo.info.label': 'Resource: demo21.marginedBox.margin → {all: 16}',
+    'demo21.marginDemo.info.label':
+        'Resource: demo21.marginedBox.margin → {all: 16}',
     'demo21.marginedBox.content.label': 'Margined content',
 
     // --- TextStyle Section ---
@@ -2778,10 +2775,10 @@ class _DemoResources {
         'both the glyph and its color are resolved',
     'demo21.iconColorDemo.info.label':
         'Every TomIcon below is constructed with just a tomId — the '
-            '.icon resource selects which glyph is drawn AND the '
-            '.color resource paints it. '
-            'e.g. demo21.coloredIcon1.icon → mFavorite · '
-            'demo21.coloredIcon1.color → #E91E63.',
+        '.icon resource selects which glyph is drawn AND the '
+        '.color resource paints it. '
+        'e.g. demo21.coloredIcon1.icon → mFavorite · '
+        'demo21.coloredIcon1.color → #E91E63.',
     'demo21.coloredIcon1.icon': 'mFavorite',
     'demo21.coloredIcon1.caption.label': 'mFavorite\n#E91E63',
     'demo21.coloredIcon2.icon': 'mStar',
@@ -2794,7 +2791,8 @@ class _DemoResources {
     // --- Container Color Section ---
     'demo21.containerColorDemo.icon.icon': 'mViewModule',
     'demo21.containerColorDemo.title.label': 'TomContainer Colors',
-    'demo21.containerColorDemo.subtitle.label': 'color resolved from resources (hex, named, int)',
+    'demo21.containerColorDemo.subtitle.label':
+        'color resolved from resources (hex, named, int)',
     'demo21.containerColorDemo.info.label':
         'Resources: colorBox1=#D32F2F, colorBox2=mTeal700, colorBox3=0xFF5E35B1',
     'demo21.colorBox1.content.label': 'HEX',
@@ -2804,7 +2802,8 @@ class _DemoResources {
     // --- Progress Color Section ---
     'demo21.progressColorDemo.icon.icon': 'mRefresh',
     'demo21.progressColorDemo.title.label': 'Progress Indicator Colors',
-    'demo21.progressColorDemo.subtitle.label': 'color, backgroundColor from resources',
+    'demo21.progressColorDemo.subtitle.label':
+        'color, backgroundColor from resources',
     'demo21.progressColorDemo.info.label':
         'Resources: demo21.progress1.color → #9C27B0, backgroundColor → #E1BEE7',
 
@@ -2812,7 +2811,8 @@ class _DemoResources {
     'demo21.elevationDemo.icon.icon': 'mLayers',
     'demo21.elevationDemo.title.label': 'TomCard Elevation',
     'demo21.elevationDemo.subtitle.label': 'elevation resolved from resources',
-    'demo21.elevationDemo.info.label': 'Resources: demo21.card1.elevation → 2, 8, 16',
+    'demo21.elevationDemo.info.label':
+        'Resources: demo21.card1.elevation → 2, 8, 16',
     'demo21.card1.content.label': 'Elev 2',
     'demo21.card2.content.label': 'Elev 8',
     'demo21.card3.content.label': 'Elev 16',
@@ -2821,7 +2821,8 @@ class _DemoResources {
     'demo21.iconSizeDemo.icon.icon': 'mFormatSize',
     'demo21.iconSizeDemo.title.label': 'TomIcon Size',
     'demo21.iconSizeDemo.subtitle.label': 'size resolved from resources',
-    'demo21.iconSizeDemo.info.label': 'Resources: demo21.sizedIcon1.size → 16, 32, 48',
+    'demo21.iconSizeDemo.info.label':
+        'Resources: demo21.sizedIcon1.size → 16, 32, 48',
     'demo21.sizedIcon1.icon': 'mHome',
     'demo21.sizedIcon2.icon': 'mHome',
     'demo21.sizedIcon3.icon': 'mHome',
@@ -2830,7 +2831,8 @@ class _DemoResources {
     'demo21.opacityDemo.icon.icon': 'mOpacity',
     'demo21.opacityDemo.title.label': 'TomAnimatedOpacity',
     'demo21.opacityDemo.subtitle.label': 'opacity resolved from resources',
-    'demo21.opacityDemo.info.label': 'Resources: demo21.opacity1.opacity → 1.0, 0.6, 0.3',
+    'demo21.opacityDemo.info.label':
+        'Resources: demo21.opacity1.opacity → 1.0, 0.6, 0.3',
     'demo21.opacity1.content.label': '100%',
     'demo21.opacity2.content.label': '60%',
     'demo21.opacity3.content.label': '30%',
@@ -2838,7 +2840,8 @@ class _DemoResources {
     // --- Toggle Section ---
     'demo21.toggleDemo.icon.icon': 'mToggleOn',
     'demo21.toggleDemo.title.label': 'Switch & Checkbox Colors',
-    'demo21.toggleDemo.subtitle.label': 'activeColor, trackColor from resources',
+    'demo21.toggleDemo.subtitle.label':
+        'activeColor, trackColor from resources',
     'demo21.toggleDemo.info.label':
         'Resources include active + inactive switch colors and checkbox side styling.',
     'demo21.switch1.label.label': 'Green switch',
@@ -2849,7 +2852,8 @@ class _DemoResources {
     // --- Lookup Type Coverage Section ---
     'demo21.lookupDemo.icon.icon': 'mFactCheck',
     'demo21.lookupDemo.title.label': 'Core Lookup API Coverage',
-    'demo21.lookupDemo.subtitle.label': 'all supported lookup types resolved at least once',
+    'demo21.lookupDemo.subtitle.label':
+        'all supported lookup types resolved at least once',
     'demo21.lookupDemo.info.label':
         'This card reads each typed API directly from TomCtr.',
 
@@ -2890,7 +2894,12 @@ class _DemoResources {
     // ==========================================================================
 
     // --- Container Parameters (padding, margin, dimensions) ---
-    'demo21.paddedBox.padding': {'left': 24.0, 'top': 16.0, 'right': 24.0, 'bottom': 16.0},
+    'demo21.paddedBox.padding': {
+      'left': 24.0,
+      'top': 16.0,
+      'right': 24.0,
+      'bottom': 16.0,
+    },
     'demo21.sizedBox.width': 150.0,
     'demo21.sizedBox.height': 100.0,
     'demo21.marginedBox.margin': {'all': 16.0},
@@ -2899,40 +2908,37 @@ class _DemoResources {
     'demo21.styledText1.style': {
       'fontSize': 28.0,
       'fontWeight': 'bold',
-      'color': '#1565C0',  // Blue 800
+      'color': '#1565C0', // Blue 800
     },
     'demo21.styledText2.style': {
       'fontSize': 18.0,
       'fontStyle': 'italic',
-      'color': '#6A1B9A',  // Purple 800
+      'color': '#6A1B9A', // Purple 800
       'letterSpacing': 1.5,
     },
     'demo21.styledText3.style': {
       'fontSize': 14.0,
       'fontWeight': 'w500',
-      'color': '#2E7D32',  // Green 800
+      'color': '#2E7D32', // Green 800
       'decoration': 'underline',
     },
 
     // --- Icon Color Parameters ---
-    'demo21.coloredIcon1.color': '#E91E63',  // Pink
-    'demo21.coloredIcon2.color': '#FF9800',  // Orange
-    'demo21.coloredIcon3.color': '#4CAF50',  // Green
-    'demo21.coloredIcon4.color': '#2196F3',  // Blue
-
+    'demo21.coloredIcon1.color': '#E91E63', // Pink
+    'demo21.coloredIcon2.color': '#FF9800', // Orange
+    'demo21.coloredIcon3.color': '#4CAF50', // Green
+    'demo21.coloredIcon4.color': '#2196F3', // Blue
     // --- Container Color Parameters ---
-    'demo21.colorBox1.color': '#D32F2F',  // Red 700
+    'demo21.colorBox1.color': '#D32F2F', // Red 700
     'demo21.colorBox2.color': 'mTeal700',
-    'demo21.colorBox3.color': 0xFF5E35B1,  // Deep Purple 600
-
+    'demo21.colorBox3.color': 0xFF5E35B1, // Deep Purple 600
     // --- Progress Indicator Colors ---
-    'demo21.progress1.color': '#9C27B0',  // Purple
-    'demo21.progress1.backgroundColor': '#E1BEE7',  // Purple 100
-    'demo21.progress2.color': '#00BCD4',  // Cyan
-    'demo21.progress2.backgroundColor': '#B2EBF2',  // Cyan 100
-    'demo21.progress3.color': '#FF5722',  // Deep Orange
-    'demo21.progress3.backgroundColor': '#FFCCBC',  // Deep Orange 100
-
+    'demo21.progress1.color': '#9C27B0', // Purple
+    'demo21.progress1.backgroundColor': '#E1BEE7', // Purple 100
+    'demo21.progress2.color': '#00BCD4', // Cyan
+    'demo21.progress2.backgroundColor': '#B2EBF2', // Cyan 100
+    'demo21.progress3.color': '#FF5722', // Deep Orange
+    'demo21.progress3.backgroundColor': '#FFCCBC', // Deep Orange 100
     // --- Card Elevation ---
     'demo21.card1.elevation': 2.0,
     'demo21.card2.elevation': 8.0,
@@ -2949,37 +2955,38 @@ class _DemoResources {
     'demo21.opacity3.opacity': 0.3,
 
     // --- Toggle Widget Colors ---
-    'demo21.switch1.activeColor': '#4CAF50',  // Green
-    'demo21.switch1.activeTrackColor': '#A5D6A7',  // Green 200
-    'demo21.switch2.activeColor': '#2196F3',  // Blue
-    'demo21.switch2.activeTrackColor': '#90CAF9',  // Blue 200
-        'demo21.switch2.inactiveThumbColor': '#1E88E5',  // Blue 600 (visible when off)
-        'demo21.switch2.inactiveTrackColor': '#BBDEFB',  // Blue 100 (visible when off)
-    'demo21.checkbox1.activeColor': '#9C27B0',  // Purple
+    'demo21.switch1.activeColor': '#4CAF50', // Green
+    'demo21.switch1.activeTrackColor': '#A5D6A7', // Green 200
+    'demo21.switch2.activeColor': '#2196F3', // Blue
+    'demo21.switch2.activeTrackColor': '#90CAF9', // Blue 200
+    'demo21.switch2.inactiveThumbColor':
+        '#1E88E5', // Blue 600 (visible when off)
+    'demo21.switch2.inactiveTrackColor':
+        '#BBDEFB', // Blue 100 (visible when off)
+    'demo21.checkbox1.activeColor': '#9C27B0', // Purple
     'demo21.checkbox1.checkColor': '#FFFFFF',
-    'demo21.checkbox2.activeColor': '#FF5722',  // Deep Orange
+    'demo21.checkbox2.activeColor': '#FF5722', // Deep Orange
     'demo21.checkbox2.checkColor': '#FFFFFF',
-        'demo21.checkbox2.side': {
-            'color': '#FF5722',
-            'width': 2.0,
-            'style': 'solid',
-        },
+    'demo21.checkbox2.side': {
+      'color': '#FF5722',
+      'width': 2.0,
+      'style': 'solid',
+    },
 
-        // --- Explicit Lookup Type Coverage ---
-        'demo21.lookup.color': '#3F51B5',
-        'demo21.lookup.icon': 'mScience',
-        'demo21.lookup.double': 42.5,
-        'demo21.lookup.int': 7,
-        'demo21.lookup.bool': true,
-        'demo21.lookup.edgeInsets': {
-            'left': 4.0,
-            'top': 8.0,
-            'right': 12.0,
-            'bottom': 16.0,
-        },
-        'demo21.lookup.list': ['alpha', 'beta', 'gamma'],
-        'demo21.lookup.map': {'status': 'ok', 'count': 3, 'source': 'demo21'},
-
+    // --- Explicit Lookup Type Coverage ---
+    'demo21.lookup.color': '#3F51B5',
+    'demo21.lookup.icon': 'mScience',
+    'demo21.lookup.double': 42.5,
+    'demo21.lookup.int': 7,
+    'demo21.lookup.bool': true,
+    'demo21.lookup.edgeInsets': {
+      'left': 4.0,
+      'top': 8.0,
+      'right': 12.0,
+      'bottom': 16.0,
+    },
+    'demo21.lookup.list': ['alpha', 'beta', 'gamma'],
+    'demo21.lookup.map': {'status': 'ok', 'count': 3, 'source': 'demo21'},
   };
 }
 
@@ -3011,31 +3018,40 @@ const _demo22SectionResources = <String, String>{
 const _demo22CardResources = <String, String>{
   'demo22.demo.appbar.basic.icon': 'mDashboard',
   'demo22.demo.appbar.basic.title.label': 'Basic TomAppBar',
-  'demo22.demo.appbar.basic.subtitle.label': 'Simple app bar with title and actions',
+  'demo22.demo.appbar.basic.subtitle.label':
+      'Simple app bar with title and actions',
   'demo22.demo.appbar.styled.icon': 'mPalette',
   'demo22.demo.appbar.styled.title.label': 'Styled TomAppBar',
-  'demo22.demo.appbar.styled.subtitle.label': 'Custom colors, elevation, and shape',
+  'demo22.demo.appbar.styled.subtitle.label':
+      'Custom colors, elevation, and shape',
   'demo22.demo.appbar.titleWidget.icon': 'mWidgets',
   'demo22.demo.appbar.titleWidget.title.label': 'TomAppBar with Title Widget',
-  'demo22.demo.appbar.titleWidget.subtitle.label': 'Custom widget as app bar title',
+  'demo22.demo.appbar.titleWidget.subtitle.label':
+      'Custom widget as app bar title',
   'demo22.demo.navDest.basic.icon': 'mNavigation',
   'demo22.demo.navDest.basic.title.label': 'TomNavigationDestination',
-  'demo22.demo.navDest.basic.subtitle.label': 'Destinations inside a NavigationBar',
+  'demo22.demo.navDest.basic.subtitle.label':
+      'Destinations inside a NavigationBar',
   'demo22.demo.drawerDest.basic.icon': 'mMenu',
   'demo22.demo.drawerDest.basic.title.label': 'TomNavigationDrawerDestination',
-  'demo22.demo.drawerDest.basic.subtitle.label': 'Destinations inside a NavigationDrawer',
+  'demo22.demo.drawerDest.basic.subtitle.label':
+      'Destinations inside a NavigationDrawer',
   'demo22.demo.tableCell.basic.icon': 'mTableChart',
   'demo22.demo.tableCell.basic.title.label': 'TomTableCell',
-  'demo22.demo.tableCell.basic.subtitle.label': 'Cells with vertical alignment in DataTable',
+  'demo22.demo.tableCell.basic.subtitle.label':
+      'Cells with vertical alignment in DataTable',
   'demo22.demo.refreshProgress.static.icon': 'mRefresh',
   'demo22.demo.refreshProgress.static.title.label': 'Static Progress Values',
-  'demo22.demo.refreshProgress.static.subtitle.label': 'Various progress indicator states',
+  'demo22.demo.refreshProgress.static.subtitle.label':
+      'Various progress indicator states',
   'demo22.demo.refreshProgress.inRefresh.icon': 'mSync',
   'demo22.demo.refreshProgress.inRefresh.title.label': 'Pull-to-Refresh',
-  'demo22.demo.refreshProgress.inRefresh.subtitle.label': 'RefreshIndicator with TomRefreshProgressIndicator',
+  'demo22.demo.refreshProgress.inRefresh.subtitle.label':
+      'RefreshIndicator with TomRefreshProgressIndicator',
   'demo22.demo.cupertinoTabView.info.icon': 'mInfoOutline',
   'demo22.demo.cupertinoTabView.info.title.label': 'TomCupertinoTabView',
-  'demo22.demo.cupertinoTabView.info.subtitle.label': 'iOS tab view requiring CupertinoTabScaffold context',
+  'demo22.demo.cupertinoTabView.info.subtitle.label':
+      'iOS tab view requiring CupertinoTabScaffold context',
 };
 
 // ==========================================================================
@@ -3064,49 +3080,63 @@ const _demo23SectionResources = <String, String>{
 const _demo23CardResources = <String, String>{
   'demo23.demo.futureBuilder.icon': 'mSchedule',
   'demo23.demo.futureBuilder.title.label': 'TomFutureBuilder',
-  'demo23.demo.futureBuilder.subtitle.label': 'Async data loading with snapshot handling',
+  'demo23.demo.futureBuilder.subtitle.label':
+      'Async data loading with snapshot handling',
   'demo23.demo.streamBuilder.icon': 'mStream',
   'demo23.demo.streamBuilder.title.label': 'TomStreamBuilder',
   'demo23.demo.streamBuilder.subtitle.label': 'Reactive stream data display',
   'demo23.demo.valueListenable.icon': 'mHearing',
   'demo23.demo.valueListenable.title.label': 'TomValueListenableBuilder',
-  'demo23.demo.valueListenable.subtitle.label': 'Rebuilds on ValueNotifier changes',
+  'demo23.demo.valueListenable.subtitle.label':
+      'Rebuilds on ValueNotifier changes',
   'demo23.demo.listenableBuilder.icon': 'mNotifications',
   'demo23.demo.listenableBuilder.title.label': 'TomListenableBuilder',
-  'demo23.demo.listenableBuilder.subtitle.label': 'Rebuilds on any Listenable change',
+  'demo23.demo.listenableBuilder.subtitle.label':
+      'Rebuilds on any Listenable change',
   'demo23.demo.layoutBuilder.icon': 'mViewQuilt',
   'demo23.demo.layoutBuilder.title.label': 'TomLayoutBuilder',
-  'demo23.demo.layoutBuilder.subtitle.label': 'Builds based on parent constraints',
+  'demo23.demo.layoutBuilder.subtitle.label':
+      'Builds based on parent constraints',
   'demo23.demo.orientationBuilder.icon': 'mScreenRotation',
   'demo23.demo.orientationBuilder.title.label': 'TomOrientationBuilder',
-  'demo23.demo.orientationBuilder.subtitle.label': 'Responds to orientation changes',
+  'demo23.demo.orientationBuilder.subtitle.label':
+      'Responds to orientation changes',
   'demo23.demo.statefulBuilder.icon': 'mBuildCircle',
   'demo23.demo.statefulBuilder.title.label': 'TomStatefulBuilder',
-  'demo23.demo.statefulBuilder.subtitle.label': 'Local setState without full StatefulWidget',
+  'demo23.demo.statefulBuilder.subtitle.label':
+      'Local setState without full StatefulWidget',
   'demo23.demo.animatedBuilder.icon': 'mAnimation',
   'demo23.demo.animatedBuilder.title.label': 'TomAnimatedBuilder',
-  'demo23.demo.animatedBuilder.subtitle.label': 'Custom animation with AnimationController',
+  'demo23.demo.animatedBuilder.subtitle.label':
+      'Custom animation with AnimationController',
   'demo23.demo.tweenAnimation.icon': 'mTimeline',
   'demo23.demo.tweenAnimation.title.label': 'TomTweenAnimationBuilder',
   'demo23.demo.tweenAnimation.subtitle.label': 'Implicit tween-based animation',
   'demo23.demo.animatedFractional.icon': 'mAspectRatio',
-  'demo23.demo.animatedFractional.title.label': 'TomAnimatedFractionallySizedBox',
-  'demo23.demo.animatedFractional.subtitle.label': 'Animated size changes with fractions',
+  'demo23.demo.animatedFractional.title.label':
+      'TomAnimatedFractionallySizedBox',
+  'demo23.demo.animatedFractional.subtitle.label':
+      'Animated size changes with fractions',
   'demo23.demo.animatedPositioned.icon': 'mOpenWith',
-  'demo23.demo.animatedPositioned.title.label': 'TomAnimatedPositionedDirectional',
-  'demo23.demo.animatedPositioned.subtitle.label': 'Animated position in Stack with direction',
+  'demo23.demo.animatedPositioned.title.label':
+      'TomAnimatedPositionedDirectional',
+  'demo23.demo.animatedPositioned.subtitle.label':
+      'Animated position in Stack with direction',
   'demo23.demo.clips.icon': 'mContentCut',
   'demo23.demo.clips.title.label': 'Clip Widgets',
-  'demo23.demo.clips.subtitle.label': 'ClipOval, ClipPath, ClipRect, ClipRRect, ClipRSuperellipse',
+  'demo23.demo.clips.subtitle.label':
+      'ClipOval, ClipPath, ClipRect, ClipRRect, ClipRSuperellipse',
   'demo23.demo.opacity.icon': 'mOpacity',
   'demo23.demo.opacity.title.label': 'TomOpacity',
   'demo23.demo.opacity.subtitle.label': 'Renders child with variable opacity',
   'demo23.demo.rawChip.icon': 'mLabel',
   'demo23.demo.rawChip.title.label': 'TomRawChip',
-  'demo23.demo.rawChip.subtitle.label': 'Low-level chip with full customization',
+  'demo23.demo.rawChip.subtitle.label':
+      'Low-level chip with full customization',
   'demo23.demo.editableText.icon': 'mEdit',
   'demo23.demo.editableText.title.label': 'TomEditableText',
-  'demo23.demo.editableText.subtitle.label': 'Base editable text without Material decoration',
+  'demo23.demo.editableText.subtitle.label':
+      'Base editable text without Material decoration',
 };
 
 // ==========================================================================
@@ -3123,8 +3153,7 @@ const _demo24SectionResources = <String, String>{
   'demo24.section.transforms.subtitle.label':
       'Transform, RotatedBox, FractionalTranslation, ConstraintsTransformBox',
   'demo24.section.multiChild.title.label': 'Multi-Child Layout',
-  'demo24.section.multiChild.subtitle.label':
-      'OverflowBar, Flow, ListBody',
+  'demo24.section.multiChild.subtitle.label': 'OverflowBar, Flow, ListBody',
   'demo24.section.customLayout.title.label': 'Custom Layout & Painting',
   'demo24.section.customLayout.subtitle.label':
       'CustomPaint, CustomSingleChildLayout',
@@ -3138,22 +3167,28 @@ const _demo24SectionResources = <String, String>{
 const _demo24CardResources = <String, String>{
   'demo24.demo.scaffold.icon': 'mWebAsset',
   'demo24.demo.scaffold.title.label': 'TomScaffold & TomBottomAppBar',
-  'demo24.demo.scaffold.subtitle.label': 'Page scaffold with bottom app bar and FAB',
+  'demo24.demo.scaffold.subtitle.label':
+      'Page scaffold with bottom app bar and FAB',
   'demo24.demo.cupertinoScaffold.icon': 'mPhoneIphone',
   'demo24.demo.cupertinoScaffold.title.label': 'TomCupertinoPageScaffold',
-  'demo24.demo.cupertinoScaffold.subtitle.label': 'iOS-style page scaffold with navigation bar',
+  'demo24.demo.cupertinoScaffold.subtitle.label':
+      'iOS-style page scaffold with navigation bar',
   'demo24.demo.cupertinoTabScaffold.icon': 'mTabUnselected',
   'demo24.demo.cupertinoTabScaffold.title.label': 'TomCupertinoTabScaffold',
-  'demo24.demo.cupertinoTabScaffold.subtitle.label': 'iOS-style tab scaffold with tab bar',
+  'demo24.demo.cupertinoTabScaffold.subtitle.label':
+      'iOS-style tab scaffold with tab bar',
   'demo24.demo.surfaces.icon': 'mLayers',
   'demo24.demo.surfaces.title.label': 'Surface Widgets',
-  'demo24.demo.surfaces.subtitle.label': 'DecoratedBox, ColoredBox, PhysicalModel, PhysicalShape',
+  'demo24.demo.surfaces.subtitle.label':
+      'DecoratedBox, ColoredBox, PhysicalModel, PhysicalShape',
   'demo24.demo.transforms.icon': 'mTransform',
   'demo24.demo.transforms.title.label': 'Transform Widgets',
-  'demo24.demo.transforms.subtitle.label': 'Rotate, translate, scale, transform clip',
+  'demo24.demo.transforms.subtitle.label':
+      'Rotate, translate, scale, transform clip',
   'demo24.demo.overflowBar.icon': 'mViewStream',
   'demo24.demo.overflowBar.title.label': 'TomOverflowBar',
-  'demo24.demo.overflowBar.subtitle.label': 'Actions bar that overflows to column',
+  'demo24.demo.overflowBar.subtitle.label':
+      'Actions bar that overflows to column',
   'demo24.demo.flow.icon': 'mAccountTree',
   'demo24.demo.flow.title.label': 'TomFlow',
   'demo24.demo.flow.subtitle.label': 'Custom layout delegating to FlowDelegate',
@@ -3162,16 +3197,20 @@ const _demo24CardResources = <String, String>{
   'demo24.demo.customPaint.subtitle.label': 'Canvas-based custom painting',
   'demo24.demo.customLayout.icon': 'mDashboardCustomize',
   'demo24.demo.customLayout.title.label': 'TomCustomSingleChildLayout',
-  'demo24.demo.customLayout.subtitle.label': 'Custom child positioning via delegate',
+  'demo24.demo.customLayout.subtitle.label':
+      'Custom child positioning via delegate',
   'demo24.demo.gridTile.icon': 'mGridView',
   'demo24.demo.gridTile.title.label': 'TomGridTile & TomGridTileBar',
-  'demo24.demo.gridTile.subtitle.label': 'Grid tiles with header and footer bars',
+  'demo24.demo.gridTile.subtitle.label':
+      'Grid tiles with header and footer bars',
   'demo24.demo.expansionPanel.icon': 'mExpandMore',
   'demo24.demo.expansionPanel.title.label': 'TomExpansionPanel',
-  'demo24.demo.expansionPanel.subtitle.label': 'Expandable panels in an ExpansionPanelList',
+  'demo24.demo.expansionPanel.subtitle.label':
+      'Expandable panels in an ExpansionPanelList',
   'demo24.demo.sliverExtras.icon': 'mViewDay',
   'demo24.demo.sliverExtras.title.label': 'Sliver Extras',
-  'demo24.demo.sliverExtras.subtitle.label': 'SliverOffstage and SliverResizingHeader',
+  'demo24.demo.sliverExtras.subtitle.label':
+      'SliverOffstage and SliverResizingHeader',
 };
 
 // ==========================================================================
@@ -3200,46 +3239,59 @@ const _demo25SectionResources = <String, String>{
 const _demo25CardResources = <String, String>{
   'demo25.demo.dropdownMenuEntry.icon': 'mArrowDropDown',
   'demo25.demo.dropdownMenuEntry.title.label': 'TomDropdownMenuEntry',
-  'demo25.demo.dropdownMenuEntry.subtitle.label': 'Entries inside TomDropdownMenu',
+  'demo25.demo.dropdownMenuEntry.subtitle.label':
+      'Entries inside TomDropdownMenu',
   'demo25.demo.snackBarAction.icon': 'mUndo',
   'demo25.demo.snackBarAction.title.label': 'TomSnackBarAction',
-  'demo25.demo.snackBarAction.subtitle.label': 'Action button inside TomSnackBar',
+  'demo25.demo.snackBarAction.subtitle.label':
+      'Action button inside TomSnackBar',
   'demo25.demo.dialogs.icon': 'mOpenInNew',
   'demo25.demo.dialogs.title.label': 'Dialog Widgets',
-  'demo25.demo.dialogs.subtitle.label': 'TomDialog, AboutDialog, SimpleDialogOption, pickers, context menu',
+  'demo25.demo.dialogs.subtitle.label':
+      'TomDialog, AboutDialog, SimpleDialogOption, pickers, context menu',
   'demo25.demo.cupertinoDialogActions.icon': 'mPhoneIphone',
-  'demo25.demo.cupertinoDialogActions.title.label': 'Cupertino Dialog & Action Sheet',
-  'demo25.demo.cupertinoDialogActions.subtitle.label': 'CupertinoDialogAction and CupertinoActionSheetAction',
+  'demo25.demo.cupertinoDialogActions.title.label':
+      'Cupertino Dialog & Action Sheet',
+  'demo25.demo.cupertinoDialogActions.subtitle.label':
+      'CupertinoDialogAction and CupertinoActionSheetAction',
   'demo25.demo.aboutListTile.icon': 'mInfoOutline',
   'demo25.demo.aboutListTile.title.label': 'TomAboutListTile',
-  'demo25.demo.aboutListTile.subtitle.label': 'ListTile that shows an AboutDialog',
+  'demo25.demo.aboutListTile.subtitle.label':
+      'ListTile that shows an AboutDialog',
   'demo25.demo.banner.icon': 'mFlag',
   'demo25.demo.banner.title.label': 'TomBanner',
   'demo25.demo.banner.subtitle.label': 'Corner banner overlay on content',
   'demo25.demo.menuAccelerator.icon': 'mKeyboard',
   'demo25.demo.menuAccelerator.title.label': 'TomMenuAcceleratorLabel',
-  'demo25.demo.menuAccelerator.subtitle.label': 'Keyboard accelerator hint in menus',
+  'demo25.demo.menuAccelerator.subtitle.label':
+      'Keyboard accelerator hint in menus',
   'demo25.demo.breadcrumb.icon': 'mChevronRight',
   'demo25.demo.breadcrumb.title.label': 'TomBreadcrumb',
   'demo25.demo.breadcrumb.subtitle.label': 'Breadcrumb navigation trail',
   'demo25.demo.drawerHeaders.icon': 'mAccountCircle',
   'demo25.demo.drawerHeaders.title.label': 'Drawer Headers',
-  'demo25.demo.drawerHeaders.subtitle.label': 'TomDrawerHeader and TomUserAccountsDrawerHeader',
+  'demo25.demo.drawerHeaders.subtitle.label':
+      'TomDrawerHeader and TomUserAccountsDrawerHeader',
   'demo25.demo.flexibleSpaceBar.icon': 'mLandscape',
   'demo25.demo.flexibleSpaceBar.title.label': 'TomFlexibleSpaceBar',
-  'demo25.demo.flexibleSpaceBar.subtitle.label': 'Collapsing space in SliverAppBar',
+  'demo25.demo.flexibleSpaceBar.subtitle.label':
+      'Collapsing space in SliverAppBar',
   'demo25.demo.tabPageSelector.icon': 'mFiberManualRecord',
   'demo25.demo.tabPageSelector.title.label': 'TomTabPageSelector',
-  'demo25.demo.tabPageSelector.subtitle.label': 'Dot indicators for TabController pages',
+  'demo25.demo.tabPageSelector.subtitle.label':
+      'Dot indicators for TabController pages',
   'demo25.demo.cupertinoNavExtras.icon': 'mArrowBack',
   'demo25.demo.cupertinoNavExtras.title.label': 'Cupertino Navigation',
-  'demo25.demo.cupertinoNavExtras.subtitle.label': 'CupertinoSliverNavigationBar and back button',
+  'demo25.demo.cupertinoNavExtras.subtitle.label':
+      'CupertinoSliverNavigationBar and back button',
   'demo25.demo.imageExtras.icon': 'mImage',
   'demo25.demo.imageExtras.title.label': 'Image Widgets',
-  'demo25.demo.imageExtras.subtitle.label': 'TomAssetImage, TomFileImage, TomInkImage reference',
+  'demo25.demo.imageExtras.subtitle.label':
+      'TomAssetImage, TomFileImage, TomInkImage reference',
   'demo25.demo.cupertinoList.icon': 'mList',
   'demo25.demo.cupertinoList.title.label': 'Cupertino Lists',
-  'demo25.demo.cupertinoList.subtitle.label': 'TomCupertinoListSection and TomCupertinoListTile',
+  'demo25.demo.cupertinoList.subtitle.label':
+      'TomCupertinoListSection and TomCupertinoListTile',
   'demo25.demo.reorderableList.icon': 'mDragHandle',
   'demo25.demo.reorderableList.title.label': 'TomReorderableListView',
   'demo25.demo.reorderableList.subtitle.label': 'Drag-to-reorder list items',
@@ -3266,45 +3318,58 @@ const _demo25PickerResources = <String, String>{
 
 const _demo26SectionResources = <String, String>{
   'demo26.section.basic.title.label': 'Basic Provider',
-  'demo26.section.basic.subtitle.label': 'Widgets created once in a TomScreenElementsProviderBase, reused across rebuilds',
+  'demo26.section.basic.subtitle.label':
+      'Widgets created once in a TomScreenElementsProviderBase, reused across rebuilds',
   'demo26.section.nested.title.label': 'Nested Scope Chains',
-  'demo26.section.nested.subtitle.label': 'Providers nesting inside providers — scopes chain automatically',
+  'demo26.section.nested.subtitle.label':
+      'Providers nesting inside providers — scopes chain automatically',
   'demo26.section.actions.title.label': 'Actions Provider',
-  'demo26.section.actions.subtitle.label': 'Standalone provider using zone scope (no explicit parent)',
+  'demo26.section.actions.subtitle.label':
+      'Standalone provider using zone scope (no explicit parent)',
   'demo26.section.composite.title.label': 'Composite Provider with ACL',
-  'demo26.section.composite.subtitle.label': 'Provider with nested sub-providers used inside TomAclBuilder',
+  'demo26.section.composite.subtitle.label':
+      'Provider with nested sub-providers used inside TomAclBuilder',
   'demo26.section.paths.title.label': 'Scope Path Visualization',
-  'demo26.section.paths.subtitle.label': 'Shows the resolved scope path for each provider',
+  'demo26.section.paths.subtitle.label':
+      'Shows the resolved scope path for each provider',
 };
 
 const _demo26CardResources = <String, String>{
   'demo26.card.basicProvider.icon': 'mWidgets',
   'demo26.card.basicProvider.title.label': 'Basic Provider Demo',
-  'demo26.card.basicProvider.description.label': 'Widgets from BasicSectionProvider — scope path: demo26.basic',
+  'demo26.card.basicProvider.description.label':
+      'Widgets from BasicSectionProvider — scope path: demo26.basic',
   'demo26.card.nested1.icon': 'mLooksOne',
   'demo26.card.nested1.title.label': 'Level 1: basic',
-  'demo26.card.nested1.description.label': 'Top-level provider widgets (demo26.basic.*)',
+  'demo26.card.nested1.description.label':
+      'Top-level provider widgets (demo26.basic.*)',
   'demo26.card.nested2.icon': 'mLooksTwo',
   'demo26.card.nested2.title.label': 'Level 2: basic.details',
-  'demo26.card.nested2.description.label': 'Nested provider widgets (demo26.basic.details.*)',
+  'demo26.card.nested2.description.label':
+      'Nested provider widgets (demo26.basic.details.*)',
   'demo26.card.nested3.icon': 'mLooks3',
   'demo26.card.nested3.title.label': 'Level 3: basic.details.metadata',
-  'demo26.card.nested3.description.label': 'Deeply nested provider widgets (demo26.basic.details.metadata.*)',
+  'demo26.card.nested3.description.label':
+      'Deeply nested provider widgets (demo26.basic.details.metadata.*)',
   'demo26.card.actions.icon': 'mPlayArrow',
   'demo26.card.actions.title.label': 'Action Buttons',
-  'demo26.card.actions.description.label': 'ActionsSectionProvider using zone scope — path: demo26.actions',
+  'demo26.card.actions.description.label':
+      'ActionsSectionProvider using zone scope — path: demo26.actions',
   'demo26.card.composite.icon': 'mAccountTree',
   'demo26.card.composite.title.label': 'Composite Provider',
-  'demo26.card.composite.description.label': 'Provider composing address and contact sub-providers via TomAclBuilder',
+  'demo26.card.composite.description.label':
+      'Provider composing address and contact sub-providers via TomAclBuilder',
   'demo26.card.paths.icon': 'mRoute',
   'demo26.card.paths.title.label': 'Resolved Scope Paths',
-  'demo26.card.paths.description.label': 'Runtime scope path for each provider in the hierarchy',
+  'demo26.card.paths.description.label':
+      'Runtime scope path for each provider in the hierarchy',
 };
 
 const _demo26WidgetResources = <String, String>{
   // BasicSectionProvider: demo26.basic.*
   'demo26.basic.title.label': 'Basic Section',
-  'demo26.basic.description.label': 'This section demonstrates widgets created inside a TomScreenElementsProviderBase. All widgets resolve resources under demo26.basic.',
+  'demo26.basic.description.label':
+      'This section demonstrates widgets created inside a TomScreenElementsProviderBase. All widgets resolve resources under demo26.basic.',
   'demo26.basic.action.label': 'Action',
   'demo26.basic.info.label': 'Info',
   // DetailsSectionProvider: demo26.basic.details.*
@@ -3334,28 +3399,36 @@ const _demo26WidgetResources = <String, String>{
 
 const _demo27SectionResources = <String, String>{
   'demo27.section.login.title.label': 'Simple Login Form',
-  'demo27.section.login.subtitle.label': 'Login form using scoped provider — all fields resolve under demo27.login',
+  'demo27.section.login.subtitle.label':
+      'Login form using scoped provider — all fields resolve under demo27.login',
   'demo27.section.contact.title.label': 'Multi-Section Contact Form',
-  'demo27.section.contact.subtitle.label': 'Nested providers for personal info and address, laid out with TomAclBuilder',
+  'demo27.section.contact.subtitle.label':
+      'Nested providers for personal info and address, laid out with TomAclBuilder',
   'demo27.section.settings.title.label': 'Settings Form',
-  'demo27.section.settings.subtitle.label': 'Mixed input types: text fields and switches in a scoped provider',
+  'demo27.section.settings.subtitle.label':
+      'Mixed input types: text fields and switches in a scoped provider',
   'demo27.section.aclForm.title.label': 'Form with ACL Layout',
-  'demo27.section.aclForm.subtitle.label': 'Top-level TomAclBuilder accessing nested sub-provider fields via dot navigation',
+  'demo27.section.aclForm.subtitle.label':
+      'Top-level TomAclBuilder accessing nested sub-provider fields via dot navigation',
 };
 
 const _demo27CardResources = <String, String>{
   'demo27.card.login.icon': 'mLogin',
   'demo27.card.login.title.label': 'Login Form',
-  'demo27.card.login.description.label': 'Email and password fields from LoginFormProvider (demo27.login)',
+  'demo27.card.login.description.label':
+      'Email and password fields from LoginFormProvider (demo27.login)',
   'demo27.card.contact.icon': 'mContacts',
   'demo27.card.contact.title.label': 'Contact Form',
-  'demo27.card.contact.description.label': 'Personal and address sections with ACL layout (demo27.contact)',
+  'demo27.card.contact.description.label':
+      'Personal and address sections with ACL layout (demo27.contact)',
   'demo27.card.settings.icon': 'mSettings',
   'demo27.card.settings.title.label': 'Settings Form',
-  'demo27.card.settings.description.label': 'Text fields and toggle switches (demo27.settings)',
+  'demo27.card.settings.description.label':
+      'Text fields and toggle switches (demo27.settings)',
   'demo27.card.aclForm.icon': 'mDashboard',
   'demo27.card.aclForm.title.label': 'ACL-Laid-Out Form',
-  'demo27.card.aclForm.description.label': 'ContactFormProvider fields accessed through nested sub-providers',
+  'demo27.card.aclForm.description.label':
+      'ContactFormProvider fields accessed through nested sub-providers',
 };
 
 const _demo27WidgetResources = <String, String>{
@@ -3406,33 +3479,43 @@ const _demo27WidgetResources = <String, String>{
 
 const _demo28SectionResources = <String, String>{
   'demo28.section.controls.title.label': 'Authorization Controls',
-  'demo28.section.controls.subtitle.label': 'Toggle switches to change authorization rules at runtime',
+  'demo28.section.controls.subtitle.label':
+      'Toggle switches to change authorization rules at runtime',
   'demo28.section.perWidget.title.label': 'Per-Widget Authorization',
-  'demo28.section.perWidget.subtitle.label': 'Individual widgets hidden or made readonly based on their resource path',
+  'demo28.section.perWidget.subtitle.label':
+      'Individual widgets hidden or made readonly based on their resource path',
   'demo28.section.groups.title.label': 'Group Authorization',
-  'demo28.section.groups.subtitle.label': 'TomAuthorizationGroup controls collective visibility for premium vs. basic features',
+  'demo28.section.groups.subtitle.label':
+      'TomAuthorizationGroup controls collective visibility for premium vs. basic features',
   'demo28.section.sectionLevel.title.label': 'Section-Level Authorization',
-  'demo28.section.sectionLevel.subtitle.label': 'TomAclBuilder applies authorization to the entire container and its children',
+  'demo28.section.sectionLevel.subtitle.label':
+      'TomAclBuilder applies authorization to the entire container and its children',
   'demo28.section.states.title.label': 'Auth State Visualization',
-  'demo28.section.states.subtitle.label': 'Live view of resolved TomAuthState for each resource path',
+  'demo28.section.states.subtitle.label':
+      'Live view of resolved TomAuthState for each resource path',
 };
 
 const _demo28CardResources = <String, String>{
   'demo28.card.controls.icon': 'mTune',
   'demo28.card.controls.title.label': 'Control Panel',
-  'demo28.card.controls.description.label': 'Toggle authorization rules and see widgets respond in real-time',
+  'demo28.card.controls.description.label':
+      'Toggle authorization rules and see widgets respond in real-time',
   'demo28.card.perWidget.icon': 'mVisibility',
   'demo28.card.perWidget.title.label': 'Admin Actions',
-  'demo28.card.perWidget.description.label': 'View, Edit, Delete buttons with individual auth state control',
+  'demo28.card.perWidget.description.label':
+      'View, Edit, Delete buttons with individual auth state control',
   'demo28.card.groups.icon': 'mGroup',
   'demo28.card.groups.title.label': 'Feature Groups',
-  'demo28.card.groups.description.label': 'Premium and basic feature chips controlled by TomAuthorizationGroup visibility',
+  'demo28.card.groups.description.label':
+      'Premium and basic feature chips controlled by TomAuthorizationGroup visibility',
   'demo28.card.sectionLevel.icon': 'mSecurity',
   'demo28.card.sectionLevel.title.label': 'Profile Section',
-  'demo28.card.sectionLevel.description.label': 'Entire form section controlled by parent path authorization',
+  'demo28.card.sectionLevel.description.label':
+      'Entire form section controlled by parent path authorization',
   'demo28.card.states.icon': 'mPolicy',
   'demo28.card.states.title.label': 'Auth State Table',
-  'demo28.card.states.description.label': 'Current TomAuthState for each resource path in the demo',
+  'demo28.card.states.description.label':
+      'Current TomAuthState for each resource path in the demo',
 };
 
 const _demo28WidgetResources = <String, String>{

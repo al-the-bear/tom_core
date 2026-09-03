@@ -24,7 +24,6 @@ class SelectionDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _SelectionDemoContent();
-
   }
 }
 
@@ -51,10 +50,25 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
   String _radioMenuValue = 'option1';
 
   // Data keys for resource lookups
-  static const _categoryKeys = ['electronics', 'clothing', 'homeGarden', 'books', 'sports'];
+  static const _categoryKeys = [
+    'electronics',
+    'clothing',
+    'homeGarden',
+    'books',
+    'sports',
+  ];
   static const _colorKeys = ['red', 'green', 'blue', 'yellow', 'black'];
   static const _sizeKeys = ['xs', 's', 'm', 'l', 'xl', 'xxl'];
-  static const _fruitKeys = ['apple', 'banana', 'orange', 'mango', 'grape', 'strawberry', 'pineapple', 'watermelon'];
+  static const _fruitKeys = [
+    'apple',
+    'banana',
+    'orange',
+    'mango',
+    'grape',
+    'strawberry',
+    'pineapple',
+    'watermelon',
+  ];
   static const _countryKeys = ['us', 'uk', 'de', 'fr', 'jp'];
 
   /// Resolves a text resource by tomId and suffix.
@@ -77,9 +91,7 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Dropdown Menus
-            _SectionHeader(
-              tomId: 'section.dropdown',
-            ),
+            _SectionHeader(tomId: 'section.dropdown'),
             TomSizedBox(height: 16),
             _buildDropdownButtonSection(),
             TomSizedBox(height: 24),
@@ -87,9 +99,7 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
             TomSizedBox(height: 32),
 
             // Section 2: Popup Menus
-            _SectionHeader(
-              tomId: 'section.popup',
-            ),
+            _SectionHeader(tomId: 'section.popup'),
             TomSizedBox(height: 16),
             _buildPopupMenuButtonSection(),
             TomSizedBox(height: 24),
@@ -97,17 +107,13 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
             TomSizedBox(height: 32),
 
             // Section 3: Menu Anchors
-            _SectionHeader(
-              tomId: 'section.anchor',
-            ),
+            _SectionHeader(tomId: 'section.anchor'),
             TomSizedBox(height: 16),
             _buildMenuAnchorSection(),
             TomSizedBox(height: 32),
 
             // Section 4: Cupertino Segmented Controls
-            _SectionHeader(
-              tomId: 'section.cupertino',
-            ),
+            _SectionHeader(tomId: 'section.cupertino'),
             TomSizedBox(height: 16),
             _buildCupertinoSegmentedSection(),
             TomSizedBox(height: 24),
@@ -115,9 +121,7 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
             TomSizedBox(height: 32),
 
             // Section 5: ACL Layout Demo (RTL/LTR)
-            _SectionHeader(
-              tomId: 'section.acl',
-            ),
+            _SectionHeader(tomId: 'section.acl'),
             TomSizedBox(height: 16),
             _buildAclDropdownSection(),
             TomSizedBox(height: 24),
@@ -135,8 +139,9 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
   Widget _buildDropdownButtonSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -155,11 +160,13 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
                     value: _selectedCategory,
                     isExpanded: true,
                     items: _categoryKeys
-                        .map((key) => TomDropdownMenuItem<String>(
-                              tomId: 'data.category.$key',
-                              value: key,
-                              child: TomText(tomId: 'data.category.$key'),
-                            ))
+                        .map(
+                          (key) => TomDropdownMenuItem<String>(
+                            tomId: 'data.category.$key',
+                            value: key,
+                            child: TomText(tomId: 'data.category.$key'),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) {
                       setState(() => _selectedCategory = value);
@@ -178,17 +185,19 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
               value: _selectedColor,
               isExpanded: true,
               items: _colorKeys
-                  .map((key) => TomDropdownMenuItem<String>(
-                        tomId: 'data.color.$key',
-                        value: key,
-                        child: Row(
-                          children: [
-                            Text(_resolveText('demo03.data.color.$key', 'emoji')),
-                            const SizedBox(width: 8),
-                            TomText(tomId: 'data.color.$key'),
-                          ],
-                        ),
-                      ))
+                  .map(
+                    (key) => TomDropdownMenuItem<String>(
+                      tomId: 'data.color.$key',
+                      value: key,
+                      child: Row(
+                        children: [
+                          Text(_resolveText('demo03.data.color.$key', 'emoji')),
+                          const SizedBox(width: 8),
+                          TomText(tomId: 'data.color.$key'),
+                        ],
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (value) {
                 setState(() => _selectedColor = value);
@@ -207,11 +216,13 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
                     value: _selectedCountry,
                     isExpanded: true,
                     items: _countryKeys
-                        .map((key) => TomDropdownMenuItem<String>(
-                              tomId: 'data.country.$key',
-                              value: key,
-                              child: TomText(tomId: 'data.country.$key'),
-                            ))
+                        .map(
+                          (key) => TomDropdownMenuItem<String>(
+                            tomId: 'data.country.$key',
+                            value: key,
+                            child: TomText(tomId: 'data.country.$key'),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) {
                       setState(() => _selectedCountry = value);
@@ -241,8 +252,9 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
   Widget _buildDropdownMenuSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -255,10 +267,12 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
               tomId: 'dropdownMenu.size',
               initialSelection: _selectedSize,
               dropdownMenuEntries: _sizeKeys
-                  .map((key) => DropdownMenuEntry<String>(
-                        value: key,
-                        label: _resolveText('demo03.data.size.$key', 'label'),
-                      ))
+                  .map(
+                    (key) => DropdownMenuEntry<String>(
+                      value: key,
+                      label: _resolveText('demo03.data.size.$key', 'label'),
+                    ),
+                  )
                   .toList(),
               onSelected: (value) {
                 setState(() => _selectedSize = value);
@@ -272,18 +286,20 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
               initialSelection: _selectedColor,
               leadingIcon: const Icon(Icons.palette),
               dropdownMenuEntries: _colorKeys
-                  .map((key) => DropdownMenuEntry<String>(
-                        value: key,
-                        label: _resolveText('demo03.data.color.$key', 'label'),
-                        leadingIcon: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: _resolveColor('demo03.data.color.$key'),
-                            shape: BoxShape.circle,
-                          ),
+                  .map(
+                    (key) => DropdownMenuEntry<String>(
+                      value: key,
+                      label: _resolveText('demo03.data.color.$key', 'label'),
+                      leadingIcon: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: _resolveColor('demo03.data.color.$key'),
+                          shape: BoxShape.circle,
                         ),
-                      ))
+                      ),
+                    ),
+                  )
                   .toList(),
               onSelected: (value) {
                 setState(() => _selectedColor = value);
@@ -297,10 +313,12 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
               initialSelection: _selectedCategory,
               expandedInsets: EdgeInsets.zero,
               dropdownMenuEntries: _categoryKeys
-                  .map((key) => DropdownMenuEntry<String>(
-                        value: key,
-                        label: _resolveText('demo03.data.category.$key', 'label'),
-                      ))
+                  .map(
+                    (key) => DropdownMenuEntry<String>(
+                      value: key,
+                      label: _resolveText('demo03.data.category.$key', 'label'),
+                    ),
+                  )
                   .toList(),
               onSelected: (value) {
                 setState(() => _selectedCategory = value);
@@ -318,8 +336,9 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
   Widget _buildPopupMenuButtonSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -382,9 +401,9 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
                     ),
                   ],
                   onSelected: (value) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Selected: $value')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Selected: $value')));
                   },
                 ),
               ],
@@ -395,9 +414,14 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
             TomPopupMenuButton<String>(
               tomId: 'popupMenu.customTrigger',
               child: TomContainer(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).colorScheme.outline),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: TomRow(
@@ -436,8 +460,9 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
   Widget _buildCheckedPopupMenuSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -500,11 +525,18 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
             // Status display
             Builder(
               builder: (context) {
-                final preview = _showPreview ? _resolveText('demo03.status.on', 'label') : _resolveText('demo03.status.off', 'label');
-                final details = _showDetails ? _resolveText('demo03.status.on', 'label') : _resolveText('demo03.status.off', 'label');
-                final sidebar = _showSidebar ? _resolveText('demo03.status.on', 'label') : _resolveText('demo03.status.off', 'label');
+                final preview = _showPreview
+                    ? _resolveText('demo03.status.on', 'label')
+                    : _resolveText('demo03.status.off', 'label');
+                final details = _showDetails
+                    ? _resolveText('demo03.status.on', 'label')
+                    : _resolveText('demo03.status.off', 'label');
+                final sidebar = _showSidebar
+                    ? _resolveText('demo03.status.on', 'label')
+                    : _resolveText('demo03.status.off', 'label');
                 return TomText(
-                  text: 'Preview: $preview, Details: $details, Sidebar: $sidebar',
+                  text:
+                      'Preview: $preview, Details: $details, Sidebar: $sidebar',
                   style: Theme.of(context).textTheme.bodySmall,
                 );
               },
@@ -521,8 +553,9 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
   Widget _buildMenuAnchorSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -641,8 +674,9 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
   Widget _buildCupertinoSegmentedSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -700,11 +734,8 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
             // Status display
             TomText(
-              text: 'Sliding: ${_resolveText('demo03.cupertinoSegmented.${
-                ['day', 'week', 'month', 'year'][_slidingValue]
-              }', 'label')}, Classic: ${_resolveText('demo03.cupertinoSegmented.${
-                ['first', 'second', 'third'][_segmentedValue]
-              }', 'label')}',
+              text:
+                  'Sliding: ${_resolveText('demo03.cupertinoSegmented.${['day', 'week', 'month', 'year'][_slidingValue]}', 'label')}, Classic: ${_resolveText('demo03.cupertinoSegmented.${['first', 'second', 'third'][_segmentedValue]}', 'label')}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -715,8 +746,9 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
   Widget _buildCupertinoPickerSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -738,12 +770,14 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
                   setState(() => _pickerValue = index);
                 },
                 children: _fruitKeys
-                    .map((key) => Center(
-                          child: TomText(
-                            tomId: 'data.fruit.$key',
-                            style: const TextStyle(fontSize: 18),
-                          ),
-                        ))
+                    .map(
+                      (key) => Center(
+                        child: TomText(
+                          tomId: 'data.fruit.$key',
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -782,11 +816,13 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
               value: _selectedCategory,
               isExpanded: true,
               items: _categoryKeys
-                  .map((key) => TomDropdownMenuItem<String>(
-                        tomId: 'data.category.$key',
-                        value: key,
-                        child: TomText(tomId: 'data.category.$key'),
-                      ))
+                  .map(
+                    (key) => TomDropdownMenuItem<String>(
+                      tomId: 'data.category.$key',
+                      value: key,
+                      child: TomText(tomId: 'data.category.$key'),
+                    ),
+                  )
                   .toList(),
               onChanged: (value) {
                 setState(() => _selectedCategory = value);
@@ -803,10 +839,12 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
               tomId: 'aclDropdown.size',
               initialSelection: _selectedSize,
               dropdownMenuEntries: _sizeKeys
-                  .map((key) => DropdownMenuEntry<String>(
-                        value: key,
-                        label: _resolveText('demo03.data.size.$key', 'label'),
-                      ))
+                  .map(
+                    (key) => DropdownMenuEntry<String>(
+                      value: key,
+                      label: _resolveText('demo03.data.size.$key', 'label'),
+                    ),
+                  )
                   .toList(),
               onSelected: (value) {
                 setState(() => _selectedSize = value);
@@ -856,10 +894,7 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
           )
           .gap()
           .append(
-            TomFilledButton(
-              tomId: 'aclSegmented.apply',
-              onPressed: () {},
-            ),
+            TomFilledButton(tomId: 'aclSegmented.apply', onPressed: () {}),
             dist: 8,
           )
           .build(),
@@ -875,9 +910,7 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -921,10 +954,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

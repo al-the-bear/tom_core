@@ -56,7 +56,8 @@ void main() {
         expect(
           mount.overflows,
           isEmpty,
-          reason: 'Demo "$slug" does not fit ${viewport.width.toInt()}x'
+          reason:
+              'Demo "$slug" does not fit ${viewport.width.toInt()}x'
               '${viewport.height.toInt()}. Run '
               '`flutter test test/screenshots.dart` and look at '
               'test/screenshots/$slug.png — the striped banner marks the edge '

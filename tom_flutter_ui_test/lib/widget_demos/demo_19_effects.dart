@@ -22,7 +22,6 @@ class EffectsDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _EffectsDemoContent();
-
   }
 }
 
@@ -53,49 +52,37 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Backdrop Filters
-            _SectionHeader(
-              tomId: 'section.backdrop',
-            ),
+            _SectionHeader(tomId: 'section.backdrop'),
             TomSizedBox(height: 16),
             _buildBackdropFilterSection(),
             TomSizedBox(height: 32),
 
             // Section 2: Image Filters
-            _SectionHeader(
-              tomId: 'section.image',
-            ),
+            _SectionHeader(tomId: 'section.image'),
             TomSizedBox(height: 16),
             _buildImageFilterSection(),
             TomSizedBox(height: 32),
 
             // Section 3: Color Filters
-            _SectionHeader(
-              tomId: 'section.color',
-            ),
+            _SectionHeader(tomId: 'section.color'),
             TomSizedBox(height: 16),
             _buildColorFilterSection(),
             TomSizedBox(height: 32),
 
             // Section 4: Shader Masks
-            _SectionHeader(
-              tomId: 'section.shader',
-            ),
+            _SectionHeader(tomId: 'section.shader'),
             TomSizedBox(height: 16),
             _buildShaderMaskSection(),
             TomSizedBox(height: 32),
 
             // Section 5: Text Selection
-            _SectionHeader(
-              tomId: 'section.selection',
-            ),
+            _SectionHeader(tomId: 'section.selection'),
             TomSizedBox(height: 16),
             _buildSelectionSection(),
             TomSizedBox(height: 32),
 
             // Section 6: Sensitive Content
-            _SectionHeader(
-              tomId: 'section.sensitive',
-            ),
+            _SectionHeader(tomId: 'section.sensitive'),
             TomSizedBox(height: 16),
             _buildSensitiveContentSection(),
             TomSizedBox(height: 48),
@@ -227,9 +214,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
           TomText(
             tomId: 'backdropFilter.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -312,8 +299,7 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
                   max: 10,
                   divisions: 20,
                   label: _imageBlurSigma.toStringAsFixed(1),
-                  onChanged: (value) =>
-                      setState(() => _imageBlurSigma = value),
+                  onChanged: (value) => setState(() => _imageBlurSigma = value),
                 ),
               ),
               SizedBox(
@@ -339,9 +325,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
           TomText(
             tomId: 'imageFilter.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -363,10 +349,7 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
             spacing: 16,
             runSpacing: 16,
             children: [
-              _buildColorFilterExample(
-                'Original',
-                null,
-              ),
+              _buildColorFilterExample('Original', null),
               _buildColorFilterExample(
                 'Selected',
                 ColorFilter.mode(_colorFilterColor, _colorFilterMode),
@@ -374,37 +357,101 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
               _buildColorFilterExample(
                 'Grayscale',
                 const ColorFilter.matrix(<double>[
-                  0.2126, 0.7152, 0.0722, 0, 0,
-                  0.2126, 0.7152, 0.0722, 0, 0,
-                  0.2126, 0.7152, 0.0722, 0, 0,
-                  0, 0, 0, 1, 0,
+                  0.2126,
+                  0.7152,
+                  0.0722,
+                  0,
+                  0,
+                  0.2126,
+                  0.7152,
+                  0.0722,
+                  0,
+                  0,
+                  0.2126,
+                  0.7152,
+                  0.0722,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
                 ]),
               ),
               _buildColorFilterExample(
                 'Sepia',
                 const ColorFilter.matrix(<double>[
-                  0.393, 0.769, 0.189, 0, 0,
-                  0.349, 0.686, 0.168, 0, 0,
-                  0.272, 0.534, 0.131, 0, 0,
-                  0, 0, 0, 1, 0,
+                  0.393,
+                  0.769,
+                  0.189,
+                  0,
+                  0,
+                  0.349,
+                  0.686,
+                  0.168,
+                  0,
+                  0,
+                  0.272,
+                  0.534,
+                  0.131,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
                 ]),
               ),
               _buildColorFilterExample(
                 'Invert',
                 const ColorFilter.matrix(<double>[
-                  -1, 0, 0, 0, 255,
-                  0, -1, 0, 0, 255,
-                  0, 0, -1, 0, 255,
-                  0, 0, 0, 1, 0,
+                  -1,
+                  0,
+                  0,
+                  0,
+                  255,
+                  0,
+                  -1,
+                  0,
+                  0,
+                  255,
+                  0,
+                  0,
+                  -1,
+                  0,
+                  255,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
                 ]),
               ),
               _buildColorFilterExample(
                 'High Contrast',
                 const ColorFilter.matrix(<double>[
-                  1.5, 0, 0, 0, -128,
-                  0, 1.5, 0, 0, -128,
-                  0, 0, 1.5, 0, -128,
-                  0, 0, 0, 1, 0,
+                  1.5,
+                  0,
+                  0,
+                  0,
+                  -128,
+                  0,
+                  1.5,
+                  0,
+                  0,
+                  -128,
+                  0,
+                  0,
+                  1.5,
+                  0,
+                  -128,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
                 ]),
               ),
             ],
@@ -450,9 +497,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
           TomText(
             tomId: 'colorFilter.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -546,11 +593,7 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
               _buildShaderMaskExample(
                 'Sweep Gradient',
                 (bounds) => const SweepGradient(
-                  colors: [
-                    Colors.white,
-                    Colors.transparent,
-                    Colors.white,
-                  ],
+                  colors: [Colors.white, Colors.transparent, Colors.white],
                 ).createShader(bounds),
               ),
               _buildShaderMaskExample(
@@ -625,10 +668,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
                     Text(
                       'Mode: ${_shaderBlendMode.name}',
                       style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onPrimary
-                            .withValues(alpha: 0.8),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary.withValues(alpha: 0.8),
                         fontSize: 12,
                       ),
                     ),
@@ -641,9 +683,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
           TomText(
             tomId: 'shaderMask.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -753,10 +795,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
                 TomContainer(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer
-                        .withValues(alpha: 0.3),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: Theme.of(context).colorScheme.primary,
@@ -785,9 +826,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
               TomText(
                 tomId: 'selectionArea.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -839,9 +880,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
               TomText(
                 tomId: 'selectableRegion.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -936,9 +977,7 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
                             children: [
                               Text(
                                 'Interactive Demo',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
+                                style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               Text(
@@ -965,8 +1004,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
                     TomContainer(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: _getSensitivityColor(_sensitivity)
-                            .withValues(alpha: 0.1),
+                        color: _getSensitivityColor(
+                          _sensitivity,
+                        ).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: _getSensitivityColor(_sensitivity),
@@ -987,9 +1027,9 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
           TomText(
             tomId: 'sensitiveContent.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1035,20 +1075,14 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
                 TomSizedBox(width: 8),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, color: color),
                 ),
               ],
             ),
             TomSizedBox(height: 8),
             Text(
               content,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 12,
-              ),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
             ),
           ],
         ),
@@ -1091,9 +1125,7 @@ class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1137,10 +1169,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

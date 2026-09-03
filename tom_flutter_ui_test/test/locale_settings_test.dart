@@ -63,26 +63,35 @@ void main() {
       expect(service.locale, deDe);
     });
 
-    test('falls back to the default when the saved value is one-part', () async {
-      // 'de'.split('_') -> ['de'] (length 1) -> corrupt-guard rejects it.
-      SharedPreferences.setMockInitialValues({'app_locale': 'de'});
-      final service = LocaleSettingsService();
+    test(
+      'falls back to the default when the saved value is one-part',
+      () async {
+        // 'de'.split('_') -> ['de'] (length 1) -> corrupt-guard rejects it.
+        SharedPreferences.setMockInitialValues({'app_locale': 'de'});
+        final service = LocaleSettingsService();
 
-      await service.initialize();
+        await service.initialize();
 
-      expect(service.locale, enUs, reason: 'one-part value must not restore');
-    });
+        expect(service.locale, enUs, reason: 'one-part value must not restore');
+      },
+    );
 
-    test('falls back to the default when the saved value is three-part',
-        () async {
-      // 'de_DE_x'.split('_') -> length 3 -> corrupt-guard rejects it.
-      SharedPreferences.setMockInitialValues({'app_locale': 'de_DE_x'});
-      final service = LocaleSettingsService();
+    test(
+      'falls back to the default when the saved value is three-part',
+      () async {
+        // 'de_DE_x'.split('_') -> length 3 -> corrupt-guard rejects it.
+        SharedPreferences.setMockInitialValues({'app_locale': 'de_DE_x'});
+        final service = LocaleSettingsService();
 
-      await service.initialize();
+        await service.initialize();
 
-      expect(service.locale, enUs, reason: 'three-part value must not restore');
-    });
+        expect(
+          service.locale,
+          enUs,
+          reason: 'three-part value must not restore',
+        );
+      },
+    );
 
     test('falls back to the default when nothing is persisted', () async {
       SharedPreferences.setMockInitialValues({});
@@ -93,26 +102,32 @@ void main() {
       expect(service.locale, enUs);
     });
 
-    test('is idempotent: a second initialize neither re-loads nor re-notifies',
-        () async {
-      // First init seeds de_DE from prefs and notifies once.
-      SharedPreferences.setMockInitialValues({'app_locale': 'de_DE'});
-      final service = LocaleSettingsService();
-      var notifyCount = 0;
-      service.addListener(() => notifyCount++);
+    test(
+      'is idempotent: a second initialize neither re-loads nor re-notifies',
+      () async {
+        // First init seeds de_DE from prefs and notifies once.
+        SharedPreferences.setMockInitialValues({'app_locale': 'de_DE'});
+        final service = LocaleSettingsService();
+        var notifyCount = 0;
+        service.addListener(() => notifyCount++);
 
-      await service.initialize();
-      expect(notifyCount, 1);
-      expect(service.locale, deDe);
+        await service.initialize();
+        expect(notifyCount, 1);
+        expect(service.locale, deDe);
 
-      // Change the underlying store, then re-initialize: the early-return must
-      // keep the already-loaded locale and emit no further notification.
-      SharedPreferences.setMockInitialValues({'app_locale': 'ja_JP'});
-      await service.initialize();
+        // Change the underlying store, then re-initialize: the early-return must
+        // keep the already-loaded locale and emit no further notification.
+        SharedPreferences.setMockInitialValues({'app_locale': 'ja_JP'});
+        await service.initialize();
 
-      expect(notifyCount, 1, reason: 'second initialize must not re-notify');
-      expect(service.locale, deDe, reason: 'second initialize must not re-load');
-    });
+        expect(notifyCount, 1, reason: 'second initialize must not re-notify');
+        expect(
+          service.locale,
+          deDe,
+          reason: 'second initialize must not re-load',
+        );
+      },
+    );
   });
 
   group('LocaleSettingsService.setLocale', () {
@@ -144,26 +159,31 @@ void main() {
       // Do NOT await yet: setLocale sets _locale + notifyListeners() before its
       // first `await`, so control returns here with the switch already visible.
       final pending = service.setLocale(const Locale('tr', 'TR'));
-      expect(notified, isTrue,
-          reason: 'UI must see the new locale before disk I/O');
+      expect(
+        notified,
+        isTrue,
+        reason: 'UI must see the new locale before disk I/O',
+      );
       expect(service.locale, const Locale('tr', 'TR'));
 
       await pending;
     });
 
-    test('early-returns without notifying when the locale is unchanged',
-        () async {
-      SharedPreferences.setMockInitialValues({'app_locale': 'de_DE'});
-      final service = LocaleSettingsService();
-      await service.initialize();
+    test(
+      'early-returns without notifying when the locale is unchanged',
+      () async {
+        SharedPreferences.setMockInitialValues({'app_locale': 'de_DE'});
+        final service = LocaleSettingsService();
+        await service.initialize();
 
-      var notifyCount = 0;
-      service.addListener(() => notifyCount++);
+        var notifyCount = 0;
+        service.addListener(() => notifyCount++);
 
-      await service.setLocale(deDe);
+        await service.setLocale(deDe);
 
-      expect(notifyCount, 0, reason: 'setting the current locale is a no-op');
-      expect(service.locale, deDe);
-    });
+        expect(notifyCount, 0, reason: 'setting the current locale is a no-op');
+        expect(service.locale, deDe);
+      },
+    );
   });
 }

@@ -32,10 +32,7 @@ class DemoTile extends StatelessWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DemoScaffold(
-              title: title,
-              child: screen,
-            ),
+            builder: (context) => DemoScaffold(title: title, child: screen),
           ),
         ),
       ),
@@ -99,10 +96,7 @@ class _DemoScaffoldState extends State<DemoScaffold> {
         textDirection: _direction == AclDirection.rtl
             ? TextDirection.rtl
             : TextDirection.ltr,
-        child: AclDirectionScope(
-          direction: _direction!,
-          child: widget.child,
-        ),
+        child: AclDirectionScope(direction: _direction!, child: widget.child),
       ),
     );
   }

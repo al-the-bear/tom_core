@@ -17,10 +17,14 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
       child: DemoBox('Tall\n(h=70)', Colors.blueGrey),
     );
     // Row 4 buttons — captured so Row 5 can mirror them via sameSize().
-    final primaryAction =
-        ElevatedButton(onPressed: () {}, child: const Text('Primary Action'));
-    final secondaryAction =
-        OutlinedButton(onPressed: () {}, child: const Text('Secondary'));
+    final primaryAction = ElevatedButton(
+      onPressed: () {},
+      child: const Text('Primary Action'),
+    );
+    final secondaryAction = OutlinedButton(
+      onPressed: () {},
+      child: const Text('Secondary'),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,20 +49,43 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
               //   Right→Right: right edge of box aligns to formAnchor's right
               //   Left→Regular: left edge of box aligns to regularBox's left
               .newRow(dist: 8)
-              .append(const SizedBox(width: 160, child: DemoBox('Right→Right\n(formAnchor)', Colors.indigo)))
+              .append(
+                const SizedBox(
+                  width: 160,
+                  child: DemoBox('Right→Right\n(formAnchor)', Colors.indigo),
+                ),
+              )
               .setPSize(160, 40)
               .alignRightToRight(formAnchor)
-              .append(const SizedBox(width: 120, child: DemoBox('Left→Regular\n(+dist:12)', Colors.teal)), dist: 8)
+              .append(
+                const SizedBox(
+                  width: 120,
+                  child: DemoBox('Left→Regular\n(+dist:12)', Colors.teal),
+                ),
+                dist: 8,
+              )
               .setPSize(120, 40)
               .alignLeftToLeft(regularBox)
               // Row 3: same-row vertical Y alignment (Y only per component)
               .newRow(dist: 8)
               .append(tallBox)
               .setPSize(140, 70)
-              .append(const SizedBox(width: 120, child: DemoBox('Top↑align', Colors.green)), dist: 8)
+              .append(
+                const SizedBox(
+                  width: 120,
+                  child: DemoBox('Top↑align', Colors.green),
+                ),
+                dist: 8,
+              )
               .setPSize(120, 36)
               .alignTopToTop(tallBox)
-              .append(const SizedBox(width: 120, child: DemoBox('Bot↓align', Colors.red)), dist: 8)
+              .append(
+                const SizedBox(
+                  width: 120,
+                  child: DemoBox('Bot↓align', Colors.red),
+                ),
+                dist: 8,
+              )
               .setPSize(120, 36)
               .alignBottomToBottom(tallBox)
               // Row 4: two buttons with intentionally different min/pref/max sizes.
@@ -74,9 +101,20 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
               // Row 5: mirrors of Row 4 using cross-row sameSize().
               // sameSize() on the same row is disallowed by the engine.
               .newRow(dist: 8)
-              .append(OutlinedButton(onPressed: () {}, child: const Text('Mirror Primary')))
+              .append(
+                OutlinedButton(
+                  onPressed: () {},
+                  child: const Text('Mirror Primary'),
+                ),
+              )
               .sameSize(primaryAction)
-              .append(OutlinedButton(onPressed: () {}, child: const Text('Mirror Secondary')), dist: 12)
+              .append(
+                OutlinedButton(
+                  onPressed: () {},
+                  child: const Text('Mirror Secondary'),
+                ),
+                dist: 12,
+              )
               .sameSize(secondaryAction)
               .build(),
         ),

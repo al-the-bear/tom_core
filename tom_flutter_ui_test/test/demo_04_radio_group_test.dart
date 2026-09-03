@@ -28,18 +28,18 @@ import 'demo_harness.dart';
 /// Demo 4 mounts five groups of the same type argument, so a group has to be
 /// identified by what it holds rather than by its type.
 Finder _groupHolding(String? value) => find.byWidgetPredicate(
-      (w) => w is RadioGroup<String> && w.groupValue == value,
-      description: 'RadioGroup<String>(groupValue: $value)',
-    );
+  (w) => w is RadioGroup<String> && w.groupValue == value,
+  description: 'RadioGroup<String>(groupValue: $value)',
+);
 
 /// The radio offering [value], in any of the three flavours demo 4 shows.
 Finder _radioFor(String value) => find.byWidgetPredicate(
-      (w) =>
-          (w is Radio<String> && w.value == value) ||
-          (w is RadioListTile<String> && w.value == value) ||
-          (w is CupertinoRadio<String> && w.value == value),
-      description: 'a radio offering "$value"',
-    );
+  (w) =>
+      (w is Radio<String> && w.value == value) ||
+      (w is RadioListTile<String> && w.value == value) ||
+      (w is CupertinoRadio<String> && w.value == value),
+  description: 'a radio offering "$value"',
+);
 
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
@@ -48,20 +48,26 @@ void main() {
   tearDownAll(() => restoreDemoEnvironment(binding));
 
   group('demo 4 radios are wired to a RadioGroup ancestor', () {
-    testWidgets('every group starts on the value the demo seeds it with',
-        (tester) async {
+    testWidgets('every group starts on the value the demo seeds it with', (
+      tester,
+    ) async {
       await pumpDemo(tester, 'widget_04_toggles');
 
       // The five seeds, from the state fields at the top of the demo.
       for (final seed in ['credit', 'medium', 'standard', 'a', 'option1']) {
-        expect(_groupHolding(seed), findsOneWidget,
-            reason: 'no RadioGroup holds "$seed", so the radios offering it '
-                'have no ancestor to read their selection from');
+        expect(
+          _groupHolding(seed),
+          findsOneWidget,
+          reason:
+              'no RadioGroup holds "$seed", so the radios offering it '
+              'have no ancestor to read their selection from',
+        );
       }
     });
 
-    testWidgets('picking a payment option moves that group and no other',
-        (tester) async {
+    testWidgets('picking a payment option moves that group and no other', (
+      tester,
+    ) async {
       await pumpDemo(tester, 'widget_04_toggles');
 
       final paypal = _radioFor('paypal');
@@ -70,19 +76,27 @@ void main() {
       await tester.tap(paypal.first);
       await tester.pumpAndSettle();
 
-      expect(_groupHolding('paypal'), findsOneWidget,
-          reason: "the group's onChanged must reach the demo's setState");
+      expect(
+        _groupHolding('paypal'),
+        findsOneWidget,
+        reason: "the group's onChanged must reach the demo's setState",
+      );
       expect(_groupHolding('credit'), findsNothing);
       // The other four groups are independent and must not have moved.
       for (final untouched in ['medium', 'standard', 'a', 'option1']) {
-        expect(_groupHolding(untouched), findsOneWidget,
-            reason: 'group holding "$untouched" must be independent of the '
-                'payment group');
+        expect(
+          _groupHolding(untouched),
+          findsOneWidget,
+          reason:
+              'group holding "$untouched" must be independent of the '
+              'payment group',
+        );
       }
     });
 
-    testWidgets('picking a shipping tile moves the RadioListTile group',
-        (tester) async {
+    testWidgets('picking a shipping tile moves the RadioListTile group', (
+      tester,
+    ) async {
       await pumpDemo(tester, 'widget_04_toggles');
 
       final express = _radioFor('express');

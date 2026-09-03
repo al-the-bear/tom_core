@@ -20,7 +20,6 @@ class LabelsDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _LabelsDemoContent();
-
   }
 }
 
@@ -46,17 +45,13 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Text Styles
-            _SectionHeader(
-              tomId: 'section.text',
-            ),
+            _SectionHeader(tomId: 'section.text'),
             TomSizedBox(height: 16),
             _buildTextSection(),
             TomSizedBox(height: 32),
 
             // Section 2: Rich & Selectable Text
-            _SectionHeader(
-              tomId: 'section.rich',
-            ),
+            _SectionHeader(tomId: 'section.rich'),
             TomSizedBox(height: 16),
             _buildRichTextSection(),
             TomSizedBox(height: 24),
@@ -64,25 +59,19 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
             TomSizedBox(height: 32),
 
             // Section 3: Badges
-            _SectionHeader(
-              tomId: 'section.badge',
-            ),
+            _SectionHeader(tomId: 'section.badge'),
             TomSizedBox(height: 16),
             _buildBadgeSection(),
             TomSizedBox(height: 32),
 
             // Section 4: List Tiles
-            _SectionHeader(
-              tomId: 'section.listTile',
-            ),
+            _SectionHeader(tomId: 'section.listTile'),
             TomSizedBox(height: 16),
             _buildListTileSection(),
             TomSizedBox(height: 32),
 
             // Section 5: Chips (with ACL demo)
-            _SectionHeader(
-              tomId: 'section.chips',
-            ),
+            _SectionHeader(tomId: 'section.chips'),
             TomSizedBox(height: 16),
             _buildChipSection(),
             TomSizedBox(height: 24),
@@ -112,10 +101,7 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Display styles
-          TomText(
-            tomId: 'text.display',
-            style: theme.textTheme.displaySmall,
-          ),
+          TomText(tomId: 'text.display', style: theme.textTheme.displaySmall),
           TomSizedBox(height: 16),
 
           // Headline styles
@@ -126,17 +112,11 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
           TomSizedBox(height: 12),
 
           // Title styles
-          TomText(
-            tomId: 'text.titleStyle',
-            style: theme.textTheme.titleLarge,
-          ),
+          TomText(tomId: 'text.titleStyle', style: theme.textTheme.titleLarge),
           TomSizedBox(height: 12),
 
           // Body styles
-          TomText(
-            tomId: 'text.body',
-            style: theme.textTheme.bodyLarge,
-          ),
+          TomText(tomId: 'text.body', style: theme.textTheme.bodyLarge),
           TomSizedBox(height: 8),
           TomText(
             tomId: 'text.bodySmall',
@@ -156,9 +136,7 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
           TomSizedBox(height: 4),
           TomText(
             tomId: 'text.labelSmall',
-            style: theme.textTheme.labelSmall?.copyWith(
-              letterSpacing: 1.5,
-            ),
+            style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
           ),
           TomSizedBox(height: 16),
 
@@ -297,10 +275,7 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                TextSpan(
-                  text: 'ello ',
-                  style: theme.textTheme.titleLarge,
-                ),
+                TextSpan(text: 'ello ', style: theme.textTheme.titleLarge),
                 TextSpan(
                   text: 'W',
                   style: theme.textTheme.headlineLarge?.copyWith(
@@ -308,10 +283,7 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                TextSpan(
-                  text: 'orld!',
-                  style: theme.textTheme.titleLarge,
-                ),
+                TextSpan(text: 'orld!', style: theme.textTheme.titleLarge),
               ],
             ),
           ),
@@ -463,7 +435,9 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
           TomListTile(
             tomId: 'listTile.basic',
             titleText: 'Basic List Tile',
-            subtitle: TomText(text: 'A simple list tile with title and subtitle'),
+            subtitle: TomText(
+              text: 'A simple list tile with title and subtitle',
+            ),
             leading: TomIcon(icon: Icons.info_outline),
           ),
           TomDivider(height: 1),
@@ -488,9 +462,7 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
               maxLines: 2,
               style: theme.textTheme.bodySmall,
             ),
-            leading: const CircleAvatar(
-              child: Text('JD'),
-            ),
+            leading: const CircleAvatar(child: Text('JD')),
             isThreeLine: true,
             trailing: TomIconButton(
               tooltip: 'More options',
@@ -518,7 +490,9 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
             leading: TomIcon(icon: Icons.check_circle),
             selected: true,
             selectedColor: theme.colorScheme.primary,
-            selectedTileColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+            selectedTileColor: theme.colorScheme.primaryContainer.withValues(
+              alpha: 0.3,
+            ),
           ),
         ],
       ),
@@ -541,17 +515,17 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              TomChip(
-                tomId: 'chip.basic',
-                labelText: 'Basic Chip',
-              ),
+              TomChip(tomId: 'chip.basic', labelText: 'Basic Chip'),
               TomChip(
                 tomId: 'chip.avatar',
                 labelText: 'With Avatar',
                 avatar: CircleAvatar(
                   radius: 12,
                   backgroundColor: theme.colorScheme.primary,
-                  child: const Text('A', style: TextStyle(fontSize: 10, color: Colors.white)),
+                  child: const Text(
+                    'A',
+                    style: TextStyle(fontSize: 10, color: Colors.white),
+                  ),
                 ),
               ),
               TomChip(
@@ -571,12 +545,16 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
               TomChip(
                 labelText: 'Primary',
                 backgroundColor: theme.colorScheme.primaryContainer,
-                labelStyle: TextStyle(color: theme.colorScheme.onPrimaryContainer),
+                labelStyle: TextStyle(
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
               ),
               TomChip(
                 labelText: 'Secondary',
                 backgroundColor: theme.colorScheme.secondaryContainer,
-                labelStyle: TextStyle(color: theme.colorScheme.onSecondaryContainer),
+                labelStyle: TextStyle(
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
               ),
               TomChip(
                 labelText: 'Outlined',
@@ -780,8 +758,9 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
   Widget _buildInputChipSection() {
     final theme = Theme.of(context);
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
@@ -891,9 +870,7 @@ class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -937,10 +914,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

@@ -38,15 +38,33 @@ class ConveniencePlacementDemo extends StatelessWidget {
               .append(tallRef)
               .setPSize(160, 80)
               // Top-align to Tall Ref
-              .append(const SizedBox(width: 100, child: DemoBox('Top\nalign', Colors.teal)), dist: 8)
+              .append(
+                const SizedBox(
+                  width: 100,
+                  child: DemoBox('Top\nalign', Colors.teal),
+                ),
+                dist: 8,
+              )
               .setPSize(100, 36)
               .alignTopToTop(tallRef)
               // Middle-align to Tall Ref
-              .append(const SizedBox(width: 120, child: DemoBox('Middle\nalign', Colors.orange)), dist: 8)
+              .append(
+                const SizedBox(
+                  width: 120,
+                  child: DemoBox('Middle\nalign', Colors.orange),
+                ),
+                dist: 8,
+              )
               .setPSize(120, 36)
               .alignMiddleToMiddle(tallRef)
               // Bottom-align to Tall Ref
-              .append(const SizedBox(width: 100, child: DemoBox('Bottom\nalign', Colors.green)), dist: 8)
+              .append(
+                const SizedBox(
+                  width: 100,
+                  child: DemoBox('Bottom\nalign', Colors.green),
+                ),
+                dist: 8,
+              )
               .setPSize(100, 36)
               .alignBottomToBottom(tallRef)
               .build(),
@@ -72,10 +90,21 @@ class ConveniencePlacementDemo extends StatelessWidget {
               .setPSize(200, 44)
               // Row 2: two fields cross-row aligned to anchor
               .newRow(dist: 8)
-              .append(const SizedBox(width: 90, child: DemoBox('←Left to\nAnchor\'s left', Colors.lightBlue)))
+              .append(
+                const SizedBox(
+                  width: 90,
+                  child: DemoBox('←Left to\nAnchor\'s left', Colors.lightBlue),
+                ),
+              )
               .setPSize(90, 44)
               .alignLeftToLeft(rowRef)
-              .append(const SizedBox(width: 90, child: DemoBox('Right to\nAnchor\'s right→', Colors.pink)), dist: 8)
+              .append(
+                const SizedBox(
+                  width: 90,
+                  child: DemoBox('Right to\nAnchor\'s right→', Colors.pink),
+                ),
+                dist: 8,
+              )
               .setPSize(90, 44)
               .alignRightToRight(rowRef)
               .build(),
@@ -114,4 +143,3 @@ class ConveniencePlacementDemo extends StatelessWidget {
     );
   }
 }
-

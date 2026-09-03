@@ -19,7 +19,6 @@ class ListsDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _ListsDemoContent();
-
   }
 }
 
@@ -68,25 +67,19 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Basic ListView
-            _SectionHeader(
-              tomId: 'section.basic',
-            ),
+            _SectionHeader(tomId: 'section.basic'),
             TomSizedBox(height: 16),
             _buildBasicListViewSection(),
             TomSizedBox(height: 32),
 
             // Section 2: Animated Lists
-            _SectionHeader(
-              tomId: 'section.animated',
-            ),
+            _SectionHeader(tomId: 'section.animated'),
             TomSizedBox(height: 16),
             _buildAnimatedListSection(),
             TomSizedBox(height: 32),
 
             // Section 3: Reorderable & Dismissible
-            _SectionHeader(
-              tomId: 'section.interactive',
-            ),
+            _SectionHeader(tomId: 'section.interactive'),
             TomSizedBox(height: 16),
             _buildReorderableSection(),
             TomSizedBox(height: 24),
@@ -94,9 +87,7 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
             TomSizedBox(height: 32),
 
             // Section 4: Wheel Scroll View
-            _SectionHeader(
-              tomId: 'section.wheel',
-            ),
+            _SectionHeader(tomId: 'section.wheel'),
             TomSizedBox(height: 16),
             _buildWheelScrollViewSection(),
             TomSizedBox(height: 48),
@@ -202,9 +193,7 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
                 child: TomListView.separated(
                   padding: const EdgeInsets.all(8),
                   itemCount: 20,
-                  separatorBuilder: (context, index) => TomDivider(
-                    indent: 56,
-                  ),
+                  separatorBuilder: (context, index) => TomDivider(indent: 56),
                   itemBuilder: (context, index) => TomListTile(
                     leading: TomCircleAvatar(
                       backgroundColor: Colors.primaries[index % 18],
@@ -296,13 +285,15 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
               ),
               TomOutlinedButton(
                 tomId: 'animatedList.removeFirst',
-                onPressed:
-                    _animatedItems.isNotEmpty ? _removeFirstAnimatedItem : null,
+                onPressed: _animatedItems.isNotEmpty
+                    ? _removeFirstAnimatedItem
+                    : null,
               ),
               TomOutlinedButton(
                 tomId: 'animatedList.removeLast',
-                onPressed:
-                    _animatedItems.isNotEmpty ? _removeLastAnimatedItem : null,
+                onPressed: _animatedItems.isNotEmpty
+                    ? _removeLastAnimatedItem
+                    : null,
               ),
             ],
           ),
@@ -345,8 +336,8 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
           TomText(
             tomId: 'animatedList.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -389,10 +380,7 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
         ),
         child: FadeTransition(
           opacity: animation,
-          child: _AnimatedListItem(
-            title: removedItem,
-            onRemove: () {},
-          ),
+          child: _AnimatedListItem(title: removedItem, onRemove: () {}),
         ),
       ),
       duration: const Duration(milliseconds: 300),
@@ -439,20 +427,20 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     child: TomListTile(
                       leading: TomCircleAvatar(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.primaryContainer,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
                         child: TomText(
                           text: '${i + 1}',
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
                           ),
                         ),
                       ),
                       titleText: _reorderableItems[i],
-                      subtitle:
-                          TomText(text: 'Long press and drag to reorder'),
+                      subtitle: TomText(text: 'Long press and drag to reorder'),
                       trailing: ReorderableDragStartListener(
                         index: i,
                         child: TomIcon(
@@ -469,8 +457,8 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
           TomText(
             tomId: 'reorderable.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -591,13 +579,14 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           child: TomListTile(
                             leading: TomCircleAvatar(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.secondaryContainer,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.secondaryContainer,
                               child: TomIcon(
                                 icon: Icons.mail,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSecondaryContainer,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSecondaryContainer,
                               ),
                             ),
                             titleText: item,
@@ -614,8 +603,8 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
           TomText(
             tomId: 'dismissible.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -697,10 +686,8 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
                                       : FontWeight.normal,
                                   color: isSelected
                                       ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.6),
+                                      : Theme.of(context).colorScheme.onSurface
+                                            .withValues(alpha: 0.6),
                                 ),
                               ),
                             );
@@ -780,9 +767,8 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
                 TomText(
                   text: 'Selected: ${months[_selectedWheelItem]}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
                 ),
               ],
             ),
@@ -824,11 +810,11 @@ class _ListsDemoContentState extends TomState<_ListsDemoContent>
                       width: 200,
                       height: 50,
                       decoration: BoxDecoration(
-                        color: Colors.primaries[index % 18].withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(25),
-                        border: Border.all(
-                          color: Colors.primaries[index % 18],
+                        color: Colors.primaries[index % 18].withValues(
+                          alpha: 0.2,
                         ),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(color: Colors.primaries[index % 18]),
                       ),
                       alignment: Alignment.center,
                       child: TomText(
@@ -860,11 +846,7 @@ class _ListTileItem extends TomStatelessWidget {
   final String subtitle;
   final Widget? leading;
 
-  _ListTileItem({
-    required this.title,
-    required this.subtitle,
-    this.leading,
-  });
+  _ListTileItem({required this.title, required this.subtitle, this.leading});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -884,10 +866,7 @@ class _AnimatedListItem extends TomStatelessWidget {
   final String title;
   final VoidCallback onRemove;
 
-  _AnimatedListItem({
-    required this.title,
-    required this.onRemove,
-  });
+  _AnimatedListItem({required this.title, required this.onRemove});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -920,9 +899,7 @@ class _AnimatedListItem extends TomStatelessWidget {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -966,10 +943,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

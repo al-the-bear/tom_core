@@ -151,4 +151,3 @@ class DynamicResizeDemo extends StatelessWidget {
     );
   }
 }
-

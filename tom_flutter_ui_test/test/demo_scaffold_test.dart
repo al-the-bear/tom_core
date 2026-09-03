@@ -22,11 +22,13 @@ void main() {
   // private `_DemoScaffoldState`.
   AclDirection? scopeDir;
   TextDirection? textDir;
-  Widget probe() => Builder(builder: (context) {
-        scopeDir = AclDirectionScope.maybeOf(context);
-        textDir = Directionality.of(context);
-        return const Text('probe-body');
-      });
+  Widget probe() => Builder(
+    builder: (context) {
+      scopeDir = AclDirectionScope.maybeOf(context);
+      textDir = Directionality.of(context);
+      return const Text('probe-body');
+    },
+  );
 
   setUp(() {
     scopeDir = null;
@@ -34,8 +36,9 @@ void main() {
   });
 
   group('DemoTile.onTap', () {
-    testWidgets('pushes a DemoScaffold-wrapped route for the tapped tile',
-        (tester) async {
+    testWidgets('pushes a DemoScaffold-wrapped route for the tapped tile', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -66,7 +69,10 @@ void main() {
       expect(find.text('probe-body'), findsOneWidget);
       // AppBar title == tile title, and a back button proves a route was pushed.
       expect(
-        find.descendant(of: find.byType(AppBar), matching: find.text('Widget Showcase')),
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Widget Showcase'),
+        ),
         findsOneWidget,
       );
       expect(find.byType(BackButton), findsOneWidget);
@@ -74,8 +80,9 @@ void main() {
   });
 
   group('DemoScaffold RTL toggle', () {
-    testWidgets('defaults to LTR and wraps the body in an LTR scope',
-        (tester) async {
+    testWidgets('defaults to LTR and wraps the body in an LTR scope', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: DemoScaffold(title: 'T', child: probe()),
@@ -98,10 +105,16 @@ void main() {
       await tester.tap(find.byType(Switch));
       await tester.pump();
 
-      expect(scopeDir, AclDirection.rtl,
-          reason: 'the AclDirectionScope re-wraps the body as RTL');
-      expect(textDir, TextDirection.rtl,
-          reason: 'the body Directionality flips to RTL');
+      expect(
+        scopeDir,
+        AclDirection.rtl,
+        reason: 'the AclDirectionScope re-wraps the body as RTL',
+      );
+      expect(
+        textDir,
+        TextDirection.rtl,
+        reason: 'the body Directionality flips to RTL',
+      );
       expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
 
       // Toggling back returns to LTR.
@@ -111,8 +124,9 @@ void main() {
       expect(textDir, TextDirection.ltr);
     });
 
-    testWidgets('seeds the direction from the ambient locale (RTL)',
-        (tester) async {
+    testWidgets('seeds the direction from the ambient locale (RTL)', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Directionality(
@@ -131,11 +145,7 @@ void main() {
     testWidgets('omits the toggle when showRtlToggle is false', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: DemoScaffold(
-            title: 'T',
-            showRtlToggle: false,
-            child: probe(),
-          ),
+          home: DemoScaffold(title: 'T', showRtlToggle: false, child: probe()),
         ),
       );
 

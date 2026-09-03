@@ -41,8 +41,7 @@ class SwappableSource<T> extends TomSelectableSource<T> {
   }
 
   @override
-  Future<List<SelectableItem<T>>> getItems() async =>
-      List.unmodifiable(_items);
+  Future<List<SelectableItem<T>>> getItems() async => List.unmodifiable(_items);
 
   @override
   Stream<List<SelectableItem<T>>> get itemsStream => _controller.stream;
@@ -61,11 +60,10 @@ Widget _panel({required String title, required List<Widget> children}) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              )),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          ),
           const SizedBox(height: 8),
           ...children,
         ],
@@ -227,15 +225,17 @@ class SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
                     'TomList<TomString>.',
                   ),
                   const SizedBox(height: 8),
-                  Row(children: [
-                    FilledButton.icon(
-                      onPressed: _toggleFilter,
-                      icon: const Icon(Icons.filter_alt),
-                      label: Text(_filtered
-                          ? 'Show all items'
-                          : 'Show filtered source'),
-                    ),
-                  ]),
+                  Row(
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _toggleFilter,
+                        icon: const Icon(Icons.filter_alt),
+                        label: Text(
+                          _filtered ? 'Show all items' : 'Show filtered source',
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -325,23 +325,41 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
   void initState() {
     super.initState();
 
-    _acceptTerms = TomFormBoolCheckbox('acceptTerms', false,
-        labelTextOverride: 'Accept terms');
-    _notifications = TomFormBoolSwitch('notify', false,
-        labelTextOverride: 'Enable notifications');
-    _mode = TomFormBoolToggle('mode', true,
-        labelTextOverride: 'Mode',
-        onLabelOverride: 'Dark',
-        offLabelOverride: 'Light');
+    _acceptTerms = TomFormBoolCheckbox(
+      'acceptTerms',
+      false,
+      labelTextOverride: 'Accept terms',
+    );
+    _notifications = TomFormBoolSwitch(
+      'notify',
+      false,
+      labelTextOverride: 'Enable notifications',
+    );
+    _mode = TomFormBoolToggle(
+      'mode',
+      true,
+      labelTextOverride: 'Mode',
+      onLabelOverride: 'Dark',
+      offLabelOverride: 'Light',
+    );
 
-    _sharedCheckbox = TomFormBoolCheckbox('shared1', false,
-        labelTextOverride: 'Shared (Checkbox)');
-    _sharedSwitch = TomFormBoolSwitch('shared2', false,
-        labelTextOverride: 'Shared (Switch)');
-    _sharedToggle = TomFormBoolToggle('shared3', false,
-        labelTextOverride: 'Shared (Toggle)',
-        onLabelOverride: 'On',
-        offLabelOverride: 'Off');
+    _sharedCheckbox = TomFormBoolCheckbox(
+      'shared1',
+      false,
+      labelTextOverride: 'Shared (Checkbox)',
+    );
+    _sharedSwitch = TomFormBoolSwitch(
+      'shared2',
+      false,
+      labelTextOverride: 'Shared (Switch)',
+    );
+    _sharedToggle = TomFormBoolToggle(
+      'shared3',
+      false,
+      labelTextOverride: 'Shared (Toggle)',
+      onLabelOverride: 'On',
+      offLabelOverride: 'Off',
+    );
 
     void sync(bool v) {
       if (_syncing) return;
@@ -365,8 +383,11 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
       _observerCancels.add(() => field.removeObserver(observer));
     }
 
-    _displayName = TomFormStringInput('displayName', 'Alexis',
-        labelTextOverride: 'Display name');
+    _displayName = TomFormStringInput(
+      'displayName',
+      'Alexis',
+      labelTextOverride: 'Display name',
+    );
     _language = TomFormStringDropdown(
       'language',
       'en',
@@ -377,10 +398,16 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
       ]),
       labelTextOverride: 'Language',
     );
-    _darkMode =
-        TomFormBoolCheckbox('darkMode', true, labelTextOverride: 'Dark mode');
-    _analytics = TomFormBoolSwitch('analytics', false,
-        labelTextOverride: 'Anonymous analytics');
+    _darkMode = TomFormBoolCheckbox(
+      'darkMode',
+      true,
+      labelTextOverride: 'Dark mode',
+    );
+    _analytics = TomFormBoolSwitch(
+      'analytics',
+      false,
+      labelTextOverride: 'Anonymous analytics',
+    );
   }
 
   @override
@@ -405,27 +432,37 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
           _sectionTitle(context, 'Independent bool fields'),
           _panel(title: 'Checkbox', children: [_acceptTerms.widget]),
           _panel(title: 'Switch', children: [_notifications.widget]),
-          _panel(title: 'Toggle (SegmentedButton<bool>)',
-              children: [_mode.widget]),
-          _sectionTitle(context,
-              'Three concretes kept in lock-step via observer sync'),
-          _panel(title: 'Checkbox / Switch / Toggle', children: [
-            _sharedCheckbox.widget,
-            const SizedBox(height: 4),
-            _sharedSwitch.widget,
-            const SizedBox(height: 4),
-            _sharedToggle.widget,
-          ]),
+          _panel(
+            title: 'Toggle (SegmentedButton<bool>)',
+            children: [_mode.widget],
+          ),
+          _sectionTitle(
+            context,
+            'Three concretes kept in lock-step via observer sync',
+          ),
+          _panel(
+            title: 'Checkbox / Switch / Toggle',
+            children: [
+              _sharedCheckbox.widget,
+              const SizedBox(height: 4),
+              _sharedSwitch.widget,
+              const SizedBox(height: 4),
+              _sharedToggle.widget,
+            ],
+          ),
           _sectionTitle(context, 'Settings layout — strings + booleans'),
-          _panel(title: 'Profile', children: [
-            _displayName.widget,
-            const SizedBox(height: 8),
-            _language.widget,
-            const SizedBox(height: 8),
-            _darkMode.widget,
-            const SizedBox(height: 8),
-            _analytics.widget,
-          ]),
+          _panel(
+            title: 'Profile',
+            children: [
+              _displayName.widget,
+              const SizedBox(height: 8),
+              _language.widget,
+              const SizedBox(height: 8),
+              _darkMode.widget,
+              const SizedBox(height: 8),
+              _analytics.widget,
+            ],
+          ),
         ],
       ),
     );
@@ -443,8 +480,7 @@ class ComplexBreakpointsDemo extends StatefulWidget {
   const ComplexBreakpointsDemo({super.key});
 
   @override
-  State<ComplexBreakpointsDemo> createState() =>
-      _ComplexBreakpointsDemoState();
+  State<ComplexBreakpointsDemo> createState() => _ComplexBreakpointsDemoState();
 }
 
 class _ComplexBreakpointsDemoState extends State<ComplexBreakpointsDemo> {
@@ -457,8 +493,11 @@ class _ComplexBreakpointsDemoState extends State<ComplexBreakpointsDemo> {
     super.initState();
     _name = TomFormStringInput('name', '', labelTextOverride: 'Name');
     _email = TomFormStringInput('email', '', labelTextOverride: 'Email');
-    _subscribed = TomFormBoolCheckbox('subscribed', false,
-        labelTextOverride: 'Subscribe to newsletter');
+    _subscribed = TomFormBoolCheckbox(
+      'subscribed',
+      false,
+      labelTextOverride: 'Subscribe to newsletter',
+    );
   }
 
   @override
@@ -480,58 +519,64 @@ class _ComplexBreakpointsDemoState extends State<ComplexBreakpointsDemo> {
         (480.0, _comfortable),
         (900.0, _spacious),
       ],
-      child: LayoutBuilder(builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    'Demo G — Complex Breakpoint Scenarios.\n'
-                    'Current width: ${width.toStringAsFixed(0)}px — '
-                    '${_bpLabel(width)} style.',
-                    style: Theme.of(context).textTheme.bodyMedium,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'Demo G — Complex Breakpoint Scenarios.\n'
+                      'Current width: ${width.toStringAsFixed(0)}px — '
+                      '${_bpLabel(width)} style.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
                 ),
-              ),
-              _sectionTitle(context, 'Outer-scope breakpoints'),
-              _panel(title: 'Fields react to style breakpoints', children: [
-                _name.widget,
-                const SizedBox(height: 8),
-                _email.widget,
-                const SizedBox(height: 8),
-                _subscribed.widget,
-              ]),
-              _sectionTitle(context, 'Nested scope — theme-only override'),
-              TomFormStyleScope(
-                // style: null → fall through to the enclosing scope's style,
-                // only apply a theme override here.
-                style: null,
-                themeSpec: const TomThemeSpec(
-                  primary: Color(0xFF2E7D32),
-                  secondary: Color(0xFF1B5E20),
-                ),
-                child: _panel(
-                  title: 'Recoloured subtree (same form style)',
+                _sectionTitle(context, 'Outer-scope breakpoints'),
+                _panel(
+                  title: 'Fields react to style breakpoints',
                   children: [
                     _name.widget,
+                    const SizedBox(height: 8),
+                    _email.widget,
                     const SizedBox(height: 8),
                     _subscribed.widget,
                   ],
                 ),
-              ),
-              _sectionTitle(context, 'Two-column → one-column collapse'),
-              _panel(title: 'Collapses under 600px', children: [
-                _collapseRow(width, _name.widget, _email.widget),
-              ]),
-            ],
-          ),
-        );
-      }),
+                _sectionTitle(context, 'Nested scope — theme-only override'),
+                TomFormStyleScope(
+                  // style: null → fall through to the enclosing scope's style,
+                  // only apply a theme override here.
+                  style: null,
+                  themeSpec: const TomThemeSpec(
+                    primary: Color(0xFF2E7D32),
+                    secondary: Color(0xFF1B5E20),
+                  ),
+                  child: _panel(
+                    title: 'Recoloured subtree (same form style)',
+                    children: [
+                      _name.widget,
+                      const SizedBox(height: 8),
+                      _subscribed.widget,
+                    ],
+                  ),
+                ),
+                _sectionTitle(context, 'Two-column → one-column collapse'),
+                _panel(
+                  title: 'Collapses under 600px',
+                  children: [_collapseRow(width, _name.widget, _email.widget)],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -626,22 +671,29 @@ class _ComplexAuthDemoState extends State<ComplexAuthDemo> {
       'emailLive',
       '',
       labelTextOverride: 'Email',
-      uiStateController: TomUIStateController(resolve: (current, _) {
-        // Disable the field when the value doesn't look like an email.
-        final v = _emailLive.get();
-        if (v.isEmpty) return current;
-        return v.contains('@') ? current : TomAuthState.disabled;
-      }),
+      uiStateController: TomUIStateController(
+        resolve: (current, _) {
+          // Disable the field when the value doesn't look like an email.
+          final v = _emailLive.get();
+          if (v.isEmpty) return current;
+          return v.contains('@') ? current : TomAuthState.disabled;
+        },
+      ),
     );
-    _phoneVerified = TomFormBoolCheckbox('phoneVerified', false,
-        labelTextOverride: 'Phone verified');
+    _phoneVerified = TomFormBoolCheckbox(
+      'phoneVerified',
+      false,
+      labelTextOverride: 'Phone verified',
+    );
     _phoneLive = TomFormStringInput(
       'phoneLive',
       '',
       labelTextOverride: 'Phone',
-      uiStateController: TomUIStateController(resolve: (current, _) {
-        return _phoneVerified.get() ? TomAuthState.read : current;
-      }),
+      uiStateController: TomUIStateController(
+        resolve: (current, _) {
+          return _phoneVerified.get() ? TomAuthState.read : current;
+        },
+      ),
     );
     // Rebuild when either field changes so the controller re-runs.
     for (final field in <TomField>[_emailLive, _phoneLive, _phoneVerified]) {
@@ -649,27 +701,55 @@ class _ComplexAuthDemoState extends State<ComplexAuthDemo> {
       _observerCancels.add(() => field.removeObserver(observer));
     }
 
-    _groupAll = TomAuthorizationGroup('groupAll',
-        mode: AuthGroupMode.controlsAll);
-    _groupWidest = TomAuthorizationGroup('groupWidest',
-        mode: AuthGroupMode.controlsWidest);
-    _groupNarrowest = TomAuthorizationGroup('groupNarrowest',
-        mode: AuthGroupMode.controlsNarrowest);
+    _groupAll = TomAuthorizationGroup(
+      'groupAll',
+      mode: AuthGroupMode.controlsAll,
+    );
+    _groupWidest = TomAuthorizationGroup(
+      'groupWidest',
+      mode: AuthGroupMode.controlsWidest,
+    );
+    _groupNarrowest = TomAuthorizationGroup(
+      'groupNarrowest',
+      mode: AuthGroupMode.controlsNarrowest,
+    );
     _groupFields = [
-      TomFormStringInput('fAll1', '',
-          labelTextOverride: 'controlsAll #1', tomGroup: _groupAll),
-      TomFormStringInput('fAll2', '',
-          labelTextOverride: 'controlsAll #2', tomGroup: _groupAll),
-      TomFormStringInput('fW1', '',
-          labelTextOverride: 'controlsWidest #1', tomGroup: _groupWidest),
-      TomFormStringInput('fW2', '',
-          labelTextOverride: 'controlsWidest #2', tomGroup: _groupWidest),
-      TomFormStringInput('fN1', '',
-          labelTextOverride: 'controlsNarrowest #1',
-          tomGroup: _groupNarrowest),
-      TomFormStringInput('fN2', '',
-          labelTextOverride: 'controlsNarrowest #2',
-          tomGroup: _groupNarrowest),
+      TomFormStringInput(
+        'fAll1',
+        '',
+        labelTextOverride: 'controlsAll #1',
+        tomGroup: _groupAll,
+      ),
+      TomFormStringInput(
+        'fAll2',
+        '',
+        labelTextOverride: 'controlsAll #2',
+        tomGroup: _groupAll,
+      ),
+      TomFormStringInput(
+        'fW1',
+        '',
+        labelTextOverride: 'controlsWidest #1',
+        tomGroup: _groupWidest,
+      ),
+      TomFormStringInput(
+        'fW2',
+        '',
+        labelTextOverride: 'controlsWidest #2',
+        tomGroup: _groupWidest,
+      ),
+      TomFormStringInput(
+        'fN1',
+        '',
+        labelTextOverride: 'controlsNarrowest #1',
+        tomGroup: _groupNarrowest,
+      ),
+      TomFormStringInput(
+        'fN2',
+        '',
+        labelTextOverride: 'controlsNarrowest #2',
+        tomGroup: _groupNarrowest,
+      ),
     ];
 
     _addrStreet = TomFormStringInput(
@@ -714,27 +794,33 @@ class _ComplexAuthDemoState extends State<ComplexAuthDemo> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionTitle(context, 'Action-icon gated by auth'),
-          _panel(title: 'Search field', children: [
-            Row(children: [
-              Checkbox(
-                value: _searchFull,
-                onChanged: (v) {
-                  setState(() {
-                    _searchFull = v ?? true;
-                    _search.authorizer = TomAuthorizer.fixed(
-                      _searchFull ? TomAuthState.full : TomAuthState.read,
-                    );
-                  });
-                },
+          _panel(
+            title: 'Search field',
+            children: [
+              Row(
+                children: [
+                  Checkbox(
+                    value: _searchFull,
+                    onChanged: (v) {
+                      setState(() {
+                        _searchFull = v ?? true;
+                        _search.authorizer = TomAuthorizer.fixed(
+                          _searchFull ? TomAuthState.full : TomAuthState.read,
+                        );
+                      });
+                    },
+                  ),
+                  const Text('auth = full (uncheck for read-only)'),
+                ],
               ),
-              const Text('auth = full (uncheck for read-only)'),
-            ]),
-            const SizedBox(height: 8),
-            _search.widget,
-          ]),
+              const SizedBox(height: 8),
+              _search.widget,
+            ],
+          ),
           _sectionTitle(context, 'UIStateController cross-field dependency'),
           _panel(
-            title: 'Email disables on bad format; phone goes read-only when '
+            title:
+                'Email disables on bad format; phone goes read-only when '
                 'verified',
             children: [
               _emailLive.widget,
@@ -745,84 +831,96 @@ class _ComplexAuthDemoState extends State<ComplexAuthDemo> {
             ],
           ),
           _sectionTitle(context, 'Group controls — all three modes'),
-          _panel(title: 'Toggle group auth', children: [
-            for (final (label, current, setter) in [
-              (
-                'controlsAll',
-                _groupAllState,
-                (TomAuthState s) => setState(() => _groupAllState = s),
-              ),
-              (
-                'controlsWidest',
-                _groupWidestState,
-                (TomAuthState s) => setState(() => _groupWidestState = s),
-              ),
-              (
-                'controlsNarrowest',
-                _groupNarrowestState,
-                (TomAuthState s) => setState(() => _groupNarrowestState = s),
-              ),
-            ])
-              Row(children: [
-                SizedBox(width: 170, child: Text(label)),
-                DropdownButton<TomAuthState>(
-                  value: current,
-                  onChanged: (state) {
-                    if (state == null) return;
-                    setter(state);
-                    TomAuthorization.adapter =
-                        _GroupStateAdapter({
-                      _groupAll.groupId: _groupAllState,
-                      _groupWidest.groupId: _groupWidestState,
-                      _groupNarrowest.groupId: _groupNarrowestState,
-                    });
-                  },
-                  items: const [
-                    DropdownMenuItem(
-                      value: TomAuthState.full,
-                      child: Text('full'),
-                    ),
-                    DropdownMenuItem(
-                      value: TomAuthState.read,
-                      child: Text('read'),
-                    ),
-                    DropdownMenuItem(
-                      value: TomAuthState.disabled,
-                      child: Text('disabled'),
-                    ),
-                    DropdownMenuItem(
-                      value: TomAuthState.none,
-                      child: Text('none'),
+          _panel(
+            title: 'Toggle group auth',
+            children: [
+              for (final (label, current, setter) in [
+                (
+                  'controlsAll',
+                  _groupAllState,
+                  (TomAuthState s) => setState(() => _groupAllState = s),
+                ),
+                (
+                  'controlsWidest',
+                  _groupWidestState,
+                  (TomAuthState s) => setState(() => _groupWidestState = s),
+                ),
+                (
+                  'controlsNarrowest',
+                  _groupNarrowestState,
+                  (TomAuthState s) => setState(() => _groupNarrowestState = s),
+                ),
+              ])
+                Row(
+                  children: [
+                    SizedBox(width: 170, child: Text(label)),
+                    DropdownButton<TomAuthState>(
+                      value: current,
+                      onChanged: (state) {
+                        if (state == null) return;
+                        setter(state);
+                        TomAuthorization.adapter = _GroupStateAdapter({
+                          _groupAll.groupId: _groupAllState,
+                          _groupWidest.groupId: _groupWidestState,
+                          _groupNarrowest.groupId: _groupNarrowestState,
+                        });
+                      },
+                      items: const [
+                        DropdownMenuItem(
+                          value: TomAuthState.full,
+                          child: Text('full'),
+                        ),
+                        DropdownMenuItem(
+                          value: TomAuthState.read,
+                          child: Text('read'),
+                        ),
+                        DropdownMenuItem(
+                          value: TomAuthState.disabled,
+                          child: Text('disabled'),
+                        ),
+                        DropdownMenuItem(
+                          value: TomAuthState.none,
+                          child: Text('none'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ]),
-            const SizedBox(height: 8),
-            for (final f in _groupFields) ...[
-              f.widget,
-              const SizedBox(height: 4),
-            ],
-          ]),
-          _sectionTitle(context, 'Subform auth as ceiling'),
-          _panel(title: 'Parent narrows child', children: [
-            DropdownButton<TomAuthState>(
-              value: _parentAuth,
-              onChanged: (s) => setState(() => _parentAuth = s!),
-              items: const [
-                DropdownMenuItem(
-                    value: TomAuthState.full, child: Text('Parent: full')),
-                DropdownMenuItem(
-                    value: TomAuthState.read, child: Text('Parent: read')),
-                DropdownMenuItem(
-                    value: TomAuthState.disabled,
-                    child: Text('Parent: disabled')),
+              const SizedBox(height: 8),
+              for (final f in _groupFields) ...[
+                f.widget,
+                const SizedBox(height: 4),
               ],
-            ),
-            const SizedBox(height: 8),
-            _addrStreet.widget,
-            const SizedBox(height: 8),
-            _addrCity.widget,
-          ]),
+            ],
+          ),
+          _sectionTitle(context, 'Subform auth as ceiling'),
+          _panel(
+            title: 'Parent narrows child',
+            children: [
+              DropdownButton<TomAuthState>(
+                value: _parentAuth,
+                onChanged: (s) => setState(() => _parentAuth = s!),
+                items: const [
+                  DropdownMenuItem(
+                    value: TomAuthState.full,
+                    child: Text('Parent: full'),
+                  ),
+                  DropdownMenuItem(
+                    value: TomAuthState.read,
+                    child: Text('Parent: read'),
+                  ),
+                  DropdownMenuItem(
+                    value: TomAuthState.disabled,
+                    child: Text('Parent: disabled'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _addrStreet.widget,
+              const SizedBox(height: 8),
+              _addrCity.widget,
+            ],
+          ),
         ],
       ),
     );

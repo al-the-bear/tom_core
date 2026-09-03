@@ -116,7 +116,9 @@ class LocaleSettingsService extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _localeKey, '${locale.languageCode}_${locale.countryCode}');
+      _localeKey,
+      '${locale.languageCode}_${locale.countryCode}',
+    );
   }
 }
 
@@ -124,10 +126,7 @@ class LocaleSettingsService extends ChangeNotifier {
 class LanguageSelectorButton extends StatelessWidget {
   final LocaleSettingsService localeService;
 
-  const LanguageSelectorButton({
-    super.key,
-    required this.localeService,
-  });
+  const LanguageSelectorButton({super.key, required this.localeService});
 
   @override
   Widget build(BuildContext context) {
@@ -136,10 +135,7 @@ class LanguageSelectorButton extends StatelessWidget {
       builder: (context, _) {
         final current = localeService.currentOption;
         return IconButton(
-          icon: Text(
-            current.flag,
-            style: const TextStyle(fontSize: 24),
-          ),
+          icon: Text(current.flag, style: const TextStyle(fontSize: 24)),
           tooltip: 'Language: ${current.displayName}',
           onPressed: () => _showLanguageDialog(context),
         );
@@ -168,8 +164,9 @@ class LanguageSelectorButton extends StatelessWidget {
                 title: Text(option.displayName),
                 subtitle: Text(option.code),
                 selected: isSelected,
-                selectedTileColor:
-                    Theme.of(context).colorScheme.primaryContainer,
+                selectedTileColor: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer,
                 onTap: () {
                   localeService.setLocale(option.locale);
                   Navigator.of(context).pop();

@@ -122,20 +122,11 @@ class GroupedSectionProvider extends TomScreenElementsProviderBase {
 class ProfileSectionProvider extends TomScreenElementsProviderBase {
   ProfileSectionProvider() : super('profile');
 
-  late final nameField = TomTextField(
-    tomId: 'name',
-    scope: this,
-  );
+  late final nameField = TomTextField(tomId: 'name', scope: this);
 
-  late final emailField = TomTextField(
-    tomId: 'email',
-    scope: this,
-  );
+  late final emailField = TomTextField(tomId: 'email', scope: this);
 
-  late final roleField = TomTextField(
-    tomId: 'role',
-    scope: this,
-  );
+  late final roleField = TomTextField(tomId: 'role', scope: this);
 
   late final saveButton = TomElevatedButton(
     tomId: 'save',
@@ -333,7 +324,10 @@ class _AuthorizationDemoContentState
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
                 Text(
                   description,
                   style: TextStyle(
@@ -385,10 +379,7 @@ class _AuthorizationDemoContentState
             ],
           ),
           TomSizedBox(height: 16),
-          Text(
-            'Basic Features',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Basic Features', style: Theme.of(context).textTheme.titleSmall),
           TomSizedBox(height: 8),
           TomWrap(
             spacing: 8,
@@ -406,21 +397,22 @@ class _AuthorizationDemoContentState
   Widget _buildSectionLevelDemo(BuildContext context) {
     return _DemoCard(
       tomId: 'card.sectionLevel',
-      child: TomAclBuilder<ProfileSectionProvider>(
-        id: 'profileAcl',
-        elementProvider: _profileProvider,
-        title: 'User Profile',
-      )
-          .append((p) => p.nameField)
-          .append((p) => p.emailField, dist: 16)
-          .newRow()
-          .append((p) => p.roleField)
-          .newRow()
-          .gapRow()
-          .newRow()
-          .gap()
-          .append((p) => p.saveButton)
-          .build(context),
+      child:
+          TomAclBuilder<ProfileSectionProvider>(
+                id: 'profileAcl',
+                elementProvider: _profileProvider,
+                title: 'User Profile',
+              )
+              .append((p) => p.nameField)
+              .append((p) => p.emailField, dist: 16)
+              .newRow()
+              .append((p) => p.roleField)
+              .newRow()
+              .gapRow()
+              .newRow()
+              .gap()
+              .append((p) => p.saveButton)
+              .build(context),
     );
   }
 
@@ -443,57 +435,59 @@ class _AuthorizationDemoContentState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final path in paths) ...[
-            Builder(builder: (context) {
-              final auth = TomAuthorization.resolveAuth(path);
-              final stateLabel = !auth.isVisible
-                  ? 'HIDDEN'
-                  : auth == TomAuthState.read
-                      ? 'READONLY'
-                      : 'FULL ACCESS';
-              final stateColor = !auth.isVisible
-                  ? Colors.red
-                  : auth == TomAuthState.read
-                      ? Colors.orange
-                      : Colors.green;
+            Builder(
+              builder: (context) {
+                final auth = TomAuthorization.resolveAuth(path);
+                final stateLabel = !auth.isVisible
+                    ? 'HIDDEN'
+                    : auth == TomAuthState.read
+                    ? 'READONLY'
+                    : 'FULL ACCESS';
+                final stateColor = !auth.isVisible
+                    ? Colors.red
+                    : auth == TomAuthState.read
+                    ? Colors.orange
+                    : Colors.green;
 
-              return TomPadding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: TomRow(
-                  children: [
-                    TomSizedBox(
-                      width: 200,
-                      child: Text(
-                        path,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontFamily: 'monospace',
+                return TomPadding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: TomRow(
+                    children: [
+                      TomSizedBox(
+                        width: 200,
+                        child: Text(
+                          path,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontFamily: 'monospace',
+                          ),
                         ),
                       ),
-                    ),
-                    TomContainer(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: stateColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: stateColor.withValues(alpha: 0.5),
+                      TomContainer(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: stateColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: stateColor.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Text(
+                          stateLabel,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.bold,
+                            color: stateColor,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        stateLabel,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.bold,
-                          color: stateColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+                    ],
+                  ),
+                );
+              },
+            ),
           ],
         ],
       ),

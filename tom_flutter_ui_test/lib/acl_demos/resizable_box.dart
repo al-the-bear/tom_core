@@ -58,142 +58,150 @@ class _ResizableBoxState extends State<ResizableBox> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      _width ??=
-          constraints.hasBoundedWidth ? constraints.maxWidth : 400.0;
-      final w = _width!.clamp(_minW, double.infinity);
-      final h = _height;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _width ??= constraints.hasBoundedWidth ? constraints.maxWidth : 400.0;
+        final w = _width!.clamp(_minW, double.infinity);
+        final h = _height;
 
-      final Widget contentWithBorder = widget.showBorder
-          ? Container(
-              decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey)),
-              child: KeyedSubtree(key: _childKey, child: widget.child),
-            )
-          : KeyedSubtree(key: _childKey, child: widget.child);
-      // Until the user drags vertically, the outer box shrinks to the
-      // child's intrinsic height (SizedBox(height: null) is loose, so
-      // the content determines the Stack's cross-axis extent via its
-      // own natural size). Afterwards (h != null) a fixed height is
-      // pinned so the drag handle can freely resize larger or smaller.
-      final Widget sizedContent = h != null
-          ? SizedBox(width: w, height: h, child: contentWithBorder)
-          : SizedBox(width: w, child: contentWithBorder);
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          sizedContent,
-
-          // ── Right-edge drag handle ───────────────────────────────────
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: _grip,
-            width: _grip,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.resizeLeftRight,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanStart: (d) {
-                  _panStartX = d.globalPosition.dx;
-                  _panStartW = _width;
-                },
-                onPanUpdate: (d) => setState(() {
-                  _width = ((_panStartW ?? w) +
-                          d.globalPosition.dx -
-                          (_panStartX ?? d.globalPosition.dx))
-                      .clamp(_minW, double.infinity);
-                }),
-              ),
-            ),
-          ),
-
-          // ── Bottom-edge drag handle ──────────────────────────────────
-          Positioned(
-            left: 0,
-            right: _grip,
-            bottom: 0,
-            height: _grip,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.resizeUpDown,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanStart: (d) {
-                  _panStartY = d.globalPosition.dy;
-                  // First drag: capture the current intrinsic height so
-                  // the pointer follows 1:1 even when we started in
-                  // auto-sized mode.
-                  _panStartH = _height ?? _captureIntrinsicHeight();
-                },
-                onPanUpdate: (d) => setState(() {
-                  _height = ((_panStartH ?? h ?? _captureIntrinsicHeight()) +
-                          d.globalPosition.dy -
-                          (_panStartY ?? d.globalPosition.dy))
-                      .clamp(_minH, double.infinity);
-                }),
-              ),
-            ),
-          ),
-
-          // ── Corner drag handle (visual grip + resize both axes) ──────
-          Positioned(
-            right: 0,
-            bottom: 0,
-            width: _grip * 2,
-            height: _grip * 2,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.resizeUpLeftDownRight,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanStart: (d) {
-                  _panStartX = d.globalPosition.dx;
-                  _panStartW = _width;
-                  _panStartY = d.globalPosition.dy;
-                  _panStartH = _height ?? _captureIntrinsicHeight();
-                },
-                onPanUpdate: (d) => setState(() {
-                  _width = ((_panStartW ?? w) +
-                          d.globalPosition.dx -
-                          (_panStartX ?? d.globalPosition.dx))
-                      .clamp(_minW, double.infinity);
-                  _height = ((_panStartH ?? h ?? _captureIntrinsicHeight()) +
-                          d.globalPosition.dy -
-                          (_panStartY ?? d.globalPosition.dy))
-                      .clamp(_minH, double.infinity);
-                }),
-                child: CustomPaint(painter: _GripPainter()),
-              ),
-            ),
-          ),
-
-          // ── Live size chip ───────────────────────────────────────────
-          Positioned(
-            right: _grip * 2 + 2,
-            bottom: _grip + 2,
-            child: IgnorePointer(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+        final Widget contentWithBorder = widget.showBorder
+            ? Container(
                 decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(2),
+                  border: Border.all(color: Colors.grey),
                 ),
-                child: Text(
-                  h == null
-                      ? '${w.round()} × auto'
-                      : '${w.round()} × ${h.round()}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    height: 1.0,
+                child: KeyedSubtree(key: _childKey, child: widget.child),
+              )
+            : KeyedSubtree(key: _childKey, child: widget.child);
+        // Until the user drags vertically, the outer box shrinks to the
+        // child's intrinsic height (SizedBox(height: null) is loose, so
+        // the content determines the Stack's cross-axis extent via its
+        // own natural size). Afterwards (h != null) a fixed height is
+        // pinned so the drag handle can freely resize larger or smaller.
+        final Widget sizedContent = h != null
+            ? SizedBox(width: w, height: h, child: contentWithBorder)
+            : SizedBox(width: w, child: contentWithBorder);
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            sizedContent,
+
+            // ── Right-edge drag handle ───────────────────────────────────
+            Positioned(
+              top: 0,
+              right: 0,
+              bottom: _grip,
+              width: _grip,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeLeftRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanStart: (d) {
+                    _panStartX = d.globalPosition.dx;
+                    _panStartW = _width;
+                  },
+                  onPanUpdate: (d) => setState(() {
+                    _width =
+                        ((_panStartW ?? w) +
+                                d.globalPosition.dx -
+                                (_panStartX ?? d.globalPosition.dx))
+                            .clamp(_minW, double.infinity);
+                  }),
+                ),
+              ),
+            ),
+
+            // ── Bottom-edge drag handle ──────────────────────────────────
+            Positioned(
+              left: 0,
+              right: _grip,
+              bottom: 0,
+              height: _grip,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeUpDown,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanStart: (d) {
+                    _panStartY = d.globalPosition.dy;
+                    // First drag: capture the current intrinsic height so
+                    // the pointer follows 1:1 even when we started in
+                    // auto-sized mode.
+                    _panStartH = _height ?? _captureIntrinsicHeight();
+                  },
+                  onPanUpdate: (d) => setState(() {
+                    _height =
+                        ((_panStartH ?? h ?? _captureIntrinsicHeight()) +
+                                d.globalPosition.dy -
+                                (_panStartY ?? d.globalPosition.dy))
+                            .clamp(_minH, double.infinity);
+                  }),
+                ),
+              ),
+            ),
+
+            // ── Corner drag handle (visual grip + resize both axes) ──────
+            Positioned(
+              right: 0,
+              bottom: 0,
+              width: _grip * 2,
+              height: _grip * 2,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeUpLeftDownRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanStart: (d) {
+                    _panStartX = d.globalPosition.dx;
+                    _panStartW = _width;
+                    _panStartY = d.globalPosition.dy;
+                    _panStartH = _height ?? _captureIntrinsicHeight();
+                  },
+                  onPanUpdate: (d) => setState(() {
+                    _width =
+                        ((_panStartW ?? w) +
+                                d.globalPosition.dx -
+                                (_panStartX ?? d.globalPosition.dx))
+                            .clamp(_minW, double.infinity);
+                    _height =
+                        ((_panStartH ?? h ?? _captureIntrinsicHeight()) +
+                                d.globalPosition.dy -
+                                (_panStartY ?? d.globalPosition.dy))
+                            .clamp(_minH, double.infinity);
+                  }),
+                  child: CustomPaint(painter: _GripPainter()),
+                ),
+              ),
+            ),
+
+            // ── Live size chip ───────────────────────────────────────────
+            Positioned(
+              right: _grip * 2 + 2,
+              bottom: _grip + 2,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 3,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: Text(
+                    h == null
+                        ? '${w.round()} × auto'
+                        : '${w.round()} × ${h.round()}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      height: 1.0,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      );
-    });
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -218,4 +226,3 @@ class _GripPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

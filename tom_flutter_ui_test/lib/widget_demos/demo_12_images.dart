@@ -22,7 +22,6 @@ class ImagesDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _ImagesDemoContent();
-
   }
 }
 
@@ -77,41 +76,31 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Icons
-            _SectionHeader(
-              tomId: 'section.icons',
-            ),
+            _SectionHeader(tomId: 'section.icons'),
             TomSizedBox(height: 16),
             _buildIconSection(),
             TomSizedBox(height: 32),
 
             // Section 2: Images
-            _SectionHeader(
-              tomId: 'section.images',
-            ),
+            _SectionHeader(tomId: 'section.images'),
             TomSizedBox(height: 16),
             _buildNetworkImageSection(),
             TomSizedBox(height: 32),
 
             // Section 3: Circle Avatars
-            _SectionHeader(
-              tomId: 'section.avatars',
-            ),
+            _SectionHeader(tomId: 'section.avatars'),
             TomSizedBox(height: 16),
             _buildCircleAvatarSection(),
             TomSizedBox(height: 32),
 
             // Section 4: FadeIn Images
-            _SectionHeader(
-              tomId: 'section.fadeIn',
-            ),
+            _SectionHeader(tomId: 'section.fadeIn'),
             TomSizedBox(height: 16),
             _buildFadeInImageSection(),
             TomSizedBox(height: 32),
 
             // Section 5: Animated Icons & Image Effects
-            _SectionHeader(
-              tomId: 'section.animated',
-            ),
+            _SectionHeader(tomId: 'section.animated'),
             TomSizedBox(height: 16),
             _buildAnimatedIconSection(),
             TomSizedBox(height: 24),
@@ -169,21 +158,9 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
             runSpacing: 12,
             children: [
               TomIcon(icon: Icons.favorite, size: 32, color: Colors.red),
-              TomIcon(
-                icon: Icons.star,
-                size: 32,
-                color: Colors.amber,
-              ),
-              TomIcon(
-                icon: Icons.eco,
-                size: 32,
-                color: Colors.green,
-              ),
-              TomIcon(
-                icon: Icons.water_drop,
-                size: 32,
-                color: Colors.blue,
-              ),
+              TomIcon(icon: Icons.star, size: 32, color: Colors.amber),
+              TomIcon(icon: Icons.eco, size: 32, color: Colors.green),
+              TomIcon(icon: Icons.water_drop, size: 32, color: Colors.blue),
               TomIcon(
                 icon: Icons.brightness_high,
                 size: 32,
@@ -276,10 +253,12 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
           TomRow(
             mainAxisSize: MainAxisSize.min,
             children: icons
-                .map((icon) => TomPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: TomIcon(icon: icon, size: 20),
-                    ))
+                .map(
+                  (icon) => TomPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: TomIcon(icon: icon, size: 20),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -383,7 +362,7 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
                 child: CircularProgressIndicator(
                   value: loadingProgress.expectedTotalBytes != null
                       ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
+                            loadingProgress.expectedTotalBytes!
                       : null,
                 ),
               );
@@ -410,10 +389,7 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
           ),
         ),
         TomSizedBox(height: 4),
-        TomText(
-          text: label,
-          style: theme.textTheme.labelSmall,
-        ),
+        TomText(text: label, style: theme.textTheme.labelSmall),
       ],
     );
   }
@@ -449,10 +425,7 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
           ),
         ),
         TomSizedBox(height: 4),
-        TomText(
-          text: label,
-          style: theme.textTheme.labelSmall,
-        ),
+        TomText(text: label, style: theme.textTheme.labelSmall),
       ],
     );
   }
@@ -483,31 +456,19 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
             children: [
               TomCircleAvatar(
                 radius: 16,
-                child: TomText(
-                  text: 'S',
-                  style: theme.textTheme.labelSmall,
-                ),
+                child: TomText(text: 'S', style: theme.textTheme.labelSmall),
               ),
               TomCircleAvatar(
                 radius: 24,
-                child: TomText(
-                  text: 'M',
-                  style: theme.textTheme.labelMedium,
-                ),
+                child: TomText(text: 'M', style: theme.textTheme.labelMedium),
               ),
               TomCircleAvatar(
                 radius: 32,
-                child: TomText(
-                  text: 'L',
-                  style: theme.textTheme.titleMedium,
-                ),
+                child: TomText(text: 'L', style: theme.textTheme.titleMedium),
               ),
               TomCircleAvatar(
                 radius: 48,
-                child: TomText(
-                  text: 'XL',
-                  style: theme.textTheme.titleLarge,
-                ),
+                child: TomText(text: 'XL', style: theme.textTheme.titleLarge),
               ),
             ],
           ),
@@ -612,28 +573,33 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
             children: [
               TomCircleAvatar(
                 radius: 28,
-                backgroundImage:
-                    const NetworkImage('https://i.pravatar.cc/150?img=1'),
+                backgroundImage: const NetworkImage(
+                  'https://i.pravatar.cc/150?img=1',
+                ),
               ),
               TomCircleAvatar(
                 radius: 28,
-                backgroundImage:
-                    const NetworkImage('https://i.pravatar.cc/150?img=2'),
+                backgroundImage: const NetworkImage(
+                  'https://i.pravatar.cc/150?img=2',
+                ),
               ),
               TomCircleAvatar(
                 radius: 28,
-                backgroundImage:
-                    const NetworkImage('https://i.pravatar.cc/150?img=3'),
+                backgroundImage: const NetworkImage(
+                  'https://i.pravatar.cc/150?img=3',
+                ),
               ),
               TomCircleAvatar(
                 radius: 28,
-                backgroundImage:
-                    const NetworkImage('https://i.pravatar.cc/150?img=4'),
+                backgroundImage: const NetworkImage(
+                  'https://i.pravatar.cc/150?img=4',
+                ),
               ),
               TomCircleAvatar(
                 radius: 28,
-                backgroundImage:
-                    const NetworkImage('https://i.pravatar.cc/150?img=5'),
+                backgroundImage: const NetworkImage(
+                  'https://i.pravatar.cc/150?img=5',
+                ),
               ),
             ],
           ),
@@ -715,10 +681,7 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
           ),
         ),
         TomSizedBox(height: 4),
-        TomText(
-          text: label,
-          style: theme.textTheme.labelSmall,
-        ),
+        TomText(text: label, style: theme.textTheme.labelSmall),
       ],
     );
   }
@@ -729,8 +692,9 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
 
   Widget _buildAnimatedIconSection() {
     final direction = AclDirectionScope.maybeOf(context);
-    final textDirection =
-        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    final textDirection = direction == AclDirection.rtl
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     final theme = Theme.of(context);
 
     return Directionality(
@@ -923,10 +887,7 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
                 ),
         ),
         TomSizedBox(height: 4),
-        TomText(
-          text: label,
-          style: theme.textTheme.labelSmall,
-        ),
+        TomText(text: label, style: theme.textTheme.labelSmall),
       ],
     );
   }
@@ -965,9 +926,7 @@ Uint8List createPlaceholderBytes() {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1011,10 +970,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

@@ -21,7 +21,6 @@ class ToggleDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _ToggleDemoContent();
-
   }
 }
 
@@ -84,8 +83,18 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
   // ===========================================================================
   // Section 4: ToggleButtons state
   // ===========================================================================
-  final List<bool> _viewSelection = [true, false, false, false]; // single select
-  final List<bool> _formatSelection = [true, false, true, false]; // multi select
+  final List<bool> _viewSelection = [
+    true,
+    false,
+    false,
+    false,
+  ]; // single select
+  final List<bool> _formatSelection = [
+    true,
+    false,
+    true,
+    false,
+  ]; // multi select
   final List<bool> _alignSelection = [false, true, false]; // vertical single
 
   // ===========================================================================
@@ -205,10 +214,7 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
           // Disabled
           TomText(tomId: 'switch.disabledLabel'),
           TomSizedBox(height: 8),
-          TomSwitch(
-            value: _switchDisabled,
-            onChanged: null,
-          ),
+          TomSwitch(value: _switchDisabled, onChanged: null),
           TomSizedBox(height: 16),
 
           // Custom colors
@@ -233,7 +239,8 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
 
           // Status display
           TomText(
-            text: 'Default: ${_switchDefault ? "ON" : "OFF"}, '
+            text:
+                'Default: ${_switchDefault ? "ON" : "OFF"}, '
                 'Thumb Icon: ${_switchThumbIcon ? "ON" : "OFF"}, '
                 'Green: ${_switchCustomGreen ? "ON" : "OFF"}, '
                 'Orange: ${_switchCustomOrange ? "ON" : "OFF"}',
@@ -357,7 +364,9 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
               TomText(
                 text: _checkTristate == null
                     ? 'Indeterminate'
-                    : _checkTristate! ? 'Checked' : 'Unchecked',
+                    : _checkTristate!
+                    ? 'Checked'
+                    : 'Unchecked',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -374,7 +383,8 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
                 value: _checkCustomColor,
                 activeColor: Colors.green,
                 checkColor: Colors.white,
-                onChanged: (v) => setState(() => _checkCustomColor = v ?? false),
+                onChanged: (v) =>
+                    setState(() => _checkCustomColor = v ?? false),
               ),
               TomText(tomId: 'checkbox.customColor'),
               TomSizedBox(width: 16),
@@ -389,10 +399,7 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
               TomSizedBox(width: 16),
 
               // Disabled
-              TomCheckbox(
-                value: _checkDisabled,
-                onChanged: null,
-              ),
+              TomCheckbox(value: _checkDisabled, onChanged: null),
               TomText(tomId: 'checkbox.disabled'),
             ],
           ),
@@ -469,7 +476,8 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
               TomCupertinoCheckbox(
                 value: _cupertinoCheckActive,
                 activeColor: CupertinoColors.activeGreen,
-                onChanged: (v) => setState(() => _cupertinoCheckActive = v ?? false),
+                onChanged: (v) =>
+                    setState(() => _cupertinoCheckActive = v ?? false),
               ),
               TomSizedBox(width: 8),
               TomText(
@@ -705,7 +713,9 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
             isSelected: _formatSelection,
             borderRadius: BorderRadius.circular(8),
             onPressed: (index) {
-              setState(() => _formatSelection[index] = !_formatSelection[index]);
+              setState(
+                () => _formatSelection[index] = !_formatSelection[index],
+              );
             },
             children: const [
               Padding(
@@ -718,11 +728,17 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
               ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('U', style: TextStyle(decoration: TextDecoration.underline)),
+                child: Text(
+                  'U',
+                  style: TextStyle(decoration: TextDecoration.underline),
+                ),
               ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('S', style: TextStyle(decoration: TextDecoration.lineThrough)),
+                child: Text(
+                  'S',
+                  style: TextStyle(decoration: TextDecoration.lineThrough),
+                ),
               ),
             ],
           ),
@@ -894,10 +910,7 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
           )
           .gap()
           .append(
-            TomFilledButton(
-              tomId: 'aclToggle.apply',
-              onPressed: () {},
-            ),
+            TomFilledButton(tomId: 'aclToggle.apply', onPressed: () {}),
             dist: 8,
           )
           .build(),
@@ -913,9 +926,7 @@ class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -959,10 +970,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

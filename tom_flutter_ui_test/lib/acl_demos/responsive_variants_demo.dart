@@ -22,40 +22,47 @@ class ResponsiveVariantsDemo extends StatelessWidget {
         const SizedBox(height: 8),
         ResizableBox(
           initialHeight: 200,
-          child: AclBuilder(
-            borderStyle: const AclBorderStyle(
-              kind: AclBorderKind.solid,
-              color: Colors.teal,
-              rounded: true,
-              borderRadius: 8,
-            ),
-          )
-              // Default layout: 3 columns
-              .append(const DemoBox('A', Colors.red))
-              .append(const DemoBox('B', Colors.green), dist: 8)
-              .append(const DemoBox('C', Colors.blue), dist: 8)
-              .expandX()
-              // Tablet variant: 2 columns + 1
-              .addVariant('tablet', atWidth: 500, builder: (b) => b
+          child:
+              AclBuilder(
+                    borderStyle: const AclBorderStyle(
+                      kind: AclBorderKind.solid,
+                      color: Colors.teal,
+                      rounded: true,
+                      borderRadius: 8,
+                    ),
+                  )
+                  // Default layout: 3 columns
                   .append(const DemoBox('A', Colors.red))
                   .append(const DemoBox('B', Colors.green), dist: 8)
+                  .append(const DemoBox('C', Colors.blue), dist: 8)
                   .expandX()
-                  .newRow(dist: 8)
-                  .append(const DemoBox('C', Colors.blue))
-                  .expandX(),
-              )
-              // Mobile variant: single column
-              .addVariant('mobile', atWidth: 300, builder: (b) => b
-                  .append(const DemoBox('A', Colors.red))
-                  .expandX()
-                  .newRow(dist: 8)
-                  .append(const DemoBox('B', Colors.green))
-                  .expandX()
-                  .newRow(dist: 8)
-                  .append(const DemoBox('C', Colors.blue))
-                  .expandX(),
-              )
-              .build(),
+                  // Tablet variant: 2 columns + 1
+                  .addVariant(
+                    'tablet',
+                    atWidth: 500,
+                    builder: (b) => b
+                        .append(const DemoBox('A', Colors.red))
+                        .append(const DemoBox('B', Colors.green), dist: 8)
+                        .expandX()
+                        .newRow(dist: 8)
+                        .append(const DemoBox('C', Colors.blue))
+                        .expandX(),
+                  )
+                  // Mobile variant: single column
+                  .addVariant(
+                    'mobile',
+                    atWidth: 300,
+                    builder: (b) => b
+                        .append(const DemoBox('A', Colors.red))
+                        .expandX()
+                        .newRow(dist: 8)
+                        .append(const DemoBox('B', Colors.green))
+                        .expandX()
+                        .newRow(dist: 8)
+                        .append(const DemoBox('C', Colors.blue))
+                        .expandX(),
+                  )
+                  .build(),
         ),
         const SizedBox(height: 16),
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),

@@ -25,4 +25,3 @@ class ExpandingBox extends StatelessWidget {
     );
   }
 }
-

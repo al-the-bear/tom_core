@@ -19,7 +19,6 @@ class TreesDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _TreesDemoContent();
-
   }
 }
 
@@ -52,41 +51,31 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Simple Tree View
-            _SectionHeader(
-              tomId: 'section.simple',
-            ),
+            _SectionHeader(tomId: 'section.simple'),
             TomSizedBox(height: 16),
             _buildSimpleTreeSection(),
             TomSizedBox(height: 32),
 
             // Section 2: TreeSliver (High Performance)
-            _SectionHeader(
-              tomId: 'section.sliver',
-            ),
+            _SectionHeader(tomId: 'section.sliver'),
             TomSizedBox(height: 16),
             _buildTreeSliverSection(),
             TomSizedBox(height: 32),
 
             // Section 3: Nested Expansion Tiles
-            _SectionHeader(
-              tomId: 'section.expansion',
-            ),
+            _SectionHeader(tomId: 'section.expansion'),
             TomSizedBox(height: 16),
             _buildExpansionTileSection(),
             TomSizedBox(height: 32),
 
             // Section 4: File Explorer Pattern
-            _SectionHeader(
-              tomId: 'section.fileExplorer',
-            ),
+            _SectionHeader(tomId: 'section.fileExplorer'),
             TomSizedBox(height: 16),
             _buildFileExplorerSection(),
             TomSizedBox(height: 32),
 
             // Section 5: Organizational Hierarchy
-            _SectionHeader(
-              tomId: 'section.organization',
-            ),
+            _SectionHeader(tomId: 'section.organization'),
             TomSizedBox(height: 16),
             _buildOrganizationSection(),
             TomSizedBox(height: 48),
@@ -188,10 +177,7 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
                 ),
                 TomTreeNode(
                   title: TomText(text: 'Plants'),
-                  leading: TomIcon(
-                    icon: Icons.park,
-                    color: Colors.green,
-                  ),
+                  leading: TomIcon(icon: Icons.park, color: Colors.green),
                   children: [
                     TomTreeNode(
                       title: TomText(text: 'Trees'),
@@ -230,8 +216,8 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
           TomText(
             tomId: 'treeView.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -298,55 +284,59 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
                   onNodeToggle: (node) {
                     // Optional: Handle node toggle events
                   },
-                  treeNodeBuilder: (
-                    BuildContext context,
-                    TreeSliverNode<Object?> node,
-                    AnimationStyle animationStyle,
-                  ) {
-                    final data = node.content as String;
-                    final depth = _getNodeDepth(node);
-                    final hasChildren = node.children.isNotEmpty;
+                  treeNodeBuilder:
+                      (
+                        BuildContext context,
+                        TreeSliverNode<Object?> node,
+                        AnimationStyle animationStyle,
+                      ) {
+                        final data = node.content as String;
+                        final depth = _getNodeDepth(node);
+                        final hasChildren = node.children.isNotEmpty;
 
-                    return TreeSliver.wrapChildToToggleNode(
-                      node: node,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            if (hasChildren)
-                              AnimatedRotation(
-                                turns: node.isExpanded ? 0.25 : 0,
-                                duration: const Duration(milliseconds: 200),
-                                child: const Icon(Icons.chevron_right, size: 20),
-                              )
-                            else
-                              const SizedBox(width: 20),
-                            const SizedBox(width: 8),
-                            Icon(
-                              hasChildren
-                                  ? Icons.folder
-                                  : Icons.insert_drive_file,
-                              size: 20,
-                              color: hasChildren
-                                  ? Colors.amber.shade700
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                        return TreeSliver.wrapChildToToggleNode(
+                          node: node,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                if (hasChildren)
+                                  AnimatedRotation(
+                                    turns: node.isExpanded ? 0.25 : 0,
+                                    duration: const Duration(milliseconds: 200),
+                                    child: const Icon(
+                                      Icons.chevron_right,
+                                      size: 20,
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(width: 20),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  hasChildren
+                                      ? Icons.folder
+                                      : Icons.insert_drive_file,
+                                  size: 20,
+                                  color: hasChildren
+                                      ? Colors.amber.shade700
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  data,
+                                  style: TextStyle(
+                                    fontWeight: depth == 0
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              data,
-                              style: TextStyle(
-                                fontWeight: depth == 0
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                          ),
+                        );
+                      },
                 ),
               ],
             ),
@@ -355,8 +345,8 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
           TomText(
             tomId: 'treeSliver.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -514,10 +504,7 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
                 leading: TomIcon(icon: Icons.notifications),
                 titleText: 'Notifications',
                 subtitle: TomText(text: 'Enabled'),
-                trailing: TomSwitch(
-                  value: true,
-                  onChanged: (_) {},
-                ),
+                trailing: TomSwitch(value: true, onChanged: (_) {}),
               ),
             ],
           ),
@@ -540,10 +527,7 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
               TomListTile(
                 leading: TomIcon(icon: Icons.fingerprint),
                 titleText: 'Biometric Login',
-                trailing: TomSwitch(
-                  value: false,
-                  onChanged: (_) {},
-                ),
+                trailing: TomSwitch(value: false, onChanged: (_) {}),
               ),
               TomListTile(
                 leading: TomIcon(icon: Icons.verified_user),
@@ -564,10 +548,7 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
 
           TomExpansionTile(
             initiallyExpanded: true,
-            leading: TomIcon(
-              icon: Icons.school,
-              color: Colors.indigo,
-            ),
+            leading: TomIcon(icon: Icons.school, color: Colors.indigo),
             titleText: 'Computer Science',
             children: [
               TomExpansionTile(
@@ -710,11 +691,17 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
                             size: 20,
                           ),
                           children: [
-                            _buildFileNode('main.dart', Icons.code, Colors.blue),
                             _buildFileNode(
-                                'app.dart', Icons.code, Colors.blue),
+                              'main.dart',
+                              Icons.code,
+                              Colors.blue,
+                            ),
+                            _buildFileNode('app.dart', Icons.code, Colors.blue),
                             _buildFileNode(
-                                'config.dart', Icons.settings, Colors.grey),
+                              'config.dart',
+                              Icons.settings,
+                              Colors.grey,
+                            ),
                           ],
                         ),
                         TomTreeNode(
@@ -726,11 +713,20 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
                           ),
                           children: [
                             _buildFileNode(
-                                'button.dart', Icons.code, Colors.blue),
+                              'button.dart',
+                              Icons.code,
+                              Colors.blue,
+                            ),
                             _buildFileNode(
-                                'card.dart', Icons.code, Colors.blue),
+                              'card.dart',
+                              Icons.code,
+                              Colors.blue,
+                            ),
                             _buildFileNode(
-                                'dialog.dart', Icons.code, Colors.blue),
+                              'dialog.dart',
+                              Icons.code,
+                              Colors.blue,
+                            ),
                           ],
                         ),
                       ],
@@ -744,9 +740,15 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
                       ),
                       children: [
                         _buildFileNode(
-                            'widget_test.dart', Icons.bug_report, Colors.green),
+                          'widget_test.dart',
+                          Icons.bug_report,
+                          Colors.green,
+                        ),
                         _buildFileNode(
-                            'unit_test.dart', Icons.bug_report, Colors.green),
+                          'unit_test.dart',
+                          Icons.bug_report,
+                          Colors.green,
+                        ),
                       ],
                     ),
                     TomTreeNode(
@@ -757,18 +759,21 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
                         size: 20,
                       ),
                       children: [
-                        _buildFileNode(
-                            'logo.png', Icons.image, Colors.purple),
-                        _buildFileNode(
-                            'icon.svg', Icons.image, Colors.purple),
+                        _buildFileNode('logo.png', Icons.image, Colors.purple),
+                        _buildFileNode('icon.svg', Icons.image, Colors.purple),
                       ],
                     ),
                     _buildFileNode(
-                        'pubspec.yaml', Icons.description, Colors.red),
+                      'pubspec.yaml',
+                      Icons.description,
+                      Colors.red,
+                    ),
+                    _buildFileNode('README.md', Icons.article, Colors.orange),
                     _buildFileNode(
-                        'README.md', Icons.article, Colors.orange),
-                    _buildFileNode(
-                        '.gitignore', Icons.visibility_off, Colors.grey),
+                      '.gitignore',
+                      Icons.visibility_off,
+                      Colors.grey,
+                    ),
                   ],
                 ),
               ],
@@ -778,8 +783,8 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
           TomText(
             tomId: 'fileExplorer.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -821,8 +826,12 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                  Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                  Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  Theme.of(
+                    context,
+                  ).colorScheme.secondaryContainer.withValues(alpha: 0.3),
                 ],
               ),
             ),
@@ -968,8 +977,8 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
           TomText(
             tomId: 'organization.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -1080,9 +1089,7 @@ class _TreesDemoContentState extends TomState<_TreesDemoContent>
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1126,10 +1133,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

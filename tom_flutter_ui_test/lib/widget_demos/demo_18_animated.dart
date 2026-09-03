@@ -8,8 +8,6 @@
 /// TomFadeTransition, TomScaleTransition, TomRotationTransition.
 library;
 
-
-
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
@@ -24,7 +22,6 @@ class AnimatedDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _AnimatedDemoContent();
-
   }
 }
 
@@ -186,7 +183,8 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomSizedBox(height: 16),
           Center(
             child: GestureDetector(
-              onTap: () => setState(() => _containerExpanded = !_containerExpanded),
+              onTap: () =>
+                  setState(() => _containerExpanded = !_containerExpanded),
               child: TomAnimatedContainer(
                 duration: const Duration(milliseconds: 500),
                 curve: Curves.easeInOut,
@@ -209,10 +207,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .shadow
-                          .withValues(alpha: _containerExpanded ? 0.4 : 0.2),
+                      color: Theme.of(context).colorScheme.shadow.withValues(
+                        alpha: _containerExpanded ? 0.4 : 0.2,
+                      ),
                       blurRadius: _containerExpanded ? 16 : 8,
                       offset: Offset(0, _containerExpanded ? 8 : 4),
                     ),
@@ -222,13 +219,13 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                 child: TomAnimatedDefaultTextStyle(
                   duration: const Duration(milliseconds: 500),
                   style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                        color: _containerExpanded
-                            ? Colors.white
-                            : Theme.of(context).colorScheme.onPrimaryContainer,
-                        fontWeight: _containerExpanded
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
+                    color: _containerExpanded
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontWeight: _containerExpanded
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
                   child: Text(_containerExpanded ? 'Expanded!' : 'Tap me'),
                 ),
               ),
@@ -238,9 +235,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'animatedContainer.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -295,9 +292,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'animatedOpacity.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -340,7 +337,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                         Text(
                           'Day Mode',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
                           ),
                         ),
                       ],
@@ -365,7 +364,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                         Text(
                           'Night Mode',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onInverseSurface,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onInverseSurface,
                           ),
                         ),
                       ],
@@ -376,7 +377,8 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                 TomFilledButton(
                   label: 'Toggle Day/Night',
                   onPressed: () => setState(() {
-                    _crossFadeState = _crossFadeState == CrossFadeState.showFirst
+                    _crossFadeState =
+                        _crossFadeState == CrossFadeState.showFirst
                         ? CrossFadeState.showSecond
                         : CrossFadeState.showFirst;
                   }),
@@ -389,9 +391,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'crossFade.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -436,10 +438,7 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                   transitionBuilder: (child, animation) {
                     return ScaleTransition(
                       scale: animation,
-                      child: FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      ),
+                      child: FadeTransition(opacity: animation, child: child),
                     );
                   },
                   child: Container(
@@ -491,9 +490,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'switcher.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -529,10 +528,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                 Positioned.fill(
                   child: CustomPaint(
                     painter: _GridPainter(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .outlineVariant
-                          .withValues(alpha: 0.3),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outlineVariant.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
@@ -553,19 +551,15 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .shadow
-                                .withValues(alpha: 0.3),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.shadow.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.touch_app,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.touch_app, color: Colors.white),
                     ),
                   ),
                 ),
@@ -576,9 +570,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'positioned.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -621,17 +615,18 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                           Padding(
                             padding: const EdgeInsets.all(2),
                             child: GestureDetector(
-                              onTap: () => setState(() =>
-                                  _alignment = alignments[row * 3 + col]),
+                              onTap: () => setState(
+                                () => _alignment = alignments[row * 3 + col],
+                              ),
                               child: Container(
                                 width: 24,
                                 height: 24,
                                 decoration: BoxDecoration(
                                   color: _alignment == alignments[row * 3 + col]
                                       ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .surfaceContainerHighest,
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
@@ -663,10 +658,7 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                         color: Theme.of(context).colorScheme.secondary,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
-                        Icons.star,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.star, color: Colors.white),
                     ),
                   ),
                 ),
@@ -677,9 +669,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'align.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -734,17 +726,15 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                     TomFilledButton(
                       label: 'Small',
                       tonal: true,
-                      onPressed: () => setState(
-                        () => _padding = const EdgeInsets.all(8),
-                      ),
+                      onPressed: () =>
+                          setState(() => _padding = const EdgeInsets.all(8)),
                       child: TomText(text: 'Small'),
                     ),
                     TomFilledButton(
                       label: 'Medium',
                       tonal: true,
-                      onPressed: () => setState(
-                        () => _padding = const EdgeInsets.all(24),
-                      ),
+                      onPressed: () =>
+                          setState(() => _padding = const EdgeInsets.all(24)),
                       child: TomText(text: 'Medium'),
                     ),
                     TomFilledButton(
@@ -767,9 +757,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'padding.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -822,7 +812,8 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                 TomSizedBox(height: 16),
                 TomFilledButton(
                   label: 'Toggle Size',
-                  onPressed: () => setState(() => _sizeExpanded = !_sizeExpanded),
+                  onPressed: () =>
+                      setState(() => _sizeExpanded = !_sizeExpanded),
                   child: TomText(text: _sizeExpanded ? 'Collapse' : 'Expand'),
                 ),
               ],
@@ -832,9 +823,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'size.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -892,9 +883,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'scale.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -950,37 +941,32 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                   children: [
                     TomIconButton.filled(
                       tooltip: 'Slide left',
-                      onPressed: () => setState(
-                        () => _slideOffset = const Offset(-0.5, 0),
-                      ),
+                      onPressed: () =>
+                          setState(() => _slideOffset = const Offset(-0.5, 0)),
                       icon: TomIcon(icon: Icons.arrow_back),
                     ),
                     TomIconButton.filled(
                       tooltip: 'Center',
-                      onPressed: () => setState(
-                        () => _slideOffset = Offset.zero,
-                      ),
+                      onPressed: () =>
+                          setState(() => _slideOffset = Offset.zero),
                       icon: TomIcon(icon: Icons.center_focus_strong),
                     ),
                     TomIconButton.filled(
                       tooltip: 'Slide right',
-                      onPressed: () => setState(
-                        () => _slideOffset = const Offset(0.5, 0),
-                      ),
+                      onPressed: () =>
+                          setState(() => _slideOffset = const Offset(0.5, 0)),
                       icon: TomIcon(icon: Icons.arrow_forward),
                     ),
                     TomIconButton.filled(
                       tooltip: 'Slide up',
-                      onPressed: () => setState(
-                        () => _slideOffset = const Offset(0, -0.5),
-                      ),
+                      onPressed: () =>
+                          setState(() => _slideOffset = const Offset(0, -0.5)),
                       icon: TomIcon(icon: Icons.arrow_upward),
                     ),
                     TomIconButton.filled(
                       tooltip: 'Slide down',
-                      onPressed: () => setState(
-                        () => _slideOffset = const Offset(0, 0.5),
-                      ),
+                      onPressed: () =>
+                          setState(() => _slideOffset = const Offset(0, 0.5)),
                       icon: TomIcon(icon: Icons.arrow_downward),
                     ),
                   ],
@@ -992,9 +978,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'slide.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1048,22 +1034,26 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomWrap(
             spacing: 8,
             children: [
-              TomFilledButton(tonal: true,
+              TomFilledButton(
+                tonal: true,
                 label: '0°',
                 onPressed: () => setState(() => _turns = 0),
                 child: TomText(text: '0°'),
               ),
-              TomFilledButton(tonal: true,
+              TomFilledButton(
+                tonal: true,
                 label: '90°',
                 onPressed: () => setState(() => _turns = 0.25),
                 child: TomText(text: '90°'),
               ),
-              TomFilledButton(tonal: true,
+              TomFilledButton(
+                tonal: true,
                 label: '180°',
                 onPressed: () => setState(() => _turns = 0.5),
                 child: TomText(text: '180°'),
               ),
-              TomFilledButton(tonal: true,
+              TomFilledButton(
+                tonal: true,
                 label: '360°',
                 onPressed: () => setState(() => _turns = 1),
                 child: TomText(text: '360°'),
@@ -1074,9 +1064,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'rotation.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1105,14 +1095,13 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                   duration: const Duration(milliseconds: 400),
                   style: _boldText
                       ? Theme.of(context).textTheme.headlineMedium!.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                            letterSpacing: 2,
-                          )
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                          letterSpacing: 2,
+                        )
                       : Theme.of(context).textTheme.bodyLarge!.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   child: const Text('Animated Text Style'),
                 ),
                 TomSizedBox(height: 16),
@@ -1132,9 +1121,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'textStyle.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1199,9 +1188,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'physicalModel.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1280,9 +1269,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'fadeTransition.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1356,9 +1345,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'scaleTransition.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1437,9 +1426,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'rotationTransition.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1462,11 +1451,7 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
         Icons.location_city,
         Theme.of(context).colorScheme.secondary,
       ),
-      _HeroItem(
-        'Travel',
-        Icons.flight,
-        Theme.of(context).colorScheme.tertiary,
-      ),
+      _HeroItem('Travel', Icons.flight, Theme.of(context).colorScheme.tertiary),
     ];
 
     return _DemoCard(
@@ -1489,9 +1474,9 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           TomText(
             tomId: 'hero.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1526,10 +1511,7 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
                   const SizedBox(height: 4),
                   Text(
                     items[index].label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: items[index].color,
-                    ),
+                    style: TextStyle(fontSize: 10, color: items[index].color),
                   ),
                 ],
               ),
@@ -1580,7 +1562,8 @@ class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
           ),
           TomSizedBox(height: 8),
           TomText(
-            text: 'Hero animations create smooth transitions between shared elements.',
+            text:
+                'Hero animations create smooth transitions between shared elements.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           TomSizedBox(height: 16),
@@ -1642,9 +1625,7 @@ class _GridPainter extends CustomPainter {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1688,10 +1669,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

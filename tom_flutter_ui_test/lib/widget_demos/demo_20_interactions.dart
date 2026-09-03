@@ -20,7 +20,6 @@ class InteractionsDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _InteractionsDemoContent();
-
   }
 }
 
@@ -68,49 +67,37 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Gesture Detection
-            _SectionHeader(
-              tomId: 'section.gesture',
-            ),
+            _SectionHeader(tomId: 'section.gesture'),
             TomSizedBox(height: 16),
             _buildGestureDetectorSection(),
             TomSizedBox(height: 32),
 
             // Section 2: Ink Effects
-            _SectionHeader(
-              tomId: 'section.ink',
-            ),
+            _SectionHeader(tomId: 'section.ink'),
             TomSizedBox(height: 16),
             _buildInkEffectsSection(),
             TomSizedBox(height: 32),
 
             // Section 3: Drag and Drop
-            _SectionHeader(
-              tomId: 'section.dragdrop',
-            ),
+            _SectionHeader(tomId: 'section.dragdrop'),
             TomSizedBox(height: 16),
             _buildDragDropSection(),
             TomSizedBox(height: 32),
 
             // Section 4: Long Press Drag
-            _SectionHeader(
-              tomId: 'section.longpress',
-            ),
+            _SectionHeader(tomId: 'section.longpress'),
             TomSizedBox(height: 16),
             _buildLongPressDragSection(),
             TomSizedBox(height: 32),
 
             // Section 5: Pointer Blocking
-            _SectionHeader(
-              tomId: 'section.pointer',
-            ),
+            _SectionHeader(tomId: 'section.pointer'),
             TomSizedBox(height: 16),
             _buildPointerBlockingSection(),
             TomSizedBox(height: 32),
 
             // Section 6: Mouse Region
-            _SectionHeader(
-              tomId: 'section.mouse',
-            ),
+            _SectionHeader(tomId: 'section.mouse'),
             TomSizedBox(height: 16),
             _buildMouseRegionSection(),
             TomSizedBox(height: 48),
@@ -168,7 +155,8 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
             runSpacing: 12,
             children: [
               TomGestureDetector(
-                onTap: () => setState(() => _gestureInfo = 'Single tap detected'),
+                onTap: () =>
+                    setState(() => _gestureInfo = 'Single tap detected'),
                 child: _buildGestureBox('Tap', Icons.touch_app),
               ),
               TomGestureDetector(
@@ -182,8 +170,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                 child: _buildGestureBox('Long Press', Icons.timer),
               ),
               TomGestureDetector(
-                onSecondaryTap: () =>
-                    setState(() => _gestureInfo = 'Secondary tap (right-click)'),
+                onSecondaryTap: () => setState(
+                  () => _gestureInfo = 'Secondary tap (right-click)',
+                ),
                 child: _buildGestureBox('Right Click', Icons.mouse),
               ),
             ],
@@ -288,9 +277,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
           TomText(
             tomId: 'gestureDetector.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -313,10 +302,7 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
         children: [
           Icon(icon, size: 24),
           TomSizedBox(height: 4),
-          TomText(
-            text: label,
-            style: const TextStyle(fontSize: 11),
-          ),
+          TomText(text: label, style: const TextStyle(fontSize: 11)),
         ],
       ),
     );
@@ -341,11 +327,7 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                 runSpacing: 16,
                 children: [
                   // Basic InkWell
-                  _buildInkWellExample(
-                    'Default',
-                    null,
-                    null,
-                  ),
+                  _buildInkWellExample('Default', null, null),
                   // Custom splash color
                   _buildInkWellExample(
                     'Custom Splash',
@@ -368,10 +350,12 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                   // Optional highlight callback
                 },
                 borderRadius: BorderRadius.circular(12),
-                splashColor:
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                highlightColor:
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                splashColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.2),
+                highlightColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.1),
                 child: TomContainer(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -396,14 +380,16 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                       ),
                       TomSizedBox(width: 12),
                       TomText(
-                        text:
-                            _inkWellPressed ? 'Activated!' : 'Tap for ink splash',
+                        text: _inkWellPressed
+                            ? 'Activated!'
+                            : 'Tap for ink splash',
                         style: TextStyle(
                           color: _inkWellPressed
                               ? Theme.of(context).colorScheme.primary
                               : null,
-                          fontWeight:
-                              _inkWellPressed ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: _inkWellPressed
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -414,9 +400,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
               TomText(
                 tomId: 'inkWell.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -434,8 +420,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                 children: [
                   // Circle InkResponse
                   TomInkResponse(
-                    onTap: () =>
-                        setState(() => _inkResponsePressed = !_inkResponsePressed),
+                    onTap: () => setState(
+                      () => _inkResponsePressed = !_inkResponsePressed,
+                    ),
                     highlightShape: BoxShape.circle,
                     radius: 40,
                     splashColor: Colors.blue.withValues(alpha: 0.3),
@@ -445,7 +432,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                       decoration: BoxDecoration(
                         color: _inkResponsePressed
                             ? Colors.blue.withValues(alpha: 0.2)
-                            : Theme.of(context).colorScheme.surfaceContainerHighest,
+                            : Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.lens_blur, size: 32),
@@ -462,7 +451,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(Icons.crop_square, size: 32),
@@ -473,7 +464,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: Theme.of(context).colorScheme.outline,
@@ -498,9 +491,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
               TomText(
                 tomId: 'inkResponse.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -530,17 +523,12 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: TomCenter(
-                child: Icon(Icons.water_drop, size: 28),
-              ),
+              child: TomCenter(child: Icon(Icons.water_drop, size: 28)),
             ),
           ),
         ),
         TomSizedBox(height: 4),
-        TomText(
-          text: label,
-          style: const TextStyle(fontSize: 11),
-        ),
+        TomText(text: label, style: const TextStyle(fontSize: 11)),
       ],
     );
   }
@@ -603,8 +591,7 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                     ),
                   ),
                 ),
-                onDragStarted: () =>
-                    setState(() => _draggedColor = color),
+                onDragStarted: () => setState(() => _draggedColor = color),
                 child: TomContainer(
                   width: 50,
                   height: 50,
@@ -655,19 +642,27 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              isHovering ? Icons.download : Icons.add_circle_outline,
+                              isHovering
+                                  ? Icons.download
+                                  : Icons.add_circle_outline,
                               size: 32,
                               color: isHovering
                                   ? _draggedColor
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                             ),
                             TomSizedBox(height: 8),
                             TomText(
-                              text: isHovering ? 'Release to drop' : 'Drop colors here',
+                              text: isHovering
+                                  ? 'Release to drop'
+                                  : 'Drop colors here',
                               style: TextStyle(
                                 color: isHovering
                                     ? _draggedColor
-                                    : Theme.of(context).colorScheme.onSurfaceVariant,
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -704,9 +699,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
           TomText(
             tomId: 'dragDrop.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -738,7 +733,10 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                       spacing: 12,
                       children: [
                         _buildLongPressDraggableItem(Icons.star, Colors.amber),
-                        _buildLongPressDraggableItem(Icons.favorite, Colors.red),
+                        _buildLongPressDraggableItem(
+                          Icons.favorite,
+                          Colors.red,
+                        ),
                         _buildLongPressDraggableItem(Icons.bolt, Colors.blue),
                       ],
                     ),
@@ -759,11 +757,12 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                     height: 100,
                     decoration: BoxDecoration(
                       color: isHovering
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.2)
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.2)
+                          : Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isHovering
@@ -794,9 +793,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
           TomText(
             tomId: 'longPressDrag.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -834,10 +833,7 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
       child: TomContainer(
         width: 50,
         height: 50,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         child: Icon(icon, color: Colors.white, size: 24),
       ),
     );
@@ -862,7 +858,8 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                   TomText(text: 'Absorb Pointer: '),
                   Switch(
                     value: _absorbPointer,
-                    onChanged: (value) => setState(() => _absorbPointer = value),
+                    onChanged: (value) =>
+                        setState(() => _absorbPointer = value),
                   ),
                   TomSizedBox(width: 8),
                   Chip(
@@ -882,7 +879,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: TomWrap(
@@ -891,21 +890,18 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                       children: [
                         TomFilledButton(
                           label: 'Button 1',
-                          onPressed: () =>
-                              setState(() => _blockedTapCount++),
+                          onPressed: () => setState(() => _blockedTapCount++),
                           child: TomText(text: 'Button 1'),
                         ),
                         TomFilledButton(
                           label: 'Button 2',
                           tonal: true,
-                          onPressed: () =>
-                              setState(() => _blockedTapCount++),
+                          onPressed: () => setState(() => _blockedTapCount++),
                           child: TomText(text: 'Button 2'),
                         ),
                         TomOutlinedButton(
                           label: 'Button 3',
-                          onPressed: () =>
-                              setState(() => _blockedTapCount++),
+                          onPressed: () => setState(() => _blockedTapCount++),
                           child: TomText(text: 'Button 3'),
                         ),
                       ],
@@ -947,9 +943,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
               TomText(
                 tomId: 'absorbPointer.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -966,7 +962,8 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                   TomText(text: 'Ignore Pointer: '),
                   Switch(
                     value: _ignorePointer,
-                    onChanged: (value) => setState(() => _ignorePointer = value),
+                    onChanged: (value) =>
+                        setState(() => _ignorePointer = value),
                   ),
                   TomSizedBox(width: 8),
                   Chip(
@@ -1035,8 +1032,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                                 _ignorePointer
                                     ? Icons.visibility_off
                                     : Icons.visibility,
-                                color:
-                                    _ignorePointer ? Colors.orange : Colors.grey,
+                                color: _ignorePointer
+                                    ? Colors.orange
+                                    : Colors.grey,
                               ),
                               TomSizedBox(height: 4),
                               TomText(
@@ -1062,9 +1060,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
               TomText(
                 tomId: 'ignorePointer.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -1146,14 +1144,12 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                 gradient: LinearGradient(
                   colors: _isHovering
                       ? [
-                          Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.1),
-                          Theme.of(context)
-                              .colorScheme
-                              .secondary
-                              .withValues(alpha: 0.1),
+                          Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.1),
+                          Theme.of(
+                            context,
+                          ).colorScheme.secondary.withValues(alpha: 0.1),
                         ]
                       : [
                           Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -1191,7 +1187,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                           style: TextStyle(
                             color: _isHovering
                                 ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -1205,10 +1203,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
                         width: 16,
                         height: 16,
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.5),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: Theme.of(context).colorScheme.primary,
@@ -1246,9 +1243,9 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
           TomText(
             tomId: 'mouseRegion.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -1269,10 +1266,7 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
           ),
         ),
         child: TomCenter(
-          child: TomText(
-            text: label,
-            style: const TextStyle(fontSize: 11),
-          ),
+          child: TomText(text: label, style: const TextStyle(fontSize: 11)),
         ),
       ),
     );
@@ -1287,9 +1281,7 @@ class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1333,10 +1325,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

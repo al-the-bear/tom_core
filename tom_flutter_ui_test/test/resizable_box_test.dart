@@ -93,8 +93,9 @@ void main() {
       expect(find.text('540 × 200'), findsOneWidget);
     });
 
-    testWidgets('clamps width to _minW (100) on a large negative drag',
-        (tester) async {
+    testWidgets('clamps width to _minW (100) on a large negative drag', (
+      tester,
+    ) async {
       await pumpBox(tester, initialHeight: 200);
 
       await drag(tester, rightHandle(tester), const Offset(-1000, 0));
@@ -112,8 +113,9 @@ void main() {
       expect(find.text('500 × 260'), findsOneWidget);
     });
 
-    testWidgets('clamps height to _minH (100) on a large negative drag',
-        (tester) async {
+    testWidgets('clamps height to _minH (100) on a large negative drag', (
+      tester,
+    ) async {
       await pumpBox(tester, initialHeight: 200);
 
       await drag(tester, bottomHandle(tester), const Offset(0, -1000));
@@ -133,23 +135,25 @@ void main() {
   });
 
   group('ResizableBox auto-height seeding', () {
-    testWidgets('starts in auto mode and shows the size chip as "w × auto"',
-        (tester) async {
+    testWidgets('starts in auto mode and shows the size chip as "w × auto"', (
+      tester,
+    ) async {
       await pumpBox(tester, initialHeight: null);
 
       expect(find.text('500 × auto'), findsOneWidget);
     });
 
     testWidgets(
-        'first vertical drag seeds from the child intrinsic height, not zero',
-        (tester) async {
-      await pumpBox(tester, initialHeight: null);
+      'first vertical drag seeds from the child intrinsic height, not zero',
+      (tester) async {
+        await pumpBox(tester, initialHeight: null);
 
-      // childHeight (140) > _minH (100), so a +50 drag yields 190, proving the
-      // seed came from _captureIntrinsicHeight() and not from 0 or the floor.
-      await drag(tester, bottomHandle(tester), const Offset(0, 50));
+        // childHeight (140) > _minH (100), so a +50 drag yields 190, proving the
+        // seed came from _captureIntrinsicHeight() and not from 0 or the floor.
+        await drag(tester, bottomHandle(tester), const Offset(0, 50));
 
-      expect(find.text('500 × 190'), findsOneWidget);
-    });
+        expect(find.text('500 × 190'), findsOneWidget);
+      },
+    );
   });
 }

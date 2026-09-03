@@ -24,7 +24,6 @@ class LayoutContainersDemo extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     return _LayoutDemoContent();
-
   }
 }
 
@@ -686,8 +685,10 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
                   child: _buildPositionLabel('BR', theme.colorScheme.error),
                 ),
                 TomCenter(
-                  child:
-                      _buildPositionLabel('C', theme.colorScheme.inverseSurface),
+                  child: _buildPositionLabel(
+                    'C',
+                    theme.colorScheme.inverseSurface,
+                  ),
                 ),
               ],
             ),
@@ -892,9 +893,7 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
                 padding: const EdgeInsets.all(12),
                 child: TomText(
                   tomId: 'constrainedBox.contentText',
-                  style: TextStyle(
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
+                  style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
                 ),
               ),
             ),
@@ -1273,9 +1272,7 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
                 ),
                 child: TomText(
                   tomId: 'centerAlign.centeredText',
-                  style: TextStyle(
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
+                  style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
                 ),
               ),
             ),
@@ -1365,10 +1362,7 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: TomPadding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
               child: TomContainer(
                 color: theme.colorScheme.secondaryContainer,
                 child: TomPadding(
@@ -1566,8 +1560,7 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
                 return TomFilledButton(
                   label: alignment.name,
                   tonal: !isSelected,
-                  onPressed: () =>
-                      setState(() => _aclMainAxis = alignment),
+                  onPressed: () => setState(() => _aclMainAxis = alignment),
                   child: TomText(
                     text: alignment.name,
                     style: const TextStyle(fontSize: 10),
@@ -1590,8 +1583,7 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
                 return TomFilledButton(
                   label: alignment.name,
                   tonal: !isSelected,
-                  onPressed: () =>
-                      setState(() => _aclCrossAxis = alignment),
+                  onPressed: () => setState(() => _aclCrossAxis = alignment),
                   child: TomText(
                     text: alignment.name,
                     style: const TextStyle(fontSize: 10),
@@ -1638,10 +1630,7 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
           )
           .gap()
           .append(
-            TomFilledButton(
-              tomId: 'aclLayout.apply',
-              onPressed: () {},
-            ),
+            TomFilledButton(tomId: 'aclLayout.apply', onPressed: () {}),
             dist: 8,
           )
           .build(),
@@ -1693,10 +1682,7 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
       padding: const EdgeInsets.all(4),
       child: TomText(
         text: text,
-        style: TextStyle(
-          fontSize: 10,
-          color: theme.colorScheme.primary,
-        ),
+        style: TextStyle(fontSize: 10, color: theme.colorScheme.primary),
       ),
     );
   }
@@ -1710,9 +1696,7 @@ class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
 class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  _SectionHeader({
-    required this.tomId,
-  });
+  _SectionHeader({required this.tomId});
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1756,10 +1740,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {

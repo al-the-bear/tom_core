@@ -12,7 +12,9 @@ class AllDimensionsDemo extends StatelessWidget {
           // ── Row 1: single ExpandX — fixed left, expand centre, fixed right ──
           .append(const DemoBox('Fixed L\n(140)', Colors.blueGrey))
           .setPSize(140, 44)
-          .append(const DemoBox('ExpandX — fills remaining width', Colors.lightGreen))
+          .append(
+            const DemoBox('ExpandX — fills remaining width', Colors.lightGreen),
+          )
           .setPSize(200, 44)
           .setAttr(AclFlags.expandX)
           .append(const DemoBox('Fixed R\n(100)', Colors.blueGrey))
@@ -77,4 +79,3 @@ class AllDimensionsDemo extends StatelessWidget {
     );
   }
 }
-

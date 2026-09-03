@@ -62,9 +62,9 @@ void main() {
 
   /// The widget adapter wrapping the Tom field with id [tomId].
   Finder adapterOf(String tomId) => find.byWidgetPredicate(
-        (w) => w is TomFieldWidgetAdapter && w.field.tomId == tomId,
-        description: 'TomFieldWidgetAdapter[$tomId]',
-      );
+    (w) => w is TomFieldWidgetAdapter && w.field.tomId == tomId,
+    description: 'TomFieldWidgetAdapter[$tomId]',
+  );
 
   /// The `TextField` underneath the field with id [tomId].
   Finder fieldOf(String tomId) =>
@@ -75,8 +75,11 @@ void main() {
       (adapterOf(tomId).evaluate().first.widget as TomFieldWidgetAdapter)
           .effectiveAuthState;
 
-  Future<void> pumpDemo(WidgetTester tester, Widget demo,
-      {Size size = const Size(1400, 2400)}) async {
+  Future<void> pumpDemo(
+    WidgetTester tester,
+    Widget demo, {
+    Size size = const Size(1400, 2400),
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -87,8 +90,9 @@ void main() {
 
   // ── (a) FormsOverviewDemo — validate/save/reset flow + gate ──────────────
   group('FormsOverviewDemo (§68a)', () {
-    testWidgets('an invalid Save is gated — nothing is committed',
-        (tester) async {
+    testWidgets('an invalid Save is gated — nothing is committed', (
+      tester,
+    ) async {
       await pumpDemo(tester, const FormsOverviewDemo());
 
       // All fields empty: required email/password/username fail validation, so
@@ -98,8 +102,9 @@ void main() {
       expect(find.text('Saved Values:'), findsNothing);
     });
 
-    testWidgets('a valid Save commits and displays; Reset clears',
-        (tester) async {
+    testWidgets('a valid Save commits and displays; Reset clears', (
+      tester,
+    ) async {
       await pumpDemo(tester, const FormsOverviewDemo());
 
       await tester.enterText(fieldOf('email'), 'a@b.com');
@@ -126,10 +131,14 @@ void main() {
       '(§68b)', (tester) async {
     await pumpDemo(tester, const SelectionVariantsDemo());
     final state = tester.state<SelectionVariantsDemoState>(
-        find.byType(SelectionVariantsDemo));
+      find.byType(SelectionVariantsDemo),
+    );
 
-    expect((await state.debugSharedSource.getItems()).length, 4,
-        reason: 'full source starts with four items');
+    expect(
+      (await state.debugSharedSource.getItems()).length,
+      4,
+      reason: 'full source starts with four items',
+    );
 
     // `_filtered` starts false → button offers the filtered view.
     await tester.tap(find.widgetWithText(FilledButton, 'Show filtered source'));
@@ -142,8 +151,11 @@ void main() {
 
     await tester.tap(find.widgetWithText(FilledButton, 'Show all items'));
     await tester.pumpAndSettle();
-    expect((await state.debugSharedSource.getItems()).length, 4,
-        reason: 'toggling back restores the full source');
+    expect(
+      (await state.debugSharedSource.getItems()).length,
+      4,
+      reason: 'toggling back restores the full source',
+    );
   });
 
   // ── (c) BooleanVariantsDemo — sync() lock-step guard ─────────────────────
@@ -151,37 +163,53 @@ void main() {
       'lock-step (§68c)', (tester) async {
     await pumpDemo(tester, const BooleanVariantsDemo());
 
-    final checkbox =
-        find.descendant(of: adapterOf('shared1'), matching: find.byType(Checkbox));
-    final toggleSwitch =
-        find.descendant(of: adapterOf('shared2'), matching: find.byType(Switch));
+    final checkbox = find.descendant(
+      of: adapterOf('shared1'),
+      matching: find.byType(Checkbox),
+    );
+    final toggleSwitch = find.descendant(
+      of: adapterOf('shared2'),
+      matching: find.byType(Switch),
+    );
     final segmented = find.descendant(
-        of: adapterOf('shared3'), matching: find.byType(SegmentedButton<bool>));
+      of: adapterOf('shared3'),
+      matching: find.byType(SegmentedButton<bool>),
+    );
 
     // All three start off.
     expect(tester.widget<Checkbox>(checkbox).value, isFalse);
     expect(tester.widget<Switch>(toggleSwitch).value, isFalse);
-    expect(tester.widget<SegmentedButton<bool>>(segmented).selected,
-        equals({false}));
+    expect(
+      tester.widget<SegmentedButton<bool>>(segmented).selected,
+      equals({false}),
+    );
 
     // Flip the checkbox — sync() must propagate to switch and toggle without
     // re-entering (the `_syncing` guard) or throwing.
     await tester.tap(checkbox);
     await tester.pumpAndSettle();
     expect(tester.widget<Checkbox>(checkbox).value, isTrue);
-    expect(tester.widget<Switch>(toggleSwitch).value, isTrue,
-        reason: 'sync() propagated the checkbox change to the switch');
-    expect(tester.widget<SegmentedButton<bool>>(segmented).selected,
-        equals({true}),
-        reason: 'sync() propagated the checkbox change to the toggle');
+    expect(
+      tester.widget<Switch>(toggleSwitch).value,
+      isTrue,
+      reason: 'sync() propagated the checkbox change to the switch',
+    );
+    expect(
+      tester.widget<SegmentedButton<bool>>(segmented).selected,
+      equals({true}),
+      reason: 'sync() propagated the checkbox change to the toggle',
+    );
 
     // Flip the switch back off — the round-trip keeps all three in step.
-    await tester.tap(find.descendant(
-        of: adapterOf('shared2'), matching: find.byType(Switch)));
+    await tester.tap(
+      find.descendant(of: adapterOf('shared2'), matching: find.byType(Switch)),
+    );
     await tester.pumpAndSettle();
     expect(tester.widget<Checkbox>(checkbox).value, isFalse);
-    expect(tester.widget<SegmentedButton<bool>>(segmented).selected,
-        equals({false}));
+    expect(
+      tester.widget<SegmentedButton<bool>>(segmented).selected,
+      equals({false}),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -189,50 +217,79 @@ void main() {
   testWidgets('ComplexBreakpointsDemo: _bpLabel maps width to a style label '
       '(§68d)', (tester) async {
     // < 480 → compact (≈368px content after 16px padding either side).
-    await pumpDemo(tester, const ComplexBreakpointsDemo(),
-        size: const Size(400, 1600));
+    await pumpDemo(
+      tester,
+      const ComplexBreakpointsDemo(),
+      size: const Size(400, 1600),
+    );
     expect(find.textContaining('compact style'), findsOneWidget);
 
     // 480 ≤ w < 900 → comfortable.
-    await pumpDemo(tester, const ComplexBreakpointsDemo(),
-        size: const Size(700, 1600));
+    await pumpDemo(
+      tester,
+      const ComplexBreakpointsDemo(),
+      size: const Size(700, 1600),
+    );
     expect(find.textContaining('comfortable style'), findsOneWidget);
 
     // ≥ 900 → spacious.
-    await pumpDemo(tester, const ComplexBreakpointsDemo(),
-        size: const Size(1000, 1600));
+    await pumpDemo(
+      tester,
+      const ComplexBreakpointsDemo(),
+      size: const Size(1000, 1600),
+    );
     expect(find.textContaining('spacious style'), findsOneWidget);
   });
 
   testWidgets('ComplexBreakpointsDemo: _collapseRow stacks below 600px and '
       'rows above (§68d)', (tester) async {
     Finder collapsePanel() => find.ancestor(
-        of: find.text('Collapses under 600px'), matching: find.byType(Card));
+      of: find.text('Collapses under 600px'),
+      matching: find.byType(Card),
+    );
     Finder nameInPanel() =>
         find.descendant(of: collapsePanel(), matching: adapterOf('name'));
     Finder emailInPanel() =>
         find.descendant(of: collapsePanel(), matching: adapterOf('email'));
 
     // Narrow (< 600): the two fields stack — email sits below name, same left.
-    await pumpDemo(tester, const ComplexBreakpointsDemo(),
-        size: const Size(500, 1600));
+    await pumpDemo(
+      tester,
+      const ComplexBreakpointsDemo(),
+      size: const Size(500, 1600),
+    );
     var nameRect = tester.getRect(nameInPanel());
     var emailRect = tester.getRect(emailInPanel());
-    expect(emailRect.top, greaterThan(nameRect.bottom - 1),
-        reason: 'narrow layout stacks email beneath name');
-    expect((emailRect.left - nameRect.left).abs(), lessThan(1),
-        reason: 'stacked fields share the same left edge');
+    expect(
+      emailRect.top,
+      greaterThan(nameRect.bottom - 1),
+      reason: 'narrow layout stacks email beneath name',
+    );
+    expect(
+      (emailRect.left - nameRect.left).abs(),
+      lessThan(1),
+      reason: 'stacked fields share the same left edge',
+    );
 
     // Wide (≥ 600): the fields sit side-by-side in a Row — same top, email to
     // the right of name.
-    await pumpDemo(tester, const ComplexBreakpointsDemo(),
-        size: const Size(900, 1600));
+    await pumpDemo(
+      tester,
+      const ComplexBreakpointsDemo(),
+      size: const Size(900, 1600),
+    );
     nameRect = tester.getRect(nameInPanel());
     emailRect = tester.getRect(emailInPanel());
-    expect((emailRect.top - nameRect.top).abs(), lessThan(1),
-        reason: 'row layout aligns the two fields on the same top');
-    expect(emailRect.left, greaterThan(nameRect.right - 1),
-        reason: 'row layout places email to the right of name');
+    expect(
+      (emailRect.top - nameRect.top).abs(),
+      lessThan(1),
+      reason: 'row layout aligns the two fields on the same top',
+    );
+    expect(
+      emailRect.left,
+      greaterThan(nameRect.right - 1),
+      reason: 'row layout places email to the right of name',
+    );
   });
 
   // ── (e) ComplexAuthDemo — UIStateController cross-field closures ─────────
@@ -251,8 +308,11 @@ void main() {
     // A non-empty value without '@' disables the field.
     await tester.enterText(fieldOf('emailLive'), 'bademail');
     await tester.pumpAndSettle();
-    expect(authOf(tester, 'emailLive'), TomAuthState.disabled,
-        reason: 'the resolve closure disables on a malformed email');
+    expect(
+      authOf(tester, 'emailLive'),
+      TomAuthState.disabled,
+      reason: 'the resolve closure disables on a malformed email',
+    );
   });
 
   testWidgets('ComplexAuthDemo: phone UIStateController goes read-only when '
@@ -262,13 +322,18 @@ void main() {
     expect(authOf(tester, 'phoneLive'), TomAuthState.full);
 
     final verify = find.descendant(
-        of: adapterOf('phoneVerified'), matching: find.byType(Checkbox));
+      of: adapterOf('phoneVerified'),
+      matching: find.byType(Checkbox),
+    );
     await tester.ensureVisible(verify);
     await tester.tap(verify);
     await tester.pumpAndSettle();
 
-    expect(authOf(tester, 'phoneLive'), TomAuthState.read,
-        reason: 'verifying the phone flips the live phone field read-only');
+    expect(
+      authOf(tester, 'phoneLive'),
+      TomAuthState.read,
+      reason: 'verifying the phone flips the live phone field read-only',
+    );
   });
 
   // ── (f) ComplexAuthDemo — _GroupStateAdapter.resolveAuth routing ─────────
@@ -295,7 +360,10 @@ void main() {
     // `?? full` default).
     expect(authOf(tester, 'fAll1'), TomAuthState.read);
     expect(authOf(tester, 'fAll2'), TomAuthState.read);
-    expect(authOf(tester, 'fN1'), TomAuthState.full,
-        reason: 'unset groups fall through to the adapter default (full)');
+    expect(
+      authOf(tester, 'fN1'),
+      TomAuthState.full,
+      reason: 'unset groups fall through to the adapter default (full)',
+    );
   });
 }

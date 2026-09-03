@@ -39,8 +39,7 @@ class _BuildersClipsDemoContent extends TomStatefulWidget {
       _BuildersClipsDemoContentState();
 }
 
-class _BuildersClipsDemoContentState
-    extends TomState<_BuildersClipsDemoContent>
+class _BuildersClipsDemoContentState extends TomState<_BuildersClipsDemoContent>
     with TickerProviderStateMixin {
   // For FutureBuilder demo
   late Future<String> _futureData;
@@ -72,8 +71,9 @@ class _BuildersClipsDemoContentState
   double _tweenTarget = 0.0;
 
   // For EditableText demo
-  final TextEditingController _editController =
-      TextEditingController(text: 'Editable text here');
+  final TextEditingController _editController = TextEditingController(
+    text: 'Editable text here',
+  );
   final FocusNode _editFocusNode = FocusNode();
 
   @override
@@ -615,10 +615,7 @@ class _BuildersClipsDemoContentState
                 // TomClipOval
                 TomColumn(
                   children: [
-                    TomClipOval(
-                      tomId: 'clip.oval',
-                      child: sampleChild,
-                    ),
+                    TomClipOval(tomId: 'clip.oval', child: sampleChild),
                     TomSizedBox(height: 4),
                     const Text('ClipOval', style: TextStyle(fontSize: 12)),
                   ],
@@ -743,10 +740,7 @@ class _BuildersClipsDemoContentState
         spacing: 8,
         runSpacing: 8,
         children: [
-          TomRawChip(
-            tomId: 'rawChip.basic',
-            label: const Text('Raw Chip'),
-          ),
+          TomRawChip(tomId: 'rawChip.basic', label: const Text('Raw Chip')),
           TomRawChip(
             tomId: 'rawChip.avatar',
             avatar: const Icon(Icons.person, size: 18),
@@ -863,10 +857,7 @@ class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  _DemoCard({
-    required this.tomId,
-    required this.child,
-  });
+  _DemoCard({required this.tomId, required this.child});
 
   @override
   Widget buildContent(BuildContext context) {
