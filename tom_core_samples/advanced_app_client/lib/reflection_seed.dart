@@ -23,7 +23,7 @@ import 'forms/todo_item_form.dart';
 // ignore: unused_import
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 // The reflection-first contract DTOs the live app backend round-trips through
-// the client core (LoginRequest/LoginResult/GradedFieldDto/ShareRequest/
+// the client core (LoginRequest/LoginResult/ShareRequest/GrantMatrixDto/
 // ResourceBundleDto/…): they must be in this one combined seed so
 // `dtoFromJson`/`dtoToJsonString` resolve at runtime.
 // ignore: unused_import
@@ -69,7 +69,6 @@ class _ContractDtoAnchor {
   ShareRequest? shareRequest;
   GrantMatrixDto? grantMatrixDto;
   ResourceBundleDto? resourceBundleDto;
-  GradedFieldDto? gradedFieldDto;
 }
 
 // The reflection generator treats this file as a runnable program and requires a

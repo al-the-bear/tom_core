@@ -19,7 +19,7 @@
       "note": "One key listed in an \"Error keys\" section that no code raises: `storage.blob.exists` in tom_core_server_file_storage_new.md."
     },
     "check_doc_inventories": {
-      "faults": 49,
+      "faults": 48,
       "measured": "2026-09-03",
       "note": "Stale line counts and file tallies across 19 completion documents. `--fix` re-measures all 49; adding and retiring a table row still needs a hand, because a new row needs a sentence saying what the file carries. Rose from 43 when header recognition was widened to read the opening paragraph as a sentence: coverage went 41 documents to 69, and the six figures that surfaced are debt that was always there and unmeasurable, not new drift. They are held here rather than repaired because the repair is a documentation pass -- see tcfinal1_aicl_stale_module_header_figures."
     },

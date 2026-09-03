@@ -37,7 +37,7 @@ dependencies:
     path: ../advanced_todo_domain
 
   # The wire contracts the backend seam speaks: LoginRequest/LoginResult,
-  # ShareRequest and GradedFieldDto. Pulled transitively via advanced_client_core,
+  # ShareRequest and GrantMatrixDto. Pulled transitively via advanced_client_core,
   # but named directly here so a direct dependency avoids the
   # depend_on_referenced_packages lint.
   advanced_todo_contracts:
