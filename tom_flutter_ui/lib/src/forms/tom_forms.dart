@@ -1,3 +1,28 @@
+/// The declarative form system — typed observable fields, validation, and a
+/// data/presentation split.
+///
+/// The guiding rule is that a form is a *model*, not a widget tree. A
+/// [TomForm] holds its fields and their values; each [TomField] is a typed
+/// observable that knows its value, its validators and its authorization
+/// state, and exposes a `widget` getter when something needs to render it.
+/// So a form can be built, populated, validated and asserted on with no
+/// Flutter binding in sight, and the same declaration renders as Material or
+/// Cupertino.
+///
+/// Read in this order:
+/// - [TomForm] — the model: fields, values, submit and validation runs.
+/// - [TomField] — one typed, observable, validating value; the concretes
+///   ([TomFormStringInput] and its siblings) only add the rendering.
+/// - [FormFieldFamily] — the factory that picks the Material or Cupertino
+///   concrete for a declared field kind.
+///
+/// Validation lives under `validation/` ([Validators],
+/// [TomValidatorRegistry], [ValidationResult]), styling under `style/`
+/// ([TomFormStyle]), and list-shaped forms under `list/` ([TomListForm]).
+///
+/// Prose: `doc/forms.md`.
+library;
+
 // Data model and prerequisites
 export 'tom_form.dart';
 export 'tom_form_child_container.dart';

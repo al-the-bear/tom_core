@@ -21,10 +21,12 @@
 /// the other reader — the one navigating the source, or following an IDE
 /// "go to definition" into `lib/src/`.
 ///
-/// **This is a ratchet, not a clean sweep.** Five module barrels are
-/// undocumented today and are named in [_knownUndocumented]. The test fails if
-/// that set grows, or if a barrel on it is quietly deleted; removing an entry
-/// is the only edit that should ever be needed.
+/// **Every module barrel is documented, and [_knownUndocumented] is empty.**
+/// It was a ratchet while it was being worked off, and the mechanism stays:
+/// a new barrel added without a dartdoc fails, and so does an attempt to
+/// silence that failure by re-populating the set. Emptiness is itself
+/// asserted, so the escape hatch that made the sweep possible cannot quietly
+/// become the way new gaps are accepted.
 ///
 /// **The last group polices what the prose says, not whether it exists.**
 /// Documentation written alongside a build plan tends to describe the code's
@@ -73,17 +75,14 @@ const _packageBarrel = 'lib/tom_flutter_ui.dart';
 const _aclBarrel =
     'lib/src/advanced_container_layout/advanced_container_layout.dart';
 
-/// Module barrels that carry no library dartdoc yet.
+/// Module barrels allowed to carry no library dartdoc.
 ///
-/// Each entry is a reader who currently arrives at a bare `export` list. The
-/// set may shrink; a growing set is a regression and fails the ratchet below.
-const _knownUndocumented = <String>{
-  'lib/src/forms/tom_forms.dart',
-  'lib/src/resource_auth/resource_auth.dart',
-  'lib/src/theme/theme.dart',
-  'lib/src/widget_base/widget_base.dart',
-  'lib/src/widgets/widgets.dart',
-};
+/// Empty, and pinned empty below. It held five entries while the sweep was in
+/// progress — each one a reader arriving at a bare `export` list — and every
+/// one of them has since been written. Adding an entry back is how a real
+/// regression would be made to look intentional, so it is a failure rather
+/// than a decision available to whoever hits the ratchet.
+const _knownUndocumented = <String>{};
 
 /// Vocabularies that name a position in the build plan rather than the code.
 ///
@@ -442,6 +441,19 @@ void main() {
   });
 
   group('the undocumented-barrel ratchet', () {
+    test('the known-gap list is empty', () {
+      // The list is the only way a bare barrel can pass the check below, so
+      // without this the sweep is undone by a one-line edit that reads like
+      // bookkeeping. Every module barrel is documented; keep it that way by
+      // making the exemption unavailable rather than merely discouraged.
+      expect(_knownUndocumented, isEmpty,
+          reason: 'a module barrel was exempted from needing a library '
+              'dartdoc. Write the dartdoc instead — the shape is a paragraph '
+              'saying what the unit is, the two or three types to read first '
+              'as [] refs, and the unit\'s doc/ document named by path:\n'
+              '${_knownUndocumented.map((p) => '  $p').join('\n')}');
+    });
+
     test('every module barrel is documented, or listed as a known gap', () {
       final undocumented = _moduleBarrels()
           .where((path) => _libraryDartdoc(path).isEmpty)
