@@ -207,8 +207,9 @@ class TomNotificationType {
     if (preferences == null || !userConfigurable) {
       return _ordered(mandatoryChannelIds, defaultChannelIds);
     }
-    if (preferences.silences(this))
+    if (preferences.silences(this)) {
       return _ordered(mandatoryChannelIds, const []);
+    }
     final chosen = preferences.channelsByTypeId[typeId] ?? defaultChannelIds;
     return _ordered(mandatoryChannelIds, chosen);
   }
