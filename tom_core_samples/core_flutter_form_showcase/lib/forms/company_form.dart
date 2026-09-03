@@ -27,11 +27,15 @@ final StaticSelectableSource<String> industrySource =
 /// Tax IDs starting with `X` are reported as taken after a 600 ms delay — the
 /// canonical way to demonstrate an async (`SlowValidator`) pending → resolved
 /// lifecycle.
+///
+/// Like every custom rule here the error is a *key*, prefixed `error.` so it
+/// shares the namespace the `Validators` built-ins use, and its sentence lives
+/// in `showcaseValidationTexts` (common/chrome_texts.dart).
 final SlowValidator<String> taxIdUniquenessValidator =
     SlowValidator<String>((value) async {
   await Future<void>.delayed(const Duration(milliseconds: 600));
   if (value.startsWith('X')) {
-    return const ValidationError('taxIdTaken');
+    return const ValidationError('error.taxIdTaken');
   }
   return const ValidationSuccess();
 });
@@ -76,7 +80,10 @@ class CompanyForm extends TomForm<CompanyProfile> {
     labelTextOverride: 'Tax ID',
     validators: [
       Validators.required(),
-      Validators.pattern(RegExp(r'^[A-Z0-9-]+$'), errorKey: 'taxIdFormat'),
+      Validators.pattern(
+        RegExp(r'^[A-Z0-9-]+$'),
+        errorKey: 'error.taxIdFormat',
+      ),
       taxIdUniquenessValidator,
     ],
   );
@@ -93,7 +100,7 @@ class CompanyForm extends TomForm<CompanyProfile> {
           r'^https?:\/\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+'
           r'[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$',
         ),
-        errorKey: 'invalidUrl',
+        errorKey: 'error.invalidUrl',
       ),
     ],
     keyboardType: TextInputType.url,

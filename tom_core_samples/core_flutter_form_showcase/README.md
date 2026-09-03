@@ -143,7 +143,7 @@ Two things happen before the first frame ([`lib/main.dart`](lib/main.dart)):
 void main() {
   initializeReflection();                       // 1. register reflected types
   TomTextResourceProvider.setAppResourceProvider(
-    TomTextResourceProvider.from(chromeTexts),  // 2. interactive-chrome bundle
+    TomTextResourceProvider.from(showcaseTexts),  // 2. chrome + validator text
   );
   runApp(ShowcaseApp());
 }
@@ -152,10 +152,14 @@ void main() {
 1. **`initializeReflection()`** (from the generated
    `reflection_seed.reflection.dart`) registers every reflected type. It **must**
    run before any form is constructed.
-2. The **`chromeTexts` bundle** is installed. The showcase resolves its teaching
-   labels through `labelTextOverride` (nothing to wire up), but its own
-   interactive chrome is a resource per G-RES-1 (see §5 for the boundary, and
-   `lib/common/chrome_texts.dart` for what the bundle carries).
+2. The **`showcaseTexts` bundle** is installed. The showcase resolves its
+   teaching labels through `labelTextOverride` (nothing to wire up), but two
+   categories are real application text and so fall under G-RES-1: the
+   scaffold's own interactive chrome (`chromeTexts`) and the **validator
+   messages** (`showcaseValidationTexts`). Installing the union before the first
+   frame is what stops a validator's `error.*` key rendering as its own name
+   (see §5 for the boundary, and `lib/common/chrome_texts.dart` for what each
+   bundle carries).
 
 `TomTextResourceProvider` is not re-exported by the `tom_flutter_ui` barrel — it
 is imported from `package:tom_core_kernel/tom_core_kernel.dart`.
@@ -215,11 +219,19 @@ construction, the widgets are non-const. See the G-UI-2 clarification in
 **Which strings are hardcoded vs resources (G-RES-1).** The teaching content is a
 deliberate copy-paste exemption: group titles/summaries, the `code:` bodies, and
 the form field labels (via `labelTextOverride`) stay inline so a reader can lift a
-snippet verbatim. The scaffold's own **application chrome** — the home screen's
-app-bar title (`showcase.app.title`) and the code panel's copy-button tooltip
-(`showcase.codeBlock.copyTooltip`) — is real on-screen text, so G-RES-1 applies
-and it resolves through the `chromeTexts` bundle installed in `main` (and in each
-test's `setUp`). The only string kept hardcoded outside the bundle is
+snippet verbatim. Everything else is a resource, in two bundles:
+
+- **Interactive chrome** (`chromeTexts`) — the home screen's app-bar title
+  (`showcase.app.title`) and the code panel's copy-button tooltip
+  (`showcase.codeBlock.copyTooltip`). Real on-screen text, so G-RES-1 applies.
+- **Validator messages** (`showcaseValidationTexts`) — `error.required`,
+  `error.minLength`, `error.maxLength`, `error.taxIdFormat`, `error.taxIdTaken`,
+  `error.invalidUrl`, `error.invalidInteger`, `error.mustBePositive`,
+  `error.invalidDecimal`, `error.mustBeNonNegative`. See §8 for why this is the
+  category with teeth.
+
+`showcaseTexts` is the union, and it is what `main` installs and what every test
+installs in its `setUp`. The only string kept hardcoded outside the bundles is
 `MaterialApp.title` — OS-level app identity, not on-screen copy. See
 `lib/common/chrome_texts.dart`.
 
@@ -339,7 +351,7 @@ validators: [Validators.required(), Validators.minLength(2)]
 
 ```dart
 validators: [
-  Validators.pattern(RegExp(r'^https?:\/\/...'), errorKey: 'invalidUrl'),
+  Validators.pattern(RegExp(r'^https?:\/\/...'), errorKey: 'error.invalidUrl'),
 ]
 ```
 
@@ -349,7 +361,7 @@ starting with `X` resolve to *taken*, and a pending spinner shows while it runs:
 ```dart
 final taxIdUniquenessValidator = SlowValidator<String>((value) async {
   await Future.delayed(const Duration(milliseconds: 600));
-  if (value.startsWith('X')) return const ValidationError('taxIdTaken');
+  if (value.startsWith('X')) return const ValidationError('error.taxIdTaken');
   return const ValidationSuccess();
 });
 ```
@@ -370,6 +382,21 @@ TomFormStringInput(
 ```dart
 TomErrorView(form: form, title: 'Please fix the following')
 ```
+
+**A validator carries a key, never a sentence — and an undefined key does not
+fail.** Every rule above emits an `error.*` key, which the field resolves through
+`<basePath>.<key>` → `<key>` → **the raw key itself** as a development indicator.
+That last step is a trap worth naming: a key no bundle defines does not throw,
+log, or render blank — it renders as `error.invalidUrl`, which reads enough like
+a message to survive review and any test that merely asserts an error appeared.
+So custom keys take the framework's `error.` prefix, sit in
+`showcaseValidationTexts` beside the `Validators` built-ins (§5), and
+`validation_message_test.dart` asserts the human sentences *by name*, sweeps the
+rendered form for anything still starting with `error.`, and scans `lib/` so that
+even a rule no interaction can provoke must still have a sentence behind it.
+Parameters are interpolated from the validator: `minLength(2)` passes
+`{min: 2}` into `'Use at least {min} characters.'`, so the bound is stated once
+— in the form — and never duplicated in the bundle.
 
 ---
 
@@ -650,7 +677,7 @@ results):
 flutter test --concurrency=1
 ```
 
-All four suites call `initializeReflection()` in `setUpAll`:
+All five suites call `initializeReflection()` in `setUpAll`:
 
 - **`showcase_smoke_test.dart`** — pumps each group and the home screen at a
   large size, asserting the group title renders and `takeException` is null.
@@ -671,8 +698,13 @@ All four suites call `initializeReflection()` in `setUpAll`:
 - **`list_form_host_test.dart`** — asserts the two list-bearing groups really
   bind their seeded items, which the smoke test cannot see (an unbound list form
   renders zero rows without throwing).
+- **`validation_message_test.dart`** — every `error.*` key the sample can emit
+  resolves to its human sentence, `{min}` is interpolated, no `Text` in a
+  rendered form shows a raw resource key, and a source scan of `lib/` catches the
+  keys no interaction can paint (§8). Without it the silent key-as-message
+  fallback is invisible to the rest of the suite.
 
-Current status: `dart analyze` → *No issues found!*; `flutter test` → **16/16
+Current status: `dart analyze` → *No issues found!*; `flutter test` → **23/23
 green** (serial).
 
 ---

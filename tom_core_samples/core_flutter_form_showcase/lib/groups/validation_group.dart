@@ -43,11 +43,11 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'Pattern',
       note: 'A RegExp validator with a named errorKey. Type a non-URL to see '
-          'the invalidUrl message.',
+          'the message that error.invalidUrl resolves to.',
       code: "validators: [\n"
           "  Validators.pattern(\n"
           "    RegExp(r'^https?:\\/\\/...'),\n"
-          "    errorKey: 'invalidUrl',\n"
+          "    errorKey: 'error.invalidUrl',\n"
           "  ),\n"
           "]",
       child: FormHost<CompanyForm>(
@@ -65,7 +65,7 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
           "    SlowValidator<String>((value) async {\n"
           "  await Future.delayed(Duration(milliseconds: 600));\n"
           "  if (value.startsWith('X')) {\n"
-          "    return ValidationError('taxIdTaken');\n"
+          "    return ValidationError('error.taxIdTaken');\n"
           "  }\n"
           "  return ValidationSuccess();\n"
           "});",

@@ -6,13 +6,14 @@
 ///     entities ([CompanyProfile], [OrderItem]); their field metadata comes
 ///     from the generated `reflection_seed.reflection.dart`, so reflection has
 ///     to be registered before any form is constructed.
-///  2. The [chromeTexts] bundle is installed. The showcase's teaching snippets
+///  2. The [showcaseTexts] bundle is installed. The showcase's teaching snippets
 ///     resolve their field labels through `labelTextOverride` (no resource file
-///     needed — error keys fall through to their raw key, which is intentionally
-///     instructive), but the showcase's own **interactive chrome** is real
-///     application text, so G-RES-1 applies and it is resolved from this bundle
-///     (see `common/chrome_texts.dart` for the exemption boundary and for what
-///     the bundle carries).
+///     needed), but two categories are real application text and so fall under
+///     G-RES-1: the showcase's own **interactive chrome** ([chromeTexts]) and the
+///     **validator messages** ([showcaseValidationTexts]). Installing the union
+///     before the first frame is what stops a validator's `error.*` key rendering
+///     as its own name; see `common/chrome_texts.dart` for the exemption boundary
+///     and for what each bundle carries.
 library;
 
 import 'package:flutter/material.dart';
@@ -25,7 +26,7 @@ import 'showcase_app.dart';
 void main() {
   initializeReflection();
   TomTextResourceProvider.setAppResourceProvider(
-    TomTextResourceProvider.from(chromeTexts),
+    TomTextResourceProvider.from(showcaseTexts),
   );
   runApp(ShowcaseApp());
 }
