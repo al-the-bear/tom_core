@@ -12,7 +12,7 @@
 /// Both used to scan with `RegExp(r':([A-Za-z_][A-Za-z0-9_]*)')`, which has no
 /// notion of string-literal context — a `:identifier`-looking substring *inside*
 /// an inlined literal (e.g. `WHERE a = 'x:y' AND b = :p`) was mis-tokenised into
-/// a spurious slot, desynchronising every following positional bind (RCC6).
+/// a spurious slot, desynchronising every following positional bind.
 ///
 /// This is the single implementation both consumers share. It walks the SQL
 /// character by character, copying the contents of quoted spans verbatim, and
@@ -29,7 +29,7 @@
 ///    a literal backtick is written doubled (`` `` ``). So the backtick span is
 ///    skipped with the doubled-delimiter rule only. A generated identifier is a
 ///    Dart field name and never contains a colon, so this is a robustness guard
-///    (RCB10) against hand-written or future SQL rather than a live trigger.
+///    against hand-written or future SQL rather than a live trigger.
 class SqlPlaceholderScan {
   SqlPlaceholderScan._();
 

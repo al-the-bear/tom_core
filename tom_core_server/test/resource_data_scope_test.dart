@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 import 'fixtures/reflection_fixture.reflection.dart';
 
-/// RCC5 — the grant-driven `resource` row scope, verified connection-free.
+/// The grant-driven `resource` row scope, verified connection-free.
 ///
 /// The done-bar: an entity carrying a resource-key column is filtered, on read
 /// *and* on write, by the resource keys the current principal holds a grant on
@@ -12,7 +12,7 @@ import 'fixtures/reflection_fixture.reflection.dart';
 /// parameters, so that is what is asserted here, exactly as the `owner`/`group`
 /// scopes are asserted in `data_scope_test.dart`.
 ///
-/// Two grades govern the two sides (RCC5 decisions 1 and 2): a role registered
+/// Two grades govern the two sides: a role registered
 /// at [TomAuthState.read] or wider admits the row to a *query*; only
 /// [TomAuthState.full] admits it to a *write*.
 
@@ -101,7 +101,7 @@ void main() {
         forWrite: true,
       ))!;
 
-  group('grant-driven read scope (RCC5 done-bar)', () {
+  group('grant-driven read scope', () {
     test(
       'two principals see disjoint row sets from their own grants',
       () async {
@@ -182,7 +182,7 @@ void main() {
     );
   });
 
-  group('grant-driven write scope (RCC5 decision 2)', () {
+  group('grant-driven write scope', () {
     test('only a full-graded grant admits the row to a write', () async {
       _install([
         _grant(1, 'project:alpha', 'owner'),

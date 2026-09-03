@@ -207,18 +207,18 @@ final nowInTokyo = tokyo.now();
 All types share these features, because `TomTimezoned` itself has them:
 
 ```text
-Common accessors (return UTC values)
+// Common accessors (return UTC values)
   year, month, day, hour, minute, second, millisecond, microsecond, weekday
 
-Local accessors (return values in the timezone)
+// Local accessors (return values in the timezone)
   localYear, localMonth, localDay, localHour, localMinute, localSecond,
   localMillisecond, localMicrosecond, localWeekday
 
-Common members
-  timezone                    The associated TomTimezone
-  getSerializationPrefix()    '' here; '@D@', '@T@' or '@X@' on the subclasses
-  toDateTime()                Get DateTime with local time values
-  toString()                  Serialize to string
+// Common members
+  timezone                    // The associated TomTimezone
+  getSerializationPrefix()    // '' here; '@D@', '@T@' or '@X@' on the subclasses
+  toDateTime()                // Get DateTime with local time values
+  toString()                  // Serialize to string
 ```
 
 Conversion is not on that list. Each of the three subclasses declares its own

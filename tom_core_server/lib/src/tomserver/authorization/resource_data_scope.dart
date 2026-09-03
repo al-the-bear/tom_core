@@ -6,14 +6,14 @@ import '../object_persistence/data_scope.dart';
 import 'principal_delegation.dart';
 
 /// The grant-driven row scope: an entity carrying a resource-key column is
-/// filtered by the resource keys the current principal holds a grant on (RCC5).
+/// filtered by the resource keys the current principal holds a grant on.
 ///
 /// This is the piece that turns the C-5 ownership grants and the C-6
 /// delegations into a `WHERE resource_key IN (…)` — the two models already
 /// answer "which resources may this principal touch, and how strongly"; the
 /// row scope simply asks them, per query, and binds the answer.
 ///
-/// **The grades are the whole design** (RCC5 decisions 1 and 2). Every grant
+/// **The grades are the whole design.** Every grant
 /// names a role; [TomResourceRoleRegistry] grades that role as a
 /// [TomAuthState]. A row is admitted to a *query* at grade
 /// [TomAuthState.read] or wider, and to a *write* only at

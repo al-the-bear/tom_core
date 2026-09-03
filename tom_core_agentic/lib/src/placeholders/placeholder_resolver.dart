@@ -1,12 +1,11 @@
 // PlaceholderResolver — expands the four placeholder forms in a scaffold.
 //
-// The single, shared placeholder engine for the whole brain stack
-// (originally Extension F, step 1 of `tom_brain_procedure_specification.md`
-// § 21.7, § 21.10; relocated to `tom_core_agentic` so the substrate /
-// access / memory config loaders and the engine all resolve through one
-// mechanism).
+// The single, shared placeholder engine for the whole brain stack, specified
+// by `tom_brain_procedure_specification.md` § 21.7, § 21.10 and living in
+// `tom_core_agentic` so the substrate / access / memory config loaders and
+// the engine all resolve through one mechanism.
 //
-// Forms (§ 21.7):
+// Forms:
 //   ${name}      simple-identifier fast path — reads a binding from the
 //                current scope. It is NOT interchangeable with
 //                `${{ name }}`; see "Simple vs expression form" below.
@@ -46,7 +45,7 @@
 // up to [maxRecursion] levels (default 10) and then errors with
 // `placeholder.recursion.exceeded`.
 //
-// Strict vs lenient (§ 21.10): an unknown `${name}` / `${env:NAME}` either
+// Strict vs lenient: an unknown `${name}` / `${env:NAME}` either
 // errors (`placeholder.unresolved`, strict) or renders as an empty string
 // (lenient). The default is strict.
 //
@@ -111,7 +110,7 @@ final class PlaceholderResolver {
   /// The environment `${env:NAME}` reads from. Defaults to the live
   /// process environment ([Platform.environment]); an explicit map makes
   /// the env form injectable (config loaders pass a fixed map so a
-  /// `${env:NAME}` apiKey resolves deterministically, § 21.6).
+  /// `${env:NAME}` apiKey resolves deterministically).
   final Map<String, String> environment;
 
   /// When true, an unknown `${name}` / `${env:NAME}` errors with

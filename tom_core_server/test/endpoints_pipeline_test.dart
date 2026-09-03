@@ -1660,8 +1660,7 @@ void main() {
       // refuses with a 404. That is the only way into this log line from a test:
       // an *accepted* handshake hijacks the connection, and `hijack` throws
       // `HijackException`, so the statement after `await handler(req)` never
-      // runs (quest todo
-      // tcincb136_ahye-websocket-handshake-log-unreachable-on-accepted-upgrade).
+      // runs, so the accepted-upgrade path cannot be reached from here.
       Future<bool> socketLogged(bool globalDefault) async {
         TomEndpointHandler.globalSettingLogRequestsDefault = globalDefault;
         captured.lines.clear();

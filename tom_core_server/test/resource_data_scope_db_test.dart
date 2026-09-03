@@ -1,4 +1,4 @@
-/// DB-backed tests for the grant-driven row scope (RCC5).
+/// DB-backed tests for the grant-driven row scope.
 ///
 /// `resource_data_scope_test.dart` asserts the *predicate* the scope resolves —
 /// which keys, at which grade, from which grants. This file asserts the thing

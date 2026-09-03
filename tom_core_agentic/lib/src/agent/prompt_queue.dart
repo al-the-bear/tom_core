@@ -3,7 +3,7 @@
 //
 // Ported from the VS Code extension's prompt-queue manager
 // (`tom_vscode_extension/src/managers/promptQueueManager.ts`) for the
-// TomSpecs editor's queue (§11.2) and its Prompt Queue editor. Persisted
+// TomSpecs editor's queue and its Prompt Queue editor. Persisted
 // as YAML in the spec workspace (`*.entry.queue.yaml`).
 //
 // `repeatCount` mirrors the extension's `number | string` union (a literal

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Runs the DB-backed test surfaces (RCK13) against a throwaway MariaDB.
+# Runs the DB-backed test surfaces against a throwaway MariaDB.
 #
 # The DB-tagged suites (`--tags db`) self-skip when no server is reachable, so
 # the default `testkit :test` run stays green everywhere. This script provides

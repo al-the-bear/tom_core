@@ -2,7 +2,7 @@
 //
 // Ported from the VS Code extension's `ReminderTemplate`
 // (`tom_vscode_extension/src/managers/reminderSystem.ts`) for the TomSpecs
-// editor (§11.2 / §11.4). The reminder runtime uses fixed `{{token}}`
+// editor. The reminder runtime uses fixed `{{token}}`
 // chain-replaces rather than the canonical placeholder resolver, so the
 // body is stored verbatim here; the editor renders / fills it elsewhere.
 library;

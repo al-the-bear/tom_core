@@ -1,4 +1,4 @@
-/// DB-backed tests for the migration orchestrator + MariaDB adaptor (RCK13).
+/// DB-backed tests for the migration orchestrator + MariaDB adaptor.
 ///
 /// The connection-free surface (filename parsing, ascending-version ordering,
 /// environment selection, statement splitting) is covered by

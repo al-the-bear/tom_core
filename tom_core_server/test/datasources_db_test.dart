@@ -1,4 +1,4 @@
-/// DB-backed tests for the MariaDB data-source driver (RCK13).
+/// DB-backed tests for the MariaDB data-source driver.
 ///
 /// The connection-free surface (dialect literals/predicates, positional-
 /// placeholder rewriting, port parsing, XA lifecycle bookkeeping) is covered by

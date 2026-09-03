@@ -1,5 +1,5 @@
 // Tests for the editor agent send pipeline: streaming a prompt through the
-// Agent SDK and refreshing the per-spec session id on a session error (§7.2).
+// Agent SDK and refreshing the per-spec session id on a session error.
 //
 // The SDK transport is faked so the loop is unit-testable without a socket: the
 // fake emits scripted `agentSdk.chunk` payloads for each started query, keyed by
@@ -144,7 +144,7 @@ SpecSessionStore _tempStore() {
 }
 
 void main() {
-  group('specSessionLooksLikeError (§7.2 rule)', () {
+  group('specSessionLooksLikeError', () {
     test('matches session / message / msg, case-insensitively', () {
       expect(specSessionLooksLikeError('Invalid SESSION id'), isTrue);
       expect(specSessionLooksLikeError('bad message format'), isTrue);

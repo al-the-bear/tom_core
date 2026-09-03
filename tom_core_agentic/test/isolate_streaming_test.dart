@@ -294,28 +294,25 @@ void main() {
     // (the producer consumes after pushing), so a single grant wakes *every*
     // parked waiter; n+1 producers then push against only n credits and
     // consume() cascades StateErrors.
-    test(
-      'grant(1) wakes exactly one of three parked waiters',
-      () async {
-        final t = BackpressureTracker(initialCredits: 0);
-        var woken = 0;
-        final f1 = t.awaitCredit().then((_) => woken++);
-        final f2 = t.awaitCredit().then((_) => woken++);
-        final f3 = t.awaitCredit().then((_) => woken++);
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-        expect(t.waiterCount, equals(3));
-        t.grant(1);
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-        // Exactly one waiter wakes; the other two stay parked.
-        expect(woken, equals(1));
-        expect(t.waiterCount, equals(2));
-        // The leftover credit is one, claimable by the woken producer.
-        expect(t.credits, equals(1));
-        // Draining the rest so no future completes after the test ends.
-        t.grant(2);
-        await Future.wait([f1, f2, f3]);
-      },
-    );
+    test('grant(1) wakes exactly one of three parked waiters', () async {
+      final t = BackpressureTracker(initialCredits: 0);
+      var woken = 0;
+      final f1 = t.awaitCredit().then((_) => woken++);
+      final f2 = t.awaitCredit().then((_) => woken++);
+      final f3 = t.awaitCredit().then((_) => woken++);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(t.waiterCount, equals(3));
+      t.grant(1);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      // Exactly one waiter wakes; the other two stay parked.
+      expect(woken, equals(1));
+      expect(t.waiterCount, equals(2));
+      // The leftover credit is one, claimable by the woken producer.
+      expect(t.credits, equals(1));
+      // Draining the rest so no future completes after the test ends.
+      t.grant(2);
+      await Future.wait([f1, f2, f3]);
+    });
 
     test('consume rejects negative and over-consume', () {
       final t = BackpressureTracker(initialCredits: 1);

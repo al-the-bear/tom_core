@@ -1,9 +1,8 @@
 // TimedRequest — a scheduled or repeating prompt.
 //
 // Ported from `tom_vscode_scripting_api`'s `TimedRequest` /
-// `tom_vscode_extension` for the TomSpecs editor's Timed Requests editor
-// (§11.2). Persisted as YAML in the spec workspace
-// (`*.timed.yaml`).
+// `tom_vscode_extension` for the TomSpecs editor's Timed Requests editor.
+// Persisted as YAML in the spec workspace (`*.timed.yaml`).
 library;
 
 import 'agent_yaml.dart';

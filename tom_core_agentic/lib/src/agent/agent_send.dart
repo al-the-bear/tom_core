@@ -13,14 +13,15 @@
 //     `TextBlock`s into [AgentSendChunk]s and the terminal `SdkResultMessage`
 //     into [AgentSendCompleted];
 //   * hold a per-spec SDK session id in a YAML sidecar ([SpecSessionStore]),
-//     auto-refreshed on a session error per §7.2.
+//     auto-refreshed on a session error.
 //
 // It is intentionally **separate** from the substrate `AgentSdkLlmProvider`
 // (also in this package): that provider serves the brain's `LlmProvider` seam
 // with `WirePrompt`/`LlmCallReport` and the conservative brain session matcher;
 // the editor sends a plain prompt string, assembles a far wider `Options`
-// surface, and uses the broader §7.2 rule. The ~20-line stream loop they share
-// in shape will diverge in substance, so they are kept apart by design.
+// surface, and uses a broader session-error rule. The ~20-line stream loop
+// they share in shape will diverge in substance, so they are kept apart by
+// design.
 
 import 'dart:async';
 import 'dart:io';
@@ -33,7 +34,7 @@ import 'agent_profile.dart' show AgentProfile;
 import 'agent_sidecar.dart';
 
 /// True when [message] should be treated as an SDK **session error** under the
-/// editor rule (§7.2): its text contains `session`, `message`, or `msg`
+/// editor rule: its text contains `session`, `message`, or `msg`
 /// (case-insensitive).
 ///
 /// Deliberately broad — unlike the brain's conservative matcher
@@ -48,8 +49,8 @@ bool specSessionLooksLikeError(String message) {
 }
 
 /// The per-specification SDK session id, persisted to a YAML sidecar so the
-/// agent can resume the same Claude-Code conversation across sends and launches
-/// (§7.2). Held **out of** the `document:` pass — it is transport state, not
+/// agent can resume the same Claude-Code conversation across sends and
+/// launches. Held **out of** the `document:` pass — it is transport state, not
 /// document content.
 ///
 /// Mirrors the editor's other sidecars (e.g. `BridgeChoiceStore`): a small YAML
@@ -85,7 +86,7 @@ class SpecSessionStore {
   void save(String sessionId) {
     final buffer = StringBuffer()
       ..writeln('# TomSpecs editor — per-specification Agent SDK session id.')
-      ..writeln('# Auto-refreshed on session errors (§7.2). Not part of the')
+      ..writeln('# Auto-refreshed on session errors. Not part of the')
       ..writeln('# document save — this is transport state only.')
       ..writeln('version: 1')
       ..writeln('sessionId: $sessionId');
@@ -93,13 +94,13 @@ class SpecSessionStore {
     file.writeAsStringSync(buffer.toString());
   }
 
-  /// Forgets the stored session id (e.g. after a session error, §7.2).
+  /// Forgets the stored session id (e.g. after a session error).
   void clear() {
     if (file.existsSync()) file.deleteSync();
   }
 }
 
-/// The editor-assembled inputs to one `query` `Options` (§7.1/§7.2), minus the
+/// The editor-assembled inputs to one `query` `Options`, minus the
 /// session id (which the engine supplies from [SpecSessionStore]).
 ///
 /// Built from the active **profile** + global **agent settings** + the
@@ -194,7 +195,7 @@ class AgentSendChunk extends AgentSendEvent {
   final String text;
 }
 
-/// Emitted when a session error (§7.2) caused the stored session id to be
+/// Emitted when a session error caused the stored session id to be
 /// dropped and the prompt to be retried with a fresh session.
 class AgentSendSessionRefreshed extends AgentSendEvent {
   const AgentSendSessionRefreshed();
@@ -243,7 +244,7 @@ Future<AgentSdkClient> connectAgentSdkClient({
 }
 
 /// Streams a single prompt through the Agent SDK and keeps the per-spec session
-/// id refreshed (§7.2).
+/// id refreshed.
 ///
 /// One engine wraps one [AgentSdkClient] (bound to the picked bridge), one
 /// [SpecSessionStore], and the assembled [AgentSendConfig]. [send] is a cold
@@ -333,7 +334,7 @@ class AgentSendEngine {
                 : null);
 
       if (errorText != null) {
-        // §7.2: refresh the session id and retry once when we were resuming a
+        // Refresh the session id and retry once when we were resuming a
         // stored session, nothing has streamed yet (so the retry cannot
         // duplicate output), and the failure looks session-shaped.
         if (resumeId != null &&

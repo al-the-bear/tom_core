@@ -1,4 +1,4 @@
--- Fixture migration for the db_migration DB-backed test (RCK13).
+-- Fixture migration for the db_migration DB-backed test.
 --
 -- A minimal, multi-statement DDL script: it exercises the migrator's
 -- statement splitting (two statements on their own commands) and gives the

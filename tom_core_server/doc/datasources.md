@@ -423,7 +423,7 @@ WHERE a = 'x:y' AND b = :p
 `:y` is four characters inside a value, not a bind — but `:([A-Za-z_]\w*)` sees
 two placeholders. The datasource then emits two `?` and reports two names, so
 every positional slot from that point on is bound to the wrong value. That was a
-real defect (RCC6), and it was two defects, because both consumers carried their
+real defect, and it was two defects, because both consumers carried their
 own copy of the same regex.
 
 `SqlPlaceholderScan` is the one implementation they now share. It walks the SQL
@@ -453,7 +453,7 @@ actually uses:
 
 Getting the backtick rule wrong would not break generated SQL: a generated
 identifier is a Dart field name and never contains a colon. It is a robustness
-guard (RCB10) for hand-written and future statements, and it is cheap precisely
+guard for hand-written and future statements, and it is cheap precisely
 because the walk already exists.
 
 ## Data Sources and Drivers

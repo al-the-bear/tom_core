@@ -1,6 +1,11 @@
 {
   "about": "Fault counts the gates in tool/ are held to. Read by tool/check_gates.py, which fails when a gate's count moves in either direction: up means a new fault, down means a baseline that should be lowered so the repair sticks. 'measured' is the date the count last changed. Regenerate with `python3 tool/check_gates.py --update`; write 'note' by hand.",
   "gates": {
+    "check_comments_read_as_is": {
+      "faults": 40,
+      "measured": "2026-09-04",
+      "note": "40 work-item ids and history-narration phrases outside the five tom_core packages, which are at zero: 32 in tom_flutter_ui, 5 in tom_flutter_form_test, 2 in tom_flutter_ui_test and 1 in tom_core_codespecs -- see tcextension11_aidb. This gate covers what check_section_refs.py does not: quest todo ids, build-plan ids, 'Todo <n>' pointers and past-indicative narration about the code's own history."
+    },
     "check_consumer_claims": {
       "faults": 0,
       "measured": "2026-09-03"
@@ -71,9 +76,9 @@
       "measured": "2026-09-03"
     },
     "check_section_refs": {
-      "faults": 218,
-      "measured": "2026-09-03",
-      "note": "218 bare section references in shipped lib/, test/ and example/ code -- '\u00a77.2', 'tests \u00a727', 'Phase 2a \u00a716' -- indexing quest plans that ship with neither the package nor its tests, so a reader of the shipped artefact cannot resolve them. Concentrated in tom_core_agentic and the two demo apps."
+      "faults": 101,
+      "measured": "2026-09-04",
+      "note": "101 bare section references in shipped lib/, test/ and example/ code -- '\u00a77.2', 'tests \u00a727', 'Phase 2a \u00a716' -- indexing quest plans that ship with neither the package nor its tests, so a reader of the shipped artefact cannot resolve them. The five tom_core packages are now at zero; what remains is 43 in tom_flutter_ui, 32 in tom_flutter_form_test, 16 in tom_flutter_ui_test and 5 in tom_core_codespecs -- see tcextension11_aidb."
     },
     "check_source_citations": {
       "faults": 0,

@@ -44,6 +44,12 @@ even inside the workspace. A reference written ``§"Heading Name"`` is a
 different construction and deliberately out of scope: it quotes the heading, so
 it names what it indexes and can be found by title.
 
+**The in-suite guard is exempt.** ``comments_read_as_is_test.dart`` -- the
+per-package Dart guard that enforces the same convention from inside the test
+run -- has to quote ``bug §50`` to say which shape it rejects. A rule that
+cannot state its own subject is not a rule, so that filename is skipped
+wherever it appears; see ``EXEMPT_FILES``.
+
 **What counts as naming the document.** A document name is a markdown-quoted or
 bare ``.md`` filename, an ``RFC <n>``, or one of the specification names used in
 this tree (``CodeSpecs``, ``OIDC Core``). The reference resolves when such a
@@ -84,6 +90,12 @@ SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
 #: workspace-internal and may reference the plans freely.
 SHIPPED_DIRS = {"lib", "test", "example"}
 
+#: Files that quote the forbidden constructions in order to forbid them. A rule
+#: has to be able to state the shape it rejects, so the in-suite guard's own
+#: prose is the one place a bare ``bug §50`` is correct writing rather than a
+#: defect. Matched by filename, since the guard is copied per package.
+EXEMPT_FILES = {"comments_read_as_is_test.dart"}
+
 #: A section reference: the sign, optional space, a section number. The number
 #: may carry a leading appendix letter (``§A.4``, ``§A.10``) as well as being
 #: plain (``§75``, ``§5.26``). Both forms index a section; only the letter form
@@ -119,6 +131,8 @@ def dart_files(root: Path):
         if SKIP_DIRS & parts:
             continue
         if not (SHIPPED_DIRS & parts):
+            continue
+        if path.name in EXEMPT_FILES:
             continue
         yield path
 

@@ -1,26 +1,26 @@
 // Placeholder-system failure types.
 //
-// Part of the shared placeholder system (originally Extension F, step 1 of
-// `tom_brain_procedure_specification.md` § 21.7, § 21.10; relocated to
-// `tom_core_agentic`). The three wire codes mirror the § 21.10 failure
-// table verbatim. Each is kept as a named `const` so callers can route on
+// Part of the shared placeholder system specified by
+// `tom_brain_procedure_specification.md` § 21.7, § 21.10, and living in
+// `tom_core_agentic`. The three wire codes mirror that specification's
+// failure table verbatim. Each is kept as a named `const` so callers can route on
 // the code without string-matching the message.
 
 /// Wire code for a placeholder expansion that did not converge inside the
-/// recursion cap. Matches the § 21.10 `placeholder.recursion.exceeded` row.
+/// recursion cap. Matches the `placeholder.recursion.exceeded` failure row.
 const String placeholderRecursionExceededCode =
     'placeholder.recursion.exceeded';
 
 /// Wire code for an unknown `${name}` (or `${env:NAME}`) under strict mode.
-/// Matches the § 21.10 `placeholder.unresolved` row.
+/// Matches the `placeholder.unresolved` failure row.
 const String placeholderUnresolvedCode = 'placeholder.unresolved';
 
 /// Wire code for a `${{ … }}` expression that threw or would not parse.
-/// Matches the § 21.10 `placeholder.expression.failed` row.
+/// Matches the `placeholder.expression.failed` failure row.
 const String placeholderExpressionFailedCode = 'placeholder.expression.failed';
 
 /// Raised when recursive placeholder expansion does not terminate within
-/// the resolver's level cap (default 10, § 21.7).
+/// the resolver's level cap (default 10).
 ///
 /// Carries the [maxRecursion] cap that was hit and the partially expanded
 /// [residue] — the text still holding unresolved placeholders when the cap
@@ -52,7 +52,7 @@ final class PlaceholderRecursionException implements Exception {
 }
 
 /// Raised when an unknown `${name}` / `${env:NAME}` is encountered while
-/// the resolver runs in **strict** mode (§ 21.7; § 21.10).
+/// the resolver runs in **strict** mode.
 ///
 /// In lenient mode the same situation renders an empty string instead, so
 /// this exception only ever surfaces under strict resolution.
@@ -75,7 +75,7 @@ final class PlaceholderUnresolvedException implements Exception {
 }
 
 /// Raised when a `${{ … }}` expression throws or fails to parse during
-/// evaluation against the expression backing (§ 21.7; § 21.10), or when a
+/// evaluation against the expression backing, or when a
 /// `${{ … }}` form is encountered by a resolver that has no expression
 /// backing (e.g. the synchronous config-layer path).
 ///

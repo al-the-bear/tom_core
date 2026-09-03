@@ -189,7 +189,7 @@ class TomDataScopeRegistry {
   /// Registers (or replaces) the asynchronous [resolver] for the scope kind
   /// [scope] — the union/OR path a shared-entity scope uses to fold ownership
   /// and share-mode delegations resolved from another database into one visible
-  /// id-set (RCB8) — optionally with a narrower [write] resolver.
+  /// id-set — optionally with a narrower [write] resolver.
   static void registerAsync(
     String scope,
     TomAsyncDataScopeResolver resolver, {
@@ -260,7 +260,7 @@ class TomDataScopePredicate {
 /// A zone marker that suppresses row-scope resolution for the reads performed
 /// inside it (installed by [TomDataScope.runUnscoped]).
 ///
-/// An **async** data-scope resolver (RCB8) enumerates a principal's visible
+/// An **async** data-scope resolver enumerates a principal's visible
 /// id-set by reading the very entities it scopes — walking the containment tree
 /// through the same repositories. Those nested reads must **not** re-enter scope
 /// resolution, or the resolver would recurse into itself indefinitely. A
@@ -290,7 +290,7 @@ class TomDataScope {
       getFromCurrentZone<TomDataScopeBypass>() != null;
 
   /// Runs [body] with row-scope resolution suppressed for every read it
-  /// performs (RCB8). An async data-scope resolver wraps its containment
+  /// performs. An async data-scope resolver wraps its containment
   /// enumeration in this so the reads that *compute* the visible id-set are not
   /// themselves re-scoped — the guard against unbounded resolver recursion.
   static Future<T> runUnscoped<T>(Future<T> Function() body) => runZoned(
@@ -325,7 +325,7 @@ class TomDataScope {
 
   /// Builds the row-scope predicate for an **async** [scope] on column [col]
   /// from [principal]'s allowed id-sets, resolved through the async resolver
-  /// registered in [TomDataScopeRegistry] (RCB8).
+  /// registered in [TomDataScopeRegistry].
   ///
   /// Returns:
   ///  - `null` when the resolver opts out (its result is `null`) — no scoping;
@@ -377,7 +377,7 @@ class TomDataScope {
   /// Builds the **union** predicate over the id-set [groups] for column [col]:
   /// an OR of one `<col> IN (…)` list per group, so the visible set is the
   /// union of the groups (owned ids ∪ shared-via-containment ids) rather than
-  /// their intersection (RCB8 (b)).
+  /// their intersection.
   ///
   /// An empty [groups] renders a `FALSE` deny-all predicate (no group can match
   /// any row). A single group renders the plain `IN` list — no `OR` wrapper —

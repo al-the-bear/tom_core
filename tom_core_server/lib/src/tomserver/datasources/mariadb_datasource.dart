@@ -482,7 +482,7 @@ class MariaDbDatasource implements TomDataSource {
   /// `replaceAll(":$p", "?")` — is essential (RCA5): `replaceAll` corrupts a
   /// placeholder that is a *prefix* of another (`:id` vs `:idx` → `?x`) and
   /// collapses a repeated name to a single slot, desynchronising every
-  /// following bind value. The scan is also string-literal aware (RCC6), so a
+  /// following bind value. The scan is also string-literal aware, so a
   /// `:name`-looking substring inside an inlined literal (`'x:y'`) is not
   /// mistaken for a slot.
   static (String, List<String>) toPositionalStatement(String namedSql) =>

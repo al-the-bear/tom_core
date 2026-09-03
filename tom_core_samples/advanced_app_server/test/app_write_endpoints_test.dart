@@ -544,26 +544,23 @@ void main() {
       expect(store.items, hasLength(2));
     });
 
-    test(
-      'creating an item stamps the creator as its C-5 owner',
-      () async {
-        final store = seededWriteStore();
-        final owner = InMemoryOwnershipGrantWriter();
-        final created = await writeServiceOver(store, ownershipWriter: owner)
-            .createItem(
-              bob,
-              TodoItem()
-                ..listId.set('1')
-                ..title.set('Fresh task'),
-            );
+    test('creating an item stamps the creator as its C-5 owner', () async {
+      final store = seededWriteStore();
+      final owner = InMemoryOwnershipGrantWriter();
+      final created = await writeServiceOver(store, ownershipWriter: owner)
+          .createItem(
+            bob,
+            TodoItem()
+              ..listId.set('1')
+              ..title.set('Fresh task'),
+          );
 
-        expect(owner.grants, hasLength(1));
-        final grant = owner.grants.single;
-        expect(grant.principalId, '$bob');
-        expect(grant.resourceKey, ResourceRoleKeys.item(created.id.get()));
-        expect(grant.role, ProjectRole.owner.name);
-      },
-    );
+      expect(owner.grants, hasLength(1));
+      final grant = owner.grants.single;
+      expect(grant.principalId, '$bob');
+      expect(grant.resourceKey, ResourceRoleKeys.item(created.id.get()));
+      expect(grant.role, ProjectRole.owner.name);
+    });
 
     test('a rejected create records no ownership grant', () async {
       final store = seededWriteStore();
@@ -625,26 +622,23 @@ void main() {
       expect(store.projects, hasLength(1));
     });
 
-    test(
-      'creating a project stamps the creator as its C-5 owner',
-      () async {
-        final store = seededWriteStore();
-        final owner = InMemoryOwnershipGrantWriter();
-        final created = await writeServiceOver(store, ownershipWriter: owner)
-            .createProject(
-              alice,
-              Project()
-                ..workspaceId.set('1')
-                ..name.set('New project'),
-            );
+    test('creating a project stamps the creator as its C-5 owner', () async {
+      final store = seededWriteStore();
+      final owner = InMemoryOwnershipGrantWriter();
+      final created = await writeServiceOver(store, ownershipWriter: owner)
+          .createProject(
+            alice,
+            Project()
+              ..workspaceId.set('1')
+              ..name.set('New project'),
+          );
 
-        expect(owner.grants, hasLength(1));
-        final grant = owner.grants.single;
-        expect(grant.principalId, '$alice');
-        expect(grant.resourceKey, ResourceRoleKeys.project(created.id.get()));
-        expect(grant.role, ProjectRole.owner.name);
-      },
-    );
+      expect(owner.grants, hasLength(1));
+      final grant = owner.grants.single;
+      expect(grant.principalId, '$alice');
+      expect(grant.resourceKey, ResourceRoleKeys.project(created.id.get()));
+      expect(grant.role, ProjectRole.owner.name);
+    });
 
     test(
       'a project-only editor may not create a sibling workspace project',

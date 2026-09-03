@@ -1,10 +1,10 @@
-// Reconnect protocol (§6.1).
+// Reconnect protocol (`tom_specs_editor_specification.md` §6.1).
 //
 // When the bound VS Code bridge stops responding the transport itself is gone
-// — there is no way to hold the live socket / in-flight exchange open (N1). We
+// — there is no way to hold the live socket / in-flight exchange open. We
 // therefore preserve the *user's intent*, not the connection: re-scan with a
 // back-off, and on reconnect re-issue the interrupted prompt prefixed with the
-// active profile's `interruptRetryPrefix` (N10).
+// active profile's `interruptRetryPrefix`.
 //
 // This file is the **non-UI** half (no Flutter): the back-off retry loop, the
 // same/different-workspace classification, and the prefix composition. The
@@ -14,7 +14,7 @@ library;
 
 import 'bridge_connection.dart';
 
-/// Composes the auto-resend body for an interrupted prompt (§6.1 step 3):
+/// Composes the auto-resend body for an interrupted prompt:
 /// the active profile's [prefix] followed by the original [prompt].
 ///
 /// An empty [prefix] yields the prompt unchanged. The original prompt is used
@@ -23,7 +23,7 @@ import 'bridge_connection.dart';
 String composeInterruptRetry(String prefix, String prompt) =>
     prefix.isEmpty ? prompt : '$prefix\n\n$prompt';
 
-/// The default reconnect back-off (§6.1 step 2): retry after 10 s, 30 s, 60 s.
+/// The default reconnect back-off: retry after 10 s, 30 s, 60 s.
 const List<Duration> defaultReconnectBackoff = [
   Duration(seconds: 10),
   Duration(seconds: 30),
@@ -32,16 +32,16 @@ const List<Duration> defaultReconnectBackoff = [
 
 /// How a reconnect attempt resolved.
 enum ReconnectResolution {
-  /// The bound port came back serving the **same** workspace (§6.1 step 3):
-  /// rebind silently and auto-resend the prefixed prompt.
+  /// The bound port came back serving the **same** workspace: rebind
+  /// silently and auto-resend the prefixed prompt.
   sameWorkspace,
 
-  /// The bound port came back but serves a **different** workspace (§6.1 step
-  /// 5): bind + resend only after the user confirms.
+  /// The bound port came back but serves a **different** workspace: bind +
+  /// resend only after the user confirms.
   differentWorkspace,
 
-  /// The bound port never answered across all back-offs (§6.1 step 4): show the
-  /// modal; fail only if the user chooses to.
+  /// The bound port never answered across all back-offs: show the modal;
+  /// fail only if the user chooses to.
   stillGone,
 }
 
@@ -69,7 +69,7 @@ class ReconnectResult {
 /// protocol instantly instead of waiting the real 10/30/60 s.
 typedef ReconnectDelay = Future<void> Function(Duration duration);
 
-/// Runs the §6.1 reconnect back-off: after each delay it rescans the bridge
+/// Runs the reconnect back-off: after each delay it rescans the bridge
 /// range and, the first time the bound port answers, classifies the result as
 /// the same or a different workspace; if the port never answers it resolves
 /// [ReconnectResolution.stillGone].
@@ -77,7 +77,7 @@ typedef ReconnectDelay = Future<void> Function(Duration duration);
 /// Pure protocol logic over an injectable [BridgeConnectionService] (the
 /// rescan) and [ReconnectDelay] (the back-off). The UI side — the informational
 /// popup, the still-gone modal, the different-workspace confirmation, and the
-/// auto-resend — is the Flutter controller's concern (N7).
+/// auto-resend — is the Flutter controller's concern.
 class ReconnectCoordinator {
   ReconnectCoordinator({
     required this.service,
@@ -88,7 +88,7 @@ class ReconnectCoordinator {
   /// The scan service used to rediscover the bound port.
   final BridgeConnectionService service;
 
-  /// The per-attempt back-off durations (§6.1 step 2).
+  /// The per-attempt back-off durations.
   final List<Duration> backoff;
 
   final ReconnectDelay _delay;

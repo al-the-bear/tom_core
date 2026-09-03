@@ -1,4 +1,4 @@
-// Persistence for the timed/scheduled-request set (§11.4).
+// Persistence for the timed/scheduled-request set.
 //
 // Timed requests (interval or scheduled prompts) are editor configuration held
 // in the spec workspace as a YAML file. Mirrors [ChatVariableStore]: written

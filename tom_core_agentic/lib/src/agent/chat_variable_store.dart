@@ -1,4 +1,4 @@
-// Persistence for the chat-variable set (§11.4).
+// Persistence for the chat-variable set.
 //
 // Custom chat variables are held in the spec workspace as a YAML file so the
 // user's bindings survive launches. Mirrors [PromptQueueStore]: a small YAML

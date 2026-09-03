@@ -1,6 +1,6 @@
 # Default test configuration for tom_core_server.
 #
-# Run suites sequentially. The DB-backed suites (RCK13) share one MariaDB
+# Run suites sequentially. The DB-backed suites share one MariaDB
 # schema — they register the same `tom_core_server_test` data source in the
 # process-wide `TomDataSourceInfo` registry and truncate the same
 # `fixture_task` table between tests. Running suites in parallel would let two

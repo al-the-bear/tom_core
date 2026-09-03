@@ -1294,7 +1294,7 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // Shared resolution contract (pins the RCK2 private-helper extraction:
+    // Shared resolution contract (pins the shared private helper:
     // both providers resolve a key as "tree walk first, flat-key fallback",
     // with the text family additionally consulting the flat key when the tree
     // walk lands on a non-String).

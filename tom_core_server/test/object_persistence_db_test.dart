@@ -1,5 +1,4 @@
-/// DB-backed tests for the object-persistence CRUD / query-sentence surface
-/// (RCK13).
+/// DB-backed tests for the object-persistence CRUD / query-sentence surface.
 ///
 /// The connection-free surface (the `TomQueryBuilder` DSL, the operator tree,
 /// the persistence annotations) is covered by `object_persistence_test.dart`.

@@ -1,4 +1,4 @@
-// Domain-free wall-clock deadline (Todo 9, G-C3).
+// Domain-free wall-clock deadline (G-C3).
 //
 // `Deadline` is the wall-clock-budget primitive the creation loop uses to bound
 // each iteration (`creation_specification.md` § 7 — a per-iteration deadline,

@@ -1,4 +1,4 @@
-// Editor-facing placeholder bindings (no JS — §11.5).
+// Editor-facing placeholder bindings (no JS).
 //
 // A thin, deliberately limited binder over the shared
 // [PlaceholderResolver]. The TomSpecs editor reuses the brain's resolver for
@@ -8,7 +8,7 @@
 // "expressions unsupported" error rather than executing any code (the editor
 // has no d4rt evaluator and must never run untrusted expressions).
 //
-// Single capability level for now (§11.5): no full / path / reminder
+// Single capability level for now: no full / path / reminder
 // tiers. The resolution-context wiring (workspace `_ai/` folder,
 // file-injection placeholders) is layered on by later steps; this binder
 // only owns the binding namespace and the alias / expression-rejection rules.

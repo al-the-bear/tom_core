@@ -317,7 +317,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// allowed values (and thus placeholders) varies per principal, a scoped read
   /// path prepares a fresh statement rather than reusing a cached one.
   ///
-  /// A scope kind registered asynchronously (RCB8) resolves through
+  /// A scope kind registered asynchronously resolves through
   /// [TomDataScope.buildAsync] — the union/OR path that folds ownership and
   /// share-mode delegations (resolved from another database) into the visible
   /// id-set; every other kind takes the synchronous single-`IN` path. The
@@ -327,11 +327,11 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   ///
   /// [forWrite] selects the (possibly narrower) set the principal may *modify*
   /// rather than the set it may see — the difference the grant-driven
-  /// `resource` scope draws between a `read` grant and a `full` one (RCC5). A
+  /// `resource` scope draws between a `read` grant and a `full` one. A
   /// scope kind that registers no write resolver writes exactly what it reads,
   /// so every other kind is unaffected.
   Future<TomDataScopePredicate?> _resolveScope({bool forWrite = false}) async {
-    // Inside an async resolver's own enumeration (RCB8), scope resolution is
+    // Inside an async resolver's own enumeration, scope resolution is
     // suppressed so the reads that *compute* the visible id-set are not
     // themselves re-scoped — the guard against unbounded resolver recursion.
     if (TomDataScope.isBypassed) return null;
@@ -369,7 +369,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// identically, so existence is not leaked across the scope boundary.
   ///
   /// The read it performs is resolved `forWrite`, so a scope kind that grades
-  /// its values (RCC5) measures the row against the *writable* set: a row the
+  /// its values measures the row against the *writable* set: a row the
   /// principal may only read is reported here exactly as an invisible one is —
   /// as not writable.
   Future<void> _assertRowWritable(K id) async {
@@ -387,7 +387,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// a scoped existence check must see *all* of them — if any is out of scope
   /// (or absent) it raises [TomDataScopeAuthorizationException]. Reuses the
   /// scoped [existsById] so the same bound-parameter predicate governs the
-  /// check and the reads — resolved against the *writable* set (RCC5).
+  /// check and the reads — resolved against the *writable* set.
   Future<void> _assertIdsWritable(Iterable<K> ids) async {
     if (TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null) return;
     if (!await _existsById(ids, forWrite: true)) {
@@ -412,7 +412,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// create grant on the parent). Applying the read scope to a null/unassigned
   /// id would reject every legitimate insert. Note this is a property of the
   /// *column*, not of the resolver being async: a grant-driven scope on a
-  /// `resource_key` column (RCC5) carries its value on the incoming entity and
+  /// `resource_key` column carries its value on the incoming entity and
   /// is checked here like any other, which is what stops a principal from
   /// creating a row under a resource key it holds no `full` grant on.
   ///
@@ -1568,7 +1568,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   /// Delegates to the shared, quote-aware [SqlPlaceholderScan.extractNames] so
   /// this extraction and [MariaDbDatasource.toPositionalStatement]'s positional
   /// rewrite tokenise identically — including skipping a `:name`-looking
-  /// substring inside an inlined string literal (RCC6).
+  /// substring inside an inlined string literal.
   static List<String> _extractPlaceholderNames(String sql) =>
       SqlPlaceholderScan.extractNames(sql);
 

@@ -348,13 +348,13 @@ void main() {
     );
   });
 
-  // RCB8: the async, union/OR data scope. Where the synchronous resolver renders
+  // The async, union/OR data scope. Where the synchronous resolver renders
   // one `<col> IN (…)` AND-predicate, an async resolver contributes an OR of one
   // `IN` list per id-set, so a row scope can be the *union* of independently
   // computed sets (owned ids ∪ shared-via-containment ids) resolved from another
   // database. Verified connection-free at the predicate level, exactly as the
   // synchronous scope is.
-  group('async union scope registry (RCB8)', () {
+  group('async union scope registry', () {
     test(
       'registerAsync registers an async kind; isAsync/asyncResolverFor see it',
       () {
@@ -392,7 +392,7 @@ void main() {
     });
   });
 
-  group('async union predicate (TomDataScope.anyOf, RCB8)', () {
+  group('async union predicate (TomDataScope.anyOf)', () {
     final col = _column('projects', 'id', int);
 
     test('two id-sets render an OR of two IN lists, values bound (C-7)', () {
@@ -466,7 +466,7 @@ void main() {
     });
   });
 
-  group('async union build + opt-out (TomDataScope.buildAsync, RCB8)', () {
+  group('async union build + opt-out (TomDataScope.buildAsync)', () {
     final col = _column('projects', 'id', int);
 
     test(
@@ -527,7 +527,7 @@ void main() {
     );
   });
 
-  group('runUnscoped re-entrancy guard (RCB8)', () {
+  group('runUnscoped re-entrancy guard', () {
     test(
       'isBypassed is false outside, true inside a runUnscoped body',
       () async {
@@ -545,12 +545,12 @@ void main() {
     });
   });
 
-  // RCC5: a scope kind may admit a *narrower* value set for writes than for
+  // A scope kind may admit a *narrower* value set for writes than for
   // reads. The `resource` scope needs this — a `read` grant admits a row to
   // queries but must reject any write to it — and the seam is generic, so an
   // application scope ("may read every tenant, may write only my own") gets the
   // same behaviour by registering a second resolver.
-  group('write-scope resolvers (RCC5)', () {
+  group('write-scope resolvers', () {
     final col = _column('tasks', 'owner_id', int);
 
     test('without a write resolver the write set is the read set', () {
@@ -670,10 +670,10 @@ void main() {
     });
   });
 
-  // RCC5: the `resource` kind is a *built-in* async scope, so `reset()` restores
+  // The `resource` kind is a *built-in* async scope, so `reset()` restores
   // it. Until a deployment installs its grant source it denies every row — an
   // unwired scope must not be an open door.
-  group('the built-in resource scope kind (RCC5)', () {
+  group('the built-in resource scope kind', () {
     final col = _column('projects', 'resource_key', String);
 
     test('resource is a built-in async kind that survives reset', () {
@@ -719,10 +719,10 @@ void main() {
     });
   });
 
-  // RCC5: `@TomDbScope` is the *only* scope declaration — an entity that carries
+  // `@TomDbScope` is the *only* scope declaration — an entity that carries
   // a resource-key column is scoped automatically under the `resource` kind, and
   // an entity that must stay global says so with the same annotation.
-  group('automatic resource scoping and opt-out (RCC5)', () {
+  group('automatic resource scoping and opt-out', () {
     TomColumnInformation col(String table, String column) =>
         _column(table, column, String);
 

@@ -1,4 +1,4 @@
-// Persistence for the saved queue-template set (§11.4).
+// Persistence for the saved queue-template set.
 //
 // Queue templates (named, ordered prompt sets that seed the queue) are editor
 // configuration held in the spec workspace as a YAML file. Mirrors

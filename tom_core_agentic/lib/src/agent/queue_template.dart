@@ -1,7 +1,7 @@
 // QueueTemplate — a saved set of prompts that can be loaded into the queue.
 //
 // Ported from the VS Code extension's queue-template store for the TomSpecs
-// editor (§11.2 / §11.4). A queue template names an ordered list of prompt
+// editor. A queue template names an ordered list of prompt
 // bodies; applying it appends those prompts (each still placeholder-bearing,
 // resolved at send time) to the live prompt queue. The queue-templates editor
 // saves/loads these as `*.template.queue.yaml`.
@@ -22,7 +22,7 @@ final class QueueTemplate {
   final String name;
 
   /// The ordered prompt bodies applied to the queue, head first. Each is
-  /// authored with the §11.5 placeholder forms and resolved at send time.
+  /// authored with the canonical placeholder forms and resolved at send time.
   final List<String> prompts;
 
   factory QueueTemplate.fromYaml(Map<String, dynamic> yaml) {

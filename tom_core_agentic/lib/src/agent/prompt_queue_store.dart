@@ -1,4 +1,4 @@
-// Persistence for the prompt queue (§11.2).
+// Persistence for the prompt queue.
 //
 // The TomSpecs editor's prompt queue is held in the spec workspace as a YAML
 // file so staged/pending prompts survive launches. This store mirrors the

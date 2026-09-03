@@ -59,9 +59,9 @@ class TestTask extends TomClass {
 
 /// Test class exercising `TomList` element serialization: a
 /// `TomList<TomString>` (scalar elements) and a `TomList<TestTask>` (nested
-/// `TomClass` elements). Reproduces the RCC5 bug where `toJson()` left raw
-/// `TomObject` list elements in the map, so `jsonEncode` threw
-/// `JsonUnsupportedObjectError`.
+/// `TomClass` elements). A `toJson()` that recurses into a nested `TomClass`
+/// field but not into a `TomList`'s elements leaves raw `TomObject`s in the
+/// map, so `jsonEncode` throws `JsonUnsupportedObjectError`.
 @tomReflector
 class TestTaggedItem extends TomClass {
   final title = TomString("");

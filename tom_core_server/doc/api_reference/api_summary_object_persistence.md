@@ -1375,7 +1375,7 @@ static.
 | ------ | --------- | ----------- |
 | `runUnscoped` | `static Future<T> runUnscoped<T>(Future<T> Function() body)` | Runs `body` with row-scope resolution suppressed (the guard against resolver recursion). |
 | `build` | `static TomDataScopePredicate? build(TomQueryBuilder builder, TomDbScope scope, TomColumnInformation col, TomPrincipal? principal)` | Builds the scope predicate for a synchronous scope; `null` when the resolver opts out. |
-| `buildAsync` | `static Future<TomDataScopePredicate?> buildAsync(TomQueryBuilder builder, TomDbScope scope, TomColumnInformation col, TomPrincipal? principal)` | Builds the union scope predicate for an async scope (RCB8). |
+| `buildAsync` | `static Future<TomDataScopePredicate?> buildAsync(TomQueryBuilder builder, TomDbScope scope, TomColumnInformation col, TomPrincipal? principal)` | Builds the union scope predicate for an async scope. |
 | `anyOf` | `static TomDataScopePredicate anyOf(TomQueryBuilder builder, TomColumnInformation col, List<List<Object?>> groups)` | The union predicate over id-set groups: an OR of one `IN` list per group. |
 | `inList` | `static TomDataScopePredicate inList(TomQueryBuilder builder, TomColumnInformation col, Iterable<Object?> values, {String prefix = parameterPrefix})` | Builds `<col> IN (…)` binding one parameter per value. |
 | `allowedValues` | `static List<Object?>? allowedValues(TomDbScope scope, TomPrincipal? principal)` | Resolves the scope-field values `principal` is allowed for a **synchronous** `scope`. |

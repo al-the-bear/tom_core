@@ -1,4 +1,4 @@
-# Ephemeral MariaDB for the `tom_core_server` DB-backed test surfaces (RCK13).
+# Ephemeral MariaDB for the `tom_core_server` DB-backed test surfaces.
 #
 # `dart test` cannot exercise the MariaDB datasource driver, the object-
 # persistence CRUD/query paths, or the migration orchestrator without a real

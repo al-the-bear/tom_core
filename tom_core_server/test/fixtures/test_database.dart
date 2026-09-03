@@ -1,4 +1,4 @@
-/// Shared MariaDB test-database fixture for the `tom_core_server` suite (RCK13).
+/// Shared MariaDB test-database fixture for the `tom_core_server` suite.
 ///
 /// `dart test` runs every test *file* in its own isolate and the DB-backed
 /// surfaces — the MariaDB [MariaDbDatasource] driver, the object-persistence
@@ -10,7 +10,7 @@
 ///    match `docker-compose.test.yaml`);
 ///  * decide, *before declaring any group*, whether a server is reachable so
 ///    the group can be `skip:`ped when it is not — keeping the default
-///    `testkit :test` run green on a machine with no database (the RCK13 done
+///    `testkit :test` run green on a machine with no database (the done
 ///    bar); and
 ///  * register the `tom_core_server_test` data source (the name the fixture
 ///    entity's `@TomDbTable` binds to) and provision / clean its schema.
@@ -212,7 +212,7 @@ CREATE TABLE IF NOT EXISTS fixture_scoped_document (
   }
 
   /// The DDL for `FixtureResourceRecord`, the entity the grant-driven row scope
-  /// filters *without* an annotation (RCC5). `resource_key` is what makes it
+  /// filters *without* an annotation. `resource_key` is what makes it
   /// scoped: the analyzer sees the column and synthesizes the scope.
   static const String _fixtureResourceDdl = '''
 CREATE TABLE IF NOT EXISTS fixture_resource_document (

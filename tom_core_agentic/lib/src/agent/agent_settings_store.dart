@@ -1,4 +1,4 @@
-// Persistence for the singleton [AgentSettings] (§7.1).
+// Persistence for the singleton [AgentSettings].
 //
 // Unlike the list stores, this holds exactly one value. Mirrors
 // [ChatVariableStore]'s error handling: a missing/malformed file yields the

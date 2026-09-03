@@ -1,11 +1,12 @@
 // PlaceholderStack — the lexical scope chain placeholders resolve against.
 //
-// Part of the shared placeholder system (originally Extension F, step 1 of
-// `tom_brain_procedure_specification.md` § 21.7; relocated to
+// Part of the shared placeholder system specified by
+// `tom_brain_procedure_specification.md` § 21.7, and living in
 // `tom_core_agentic` so every config layer — substrate / access / memory /
-// run — and the engine share one resolver).
+// run — and the engine share one resolver.
 //
-// § 21.7 frames the scope stack as "the d4rt lexical scope chain": each
+// That specification frames the scope stack as "the d4rt lexical scope
+// chain": each
 // nested procedure / `sub.llm` frame pushes a child scope; a child may
 // bind its own variables — **even same-named** ones, shadowing the parent;
 // on pop the child is discarded and the parent's bindings are restored, so
@@ -17,7 +18,7 @@
 // against. Keeping the namespace here (a) gives the requested
 // push/pop shadow/restore semantics exactly, and (b) keeps the two forms
 // reading one set of bindings, the "unifies the simple and expression forms
-// under one variable namespace" property § 21.7 calls for.
+// under one variable namespace" property the specification calls for.
 //
 // One namespace, but not one *visible* namespace: a binding name is any
 // string here, whereas a d4rt local must be an identifier, so a backing

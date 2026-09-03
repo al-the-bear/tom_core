@@ -1,4 +1,4 @@
-// Global agent settings (§7.1 Options surface + bridge host/port).
+// Global agent settings (the `Options` surface + bridge host/port).
 //
 // A single editor-configuration value (not a list): the bridge connection
 // target and the global Agent SDK option defaults that overlay a profile when
@@ -9,7 +9,7 @@ library;
 import 'agent_profile.dart';
 import 'bridge_connection.dart';
 
-/// Global agent settings: bridge target + the §7.1 `Options` defaults.
+/// Global agent settings: bridge target + the `Options` defaults.
 ///
 /// These defaults overlay the active [AgentProfile] — a profile field, when
 /// set, wins; otherwise the value here applies. [defaultProfileId] names the

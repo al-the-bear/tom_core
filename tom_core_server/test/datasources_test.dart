@@ -855,7 +855,7 @@ void main() {
     });
 
     test('a `:name`-looking substring inside a string literal is not a slot', () {
-      // RCC6: a bound :p ANDed with an inlined 'x:y' literal must yield exactly
+      // A bound :p ANDed with an inlined 'x:y' literal must yield exactly
       // one `?`; the `:y` inside the quotes is literal text, not a placeholder.
       final (sql, params) = MariaDbDatasource.toPositionalStatement(
         "a = 'x:y' AND b = :p",
@@ -895,8 +895,7 @@ void main() {
       },
     );
 
-    test('a `:name`-looking substring inside a backtick identifier is safe '
-        '(RCB10)', () {
+    test('a `:name`-looking substring inside a backtick identifier is safe', () {
       // A bound :p next to a `weird:col` backtick identifier must yield exactly
       // one `?`; the `:col` inside the backticks is a quoted identifier, not a
       // placeholder.
@@ -907,8 +906,7 @@ void main() {
       expect(params, ['p']);
     });
 
-    test('a doubled backtick escapes a literal backtick inside an identifier '
-        '(RCB10)', () {
+    test('a doubled backtick escapes a literal backtick inside an identifier', () {
       // ``a`` `:x` `` is one identifier (the `` `` `` is an escaped backtick), so
       // `:x` never leaves the identifier — only the trailing bound :p is a slot.
       final (sql, params) = MariaDbDatasource.toPositionalStatement(
@@ -919,7 +917,7 @@ void main() {
     });
 
     test('a backslash is a literal character inside a backtick identifier, not '
-        'an escape (RCB10)', () {
+        'an escape', () {
       // Distinguishes the backtick rule from the string-literal rule: under
       // string-literal escaping the `\` before the closing backtick would
       // escape it and swallow the rest of the SQL (zero slots). Backtick
@@ -933,7 +931,7 @@ void main() {
     });
   });
 
-  group('SqlPlaceholderScan.extractNames (RCC6, shared with crud_repository)', () {
+  group('SqlPlaceholderScan.extractNames (shared with crud_repository)', () {
     test('extractNames mirrors toPositional and skips literal content', () {
       // crud_repository._extractPlaceholderNames delegates here, so raw
       // statements prepared by the repository inherit the same quote-aware
@@ -948,7 +946,7 @@ void main() {
       expect(SqlPlaceholderScan.extractNames('x = :v OR y = :v'), ['v', 'v']);
     });
 
-    test('extractNames skips a `:name`-looking backtick identifier (RCB10)', () {
+    test('extractNames skips a `:name`-looking backtick identifier', () {
       // The repository's raw-bind path inherits the same backtick awareness as
       // the datasource rewrite: `weird:col` is a quoted identifier, so only the
       // real bound :p is extracted.

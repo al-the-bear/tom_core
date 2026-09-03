@@ -1,6 +1,5 @@
-// Round-trip tests for the prompt-queue and prompt-trail YAML stores
-// (§11.2 / §11.3). Each store writes to a temp file and reloads to an equal
-// model list, and degrades to an empty list on a missing/malformed file.
+// Round-trip tests for the prompt-queue and prompt-trail YAML stores. Each
+// store writes to a temp file and reloads to an equal model list, and degrades to an empty list on a missing/malformed file.
 
 import 'dart:io';
 

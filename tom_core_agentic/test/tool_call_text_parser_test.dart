@@ -257,36 +257,29 @@ void main() {
     // by prompt injection) of a few hundred KB of a single bracket char would
     // peg the agent isolate for minutes. The work is bounded instead, so a
     // large unbalanced run returns empty well within a small fixed time budget.
-    test(
-      'a large unbalanced bracket run is bounded and yields no calls',
-      () {
-        final huge = '{' * 200000; // ~200 KB of unbalanced openers
-        final sw = Stopwatch()..start();
-        final calls = parseToolCallsFromText(huge);
-        sw.stop();
-        expect(calls, isEmpty);
-        // Quadratic behaviour would take many seconds here; the bounded scan is
-        // linear. A generous 2 s ceiling fails loudly on a regression without
-        // flaking on a slow CI box.
-        expect(
-          sw.elapsedMilliseconds,
-          lessThan(2000),
-          reason: 'scan must stay linear on adversarial input',
-        );
-      },
-    );
+    test('a large unbalanced bracket run is bounded and yields no calls', () {
+      final huge = '{' * 200000; // ~200 KB of unbalanced openers
+      final sw = Stopwatch()..start();
+      final calls = parseToolCallsFromText(huge);
+      sw.stop();
+      expect(calls, isEmpty);
+      // Quadratic behaviour would take many seconds here; the bounded scan is
+      // linear. A generous 2 s ceiling fails loudly on a regression without
+      // flaking on a slow CI box.
+      expect(
+        sw.elapsedMilliseconds,
+        lessThan(2000),
+        reason: 'scan must stay linear on adversarial input',
+      );
+    });
 
-    test(
-      'a balanced JSON call embedded after prose is still recovered',
-      () {
-        // The work bound must not blind the scanner to a real call once the
-        // (well-formed) input is comfortably under budget.
-        const text =
-            'here you go: {"tool": "echo", "arguments": {"x": 1}} done';
-        final calls = parseToolCallsFromText(text);
-        expect(calls.map((c) => c.name), <String>['echo']);
-      },
-    );
+    test('a balanced JSON call embedded after prose is still recovered', () {
+      // The work bound must not blind the scanner to a real call once the
+      // (well-formed) input is comfortably under budget.
+      const text = 'here you go: {"tool": "echo", "arguments": {"x": 1}} done';
+      final calls = parseToolCallsFromText(text);
+      expect(calls.map((c) => c.name), <String>['echo']);
+    });
   });
 
   group('looksLikeToolCallAttempt', () {

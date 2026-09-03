@@ -1,4 +1,4 @@
-// Domain-free file-scope containment (Todo 9, G-C3).
+// Domain-free file-scope containment (G-C3).
 //
 // `PathScope` is the path-normalisation / containment primitive the creation
 // loop's file-scope sandbox is built on (`creation_specification.md` § 7). It is

@@ -1074,7 +1074,7 @@ class FixtureServerConfig {
   bool verbose = false;
 }
 
-/// A reflected persistence entity for the DB-backed test surfaces (RCK13).
+/// A reflected persistence entity for the DB-backed test surfaces.
 ///
 /// Mirrors the sample's `@TomDbTable` / `@TomEntityId` / `@TomDbColumn` record
 /// shape (a nullable surrogate key that is `null` before the first insert, plus
@@ -1253,8 +1253,7 @@ class FixtureScopedDocumentRecord {
 class FixtureScopedDocumentRepository
     extends TomSqlDatasourceRepository<FixtureScopedDocumentRecord, int> {}
 
-/// A reflected entity carrying a **resource key** and *no* `@TomDbScope`
-/// (RCC5).
+/// A reflected entity carrying a **resource key** and *no* `@TomDbScope`.
 ///
 /// The missing annotation is the point. An entity whose rows are identified by
 /// a resource key is scoped by the principal's grants automatically — the

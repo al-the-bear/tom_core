@@ -1,7 +1,7 @@
 // PromptTemplate — a reusable, placeholder-bearing prompt body.
 //
 // Ported from the VS Code extension's prompt-template store for the TomSpecs
-// editor (§11.4). A template's [body] is authored with the §11.5 placeholder
+// editor. A template's [body] is authored with the canonical placeholder
 // forms (`${name}`, `{{name}}`, `${env:NAME}`) and resolved through the same
 // composer the chat composer uses, giving the prompt-templates editor a
 // live preview. The body is stored verbatim; resolution happens at use time so
@@ -23,7 +23,7 @@ final class PromptTemplate {
   /// Human-readable label shown in the prompt-templates editor.
   final String name;
 
-  /// Template body using the §11.5 placeholder forms; resolved at use time.
+  /// Template body using the canonical placeholder forms; resolved at use time.
   final String body;
 
   /// Whether this template seeds the composer's user-message field (vs. a

@@ -1,4 +1,4 @@
-// Persistence for the prompt trail (§11.3).
+// Persistence for the prompt trail.
 //
 // The trail's request/answer pairs are held in the spec workspace as a YAML
 // file so the exchange history survives launches (mirroring

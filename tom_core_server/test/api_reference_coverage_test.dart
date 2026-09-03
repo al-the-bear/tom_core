@@ -120,7 +120,7 @@
 /// every one of them violated. Reference migrations under
 /// `example/<module>/migrations/` do not satisfy this: four guides cite that
 /// SQL while explaining a table, which is data a reader reads, not a program a
-/// reader runs. Twelve modules are quarantined under one quest todo.
+/// reader runs. Twelve modules are quarantined on one named list.
 ///
 /// The group before it asks a question about the document's *tense* rather than
 /// its content. Every check above compares a claim against the code as it
@@ -152,7 +152,7 @@
 /// recovery, and mentioned none of the three. Silence reads as "no edges",
 /// which is a stronger claim than any guide in this package can make. So the
 /// per-module half requires the section to exist; eight guides are quarantined
-/// under one quest todo.
+/// on one named list.
 ///
 /// The two groups after it ask a blunter question than anything above: not
 /// whether a documented thing is documented correctly, but whether the document
@@ -185,7 +185,7 @@
 ///
 /// Both carry a quarantine, because both were measured across all twenty
 /// modules before being enforced and both found debt older than the module that
-/// exposed them. The quarantines are visible skips naming their quest todos,
+/// exposed them. The quarantines are visible skips naming their list,
 /// and a meta-test fails when an entry has nothing left to suppress, so the
 /// exemption expires by itself rather than by being remembered.
 ///
@@ -296,7 +296,7 @@
 /// aggregates`) matched neither class nor member section, which closed the
 /// class and orphaned every row beneath it. Each of those was silently
 /// weakening the attribution check as well. Two modules' summaries remain
-/// genuinely incomplete and are quarantined under their own quest todos.
+/// genuinely incomplete and are quarantined on their own named lists.
 ///
 /// Everything here reads the working tree, so the failure names the missing
 /// file, type, field or section and appears the moment the next one lands.
@@ -2203,7 +2203,7 @@ bool _hasLimitationsSection(String module) =>
 /// Guides with no section for what the module has not done.
 ///
 /// Surfaced as a `skip:` rather than a filtered list so the gap is visible in
-/// the run. Tracked by quest todo `tcincb126_ahxt`.
+/// the run.
 const Set<String> _limitationsPendingSection = {
   'authorization',
   'healthcheck',
@@ -2569,8 +2569,8 @@ List<String> _exampleFiles() => [
 /// A quarantine rather than an opt-in list, so a *new* example is checked from
 /// the moment it is added rather than from the moment somebody remembers to
 /// enrol it. Each entry is inert under the `dart run` its own header gives; the
-/// conversion is quest todo `tcincb134_ahyc`, and the meta-test above drops the
-/// exemption the moment an entry stops needing it.
+/// conversion is still owed, and the meta-test above drops the exemption the
+/// moment an entry stops needing it.
 const Set<String> _examplesAssertingExpectations = {
   'example/audit/audit_example.dart',
   'example/authentication/authentication_example.dart',
@@ -2644,8 +2644,7 @@ List<String> _moduleSuites(String module) =>
         .toList()
       ..sort();
 
-/// The modules for which no `<module>*_test.dart` exists — quest todo
-/// `tcincb154_ahzj`.
+/// The modules for which no `<module>*_test.dart` exists.
 ///
 /// `preferences` is covered, and covered well, by six `user_preferences*`
 /// suites named after the types rather than the directory. Whether that is a
@@ -2655,7 +2654,7 @@ List<String> _moduleSuites(String module) =>
 const Set<String> _suiteNamingPending = {'preferences'};
 
 /// The modules whose guide does not yet name every suite and the example that
-/// verify it — quest todo `tcincb125_ahxt`.
+/// verify it.
 const Set<String> _verificationPendingAttribution = {
   'audit',
   'authentication',
@@ -2670,7 +2669,7 @@ const Set<String> _verificationPendingAttribution = {
 };
 
 /// The modules whose Overview table has not been reconciled against its
-/// exports yet — quest todo `tcincb3_ahwn`.
+/// exports yet.
 ///
 /// A quarantine rather than an opt-in list, so that the default for a *new*
 /// module is checked. The debt is deliberately spent as a visible skip on every
@@ -2962,7 +2961,7 @@ void main() {
           );
         },
         skip: _tablesPendingReconciliation.contains(module)
-            ? 'Overview table not reconciled yet — quest todo tcincb3_ahwn.'
+            ? 'Overview table not reconciled yet.'
             : null,
       );
     }
@@ -3215,7 +3214,7 @@ class RealClass {}
         skip:
             _modulesWithoutReadme.contains(module) ||
                 _moduleReadmesPendingReconciliation.contains(module)
-            ? 'module readme not reconciled yet — quest todo tcincb131_ahyb.'
+            ? 'module readme not reconciled yet.'
             : null,
       );
     }
@@ -3300,7 +3299,7 @@ class RealClass {}
           );
         },
         skip: _sourceListsPendingReconciliation.contains(module)
-            ? 'Source list not reconciled yet — quest todo tcincb121_ahxs.'
+            ? 'Source list not reconciled yet.'
             : null,
       );
     }
@@ -3371,7 +3370,7 @@ class RealClass {}
           );
         },
         skip: _indexPendingReconciliation.contains(module)
-            ? 'Index not reconciled yet — quest todo tcincb122_ahxs.'
+            ? 'Index not reconciled yet.'
             : null,
       );
     }
@@ -3444,7 +3443,7 @@ class RealClass {}
           );
         },
         skip: _indexPendingReconciliation.contains(module)
-            ? 'Index not reconciled yet — quest todo tcincb122_ahxs.'
+            ? 'Index not reconciled yet.'
             : null,
       );
     }
@@ -4769,7 +4768,7 @@ One: `TomKind`, documented beside the type that carries it.
           );
         },
         skip: _limitationsPendingSection.contains(module)
-            ? 'no limitations section yet — quest todo tcincb126_ahxt.'
+            ? 'no limitations section yet.'
             : null,
       );
     }
@@ -4910,8 +4909,7 @@ One: `TomKind`, documented beside the type that carries it.
           );
         },
         skip: _verificationPendingAttribution.contains(module)
-            ? 'verification artefacts not attributed yet — quest todo '
-                  'tcincb125_ahxt.'
+            ? 'verification artefacts not attributed yet.'
             : null,
       );
     }
@@ -5384,7 +5382,7 @@ One: `TomKind`, documented beside the type that carries it.
           );
         },
         skip: _suiteNamingPending.contains(module)
-            ? 'no name-matched suite yet — quest todo tcincb154_ahzj.'
+            ? 'no name-matched suite yet.'
             : null,
       );
     }
@@ -5433,8 +5431,7 @@ One: `TomKind`, documented beside the type that carries it.
           );
         },
         skip: _examplesAssertingExpectations.contains(example)
-            ? 'expectations still written as `assert` — quest todo '
-                  'tcincb134_ahyc.'
+            ? 'expectations still written as `assert`.'
             : null,
       );
     }
@@ -5522,7 +5519,7 @@ One: `TomKind`, documented beside the type that carries it.
           );
         },
         skip: _memberListsPendingReconciliation.contains(module)
-            ? 'member lists not reconciled yet — quest todo tcincb123_ahxt.'
+            ? 'member lists not reconciled yet.'
             : null,
       );
     }
@@ -6332,7 +6329,15 @@ One: `TomKind`, documented beside the type that carries it.
       // shape invisible to this group, and the group stays green throughout. So
       // the list is widened whenever the vocabulary grows.
       'todo ids': RegExp(r'\b(tc(inc|open)b?|csexd)\d+', caseSensitive: false),
-      'internal bug numbers': RegExp(r'\bbug\s+§|\bRCK\d+'),
+      // The whole build-plan vocabulary alongside the bug-list form, not just
+      // the kernel plan's prefix: a prefix missing from this alternation makes
+      // every id of that shape invisible, which is the same hole the todo-id
+      // marker guards against one line above. The guideline, testkit and
+      // concept prefixes are excluded on purpose — they index the framework's
+      // published vocabularies, not a work item.
+      'internal bug numbers': RegExp(
+        r'\bbug\s+§|\b(RC[BCK]?\d+|RC-\d+|D-(?:RC)?[A-Z]?\d+)\b',
+      ),
       // The indefinite article is the tell: an unnamed follow-up cannot be
       // followed, and naming it would breach the rule above anyway. Both roads
       // lead to stating the current state instead.

@@ -204,6 +204,7 @@ reports and never gates.
 | [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, and every framework name in it must resolve |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
+| [`tool/check_comments_read_as_is.py`](tool/check_comments_read_as_is.py) | Finds work-item ids and history narration in shipped text |
 | [`tool/check_test_inventories.py`](tool/check_test_inventories.py) | Audits a document that claims to inventory a package's test files against the files the runner discovers |
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and sample guides that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
@@ -441,13 +442,24 @@ nothing, so a failure reports an index entry instead of the contract that broke.
 
 The check covers `lib/`, `test/` and `example/` — the three directories whose
 contents leave the workspace. Plans and other markdown are not scanned, because
-cross-referencing its own sections is what a plan is for. What counts as naming
-the document is deliberately literal: the text immediately left of the sign must
-end in an `.md` filename, an `RFC <n>`, or one of the specification names used
-here. That rule is cheap to satisfy correctly — write the document name you
-meant — and cannot be satisfied by accident, which is what makes it worth gating
-on. `tom_core_server` is clean; the other packages are not yet, so run it with a
-subtree argument.
+cross-referencing its own sections is what a plan is for.
+
+The question it asks is the one that matters to the reader: *can I see, from
+here, which document this indexes?* A document name is a markdown-quoted or bare
+`.md` filename, an `RFC <n>`, or one of the specification names used in this
+tree, and it counts when it sits **in view** of the reference — on the same line,
+or on a line immediately above or below within the same comment block. In view
+rather than immediately-to-the-left, because a wrapped sentence is one sentence
+and the writer did not choose where it broke; the narrower rule reported ``(§11.2
+/ §11.4 of `tom_specs_editor_specification.md`)`` and its kind as faults, and a
+gate that fails correct work is a gate that gets switched off. A bare `bug §75`
+still cannot be resolved from anywhere and is still a fault.
+`comments_read_as_is_test.dart` is skipped: a rule has to be able to quote the
+shape it rejects.
+
+The five `tom_core_*` packages are clean and held there. `tom_flutter_ui`,
+`tom_flutter_form_test`, `tom_flutter_ui_test` and `tom_core_codespecs` carry
+the remaining backlog, so run those with a subtree argument.
 
 ```bash
 python3 tool/check_section_numbers.py                  # the whole repository
@@ -460,6 +472,41 @@ asks whether a `§` reference names a document a reader can reach;
 actually has that section. Both failures read identically in the source — a
 plausible number beside a plausible filename — and only the second survives the
 first check, so it needs its own pass.
+
+```bash
+python3 tool/check_comments_read_as_is.py                  # the whole repository
+python3 tool/check_comments_read_as_is.py tom_core_server  # one subtree
+```
+
+The third member of that family, and the one that does not involve a `§` at all.
+Shipped text is read **as is**, by someone holding the package and nothing else,
+and two constructions break that. **Work-item ids** — `tcincb154_ahzj`, `RCK13`,
+`RCC5`, `Todo 9` — name rows in quest documents that ship with neither the
+package nor its tests. **History narration** — "used to return", "before the fix
+it threw" — describes the sequence of states that produced the code, which is
+the commit log's job; the repair is almost always to turn the past indicative
+into a conditional, so *before the fix it threw* becomes *doing X instead would
+throw*, which says the same thing to the reader and stays true.
+
+Traceability is not lost, it is reversed: a todo may name the file it changed,
+so the pointer lives in the document that can hold it. Todo → code, never code →
+todo.
+
+Three things are deliberately not faults. A testkit id in the leading
+`ID: description` position of a test or group name is the join key of
+`testlog/baseline_*.csv`, so renaming one discards that test's result history —
+exempt there, and only there. `G-API-3`, `TC-14` and a bare `C-5` index the
+framework's published guideline, testkit and concept vocabularies rather than a
+work item. And `step 4` in an example refers to something the reader is holding;
+only `Todo <n>` and `plan step <n>` point outside the artefact.
+
+This is a Python gate rather than four more copies of
+`tom_core_kernel/test/comments_read_as_is_test.dart` because the rule is one
+rule: four hand-synchronised copies in two dialects — `tom_core_flutter` runs on
+`flutter_test`, and `tom_core_samples` is not a package at all — would drift,
+and Dart cannot share `test/` code across packages without publishing it. The
+kernel keeps its in-suite guard as the fastest signal for the package it guards;
+this gate covers every package, including the sample suite's orphan markdown.
 
 ```bash
 python3 tool/check_test_inventories.py

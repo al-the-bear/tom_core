@@ -1,4 +1,4 @@
-// Persistence for the Anthropic agent-profile set (§7.1, §11.4).
+// Persistence for the Anthropic agent-profile set.
 //
 // Profiles are editor configuration held in the spec workspace as a YAML file
 // so the user's personas survive launches. Mirrors [ChatVariableStore]: a small
