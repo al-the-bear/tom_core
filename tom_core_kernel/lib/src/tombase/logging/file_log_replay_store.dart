@@ -22,6 +22,7 @@ import 'dart:io';
 import 'package:tom_basics/tom_basics.dart';
 
 import '../little_things/atomic_file.dart';
+import '../little_things/file_mutex.dart';
 import 'remote_logoutput.dart';
 
 // =============================================================================
@@ -45,6 +46,29 @@ import 'remote_logoutput.dart';
 /// into place. Rename within a directory is atomic, so a process killed
 /// mid-write leaves either the previous queue or the new one — never a
 /// half-written array.
+///
+/// ## The file may be shared
+///
+/// Two stores on one path — a worker isolate and the isolate that spawned it,
+/// or a restarted process overlapping the one it replaces — are safe. Every
+/// operation re-reads the file and every mutation runs under a sibling lock
+/// (see [tomWithFileLock]), so a mutation applies to what is on disk *now*
+/// rather than to a snapshot taken when this store was constructed. Without
+/// that, each owner would rewrite the file whole from its own stale copy and
+/// the later write would erase the other's records silently — the worst
+/// failure available to a store whose entire purpose is that records survive.
+///
+/// [length], [snapshot] and [oldest] therefore answer from the file, not from
+/// memory, and cost a read. That is deliberate: an owner that reported its own
+/// private count would make [oldest] and [removeOldest] disagree about which
+/// record is the oldest, and the drain loop would then delete a record it had
+/// never sent.
+///
+/// What sharing does *not* buy is exactly-once delivery. Two owners draining
+/// concurrently can both read the same [oldest] before either removes it, and
+/// both will send it. A duplicated log record is a nuisance; a lost one is the
+/// failure this store exists to prevent, and the two cannot both be excluded
+/// without coordination the kernel deliberately has no room for.
 ///
 /// ## A damaged file never blocks startup
 ///
@@ -71,6 +95,14 @@ class TomFileLogReplayStore implements TomLogReplayStore {
   /// The file the queue is mirrored to and reloaded from.
   final File file;
 
+  /// The guard held for the duration of every operation.
+  final File _lockFile;
+
+  /// The queue as of the operation currently running.
+  ///
+  /// A working copy rather than a cache: [_guarded] refills it from the file at
+  /// the start of every operation, because the file may have been changed by
+  /// another owner since the last one.
   final List<TomRemoteLogMessage> _records = [];
 
   /// Creates a store backed by [path], loading any previously persisted
@@ -78,36 +110,40 @@ class TomFileLogReplayStore implements TomLogReplayStore {
   ///
   /// Never throws because of the file's content: see the class documentation
   /// for how a damaged file is salvaged, quarantined and reported.
-  TomFileLogReplayStore(String path) : file = File(path) {
-    _load();
+  TomFileLogReplayStore(String path)
+    : file = File(path),
+      _lockFile = File(tomFileLockPath(path)) {
+    _guarded(() {});
   }
 
   @override
-  int get length => _records.length;
+  int get length => _guarded(() => _records.length);
 
   @override
-  void append(TomRemoteLogMessage message) {
+  void append(TomRemoteLogMessage message) => _guarded(() {
     _records.add(message);
     _persist();
-  }
+  });
 
   @override
-  List<TomRemoteLogMessage> snapshot() => List.of(_records);
+  List<TomRemoteLogMessage> snapshot() => _guarded(() => List.of(_records));
 
   @override
-  TomRemoteLogMessage? get oldest => _records.isEmpty ? null : _records.first;
+  TomRemoteLogMessage? get oldest =>
+      _guarded(() => _records.isEmpty ? null : _records.first);
 
   @override
-  void removeOldest() {
+  void removeOldest() => _guarded(() {
     if (_records.isEmpty) return;
     _records.removeAt(0);
     _persist();
-  }
+  });
 
   @override
-  void trim(int maxSize) {
+  void trim(int maxSize) => _guarded(() {
     if (maxSize <= 0) {
-      clear();
+      _records.clear();
+      _persist();
       return;
     }
     if (_records.length <= maxSize) return;
@@ -115,25 +151,54 @@ class TomFileLogReplayStore implements TomLogReplayStore {
       _records.removeAt(0);
     }
     _persist();
-  }
+  });
 
   @override
-  void clear() {
+  void clear() => _guarded(() {
     _records.clear();
     _persist();
-  }
+  });
+
+  /// Runs [operation] holding the lock, over a queue freshly read from [file].
+  ///
+  /// This is the whole of the sharing story. Reading inside the guard is what
+  /// makes a mutation a read-modify-write of the *current* file rather than a
+  /// rewrite from whatever this owner last saw, and it is why reads are guarded
+  /// too: [oldest] and [removeOldest] are consecutive calls in the drain loop,
+  /// and one answering from memory while the other rewrites the file would let
+  /// the loop delete a record it had never sent.
+  ///
+  /// Not reentrant — no operation may call another. Each is written against
+  /// [_records] directly for that reason, including [trim]'s clearing branch,
+  /// which would otherwise delegate to [clear] and deadlock on the guard this
+  /// call already holds.
+  T _guarded<T>(T Function() operation) => tomWithFileLock(
+    _lockFile,
+    () {
+      _records.clear();
+      _load();
+      return operation();
+    },
+    onBrokenLock: _report,
+  );
 
   /// Where damaged content is moved so the next [_persist] cannot overwrite
   /// the evidence of what was lost.
   String get _corruptPath => '${file.path}.corrupt';
 
-  /// Reads and decodes records from [file] if it exists.
+  /// Reads and decodes records from [file] if it exists, appending them to the
+  /// (already emptied) working copy. Called from [_guarded], so it runs at the
+  /// start of every operation and always with the lock held.
   ///
-  /// This method never throws. It runs from the constructor, and the store is
-  /// normally built during startup wiring, so a throw here would turn a past
-  /// crash into a boot failure — the durable buffer would take down the very
-  /// process it exists to protect. Every unreadable state instead degrades to
-  /// "start with what could be salvaged, and say what was lost".
+  /// This method never throws. It first runs from the constructor, and the
+  /// store is normally built during startup wiring, so a throw here would turn
+  /// a past crash into a boot failure — the durable buffer would take down the
+  /// very process it exists to protect. Every unreadable state instead degrades
+  /// to "carry on with what could be salvaged, and say what was lost".
+  ///
+  /// Damage is reported once, not once per operation: [_recoverFrom] moves the
+  /// unreadable content aside and writes the salvaged records back, so the next
+  /// read finds a healthy file.
   void _load() {
     if (!file.existsSync()) return;
 

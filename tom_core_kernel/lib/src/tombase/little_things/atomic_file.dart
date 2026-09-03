@@ -21,6 +21,25 @@ library;
 // =============================================================================
 
 import 'dart:io';
+import 'dart:math';
+
+// =============================================================================
+// Writer identity
+// =============================================================================
+
+/// Identifies *this isolate* among everything that might write the same file.
+///
+/// A process id is not enough. Every isolate in a process reports the same
+/// [pid], so naming a per-writer file after the pid alone gives two isolates
+/// one name — and for the staging file below that means one isolate's rename
+/// publishes, or destroys, the file the other is still writing.
+///
+/// The random half is what separates isolates, and it must be *unpredictably*
+/// random rather than merely varied: this is computed once per isolate, and
+/// isolates spawned in the same instant would draw the same seed from a
+/// time-based generator and collide exactly when concurrency is highest.
+final String tomFileWriterId =
+    '$pid-${Random.secure().nextInt(1 << 32).toRadixString(36)}';
 
 // =============================================================================
 // Atomic write
@@ -29,13 +48,12 @@ import 'dart:io';
 /// The sibling path [tomWriteFileAtomically] stages the new content at before
 /// renaming it over [path].
 ///
-/// The process id is part of the name on purpose. `TomFileJobStore` is
-/// documented as usable by "nodes on a shared mount", and a temp name shared
-/// between processes would let one process's rename publish another's
-/// half-written staging file — reintroducing, between processes, the very
-/// truncation this library exists to prevent. One name per process per target
-/// also means the staging files cannot accumulate: a process reuses its own.
-String tomAtomicWriteTempPath(String path) => '$path.$pid.tmp';
+/// The writer's identity is part of the name on purpose. A staging name shared
+/// between writers lets one writer's rename publish another's half-written
+/// file — reintroducing, between writers, the very truncation this library
+/// exists to prevent. One name per writer per target also means staging files
+/// cannot accumulate: a writer reuses its own.
+String tomAtomicWriteTempPath(String path) => '$path.$tomFileWriterId.tmp';
 
 /// Writes [contents] to [file] so a reader sees either the complete previous
 /// content or the complete new content, never a blend of the two.

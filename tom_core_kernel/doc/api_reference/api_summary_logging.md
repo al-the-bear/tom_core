@@ -361,13 +361,26 @@ TomInMemoryLogReplayStore()
 
 ### TomFileLogReplayStore
 
-File-backed `TomLogReplayStore` for durable replay buffering. Records are held
-in memory and mirrored to a JSON file on every mutation (flushed to disk before
-returning); constructing the store reloads any records previously written, so
-the buffer survives a process restart during an endpoint outage. Each write
-goes to a sibling temp file that is renamed into place, so a process killed
-mid-write leaves either the previous queue or the new one, never a half-written
-array. Requires `dart:io` and is therefore not available on the web.
+File-backed `TomLogReplayStore` for durable replay buffering. The file is the
+queue: every operation re-reads it and every mutation rewrites it (flushed to
+disk before returning), so the buffer survives a process restart during an
+endpoint outage. Each write goes to a sibling temp file that is renamed into
+place, so a process killed mid-write leaves either the previous queue or the new
+one, never a half-written array. Requires `dart:io` and is therefore not
+available on the web.
+
+Two owners may share one path — a worker isolate and the isolate that spawned
+it, or a restarted process overlapping with the one it replaces. Every operation
+runs while holding a sibling lock file (`<path>.lock`), which makes a mutation a
+read-modify-write of the current file rather than a rewrite from a stale
+snapshot. Reads are guarded for the same reason: an owner answering `oldest` from
+a private copy while another rewrites the file would let a drain loop delete a
+record it had never sent. A lock left behind by a killed owner is broken once it
+has stood unchanged for ten seconds, and that recovery is reported through
+`TomRemoteLogOutput.globalSettingFallbackOutput`. Sharing does not buy
+exactly-once delivery — two owners draining concurrently can both send the same
+record — because a duplicated log record is a nuisance and a lost one is the
+failure this store exists to prevent.
 
 - **Implements:** `TomLogReplayStore`
 

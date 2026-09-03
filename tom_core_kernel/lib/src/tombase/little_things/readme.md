@@ -25,11 +25,19 @@ This is the module's whole exported surface — two classes and nine functions.
 | `tomPrintStackTrace(s, {message, depth})` | Log a trimmed stack trace at ERROR level. Despite the name, it does not `print`. Logs nothing when there is neither a message nor a frame. |
 | `convertMinutesToUtcOffset(minutes)` | Format a minute offset as `±HH:MM`. Throws outside ±840 minutes (±14:00), which no real zone reaches — the hour field is two digits wide, so a wider offset has no valid rendering. |
 
-The module also holds one **internal**, deliberately unexported file:
-`atomic_file.dart`, the crash-safe whole-file write shared by the package's two
-file-backed stores (`TomFileJobStore` and `TomFileLogReplayStore`). It stays off
-the exported surface because it imports `dart:io` and because how a store
-reaches the disk is not something a caller should be reaching for.
+The module also holds two **internal**, deliberately unexported files serving the
+package's file-backed stores (`TomFileJobStore` and `TomFileLogReplayStore`):
+
+- `atomic_file.dart` — the crash-safe whole-file write. Content is staged in a
+  per-writer sibling file and renamed over the target, so a reader sees either
+  the complete previous content or the complete new one.
+- `file_mutex.dart` — mutual exclusion between everything that might write one
+  file. Built on exclusive file creation rather than `dart:io`'s own locks,
+  which are process-scoped and so cannot separate two isolates of one process.
+  A guard left behind by a killed writer is broken once it goes stale.
+
+Both stay off the exported surface because they import `dart:io` and because how
+a store reaches the disk is not something a caller should be reaching for.
 
 ## Quick start
 

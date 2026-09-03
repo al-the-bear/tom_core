@@ -25,7 +25,7 @@ survives a restart during an endpoint outage.
 | `TomRemoteLogMessage` / `TomRemoteLogResult` / `TomLoggingContext` | Remote-logging payloads and context. |
 | `TomLogReplayStore` | Storage contract behind `TomRemoteLogOutput`'s replay queue: FIFO append, snapshot, and overflow that drops from the head. |
 | `TomInMemoryLogReplayStore` | The zero-config default — buffered records live in a list and are lost if the process exits with the queue non-empty. |
-| `TomFileLogReplayStore` | Durable alternative: every mutation is mirrored to a JSON file (written to a temp file and renamed into place), and construction reloads it, so the buffer survives a restart mid-outage. Requires `dart:io`, so it is not available on the web. |
+| `TomFileLogReplayStore` | Durable alternative: every mutation is mirrored to a JSON file (written to a temp file and renamed into place) under a sibling lock, and every operation reloads it — so the buffer survives a restart mid-outage, and two owners of one path do not overwrite each other. Requires `dart:io`, so it is not available on the web. |
 
 ## Quick start
 

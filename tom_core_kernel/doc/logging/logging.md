@@ -397,6 +397,22 @@ Each mutation is written to a sibling temp file and renamed into place, so a
 process killed mid-write leaves either the previous queue or the new one, never
 a half-written array.
 
+Two owners may point at the same path — a worker isolate and the isolate that
+spawned it, or a restarted process overlapping with the one it replaces. Every
+operation re-reads the file and every mutation runs while holding a sibling lock
+file (`<path>.lock`), so a change applies to what is on disk now rather than to
+whatever this owner last saw. Reads cost a file read for the same reason: an
+owner reporting a private count would let `oldest` and `removeOldest` disagree
+about which record is next. A lock left behind by a killed owner is broken once
+it has stood unchanged for ten seconds, and the recovery is reported through
+`globalSettingFallbackOutput` — that writer died inside a mutation, so its last
+change may not have landed.
+
+What sharing does *not* buy is exactly-once delivery: two owners draining at the
+same time can both read the same oldest record and both send it. A duplicated log
+record is a nuisance; a lost one is the failure the durable store exists to
+prevent.
+
 Constructing the store never throws because of the file's content. That matters
 because the store is normally wired up during startup: a constructor that threw
 on a damaged file would let a past crash prevent the next start, so the durable

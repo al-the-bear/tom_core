@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:test/test.dart';
 
@@ -2086,6 +2087,145 @@ void main() {
             recovered.accepted.map((m) => m.message),
             equals(['a', 'b', 'c']),
           );
+        });
+
+        group('shared by two owners', () {
+          // The store's whole purpose is that records survive, so losing one
+          // silently is its worst possible failure. Two owners of the same
+          // path — a worker isolate and its creator, or a restarted process
+          // overlapping the old one — each used to hold a private snapshot
+          // taken at construction and each rewrote the file whole, so the
+          // last writer erased everything the other had buffered.
+          late String path;
+
+          setUp(() => path = '${tempDir.path}/queue.json');
+
+          test('a second owner does not clobber the first', () {
+            final first = TomFileLogReplayStore(path);
+            final second = TomFileLogReplayStore(path);
+
+            // Interleaved, so neither owner's snapshot is ever current.
+            first.append(record('a'));
+            second.append(record('b'));
+            first.append(record('c'));
+            second.append(record('d'));
+
+            expect(
+              TomFileLogReplayStore(path).snapshot().map((m) => m.message),
+              equals(['a', 'b', 'c', 'd']),
+            );
+          });
+
+          test('an owner sees records the other appended', () {
+            final first = TomFileLogReplayStore(path);
+            final second = TomFileLogReplayStore(path);
+
+            first.append(record('a'));
+
+            // Reads answer from the file, not from a snapshot taken before
+            // the other owner existed.
+            expect(second.length, equals(1));
+            expect(second.oldest?.message, equals('a'));
+            expect(second.snapshot().map((m) => m.message), equals(['a']));
+          });
+
+          test('a drained record does not come back', () {
+            final drainer = TomFileLogReplayStore(path);
+            final other = TomFileLogReplayStore(path);
+
+            drainer.append(record('a'));
+            drainer.append(record('b'));
+            // The drain loop's pair: read the oldest, send it, drop it.
+            expect(drainer.oldest?.message, equals('a'));
+            drainer.removeOldest();
+
+            // The second owner must not re-persist 'a' from a stale snapshot,
+            // which would hand an already-delivered record back to the queue.
+            other.append(record('c'));
+
+            expect(
+              TomFileLogReplayStore(path).snapshot().map((m) => m.message),
+              equals(['b', 'c']),
+            );
+          });
+
+          test('a trim by one owner is not undone by the other', () {
+            final first = TomFileLogReplayStore(path);
+            final second = TomFileLogReplayStore(path);
+
+            first.append(record('a'));
+            first.append(record('b'));
+            first.append(record('c'));
+            second.trim(1);
+
+            // 'a' and 'b' were dropped on purpose; the other owner appending
+            // must not resurrect them.
+            first.append(record('d'));
+
+            expect(
+              TomFileLogReplayStore(path).snapshot().map((m) => m.message),
+              equals(['c', 'd']),
+            );
+          });
+
+          test('records from concurrent isolates all survive', () async {
+            // The case the in-isolate tests above cannot show: real parallel
+            // writers. dart:io's own file locks are process-scoped and do not
+            // exclude across isolates, so this fails for anything relying on
+            // them.
+            const owners = 4;
+            const perOwner = 15;
+
+            await Future.wait([
+              for (var owner = 0; owner < owners; owner++)
+                Isolate.run(() {
+                  final store = TomFileLogReplayStore(path);
+                  for (var i = 0; i < perOwner; i++) {
+                    store.append(
+                      TomRemoteLogMessage.of(
+                        TomLogLevel.production.levelPattern,
+                        TomLogLevel.info.levelPattern,
+                        'INFO   ',
+                        'owner$owner-$i',
+                        'main',
+                        '2026-01-02T10:00:00.000',
+                        null,
+                      ),
+                    );
+                  }
+                }),
+            ]);
+
+            final survived = TomFileLogReplayStore(path).snapshot();
+            expect(survived, hasLength(owners * perOwner));
+            // Every owner's records are present, and each exactly once.
+            expect(
+              survived.map((m) => m.message).toSet(),
+              hasLength(owners * perOwner),
+            );
+          });
+
+          test('a lock left behind by a killed owner is broken', () {
+            final store = TomFileLogReplayStore(path);
+            store.append(record('a'));
+
+            // What a process killed inside a mutation leaves: the guard file
+            // with nobody holding it. Without staleness recovery every later
+            // owner would wait on it forever, which is a worse failure than
+            // the one the guard prevents.
+            File('$path.lock')
+              ..createSync()
+              ..setLastModifiedSync(
+                DateTime.now().subtract(const Duration(minutes: 5)),
+              );
+
+            store.append(record('b'));
+
+            expect(
+              TomFileLogReplayStore(path).snapshot().map((m) => m.message),
+              equals(['a', 'b']),
+            );
+          });
         });
 
         group('corrupt file recovery', () {
