@@ -47,10 +47,7 @@ class ShowcaseApp extends TomStatelessWidget {
       // — intentionally hardcoded, outside the G-RES-1 resource bundle.
       title: 'Tom Flutter UI — Component Showcase',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       home: _ShowcaseHome(),
     );
   }
@@ -80,9 +77,7 @@ class _ShowcaseHome extends TomStatelessWidget {
             isThreeLine: true,
             trailing: TomIcon(icon: Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
-              TomPageRoute<void>(
-                builder: (_) => GroupScreen(group: group),
-              ),
+              TomPageRoute<void>(builder: (_) => GroupScreen(group: group)),
             ),
           );
         },

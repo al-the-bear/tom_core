@@ -88,7 +88,9 @@ class _GrantsScreenState extends State<GrantsScreen> {
     setState(() => _saving = true);
     // The write runs through the grant-matrix action (`admin.grants.save`).
     final error = await runAdminAction(
-        adminActions.putGrants, PutGrantsContext(_session, _working));
+      adminActions.putGrants,
+      PutGrantsContext(_session, _working),
+    );
     if (!mounted) return;
     if (error != null) {
       setState(() => _saving = false);
@@ -185,7 +187,9 @@ class _GrantsScreenState extends State<GrantsScreen> {
     if (roles.isEmpty || keys.isEmpty) {
       return Center(
         child: TomText(
-            text: TomCtr.text('grants.empty'), key: Key('grants-empty')),
+          text: TomCtr.text('grants.empty'),
+          key: Key('grants-empty'),
+        ),
       );
     }
     return SingleChildScrollView(
@@ -208,12 +212,14 @@ class _GrantsScreenState extends State<GrantsScreen> {
                 cells: [
                   DataCell(TomText(text: role)),
                   for (final key in keys)
-                    DataCell(_GrantCell(
-                      role: role,
-                      resourceKey: key,
-                      access: _working.accessFor(role, key),
-                      onTap: () => _cycle(role, key),
-                    )),
+                    DataCell(
+                      _GrantCell(
+                        role: role,
+                        resourceKey: key,
+                        access: _working.accessFor(role, key),
+                        onTap: () => _cycle(role, key),
+                      ),
+                    ),
                 ],
               ),
           ],

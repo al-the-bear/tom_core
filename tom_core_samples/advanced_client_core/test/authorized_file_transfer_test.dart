@@ -46,41 +46,52 @@ void main() {
 
   group('AuthorizedFileTransferClient', () {
     // The bearer store is process-global; each test gets a fresh one.
-    setUp(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
-    tearDown(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
+    setUp(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
+    tearDown(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
 
-    test('TC-AFT-01: an expired token is refreshed once and the upload replayed '
-        'with the fresh bearer', () async {
-      final f = _expiredSession();
+    test(
+      'TC-AFT-01: an expired token is refreshed once and the upload replayed '
+      'with the fresh bearer',
+      () async {
+        final f = _expiredSession();
 
-      final stored = await f.files.upload(
-        slot: _slot,
-        source: TomFileSource.bytes('notes.txt', _payload),
-      );
+        final stored = await f.files.upload(
+          slot: _slot,
+          source: TomFileSource.bytes('notes.txt', _payload),
+        );
 
-      expect(stored.byteCount, equals(_payload.length));
-      // Exactly one refresh, exactly two attempts — a recovery, not a loop.
-      expect(f.refreshCalls, equals(1));
-      expect(f.scripted.presented,
-          equals(['Bearer ${f.staleAuthz}', 'Bearer ${f.freshAuthz}']));
-    });
+        expect(stored.byteCount, equals(_payload.length));
+        // Exactly one refresh, exactly two attempts — a recovery, not a loop.
+        expect(f.refreshCalls, equals(1));
+        expect(
+          f.scripted.presented,
+          equals(['Bearer ${f.staleAuthz}', 'Bearer ${f.freshAuthz}']),
+        );
+      },
+    );
 
-    test('TC-AFT-02: download recovers the same way and serves the bytes intact',
-        () async {
-      final f = _expiredSession();
-      f.scripted.content[_slot] = _payload;
+    test(
+      'TC-AFT-02: download recovers the same way and serves the bytes intact',
+      () async {
+        final f = _expiredSession();
+        f.scripted.content[_slot] = _payload;
 
-      final received = <int>[];
-      await for (final chunk in f.files.download(_slot)) {
-        received.addAll(chunk);
-      }
+        final received = <int>[];
+        await for (final chunk in f.files.download(_slot)) {
+          received.addAll(chunk);
+        }
 
-      expect(received, equals(_payload));
-      expect(f.refreshCalls, equals(1));
-      expect(f.scripted.presented, hasLength(2));
-    });
+        expect(received, equals(_payload));
+        expect(f.refreshCalls, equals(1));
+        expect(f.scripted.presented, hasLength(2));
+      },
+    );
 
     test('TC-AFT-03: describe (HEAD) recovers', () async {
       final f = _expiredSession();
@@ -128,51 +139,64 @@ void main() {
       await f.files.describe(_slot);
 
       expect(f.scripted.presented.single, equals('Bearer ${f.freshAuthz}'));
-      expect(f.scripted.presented.single,
-          isNot(equals('Bearer ${TomBearerAuthentication.token}')));
+      expect(
+        f.scripted.presented.single,
+        isNot(equals('Bearer ${TomBearerAuthentication.token}')),
+      );
       expect(f.refreshCalls, isZero, reason: 'nothing expired');
     });
 
-    test('TC-AFT-07: a non-expiry refusal is rethrown unchanged, with no refresh',
-        () async {
-      final f = _liveSession();
-      f.scripted.refusal = TomFileTransferException(
-        'file_transfer.rejected',
-        'The server rejected the file transfer.',
-        parameters: {'slot': _slot, 'statusCode': 403},
-      );
+    test(
+      'TC-AFT-07: a non-expiry refusal is rethrown unchanged, with no refresh',
+      () async {
+        final f = _liveSession();
+        f.scripted.refusal = TomFileTransferException(
+          'file_transfer.rejected',
+          'The server rejected the file transfer.',
+          parameters: {'slot': _slot, 'statusCode': 403},
+        );
 
-      await expectLater(
-        f.files.describe(_slot),
-        throwsA(isA<TomFileTransferException>()
-            .having((e) => e.key, 'key', 'file_transfer.rejected')
-            .having((e) => e.parameters?['statusCode'], 'statusCode', 403)),
-      );
-      // A 403 is an answer, not an expiry: refreshing would only re-ask a
-      // question the server already settled.
-      expect(f.refreshCalls, isZero);
-      expect(f.scripted.presented, hasLength(1));
-    });
+        await expectLater(
+          f.files.describe(_slot),
+          throwsA(
+            isA<TomFileTransferException>()
+                .having((e) => e.key, 'key', 'file_transfer.rejected')
+                .having((e) => e.parameters?['statusCode'], 'statusCode', 403),
+          ),
+        );
+        // A 403 is an answer, not an expiry: refreshing would only re-ask a
+        // question the server already settled.
+        expect(f.refreshCalls, isZero);
+        expect(f.scripted.presented, hasLength(1));
+      },
+    );
 
-    test('TC-AFT-08: a refusal that names no status is rethrown untouched',
-        () async {
-      // A cancellation carries no `statusCode`, so there is nothing for the
-      // policy to rule on — it must surface exactly as the transfer client threw
-      // it rather than being mistaken for a recoverable failure.
-      final f = _liveSession();
-      f.scripted.refusal = TomFileTransferException(
-        'file_transfer.cancelled',
-        'The file transfer was cancelled.',
-        parameters: {'slot': _slot},
-      );
+    test(
+      'TC-AFT-08: a refusal that names no status is rethrown untouched',
+      () async {
+        // A cancellation carries no `statusCode`, so there is nothing for the
+        // policy to rule on — it must surface exactly as the transfer client threw
+        // it rather than being mistaken for a recoverable failure.
+        final f = _liveSession();
+        f.scripted.refusal = TomFileTransferException(
+          'file_transfer.cancelled',
+          'The file transfer was cancelled.',
+          parameters: {'slot': _slot},
+        );
 
-      await expectLater(
-        f.files.remove(_slot),
-        throwsA(isA<TomFileTransferException>()
-            .having((e) => e.key, 'key', 'file_transfer.cancelled')),
-      );
-      expect(f.refreshCalls, isZero);
-    });
+        await expectLater(
+          f.files.remove(_slot),
+          throwsA(
+            isA<TomFileTransferException>().having(
+              (e) => e.key,
+              'key',
+              'file_transfer.cancelled',
+            ),
+          ),
+        );
+        expect(f.refreshCalls, isZero);
+      },
+    );
 
     test('TC-AFT-09: a 401 that persists after the refresh surfaces as '
         'TomAuthExpiredException', () async {
@@ -182,48 +206,59 @@ void main() {
 
       await expectLater(
         f.files.describe(_slot),
-        throwsA(isA<TomAuthExpiredException>()
-            .having((e) => e.statusCode, 'statusCode', 401)
-            // The server's own key, read from the refusal body exactly as the
-            // JSON half reads it — one vocabulary across both halves.
-            .having((e) => e.key, 'key', 'auth.token.expired')),
+        throwsA(
+          isA<TomAuthExpiredException>()
+              .having((e) => e.statusCode, 'statusCode', 401)
+              // The server's own key, read from the refusal body exactly as the
+              // JSON half reads it — one vocabulary across both halves.
+              .having((e) => e.key, 'key', 'auth.token.expired'),
+        ),
       );
       expect(f.refreshCalls, equals(1), reason: 'refreshed once, never looped');
       expect(f.scripted.presented, hasLength(2));
     });
 
-    test('TC-AFT-10: a refusal arriving after the first chunk is not retried',
-        () async {
-      // The retry window closes at the first chunk on purpose: the consumer has
-      // already seen a prefix, and silently restarting the stream would hand it
-      // those bytes twice. A 401 lands before any bytes anyway — the server
-      // authorizes before it writes — so nothing recoverable is given up.
-      final f = _expiredSession();
-      f.scripted.refuseAfterFirstChunk = true;
+    test(
+      'TC-AFT-10: a refusal arriving after the first chunk is not retried',
+      () async {
+        // The retry window closes at the first chunk on purpose: the consumer has
+        // already seen a prefix, and silently restarting the stream would hand it
+        // those bytes twice. A 401 lands before any bytes anyway — the server
+        // authorizes before it writes — so nothing recoverable is given up.
+        final f = _expiredSession();
+        f.scripted.refuseAfterFirstChunk = true;
 
-      final received = <int>[];
-      await expectLater(
-        () async {
-          await for (final chunk in f.files.download(_slot)) {
-            received.addAll(chunk);
-          }
-        }(),
-        throwsA(isA<TomFileTransferException>()
-            .having((e) => e.parameters?['statusCode'], 'statusCode', 401)),
-      );
-      expect(received, equals([1]), reason: 'the prefix is delivered once');
-      expect(f.refreshCalls, isZero);
-    });
+        final received = <int>[];
+        await expectLater(
+          () async {
+            await for (final chunk in f.files.download(_slot)) {
+              received.addAll(chunk);
+            }
+          }(),
+          throwsA(
+            isA<TomFileTransferException>().having(
+              (e) => e.parameters?['statusCode'],
+              'statusCode',
+              401,
+            ),
+          ),
+        );
+        expect(received, equals([1]), reason: 'the prefix is delivered once');
+        expect(f.refreshCalls, isZero);
+      },
+    );
 
-    test('TC-AFT-11: an empty slot describes as null without a refresh',
-        () async {
-      // Absence is an answer, not a failure — the decorator must not turn "no
-      // file here" into a session problem.
-      final f = _liveSession();
+    test(
+      'TC-AFT-11: an empty slot describes as null without a refresh',
+      () async {
+        // Absence is an answer, not a failure — the decorator must not turn "no
+        // file here" into a session problem.
+        final f = _liveSession();
 
-      expect(await f.files.describe(_slot), isNull);
-      expect(f.refreshCalls, isZero);
-    });
+        expect(await f.files.describe(_slot), isNull);
+        expect(f.refreshCalls, isZero);
+      },
+    );
 
     test('TC-AFT-12: closing the decorator closes the delegate', () async {
       final f = _liveSession();
@@ -291,11 +326,7 @@ _Fixture _liveSession() {
     current,
     false,
   );
-  return _assemble(
-    honoured: current,
-    staleAuthz: current,
-    freshAuthz: current,
-  );
+  return _assemble(honoured: current, staleAuthz: current, freshAuthz: current);
 }
 
 /// Composes the decorator the way the application does: one [AuthClient], one
@@ -307,8 +338,10 @@ _Fixture _assemble({
   required String freshAuthz,
 }) {
   final transport = _RefreshTransport(_loginBody(freshAuthz));
-  final authClient =
-      AuthClient(Uri.parse('http://localhost:8081'), transport: transport);
+  final authClient = AuthClient(
+    Uri.parse('http://localhost:8081'),
+    transport: transport,
+  );
   final http = AuthorizedHttp(transport, authClient);
   final scripted = _ScriptedFiles(honoured: honoured);
   return _Fixture(
@@ -438,10 +471,10 @@ class _ScriptedFiles extends TomFileTransferClient {
   }
 
   TomFileTransferException _notFound(String slot) => TomFileTransferException(
-        'file_transfer.not_found',
-        'No file is stored for the requested slot.',
-        parameters: {'slot': slot},
-      );
+    'file_transfer.not_found',
+    'No file is stored for the requested slot.',
+    parameters: {'slot': slot},
+  );
 }
 
 /// A [JsonTransport] that answers every call with one canned `/auth/refresh`
@@ -470,17 +503,17 @@ class _RefreshTransport implements JsonTransport {
 /// A success `/auth/refresh` body carrying [authzToken] as the new authorization
 /// token, so a refresh stores a pair the replay can pick up.
 Map<String, Object?> _loginBody(String authzToken) => {
-      'user': {
-        'id': '2',
-        'username': 'alice',
-        'displayName': 'alice',
-        'email': 'alice@example.com',
-        'status': 'active',
-      },
-      'authToken': _makeJwt({'username': 'alice', 'userId': 2, 'kind': 'auth'}),
-      'authzToken': authzToken,
-      'expiresAt': '2026-06-28T12:34:56.000Z',
-    };
+  'user': {
+    'id': '2',
+    'username': 'alice',
+    'displayName': 'alice',
+    'email': 'alice@example.com',
+    'status': 'active',
+  },
+  'authToken': _makeJwt({'username': 'alice', 'userId': 2, 'kind': 'auth'}),
+  'authzToken': authzToken,
+  'expiresAt': '2026-06-28T12:34:56.000Z',
+};
 
 /// Builds an unsigned, undecrypted JWT whose middle segment carries [payload].
 /// Suitable for `setTokens(..., decrypt: false)`.

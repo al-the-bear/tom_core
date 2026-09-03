@@ -17,13 +17,15 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup rowsSpacingGroup = ShowcaseGroup(
   id: 'rows_spacing',
   title: 'Rows & spacing (newRow, dist)',
-  summary: 'newRow starts a fresh row; the dist argument inserts gaps before a '
+  summary:
+      'newRow starts a fresh row; the dist argument inserts gaps before a '
       'component or row — grid-like layouts without nested Columns.',
   icon: Icons.table_rows_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'A single row',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('A', red))\n"
           "    .append(demoBox('B', green))\n"
           "    .append(demoBox('C', blue))\n"
@@ -37,7 +39,8 @@ final ShowcaseGroup rowsSpacingGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'Two rows — newRow',
       note: 'newRow(dist: 8) drops to a second row with an 8px gap above it.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('Row 1 · A', teal))\n"
           "    .append(demoBox('Row 1 · B', teal))\n"
           '    .newRow(dist: 8)\n'
@@ -54,9 +57,11 @@ final ShowcaseGroup rowsSpacingGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Per-component gaps — append(dist:)',
-      note: 'dist on append inserts a leading gap, so spacing is local to each '
+      note:
+          'dist on append inserts a leading gap, so spacing is local to each '
           'component rather than a single row-wide value.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('A', indigo))\n"
           "    .append(demoBox('B', indigo), dist: 24)\n"
           "    .append(demoBox('C', indigo), dist: 4)\n"

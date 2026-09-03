@@ -31,45 +31,57 @@ const int _dave = 99; // a stranger — grantee of no share, owner of nothing
 /// list 1, which lives in project 1, which lives in workspace 1.
 InMemoryResourceContainmentStore _containment() =>
     InMemoryResourceContainmentStore(
-      projects: [ProjectRecord()..id = 1..workspaceId = 1],
-      lists: [ListRecord()..id = 1..projectId = 1],
-      items: [ItemRecord()..id = 1..listId = 1],
+      projects: [
+        ProjectRecord()
+          ..id = 1
+          ..workspaceId = 1,
+      ],
+      lists: [
+        ListRecord()
+          ..id = 1
+          ..projectId = 1,
+      ],
+      items: [
+        ItemRecord()
+          ..id = 1
+          ..listId = 1,
+      ],
     );
 
 /// Alice's C-5 owner grant on the workspace; the containment rule flows it down
 /// to the item.
 List<TomPrincipalResourceGrant> _ownerGrants() => [
-      TomPrincipalResourceGrant(
-        principalId: '$_alice',
-        resourceKey: ResourceRoleKeys.workspace('1'),
-        role: ProjectRole.owner.name,
-      ),
-    ];
+  TomPrincipalResourceGrant(
+    principalId: '$_alice',
+    resourceKey: ResourceRoleKeys.workspace('1'),
+    role: ProjectRole.owner.name,
+  ),
+];
 
 /// The two C-6 shares on project 1: bob as `editor`, carol as `viewer`.
 List<TomPrincipalDelegation> _shares() => [
-      for (final share in const [
-        (_bob, ProjectRole.editor),
-        (_carol, ProjectRole.viewer),
-      ])
-        TomPrincipalDelegation(
-          mode: TomDelegationMode.share.name,
-          delegatorId: '$_alice',
-          delegateId: '${share.$1}',
-          resourceKey: ResourceRoleKeys.project('1'),
-          role: share.$2.name,
-        ),
-    ];
+  for (final share in const [
+    (_bob, ProjectRole.editor),
+    (_carol, ProjectRole.viewer),
+  ])
+    TomPrincipalDelegation(
+      mode: TomDelegationMode.share.name,
+      delegatorId: '$_alice',
+      delegateId: '${share.$1}',
+      resourceKey: ResourceRoleKeys.project('1'),
+      role: share.$2.name,
+    ),
+];
 
 /// The attachment grant rows the auth seed writes, as the grant store sees them.
 List<TomResourceGrant> _attachmentGrants() => [
-      for (final entry in projectRoleAttachmentGrades.entries)
-        TomResourceGrant(
-          roleName: entry.key.name,
-          resourceKey: itemAttachmentGradeKey,
-          accessLevel: entry.value,
-        ),
-    ];
+  for (final entry in projectRoleAttachmentGrades.entries)
+    TomResourceGrant(
+      roleName: entry.key.name,
+      resourceKey: itemAttachmentGradeKey,
+      accessLevel: entry.value,
+    ),
+];
 
 /// Builds the resolver over the seeded stores, optionally with a narrowed grant
 /// matrix (the shape an administrator's console edit produces).
@@ -94,9 +106,9 @@ ItemAttachmentGradeResolver _buildResolver({List<TomResourceGrant>? grants}) {
 
 /// An authenticated principal for auth user [userId].
 TomPrincipal _principal(int userId) => TomPrincipal(
-      authenticated: true,
-      user: TomUser(id: userId, username: 'user-$userId'),
-    );
+  authenticated: true,
+  user: TomUser(id: userId, username: 'user-$userId'),
+);
 
 void main() {
   group('the attachment grade follows the role on the item', () {
@@ -116,8 +128,7 @@ void main() {
       );
     });
 
-    test('a viewer share resolves read — the download, not the upload',
-        () async {
+    test('a viewer share resolves read — the download, not the upload', () async {
       final grade = await _buildResolver().gradeFor(_principal(_carol), 1);
       expect(grade, TomAuthState.read);
       // Spelling out both halves, because this pair *is* the demonstration: the
@@ -162,27 +173,25 @@ void main() {
       // nothing on the attachment — the grade fold degrades to none rather than
       // defaulting open.
       final resolver = _buildResolver(grants: const []);
-      expect(
-        await resolver.gradeFor(_principal(_alice), 1),
-        TomAuthState.none,
-      );
+      expect(await resolver.gradeFor(_principal(_alice), 1), TomAuthState.none);
     });
   });
 
   group('the grant matrix is the authority, not the code', () {
-    test("narrowing owner's grant to read takes away the owner's upload",
-        () async {
+    test("narrowing owner's grant to read takes away the owner's upload", () async {
       // This is what an administrator does through the authadmin console: edit
       // one `tom_resource_grant` row. Nothing in the app server changes, and the
       // owner of the item can now only download its attachment. The cross-tier
       // runner performs this same edit over HTTP against the live pair.
-      final resolver = _buildResolver(grants: [
-        TomResourceGrant(
-          roleName: ProjectRole.owner.name,
-          resourceKey: itemAttachmentGradeKey,
-          accessLevel: TomAuthState.read,
-        ),
-      ]);
+      final resolver = _buildResolver(
+        grants: [
+          TomResourceGrant(
+            roleName: ProjectRole.owner.name,
+            resourceKey: itemAttachmentGradeKey,
+            accessLevel: TomAuthState.read,
+          ),
+        ],
+      );
       final grade = await resolver.gradeFor(_principal(_alice), 1);
       expect(grade, TomAuthState.read);
       expect(grade.isInteractive, isFalse);

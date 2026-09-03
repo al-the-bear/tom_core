@@ -129,7 +129,8 @@ class RepositoryAppReadStore implements AppReadStore {
   const RepositoryAppReadStore();
 
   @override
-  Future<List<WorkspaceRecord>> allWorkspaces() => workspaceRepository.findAll();
+  Future<List<WorkspaceRecord>> allWorkspaces() =>
+      workspaceRepository.findAll();
 
   @override
   Future<List<ProjectRecord>> projectsInWorkspace(int workspaceId) async {
@@ -192,9 +193,10 @@ class RepositoryAppReadStore implements AppReadStore {
     final slot = TomFileSlots.resolve(appItemsTable, itemAttachmentColumn);
     if (slot == null) {
       throw StateError(
-          'The $appItemsTable/$itemAttachmentColumn file slot is not '
-          'registered — TomFileSlots.register(itemRepository) must run at boot '
-          'before attachments can be described.');
+        'The $appItemsTable/$itemAttachmentColumn file slot is not '
+        'registered — TomFileSlots.register(itemRepository) must run at boot '
+        'before attachments can be described.',
+      );
     }
     return slot.describe('$itemId');
   }
@@ -226,28 +228,34 @@ class InMemoryAppReadStore implements AppReadStore {
     List<CommentRecord> comments = const [],
     List<SubtaskRecord> subtasks = const [],
     Map<int, TomFileMetadata> attachments = const {},
-  })  : _workspaces = workspaces,
-        _projects = projects,
-        _lists = lists,
-        _items = items,
-        _comments = comments,
-        _subtasks = subtasks,
-        _attachments = attachments;
+  }) : _workspaces = workspaces,
+       _projects = projects,
+       _lists = lists,
+       _items = items,
+       _comments = comments,
+       _subtasks = subtasks,
+       _attachments = attachments;
 
   @override
   Future<List<WorkspaceRecord>> allWorkspaces() async => List.of(_workspaces);
 
   @override
-  Future<List<ProjectRecord>> projectsInWorkspace(int workspaceId) async =>
-      [for (final p in _projects) if (p.workspaceId == workspaceId) p];
+  Future<List<ProjectRecord>> projectsInWorkspace(int workspaceId) async => [
+    for (final p in _projects)
+      if (p.workspaceId == workspaceId) p,
+  ];
 
   @override
-  Future<List<ListRecord>> listsInProject(int projectId) async =>
-      [for (final l in _lists) if (l.projectId == projectId) l];
+  Future<List<ListRecord>> listsInProject(int projectId) async => [
+    for (final l in _lists)
+      if (l.projectId == projectId) l,
+  ];
 
   @override
-  Future<List<ItemRecord>> itemsInList(int listId) async =>
-      [for (final i in _items) if (i.listId == listId) i];
+  Future<List<ItemRecord>> itemsInList(int listId) async => [
+    for (final i in _items)
+      if (i.listId == listId) i,
+  ];
 
   // Sorted here rather than trusting seed order, so the in-memory store owes the
   // same total ordering the repository store's `ORDER BY … id` produces. A test
@@ -257,21 +265,24 @@ class InMemoryAppReadStore implements AppReadStore {
   @override
   Future<List<CommentRecord>> commentsOnItem(int itemId) async {
     final epoch = DateTime.fromMillisecondsSinceEpoch(0);
-    return [for (final c in _comments) if (c.itemId == itemId) c]
-      ..sort((a, b) {
-        final byTime =
-            (a.createdAt ?? epoch).compareTo(b.createdAt ?? epoch);
-        return byTime != 0 ? byTime : (a.id ?? 0).compareTo(b.id ?? 0);
-      });
+    return [
+      for (final c in _comments)
+        if (c.itemId == itemId) c,
+    ]..sort((a, b) {
+      final byTime = (a.createdAt ?? epoch).compareTo(b.createdAt ?? epoch);
+      return byTime != 0 ? byTime : (a.id ?? 0).compareTo(b.id ?? 0);
+    });
   }
 
   @override
   Future<List<SubtaskRecord>> subtasksOfItem(int itemId) async =>
-      [for (final s in _subtasks) if (s.itemId == itemId) s]
-        ..sort((a, b) {
-          final byPosition = (a.position ?? 0).compareTo(b.position ?? 0);
-          return byPosition != 0 ? byPosition : (a.id ?? 0).compareTo(b.id ?? 0);
-        });
+      [
+        for (final s in _subtasks)
+          if (s.itemId == itemId) s,
+      ]..sort((a, b) {
+        final byPosition = (a.position ?? 0).compareTo(b.position ?? 0);
+        return byPosition != 0 ? byPosition : (a.id ?? 0).compareTo(b.id ?? 0);
+      });
 
   @override
   Future<TomFileMetadata?> describeAttachment(int itemId) async =>
@@ -312,14 +323,16 @@ class AppReadService {
   /// Builds the service over its collaborators (live stores at boot, seeded
   /// stores under test), deriving the [visibleResolver] from them.
   AppReadService(this.store, this.accessResolver)
-      : visibleResolver =
-            VisibleResourceResolver(store, accessResolver.delegationResolver);
+    : visibleResolver = VisibleResourceResolver(
+        store,
+        accessResolver.delegationResolver,
+      );
 
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppReadService.production() => AppReadService(
-        const RepositoryAppReadStore(),
-        ResourceRoleResolver.production(),
-      );
+    const RepositoryAppReadStore(),
+    ResourceRoleResolver.production(),
+  );
 
   /// Workspaces the principal [userId] owns.
   ///
@@ -331,9 +344,9 @@ class AppReadService {
   /// so both stores agree without a redundant per-row [ResourceRoleResolver]
   /// call.
   Future<List<Workspace>> listWorkspaces(int userId) async => [
-        for (final record in await store.allWorkspaces())
-          if (record.ownerId == userId) workspaceFromRecord(record),
-      ];
+    for (final record in await store.allWorkspaces())
+      if (record.ownerId == userId) workspaceFromRecord(record),
+  ];
 
   /// Visible projects in the workspace [workspaceId] for the principal [userId].
   Future<List<Project>> listProjects(int userId, int workspaceId) =>
@@ -400,7 +413,9 @@ class AppReadService {
   /// disagree.
   Future<void> _requireVisibleItem(int userId, int itemId) async {
     final visible = await visibleResolver.visibleIds(
-        AppResourceTypes.item, userId.toString());
+      AppResourceTypes.item,
+      userId.toString(),
+    );
     if (!visible.contains(itemId)) throw itemNotFound(itemId);
   }
 
@@ -415,7 +430,10 @@ class AppReadService {
   /// orphaned key, or a column the caller's grade masks — is likewise omitted.
   /// Absence therefore always means "no paperclip", which is the only reading
   /// a client should have to implement.
-  Future<List<FileDescriptorDto>> listAttachments(int userId, int listId) async {
+  Future<List<FileDescriptorDto>> listAttachments(
+    int userId,
+    int listId,
+  ) async {
     final descriptors = <FileDescriptorDto>[];
     for (final item in await listItems(userId, listId)) {
       if (item.attachment.get().isEmpty) continue;
@@ -423,11 +441,16 @@ class AppReadService {
       if (id == null) continue;
       final metadata = await store.describeAttachment(id);
       if (metadata == null) continue;
-      descriptors.add(FileDescriptorDto.fromMetadata(
-        FileDescriptorDto.slotOf(
-            appItemsTable, item.id.get(), itemAttachmentColumn),
-        metadata,
-      ));
+      descriptors.add(
+        FileDescriptorDto.fromMetadata(
+          FileDescriptorDto.slotOf(
+            appItemsTable,
+            item.id.get(),
+            itemAttachmentColumn,
+          ),
+          metadata,
+        ),
+      );
     }
     return descriptors;
   }
@@ -521,8 +544,10 @@ class AppReadService {
     int? Function(T) idOf,
     R Function(T) project,
   ) async {
-    final visible =
-        await visibleResolver.visibleIds(resourceType, userId.toString());
+    final visible = await visibleResolver.visibleIds(
+      resourceType,
+      userId.toString(),
+    );
     return [
       for (final record in await loadCandidates())
         if (idOf(record) != null && visible.contains(idOf(record)))
@@ -670,11 +695,11 @@ class InMemoryAppWriteStore implements AppWriteStore {
     List<ProjectRecord> projects = const [],
     List<CommentRecord> comments = const [],
     List<SubtaskRecord> subtasks = const [],
-  })  : _workspaces = [...workspaces],
-        _items = [...items],
-        _projects = [...projects],
-        _comments = [...comments],
-        _subtasks = [...subtasks] {
+  }) : _workspaces = [...workspaces],
+       _items = [...items],
+       _projects = [...projects],
+       _comments = [...comments],
+       _subtasks = [...subtasks] {
     _nextWorkspaceId = _maxId(_workspaces.map((w) => w.id)) + 1;
     _nextItemId = _maxId(_items.map((i) => i.id)) + 1;
     _nextProjectId = _maxId(_projects.map((p) => p.id)) + 1;
@@ -738,7 +763,8 @@ class InMemoryAppWriteStore implements AppWriteStore {
   }
 
   @override
-  Future<void> deleteItem(int id) async => _items.removeWhere((i) => i.id == id);
+  Future<void> deleteItem(int id) async =>
+      _items.removeWhere((i) => i.id == id);
 
   @override
   Future<ProjectRecord> saveProject(ProjectRecord record) async {
@@ -851,20 +877,34 @@ class _GradableItemField {
 /// here, leaving them out is what makes a client-supplied key unwritable — the
 /// keys move exclusively through the file endpoint.
 final Map<String, _GradableItemBinding> _gradableItemBindings = {
-  'todo.item.title':
-      _GradableItemBinding((r) => r.title, (t, s) => t.title = s.title),
-  'todo.item.status':
-      _GradableItemBinding((r) => r.status, (t, s) => t.status = s.status),
-  'todo.item.priority':
-      _GradableItemBinding((r) => r.priority, (t, s) => t.priority = s.priority),
+  'todo.item.title': _GradableItemBinding(
+    (r) => r.title,
+    (t, s) => t.title = s.title,
+  ),
+  'todo.item.status': _GradableItemBinding(
+    (r) => r.status,
+    (t, s) => t.status = s.status,
+  ),
+  'todo.item.priority': _GradableItemBinding(
+    (r) => r.priority,
+    (t, s) => t.priority = s.priority,
+  ),
   'todo.item.assigneeId': _GradableItemBinding(
-      (r) => r.assigneeId, (t, s) => t.assigneeId = s.assigneeId),
-  'todo.item.dueDate':
-      _GradableItemBinding((r) => r.dueDate, (t, s) => t.dueDate = s.dueDate),
+    (r) => r.assigneeId,
+    (t, s) => t.assigneeId = s.assigneeId,
+  ),
+  'todo.item.dueDate': _GradableItemBinding(
+    (r) => r.dueDate,
+    (t, s) => t.dueDate = s.dueDate,
+  ),
   'todo.item.estimate': _GradableItemBinding(
-      (r) => r.estimateHours, (t, s) => t.estimateHours = s.estimateHours),
+    (r) => r.estimateHours,
+    (t, s) => t.estimateHours = s.estimateHours,
+  ),
   'todo.item.description': _GradableItemBinding(
-      (r) => r.description, (t, s) => t.description = s.description),
+    (r) => r.description,
+    (t, s) => t.description = s.description,
+  ),
 };
 
 /// The field-graded [ItemRecord] columns, in the display order the server
@@ -875,13 +915,17 @@ final Map<String, _GradableItemBinding> _gradableItemBindings = {
 final List<_GradableItemField> _gradableItemFields = [
   for (final key in AppResourceBundles.gradableItemKeys())
     _GradableItemField(
-        key, _gradableItemBindings[key]!.read, _gradableItemBindings[key]!.copy),
+      key,
+      _gradableItemBindings[key]!.read,
+      _gradableItemBindings[key]!.copy,
+    ),
 ];
 
 /// The gradable `todo.item.*` field keys the write path enforces, in order —
 /// exposed so a drift guard can assert it against the server resource bundle.
-List<String> get gradableItemFieldKeys =>
-    [for (final field in _gradableItemFields) field.resourceKey];
+List<String> get gradableItemFieldKeys => [
+  for (final field in _gradableItemFields) field.resourceKey,
+];
 
 /// Pure write logic over an [AppWriteStore], gated by the same two authorization
 /// layers the reads use.
@@ -937,11 +981,11 @@ class AppWriteService {
 
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppWriteService.production() => AppWriteService(
-        const RepositoryAppWriteStore(),
-        ResourceRoleResolver.production(),
-        FieldGradeResolver(const RepositoryGrantStore()),
-        const RepositoryOwnershipGrantWriter(),
-      );
+    const RepositoryAppWriteStore(),
+    ResourceRoleResolver.production(),
+    FieldGradeResolver(const RepositoryGrantStore()),
+    const RepositoryOwnershipGrantWriter(),
+  );
 
   /// Creates [project] in its workspace; the principal must own or edit that
   /// workspace (project ownership flows from the owning workspace, so the creator
@@ -1326,9 +1370,9 @@ class AppShareService {
 
   /// The production wiring: every collaborator over its repository-backed store.
   factory AppShareService.production() => AppShareService(
-        const RepositoryShareDelegationStore(),
-        ResourceRoleResolver.production(),
-      );
+    const RepositoryShareDelegationStore(),
+    ResourceRoleResolver.production(),
+  );
 
   /// Grants [request.granteeUserId] the [request.projectRole] on the resource
   /// `(request.resourceType, request.resourceId)` as a `share`-mode delegation.
@@ -1349,9 +1393,10 @@ class AppShareService {
         mode: TomDelegationMode.share.name,
         delegatorId: userId.toString(),
         delegateId: granteeId.toString(),
-        resourceKey:
-            ResourceRoleKeys.forResource(
-                request.resourceType, resourceId.toString()),
+        resourceKey: ResourceRoleKeys.forResource(
+          request.resourceType,
+          resourceId.toString(),
+        ),
         role: request.projectRole,
       ),
     );
@@ -1556,8 +1601,10 @@ class AdvancedAppApiService implements AppApiService {
   // distinct path to avoid being shadowed by it.
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appHealth')
   @override
-  Future<Map<String, Object>> health() async =>
-      {'status': 'ok', 'service': 'advanced_app_server'};
+  Future<Map<String, Object>> health() async => {
+    'status': 'ok',
+    'service': 'advanced_app_server',
+  };
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListWorkspaces')
   @override
@@ -1575,7 +1622,10 @@ class AdvancedAppApiService implements AppApiService {
   @override
   Future<Workspace> updateWorkspace(Workspace workspace) =>
       _writes.updateWorkspace(
-          _principalId, int.tryParse(workspace.id.get()) ?? -1, workspace);
+        _principalId,
+        int.tryParse(workspace.id.get()) ?? -1,
+        workspace,
+      );
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appDeleteWorkspace')
   @override
@@ -1630,8 +1680,8 @@ class AdvancedAppApiService implements AppApiService {
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateItem')
   @override
-  Future<TodoItem> updateItem(TodoItem item) => _writes.updateItem(
-      _principalId, int.tryParse(item.id.get()) ?? -1, item);
+  Future<TodoItem> updateItem(TodoItem item) =>
+      _writes.updateItem(_principalId, int.tryParse(item.id.get()) ?? -1, item);
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appDeleteItem')
   @override
@@ -1641,7 +1691,10 @@ class AdvancedAppApiService implements AppApiService {
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddComment')
   @override
   Future<TodoComment> addComment(TodoComment comment) => _writes.addComment(
-      _principalId, int.tryParse(comment.itemId.get()) ?? -1, comment);
+    _principalId,
+    int.tryParse(comment.itemId.get()) ?? -1,
+    comment,
+  );
 
   // The parent link is read from the payload's `itemId` — which the pipeline
   // has already populated from the `{id}` path capture (`urlParameterMapping:
@@ -1650,12 +1703,18 @@ class AdvancedAppApiService implements AppApiService {
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddSubtask')
   @override
   Future<Subtask> addSubtask(Subtask subtask) => _writes.addSubtask(
-      _principalId, int.tryParse(subtask.itemId.get()) ?? -1, subtask);
+    _principalId,
+    int.tryParse(subtask.itemId.get()) ?? -1,
+    subtask,
+  );
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateSubtask')
   @override
   Future<Subtask> updateSubtask(Subtask subtask) => _writes.updateSubtask(
-      _principalId, int.tryParse(subtask.id.get()) ?? -1, subtask);
+    _principalId,
+    int.tryParse(subtask.id.get()) ?? -1,
+    subtask,
+  );
 
   // ----- Share endpoints ---------------------------------------------------
 

@@ -47,8 +47,10 @@ class GroupsScreen extends StatelessWidget {
       },
       onCreate: _create,
       onEdit: _edit,
-      onDelete: (group) =>
-          runAdminAction(adminActions.deleteGroup, DeleteGroupContext(session, group.id)),
+      onDelete: (group) => runAdminAction(
+        adminActions.deleteGroup,
+        DeleteGroupContext(session, group.id),
+      ),
       createAuthorizer: adminActions.createGroup.authorizer,
       deleteAuthorizer: adminActions.deleteGroup.authorizer,
     );
@@ -77,7 +79,9 @@ class GroupsScreen extends StatelessWidget {
             memberUserIds: selected.toList(),
           );
           return runAdminAction(
-              adminActions.createGroup, CreateGroupContext(session, group));
+            adminActions.createGroup,
+            CreateGroupContext(session, group),
+          );
         },
       );
     } finally {
@@ -108,8 +112,10 @@ class GroupsScreen extends StatelessWidget {
             name: draft.name.get(),
             memberUserIds: selected.toList(),
           );
-          return runAdminAction(adminActions.updateGroup,
-              UpdateGroupContext(session, group.id, updated));
+          return runAdminAction(
+            adminActions.updateGroup,
+            UpdateGroupContext(session, group.id, updated),
+          );
         },
       );
     } finally {
@@ -159,8 +165,9 @@ class _MembershipChecklistState extends State<_MembershipChecklist> {
         Align(
           alignment: Alignment.centerLeft,
           child: TomText(
-              text: TomCtr.text('admin.groups.members'),
-              style: Theme.of(context).textTheme.labelLarge),
+            text: TomCtr.text('admin.groups.members'),
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
         ),
         for (final user in widget.users)
           TomCheckboxListTile(
@@ -169,8 +176,9 @@ class _MembershipChecklistState extends State<_MembershipChecklist> {
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
             value: widget.selected.contains(user.id),
-            titleText:
-                user.displayName.isEmpty ? user.username : user.displayName,
+            titleText: user.displayName.isEmpty
+                ? user.username
+                : user.displayName,
             onChanged: (checked) => setState(() {
               if (checked ?? false) {
                 widget.selected.add(user.id);

@@ -121,16 +121,17 @@ class _ShareDialogState extends State<_ShareDialog> {
                 onChanged: _busy
                     ? null
                     : (role) =>
-                        setState(() => _role = role ?? ProjectRole.viewer),
+                          setState(() => _role = role ?? ProjectRole.viewer),
               ),
             ],
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
             TomText(
-                text: _error!,
-                key: const Key('share-error'),
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              text: _error!,
+              key: const Key('share-error'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ],
         ],
       ),

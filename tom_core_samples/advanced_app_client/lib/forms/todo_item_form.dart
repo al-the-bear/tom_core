@@ -67,8 +67,15 @@ class TodoItemForm extends TomForm<TodoItem> {
 
   /// The gradable fields, in display order — the screen lays these out and the
   /// Save action is offered only when at least one is editable.
-  List<TomField<dynamic>> get gradableFields =>
-      [title, status, priority, assigneeId, dueDate, estimateHours, description];
+  List<TomField<dynamic>> get gradableFields => [
+    title,
+    status,
+    priority,
+    assigneeId,
+    dueDate,
+    estimateHours,
+    description,
+  ];
 
   /// Creates the fields (implementation half of the definition/implementation/
   /// layout split, G-UI-5). Runs inside the form's scope, after `basePath` is
@@ -101,7 +108,17 @@ class TodoItemForm extends TomForm<TodoItem> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    estimateHours = TomFormNDoubleInput('estimate', null, form: this, decimals: 1);
-    description = TomFormStringInput('description', '', form: this, maxLines: 3);
+    estimateHours = TomFormNDoubleInput(
+      'estimate',
+      null,
+      form: this,
+      decimals: 1,
+    );
+    description = TomFormStringInput(
+      'description',
+      '',
+      form: this,
+      maxLines: 3,
+    );
   }
 }

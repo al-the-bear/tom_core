@@ -36,9 +36,10 @@ void main() {
     // exception carries the diagnosis, not the printed lines.
     void expectRuns(String name, void Function() example) {
       test(name, () {
-        runZoned(example, zoneSpecification: ZoneSpecification(
-          print: (_, __, ___, ____) {},
-        ));
+        runZoned(
+          example,
+          zoneSpecification: ZoneSpecification(print: (_, __, ___, ____) {}),
+        );
       });
     }
 

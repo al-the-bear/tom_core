@@ -83,8 +83,10 @@ void _demoMapping() {
     ..email = 'ada@example.com'
     ..role = 'owner';
   final owner = userFromRecord(ownerRecord);
-  print('Loaded user: ${owner.displayName.get()} '
-      '(id=${owner.id.get()}, role=${owner.role.get()})');
+  print(
+    'Loaded user: ${owner.displayName.get()} '
+    '(id=${owner.id.get()}, role=${owner.role.get()})',
+  );
   // expected output: Loaded user: Ada (id=7, role=owner)
   _expect(owner.displayName.get() == 'Ada', 'user displayName round-trips');
   _expect(owner.role.get() == 'owner', 'user role round-trips');
@@ -98,9 +100,11 @@ void _demoMapping() {
 
   // Flattened for INSERT into `todo_items`, with its owning list id supplied.
   final row = itemToRecord(item, listId: 4);
-  print('New item -> row: title=${row.title}, priority=${row.priority}, '
-      'assignee_id=${row.assigneeId}, list_id=${row.listId}, '
-      'id=${row.id} (null => INSERT)');
+  print(
+    'New item -> row: title=${row.title}, priority=${row.priority}, '
+    'assignee_id=${row.assigneeId}, list_id=${row.listId}, '
+    'id=${row.id} (null => INSERT)',
+  );
   // expected output: New item -> row: title=Write the README, priority=high,
   //   assignee_id=7, list_id=4, id=null (null => INSERT)
   _expect(row.title == 'Write the README', 'item title flattens to row');
@@ -110,11 +114,15 @@ void _demoMapping() {
 
   // …and the round-trip back to the observable model the client edits.
   final reloaded = itemFromRecord(row..id = 3);
-  print('Row -> item: ${reloaded.title.get()} '
-      'priority=${reloaded.priorityValue.name} id=${reloaded.id.get()}');
+  print(
+    'Row -> item: ${reloaded.title.get()} '
+    'priority=${reloaded.priorityValue.name} id=${reloaded.id.get()}',
+  );
   // expected output: Row -> item: Write the README priority=high id=3
-  _expect(reloaded.priorityValue == TodoPriority.high,
-      'priority name re-parses to the typed enum');
+  _expect(
+    reloaded.priorityValue == TodoPriority.high,
+    'priority name re-parses to the typed enum',
+  );
   _expect(reloaded.id.get() == '3', 'assigned id survives the round-trip');
 }
 
@@ -150,42 +158,48 @@ void _demoAuthorization() {
     final authorizer = TodoFieldAuthorizer.fromGrants(entry.value);
     print('Role "${entry.key}":');
     for (final key in gradableTodoItemKeys) {
-      print('  $key -> ${authorizer.stateOf(key).name} '
-          '(${_rendering(authorizer.stateOf(key))})');
+      print(
+        '  $key -> ${authorizer.stateOf(key).name} '
+        '(${_rendering(authorizer.stateOf(key))})',
+      );
     }
   }
   // expected output (excerpt): viewer's done -> disabled (greyed-out),
   //   member's priority -> none (hidden), owner's title -> full (editable)
   final viewer = TodoFieldAuthorizer.fromGrants(grantsByRole['viewer']!);
-  _expect(viewer.stateOf('todo.item.done') == TomAuthState.disabled,
-      'viewer sees a disabled (greyed-out) done toggle');
+  _expect(
+    viewer.stateOf('todo.item.done') == TomAuthState.disabled,
+    'viewer sees a disabled (greyed-out) done toggle',
+  );
   final member = TodoFieldAuthorizer.fromGrants(grantsByRole['member']!);
-  _expect(member.stateOf('todo.item.priority') == TomAuthState.none,
-      'member has no (hidden) priority field');
+  _expect(
+    member.stateOf('todo.item.priority') == TomAuthState.none,
+    'member has no (hidden) priority field',
+  );
   final owner = TodoFieldAuthorizer.fromGrants(grantsByRole['owner']!);
-  _expect(owner.stateOf('todo.item.title') == TomAuthState.full,
-      'owner edits (full) the title field');
+  _expect(
+    owner.stateOf('todo.item.title') == TomAuthState.full,
+    'owner edits (full) the title field',
+  );
 }
 
 /// Builds the grant rows for one role from a `(resourceKey -> state)` map.
-List<TomResourceGrant> _grants(String role, Map<String, TomAuthState> states) =>
-    [
-      for (final e in states.entries)
-        TomResourceGrant(
-          roleName: role,
-          resourceKey: e.key,
-          accessLevel: e.value,
-        ),
-    ];
+List<TomResourceGrant> _grants(
+  String role,
+  Map<String, TomAuthState> states,
+) => [
+  for (final e in states.entries)
+    TomResourceGrant(roleName: role, resourceKey: e.key, accessLevel: e.value),
+];
 
 /// The UI rendering each state maps to (the client half of the four-state
 /// story), for readable output.
 String _rendering(TomAuthState state) => switch (state) {
-      TomAuthState.full => 'editable',
-      TomAuthState.read => 'read-only',
-      TomAuthState.disabled => 'greyed-out',
-      TomAuthState.none => 'hidden',
-    };
+  TomAuthState.full => 'editable',
+  TomAuthState.read => 'read-only',
+  TomAuthState.disabled => 'greyed-out',
+  TomAuthState.none => 'hidden',
+};
 
 /// Throws a [StateError] when [ok] is false so the aggregator's tally records a
 /// failure (a silent wrong-output regression becomes a hard, non-zero exit).

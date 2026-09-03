@@ -24,7 +24,7 @@ class TodoFieldMatrixDto {
   /// Wraps [matrix] (role → resourceKey → grade) as a token map. A `null`/empty
   /// argument yields an empty matrix.
   TodoFieldMatrixDto([Map<String, Map<String, TomAuthState>>? matrix])
-      : states = _encode(matrix ?? const {});
+    : states = _encode(matrix ?? const {});
 
   /// The roles (by name) the matrix carries.
   Iterable<String> get roles => states.keys;
@@ -72,7 +72,8 @@ class TodoFieldMatrixDto {
   }
 
   static Map<String, Object?> _encode(
-      Map<String, Map<String, TomAuthState>> matrix) {
+    Map<String, Map<String, TomAuthState>> matrix,
+  ) {
     return {
       for (final entry in matrix.entries)
         entry.key: <String, Object?>{

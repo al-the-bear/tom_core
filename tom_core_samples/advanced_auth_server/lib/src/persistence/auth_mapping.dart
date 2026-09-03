@@ -58,12 +58,12 @@ User userFromRecord(UserRecord record) => User()
 /// Projects a [UserRecord] onto the password-free wire [UserDto] the auth and
 /// admin APIs return.
 UserDto userRecordToDto(UserRecord record) => UserDto(
-      id: _idString(record.id),
-      username: record.username ?? '',
-      displayName: record.displayName ?? '',
-      email: record.email ?? '',
-      status: record.status,
-    );
+  id: _idString(record.id),
+  username: record.username ?? '',
+  displayName: record.displayName ?? '',
+  email: record.email ?? '',
+  status: record.status,
+);
 
 /// Applies the mutable profile fields of a [UserDto] onto a [UserRecord] (the
 /// `PUT /admin/users/{id}` update path). Returns the same [record] for chaining.
@@ -92,10 +92,8 @@ UserRecord createUserRequestToRecord(CreateUserRequest request) => UserRecord()
 // ---------------------------------------------------------------------------
 
 /// Projects a [RoleRecord] onto its wire [RoleDto] (`{key, name}`).
-RoleDto roleRecordToDto(RoleRecord record) => RoleDto(
-      key: record.roleKey ?? '',
-      name: record.name ?? '',
-    );
+RoleDto roleRecordToDto(RoleRecord record) =>
+    RoleDto(key: record.roleKey ?? '', name: record.name ?? '');
 
 /// Builds a [RoleRecord] from a [RoleDto]. The surrogate [RoleRecord.id] is left
 /// `null` (assigned on insert); the stable [RoleDto.key] is the natural lookup
@@ -127,11 +125,13 @@ GroupRecord groupDtoToRecord(GroupDto dto) => GroupRecord()
 /// Materialises a [GroupDto]'s membership into `(group_id, user_id)`
 /// [GroupMemberRecord]s for the given [groupId]. Member ids that are not numeric
 /// keys are skipped (they cannot reference a persisted user).
-List<GroupMemberRecord> groupMemberRecords(GroupDto dto, {required int groupId}) =>
-    [
-      for (final memberId in dto.memberUserIds)
-        if (_idOrNull(memberId) case final int userId)
-          GroupMemberRecord()
-            ..groupId = groupId
-            ..userId = userId,
-    ];
+List<GroupMemberRecord> groupMemberRecords(
+  GroupDto dto, {
+  required int groupId,
+}) => [
+  for (final memberId in dto.memberUserIds)
+    if (_idOrNull(memberId) case final int userId)
+      GroupMemberRecord()
+        ..groupId = groupId
+        ..userId = userId,
+];

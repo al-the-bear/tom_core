@@ -15,13 +15,13 @@ import '../domain/showcase_entities.dart';
 /// The industry dropdown source — a static, labelled selectable list.
 final StaticSelectableSource<String> industrySource =
     StaticSelectableSource<String>([
-  const SelectableItem(value: 'tech', label: 'Technology'),
-  const SelectableItem(value: 'finance', label: 'Finance'),
-  const SelectableItem(value: 'healthcare', label: 'Healthcare'),
-  const SelectableItem(value: 'manufacturing', label: 'Manufacturing'),
-  const SelectableItem(value: 'retail', label: 'Retail'),
-  const SelectableItem(value: 'other', label: 'Other'),
-]);
+      const SelectableItem(value: 'tech', label: 'Technology'),
+      const SelectableItem(value: 'finance', label: 'Finance'),
+      const SelectableItem(value: 'healthcare', label: 'Healthcare'),
+      const SelectableItem(value: 'manufacturing', label: 'Manufacturing'),
+      const SelectableItem(value: 'retail', label: 'Retail'),
+      const SelectableItem(value: 'other', label: 'Other'),
+    ]);
 
 /// Simulates a server round-trip checking that a tax ID is not already taken.
 /// Tax IDs starting with `X` are reported as taken after a 600 ms delay — the
@@ -31,8 +31,9 @@ final StaticSelectableSource<String> industrySource =
 /// Like every custom rule here the error is a *key*, prefixed `error.` so it
 /// shares the namespace the `Validators` built-ins use, and its sentence lives
 /// in `showcaseValidationTexts` (common/chrome_texts.dart).
-final SlowValidator<String> taxIdUniquenessValidator =
-    SlowValidator<String>((value) async {
+final SlowValidator<String> taxIdUniquenessValidator = SlowValidator<String>((
+  value,
+) async {
   await Future<void>.delayed(const Duration(milliseconds: 600));
   if (value.startsWith('X')) {
     return const ValidationError('error.taxIdTaken');

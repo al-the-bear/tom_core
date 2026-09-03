@@ -37,7 +37,10 @@ import 'package:advanced_app_client/screens/board_screen.dart';
 import 'package:advanced_app_client/screens/item_detail_screen.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    show ProjectRole, projectRoleAttachmentGrades, registerProjectRoleVocabulary;
+    show
+        ProjectRole,
+        projectRoleAttachmentGrades,
+        registerProjectRoleVocabulary;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -97,12 +100,14 @@ void main() {
 
     if (shareCarolAs != null) {
       await session.login(login('alice'));
-      await backend.share(ShareRequest(
-        resourceType: 'project',
-        resourceId: 'p-1',
-        granteeUserId: 'u-carol',
-        projectRole: shareCarolAs,
-      ));
+      await backend.share(
+        ShareRequest(
+          resourceType: 'project',
+          resourceId: 'p-1',
+          granteeUserId: 'u-carol',
+          projectRole: shareCarolAs,
+        ),
+      );
       await session.logout();
     }
 
@@ -120,24 +125,26 @@ void main() {
         .cast<FileDescriptorDto?>()
         .firstWhere((_) => true, orElse: () => null);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => Navigator.of(context).push(
-              TomPageRoute<bool>(
-                builder: (_) => ItemDetailScreen(
-                  session: session,
-                  item: item,
-                  attachment: stored,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                TomPageRoute<bool>(
+                  builder: (_) => ItemDetailScreen(
+                    session: session,
+                    item: item,
+                    attachment: stored,
+                  ),
                 ),
               ),
+              child: const Text('open'),
             ),
-            child: const Text('open'),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     return backend;
@@ -150,20 +157,22 @@ void main() {
   }
 
   testWidgets(
-      'TC-D12-01: the empty attachment field renders its bundle label and caption',
-      (tester) async {
-    await openDetail(tester, 'alice');
+    'TC-D12-01: the empty attachment field renders its bundle label and caption',
+    (tester) async {
+      await openDetail(tester, 'alice');
 
-    // The label comes from `board.item.attachment.label` and the caption from
-    // the global `file.none` — both server-bundle keys, neither a framework
-    // default (the framework's own fallback is "— no file selected").
-    expect(find.text('Attachment'), findsWidgets);
-    expect(find.text('— no file attached'), findsOneWidget);
-    expect(find.text('Choose file…'), findsOneWidget);
-  });
+      // The label comes from `board.item.attachment.label` and the caption from
+      // the global `file.none` — both server-bundle keys, neither a framework
+      // default (the framework's own fallback is "— no file selected").
+      expect(find.text('Attachment'), findsWidgets);
+      expect(find.text('— no file attached'), findsOneWidget);
+      expect(find.text('Choose file…'), findsOneWidget);
+    },
+  );
 
-  testWidgets('TC-D12-02: picking a file uploads it into the item\'s slot',
-      (tester) async {
+  testWidgets('TC-D12-02: picking a file uploads it into the item\'s slot', (
+    tester,
+  ) async {
     final store = TomMemoryFileTransferClient();
     final backend = await openDetail(tester, 'alice', files: store);
     expect(store.slots, isEmpty);
@@ -188,31 +197,32 @@ void main() {
   });
 
   testWidgets(
-      'TC-D12-03: a transfer in flight shows progress and a cancel affordance',
-      (tester) async {
-    // Hold the upload open at 30% so the indicator can be observed mid-flight;
-    // everything else is the real in-memory client.
-    final gate = _GatedFileTransferClient(TomMemoryFileTransferClient());
-    await openDetail(tester, 'alice', files: gate);
+    'TC-D12-03: a transfer in flight shows progress and a cancel affordance',
+    (tester) async {
+      // Hold the upload open at 30% so the indicator can be observed mid-flight;
+      // everything else is the real in-memory client.
+      final gate = _GatedFileTransferClient(TomMemoryFileTransferClient());
+      await openDetail(tester, 'alice', files: gate);
 
-    // Tapped and pumped by hand rather than through [pickFile]: that helper
-    // settles, and a gated upload never settles. The tap itself completes — it
-    // is the transfer it starts that stays in flight — so each step can still be
-    // awaited, and the pumps let the picked file and its first progress frame
-    // render while the upload hangs.
-    await tester.tap(find.text('Choose file…'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 10));
+      // Tapped and pumped by hand rather than through [pickFile]: that helper
+      // settles, and a gated upload never settles. The tap itself completes — it
+      // is the transfer it starts that stays in flight — so each step can still be
+      // awaited, and the pumps let the picked file and its first progress frame
+      // render while the upload hangs.
+      await tester.tap(find.text('Choose file…'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 10));
 
-    // The progress line is the bundle's `file.uploading`, interpolated.
-    expect(find.textContaining('Uploading 30%'), findsOneWidget);
-    // …and the cancel affordance is offered while it is in flight.
-    expect(find.byTooltip('Cancel'), findsOneWidget);
+      // The progress line is the bundle's `file.uploading`, interpolated.
+      expect(find.textContaining('Uploading 30%'), findsOneWidget);
+      // …and the cancel affordance is offered while it is in flight.
+      expect(find.byTooltip('Cancel'), findsOneWidget);
 
-    gate.release();
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Uploading 30%'), findsNothing);
-  });
+      gate.release();
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Uploading 30%'), findsNothing);
+    },
+  );
 
   testWidgets('TC-D12-04: a stored file renders from the board descriptor, '
       'downloads and clears', (tester) async {
@@ -244,8 +254,9 @@ void main() {
     expect(await backend.listAttachments('l-1'), isEmpty);
   });
 
-  testWidgets('TC-D12-05: a viewer sees the attachment but cannot change it',
-      (tester) async {
+  testWidgets('TC-D12-05: a viewer sees the attachment but cannot change it', (
+    tester,
+  ) async {
     await openDetail(tester, 'carol', shareCarolAs: ProjectRole.viewer);
 
     // The field is present (a viewer may see that a task has a file) but the
@@ -261,8 +272,7 @@ void main() {
     expect(choose.onPressed, isNull);
   });
 
-  testWidgets(
-      'TC-D13-01: an editor keeps the picker — the attachment grade follows '
+  testWidgets('TC-D13-01: an editor keeps the picker — the attachment grade follows '
       'the role, not the field set', (tester) async {
     // The complement of TC-D12-05, and the reason the field consults
     // `projectRoleAttachmentGrades` rather than assuming the resource ceiling:
@@ -278,31 +288,41 @@ void main() {
         matching: find.byType(OutlinedButton),
       ),
     );
-    expect(choose.onPressed, isNotNull,
-        reason: 'the editor row of the attachment matrix is `full`');
+    expect(
+      choose.onPressed,
+      isNotNull,
+      reason: 'the editor row of the attachment matrix is `full`',
+    );
   });
 
   testWidgets(
-      'TC-D13-02: without the resource-role registry the attachment collapses '
-      'entirely', (tester) async {
-    // The closed-safe floor, and the thing the composition exists to preserve:
-    // the attachment's state is the item's *resource ceiling* narrowed by the
-    // role's grade, so an unresolvable ceiling closes the field no matter what
-    // the grade map says. Dropping the registry is how a real deployment reaches
-    // that state (a role name the vocabulary does not know), and the answer must
-    // be "no field", not "an owner's field".
-    TomResourceRoleRegistry.reset();
+    'TC-D13-02: without the resource-role registry the attachment collapses '
+    'entirely',
+    (tester) async {
+      // The closed-safe floor, and the thing the composition exists to preserve:
+      // the attachment's state is the item's *resource ceiling* narrowed by the
+      // role's grade, so an unresolvable ceiling closes the field no matter what
+      // the grade map says. Dropping the registry is how a real deployment reaches
+      // that state (a role name the vocabulary does not know), and the answer must
+      // be "no field", not "an owner's field".
+      TomResourceRoleRegistry.reset();
 
-    await openDetail(tester, 'alice');
+      await openDetail(tester, 'alice');
 
-    expect(find.text('Attachment'), findsNothing,
-        reason: 'resource state `none` hides the field, exactly as it hides an '
-            'ungraded form field');
-    expect(find.text('Choose file…'), findsNothing);
-  });
+      expect(
+        find.text('Attachment'),
+        findsNothing,
+        reason:
+            'resource state `none` hides the field, exactly as it hides an '
+            'ungraded form field',
+      );
+      expect(find.text('Choose file…'), findsNothing);
+    },
+  );
 
-  testWidgets('TC-D12-06: the board paperclips exactly the items with a file',
-      (tester) async {
+  testWidgets('TC-D12-06: the board paperclips exactly the items with a file', (
+    tester,
+  ) async {
     useTallViewport(tester);
     final store = TomMemoryFileTransferClient();
     final backend = InMemoryAppBackend(files: store);
@@ -351,11 +371,15 @@ void main() {
 
   testWidgets('TC-D12-08: the attachment chrome is server-bundle-driven '
       '(sentinel proof)', (tester) async {
-    await openDetail(tester, 'alice', bundleOverride: {
-      'board.item.attachment.label': 'Attachment [srv]',
-      'file.choose': 'Pick one [srv]',
-      'file.none': 'Nothing yet [srv]',
-    });
+    await openDetail(
+      tester,
+      'alice',
+      bundleOverride: {
+        'board.item.attachment.label': 'Attachment [srv]',
+        'file.choose': 'Pick one [srv]',
+        'file.none': 'Nothing yet [srv]',
+      },
+    );
 
     expect(find.textContaining('Attachment [srv]'), findsWidgets);
     expect(find.textContaining('Pick one [srv]'), findsOneWidget);

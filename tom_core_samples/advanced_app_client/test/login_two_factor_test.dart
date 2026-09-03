@@ -73,11 +73,16 @@ void main() {
     final key = TomTotp.decodeBase32(secret);
     final counter = TomTotp.counterFor(period: InMemoryAppBackend.totpPeriod);
     final accepted = <String>{
-      for (var offset = -InMemoryAppBackend.totpWindowSteps;
-          offset <= InMemoryAppBackend.totpWindowSteps;
-          offset++)
+      for (
+        var offset = -InMemoryAppBackend.totpWindowSteps;
+        offset <= InMemoryAppBackend.totpWindowSteps;
+        offset++
+      )
         TomTotp.generateCode(
-            key, counter + offset, InMemoryAppBackend.totpDigits),
+          key,
+          counter + offset,
+          InMemoryAppBackend.totpDigits,
+        ),
     };
     for (var candidate = 0; candidate < 10; candidate++) {
       final code = '$candidate' * InMemoryAppBackend.totpDigits;
@@ -105,7 +110,9 @@ void main() {
   /// Answers the outstanding challenge through the framework's TOTP panel.
   Future<void> submitChallenge(WidgetTester tester, String code) async {
     await tester.enterText(
-        find.byKey(const Key('tom-2fa-totp-challenge-code')), code);
+      find.byKey(const Key('tom-2fa-totp-challenge-code')),
+      code,
+    );
     await tester.tap(find.byKey(const Key('tom-2fa-totp-challenge-submit')));
     await tester.pumpAndSettle();
   }
@@ -118,7 +125,9 @@ void main() {
   Future<void> submitEnrolment(WidgetTester tester, String code) async {
     final submit = find.byKey(const Key('tom-2fa-totp-enrolment-submit'));
     await tester.enterText(
-        find.byKey(const Key('tom-2fa-totp-enrolment-code')), code);
+      find.byKey(const Key('tom-2fa-totp-enrolment-code')),
+      code,
+    );
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();
     await tester.tap(submit);
@@ -143,58 +152,68 @@ void main() {
 
   group('challenge branch — an account that already holds a factor', () {
     testWidgets(
-        'TC-28-05: a 2FA account stops at the code phase instead of the board',
-        (tester) async {
-      await pumpApp(tester, InMemoryAppBackend());
-      await signIn(tester, 'dave', 'dave-pass');
+      'TC-28-05: a 2FA account stops at the code phase instead of the board',
+      (tester) async {
+        await pumpApp(tester, InMemoryAppBackend());
+        await signIn(tester, 'dave', 'dave-pass');
 
-      // The password was accepted, but this is not a session: the interim token
-      // authorizes nothing, so the shell must still be on the sign-in screen.
-      expect(find.text('Advanced Todo — Two-step verification'), findsOneWidget);
-      expect(challengeFinder, findsOneWidget);
-      expect(boardFinder, findsNothing);
-      // The field is sized from the challenge, and all three attempts are intact.
-      expect(find.text('3 attempt(s) remaining.'), findsOneWidget);
-      expect(errorFinder, findsNothing);
-      // A held factor is challenged, never re-offered: no chooser, no skip.
-      expect(chooserFinder, findsNothing);
-      expect(skipFinder, findsNothing);
-    });
-
-    testWidgets(
-        'TC-28-06: a valid code completes the login and reaches the board',
-        (tester) async {
-      await pumpApp(tester, InMemoryAppBackend());
-      await signIn(tester, 'dave', 'dave-pass');
-      await submitChallenge(tester, currentCode(seededSecret));
-
-      expect(boardFinder, findsOneWidget);
-      expect(find.text('Signed in as Dave Dijkstra (2FA)'), findsOneWidget);
-    });
+        // The password was accepted, but this is not a session: the interim token
+        // authorizes nothing, so the shell must still be on the sign-in screen.
+        expect(
+          find.text('Advanced Todo — Two-step verification'),
+          findsOneWidget,
+        );
+        expect(challengeFinder, findsOneWidget);
+        expect(boardFinder, findsNothing);
+        // The field is sized from the challenge, and all three attempts are intact.
+        expect(find.text('3 attempt(s) remaining.'), findsOneWidget);
+        expect(errorFinder, findsNothing);
+        // A held factor is challenged, never re-offered: no chooser, no skip.
+        expect(chooserFinder, findsNothing);
+        expect(skipFinder, findsNothing);
+      },
+    );
 
     testWidgets(
-        'TC-28-07: a wrong code shows a retryable error with the attempts remaining',
-        (tester) async {
-      await pumpApp(tester, InMemoryAppBackend());
-      await signIn(tester, 'dave', 'dave-pass');
-      await submitChallenge(tester, wrongCode(seededSecret));
+      'TC-28-06: a valid code completes the login and reaches the board',
+      (tester) async {
+        await pumpApp(tester, InMemoryAppBackend());
+        await signIn(tester, 'dave', 'dave-pass');
+        await submitChallenge(tester, currentCode(seededSecret));
 
-      // Still in the code phase, with the attempt spent — the count moves
-      // whether or not the code was right, exactly as the server's
-      // token-carried counter does.
-      expect(find.text('Advanced Todo — Two-step verification'), findsOneWidget);
-      expect(errorFinder, findsOneWidget);
-      expect(attemptsFinder, findsOneWidget);
-      expect(find.text('2 attempt(s) remaining.'), findsOneWidget);
-      expect(boardFinder, findsNothing);
+        expect(boardFinder, findsOneWidget);
+        expect(find.text('Signed in as Dave Dijkstra (2FA)'), findsOneWidget);
+      },
+    );
 
-      // Retryable means exactly that: the right code still completes the login.
-      await submitChallenge(tester, currentCode(seededSecret));
-      expect(boardFinder, findsOneWidget);
-    });
+    testWidgets(
+      'TC-28-07: a wrong code shows a retryable error with the attempts remaining',
+      (tester) async {
+        await pumpApp(tester, InMemoryAppBackend());
+        await signIn(tester, 'dave', 'dave-pass');
+        await submitChallenge(tester, wrongCode(seededSecret));
 
-    testWidgets('TC-28-08: a third wrong code returns to the password screen',
-        (tester) async {
+        // Still in the code phase, with the attempt spent — the count moves
+        // whether or not the code was right, exactly as the server's
+        // token-carried counter does.
+        expect(
+          find.text('Advanced Todo — Two-step verification'),
+          findsOneWidget,
+        );
+        expect(errorFinder, findsOneWidget);
+        expect(attemptsFinder, findsOneWidget);
+        expect(find.text('2 attempt(s) remaining.'), findsOneWidget);
+        expect(boardFinder, findsNothing);
+
+        // Retryable means exactly that: the right code still completes the login.
+        await submitChallenge(tester, currentCode(seededSecret));
+        expect(boardFinder, findsOneWidget);
+      },
+    );
+
+    testWidgets('TC-28-08: a third wrong code returns to the password screen', (
+      tester,
+    ) async {
       await pumpApp(tester, InMemoryAppBackend());
       await signIn(tester, 'dave', 'dave-pass');
 
@@ -223,8 +242,9 @@ void main() {
     // both modes, so these tests sign in as the account that owes one rather
     // than flipping a switch on the backend.
 
-    testWidgets('TC-2FA-E1: the first login lands on the method chooser',
-        (tester) async {
+    testWidgets('TC-2FA-E1: the first login lands on the method chooser', (
+      tester,
+    ) async {
       await pumpApp(tester, InMemoryAppBackend());
       await signIn(tester, 'erin', 'erin-pass');
 
@@ -241,41 +261,47 @@ void main() {
     });
 
     testWidgets(
-        'TC-2FA-E2: choosing TOTP shows the QR code, the typable secret and the account',
-        (tester) async {
-      await pumpApp(tester, InMemoryAppBackend());
-      await signIn(tester, 'erin', 'erin-pass');
-      await tester.tap(find.byKey(const Key('tom-2fa-method-totp')));
-      await tester.pumpAndSettle();
+      'TC-2FA-E2: choosing TOTP shows the QR code, the typable secret and the account',
+      (tester) async {
+        await pumpApp(tester, InMemoryAppBackend());
+        await signIn(tester, 'erin', 'erin-pass');
+        await tester.tap(find.byKey(const Key('tom-2fa-method-totp')));
+        await tester.pumpAndSettle();
 
-      expect(enrolmentFinder, findsOneWidget);
-      expect(find.byKey(const Key('tom-2fa-totp-qr')), findsOneWidget);
-      expect(find.byKey(const Key('tom-2fa-totp-secret')), findsOneWidget);
-      // The account the factor is for, so a user with several in one app can
-      // tell the QR codes apart. It comes from the session's pending account —
-      // there is no logged-in user yet.
-      expect(find.byKey(const Key('tom-2fa-totp-account')), findsOneWidget);
-      expect(find.text('erin'), findsOneWidget);
-      // The secret is real base32 of the seeded length, grouped for typing.
-      expect(displayedSecret(tester), matches(RegExp(r'^[A-Z2-7]{32}$')));
-    });
+        expect(enrolmentFinder, findsOneWidget);
+        expect(find.byKey(const Key('tom-2fa-totp-qr')), findsOneWidget);
+        expect(find.byKey(const Key('tom-2fa-totp-secret')), findsOneWidget);
+        // The account the factor is for, so a user with several in one app can
+        // tell the QR codes apart. It comes from the session's pending account —
+        // there is no logged-in user yet.
+        expect(find.byKey(const Key('tom-2fa-totp-account')), findsOneWidget);
+        expect(find.text('erin'), findsOneWidget);
+        // The secret is real base32 of the seeded length, grouped for typing.
+        expect(displayedSecret(tester), matches(RegExp(r'^[A-Z2-7]{32}$')));
+      },
+    );
 
     testWidgets(
-        'TC-2FA-E3: confirming with a code from the shown secret completes the login',
-        (tester) async {
-      await pumpApp(tester, InMemoryAppBackend());
-      await signIn(tester, 'erin', 'erin-pass');
-      await tester.tap(find.byKey(const Key('tom-2fa-method-totp')));
-      await tester.pumpAndSettle();
+      'TC-2FA-E3: confirming with a code from the shown secret completes the login',
+      (tester) async {
+        await pumpApp(tester, InMemoryAppBackend());
+        await signIn(tester, 'erin', 'erin-pass');
+        await tester.tap(find.byKey(const Key('tom-2fa-method-totp')));
+        await tester.pumpAndSettle();
 
-      await submitEnrolment(tester, currentCode(displayedSecret(tester)));
+        await submitEnrolment(tester, currentCode(displayedSecret(tester)));
 
-      expect(boardFinder, findsOneWidget);
-      expect(find.text('Signed in as Erin Nakamura (2FA setup)'), findsOneWidget);
-    });
+        expect(boardFinder, findsOneWidget);
+        expect(
+          find.text('Signed in as Erin Nakamura (2FA setup)'),
+          findsOneWidget,
+        );
+      },
+    );
 
-    testWidgets('TC-2FA-E4: a wrong confirmation code is retryable',
-        (tester) async {
+    testWidgets('TC-2FA-E4: a wrong confirmation code is retryable', (
+      tester,
+    ) async {
       await pumpApp(tester, InMemoryAppBackend());
       await signIn(tester, 'erin', 'erin-pass');
       await tester.tap(find.byKey(const Key('tom-2fa-method-totp')));
@@ -297,8 +323,9 @@ void main() {
       expect(boardFinder, findsOneWidget);
     });
 
-    testWidgets('TC-2FA-E5: declining a skippable offer signs in without one',
-        (tester) async {
+    testWidgets('TC-2FA-E5: declining a skippable offer signs in without one', (
+      tester,
+    ) async {
       await pumpApp(tester, InMemoryAppBackend());
       await signIn(tester, 'erin', 'erin-pass');
       await tester.ensureVisible(skipFinder);
@@ -307,34 +334,38 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(boardFinder, findsOneWidget);
-      expect(find.text('Signed in as Erin Nakamura (2FA setup)'), findsOneWidget);
+      expect(
+        find.text('Signed in as Erin Nakamura (2FA setup)'),
+        findsOneWidget,
+      );
     });
 
     testWidgets(
-        'TC-2FA-E6: after enrolling, the next sign-in is challenged on the new factor',
-        (tester) async {
-      // The whole point of enrolment, and the one assertion that needs the two
-      // halves of this file to meet: the factor a confirmation stores is a
-      // factor the *next* login is challenged on. One backend instance across
-      // both sign-ins, because that is where the enrolment landed.
-      final backend = InMemoryAppBackend();
-      await pumpApp(tester, backend);
-      await signIn(tester, 'erin', 'erin-pass');
-      await tester.tap(find.byKey(const Key('tom-2fa-method-totp')));
-      await tester.pumpAndSettle();
-      final secret = displayedSecret(tester);
-      await submitEnrolment(tester, currentCode(secret));
-      expect(boardFinder, findsOneWidget);
+      'TC-2FA-E6: after enrolling, the next sign-in is challenged on the new factor',
+      (tester) async {
+        // The whole point of enrolment, and the one assertion that needs the two
+        // halves of this file to meet: the factor a confirmation stores is a
+        // factor the *next* login is challenged on. One backend instance across
+        // both sign-ins, because that is where the enrolment landed.
+        final backend = InMemoryAppBackend();
+        await pumpApp(tester, backend);
+        await signIn(tester, 'erin', 'erin-pass');
+        await tester.tap(find.byKey(const Key('tom-2fa-method-totp')));
+        await tester.pumpAndSettle();
+        final secret = displayedSecret(tester);
+        await submitEnrolment(tester, currentCode(secret));
+        expect(boardFinder, findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('logout-button')));
-      await tester.pumpAndSettle();
-      await signIn(tester, 'erin', 'erin-pass');
+        await tester.tap(find.byKey(const Key('logout-button')));
+        await tester.pumpAndSettle();
+        await signIn(tester, 'erin', 'erin-pass');
 
-      // Challenged, not offered: the account now holds a factor.
-      expect(challengeFinder, findsOneWidget);
-      expect(chooserFinder, findsNothing);
-      await submitChallenge(tester, currentCode(secret));
-      expect(boardFinder, findsOneWidget);
-    });
+        // Challenged, not offered: the account now holds a factor.
+        expect(challengeFinder, findsOneWidget);
+        expect(chooserFinder, findsNothing);
+        await submitChallenge(tester, currentCode(secret));
+        expect(boardFinder, findsOneWidget);
+      },
+    );
   });
 }

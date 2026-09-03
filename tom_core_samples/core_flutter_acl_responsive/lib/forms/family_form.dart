@@ -19,7 +19,7 @@ import '../domain/responsive_entities.dart';
 class FamilyForm extends TomForm<ResponsiveProfile> {
   /// Creates the form against [family] in the ambient [TomScope].
   FamilyForm({required this.family})
-      : super(formId: 'family-${family.kind.name}');
+    : super(formId: 'family-${family.kind.name}');
 
   /// Which family this form was instantiated against (Material vs Cupertino).
   /// Stored for inspection by the screen; the concrete classes are picked once

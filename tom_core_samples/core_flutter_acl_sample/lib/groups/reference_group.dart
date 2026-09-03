@@ -19,7 +19,8 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup referenceGroup = ShowcaseGroup(
   id: 'reference',
   title: 'Reference constraints',
-  summary: 'sameWidthAs and alignLeftToLeft link a component to an anchor in '
+  summary:
+      'sameWidthAs and alignLeftToLeft link a component to an anchor in '
       'an earlier row, keeping label/field columns aligned without a grid.',
   icon: Icons.linear_scale_outlined,
   cells: (context) {
@@ -30,9 +31,11 @@ final ShowcaseGroup referenceGroup = ShowcaseGroup(
     return [
       ShowcaseCell(
         title: 'Linked width + left edge',
-        note: 'Row 2 borrows the width and left edge of the row-1 anchors, so '
+        note:
+            'Row 2 borrows the width and left edge of the row-1 anchors, so '
             'the two columns line up exactly.',
-        code: "final anchorLabel = demoBox('Anchor label', deepOrange);\n"
+        code:
+            "final anchorLabel = demoBox('Anchor label', deepOrange);\n"
             "final anchorField = demoBox('Anchor field (wide)', blueGrey);\n"
             '\n'
             'AclBuilder()\n'

@@ -28,56 +28,60 @@ void main() {
   });
 
   testWidgets(
-      'CCS-FORM-01: each gradable field basePath equals its wire/authz key',
-      (tester) async {
-    final form = buildForm();
-    // The label key is `<basePath>.label`; the grant key is `<prefix>.<tomId>`.
-    // Deriving both from the single production key constant proves the two
-    // addressing schemes have collapsed into one identity.
-    expect(form.title.basePath, '$todoItemKey.title');
-    expect(form.done.basePath, '$todoItemKey.done');
-    expect(form.priority.basePath, '$todoItemKey.priority');
-    expect(form.assigneeId.basePath, '$todoItemKey.assigneeId');
-    // And that prefix resolves to the exact server-seeded wire prefix. Pinned
-    // against the literal so the two-segment composition cannot quietly change
-    // the path while every relative assertion above still passes.
-    expect(todoItemKey, 'todo.item');
-    expect(form.basePath, 'todo.item');
-    expect(form.title.basePath, 'todo.item.title');
-  });
+    'CCS-FORM-01: each gradable field basePath equals its wire/authz key',
+    (tester) async {
+      final form = buildForm();
+      // The label key is `<basePath>.label`; the grant key is `<prefix>.<tomId>`.
+      // Deriving both from the single production key constant proves the two
+      // addressing schemes have collapsed into one identity.
+      expect(form.title.basePath, '$todoItemKey.title');
+      expect(form.done.basePath, '$todoItemKey.done');
+      expect(form.priority.basePath, '$todoItemKey.priority');
+      expect(form.assigneeId.basePath, '$todoItemKey.assigneeId');
+      // And that prefix resolves to the exact server-seeded wire prefix. Pinned
+      // against the literal so the two-segment composition cannot quietly change
+      // the path while every relative assertion above still passes.
+      expect(todoItemKey, 'todo.item');
+      expect(form.basePath, 'todo.item');
+      expect(form.title.basePath, 'todo.item.title');
+    },
+  );
 
   testWidgets(
-      'CCS-FORM-02: the grade stamped under the wire key drives the field',
-      (tester) async {
-    // A matrix keyed purely by the wire keys — the same identity as basePath.
-    final form = buildForm(const {
-      'todo.item.title': TomAuthState.read,
-      'todo.item.done': TomAuthState.disabled,
-      'todo.item.priority': TomAuthState.none,
-      'todo.item.assigneeId': TomAuthState.full,
-    });
-    expect(form.title.effectiveAuthState, TomAuthState.read);
-    expect(form.done.effectiveAuthState, TomAuthState.disabled);
-    expect(form.priority.effectiveAuthState, TomAuthState.none);
-    expect(form.assigneeId.effectiveAuthState, TomAuthState.full);
-  });
+    'CCS-FORM-02: the grade stamped under the wire key drives the field',
+    (tester) async {
+      // A matrix keyed purely by the wire keys — the same identity as basePath.
+      final form = buildForm(const {
+        'todo.item.title': TomAuthState.read,
+        'todo.item.done': TomAuthState.disabled,
+        'todo.item.priority': TomAuthState.none,
+        'todo.item.assigneeId': TomAuthState.full,
+      });
+      expect(form.title.effectiveAuthState, TomAuthState.read);
+      expect(form.done.effectiveAuthState, TomAuthState.disabled);
+      expect(form.priority.effectiveAuthState, TomAuthState.none);
+      expect(form.assigneeId.effectiveAuthState, TomAuthState.full);
+    },
+  );
 
   testWidgets(
-      'CCS-FORM-03: a gradable field absent from the matrix is closed-safe (none)',
-      (tester) async {
-    final form = buildForm();
-    expect(form.title.effectiveAuthState, TomAuthState.none);
-    expect(form.assigneeId.effectiveAuthState, TomAuthState.none);
-    // `description` is declared without an authorizer, so it is not addressed
-    // by the matrix at all — `resolveEffectiveAuth` guards the per-widget layer
-    // with `authorizer != null` and skips it. An empty matrix closes the graded
-    // surface; it does not close the ungraded field. Pinned here because the
-    // absence of this assertion is what let "every field is none" stand.
-    expect(form.description.effectiveAuthState, TomAuthState.full);
-  });
+    'CCS-FORM-03: a gradable field absent from the matrix is closed-safe (none)',
+    (tester) async {
+      final form = buildForm();
+      expect(form.title.effectiveAuthState, TomAuthState.none);
+      expect(form.assigneeId.effectiveAuthState, TomAuthState.none);
+      // `description` is declared without an authorizer, so it is not addressed
+      // by the matrix at all — `resolveEffectiveAuth` guards the per-widget layer
+      // with `authorizer != null` and skips it. An empty matrix closes the graded
+      // surface; it does not close the ungraded field. Pinned here because the
+      // absence of this assertion is what let "every field is none" stand.
+      expect(form.description.effectiveAuthState, TomAuthState.full);
+    },
+  );
 
-  testWidgets('CCS-FORM-04: the label resolves from the same field identity',
-      (tester) async {
+  testWidgets('CCS-FORM-04: the label resolves from the same field identity', (
+    tester,
+  ) async {
     final form = buildForm();
     // `<basePath>.label` → `todo.item.title.label` in the installed bundle.
     expect(form.title.resolvedLabel, 'Title');

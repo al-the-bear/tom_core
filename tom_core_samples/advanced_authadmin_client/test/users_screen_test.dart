@@ -26,8 +26,9 @@ void main() {
     );
   });
 
-  testWidgets('TC-34-U01: the Users tab lists the seeded accounts',
-      (tester) async {
+  testWidgets('TC-34-U01: the Users tab lists the seeded accounts', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
 
     expect(find.byKey(const Key('users-screen')), findsOneWidget);
@@ -37,8 +38,9 @@ void main() {
     expect(find.byKey(const Key('users-tile-u-carol')), findsOneWidget);
   });
 
-  testWidgets('TC-34-U02: creating an account adds it to the list',
-      (tester) async {
+  testWidgets('TC-34-U02: creating an account adds it to the list', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
 
@@ -59,8 +61,9 @@ void main() {
     expect(users.any((u) => u.username == 'carol'), isTrue);
   });
 
-  testWidgets('TC-34-U03: an empty username fails validation, no row is added',
-      (tester) async {
+  testWidgets('TC-34-U03: an empty username fails validation, no row is added', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     final before = (await backend.listUsers()).length;
@@ -74,29 +77,32 @@ void main() {
     expect((await backend.listUsers()).length, before);
   });
 
-  testWidgets('TC-34-U04: editing updates the profile (username stays the key)',
-      (tester) async {
-    final backend = InMemoryAdminBackend();
-    await pumpSignedInConsole(tester, backend);
+  testWidgets(
+    'TC-34-U04: editing updates the profile (username stays the key)',
+    (tester) async {
+      final backend = InMemoryAdminBackend();
+      await pumpSignedInConsole(tester, backend);
 
-    await tester.tap(find.byKey(const Key('users-tile-u-bob')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('users-tile-u-bob')));
+      await tester.pumpAndSettle();
 
-    // Edit form: username (read-only), displayName, email, status (dropdown).
-    final fields = find.byType(TextField);
-    final username = tester.widget<TextField>(fields.at(0));
-    expect(username.enabled, isFalse); // the stable key is not editable
-    await tester.enterText(fields.at(1), 'Bob Edited');
-    await saveEditor(tester);
+      // Edit form: username (read-only), displayName, email, status (dropdown).
+      final fields = find.byType(TextField);
+      final username = tester.widget<TextField>(fields.at(0));
+      expect(username.enabled, isFalse); // the stable key is not editable
+      await tester.enterText(fields.at(1), 'Bob Edited');
+      await saveEditor(tester);
 
-    expect(find.text('Bob Edited'), findsOneWidget);
-    final bob = (await backend.listUsers()).firstWhere((u) => u.id == 'u-bob');
-    expect(bob.displayName, 'Bob Edited');
-    expect(bob.username, 'bob'); // unchanged
-  });
+      expect(find.text('Bob Edited'), findsOneWidget);
+      final bob = (await backend.listUsers()).firstWhere(
+        (u) => u.id == 'u-bob',
+      );
+      expect(bob.displayName, 'Bob Edited');
+      expect(bob.username, 'bob'); // unchanged
+    },
+  );
 
-  testWidgets('TC-34-U05: deleting an account removes its row',
-      (tester) async {
+  testWidgets('TC-34-U05: deleting an account removes its row', (tester) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
 

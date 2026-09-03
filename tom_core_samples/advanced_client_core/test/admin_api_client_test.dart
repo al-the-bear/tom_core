@@ -48,16 +48,18 @@ void main() {
       expect(users[1].status, 'suspended');
     });
 
-    test('TC-25-02: parseUser tolerates a partial row, keeping DTO defaults',
-        () {
-      final user = parseUser({'id': '9', 'username': 'bob'});
-      expect(user.id, '9');
-      expect(user.username, 'bob');
-      // Absent fields fall back to the DTO defaults (status → active token).
-      expect(user.displayName, '');
-      expect(user.email, '');
-      expect(user.status, 'active');
-    });
+    test(
+      'TC-25-02: parseUser tolerates a partial row, keeping DTO defaults',
+      () {
+        final user = parseUser({'id': '9', 'username': 'bob'});
+        expect(user.id, '9');
+        expect(user.username, 'bob');
+        // Absent fields fall back to the DTO defaults (status → active token).
+        expect(user.displayName, '');
+        expect(user.email, '');
+        expect(user.status, 'active');
+      },
+    );
 
     test('TC-25-03: parseRoles maps key/name', () {
       final roles = parseRoles([
@@ -83,34 +85,48 @@ void main() {
     });
 
     test(
-        'TC-25-05: parseGrantMatrix maps the role×field matrix (unknown → none)',
-        () {
-      final matrix = parseGrantMatrix({
-        'matrix': {
-          'owner': {'todo.item.title': 'full', 'todo.item.status': 'full'},
-          'viewer': {
-            'todo.item.title': 'read',
-            // An unknown access token degrades closed-safe to none.
-            'todo.item.status': 'bogus',
+      'TC-25-05: parseGrantMatrix maps the role×field matrix (unknown → none)',
+      () {
+        final matrix = parseGrantMatrix({
+          'matrix': {
+            'owner': {'todo.item.title': 'full', 'todo.item.status': 'full'},
+            'viewer': {
+              'todo.item.title': 'read',
+              // An unknown access token degrades closed-safe to none.
+              'todo.item.status': 'bogus',
+            },
           },
-        },
-      });
-      expect(matrix.roles, containsAll(['owner', 'viewer']));
-      expect(matrix.accessFor('owner', 'todo.item.title'), TomAuthState.full);
-      expect(matrix.accessFor('viewer', 'todo.item.title'), TomAuthState.read);
-      expect(matrix.accessFor('viewer', 'todo.item.status'), TomAuthState.none);
-      // An unset cell is closed-safe too.
-      expect(matrix.accessFor('owner', 'todo.item.dueDate'), TomAuthState.none);
-    });
+        });
+        expect(matrix.roles, containsAll(['owner', 'viewer']));
+        expect(matrix.accessFor('owner', 'todo.item.title'), TomAuthState.full);
+        expect(
+          matrix.accessFor('viewer', 'todo.item.title'),
+          TomAuthState.read,
+        );
+        expect(
+          matrix.accessFor('viewer', 'todo.item.status'),
+          TomAuthState.none,
+        );
+        // An unset cell is closed-safe too.
+        expect(
+          matrix.accessFor('owner', 'todo.item.dueDate'),
+          TomAuthState.none,
+        );
+      },
+    );
   });
 
   group('AdminApiClient over a fake transport', () {
     final authBaseUri = Uri.parse('http://localhost:8081');
 
-    setUp(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
-    tearDown(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
+    setUp(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
+    tearDown(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
 
     AdminApiClient clientOver(_RoutingTransport transport) {
       final auth = AuthClient(authBaseUri, transport: transport);
@@ -122,69 +138,82 @@ void main() {
       TomBearerAuthentication.setTokens(jwt, jwt, false);
     }
 
-    test('TC-25-06: listUsers sends GET /admin/users with the bearer', () async {
-      storeAdminBearer();
-      final transport = _RoutingTransport({
-        '/admin/users': [
-          HttpJsonResponse(200, jsonEncode([_userBody('1'), _userBody('2')])),
-        ],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-25-06: listUsers sends GET /admin/users with the bearer',
+      () async {
+        storeAdminBearer();
+        final transport = _RoutingTransport({
+          '/admin/users': [
+            HttpJsonResponse(200, jsonEncode([_userBody('1'), _userBody('2')])),
+          ],
+        });
+        final client = clientOver(transport);
 
-      final users = await client.listUsers();
+        final users = await client.listUsers();
 
-      expect(users.map((u) => u.id), ['1', '2']);
-      final call = transport.callsTo('/admin/users').single;
-      expect(call.method, 'GET');
-      expect(call.headers['Authorization'], startsWith('Bearer '));
-    });
+        expect(users.map((u) => u.id), ['1', '2']);
+        final call = transport.callsTo('/admin/users').single;
+        expect(call.method, 'GET');
+        expect(call.headers['Authorization'], startsWith('Bearer '));
+      },
+    );
 
-    test('TC-25-07: createUser POSTs the request JSON and parses the result',
-        () async {
-      storeAdminBearer();
-      final transport = _RoutingTransport({
-        '/admin/users': [HttpJsonResponse(201, jsonEncode(_userBody('99')))],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-25-07: createUser POSTs the request JSON and parses the result',
+      () async {
+        storeAdminBearer();
+        final transport = _RoutingTransport({
+          '/admin/users': [HttpJsonResponse(201, jsonEncode(_userBody('99')))],
+        });
+        final client = clientOver(transport);
 
-      final created = await client.createUser(CreateUserRequest(
-        username: 'dave',
-        password: 'secret',
-        displayName: 'Dave',
-        email: 'dave@example.com',
-      ));
+        final created = await client.createUser(
+          CreateUserRequest(
+            username: 'dave',
+            password: 'secret',
+            displayName: 'Dave',
+            email: 'dave@example.com',
+          ),
+        );
 
-      expect(created.id, '99');
-      final call = transport.callsTo('/admin/users').single;
-      expect(call.method, 'POST');
-      final body = jsonDecode(call.body!) as Map;
-      expect(body['username'], 'dave');
-      expect(body['password'], 'secret');
-    });
+        expect(created.id, '99');
+        final call = transport.callsTo('/admin/users').single;
+        expect(call.method, 'POST');
+        final body = jsonDecode(call.body!) as Map;
+        expect(body['username'], 'dave');
+        expect(body['password'], 'secret');
+      },
+    );
 
-    test('TC-25-08: getGrants GETs /admin/grants and parses the matrix',
-        () async {
-      storeAdminBearer();
-      final transport = _RoutingTransport({
-        '/admin/grants': [
-          HttpJsonResponse(
+    test(
+      'TC-25-08: getGrants GETs /admin/grants and parses the matrix',
+      () async {
+        storeAdminBearer();
+        final transport = _RoutingTransport({
+          '/admin/grants': [
+            HttpJsonResponse(
               200,
               jsonEncode({
                 'matrix': {
                   'owner': {'todo.item.title': 'full'},
                   'viewer': {'todo.item.title': 'read'},
                 },
-              })),
-        ],
-      });
-      final client = clientOver(transport);
+              }),
+            ),
+          ],
+        });
+        final client = clientOver(transport);
 
-      final matrix = await client.getGrants();
+        final matrix = await client.getGrants();
 
-      expect(matrix.accessFor('owner', 'todo.item.title'), TomAuthState.full);
-      expect(matrix.accessFor('viewer', 'todo.item.title'), TomAuthState.read);
-      expect(transport.callsTo('/admin/grants').single.method, 'GET');
-    });
+        expect(matrix.accessFor('owner', 'todo.item.title'), TomAuthState.full);
+        expect(
+          matrix.accessFor('viewer', 'todo.item.title'),
+          TomAuthState.read,
+        );
+        expect(transport.callsTo('/admin/grants').single.method, 'GET');
+      },
+    );
 
     test('TC-25-09: putGrants PUTs the matrix JSON', () async {
       storeAdminBearer();
@@ -203,27 +232,29 @@ void main() {
       // The body round-trips back to a matrix with the same cell (closed-safe
       // wire shape); GrantMatrixDto has no value equality, so assert on the cell.
       final sent = dtoFromJson<GrantMatrixDto>(
-          jsonDecode(call.body!) as Map<String, Object?>);
+        jsonDecode(call.body!) as Map<String, Object?>,
+      );
       expect(sent.accessFor('editor', 'todo.item.status'), TomAuthState.full);
     });
 
-    test('TC-25-10: assign POSTs the AssignmentRequest to /admin/assignments',
-        () async {
-      storeAdminBearer();
-      final transport = _RoutingTransport({
-        '/admin/assignments': [HttpJsonResponse(200, '')],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-25-10: assign POSTs the AssignmentRequest to /admin/assignments',
+      () async {
+        storeAdminBearer();
+        final transport = _RoutingTransport({
+          '/admin/assignments': [HttpJsonResponse(200, '')],
+        });
+        final client = clientOver(transport);
 
-      await client.assign(
-          AssignmentRequest(userId: '2', roleKey: 'admin'));
+        await client.assign(AssignmentRequest(userId: '2', roleKey: 'admin'));
 
-      final call = transport.callsTo('/admin/assignments').single;
-      expect(call.method, 'POST');
-      final body = jsonDecode(call.body!) as Map;
-      expect(body['userId'], '2');
-      expect(body['roleKey'], 'admin');
-    });
+        final call = transport.callsTo('/admin/assignments').single;
+        expect(call.method, 'POST');
+        final body = jsonDecode(call.body!) as Map;
+        expect(body['userId'], '2');
+        expect(body['roleKey'], 'admin');
+      },
+    );
 
     test('TC-25-11: deleteUser DELETEs /admin/users/{id}', () async {
       storeAdminBearer();
@@ -237,57 +268,70 @@ void main() {
       expect(transport.callsTo('/admin/users/55').single.method, 'DELETE');
     });
 
-    test('TC-25-12: a 403 raises AdminApiException carrying the server key',
-        () async {
-      storeAdminBearer();
-      final transport = _RoutingTransport({
-        '/admin/users': [
-          HttpJsonResponse(
+    test(
+      'TC-25-12: a 403 raises AdminApiException carrying the server key',
+      () async {
+        storeAdminBearer();
+        final transport = _RoutingTransport({
+          '/admin/users': [
+            HttpJsonResponse(
               403,
               jsonEncode({
                 'error': 'endpoint_handler.handle_method_call.access_denied',
-              })),
-        ],
-      });
-      final client = clientOver(transport);
+              }),
+            ),
+          ],
+        });
+        final client = clientOver(transport);
 
-      await expectLater(
-        client.listUsers(),
-        throwsA(isA<AdminApiException>()
-            .having((e) => e.key, 'key',
-                'endpoint_handler.handle_method_call.access_denied')
-            .having((e) => e.statusCode, 'statusCode', 403)),
-      );
-    });
+        await expectLater(
+          client.listUsers(),
+          throwsA(
+            isA<AdminApiException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  'endpoint_handler.handle_method_call.access_denied',
+                )
+                .having((e) => e.statusCode, 'statusCode', 403),
+          ),
+        );
+      },
+    );
 
-    test('TC-25-13: updateRole PUTs /admin/roles/{key} and parses the result',
-        () async {
-      storeAdminBearer();
-      final transport = _RoutingTransport({
-        '/admin/roles/editor': [
-          HttpJsonResponse(
-              200, jsonEncode({'key': 'editor', 'name': 'Editor (renamed)'})),
-        ],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-25-13: updateRole PUTs /admin/roles/{key} and parses the result',
+      () async {
+        storeAdminBearer();
+        final transport = _RoutingTransport({
+          '/admin/roles/editor': [
+            HttpJsonResponse(
+              200,
+              jsonEncode({'key': 'editor', 'name': 'Editor (renamed)'}),
+            ),
+          ],
+        });
+        final client = clientOver(transport);
 
-      final role = await client
-          .updateRole(RoleDto(key: 'editor', name: 'Editor (renamed)'));
+        final role = await client.updateRole(
+          RoleDto(key: 'editor', name: 'Editor (renamed)'),
+        );
 
-      expect(role.name, 'Editor (renamed)');
-      expect(transport.callsTo('/admin/roles/editor').single.method, 'PUT');
-    });
+        expect(role.name, 'Editor (renamed)');
+        expect(transport.callsTo('/admin/roles/editor').single.method, 'PUT');
+      },
+    );
   });
 }
 
 /// A `UserDto` wire map (the framework list-serialization shape) carrying [id].
 Map<String, Object?> _userBody(String id) => {
-      'id': id,
-      'username': 'user$id',
-      'displayName': 'User $id',
-      'email': 'user$id@example.com',
-      'status': 'active',
-    };
+  'id': id,
+  'username': 'user$id',
+  'displayName': 'User $id',
+  'email': 'user$id@example.com',
+  'status': 'active',
+};
 
 /// Builds an unsigned, undecrypted JWT whose middle segment carries [payload].
 /// Suitable for `setTokens(..., decrypt: false)`.

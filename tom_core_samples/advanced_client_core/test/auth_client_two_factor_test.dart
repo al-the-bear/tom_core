@@ -28,50 +28,64 @@ void main() {
   group('AuthClient — two-pass login', () {
     final baseUri = Uri.parse('http://localhost:8081');
 
-    setUp(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
-    tearDown(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
+    setUp(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
+    tearDown(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
 
-    test('pass 1 reports the pending factor and stores the interim token',
-        () async {
-      final pending = _pendingResponse(attempt: 0);
-      final transport =
-          _FakeTransport([HttpJsonResponse(200, jsonEncode(pending))]);
-      final client = AuthClient(baseUri, transport: transport);
+    test(
+      'pass 1 reports the pending factor and stores the interim token',
+      () async {
+        final pending = _pendingResponse(attempt: 0);
+        final transport = _FakeTransport([
+          HttpJsonResponse(200, jsonEncode(pending)),
+        ]);
+        final client = AuthClient(baseUri, transport: transport);
 
-      final result =
-          await client.login(LoginRequest(username: 'dave', password: 'p'));
+        final result = await client.login(
+          LoginRequest(username: 'dave', password: 'p'),
+        );
 
-      expect(result.requires2FA, isTrue);
-      expect(result.twoFactorType, equals('totp'));
-      // The interim pair is stored like any other: it is what pass 2 presents.
-      expect(TomBearerAuthentication.authorizationToken,
-          equals(pending['authzToken']));
-    });
+        expect(result.requires2FA, isTrue);
+        expect(result.twoFactorType, equals('totp'));
+        // The interim pair is stored like any other: it is what pass 2 presents.
+        expect(
+          TomBearerAuthentication.authorizationToken,
+          equals(pending['authzToken']),
+        );
+      },
+    );
 
-    test('the challenge detail is read from the token, not from the DTO',
-        () async {
-      final transport = _FakeTransport(
-          [HttpJsonResponse(200, jsonEncode(_pendingResponse(attempt: 0)))]);
-      final client = AuthClient(baseUri, transport: transport);
+    test(
+      'the challenge detail is read from the token, not from the DTO',
+      () async {
+        final transport = _FakeTransport([
+          HttpJsonResponse(200, jsonEncode(_pendingResponse(attempt: 0))),
+        ]);
+        final client = AuthClient(baseUri, transport: transport);
 
-      await client.login(LoginRequest(username: 'dave'));
-      final challenge = client.pendingChallenge;
+        await client.login(LoginRequest(username: 'dave'));
+        final challenge = client.pendingChallenge;
 
-      expect(challenge, isNotNull);
-      expect(challenge!.type, equals('totp'));
-      expect(challenge.hint, equals('Authenticator app'));
-      expect(challenge.attemptsRemaining, equals(3));
-      expect(challenge.isExpired(), isFalse);
-      // The mechanism describes its own input shape, so the sign-in screen can
-      // size the code field without knowing which mechanism it is showing.
-      expect(challenge.clientData['digits'], equals(6));
-    });
+        expect(challenge, isNotNull);
+        expect(challenge!.type, equals('totp'));
+        expect(challenge.hint, equals('Authenticator app'));
+        expect(challenge.attemptsRemaining, equals(3));
+        expect(challenge.isExpired(), isFalse);
+        // The mechanism describes its own input shape, so the sign-in screen can
+        // size the code field without knowing which mechanism it is showing.
+        expect(challenge.clientData['digits'], equals(6));
+      },
+    );
 
     test('a 2FA-free login leaves no pending challenge', () async {
-      final transport = _FakeTransport(
-          [HttpJsonResponse(200, jsonEncode(_completedResponse()))]);
+      final transport = _FakeTransport([
+        HttpJsonResponse(200, jsonEncode(_completedResponse())),
+      ]);
       final client = AuthClient(baseUri, transport: transport);
 
       final result = await client.login(LoginRequest(username: 'alice'));
@@ -95,122 +109,151 @@ void main() {
 
       final call = transport.calls.last;
       expect(call.method, equals('POST'));
-      expect(call.uri,
-          equals(Uri.parse('http://localhost:8081/auth/second-factor')));
+      expect(
+        call.uri,
+        equals(Uri.parse('http://localhost:8081/auth/second-factor')),
+      );
       // The interim token travels in the *body*, not as a bearer: the endpoint
       // is public because the interim principal authenticates nothing.
       expect(call.headers.containsKey('Authorization'), isFalse);
-      expect(jsonDecode(call.body!),
-          equals({'code': '123456', 'challengeToken': pending['authzToken']}));
+      expect(
+        jsonDecode(call.body!),
+        equals({'code': '123456', 'challengeToken': pending['authzToken']}),
+      );
 
       expect(result.requires2FA, isFalse);
       expect(TomBearerAuthentication.token, equals(completed['authToken']));
-      expect(TomBearerAuthentication.authorizationToken,
-          equals(completed['authzToken']));
+      expect(
+        TomBearerAuthentication.authorizationToken,
+        equals(completed['authzToken']),
+      );
       expect(client.pendingChallenge, isNull);
     });
 
-    test('submitting without a prior login fails before any request is sent',
-        () async {
-      final transport = _FakeTransport([]);
-      final client = AuthClient(baseUri, transport: transport);
+    test(
+      'submitting without a prior login fails before any request is sent',
+      () async {
+        final transport = _FakeTransport([]);
+        final client = AuthClient(baseUri, transport: transport);
 
-      await expectLater(
-        client.submitSecondFactor('123456'),
-        throwsA(isA<AuthClientException>()
-            .having((e) => e.key, 'key', 'auth.no_token')),
-      );
-      expect(transport.calls, isEmpty);
-    });
+        await expectLater(
+          client.submitSecondFactor('123456'),
+          throwsA(
+            isA<AuthClientException>().having(
+              (e) => e.key,
+              'key',
+              'auth.no_token',
+            ),
+          ),
+        );
+        expect(transport.calls, isEmpty);
+      },
+    );
 
-    test('a refused code stores the re-issued token and reports it is retryable',
-        () async {
-      final pending = _pendingResponse(attempt: 0);
-      final reissued = _pendingResponse(attempt: 1, suffix: '-retry');
-      final transport = _FakeTransport([
-        HttpJsonResponse(200, jsonEncode(pending)),
-        HttpJsonResponse(
+    test(
+      'a refused code stores the re-issued token and reports it is retryable',
+      () async {
+        final pending = _pendingResponse(attempt: 0);
+        final reissued = _pendingResponse(attempt: 1, suffix: '-retry');
+        final transport = _FakeTransport([
+          HttpJsonResponse(200, jsonEncode(pending)),
+          HttpJsonResponse(
             401,
             jsonEncode({
               'error': 'login.error.2fa.invalid-code',
               'challengeToken': reissued['authzToken'],
-            })),
-      ]);
-      final client = AuthClient(baseUri, transport: transport);
+            }),
+          ),
+        ]);
+        final client = AuthClient(baseUri, transport: transport);
 
-      await client.login(LoginRequest(username: 'dave'));
-      final failure = await client
-          .submitSecondFactor('000000')
-          .then<Object?>((r) => r)
-          .onError<AuthClientException>((error, _) => error);
+        await client.login(LoginRequest(username: 'dave'));
+        final failure = await client
+            .submitSecondFactor('000000')
+            .then<Object?>((r) => r)
+            .onError<AuthClientException>((error, _) => error);
 
-      expect(failure, isA<AuthClientException>());
-      final error = failure as AuthClientException;
-      expect(error.key, equals('login.error.2fa.invalid-code'));
-      expect(error.statusCode, equals(401));
-      expect(error.canRetrySecondFactor, isTrue);
+        expect(failure, isA<AuthClientException>());
+        final error = failure as AuthClientException;
+        expect(error.key, equals('login.error.2fa.invalid-code'));
+        expect(error.statusCode, equals(401));
+        expect(error.canRetrySecondFactor, isTrue);
 
-      // The stored token has *advanced*: the attempt counter lives in it, so a
-      // client that kept its old copy would show "3 tries left" forever.
-      expect(TomBearerAuthentication.authorizationToken,
-          equals(reissued['authzToken']));
-      expect(client.pendingChallenge!.attemptsRemaining, equals(2));
-    });
+        // The stored token has *advanced*: the attempt counter lives in it, so a
+        // client that kept its old copy would show "3 tries left" forever.
+        expect(
+          TomBearerAuthentication.authorizationToken,
+          equals(reissued['authzToken']),
+        );
+        expect(client.pendingChallenge!.attemptsRemaining, equals(2));
+      },
+    );
 
-    test('retrying after a refusal is just another submitSecondFactor call',
-        () async {
-      final reissued = _pendingResponse(attempt: 1, suffix: '-retry');
-      final completed = _completedResponse();
-      final transport = _FakeTransport([
-        HttpJsonResponse(200, jsonEncode(_pendingResponse(attempt: 0))),
-        HttpJsonResponse(
+    test(
+      'retrying after a refusal is just another submitSecondFactor call',
+      () async {
+        final reissued = _pendingResponse(attempt: 1, suffix: '-retry');
+        final completed = _completedResponse();
+        final transport = _FakeTransport([
+          HttpJsonResponse(200, jsonEncode(_pendingResponse(attempt: 0))),
+          HttpJsonResponse(
             401,
             jsonEncode({
               'error': 'login.error.2fa.invalid-code',
               'challengeToken': reissued['authzToken'],
-            })),
-        HttpJsonResponse(200, jsonEncode(completed)),
-      ]);
-      final client = AuthClient(baseUri, transport: transport);
+            }),
+          ),
+          HttpJsonResponse(200, jsonEncode(completed)),
+        ]);
+        final client = AuthClient(baseUri, transport: transport);
 
-      await client.login(LoginRequest(username: 'dave'));
-      await client
-          .submitSecondFactor('000000')
-          .then<Object?>((r) => r)
-          .onError<AuthClientException>((error, _) => error);
-      final result = await client.submitSecondFactor('123456');
+        await client.login(LoginRequest(username: 'dave'));
+        await client
+            .submitSecondFactor('000000')
+            .then<Object?>((r) => r)
+            .onError<AuthClientException>((error, _) => error);
+        final result = await client.submitSecondFactor('123456');
 
-      // The retry presents the token the refusal supplied, without the caller
-      // having had to thread it through.
-      expect(jsonDecode(transport.calls.last.body!)['challengeToken'],
-          equals(reissued['authzToken']));
-      expect(result.requires2FA, isFalse);
-      expect(TomBearerAuthentication.token, equals(completed['authToken']));
-    });
+        // The retry presents the token the refusal supplied, without the caller
+        // having had to thread it through.
+        expect(
+          jsonDecode(transport.calls.last.body!)['challengeToken'],
+          equals(reissued['authzToken']),
+        );
+        expect(result.requires2FA, isFalse);
+        expect(TomBearerAuthentication.token, equals(completed['authToken']));
+      },
+    );
 
-    test('a terminal refusal offers no retry and leaves nothing to answer with',
-        () async {
-      final transport = _FakeTransport([
-        HttpJsonResponse(200, jsonEncode(_pendingResponse(attempt: 0))),
-        HttpJsonResponse(
-            401, jsonEncode({'error': 'login.error.2fa.attempts-exhausted'})),
-      ]);
-      final client = AuthClient(baseUri, transport: transport);
+    test(
+      'a terminal refusal offers no retry and leaves nothing to answer with',
+      () async {
+        final transport = _FakeTransport([
+          HttpJsonResponse(200, jsonEncode(_pendingResponse(attempt: 0))),
+          HttpJsonResponse(
+            401,
+            jsonEncode({'error': 'login.error.2fa.attempts-exhausted'}),
+          ),
+        ]);
+        final client = AuthClient(baseUri, transport: transport);
 
-      final pending = await client.login(LoginRequest(username: 'dave'));
-      final failure = await client
-          .submitSecondFactor('000000')
-          .then<Object?>((r) => r)
-          .onError<AuthClientException>((error, _) => error);
+        final pending = await client.login(LoginRequest(username: 'dave'));
+        final failure = await client
+            .submitSecondFactor('000000')
+            .then<Object?>((r) => r)
+            .onError<AuthClientException>((error, _) => error);
 
-      final error = failure as AuthClientException;
-      expect(error.key, equals('login.error.2fa.attempts-exhausted'));
-      expect(error.canRetrySecondFactor, isFalse);
-      // Nothing was re-stored, so the caller is sent back to pass 1 rather than
-      // left retrying a spent challenge.
-      expect(TomBearerAuthentication.authorizationToken,
-          equals(pending.authzToken));
-    });
+        final error = failure as AuthClientException;
+        expect(error.key, equals('login.error.2fa.attempts-exhausted'));
+        expect(error.canRetrySecondFactor, isFalse);
+        // Nothing was re-stored, so the caller is sent back to pass 1 rather than
+        // left retrying a spent challenge.
+        expect(
+          TomBearerAuthentication.authorizationToken,
+          equals(pending.authzToken),
+        );
+      },
+    );
 
     test('logout drops a half-finished login', () async {
       final transport = _FakeTransport([
@@ -244,8 +287,10 @@ Map<String, Object?> _pendingResponse({
     Tom2FAClaims.hint: 'Authenticator app',
     Tom2FAClaims.attempt: attempt,
     Tom2FAClaims.attemptsAllowed: 3,
-    Tom2FAClaims.expiresAt:
-        DateTime.now().toUtc().add(const Duration(minutes: 5)).toIso8601String(),
+    Tom2FAClaims.expiresAt: DateTime.now()
+        .toUtc()
+        .add(const Duration(minutes: 5))
+        .toIso8601String(),
     Tom2FAClaims.clientData: {'digits': 6, 'periodSeconds': 30},
   };
   return {
@@ -262,20 +307,19 @@ Map<String, Object?> _pendingResponse({
 /// claims, which is exactly what makes it indistinguishable from a single-pass
 /// login.
 Map<String, Object?> _completedResponse() => {
-      'user': _user('dave', 5),
-      'authToken': _makeJwt({'username': 'dave', 'userId': 5, 'kind': 'auth-ok'}),
-      'authzToken':
-          _makeJwt({'username': 'dave', 'userId': 5, 'kind': 'authz-ok'}),
-      'expiresAt': '2026-06-28T12:34:56.000Z',
-    };
+  'user': _user('dave', 5),
+  'authToken': _makeJwt({'username': 'dave', 'userId': 5, 'kind': 'auth-ok'}),
+  'authzToken': _makeJwt({'username': 'dave', 'userId': 5, 'kind': 'authz-ok'}),
+  'expiresAt': '2026-06-28T12:34:56.000Z',
+};
 
 Map<String, Object?> _user(String username, int id) => {
-      'id': '$id',
-      'username': username,
-      'displayName': username,
-      'email': '$username@example.com',
-      'status': 'active',
-    };
+  'id': '$id',
+  'username': username,
+  'displayName': username,
+  'email': '$username@example.com',
+  'status': 'active',
+};
 
 /// Builds an unsigned, undecrypted JWT whose middle segment carries [payload].
 /// Suitable for `setTokens(..., decrypt: false)`.

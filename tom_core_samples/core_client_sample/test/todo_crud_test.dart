@@ -44,8 +44,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('CCS-CRUD-01: owner sees every gradable field on a todo',
-      (tester) async {
+  testWidgets('CCS-CRUD-01: owner sees every gradable field on a todo', (
+    tester,
+  ) async {
     await pumpSignedIn(tester, 'alice');
     await openFirstItem(tester);
     expect(find.text('Title'), findsOneWidget);
@@ -54,8 +55,9 @@ void main() {
     expect(find.text('Done'), findsOneWidget);
   });
 
-  testWidgets('CCS-CRUD-02: member never sees priority (TomAuthState.none)',
-      (tester) async {
+  testWidgets('CCS-CRUD-02: member never sees priority (TomAuthState.none)', (
+    tester,
+  ) async {
     await pumpSignedIn(tester, 'bob');
     await openFirstItem(tester);
     expect(find.text('Title'), findsOneWidget);
@@ -63,8 +65,9 @@ void main() {
     expect(find.text('Priority'), findsNothing);
   });
 
-  testWidgets('CCS-CRUD-03: owner creates a todo and it appears in the list',
-      (tester) async {
+  testWidgets('CCS-CRUD-03: owner creates a todo and it appears in the list', (
+    tester,
+  ) async {
     await pumpSignedIn(tester, 'alice');
     await tester.tap(find.byTooltip('New todo'));
     await tester.pumpAndSettle();
@@ -77,8 +80,9 @@ void main() {
     expect(find.text('Fresh todo'), findsOneWidget);
   });
 
-  testWidgets('CCS-CRUD-04: saving a new todo with an empty title is blocked',
-      (tester) async {
+  testWidgets('CCS-CRUD-04: saving a new todo with an empty title is blocked', (
+    tester,
+  ) async {
     await pumpSignedIn(tester, 'alice');
     await tester.tap(find.byTooltip('New todo'));
     await tester.pumpAndSettle();

@@ -92,8 +92,10 @@ Future<List<TomPickedFile>> sampleAvatarPicker(
   TomFilePickRequest request,
 ) async {
   final extension = request.allowedExtensions?.firstOrNull ?? 'png';
-  final stamp =
-      DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
+  final stamp = DateTime.now().toIso8601String().replaceAll(
+    RegExp(r'[:.]'),
+    '-',
+  );
   return [
     TomPickedFile(
       name: 'avatar-$stamp.$extension',

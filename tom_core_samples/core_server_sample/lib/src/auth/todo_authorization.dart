@@ -53,9 +53,7 @@ class TodoFieldAuthorizer {
 
   /// Builds an authorizer from the [grants] that apply to a principal's role.
   factory TodoFieldAuthorizer.fromGrants(Iterable<TomResourceGrant> grants) =>
-      TodoFieldAuthorizer(
-        TomGradedAccessControlInformation.fromGrants(grants),
-      );
+      TodoFieldAuthorizer(TomGradedAccessControlInformation.fromGrants(grants));
 
   /// The effective state for [resourceKey] (defaults to [TomAuthState.none]
   /// — hidden — for an ungranted key, the closed-safe default).
@@ -63,12 +61,11 @@ class TodoFieldAuthorizer {
 
   /// The effective state for every gradable todo-item field.
   Map<String, TomAuthState> get fieldStates => {
-        for (final key in gradableTodoItemKeys) key: stateOf(key),
-      };
+    for (final key in gradableTodoItemKeys) key: stateOf(key),
+  };
 
   /// Whether [resourceKey] is editable (`full`) for this role.
-  bool canEdit(String resourceKey) =>
-      stateOf(resourceKey) == TomAuthState.full;
+  bool canEdit(String resourceKey) => stateOf(resourceKey) == TomAuthState.full;
 
   /// Whether [resourceKey] is at least visible (`read` / `disabled` / `full`,
   /// i.e. not `none`).

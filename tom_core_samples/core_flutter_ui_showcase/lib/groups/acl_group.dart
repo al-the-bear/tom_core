@@ -16,13 +16,15 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup aclGroup = ShowcaseGroup(
   id: 'acl',
   title: 'Advanced container layout',
-  summary: 'The fluent AclBuilder engine: rows, preferred sizing and '
+  summary:
+      'The fluent AclBuilder engine: rows, preferred sizing and '
       'titled/bordered groups composed without nested Rows and Columns.',
   icon: Icons.account_tree_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Basic row',
-      code: "AclBuilder()\n"
+      code:
+          "AclBuilder()\n"
           "    .append(demoBox('A', Colors.red))\n"
           "    .append(demoBox('B', Colors.green))\n"
           "    .append(demoBox('C', Colors.blue))\n"
@@ -35,9 +37,11 @@ final ShowcaseGroup aclGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Preferred sizing (setPSize)',
-      note: 'The first cell is given a 200px preferred width; the rest share '
+      note:
+          'The first cell is given a 200px preferred width; the rest share '
           'the remainder.',
-      code: "AclBuilder()\n"
+      code:
+          "AclBuilder()\n"
           "    .append(demoBox('200px preferred', Colors.teal))\n"
           "    .setPSize(200)\n"
           "    .append(demoBox('rest', Colors.orange))\n"
@@ -52,7 +56,8 @@ final ShowcaseGroup aclGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Titled & bordered group',
-      code: "AclBuilder()\n"
+      code:
+          "AclBuilder()\n"
           "    .append(demoBox('Name', Colors.indigo))\n"
           "    .append(demoBox('Email', Colors.cyan))\n"
           "    .setAclBorderStyle(const AclBorderStyle.solid())\n"

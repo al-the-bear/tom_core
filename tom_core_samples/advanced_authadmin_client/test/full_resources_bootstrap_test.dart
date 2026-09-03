@@ -29,54 +29,68 @@ void main() {
   setUpAll(initializeReflection);
 
   testWidgets(
-      'TC-9-02: admin login installs the console bundle over the login bundle; '
-      'logout resets to the login bundle', (tester) async {
-    // Start from an empty provider so every key falls back to itself — no key
-    // can resolve unless a bundle put it there.
-    TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(const <String, dynamic>{}),
-    );
+    'TC-9-02: admin login installs the console bundle over the login bundle; '
+    'logout resets to the login bundle',
+    (tester) async {
+      // Start from an empty provider so every key falls back to itself — no key
+      // can resolve unless a bundle put it there.
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from(const <String, dynamic>{}),
+      );
 
-    final session = AdminSession(InMemoryAdminBackend());
-    await session.loadLoginResources();
-    await tester.pumpWidget(AdminConsoleApp(session: session));
-    await tester.pumpAndSettle();
+      final session = AdminSession(InMemoryAdminBackend());
+      await session.loadLoginResources();
+      await tester.pumpWidget(AdminConsoleApp(session: session));
+      await tester.pumpAndSettle();
 
-    final texts = TomTextResourceProvider.getAppResources;
+      final texts = TomTextResourceProvider.getAppResources;
 
-    // Before login: the login bundle is installed, but the post-login console
-    // chrome key still falls back to itself.
-    expect(find.text('Advanced Todo — Admin console'), findsNothing);
-    expect(texts().getText('adminConsole.title'), 'adminConsole.title');
-    expect(texts().getText('user.username.label'), 'user.username.label');
-    expect(texts().getText('grants.title'), 'grants.title');
-    // The admin login chrome is already resolvable.
-    expect(texts().getText('adminLogin.title'), 'Advanced Todo — Admin sign in');
+      // Before login: the login bundle is installed, but the post-login console
+      // chrome key still falls back to itself.
+      expect(find.text('Advanced Todo — Admin console'), findsNothing);
+      expect(texts().getText('adminConsole.title'), 'adminConsole.title');
+      expect(texts().getText('user.username.label'), 'user.username.label');
+      expect(texts().getText('grants.title'), 'grants.title');
+      // The admin login chrome is already resolvable.
+      expect(
+        texts().getText('adminLogin.title'),
+        'Advanced Todo — Admin sign in',
+      );
 
-    // Sign in as the administrator: the admin-gated console bundle is fetched
-    // through the seam (after the admin probe) and merged over the login bundle,
-    // then the shell rebuilds onto the console.
-    await session.login(LoginRequest(username: 'admin', password: 'pw'));
-    await tester.pumpAndSettle();
+      // Sign in as the administrator: the admin-gated console bundle is fetched
+      // through the seam (after the admin probe) and merged over the login bundle,
+      // then the shell rebuilds onto the console.
+      await session.login(LoginRequest(username: 'admin', password: 'pw'));
+      await tester.pumpAndSettle();
 
-    // After login: the shell AppBar renders the server-delivered title, and the
-    // editor label keys now resolve to the full-bundle texts.
-    expect(find.text('Advanced Todo — Admin console'), findsOneWidget);
-    expect(texts().getText('adminConsole.title'), 'Advanced Todo — Admin console');
-    expect(texts().getText('user.username.label'), 'Username');
-    expect(texts().getText('grants.title'), 'Grant matrix');
-    // The login chrome stays resolvable underneath the merge.
-    expect(texts().getText('adminLogin.title'), 'Advanced Todo — Admin sign in');
+      // After login: the shell AppBar renders the server-delivered title, and the
+      // editor label keys now resolve to the full-bundle texts.
+      expect(find.text('Advanced Todo — Admin console'), findsOneWidget);
+      expect(
+        texts().getText('adminConsole.title'),
+        'Advanced Todo — Admin console',
+      );
+      expect(texts().getText('user.username.label'), 'Username');
+      expect(texts().getText('grants.title'), 'Grant matrix');
+      // The login chrome stays resolvable underneath the merge.
+      expect(
+        texts().getText('adminLogin.title'),
+        'Advanced Todo — Admin sign in',
+      );
 
-    // Sign out: the provider is reset to the login bundle — the full keys fall
-    // back again while the login chrome remains.
-    await session.logout();
-    await tester.pumpAndSettle();
+      // Sign out: the provider is reset to the login bundle — the full keys fall
+      // back again while the login chrome remains.
+      await session.logout();
+      await tester.pumpAndSettle();
 
-    expect(find.text('Advanced Todo — Admin console'), findsNothing);
-    expect(find.text('Advanced Todo — Admin sign in'), findsOneWidget);
-    expect(texts().getText('adminConsole.title'), 'adminConsole.title');
-    expect(texts().getText('user.username.label'), 'user.username.label');
-    expect(texts().getText('adminLogin.title'), 'Advanced Todo — Admin sign in');
-  });
+      expect(find.text('Advanced Todo — Admin console'), findsNothing);
+      expect(find.text('Advanced Todo — Admin sign in'), findsOneWidget);
+      expect(texts().getText('adminConsole.title'), 'adminConsole.title');
+      expect(texts().getText('user.username.label'), 'user.username.label');
+      expect(
+        texts().getText('adminLogin.title'),
+        'Advanced Todo — Admin sign in',
+      );
+    },
+  );
 }

@@ -19,15 +19,18 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup visibilityGroup = ShowcaseGroup(
   id: 'visibility',
   title: 'Group visibility',
-  summary: 'startGroup/endGroup name a group; an AclBinaryVisibilityController '
+  summary:
+      'startGroup/endGroup name a group; an AclBinaryVisibilityController '
       'shows, hides or disables it reactively via setGroupVisibilityController.',
   icon: Icons.visibility_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Toggle a named group',
-      note: 'Flip the switch to hide or reveal the "details" group. The summary '
+      note:
+          'Flip the switch to hide or reveal the "details" group. The summary '
           'row stays put; only the grouped row reacts.',
-      code: 'final ctrl = AclBinaryVisibilityController();\n'
+      code:
+          'final ctrl = AclBinaryVisibilityController();\n'
           '\n'
           'AclBuilder()\n'
           "    .setGroupVisibilityController('details', ctrl)\n"

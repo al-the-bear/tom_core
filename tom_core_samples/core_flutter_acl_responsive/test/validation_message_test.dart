@@ -87,55 +87,78 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('a malformed tax ID resolves error.taxIdFormat to its message',
-      (tester) async {
+  testWidgets('a malformed tax ID resolves error.taxIdFormat to its message', (
+    tester,
+  ) async {
     await pumpForm(tester);
     await typeAndAwaitValidation(tester, 1, 'de 1234');
 
-    expect(find.text(companyValidationTexts['error.taxIdFormat']), findsOneWidget,
-        reason: 'the pattern validator emits error.taxIdFormat; the field must '
-            'resolve it through the registered bundle, not render the key');
+    expect(
+      find.text(companyValidationTexts['error.taxIdFormat']),
+      findsOneWidget,
+      reason:
+          'the pattern validator emits error.taxIdFormat; the field must '
+          'resolve it through the registered bundle, not render the key',
+    );
   });
 
-  testWidgets('a malformed website resolves error.invalidUrl to its message',
-      (tester) async {
+  testWidgets('a malformed website resolves error.invalidUrl to its message', (
+    tester,
+  ) async {
     await pumpForm(tester);
     await typeAndAwaitValidation(tester, 2, 'not a url');
 
-    expect(find.text(companyValidationTexts['error.invalidUrl']), findsOneWidget,
-        reason: 'the URL pattern validator emits error.invalidUrl');
+    expect(
+      find.text(companyValidationTexts['error.invalidUrl']),
+      findsOneWidget,
+      reason: 'the URL pattern validator emits error.invalidUrl',
+    );
   });
 
-  testWidgets('clearing a required field resolves error.required',
-      (tester) async {
+  testWidgets('clearing a required field resolves error.required', (
+    tester,
+  ) async {
     await pumpForm(tester);
     // The bound [CompanyProfile] seeds every field with a valid value, so the
     // field has to be *emptied* to trip `required` — validating the pristine
     // form would pass and prove nothing.
     await typeAndAwaitValidation(tester, 1, '');
 
-    expect(find.text(companyValidationTexts['error.required']), findsOneWidget,
-        reason: 'the built-in required validator emits error.required, which '
-            'the bundle must define like any other message');
+    expect(
+      find.text(companyValidationTexts['error.required']),
+      findsOneWidget,
+      reason:
+          'the built-in required validator emits error.required, which '
+          'the bundle must define like any other message',
+    );
   });
 
-  testWidgets('error.minLength interpolates its {min} parameter',
-      (tester) async {
+  testWidgets('error.minLength interpolates its {min} parameter', (
+    tester,
+  ) async {
     await pumpForm(tester);
     await typeAndAwaitValidation(tester, 0, 'A');
 
     // The bundle stores a `{min}` placeholder; the field substitutes the
     // validator's param. Asserting the *substituted* string is what proves the
     // interpolation happened — a template rendered verbatim would fail here.
-    expect(find.text('Use at least 2 characters.'), findsOneWidget,
-        reason: 'minLength(2) passes params {min: 2}, which the resolver '
-            'interpolates into the resource template');
-    expect(find.textContaining('{min}'), findsNothing,
-        reason: 'an uninterpolated placeholder reaching the screen is a bug');
+    expect(
+      find.text('Use at least 2 characters.'),
+      findsOneWidget,
+      reason:
+          'minLength(2) passes params {min: 2}, which the resolver '
+          'interpolates into the resource template',
+    );
+    expect(
+      find.textContaining('{min}'),
+      findsNothing,
+      reason: 'an uninterpolated placeholder reaching the screen is a bug',
+    );
   });
 
-  testWidgets('no validation message renders as a raw resource key',
-      (tester) async {
+  testWidgets('no validation message renders as a raw resource key', (
+    tester,
+  ) async {
     await pumpForm(tester);
     await typeAndAwaitValidation(tester, 1, 'de 1234');
     await typeAndAwaitValidation(tester, 2, 'not a url');
@@ -149,8 +172,12 @@ void main() {
       (w) => w is Text && (w.data?.startsWith('error.') ?? false),
       description: 'a Text still showing a raw error.* resource key',
     );
-    expect(keyish, findsNothing,
-        reason: 'every error.* key the sample can emit must be defined in '
-            'companyValidationTexts — see chrome_texts.dart');
+    expect(
+      keyish,
+      findsNothing,
+      reason:
+          'every error.* key the sample can emit must be defined in '
+          'companyValidationTexts — see chrome_texts.dart',
+    );
   });
 }

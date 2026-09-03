@@ -51,16 +51,20 @@ void main() {
   final loginFinder = find.byKey(const Key('login-screen'));
   final boardFinder = find.byKey(const Key('board-screen'));
 
-  testWidgets('TC-27-01: a logged-out session boots to the login screen',
-      (tester) async {
-    await tester.pumpWidget(AdvancedTodoApp(session: AppSession(_ExpiringBackend())));
+  testWidgets('TC-27-01: a logged-out session boots to the login screen', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      AdvancedTodoApp(session: AppSession(_ExpiringBackend())),
+    );
 
     expect(loginFinder, findsOneWidget);
     expect(boardFinder, findsNothing);
   });
 
-  testWidgets('TC-27-02: a successful login flips the home onto the board',
-      (tester) async {
+  testWidgets('TC-27-02: a successful login flips the home onto the board', (
+    tester,
+  ) async {
     final session = AppSession(_ExpiringBackend());
     await tester.pumpWidget(AdvancedTodoApp(session: session));
 
@@ -76,28 +80,34 @@ void main() {
   });
 
   testWidgets(
-      'TC-27-03: a post-refresh 401 on a guarded call routes back to login',
-      (tester) async {
-    final backend = _ExpiringBackend();
-    final session = AppSession(backend);
-    await tester.pumpWidget(AdvancedTodoApp(session: session));
-    await session.login(aliceLogin);
-    await tester.pump();
-    expect(boardFinder, findsOneWidget);
+    'TC-27-03: a post-refresh 401 on a guarded call routes back to login',
+    (tester) async {
+      final backend = _ExpiringBackend();
+      final session = AppSession(backend);
+      await tester.pumpWidget(AdvancedTodoApp(session: session));
+      await session.login(aliceLogin);
+      await tester.pump();
+      expect(boardFinder, findsOneWidget);
 
-    // The next guarded call hits a dead session.
-    backend.expireNextCall = true;
-    await expectLater(
-      session.guard((b) => b.resourceRoles()),
-      throwsA(isA<AppBackendException>()
-          .having((e) => e.key, 'key', 'auth.session_expired')),
-    );
-    await tester.pump();
+      // The next guarded call hits a dead session.
+      backend.expireNextCall = true;
+      await expectLater(
+        session.guard((b) => b.resourceRoles()),
+        throwsA(
+          isA<AppBackendException>().having(
+            (e) => e.key,
+            'key',
+            'auth.session_expired',
+          ),
+        ),
+      );
+      await tester.pump();
 
-    expect(session.isLoggedIn, isFalse);
-    expect(loginFinder, findsOneWidget);
-    expect(boardFinder, findsNothing);
-  });
+      expect(session.isLoggedIn, isFalse);
+      expect(loginFinder, findsOneWidget);
+      expect(boardFinder, findsNothing);
+    },
+  );
 
   testWidgets('TC-27-04: tapping logout routes back to login', (tester) async {
     final session = AppSession(_ExpiringBackend());
@@ -134,23 +144,25 @@ void main() {
       expect(TomAuthorization.resolveAuth('item:unknown'), TomAuthState.full);
     });
 
-    test('login snapshots grants + installs the adapter; logout resets both',
-        () async {
-      final session = AppSession(InMemoryAppBackend());
+    test(
+      'login snapshots grants + installs the adapter; logout resets both',
+      () async {
+        final session = AppSession(InMemoryAppBackend());
 
-      await session.login(aliceLogin);
+        await session.login(aliceLogin);
 
-      // The snapshot carries the principal's role on each accessible resource…
-      expect(session.resourceRoles['item:i-1'], 'owner');
-      // …and the installed adapter resolves it through the registry (owner→full),
-      // while an ungranted resource resolves closed-safe (none).
-      expect(TomAuthorization.resolveAuth('item:i-1'), TomAuthState.full);
-      expect(TomAuthorization.resolveAuth('item:unknown'), TomAuthState.none);
+        // The snapshot carries the principal's role on each accessible resource…
+        expect(session.resourceRoles['item:i-1'], 'owner');
+        // …and the installed adapter resolves it through the registry (owner→full),
+        // while an ungranted resource resolves closed-safe (none).
+        expect(TomAuthorization.resolveAuth('item:i-1'), TomAuthState.full);
+        expect(TomAuthorization.resolveAuth('item:unknown'), TomAuthState.none);
 
-      await session.logout();
-      // Cleared: no snapshot, and the adapter is reset back to permissive.
-      expect(session.resourceRoles, isEmpty);
-      expect(TomAuthorization.resolveAuth('item:unknown'), TomAuthState.full);
-    });
+        await session.logout();
+        // Cleared: no snapshot, and the adapter is reset back to permissive.
+        expect(session.resourceRoles, isEmpty);
+        expect(TomAuthorization.resolveAuth('item:unknown'), TomAuthState.full);
+      },
+    );
   });
 }

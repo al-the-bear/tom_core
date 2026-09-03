@@ -16,13 +16,15 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup labelsGroup = ShowcaseGroup(
   id: 'labels',
   title: 'Labels & images',
-  summary: 'Text, selectable text, icons, chips and badges — the read-only '
+  summary:
+      'Text, selectable text, icons, chips and badges — the read-only '
       'display widgets.',
   icon: Icons.label_outline,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomText',
-      code: "TomText(\n"
+      code:
+          "TomText(\n"
           "  text: 'Headline text',\n"
           "  style: Theme.of(context).textTheme.headlineSmall,\n"
           ")",
@@ -33,14 +35,16 @@ final ShowcaseGroup labelsGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomSelectableText',
-      code: "TomSelectableText(\n"
+      code:
+          "TomSelectableText(\n"
           "  text: 'Select and copy me',\n"
           ")",
       child: TomSelectableText(text: 'Select and copy me'),
     ),
     ShowcaseCell(
       title: 'TomIcon',
-      code: "TomIcon(\n"
+      code:
+          "TomIcon(\n"
           "  icon: Icons.star,\n"
           "  size: 32,\n"
           "  color: Colors.amber,\n"
@@ -49,14 +53,16 @@ final ShowcaseGroup labelsGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomChip',
-      code: "TomChip(\n"
+      code:
+          "TomChip(\n"
           "  labelText: 'Flutter',\n"
           ")",
       child: TomChip(labelText: 'Flutter'),
     ),
     ShowcaseCell(
       title: 'TomBadge',
-      code: "TomBadge(\n"
+      code:
+          "TomBadge(\n"
           "  labelText: '5',\n"
           "  child: TomIcon(icon: Icons.notifications_outlined),\n"
           ")",

@@ -52,7 +52,8 @@ import '../resources/app_resource_bundles.dart';
 /// server's own records live on the named `app_db` datasource, so the app-server
 /// boot binds `main` against the shared `auth_db` connection and this singleton
 /// reads the grant rows the auth server seeded.
-class GrantRepository extends TomSqlDatasourceRepository<TomResourceGrant, int> {}
+class GrantRepository
+    extends TomSqlDatasourceRepository<TomResourceGrant, int> {}
 
 /// Process-wide singleton grant repository.
 final grantRepository = GrantRepository();
@@ -84,12 +85,14 @@ class FieldGradeResolver {
   /// store under test). [gradableItemKeys] defaults to the server resource
   /// bundle's gradable set.
   FieldGradeResolver(this.store, {List<String>? gradableItemKeys})
-      : gradableItemKeys =
-            gradableItemKeys ?? AppResourceBundles.gradableItemKeys();
+    : gradableItemKeys =
+          gradableItemKeys ?? AppResourceBundles.gradableItemKeys();
 
   /// Loads [role]'s grants and folds them into a graded view. Several rows for
   /// the same key widen to the most permissive grade (the framework default).
-  Future<TomGradedAccessControlInformation> gradesForRole(ProjectRole role) async {
+  Future<TomGradedAccessControlInformation> gradesForRole(
+    ProjectRole role,
+  ) async {
     final grants = await store.grantsForRole(role.name);
     return TomGradedAccessControlInformation.fromGrants(grants);
   }
@@ -103,9 +106,7 @@ class FieldGradeResolver {
     ProjectRole role,
   ) async {
     final graded = await gradesForRole(role);
-    return {
-      for (final key in gradableItemKeys) key: graded.resolveState(key),
-    };
+    return {for (final key in gradableItemKeys) key: graded.resolveState(key)};
   }
 }
 
@@ -140,6 +141,8 @@ class InMemoryGrantStore implements GrantStore {
   InMemoryGrantStore(List<TomResourceGrant> grants) : _grants = grants;
 
   @override
-  Future<List<TomResourceGrant>> grantsForRole(String roleName) async =>
-      [for (final grant in _grants) if (grant.roleName == roleName) grant];
+  Future<List<TomResourceGrant>> grantsForRole(String roleName) async => [
+    for (final grant in _grants)
+      if (grant.roleName == roleName) grant,
+  ];
 }

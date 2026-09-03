@@ -46,9 +46,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: Column(
-              children: [for (final field in fields) field.widget],
-            ),
+            child: Column(children: [for (final field in fields) field.widget]),
           ),
         ),
       ),
@@ -57,60 +55,63 @@ void main() {
   }
 
   testWidgets(
-      'TC-10-01: LoginForm labels/hints resolve from the login.* bundle, not '
-      'overrides', (tester) async {
-    installBundle(const {
-      'login.username.label': 'Username [srv]',
-      'login.username.hint': 'alice, bob or carol [srv]',
-      'login.password.label': 'Password [srv]',
-    });
-    // Built unscoped: formId 'login' *is* the base path, so fields self-address
-    // as login.username / login.password — the keys the bundle serves.
-    final form = LoginForm();
-    expect(form.basePath, 'login');
-    expect(form.username.basePath, 'login.username');
-    expect(form.password.basePath, 'login.password');
+    'TC-10-01: LoginForm labels/hints resolve from the login.* bundle, not '
+    'overrides',
+    (tester) async {
+      installBundle(const {
+        'login.username.label': 'Username [srv]',
+        'login.username.hint': 'alice, bob or carol [srv]',
+        'login.password.label': 'Password [srv]',
+      });
+      // Built unscoped: formId 'login' *is* the base path, so fields self-address
+      // as login.username / login.password — the keys the bundle serves.
+      final form = LoginForm();
+      expect(form.basePath, 'login');
+      expect(form.username.basePath, 'login.username');
+      expect(form.password.basePath, 'login.password');
 
-    await pumpFields(tester, [form.username, form.password]);
+      await pumpFields(tester, [form.username, form.password]);
 
-    expect(find.textContaining('Username [srv]'), findsWidgets);
-    expect(find.textContaining('alice, bob or carol [srv]'), findsWidgets);
-    expect(find.textContaining('Password [srv]'), findsWidgets);
-    // A leftover override would have rendered the bare strings it carried.
-    expect(find.text('Username'), findsNothing);
-    expect(find.text('Password'), findsNothing);
-    form.dispose();
-  });
+      expect(find.textContaining('Username [srv]'), findsWidgets);
+      expect(find.textContaining('alice, bob or carol [srv]'), findsWidgets);
+      expect(find.textContaining('Password [srv]'), findsWidgets);
+      // A leftover override would have rendered the bare strings it carried.
+      expect(find.text('Username'), findsNothing);
+      expect(find.text('Password'), findsNothing);
+      form.dispose();
+    },
+  );
 
   testWidgets(
-      'TC-10-02: TodoItemForm labels resolve from the todo.item.* bundle',
-      (tester) async {
-    installBundle({
-      'todo.item.title.label': 'Title [srv]',
-      'todo.item.status.label': 'Status [srv]',
-      'todo.item.priority.label': 'Priority [srv]',
-      'todo.item.assigneeId.label': 'Assignee [srv]',
-      'todo.item.dueDate.label': 'Due date [srv]',
-      'todo.item.estimate.label': 'Estimate [srv]',
-      'todo.item.description.label': 'Description [srv]',
-    });
-    // Built under the gradable scope, so basePath is todo.item and each
-    // field self-addresses as its `todo.item.<field>` key.
-    final form = TomScope.withScope('todo', TodoItemForm.new);
-    expect(form.basePath, 'todo.item');
+    'TC-10-02: TodoItemForm labels resolve from the todo.item.* bundle',
+    (tester) async {
+      installBundle({
+        'todo.item.title.label': 'Title [srv]',
+        'todo.item.status.label': 'Status [srv]',
+        'todo.item.priority.label': 'Priority [srv]',
+        'todo.item.assigneeId.label': 'Assignee [srv]',
+        'todo.item.dueDate.label': 'Due date [srv]',
+        'todo.item.estimate.label': 'Estimate [srv]',
+        'todo.item.description.label': 'Description [srv]',
+      });
+      // Built under the gradable scope, so basePath is todo.item and each
+      // field self-addresses as its `todo.item.<field>` key.
+      final form = TomScope.withScope('todo', TodoItemForm.new);
+      expect(form.basePath, 'todo.item');
 
-    await pumpFields(tester, form.gradableFields);
+      await pumpFields(tester, form.gradableFields);
 
-    expect(find.textContaining('Title [srv]'), findsWidgets);
-    expect(find.textContaining('Status [srv]'), findsWidgets);
-    expect(find.textContaining('Priority [srv]'), findsWidgets);
-    expect(find.textContaining('Assignee [srv]'), findsWidgets);
-    expect(find.textContaining('Due date [srv]'), findsWidgets);
-    expect(find.textContaining('Estimate [srv]'), findsWidgets);
-    expect(find.textContaining('Description [srv]'), findsWidgets);
-    // No leftover override renders the bare label strings.
-    expect(find.text('Title'), findsNothing);
-    expect(find.text('Description'), findsNothing);
-    form.dispose();
-  });
+      expect(find.textContaining('Title [srv]'), findsWidgets);
+      expect(find.textContaining('Status [srv]'), findsWidgets);
+      expect(find.textContaining('Priority [srv]'), findsWidgets);
+      expect(find.textContaining('Assignee [srv]'), findsWidgets);
+      expect(find.textContaining('Due date [srv]'), findsWidgets);
+      expect(find.textContaining('Estimate [srv]'), findsWidgets);
+      expect(find.textContaining('Description [srv]'), findsWidgets);
+      // No leftover override renders the bare label strings.
+      expect(find.text('Title'), findsNothing);
+      expect(find.text('Description'), findsNothing);
+      form.dispose();
+    },
+  );
 }

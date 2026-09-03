@@ -108,7 +108,8 @@ class ListFormHost<TItem extends TomClass, TForm extends TomForm<TItem>>
   final Widget Function(
     BuildContext context,
     TomListForm<TItem, TForm> listForm,
-  ) builder;
+  )
+  builder;
 
   @override
   State<ListFormHost<TItem, TForm>> createState() =>

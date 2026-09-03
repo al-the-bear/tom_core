@@ -46,7 +46,8 @@ library;
 
 import 'package:tom_core_server/tom_core_server.dart';
 
-import '../endpoints/app_endpoints.dart' show AppReadStore, RepositoryAppReadStore;
+import '../endpoints/app_endpoints.dart'
+    show AppReadStore, RepositoryAppReadStore;
 import '../persistence/app_persistence_model.dart';
 import 'resource_role_resolver.dart';
 
@@ -70,17 +71,23 @@ void registerAppDataScopes() {
   TomDataScopeRegistry.registerAsync(
     projectVisibilityScope,
     (principal) => resolver.visibleIdGroups(
-        AppResourceTypes.project, _scopePrincipalId(principal)),
+      AppResourceTypes.project,
+      _scopePrincipalId(principal),
+    ),
   );
   TomDataScopeRegistry.registerAsync(
     listVisibilityScope,
     (principal) => resolver.visibleIdGroups(
-        AppResourceTypes.list, _scopePrincipalId(principal)),
+      AppResourceTypes.list,
+      _scopePrincipalId(principal),
+    ),
   );
   TomDataScopeRegistry.registerAsync(
     itemVisibilityScope,
     (principal) => resolver.visibleIdGroups(
-        AppResourceTypes.item, _scopePrincipalId(principal)),
+      AppResourceTypes.item,
+      _scopePrincipalId(principal),
+    ),
   );
 }
 
@@ -113,9 +120,9 @@ class VisibleResourceResolver {
   /// The production wiring: the repository-backed read store and the framework
   /// delegation resolver over the shared grant/delegation repositories.
   factory VisibleResourceResolver.production() => VisibleResourceResolver(
-        const RepositoryAppReadStore(),
-        ResourceRoleResolver.production().delegationResolver,
-      );
+    const RepositoryAppReadStore(),
+    ResourceRoleResolver.production().delegationResolver,
+  );
 
   /// The owned and shared id-set groups for entity [type] that principal
   /// [principalId] may see — the two groups the RCB8 async data scope ORs into
@@ -132,8 +139,9 @@ class VisibleResourceResolver {
     if (principalId == null || principalId.isEmpty) return const [];
     return TomDataScope.runUnscoped(() async {
       final owned = await _idsFromRoles(
-        await delegationResolver.directResolver
-            .resolveResourceRoles(principalId),
+        await delegationResolver.directResolver.resolveResourceRoles(
+          principalId,
+        ),
         type,
       );
       final shared = await _idsFromRoles(

@@ -19,14 +19,16 @@ import '../forms/company_form.dart';
 final ShowcaseGroup layoutGroup = ShowcaseGroup(
   id: 'layout',
   title: 'Layout (AclBuilder)',
-  summary: 'Fluent field layout: single-column stacks, multiple fields per '
+  summary:
+      'Fluent field layout: single-column stacks, multiple fields per '
       'row, and per-cell gaps with the TomAclBuilder engine.',
   icon: Icons.view_agenda_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Single-column stack',
       note: 'Every field on its own row — the default form rhythm.',
-      code: "TomAclBuilder(id: 'basic', elementProvider: form)\n"
+      code:
+          "TomAclBuilder(id: 'basic', elementProvider: form)\n"
           "    .setAclExpandXDefault(true)\n"
           "    .setAclDefaultAppendGap(0)\n"
           "    .append((p) => p.name.widget)\n"
@@ -37,23 +39,23 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
         scopeId: 'lay_stack',
         create: CompanyForm.new,
         bind: (form) => form.bind(CompanyProfile()),
-        builder: (context, form) => TomAclBuilder(
-          id: 'lay_stack_acl',
-          elementProvider: form,
-        )
-            .setAclExpandXDefault(true)
-            .setAclDefaultAppendGap(0)
-            .append((p) => p.name.widget)
-            .newRow()
-            .append((p) => p.website.widget)
-            .build(context),
+        builder: (context, form) =>
+            TomAclBuilder(id: 'lay_stack_acl', elementProvider: form)
+                .setAclExpandXDefault(true)
+                .setAclDefaultAppendGap(0)
+                .append((p) => p.name.widget)
+                .newRow()
+                .append((p) => p.website.widget)
+                .build(context),
       ),
     ),
     ShowcaseCell(
       title: 'Two fields per row',
-      note: 'append twice before newRow puts both fields on one line, sharing '
+      note:
+          'append twice before newRow puts both fields on one line, sharing '
           'the width.',
-      code: "TomAclBuilder(id: 'pair', elementProvider: form)\n"
+      code:
+          "TomAclBuilder(id: 'pair', elementProvider: form)\n"
           "    .setAclExpandXDefault(true)\n"
           "    .setAclDefaultAppendGap(0)\n"
           "    .append((p) => p.industry.widget)\n"
@@ -63,22 +65,22 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
         scopeId: 'lay_pair',
         create: CompanyForm.new,
         bind: (form) => form.bind(CompanyProfile()),
-        builder: (context, form) => TomAclBuilder(
-          id: 'lay_pair_acl',
-          elementProvider: form,
-        )
-            .setAclExpandXDefault(true)
-            .setAclDefaultAppendGap(0)
-            .append((p) => p.industry.widget)
-            .append((p) => p.taxId.widget, dist: 16)
-            .build(context),
+        builder: (context, form) =>
+            TomAclBuilder(id: 'lay_pair_acl', elementProvider: form)
+                .setAclExpandXDefault(true)
+                .setAclDefaultAppendGap(0)
+                .append((p) => p.industry.widget)
+                .append((p) => p.taxId.widget, dist: 16)
+                .build(context),
       ),
     ),
     ShowcaseCell(
       title: 'Full form layout',
-      note: 'The composed CompanyForm: name, then industry + tax id, then '
+      note:
+          'The composed CompanyForm: name, then industry + tax id, then '
           'website, then a multi-line description.',
-      code: "TomAclBuilder(id: 'company', elementProvider: form)\n"
+      code:
+          "TomAclBuilder(id: 'company', elementProvider: form)\n"
           "    .setAclExpandXDefault(true)\n"
           "    .setAclDefaultAppendGap(0)\n"
           "    .append((p) => p.name.widget)\n"
@@ -94,21 +96,19 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
         scopeId: 'lay_full',
         create: CompanyForm.new,
         bind: (form) => form.bind(CompanyProfile()),
-        builder: (context, form) => TomAclBuilder(
-          id: 'lay_full_acl',
-          elementProvider: form,
-        )
-            .setAclExpandXDefault(true)
-            .setAclDefaultAppendGap(0)
-            .append((p) => p.name.widget)
-            .newRow()
-            .append((p) => p.industry.widget)
-            .append((p) => p.taxId.widget, dist: 16)
-            .newRow()
-            .append((p) => p.website.widget)
-            .newRow()
-            .append((p) => p.description.widget)
-            .build(context),
+        builder: (context, form) =>
+            TomAclBuilder(id: 'lay_full_acl', elementProvider: form)
+                .setAclExpandXDefault(true)
+                .setAclDefaultAppendGap(0)
+                .append((p) => p.name.widget)
+                .newRow()
+                .append((p) => p.industry.widget)
+                .append((p) => p.taxId.widget, dist: 16)
+                .newRow()
+                .append((p) => p.website.widget)
+                .newRow()
+                .append((p) => p.description.widget)
+                .build(context),
       ),
     ),
   ],

@@ -64,8 +64,10 @@ class UsersScreen extends StatelessWidget {
       subtitleOf: (user) => '${user.username} · ${user.status}',
       onCreate: _create,
       onEdit: _edit,
-      onDelete: (user) =>
-          runAdminAction(adminActions.deleteUser, DeleteUserContext(session, user.id)),
+      onDelete: (user) => runAdminAction(
+        adminActions.deleteUser,
+        DeleteUserContext(session, user.id),
+      ),
       createAuthorizer: adminActions.createUser.authorizer,
       deleteAuthorizer: adminActions.deleteUser.authorizer,
     );
@@ -90,7 +92,9 @@ class UsersScreen extends StatelessWidget {
             email: draft.email.get(),
           );
           return runAdminAction(
-              adminActions.createUser, CreateUserContext(session, request));
+            adminActions.createUser,
+            CreateUserContext(session, request),
+          );
         },
       );
     } finally {
@@ -132,8 +136,10 @@ class UsersScreen extends StatelessWidget {
             email: draft.email.get(),
             status: draft.status.get(),
           );
-          return runAdminAction(adminActions.updateUser,
-              UpdateUserContext(session, user.id, updated));
+          return runAdminAction(
+            adminActions.updateUser,
+            UpdateUserContext(session, user.id, updated),
+          );
         },
       );
     } finally {

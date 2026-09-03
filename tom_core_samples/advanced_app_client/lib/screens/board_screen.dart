@@ -210,8 +210,7 @@ class _BoardScreenState extends State<BoardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final name =
-        _session.user?.displayName ?? _session.user?.username ?? '';
+    final name = _session.user?.displayName ?? _session.user?.username ?? '';
     // Board chrome comes from the post-login full bundle (installed by
     // [AppSession.login]); `board.*` has no grade counterpart and no form
     // override, so it renders the server text straight through [TomCtr].
@@ -250,7 +249,9 @@ class _BoardScreenState extends State<BoardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(text: TomCtr.text('board.signedInAs').replaceAll('{name}', name)),
+          TomText(
+            text: TomCtr.text('board.signedInAs').replaceAll('{name}', name),
+          ),
           const SizedBox(height: 8),
           AclBuilder()
               .setAclDefaultHideUnauthorized(true)
@@ -266,8 +267,9 @@ class _BoardScreenState extends State<BoardScreen> {
                       items: [
                         for (final w in _workspaces)
                           DropdownMenuItem(
-                              value: w.id.get(),
-                              child: Text(w.name.get())),
+                            value: w.id.get(),
+                            child: Text(w.name.get()),
+                          ),
                       ],
                       onChanged: _onWorkspaceChanged,
                     ),
@@ -287,8 +289,9 @@ class _BoardScreenState extends State<BoardScreen> {
                       items: [
                         for (final p in _projects)
                           DropdownMenuItem(
-                              value: p.id.get(),
-                              child: Text(p.name.get())),
+                            value: p.id.get(),
+                            child: Text(p.name.get()),
+                          ),
                       ],
                       onChanged: _onProjectChanged,
                     ),
@@ -308,7 +311,9 @@ class _BoardScreenState extends State<BoardScreen> {
       return Center(child: TomCircularProgressIndicator());
     }
     if (_error != null) {
-      return Center(child: TomText(text: _error!, key: const Key('board-error')));
+      return Center(
+        child: TomText(text: _error!, key: const Key('board-error')),
+      );
     }
     if (_items.isEmpty) {
       return Center(child: TomText(text: TomCtr.text('board.empty')));
@@ -347,7 +352,8 @@ class _BoardScreenState extends State<BoardScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: TomText(
-              text: '${TomObservableEnum.resolveText(status)} '
+              text:
+                  '${TomObservableEnum.resolveText(status)} '
                   '(${items.length})',
               style: Theme.of(context).textTheme.titleMedium,
             ),
@@ -366,7 +372,8 @@ class _BoardScreenState extends State<BoardScreen> {
       child: TomListTile(
         titleText: item.title.get(),
         subtitle: TomText(
-          text: '${TomObservableEnum.resolveText(item.priorityValue)} · '
+          text:
+              '${TomObservableEnum.resolveText(item.priorityValue)} · '
               '${TomObservableEnum.resolveText(item.labelValue)}',
         ),
         // The paperclip is the whole point of fetching descriptors: presence,
@@ -375,8 +382,9 @@ class _BoardScreenState extends State<BoardScreen> {
             ? null
             : Tooltip(
                 key: Key('item-$itemId-attachment'),
-                message: TomCtr.text('board.item.attachment.present')
-                    .replaceAll('{size}', tomHumanFileSize(file.byteCount)),
+                message: TomCtr.text(
+                  'board.item.attachment.present',
+                ).replaceAll('{size}', tomHumanFileSize(file.byteCount)),
                 child: const Icon(Icons.attach_file, size: 18),
               ),
         onTap: () => _openItem(item),

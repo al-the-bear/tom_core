@@ -78,8 +78,9 @@ class TodoItemForm extends TomForm<TodoItem> {
   /// Builds the fixed authorizer for the field named [tomId], resolving its
   /// grade from the matrix under the same identity its `basePath` uses:
   /// `todo.item.<tomId>` (so the label and grant keys never diverge).
-  TomAuthorizer _authFor(String tomId) =>
-      TomAuthorizer.fixed(fieldStates['$todoItemKey.$tomId'] ?? TomAuthState.none);
+  TomAuthorizer _authFor(String tomId) => TomAuthorizer.fixed(
+    fieldStates['$todoItemKey.$tomId'] ?? TomAuthState.none,
+  );
 
   /// Title — required free text.
   ///
@@ -149,5 +150,6 @@ ValidationResult _noSurroundingSpace(String value) => value.trim() != value
 /// source resolves each label on read and re-emits when the bundle changes, so
 /// there is no Dart-side label table and a locale switch relabels the dropdown
 /// without rebuilding the form.
-final TomSelectableSource<String> _prioritySource =
-    TomEnumNameSelectableSource(TodoPriority.values);
+final TomSelectableSource<String> _prioritySource = TomEnumNameSelectableSource(
+  TodoPriority.values,
+);

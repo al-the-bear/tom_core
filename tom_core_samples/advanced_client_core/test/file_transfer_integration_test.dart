@@ -114,13 +114,16 @@ void main() {
   setUpAll(initializeReflection);
 
   group('file transfer (live auth + app servers)', () {
-    setUp(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
-    tearDown(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
+    setUp(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
+    tearDown(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
 
-    test(
-        'TC-FT-01: the app server stores, describes, serves and clears an item '
+    test('TC-FT-01: the app server stores, describes, serves and clears an item '
         'attachment', () async {
       final c = _liveClients();
       final files = ioFileTransferClient(Uri.parse(_appBaseUri));
@@ -137,13 +140,19 @@ void main() {
           // here would assert the table's contents instead of the thing that
           // matters — that the type the client *declares* is the type the
           // server stores and hands back.
-          source: TomFileSource.bytes('attachment.txt', bytes,
-              mediaType: 'text/plain'),
+          source: TomFileSource.bytes(
+            'attachment.txt',
+            bytes,
+            mediaType: 'text/plain',
+          ),
         );
         expect(stored.byteCount, equals(bytes.length));
         expect(stored.mediaType, startsWith('text/plain'));
-        expect(stored.key, isNotEmpty,
-            reason: 'the server generates the storage key the row now holds');
+        expect(
+          stored.key,
+          isNotEmpty,
+          reason: 'the server generates the storage key the row now holds',
+        );
 
         // HEAD: the same facts without moving the file, which is the whole point
         // of describe existing next to download.
@@ -151,16 +160,26 @@ void main() {
         expect(described, isNotNull);
         expect(described!.byteCount, equals(bytes.length));
         expect(described.key, equals(stored.key));
-        expect(described.mediaType, startsWith('text/plain'),
-            reason: 'the type is persisted with the blob, not merely echoed '
-                'back by the upload response');
+        expect(
+          described.mediaType,
+          startsWith('text/plain'),
+          reason:
+              'the type is persisted with the blob, not merely echoed '
+              'back by the upload response',
+        );
 
-        expect(await _downloadAll(files, _attachmentSlot), equals(bytes),
-            reason: 'the bytes served back are the bytes uploaded');
+        expect(
+          await _downloadAll(files, _attachmentSlot),
+          equals(bytes),
+          reason: 'the bytes served back are the bytes uploaded',
+        );
 
         expect(await files.remove(_attachmentSlot), isTrue);
-        expect(await files.describe(_attachmentSlot), isNull,
-            reason: 'the delete empties the slot, leaving app_db as seeded');
+        expect(
+          await files.describe(_attachmentSlot),
+          isNull,
+          reason: 'the delete empties the slot, leaving app_db as seeded',
+        );
       } on SocketException catch (e) {
         markTestSkipped(_skipMessage(e));
         return;
@@ -170,8 +189,7 @@ void main() {
       }
     });
 
-    test(
-        'TC-FT-02: the auth server stores and serves a user avatar from its own '
+    test('TC-FT-02: the auth server stores and serves a user avatar from its own '
         'database and blob store', () async {
       final c = _liveClients();
       final files = ioFileTransferClient(Uri.parse(_authBaseUri));
@@ -186,8 +204,11 @@ void main() {
         );
         expect(stored.byteCount, equals(bytes.length));
 
-        expect(await _downloadAll(files, _avatarSlot), equals(bytes),
-            reason: 'the second server serves its own files from auth_db');
+        expect(
+          await _downloadAll(files, _avatarSlot),
+          equals(bytes),
+          reason: 'the second server serves its own files from auth_db',
+        );
 
         // Cleared for the same re-runnability reason as TC-FT-01. Note this is
         // the HTTP clear (the column and its bytes), not a row delete — the
@@ -204,8 +225,7 @@ void main() {
       }
     });
 
-    test(
-        'TC-FT-03: a file column that never said `exposed` is not addressable, '
+    test('TC-FT-03: a file column that never said `exposed` is not addressable, '
         'while its neighbour on the same row is', () async {
       final c = _liveClients();
       final files = ioFileTransferClient(Uri.parse(_appBaseUri));
@@ -237,10 +257,14 @@ void main() {
         // authorization question to ask about a column that HTTP cannot name.
         // The principal-relative refusals live one layer down and are asserted
         // by TC-FT-04 (no principal → 403) and TC-FT-05 (a read grade → 403).
-        expect(await files.describe(_internalNoteSlot), isNull,
-            reason: 'exposure decides which column a slot names, not who may '
-                'have it — so this HEAD is a 404 for the row\'s own owner, at '
-                'the same moment her neighbouring column answers');
+        expect(
+          await files.describe(_internalNoteSlot),
+          isNull,
+          reason:
+              'exposure decides which column a slot names, not who may '
+              'have it — so this HEAD is a 404 for the row\'s own owner, at '
+              'the same moment her neighbouring column answers',
+        );
 
         // And the dangerous direction — a write — is refused for the same
         // reason, with the same "no such thing" answer.
@@ -249,13 +273,21 @@ void main() {
             slot: _internalNoteSlot,
             source: TomFileSource.bytes('note.txt', utf8.encode('nope')),
           ),
-          throwsA(isA<TomFileTransferException>()
-              .having((e) => e.key, 'key', 'file_transfer.not_found')),
+          throwsA(
+            isA<TomFileTransferException>().having(
+              (e) => e.key,
+              'key',
+              'file_transfer.not_found',
+            ),
+          ),
           reason: 'the endpoint refuses to write a column nobody exposed',
         );
 
-        expect(await _downloadAll(files, _internalNoteSlot), isNull,
-            reason: 'and GET hands back no bytes either');
+        expect(
+          await _downloadAll(files, _internalNoteSlot),
+          isNull,
+          reason: 'and GET hands back no bytes either',
+        );
       } on SocketException catch (e) {
         markTestSkipped(_skipMessage(e));
         return;
@@ -280,9 +312,13 @@ void main() {
       try {
         // No login: the bearer store is reset around every test in this group,
         // so these requests carry no token at all.
-        expect((await c.app.health())['status'], equals('ok'),
-            reason: 'the stack is up — the refusals below are the gate, not a '
-                'dead socket');
+        expect(
+          (await c.app.health())['status'],
+          equals('ok'),
+          reason:
+              'the stack is up — the refusals below are the gate, not a '
+              'dead socket',
+        );
 
         // The avatar slot is the one that matters. `auth_users` declares no
         // `@TomDbScope`, so nothing downstream of the gate would have filtered
@@ -292,9 +328,15 @@ void main() {
         // somebody's avatar to anybody who asked.
         await expectLater(
           _downloadAll(authFiles, _avatarSlot),
-          throwsA(isA<TomFileTransferException>()
-              .having((e) => e.parameters?['statusCode'], 'statusCode', 403)),
-          reason: 'an anonymous read of an unscoped entity must be refused by '
+          throwsA(
+            isA<TomFileTransferException>().having(
+              (e) => e.parameters?['statusCode'],
+              'statusCode',
+              403,
+            ),
+          ),
+          reason:
+              'an anonymous read of an unscoped entity must be refused by '
               'the endpoint itself',
         );
 
@@ -307,8 +349,13 @@ void main() {
               utf8.encode('written by nobody'),
             ),
           ),
-          throwsA(isA<TomFileTransferException>()
-              .having((e) => e.parameters?['statusCode'], 'statusCode', 403)),
+          throwsA(
+            isA<TomFileTransferException>().having(
+              (e) => e.parameters?['statusCode'],
+              'statusCode',
+              403,
+            ),
+          ),
           reason: 'and an anonymous write likewise',
         );
         // Whether the refused upload *stored* anything cannot be asked
@@ -317,8 +364,11 @@ void main() {
         // TC-FT-03 both clear it), so a file here could only have come from the
         // anonymous write above.
         await c.auth.login(_aliceLogin);
-        expect(await appFiles.describe(_attachmentSlot), isNull,
-            reason: 'the refused upload must have stored nothing');
+        expect(
+          await appFiles.describe(_attachmentSlot),
+          isNull,
+          reason: 'the refused upload must have stored nothing',
+        );
       } on SocketException catch (e) {
         markTestSkipped(_skipMessage(e));
         return;
@@ -329,8 +379,7 @@ void main() {
       }
     });
 
-    test(
-        'TC-FT-05: a read-only column grade serves the download and refuses the '
+    test('TC-FT-05: a read-only column grade serves the download and refuses the '
         'upload', () async {
       final c = _liveClients();
       final files = ioFileTransferClient(Uri.parse(_appBaseUri));
@@ -341,11 +390,16 @@ void main() {
         // Alice owns the tree, is graded `full` on the attachment, and puts a
         // file in the slot for carol to find.
         await c.auth.login(_aliceLogin);
-        final bytes = utf8.encode('alice uploaded this, carol may only read it');
+        final bytes = utf8.encode(
+          'alice uploaded this, carol may only read it',
+        );
         await files.upload(
           slot: _attachmentSlot,
-          source: TomFileSource.bytes('shared.txt', bytes,
-              mediaType: 'text/plain'),
+          source: TomFileSource.bytes(
+            'shared.txt',
+            bytes,
+            mediaType: 'text/plain',
+          ),
         );
         uploaded = true;
 
@@ -357,12 +411,19 @@ void main() {
 
         // `read` means showsContent: the two read verbs answer, in full.
         final described = await files.describe(_attachmentSlot);
-        expect(described, isNotNull,
-            reason: 'the grade is read, not none — carol is not being hidden '
-                'from the file, she is being denied the write');
+        expect(
+          described,
+          isNotNull,
+          reason:
+              'the grade is read, not none — carol is not being hidden '
+              'from the file, she is being denied the write',
+        );
         expect(described!.byteCount, equals(bytes.length));
-        expect(await _downloadAll(files, _attachmentSlot), equals(bytes),
-            reason: 'a read grade serves the bytes, not a redacted stand-in');
+        expect(
+          await _downloadAll(files, _attachmentSlot),
+          equals(bytes),
+          reason: 'a read grade serves the bytes, not a redacted stand-in',
+        );
 
         // `read` means !isInteractive: the two write verbs are refused, with the
         // *forbidden* answer rather than the *absent* one. The distinction from
@@ -374,23 +435,38 @@ void main() {
             slot: _attachmentSlot,
             source: TomFileSource.bytes('carol.txt', utf8.encode('overwrite')),
           ),
-          throwsA(isA<TomFileTransferException>()
-              .having((e) => e.parameters?['statusCode'], 'statusCode', 403)),
-          reason: 'the same four-role matrix that makes a field read-only makes '
+          throwsA(
+            isA<TomFileTransferException>().having(
+              (e) => e.parameters?['statusCode'],
+              'statusCode',
+              403,
+            ),
+          ),
+          reason:
+              'the same four-role matrix that makes a field read-only makes '
               'this file column read-only — one grant row, both effects',
         );
         await expectLater(
           files.remove(_attachmentSlot),
-          throwsA(isA<TomFileTransferException>()
-              .having((e) => e.parameters?['statusCode'], 'statusCode', 403)),
-          reason: 'clearing is a write too; a grade that refuses the replace '
+          throwsA(
+            isA<TomFileTransferException>().having(
+              (e) => e.parameters?['statusCode'],
+              'statusCode',
+              403,
+            ),
+          ),
+          reason:
+              'clearing is a write too; a grade that refuses the replace '
               'must refuse the delete, or the read-only file could still be '
               'destroyed',
         );
 
         // And the refusals stored nothing: the bytes alice uploaded are intact.
-        expect(await _downloadAll(files, _attachmentSlot), equals(bytes),
-            reason: 'both refusals happened before the blob store was touched');
+        expect(
+          await _downloadAll(files, _attachmentSlot),
+          equals(bytes),
+          reason: 'both refusals happened before the blob store was touched',
+        );
       } on SocketException catch (e) {
         markTestSkipped(_skipMessage(e));
         return;
@@ -444,15 +520,12 @@ String _skipMessage(SocketException e) =>
 /// through [TomHttpFileTransferClient], which speaks the byte contract rather
 /// than the JSON one and therefore carries its own connection.
 ({IoJsonTransport transport, AuthClient auth, AppApiClient app})
-    _liveClients() {
+_liveClients() {
   final transport = IoJsonTransport();
   final auth = AuthClient(Uri.parse(_authBaseUri), transport: transport);
   return (
     transport: transport,
     auth: auth,
-    app: AppApiClient(
-      Uri.parse(_appBaseUri),
-      AuthorizedHttp(transport, auth),
-    ),
+    app: AppApiClient(Uri.parse(_appBaseUri), AuthorizedHttp(transport, auth)),
   );
 }

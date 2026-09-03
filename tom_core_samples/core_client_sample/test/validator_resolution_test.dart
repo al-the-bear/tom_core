@@ -26,50 +26,58 @@ void main() {
   });
 
   testWidgets(
-      'CCS-VAL-01: login fields resolve their validator purely from resources',
-      (tester) async {
-    final form = LoginForm();
-    // No code validators are passed; each field's single validator is the
-    // `required` declared under `login.<tomId>.validators`.
-    expect(form.username.validators.length, 1);
-    expect(form.password.validators.length, 1);
-  });
-
-  testWidgets('CCS-VAL-02: the title field merges a code + a resource validator',
-      (tester) async {
-    final form = buildForm();
-    // One code-supplied validator (_noSurroundingSpace) + one resource-declared
-    // (`required`) = two effective validators, proving TomField merges both.
-    expect(form.title.validators.length, 2);
-  });
+    'CCS-VAL-01: login fields resolve their validator purely from resources',
+    (tester) async {
+      final form = LoginForm();
+      // No code validators are passed; each field's single validator is the
+      // `required` declared under `login.<tomId>.validators`.
+      expect(form.username.validators.length, 1);
+      expect(form.password.validators.length, 1);
+    },
+  );
 
   testWidgets(
-      'CCS-VAL-03: a failed resource `required` renders the resolved message',
-      (tester) async {
-    final form = LoginForm();
-    form.username.set('');
-    await form.username.validate();
-    expect(form.username.resolvedErrorMessage, 'This field is required.');
-  });
+    'CCS-VAL-02: the title field merges a code + a resource validator',
+    (tester) async {
+      final form = buildForm();
+      // One code-supplied validator (_noSurroundingSpace) + one resource-declared
+      // (`required`) = two effective validators, proving TomField merges both.
+      expect(form.title.validators.length, 2);
+    },
+  );
 
   testWidgets(
-      'CCS-VAL-04: the code-supplied validator message also resolves as a resource',
-      (tester) async {
-    final form = buildForm();
-    form.title.set(' padded ');
-    await form.title.validate();
-    expect(form.title.resolvedErrorMessage,
-        'Title cannot have leading or trailing spaces.');
-  });
+    'CCS-VAL-03: a failed resource `required` renders the resolved message',
+    (tester) async {
+      final form = LoginForm();
+      form.username.set('');
+      await form.username.validate();
+      expect(form.username.resolvedErrorMessage, 'This field is required.');
+    },
+  );
 
   testWidgets(
-      'CCS-VAL-05: an empty title falls through the code rule to resource `required`',
-      (tester) async {
-    final form = buildForm();
-    // The whitespace rule passes on '' (trim == value), so `required` is the
-    // validator that reports — demonstrating the merge runs both in order.
-    form.title.set('');
-    await form.title.validate();
-    expect(form.title.resolvedErrorMessage, 'This field is required.');
-  });
+    'CCS-VAL-04: the code-supplied validator message also resolves as a resource',
+    (tester) async {
+      final form = buildForm();
+      form.title.set(' padded ');
+      await form.title.validate();
+      expect(
+        form.title.resolvedErrorMessage,
+        'Title cannot have leading or trailing spaces.',
+      );
+    },
+  );
+
+  testWidgets(
+    'CCS-VAL-05: an empty title falls through the code rule to resource `required`',
+    (tester) async {
+      final form = buildForm();
+      // The whitespace rule passes on '' (trim == value), so `required` is the
+      // validator that reports — demonstrating the merge runs both in order.
+      form.title.set('');
+      await form.title.validate();
+      expect(form.title.resolvedErrorMessage, 'This field is required.');
+    },
+  );
 }

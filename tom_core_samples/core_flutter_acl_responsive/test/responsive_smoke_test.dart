@@ -50,9 +50,7 @@ void main() {
 
     tolerateOverflowErrors();
 
-    await tester.pumpWidget(
-      MaterialApp(home: GroupScreen(group: group)),
-    );
+    await tester.pumpWidget(MaterialApp(home: GroupScreen(group: group)));
     await tester.pump();
   }
 
@@ -66,8 +64,9 @@ void main() {
   group('every responsive group builds at each width tier', () {
     for (final group in responsiveGroups) {
       for (final (tier, width) in widths) {
-        testWidgets('group "${group.id}" renders at $tier ($width)',
-            (tester) async {
+        testWidgets('group "${group.id}" renders at $tier ($width)', (
+          tester,
+        ) async {
           // Any non-overflow error during the pump reaches flutter_test's own
           // handler and fails this test with its real message — the pump itself
           // is the assertion that every cell built.

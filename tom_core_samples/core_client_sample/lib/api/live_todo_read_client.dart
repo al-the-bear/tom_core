@@ -42,9 +42,9 @@ TomAuthState parseAuthState(String? token) =>
 /// enum's name (the server stores them that way); an empty token falls back to
 /// the domain default.
 List<TodoItem> parseTodos(List<Object?> body) => [
-      for (final element in body)
-        _dtoToItem(dtoFromJson<TodoItemDto>(_asMap(element))),
-    ];
+  for (final element in body)
+    _dtoToItem(dtoFromJson<TodoItemDto>(_asMap(element))),
+];
 
 /// Maps the `GET /todos/field-states` body (`{ states: { role: { key: token } } }`)
 /// to a per-role, per-field [TomAuthState] matrix.
@@ -53,7 +53,8 @@ List<TodoItem> parseTodos(List<Object?> body) => [
 /// the full gradable-field vocabulary, so a field absent from a role's block
 /// degrades to [TomAuthState.none] (closed-safe).
 Map<String, Map<String, TomAuthState>> parseFieldStates(
-    Map<String, dynamic> body) {
+  Map<String, dynamic> body,
+) {
   final matrix = dtoFromJson<TodoFieldMatrixDto>(body.cast<String, Object?>());
   return {
     for (final role in matrix.roles)
@@ -80,7 +81,7 @@ Map<String, Object?> _asMap(Object? raw) =>
 class LiveTodoReadClient {
   /// Creates a client against [baseUrl] (e.g. `http://localhost:8080`).
   LiveTodoReadClient(this.baseUrl, {HttpClient? httpClient})
-      : _client = httpClient ?? HttpClient();
+    : _client = httpClient ?? HttpClient();
 
   /// The server's base URL, without a trailing slash.
   final String baseUrl;

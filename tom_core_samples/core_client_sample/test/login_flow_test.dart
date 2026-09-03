@@ -38,16 +38,18 @@ void main() {
     expect(find.text('Tom Todo — sign in'), findsOneWidget);
   });
 
-  testWidgets('CCS-LOGIN-02: a good login lands on the todo list',
-      (tester) async {
+  testWidgets('CCS-LOGIN-02: a good login lands on the todo list', (
+    tester,
+  ) async {
     await pumpApp(tester);
     await signIn(tester, 'alice', 'pw');
     expect(find.text('Todos'), findsOneWidget);
     expect(find.text('role: owner'), findsOneWidget);
   });
 
-  testWidgets('CCS-LOGIN-03: a bad account surfaces an inline error',
-      (tester) async {
+  testWidgets('CCS-LOGIN-03: a bad account surfaces an inline error', (
+    tester,
+  ) async {
     await pumpApp(tester);
     await signIn(tester, 'nobody', 'pw');
     expect(find.textContaining('Unknown account'), findsOneWidget);
@@ -55,8 +57,9 @@ void main() {
     expect(find.text('Tom Todo — sign in'), findsOneWidget);
   });
 
-  testWidgets('CCS-LOGIN-04: logout returns to the sign-in screen',
-      (tester) async {
+  testWidgets('CCS-LOGIN-04: logout returns to the sign-in screen', (
+    tester,
+  ) async {
     await pumpApp(tester);
     await signIn(tester, 'alice', 'pw');
     await tester.tap(find.byTooltip('Log out'));

@@ -39,8 +39,8 @@ class InMemoryAdminBackend implements AdminBackend {
   InMemoryAdminBackend({
     TomFileTransferClient? files,
     Set<String> twoFactorUsernames = const {},
-  })  : files = files ?? TomMemoryFileTransferClient(),
-        _twoFactorUsernames = twoFactorUsernames {
+  }) : files = files ?? TomMemoryFileTransferClient(),
+       _twoFactorUsernames = twoFactorUsernames {
     _seed();
   }
 
@@ -122,7 +122,7 @@ class InMemoryAdminBackend implements AdminBackend {
     'login.title': 'Advanced Todo — Sign in',
     'login.intro':
         'Try alice, bob or carol (any non-empty password), dave to be challenged '
-            'for a second factor, or erin to be offered one.',
+        'for a second factor, or erin to be offered one.',
     'login.username.label': 'Username',
     'login.username.hint': 'alice, bob, carol, dave or erin',
     'login.password.label': 'Password',
@@ -233,7 +233,8 @@ class InMemoryAdminBackend implements AdminBackend {
     'file_transfer.rejected': 'The server refused that file.',
     'file_transfer.cancelled': 'Transfer cancelled.',
     'file_transfer.invalid_slot': 'That file location is not valid.',
-    'file_transfer.invalid_descriptor': 'The server sent an unreadable response.',
+    'file_transfer.invalid_descriptor':
+        'The server sent an unreadable response.',
     'admin.assignments.title': 'Assign roles and groups',
     'admin.assignments.assignTo': 'Assign to {name}',
     'admin.assignments.assigned': 'Assigned to {name}.',
@@ -277,12 +278,14 @@ class InMemoryAdminBackend implements AdminBackend {
     // administrator. Only `admin` holds the `admin` role, so the others are the
     // non-admin path the shell rejects.
     void user(String id, String username, String name, List<String> roles) {
-      _users.add(UserDto(
-        id: id,
-        username: username,
-        displayName: name,
-        email: '$username@todo.example',
-      ));
+      _users.add(
+        UserDto(
+          id: id,
+          username: username,
+          displayName: name,
+          email: '$username@todo.example',
+        ),
+      );
       _passwords[id] = demoPassword;
       _userRoles[id] = {...roles};
     }
@@ -302,11 +305,13 @@ class InMemoryAdminBackend implements AdminBackend {
       RoleDto(key: 'viewer', name: 'Viewer'),
     ]);
 
-    _groups.add(GroupDto(
-      id: 'g-eng',
-      name: 'Engineering',
-      memberUserIds: const ['u-bob', 'u-carol'],
-    ));
+    _groups.add(
+      GroupDto(
+        id: 'g-eng',
+        name: 'Engineering',
+        memberUserIds: const ['u-bob', 'u-carol'],
+      ),
+    );
 
     // The four-state grant matrix at the values the auth server's
     // `[003]-auth_demo_seed@dev,test.sql` seeds, so the demo console opens on the
@@ -482,7 +487,8 @@ class InMemoryAdminBackend implements AdminBackend {
     if (key.isEmpty) return false;
     final counter = TomTotp.counterFor(period: totpPeriod);
     for (var offset = -totpWindowSteps; offset <= totpWindowSteps; offset++) {
-      if (TomTotp.generateCode(key, counter + offset, totpDigits) == submitted) {
+      if (TomTotp.generateCode(key, counter + offset, totpDigits) ==
+          submitted) {
         return true;
       }
     }
@@ -537,8 +543,10 @@ class InMemoryAdminBackend implements AdminBackend {
     _requireAdmin();
     final index = _users.indexWhere((u) => u.id == id);
     if (index < 0) {
-      throw AdminBackendException('No user with id "$id".',
-          key: 'admin.user.not_found');
+      throw AdminBackendException(
+        'No user with id "$id".',
+        key: 'admin.user.not_found',
+      );
     }
     // Update the mutable profile/status; id and username are stable keys.
     final existing = _users[index];
@@ -573,12 +581,16 @@ class InMemoryAdminBackend implements AdminBackend {
   Future<RoleDto> createRole(RoleDto role) async {
     _requireAdmin();
     if (role.key.trim().isEmpty) {
-      throw const AdminBackendException('A role key is required.',
-          key: 'admin.role.invalid');
+      throw const AdminBackendException(
+        'A role key is required.',
+        key: 'admin.role.invalid',
+      );
     }
     if (_roles.any((r) => r.key == role.key)) {
-      throw AdminBackendException('A role "${role.key}" already exists.',
-          key: 'admin.role.duplicate');
+      throw AdminBackendException(
+        'A role "${role.key}" already exists.',
+        key: 'admin.role.duplicate',
+      );
     }
     _roles.add(role);
     return role;
@@ -589,8 +601,10 @@ class InMemoryAdminBackend implements AdminBackend {
     _requireAdmin();
     final index = _roles.indexWhere((r) => r.key == key);
     if (index < 0) {
-      throw AdminBackendException('No role with key "$key".',
-          key: 'admin.role.not_found');
+      throw AdminBackendException(
+        'No role with key "$key".',
+        key: 'admin.role.not_found',
+      );
     }
     final updated = RoleDto(key: key, name: role.name);
     _roles[index] = updated;
@@ -628,8 +642,10 @@ class InMemoryAdminBackend implements AdminBackend {
     _requireAdmin();
     final index = _groups.indexWhere((g) => g.id == id);
     if (index < 0) {
-      throw AdminBackendException('No group with id "$id".',
-          key: 'admin.group.not_found');
+      throw AdminBackendException(
+        'No group with id "$id".',
+        key: 'admin.group.not_found',
+      );
     }
     final updated = GroupDto(
       id: id,
@@ -672,21 +688,27 @@ class InMemoryAdminBackend implements AdminBackend {
   Future<void> assign(AssignmentRequest request) async {
     _requireAdmin();
     if (_users.every((u) => u.id != request.userId)) {
-      throw AdminBackendException('No user with id "${request.userId}".',
-          key: 'admin.user.not_found');
+      throw AdminBackendException(
+        'No user with id "${request.userId}".',
+        key: 'admin.user.not_found',
+      );
     }
     if (request.roleKey.isNotEmpty) {
       if (_roles.every((r) => r.key != request.roleKey)) {
-        throw AdminBackendException('No role with key "${request.roleKey}".',
-            key: 'admin.role.not_found');
+        throw AdminBackendException(
+          'No role with key "${request.roleKey}".',
+          key: 'admin.role.not_found',
+        );
       }
       (_userRoles[request.userId] ??= <String>{}).add(request.roleKey);
     }
     if (request.groupId.isNotEmpty) {
       final index = _groups.indexWhere((g) => g.id == request.groupId);
       if (index < 0) {
-        throw AdminBackendException('No group with id "${request.groupId}".',
-            key: 'admin.group.not_found');
+        throw AdminBackendException(
+          'No group with id "${request.groupId}".',
+          key: 'admin.group.not_found',
+        );
       }
       final group = _groups[index];
       if (!group.memberUserIds.contains(request.userId)) {
@@ -713,8 +735,10 @@ class InMemoryAdminBackend implements AdminBackend {
   void _requireAdmin() {
     final id = _currentUserId;
     if (id == null) {
-      throw const AdminBackendException('Not logged in.',
-          key: 'admin.no_session');
+      throw const AdminBackendException(
+        'Not logged in.',
+        key: 'admin.no_session',
+      );
     }
     if (!(_userRoles[id]?.contains('admin') ?? false)) {
       throw const AdminBackendException(
@@ -725,16 +749,13 @@ class InMemoryAdminBackend implements AdminBackend {
   }
 
   UserDto _copyUser(UserDto s) => UserDto(
-        id: s.id,
-        username: s.username,
-        displayName: s.displayName,
-        email: s.email,
-        status: s.status,
-      );
+    id: s.id,
+    username: s.username,
+    displayName: s.displayName,
+    email: s.email,
+    status: s.status,
+  );
 
-  GroupDto _copyGroup(GroupDto s) => GroupDto(
-        id: s.id,
-        name: s.name,
-        memberUserIds: s.memberUserIds,
-      );
+  GroupDto _copyGroup(GroupDto s) =>
+      GroupDto(id: s.id, name: s.name, memberUserIds: s.memberUserIds);
 }

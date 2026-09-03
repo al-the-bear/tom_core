@@ -78,20 +78,28 @@ const Map<ProjectRole, Map<String, TomAuthState>> seededGrantMatrix = {
 
 /// Flattens [seededGrantMatrix] into the grant rows the auth server seeds.
 List<TomResourceGrant> seedGrants() => [
-      for (final role in seededGrantMatrix.entries)
-        for (final field in role.value.entries)
-          TomResourceGrant(
-            roleName: role.key.name,
-            resourceKey: field.key,
-            accessLevel: field.value,
-          ),
-    ];
+  for (final role in seededGrantMatrix.entries)
+    for (final field in role.value.entries)
+      TomResourceGrant(
+        roleName: role.key.name,
+        resourceKey: field.key,
+        accessLevel: field.value,
+      ),
+];
 
 // The demo seed's records (`[001]-app_demo_seed@dev,test.sql`). Fresh instances
 // per call so the resource store and the write store hold independent (but
 // equal) copies.
-List<ProjectRecord> demoProjects() => [ProjectRecord()..id = 1..workspaceId = 1];
-List<ListRecord> demoLists() => [ListRecord()..id = 1..projectId = 1];
+List<ProjectRecord> demoProjects() => [
+  ProjectRecord()
+    ..id = 1
+    ..workspaceId = 1,
+];
+List<ListRecord> demoLists() => [
+  ListRecord()
+    ..id = 1
+    ..projectId = 1,
+];
 
 /// The seeded item — a fully-populated row so a `PUT` can change one graded
 /// field while leaving the rest equal to storage (no spurious diff).
@@ -110,35 +118,34 @@ ItemRecord demoItem() => ItemRecord()
 /// Alice owns the whole tree via a single workspace-level owner grant (RCC1);
 /// the containment rule flows it down to the project, lists and item.
 List<TomPrincipalResourceGrant> demoGrants() => [
-      TomPrincipalResourceGrant(
-        principalId: '$alice',
-        resourceKey: ResourceRoleKeys.workspace('1'),
-        role: ProjectRole.owner.name,
-      ),
-    ];
+  TomPrincipalResourceGrant(
+    principalId: '$alice',
+    resourceKey: ResourceRoleKeys.workspace('1'),
+    role: ProjectRole.owner.name,
+  ),
+];
 
 /// The three shares as C-6 `share`-mode delegations on project 1: bob `editor`,
 /// carol `viewer`, erin `commenter` (RCC3). None target the workspace, so a
 /// grantee holds no role there.
 List<TomPrincipalDelegation> demoShares() => [
-      shareDelegation(delegate: bob, role: ProjectRole.editor),
-      shareDelegation(delegate: carol, role: ProjectRole.viewer),
-      shareDelegation(delegate: erin, role: ProjectRole.commenter),
-    ];
+  shareDelegation(delegate: bob, role: ProjectRole.editor),
+  shareDelegation(delegate: carol, role: ProjectRole.viewer),
+  shareDelegation(delegate: erin, role: ProjectRole.commenter),
+];
 
 /// Builds a `share`-mode delegation from alice on project 1 (unbounded window,
 /// not revoked).
 TomPrincipalDelegation shareDelegation({
   required int delegate,
   required ProjectRole role,
-}) =>
-    TomPrincipalDelegation(
-      mode: TomDelegationMode.share.name,
-      delegatorId: '$alice',
-      delegateId: '$delegate',
-      resourceKey: ResourceRoleKeys.project('1'),
-      role: role.name,
-    );
+}) => TomPrincipalDelegation(
+  mode: TomDelegationMode.share.name,
+  delegatorId: '$alice',
+  delegateId: '$delegate',
+  resourceKey: ResourceRoleKeys.project('1'),
+  role: role.name,
+);
 
 /// Wires a write service over a caller-supplied [writeStore] (so a test can
 /// inspect what was persisted) and freshly-seeded resolver stores. A test that
@@ -147,25 +154,24 @@ TomPrincipalDelegation shareDelegation({
 AppWriteService writeServiceOver(
   InMemoryAppWriteStore writeStore, {
   OwnershipGrantWriter? ownershipWriter,
-}) =>
-    AppWriteService(
-      writeStore,
-      ResourceRoleResolver(
-        InMemoryResourceContainmentStore(
-          projects: demoProjects(),
-          lists: demoLists(),
-          items: [demoItem()],
-        ),
-        TomDelegationResolver(
-          InMemoryPrincipalDelegationStore(demoShares()),
-          TomPrincipalResourceRoleResolver(
-            InMemoryPrincipalResourceGrantStore(demoGrants()),
-          ),
-        ),
+}) => AppWriteService(
+  writeStore,
+  ResourceRoleResolver(
+    InMemoryResourceContainmentStore(
+      projects: demoProjects(),
+      lists: demoLists(),
+      items: [demoItem()],
+    ),
+    TomDelegationResolver(
+      InMemoryPrincipalDelegationStore(demoShares()),
+      TomPrincipalResourceRoleResolver(
+        InMemoryPrincipalResourceGrantStore(demoGrants()),
       ),
-      FieldGradeResolver(InMemoryGrantStore(seedGrants())),
-      ownershipWriter ?? InMemoryOwnershipGrantWriter(),
-    );
+    ),
+  ),
+  FieldGradeResolver(InMemoryGrantStore(seedGrants())),
+  ownershipWriter ?? InMemoryOwnershipGrantWriter(),
+);
 
 /// A new write store seeded with the demo item.
 InMemoryAppWriteStore seededWriteStore() =>
@@ -198,21 +204,23 @@ void main() {
       expect(persistedItem(store).title, 'Original title');
     });
 
-    test('an editor PUT to full-graded fields succeeds and persists them',
-        () async {
-      final store = seededWriteStore();
-      final service = writeServiceOver(store);
-      final payload = itemPayload()
-        ..title.set('Refined title')
-        ..statusValue = TodoStatus.inProgress;
+    test(
+      'an editor PUT to full-graded fields succeeds and persists them',
+      () async {
+        final store = seededWriteStore();
+        final service = writeServiceOver(store);
+        final payload = itemPayload()
+          ..title.set('Refined title')
+          ..statusValue = TodoStatus.inProgress;
 
-      final result = await service.updateItem(bob, 1, payload);
+        final result = await service.updateItem(bob, 1, payload);
 
-      expect(result.title.get(), 'Refined title');
-      expect(result.status.get(), TodoStatus.inProgress.name);
-      expect(persistedItem(store).title, 'Refined title');
-      expect(persistedItem(store).status, TodoStatus.inProgress.name);
-    });
+        expect(result.title.get(), 'Refined title');
+        expect(result.status.get(), TodoStatus.inProgress.name);
+        expect(persistedItem(store).title, 'Refined title');
+        expect(persistedItem(store).status, TodoStatus.inProgress.name);
+      },
+    );
 
     test('the persisted row reflects only permitted fields', () async {
       final store = seededWriteStore();
@@ -233,40 +241,47 @@ void main() {
       expect(persisted.listId, 1); // structural, preserved
     });
 
-    test('an editor PUT changing a read-only field (estimate) is rejected',
-        () async {
-      final store = seededWriteStore();
-      final service = writeServiceOver(store);
-      final payload = itemPayload()..estimateHours.set(99.0);
+    test(
+      'an editor PUT changing a read-only field (estimate) is rejected',
+      () async {
+        final store = seededWriteStore();
+        final service = writeServiceOver(store);
+        final payload = itemPayload()..estimateHours.set(99.0);
 
-      await expectLater(
-        () => service.updateItem(bob, 1, payload),
-        throwsA(isA<TomEndpointHandlerException>()),
-      );
-      expect(persistedItem(store).estimateHours, 4.0);
-    });
+        await expectLater(
+          () => service.updateItem(bob, 1, payload),
+          throwsA(isA<TomEndpointHandlerException>()),
+        );
+        expect(persistedItem(store).estimateHours, 4.0);
+      },
+    );
 
-    test('a commenter PUT to status succeeds but to title is rejected',
-        () async {
-      // The grant matrix gives a commenter `full` on status yet only `read` on
-      // title — field granularity within a single role.
-      final statusStore = seededWriteStore();
-      await writeServiceOver(statusStore)
-          .updateItem(erin, 1, itemPayload()..statusValue = TodoStatus.done);
-      expect(persistedItem(statusStore).status, TodoStatus.done.name);
+    test(
+      'a commenter PUT to status succeeds but to title is rejected',
+      () async {
+        // The grant matrix gives a commenter `full` on status yet only `read` on
+        // title — field granularity within a single role.
+        final statusStore = seededWriteStore();
+        await writeServiceOver(
+          statusStore,
+        ).updateItem(erin, 1, itemPayload()..statusValue = TodoStatus.done);
+        expect(persistedItem(statusStore).status, TodoStatus.done.name);
 
-      final titleStore = seededWriteStore();
-      await expectLater(
-        () => writeServiceOver(titleStore)
-            .updateItem(erin, 1, itemPayload()..title.set('No')),
-        throwsA(isA<TomEndpointHandlerException>()),
-      );
-    });
+        final titleStore = seededWriteStore();
+        await expectLater(
+          () => writeServiceOver(
+            titleStore,
+          ).updateItem(erin, 1, itemPayload()..title.set('No')),
+          throwsA(isA<TomEndpointHandlerException>()),
+        );
+      },
+    );
 
     test('the owner may write every field, including estimate', () async {
       final store = seededWriteStore();
-      final result = await writeServiceOver(store)
-          .updateItem(alice, 1, itemPayload()..estimateHours.set(12.0));
+      final result = await writeServiceOver(
+        store,
+      ).updateItem(alice, 1, itemPayload()..estimateHours.set(12.0));
       expect(result.estimateHours.get(), 12.0);
       expect(persistedItem(store).estimateHours, 12.0);
     });
@@ -274,8 +289,9 @@ void main() {
     test('a stranger PUT is denied (closed/safe, not found)', () async {
       final store = seededWriteStore();
       await expectLater(
-        () => writeServiceOver(store)
-            .updateItem(dave, 1, itemPayload()..title.set('x')),
+        () => writeServiceOver(
+          store,
+        ).updateItem(dave, 1, itemPayload()..title.set('x')),
         throwsA(isA<TomEndpointHandlerException>()),
       );
       expect(persistedItem(store).title, 'Original title');
@@ -322,16 +338,18 @@ void main() {
 
     test('an editor may comment', () async {
       final store = seededWriteStore();
-      await writeServiceOver(store)
-          .addComment(bob, 1, TodoComment()..body.set('Done'));
+      await writeServiceOver(
+        store,
+      ).addComment(bob, 1, TodoComment()..body.set('Done'));
       expect(store.comments, hasLength(1));
     });
 
     test('a viewer may not comment', () async {
       final store = seededWriteStore();
       await expectLater(
-        () => writeServiceOver(store)
-            .addComment(carol, 1, TodoComment()..body.set('Nope')),
+        () => writeServiceOver(
+          store,
+        ).addComment(carol, 1, TodoComment()..body.set('Nope')),
         throwsA(isA<TomEndpointHandlerException>()),
       );
       expect(store.comments, isEmpty);
@@ -344,8 +362,7 @@ void main() {
   // fixture's `commenter`, and she is the one caller who may comment but not
   // build a checklist.
   group('addSubtask role gating (editor and above)', () {
-    test('an editor may add a subtask, filed under the addressed item',
-        () async {
+    test('an editor may add a subtask, filed under the addressed item', () async {
       // `position` is server-owned like `id` and `itemId`: the step appends, so
       // the caller's 7 is ignored and the first entry of an empty checklist
       // lands at 0. A client's position is only ever a guess from whatever list
@@ -365,40 +382,43 @@ void main() {
       expect(store.subtasks.single.position, 0);
     });
 
-    test('successive subtasks append rather than collide at one position',
-        () async {
-      // The counter is per item, not global: a neighbouring item's checklist
-      // sitting at position 5 does not push item 1's first step past 0.
-      final store = InMemoryAppWriteStore(
-        items: [demoItem()],
-        subtasks: [
-          SubtaskRecord()
-            ..id = 9
-            ..itemId = 2
-            ..title = 'Someone else’s step'
-            ..done = false
-            ..position = 5,
-        ],
-      );
-      final service = writeServiceOver(store);
-      await service.addSubtask(bob, 1, Subtask()..title.set('First'));
-      await service.addSubtask(bob, 1, Subtask()..title.set('Second'));
+    test(
+      'successive subtasks append rather than collide at one position',
+      () async {
+        // The counter is per item, not global: a neighbouring item's checklist
+        // sitting at position 5 does not push item 1's first step past 0.
+        final store = InMemoryAppWriteStore(
+          items: [demoItem()],
+          subtasks: [
+            SubtaskRecord()
+              ..id = 9
+              ..itemId = 2
+              ..title = 'Someone else’s step'
+              ..done = false
+              ..position = 5,
+          ],
+        );
+        final service = writeServiceOver(store);
+        await service.addSubtask(bob, 1, Subtask()..title.set('First'));
+        await service.addSubtask(bob, 1, Subtask()..title.set('Second'));
 
-      expect(
-        store.subtasks
-            .where((s) => s.itemId == 1)
-            .map((s) => '${s.position}/${s.title}'),
-        ['0/First', '1/Second'],
-      );
-    });
+        expect(
+          store.subtasks
+              .where((s) => s.itemId == 1)
+              .map((s) => '${s.position}/${s.title}'),
+          ['0/First', '1/Second'],
+        );
+      },
+    );
 
     test('a commenter may not add a subtask', () async {
       // The line between the two child collections: erin may comment (asserted
       // above) but a checklist entry is an edit to the item's scope.
       final store = seededWriteStore();
       await expectLater(
-        () => writeServiceOver(store)
-            .addSubtask(erin, 1, Subtask()..title.set('Nope')),
+        () => writeServiceOver(
+          store,
+        ).addSubtask(erin, 1, Subtask()..title.set('Nope')),
         throwsA(isA<TomEndpointHandlerException>()),
       );
       expect(store.subtasks, isEmpty);
@@ -407,8 +427,9 @@ void main() {
     test('a viewer may not add a subtask', () async {
       final store = seededWriteStore();
       await expectLater(
-        () => writeServiceOver(store)
-            .addSubtask(carol, 1, Subtask()..title.set('Nope')),
+        () => writeServiceOver(
+          store,
+        ).addSubtask(carol, 1, Subtask()..title.set('Nope')),
         throwsA(isA<TomEndpointHandlerException>()),
       );
       expect(store.subtasks, isEmpty);
@@ -435,16 +456,16 @@ void main() {
   group('updateSubtask gating and server-owned columns', () {
     /// A store carrying one subtask on item 1 — the row the update tests edit.
     InMemoryAppWriteStore storeWithSubtask() => InMemoryAppWriteStore(
-          items: [demoItem()],
-          subtasks: [
-            SubtaskRecord()
-              ..id = 5
-              ..itemId = 1
-              ..title = 'Draft the schema'
-              ..done = false
-              ..position = 0,
-          ],
-        );
+      items: [demoItem()],
+      subtasks: [
+        SubtaskRecord()
+          ..id = 5
+          ..itemId = 1
+          ..title = 'Draft the schema'
+          ..done = false
+          ..position = 0,
+      ],
+    );
 
     test('an editor may toggle done', () async {
       final store = storeWithSubtask();
@@ -463,37 +484,46 @@ void main() {
     test('a viewer may not toggle done', () async {
       final store = storeWithSubtask();
       await expectLater(
-        () => writeServiceOver(store)
-            .updateSubtask(carol, 5, Subtask()..done.set(true)),
+        () => writeServiceOver(
+          store,
+        ).updateSubtask(carol, 5, Subtask()..done.set(true)),
         throwsA(isA<TomEndpointHandlerException>()),
       );
       expect(store.subtasks.single.done, isFalse);
     });
 
-    test('the parent link is not writable — a subtask cannot be moved',
-        () async {
-      // The gate was resolved from the *stored* parent, so honouring a payload
-      // `itemId` would let an editor of item 1 attach a row to an item they
-      // hold nothing on.
-      final store = storeWithSubtask();
-      final saved = await writeServiceOver(store).updateSubtask(
-        bob,
-        5,
-        Subtask()
-          ..itemId.set('999')
-          ..title.set('Draft the schema'),
-      );
-      expect(saved.itemId.get(), '1');
-      expect(store.subtasks.single.itemId, 1);
-    });
+    test(
+      'the parent link is not writable — a subtask cannot be moved',
+      () async {
+        // The gate was resolved from the *stored* parent, so honouring a payload
+        // `itemId` would let an editor of item 1 attach a row to an item they
+        // hold nothing on.
+        final store = storeWithSubtask();
+        final saved = await writeServiceOver(store).updateSubtask(
+          bob,
+          5,
+          Subtask()
+            ..itemId.set('999')
+            ..title.set('Draft the schema'),
+        );
+        expect(saved.itemId.get(), '1');
+        expect(store.subtasks.single.itemId, 1);
+      },
+    );
 
     test('an unknown subtask is reported missing, not forbidden', () async {
       final store = storeWithSubtask();
       await expectLater(
-        () => writeServiceOver(store)
-            .updateSubtask(bob, 404, Subtask()..done.set(true)),
-        throwsA(isA<TomException>()
-            .having((e) => e.key, 'key', 'app.subtask.not_found')),
+        () => writeServiceOver(
+          store,
+        ).updateSubtask(bob, 404, Subtask()..done.set(true)),
+        throwsA(
+          isA<TomException>().having(
+            (e) => e.key,
+            'key',
+            'app.subtask.not_found',
+          ),
+        ),
       );
     });
   });
@@ -513,24 +543,26 @@ void main() {
       expect(store.items, hasLength(2));
     });
 
-    test('creating an item stamps the creator as its C-5 owner (RCC1)',
-        () async {
-      final store = seededWriteStore();
-      final owner = InMemoryOwnershipGrantWriter();
-      final created = await writeServiceOver(store, ownershipWriter: owner)
-          .createItem(
-        bob,
-        TodoItem()
-          ..listId.set('1')
-          ..title.set('Fresh task'),
-      );
+    test(
+      'creating an item stamps the creator as its C-5 owner (RCC1)',
+      () async {
+        final store = seededWriteStore();
+        final owner = InMemoryOwnershipGrantWriter();
+        final created = await writeServiceOver(store, ownershipWriter: owner)
+            .createItem(
+              bob,
+              TodoItem()
+                ..listId.set('1')
+                ..title.set('Fresh task'),
+            );
 
-      expect(owner.grants, hasLength(1));
-      final grant = owner.grants.single;
-      expect(grant.principalId, '$bob');
-      expect(grant.resourceKey, ResourceRoleKeys.item(created.id.get()));
-      expect(grant.role, ProjectRole.owner.name);
-    });
+        expect(owner.grants, hasLength(1));
+        final grant = owner.grants.single;
+        expect(grant.principalId, '$bob');
+        expect(grant.resourceKey, ResourceRoleKeys.item(created.id.get()));
+        expect(grant.role, ProjectRole.owner.name);
+      },
+    );
 
     test('a rejected create records no ownership grant', () async {
       final store = seededWriteStore();
@@ -592,42 +624,45 @@ void main() {
       expect(store.projects, hasLength(1));
     });
 
-    test('creating a project stamps the creator as its C-5 owner (RCC1)',
-        () async {
-      final store = seededWriteStore();
-      final owner = InMemoryOwnershipGrantWriter();
-      final created = await writeServiceOver(store, ownershipWriter: owner)
-          .createProject(
-        alice,
-        Project()
-          ..workspaceId.set('1')
-          ..name.set('New project'),
-      );
+    test(
+      'creating a project stamps the creator as its C-5 owner (RCC1)',
+      () async {
+        final store = seededWriteStore();
+        final owner = InMemoryOwnershipGrantWriter();
+        final created = await writeServiceOver(store, ownershipWriter: owner)
+            .createProject(
+              alice,
+              Project()
+                ..workspaceId.set('1')
+                ..name.set('New project'),
+            );
 
-      expect(owner.grants, hasLength(1));
-      final grant = owner.grants.single;
-      expect(grant.principalId, '$alice');
-      expect(
-          grant.resourceKey, ResourceRoleKeys.project(created.id.get()));
-      expect(grant.role, ProjectRole.owner.name);
-    });
+        expect(owner.grants, hasLength(1));
+        final grant = owner.grants.single;
+        expect(grant.principalId, '$alice');
+        expect(grant.resourceKey, ResourceRoleKeys.project(created.id.get()));
+        expect(grant.role, ProjectRole.owner.name);
+      },
+    );
 
-    test('a project-only editor may not create a sibling workspace project',
-        () async {
-      // bob is shared `editor` on project 1, but holds no role on workspace 1,
-      // so he cannot create a new project there.
-      final store = seededWriteStore();
-      await expectLater(
-        () => writeServiceOver(store).createProject(
-          bob,
-          Project()
-            ..workspaceId.set('1')
-            ..name.set('Sneaky'),
-        ),
-        throwsA(isA<TomEndpointHandlerException>()),
-      );
-      expect(store.projects, isEmpty);
-    });
+    test(
+      'a project-only editor may not create a sibling workspace project',
+      () async {
+        // bob is shared `editor` on project 1, but holds no role on workspace 1,
+        // so he cannot create a new project there.
+        final store = seededWriteStore();
+        await expectLater(
+          () => writeServiceOver(store).createProject(
+            bob,
+            Project()
+              ..workspaceId.set('1')
+              ..name.set('Sneaky'),
+          ),
+          throwsA(isA<TomEndpointHandlerException>()),
+        );
+        expect(store.projects, isEmpty);
+      },
+    );
   });
 
   group('createWorkspace ownership (RCB9 scoped-entity create)', () {
@@ -641,10 +676,9 @@ void main() {
     // integration script), so these tests assert the creator↔owner wiring.
     test('persists the workspace with the creator as its owner', () async {
       final store = seededWriteStore();
-      final created = await writeServiceOver(store).createWorkspace(
-        dave,
-        Workspace()..name.set('Dave\'s space'),
-      );
+      final created = await writeServiceOver(
+        store,
+      ).createWorkspace(dave, Workspace()..name.set('Dave\'s space'));
 
       expect(created.name.get(), 'Dave\'s space');
       expect(created.id.get(), isNotEmpty); // surrogate key assigned
@@ -656,14 +690,15 @@ void main() {
     test('stamps the creator as the workspace C-5 owner (RCC1)', () async {
       final store = seededWriteStore();
       final owner = InMemoryOwnershipGrantWriter();
-      final created = await writeServiceOver(store, ownershipWriter: owner)
-          .createWorkspace(dave, Workspace()..name.set('Dave\'s space'));
+      final created = await writeServiceOver(
+        store,
+        ownershipWriter: owner,
+      ).createWorkspace(dave, Workspace()..name.set('Dave\'s space'));
 
       expect(owner.grants, hasLength(1));
       final grant = owner.grants.single;
       expect(grant.principalId, '$dave');
-      expect(grant.resourceKey,
-          ResourceRoleKeys.workspace(created.id.get()));
+      expect(grant.resourceKey, ResourceRoleKeys.workspace(created.id.get()));
       expect(grant.role, ProjectRole.owner.name);
     });
   });

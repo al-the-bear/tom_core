@@ -18,15 +18,18 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup sizingGroup = ShowcaseGroup(
   id: 'sizing',
   title: 'Sizing (preferred / min / max)',
-  summary: 'setPSize, setMSize and setXSize size each component independently '
+  summary:
+      'setPSize, setMSize and setXSize size each component independently '
       'by preferred, minimum and maximum width.',
   icon: Icons.straighten_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Preferred width — setPSize',
-      note: 'The first cell asks for a 200px preferred width; the remaining '
+      note:
+          'The first cell asks for a 200px preferred width; the remaining '
           'cells share the leftover space.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('200px preferred', teal))\n"
           '    .setPSize(200)\n'
           "    .append(demoBox('rest', orange))\n"
@@ -41,9 +44,11 @@ final ShowcaseGroup sizingGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Minimum width — setMSize',
-      note: 'setMSize pins a floor: the cell never shrinks below 120px even as '
+      note:
+          'setMSize pins a floor: the cell never shrinks below 120px even as '
           'the row tightens.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('min 120', indigo))\n"
           '    .setMSize(120)\n'
           "    .append(demoBox('flex', cyan))\n"
@@ -58,9 +63,11 @@ final ShowcaseGroup sizingGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Maximum width — setXSize',
-      note: 'setXSize caps growth: the cell stops widening at 160px and the '
+      note:
+          'setXSize caps growth: the cell stops widening at 160px and the '
           'surplus flows to its neighbours.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('max 160', deepPurple))\n"
           '    .setXSize(160)\n'
           "    .append(demoBox('grows', red))\n"
@@ -75,9 +82,11 @@ final ShowcaseGroup sizingGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'All three together',
-      note: 'A single cell with preferred 180 / min 100 / max 240 — the band it '
+      note:
+          'A single cell with preferred 180 / min 100 / max 240 — the band it '
           'is free to occupy as the row reflows.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('P180 M100 X240', teal))\n"
           '    .setPSize(180)\n'
           '    .setMSize(100)\n'

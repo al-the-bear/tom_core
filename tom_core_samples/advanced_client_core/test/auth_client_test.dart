@@ -28,148 +28,205 @@ void main() {
 
     // Each test starts from a clean bearer singleton — setTokens/logout mutate
     // global state, so leaking it between tests would mask storage bugs.
-    setUp(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
-    tearDown(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
+    setUp(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
+    tearDown(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
 
     group('login', () {
-      test('TC-22-01: POSTs /auth/login with the request body and parses the result',
-          () async {
-        final transport = _FakeTransport([
-          HttpJsonResponse(200, jsonEncode(_loginResponseFor('alice'))),
-        ]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-01: POSTs /auth/login with the request body and parses the result',
+        () async {
+          final transport = _FakeTransport([
+            HttpJsonResponse(200, jsonEncode(_loginResponseFor('alice'))),
+          ]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        final result = await client.login(
-            LoginRequest(username: 'alice', password: 'alice-pass'));
+          final result = await client.login(
+            LoginRequest(username: 'alice', password: 'alice-pass'),
+          );
 
-        // The sequenced HTTP call.
-        final call = transport.calls.single;
-        expect(call.method, equals('POST'));
-        expect(call.uri, equals(Uri.parse('http://localhost:8081/auth/login')));
-        expect(jsonDecode(call.body!),
-            equals({'username': 'alice', 'password': 'alice-pass', 'app': '', 'org': ''}));
+          // The sequenced HTTP call.
+          final call = transport.calls.single;
+          expect(call.method, equals('POST'));
+          expect(
+            call.uri,
+            equals(Uri.parse('http://localhost:8081/auth/login')),
+          );
+          expect(
+            jsonDecode(call.body!),
+            equals({
+              'username': 'alice',
+              'password': 'alice-pass',
+              'app': '',
+              'org': '',
+            }),
+          );
 
-        // The parsed DTO.
-        expect(result.user.username, equals('alice'));
-        expect(result.authToken, isNotEmpty);
-        expect(result.authzToken, isNotEmpty);
-      });
+          // The parsed DTO.
+          expect(result.user.username, equals('alice'));
+          expect(result.authToken, isNotEmpty);
+          expect(result.authzToken, isNotEmpty);
+        },
+      );
 
-      test('TC-22-02: stores the returned token pair so later calls carry the bearer',
-          () async {
-        final response = _loginResponseFor('alice');
-        final transport =
-            _FakeTransport([HttpJsonResponse(200, jsonEncode(response))]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-02: stores the returned token pair so later calls carry the bearer',
+        () async {
+          final response = _loginResponseFor('alice');
+          final transport = _FakeTransport([
+            HttpJsonResponse(200, jsonEncode(response)),
+          ]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        expect(TomBearerAuthentication.authorizationToken, isNull);
-        await client.login(LoginRequest(username: 'alice'));
+          expect(TomBearerAuthentication.authorizationToken, isNull);
+          await client.login(LoginRequest(username: 'alice'));
 
-        expect(TomBearerAuthentication.token, equals(response['authToken']));
-        expect(TomBearerAuthentication.authorizationToken,
-            equals(response['authzToken']));
-        expect(TomBearerAuthentication.getPrincipal().username, equals('alice'));
-      });
+          expect(TomBearerAuthentication.token, equals(response['authToken']));
+          expect(
+            TomBearerAuthentication.authorizationToken,
+            equals(response['authzToken']),
+          );
+          expect(
+            TomBearerAuthentication.getPrincipal().username,
+            equals('alice'),
+          );
+        },
+      );
 
-      test('TC-22-03: a 401 throws AuthClientException carrying the server error key',
-          () async {
-        final transport = _FakeTransport([
-          HttpJsonResponse(401, jsonEncode({'error': 'auth.credentials.rejected'})),
-        ]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-03: a 401 throws AuthClientException carrying the server error key',
+        () async {
+          final transport = _FakeTransport([
+            HttpJsonResponse(
+              401,
+              jsonEncode({'error': 'auth.credentials.rejected'}),
+            ),
+          ]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        await expectLater(
-          client.login(LoginRequest(username: 'alice', password: 'wrong')),
-          throwsA(isA<AuthClientException>()
-              .having((e) => e.key, 'key', 'auth.credentials.rejected')
-              .having((e) => e.statusCode, 'statusCode', 401)),
-        );
-        // A rejected login must not store anything.
-        expect(TomBearerAuthentication.authorizationToken, isNull);
-      });
+          await expectLater(
+            client.login(LoginRequest(username: 'alice', password: 'wrong')),
+            throwsA(
+              isA<AuthClientException>()
+                  .having((e) => e.key, 'key', 'auth.credentials.rejected')
+                  .having((e) => e.statusCode, 'statusCode', 401),
+            ),
+          );
+          // A rejected login must not store anything.
+          expect(TomBearerAuthentication.authorizationToken, isNull);
+        },
+      );
 
-      test('TC-22-04: a non-success without an error key falls back to auth.login.failed',
-          () async {
-        final transport = _FakeTransport([HttpJsonResponse(500, '')]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-04: a non-success without an error key falls back to auth.login.failed',
+        () async {
+          final transport = _FakeTransport([HttpJsonResponse(500, '')]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        await expectLater(
-          client.login(LoginRequest(username: 'alice')),
-          throwsA(isA<AuthClientException>()
-              .having((e) => e.key, 'key', 'auth.login.failed')
-              .having((e) => e.statusCode, 'statusCode', 500)),
-        );
-      });
+          await expectLater(
+            client.login(LoginRequest(username: 'alice')),
+            throwsA(
+              isA<AuthClientException>()
+                  .having((e) => e.key, 'key', 'auth.login.failed')
+                  .having((e) => e.statusCode, 'statusCode', 500),
+            ),
+          );
+        },
+      );
     });
 
     group('refresh', () {
-      test('TC-22-05: sends the stored authzToken as the bearer and re-stores the new pair',
-          () async {
-        final first = _loginResponseFor('alice', suffix: '1');
-        final second = _loginResponseFor('alice', suffix: '2');
-        final transport = _FakeTransport([
-          HttpJsonResponse(200, jsonEncode(first)),
-          HttpJsonResponse(200, jsonEncode(second)),
-        ]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-05: sends the stored authzToken as the bearer and re-stores the new pair',
+        () async {
+          final first = _loginResponseFor('alice', suffix: '1');
+          final second = _loginResponseFor('alice', suffix: '2');
+          final transport = _FakeTransport([
+            HttpJsonResponse(200, jsonEncode(first)),
+            HttpJsonResponse(200, jsonEncode(second)),
+          ]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        await client.login(LoginRequest(username: 'alice'));
-        await client.refresh();
+          await client.login(LoginRequest(username: 'alice'));
+          await client.refresh();
 
-        final refreshCall = transport.calls[1];
-        expect(refreshCall.method, equals('POST'));
-        expect(refreshCall.uri,
-            equals(Uri.parse('http://localhost:8081/auth/refresh')));
-        expect(refreshCall.headers['Authorization'],
-            equals('Bearer ${first['authzToken']}'));
-        // The fresh pair replaced the old one.
-        expect(TomBearerAuthentication.authorizationToken,
-            equals(second['authzToken']));
-      });
+          final refreshCall = transport.calls[1];
+          expect(refreshCall.method, equals('POST'));
+          expect(
+            refreshCall.uri,
+            equals(Uri.parse('http://localhost:8081/auth/refresh')),
+          );
+          expect(
+            refreshCall.headers['Authorization'],
+            equals('Bearer ${first['authzToken']}'),
+          );
+          // The fresh pair replaced the old one.
+          expect(
+            TomBearerAuthentication.authorizationToken,
+            equals(second['authzToken']),
+          );
+        },
+      );
 
-      test('TC-22-06: refresh without a stored token throws auth.no_token', () async {
-        final transport = _FakeTransport([]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-06: refresh without a stored token throws auth.no_token',
+        () async {
+          final transport = _FakeTransport([]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        await expectLater(
-          client.refresh(),
-          throwsA(isA<AuthClientException>()
-              .having((e) => e.key, 'key', 'auth.no_token')
-              .having((e) => e.statusCode, 'statusCode', 0)),
-        );
-        // The bearer-less refresh never reaches the transport.
-        expect(transport.calls, isEmpty);
-      });
+          await expectLater(
+            client.refresh(),
+            throwsA(
+              isA<AuthClientException>()
+                  .having((e) => e.key, 'key', 'auth.no_token')
+                  .having((e) => e.statusCode, 'statusCode', 0),
+            ),
+          );
+          // The bearer-less refresh never reaches the transport.
+          expect(transport.calls, isEmpty);
+        },
+      );
     });
 
     group('loginResources', () {
-      test('TC-22-11: GETs /auth/resources/login (no bearer) and parses the bundle',
-          () async {
-        final transport = _FakeTransport([
-          HttpJsonResponse(
+      test(
+        'TC-22-11: GETs /auth/resources/login (no bearer) and parses the bundle',
+        () async {
+          final transport = _FakeTransport([
+            HttpJsonResponse(
               200,
               jsonEncode({
                 'texts': {
                   'login.title': 'Advanced Todo — Sign in',
                   'login.username.label': 'Username',
-                }
-              })),
-        ]);
-        final client = AuthClient(baseUri, transport: transport);
+                },
+              }),
+            ),
+          ]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        final bundle = await client.loginResources();
+          final bundle = await client.loginResources();
 
-        final call = transport.calls.single;
-        expect(call.method, equals('GET'));
-        expect(call.uri,
-            equals(Uri.parse('http://localhost:8081/auth/resources/login')));
-        // Public endpoint — never attaches an Authorization header.
-        expect(call.headers.containsKey('Authorization'), isFalse);
-        expect(bundle.texts['login.title'], equals('Advanced Todo — Sign in'));
-        expect(bundle.texts['login.username.label'], equals('Username'));
-      });
+          final call = transport.calls.single;
+          expect(call.method, equals('GET'));
+          expect(
+            call.uri,
+            equals(Uri.parse('http://localhost:8081/auth/resources/login')),
+          );
+          // Public endpoint — never attaches an Authorization header.
+          expect(call.headers.containsKey('Authorization'), isFalse);
+          expect(
+            bundle.texts['login.title'],
+            equals('Advanced Todo — Sign in'),
+          );
+          expect(bundle.texts['login.username.label'], equals('Username'));
+        },
+      );
 
       test('TC-22-12: a non-success throws AuthClientException', () async {
         final transport = _FakeTransport([HttpJsonResponse(503, '')]);
@@ -177,53 +234,67 @@ void main() {
 
         await expectLater(
           client.loginResources(),
-          throwsA(isA<AuthClientException>()
-              .having((e) => e.statusCode, 'statusCode', 503)),
+          throwsA(
+            isA<AuthClientException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              503,
+            ),
+          ),
         );
       });
     });
 
     group('logout', () {
-      test('TC-22-07: tells the server then discards the local token pair', () async {
-        final transport = _FakeTransport([
-          HttpJsonResponse(200, jsonEncode(_loginResponseFor('alice'))),
-          HttpJsonResponse(200, ''),
-        ]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-07: tells the server then discards the local token pair',
+        () async {
+          final transport = _FakeTransport([
+            HttpJsonResponse(200, jsonEncode(_loginResponseFor('alice'))),
+            HttpJsonResponse(200, ''),
+          ]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        await client.login(LoginRequest(username: 'alice'));
-        await client.logout();
+          await client.login(LoginRequest(username: 'alice'));
+          await client.logout();
 
-        expect(transport.calls[1].uri,
-            equals(Uri.parse('http://localhost:8081/auth/logout')));
-        // Local discard happened — no bearer survives.
-        expect(TomBearerAuthentication.token, isNull);
-        expect(TomBearerAuthentication.authorizationToken, isNull);
-      });
+          expect(
+            transport.calls[1].uri,
+            equals(Uri.parse('http://localhost:8081/auth/logout')),
+          );
+          // Local discard happened — no bearer survives.
+          expect(TomBearerAuthentication.token, isNull);
+          expect(TomBearerAuthentication.authorizationToken, isNull);
+        },
+      );
 
-      test('TC-22-08: discards the local token pair even if the server call fails',
-          () async {
-        final transport = _FailingOnLogout([
-          HttpJsonResponse(200, jsonEncode(_loginResponseFor('alice'))),
-        ]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-08: discards the local token pair even if the server call fails',
+        () async {
+          final transport = _FailingOnLogout([
+            HttpJsonResponse(200, jsonEncode(_loginResponseFor('alice'))),
+          ]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        await client.login(LoginRequest(username: 'alice'));
-        await expectLater(client.logout(), throwsA(isA<Exception>()));
+          await client.login(LoginRequest(username: 'alice'));
+          await expectLater(client.logout(), throwsA(isA<Exception>()));
 
-        expect(TomBearerAuthentication.authorizationToken, isNull);
-      });
+          expect(TomBearerAuthentication.authorizationToken, isNull);
+        },
+      );
 
-      test('TC-22-09: logout with no stored session is a no-op that touches no transport',
-          () async {
-        final transport = _FakeTransport([]);
-        final client = AuthClient(baseUri, transport: transport);
+      test(
+        'TC-22-09: logout with no stored session is a no-op that touches no transport',
+        () async {
+          final transport = _FakeTransport([]);
+          final client = AuthClient(baseUri, transport: transport);
 
-        await client.logout();
+          await client.logout();
 
-        expect(transport.calls, isEmpty);
-        expect(TomBearerAuthentication.authorizationToken, isNull);
-      });
+          expect(transport.calls, isEmpty);
+          expect(TomBearerAuthentication.authorizationToken, isNull);
+        },
+      );
     });
   });
 
@@ -245,7 +316,8 @@ void main() {
 }''';
 
       final result = dtoFromJson<LoginResult>(
-          jsonDecode(captured) as Map<String, Object?>);
+        jsonDecode(captured) as Map<String, Object?>,
+      );
 
       expect(result.user.id, equals('2'));
       expect(result.user.username, equals('alice'));
@@ -253,8 +325,7 @@ void main() {
       expect(result.user.status, equals('active'));
       expect(result.authToken, equals('auth-token-abc'));
       expect(result.authzToken, equals('authz-token-def'));
-      expect(result.expiresAt,
-          equals(DateTime.utc(2026, 6, 28, 12, 34, 56)));
+      expect(result.expiresAt, equals(DateTime.utc(2026, 6, 28, 12, 34, 56)));
     });
   });
 }

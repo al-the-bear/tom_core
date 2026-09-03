@@ -71,9 +71,13 @@ void main() {
           description: 'a resolveFormFactor badge',
         ),
       );
-      expect(badge.evaluate(), hasLength(1),
-          reason: 'cell "$title" must paint exactly one resolveFormFactor '
-              'badge — the readout is what makes the tier observable');
+      expect(
+        badge.evaluate(),
+        hasLength(1),
+        reason:
+            'cell "$title" must paint exactly one resolveFormFactor '
+            'badge — the readout is what makes the tier observable',
+      );
       result.add((title, tester.widget<Text>(badge).data!));
     }
     return result;
@@ -86,38 +90,58 @@ void main() {
   /// `Desktop (1200px) — default row`.
   String titleTier(String title) => title.split(' ').first.toLowerCase();
 
-  testWidgets('a desktop-tier cell is pinned at a width that resolves desktop',
-      (tester) async {
+  testWidgets(
+    'a desktop-tier cell is pinned at a width that resolves desktop',
+    (tester) async {
+      await pumpGroup(tester);
+      expect(
+        find.text('resolveFormFactor(1200.0) → desktop'),
+        findsOneWidget,
+        reason:
+            'desktop starts at 1024, so demonstrating the tier needs a '
+            'width at or above it',
+      );
+    },
+  );
+
+  testWidgets('a tablet-tier cell is pinned at a width that resolves tablet', (
+    tester,
+  ) async {
     await pumpGroup(tester);
-    expect(find.text('resolveFormFactor(1200.0) → desktop'), findsOneWidget,
-        reason: 'desktop starts at 1024, so demonstrating the tier needs a '
-            'width at or above it');
+    expect(
+      find.text('resolveFormFactor(900.0) → tablet'),
+      findsOneWidget,
+      reason: '900 sits between the 600 and 1024 boundaries',
+    );
   });
 
-  testWidgets('a tablet-tier cell is pinned at a width that resolves tablet',
-      (tester) async {
+  testWidgets('a phone-tier cell is pinned at a width that resolves phone', (
+    tester,
+  ) async {
     await pumpGroup(tester);
-    expect(find.text('resolveFormFactor(900.0) → tablet'), findsOneWidget,
-        reason: '900 sits between the 600 and 1024 boundaries');
+    expect(
+      find.text('resolveFormFactor(400.0) → phone'),
+      findsOneWidget,
+      reason:
+          'below 600 the tier is phone — and 400 is also the only cell '
+          'below the 600px addVariant threshold, so it is the stacked one',
+    );
   });
 
-  testWidgets('a phone-tier cell is pinned at a width that resolves phone',
-      (tester) async {
-    await pumpGroup(tester);
-    expect(find.text('resolveFormFactor(400.0) → phone'), findsOneWidget,
-        reason: 'below 600 the tier is phone — and 400 is also the only cell '
-            'below the 600px addVariant threshold, so it is the stacked one');
-  });
-
-  testWidgets('every cell title names the tier its own width resolves to',
-      (tester) async {
+  testWidgets('every cell title names the tier its own width resolves to', (
+    tester,
+  ) async {
     await pumpGroup(tester);
     final observed = titledBadges(tester);
 
     for (final (title, badge) in observed) {
-      expect(titleTier(title), tierOf(badge),
-          reason: 'cell "$title" renders "$badge" — a title that contradicts '
-              'the resolver teaches the mapping backwards');
+      expect(
+        titleTier(title),
+        tierOf(badge),
+        reason:
+            'cell "$title" renders "$badge" — a title that contradicts '
+            'the resolver teaches the mapping backwards',
+      );
     }
   });
 
@@ -125,8 +149,12 @@ void main() {
     await pumpGroup(tester);
     final tiers = titledBadges(tester).map((e) => tierOf(e.$2)).toSet();
 
-    expect(tiers, containsAll(<String>['phone', 'tablet', 'desktop']),
-        reason: 'the group exists to show the phone/tablet/desktop mapping, so '
-            'each tier needs a cell that actually resolves to it');
+    expect(
+      tiers,
+      containsAll(<String>['phone', 'tablet', 'desktop']),
+      reason:
+          'the group exists to show the phone/tablet/desktop mapping, so '
+          'each tier needs a cell that actually resolves to it',
+    );
   });
 }

@@ -79,8 +79,9 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('with no bind the host renders the form at its declared defaults',
-      (tester) async {
+  testWidgets('with no bind the host renders the form at its declared defaults', (
+    tester,
+  ) async {
     late final CompanyForm form;
     await pumpHost(
       tester,
@@ -94,16 +95,20 @@ void main() {
     expect(form.name.get(), isEmpty);
     expect(form.taxId.get(), isEmpty);
     expect(form.website.get(), isEmpty);
-    expect(find.text('Acme Corporation'), findsNothing,
-        reason: 'no entity was supplied, so no entity value can be on screen');
+    expect(
+      find.text('Acme Corporation'),
+      findsNothing,
+      reason: 'no entity was supplied, so no entity value can be on screen',
+    );
 
     // The point of the unbound path is that it *renders*. A form that threw
     // without a binding would make the optionality of `bind` a lie.
     expect(find.byType(TextField), findsNWidgets(3));
   });
 
-  testWidgets('the caller-supplied bind seeds every field from its entity',
-      (tester) async {
+  testWidgets('the caller-supplied bind seeds every field from its entity', (
+    tester,
+  ) async {
     late final CompanyForm form;
     final profile = CompanyProfile();
     await pumpHost(
@@ -114,13 +119,18 @@ void main() {
     );
 
     expect(form.name.get(), profile.name.get());
-    expect(find.text('Acme Corporation'), findsOneWidget,
-        reason: 'binding is what puts entity state on screen — the host itself '
-            'only forwards the callback');
+    expect(
+      find.text('Acme Corporation'),
+      findsOneWidget,
+      reason:
+          'binding is what puts entity state on screen — the host itself '
+          'only forwards the callback',
+    );
   });
 
-  testWidgets('the host disposes the form when it leaves the tree',
-      (tester) async {
+  testWidgets('the host disposes the form when it leaves the tree', (
+    tester,
+  ) async {
     late final CompanyForm form;
     final profile = CompanyProfile();
     await pumpHost(
@@ -145,8 +155,12 @@ void main() {
     // in sync past the widget's life.
     profile.name.set('Disposed Ltd');
     await tester.pump();
-    expect(form.name.get(), 'Mounted Ltd',
-        reason: 'the form was disposed with the host; a post-teardown mutation '
-            'of the entity must not reach a disposed field');
+    expect(
+      form.name.get(),
+      'Mounted Ltd',
+      reason:
+          'the form was disposed with the host; a post-teardown mutation '
+          'of the entity must not reach a disposed field',
+    );
   });
 }

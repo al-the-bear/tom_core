@@ -83,8 +83,9 @@ class ShowcaseCell extends TomStatelessWidget {
               TomSizedBox(height: 4),
               TomText(
                 text: note!,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.secondary),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
               ),
             ],
             TomSizedBox(height: 12),
@@ -130,10 +131,7 @@ class _PreviewSurface extends TomStatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.outlineVariant),
       ),
-      child: TomAlign(
-        alignment: Alignment.centerLeft,
-        child: child,
-      ),
+      child: TomAlign(alignment: Alignment.centerLeft, child: child),
     );
   }
 }

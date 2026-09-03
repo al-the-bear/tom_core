@@ -99,29 +99,29 @@ const _appTitleKey = 'app.title';
 class TodoApiServer implements TodoApiService {
   @override
   Future<Map<String, Object>> health() async => <String, Object>{
-        'status': 'ok',
-        // Read through the config-resource provider rather than written here
-        // (G-RES-1). `app.title` is declared in `config-resources_default.yaml`
-        // and overridden by the `_dev` overlay, so a literal would report the
-        // production name while the server ran the dev configuration — the
-        // probe would describe a server nobody was running.
-        //
-        // Declared obligatory (no `withDefault`): restating the asset's value
-        // as a fallback would put the same string back in the source, one
-        // rename away from silently serving a stale name again. Absent, it
-        // fails naming the key.
-        //
-        // Resolved per call, not once into a field: `TomConfig` caches at
-        // construction, and a liveness probe is the one place that should
-        // report the configuration the server holds *now* rather than the one
-        // it held when its beans were built.
-        //
-        // `.get()!` rather than the `~config` shorthand: `~x!` parses as
-        // `~(x!)`, so the shorthand cannot carry the non-null assertion an
-        // obligatory key earns. The bang is safe — an absent key throws, and a
-        // key configured explicitly `null` fails the cast and throws.
-        'app': TomStringConfig(_appTitleKey).get()!,
-      };
+    'status': 'ok',
+    // Read through the config-resource provider rather than written here
+    // (G-RES-1). `app.title` is declared in `config-resources_default.yaml`
+    // and overridden by the `_dev` overlay, so a literal would report the
+    // production name while the server ran the dev configuration — the
+    // probe would describe a server nobody was running.
+    //
+    // Declared obligatory (no `withDefault`): restating the asset's value
+    // as a fallback would put the same string back in the source, one
+    // rename away from silently serving a stale name again. Absent, it
+    // fails naming the key.
+    //
+    // Resolved per call, not once into a field: `TomConfig` caches at
+    // construction, and a liveness probe is the one place that should
+    // report the configuration the server holds *now* rather than the one
+    // it held when its beans were built.
+    //
+    // `.get()!` rather than the `~config` shorthand: `~x!` parses as
+    // `~(x!)`, so the shorthand cannot carry the non-null assertion an
+    // obligatory key earns. The bang is safe — an absent key throws, and a
+    // key configured explicitly `null` fails the cast and throws.
+    'app': TomStringConfig(_appTitleKey).get()!,
+  };
 
   @override
   Future<List<TodoItemDto>> listTodos() async {
@@ -146,7 +146,9 @@ class TodoApiServer implements TodoApiService {
 
     final matrix = <String, Map<String, TomAuthState>>{};
     for (final entry in grantsByRole.entries) {
-      matrix[entry.key] = TodoFieldAuthorizer.fromGrants(entry.value).fieldStates;
+      matrix[entry.key] = TodoFieldAuthorizer.fromGrants(
+        entry.value,
+      ).fieldStates;
     }
     return TodoFieldMatrixDto(matrix);
   }
@@ -157,13 +159,13 @@ class TodoApiServer implements TodoApiService {
 /// enums travel as their stored `.name` token, and the due date as an ISO-8601
 /// string (empty when unset).
 TodoItemDto _recordToDto(TodoItemRecord record) => TodoItemDto(
-      id: record.id?.toString() ?? '',
-      title: record.title ?? '',
-      description: record.description ?? '',
-      done: record.done ?? false,
-      priority: record.priority ?? TodoPriority.medium.name,
-      label: record.label ?? TodoLabel.feature.name,
-      assigneeId: record.assigneeId?.toString() ?? '',
-      dueDate: record.dueDate?.toIso8601String() ?? '',
-      listId: record.listId?.toString() ?? '',
-    );
+  id: record.id?.toString() ?? '',
+  title: record.title ?? '',
+  description: record.description ?? '',
+  done: record.done ?? false,
+  priority: record.priority ?? TodoPriority.medium.name,
+  label: record.label ?? TodoLabel.feature.name,
+  assigneeId: record.assigneeId?.toString() ?? '',
+  dueDate: record.dueDate?.toIso8601String() ?? '',
+  listId: record.listId?.toString() ?? '',
+);

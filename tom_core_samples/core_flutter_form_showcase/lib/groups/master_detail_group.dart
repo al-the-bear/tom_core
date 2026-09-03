@@ -38,8 +38,9 @@ class _MasterPane extends TomStatelessWidget {
           TomPadding(
             padding: const EdgeInsets.all(8),
             child: TomText(
-                text: 'Items (${listForm.length})',
-                style: theme.textTheme.titleSmall),
+              text: 'Items (${listForm.length})',
+              style: theme.textTheme.titleSmall,
+            ),
           ),
           TomDivider(height: 1),
           TomExpanded(
@@ -60,7 +61,9 @@ class _MasterPane extends TomStatelessWidget {
                       dense: true,
                       selected: selected,
                       titleText: name,
-                      subtitle: TomText(text: 'Qty ${item?.quantity.get() ?? ''}'),
+                      subtitle: TomText(
+                        text: 'Qty ${item?.quantity.get() ?? ''}',
+                      ),
                       onTap: () => selectIndex(index),
                     );
                   },
@@ -105,8 +108,9 @@ class _DetailPane extends TomStatelessWidget {
                   children: [
                     TomExpanded(
                       child: TomText(
-                          text: 'Item detail',
-                          style: Theme.of(context).textTheme.titleSmall),
+                        text: 'Item detail',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                     ),
                     if (form.isDirty)
                       TomChip(
@@ -154,16 +158,19 @@ class _DetailPane extends TomStatelessWidget {
 final ShowcaseGroup masterDetailGroup = ShowcaseGroup(
   id: 'master_detail',
   title: 'Master-detail',
-  summary: 'A TomMasterDetailListForm: pick an item on the left to edit its '
+  summary:
+      'A TomMasterDetailListForm: pick an item on the left to edit its '
       'own sub-form on the right, with an unsaved-changes guard on switch.',
   icon: Icons.vertical_split_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomMasterDetailListForm',
-      note: 'Select a row to edit it on the right, and drag the splitter to '
+      note:
+          'Select a row to edit it on the right, and drag the splitter to '
           'rebalance the panes. Edit a field then pick another row to see the '
           'Save / Discard / Cancel guard.',
-      code: "TomMasterDetailListForm<OrderItem, OrderItemForm>(\n"
+      code:
+          "TomMasterDetailListForm<OrderItem, OrderItemForm>(\n"
           "  listForm: listForm,\n"
           "  masterPaneWidth: 220,\n"
           "  draggableSplitter: true,\n"

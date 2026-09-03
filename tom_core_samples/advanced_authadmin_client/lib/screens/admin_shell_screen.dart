@@ -39,16 +39,31 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   Widget build(BuildContext context) {
     // The rail destinations and the matching bodies stay index-aligned.
     final destinations = <NavigationRailDestination>[
-      _destination(Icons.people_outline, Icons.people,
-          TomCtr.text('adminConsole.nav.users')),
-      _destination(Icons.badge_outlined, Icons.badge,
-          TomCtr.text('adminConsole.nav.roles')),
-      _destination(Icons.groups_outlined, Icons.groups,
-          TomCtr.text('adminConsole.nav.groups')),
-      _destination(Icons.grid_on_outlined, Icons.grid_on,
-          TomCtr.text('adminConsole.nav.grants')),
-      _destination(Icons.assignment_ind_outlined, Icons.assignment_ind,
-          TomCtr.text('adminConsole.nav.assignments')),
+      _destination(
+        Icons.people_outline,
+        Icons.people,
+        TomCtr.text('adminConsole.nav.users'),
+      ),
+      _destination(
+        Icons.badge_outlined,
+        Icons.badge,
+        TomCtr.text('adminConsole.nav.roles'),
+      ),
+      _destination(
+        Icons.groups_outlined,
+        Icons.groups,
+        TomCtr.text('adminConsole.nav.groups'),
+      ),
+      _destination(
+        Icons.grid_on_outlined,
+        Icons.grid_on,
+        TomCtr.text('adminConsole.nav.grants'),
+      ),
+      _destination(
+        Icons.assignment_ind_outlined,
+        Icons.assignment_ind,
+        TomCtr.text('adminConsole.nav.assignments'),
+      ),
     ];
     final bodies = <Widget>[
       UsersScreen(session: _session),

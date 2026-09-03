@@ -72,13 +72,12 @@ void registerSampleFilePicker() =>
 /// The [request] is honoured the one way a synthetic picker can: its
 /// `allowedExtensions`, when the field declares any, choose the suffix, so the
 /// field's own validators pass rather than rejecting the sample's own file.
-Future<List<TomPickedFile>> sampleFilePicker(
-  TomFilePickRequest request,
-) async {
+Future<List<TomPickedFile>> sampleFilePicker(TomFilePickRequest request) async {
   final extension = request.allowedExtensions?.firstOrNull ?? 'txt';
-  final stamp = DateTime.now()
-      .toIso8601String()
-      .replaceAll(RegExp(r'[:.]'), '-');
+  final stamp = DateTime.now().toIso8601String().replaceAll(
+    RegExp(r'[:.]'),
+    '-',
+  );
   final name = 'note-$stamp.$extension';
   final bytes = utf8.encode(
     'Sample attachment composed by advanced_app_client at $stamp.\n',

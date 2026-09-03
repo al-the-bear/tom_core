@@ -55,8 +55,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await widget.session
-          .login(_credentials.username.get(), _credentials.password.get());
+      await widget.session.login(
+        _credentials.username.get(),
+        _credentials.password.get(),
+      );
     } on TodoApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -67,7 +69,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return TomScaffold(
-      appBar: TomAppBar(title: TomText(text: TomCtr.text('login.appbar.title'))),
+      appBar: TomAppBar(
+        title: TomText(text: TomCtr.text('login.appbar.title')),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),

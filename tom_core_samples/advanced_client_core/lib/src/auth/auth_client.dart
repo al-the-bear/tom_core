@@ -70,8 +70,8 @@ class AuthClient {
     this.baseUri, {
     JsonTransport? transport,
     bool decryptTokens = false,
-  })  : _transport = transport ?? IoJsonTransport(),
-        _decryptTokens = decryptTokens;
+  }) : _transport = transport ?? IoJsonTransport(),
+       _decryptTokens = decryptTokens;
 
   /// Exchanges [request] credentials for the token pair, stores it, and returns
   /// the resolved [LoginResult]. Throws [AuthClientException] on a rejected
@@ -302,10 +302,10 @@ class AuthClient {
 
   /// Stores the token pair so subsequent requests can attach the bearer.
   void _store(LoginResult result) => TomBearerAuthentication.setTokens(
-        result.authToken,
-        result.authzToken,
-        _decryptTokens,
-      );
+    result.authToken,
+    result.authzToken,
+    _decryptTokens,
+  );
 
   /// The `Authorization: Bearer <authzToken>` header for an authenticated call,
   /// or throws when no session is stored.

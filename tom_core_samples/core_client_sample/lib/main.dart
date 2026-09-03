@@ -40,9 +40,6 @@ void main() {
   final liveClient = liveUrl.isEmpty ? null : LiveTodoReadClient(liveUrl);
 
   runApp(
-    TodoApp(
-      session: AppSession(InMemoryTodoApi()),
-      liveClient: liveClient,
-    ),
+    TodoApp(session: AppSession(InMemoryTodoApi()), liveClient: liveClient),
   );
 }

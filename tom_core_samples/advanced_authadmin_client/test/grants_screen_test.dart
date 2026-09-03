@@ -31,8 +31,11 @@ void main() {
 
   // The label the cell renders for each state (distinct per state). Reading is
   // position-independent — the finder walks the element tree, not the screen.
-  String labelOf(WidgetTester tester, Key cell) =>
-      tester.widget<Text>(find.descendant(of: find.byKey(cell), matching: find.byType(Text))).data!;
+  String labelOf(WidgetTester tester, Key cell) => tester
+      .widget<Text>(
+        find.descendant(of: find.byKey(cell), matching: find.byType(Text)),
+      )
+      .data!;
 
   // Tapping is *not* position-independent. The grid scrolls horizontally and the
   // matrix spans eight graded keys (the seven form fields plus
@@ -47,8 +50,9 @@ void main() {
     await tester.tap(find.byKey(cell));
   }
 
-  testWidgets('TC-35-01: the Grants tab renders the seeded matrix',
-      (tester) async {
+  testWidgets('TC-35-01: the Grants tab renders the seeded matrix', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Grants');
 
@@ -61,8 +65,9 @@ void main() {
     );
   });
 
-  testWidgets('TC-35-02: a cell cycles none → disabled → read → full on tap',
-      (tester) async {
+  testWidgets('TC-35-02: a cell cycles none → disabled → read → full on tap', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Grants');
 
@@ -79,18 +84,20 @@ void main() {
     expect(labelOf(tester, ownerTitle), 'Read');
   });
 
-  testWidgets('TC-35-03: Save is disabled until a cell changes', (tester) async {
+  testWidgets('TC-35-03: Save is disabled until a cell changes', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Grants');
 
     // The grants-save key is on the TomFilledButton wrapper; the enabled/disabled
     // state lives on the FilledButton it renders, so reach through to it.
     FilledButton saveButton() => tester.widget<FilledButton>(
-          find.descendant(
-            of: find.byKey(const Key('grants-save')),
-            matching: find.byType(FilledButton),
-          ),
-        );
+      find.descendant(
+        of: find.byKey(const Key('grants-save')),
+        matching: find.byType(FilledButton),
+      ),
+    );
     expect(saveButton().onPressed, isNull); // pristine
 
     await tapCell(tester, ownerTitle);
@@ -98,8 +105,9 @@ void main() {
     expect(saveButton().onPressed, isNotNull); // dirty
   });
 
-  testWidgets('TC-35-04: saving issues the edited matrix to the backend',
-      (tester) async {
+  testWidgets('TC-35-04: saving issues the edited matrix to the backend', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     await openDestination(tester, 'Grants');
@@ -114,11 +122,15 @@ void main() {
     expect(saved.accessFor('owner', 'todo.item.title'), TomAuthState.none);
     // Other cells are untouched.
     expect(saved.accessFor('owner', 'todo.item.status'), TomAuthState.full);
-    expect(saved.accessFor('viewer', 'todo.item.status'), TomAuthState.disabled);
+    expect(
+      saved.accessFor('viewer', 'todo.item.status'),
+      TomAuthState.disabled,
+    );
   });
 
-  testWidgets('TC-35-05: a reload reflects the persisted matrix',
-      (tester) async {
+  testWidgets('TC-35-05: a reload reflects the persisted matrix', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     await openDestination(tester, 'Grants');
@@ -135,10 +147,12 @@ void main() {
     // cell shows the re-read state.
     expect(
       tester
-          .widget<FilledButton>(find.descendant(
-            of: find.byKey(const Key('grants-save')),
-            matching: find.byType(FilledButton),
-          ))
+          .widget<FilledButton>(
+            find.descendant(
+              of: find.byKey(const Key('grants-save')),
+              matching: find.byType(FilledButton),
+            ),
+          )
           .onPressed,
       isNull,
     );

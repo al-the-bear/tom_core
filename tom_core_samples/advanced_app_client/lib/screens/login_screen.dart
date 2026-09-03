@@ -95,10 +95,12 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await widget.session.login(LoginRequest(
-        username: _credentials.username.get(),
-        password: _credentials.password.get(),
-      ));
+      await widget.session.login(
+        LoginRequest(
+          username: _credentials.username.get(),
+          password: _credentials.password.get(),
+        ),
+      );
       // A login that owes a second factor — to answer or to set up — leaves the
       // session awaiting one, and the build below shows the flow panel.
     } on AppBackendException catch (e) {
@@ -137,49 +139,45 @@ class _LoginScreenState extends State<LoginScreen> {
   List<Widget> _credentialsPhase(
     BuildContext context,
     TomTextResourceProvider texts,
-  ) =>
-      [
-        TomText(
-          text: texts.getText('login.intro'),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 16),
-        _form.username.widget,
-        const SizedBox(height: 12),
-        _form.password.widget,
-        const SizedBox(height: 16),
-        // The rejected-credentials message, or — when the phase we just left was
-        // the second factor's — the reason it ended. The flow panel's own error
-        // line disappeared with the panel, so a spent challenge would otherwise
-        // drop the user back here with no account of what happened.
-        ..._errorBlock(
-          context,
-          _error ?? widget.session.abandonedTwoFactorMessage,
-        ),
-        TomFilledButton(
-          onPressed: _busy ? null : _submit,
-          child: _busy
-              ? SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: TomCircularProgressIndicator(strokeWidth: 2),
-                )
-              : TomText(text: texts.getText('login.submit')),
-        ),
-      ];
+  ) => [
+    TomText(
+      text: texts.getText('login.intro'),
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
+    const SizedBox(height: 16),
+    _form.username.widget,
+    const SizedBox(height: 12),
+    _form.password.widget,
+    const SizedBox(height: 16),
+    // The rejected-credentials message, or — when the phase we just left was
+    // the second factor's — the reason it ended. The flow panel's own error
+    // line disappeared with the panel, so a spent challenge would otherwise
+    // drop the user back here with no account of what happened.
+    ..._errorBlock(context, _error ?? widget.session.abandonedTwoFactorMessage),
+    TomFilledButton(
+      onPressed: _busy ? null : _submit,
+      child: _busy
+          ? SizedBox(
+              height: 18,
+              width: 18,
+              child: TomCircularProgressIndicator(strokeWidth: 2),
+            )
+          : TomText(text: texts.getText('login.submit')),
+    ),
+  ];
 
   /// The inline failure line for the credentials phase, showing [message]. The
   /// second-factor phase has its own (`tom-2fa-error`), owned by the flow panel
   /// while the flow is running.
   List<Widget> _errorBlock(BuildContext context, String? message) =>
       message == null
-          ? const []
-          : [
-              TomText(
-                text: message,
-                key: const Key('login-error'),
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-              const SizedBox(height: 12),
-            ];
+      ? const []
+      : [
+          TomText(
+            text: message,
+            key: const Key('login-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+          const SizedBox(height: 12),
+        ];
 }

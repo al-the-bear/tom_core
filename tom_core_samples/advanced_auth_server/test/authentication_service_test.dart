@@ -95,18 +95,20 @@ void main() {
       },
     );
 
-    test('the login does not fold effective per-resource roles into the token',
-        () async {
-      // The bearer token is opaque and never read for enforcement; the app
-      // server re-resolves grants/shares live from auth_db and the client reads
-      // its roles from /resource-roles. So the login leaves aci.resourceRoles
-      // empty rather than baking a claim that could only go stale.
-      final service = AdvancedAuthenticationService(_storeWith());
+    test(
+      'the login does not fold effective per-resource roles into the token',
+      () async {
+        // The bearer token is opaque and never read for enforcement; the app
+        // server re-resolves grants/shares live from auth_db and the client reads
+        // its roles from /resource-roles. So the login leaves aci.resourceRoles
+        // empty rather than baking a claim that could only go stale.
+        final service = AdvancedAuthenticationService(_storeWith());
 
-      final info = await service.authenticateUser(_login('ada', 's3cret'));
+        final info = await service.authenticateUser(_login('ada', 's3cret'));
 
-      expect(info.principal.aci.resourceRoles, isEmpty);
-    });
+        expect(info.principal.aci.resourceRoles, isEmpty);
+      },
+    );
 
     test('rejects the wrong password with a TomLoginException', () async {
       final service = AdvancedAuthenticationService(_storeWith());

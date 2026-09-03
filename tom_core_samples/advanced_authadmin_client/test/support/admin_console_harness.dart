@@ -41,9 +41,7 @@ Future<void> pumpSignedInConsole(
 ) async {
   useTallViewport(tester);
   installLoginBundle();
-  await tester.pumpWidget(
-    AdminConsoleApp(session: AdminSession(backend)),
-  );
+  await tester.pumpWidget(AdminConsoleApp(session: AdminSession(backend)));
   await tester.pumpAndSettle();
 
   final fields = find.byType(TextField);

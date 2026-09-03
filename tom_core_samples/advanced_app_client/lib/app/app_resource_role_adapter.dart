@@ -32,7 +32,7 @@ class AppResourceRoleAdapter implements TomAuthorizationAdapter {
   /// Builds the adapter over the principal's `resourceKey → roleName` map
   /// (typically `principal.aci.resourceRoles`).
   AppResourceRoleAdapter(Map<String, String> resourceRoles)
-      : _resourceRoles = TomResourceRoleAdapter(resourceRoles);
+    : _resourceRoles = TomResourceRoleAdapter(resourceRoles);
 
   @override
   TomAuthState resolveAuth(String resourceKeyPath) {

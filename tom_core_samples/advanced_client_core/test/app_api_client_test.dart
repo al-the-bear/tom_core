@@ -65,45 +65,52 @@ void main() {
     });
 
     test(
-        'TC-24-04: parseItems decodes enum tokens, the @!@ date prefix and tags',
-        () {
-      final items = parseItems([
-        {
-          'id': '11',
-          'listId': '3',
-          'title': 'Wire the endpoint',
-          'description': 'GET /items',
-          'status': TodoStatus.inProgress.name,
-          'priority': TodoPriority.high.name,
-          'label': TodoLabel.bug.name,
-          'assigneeId': '2',
-          'reporterId': '5',
-          'dueDate': '${TomDateTime.serializationPrefix}2026-07-01T09:00:00.000',
-          'estimateHours': 4.5,
-          'tags': ['backend', 'urgent'],
-        },
-      ]);
-      final item = items.single;
-      expect(item.id.get(), '11');
-      expect(item.statusValue, TodoStatus.inProgress);
-      expect(item.priorityValue, TodoPriority.high);
-      expect(item.labelValue, TodoLabel.bug);
-      expect(item.dueDate.get(), DateTime.parse('2026-07-01T09:00:00.000'));
-      expect(item.estimateHours.get(), 4.5);
-      expect([for (final t in item.tags.get()) t.get()], ['backend', 'urgent']);
-    });
+      'TC-24-04: parseItems decodes enum tokens, the @!@ date prefix and tags',
+      () {
+        final items = parseItems([
+          {
+            'id': '11',
+            'listId': '3',
+            'title': 'Wire the endpoint',
+            'description': 'GET /items',
+            'status': TodoStatus.inProgress.name,
+            'priority': TodoPriority.high.name,
+            'label': TodoLabel.bug.name,
+            'assigneeId': '2',
+            'reporterId': '5',
+            'dueDate':
+                '${TomDateTime.serializationPrefix}2026-07-01T09:00:00.000',
+            'estimateHours': 4.5,
+            'tags': ['backend', 'urgent'],
+          },
+        ]);
+        final item = items.single;
+        expect(item.id.get(), '11');
+        expect(item.statusValue, TodoStatus.inProgress);
+        expect(item.priorityValue, TodoPriority.high);
+        expect(item.labelValue, TodoLabel.bug);
+        expect(item.dueDate.get(), DateTime.parse('2026-07-01T09:00:00.000'));
+        expect(item.estimateHours.get(), 4.5);
+        expect(
+          [for (final t in item.tags.get()) t.get()],
+          ['backend', 'urgent'],
+        );
+      },
+    );
 
-    test('TC-24-05: parseItems tolerates a partial row, keeping field defaults',
-        () {
-      expect(parseItems(const []), isEmpty);
-      final item = parseItems([
-        {'id': '1', 'title': 'Bare'},
-      ]).single;
-      // Untouched fields keep the entity's constructor defaults.
-      expect(item.statusValue, TodoStatus.backlog);
-      expect(item.priorityValue, TodoPriority.medium);
-      expect(item.dueDate.get(), isNull);
-    });
+    test(
+      'TC-24-05: parseItems tolerates a partial row, keeping field defaults',
+      () {
+        expect(parseItems(const []), isEmpty);
+        final item = parseItems([
+          {'id': '1', 'title': 'Bare'},
+        ]).single;
+        // Untouched fields keep the entity's constructor defaults.
+        expect(item.statusValue, TodoStatus.backlog);
+        expect(item.priorityValue, TodoPriority.medium);
+        expect(item.dueDate.get(), isNull);
+      },
+    );
 
     test('TC-24-06: parseComment maps the thread entry', () {
       final comment = parseComment({
@@ -146,25 +153,31 @@ void main() {
       expect(subtask.position.get(), 2);
     });
 
-    test('TC-24-15: parseSubtasks tolerates a partial row, keeping defaults',
-        () {
-      expect(parseSubtasks(const []), isEmpty);
-      final subtask = parseSubtasks([
-        {'id': '5', 'title': 'Bare'},
-      ]).single;
-      expect(subtask.done.get(), isFalse);
-      expect(subtask.position.get(), 0);
-    });
+    test(
+      'TC-24-15: parseSubtasks tolerates a partial row, keeping defaults',
+      () {
+        expect(parseSubtasks(const []), isEmpty);
+        final subtask = parseSubtasks([
+          {'id': '5', 'title': 'Bare'},
+        ]).single;
+        expect(subtask.done.get(), isFalse);
+        expect(subtask.position.get(), 0);
+      },
+    );
   });
 
   group('AppApiClient over a fake transport', () {
     final appBaseUri = Uri.parse('http://localhost:8080');
     final authBaseUri = Uri.parse('http://localhost:8081');
 
-    setUp(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
-    tearDown(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
+    setUp(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
+    tearDown(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
 
     AppApiClient clientOver(_RoutingTransport transport) {
       final auth = AuthClient(authBaseUri, transport: transport);
@@ -176,40 +189,49 @@ void main() {
       TomBearerAuthentication.setTokens(jwt, jwt, false);
     }
 
-    test('TC-24-08: listItems sends GET /items?listId= with the bearer', () async {
-      storeBearer();
-      final transport = _RoutingTransport({
-        '/items': [
-          HttpJsonResponse(200, jsonEncode([_itemBody('11'), _itemBody('12')])),
-        ],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-24-08: listItems sends GET /items?listId= with the bearer',
+      () async {
+        storeBearer();
+        final transport = _RoutingTransport({
+          '/items': [
+            HttpJsonResponse(
+              200,
+              jsonEncode([_itemBody('11'), _itemBody('12')]),
+            ),
+          ],
+        });
+        final client = clientOver(transport);
 
-      final items = await client.listItems('3');
+        final items = await client.listItems('3');
 
-      expect(items.map((i) => i.id.get()), ['11', '12']);
-      final call = transport.callsTo('/items').single;
-      expect(call.method, 'GET');
-      expect(call.uri.queryParameters['listId'], '3');
-      expect(call.headers['Authorization'], startsWith('Bearer '));
-    });
+        expect(items.map((i) => i.id.get()), ['11', '12']);
+        final call = transport.callsTo('/items').single;
+        expect(call.method, 'GET');
+        expect(call.uri.queryParameters['listId'], '3');
+        expect(call.headers['Authorization'], startsWith('Bearer '));
+      },
+    );
 
-    test('TC-24-09: createItem POSTs the entity JSON and parses the result',
-        () async {
-      storeBearer();
-      final transport = _RoutingTransport({
-        '/items': [HttpJsonResponse(201, jsonEncode(_itemBody('99')))],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-24-09: createItem POSTs the entity JSON and parses the result',
+      () async {
+        storeBearer();
+        final transport = _RoutingTransport({
+          '/items': [HttpJsonResponse(201, jsonEncode(_itemBody('99')))],
+        });
+        final client = clientOver(transport);
 
-      final created =
-          await client.createItem(TodoItem()..title.set('New task'));
+        final created = await client.createItem(
+          TodoItem()..title.set('New task'),
+        );
 
-      expect(created.id.get(), '99');
-      final call = transport.callsTo('/items').single;
-      expect(call.method, 'POST');
-      expect((jsonDecode(call.body!) as Map)['title'], 'New task');
-    });
+        expect(created.id.get(), '99');
+        final call = transport.callsTo('/items').single;
+        expect(call.method, 'POST');
+        expect((jsonDecode(call.body!) as Map)['title'], 'New task');
+      },
+    );
 
     test('TC-24-10: health() reads the public status object', () async {
       final transport = _RoutingTransport({
@@ -217,7 +239,9 @@ void main() {
         // framework's plain-text `/health` liveness probe.
         '/status': [
           HttpJsonResponse(
-              200, jsonEncode({'status': 'ok', 'service': 'advanced_app_server'})),
+            200,
+            jsonEncode({'status': 'ok', 'service': 'advanced_app_server'}),
+          ),
         ],
       });
       final client = clientOver(transport);
@@ -228,41 +252,52 @@ void main() {
       expect(health['service'], 'advanced_app_server');
     });
 
-    test('TC-24-11: a 403 raises AppApiException carrying the server key',
-        () async {
-      storeBearer();
-      final transport = _RoutingTransport({
-        '/items': [
-          HttpJsonResponse(403, jsonEncode({'error': 'app.access.forbidden'})),
-        ],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-24-11: a 403 raises AppApiException carrying the server key',
+      () async {
+        storeBearer();
+        final transport = _RoutingTransport({
+          '/items': [
+            HttpJsonResponse(
+              403,
+              jsonEncode({'error': 'app.access.forbidden'}),
+            ),
+          ],
+        });
+        final client = clientOver(transport);
 
-      await expectLater(
-        client.listItems('3'),
-        throwsA(isA<AppApiException>()
-            .having((e) => e.key, 'key', 'app.access.forbidden')
-            .having((e) => e.statusCode, 'statusCode', 403)),
-      );
-    });
+        await expectLater(
+          client.listItems('3'),
+          throwsA(
+            isA<AppApiException>()
+                .having((e) => e.key, 'key', 'app.access.forbidden')
+                .having((e) => e.statusCode, 'statusCode', 403),
+          ),
+        );
+      },
+    );
 
-    test('TC-24-12: a 404 on delete raises AppApiException (not_found)',
-        () async {
-      storeBearer();
-      final transport = _RoutingTransport({
-        '/items/55': [
-          HttpJsonResponse(404, jsonEncode({'error': 'app.item.not_found'})),
-        ],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-24-12: a 404 on delete raises AppApiException (not_found)',
+      () async {
+        storeBearer();
+        final transport = _RoutingTransport({
+          '/items/55': [
+            HttpJsonResponse(404, jsonEncode({'error': 'app.item.not_found'})),
+          ],
+        });
+        final client = clientOver(transport);
 
-      await expectLater(
-        client.deleteItem(EntityIdRequest(id: '55')),
-        throwsA(isA<AppApiException>()
-            .having((e) => e.key, 'key', 'app.item.not_found')
-            .having((e) => e.statusCode, 'statusCode', 404)),
-      );
-    });
+        await expectLater(
+          client.deleteItem(EntityIdRequest(id: '55')),
+          throwsA(
+            isA<AppApiException>()
+                .having((e) => e.key, 'key', 'app.item.not_found')
+                .having((e) => e.statusCode, 'statusCode', 404),
+          ),
+        );
+      },
+    );
 
     test('TC-24-16: listComments GETs the item-scoped thread path', () async {
       // The path capture is the whole input, so the assertion that matters is
@@ -272,11 +307,12 @@ void main() {
       final transport = _RoutingTransport({
         '/items/11/comments': [
           HttpJsonResponse(
-              200,
-              jsonEncode([
-                {'id': '1', 'itemId': '11', 'body': 'first'},
-                {'id': '2', 'itemId': '11', 'body': 'second'},
-              ])),
+            200,
+            jsonEncode([
+              {'id': '1', 'itemId': '11', 'body': 'first'},
+              {'id': '2', 'itemId': '11', 'body': 'second'},
+            ]),
+          ),
         ],
       });
       final client = clientOver(transport);
@@ -290,41 +326,52 @@ void main() {
       expect(call.headers['Authorization'], startsWith('Bearer '));
     });
 
-    test('TC-24-17: listSubtasks GETs the item-scoped checklist path', () async {
-      storeBearer();
-      final transport = _RoutingTransport({
-        '/items/11/subtasks': [
-          HttpJsonResponse(
+    test(
+      'TC-24-17: listSubtasks GETs the item-scoped checklist path',
+      () async {
+        storeBearer();
+        final transport = _RoutingTransport({
+          '/items/11/subtasks': [
+            HttpJsonResponse(
               200,
               jsonEncode([
                 {'id': '5', 'itemId': '11', 'title': 'a', 'position': 0},
                 {'id': '7', 'itemId': '11', 'title': 'b', 'position': 1},
-              ])),
-        ],
-      });
-      final client = clientOver(transport);
+              ]),
+            ),
+          ],
+        });
+        final client = clientOver(transport);
 
-      final checklist = await client.listSubtasks(EntityIdRequest(id: '11'));
+        final checklist = await client.listSubtasks(EntityIdRequest(id: '11'));
 
-      expect(checklist.map((s) => s.title.get()), ['a', 'b']);
-      expect(transport.callsTo('/items/11/subtasks').single.method, 'GET');
-    });
+        expect(checklist.map((s) => s.title.get()), ['a', 'b']);
+        expect(transport.callsTo('/items/11/subtasks').single.method, 'GET');
+      },
+    );
 
     test('TC-24-18: addSubtask POSTs under the parent item', () async {
       storeBearer();
       final transport = _RoutingTransport({
         '/items/11/subtasks': [
           HttpJsonResponse(
-              201,
-              jsonEncode(
-                  {'id': '9', 'itemId': '11', 'title': 'c', 'position': 2})),
+            201,
+            jsonEncode({
+              'id': '9',
+              'itemId': '11',
+              'title': 'c',
+              'position': 2,
+            }),
+          ),
         ],
       });
       final client = clientOver(transport);
 
-      final created = await client.addSubtask(Subtask()
-        ..itemId.set('11')
-        ..title.set('c'));
+      final created = await client.addSubtask(
+        Subtask()
+          ..itemId.set('11')
+          ..title.set('c'),
+      );
 
       expect(created.id.get(), '9');
       final call = transport.callsTo('/items/11/subtasks').single;
@@ -339,54 +386,60 @@ void main() {
       final transport = _RoutingTransport({
         '/subtasks/9': [
           HttpJsonResponse(
-              200,
-              jsonEncode(
-                  {'id': '9', 'itemId': '11', 'title': 'c', 'done': true})),
+            200,
+            jsonEncode({'id': '9', 'itemId': '11', 'title': 'c', 'done': true}),
+          ),
         ],
       });
       final client = clientOver(transport);
 
-      final saved = await client.updateSubtask(Subtask()
-        ..id.set('9')
-        ..itemId.set('11')
-        ..done.set(true));
+      final saved = await client.updateSubtask(
+        Subtask()
+          ..id.set('9')
+          ..itemId.set('11')
+          ..done.set(true),
+      );
 
       expect(saved.done.get(), isTrue);
       expect(transport.callsTo('/subtasks/9').single.method, 'PUT');
     });
 
-    test('TC-24-20: a 404 on the thread read surfaces the closed/safe key',
-        () async {
-      // The server reports an unreachable item as missing rather than
-      // forbidden; the client must relay that key verbatim so the UI can tell
-      // "gone" from "denied" the same way the server does.
-      storeBearer();
-      final transport = _RoutingTransport({
-        '/items/55/comments': [
-          HttpJsonResponse(404, jsonEncode({'error': 'app.item.not_found'})),
-        ],
-      });
-      final client = clientOver(transport);
+    test(
+      'TC-24-20: a 404 on the thread read surfaces the closed/safe key',
+      () async {
+        // The server reports an unreachable item as missing rather than
+        // forbidden; the client must relay that key verbatim so the UI can tell
+        // "gone" from "denied" the same way the server does.
+        storeBearer();
+        final transport = _RoutingTransport({
+          '/items/55/comments': [
+            HttpJsonResponse(404, jsonEncode({'error': 'app.item.not_found'})),
+          ],
+        });
+        final client = clientOver(transport);
 
-      await expectLater(
-        client.listComments(EntityIdRequest(id: '55')),
-        throwsA(isA<AppApiException>()
-            .having((e) => e.key, 'key', 'app.item.not_found')
-            .having((e) => e.statusCode, 'statusCode', 404)),
-      );
-    });
+        await expectLater(
+          client.listComments(EntityIdRequest(id: '55')),
+          throwsA(
+            isA<AppApiException>()
+                .having((e) => e.key, 'key', 'app.item.not_found')
+                .having((e) => e.statusCode, 'statusCode', 404),
+          ),
+        );
+      },
+    );
   });
 }
 
 /// A `TodoItem` wire map (the framework `getValues()` shape) carrying [id].
 Map<String, Object?> _itemBody(String id) => {
-      'id': id,
-      'listId': '3',
-      'title': 'Item $id',
-      'status': TodoStatus.backlog.name,
-      'priority': TodoPriority.medium.name,
-      'label': TodoLabel.feature.name,
-    };
+  'id': id,
+  'listId': '3',
+  'title': 'Item $id',
+  'status': TodoStatus.backlog.name,
+  'priority': TodoPriority.medium.name,
+  'label': TodoLabel.feature.name,
+};
 
 /// Builds an unsigned, undecrypted JWT whose middle segment carries [payload].
 /// Suitable for `setTokens(..., decrypt: false)`.

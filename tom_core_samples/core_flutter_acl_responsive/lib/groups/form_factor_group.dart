@@ -40,12 +40,16 @@ Widget _factorLayout(double width) {
             .setAclExpandXDefault(true)
             .append(demoBox('Label', Colors.indigo))
             .append(demoBox('Value', Colors.cyan), dist: 12)
-            .addVariant('phone', atWidth: 600, builder: (b) {
-              b
-                  .append(demoBox('Label', Colors.indigo))
-                  .newRow(dist: 6)
-                  .append(demoBox('Value', Colors.cyan));
-            })
+            .addVariant(
+              'phone',
+              atWidth: 600,
+              builder: (b) {
+                b
+                    .append(demoBox('Label', Colors.indigo))
+                    .newRow(dist: 6)
+                    .append(demoBox('Value', Colors.cyan));
+              },
+            )
             .build(),
       ),
     ],
@@ -56,7 +60,8 @@ Widget _factorLayout(double width) {
 final ShowcaseGroup formFactorGroup = ShowcaseGroup(
   id: 'form_factor',
   title: 'Form-factor variants',
-  summary: 'resolveFormFactor maps width to phone/tablet/desktop tiers; '
+  summary:
+      'resolveFormFactor maps width to phone/tablet/desktop tiers; '
       'addVariant swaps in a stacked phone layout below 600px — one chain, two '
       'shapes.',
   icon: Icons.devices_outlined,
@@ -67,9 +72,11 @@ final ShowcaseGroup formFactorGroup = ShowcaseGroup(
   cells: (context) => [
     ShowcaseCell(
       title: 'Desktop (1200px) — default row',
-      note: 'At 1024px and above the tier is desktop. Being above the 600px '
+      note:
+          'At 1024px and above the tier is desktop. Being above the 600px '
           'phone variant too, the default side-by-side row applies.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('Label', Colors.indigo))\n"
           "    .append(demoBox('Value', Colors.cyan), dist: 12)\n"
           "    .addVariant('phone', atWidth: 600, builder: (b) {\n"
@@ -82,19 +89,23 @@ final ShowcaseGroup formFactorGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Tablet (900px) — the same default row',
-      note: 'Below 1024px the tier is tablet, but the layout is unchanged: the '
+      note:
+          'Below 1024px the tier is tablet, but the layout is unchanged: the '
           'variant threshold is 600, not the tier boundary. Same chain, same '
           'shape, different tier name.',
-      code: '// Same chain as above — 900px is below the 1024px desktop\n'
+      code:
+          '// Same chain as above — 900px is below the 1024px desktop\n'
           '// boundary but still above the 600px atWidth threshold, so the\n'
           '// tier changes and the shape does not.',
       child: _factorLayout(900),
     ),
     ShowcaseCell(
       title: 'Phone (400px) — stacked variant',
-      note: 'Below 600px the registered phone variant replaces the default row '
+      note:
+          'Below 600px the registered phone variant replaces the default row '
           'with a stacked layout.',
-      code: '// Same chain as above — the ACL engine picks the phone variant\n'
+      code:
+          '// Same chain as above — the ACL engine picks the phone variant\n'
           '// because 400px < the 600px atWidth threshold.',
       child: _factorLayout(400),
     ),

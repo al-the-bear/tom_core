@@ -65,14 +65,14 @@ const Map<ProjectRole, Map<String, TomAuthState>> seededGrantMatrix = {
 
 /// Flattens [seededGrantMatrix] into the grant rows the auth server seeds.
 List<TomResourceGrant> seedGrants() => [
-      for (final role in seededGrantMatrix.entries)
-        for (final field in role.value.entries)
-          TomResourceGrant(
-            roleName: role.key.name,
-            resourceKey: field.key,
-            accessLevel: field.value,
-          ),
-    ];
+  for (final role in seededGrantMatrix.entries)
+    for (final field in role.value.entries)
+      TomResourceGrant(
+        roleName: role.key.name,
+        resourceKey: field.key,
+        accessLevel: field.value,
+      ),
+];
 
 void main() {
   final resolver = FieldGradeResolver(InMemoryGrantStore(seedGrants()));
@@ -90,18 +90,20 @@ void main() {
     test('a key granted twice widens to the most permissive grade', () async {
       // Two rows grade the same key for one role; the fold keeps the stronger
       // (read vs full -> full), matching TomGradedAccessControlInformation.
-      final resolver = FieldGradeResolver(InMemoryGrantStore([
-        TomResourceGrant(
-          roleName: ProjectRole.editor.name,
-          resourceKey: 'todo.item.title',
-          accessLevel: TomAuthState.read,
-        ),
-        TomResourceGrant(
-          roleName: ProjectRole.editor.name,
-          resourceKey: 'todo.item.title',
-          accessLevel: TomAuthState.full,
-        ),
-      ]));
+      final resolver = FieldGradeResolver(
+        InMemoryGrantStore([
+          TomResourceGrant(
+            roleName: ProjectRole.editor.name,
+            resourceKey: 'todo.item.title',
+            accessLevel: TomAuthState.read,
+          ),
+          TomResourceGrant(
+            roleName: ProjectRole.editor.name,
+            resourceKey: 'todo.item.title',
+            accessLevel: TomAuthState.full,
+          ),
+        ]),
+      );
       final graded = await resolver.gradesForRole(ProjectRole.editor);
       expect(graded.resolveState('todo.item.title'), TomAuthState.full);
     });
@@ -109,30 +111,40 @@ void main() {
     test('a field with no grant row degrades to none (closed/safe)', () async {
       // The role has a grant for title only; every other gradable field has no
       // row and must resolve to none (hidden), the framework's safe default.
-      final resolver = FieldGradeResolver(InMemoryGrantStore([
-        TomResourceGrant(
-          roleName: ProjectRole.viewer.name,
-          resourceKey: 'todo.item.title',
-          accessLevel: TomAuthState.read,
-        ),
-      ]));
+      final resolver = FieldGradeResolver(
+        InMemoryGrantStore([
+          TomResourceGrant(
+            roleName: ProjectRole.viewer.name,
+            resourceKey: 'todo.item.title',
+            accessLevel: TomAuthState.read,
+          ),
+        ]),
+      );
       final states = await resolver.resolveItemFieldStates(ProjectRole.viewer);
       expect(states['todo.item.title'], TomAuthState.read);
       expect(states['todo.item.status'], TomAuthState.none);
       expect(states['todo.item.estimate'], TomAuthState.none);
     });
 
-    test('resolved states cover every gradable field, in display order', () async {
-      final states = await resolver.resolveItemFieldStates(ProjectRole.owner);
-      expect(states.keys, orderedEquals(seededGrantMatrix[ProjectRole.owner]!.keys));
-    });
+    test(
+      'resolved states cover every gradable field, in display order',
+      () async {
+        final states = await resolver.resolveItemFieldStates(ProjectRole.owner);
+        expect(
+          states.keys,
+          orderedEquals(seededGrantMatrix[ProjectRole.owner]!.keys),
+        );
+      },
+    );
 
     test('the gradable key set is derived from the server bundle', () {
       // The resolver carries no inline key list — its default set is the
       // server resource bundle's gradable keys, so the graded set tracks the
       // texts the server serves.
-      expect(resolver.gradableItemKeys,
-          orderedEquals(AppResourceBundles.gradableItemKeys()));
+      expect(
+        resolver.gradableItemKeys,
+        orderedEquals(AppResourceBundles.gradableItemKeys()),
+      );
     });
   });
 }

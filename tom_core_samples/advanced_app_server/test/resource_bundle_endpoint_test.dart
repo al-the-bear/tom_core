@@ -29,10 +29,10 @@ const _gradableItemFields = <String>[
 ];
 
 TomPrincipal _authenticated({List<String> roles = const []}) => TomPrincipal(
-      authenticated: true,
-      user: TomUser(username: 'alice'),
-      aci: TomAccessControlInformation(roles: roles),
-    );
+  authenticated: true,
+  user: TomUser(username: 'alice'),
+  aci: TomAccessControlInformation(roles: roles),
+);
 
 void main() {
   group('app resource bundle (todo 7)', () {
@@ -41,7 +41,11 @@ void main() {
       final texts = AppResourceBundles.appBundle().texts;
       for (final field in _gradableItemFields) {
         final key = 'todo.item.$field.label';
-        expect(texts.containsKey(key), isTrue, reason: 'missing label key $key');
+        expect(
+          texts.containsKey(key),
+          isTrue,
+          reason: 'missing label key $key',
+        );
       }
       // The estimate label is keyed on the concept token (`estimate`), never the
       // entity member `estimateHours` — the label key tracks the grade key.
@@ -63,11 +67,13 @@ void main() {
       expect(dto.texts, AppResourceBundles.appBundle().texts);
     });
 
-    test('appResources requires authentication (rejects an anonymous caller)',
-        () {
-      final access = appApi.endpoints['appResources']!.access!;
-      expect(access.checkAccessibility(null), isFalse);
-      expect(access.checkAccessibility(_authenticated()), isTrue);
-    });
+    test(
+      'appResources requires authentication (rejects an anonymous caller)',
+      () {
+        final access = appApi.endpoints['appResources']!.access!;
+        expect(access.checkAccessibility(null), isFalse);
+        expect(access.checkAccessibility(_authenticated()), isTrue);
+      },
+    );
   });
 }

@@ -41,10 +41,7 @@ List<TomMigrationArtifact> _chain(String directory) {
     ..sort((a, b) => a.path.compareTo(b.path));
   return [
     for (final file in files)
-      TomMigrationArtifact(
-        file.uri.pathSegments.last,
-        file.readAsStringSync(),
-      ),
+      TomMigrationArtifact(file.uri.pathSegments.last, file.readAsStringSync()),
   ];
 }
 

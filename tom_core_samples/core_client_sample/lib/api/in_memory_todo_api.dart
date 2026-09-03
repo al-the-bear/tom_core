@@ -71,11 +71,13 @@ class InMemoryTodoApi implements TodoApi {
 
   void _seedUsers() {
     void add(String id, String username, String name, String role) {
-      _users.add(User()
-        ..id.set(id)
-        ..displayName.set(name)
-        ..email.set('$username@todo.example')
-        ..role.set(role));
+      _users.add(
+        User()
+          ..id.set(id)
+          ..displayName.set(name)
+          ..email.set('$username@todo.example')
+          ..role.set(role),
+      );
     }
 
     add('1', 'alice', 'Alice (owner)', 'owner');
@@ -84,8 +86,14 @@ class InMemoryTodoApi implements TodoApi {
   }
 
   void _seedItems() {
-    void add(String title, String desc, bool done, TodoPriority priority,
-        TodoLabel label, String assigneeId) {
+    void add(
+      String title,
+      String desc,
+      bool done,
+      TodoPriority priority,
+      TodoLabel label,
+      String assigneeId,
+    ) {
       final item = TodoItem()
         ..id.set('${_nextId++}')
         ..title.set(title)
@@ -97,12 +105,30 @@ class InMemoryTodoApi implements TodoApi {
       _items.add(item);
     }
 
-    add('Write the article', 'Draft the core_client_sample walkthrough.', false,
-        TodoPriority.high, TodoLabel.docs, '1');
-    add('Fix the login redirect', 'Bounce back to the list after auth.', false,
-        TodoPriority.critical, TodoLabel.bug, '2');
-    add('Tidy the seed data', 'Round out the demo todo set.', true,
-        TodoPriority.low, TodoLabel.chore, '2');
+    add(
+      'Write the article',
+      'Draft the core_client_sample walkthrough.',
+      false,
+      TodoPriority.high,
+      TodoLabel.docs,
+      '1',
+    );
+    add(
+      'Fix the login redirect',
+      'Bounce back to the list after auth.',
+      false,
+      TodoPriority.critical,
+      TodoLabel.bug,
+      '2',
+    );
+    add(
+      'Tidy the seed data',
+      'Round out the demo todo set.',
+      true,
+      TodoPriority.low,
+      TodoLabel.chore,
+      '2',
+    );
   }
 
   @override
@@ -121,8 +147,9 @@ class InMemoryTodoApi implements TodoApi {
   }
 
   @override
-  Future<List<TodoItem>> listItems() async =>
-      [for (final item in _items) _copyItem(item)];
+  Future<List<TodoItem>> listItems() async => [
+    for (final item in _items) _copyItem(item),
+  ];
 
   @override
   Future<TodoItem> saveItem(TodoItem item) async {

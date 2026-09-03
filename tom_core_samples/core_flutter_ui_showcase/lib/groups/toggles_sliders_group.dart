@@ -15,13 +15,15 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup togglesSlidersGroup = ShowcaseGroup(
   id: 'toggles',
   title: 'Toggles & sliders',
-  summary: 'Switches, checkboxes and sliders — the interactive value '
+  summary:
+      'Switches, checkboxes and sliders — the interactive value '
       'widgets that report changes through onChanged.',
   icon: Icons.tune,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomSwitch',
-      code: "TomSwitch(\n"
+      code:
+          "TomSwitch(\n"
           "  value: _on,\n"
           "  onChanged: (v) => setState(() => _on = v),\n"
           ")",
@@ -29,7 +31,8 @@ final ShowcaseGroup togglesSlidersGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomCheckbox',
-      code: "TomCheckbox(\n"
+      code:
+          "TomCheckbox(\n"
           "  value: _checked,\n"
           "  onChanged: (v) => setState(() => _checked = v ?? false),\n"
           ")",
@@ -37,10 +40,12 @@ final ShowcaseGroup togglesSlidersGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomSlider',
-      note: 'A slider has no intrinsic width either — the demo constrains it '
+      note:
+          'A slider has no intrinsic width either — the demo constrains it '
           'to 240px, and the snippet shows that constraint because without it '
           'the copied slider spans its whole parent.',
-      code: "TomSizedBox(\n"
+      code:
+          "TomSizedBox(\n"
           "  width: 240,\n"
           "  child: TomSlider(\n"
           "    value: _value,\n"
@@ -70,10 +75,7 @@ class _SwitchDemoState extends TomState<_SwitchDemo> {
 
   @override
   Widget buildContent(BuildContext context) {
-    return TomSwitch(
-      value: _on,
-      onChanged: (v) => setState(() => _on = v),
-    );
+    return TomSwitch(value: _on, onChanged: (v) => setState(() => _on = v));
   }
 }
 

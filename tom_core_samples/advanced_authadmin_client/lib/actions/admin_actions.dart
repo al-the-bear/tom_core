@@ -57,18 +57,16 @@ abstract class AdminActionContext extends TomActionContext {
   /// Runs [op] through [AdminSession.guard], completing [result] with `null` on
   /// success or the [AdminBackendException.message] on failure.
   void run<T>(Future<T> Function(AdminBackend backend) op) {
-    session.guard<T>(op).then(
-      (_) {
-        if (!_result.isCompleted) _result.complete(null);
-      },
-    ).catchError(
-      (Object e) {
-        if (!_result.isCompleted) {
-          _result.complete((e as AdminBackendException).message);
-        }
-      },
-      test: (e) => e is AdminBackendException,
-    );
+    session
+        .guard<T>(op)
+        .then((_) {
+          if (!_result.isCompleted) _result.complete(null);
+        })
+        .catchError((Object e) {
+          if (!_result.isCompleted) {
+            _result.complete((e as AdminBackendException).message);
+          }
+        }, test: (e) => e is AdminBackendException);
   }
 }
 
@@ -188,7 +186,7 @@ class PutGrantsContext extends AdminActionContext {
 class CreateUserAction extends TomSimpleAction<CreateUserContext> {
   /// Registers the action.
   CreateUserAction(TomActionController controller)
-      : super(actionId: 'users.create', controller: controller);
+    : super(actionId: 'users.create', controller: controller);
 
   @override
   void executeSimple(CreateUserContext context, TomActionTransaction tx) {
@@ -200,7 +198,7 @@ class CreateUserAction extends TomSimpleAction<CreateUserContext> {
 class UpdateUserAction extends TomSimpleAction<UpdateUserContext> {
   /// Registers the action.
   UpdateUserAction(TomActionController controller)
-      : super(actionId: 'users.update', controller: controller);
+    : super(actionId: 'users.update', controller: controller);
 
   @override
   void executeSimple(UpdateUserContext context, TomActionTransaction tx) {
@@ -212,7 +210,7 @@ class UpdateUserAction extends TomSimpleAction<UpdateUserContext> {
 class DeleteUserAction extends TomSimpleAction<DeleteUserContext> {
   /// Registers the action.
   DeleteUserAction(TomActionController controller)
-      : super(actionId: 'users.delete', controller: controller);
+    : super(actionId: 'users.delete', controller: controller);
 
   @override
   void executeSimple(DeleteUserContext context, TomActionTransaction tx) {
@@ -224,7 +222,7 @@ class DeleteUserAction extends TomSimpleAction<DeleteUserContext> {
 class CreateRoleAction extends TomSimpleAction<CreateRoleContext> {
   /// Registers the action.
   CreateRoleAction(TomActionController controller)
-      : super(actionId: 'roles.create', controller: controller);
+    : super(actionId: 'roles.create', controller: controller);
 
   @override
   void executeSimple(CreateRoleContext context, TomActionTransaction tx) {
@@ -236,7 +234,7 @@ class CreateRoleAction extends TomSimpleAction<CreateRoleContext> {
 class UpdateRoleAction extends TomSimpleAction<UpdateRoleContext> {
   /// Registers the action.
   UpdateRoleAction(TomActionController controller)
-      : super(actionId: 'roles.update', controller: controller);
+    : super(actionId: 'roles.update', controller: controller);
 
   @override
   void executeSimple(UpdateRoleContext context, TomActionTransaction tx) {
@@ -248,7 +246,7 @@ class UpdateRoleAction extends TomSimpleAction<UpdateRoleContext> {
 class DeleteRoleAction extends TomSimpleAction<DeleteRoleContext> {
   /// Registers the action.
   DeleteRoleAction(TomActionController controller)
-      : super(actionId: 'roles.delete', controller: controller);
+    : super(actionId: 'roles.delete', controller: controller);
 
   @override
   void executeSimple(DeleteRoleContext context, TomActionTransaction tx) {
@@ -260,7 +258,7 @@ class DeleteRoleAction extends TomSimpleAction<DeleteRoleContext> {
 class CreateGroupAction extends TomSimpleAction<CreateGroupContext> {
   /// Registers the action.
   CreateGroupAction(TomActionController controller)
-      : super(actionId: 'groups.create', controller: controller);
+    : super(actionId: 'groups.create', controller: controller);
 
   @override
   void executeSimple(CreateGroupContext context, TomActionTransaction tx) {
@@ -272,7 +270,7 @@ class CreateGroupAction extends TomSimpleAction<CreateGroupContext> {
 class UpdateGroupAction extends TomSimpleAction<UpdateGroupContext> {
   /// Registers the action.
   UpdateGroupAction(TomActionController controller)
-      : super(actionId: 'groups.update', controller: controller);
+    : super(actionId: 'groups.update', controller: controller);
 
   @override
   void executeSimple(UpdateGroupContext context, TomActionTransaction tx) {
@@ -284,7 +282,7 @@ class UpdateGroupAction extends TomSimpleAction<UpdateGroupContext> {
 class DeleteGroupAction extends TomSimpleAction<DeleteGroupContext> {
   /// Registers the action.
   DeleteGroupAction(TomActionController controller)
-      : super(actionId: 'groups.delete', controller: controller);
+    : super(actionId: 'groups.delete', controller: controller);
 
   @override
   void executeSimple(DeleteGroupContext context, TomActionTransaction tx) {
@@ -296,7 +294,7 @@ class DeleteGroupAction extends TomSimpleAction<DeleteGroupContext> {
 class AssignAction extends TomSimpleAction<AssignContext> {
   /// Registers the action.
   AssignAction(TomActionController controller)
-      : super(actionId: 'assignments.assign', controller: controller);
+    : super(actionId: 'assignments.assign', controller: controller);
 
   @override
   void executeSimple(AssignContext context, TomActionTransaction tx) {
@@ -308,7 +306,7 @@ class AssignAction extends TomSimpleAction<AssignContext> {
 class PutGrantsAction extends TomSimpleAction<PutGrantsContext> {
   /// Registers the action.
   PutGrantsAction(TomActionController controller)
-      : super(actionId: 'grants.save', controller: controller);
+    : super(actionId: 'grants.save', controller: controller);
 
   @override
   void executeSimple(PutGrantsContext context, TomActionTransaction tx) {

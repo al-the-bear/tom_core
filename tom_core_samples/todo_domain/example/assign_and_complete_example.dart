@@ -20,8 +20,10 @@ void main() {
     ..title.set('Publish the article')
     ..assigneeId.set(owner.id.get());
 
-  print('${task.title.get()} → ${owner.displayName.get()} '
-      '(${owner.role.get()})');
+  print(
+    '${task.title.get()} → ${owner.displayName.get()} '
+    '(${owner.role.get()})',
+  );
   // expected: Publish the article → Ada Lovelace (owner)
 
   task.done.set(true);

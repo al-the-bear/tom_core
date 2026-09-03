@@ -173,10 +173,12 @@ void main() {
     });
 
     test('an unknown stored enum token degrades through the typed accessor', () {
-      final item = itemFromRecord(ItemRecord()
-        ..id = 1
-        ..status = 'not-a-status'
-        ..priority = 'galactic');
+      final item = itemFromRecord(
+        ItemRecord()
+          ..id = 1
+          ..status = 'not-a-status'
+          ..priority = 'galactic',
+      );
       // Leniency: the raw token never crashes the mapping; the typed view falls
       // back to the enum's default.
       expect(item.statusValue, TodoStatus.backlog);
@@ -204,9 +206,11 @@ void main() {
     });
 
     test('a malformed tags column degrades to no tags', () {
-      final item = itemFromRecord(ItemRecord()
-        ..id = 1
-        ..tags = 'not json at all');
+      final item = itemFromRecord(
+        ItemRecord()
+          ..id = 1
+          ..tags = 'not json at all',
+      );
       expect(item.tags.get(), isEmpty);
     });
   });

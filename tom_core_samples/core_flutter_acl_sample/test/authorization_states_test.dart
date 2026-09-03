@@ -42,8 +42,9 @@ void main() {
     expect(find.text('TomAuthState.none'), findsOneWidget);
   });
 
-  testWidgets('the gated button shows for full/read/disabled but not none',
-      (tester) async {
+  testWidgets('the gated button shows for full/read/disabled but not none', (
+    tester,
+  ) async {
     await pumpAuthGroup(tester);
     // The button label appears once per visible state (full, read, disabled),
     // and never for `none` — proving `none` collapses the widget while the
@@ -52,12 +53,16 @@ void main() {
       of: find.byType(TomElevatedButton),
       matching: find.text('Approve'),
     );
-    expect(approveLabels, findsNWidgets(3),
-        reason: 'full, read and disabled render the button; none hides it');
+    expect(
+      approveLabels,
+      findsNWidgets(3),
+      reason: 'full, read and disabled render the button; none hides it',
+    );
   });
 
-  testWidgets('every authorization cell carries a non-empty snippet',
-      (tester) async {
+  testWidgets('every authorization cell carries a non-empty snippet', (
+    tester,
+  ) async {
     late BuildContext capturedContext;
     await tester.pumpWidget(
       MaterialApp(
@@ -70,8 +75,11 @@ void main() {
       ),
     );
     for (final cell in authorizationGroup.cells(capturedContext)) {
-      expect(cell.code.trim(), contains('TomAuthorizer.fixed'),
-          reason: 'each authorization snippet must show the gating call');
+      expect(
+        cell.code.trim(),
+        contains('TomAuthorizer.fixed'),
+        reason: 'each authorization snippet must show the gating call',
+      );
     }
   });
 }

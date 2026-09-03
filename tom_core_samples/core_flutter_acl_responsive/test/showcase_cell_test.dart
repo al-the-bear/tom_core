@@ -33,8 +33,9 @@ void main() {
     );
   });
 
-  testWidgets('renders both the code snippet and the live child',
-      (tester) async {
+  testWidgets('renders both the code snippet and the live child', (
+    tester,
+  ) async {
     // A wide viewport so the cell uses its side-by-side regime.
     tester.view.physicalSize = const Size(1200, 1200);
     tester.view.devicePixelRatio = 1.0;
@@ -60,14 +61,17 @@ void main() {
 
     expect(find.byKey(marker), findsOneWidget);
     expect(
-      find.textContaining('AclBuilder().append(demoBox("x", Colors.teal)).build()'),
+      find.textContaining(
+        'AclBuilder().append(demoBox("x", Colors.teal)).build()',
+      ),
       findsOneWidget,
     );
     expect(find.text('Demo'), findsOneWidget);
   });
 
-  testWidgets('every responsive cell carries a non-empty snippet',
-      (tester) async {
+  testWidgets('every responsive cell carries a non-empty snippet', (
+    tester,
+  ) async {
     // Group builders read Theme.of(context) / MediaQuery, so a real pumped
     // context is needed rather than a fake one.
     late BuildContext capturedContext;
@@ -84,14 +88,18 @@ void main() {
 
     for (final group in responsiveGroups) {
       for (final cell in group.cells(capturedContext)) {
-        expect(cell.code.trim(), isNotEmpty,
-            reason: 'group ${group.id}: a cell has an empty code snippet');
+        expect(
+          cell.code.trim(),
+          isNotEmpty,
+          reason: 'group ${group.id}: a cell has an empty code snippet',
+        );
       }
     }
   });
 
-  testWidgets('no snippet names an API absent from its own group source',
-      (tester) async {
+  testWidgets('no snippet names an API absent from its own group source', (
+    tester,
+  ) async {
     late BuildContext capturedContext;
     await tester.pumpWidget(
       MaterialApp(
@@ -109,9 +117,13 @@ void main() {
       // group whose file is renamed away from that mapping must fail loudly
       // rather than silently skip its snippets.
       final file = File('lib/groups/${group.id}_group.dart');
-      expect(file.existsSync(), isTrue,
-          reason: 'group ${group.id}: expected its source at ${file.path} — '
-              'the snippet check reads the live child from there');
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason:
+            'group ${group.id}: expected its source at ${file.path} — '
+            'the snippet check reads the live child from there',
+      );
       // Why the stripping matters: the snippets are themselves string literals
       // in this very file, so searching the raw text would find every name in
       // its own snippet and pass unconditionally.
@@ -119,13 +131,17 @@ void main() {
 
       for (final cell in group.cells(capturedContext)) {
         for (final name in _calledNames(cell.code)) {
-          expect(live, contains(RegExp('\\b${RegExp.escape(name)}\\s*\\(')),
-              reason: 'group ${group.id}, cell "${cell.title}": the snippet '
-                  'calls `$name(...)`, which is never called by the live code '
-                  'in ${file.path}. A snippet may abridge the live child, but '
-                  'it may not name an API that does not exist. If the call is '
-                  'genuine but reached indirectly, make the snippet say so — '
-                  'that is a real gap between what is shown and what runs.');
+          expect(
+            live,
+            contains(RegExp('\\b${RegExp.escape(name)}\\s*\\(')),
+            reason:
+                'group ${group.id}, cell "${cell.title}": the snippet '
+                'calls `$name(...)`, which is never called by the live code '
+                'in ${file.path}. A snippet may abridge the live child, but '
+                'it may not name an API that does not exist. If the call is '
+                'genuine but reached indirectly, make the snippet say so — '
+                'that is a real gap between what is shown and what runs.',
+          );
         }
       }
     }
@@ -207,8 +223,24 @@ Set<String> _calledNames(String code) {
       .replaceAll(RegExp(r'"(?:[^"\\]|\\.)*"'), '""');
 
   const keywords = {
-    'if', 'for', 'while', 'switch', 'return', 'catch', 'assert', 'super',
-    'this', 'new', 'await', 'in', 'is', 'as', 'else', 'do', 'throw', 'yield',
+    'if',
+    'for',
+    'while',
+    'switch',
+    'return',
+    'catch',
+    'assert',
+    'super',
+    'this',
+    'new',
+    'await',
+    'in',
+    'is',
+    'as',
+    'else',
+    'do',
+    'throw',
+    'yield',
   };
 
   return RegExp(r'([A-Za-z_$][A-Za-z0-9_$]*)\s*\(')

@@ -15,9 +15,9 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 
 TomPrincipal _principal({required List<String> roles}) => TomPrincipal(
-      authenticated: true,
-      aci: TomAccessControlInformation(roles: roles),
-    );
+  authenticated: true,
+  aci: TomAccessControlInformation(roles: roles),
+);
 
 void main() {
   group('login resource bundle (public)', () {
@@ -41,8 +41,7 @@ void main() {
       // descriptor's `two_factor.<type>.*` — so those keys, not a per-app
       // scope, are what the bundle must carry for it.
       expect(texts['two_factor.challenge.title'], 'Two-step verification');
-      expect(texts['two_factor.totp.challenge.codeLabel'],
-          'Verification code');
+      expect(texts['two_factor.totp.challenge.codeLabel'], 'Verification code');
       expect(texts['two_factor.totp.challenge.submit'], 'Verify');
       expect(texts['two_factor.attemptsRemaining'], contains('{count}'));
       // Enrolment is the other half of the same flow: the chooser, the offer's
@@ -66,9 +65,11 @@ void main() {
 
     test('login resources are reachable unauthenticated', () {
       expect(
-          authApi.endpoints['authLoginResources']!.access!
-              .checkAccessibility(null),
-          isTrue);
+        authApi.endpoints['authLoginResources']!.access!.checkAccessibility(
+          null,
+        ),
+        isTrue,
+      );
     });
   });
 
@@ -89,11 +90,17 @@ void main() {
       expect(dto.texts, AuthResourceBundles.adminConsoleBundle().texts);
     });
 
-    test('admin resources require the admin role (reject anon + non-admin)', () {
-      final access = adminApi.endpoints['adminResources']!.access!;
-      expect(access.checkAccessibility(null), isFalse);
-      expect(access.checkAccessibility(_principal(roles: ['editor'])), isFalse);
-      expect(access.checkAccessibility(_principal(roles: ['admin'])), isTrue);
-    });
+    test(
+      'admin resources require the admin role (reject anon + non-admin)',
+      () {
+        final access = adminApi.endpoints['adminResources']!.access!;
+        expect(access.checkAccessibility(null), isFalse);
+        expect(
+          access.checkAccessibility(_principal(roles: ['editor'])),
+          isFalse,
+        );
+        expect(access.checkAccessibility(_principal(roles: ['admin'])), isTrue);
+      },
+    );
   });
 }

@@ -11,7 +11,8 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup progressGroup = ShowcaseGroup(
   id: 'progress',
   title: 'Progress',
-  summary: 'Circular and linear progress indicators, both determinate and '
+  summary:
+      'Circular and linear progress indicators, both determinate and '
       'indeterminate.',
   icon: Icons.donut_large,
   cells: (context) => [
@@ -22,17 +23,20 @@ final ShowcaseGroup progressGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomCircularProgressIndicator (determinate)',
-      code: "TomCircularProgressIndicator(\n"
+      code:
+          "TomCircularProgressIndicator(\n"
           "  value: 0.65,\n"
           ")",
       child: TomCircularProgressIndicator(value: 0.65),
     ),
     ShowcaseCell(
       title: 'TomLinearProgressIndicator (determinate)',
-      note: 'A linear indicator has no intrinsic width — it fills whatever its '
+      note:
+          'A linear indicator has no intrinsic width — it fills whatever its '
           'parent offers, so the constraint is part of what the cell teaches '
           'and belongs in the snippet.',
-      code: "TomSizedBox(\n"
+      code:
+          "TomSizedBox(\n"
           "  width: 240,\n"
           "  child: TomLinearProgressIndicator(value: 0.4),\n"
           ")",

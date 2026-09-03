@@ -75,7 +75,8 @@ void main() {
       expect(
         labelled,
         equals(_gradableItemFields),
-        reason: 'The todo.item.* fields labelled in resources_app.json must '
+        reason:
+            'The todo.item.* fields labelled in resources_app.json must '
             'match the gradable item field set exactly. A difference means '
             'the text tree drifted from the field set — add the missing '
             'label or remove the stray one.',
@@ -103,7 +104,10 @@ void main() {
       // caught, and so is a regrade applied to `gradableItemKeys` alone. The
       // two orders are independent: the bundle's comes from the JSON tree, the
       // domain's from its own declaration.
-      expect(AppResourceBundles.gradableItemKeys(), orderedEquals(gradableItemKeys));
+      expect(
+        AppResourceBundles.gradableItemKeys(),
+        orderedEquals(gradableItemKeys),
+      );
     });
 
     test('the write path enforces exactly the bundle-derived keys', () {
@@ -113,8 +117,7 @@ void main() {
       expect(gradableItemFieldKeys, orderedEquals(gradableItemKeys));
     });
 
-    test('the graded attachment column stays out of the gradable field set',
-        () {
+    test('the graded attachment column stays out of the gradable field set', () {
       // `todo.item.attachment` is granted by the same four roles in the same
       // auth-server matrix, but it is a **column**, not a form field, and the
       // difference is a security boundary rather than bookkeeping:
@@ -134,7 +137,8 @@ void main() {
       expect(
         AppResourceBundles.gradableItemKeys(),
         isNot(contains(itemAttachmentGradeKey)),
-        reason: 'a todo.item.attachment.* text in resources_app.json would pull '
+        reason:
+            'a todo.item.attachment.* text in resources_app.json would pull '
             'the file column into the item write path — grade it on the file '
             'endpoint instead',
       );

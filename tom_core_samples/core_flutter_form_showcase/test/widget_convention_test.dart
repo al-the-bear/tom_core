@@ -30,8 +30,7 @@ void main() {
     );
   });
 
-  test('no library file builds a raw Flutter widget that has a Tom equivalent',
-      () {
+  test('no library file builds a raw Flutter widget that has a Tom equivalent', () {
     // `MaterialApp` is the sole exemption, and it is a real one rather than a
     // grandfathered case: `tom_flutter_ui` ships no `TomMaterialApp`, because
     // the Tom widgets live *inside* an app rather than replacing its root. The
@@ -39,18 +38,22 @@ void main() {
     const exempt = {'MaterialApp'};
 
     final lib = Directory('lib');
-    expect(lib.existsSync(), isTrue,
-        reason: 'tests must run from the package root');
+    expect(
+      lib.existsSync(),
+      isTrue,
+      reason: 'tests must run from the package root',
+    );
 
     final offenders = <String>[];
     var filesScanned = 0;
 
-    for (final file in lib
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))
-        // Generated code is the generator's output, not the sample's prose.
-        .where((f) => !f.path.endsWith('.reflection.dart'))) {
+    for (final file
+        in lib
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart'))
+            // Generated code is the generator's output, not the sample's prose.
+            .where((f) => !f.path.endsWith('.reflection.dart'))) {
       filesScanned++;
       final lines = _executableText(file.readAsStringSync()).split('\n');
 
@@ -63,9 +66,13 @@ void main() {
       }
     }
 
-    expect(offenders, isEmpty,
-        reason: 'the sample lays out exclusively with Tom widgets (G-UI-1):\n'
-            '${offenders.join("\n")}');
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'the sample lays out exclusively with Tom widgets (G-UI-1):\n'
+          '${offenders.join("\n")}',
+    );
 
     // A sweep that scans nothing passes trivially; the package has ~20 library
     // files, so anything near zero means the walk broke rather than the code
@@ -73,31 +80,39 @@ void main() {
     expect(filesScanned, greaterThanOrEqualTo(15));
   });
 
-  testWidgets('no snippet teaches a raw Flutter widget over its Tom equivalent',
-      (tester) async {
-    late BuildContext capturedContext;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            capturedContext = context;
-            return const SizedBox.shrink();
-          },
+  testWidgets(
+    'no snippet teaches a raw Flutter widget over its Tom equivalent',
+    (tester) async {
+      late BuildContext capturedContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              capturedContext = context;
+              return const SizedBox.shrink();
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    for (final group in showcaseGroups) {
-      for (final cell in group.cells(capturedContext)) {
-        final hits =
-            _rawWidgetCall.allMatches(cell.code).map((m) => m.group(1)).toSet();
-        expect(hits, isEmpty,
-            reason: 'group "${group.id}", cell "${cell.title}": snippet uses '
+      for (final group in showcaseGroups) {
+        for (final cell in group.cells(capturedContext)) {
+          final hits = _rawWidgetCall
+              .allMatches(cell.code)
+              .map((m) => m.group(1))
+              .toSet();
+          expect(
+            hits,
+            isEmpty,
+            reason:
+                'group "${group.id}", cell "${cell.title}": snippet uses '
                 'raw Flutter ${hits.join(", ")} instead of the Tom '
-                'equivalent(s)');
+                'equivalent(s)',
+          );
+        }
       }
-    }
-  });
+    },
+  );
 }
 
 /// The Flutter widgets this sample never builds directly, because
@@ -105,11 +120,35 @@ void main() {
 ///
 /// Names only — the regex that uses them adds the boundary and call syntax.
 const rawFlutterWidgets = <String>[
-  'Row', 'Column', 'Expanded', 'Flexible', 'SizedBox', 'Padding', 'Card',
-  'Divider', 'InkWell', 'ListView', 'ListTile', 'Wrap', 'SingleChildScrollView',
-  'Stack', 'Positioned', 'DecoratedBox', 'Chip', 'Text', 'Icon', 'IconButton',
-  'SelectableText', 'ElevatedButton', 'FilledButton', 'OutlinedButton',
-  'TextButton', 'Container', 'Align', 'Scaffold', 'AppBar',
+  'Row',
+  'Column',
+  'Expanded',
+  'Flexible',
+  'SizedBox',
+  'Padding',
+  'Card',
+  'Divider',
+  'InkWell',
+  'ListView',
+  'ListTile',
+  'Wrap',
+  'SingleChildScrollView',
+  'Stack',
+  'Positioned',
+  'DecoratedBox',
+  'Chip',
+  'Text',
+  'Icon',
+  'IconButton',
+  'SelectableText',
+  'ElevatedButton',
+  'FilledButton',
+  'OutlinedButton',
+  'TextButton',
+  'Container',
+  'Align',
+  'Scaffold',
+  'AppBar',
 ];
 
 /// Matches a direct construction of one of [rawFlutterWidgets].
@@ -137,4 +176,6 @@ final _newline = RegExp(r'[^\n]');
 /// the rule and must not be read as breaking it, and a cell's `code` snippet is
 /// a string literal whose contents are the *other* test's business.
 String _executableText(String source) => source.replaceAllMapped(
-    _commentOrString, (m) => m.group(0)!.replaceAll(_newline, ' '));
+  _commentOrString,
+  (m) => m.group(0)!.replaceAll(_newline, ' '),
+);

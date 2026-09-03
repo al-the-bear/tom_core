@@ -17,13 +17,13 @@ import '../domain/responsive_entities.dart';
 /// The industry dropdown source — a static, labelled selectable list.
 final StaticSelectableSource<String> industrySource =
     StaticSelectableSource<String>([
-  const SelectableItem(value: 'tech', label: 'Technology'),
-  const SelectableItem(value: 'finance', label: 'Finance'),
-  const SelectableItem(value: 'healthcare', label: 'Healthcare'),
-  const SelectableItem(value: 'manufacturing', label: 'Manufacturing'),
-  const SelectableItem(value: 'retail', label: 'Retail'),
-  const SelectableItem(value: 'other', label: 'Other'),
-]);
+      const SelectableItem(value: 'tech', label: 'Technology'),
+      const SelectableItem(value: 'finance', label: 'Finance'),
+      const SelectableItem(value: 'healthcare', label: 'Healthcare'),
+      const SelectableItem(value: 'manufacturing', label: 'Manufacturing'),
+      const SelectableItem(value: 'retail', label: 'Retail'),
+      const SelectableItem(value: 'other', label: 'Other'),
+    ]);
 
 /// A flat company form: string input, dropdown and two pattern-validated
 /// inputs. The single source of truth for the breakpoint-field-style and

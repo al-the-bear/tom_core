@@ -60,8 +60,9 @@ import 'reflection_seed.dart';
 /// default live stack) unless `--dart-define=TEST_MODE=true` selects the seeded
 /// in-memory `test` environment (G-ENV-2/G-ENV-3). This is the environment
 /// *selector*; the locator picks the backend from the name.
-const String _clientEnvironment =
-    bool.fromEnvironment('TEST_MODE') ? 'test' : 'prod';
+const String _clientEnvironment = bool.fromEnvironment('TEST_MODE')
+    ? 'test'
+    : 'prod';
 
 Future<void> main() async {
   initializeReflection();
@@ -98,10 +99,7 @@ Future<void> main() async {
 /// `two_factor_optional` role rows the `[005]` migration seeds. So `dave` is
 /// challenged and `erin` is offered enrolment in either mode, and `alice` signs
 /// straight in in either mode.
-AppBackend _installBackend() => TomBean.installByEnvironment<AppBackend>(
-      {
-        'prod': LiveAppBackend.fromConfig,
-        'test': InMemoryAppBackend.new,
-      },
-      environment: _clientEnvironment,
-    ).get();
+AppBackend _installBackend() => TomBean.installByEnvironment<AppBackend>({
+  'prod': LiveAppBackend.fromConfig,
+  'test': InMemoryAppBackend.new,
+}, environment: _clientEnvironment).get();

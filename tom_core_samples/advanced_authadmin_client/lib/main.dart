@@ -37,8 +37,9 @@ import 'reflection_seed.dart';
 /// default live stack) unless `--dart-define=TEST_MODE=true` selects the seeded
 /// in-memory `test` environment (G-ENV-2/G-ENV-3). This is the environment
 /// *selector*; the locator picks the backend from the name.
-const String _clientEnvironment =
-    bool.fromEnvironment('TEST_MODE') ? 'test' : 'prod';
+const String _clientEnvironment = bool.fromEnvironment('TEST_MODE')
+    ? 'test'
+    : 'prod';
 
 Future<void> main() async {
   initializeReflection();
@@ -62,10 +63,7 @@ Future<void> main() async {
 /// [AdvancedClientConfig] config bean; the `test` environment installs the seeded
 /// [InMemoryAdminBackend]. Exactly one backend is built and registered — there is
 /// no runtime dispatcher.
-AdminBackend _installBackend() => TomBean.installByEnvironment<AdminBackend>(
-      {
-        'prod': LiveAdminBackend.fromConfig,
-        'test': InMemoryAdminBackend.new,
-      },
-      environment: _clientEnvironment,
-    ).get();
+AdminBackend _installBackend() => TomBean.installByEnvironment<AdminBackend>({
+  'prod': LiveAdminBackend.fromConfig,
+  'test': InMemoryAdminBackend.new,
+}, environment: _clientEnvironment).get();

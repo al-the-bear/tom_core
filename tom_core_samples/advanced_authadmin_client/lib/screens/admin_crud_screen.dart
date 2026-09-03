@@ -170,8 +170,10 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
         key: const Key('admin-delete-confirm'),
         title: TomText(text: TomCtr.text('admin.delete.label')),
         content: TomText(
-            text: TomCtr.text('admin.delete.confirm')
-                .replaceAll('{name}', widget.titleOf(item))),
+          text: TomCtr.text(
+            'admin.delete.confirm',
+          ).replaceAll('{name}', widget.titleOf(item)),
+        ),
         actions: [
           TomTextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -228,7 +230,9 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
     if (_items.isEmpty) {
       return Center(
         child: TomText(
-            text: widget.emptyText, key: Key('${widget.tilePrefix}-empty')),
+          text: widget.emptyText,
+          key: Key('${widget.tilePrefix}-empty'),
+        ),
       );
     }
     return ListView.builder(

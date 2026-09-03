@@ -46,10 +46,7 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: Center(
-              child: SizedBox(
-                width: width,
-                child: FamilySwapDemo(),
-              ),
+              child: SizedBox(width: width, child: FamilySwapDemo()),
             ),
           ),
         ),
@@ -91,16 +88,28 @@ void main() {
     return texts[1];
   }
 
-  testWidgets('wide viewport (800px) renders the Material family and seeds',
-      (tester) async {
+  testWidgets('wide viewport (800px) renders the Material family and seeds', (
+    tester,
+  ) async {
     await pumpAtWidth(tester, 800);
-    expect(find.text('Active family: material'), findsOneWidget,
-        reason: 'wide branch must render the Material family form');
+    expect(
+      find.text('Active family: material'),
+      findsOneWidget,
+      reason: 'wide branch must render the Material family form',
+    );
     expect(find.textContaining('wide → Material'), findsOneWidget);
-    for (final id in ['fullName', 'quantity', 'ratio', 'notifyMe',
-        'eventDate']) {
-      expect(adapterByTomId(id), findsOneWidget,
-          reason: 'field "$id" must render in the active family');
+    for (final id in [
+      'fullName',
+      'quantity',
+      'ratio',
+      'notifyMe',
+      'eventDate',
+    ]) {
+      expect(
+        adapterByTomId(id),
+        findsOneWidget,
+        reason: 'field "$id" must render in the active family',
+      );
     }
     expect(stateValue(tester, 'quantity'), '3');
     expect(stateValue(tester, 'ratio'), '0.75');
@@ -108,11 +117,15 @@ void main() {
     expect(stateValue(tester, 'eventDate'), '2026-06-15');
   });
 
-  testWidgets('narrow viewport (600px) flips the active family to Cupertino',
-      (tester) async {
+  testWidgets('narrow viewport (600px) flips the active family to Cupertino', (
+    tester,
+  ) async {
     await pumpAtWidth(tester, 600);
-    expect(find.text('Active family: cupertino'), findsOneWidget,
-        reason: 'narrow branch must render the Cupertino family form');
+    expect(
+      find.text('Active family: cupertino'),
+      findsOneWidget,
+      reason: 'narrow branch must render the Cupertino family form',
+    );
     expect(find.textContaining('narrow → Cupertino'), findsOneWidget);
   });
 
@@ -127,29 +140,44 @@ void main() {
   // Cupertino style therefore has to be the scope's *base*, which covers
   // everything below the lowest override.
 
-  testWidgets('narrow viewport (600px) resolves the Cupertino form style',
-      (tester) async {
+  testWidgets('narrow viewport (600px) resolves the Cupertino form style', (
+    tester,
+  ) async {
     await pumpAtWidth(tester, 600);
     final style = resolvedStyle(tester);
-    expect(style, isA<TomCupertinoFormStyle>(),
-        reason: 'the Cupertino family renders below 700, so the Cupertino '
-            'style must resolve there — not the Material3 default');
-    expect(style.defaults.borderRadius, 6.0,
-        reason: 'Cupertino preset radius (6.0); Material3 uses 8.0, so this '
-            'pins the actual preset rather than merely the subtype');
+    expect(
+      style,
+      isA<TomCupertinoFormStyle>(),
+      reason:
+          'the Cupertino family renders below 700, so the Cupertino '
+          'style must resolve there — not the Material3 default',
+    );
+    expect(
+      style.defaults.borderRadius,
+      6.0,
+      reason:
+          'Cupertino preset radius (6.0); Material3 uses 8.0, so this '
+          'pins the actual preset rather than merely the subtype',
+    );
   });
 
-  testWidgets('wide viewport (800px) resolves the Material3 form style',
-      (tester) async {
+  testWidgets('wide viewport (800px) resolves the Material3 form style', (
+    tester,
+  ) async {
     await pumpAtWidth(tester, 800);
     final style = resolvedStyle(tester);
-    expect(style, isNot(isA<TomCupertinoFormStyle>()),
-        reason: 'the Material family renders at/above 700, so Cupertino chrome '
-            'must not be applied there');
+    expect(
+      style,
+      isNot(isA<TomCupertinoFormStyle>()),
+      reason:
+          'the Material family renders at/above 700, so Cupertino chrome '
+          'must not be applied there',
+    );
   });
 
-  testWidgets('the style flips on the same side of 700 as the family',
-      (tester) async {
+  testWidgets('the style flips on the same side of 700 as the family', (
+    tester,
+  ) async {
     // Exactly at the breakpoint both rules take their wide branch: the family
     // selector uses `width >= 700` and the override matches on `minWidth <=
     // width`. Pinning the boundary is what stops the two drifting apart by one
@@ -157,13 +185,18 @@ void main() {
     await pumpAtWidth(tester, familySwapBreakpoint);
     final style = resolvedStyle(tester);
     expect(find.text('Active family: material'), findsOneWidget);
-    expect(style, isNot(isA<TomCupertinoFormStyle>()),
-        reason: 'at exactly 700 the family is Material, so the style must be '
-            'Material3 too');
+    expect(
+      style,
+      isNot(isA<TomCupertinoFormStyle>()),
+      reason:
+          'at exactly 700 the family is Material, so the style must be '
+          'Material3 too',
+    );
   });
 
-  testWidgets('editing fullName in the active form reaches the shared panel',
-      (tester) async {
+  testWidgets('editing fullName in the active form reaches the shared panel', (
+    tester,
+  ) async {
     await pumpAtWidth(tester, 800);
     final input = find.descendant(
       of: adapterByTomId('fullName'),
@@ -172,13 +205,18 @@ void main() {
     expect(input, findsOneWidget);
     await tester.enterText(input, 'Grace Hopper');
     await tester.pumpAndSettle();
-    expect(stateValue(tester, 'fullName'), 'Grace Hopper',
-        reason: 'edit in the active Material family must reach the shared '
-            'TomString → state panel');
+    expect(
+      stateValue(tester, 'fullName'),
+      'Grace Hopper',
+      reason:
+          'edit in the active Material family must reach the shared '
+          'TomString → state panel',
+    );
   });
 
-  testWidgets('state survives the family swap from wide to narrow',
-      (tester) async {
+  testWidgets('state survives the family swap from wide to narrow', (
+    tester,
+  ) async {
     await pumpAtWidth(tester, 800);
     final input = find.descendant(
       of: adapterByTomId('fullName'),
@@ -193,7 +231,10 @@ void main() {
     tester.view.physicalSize = const Size(600, 3000);
     await tester.pumpAndSettle();
     expect(find.text('Active family: cupertino'), findsOneWidget);
-    expect(stateValue(tester, 'fullName'), 'Linus Torvalds',
-        reason: 'wide-side edit must survive into the Cupertino form');
+    expect(
+      stateValue(tester, 'fullName'),
+      'Linus Torvalds',
+      reason: 'wide-side edit must survive into the Cupertino form',
+    );
   });
 }

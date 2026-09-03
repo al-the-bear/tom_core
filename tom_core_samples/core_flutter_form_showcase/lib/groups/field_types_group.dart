@@ -18,14 +18,16 @@ import '../forms/order_item_form.dart';
 final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
   id: 'field_types',
   title: 'Field types',
-  summary: 'The four string-backed field widgets — text input, dropdown, '
+  summary:
+      'The four string-backed field widgets — text input, dropdown, '
       'type-ahead search and multi-line — each bound to a reflected entity.',
   icon: Icons.text_fields_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomFormStringInput',
       note: 'A plain text field. Bound to CompanyProfile.name via the form.',
-      code: "TomFormStringInput(\n"
+      code:
+          "TomFormStringInput(\n"
           "  'name',\n"
           "  '',\n"
           "  form: this,\n"
@@ -42,7 +44,8 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomFormStringDropdown',
       note: 'A dropdown over a StaticSelectableSource of labelled values.',
-      code: "TomFormStringDropdown(\n"
+      code:
+          "TomFormStringDropdown(\n"
           "  'industry',\n"
           "  '',\n"
           "  form: this,\n"
@@ -59,9 +62,11 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomFormSearchInput',
-      note: 'A type-ahead picker. Selecting a catalogue entry auto-fills the '
+      note:
+          'A type-ahead picker. Selecting a catalogue entry auto-fills the '
           'sibling unit-price field.',
-      code: "TomFormSearchInput<String>(\n"
+      code:
+          "TomFormSearchInput<String>(\n"
           "  'productName',\n"
           "  '',\n"
           "  form: this,\n"
@@ -80,7 +85,8 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'Multi-line input',
       note: 'The same TomFormStringInput with maxLines and maxLength set.',
-      code: "TomFormStringInput(\n"
+      code:
+          "TomFormStringInput(\n"
           "  'description',\n"
           "  '',\n"
           "  form: this,\n"

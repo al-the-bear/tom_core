@@ -70,8 +70,10 @@ class LiveAppBackend implements AppBackend {
   factory LiveAppBackend.fromConfig() {
     final config = AdvancedClientConfig.resolve();
     final transport = IoJsonTransport();
-    final auth =
-        AuthClient(Uri.parse(config.authServerUrl), transport: transport);
+    final auth = AuthClient(
+      Uri.parse(config.authServerUrl),
+      transport: transport,
+    );
     final http = AuthorizedHttp(transport, auth);
     final appServer = Uri.parse(config.appServerUrl);
     return LiveAppBackend(
@@ -138,13 +140,13 @@ class LiveAppBackend implements AppBackend {
 
   @override
   Future<TodoItem> saveItem(TodoItem item) => _guard(() {
-        // An empty id means "create"; the server assigns the primary key. On
-        // update the addressed item is carried on `item.id` (the `{id}` path
-        // capture binds back onto it server-side).
-        return item.id.get().isEmpty
-            ? _api.createItem(item)
-            : _api.updateItem(item);
-      });
+    // An empty id means "create"; the server assigns the primary key. On
+    // update the addressed item is carried on `item.id` (the `{id}` path
+    // capture binds back onto it server-side).
+    return item.id.get().isEmpty
+        ? _api.createItem(item)
+        : _api.updateItem(item);
+  });
 
   @override
   Future<void> deleteItem(String id) =>
@@ -179,8 +181,7 @@ class LiveAppBackend implements AppBackend {
       _guard(() => _api.resourceRoles());
 
   @override
-  Future<void> share(ShareRequest request) =>
-      _guard(() => _api.share(request));
+  Future<void> share(ShareRequest request) => _guard(() => _api.share(request));
 
   /// Runs [op], translating the client core's typed transport failures into the
   /// single [AppBackendException] the UI catches (preserving the server's stable

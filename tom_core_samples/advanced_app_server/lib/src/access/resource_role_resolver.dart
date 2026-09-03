@@ -96,16 +96,14 @@ class ResourceRoleResolver {
   /// framework delegation resolver over the shared grant/delegation repositories
   /// (both on `main`, bound to `auth_db` at boot).
   factory ResourceRoleResolver.production() => ResourceRoleResolver(
-        const RepositoryResourceContainmentStore(),
-        TomDelegationResolver(
-          RepositoryPrincipalDelegationStore(principalDelegationRepository),
-          TomPrincipalResourceRoleResolver(
-            RepositoryPrincipalResourceGrantStore(
-              principalResourceGrantRepository,
-            ),
-          ),
-        ),
-      );
+    const RepositoryResourceContainmentStore(),
+    TomDelegationResolver(
+      RepositoryPrincipalDelegationStore(principalDelegationRepository),
+      TomPrincipalResourceRoleResolver(
+        RepositoryPrincipalResourceGrantStore(principalResourceGrantRepository),
+      ),
+    ),
+  );
 
   /// Computes the effective [ProjectRole] the principal [userId] holds on the
   /// resource `(resourceType, resourceId)`, or `null` when they have no access.
@@ -127,7 +125,8 @@ class ResourceRoleResolver {
     final chain = await _ancestry(resourceType, resourceId);
     ProjectRole? best;
     for (final ref in chain) {
-      final token = effective[ResourceRoleKeys.forResource(ref.type, ref.id.toString())];
+      final token =
+          effective[ResourceRoleKeys.forResource(ref.type, ref.id.toString())];
       if (token == null) continue;
       final role = _parseRole(token);
       if (best == null || role.index < best.index) best = role;
@@ -164,7 +163,9 @@ class ResourceRoleResolver {
             ? null
             : _Ref(AppResourceTypes.project, projectId);
       case AppResourceTypes.project:
-        final workspaceId = (await containment.findProject(ref.id))?.workspaceId;
+        final workspaceId = (await containment.findProject(
+          ref.id,
+        ))?.workspaceId;
         return workspaceId == null
             ? null
             : _Ref(AppResourceTypes.workspace, workspaceId);
@@ -240,9 +241,18 @@ class InMemoryResourceContainmentStore implements ResourceContainmentStore {
     List<ProjectRecord> projects = const [],
     List<ListRecord> lists = const [],
     List<ItemRecord> items = const [],
-  })  : _projects = {for (final p in projects) if (p.id != null) p.id!: p},
-        _lists = {for (final l in lists) if (l.id != null) l.id!: l},
-        _items = {for (final i in items) if (i.id != null) i.id!: i};
+  }) : _projects = {
+         for (final p in projects)
+           if (p.id != null) p.id!: p,
+       },
+       _lists = {
+         for (final l in lists)
+           if (l.id != null) l.id!: l,
+       },
+       _items = {
+         for (final i in items)
+           if (i.id != null) i.id!: i,
+       };
 
   @override
   Future<ProjectRecord?> findProject(int id) async => _projects[id];

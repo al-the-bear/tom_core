@@ -40,8 +40,7 @@ void main() {
   final attemptsFinder = find.byKey(const Key('admin-login-attempts'));
 
   /// The code an authenticator would show right now for the seeded secret.
-  String currentCode() =>
-      TomTotp.codeFor(InMemoryAdminBackend.demoTotpSecret);
+  String currentCode() => TomTotp.codeFor(InMemoryAdminBackend.demoTotpSecret);
 
   /// A code the backend will refuse: any six-digit value outside the accepted
   /// skew window. Computed rather than hardcoded, because a literal could
@@ -50,11 +49,16 @@ void main() {
     final key = TomTotp.decodeBase32(InMemoryAdminBackend.demoTotpSecret);
     final counter = TomTotp.counterFor(period: InMemoryAdminBackend.totpPeriod);
     final accepted = <String>{
-      for (var offset = -InMemoryAdminBackend.totpWindowSteps;
-          offset <= InMemoryAdminBackend.totpWindowSteps;
-          offset++)
+      for (
+        var offset = -InMemoryAdminBackend.totpWindowSteps;
+        offset <= InMemoryAdminBackend.totpWindowSteps;
+        offset++
+      )
         TomTotp.generateCode(
-            key, counter + offset, InMemoryAdminBackend.totpDigits),
+          key,
+          counter + offset,
+          InMemoryAdminBackend.totpDigits,
+        ),
     };
     for (var candidate = 0; candidate < 10; candidate++) {
       final code = '$candidate' * InMemoryAdminBackend.totpDigits;
@@ -93,53 +97,60 @@ void main() {
   }
 
   testWidgets(
-      'TC-33-07: an enrolled admin stops at the code phase instead of the shell',
-      (tester) async {
-    await pumpConsole(tester);
-    await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
+    'TC-33-07: an enrolled admin stops at the code phase instead of the shell',
+    (tester) async {
+      await pumpConsole(tester);
+      await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
 
-    // The password was accepted, but this is not a session — and the `admin`
-    // probe has deliberately not run, because the interim token authorizes
-    // nothing and the probe would fail for the wrong reason.
-    expect(loginFinder, findsOneWidget);
-    expect(
-        find.text('Advanced Todo — Admin two-step verification'), findsOneWidget);
-    expect(shellFinder, findsNothing);
-    expect(find.text('3 attempt(s) remaining.'), findsOneWidget);
-    expect(errorFinder, findsNothing);
-  });
-
-  testWidgets('TC-33-08: a valid code completes the login and opens the shell',
-      (tester) async {
-    await pumpConsole(tester);
-    await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
-    await submitCode(tester, currentCode());
-
-    // Pass 2 done, then the `admin` probe — the shell opens on its default
-    // destination exactly as a single-pass admin login opens it.
-    expect(shellFinder, findsOneWidget);
-    expect(find.byKey(const Key('users-screen')), findsOneWidget);
-    expect(loginFinder, findsNothing);
-  });
+      // The password was accepted, but this is not a session — and the `admin`
+      // probe has deliberately not run, because the interim token authorizes
+      // nothing and the probe would fail for the wrong reason.
+      expect(loginFinder, findsOneWidget);
+      expect(
+        find.text('Advanced Todo — Admin two-step verification'),
+        findsOneWidget,
+      );
+      expect(shellFinder, findsNothing);
+      expect(find.text('3 attempt(s) remaining.'), findsOneWidget);
+      expect(errorFinder, findsNothing);
+    },
+  );
 
   testWidgets(
-      'TC-33-09: a wrong code shows a retryable error with the attempts remaining',
-      (tester) async {
-    await pumpConsole(tester);
-    await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
-    await submitCode(tester, wrongCode());
+    'TC-33-08: a valid code completes the login and opens the shell',
+    (tester) async {
+      await pumpConsole(tester);
+      await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
+      await submitCode(tester, currentCode());
 
-    expect(errorFinder, findsOneWidget);
-    expect(find.text('2 attempt(s) remaining.'), findsOneWidget);
-    expect(shellFinder, findsNothing);
+      // Pass 2 done, then the `admin` probe — the shell opens on its default
+      // destination exactly as a single-pass admin login opens it.
+      expect(shellFinder, findsOneWidget);
+      expect(find.byKey(const Key('users-screen')), findsOneWidget);
+      expect(loginFinder, findsNothing);
+    },
+  );
 
-    // Retryable means exactly that: the right code still opens the console.
-    await submitCode(tester, currentCode());
-    expect(shellFinder, findsOneWidget);
-  });
+  testWidgets(
+    'TC-33-09: a wrong code shows a retryable error with the attempts remaining',
+    (tester) async {
+      await pumpConsole(tester);
+      await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
+      await submitCode(tester, wrongCode());
 
-  testWidgets('TC-33-10: a third wrong code returns to the password screen',
-      (tester) async {
+      expect(errorFinder, findsOneWidget);
+      expect(find.text('2 attempt(s) remaining.'), findsOneWidget);
+      expect(shellFinder, findsNothing);
+
+      // Retryable means exactly that: the right code still opens the console.
+      await submitCode(tester, currentCode());
+      expect(shellFinder, findsOneWidget);
+    },
+  );
+
+  testWidgets('TC-33-10: a third wrong code returns to the password screen', (
+    tester,
+  ) async {
     await pumpConsole(tester);
     await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
 
@@ -157,21 +168,24 @@ void main() {
   });
 
   testWidgets(
-      'TC-33-11: an enrolled non-admin is still refused, one pass later',
-      (tester) async {
-    await pumpConsole(tester, twoFactorUsernames: {'alice'});
-    await signIn(tester, 'alice', InMemoryAdminBackend.demoPassword);
+    'TC-33-11: an enrolled non-admin is still refused, one pass later',
+    (tester) async {
+      await pumpConsole(tester, twoFactorUsernames: {'alice'});
+      await signIn(tester, 'alice', InMemoryAdminBackend.demoPassword);
 
-    // Pass 1 succeeded — the second factor is an account property, not a role
-    // check — so the code phase opens for her too.
-    expect(
-        find.text('Advanced Todo — Admin two-step verification'), findsOneWidget);
-    await submitCode(tester, currentCode());
+      // Pass 1 succeeded — the second factor is an account property, not a role
+      // check — so the code phase opens for her too.
+      expect(
+        find.text('Advanced Todo — Admin two-step verification'),
+        findsOneWidget,
+      );
+      await submitCode(tester, currentCode());
 
-    // …and only now does the `admin` probe run, and refuse her.
-    expect(errorFinder, findsOneWidget);
-    expect(find.text('Administrator access is required.'), findsOneWidget);
-    expect(loginFinder, findsOneWidget);
-    expect(shellFinder, findsNothing);
-  });
+      // …and only now does the `admin` probe run, and refuse her.
+      expect(errorFinder, findsOneWidget);
+      expect(find.text('Administrator access is required.'), findsOneWidget);
+      expect(loginFinder, findsOneWidget);
+      expect(shellFinder, findsNothing);
+    },
+  );
 }

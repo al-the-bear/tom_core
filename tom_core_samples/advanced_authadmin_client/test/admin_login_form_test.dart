@@ -96,8 +96,9 @@ void main() {
     form.dispose();
   });
 
-  testWidgets('labels resolve from the adminLogin.* login bundle, not overrides',
-      (tester) async {
+  testWidgets('labels resolve from the adminLogin.* login bundle, not overrides', (
+    tester,
+  ) async {
     // Install a sentinel login bundle (the `[srv]` suffix is distinct from both
     // the canned strings and the bare tomId fallback). The form carries no
     // labelTextOverride, so the only source of a field's label is this provider

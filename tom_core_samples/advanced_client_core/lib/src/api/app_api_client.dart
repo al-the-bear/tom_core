@@ -74,8 +74,9 @@ Workspace parseWorkspace(Map<String, dynamic> json) => Workspace()
   ..createdAt.set(_date(json['createdAt']));
 
 /// Parses a bare array of workspace maps into [Workspace]s.
-List<Workspace> parseWorkspaces(List<Object?> body) =>
-    [for (final e in body) parseWorkspace(_asMap(e))];
+List<Workspace> parseWorkspaces(List<Object?> body) => [
+  for (final e in body) parseWorkspace(_asMap(e)),
+];
 
 /// Parses one `Project` from its wire map.
 Project parseProject(Map<String, dynamic> json) => Project()
@@ -87,8 +88,9 @@ Project parseProject(Map<String, dynamic> json) => Project()
   ..archived.set(json['archived'] == true);
 
 /// Parses a bare array of project maps into [Project]s.
-List<Project> parseProjects(List<Object?> body) =>
-    [for (final e in body) parseProject(_asMap(e))];
+List<Project> parseProjects(List<Object?> body) => [
+  for (final e in body) parseProject(_asMap(e)),
+];
 
 /// Parses one `TodoList` from its wire map.
 TodoList parseList(Map<String, dynamic> json) => TodoList()
@@ -98,8 +100,9 @@ TodoList parseList(Map<String, dynamic> json) => TodoList()
   ..position.set(_int(json['position']));
 
 /// Parses a bare array of list maps into [TodoList]s.
-List<TodoList> parseLists(List<Object?> body) =>
-    [for (final e in body) parseList(_asMap(e))];
+List<TodoList> parseLists(List<Object?> body) => [
+  for (final e in body) parseList(_asMap(e)),
+];
 
 /// Parses one `TodoItem` from its wire map. The string-backed enum fields
 /// (`status`/`priority`/`label`) arrive as their `name` token (kept verbatim in
@@ -129,8 +132,9 @@ TodoItem parseItem(Map<String, dynamic> json) {
 }
 
 /// Parses a bare array of item maps into [TodoItem]s.
-List<TodoItem> parseItems(List<Object?> body) =>
-    [for (final e in body) parseItem(_asMap(e))];
+List<TodoItem> parseItems(List<Object?> body) => [
+  for (final e in body) parseItem(_asMap(e)),
+];
 
 /// Parses one `TodoComment` from its wire map.
 TodoComment parseComment(Map<String, dynamic> json) => TodoComment()
@@ -146,8 +150,9 @@ TodoComment parseComment(Map<String, dynamic> json) => TodoComment()
 /// preserves that order rather than re-sorting: the sequence is the endpoint's
 /// promise, so a client that sorted independently could show a different thread
 /// than the one the server serves.
-List<TodoComment> parseComments(List<Object?> body) =>
-    [for (final e in body) parseComment(_asMap(e))];
+List<TodoComment> parseComments(List<Object?> body) => [
+  for (final e in body) parseComment(_asMap(e)),
+];
 
 /// Parses one `Subtask` from its wire map.
 ///
@@ -163,8 +168,9 @@ Subtask parseSubtask(Map<String, dynamic> json) => Subtask()
 
 /// Parses a bare array of subtask maps into [Subtask]s, preserving the server's
 /// `position` order (see [parseComments]).
-List<Subtask> parseSubtasks(List<Object?> body) =>
-    [for (final e in body) parseSubtask(_asMap(e))];
+List<Subtask> parseSubtasks(List<Object?> body) => [
+  for (final e in body) parseSubtask(_asMap(e)),
+];
 
 Map<String, dynamic> _asMap(Object? element) =>
     (element as Map).cast<String, dynamic>();
@@ -221,17 +227,21 @@ class AppApiClient implements AppApiService {
   @override
   Future<Workspace> createWorkspace(Workspace workspace) async =>
       parseWorkspace(
-        (await _send('POST', '/workspaces',
-                body: jsonEncode(workspace.toJson())))
-            .jsonObject,
+        (await _send(
+          'POST',
+          '/workspaces',
+          body: jsonEncode(workspace.toJson()),
+        )).jsonObject,
       );
 
   @override
   Future<Workspace> updateWorkspace(Workspace workspace) async =>
       parseWorkspace(
-        (await _send('PUT', '/workspaces/${workspace.id.get()}',
-                body: jsonEncode(workspace.toJson())))
-            .jsonObject,
+        (await _send(
+          'PUT',
+          '/workspaces/${workspace.id.get()}',
+          body: jsonEncode(workspace.toJson()),
+        )).jsonObject,
       );
 
   @override
@@ -239,15 +249,18 @@ class AppApiClient implements AppApiService {
       _send('DELETE', '/workspaces/${request.id}');
 
   @override
-  Future<List<Project>> listProjects(String workspaceId) async =>
-      parseProjects(
-          (await _get('/projects', {'workspaceId': workspaceId})).jsonArray);
+  Future<List<Project>> listProjects(String workspaceId) async => parseProjects(
+    (await _get('/projects', {'workspaceId': workspaceId})).jsonArray,
+  );
 
   @override
   Future<Project> createProject(Project project) async => parseProject(
-        (await _send('POST', '/projects', body: jsonEncode(project.toJson())))
-            .jsonObject,
-      );
+    (await _send(
+      'POST',
+      '/projects',
+      body: jsonEncode(project.toJson()),
+    )).jsonObject,
+  );
 
   @override
   Future<List<TodoList>> listLists(String projectId) async =>
@@ -261,23 +274,23 @@ class AppApiClient implements AppApiService {
   Future<List<FileDescriptorDto>> listAttachments(String listId) async {
     final body = (await _get('/attachments', {'listId': listId})).jsonArray;
     return [
-      for (final entry in body)
-        dtoFromJson<FileDescriptorDto>(_asMap(entry)),
+      for (final entry in body) dtoFromJson<FileDescriptorDto>(_asMap(entry)),
     ];
   }
 
   @override
   Future<TodoItem> createItem(TodoItem item) async => parseItem(
-        (await _send('POST', '/items', body: jsonEncode(item.toJson())))
-            .jsonObject,
-      );
+    (await _send('POST', '/items', body: jsonEncode(item.toJson()))).jsonObject,
+  );
 
   @override
   Future<TodoItem> updateItem(TodoItem item) async => parseItem(
-        (await _send('PUT', '/items/${item.id.get()}',
-                body: jsonEncode(item.toJson())))
-            .jsonObject,
-      );
+    (await _send(
+      'PUT',
+      '/items/${item.id.get()}',
+      body: jsonEncode(item.toJson()),
+    )).jsonObject,
+  );
 
   @override
   Future<void> deleteItem(EntityIdRequest request) async =>
@@ -285,10 +298,12 @@ class AppApiClient implements AppApiService {
 
   @override
   Future<TodoComment> addComment(TodoComment comment) async => parseComment(
-        (await _send('POST', '/items/${comment.itemId.get()}/comments',
-                body: jsonEncode(comment.toJson())))
-            .jsonObject,
-      );
+    (await _send(
+      'POST',
+      '/items/${comment.itemId.get()}/comments',
+      body: jsonEncode(comment.toJson()),
+    )).jsonObject,
+  );
 
   // The two ordered child reads. Both are body-less GETs whose only input is
   // the path capture, so the typed `EntityIdRequest` is interpolated straight
@@ -304,17 +319,21 @@ class AppApiClient implements AppApiService {
 
   @override
   Future<Subtask> addSubtask(Subtask subtask) async => parseSubtask(
-        (await _send('POST', '/items/${subtask.itemId.get()}/subtasks',
-                body: jsonEncode(subtask.toJson())))
-            .jsonObject,
-      );
+    (await _send(
+      'POST',
+      '/items/${subtask.itemId.get()}/subtasks',
+      body: jsonEncode(subtask.toJson()),
+    )).jsonObject,
+  );
 
   @override
   Future<Subtask> updateSubtask(Subtask subtask) async => parseSubtask(
-        (await _send('PUT', '/subtasks/${subtask.id.get()}',
-                body: jsonEncode(subtask.toJson())))
-            .jsonObject,
-      );
+    (await _send(
+      'PUT',
+      '/subtasks/${subtask.id.get()}',
+      body: jsonEncode(subtask.toJson()),
+    )).jsonObject,
+  );
 
   @override
   Future<void> share(ShareRequest request) async =>
@@ -333,9 +352,10 @@ class AppApiClient implements AppApiService {
     return {for (final entry in body.entries) entry.key: '${entry.value}'};
   }
 
-  Future<HttpJsonResponse> _get(String path,
-          [Map<String, String> query = const {}]) =>
-      _send('GET', path, query: query);
+  Future<HttpJsonResponse> _get(
+    String path, [
+    Map<String, String> query = const {},
+  ]) => _send('GET', path, query: query);
 
   /// Sends [method] to [path] (with optional [query]/[body]) through the
   /// authorized transport and returns the response, throwing [AppApiException]
@@ -346,8 +366,11 @@ class AppApiClient implements AppApiService {
     Map<String, String> query = const {},
     String? body,
   }) async {
-    final response =
-        await _http.send(method: method, uri: _uri(path, query), body: body);
+    final response = await _http.send(
+      method: method,
+      uri: _uri(path, query),
+      body: body,
+    );
     if (!response.isSuccess) {
       throw AppApiException(
         _errorKey(response) ?? 'app.request.failed',

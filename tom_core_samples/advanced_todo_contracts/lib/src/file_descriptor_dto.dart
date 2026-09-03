@@ -55,15 +55,14 @@ class FileDescriptorDto {
   factory FileDescriptorDto.fromMetadata(
     String slot,
     TomFileMetadata metadata,
-  ) =>
-      FileDescriptorDto(
-        slot: slot,
-        key: metadata.key,
-        mediaType: metadata.mediaType,
-        byteCount: metadata.byteCount,
-        fileName: metadata.fileName ?? '',
-        storedAt: metadata.storedAt?.toIso8601String() ?? '',
-      );
+  ) => FileDescriptorDto(
+    slot: slot,
+    key: metadata.key,
+    mediaType: metadata.mediaType,
+    byteCount: metadata.byteCount,
+    fileName: metadata.fileName ?? '',
+    storedAt: metadata.storedAt?.toIso8601String() ?? '',
+  );
 
   /// Composes the slot address for a file column of one row.
   static String slotOf(String table, String id, String column) =>
@@ -82,16 +81,15 @@ class FileDescriptorDto {
   /// The kernel descriptor this DTO carries — the exact value a `HEAD` against
   /// [slot] produces.
   TomFileMetadata toMetadata() => TomFileMetadata(
-        key: key,
-        mediaType: mediaType,
-        byteCount: byteCount,
-        fileName: fileName.isEmpty ? null : fileName,
-        storedAt: storedAt.isEmpty ? null : DateTime.tryParse(storedAt),
-      );
+    key: key,
+    mediaType: mediaType,
+    byteCount: byteCount,
+    fileName: fileName.isEmpty ? null : fileName,
+    storedAt: storedAt.isEmpty ? null : DateTime.tryParse(storedAt),
+  );
 
   @override
-  String toString() =>
-      'FileDescriptorDto($slot: $mediaType, $byteCount bytes)';
+  String toString() => 'FileDescriptorDto($slot: $mediaType, $byteCount bytes)';
 }
 
 /// The file slots the two servers publish, named once.

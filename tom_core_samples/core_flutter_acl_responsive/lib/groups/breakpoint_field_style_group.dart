@@ -21,17 +21,20 @@ import '../forms/company_form.dart';
 final ShowcaseGroup breakpointFieldStyleGroup = ShowcaseGroup(
   id: 'breakpoint_field_style',
   title: 'Breakpoint field style',
-  summary: 'TomFormStyleScope publishes the available width; TomFieldStyle '
+  summary:
+      'TomFormStyleScope publishes the available width; TomFieldStyle '
       "*BpOverrides re-style the same form per tier — no app-code branching. "
       'Resize the window: label, fonts, gaps and error chrome react live.',
   icon: Icons.format_size_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Width-reactive field anatomy',
-      note: 'Crossing 400px: label floating → above, fonts bump, gaps grow, '
+      note:
+          'Crossing 400px: label floating → above, fonts bump, gaps grow, '
           'error border turns on. Crossing 500px: error icon appears. '
           'Crossing 700px: label above → inline, fonts/gaps bump again.',
-      code: 'TomFormStyleScope(\n'
+      code:
+          'TomFormStyleScope(\n'
           '  style: TomFormStyle(\n'
           '    defaults: TomFieldStyle(\n'
           '      labelPlacement: LabelPlacement.floating,\n'
@@ -64,7 +67,8 @@ class BreakpointFieldStyleDemo extends TomStatefulWidget {
       _BreakpointFieldStyleDemoState();
 }
 
-class _BreakpointFieldStyleDemoState extends TomState<BreakpointFieldStyleDemo> {
+class _BreakpointFieldStyleDemoState
+    extends TomState<BreakpointFieldStyleDemo> {
   late final CompanyForm _form;
 
   @override
@@ -83,7 +87,8 @@ class _BreakpointFieldStyleDemoState extends TomState<BreakpointFieldStyleDemo> 
   /// Breakpoint-aware style. The override lists ride on [TomFieldStyle]; the
   /// scope feeds the live width into `resolveFieldStyle`.
   TomFormStyle get _style => TomFormStyle(
-        defaults: const TomFieldStyle(
+    defaults:
+        const TomFieldStyle(
           labelPlacement: LabelPlacement.floating,
           labelPlacementBpOverrides: [
             (400, LabelPlacement.above),
@@ -113,7 +118,7 @@ class _BreakpointFieldStyleDemoState extends TomState<BreakpointFieldStyleDemo> 
             borderSide: BorderSide(width: 2),
           ),
         ),
-      );
+  );
 
   @override
   Widget buildContent(BuildContext context) {
@@ -127,15 +132,18 @@ class _BreakpointFieldStyleDemoState extends TomState<BreakpointFieldStyleDemo> 
             TomSizedBox(height: 12),
             TomFormStyleScope(
               style: _style,
-              child: TomAclBuilder(id: 'bpFieldStyleAcl', elementProvider: _form)
-                  .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-                  .setAclExpandXDefault(true)
-                  .append((p) => p.name.widget)
-                  .newRow()
-                  .append((p) => p.taxId.widget)
-                  .newRow()
-                  .append((p) => p.website.widget)
-                  .build(context),
+              child:
+                  TomAclBuilder(id: 'bpFieldStyleAcl', elementProvider: _form)
+                      .setAclDefaultRowVerticalAlignment(
+                        AclRowCrossAlignment.top,
+                      )
+                      .setAclExpandXDefault(true)
+                      .append((p) => p.name.widget)
+                      .newRow()
+                      .append((p) => p.taxId.widget)
+                      .newRow()
+                      .append((p) => p.website.widget)
+                      .build(context),
             ),
           ],
         );
@@ -159,7 +167,9 @@ class _BadgeRow extends TomStatelessWidget {
     final gap = width >= 700 ? '8px' : (width >= 400 ? '4px' : '2px');
     final border = width >= 400 ? 'on' : 'off';
     final icon = width >= 500 ? 'on' : 'off';
-    final label = width >= 700 ? 'inline' : (width >= 400 ? 'above' : 'floating');
+    final label = width >= 700
+        ? 'inline'
+        : (width >= 400 ? 'above' : 'floating');
     final font = width >= 700 ? '15px' : (width >= 400 ? '13px' : '11px');
 
     return TomWrap(

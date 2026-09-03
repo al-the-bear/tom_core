@@ -23,7 +23,8 @@ void main() {
           expect(
             endpoint.access,
             isNotNull,
-            reason: '${api.id}.${endpoint.id}: every endpoint must declare a '
+            reason:
+                '${api.id}.${endpoint.id}: every endpoint must declare a '
                 'contract-side access policy (TomApiEndpoint.access)',
           );
         }
@@ -41,24 +42,25 @@ void main() {
             if (endpoint.access is TomPublicAccess) endpoint.id,
       ];
       expect(
-          public,
-          unorderedEquals([
-            'authLogin',
-            // Public because its caller is mid-login and holds no bearer yet;
-            // the interim challenge token travels in the body instead.
-            'authSecondFactor',
-            // The three enrolment passes, public for the same reason: they are
-            // reached *during* a half-finished login, by a caller holding a
-            // token that by construction authenticates nobody. Listing them
-            // individually rather than widening the guard to a prefix is the
-            // point of this test — a fourth enrolment endpoint should have to
-            // be justified here.
-            'authBeginEnrolment',
-            'authConfirmEnrolment',
-            'authSkipEnrolment',
-            'authLoginResources',
-            'appHealth',
-          ]));
+        public,
+        unorderedEquals([
+          'authLogin',
+          // Public because its caller is mid-login and holds no bearer yet;
+          // the interim challenge token travels in the body instead.
+          'authSecondFactor',
+          // The three enrolment passes, public for the same reason: they are
+          // reached *during* a half-finished login, by a caller holding a
+          // token that by construction authenticates nobody. Listing them
+          // individually rather than widening the guard to a prefix is the
+          // point of this test — a fourth enrolment endpoint should have to
+          // be justified here.
+          'authBeginEnrolment',
+          'authConfirmEnrolment',
+          'authSkipEnrolment',
+          'authLoginResources',
+          'appHealth',
+        ]),
+      );
     });
 
     test('public endpoints skip bearer authentication', () {
@@ -70,11 +72,16 @@ void main() {
         'authSkipEnrolment',
         'authLoginResources',
       ]) {
-        expect(authApi.endpoints[id]!.includeBearerAuthentication, isFalse,
-            reason: '$id is public and must not be bearer-gated');
+        expect(
+          authApi.endpoints[id]!.includeBearerAuthentication,
+          isFalse,
+          reason: '$id is public and must not be bearer-gated',
+        );
       }
       expect(
-          appApi.endpoints['appHealth']!.includeBearerAuthentication, isFalse);
+        appApi.endpoints['appHealth']!.includeBearerAuthentication,
+        isFalse,
+      );
     });
 
     test('every admin endpoint requires the admin role', () {
@@ -95,7 +102,8 @@ void main() {
         expect(
           identical(endpoint.access, adminAccess),
           isTrue,
-          reason: 'every /admin/* endpoint must reference the shared '
+          reason:
+              'every /admin/* endpoint must reference the shared '
               'adminAccess constant, not a re-stated TomRoleAccess literal',
         );
       }
@@ -103,23 +111,31 @@ void main() {
 
     test('the resource endpoints are GETs with the documented access', () {
       // Login texts: public, on the auth API.
-      expect(authApi.endpoints['authLoginResources']!.method,
-          TomHttpMethod.get);
-      expect(authApi.endpoints['authLoginResources']!.access,
-          isA<TomPublicAccess>());
+      expect(
+        authApi.endpoints['authLoginResources']!.method,
+        TomHttpMethod.get,
+      );
+      expect(
+        authApi.endpoints['authLoginResources']!.access,
+        isA<TomPublicAccess>(),
+      );
 
       // Admin console full bundle: admin-gated, on the admin API.
       expect(adminApi.endpoints['adminResources']!.method, TomHttpMethod.get);
-      expect(adminApi.endpoints['adminResources']!.access, isA<TomRoleAccess>());
+      expect(
+        adminApi.endpoints['adminResources']!.access,
+        isA<TomRoleAccess>(),
+      );
 
       // App client full bundle: authenticated, on the app API.
       expect(appApi.endpoints['appResources']!.method, TomHttpMethod.get);
-      expect(appApi.endpoints['appResources']!.access,
-          isA<TomAuthenticatedAccess>());
+      expect(
+        appApi.endpoints['appResources']!.access,
+        isA<TomAuthenticatedAccess>(),
+      );
     });
 
-    test(
-        'the attachment descriptors are an authenticated GET that moves no '
+    test('the attachment descriptors are an authenticated GET that moves no '
         'bytes', () {
       // The board's paperclip source. It must be a GET (a read), authenticated
       // (attachment names are as private as the items they hang off), and carry

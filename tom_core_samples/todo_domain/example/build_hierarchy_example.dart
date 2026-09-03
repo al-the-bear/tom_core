@@ -24,8 +24,10 @@ void main() {
   // Walk the hierarchy and print one line per leaf task.
   for (final list in project.lists) {
     for (final item in list.items) {
-      print('${project.name.get()} › ${list.name.get()} › '
-          '${item.title.get()}');
+      print(
+        '${project.name.get()} › ${list.name.get()} › '
+        '${item.title.get()}',
+      );
     }
   }
   // expected output:

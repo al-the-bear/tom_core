@@ -75,8 +75,9 @@ void main() {
     expect(find.text(draftItem), findsWidgets);
   });
 
-  testWidgets('TC-29-03: the picker shows the seeded workspace and project',
-      (tester) async {
+  testWidgets('TC-29-03: the picker shows the seeded workspace and project', (
+    tester,
+  ) async {
     await pumpBoard(tester);
 
     expect(find.byKey(const Key('workspace-picker')), findsOneWidget);

@@ -35,10 +35,10 @@ import '../bin/app_server_start.reflection.dart' show initializeReflection;
 class _Builder with TomQueryBuilder {}
 
 TomPrincipal _principal(int id) => TomPrincipal(
-      user: TomUser(id: id, username: 'user$id'),
-      aci: TomAccessControlInformation(),
-      authenticated: true,
-    );
+  user: TomUser(id: id, username: 'user$id'),
+  aci: TomAccessControlInformation(),
+  authenticated: true,
+);
 
 void main() {
   setUpAll(initializeReflection);
@@ -83,8 +83,10 @@ void main() {
     // connection-free.
     setUp(() {
       TomDataSourceInfo.datasources['main'] = TomDataSourceInfo('main', {});
-      TomDataSourceInfo.datasources[appDatasource] =
-          TomDataSourceInfo(appDatasource, {});
+      TomDataSourceInfo.datasources[appDatasource] = TomDataSourceInfo(
+        appDatasource,
+        {},
+      );
     });
     tearDown(() {
       // The boot registers these onto the process-global registry; reset so the
@@ -117,31 +119,40 @@ void main() {
       return TomAnnotationAnalyzer.determineColumn('ownerId', [info]);
     }
 
-    test('binds the principal id against owner_id, never inlining it (C-7)', () {
-      final scope = TomAnnotationAnalyzer.findDataScope(WorkspaceRecord)!;
-      final col = ownerColumn();
+    test(
+      'binds the principal id against owner_id, never inlining it (C-7)',
+      () {
+        final scope = TomAnnotationAnalyzer.findDataScope(WorkspaceRecord)!;
+        final col = ownerColumn();
 
-      final alice = TomDataScope.build(builder, scope, col, _principal(2))!;
-      final bob = TomDataScope.build(builder, scope, col, _principal(3))!;
+        final alice = TomDataScope.build(builder, scope, col, _principal(2))!;
+        final bob = TomDataScope.build(builder, scope, col, _principal(3))!;
 
-      // Same parameterised SQL for both principals — the value is a bound
-      // placeholder, not concatenated into the text.
-      expect(alice.predicate.generate(dialect),
-          'app_workspaces.owner_id IN (:__tomscope_0)');
-      expect(bob.predicate.generate(dialect),
-          'app_workspaces.owner_id IN (:__tomscope_0)');
-      expect(alice.parameters, {'__tomscope_0': 2});
-      expect(bob.parameters, {'__tomscope_0': 3});
-      // The numeric id never appears in the SQL text.
-      expect(alice.predicate.generate(dialect), isNot(contains('2')));
-    });
+        // Same parameterised SQL for both principals — the value is a bound
+        // placeholder, not concatenated into the text.
+        expect(
+          alice.predicate.generate(dialect),
+          'app_workspaces.owner_id IN (:__tomscope_0)',
+        );
+        expect(
+          bob.predicate.generate(dialect),
+          'app_workspaces.owner_id IN (:__tomscope_0)',
+        );
+        expect(alice.parameters, {'__tomscope_0': 2});
+        expect(bob.parameters, {'__tomscope_0': 3});
+        // The numeric id never appears in the SQL text.
+        expect(alice.predicate.generate(dialect), isNot(contains('2')));
+      },
+    );
 
     test('an unauthenticated (null) principal is denied every row', () {
       final scope = TomAnnotationAnalyzer.findDataScope(WorkspaceRecord)!;
       final denied = TomDataScope.build(builder, scope, ownerColumn(), null)!;
       // No allowed values → a FALSE predicate (never the invalid `IN ()`).
-      expect(denied.predicate.generate(dialect),
-          builder.boolOp(false).generate(dialect));
+      expect(
+        denied.predicate.generate(dialect),
+        builder.boolOp(false).generate(dialect),
+      );
       expect(denied.parameters, isEmpty);
     });
   });

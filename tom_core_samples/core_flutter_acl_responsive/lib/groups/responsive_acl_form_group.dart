@@ -24,23 +24,21 @@ import '../forms/company_form.dart';
 /// bump at each tier. The override lists ride on [TomFieldStyle]; the enclosing
 /// [TomFormStyleScope] feeds the live width into `resolveFieldStyle`.
 TomFormStyle get _responsiveStyle => TomFormStyle(
-      defaults: const TomFieldStyle(
-        labelPlacement: LabelPlacement.floating,
-        labelPlacementBpOverrides: [
-          (400, LabelPlacement.above),
-          (700, LabelPlacement.inline),
-        ],
-        labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-        labelStyleBpOverrides: [
-          (400, TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-          (700, TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        ],
-        labelFieldGap: 2,
-        labelFieldGapBpOverrides: [(400, 4.0), (700, 8.0)],
-      ).copyWith(
-        fieldBorder: const OutlineInputBorder(),
-      ),
-    );
+  defaults: const TomFieldStyle(
+    labelPlacement: LabelPlacement.floating,
+    labelPlacementBpOverrides: [
+      (400, LabelPlacement.above),
+      (700, LabelPlacement.inline),
+    ],
+    labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+    labelStyleBpOverrides: [
+      (400, TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      (700, TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+    ],
+    labelFieldGap: 2,
+    labelFieldGapBpOverrides: [(400, 4.0), (700, 8.0)],
+  ).copyWith(fieldBorder: const OutlineInputBorder()),
+);
 
 /// Builds the capstone layout at a fixed [width]: a [TomFormStyleScope] (style
 /// axis) wrapping a [TomAclBuilder] whose row reflows at 480px (layout axis).
@@ -74,16 +72,19 @@ Widget _responsiveForm(String scopeId, double width) {
 final ShowcaseGroup responsiveAclFormGroup = ShowcaseGroup(
   id: 'responsive_acl_form',
   title: 'Responsive ACL form',
-  summary: 'The capstone: one TomAclBuilder chain where addRowBreakpoint '
+  summary:
+      'The capstone: one TomAclBuilder chain where addRowBreakpoint '
       'reflows a row to a stack AND TomFormStyleScope re-styles every field per '
       'tier — both axes react to the same width, no app-code branching.',
   icon: Icons.dashboard_customize_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Wide (640px) — row shared, label inline-ish',
-      note: 'Above 480px the industry/taxId fields share one row; above 400px '
+      note:
+          'Above 480px the industry/taxId fields share one row; above 400px '
           'labels sit above the field with the larger font and gap.',
-      code: 'TomFormStyleScope(\n'
+      code:
+          'TomFormStyleScope(\n'
           '  style: TomFormStyle(defaults: TomFieldStyle(\n'
           '    labelPlacement: LabelPlacement.floating,\n'
           '    labelPlacementBpOverrides: [\n'
@@ -104,10 +105,12 @@ final ShowcaseGroup responsiveAclFormGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Narrow (360px) — row stacked, label floating',
-      note: 'Below 480px the shared row reflows to a stack; below 400px the same '
+      note:
+          'Below 480px the shared row reflows to a stack; below 400px the same '
           'fields drop to floating labels with the compact font and gap. Same '
           'chain — both axes moved.',
-      code: '// Identical builder + scope as above — only the available width\n'
+      code:
+          '// Identical builder + scope as above — only the available width\n'
           '// differs. The layout axis (addRowBreakpoint) and the style axis\n'
           '// (TomFieldStyle *BpOverrides) both respond to it.',
       child: _responsiveForm('cap_narrow', 360),

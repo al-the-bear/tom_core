@@ -32,9 +32,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      MaterialApp(home: GroupScreen(group: group)),
-    );
+    await tester.pumpWidget(MaterialApp(home: GroupScreen(group: group)));
     await tester.pump();
   }
 

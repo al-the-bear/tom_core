@@ -62,19 +62,21 @@ void main() {
   });
 
   testWidgets(
-      'TC-28-03: a rejected login shows an inline error without leaving the page',
-      (tester) async {
-    await pumpApp(tester);
-    await signIn(tester, 'mallory', 'pw');
+    'TC-28-03: a rejected login shows an inline error without leaving the page',
+    (tester) async {
+      await pumpApp(tester);
+      await signIn(tester, 'mallory', 'pw');
 
-    expect(errorFinder, findsOneWidget);
-    // Still on the login screen — the shell never swapped to the board.
-    expect(find.text('Advanced Todo — Sign in'), findsOneWidget);
-    expect(boardFinder, findsNothing);
-  });
+      expect(errorFinder, findsOneWidget);
+      // Still on the login screen — the shell never swapped to the board.
+      expect(find.text('Advanced Todo — Sign in'), findsOneWidget);
+      expect(boardFinder, findsNothing);
+    },
+  );
 
-  testWidgets('TC-28-04: empty credentials fail validation and never submit',
-      (tester) async {
+  testWidgets('TC-28-04: empty credentials fail validation and never submit', (
+    tester,
+  ) async {
     await pumpApp(tester);
     // Tap Sign in with both fields empty.
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));

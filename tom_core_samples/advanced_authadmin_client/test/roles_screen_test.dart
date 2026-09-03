@@ -24,7 +24,9 @@ void main() {
     );
   });
 
-  testWidgets('TC-34-R01: the Roles tab lists the seeded roles', (tester) async {
+  testWidgets('TC-34-R01: the Roles tab lists the seeded roles', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Roles');
 
@@ -52,8 +54,9 @@ void main() {
     expect((await backend.listRoles()).any((r) => r.key == 'auditor'), isTrue);
   });
 
-  testWidgets('TC-34-R03: a duplicate key is refused with an inline error',
-      (tester) async {
+  testWidgets('TC-34-R03: a duplicate key is refused with an inline error', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Roles');
 
@@ -69,8 +72,9 @@ void main() {
     expect(find.byKey(const Key('admin-editor-error')), findsOneWidget);
   });
 
-  testWidgets('TC-34-R04: editing renames a role; its key is read-only',
-      (tester) async {
+  testWidgets('TC-34-R04: editing renames a role; its key is read-only', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     await openDestination(tester, 'Roles');
@@ -85,8 +89,9 @@ void main() {
     await tester.enterText(fields.at(1), 'Read-only viewer');
     await saveEditor(tester);
 
-    final viewer =
-        (await backend.listRoles()).firstWhere((r) => r.key == 'viewer');
+    final viewer = (await backend.listRoles()).firstWhere(
+      (r) => r.key == 'viewer',
+    );
     expect(viewer.name, 'Read-only viewer');
   });
 
@@ -100,6 +105,9 @@ void main() {
     await confirmDelete(tester);
 
     expect(find.byKey(const Key('roles-tile-commenter')), findsNothing);
-    expect((await backend.listRoles()).any((r) => r.key == 'commenter'), isFalse);
+    expect(
+      (await backend.listRoles()).any((r) => r.key == 'commenter'),
+      isFalse,
+    );
   });
 }

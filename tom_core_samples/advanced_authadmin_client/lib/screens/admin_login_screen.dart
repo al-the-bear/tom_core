@@ -85,10 +85,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       _error = null;
     });
     try {
-      await widget.session.login(LoginRequest(
-        username: _credentials.username.get(),
-        password: _credentials.password.get(),
-      ));
+      await widget.session.login(
+        LoginRequest(
+          username: _credentials.username.get(),
+          password: _credentials.password.get(),
+        ),
+      );
       // A login that owes a second factor leaves the session awaiting one; the
       // build below then shows the code phase. The `admin` probe has not run
       // yet — it cannot, against an interim token — so a non-admin with a
@@ -174,29 +176,28 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   List<Widget> _credentialsPhaseChildren(
     BuildContext context,
     TomTextResourceProvider texts,
-  ) =>
-      [
-        TomText(
-          text: texts.getText('adminLogin.intro'),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 16),
-        _form.username.widget,
-        const SizedBox(height: 12),
-        _form.password.widget,
-        const SizedBox(height: 16),
-        ..._errorBlock(context),
-        TomFilledButton(
-          onPressed: _busy ? null : _submit,
-          child: _busy
-              ? SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: TomCircularProgressIndicator(strokeWidth: 2),
-                )
-              : TomText(text: texts.getText('adminLogin.submit')),
-        ),
-      ];
+  ) => [
+    TomText(
+      text: texts.getText('adminLogin.intro'),
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
+    const SizedBox(height: 16),
+    _form.username.widget,
+    const SizedBox(height: 12),
+    _form.password.widget,
+    const SizedBox(height: 16),
+    ..._errorBlock(context),
+    TomFilledButton(
+      onPressed: _busy ? null : _submit,
+      child: _busy
+          ? SizedBox(
+              height: 18,
+              width: 18,
+              child: TomCircularProgressIndicator(strokeWidth: 2),
+            )
+          : TomText(text: texts.getText('adminLogin.submit')),
+    ),
+  ];
 
   List<Widget> _codePhaseChildren(
     BuildContext context,

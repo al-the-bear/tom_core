@@ -57,7 +57,7 @@ class AuthorizedHttp {
   /// [authClient] used to refresh a stale token. The two may share one
   /// transport instance (the live wiring) or hold separate ones (tests).
   AuthorizedHttp(this._transport, AuthClient authClient)
-      : refresher = AuthClientRefresher(authClient);
+    : refresher = AuthClientRefresher(authClient);
 
   /// The `Authorization` header for the current session, or an empty map when
   /// no one is logged in.
@@ -104,10 +104,7 @@ class AuthorizedHttp {
     Map<String, String> headers,
     String? body,
   ) {
-    final merged = <String, String>{
-      ...headers,
-      ...authorizationHeader(),
-    };
+    final merged = <String, String>{...headers, ...authorizationHeader()};
     return _transport.send(
       method: method,
       uri: uri,

@@ -50,7 +50,8 @@ import '../resources/auth_resource_bundles.dart';
 /// auth-server boot (`bin/auth_server_start.dart`) registers `main` against the same `auth_db`
 /// connection, so this singleton reads/writes the grant rows alongside the
 /// auth records.
-class GrantRepository extends TomSqlDatasourceRepository<TomResourceGrant, int> {}
+class GrantRepository
+    extends TomSqlDatasourceRepository<TomResourceGrant, int> {}
 
 /// Process-wide singleton grant repository.
 final grantRepository = GrantRepository();
@@ -104,7 +105,10 @@ abstract class AdminStore {
 
   /// Replaces the membership of the group with [groupId] by [members] (deletes
   /// the existing rows, inserts the new ones).
-  Future<void> replaceGroupMembers(int groupId, List<GroupMemberRecord> members);
+  Future<void> replaceGroupMembers(
+    int groupId,
+    List<GroupMemberRecord> members,
+  );
 
   /// Records a `(user, role)` assignment. Duplicate assignments are tolerated.
   Future<void> addUserRole(int userId, int roleId);
@@ -117,7 +121,10 @@ abstract class AdminStore {
 
   /// Replaces every grant for [roleName] with [grants] (deletes the role's
   /// existing rows, inserts the new ones).
-  Future<void> replaceGrantsForRole(String roleName, List<TomResourceGrant> grants);
+  Future<void> replaceGrantsForRole(
+    String roleName,
+    List<TomResourceGrant> grants,
+  );
 }
 
 /// The query-backed [AdminStore] wired in `bin/auth_server_start.dart`.
@@ -267,12 +274,12 @@ class InMemoryAdminStore implements AdminStore {
     List<GroupMemberRecord>? groupMembers,
     List<UserRoleRecord>? userRoles,
     List<TomResourceGrant>? grants,
-  })  : _users = [...?users],
-        _roles = [...?roles],
-        _groups = [...?groups],
-        _groupMembers = [...?groupMembers],
-        _userRoles = [...?userRoles],
-        _grants = [...?grants] {
+  }) : _users = [...?users],
+       _roles = [...?roles],
+       _groups = [...?groups],
+       _groupMembers = [...?groupMembers],
+       _userRoles = [...?userRoles],
+       _grants = [...?grants] {
     _nextUserId = _maxId(_users.map((u) => u.id)) + 1;
     _nextRoleId = _maxId(_roles.map((r) => r.id)) + 1;
     _nextGroupId = _maxId(_groups.map((g) => g.id)) + 1;
@@ -309,7 +316,8 @@ class InMemoryAdminStore implements AdminStore {
   }
 
   @override
-  Future<void> removeUser(int id) async => _users.removeWhere((u) => u.id == id);
+  Future<void> removeUser(int id) async =>
+      _users.removeWhere((u) => u.id == id);
 
   @override
   Future<List<RoleRecord>> allRoles() async => List.of(_roles);
@@ -349,8 +357,10 @@ class InMemoryAdminStore implements AdminStore {
   }
 
   @override
-  Future<List<GroupMemberRecord>> membersOfGroup(int groupId) async =>
-      [for (final m in _groupMembers) if (m.groupId == groupId) m];
+  Future<List<GroupMemberRecord>> membersOfGroup(int groupId) async => [
+    for (final m in _groupMembers)
+      if (m.groupId == groupId) m,
+  ];
 
   @override
   Future<GroupRecord> saveGroup(GroupRecord record) async {
@@ -440,8 +450,9 @@ class AdminService {
   // ----- Users -------------------------------------------------------------
 
   /// Lists every account as a password-free [UserDto].
-  Future<List<UserDto>> listUsers() async =>
-      [for (final record in await store.allUsers()) userRecordToDto(record)];
+  Future<List<UserDto>> listUsers() async => [
+    for (final record in await store.allUsers()) userRecordToDto(record),
+  ];
 
   /// Creates an account from [request], hashing the plaintext password into the
   /// server-only credential columns (via `applyPassword`) before persisting.
@@ -481,8 +492,9 @@ class AdminService {
   // ----- Roles -------------------------------------------------------------
 
   /// Lists every role as a [RoleDto].
-  Future<List<RoleDto>> listRoles() async =>
-      [for (final record in await store.allRoles()) roleRecordToDto(record)];
+  Future<List<RoleDto>> listRoles() async => [
+    for (final record in await store.allRoles()) roleRecordToDto(record),
+  ];
 
   /// Creates a role from [role].
   Future<RoleDto> createRole(RoleDto role) async =>
@@ -594,8 +606,9 @@ class AdminService {
   /// and persists them through the store.
   Future<void> putGrants(GrantMatrixDto matrix) async {
     for (final role in matrix.roles) {
-      final graded =
-          TomGradedAccessControlInformation(grades: matrix.gradeMapFor(role));
+      final graded = TomGradedAccessControlInformation(
+        grades: matrix.gradeMapFor(role),
+      );
       await store.replaceGrantsForRole(role, graded.toGrants(role));
     }
   }

@@ -1,4 +1,5 @@
-import 'package:advanced_todo_domain/advanced_todo_domain.dart' show ProjectRole;
+import 'package:advanced_todo_domain/advanced_todo_domain.dart'
+    show ProjectRole;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// A request to share a resource with another user at a given role, posted to

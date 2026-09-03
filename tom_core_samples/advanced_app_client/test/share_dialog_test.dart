@@ -26,7 +26,8 @@ void main() {
     );
   });
 
-  LoginRequest login(String user) => LoginRequest(username: user, password: 'pw');
+  LoginRequest login(String user) =>
+      LoginRequest(username: user, password: 'pw');
 
   /// Pumps the board signed in as [user] over a fresh backend, returning the
   /// live backend so a test can re-read the resulting access.
@@ -49,39 +50,44 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('TC-31-01: owner shares the project and the grantee gains access',
-      (tester) async {
-    final backend = await pumpBoard(tester, 'alice');
+  testWidgets(
+    'TC-31-01: owner shares the project and the grantee gains access',
+    (tester) async {
+      final backend = await pumpBoard(tester, 'alice');
 
-    // Carol has no access before the share.
-    await backend.login(login('carol'));
-    expect(await backend.listProjects('w-1'), isEmpty);
-    await backend.login(login('alice')); // restore the board's principal
+      // Carol has no access before the share.
+      await backend.login(login('carol'));
+      expect(await backend.listProjects('w-1'), isEmpty);
+      await backend.login(login('alice')); // restore the board's principal
 
-    await openShareDialog(tester);
-    await tester.enterText(
-        find.byKey(const Key('share-grantee-input')), 'u-carol');
-    await tester.tap(find.byKey(const Key('share-submit-button')));
-    await tester.pumpAndSettle();
+      await openShareDialog(tester);
+      await tester.enterText(
+        find.byKey(const Key('share-grantee-input')),
+        'u-carol',
+      );
+      await tester.tap(find.byKey(const Key('share-submit-button')));
+      await tester.pumpAndSettle();
 
-    // The dialog closed (success) and the snackbar confirms it.
-    expect(find.byKey(const Key('share-dialog')), findsNothing);
-    expect(find.text('Project shared'), findsOneWidget);
+      // The dialog closed (success) and the snackbar confirms it.
+      expect(find.byKey(const Key('share-dialog')), findsNothing);
+      expect(find.text('Project shared'), findsOneWidget);
 
-    // Carol now sees the shared project (default role: viewer).
-    await backend.login(login('carol'));
-    final projects = await backend.listProjects('w-1');
-    expect(projects.map((p) => p.id.get()), contains('p-1'));
-  });
+      // Carol now sees the shared project (default role: viewer).
+      await backend.login(login('carol'));
+      final projects = await backend.listProjects('w-1');
+      expect(projects.map((p) => p.id.get()), contains('p-1'));
+    },
+  );
 
-  testWidgets('TC-31-02: a non-owner share is rejected inline',
-      (tester) async {
+  testWidgets('TC-31-02: a non-owner share is rejected inline', (tester) async {
     // Bob is an editor on the project (seeded share); only the owner may share.
     await pumpBoard(tester, 'bob');
 
     await openShareDialog(tester);
     await tester.enterText(
-        find.byKey(const Key('share-grantee-input')), 'u-carol');
+      find.byKey(const Key('share-grantee-input')),
+      'u-carol',
+    );
     await tester.tap(find.byKey(const Key('share-submit-button')));
     await tester.pumpAndSettle();
 
@@ -90,8 +96,9 @@ void main() {
     expect(find.byKey(const Key('share-error')), findsOneWidget);
   });
 
-  testWidgets('TC-31-03: an empty grantee is blocked before any backend call',
-      (tester) async {
+  testWidgets('TC-31-03: an empty grantee is blocked before any backend call', (
+    tester,
+  ) async {
     await pumpBoard(tester, 'alice');
 
     await openShareDialog(tester);

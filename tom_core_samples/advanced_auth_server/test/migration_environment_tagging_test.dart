@@ -15,24 +15,24 @@ import 'package:test/test.dart';
 
 /// The auth schema migration directory, relative to the package root (the
 /// working directory under `dart test`, matching the boot-time loader).
-const String _authSchemaDir =
-    'database_migrations/auth_db/auth_schema/';
+const String _authSchemaDir = 'database_migrations/auth_db/auth_schema/';
 
 /// Parses every `*.sql` migration basename in [dir] into `(version, parsed)`
 /// records ordered by ascending numeric version.
 List<({int version, TomMigrationFileName parsed})> _migrations(String dir) {
-  final files = Directory(dir)
-      .listSync()
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.sql'))
-      .map((f) {
-        final name = f.uri.pathSegments.last;
-        final basename = name.substring(0, name.length - '.sql'.length);
-        final parsed = TomDbMigrations.parseMigrationFileName(basename);
-        return (version: parsed.version, parsed: parsed);
-      })
-      .toList()
-    ..sort((a, b) => a.version.compareTo(b.version));
+  final files =
+      Directory(dir)
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.sql'))
+          .map((f) {
+            final name = f.uri.pathSegments.last;
+            final basename = name.substring(0, name.length - '.sql'.length);
+            final parsed = TomDbMigrations.parseMigrationFileName(basename);
+            return (version: parsed.version, parsed: parsed);
+          })
+          .toList()
+        ..sort((a, b) => a.version.compareTo(b.version));
   return files;
 }
 
@@ -50,7 +50,8 @@ void main() {
       expect(
         migrations.map((m) => m.version),
         List.generate(migrations.length, (index) => index),
-        reason: 'auth_db migrations must run [000], [001], … with no gaps and '
+        reason:
+            'auth_db migrations must run [000], [001], … with no gaps and '
             'no duplicates',
       );
     });
@@ -79,8 +80,11 @@ void main() {
         // offer and nowhere to store the answer.
         'auth_two_factor_enrolments',
       ]) {
-        expect(byDesc[desc]!.environments, isEmpty,
-            reason: '$desc must be untagged (applies in every environment)');
+        expect(
+          byDesc[desc]!.environments,
+          isEmpty,
+          reason: '$desc must be untagged (applies in every environment)',
+        );
       }
 
       // The demo seeds are restricted to dev/test. The two-factor seed is one
@@ -92,10 +96,10 @@ void main() {
     });
 
     test('a production apply seeds admin without demo users', () {
-      bool appliesIn(String env, String desc) =>
-          migrations.firstWhere((m) => m.parsed.description == desc)
-              .parsed
-              .appliesInEnvironment(env);
+      bool appliesIn(String env, String desc) => migrations
+          .firstWhere((m) => m.parsed.description == desc)
+          .parsed
+          .appliesInEnvironment(env);
 
       // Under production: schema + admin apply, the demo seed is skipped.
       expect(appliesIn('production', 'auth_core_schema'), isTrue);

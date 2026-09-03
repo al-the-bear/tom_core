@@ -24,16 +24,19 @@ const double familySwapBreakpoint = 700;
 final ShowcaseGroup familySwapGroup = ShowcaseGroup(
   id: 'family_swap',
   title: 'Family swap',
-  summary: 'Two forms — one Material, one Cupertino — bound to one shared '
+  summary:
+      'Two forms — one Material, one Cupertino — bound to one shared '
       'entity. The 700px breakpoint picks which renders; styleBpOverrides flips '
       'the form style to match. Edits survive the swap.',
   icon: Icons.swap_horiz_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Material ↔ Cupertino at 700px',
-      note: 'Resize across 700px: the whole field family swaps, yet the shared '
+      note:
+          'Resize across 700px: the whole field family swaps, yet the shared '
           'state panel keeps every value — both forms bind the same entity.',
-      code: '// Pre-build one form per family, both bound to ONE entity:\n'
+      code:
+          '// Pre-build one form per family, both bound to ONE entity:\n'
           'final material  = FamilyForm(family: FormFieldFamily.material);\n'
           'final cupertino = FamilyForm(family: FormFieldFamily.cupertino);\n'
           'material.bind(shared); cupertino.bind(shared);\n\n'
@@ -113,9 +116,7 @@ class _FamilySwapDemoState extends TomState<FamilySwapDemo> {
     // lowest override, which is exactly the narrow, Cupertino-family side.
     return TomFormStyleScope(
       style: TomCupertinoFormStyle.cupertino,
-      styleBpOverrides: [
-        (familySwapBreakpoint, TomFormStyle.material3),
-      ],
+      styleBpOverrides: [(familySwapBreakpoint, TomFormStyle.material3)],
       child: TomLayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
@@ -164,7 +165,8 @@ class _BreakpointBadge extends TomStatelessWidget {
           TomSizedBox(width: 8),
           TomExpanded(
             child: TomText(
-              text: 'width: ${width.toStringAsFixed(0)} px '
+              text:
+                  'width: ${width.toStringAsFixed(0)} px '
                   '→ family: ${family.kind.name} '
                   '(${wide ? "wide → Material" : "narrow → Cupertino"})',
               style: theme.textTheme.bodySmall,
@@ -197,8 +199,9 @@ class _FormColumn extends TomStatelessWidget {
               padding: const EdgeInsets.only(bottom: 6),
               child: TomText(
                 text: 'Active family: ${form.family.kind.name}',
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(color: theme.colorScheme.primary),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
               ),
             ),
             form.fullName.widget,
@@ -229,7 +232,8 @@ class _StatePanel extends TomStatelessWidget {
   @override
   Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
-    String dateStr(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+    String dateStr(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-'
         '${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
     return TomCard(
@@ -242,8 +246,9 @@ class _StatePanel extends TomStatelessWidget {
             TomPadding(
               padding: const EdgeInsets.only(bottom: 6),
               child: TomText(
-                  text: 'Shared state (ResponsiveProfile)',
-                  style: theme.textTheme.titleSmall),
+                text: 'Shared state (ResponsiveProfile)',
+                style: theme.textTheme.titleSmall,
+              ),
             ),
             TomMultiObservableBuilder(
               observables: [
@@ -273,14 +278,16 @@ class _StatePanel extends TomStatelessWidget {
                             TomSizedBox(
                               width: 110,
                               child: TomText(
-                                  text: name,
-                                  style: theme.textTheme.bodySmall),
+                                text: name,
+                                style: theme.textTheme.bodySmall,
+                              ),
                             ),
                             TomExpanded(
                               child: TomText(
                                 text: value,
-                                style: theme.textTheme.bodySmall
-                                    ?.copyWith(fontFamily: 'monospace'),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontFamily: 'monospace',
+                                ),
                               ),
                             ),
                           ],

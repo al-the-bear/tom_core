@@ -101,7 +101,8 @@ class InMemoryShareDelegationStore
   }
 
   /// The persisted delegation rows (test introspection).
-  List<TomPrincipalDelegation> get delegations => List.unmodifiable(_delegations);
+  List<TomPrincipalDelegation> get delegations =>
+      List.unmodifiable(_delegations);
 
   @override
   Future<TomPrincipalDelegation> saveShare(

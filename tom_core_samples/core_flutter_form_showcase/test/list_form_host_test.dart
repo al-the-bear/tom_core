@@ -35,8 +35,9 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('lists group renders the seeded rows through ListFormHost',
-      (tester) async {
+  testWidgets('lists group renders the seeded rows through ListFormHost', (
+    tester,
+  ) async {
     await pumpGroup(tester, listsGroup);
 
     // seededOrderItems() supplies three rows, each rendering a product-name and
@@ -48,14 +49,18 @@ void main() {
       'Punched-card deck (1000 pk)',
       'Lubricating oil (1L)',
     ]) {
-      expect(find.textContaining(product), findsWidgets,
-          reason: 'seeded row "$product" did not reach the screen');
+      expect(
+        find.textContaining(product),
+        findsWidgets,
+        reason: 'seeded row "$product" did not reach the screen',
+      );
     }
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('master-detail group binds its list through ListFormHost',
-      (tester) async {
+  testWidgets('master-detail group binds its list through ListFormHost', (
+    tester,
+  ) async {
     await pumpGroup(tester, masterDetailGroup);
 
     // The master pane's header prints the bound list's length, so this asserts

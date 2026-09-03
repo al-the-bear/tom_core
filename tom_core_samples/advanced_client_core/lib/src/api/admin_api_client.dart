@@ -63,22 +63,25 @@ class AdminApiException extends TomException {
 UserDto parseUser(Map<String, Object?> json) => dtoFromJson<UserDto>(json);
 
 /// Parses a bare array of user maps into [UserDto]s.
-List<UserDto> parseUsers(List<Object?> body) =>
-    [for (final e in body) dtoFromJson<UserDto>(_asMap(e))];
+List<UserDto> parseUsers(List<Object?> body) => [
+  for (final e in body) dtoFromJson<UserDto>(_asMap(e)),
+];
 
 /// Parses one `RoleDto` from its wire map.
 RoleDto parseRole(Map<String, Object?> json) => dtoFromJson<RoleDto>(json);
 
 /// Parses a bare array of role maps into [RoleDto]s.
-List<RoleDto> parseRoles(List<Object?> body) =>
-    [for (final e in body) dtoFromJson<RoleDto>(_asMap(e))];
+List<RoleDto> parseRoles(List<Object?> body) => [
+  for (final e in body) dtoFromJson<RoleDto>(_asMap(e)),
+];
 
 /// Parses one `GroupDto` (with its membership) from its wire map.
 GroupDto parseGroup(Map<String, Object?> json) => dtoFromJson<GroupDto>(json);
 
 /// Parses a bare array of group maps into [GroupDto]s.
-List<GroupDto> parseGroups(List<Object?> body) =>
-    [for (final e in body) dtoFromJson<GroupDto>(_asMap(e))];
+List<GroupDto> parseGroups(List<Object?> body) => [
+  for (final e in body) dtoFromJson<GroupDto>(_asMap(e)),
+];
 
 /// Parses the `GET /admin/grants` body — the `{matrix: {role: {resourceKey:
 /// accessToken}}}` map — into a [GrantMatrixDto]. Unknown access tokens degrade
@@ -114,17 +117,21 @@ class AdminApiClient implements AdminApiService {
 
   @override
   Future<UserDto> createUser(CreateUserRequest request) async => parseUser(
-        (await _send('POST', '/admin/users',
-                body: dtoToJsonString(request)))
-            .jsonObject,
-      );
+    (await _send(
+      'POST',
+      '/admin/users',
+      body: dtoToJsonString(request),
+    )).jsonObject,
+  );
 
   @override
   Future<UserDto> updateUser(UserDto user) async => parseUser(
-        (await _send('PUT', '/admin/users/${user.id}',
-                body: dtoToJsonString(user)))
-            .jsonObject,
-      );
+    (await _send(
+      'PUT',
+      '/admin/users/${user.id}',
+      body: dtoToJsonString(user),
+    )).jsonObject,
+  );
 
   @override
   Future<void> deleteUser(EntityIdRequest request) async =>
@@ -138,16 +145,21 @@ class AdminApiClient implements AdminApiService {
 
   @override
   Future<RoleDto> createRole(RoleDto role) async => parseRole(
-        (await _send('POST', '/admin/roles', body: dtoToJsonString(role)))
-            .jsonObject,
-      );
+    (await _send(
+      'POST',
+      '/admin/roles',
+      body: dtoToJsonString(role),
+    )).jsonObject,
+  );
 
   @override
   Future<RoleDto> updateRole(RoleDto role) async => parseRole(
-        (await _send('PUT', '/admin/roles/${role.key}',
-                body: dtoToJsonString(role)))
-            .jsonObject,
-      );
+    (await _send(
+      'PUT',
+      '/admin/roles/${role.key}',
+      body: dtoToJsonString(role),
+    )).jsonObject,
+  );
 
   @override
   Future<void> deleteRole(EntityIdRequest request) async =>
@@ -161,17 +173,21 @@ class AdminApiClient implements AdminApiService {
 
   @override
   Future<GroupDto> createGroup(GroupDto group) async => parseGroup(
-        (await _send('POST', '/admin/groups',
-                body: dtoToJsonString(group)))
-            .jsonObject,
-      );
+    (await _send(
+      'POST',
+      '/admin/groups',
+      body: dtoToJsonString(group),
+    )).jsonObject,
+  );
 
   @override
   Future<GroupDto> updateGroup(GroupDto group) async => parseGroup(
-        (await _send('PUT', '/admin/groups/${group.id}',
-                body: dtoToJsonString(group)))
-            .jsonObject,
-      );
+    (await _send(
+      'PUT',
+      '/admin/groups/${group.id}',
+      body: dtoToJsonString(group),
+    )).jsonObject,
+  );
 
   @override
   Future<void> deleteGroup(EntityIdRequest request) async =>
@@ -192,12 +208,14 @@ class AdminApiClient implements AdminApiService {
       _send('POST', '/admin/assignments', body: dtoToJsonString(request));
 
   @override
-  Future<ResourceBundleDto> resources() async =>
-      dtoFromJson<ResourceBundleDto>((await _get('/admin/resources')).jsonObject);
+  Future<ResourceBundleDto> resources() async => dtoFromJson<ResourceBundleDto>(
+    (await _get('/admin/resources')).jsonObject,
+  );
 
-  Future<HttpJsonResponse> _get(String path,
-          [Map<String, String> query = const {}]) =>
-      _send('GET', path, query: query);
+  Future<HttpJsonResponse> _get(
+    String path, [
+    Map<String, String> query = const {},
+  ]) => _send('GET', path, query: query);
 
   /// Sends [method] to [path] (with optional [query]/[body]) through the
   /// authorized transport and returns the response, throwing [AdminApiException]
@@ -208,8 +226,11 @@ class AdminApiClient implements AdminApiService {
     Map<String, String> query = const {},
     String? body,
   }) async {
-    final response =
-        await _http.send(method: method, uri: _uri(path, query), body: body);
+    final response = await _http.send(
+      method: method,
+      uri: _uri(path, query),
+      body: body,
+    );
     if (!response.isSuccess) {
       throw AdminApiException(
         _errorKey(response) ?? 'admin.request.failed',

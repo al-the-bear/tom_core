@@ -23,11 +23,15 @@ TomResourceGrant _grant(String role, String key, TomAuthState access) =>
 void main() {
   group('AdminService grants', () {
     test('getGrants projects the stored grants into the matrix', () async {
-      final admin = AdminService(InMemoryAdminStore(grants: [
-        _grant('editor', 'item.title', TomAuthState.read),
-        _grant('editor', 'item.notes', TomAuthState.full),
-        _grant('viewer', 'item.title', TomAuthState.disabled),
-      ]));
+      final admin = AdminService(
+        InMemoryAdminStore(
+          grants: [
+            _grant('editor', 'item.title', TomAuthState.read),
+            _grant('editor', 'item.notes', TomAuthState.full),
+            _grant('viewer', 'item.title', TomAuthState.disabled),
+          ],
+        ),
+      );
 
       final matrix = await admin.getGrants();
 
@@ -38,11 +42,10 @@ void main() {
       expect(matrix.accessFor('viewer', 'item.notes'), TomAuthState.none);
     });
 
-    test('an admin can edit a grant and the edit is persisted',
-        () async {
-      final store = InMemoryAdminStore(grants: [
-        _grant('editor', 'item.title', TomAuthState.read),
-      ]);
+    test('an admin can edit a grant and the edit is persisted', () async {
+      final store = InMemoryAdminStore(
+        grants: [_grant('editor', 'item.title', TomAuthState.read)],
+      );
       final admin = AdminService(store);
 
       // Read the matrix, raise the cell to full, and write it back — the exact
@@ -61,19 +64,23 @@ void main() {
       // ... and it is materialised as a persisted TomResourceGrant row.
       final rows = await store.allGrants();
       expect(
-        rows.any((g) =>
-            g.roleName == 'editor' &&
-            g.resourceKey == 'item.title' &&
-            g.accessLevel == TomAuthState.full),
+        rows.any(
+          (g) =>
+              g.roleName == 'editor' &&
+              g.resourceKey == 'item.title' &&
+              g.accessLevel == TomAuthState.full,
+        ),
         isTrue,
       );
     });
 
     test('putGrants replaces only the roles present in the matrix', () async {
-      final store = InMemoryAdminStore(grants: [
-        _grant('editor', 'item.title', TomAuthState.read),
-        _grant('viewer', 'item.title', TomAuthState.read),
-      ]);
+      final store = InMemoryAdminStore(
+        grants: [
+          _grant('editor', 'item.title', TomAuthState.read),
+          _grant('viewer', 'item.title', TomAuthState.read),
+        ],
+      );
       final admin = AdminService(store);
 
       // A matrix carrying only the editor row leaves the viewer grant intact.
@@ -94,12 +101,14 @@ void main() {
       final store = InMemoryAdminStore();
       final admin = AdminService(store);
 
-      final created = await admin.createUser(CreateUserRequest(
-        username: 'ada',
-        password: 's3cret',
-        displayName: 'Ada Lovelace',
-        email: 'ada@example.com',
-      ));
+      final created = await admin.createUser(
+        CreateUserRequest(
+          username: 'ada',
+          password: 's3cret',
+          displayName: 'Ada Lovelace',
+          email: 'ada@example.com',
+        ),
+      );
 
       expect(created.username, 'ada');
       expect(created.id, isNotEmpty);
@@ -112,36 +121,38 @@ void main() {
       expect(verifyUserPassword(stored.first, 's3cret'), isTrue);
     });
 
-    test('updateUser edits the profile but preserves the stored password',
-        () async {
-      final seeded = applyPassword(
-        UserRecord()
-          ..id = 1
-          ..username = 'ada'
-          ..displayName = 'Ada'
-          ..email = 'ada@old.example'
-          ..status = UserStatus.active.name,
-        's3cret',
-      );
-      final store = InMemoryAdminStore(users: [seeded]);
-      final admin = AdminService(store);
+    test(
+      'updateUser edits the profile but preserves the stored password',
+      () async {
+        final seeded = applyPassword(
+          UserRecord()
+            ..id = 1
+            ..username = 'ada'
+            ..displayName = 'Ada'
+            ..email = 'ada@old.example'
+            ..status = UserStatus.active.name,
+          's3cret',
+        );
+        final store = InMemoryAdminStore(users: [seeded]);
+        final admin = AdminService(store);
 
-      final updated = await admin.updateUser(
-        '1',
-        UserDto(
-          id: '1',
-          username: 'ada',
-          displayName: 'Ada Lovelace',
-          email: 'ada@new.example',
-          status: UserStatus.active.name,
-        ),
-      );
+        final updated = await admin.updateUser(
+          '1',
+          UserDto(
+            id: '1',
+            username: 'ada',
+            displayName: 'Ada Lovelace',
+            email: 'ada@new.example',
+            status: UserStatus.active.name,
+          ),
+        );
 
-      expect(updated.displayName, 'Ada Lovelace');
-      expect(updated.email, 'ada@new.example');
-      final stored = await store.findUser(1);
-      expect(verifyUserPassword(stored!, 's3cret'), isTrue);
-    });
+        expect(updated.displayName, 'Ada Lovelace');
+        expect(updated.email, 'ada@new.example');
+        final stored = await store.findUser(1);
+        expect(verifyUserPassword(stored!, 's3cret'), isTrue);
+      },
+    );
 
     test('updateUser rejects an unknown id', () {
       final admin = AdminService(InMemoryAdminStore());
@@ -180,22 +191,24 @@ void main() {
   });
 
   group('AdminService group CRUD', () {
-    test('createGroup persists the group with its ordered membership', () async {
-      final store = InMemoryAdminStore(users: [
-        UserRecord()..id = 1,
-        UserRecord()..id = 2,
-      ]);
-      final admin = AdminService(store);
+    test(
+      'createGroup persists the group with its ordered membership',
+      () async {
+        final store = InMemoryAdminStore(
+          users: [UserRecord()..id = 1, UserRecord()..id = 2],
+        );
+        final admin = AdminService(store);
 
-      final created = await admin.createGroup(
-        GroupDto(name: 'Engineering', memberUserIds: ['1', '2']),
-      );
+        final created = await admin.createGroup(
+          GroupDto(name: 'Engineering', memberUserIds: ['1', '2']),
+        );
 
-      expect(created.name, 'Engineering');
-      expect(created.memberUserIds, ['1', '2']);
-      final groups = await admin.listGroups();
-      expect(groups.single.memberUserIds, ['1', '2']);
-    });
+        expect(created.name, 'Engineering');
+        expect(created.memberUserIds, ['1', '2']);
+        final groups = await admin.listGroups();
+        expect(groups.single.memberUserIds, ['1', '2']);
+      },
+    );
   });
 
   group('AdminService assignments', () {
@@ -215,20 +228,15 @@ void main() {
       );
       final admin = AdminService(store);
 
-      await admin.assign(AssignmentRequest(
-        userId: '1',
-        roleKey: 'admin',
-        groupId: '9',
-      ));
+      await admin.assign(
+        AssignmentRequest(userId: '1', roleKey: 'admin', groupId: '9'),
+      );
 
       expect(
         store.userRoleRows.any((a) => a.userId == 1 && a.roleId == 5),
         isTrue,
       );
-      expect(
-        (await store.membersOfGroup(9)).any((m) => m.userId == 1),
-        isTrue,
-      );
+      expect((await store.membersOfGroup(9)).any((m) => m.userId == 1), isTrue);
     });
   });
 
@@ -236,9 +244,9 @@ void main() {
     const gate = TomRoleAccess(['admin']);
 
     TomPrincipal principalWithRoles(List<String> roles) => TomPrincipal(
-          authenticated: true,
-          aci: TomAccessControlInformation(roles: roles),
-        );
+      authenticated: true,
+      aci: TomAccessControlInformation(roles: roles),
+    );
 
     test('an admin principal passes the gate', () {
       expect(gate.checkAccessibility(principalWithRoles(['admin'])), isTrue);

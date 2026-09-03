@@ -23,11 +23,11 @@ void main() {
 
   group('LoginRequest', () {
     LoginRequest request() => LoginRequest(
-          username: 'alice',
-          password: 's3cret',
-          app: 'todo',
-          org: 'acme',
-        );
+      username: 'alice',
+      password: 's3cret',
+      app: 'todo',
+      org: 'acme',
+    );
 
     test('toString never leaks the password', () {
       expect(request().toString(), isNot(contains('s3cret')));
@@ -45,12 +45,12 @@ void main() {
 
   group('UserDto', () {
     UserDto user() => UserDto(
-          id: 'u1',
-          username: 'alice',
-          displayName: 'Alice',
-          email: 'alice@example.com',
-          status: UserStatus.suspended.name,
-        );
+      id: 'u1',
+      username: 'alice',
+      displayName: 'Alice',
+      email: 'alice@example.com',
+      status: UserStatus.suspended.name,
+    );
 
     test('defaults to the active status', () {
       expect(UserDto().statusValue, UserStatus.active);
@@ -79,11 +79,11 @@ void main() {
 
   group('LoginResult', () {
     LoginResult result() => LoginResult(
-          user: UserDto(id: 'u1', username: 'alice'),
-          authToken: 'auth-token',
-          authzToken: 'authz-token',
-          expiresAt: DateTime.utc(2026, 6, 28, 12),
-        );
+      user: UserDto(id: 'u1', username: 'alice'),
+      authToken: 'auth-token',
+      authzToken: 'authz-token',
+      expiresAt: DateTime.utc(2026, 6, 28, 12),
+    );
 
     test('toString never leaks the bearer tokens', () {
       expect(result().toString(), isNot(contains('auth-token')));
@@ -114,8 +114,10 @@ void main() {
       // Not every caller can promise a String: `GrantMatrixDto.matrix` is typed
       // `Map<String, Object?>`, so the guard has to cover any value at all.
       expect(GradedFieldDto.parseAccess(7), TomAuthState.none);
-      expect(GradedFieldDto.parseAccess(const <String, Object?>{}),
-          TomAuthState.none);
+      expect(
+        GradedFieldDto.parseAccess(const <String, Object?>{}),
+        TomAuthState.none,
+      );
     });
 
     test('parseAccess honours a non-default orElse', () {
@@ -124,13 +126,17 @@ void main() {
       expect(GradedFieldDto.parseAccess(null, orElse: fallback), fallback);
       expect(GradedFieldDto.parseAccess(7, orElse: fallback), fallback);
       // A recognised token still wins over orElse.
-      expect(GradedFieldDto.parseAccess('read', orElse: fallback),
-          TomAuthState.read);
+      expect(
+        GradedFieldDto.parseAccess('read', orElse: fallback),
+        TomAuthState.read,
+      );
     });
 
     test('round-trips through reflection JSON', () {
       final grade = GradedFieldDto(
-          resourceKey: 'todo.item.status', access: TomAuthState.read);
+        resourceKey: 'todo.item.status',
+        access: TomAuthState.read,
+      );
       final restored = dtoFromJson<GradedFieldDto>(_wire(grade));
       expect(restored.resourceKey, 'todo.item.status');
       expect(restored.accessState, TomAuthState.read);
@@ -139,8 +145,9 @@ void main() {
     test('toString shows the key and access token', () {
       expect(
         GradedFieldDto(
-                resourceKey: 'todo.item.title', access: TomAuthState.read)
-            .toString(),
+          resourceKey: 'todo.item.title',
+          access: TomAuthState.read,
+        ).toString(),
         'GradedFieldDto(todo.item.title -> read)',
       );
     });
@@ -148,11 +155,11 @@ void main() {
 
   group('ShareRequest', () {
     ShareRequest share() => ShareRequest(
-          resourceType: 'project',
-          resourceId: 'p1',
-          granteeUserId: 'u2',
-          projectRole: ProjectRole.editor,
-        );
+      resourceType: 'project',
+      resourceId: 'p1',
+      granteeUserId: 'u2',
+      projectRole: ProjectRole.editor,
+    );
 
     test('defaults to the least-privileged viewer role', () {
       expect(ShareRequest().projectRoleValue, ProjectRole.viewer);
@@ -184,23 +191,33 @@ void main() {
 
   group('GrantMatrixDto', () {
     GrantMatrixDto sampleMatrix() => GrantMatrixDto.fromGrades({
-          'owner': [
-            GradedFieldDto(
-                resourceKey: 'todo.item.title', access: TomAuthState.full),
-            GradedFieldDto(
-                resourceKey: 'todo.item.status', access: TomAuthState.full),
-          ],
-          'viewer': [
-            GradedFieldDto(
-                resourceKey: 'todo.item.title', access: TomAuthState.read),
-            GradedFieldDto(
-                resourceKey: 'todo.item.status', access: TomAuthState.read),
-          ],
-        });
+      'owner': [
+        GradedFieldDto(
+          resourceKey: 'todo.item.title',
+          access: TomAuthState.full,
+        ),
+        GradedFieldDto(
+          resourceKey: 'todo.item.status',
+          access: TomAuthState.full,
+        ),
+      ],
+      'viewer': [
+        GradedFieldDto(
+          resourceKey: 'todo.item.title',
+          access: TomAuthState.read,
+        ),
+        GradedFieldDto(
+          resourceKey: 'todo.item.status',
+          access: TomAuthState.read,
+        ),
+      ],
+    });
 
     test('empty matrix resolves every cell to closed-safe none', () {
-      expect(GrantMatrixDto().accessFor('owner', 'todo.item.title'),
-          TomAuthState.none);
+      expect(
+        GrantMatrixDto().accessFor('owner', 'todo.item.title'),
+        TomAuthState.none,
+      );
     });
 
     test('accessFor returns the set cell and none for the unset', () {
@@ -208,30 +225,41 @@ void main() {
       expect(matrix.accessFor('owner', 'todo.item.title'), TomAuthState.full);
       expect(matrix.accessFor('viewer', 'todo.item.status'), TomAuthState.read);
       expect(matrix.accessFor('owner', 'unknown.key'), TomAuthState.none);
-      expect(matrix.accessFor('commenter', 'todo.item.title'),
-          TomAuthState.none);
+      expect(
+        matrix.accessFor('commenter', 'todo.item.title'),
+        TomAuthState.none,
+      );
     });
 
     test('withAccess leaves the original instance unchanged', () {
       final base = sampleMatrix();
-      final updated =
-          base.withAccess('viewer', 'todo.item.title', TomAuthState.disabled);
+      final updated = base.withAccess(
+        'viewer',
+        'todo.item.title',
+        TomAuthState.disabled,
+      );
       expect(base.accessFor('viewer', 'todo.item.title'), TomAuthState.read);
-      expect(updated.accessFor('viewer', 'todo.item.title'),
-          TomAuthState.disabled);
+      expect(
+        updated.accessFor('viewer', 'todo.item.title'),
+        TomAuthState.disabled,
+      );
     });
 
     test('gradesFor returns grades ordered by resource key', () {
-      expect(sampleMatrix().gradesFor('owner').map((g) => g.resourceKey),
-          ['todo.item.status', 'todo.item.title']);
+      expect(sampleMatrix().gradesFor('owner').map((g) => g.resourceKey), [
+        'todo.item.status',
+        'todo.item.title',
+      ]);
     });
 
     test('round-trips through reflection JSON, degrading unknown tokens', () {
       final matrix = sampleMatrix();
       final restored = dtoFromJson<GrantMatrixDto>(_wire(matrix));
       expect(restored.accessFor('owner', 'todo.item.title'), TomAuthState.full);
-      expect(restored.accessFor('viewer', 'todo.item.status'),
-          TomAuthState.read);
+      expect(
+        restored.accessFor('viewer', 'todo.item.status'),
+        TomAuthState.read,
+      );
 
       final lenient = dtoFromJson<GrantMatrixDto>({
         'matrix': {
@@ -251,15 +279,16 @@ void main() {
     // network, and a reader that throws breaks the console's read path instead
     // of rendering the most restrictive grade.
     group('malformed cells', () {
-      GrantMatrixDto malformed() => GrantMatrixDto()
-        ..matrix = <String, Object?>{
-          'owner': <String, Object?>{
-            'todo.item.title': 'full', // well-formed: must still parse
-            'todo.item.status': 7, // an int where a token belongs
-            'todo.item.priority': <String, Object?>{}, // a nested map
-          },
-          'ghost': 'not-a-row', // a row that is not a map at all
-        };
+      GrantMatrixDto malformed() =>
+          GrantMatrixDto()
+            ..matrix = <String, Object?>{
+              'owner': <String, Object?>{
+                'todo.item.title': 'full', // well-formed: must still parse
+                'todo.item.status': 7, // an int where a token belongs
+                'todo.item.priority': <String, Object?>{}, // a nested map
+              },
+              'ghost': 'not-a-row', // a row that is not a map at all
+            };
 
       test('accessFor denies a non-String cell', () {
         final dto = malformed();
@@ -281,8 +310,11 @@ void main() {
 
       test('gradesFor denies a non-String cell and keeps key order', () {
         final grades = malformed().gradesFor('owner');
-        expect(grades.map((g) => g.resourceKey),
-            ['todo.item.priority', 'todo.item.status', 'todo.item.title']);
+        expect(grades.map((g) => g.resourceKey), [
+          'todo.item.priority',
+          'todo.item.status',
+          'todo.item.title',
+        ]);
         expect(grades.map((g) => g.accessState), [
           TomAuthState.none,
           TomAuthState.none,
@@ -291,14 +323,23 @@ void main() {
       });
 
       test('withAccess copies a malformed row as denied', () {
-        final updated = malformed()
-            .withAccess('owner', 'todo.item.status', TomAuthState.read);
-        expect(updated.accessFor('owner', 'todo.item.status'),
-            TomAuthState.read); // the edited cell
-        expect(updated.accessFor('owner', 'todo.item.priority'),
-            TomAuthState.none); // the other malformed cell, now a token
-        expect(updated.accessFor('owner', 'todo.item.title'),
-            TomAuthState.full); // anti-vacuity
+        final updated = malformed().withAccess(
+          'owner',
+          'todo.item.status',
+          TomAuthState.read,
+        );
+        expect(
+          updated.accessFor('owner', 'todo.item.status'),
+          TomAuthState.read,
+        ); // the edited cell
+        expect(
+          updated.accessFor('owner', 'todo.item.priority'),
+          TomAuthState.none,
+        ); // the other malformed cell, now a token
+        expect(
+          updated.accessFor('owner', 'todo.item.title'),
+          TomAuthState.full,
+        ); // anti-vacuity
       });
 
       test('a malformed cell survives the wire path', () {
@@ -308,8 +349,10 @@ void main() {
           },
         });
         expect(back.accessFor('owner', 'todo.item.status'), TomAuthState.none);
-        expect(back.gradeMapFor('owner')['todo.item.status'],
-            TomAuthState.none);
+        expect(
+          back.gradeMapFor('owner')['todo.item.status'],
+          TomAuthState.none,
+        );
         expect(back.accessFor('owner', 'todo.item.title'), TomAuthState.full);
       });
     });
@@ -317,11 +360,11 @@ void main() {
 
   group('ResourceBundleDto', () {
     ResourceBundleDto sampleBundle() => ResourceBundleDto(const {
-          'todo.item.title.label': 'Title',
-          'todo.item.status.label': 'Status',
-          'todo.item.estimate.error.required': 'An estimate is required',
-          'login.username.hint': 'Your username',
-        });
+      'todo.item.title.label': 'Title',
+      'todo.item.status.label': 'Status',
+      'todo.item.estimate.error.required': 'An estimate is required',
+      'login.username.hint': 'Your username',
+    });
 
     test('defaults to an empty bundle', () {
       expect(ResourceBundleDto().texts, isEmpty);
@@ -390,8 +433,11 @@ void main() {
     });
 
     test('AssignmentRequest round-trips', () {
-      final assignment =
-          AssignmentRequest(userId: 'u1', roleKey: 'admin', groupId: 'g1');
+      final assignment = AssignmentRequest(
+        userId: 'u1',
+        roleKey: 'admin',
+        groupId: 'g1',
+      );
       final restored = dtoFromJson<AssignmentRequest>(_wire(assignment));
       expect(restored.userId, 'u1');
       expect(restored.roleKey, 'admin');
@@ -435,8 +481,10 @@ void main() {
       // the *same* kernel value. A bespoke present/type/size triple could not
       // make this assertion at all.
       final metadata = TomFileMetadata.fromJson(headJson);
-      final dto =
-          FileDescriptorDto.fromMetadata('app_items/1/attachment', metadata);
+      final dto = FileDescriptorDto.fromMetadata(
+        'app_items/1/attachment',
+        metadata,
+      );
 
       expect(dto.toMetadata(), equals(metadata));
       expect(dto.toMetadata().toJson(), equals(headJson));
@@ -452,8 +500,10 @@ void main() {
         'mediaType': 'application/octet-stream',
         'byteCount': 0,
       });
-      final dto =
-          FileDescriptorDto.fromMetadata('auth_users/2/avatar_ref', metadata);
+      final dto = FileDescriptorDto.fromMetadata(
+        'auth_users/2/avatar_ref',
+        metadata,
+      );
 
       expect(dto.fileName, isEmpty);
       expect(dto.storedAt, isEmpty);
@@ -462,7 +512,8 @@ void main() {
 
     test('carries the slot it describes, and its row id', () {
       final dto = FileDescriptorDto(
-          slot: FileDescriptorDto.slotOf('app_items', '42', 'attachment'));
+        slot: FileDescriptorDto.slotOf('app_items', '42', 'attachment'),
+      );
       expect(dto.slot, 'app_items/42/attachment');
       expect(dto.slotId, '42');
       // A malformed address yields null rather than a wrong id — the caller
@@ -472,7 +523,9 @@ void main() {
 
     test('round-trips through reflection JSON', () {
       final dto = FileDescriptorDto.fromMetadata(
-          'app_items/1/attachment', TomFileMetadata.fromJson(headJson));
+        'app_items/1/attachment',
+        TomFileMetadata.fromJson(headJson),
+      );
       final restored = dtoFromJson<FileDescriptorDto>(_wire(dto));
 
       expect(restored.slot, 'app_items/1/attachment');
@@ -481,7 +534,9 @@ void main() {
 
     test('toString names the slot and size without the storage key', () {
       final dto = FileDescriptorDto.fromMetadata(
-          'app_items/1/attachment', TomFileMetadata.fromJson(headJson));
+        'app_items/1/attachment',
+        TomFileMetadata.fromJson(headJson),
+      );
       expect(dto.toString(), contains('app_items/1/attachment'));
       expect(dto.toString(), contains('34'));
     });

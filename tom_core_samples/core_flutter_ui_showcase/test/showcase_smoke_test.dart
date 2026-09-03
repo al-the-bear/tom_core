@@ -34,9 +34,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      MaterialApp(home: GroupScreen(group: group)),
-    );
+    await tester.pumpWidget(MaterialApp(home: GroupScreen(group: group)));
     await tester.pump();
   }
 
@@ -74,30 +72,45 @@ void main() {
   // sections swapping headings, which reads as correct from either end.
   test('the README documents every group under its real title', () {
     final readme = File('README.md');
-    expect(readme.existsSync(), isTrue,
-        reason: 'tests must run from the package root');
+    expect(
+      readme.existsSync(),
+      isTrue,
+      reason: 'tests must run from the package root',
+    );
 
     final sections = <String, String>{};
-    for (final match in RegExp(r'^### (.+?) — `(groups/\w+\.dart)`$',
-            multiLine: true)
-        .allMatches(readme.readAsStringSync())) {
+    for (final match in RegExp(
+      r'^### (.+?) — `(groups/\w+\.dart)`$',
+      multiLine: true,
+    ).allMatches(readme.readAsStringSync())) {
       sections[match.group(2)!] = match.group(1)!;
     }
 
-    expect(sections, hasLength(showcaseGroups.length),
-        reason: 'the README must document each of the '
-            '${showcaseGroups.length} groups in exactly one "### <title> — '
-            '`groups/<file>.dart`" section');
+    expect(
+      sections,
+      hasLength(showcaseGroups.length),
+      reason:
+          'the README must document each of the '
+          '${showcaseGroups.length} groups in exactly one "### <title> — '
+          '`groups/<file>.dart`" section',
+    );
 
     sections.forEach((path, heading) {
       final file = File('lib/$path');
-      expect(file.existsSync(), isTrue,
-          reason: 'README section "$heading" cites $path, which does not exist');
-      expect(file.readAsStringSync(), contains("title: '$heading',"),
-          reason: 'README section "$heading" cites $path, but that group does '
-              'not declare that title — the app bar and home index show the '
-              'declared one, so a reader matching the README against the '
-              'running app finds no such screen');
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason: 'README section "$heading" cites $path, which does not exist',
+      );
+      expect(
+        file.readAsStringSync(),
+        contains("title: '$heading',"),
+        reason:
+            'README section "$heading" cites $path, but that group does '
+            'not declare that title — the app bar and home index show the '
+            'declared one, so a reader matching the README against the '
+            'running app finds no such screen',
+      );
     });
   });
 
@@ -114,11 +127,13 @@ void main() {
   // classes here (`MaterialApp`, `StatelessWidget`, `Column`, `Container`, all
   // cited as counter-examples), and an exclusion list for those would go stale
   // in the same way the enumeration did.
-  test('the README names every chrome class that extends TomStatelessWidget',
-      () {
+  test('the README names every chrome class that extends TomStatelessWidget', () {
     final readme = File('README.md');
-    expect(readme.existsSync(), isTrue,
-        reason: 'tests must run from the package root');
+    expect(
+      readme.existsSync(),
+      isTrue,
+      reason: 'tests must run from the package root',
+    );
 
     // Anchored on the two phrases the claim cannot be made without, rather than
     // on a line number or heading. Requiring exactly one match is what keeps
@@ -127,35 +142,50 @@ void main() {
     final claims = readme
         .readAsStringSync()
         .split('\n\n')
-        .where((p) => p.contains('derive from') &&
-            p.contains('`TomStatelessWidget`'))
+        .where(
+          (p) =>
+              p.contains('derive from') && p.contains('`TomStatelessWidget`'),
+        )
         .toList();
-    expect(claims, hasLength(1),
-        reason: 'the README must state the chrome base-class claim in exactly '
-            'one paragraph');
+    expect(
+      claims,
+      hasLength(1),
+      reason:
+          'the README must state the chrome base-class claim in exactly '
+          'one paragraph',
+    );
     final claim = claims.single;
 
     final declared = <String, String>{};
     for (final entity in Directory('lib').listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
-      for (final match
-          in RegExp(r'^class (\w+) extends TomStatelessWidget\b', multiLine: true)
-              .allMatches(entity.readAsStringSync())) {
+      for (final match in RegExp(
+        r'^class (\w+) extends TomStatelessWidget\b',
+        multiLine: true,
+      ).allMatches(entity.readAsStringSync())) {
         declared[match.group(1)!] = entity.path;
       }
     }
 
     // A guard against the check passing vacuously — a moved directory or a
     // renamed base class would otherwise leave nothing to assert.
-    expect(declared, hasLength(greaterThanOrEqualTo(6)),
-        reason: 'expected the showcase chrome to still be built from '
-            'TomStatelessWidget subclasses; found ${declared.length}');
+    expect(
+      declared,
+      hasLength(greaterThanOrEqualTo(6)),
+      reason:
+          'expected the showcase chrome to still be built from '
+          'TomStatelessWidget subclasses; found ${declared.length}',
+    );
 
     declared.forEach((name, path) {
-      expect(claim, contains('`$name`'),
-          reason: '$path declares $name, which extends TomStatelessWidget, but '
-              'the README paragraph listing the chrome classes does not name '
-              'it — the list reads as exhaustive and is not');
+      expect(
+        claim,
+        contains('`$name`'),
+        reason:
+            '$path declares $name, which extends TomStatelessWidget, but '
+            'the README paragraph listing the chrome classes does not name '
+            'it — the list reads as exhaustive and is not',
+      );
     });
 
     // The other half of the same sentence: "no raw StatelessWidget". Stated in
@@ -163,12 +193,15 @@ void main() {
     for (final entity in Directory('lib').listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
       expect(
-          RegExp(r'^class \w+ extends State(?:less|ful)Widget\b',
-                  multiLine: true)
-              .hasMatch(entity.readAsStringSync()),
-          isFalse,
-          reason: '${entity.path} declares a raw Flutter widget subclass; the '
-              'README claims the package has none');
+        RegExp(
+          r'^class \w+ extends State(?:less|ful)Widget\b',
+          multiLine: true,
+        ).hasMatch(entity.readAsStringSync()),
+        isFalse,
+        reason:
+            '${entity.path} declares a raw Flutter widget subclass; the '
+            'README claims the package has none',
+      );
     }
   });
 }

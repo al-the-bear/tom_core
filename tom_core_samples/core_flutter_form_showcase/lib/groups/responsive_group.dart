@@ -41,14 +41,16 @@ Widget _breakpointForm(String scopeId, double width) {
 final ShowcaseGroup responsiveGroup = ShowcaseGroup(
   id: 'responsive',
   title: 'Responsive breakpoints',
-  summary: 'One row with addRowBreakpoint(atWidth: 400): two fields stay side '
+  summary:
+      'One row with addRowBreakpoint(atWidth: 400): two fields stay side '
       'by side above 400px and reflow to a stack below it.',
   icon: Icons.aspect_ratio_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Wide (520px) — side by side',
       note: 'Above the 400px breakpoint the two fields share one row.',
-      code: "TomAclBuilder(id: 'bp', elementProvider: form)\n"
+      code:
+          "TomAclBuilder(id: 'bp', elementProvider: form)\n"
           "    .setAclExpandXDefault(true)\n"
           "    .setAclDefaultAppendGap(0)\n"
           "    .append((p) => p.industry.widget)\n"
@@ -60,7 +62,8 @@ final ShowcaseGroup responsiveGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'Narrow (320px) — stacked',
       note: 'The identical layout below 400px reflows the row to a stack.',
-      code: "// Same builder as above — only the available width differs.\n"
+      code:
+          "// Same builder as above — only the available width differs.\n"
           "TomSizedBox(width: 320, child: formLayout)",
       child: _breakpointForm('rsp_narrow', 320),
     ),

@@ -52,10 +52,7 @@ import 'resource_role_resolver.dart';
 /// serves every concurrent request.
 void registerAppColumnGrades() {
   final grades = ItemAttachmentGradeResolver.production();
-  TomRowColumnAuthorization.register(
-    itemAttachmentGradeKey,
-    grades.gradeFor,
-  );
+  TomRowColumnAuthorization.register(itemAttachmentGradeKey, grades.gradeFor);
 }
 
 /// Resolves the C-4 grade a principal holds on one item's `attachment` column.

@@ -63,15 +63,19 @@ class TodoUserRecord {
 }
 
 /// Repository for [TodoUserRecord].
-class TodoUserRepository extends TomSqlDatasourceRepository<TodoUserRecord, int> {
-}
+class TodoUserRepository
+    extends TomSqlDatasourceRepository<TodoUserRecord, int> {}
 
 /// Process-wide singleton repository instance.
 final todoUserRepository = TodoUserRepository();
 
 /// A project row in `todo_projects`.
 @tomReflector
-@TomDbTable(datasource: 'todo_db', table: 'todo_projects', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: 'todo_db',
+  table: 'todo_projects',
+  primaryKeyField: 'id',
+)
 class TodoProjectRecord {
   /// Surrogate primary key.
   @TomEntityId()

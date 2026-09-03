@@ -102,11 +102,10 @@ TomFileTransferClient ioFileTransferClient(Uri serverBaseUri) {
 TomFileTransferClient authenticatedFileTransferClient(
   Uri serverBaseUri,
   AuthorizedHttp http,
-) =>
-    AuthorizedFileTransferClient(
-      ioFileTransferClient(serverBaseUri),
-      http.refresher,
-    );
+) => AuthorizedFileTransferClient(
+  ioFileTransferClient(serverBaseUri),
+  http.refresher,
+);
 
 /// The authenticated file client both Flutter clients transfer bytes through.
 ///
@@ -152,13 +151,14 @@ class AuthorizedFileTransferClient extends TomFileTransferClient {
     required TomFileSource source,
     void Function(TomTransferProgress progress)? onProgress,
     TomTransferCancellation? cancellation,
-  }) =>
-      _authorized(() => delegate.upload(
-            slot: slot,
-            source: source,
-            onProgress: onProgress,
-            cancellation: cancellation,
-          ));
+  }) => _authorized(
+    () => delegate.upload(
+      slot: slot,
+      source: source,
+      onProgress: onProgress,
+      cancellation: cancellation,
+    ),
+  );
 
   /// Streams [slot], refreshing and replaying once if the *request* is refused
   /// as expired.
@@ -175,10 +175,10 @@ class AuthorizedFileTransferClient extends TomFileTransferClient {
     TomTransferCancellation? cancellation,
   }) async* {
     Stream<List<int>> open() => delegate.download(
-          slot,
-          onProgress: onProgress,
-          cancellation: cancellation,
-        );
+      slot,
+      onProgress: onProgress,
+      cancellation: cancellation,
+    );
     final started = await _authorized(() async {
       final iterator = StreamIterator(open());
       // Pulling the first chunk is what forces the request out and surfaces a
@@ -231,9 +231,9 @@ class AuthorizedFileTransferClient extends TomFileTransferClient {
 /// reports by throwing, and this is the translation between them.
 class _TransferAttempt<R> {
   _TransferAttempt.succeeded(R value)
-      : statusCode = 200,
-        _value = value,
-        failure = null;
+    : statusCode = 200,
+      _value = value,
+      failure = null;
 
   _TransferAttempt.refused(this.statusCode, this.failure) : _value = null;
 

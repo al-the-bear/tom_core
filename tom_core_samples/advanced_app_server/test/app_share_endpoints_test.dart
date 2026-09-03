@@ -35,31 +35,43 @@ const int dave = 99; // stranger — owns nothing, shares nothing
 /// item 1 in list 1.
 InMemoryResourceContainmentStore demoContainment() =>
     InMemoryResourceContainmentStore(
-      projects: [ProjectRecord()..id = 1..workspaceId = 1],
-      lists: [ListRecord()..id = 1..projectId = 1],
-      items: [ItemRecord()..id = 1..listId = 1],
+      projects: [
+        ProjectRecord()
+          ..id = 1
+          ..workspaceId = 1,
+      ],
+      lists: [
+        ListRecord()
+          ..id = 1
+          ..projectId = 1,
+      ],
+      items: [
+        ItemRecord()
+          ..id = 1
+          ..listId = 1,
+      ],
     );
 
 /// Alice owns the whole tree via a single workspace-level owner grant.
 List<TomPrincipalResourceGrant> demoGrants() => [
-      TomPrincipalResourceGrant(
-        principalId: '$alice',
-        resourceKey: ResourceRoleKeys.workspace('1'),
-        role: ProjectRole.owner.name,
-      ),
-    ];
+  TomPrincipalResourceGrant(
+    principalId: '$alice',
+    resourceKey: ResourceRoleKeys.workspace('1'),
+    role: ProjectRole.owner.name,
+  ),
+];
 
 /// The single pre-existing share: bob is an `editor` on project 1.
 List<TomPrincipalDelegation> demoShares() => [
-      TomPrincipalDelegation(
-        id: 1,
-        mode: TomDelegationMode.share.name,
-        delegatorId: '$alice',
-        delegateId: '$bob',
-        resourceKey: ResourceRoleKeys.project('1'),
-        role: ProjectRole.editor.name,
-      ),
-    ];
+  TomPrincipalDelegation(
+    id: 1,
+    mode: TomDelegationMode.share.name,
+    delegatorId: '$alice',
+    delegateId: '$bob',
+    resourceKey: ResourceRoleKeys.project('1'),
+    role: ProjectRole.editor.name,
+  ),
+];
 
 /// A resolver reading the delegation rows in [delegations] plus the demo
 /// ownership grants — used to prove a freshly persisted share is effective.
@@ -81,27 +93,33 @@ AppShareService shareServiceOver(InMemoryShareDelegationStore store) =>
 
 void main() {
   group('share (POST /share) — owner-only', () {
-    test('the owner shares a project; the persisted row records the grant',
-        () async {
-      final store = InMemoryShareDelegationStore(delegations: demoShares());
-      await shareServiceOver(store).share(
-        alice,
-        ShareRequest(
-          resourceType: AppResourceTypes.project,
-          resourceId: '1',
-          granteeUserId: '$carol',
-          projectRole: ProjectRole.commenter,
-        ),
-      );
+    test(
+      'the owner shares a project; the persisted row records the grant',
+      () async {
+        final store = InMemoryShareDelegationStore(delegations: demoShares());
+        await shareServiceOver(store).share(
+          alice,
+          ShareRequest(
+            resourceType: AppResourceTypes.project,
+            resourceId: '1',
+            granteeUserId: '$carol',
+            projectRole: ProjectRole.commenter,
+          ),
+        );
 
-      final saved =
-          store.delegations.firstWhere((d) => d.delegateId == '$carol');
-      expect(saved.id, greaterThan(0)); // surrogate key assigned
-      expect(saved.mode, TomDelegationMode.share.name);
-      expect(saved.resourceKey, ResourceRoleKeys.project('1'));
-      expect(saved.role, ProjectRole.commenter.name);
-      expect(saved.delegatorId, '$alice'); // the sharer is recorded as delegator
-    });
+        final saved = store.delegations.firstWhere(
+          (d) => d.delegateId == '$carol',
+        );
+        expect(saved.id, greaterThan(0)); // surrogate key assigned
+        expect(saved.mode, TomDelegationMode.share.name);
+        expect(saved.resourceKey, ResourceRoleKeys.project('1'));
+        expect(saved.role, ProjectRole.commenter.name);
+        expect(
+          saved.delegatorId,
+          '$alice',
+        ); // the sharer is recorded as delegator
+      },
+    );
 
     test('a created share immediately grants the grantee access', () async {
       final store = InMemoryShareDelegationStore(delegations: demoShares());
@@ -148,50 +166,69 @@ void main() {
             projectRole: ProjectRole.viewer,
           ),
         ),
-        throwsA(isA<TomEndpointHandlerException>()
-            .having((e) => e.key, 'key', 'app.access.forbidden')),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'app.access.forbidden',
+          ),
+        ),
       );
       // Nothing was persisted beyond the seed.
       expect(store.delegations, hasLength(1));
     });
 
-    test('a stranger may not share (forbidden, not leaked as missing)',
-        () async {
-      final store = InMemoryShareDelegationStore(delegations: demoShares());
-      await expectLater(
-        () => shareServiceOver(store).share(
-          dave,
-          ShareRequest(
-            resourceType: AppResourceTypes.project,
-            resourceId: '1',
-            granteeUserId: '$carol',
-            projectRole: ProjectRole.viewer,
+    test(
+      'a stranger may not share (forbidden, not leaked as missing)',
+      () async {
+        final store = InMemoryShareDelegationStore(delegations: demoShares());
+        await expectLater(
+          () => shareServiceOver(store).share(
+            dave,
+            ShareRequest(
+              resourceType: AppResourceTypes.project,
+              resourceId: '1',
+              granteeUserId: '$carol',
+              projectRole: ProjectRole.viewer,
+            ),
           ),
-        ),
-        throwsA(isA<TomEndpointHandlerException>()
-            .having((e) => e.key, 'key', 'app.access.forbidden')),
-      );
-      expect(store.delegations, hasLength(1));
-    });
+          throwsA(
+            isA<TomEndpointHandlerException>().having(
+              (e) => e.key,
+              'key',
+              'app.access.forbidden',
+            ),
+          ),
+        );
+        expect(store.delegations, hasLength(1));
+      },
+    );
 
-    test('a non-numeric resource or grantee id is rejected as invalid',
-        () async {
-      final store = InMemoryShareDelegationStore(delegations: demoShares());
-      await expectLater(
-        () => shareServiceOver(store).share(
-          alice,
-          ShareRequest(
-            resourceType: AppResourceTypes.project,
-            resourceId: 'not-a-number',
-            granteeUserId: '$carol',
-            projectRole: ProjectRole.viewer,
+    test(
+      'a non-numeric resource or grantee id is rejected as invalid',
+      () async {
+        final store = InMemoryShareDelegationStore(delegations: demoShares());
+        await expectLater(
+          () => shareServiceOver(store).share(
+            alice,
+            ShareRequest(
+              resourceType: AppResourceTypes.project,
+              resourceId: 'not-a-number',
+              granteeUserId: '$carol',
+              projectRole: ProjectRole.viewer,
+            ),
           ),
-        ),
-        throwsA(isA<TomEndpointHandlerException>()
-            .having((e) => e.key, 'key', 'app.share.invalid')),
-      );
-      expect(store.delegations, hasLength(1));
-    });
+          throwsA(
+            isA<TomEndpointHandlerException>().having(
+              (e) => e.key,
+              'key',
+              'app.share.invalid',
+            ),
+          ),
+        );
+        expect(store.delegations, hasLength(1));
+      },
+    );
   });
 
   group('revokeShare (DELETE /share/{id}) — owner-only', () {
@@ -229,22 +266,34 @@ void main() {
       final store = InMemoryShareDelegationStore(delegations: demoShares());
       await expectLater(
         () => shareServiceOver(store).revokeShare(bob, 1),
-        throwsA(isA<TomEndpointHandlerException>()
-            .having((e) => e.key, 'key', 'app.access.forbidden')),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'app.access.forbidden',
+          ),
+        ),
       );
       expect(store.delegations, hasLength(1)); // untouched
     });
 
-    test('revoking an unknown share is reported as not found (closed/safe)',
-        () async {
-      final store = InMemoryShareDelegationStore(delegations: demoShares());
-      await expectLater(
-        () => shareServiceOver(store).revokeShare(alice, 999),
-        throwsA(isA<TomEndpointHandlerException>()
-            .having((e) => e.key, 'key', 'app.share.not_found')),
-      );
-      expect(store.delegations, hasLength(1));
-    });
+    test(
+      'revoking an unknown share is reported as not found (closed/safe)',
+      () async {
+        final store = InMemoryShareDelegationStore(delegations: demoShares());
+        await expectLater(
+          () => shareServiceOver(store).revokeShare(alice, 999),
+          throwsA(
+            isA<TomEndpointHandlerException>().having(
+              (e) => e.key,
+              'key',
+              'app.share.not_found',
+            ),
+          ),
+        );
+        expect(store.delegations, hasLength(1));
+      },
+    );
   });
 
   group('appForbiddenOrNotFound — the server-level status mapping', () {

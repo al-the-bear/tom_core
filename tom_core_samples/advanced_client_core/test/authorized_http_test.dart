@@ -31,32 +31,40 @@ void main() {
     const refreshPath = '/auth/refresh';
 
     // Fresh bearer singleton per test — setTokens/refresh mutate global state.
-    setUp(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
-    tearDown(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
+    setUp(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
+    tearDown(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
 
-    AuthorizedHttp wrapperOver(_RoutingTransport transport) =>
-        AuthorizedHttp(transport, AuthClient(authBaseUri, transport: transport));
+    AuthorizedHttp wrapperOver(_RoutingTransport transport) => AuthorizedHttp(
+      transport,
+      AuthClient(authBaseUri, transport: transport),
+    );
 
-    test('TC-23-01: injects the stored bearer and returns a 2xx unchanged',
-        () async {
-      final authz = _makeJwt({'username': 'alice', 'userId': 2});
-      TomBearerAuthentication.setTokens(authz, authz, false);
+    test(
+      'TC-23-01: injects the stored bearer and returns a 2xx unchanged',
+      () async {
+        final authz = _makeJwt({'username': 'alice', 'userId': 2});
+        TomBearerAuthentication.setTokens(authz, authz, false);
 
-      final transport = _RoutingTransport({
-        appPath: [HttpJsonResponse(200, '{"ok":true}')],
-      });
-      final http = wrapperOver(transport);
+        final transport = _RoutingTransport({
+          appPath: [HttpJsonResponse(200, '{"ok":true}')],
+        });
+        final http = wrapperOver(transport);
 
-      final response = await http.send(method: 'GET', uri: appUri);
+        final response = await http.send(method: 'GET', uri: appUri);
 
-      expect(response.statusCode, equals(200));
-      final call = transport.callsTo(appPath).single;
-      expect(call.headers['Authorization'], equals('Bearer $authz'));
-      // No 401, so no refresh.
-      expect(transport.callsTo(refreshPath), isEmpty);
-    });
+        expect(response.statusCode, equals(200));
+        final call = transport.callsTo(appPath).single;
+        expect(call.headers['Authorization'], equals('Bearer $authz'));
+        // No 401, so no refresh.
+        expect(transport.callsTo(refreshPath), isEmpty);
+      },
+    );
 
     test('TC-23-02: merges the bearer with caller-supplied headers', () async {
       final authz = _makeJwt({'username': 'alice', 'userId': 2});
@@ -80,100 +88,117 @@ void main() {
       expect(call.body, equals('{"title":"x"}'));
     });
 
-    test('TC-23-03: on a 401 refreshes once and retries with the new bearer',
-        () async {
-      final authz0 = _makeJwt({'username': 'alice', 'userId': 2, 'v': 0});
-      TomBearerAuthentication.setTokens(authz0, authz0, false);
-      final authz1 = _makeJwt({'username': 'alice', 'userId': 2, 'v': 1});
+    test(
+      'TC-23-03: on a 401 refreshes once and retries with the new bearer',
+      () async {
+        final authz0 = _makeJwt({'username': 'alice', 'userId': 2, 'v': 0});
+        TomBearerAuthentication.setTokens(authz0, authz0, false);
+        final authz1 = _makeJwt({'username': 'alice', 'userId': 2, 'v': 1});
 
-      final transport = _RoutingTransport({
-        // First app call is rejected; the retry succeeds.
-        appPath: [
-          HttpJsonResponse(401, '{"error":"auth.token.expired"}'),
-          HttpJsonResponse(200, '{"items":[]}'),
-        ],
-        refreshPath: [HttpJsonResponse(200, jsonEncode(_loginBody(authz1)))],
-      });
-      final http = wrapperOver(transport);
+        final transport = _RoutingTransport({
+          // First app call is rejected; the retry succeeds.
+          appPath: [
+            HttpJsonResponse(401, '{"error":"auth.token.expired"}'),
+            HttpJsonResponse(200, '{"items":[]}'),
+          ],
+          refreshPath: [HttpJsonResponse(200, jsonEncode(_loginBody(authz1)))],
+        });
+        final http = wrapperOver(transport);
 
-      final response = await http.send(method: 'GET', uri: appUri);
+        final response = await http.send(method: 'GET', uri: appUri);
 
-      expect(response.statusCode, equals(200));
-      // Exactly one refresh and exactly one retry — no looping.
-      expect(transport.callsTo(refreshPath), hasLength(1));
-      final appCalls = transport.callsTo(appPath);
-      expect(appCalls, hasLength(2));
-      // First attempt carried the stale token; the retry carries the fresh one.
-      expect(appCalls[0].headers['Authorization'], equals('Bearer $authz0'));
-      expect(appCalls[1].headers['Authorization'], equals('Bearer $authz1'));
-      // The refresh sent the (old) authorization token as its bearer.
-      expect(transport.callsTo(refreshPath).single.headers['Authorization'],
-          equals('Bearer $authz0'));
-    });
+        expect(response.statusCode, equals(200));
+        // Exactly one refresh and exactly one retry — no looping.
+        expect(transport.callsTo(refreshPath), hasLength(1));
+        final appCalls = transport.callsTo(appPath);
+        expect(appCalls, hasLength(2));
+        // First attempt carried the stale token; the retry carries the fresh one.
+        expect(appCalls[0].headers['Authorization'], equals('Bearer $authz0'));
+        expect(appCalls[1].headers['Authorization'], equals('Bearer $authz1'));
+        // The refresh sent the (old) authorization token as its bearer.
+        expect(
+          transport.callsTo(refreshPath).single.headers['Authorization'],
+          equals('Bearer $authz0'),
+        );
+      },
+    );
 
-    test('TC-23-04: a 401 that persists after refresh throws TomAuthExpiredException',
-        () async {
-      final authz0 = _makeJwt({'username': 'alice', 'userId': 2});
-      TomBearerAuthentication.setTokens(authz0, authz0, false);
-      final authz1 = _makeJwt({'username': 'alice', 'userId': 2, 'v': 1});
+    test(
+      'TC-23-04: a 401 that persists after refresh throws TomAuthExpiredException',
+      () async {
+        final authz0 = _makeJwt({'username': 'alice', 'userId': 2});
+        TomBearerAuthentication.setTokens(authz0, authz0, false);
+        final authz1 = _makeJwt({'username': 'alice', 'userId': 2, 'v': 1});
 
-      final transport = _RoutingTransport({
-        appPath: [
-          HttpJsonResponse(401, '{"error":"auth.token.expired"}'),
-          HttpJsonResponse(401, '{"error":"auth.token.invalid"}'),
-        ],
-        refreshPath: [HttpJsonResponse(200, jsonEncode(_loginBody(authz1)))],
-      });
-      final http = wrapperOver(transport);
+        final transport = _RoutingTransport({
+          appPath: [
+            HttpJsonResponse(401, '{"error":"auth.token.expired"}'),
+            HttpJsonResponse(401, '{"error":"auth.token.invalid"}'),
+          ],
+          refreshPath: [HttpJsonResponse(200, jsonEncode(_loginBody(authz1)))],
+        });
+        final http = wrapperOver(transport);
 
-      await expectLater(
-        http.send(method: 'GET', uri: appUri),
-        throwsA(isA<TomAuthExpiredException>()
-            .having((e) => e.key, 'key', 'auth.token.invalid')
-            .having((e) => e.statusCode, 'statusCode', 401)),
-      );
-      // Refresh + retry happened exactly once each — then it surfaced, no loop.
-      expect(transport.callsTo(refreshPath), hasLength(1));
-      expect(transport.callsTo(appPath), hasLength(2));
-    });
+        await expectLater(
+          http.send(method: 'GET', uri: appUri),
+          throwsA(
+            isA<TomAuthExpiredException>()
+                .having((e) => e.key, 'key', 'auth.token.invalid')
+                .having((e) => e.statusCode, 'statusCode', 401),
+          ),
+        );
+        // Refresh + retry happened exactly once each — then it surfaced, no loop.
+        expect(transport.callsTo(refreshPath), hasLength(1));
+        expect(transport.callsTo(appPath), hasLength(2));
+      },
+    );
 
-    test('TC-23-05: a non-401 error status is returned as-is, with no refresh',
-        () async {
-      final authz = _makeJwt({'username': 'alice', 'userId': 2});
-      TomBearerAuthentication.setTokens(authz, authz, false);
+    test(
+      'TC-23-05: a non-401 error status is returned as-is, with no refresh',
+      () async {
+        final authz = _makeJwt({'username': 'alice', 'userId': 2});
+        TomBearerAuthentication.setTokens(authz, authz, false);
 
-      final transport = _RoutingTransport({
-        appPath: [HttpJsonResponse(403, '{"error":"app.access.forbidden"}')],
-      });
-      final http = wrapperOver(transport);
+        final transport = _RoutingTransport({
+          appPath: [HttpJsonResponse(403, '{"error":"app.access.forbidden"}')],
+        });
+        final http = wrapperOver(transport);
 
-      final response = await http.send(method: 'GET', uri: appUri);
+        final response = await http.send(method: 'GET', uri: appUri);
 
-      // The API client interprets 403/404 itself — the wrapper does not refresh.
-      expect(response.statusCode, equals(403));
-      expect(transport.callsTo(appPath), hasLength(1));
-      expect(transport.callsTo(refreshPath), isEmpty);
-    });
+        // The API client interprets 403/404 itself — the wrapper does not refresh.
+        expect(response.statusCode, equals(403));
+        expect(transport.callsTo(appPath), hasLength(1));
+        expect(transport.callsTo(refreshPath), isEmpty);
+      },
+    );
 
-    test('TC-23-06: with no stored session the call goes out unauthenticated and a 401 surfaces the refresh failure',
-        () async {
-      // No setTokens — there is no session to inject or to refresh.
-      final transport = _RoutingTransport({
-        appPath: [HttpJsonResponse(401, '')],
-      });
-      final http = wrapperOver(transport);
+    test(
+      'TC-23-06: with no stored session the call goes out unauthenticated and a 401 surfaces the refresh failure',
+      () async {
+        // No setTokens — there is no session to inject or to refresh.
+        final transport = _RoutingTransport({
+          appPath: [HttpJsonResponse(401, '')],
+        });
+        final http = wrapperOver(transport);
 
-      await expectLater(
-        http.send(method: 'GET', uri: appUri),
-        throwsA(isA<AuthClientException>()
-            .having((e) => e.key, 'key', 'auth.no_token')),
-      );
-      // The first attempt carried no Authorization header; refresh aborted
-      // before any /auth/refresh round-trip.
-      final firstCall = transport.callsTo(appPath).single;
-      expect(firstCall.headers.containsKey('Authorization'), isFalse);
-      expect(transport.callsTo(refreshPath), isEmpty);
-    });
+        await expectLater(
+          http.send(method: 'GET', uri: appUri),
+          throwsA(
+            isA<AuthClientException>().having(
+              (e) => e.key,
+              'key',
+              'auth.no_token',
+            ),
+          ),
+        );
+        // The first attempt carried no Authorization header; refresh aborted
+        // before any /auth/refresh round-trip.
+        final firstCall = transport.callsTo(appPath).single;
+        expect(firstCall.headers.containsKey('Authorization'), isFalse);
+        expect(transport.callsTo(refreshPath), isEmpty);
+      },
+    );
   });
 }
 
@@ -181,17 +206,17 @@ void main() {
 /// token (and a synthetic auth token), so the wrapper's refresh stores a fresh
 /// pair the retry can pick up.
 Map<String, Object?> _loginBody(String authzToken) => {
-      'user': {
-        'id': '2',
-        'username': 'alice',
-        'displayName': 'alice',
-        'email': 'alice@example.com',
-        'status': 'active',
-      },
-      'authToken': _makeJwt({'username': 'alice', 'userId': 2, 'kind': 'auth'}),
-      'authzToken': authzToken,
-      'expiresAt': '2026-06-28T12:34:56.000Z',
-    };
+  'user': {
+    'id': '2',
+    'username': 'alice',
+    'displayName': 'alice',
+    'email': 'alice@example.com',
+    'status': 'active',
+  },
+  'authToken': _makeJwt({'username': 'alice', 'userId': 2, 'kind': 'auth'}),
+  'authzToken': authzToken,
+  'expiresAt': '2026-06-28T12:34:56.000Z',
+};
 
 /// Builds an unsigned, undecrypted JWT whose middle segment carries [payload].
 /// Suitable for `setTokens(..., decrypt: false)`.

@@ -32,7 +32,15 @@ final _identifier = RegExp(r'[A-Za-z_$][A-Za-z0-9_$]*');
 /// Dart keywords and literals: they are syntax, not references to a
 /// declaration, so a snippet may use them without the child doing so.
 const _syntax = {
-  'const', 'final', 'var', 'new', 'return', 'true', 'false', 'null', 'this'
+  'const',
+  'final',
+  'var',
+  'new',
+  'return',
+  'true',
+  'false',
+  'null',
+  'this',
 };
 
 /// The snippets in [source] — the text a reader copies out of the running app.
@@ -55,8 +63,9 @@ void main() {
     );
   });
 
-  testWidgets('renders both the code snippet and the live child',
-      (tester) async {
+  testWidgets('renders both the code snippet and the live child', (
+    tester,
+  ) async {
     const marker = Key('cell-child-marker');
 
     await tester.pumpWidget(
@@ -85,8 +94,9 @@ void main() {
     expect(find.text('Demo'), findsOneWidget);
   });
 
-  testWidgets('every showcase cell carries a non-empty snippet',
-      (tester) async {
+  testWidgets('every showcase cell carries a non-empty snippet', (
+    tester,
+  ) async {
     // Some group builders read `Theme.of(context)` eagerly, so we need a real
     // BuildContext from a pumped MaterialApp rather than a fake.
     late BuildContext capturedContext;
@@ -103,8 +113,11 @@ void main() {
 
     for (final group in showcaseGroups) {
       for (final cell in group.cells(capturedContext)) {
-        expect(cell.code.trim(), isNotEmpty,
-            reason: 'group ${group.id}: a cell has an empty code snippet');
+        expect(
+          cell.code.trim(),
+          isNotEmpty,
+          reason: 'group ${group.id}: a cell has an empty code snippet',
+        );
       }
     }
   });
@@ -120,19 +133,22 @@ void main() {
   // legitimately name `_on`/`_checked`/`_value` from the stateful demo
   // wrappers declared beside them.
   test('a snippet only names identifiers that exist in its group file', () {
-    final files = Directory('lib/groups')
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final files =
+        Directory('lib/groups')
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart'))
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
 
     var identifiersChecked = 0;
 
     for (final file in files) {
       final source = file.readAsStringSync();
-      final defined =
-          _identifier.allMatches(_childText(source)).map((m) => m[0]!).toSet();
+      final defined = _identifier
+          .allMatches(_childText(source))
+          .map((m) => m[0]!)
+          .toSet();
 
       // Strings *inside* a snippet are data (labels, ids), not references.
       final snippet = _snippetText(source).replaceAll(_singleQuoted, "''");
@@ -141,10 +157,14 @@ void main() {
         final name = match[0]!;
         if (_syntax.contains(name)) continue;
         identifiersChecked++;
-        expect(defined, contains(name),
-            reason: '${file.path}: the snippet names `$name`, which appears '
-                'nowhere in the file that renders it — a reader copying the '
-                'snippet gets code that does not compile');
+        expect(
+          defined,
+          contains(name),
+          reason:
+              '${file.path}: the snippet names `$name`, which appears '
+              'nowhere in the file that renders it — a reader copying the '
+              'snippet gets code that does not compile',
+        );
       }
     }
 
@@ -167,17 +187,19 @@ void main() {
   // only where the snippet actually quotes the construct.
   test('a snippet quoting a construct shows its whole configuration', () {
     final groups = Directory('lib/groups');
-    expect(groups.existsSync(), isTrue,
-        reason: 'tests must run from the package root');
+    expect(
+      groups.existsSync(),
+      isTrue,
+      reason: 'tests must run from the package root',
+    );
 
     var sizingChecked = 0;
     var ctorsChecked = 0;
     var aclChecked = 0;
 
-    for (final file in groups
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))) {
+    for (final file in groups.listSync().whereType<File>().where(
+      (f) => f.path.endsWith('.dart'),
+    )) {
       final source = file.readAsStringSync();
       final snippet = _snippetText(source);
       final child = _childText(source);
@@ -189,10 +211,14 @@ void main() {
       // argument, so it cannot be caught by comparing argument lists.
       if (child.contains('TomSizedBox(')) {
         sizingChecked++;
-        expect(snippet, contains('TomSizedBox('),
-            reason: '$name: the child constrains a widget with TomSizedBox but '
-                'no snippet shows it — a reader copying the snippet gets an '
-                'unconstrained widget, not the one previewed');
+        expect(
+          snippet,
+          contains('TomSizedBox('),
+          reason:
+              '$name: the child constrains a widget with TomSizedBox but '
+              'no snippet shows it — a reader copying the snippet gets an '
+              'unconstrained widget, not the one previewed',
+        );
       }
 
       // For every Tom widget a snippet quotes, the arguments the child passes
@@ -200,12 +226,18 @@ void main() {
       // widget is given is that widget's own rule to answer.
       for (final ctor in _tomConstructors(snippet)) {
         ctorsChecked++;
-        final missing = _namedArguments(child, ctor)
-            .difference(_namedArguments(snippet, ctor));
-        expect(missing, isEmpty,
-            reason: '$name: the snippet quotes $ctor but omits '
-                '${missing.map((a) => "$a:").join(", ")}, which the child '
-                'passes — the copied widget would render differently');
+        final missing = _namedArguments(
+          child,
+          ctor,
+        ).difference(_namedArguments(snippet, ctor));
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              '$name: the snippet quotes $ctor but omits '
+              '${missing.map((a) => "$a:").join(", ")}, which the child '
+              'passes — the copied widget would render differently',
+        );
       }
 
       // The ACL engine configures through a fluent chain rather than
@@ -215,10 +247,14 @@ void main() {
       if (snippet.contains('AclBuilder(')) {
         aclChecked++;
         final missing = _builderCalls(child).difference(_builderCalls(snippet));
-        expect(missing, isEmpty,
-            reason: '$name: the snippet quotes AclBuilder but omits '
-                '${missing.map((c) => ".$c()").join(", ")}, which the child '
-                'calls — the copied layout would render differently');
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              '$name: the snippet quotes AclBuilder but omits '
+              '${missing.map((c) => ".$c()").join(", ")}, which the child '
+              'calls — the copied layout would render differently',
+        );
       }
     }
 
@@ -247,8 +283,11 @@ void main() {
   // contract — that each section names a screen that exists.)
   test('a README illustration only shows values its group file has', () {
     final readme = File('README.md');
-    expect(readme.existsSync(), isTrue,
-        reason: 'tests must run from the package root');
+    expect(
+      readme.existsSync(),
+      isTrue,
+      reason: 'tests must run from the package root',
+    );
 
     final heading = RegExp(r'^[^\n]+? — `(groups/\w+\.dart)`$');
     final fence = RegExp(r'^```dart\n([\s\S]*?)^```', multiLine: true);
@@ -264,8 +303,11 @@ void main() {
 
       final path = cited.group(1)!;
       final file = File('lib/$path');
-      expect(file.existsSync(), isTrue,
-          reason: 'the README illustrates $path, which does not exist');
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason: 'the README illustrates $path, which does not exist',
+      );
 
       // Comments are commentary on both sides; strings are data, so they are
       // compared as whole literals rather than tokenised into identifiers.
@@ -278,17 +320,25 @@ void main() {
           final value = match[0]!;
           if (_syntax.contains(value)) continue;
           tokensChecked++;
-          expect(available, contains(value),
-              reason: 'README section for $path shows the $kind `$value`, '
-                  'which appears nowhere in that file — the illustration and '
-                  'the cell it illustrates have drifted apart');
+          expect(
+            available,
+            contains(value),
+            reason:
+                'README section for $path shows the $kind `$value`, '
+                'which appears nowhere in that file — the illustration and '
+                'the cell it illustrates have drifted apart',
+          );
         }
       }
 
       requireAll('string', _singleQuoted, shown, source);
       final bare = shown.replaceAll(_singleQuoted, "''");
-      requireAll('identifier', _dottedIdentifier, bare,
-          source.replaceAll(_singleQuoted, "''"));
+      requireAll(
+        'identifier',
+        _dottedIdentifier,
+        bare,
+        source.replaceAll(_singleQuoted, "''"),
+      );
       requireAll('number', _number, bare, source);
 
       sectionsChecked++;
@@ -305,12 +355,14 @@ void main() {
 /// taken whole, so that a shorter path is a *different* token rather than a
 /// prefix of the real one.
 final _dottedIdentifier = RegExp(
-    r'[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*');
+  r'[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*',
+);
 final _number = RegExp(r'\d+(?:\.\d+)?');
 
 final _tomConstructor = RegExp(r'\b(Tom[A-Za-z0-9]*)\s*\(');
-final _builderCall =
-    RegExp(r'\.(append|setPSize|setMinSize|setMaxSize|setAcl[A-Za-z0-9]*)\s*\(');
+final _builderCall = RegExp(
+  r'\.(append|setPSize|setMinSize|setMaxSize|setAcl[A-Za-z0-9]*)\s*\(',
+);
 final _namedArgument = RegExp(r'\b(\w+)\s*:');
 
 /// The Tom widget constructors invoked in [source].

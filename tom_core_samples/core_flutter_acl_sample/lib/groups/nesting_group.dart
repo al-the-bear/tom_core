@@ -17,15 +17,18 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup nestingGroup = ShowcaseGroup(
   id: 'nesting',
   title: 'Nesting (ACL inside ACL)',
-  summary: 'AclBuilder.build() returns a Widget, so a whole layout can be '
+  summary:
+      'AclBuilder.build() returns a Widget, so a whole layout can be '
       'appended as one cell of another — panel-within-panel composition.',
   icon: Icons.account_tree_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'A two-row panel nested in a row',
-      note: 'The inner builder produces a small stacked panel; the outer '
+      note:
+          'The inner builder produces a small stacked panel; the outer '
           'builder treats it as one component beside a sibling box.',
-      code: 'final inner = AclBuilder()\n'
+      code:
+          'final inner = AclBuilder()\n'
           "    .append(demoBox('Item 1', green))\n"
           '    .newRow(dist: 4)\n'
           "    .append(demoBox('Item 2', green))\n"
@@ -52,9 +55,11 @@ final ShowcaseGroup nestingGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Two nested panels side by side',
-      note: 'Each panel is its own ACL build result; the outer row sizes and '
+      note:
+          'Each panel is its own ACL build result; the outer row sizes and '
           'spaces them like any other component.',
-      code: 'final leftPanel = AclBuilder()\n'
+      code:
+          'final leftPanel = AclBuilder()\n'
           "    .append(demoBox('Left · A', blue))\n"
           '    .newRow(dist: 4)\n'
           "    .append(demoBox('Left · B', blue))\n"

@@ -31,10 +31,14 @@ void main() {
   setUpAll(initializeReflection);
 
   group('AdminApiClient (live auth server)', () {
-    setUp(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
-    tearDown(() => TomBearerAuthentication.bearerAuthentication =
-        TomBearerAuthentication());
+    setUp(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
+    tearDown(
+      () => TomBearerAuthentication.bearerAuthentication =
+          TomBearerAuthentication(),
+    );
 
     test('TC-25-14: admin logs in, then lists users', () async {
       // One live transport, shared by AuthClient and AdminApiClient (the
@@ -46,14 +50,16 @@ void main() {
 
       try {
         await auth.login(
-            LoginRequest(username: 'admin', password: 'admin-pass'));
+          LoginRequest(username: 'admin', password: 'admin-pass'),
+        );
         final users = await client.listUsers();
         // The seed always contains at least the `admin` and `alice` principals.
         expect(users, isNotEmpty);
       } on SocketException catch (e) {
         markTestSkipped(
-            'auth server not reachable on $_authBaseUri — start '
-            'advanced_auth_server to run this integration test ($e)');
+          'auth server not reachable on $_authBaseUri — start '
+          'advanced_auth_server to run this integration test ($e)',
+        );
         return;
       } finally {
         transport.close();

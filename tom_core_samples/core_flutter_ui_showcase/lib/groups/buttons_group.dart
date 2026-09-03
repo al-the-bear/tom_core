@@ -15,13 +15,15 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup buttonsGroup = ShowcaseGroup(
   id: 'buttons',
   title: 'Buttons',
-  summary: 'Elevated, filled, text, outlined, icon and floating action '
+  summary:
+      'Elevated, filled, text, outlined, icon and floating action '
       'buttons — the full Tom button family.',
   icon: Icons.smart_button,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomElevatedButton',
-      code: "TomElevatedButton(\n"
+      code:
+          "TomElevatedButton(\n"
           "  label: 'Save',\n"
           "  onPressed: () {},\n"
           ")",
@@ -29,7 +31,8 @@ final ShowcaseGroup buttonsGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomFilledButton (tonal)',
-      code: "TomFilledButton(\n"
+      code:
+          "TomFilledButton(\n"
           "  tonal: true,\n"
           "  label: 'Continue',\n"
           "  onPressed: () {},\n"
@@ -38,7 +41,8 @@ final ShowcaseGroup buttonsGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomTextButton',
-      code: "TomTextButton(\n"
+      code:
+          "TomTextButton(\n"
           "  label: 'Learn more',\n"
           "  onPressed: () {},\n"
           ")",
@@ -46,7 +50,8 @@ final ShowcaseGroup buttonsGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomOutlinedButton',
-      code: "TomOutlinedButton(\n"
+      code:
+          "TomOutlinedButton(\n"
           "  label: 'Cancel',\n"
           "  onPressed: () {},\n"
           ")",
@@ -54,9 +59,11 @@ final ShowcaseGroup buttonsGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomIconButton',
-      note: 'An icon button needs a tooltip (or a tomId) so it has an '
+      note:
+          'An icon button needs a tooltip (or a tomId) so it has an '
           'accessible label.',
-      code: "TomIconButton(\n"
+      code:
+          "TomIconButton(\n"
           "  icon: const Icon(Icons.favorite),\n"
           "  tooltip: 'Favorite',\n"
           "  onPressed: () {},\n"
@@ -69,7 +76,8 @@ final ShowcaseGroup buttonsGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomFloatingActionButton',
-      code: "TomFloatingActionButton(\n"
+      code:
+          "TomFloatingActionButton(\n"
           "  heroTag: 'fab_showcase',\n"
           "  child: const Icon(Icons.add),\n"
           "  onPressed: () {},\n"
@@ -83,7 +91,8 @@ final ShowcaseGroup buttonsGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'Disabled state',
       note: 'Passing onPressed: null disables any Tom button.',
-      code: "TomElevatedButton(\n"
+      code:
+          "TomElevatedButton(\n"
           "  label: 'Unavailable',\n"
           "  onPressed: null,\n"
           ")",

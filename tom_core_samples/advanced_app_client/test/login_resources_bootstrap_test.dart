@@ -22,8 +22,7 @@ void main() {
   // reflected domain tree in its constructor.
   setUpAll(initializeReflection);
 
-  testWidgets(
-      'TC-8-01: the login screen renders server-delivered chrome after the '
+  testWidgets('TC-8-01: the login screen renders server-delivered chrome after the '
       'bootstrap fetch (no hardcoded string)', (tester) async {
     // Start from an empty provider: every chrome key falls back to itself, which
     // is only possible because the widget carries no client-side strings.
@@ -48,9 +47,12 @@ void main() {
     // After: the screen renders the server-delivered texts; the raw keys are gone.
     expect(find.text('Advanced Todo — Sign in'), findsOneWidget);
     expect(
-        find.text('Try alice, bob or carol (any non-empty password), dave to '
-            'be challenged for a second factor, or erin to be offered one.'),
-        findsOneWidget);
+      find.text(
+        'Try alice, bob or carol (any non-empty password), dave to '
+        'be challenged for a second factor, or erin to be offered one.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('login.title'), findsNothing);
     expect(find.text('login.intro'), findsNothing);
   });

@@ -12,13 +12,15 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup layoutGroup = ShowcaseGroup(
   id: 'layout',
   title: 'Layout',
-  summary: 'Rows, columns, wraps and the Expanded flex child — the Tom '
+  summary:
+      'Rows, columns, wraps and the Expanded flex child — the Tom '
       'mirrors of Flutter\'s layout primitives.',
   icon: Icons.view_quilt_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomRow',
-      code: "TomRow(\n"
+      code:
+          "TomRow(\n"
           "  mainAxisSize: MainAxisSize.min,\n"
           "  children: [\n"
           "    demoBox('A', Colors.red),\n"
@@ -41,7 +43,8 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomColumn',
-      code: "TomColumn(\n"
+      code:
+          "TomColumn(\n"
           "  mainAxisSize: MainAxisSize.min,\n"
           "  crossAxisAlignment: CrossAxisAlignment.start,\n"
           "  children: [\n"
@@ -62,7 +65,8 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomRow + TomExpanded',
-      code: "TomRow(\n"
+      code:
+          "TomRow(\n"
           "  children: [\n"
           "    TomExpanded(flex: 2, child: demoBox('flex 2', Colors.teal)),\n"
           "    TomExpanded(flex: 1, child: demoBox('flex 1', Colors.amber)),\n"
@@ -77,7 +81,8 @@ final ShowcaseGroup layoutGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomWrap',
-      code: "TomWrap(\n"
+      code:
+          "TomWrap(\n"
           "  spacing: 8,\n"
           "  runSpacing: 8,\n"
           "  children: [\n"

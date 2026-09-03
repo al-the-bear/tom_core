@@ -23,15 +23,18 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup authorizationGroup = ShowcaseGroup(
   id: 'authorization',
   title: 'Four-state authorization',
-  summary: 'none, disabled, read and full — the TomAuthState model that '
+  summary:
+      'none, disabled, read and full — the TomAuthState model that '
       'drives how every Tom widget renders, shown with TomAuthorizer.fixed.',
   icon: Icons.shield_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomAuthState.full',
-      note: 'Fully interactive and editable — the default for an '
+      note:
+          'Fully interactive and editable — the default for an '
           'unconstrained widget.',
-      code: "TomElevatedButton(\n"
+      code:
+          "TomElevatedButton(\n"
           "  authorizer: TomAuthorizer.fixed(TomAuthState.full),\n"
           "  label: 'Approve',\n"
           "  onPressed: () {},\n"
@@ -45,7 +48,8 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomAuthState.read',
       note: 'Visible and shows its value, but cannot be activated.',
-      code: "TomElevatedButton(\n"
+      code:
+          "TomElevatedButton(\n"
           "  authorizer: TomAuthorizer.fixed(TomAuthState.read),\n"
           "  label: 'Approve',\n"
           "  onPressed: () {},\n"
@@ -59,7 +63,8 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomAuthState.disabled',
       note: 'Greyed out — the data may exist but is not accessible here.',
-      code: "TomElevatedButton(\n"
+      code:
+          "TomElevatedButton(\n"
           "  authorizer: TomAuthorizer.fixed(TomAuthState.disabled),\n"
           "  label: 'Approve',\n"
           "  onPressed: () {},\n"
@@ -72,9 +77,11 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomAuthState.none',
-      note: 'Hidden entirely — the cell renders an empty preview surface '
+      note:
+          'Hidden entirely — the cell renders an empty preview surface '
           'because the widget collapses to nothing.',
-      code: "TomElevatedButton(\n"
+      code:
+          "TomElevatedButton(\n"
           "  authorizer: TomAuthorizer.fixed(TomAuthState.none),\n"
           "  label: 'Approve',\n"
           "  onPressed: () {},\n"

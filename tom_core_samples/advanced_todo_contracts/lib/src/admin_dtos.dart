@@ -76,11 +76,8 @@ class GroupDto {
   List<String> memberUserIds;
 
   /// Creates a group DTO.
-  GroupDto({
-    this.id = '',
-    this.name = '',
-    List<String>? memberUserIds,
-  }) : memberUserIds = memberUserIds ?? <String>[];
+  GroupDto({this.id = '', this.name = '', List<String>? memberUserIds})
+    : memberUserIds = memberUserIds ?? <String>[];
 
   @override
   String toString() => 'GroupDto($id, $name, ${memberUserIds.length} members)';
@@ -103,11 +100,7 @@ class AssignmentRequest {
   String groupId;
 
   /// Creates an assignment request.
-  AssignmentRequest({
-    this.userId = '',
-    this.roleKey = '',
-    this.groupId = '',
-  });
+  AssignmentRequest({this.userId = '', this.roleKey = '', this.groupId = ''});
 
   @override
   String toString() =>

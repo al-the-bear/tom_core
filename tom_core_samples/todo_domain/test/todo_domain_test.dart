@@ -44,8 +44,7 @@ void main() {
       expect(project.lists[0].items[0].title.get(), 'Ship todo_domain');
     });
 
-    test('enum values resolve under a global.<enumtype>.<value> resource key',
-        () {
+    test('enum values resolve under a global.<enumtype>.<value> resource key', () {
       // G-RES-5: enums carry no hardcoded display text — the framework derives
       // the key and the installed bundle supplies the text at the point of
       // display. Asserted here because these are the keys the bundle must carry.
@@ -124,16 +123,17 @@ void main() {
     /// A matrix whose `viewer` row mixes a well-formed token with cells that
     /// are not strings at all — the shape an untrusted or version-skewed
     /// payload can take, since `states` is typed `Map<String, Object?>`.
-    TodoFieldMatrixDto malformed() => TodoFieldMatrixDto()
-      ..states = <String, Object?>{
-        'viewer': <String, Object?>{
-          'todo.item.title': 'read', // well-formed: must still parse
-          'todo.item.priority': 42, // an int where a token belongs
-          'todo.item.done': <String, Object?>{}, // a nested map
-          'todo.item.label': true, // a bool
-        },
-        'ghost': 'not-a-row', // a row that is not a map at all
-      };
+    TodoFieldMatrixDto malformed() =>
+        TodoFieldMatrixDto()
+          ..states = <String, Object?>{
+            'viewer': <String, Object?>{
+              'todo.item.title': 'read', // well-formed: must still parse
+              'todo.item.priority': 42, // an int where a token belongs
+              'todo.item.done': <String, Object?>{}, // a nested map
+              'todo.item.label': true, // a bool
+            },
+            'ghost': 'not-a-row', // a row that is not a map at all
+          };
 
     test('TDW-MTX-01: accessFor resolves a non-String cell to none', () {
       final dto = malformed();
@@ -185,13 +185,17 @@ void main() {
 
     test('TDW-MTX-06: orElse chooses the fallback for every bad input', () {
       const fallback = TomAuthState.disabled;
-      expect(TodoFieldMatrixDto.parseState('bogus', orElse: fallback),
-          fallback);
+      expect(
+        TodoFieldMatrixDto.parseState('bogus', orElse: fallback),
+        fallback,
+      );
       expect(TodoFieldMatrixDto.parseState(null, orElse: fallback), fallback);
       expect(TodoFieldMatrixDto.parseState(42, orElse: fallback), fallback);
       // A recognised token still wins over orElse.
-      expect(TodoFieldMatrixDto.parseState('read', orElse: fallback),
-          TomAuthState.read);
+      expect(
+        TodoFieldMatrixDto.parseState('read', orElse: fallback),
+        TomAuthState.read,
+      );
     });
 
     test('TDW-MTX-07: roles names every row the matrix carries', () {

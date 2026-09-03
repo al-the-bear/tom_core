@@ -68,8 +68,11 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
         _loading = false;
         _showingLive = true;
       });
-      _snack(TomCtr.text('todos.live.loaded')
-          .replaceAll('{count}', '${items.length}'));
+      _snack(
+        TomCtr.text(
+          'todos.live.loaded',
+        ).replaceAll('{count}', '${items.length}'),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -103,8 +106,9 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(
               child: TomText(
-                text:
-                    TomCtr.text('todos.role').replaceAll('{role}', _session.role),
+                text: TomCtr.text(
+                  'todos.role',
+                ).replaceAll('{role}', _session.role),
               ),
             ),
           ),
@@ -148,28 +152,28 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
             child: _loading
                 ? Center(child: TomCircularProgressIndicator())
                 : _items.isEmpty
-                    ? Center(child: TomText(text: TomCtr.text('todos.empty')))
-                    : ListView.builder(
-                        itemCount: _items.length,
-                        itemBuilder: (context, index) {
-                          final item = _items[index];
-                          return TomListTile(
-                            leading: Icon(
-                              item.done.get()
-                                  ? Icons.check_circle
-                                  : Icons.radio_button_unchecked,
-                            ),
-                            titleText: item.title.get(),
-                            subtitle: TomText(
-                              text:
-                                  '${TomObservableEnum.resolveText(item.priorityValue)}'
-                                  ' · '
-                                  '${TomObservableEnum.resolveText(item.labelValue)}',
-                            ),
-                            onTap: _showingLive ? null : () => _openDetail(item),
-                          );
-                        },
-                      ),
+                ? Center(child: TomText(text: TomCtr.text('todos.empty')))
+                : ListView.builder(
+                    itemCount: _items.length,
+                    itemBuilder: (context, index) {
+                      final item = _items[index];
+                      return TomListTile(
+                        leading: Icon(
+                          item.done.get()
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                        ),
+                        titleText: item.title.get(),
+                        subtitle: TomText(
+                          text:
+                              '${TomObservableEnum.resolveText(item.priorityValue)}'
+                              ' · '
+                              '${TomObservableEnum.resolveText(item.labelValue)}',
+                        ),
+                        onTap: _showingLive ? null : () => _openDetail(item),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

@@ -151,7 +151,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     final resourceState = TomAuthorization.resolveAuth(itemKey);
     // The principal's role on the item picks the per-field grade row; the field
     // grades live in the shared domain (projectRoleFieldGrades), not here.
-    final role = ProjectRole.values.asNameMap()[_session.resourceRoles[itemKey]];
+    final role = ProjectRole.values
+        .asNameMap()[_session.resourceRoles[itemKey]];
     final grades = role == null
         ? const <String, TomAuthState>{}
         : (projectRoleFieldGrades[role] ?? const <String, TomAuthState>{});
@@ -296,8 +297,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _busy = true;
       _error = null;
     });
-    final error =
-        await runAppAction(itemActions.save, SaveItemContext(_session, _item));
+    final error = await runAppAction(
+      itemActions.save,
+      SaveItemContext(_session, _item),
+    );
     if (!mounted) return;
     if (error == null) {
       Navigator.of(context).pop(true);
@@ -329,7 +332,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       TomMessenger.showSnackBar(
         context,
         TomSnackBar(
-            content: TomText(text: TomCtr.text('board.item.comment.added'))),
+          content: TomText(text: TomCtr.text('board.item.comment.added')),
+        ),
       );
       await _reloadThread();
       return;
@@ -390,7 +394,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   /// composer (the write itself already succeeded).
   Future<void> _reloadThread() async {
     try {
-      final thread = await _session.guard((b) => b.listComments(_item.id.get()));
+      final thread = await _session.guard(
+        (b) => b.listComments(_item.id.get()),
+      );
       if (!mounted) return;
       setState(() => _thread = thread);
     } on AppBackendException catch (e) {
@@ -402,8 +408,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   /// Re-reads the checklist after a write; see [_reloadThread].
   Future<void> _reloadChecklist() async {
     try {
-      final checklist =
-          await _session.guard((b) => b.listSubtasks(_item.id.get()));
+      final checklist = await _session.guard(
+        (b) => b.listSubtasks(_item.id.get()),
+      );
       if (!mounted) return;
       setState(() => _checklist = checklist);
     } on AppBackendException catch (e) {
@@ -426,8 +433,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     if (form == null) {
       return Center(
         child: TomText(
-            text: _error ?? TomCtr.text('board.item.loadError'),
-            key: const Key('item-detail-error')),
+          text: _error ?? TomCtr.text('board.item.loadError'),
+          key: const Key('item-detail-error'),
+        ),
       );
     }
     final canSave = form.gradableFields.any((f) => f.isEditable);
@@ -447,9 +455,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         ],
         if (_error != null) ...[
           TomText(
-              text: _error!,
-              key: const Key('item-detail-error'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            text: _error!,
+            key: const Key('item-detail-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
           const SizedBox(height: 12),
         ],
         if (canSave)
@@ -492,9 +501,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     }
     if (_childrenError case final message?) {
       return TomText(
-          key: key,
-          text: message,
-          style: TextStyle(color: Theme.of(context).colorScheme.error));
+        key: key,
+        text: message,
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      );
     }
     return null;
   }
@@ -513,15 +523,17 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TomText(
-            text: TomCtr.text('board.item.subtask.title'),
-            style: Theme.of(context).textTheme.titleMedium),
+          text: TomCtr.text('board.item.subtask.title'),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 8),
         if (_childrenNotice(const Key('subtask-notice')) case final notice?)
           notice
         else if (_checklist.isEmpty)
           TomText(
-              key: const Key('subtask-empty'),
-              text: TomCtr.text('board.item.subtask.empty'))
+            key: const Key('subtask-empty'),
+            text: TomCtr.text('board.item.subtask.empty'),
+          )
         else
           Column(
             key: const Key('subtask-list'),
@@ -545,9 +557,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         if (_subtaskError != null) ...[
           const SizedBox(height: 8),
           TomText(
-              text: _subtaskError!,
-              key: const Key('subtask-error'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            text: _subtaskError!,
+            key: const Key('subtask-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
         ],
         if (_canEditSubtasks) ...[
           const SizedBox(height: 8),
@@ -589,22 +602,22 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TomText(
-            text: TomCtr.text('board.item.comment.thread'),
-            style: Theme.of(context).textTheme.titleMedium),
+          text: TomCtr.text('board.item.comment.thread'),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 8),
         if (_childrenNotice(const Key('comment-notice')) case final notice?)
           notice
         else if (_thread.isEmpty)
           TomText(
-              key: const Key('comment-empty'),
-              text: TomCtr.text('board.item.comment.empty'))
+            key: const Key('comment-empty'),
+            text: TomCtr.text('board.item.comment.empty'),
+          )
         else
           Column(
             key: const Key('comment-thread'),
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final comment in _thread) _buildComment(comment),
-            ],
+            children: [for (final comment in _thread) _buildComment(comment)],
           ),
         const SizedBox(height: 16),
         _buildCommentComposer(),
@@ -650,8 +663,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TomText(
-            text: TomCtr.text('board.item.comment.title'),
-            style: Theme.of(context).textTheme.titleMedium),
+          text: TomCtr.text('board.item.comment.title'),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 8),
         TomTextField(
           key: const Key('comment-input'),
@@ -660,16 +674,15 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           maxLines: 3,
           label: '',
           hint: TomCtr.text('board.item.comment.hint'),
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(border: OutlineInputBorder()),
         ),
         if (_commentError != null) ...[
           const SizedBox(height: 8),
           TomText(
-              text: _commentError!,
-              key: const Key('comment-error'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            text: _commentError!,
+            key: const Key('comment-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
         ],
         const SizedBox(height: 8),
         Align(

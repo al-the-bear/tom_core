@@ -22,12 +22,14 @@ void main() {
   });
 
   group('login', () {
-    test('CCS-API-01: accepts a known account with any non-empty password',
-        () async {
-      final result = await api.login('alice', 'whatever');
-      expect(result.user.role.get(), 'owner');
-      expect(result.token, isNotEmpty);
-    });
+    test(
+      'CCS-API-01: accepts a known account with any non-empty password',
+      () async {
+        final result = await api.login('alice', 'whatever');
+        expect(result.user.role.get(), 'owner');
+        expect(result.token, isNotEmpty);
+      },
+    );
 
     test('CCS-API-02: is case-insensitive and trims the username', () async {
       final result = await api.login('  ALICE ', 'pw');
@@ -35,17 +37,11 @@ void main() {
     });
 
     test('CCS-API-03: rejects an unknown account', () async {
-      expect(
-        () => api.login('nobody', 'pw'),
-        throwsA(isA<TodoApiException>()),
-      );
+      expect(() => api.login('nobody', 'pw'), throwsA(isA<TodoApiException>()));
     });
 
     test('CCS-API-04: rejects an empty password', () async {
-      expect(
-        () => api.login('alice', ''),
-        throwsA(isA<TodoApiException>()),
-      );
+      expect(() => api.login('alice', ''), throwsA(isA<TodoApiException>()));
     });
   });
 
@@ -67,8 +63,9 @@ void main() {
       final first = items.first;
       first.title.set('Renamed');
       await api.saveItem(first);
-      final reloaded = (await api.listItems())
-          .firstWhere((i) => i.id.get() == first.id.get());
+      final reloaded = (await api.listItems()).firstWhere(
+        (i) => i.id.get() == first.id.get(),
+      );
       expect(reloaded.title.get(), 'Renamed');
     });
 
@@ -97,20 +94,24 @@ void main() {
       expect(states['todo.item.assigneeId'], TomAuthState.full);
     });
 
-    test('CCS-API-11: member cannot see priority and cannot reassign',
-        () async {
-      final states = await api.fieldStates('member');
-      expect(states['todo.item.priority'], TomAuthState.none);
-      expect(states['todo.item.assigneeId'], TomAuthState.read);
-    });
+    test(
+      'CCS-API-11: member cannot see priority and cannot reassign',
+      () async {
+        final states = await api.fieldStates('member');
+        expect(states['todo.item.priority'], TomAuthState.none);
+        expect(states['todo.item.assigneeId'], TomAuthState.read);
+      },
+    );
 
-    test('CCS-API-12: viewer toggles nothing — done is disabled, rest read',
-        () async {
-      final states = await api.fieldStates('viewer');
-      expect(states['todo.item.done'], TomAuthState.disabled);
-      expect(states['todo.item.title'], TomAuthState.read);
-      expect(states['todo.item.priority'], TomAuthState.read);
-    });
+    test(
+      'CCS-API-12: viewer toggles nothing — done is disabled, rest read',
+      () async {
+        final states = await api.fieldStates('viewer');
+        expect(states['todo.item.done'], TomAuthState.disabled);
+        expect(states['todo.item.title'], TomAuthState.read);
+        expect(states['todo.item.priority'], TomAuthState.read);
+      },
+    );
 
     test('CCS-API-13: an unknown role degrades every field to none', () async {
       final states = await api.fieldStates('ghost');

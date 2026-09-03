@@ -32,12 +32,24 @@ const int dave = 99; // a stranger — grantee of no share, owner of nothing.
 /// item 1 in list 1.
 InMemoryResourceContainmentStore demoContainment() =>
     InMemoryResourceContainmentStore(
-      projects: [ProjectRecord()..id = 1..workspaceId = 1],
-      lists: [
-        ListRecord()..id = 1..projectId = 1,
-        ListRecord()..id = 2..projectId = 1,
+      projects: [
+        ProjectRecord()
+          ..id = 1
+          ..workspaceId = 1,
       ],
-      items: [ItemRecord()..id = 1..listId = 1],
+      lists: [
+        ListRecord()
+          ..id = 1
+          ..projectId = 1,
+        ListRecord()
+          ..id = 2
+          ..projectId = 1,
+      ],
+      items: [
+        ItemRecord()
+          ..id = 1
+          ..listId = 1,
+      ],
     );
 
 /// Alice owns the whole tree via a single workspace-level owner grant; the
@@ -45,28 +57,28 @@ InMemoryResourceContainmentStore demoContainment() =>
 /// paths stamp finer per-resource grants at runtime, but one ancestor grant is
 /// enough to exercise the flow-down.)
 List<TomPrincipalResourceGrant> demoGrants() => [
-      TomPrincipalResourceGrant(
-        principalId: '$alice',
-        resourceKey: ResourceRoleKeys.workspace('1'),
-        role: ProjectRole.owner.name,
-      ),
-    ];
+  TomPrincipalResourceGrant(
+    principalId: '$alice',
+    resourceKey: ResourceRoleKeys.workspace('1'),
+    role: ProjectRole.owner.name,
+  ),
+];
 
 /// The two pre-existing shares: bob is `editor`, carol is `viewer` on project 1.
 List<TomPrincipalDelegation> demoShares() => [
-      shareDelegation(
-        delegator: alice,
-        delegate: bob,
-        resourceKey: ResourceRoleKeys.project('1'),
-        role: ProjectRole.editor,
-      ),
-      shareDelegation(
-        delegator: alice,
-        delegate: carol,
-        resourceKey: ResourceRoleKeys.project('1'),
-        role: ProjectRole.viewer,
-      ),
-    ];
+  shareDelegation(
+    delegator: alice,
+    delegate: bob,
+    resourceKey: ResourceRoleKeys.project('1'),
+    role: ProjectRole.editor,
+  ),
+  shareDelegation(
+    delegator: alice,
+    delegate: carol,
+    resourceKey: ResourceRoleKeys.project('1'),
+    role: ProjectRole.viewer,
+  ),
+];
 
 /// Builds a `share`-mode delegation row (unbounded window, not revoked).
 TomPrincipalDelegation shareDelegation({
@@ -74,14 +86,13 @@ TomPrincipalDelegation shareDelegation({
   required int delegate,
   required String resourceKey,
   required ProjectRole role,
-}) =>
-    TomPrincipalDelegation(
-      mode: TomDelegationMode.share.name,
-      delegatorId: '$delegator',
-      delegateId: '$delegate',
-      resourceKey: resourceKey,
-      role: role.name,
-    );
+}) => TomPrincipalDelegation(
+  mode: TomDelegationMode.share.name,
+  delegatorId: '$delegator',
+  delegateId: '$delegate',
+  resourceKey: resourceKey,
+  role: role.name,
+);
 
 /// Builds the resolver over seeded grant and delegation stores and the demo
 /// containment tree.
@@ -100,17 +111,19 @@ ResourceRoleResolver buildResolver({
 
 void main() {
   group('ownership', () {
-    test('the workspace owner resolves to owner on the workspace itself',
-        () async {
-      expect(
-        await buildResolver().resolveRole(
-          userId: alice,
-          resourceType: AppResourceTypes.workspace,
-          resourceId: 1,
-        ),
-        ProjectRole.owner,
-      );
-    });
+    test(
+      'the workspace owner resolves to owner on the workspace itself',
+      () async {
+        expect(
+          await buildResolver().resolveRole(
+            userId: alice,
+            resourceType: AppResourceTypes.workspace,
+            resourceId: 1,
+          ),
+          ProjectRole.owner,
+        );
+      },
+    );
 
     test('ownership flows down the chain to project, list, and item', () async {
       final resolver = buildResolver();
@@ -133,61 +146,67 @@ void main() {
   });
 
   group('shares', () {
-    test('a grantee resolves to the shared role on the shared resource',
-        () async {
-      final resolver = buildResolver();
-      expect(
-        await resolver.resolveRole(
-          userId: bob,
-          resourceType: AppResourceTypes.project,
-          resourceId: 1,
-        ),
-        ProjectRole.editor,
-      );
-      expect(
-        await resolver.resolveRole(
-          userId: carol,
-          resourceType: AppResourceTypes.project,
-          resourceId: 1,
-        ),
-        ProjectRole.viewer,
-      );
-    });
+    test(
+      'a grantee resolves to the shared role on the shared resource',
+      () async {
+        final resolver = buildResolver();
+        expect(
+          await resolver.resolveRole(
+            userId: bob,
+            resourceType: AppResourceTypes.project,
+            resourceId: 1,
+          ),
+          ProjectRole.editor,
+        );
+        expect(
+          await resolver.resolveRole(
+            userId: carol,
+            resourceType: AppResourceTypes.project,
+            resourceId: 1,
+          ),
+          ProjectRole.viewer,
+        );
+      },
+    );
 
-    test('a share on a project covers its lists and items (descendants)',
-        () async {
-      final resolver = buildResolver();
-      // The share targets project 1; the resolver walks the item's ancestry up
-      // to that project and grants the shared role.
-      expect(
-        await resolver.resolveRole(
-          userId: bob,
-          resourceType: AppResourceTypes.item,
-          resourceId: 1,
-        ),
-        ProjectRole.editor,
-      );
-      expect(
-        await resolver.resolveRole(
-          userId: carol,
-          resourceType: AppResourceTypes.list,
-          resourceId: 2,
-        ),
-        ProjectRole.viewer,
-      );
-    });
+    test(
+      'a share on a project covers its lists and items (descendants)',
+      () async {
+        final resolver = buildResolver();
+        // The share targets project 1; the resolver walks the item's ancestry up
+        // to that project and grants the shared role.
+        expect(
+          await resolver.resolveRole(
+            userId: bob,
+            resourceType: AppResourceTypes.item,
+            resourceId: 1,
+          ),
+          ProjectRole.editor,
+        );
+        expect(
+          await resolver.resolveRole(
+            userId: carol,
+            resourceType: AppResourceTypes.list,
+            resourceId: 2,
+          ),
+          ProjectRole.viewer,
+        );
+      },
+    );
 
     test('a share does not flow upward to an ancestor', () async {
       // A share on item 1 only — it must NOT grant access to the parent project.
-      final resolver = buildResolver(shares: [
-        ...demoShares(),
-        shareDelegation(
-          delegator: alice,
-          delegate: dave,
-          resourceKey: ResourceRoleKeys.item('1'),
-          role: ProjectRole.editor,
-        ),
-      ]);
+      final resolver = buildResolver(
+        shares: [
+          ...demoShares(),
+          shareDelegation(
+            delegator: alice,
+            delegate: dave,
+            resourceKey: ResourceRoleKeys.item('1'),
+            role: ProjectRole.editor,
+          ),
+        ],
+      );
       expect(
         await resolver.resolveRole(
           userId: dave,
@@ -211,21 +230,23 @@ void main() {
     test('the strongest of several applicable shares wins', () async {
       // dave is a viewer on the project but an editor on one item; on that item
       // the stronger (editor) role must win.
-      final resolver = buildResolver(shares: [
-        ...demoShares(),
-        shareDelegation(
-          delegator: alice,
-          delegate: dave,
-          resourceKey: ResourceRoleKeys.project('1'),
-          role: ProjectRole.viewer,
-        ),
-        shareDelegation(
-          delegator: alice,
-          delegate: dave,
-          resourceKey: ResourceRoleKeys.item('1'),
-          role: ProjectRole.editor,
-        ),
-      ]);
+      final resolver = buildResolver(
+        shares: [
+          ...demoShares(),
+          shareDelegation(
+            delegator: alice,
+            delegate: dave,
+            resourceKey: ResourceRoleKeys.project('1'),
+            role: ProjectRole.viewer,
+          ),
+          shareDelegation(
+            delegator: alice,
+            delegate: dave,
+            resourceKey: ResourceRoleKeys.item('1'),
+            role: ProjectRole.editor,
+          ),
+        ],
+      );
       expect(
         await resolver.resolveRole(
           userId: dave,
@@ -237,16 +258,18 @@ void main() {
     });
 
     test('an unknown stored role token degrades to viewer', () async {
-      final resolver = buildResolver(shares: [
-        ...demoShares(),
-        TomPrincipalDelegation(
-          mode: TomDelegationMode.share.name,
-          delegatorId: '$alice',
-          delegateId: '$dave',
-          resourceKey: ResourceRoleKeys.project('1'),
-          role: 'not-a-role',
-        ),
-      ]);
+      final resolver = buildResolver(
+        shares: [
+          ...demoShares(),
+          TomPrincipalDelegation(
+            mode: TomDelegationMode.share.name,
+            delegatorId: '$alice',
+            delegateId: '$dave',
+            resourceKey: ResourceRoleKeys.project('1'),
+            role: 'not-a-role',
+          ),
+        ],
+      );
       expect(
         await resolver.resolveRole(
           userId: dave,

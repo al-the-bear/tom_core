@@ -43,14 +43,16 @@ Widget _breakpointForm(String scopeId, double width) {
 final ShowcaseGroup rowBreakpointGroup = ShowcaseGroup(
   id: 'row_breakpoint',
   title: 'Row breakpoints',
-  summary: 'addRowBreakpoint(atWidth: 400): two fields share one row above '
+  summary:
+      'addRowBreakpoint(atWidth: 400): two fields share one row above '
       '400px and reflow to a stack below it — same builder, different width.',
   icon: Icons.table_rows_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Wide (520px) — side by side',
       note: 'Above the 400px breakpoint the two fields share one row.',
-      code: "TomAclBuilder(id: 'bp', elementProvider: form)\n"
+      code:
+          "TomAclBuilder(id: 'bp', elementProvider: form)\n"
           '    .append((p) => p.industry.widget)\n'
           '    .addRowBreakpoint(atWidth: 400)\n'
           '    .append((p) => p.taxId.widget, dist: 16)\n'
@@ -60,7 +62,8 @@ final ShowcaseGroup rowBreakpointGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'Narrow (320px) — stacked',
       note: 'The identical layout below 400px reflows the row to a stack.',
-      code: '// Same builder as above — only the available width differs.\n'
+      code:
+          '// Same builder as above — only the available width differs.\n'
           'SizedBox(width: 320, child: formLayout)',
       child: _breakpointForm('rsp_narrow', 320),
     ),

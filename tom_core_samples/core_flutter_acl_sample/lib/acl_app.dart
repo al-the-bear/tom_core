@@ -59,10 +59,7 @@ class AclApp extends TomStatelessWidget {
       // — intentionally hardcoded, outside the G-RES-1 resource bundle.
       title: 'Tom Core — ACL Feature Tour',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.teal,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       home: _AclHome(),
     );
   }
@@ -92,9 +89,7 @@ class _AclHome extends TomStatelessWidget {
             isThreeLine: true,
             trailing: TomIcon(icon: Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
-              TomPageRoute<void>(
-                builder: (_) => GroupScreen(group: group),
-              ),
+              TomPageRoute<void>(builder: (_) => GroupScreen(group: group)),
             ),
           );
         },

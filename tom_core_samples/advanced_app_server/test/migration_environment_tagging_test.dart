@@ -18,18 +18,19 @@ const String _appSchemaDir = 'database_migrations/app_db/app_schema/';
 /// Parses every `*.sql` migration basename in [dir] into `(version, parsed)`
 /// records ordered by ascending numeric version.
 List<({int version, TomMigrationFileName parsed})> _migrations(String dir) {
-  final files = Directory(dir)
-      .listSync()
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.sql'))
-      .map((f) {
-        final name = f.uri.pathSegments.last;
-        final basename = name.substring(0, name.length - '.sql'.length);
-        final parsed = TomDbMigrations.parseMigrationFileName(basename);
-        return (version: parsed.version, parsed: parsed);
-      })
-      .toList()
-    ..sort((a, b) => a.version.compareTo(b.version));
+  final files =
+      Directory(dir)
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.sql'))
+          .map((f) {
+            final name = f.uri.pathSegments.last;
+            final basename = name.substring(0, name.length - '.sql'.length);
+            final parsed = TomDbMigrations.parseMigrationFileName(basename);
+            return (version: parsed.version, parsed: parsed);
+          })
+          .toList()
+        ..sort((a, b) => a.version.compareTo(b.version));
   return files;
 }
 
@@ -48,7 +49,8 @@ void main() {
       expect(
         migrations.map((m) => m.version),
         List.generate(migrations.length, (index) => index),
-        reason: 'app_db migrations must run [000], [001], … with no gaps and '
+        reason:
+            'app_db migrations must run [000], [001], … with no gaps and '
             'no duplicates',
       );
     });
@@ -65,17 +67,20 @@ void main() {
         'app_file_columns',
         'app_blob_tables',
       ]) {
-        expect(byDesc[desc]!.environments, isEmpty,
-            reason: '$desc must be untagged (applies in every environment)');
+        expect(
+          byDesc[desc]!.environments,
+          isEmpty,
+          reason: '$desc must be untagged (applies in every environment)',
+        );
       }
       expect(byDesc['app_demo_seed']!.environments, ['dev', 'test']);
     });
 
     test('a production apply creates the schema but skips demo content', () {
-      bool appliesIn(String env, String desc) =>
-          migrations.firstWhere((m) => m.parsed.description == desc)
-              .parsed
-              .appliesInEnvironment(env);
+      bool appliesIn(String env, String desc) => migrations
+          .firstWhere((m) => m.parsed.description == desc)
+          .parsed
+          .appliesInEnvironment(env);
 
       expect(appliesIn('production', 'app_core_schema'), isTrue);
       expect(appliesIn('production', 'app_file_columns'), isTrue);

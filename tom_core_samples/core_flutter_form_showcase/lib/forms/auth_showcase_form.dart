@@ -43,7 +43,8 @@ class AuthShowcaseForm extends TomForm<CompanyProfile> {
   /// Hidden entirely.
   late final none = _field('none', TomAuthState.none);
 
-  TomFormStringInput _field(String id, TomAuthState state) => TomFormStringInput(
+  TomFormStringInput _field(String id, TomAuthState state) =>
+      TomFormStringInput(
         id,
         _sampleCompany,
         form: this,

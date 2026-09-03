@@ -81,7 +81,8 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
-  LoginRequest login(String user) => LoginRequest(username: user, password: 'pw');
+  LoginRequest login(String user) =>
+      LoginRequest(username: user, password: 'pw');
 
   /// Signs [user] in over a fresh backend and pushes the detail screen for item
   /// [itemId] from a host route. Returns the live backend so a test can re-read
@@ -113,12 +114,14 @@ void main() {
 
     if (shareCarolAs != null) {
       await session.login(login('alice'));
-      await backend.share(ShareRequest(
-        resourceType: 'project',
-        resourceId: 'p-1',
-        granteeUserId: 'u-carol',
-        projectRole: shareCarolAs,
-      ));
+      await backend.share(
+        ShareRequest(
+          resourceType: 'project',
+          resourceId: 'p-1',
+          granteeUserId: 'u-carol',
+          projectRole: shareCarolAs,
+        ),
+      );
       await session.logout();
     }
 
@@ -133,27 +136,31 @@ void main() {
     final items = await backend.listItems('l-1');
     final item = items.firstWhere((i) => i.id.get() == itemId);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => ElevatedButton(
-            onPressed: () => Navigator.of(context).push(
-              TomPageRoute<bool>(
-                builder: (_) => ItemDetailScreen(session: session, item: item),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                TomPageRoute<bool>(
+                  builder: (_) =>
+                      ItemDetailScreen(session: session, item: item),
+                ),
               ),
+              child: const Text('open'),
             ),
-            child: const Text('open'),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     return backend;
   }
 
-  testWidgets('TC-30-01: owner sees a full editor with every gradable field',
-      (tester) async {
+  testWidgets('TC-30-01: owner sees a full editor with every gradable field', (
+    tester,
+  ) async {
     await openDetail(tester, 'alice');
 
     // All seven gradable field labels are present (Material renders a field's
@@ -179,38 +186,44 @@ void main() {
   });
 
   testWidgets(
-      'TC-30-02: viewer is read-only — status disabled, estimate hidden, no Save',
-      (tester) async {
-    await openDetail(tester, 'carol', shareCarolAs: ProjectRole.viewer);
+    'TC-30-02: viewer is read-only — status disabled, estimate hidden, no Save',
+    (tester) async {
+      await openDetail(tester, 'carol', shareCarolAs: ProjectRole.viewer);
 
-    // The ungranted field (estimate → none) collapses entirely…
-    expect(find.text('Estimate (h)'), findsNothing);
-    // …while the disabled status control is still visible.
-    expect(find.text('Status'), findsOneWidget);
-    // Priority is `read` for a viewer (not `none`), so it stays visible — this is
-    // what separates the viewer matrix from the commenter's (TC-30-04), where
-    // priority is hidden.
-    expect(find.text('Priority'), findsWidgets);
+      // The ungranted field (estimate → none) collapses entirely…
+      expect(find.text('Estimate (h)'), findsNothing);
+      // …while the disabled status control is still visible.
+      expect(find.text('Status'), findsOneWidget);
+      // Priority is `read` for a viewer (not `none`), so it stays visible — this is
+      // what separates the viewer matrix from the commenter's (TC-30-04), where
+      // priority is hidden.
+      expect(find.text('Priority'), findsWidgets);
 
-    // Nothing is editable: both dropdowns are disabled (onChanged == null) and
-    // there is no Save button at all.
-    final dropdowns = tester
-        .widgetList<DropdownButtonFormField<String>>(
-            find.byType(DropdownButtonFormField<String>))
-        .toList();
-    expect(dropdowns, isNotEmpty);
-    for (final dropdown in dropdowns) {
-      expect(dropdown.onChanged, isNull);
-    }
-    expect(find.byKey(const Key('item-save-button')), findsNothing);
-  });
+      // Nothing is editable: both dropdowns are disabled (onChanged == null) and
+      // there is no Save button at all.
+      final dropdowns = tester
+          .widgetList<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>),
+          )
+          .toList();
+      expect(dropdowns, isNotEmpty);
+      for (final dropdown in dropdowns) {
+        expect(dropdown.onChanged, isNull);
+      }
+      expect(find.byKey(const Key('item-save-button')), findsNothing);
+    },
+  );
 
-  testWidgets('TC-30-03: editor save persists only the permitted fields',
-      (tester) async {
+  testWidgets('TC-30-03: editor save persists only the permitted fields', (
+    tester,
+  ) async {
     final backend = await openDetail(tester, 'bob');
 
     // bob (editor) can edit the title (full) but not the assignee (read).
-    await tester.enterText(find.byType(TextField).first, 'Reworked landing copy');
+    await tester.enterText(
+      find.byType(TextField).first,
+      'Reworked landing copy',
+    );
     await tester.tap(find.byKey(const Key('item-save-button')));
     await tester.pumpAndSettle();
 
@@ -223,53 +236,59 @@ void main() {
   });
 
   testWidgets(
-      'TC-30-04: commenter hides priority + estimate, reads the rest, no Save',
-      (tester) async {
-    await openDetail(tester, 'carol', shareCarolAs: ProjectRole.commenter);
+    'TC-30-04: commenter hides priority + estimate, reads the rest, no Save',
+    (tester) async {
+      await openDetail(tester, 'carol', shareCarolAs: ProjectRole.commenter);
 
-    // The commenter matrix grades both priority and estimate `none`, so the
-    // closed-safe render hides *both* fields (D-A4 made visible end-to-end) —
-    // this is the only role that hides priority.
-    expect(find.text('Priority'), findsNothing);
-    expect(find.text('Estimate (h)'), findsNothing);
+      // The commenter matrix grades both priority and estimate `none`, so the
+      // closed-safe render hides *both* fields (D-A4 made visible end-to-end) —
+      // this is the only role that hides priority.
+      expect(find.text('Priority'), findsNothing);
+      expect(find.text('Estimate (h)'), findsNothing);
 
-    // The remaining five fields are `read`: present but never editable.
-    expect(find.text('Title'), findsWidgets);
-    expect(find.text('Status'), findsWidgets);
-    expect(find.text('Assignee id'), findsWidgets);
-    expect(find.text('Due date'), findsWidgets);
-    expect(find.text('Description'), findsWidgets);
+      // The remaining five fields are `read`: present but never editable.
+      expect(find.text('Title'), findsWidgets);
+      expect(find.text('Status'), findsWidgets);
+      expect(find.text('Assignee id'), findsWidgets);
+      expect(find.text('Due date'), findsWidgets);
+      expect(find.text('Description'), findsWidgets);
 
-    // No field is `full`, so the screen offers no Save, and the status dropdown
-    // (graded `read`) is disabled like every other control.
-    expect(find.byKey(const Key('item-save-button')), findsNothing);
-    final dropdowns = tester
-        .widgetList<DropdownButtonFormField<String>>(
-            find.byType(DropdownButtonFormField<String>))
-        .toList();
-    expect(dropdowns, isNotEmpty);
-    for (final dropdown in dropdowns) {
-      expect(dropdown.onChanged, isNull);
-    }
-  });
+      // No field is `full`, so the screen offers no Save, and the status dropdown
+      // (graded `read`) is disabled like every other control.
+      expect(find.byKey(const Key('item-save-button')), findsNothing);
+      final dropdowns = tester
+          .widgetList<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>),
+          )
+          .toList();
+      expect(dropdowns, isNotEmpty);
+      for (final dropdown in dropdowns) {
+        expect(dropdown.onChanged, isNull);
+      }
+    },
+  );
 
-  testWidgets(
-      'TC-30-05: field labels are server-bundle-driven (sentinel proof)',
-      (tester) async {
+  testWidgets('TC-30-05: field labels are server-bundle-driven (sentinel proof)', (
+    tester,
+  ) async {
     // Sign in as the owner (every field `full`, so all seven render), but
     // replace the installed full bundle with sentinel label values distinct from
     // both the canned strings and the bare tomId fallback. With the form
     // carrying no overrides the only source of a field's label is this
     // provider, so the sentinels rendering proves the labels are bundle-driven.
-    await openDetail(tester, 'alice', bundleOverride: {
-      'todo.item.title.label': 'Title [srv]',
-      'todo.item.status.label': 'Status [srv]',
-      'todo.item.priority.label': 'Priority [srv]',
-      'todo.item.assigneeId.label': 'Assignee [srv]',
-      'todo.item.dueDate.label': 'Due date [srv]',
-      'todo.item.estimate.label': 'Estimate [srv]',
-      'todo.item.description.label': 'Description [srv]',
-    });
+    await openDetail(
+      tester,
+      'alice',
+      bundleOverride: {
+        'todo.item.title.label': 'Title [srv]',
+        'todo.item.status.label': 'Status [srv]',
+        'todo.item.priority.label': 'Priority [srv]',
+        'todo.item.assigneeId.label': 'Assignee [srv]',
+        'todo.item.dueDate.label': 'Due date [srv]',
+        'todo.item.estimate.label': 'Estimate [srv]',
+        'todo.item.description.label': 'Description [srv]',
+      },
+    );
 
     expect(find.textContaining('Title [srv]'), findsWidgets);
     expect(find.textContaining('Status [srv]'), findsWidgets);
@@ -300,42 +319,57 @@ void main() {
   const double childSectionViewport = 4200;
 
   testWidgets(
-      'TC-30-06: the item renders its seeded thread and checklist in order',
-      (tester) async {
-    await openDetail(tester, 'alice', viewportHeight: childSectionViewport);
+    'TC-30-06: the item renders its seeded thread and checklist in order',
+    (tester) async {
+      await openDetail(tester, 'alice', viewportHeight: childSectionViewport);
 
-    // The thread: one seeded comment, rendered with its author byline and body.
-    expect(find.byKey(const Key('comment-thread')), findsOneWidget);
-    expect(find.byKey(const Key('comment-c-1')), findsOneWidget);
-    expect(find.text('Started on the hero section — draft attached.'),
-        findsOneWidget);
-    // The byline is bundle-driven (`board.item.comment.byline`) with both
-    // placeholders substituted — the seeded author and the seeded timestamp.
-    expect(find.text('u-bob · 2026-07-01 09:30'), findsOneWidget);
+      // The thread: one seeded comment, rendered with its author byline and body.
+      expect(find.byKey(const Key('comment-thread')), findsOneWidget);
+      expect(find.byKey(const Key('comment-c-1')), findsOneWidget);
+      expect(
+        find.text('Started on the hero section — draft attached.'),
+        findsOneWidget,
+      );
+      // The byline is bundle-driven (`board.item.comment.byline`) with both
+      // placeholders substituted — the seeded author and the seeded timestamp.
+      expect(find.text('u-bob · 2026-07-01 09:30'), findsOneWidget);
 
-    // The checklist: both steps, in `position` order, with the first ticked.
-    expect(find.byKey(const Key('subtask-list')), findsOneWidget);
-    expect(find.text('Collect the reference sites'), findsOneWidget);
-    expect(find.text('Write the hero paragraph'), findsOneWidget);
-    final boxes = tester
-        .widgetList<Checkbox>(find.descendant(
-            of: find.byKey(const Key('subtask-list')),
-            matching: find.byType(Checkbox)))
-        .toList();
-    expect(boxes.map((b) => b.value), [true, false],
-        reason: 'position order is preserved and s-1 is the done one');
-  });
+      // The checklist: both steps, in `position` order, with the first ticked.
+      expect(find.byKey(const Key('subtask-list')), findsOneWidget);
+      expect(find.text('Collect the reference sites'), findsOneWidget);
+      expect(find.text('Write the hero paragraph'), findsOneWidget);
+      final boxes = tester
+          .widgetList<Checkbox>(
+            find.descendant(
+              of: find.byKey(const Key('subtask-list')),
+              matching: find.byType(Checkbox),
+            ),
+          )
+          .toList();
+      expect(
+        boxes.map((b) => b.value),
+        [true, false],
+        reason: 'position order is preserved and s-1 is the done one',
+      );
+    },
+  );
 
-  testWidgets('TC-30-07: an owner adds a checklist step and it is persisted',
-      (tester) async {
-    final backend =
-        await openDetail(tester, 'alice', viewportHeight: childSectionViewport);
+  testWidgets('TC-30-07: an owner adds a checklist step and it is persisted', (
+    tester,
+  ) async {
+    final backend = await openDetail(
+      tester,
+      'alice',
+      viewportHeight: childSectionViewport,
+    );
 
     await tester.enterText(
-        find.descendant(
-            of: find.byKey(const Key('subtask-input')),
-            matching: find.byType(TextField)),
-        'Pick the hero image');
+      find.descendant(
+        of: find.byKey(const Key('subtask-input')),
+        matching: find.byType(TextField),
+      ),
+      'Pick the hero image',
+    );
     await tester.tap(find.byKey(const Key('subtask-submit-button')));
     await tester.pumpAndSettle();
 
@@ -343,68 +377,94 @@ void main() {
     // it shows is the persisted one — and the backend agrees.
     expect(find.text('Pick the hero image'), findsOneWidget);
     final stored = await backend.listSubtasks('i-1');
-    expect(stored.map((s) => s.title.get()),
-        containsAllInOrder(<String>['Collect the reference sites',
-          'Write the hero paragraph', 'Pick the hero image']));
+    expect(
+      stored.map((s) => s.title.get()),
+      containsAllInOrder(<String>[
+        'Collect the reference sites',
+        'Write the hero paragraph',
+        'Pick the hero image',
+      ]),
+    );
     // The composer is cleared, so a second tap cannot re-post the same step.
     expect(
-        tester
-            .widget<TextField>(find.descendant(
-                of: find.byKey(const Key('subtask-input')),
-                matching: find.byType(TextField)))
-            .controller
-            ?.text,
-        isEmpty);
+      tester
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const Key('subtask-input')),
+              matching: find.byType(TextField),
+            ),
+          )
+          .controller
+          ?.text,
+      isEmpty,
+    );
   });
 
-  testWidgets('TC-30-08: an owner ticks a step and the toggle is persisted',
-      (tester) async {
-    final backend =
-        await openDetail(tester, 'alice', viewportHeight: childSectionViewport);
+  testWidgets('TC-30-08: an owner ticks a step and the toggle is persisted', (
+    tester,
+  ) async {
+    final backend = await openDetail(
+      tester,
+      'alice',
+      viewportHeight: childSectionViewport,
+    );
 
     // The second row (`s-2`) starts unticked; tap its checkbox.
-    await tester.tap(find.descendant(
+    await tester.tap(
+      find.descendant(
         of: find.byKey(const Key('subtask-s-2')),
-        matching: find.byType(Checkbox)));
+        matching: find.byType(Checkbox),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final stored = await backend.listSubtasks('i-1');
     expect(stored.firstWhere((s) => s.id.get() == 's-2').done.get(), isTrue);
     // The title round-tripped: the toggle sends the whole row, so ticking a box
     // must not blank the step it belongs to.
-    expect(stored.firstWhere((s) => s.id.get() == 's-2').title.get(),
-        'Write the hero paragraph');
+    expect(
+      stored.firstWhere((s) => s.id.get() == 's-2').title.get(),
+      'Write the hero paragraph',
+    );
   });
 
   testWidgets(
-      'TC-30-09: a viewer reads both sections but gets no checklist composer',
-      (tester) async {
-    final backend = await openDetail(tester, 'carol',
+    'TC-30-09: a viewer reads both sections but gets no checklist composer',
+    (tester) async {
+      final backend = await openDetail(
+        tester,
+        'carol',
         shareCarolAs: ProjectRole.viewer,
-        viewportHeight: childSectionViewport);
+        viewportHeight: childSectionViewport,
+      );
 
-    // Both histories are readable — the thread is gated by the *item's*
-    // readability alone, so a viewer sees the discussion they may not join…
-    expect(find.byKey(const Key('comment-thread')), findsOneWidget);
-    expect(find.text('Started on the hero section — draft attached.'),
-        findsOneWidget);
-    expect(find.byKey(const Key('subtask-list')), findsOneWidget);
-    expect(find.text('Collect the reference sites'), findsOneWidget);
+      // Both histories are readable — the thread is gated by the *item's*
+      // readability alone, so a viewer sees the discussion they may not join…
+      expect(find.byKey(const Key('comment-thread')), findsOneWidget);
+      expect(
+        find.text('Started on the hero section — draft attached.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('subtask-list')), findsOneWidget);
+      expect(find.text('Collect the reference sites'), findsOneWidget);
 
-    // …but the checklist composer is absent entirely (a control that could only
-    // ever be refused), as is the comment composer's editor-gated sibling.
-    expect(find.byKey(const Key('subtask-input')), findsNothing);
-    expect(find.byKey(const Key('subtask-submit-button')), findsNothing);
+      // …but the checklist composer is absent entirely (a control that could only
+      // ever be refused), as is the comment composer's editor-gated sibling.
+      expect(find.byKey(const Key('subtask-input')), findsNothing);
+      expect(find.byKey(const Key('subtask-submit-button')), findsNothing);
 
-    // And the rows themselves are inert: the `read` grade wraps each checkbox in
-    // the framework's readonly treatment, so a tap changes nothing.
-    await tester.tap(
+      // And the rows themselves are inert: the `read` grade wraps each checkbox in
+      // the framework's readonly treatment, so a tap changes nothing.
+      await tester.tap(
         find.descendant(
-            of: find.byKey(const Key('subtask-s-2')),
-            matching: find.byType(Checkbox)),
-        warnIfMissed: false);
-    await tester.pumpAndSettle();
-    final stored = await backend.listSubtasks('i-1');
-    expect(stored.firstWhere((s) => s.id.get() == 's-2').done.get(), isFalse);
-  });
+          of: find.byKey(const Key('subtask-s-2')),
+          matching: find.byType(Checkbox),
+        ),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+      final stored = await backend.listSubtasks('i-1');
+      expect(stored.firstWhere((s) => s.id.get() == 's-2').done.get(), isFalse);
+    },
+  );
 }

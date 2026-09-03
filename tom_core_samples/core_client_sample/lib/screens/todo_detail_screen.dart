@@ -85,8 +85,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     return TomScaffold(
       appBar: TomAppBar(
         title: TomText(
-            text: TomCtr.text(
-                _isNew ? 'todoDetail.title.new' : 'todoDetail.title.edit')),
+          text: TomCtr.text(
+            _isNew ? 'todoDetail.title.new' : 'todoDetail.title.edit',
+          ),
+        ),
         actions: [
           if (!_isNew)
             TomIconButton(

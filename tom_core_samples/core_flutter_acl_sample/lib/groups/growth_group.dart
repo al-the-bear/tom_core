@@ -16,15 +16,18 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup growthGroup = ShowcaseGroup(
   id: 'growth',
   title: 'Growth (expandX / expandY / expand)',
-  summary: 'Expand flags let a component absorb the space the sized cells leave '
+  summary:
+      'Expand flags let a component absorb the space the sized cells leave '
       'behind — the ACL counterpart of Flutter Expanded.',
   icon: Icons.open_in_full_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'expandX — fill remaining width',
-      note: 'The fixed cell keeps its 120px; the flagged cell expands to fill '
+      note:
+          'The fixed cell keeps its 120px; the flagged cell expands to fill '
           'the rest of the row.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('fixed 120', indigo))\n"
           '    .setPSize(120)\n'
           "    .append(demoBox('expandX', teal))\n"
@@ -40,7 +43,8 @@ final ShowcaseGroup growthGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'Two expanders share the surplus',
       note: 'When several cells expand, they divide the leftover space evenly.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('A', orange)).expandX()\n"
           "    .append(demoBox('B', purple)).expandX()\n"
           '    .build()',
@@ -54,7 +58,8 @@ final ShowcaseGroup growthGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'expandY — fill the row height',
       note: 'expandY stretches the cell to the tallest component in the row.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('tall', red))\n"
           '    .setPSize(120, 96)\n'
           "    .append(demoBox('expandY', green))\n"

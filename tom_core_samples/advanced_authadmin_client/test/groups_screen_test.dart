@@ -25,18 +25,21 @@ void main() {
     );
   });
 
-  testWidgets('TC-34-G01: the Groups tab lists the seeded group + member count',
-      (tester) async {
-    await pumpSignedInConsole(tester, InMemoryAdminBackend());
-    await openDestination(tester, 'Groups');
+  testWidgets(
+    'TC-34-G01: the Groups tab lists the seeded group + member count',
+    (tester) async {
+      await pumpSignedInConsole(tester, InMemoryAdminBackend());
+      await openDestination(tester, 'Groups');
 
-    expect(find.byKey(const Key('groups-screen')), findsOneWidget);
-    expect(find.byKey(const Key('groups-tile-g-eng')), findsOneWidget);
-    expect(find.text('2 members'), findsOneWidget);
-  });
+      expect(find.byKey(const Key('groups-screen')), findsOneWidget);
+      expect(find.byKey(const Key('groups-tile-g-eng')), findsOneWidget);
+      expect(find.text('2 members'), findsOneWidget);
+    },
+  );
 
-  testWidgets('TC-34-G02: creating a group with a member adds it to the list',
-      (tester) async {
+  testWidgets('TC-34-G02: creating a group with a member adds it to the list', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     await openDestination(tester, 'Groups');
@@ -50,13 +53,15 @@ void main() {
     await saveEditor(tester);
 
     expect(find.text('Design'), findsOneWidget);
-    final design =
-        (await backend.listGroups()).firstWhere((g) => g.name == 'Design');
+    final design = (await backend.listGroups()).firstWhere(
+      (g) => g.name == 'Design',
+    );
     expect(design.memberUserIds, ['u-alice']);
   });
 
-  testWidgets('TC-34-G03: the editor pre-checks a group\'s current members',
-      (tester) async {
+  testWidgets('TC-34-G03: the editor pre-checks a group\'s current members', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Groups');
 
@@ -64,18 +69,19 @@ void main() {
     await tester.pumpAndSettle();
 
     CheckboxListTile box(String id) => tester.widget<CheckboxListTile>(
-          find.descendant(
-            of: find.byKey(Key('group-member-$id')),
-            matching: find.byType(CheckboxListTile),
-          ),
-        );
+      find.descendant(
+        of: find.byKey(Key('group-member-$id')),
+        matching: find.byType(CheckboxListTile),
+      ),
+    );
     expect(box('u-bob').value, isTrue);
     expect(box('u-carol').value, isTrue);
     expect(box('u-alice').value, isFalse);
   });
 
-  testWidgets('TC-34-G04: removing a member updates the saved membership',
-      (tester) async {
+  testWidgets('TC-34-G04: removing a member updates the saved membership', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     await openDestination(tester, 'Groups');

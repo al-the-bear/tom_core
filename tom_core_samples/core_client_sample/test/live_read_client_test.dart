@@ -60,14 +60,8 @@ void main() {
     test('CCS-LIVE-05: maps the per-role/per-field matrix', () {
       final matrix = parseFieldStates(const {
         'states': {
-          'owner': {
-            'todo.item.title': 'full',
-            'todo.item.priority': 'full',
-          },
-          'viewer': {
-            'todo.item.title': 'read',
-            'todo.item.done': 'disabled',
-          },
+          'owner': {'todo.item.title': 'full', 'todo.item.priority': 'full'},
+          'viewer': {'todo.item.title': 'read', 'todo.item.done': 'disabled'},
         },
       });
       expect(matrix['owner']!['todo.item.title'], TomAuthState.full);

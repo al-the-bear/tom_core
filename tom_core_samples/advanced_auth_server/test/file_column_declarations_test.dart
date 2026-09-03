@@ -43,22 +43,31 @@ void main() {
       expect(
         fileColumns.keys.toSet(),
         {AppFileSlots.userAvatarColumn},
-        reason: 'the auth tier stores exactly one blob per user; a second file '
+        reason:
+            'the auth tier stores exactly one blob per user; a second file '
             'column would widen the sample without the guide saying so',
       );
     });
 
     test('the avatar is exposed but does not cascade', () {
-      final reference = fileColumns[AppFileSlots.userAvatarColumn]!
-          .fileReference!;
-      expect(reference.exposed, isTrue,
-          reason: 'exposure is what gives the column a slot at all — the '
-              'avatar is uploaded and fetched over HTTP like the attachment');
-      expect(reference.cascadeDelete, isFalse,
-          reason: 'the counterpart of the attachment: deleting a user must '
-              'leave the avatar bytes in the blob store. This one flag is the '
-              'whole difference, and the framework db suite proves it decides '
-              'the outcome');
+      final reference =
+          fileColumns[AppFileSlots.userAvatarColumn]!.fileReference!;
+      expect(
+        reference.exposed,
+        isTrue,
+        reason:
+            'exposure is what gives the column a slot at all — the '
+            'avatar is uploaded and fetched over HTTP like the attachment',
+      );
+      expect(
+        reference.cascadeDelete,
+        isFalse,
+        reason:
+            'the counterpart of the attachment: deleting a user must '
+            'leave the avatar bytes in the blob store. This one flag is the '
+            'whole difference, and the framework db suite proves it decides '
+            'the outcome',
+      );
     });
 
     test('the avatar carries no column grade', () {
@@ -68,8 +77,10 @@ void main() {
       // `authKey` here would demand a resolver the auth server does not
       // register, and an unregistered key falls back to the process-global
       // TomAuthorization — `full` for everyone, since no adapter is installed.
-      expect(fileColumns[AppFileSlots.userAvatarColumn]!.column?.authKey,
-          isNull);
+      expect(
+        fileColumns[AppFileSlots.userAvatarColumn]!.column?.authKey,
+        isNull,
+      );
     });
   });
 }

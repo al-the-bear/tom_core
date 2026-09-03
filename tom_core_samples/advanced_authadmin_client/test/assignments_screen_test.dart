@@ -50,8 +50,9 @@ void main() {
     await saveEditor(tester);
   }
 
-  testWidgets('TC-36-01: the Assignments tab lists the seeded users',
-      (tester) async {
+  testWidgets('TC-36-01: the Assignments tab lists the seeded users', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Assignments');
 
@@ -61,8 +62,9 @@ void main() {
     expect(find.text('Groups: Engineering'), findsNWidgets(2));
   });
 
-  testWidgets('TC-36-02: assigning a role persists to the backend',
-      (tester) async {
+  testWidgets('TC-36-02: assigning a role persists to the backend', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     await openDestination(tester, 'Assignments');
@@ -71,11 +73,15 @@ void main() {
     await assignTo(tester, 'u-alice', role: 'Editor');
 
     // alice keeps her seeded 'owner' role and gains 'editor'.
-    expect(backend.rolesOf('u-alice'), containsAll(<String>['owner', 'editor']));
+    expect(
+      backend.rolesOf('u-alice'),
+      containsAll(<String>['owner', 'editor']),
+    );
   });
 
-  testWidgets('TC-36-03: assigning a group persists and updates the row',
-      (tester) async {
+  testWidgets('TC-36-03: assigning a group persists and updates the row', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     await openDestination(tester, 'Assignments');
@@ -104,8 +110,9 @@ void main() {
     );
   });
 
-  testWidgets('TC-36-04: an empty selection is refused and the editor stays',
-      (tester) async {
+  testWidgets('TC-36-04: an empty selection is refused and the editor stays', (
+    tester,
+  ) async {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Assignments');
 
@@ -118,8 +125,9 @@ void main() {
     expect(find.byKey(const Key('admin-editor-error')), findsOneWidget);
   });
 
-  testWidgets('TC-36-05: a role and a group can be assigned together',
-      (tester) async {
+  testWidgets('TC-36-05: a role and a group can be assigned together', (
+    tester,
+  ) async {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
     await openDestination(tester, 'Assignments');

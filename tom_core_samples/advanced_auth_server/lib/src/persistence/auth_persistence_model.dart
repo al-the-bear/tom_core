@@ -40,9 +40,10 @@ const String authDatasource = 'auth_db';
 // (`AppFileSlots`) rather than spelled here, because the admin console composes
 // the very same names into the slot `auth_users/<id>/avatar_ref`.
 @TomDbTable(
-    datasource: authDatasource,
-    table: AppFileSlots.usersTable,
-    primaryKeyField: 'id')
+  datasource: authDatasource,
+  table: AppFileSlots.usersTable,
+  primaryKeyField: 'id',
+)
 class UserRecord {
   /// Surrogate primary key (`null` until first persisted).
   @TomEntityId()
@@ -120,7 +121,11 @@ final userRepository = UserRepository();
 /// A role row in `auth_roles`. [roleKey] is the stable key the grant matrix and
 /// `@TomRoleAccess` gate on (e.g. `admin`); [name] is the human-facing label.
 @tomReflector
-@TomDbTable(datasource: authDatasource, table: 'auth_roles', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: authDatasource,
+  table: 'auth_roles',
+  primaryKeyField: 'id',
+)
 class RoleRecord {
   /// Surrogate primary key.
   @TomEntityId()
@@ -145,7 +150,11 @@ final roleRepository = RoleRepository();
 /// A group row in `auth_groups`. Membership lives in [GroupMemberRecord]s, not
 /// as a column here.
 @tomReflector
-@TomDbTable(datasource: authDatasource, table: 'auth_groups', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: authDatasource,
+  table: 'auth_groups',
+  primaryKeyField: 'id',
+)
 class GroupRecord {
   /// Surrogate primary key.
   @TomEntityId()

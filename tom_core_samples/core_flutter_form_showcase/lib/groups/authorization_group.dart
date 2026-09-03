@@ -38,7 +38,8 @@ ShowcaseCell _stateCell({
   return ShowcaseCell(
     title: title,
     note: note,
-    code: "TomFormStringInput(\n"
+    code:
+        "TomFormStringInput(\n"
         "  '$stateName',\n"
         "  'Analytical Engines Ltd.',\n"
         "  form: this,\n"
@@ -58,7 +59,8 @@ ShowcaseCell _stateCell({
 final ShowcaseGroup authorizationGroup = ShowcaseGroup(
   id: 'authorization',
   title: 'Four-state authorization',
-  summary: 'none, disabled, read and full — the TomAuthState model that drives '
+  summary:
+      'none, disabled, read and full — the TomAuthState model that drives '
       'how every field renders, shown with TomAuthorizer.fixed.',
   icon: Icons.shield_outlined,
   cells: (context) => [
@@ -85,7 +87,8 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     ),
     _stateCell(
       title: 'TomAuthState.none',
-      note: 'Hidden entirely — the preview surface renders empty because the '
+      note:
+          'Hidden entirely — the preview surface renders empty because the '
           'field collapses to nothing.',
       scopeId: 'auth_none',
       stateName: 'none',

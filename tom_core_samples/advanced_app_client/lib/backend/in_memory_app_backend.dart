@@ -43,7 +43,7 @@ class InMemoryAppBackend implements AppBackend {
   /// the board, an item or a share signing in as alice with no 2FA step in the
   /// way.
   InMemoryAppBackend({TomFileTransferClient? files})
-      : files = files ?? TomMemoryFileTransferClient() {
+    : files = files ?? TomMemoryFileTransferClient() {
     _seed();
   }
 
@@ -106,7 +106,7 @@ class InMemoryAppBackend implements AppBackend {
     'login.title': 'Advanced Todo — Sign in',
     'login.intro':
         'Try alice, bob or carol (any non-empty password), dave to be challenged '
-            'for a second factor, or erin to be offered one.',
+        'for a second factor, or erin to be offered one.',
     'login.username.label': 'Username',
     'login.username.hint': 'alice, bob, carol, dave or erin',
     'login.password.label': 'Password',
@@ -124,7 +124,7 @@ class InMemoryAppBackend implements AppBackend {
     'two_factor.choose.title': 'Set up two-step verification',
     'two_factor.choose.intro':
         'Add a second step to your sign-in. Choose how you would like to '
-            'confirm it is you.',
+        'confirm it is you.',
     'two_factor.enrol.title': 'Set up your authenticator',
     'two_factor.challenge.title': 'Two-step verification',
     'two_factor.skip.label': 'Not now',
@@ -139,11 +139,10 @@ class InMemoryAppBackend implements AppBackend {
         'Use a code from Google Authenticator, 1Password or a similar app.',
     'two_factor.totp.enrol.intro':
         'Scan this code with your authenticator app, then type the code it '
-            'shows to confirm.',
+        'shows to confirm.',
     'two_factor.totp.enrol.qrLabel':
         'QR code containing your authenticator set-up link',
-    'two_factor.totp.enrol.manualEntry':
-        'Cannot scan? Enter this key by hand:',
+    'two_factor.totp.enrol.manualEntry': 'Cannot scan? Enter this key by hand:',
     'two_factor.totp.enrol.codeLabel': 'Code from your app',
     'two_factor.totp.enrol.submit': 'Confirm',
     'two_factor.totp.challenge.codeLabel': 'Verification code',
@@ -343,12 +342,14 @@ class InMemoryAppBackend implements AppBackend {
   static const String totpIssuer = 'Advanced Todo';
 
   void _seed() {
-    void user(String id, String username, String name) => _users.add(UserDto(
-          id: id,
-          username: username,
-          displayName: name,
-          email: '$username@todo.example',
-        ));
+    void user(String id, String username, String name) => _users.add(
+      UserDto(
+        id: id,
+        username: username,
+        displayName: name,
+        email: '$username@todo.example',
+      ),
+    );
     user('u-alice', 'alice', 'Alice (owner)');
     user('u-bob', 'bob', 'Bob (editor)');
     user('u-carol', 'carol', 'Carol (viewer)');
@@ -361,75 +362,93 @@ class InMemoryAppBackend implements AppBackend {
     user('u-dave', 'dave', 'Dave Dijkstra (2FA)');
     user('u-erin', 'erin', 'Erin Nakamura (2FA setup)');
 
-    _workspaces.add(Workspace()
-      ..id.set('w-1')
-      ..name.set('Acme Engineering')
-      ..ownerId.set('u-alice'));
+    _workspaces.add(
+      Workspace()
+        ..id.set('w-1')
+        ..name.set('Acme Engineering')
+        ..ownerId.set('u-alice'),
+    );
 
-    _projects.add(Project()
-      ..id.set('p-1')
-      ..workspaceId.set('w-1')
-      ..name.set('Website relaunch')
-      ..description.set('The Q3 marketing-site rebuild.')
-      ..colour.set('#3366FF'));
+    _projects.add(
+      Project()
+        ..id.set('p-1')
+        ..workspaceId.set('w-1')
+        ..name.set('Website relaunch')
+        ..description.set('The Q3 marketing-site rebuild.')
+        ..colour.set('#3366FF'),
+    );
 
-    _lists.add(TodoList()
-      ..id.set('l-1')
-      ..projectId.set('p-1')
-      ..name.set('Sprint backlog')
-      ..position.set(0));
+    _lists.add(
+      TodoList()
+        ..id.set('l-1')
+        ..projectId.set('p-1')
+        ..name.set('Sprint backlog')
+        ..position.set(0),
+    );
 
-    _items.add(TodoItem()
-      ..id.set('i-1')
-      ..listId.set('l-1')
-      ..title.set('Draft the landing copy')
-      ..description.set('First pass at the hero section.')
-      ..statusValue = TodoStatus.todo
-      ..priorityValue = TodoPriority.high
-      ..labelValue = TodoLabel.docs
-      ..assigneeId.set('u-bob')
-      ..reporterId.set('u-alice'));
-    _items.add(TodoItem()
-      ..id.set('i-2')
-      ..listId.set('l-1')
-      ..title.set('Wire the contact form')
-      ..statusValue = TodoStatus.inProgress
-      ..priorityValue = TodoPriority.medium
-      ..labelValue = TodoLabel.feature
-      ..reporterId.set('u-alice'));
+    _items.add(
+      TodoItem()
+        ..id.set('i-1')
+        ..listId.set('l-1')
+        ..title.set('Draft the landing copy')
+        ..description.set('First pass at the hero section.')
+        ..statusValue = TodoStatus.todo
+        ..priorityValue = TodoPriority.high
+        ..labelValue = TodoLabel.docs
+        ..assigneeId.set('u-bob')
+        ..reporterId.set('u-alice'),
+    );
+    _items.add(
+      TodoItem()
+        ..id.set('i-2')
+        ..listId.set('l-1')
+        ..title.set('Wire the contact form')
+        ..statusValue = TodoStatus.inProgress
+        ..priorityValue = TodoPriority.medium
+        ..labelValue = TodoLabel.feature
+        ..reporterId.set('u-alice'),
+    );
 
     // A thread and a checklist on item 1, mirroring the live `app_db` seed's
     // shape (one existing comment, two subtasks with one already done). Without
     // them the detail screen's two new sections would only ever be seen empty
     // offline, and "renders a thread" would go untested in the widget suite.
-    _comments.add(TodoComment()
-      ..id.set('c-1')
-      ..itemId.set('i-1')
-      ..authorId.set('u-bob')
-      ..body.set('Started on the hero section — draft attached.')
-      ..createdAt.set(DateTime(2026, 7, 1, 9, 30)));
+    _comments.add(
+      TodoComment()
+        ..id.set('c-1')
+        ..itemId.set('i-1')
+        ..authorId.set('u-bob')
+        ..body.set('Started on the hero section — draft attached.')
+        ..createdAt.set(DateTime(2026, 7, 1, 9, 30)),
+    );
 
-    _subtasks.add(Subtask()
-      ..id.set('s-1')
-      ..itemId.set('i-1')
-      ..title.set('Collect the reference sites')
-      ..done.set(true)
-      ..position.set(0));
-    _subtasks.add(Subtask()
-      ..id.set('s-2')
-      ..itemId.set('i-1')
-      ..title.set('Write the hero paragraph')
-      ..done.set(false)
-      ..position.set(1));
+    _subtasks.add(
+      Subtask()
+        ..id.set('s-1')
+        ..itemId.set('i-1')
+        ..title.set('Collect the reference sites')
+        ..done.set(true)
+        ..position.set(0),
+    );
+    _subtasks.add(
+      Subtask()
+        ..id.set('s-2')
+        ..itemId.set('i-1')
+        ..title.set('Write the hero paragraph')
+        ..done.set(false)
+        ..position.set(1),
+    );
 
     // Bob is shared into the project as an editor; Carol starts with no access
     // (the share test grants it).
-    _shares.add(ShareRequest(
-      resourceType: 'project',
-      resourceId: 'p-1',
-      granteeUserId: 'u-bob',
-      projectRole: ProjectRole.editor,
-    ));
+    _shares.add(
+      ShareRequest(
+        resourceType: 'project',
+        resourceId: 'p-1',
+        granteeUserId: 'u-bob',
+        projectRole: ProjectRole.editor,
+      ),
+    );
   }
 
   /// The id of the logged-in principal, or throws if no session is active.
@@ -761,7 +780,8 @@ class InMemoryAppBackend implements AppBackend {
     if (key.isEmpty) return false;
     final counter = TomTotp.counterFor(period: totpPeriod);
     for (var offset = -totpWindowSteps; offset <= totpWindowSteps; offset++) {
-      if (TomTotp.generateCode(key, counter + offset, totpDigits) == submitted) {
+      if (TomTotp.generateCode(key, counter + offset, totpDigits) ==
+          submitted) {
         return true;
       }
     }
@@ -824,7 +844,9 @@ class InMemoryAppBackend implements AppBackend {
     // stored item — mirroring the server, where the file columns are absent
     // from the writable bindings so a client cannot mint a storage key.
     for (final item in visible) {
-      final stored = await files.describe(AppFileSlots.itemAttachment(item.id.get()));
+      final stored = await files.describe(
+        AppFileSlots.itemAttachment(item.id.get()),
+      );
       item.attachment.set(stored?.key ?? '');
     }
     return visible;
@@ -860,8 +882,10 @@ class InMemoryAppBackend implements AppBackend {
     }
     final index = _items.indexWhere((existing) => existing.id.get() == id);
     if (index < 0) {
-      throw AppBackendException('No item with id "$id".',
-          key: 'app.item.not_found');
+      throw AppBackendException(
+        'No item with id "$id".',
+        key: 'app.item.not_found',
+      );
     }
     final project = _projectOfList(_items[index].listId.get());
     if (project == null || !_canWrite(_roleOnProject(project, principal))) {
@@ -894,8 +918,10 @@ class InMemoryAppBackend implements AppBackend {
     final principal = _principalId;
     final item = _items.firstWhere(
       (i) => i.id.get() == itemId,
-      orElse: () => throw AppBackendException('No item with id "$itemId".',
-          key: 'app.item.not_found'),
+      orElse: () => throw AppBackendException(
+        'No item with id "$itemId".',
+        key: 'app.item.not_found',
+      ),
     );
     final project = _projectOfList(item.listId.get());
     if (project == null || _roleOnProject(project, principal) == null) {
@@ -921,8 +947,11 @@ class InMemoryAppBackend implements AppBackend {
     return [
       for (final c in _comments)
         if (c.itemId.get() == itemId) _copyComment(c),
-    ]..sort((a, b) => (a.createdAt.get() ?? DateTime(0))
-        .compareTo(b.createdAt.get() ?? DateTime(0)));
+    ]..sort(
+      (a, b) => (a.createdAt.get() ?? DateTime(0)).compareTo(
+        b.createdAt.get() ?? DateTime(0),
+      ),
+    );
   }
 
   @override
@@ -965,11 +994,12 @@ class InMemoryAppBackend implements AppBackend {
 
   @override
   Future<Subtask> updateSubtask(Subtask subtask) async {
-    final index =
-        _subtasks.indexWhere((s) => s.id.get() == subtask.id.get());
+    final index = _subtasks.indexWhere((s) => s.id.get() == subtask.id.get());
     if (index < 0) {
-      throw AppBackendException('No subtask with id "${subtask.id.get()}".',
-          key: 'app.subtask.not_found');
+      throw AppBackendException(
+        'No subtask with id "${subtask.id.get()}".',
+        key: 'app.subtask.not_found',
+      );
     }
     // The parent comes from storage, so the gate is resolved against the item
     // the subtask really belongs to and the link cannot be rewritten.
@@ -995,13 +1025,17 @@ class InMemoryAppBackend implements AppBackend {
   TodoItem _requireReadableItem(String itemId) {
     final item = _items.firstWhere(
       (i) => i.id.get() == itemId,
-      orElse: () => throw AppBackendException('No item with id "$itemId".',
-          key: 'app.item.not_found'),
+      orElse: () => throw AppBackendException(
+        'No item with id "$itemId".',
+        key: 'app.item.not_found',
+      ),
     );
     final project = _projectOfList(item.listId.get());
     if (project == null || _roleOnProject(project, _principalId) == null) {
-      throw AppBackendException('No item with id "$itemId".',
-          key: 'app.item.not_found');
+      throw AppBackendException(
+        'No item with id "$itemId".',
+        key: 'app.item.not_found',
+      );
     }
     return item;
   }
@@ -1020,10 +1054,12 @@ class InMemoryAppBackend implements AppBackend {
       final role = _roleOnProject(project, principal);
       if (role == null) continue;
       roles[ResourceRoleKeys.project(project.id.get())] = role.name;
-      for (final list
-          in _lists.where((l) => l.projectId.get() == project.id.get())) {
-        for (final item
-            in _items.where((i) => i.listId.get() == list.id.get())) {
+      for (final list in _lists.where(
+        (l) => l.projectId.get() == project.id.get(),
+      )) {
+        for (final item in _items.where(
+          (i) => i.listId.get() == list.id.get(),
+        )) {
           roles[ResourceRoleKeys.item(item.id.get())] = role.name;
         }
       }
@@ -1047,10 +1083,12 @@ class InMemoryAppBackend implements AppBackend {
         key: 'app.access.forbidden',
       );
     }
-    _shares.removeWhere((s) =>
-        s.resourceType == request.resourceType &&
-        s.resourceId == request.resourceId &&
-        s.granteeUserId == request.granteeUserId);
+    _shares.removeWhere(
+      (s) =>
+          s.resourceType == request.resourceType &&
+          s.resourceId == request.resourceId &&
+          s.granteeUserId == request.granteeUserId,
+    );
     _shares.add(request);
   }
 
@@ -1076,9 +1114,11 @@ class InMemoryAppBackend implements AppBackend {
 
   bool _canSeeWorkspace(Workspace workspace, String principal) {
     if (workspace.ownerId.get() == principal) return true;
-    return _projects.any((p) =>
-        p.workspaceId.get() == workspace.id.get() &&
-        _roleOnProject(p, principal) != null);
+    return _projects.any(
+      (p) =>
+          p.workspaceId.get() == workspace.id.get() &&
+          _roleOnProject(p, principal) != null,
+    );
   }
 
   /// Whether [role] may create/update items (owner or editor).

@@ -259,15 +259,16 @@ class LoginResult {
     this.requires2FAEnrolment = false,
     List<Tom2FAMethodDescriptor>? availableTwoFactorMethods,
     this.twoFactorEnrolmentSkippable = false,
-  })  : user = user ?? UserDto(),
-        availableTwoFactorMethods = availableTwoFactorMethods ?? [],
-        expiresAt =
-            expiresAt ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  }) : user = user ?? UserDto(),
+       availableTwoFactorMethods = availableTwoFactorMethods ?? [],
+       expiresAt =
+           expiresAt ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
   @override
-  String toString() => 'LoginResult(${user.username}, '
+  String toString() =>
+      'LoginResult(${user.username}, '
       'expiresAt: ${expiresAt.toUtc().toIso8601String()}'
       '${requires2FA ? ', pending 2FA: $twoFactorType' : ''}'
       '${requires2FAEnrolment ? ', pending 2FA enrolment: '
-          '${availableTwoFactorMethods.map((m) => m.type).join('/')}' : ''})';
+                '${availableTwoFactorMethods.map((m) => m.type).join('/')}' : ''})';
 }

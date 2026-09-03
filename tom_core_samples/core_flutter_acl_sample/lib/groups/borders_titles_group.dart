@@ -17,13 +17,15 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup bordersTitlesGroup = ShowcaseGroup(
   id: 'borders_titles',
   title: 'Borders & titles',
-  summary: 'setAclBorderStyle frames a container; setAclTitle + '
+  summary:
+      'setAclBorderStyle frames a container; setAclTitle + '
       'setAclTitlePosition add and place a caption on the border.',
   icon: Icons.crop_square_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Titled, bordered group',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('Name', indigo))\n"
           "    .append(demoBox('Email', cyan))\n"
           '    .setAclBorderStyle(const AclBorderStyle.solid())\n'
@@ -38,7 +40,8 @@ final ShowcaseGroup bordersTitlesGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Rounded border, centred title',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('Street', teal))\n"
           "    .append(demoBox('City', teal))\n"
           '    .setAclBorderStyle(\n'
@@ -59,7 +62,8 @@ final ShowcaseGroup bordersTitlesGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Coloured, thicker border with right title',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('Amount', deepPurple))\n"
           '    .setAclBorderStyle(\n'
           '      const AclBorderStyle.solid(color: Colors.deepPurple,\n'
@@ -71,10 +75,7 @@ final ShowcaseGroup bordersTitlesGroup = ShowcaseGroup(
       child: AclBuilder()
           .append(demoBox('Amount', Colors.deepPurple))
           .setAclBorderStyle(
-            const AclBorderStyle.solid(
-              color: Colors.deepPurple,
-              lineWidth: 2,
-            ),
+            const AclBorderStyle.solid(color: Colors.deepPurple, lineWidth: 2),
           )
           .setAclTitle('Payment')
           .setAclTitlePosition(AclTitlePosition.topRight)

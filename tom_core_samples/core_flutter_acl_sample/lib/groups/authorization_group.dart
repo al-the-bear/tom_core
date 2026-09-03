@@ -49,14 +49,16 @@ Widget _gatedRow(String label, TomAuthState state, Color color) => AclBuilder()
 final ShowcaseGroup authorizationGroup = ShowcaseGroup(
   id: 'authorization',
   title: 'Four-state authorization',
-  summary: 'none, disabled, read and full — the TomAuthState model gating a '
+  summary:
+      'none, disabled, read and full — the TomAuthState model gating a '
       'button inside an ACL row, each state rendering distinctly.',
   icon: Icons.shield_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomAuthState.full',
       note: 'Fully interactive and editable — the unconstrained default.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('full', green)).setPSize(120)\n"
           '    .append(\n'
           '      TomElevatedButton(\n'
@@ -71,7 +73,8 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomAuthState.read',
       note: 'Visible and shows its value, but cannot be activated.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('read', blue)).setPSize(120)\n"
           '    .append(\n'
           '      TomElevatedButton(\n'
@@ -86,7 +89,8 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomAuthState.disabled',
       note: 'Greyed out and non-interactive — distinct from read-only.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('disabled', orange)).setPSize(120)\n"
           '    .append(\n'
           '      TomElevatedButton(\n'
@@ -100,9 +104,11 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomAuthState.none',
-      note: 'Hidden entirely — the button collapses to nothing, leaving only '
+      note:
+          'Hidden entirely — the button collapses to nothing, leaving only '
           'the label box in the row.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('none', grey)).setPSize(120)\n"
           '    .append(\n'
           '      TomElevatedButton(\n'

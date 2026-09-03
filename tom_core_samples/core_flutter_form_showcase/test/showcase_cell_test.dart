@@ -34,8 +34,9 @@ void main() {
     );
   });
 
-  testWidgets('renders both the code snippet and the live child',
-      (tester) async {
+  testWidgets('renders both the code snippet and the live child', (
+    tester,
+  ) async {
     const marker = Key('cell-child-marker');
 
     await tester.pumpWidget(
@@ -61,8 +62,9 @@ void main() {
     expect(find.text('Demo'), findsOneWidget);
   });
 
-  testWidgets('every showcase cell carries a non-empty snippet',
-      (tester) async {
+  testWidgets('every showcase cell carries a non-empty snippet', (
+    tester,
+  ) async {
     // Group builders read Theme.of(context), so a real pumped context is
     // needed rather than a fake one.
     late BuildContext capturedContext;
@@ -79,8 +81,11 @@ void main() {
 
     for (final group in showcaseGroups) {
       for (final cell in group.cells(capturedContext)) {
-        expect(cell.code.trim(), isNotEmpty,
-            reason: 'group ${group.id}: a cell has an empty code snippet');
+        expect(
+          cell.code.trim(),
+          isNotEmpty,
+          reason: 'group ${group.id}: a cell has an empty code snippet',
+        );
       }
     }
   });
@@ -100,10 +105,16 @@ void main() {
   // `lib/`, so it still fails.
   testWidgets('no snippet names an API the sample never calls', (tester) async {
     late BuildContext capturedContext;
-    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) {
-      capturedContext = context;
-      return const SizedBox.shrink();
-    })));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
 
     // Why the stripping matters: the snippets are themselves string literals
     // inside `lib/groups/`, so searching the raw text would find every name in
@@ -117,20 +128,23 @@ void main() {
         .where((f) => !f.path.endsWith('.reflection.dart'))
         .map((f) => _executableSource(f.readAsStringSync()))
         .join('\n');
-    expect(live, isNotEmpty,
-        reason: 'tests must run from the package root');
+    expect(live, isNotEmpty, reason: 'tests must run from the package root');
 
     for (final group in showcaseGroups) {
       for (final cell in group.cells(capturedContext)) {
         for (final name in _calledNames(cell.code)) {
-          expect(live, contains(RegExp('\\b${RegExp.escape(name)}\\s*\\(')),
-              reason: 'group ${group.id}, cell "${cell.title}": the snippet '
-                  'calls `$name(...)`, which nothing in lib/ calls. A snippet '
-                  'may abridge the live child, but it may not name an API that '
-                  'does not exist. If the name is a private helper of the '
-                  'sample, spell it with its underscore — `_MasterPane`, not '
-                  '`MasterPane` — so a reader does not go looking for it in '
-                  'tom_flutter_ui.');
+          expect(
+            live,
+            contains(RegExp('\\b${RegExp.escape(name)}\\s*\\(')),
+            reason:
+                'group ${group.id}, cell "${cell.title}": the snippet '
+                'calls `$name(...)`, which nothing in lib/ calls. A snippet '
+                'may abridge the live child, but it may not name an API that '
+                'does not exist. If the name is a private helper of the '
+                'sample, spell it with its underscore — `_MasterPane`, not '
+                '`MasterPane` — so a reader does not go looking for it in '
+                'tom_flutter_ui.',
+          );
         }
       }
     }
@@ -151,16 +165,18 @@ void main() {
     // actually quotes the construct, which exempts a deliberate placeholder
     // automatically while binding anything that claims to show the real thing.
     final groups = Directory('lib/groups');
-    expect(groups.existsSync(), isTrue,
-        reason: 'tests must run from the package root');
+    expect(
+      groups.existsSync(),
+      isTrue,
+      reason: 'tests must run from the package root',
+    );
 
     var aclChecked = 0;
     var scaffoldChecked = 0;
 
-    for (final file in groups
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))) {
+    for (final file in groups.listSync().whereType<File>().where(
+      (f) => f.path.endsWith('.dart'),
+    )) {
       final source = file.readAsStringSync();
       final snippet = _snippetText(source);
       final child = _childText(source);
@@ -169,10 +185,14 @@ void main() {
       if (snippet.contains('TomAclBuilder(')) {
         aclChecked++;
         final missing = _builderCalls(child).difference(_builderCalls(snippet));
-        expect(missing, isEmpty,
-            reason: '$name: the snippet quotes TomAclBuilder but omits '
-                '${missing.map((c) => ".$c()").join(", ")}, which the child '
-                'calls — the copied layout would render differently');
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              '$name: the snippet quotes TomAclBuilder but omits '
+              '${missing.map((c) => ".$c()").join(", ")}, which the child '
+              'calls — the copied layout would render differently',
+        );
       }
 
       for (final ctor in const [
@@ -181,11 +201,17 @@ void main() {
       ]) {
         if (!snippet.contains(ctor)) continue;
         scaffoldChecked++;
-        final missing =
-            _flagArguments(child, ctor).difference(_flagArguments(snippet, ctor));
-        expect(missing, isEmpty,
-            reason: '$name: the snippet quotes $ctor but omits '
-                '${missing.join(", ")}, which the child passes');
+        final missing = _flagArguments(
+          child,
+          ctor,
+        ).difference(_flagArguments(snippet, ctor));
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              '$name: the snippet quotes $ctor but omits '
+              '${missing.join(", ")}, which the child passes',
+        );
       }
     }
 
@@ -258,17 +284,36 @@ String _executableSource(String dart) {
 /// Dart syntax, not API surface, and a snippet is free to use control flow the
 /// live child spells differently.
 Set<String> _calledNames(String code) {
-  var withoutComments = code.split('\n').map((line) {
-    final marker = line.indexOf('//');
-    return marker == -1 ? line : line.substring(0, marker);
-  }).join('\n');
+  var withoutComments = code
+      .split('\n')
+      .map((line) {
+        final marker = line.indexOf('//');
+        return marker == -1 ? line : line.substring(0, marker);
+      })
+      .join('\n');
   withoutComments = withoutComments
       .replaceAll(RegExp(r"'(?:[^'\\]|\\.)*'"), "''")
       .replaceAll(RegExp(r'"(?:[^"\\]|\\.)*"'), '""');
 
   const keywords = {
-    'if', 'for', 'while', 'switch', 'return', 'catch', 'assert', 'super',
-    'this', 'new', 'await', 'in', 'is', 'as', 'else', 'do', 'throw', 'yield',
+    'if',
+    'for',
+    'while',
+    'switch',
+    'return',
+    'catch',
+    'assert',
+    'super',
+    'this',
+    'new',
+    'await',
+    'in',
+    'is',
+    'as',
+    'else',
+    'do',
+    'throw',
+    'yield',
   };
 
   return RegExp(r'([A-Za-z_$][A-Za-z0-9_$]*)\s*\(')

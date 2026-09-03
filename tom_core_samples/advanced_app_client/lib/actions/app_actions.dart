@@ -123,7 +123,12 @@ class ToggleSubtaskContext extends AppActionContext {
 /// Context for [ShareProjectAction]: the project and the grant to make.
 class ShareProjectContext extends AppActionContext {
   /// Creates the context for sharing [projectId] with [granteeUserId] at [role].
-  ShareProjectContext(super.session, this.projectId, this.granteeUserId, this.role);
+  ShareProjectContext(
+    super.session,
+    this.projectId,
+    this.granteeUserId,
+    this.role,
+  );
 
   /// The project being shared.
   final String projectId;
@@ -143,7 +148,7 @@ class ShareProjectContext extends AppActionContext {
 class SaveItemAction extends TomSimpleAction<SaveItemContext> {
   /// Registers the action under `todo.item.save`.
   SaveItemAction(TomActionController controller)
-      : super(actionId: 'save', controller: controller);
+    : super(actionId: 'save', controller: controller);
 
   @override
   void executeSimple(SaveItemContext context, TomActionTransaction tx) {
@@ -151,7 +156,8 @@ class SaveItemAction extends TomSimpleAction<SaveItemContext> {
         .guard((b) => b.saveItem(context.item))
         .then((_) => context.completeOk())
         .catchError(
-          (Object e) => context.completeError((e as AppBackendException).message),
+          (Object e) =>
+              context.completeError((e as AppBackendException).message),
           test: (e) => e is AppBackendException,
         );
   }
@@ -161,7 +167,7 @@ class SaveItemAction extends TomSimpleAction<SaveItemContext> {
 class AddCommentAction extends TomSimpleAction<AddCommentContext> {
   /// Registers the action under `todo.item.comment`.
   AddCommentAction(TomActionController controller)
-      : super(actionId: 'comment', controller: controller);
+    : super(actionId: 'comment', controller: controller);
 
   @override
   void executeSimple(AddCommentContext context, TomActionTransaction tx) {
@@ -173,7 +179,8 @@ class AddCommentAction extends TomSimpleAction<AddCommentContext> {
         .guard((b) => b.addComment(context.itemId, comment))
         .then((_) => context.completeOk())
         .catchError(
-          (Object e) => context.completeError((e as AppBackendException).message),
+          (Object e) =>
+              context.completeError((e as AppBackendException).message),
           test: (e) => e is AppBackendException,
         );
   }
@@ -183,7 +190,7 @@ class AddCommentAction extends TomSimpleAction<AddCommentContext> {
 class AddSubtaskAction extends TomSimpleAction<AddSubtaskContext> {
   /// Registers the action under `todo.item.addSubtask`.
   AddSubtaskAction(TomActionController controller)
-      : super(actionId: 'addSubtask', controller: controller);
+    : super(actionId: 'addSubtask', controller: controller);
 
   @override
   void executeSimple(AddSubtaskContext context, TomActionTransaction tx) {
@@ -195,7 +202,8 @@ class AddSubtaskAction extends TomSimpleAction<AddSubtaskContext> {
         .guard((b) => b.addSubtask(context.itemId, subtask))
         .then((_) => context.completeOk())
         .catchError(
-          (Object e) => context.completeError((e as AppBackendException).message),
+          (Object e) =>
+              context.completeError((e as AppBackendException).message),
           test: (e) => e is AppBackendException,
         );
   }
@@ -205,7 +213,7 @@ class AddSubtaskAction extends TomSimpleAction<AddSubtaskContext> {
 class ToggleSubtaskAction extends TomSimpleAction<ToggleSubtaskContext> {
   /// Registers the action under `todo.item.toggleSubtask`.
   ToggleSubtaskAction(TomActionController controller)
-      : super(actionId: 'toggleSubtask', controller: controller);
+    : super(actionId: 'toggleSubtask', controller: controller);
 
   @override
   void executeSimple(ToggleSubtaskContext context, TomActionTransaction tx) {
@@ -223,7 +231,8 @@ class ToggleSubtaskAction extends TomSimpleAction<ToggleSubtaskContext> {
         .guard((b) => b.updateSubtask(edited))
         .then((_) => context.completeOk())
         .catchError(
-          (Object e) => context.completeError((e as AppBackendException).message),
+          (Object e) =>
+              context.completeError((e as AppBackendException).message),
           test: (e) => e is AppBackendException,
         );
   }
@@ -233,20 +242,25 @@ class ToggleSubtaskAction extends TomSimpleAction<ToggleSubtaskContext> {
 class ShareProjectAction extends TomSimpleAction<ShareProjectContext> {
   /// Registers the action under `board.share`.
   ShareProjectAction(TomActionController controller)
-      : super(actionId: 'share', controller: controller);
+    : super(actionId: 'share', controller: controller);
 
   @override
   void executeSimple(ShareProjectContext context, TomActionTransaction tx) {
     context.session
-        .guard((b) => b.share(ShareRequest(
+        .guard(
+          (b) => b.share(
+            ShareRequest(
               resourceType: 'project',
               resourceId: context.projectId,
               granteeUserId: context.granteeUserId,
               projectRole: context.role,
-            )))
+            ),
+          ),
+        )
         .then((_) => context.completeOk())
         .catchError(
-          (Object e) => context.completeError((e as AppBackendException).message),
+          (Object e) =>
+              context.completeError((e as AppBackendException).message),
           test: (e) => e is AppBackendException,
         );
   }

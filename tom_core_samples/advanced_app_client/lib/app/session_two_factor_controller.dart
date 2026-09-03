@@ -48,8 +48,7 @@ class SessionTwoFactorController extends Tom2FAFlowController {
   String get accountLabel => session.pendingAccount;
 
   @override
-  Future<void> chooseMethod(String type) =>
-      session.chooseTwoFactorMethod(type);
+  Future<void> chooseMethod(String type) => session.chooseTwoFactorMethod(type);
 
   @override
   Future<void> confirmEnrolment(String code) => session.confirmEnrolment(code);
@@ -68,7 +67,6 @@ class SessionTwoFactorController extends Tom2FAFlowController {
   /// for the user (server-supplied where the server had one), so the panel shows
   /// that rather than an exception's `toString`.
   @override
-  String describeError(Object error) => error is AppBackendException
-      ? error.message
-      : super.describeError(error);
+  String describeError(Object error) =>
+      error is AppBackendException ? error.message : super.describeError(error);
 }

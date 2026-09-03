@@ -51,16 +51,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('TC-33-01: the console starts on the admin sign-in screen',
-      (tester) async {
+  testWidgets('TC-33-01: the console starts on the admin sign-in screen', (
+    tester,
+  ) async {
     await pumpConsole(tester);
     expect(loginFinder, findsOneWidget);
     expect(find.text('Advanced Todo — Admin sign in'), findsOneWidget);
     expect(shellFinder, findsNothing);
   });
 
-  testWidgets('TC-33-02: an admin login proceeds to the console shell',
-      (tester) async {
+  testWidgets('TC-33-02: an admin login proceeds to the console shell', (
+    tester,
+  ) async {
     await pumpConsole(tester);
     await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
 
@@ -72,32 +74,36 @@ void main() {
   });
 
   testWidgets(
-      'TC-33-03: a signed-in non-admin is rejected with an access error',
-      (tester) async {
-    await pumpConsole(tester);
-    await signIn(tester, 'alice', InMemoryAdminBackend.demoPassword);
+    'TC-33-03: a signed-in non-admin is rejected with an access error',
+    (tester) async {
+      await pumpConsole(tester);
+      await signIn(tester, 'alice', InMemoryAdminBackend.demoPassword);
 
-    // Authenticated, but the admin probe refused: an inline error, still on
-    // login, the shell never opened.
-    expect(errorFinder, findsOneWidget);
-    expect(find.text('Administrator access is required.'), findsOneWidget);
-    expect(loginFinder, findsOneWidget);
-    expect(shellFinder, findsNothing);
-  });
+      // Authenticated, but the admin probe refused: an inline error, still on
+      // login, the shell never opened.
+      expect(errorFinder, findsOneWidget);
+      expect(find.text('Administrator access is required.'), findsOneWidget);
+      expect(loginFinder, findsOneWidget);
+      expect(shellFinder, findsNothing);
+    },
+  );
 
-  testWidgets('TC-33-04: bad credentials show an inline error without leaving',
-      (tester) async {
-    await pumpConsole(tester);
-    await signIn(tester, 'admin', 'wrong');
+  testWidgets(
+    'TC-33-04: bad credentials show an inline error without leaving',
+    (tester) async {
+      await pumpConsole(tester);
+      await signIn(tester, 'admin', 'wrong');
 
-    expect(errorFinder, findsOneWidget);
-    expect(find.text('Invalid administrator credentials.'), findsOneWidget);
-    expect(loginFinder, findsOneWidget);
-    expect(shellFinder, findsNothing);
-  });
+      expect(errorFinder, findsOneWidget);
+      expect(find.text('Invalid administrator credentials.'), findsOneWidget);
+      expect(loginFinder, findsOneWidget);
+      expect(shellFinder, findsNothing);
+    },
+  );
 
-  testWidgets('TC-33-05: empty credentials fail validation and never submit',
-      (tester) async {
+  testWidgets('TC-33-05: empty credentials fail validation and never submit', (
+    tester,
+  ) async {
     await pumpConsole(tester);
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
@@ -108,8 +114,9 @@ void main() {
     expect(shellFinder, findsNothing);
   });
 
-  testWidgets('TC-33-06: signing out from the shell routes back to login',
-      (tester) async {
+  testWidgets('TC-33-06: signing out from the shell routes back to login', (
+    tester,
+  ) async {
     await pumpConsole(tester);
     await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
     expect(shellFinder, findsOneWidget);

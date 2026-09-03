@@ -43,8 +43,7 @@ void main() {
       expect(form.basePath, 'todo.item');
     });
 
-    test('each gradable field self-addresses as its todo.item.<field> key',
-        () {
+    test('each gradable field self-addresses as its todo.item.<field> key', () {
       final form = buildForm();
       expect(form.title.basePath, 'todo.item.title');
       expect(form.status.basePath, 'todo.item.status');
@@ -54,8 +53,7 @@ void main() {
       expect(form.description.basePath, 'todo.item.description');
     });
 
-    test(
-        'the estimate field self-addresses as todo.item.estimate while its '
+    test('the estimate field self-addresses as todo.item.estimate while its '
         'member stays estimateHours', () {
       final form = buildForm();
       // basePath uses the tomId (estimate), so it matches the graded key…
@@ -67,8 +65,7 @@ void main() {
       expect(form.fields.containsKey('estimate'), isFalse);
     });
 
-    test('gradableFields basePaths equal the gradable item keys, in order',
-        () {
+    test('gradableFields basePaths equal the gradable item keys, in order', () {
       final form = buildForm();
       expect(
         form.gradableFields.map((field) => field.basePath).toList(),

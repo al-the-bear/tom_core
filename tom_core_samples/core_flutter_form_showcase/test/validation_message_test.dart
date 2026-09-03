@@ -50,9 +50,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SingleChildScrollView(
-            child: Column(children: children()),
-          ),
+          body: SingleChildScrollView(child: Column(children: children())),
         ),
       ),
     );
@@ -66,22 +64,18 @@ void main() {
   /// showcase cell owns one — so the suite exercises the same lifecycle the app
   /// does rather than a test-only variant.
   Future<void> pumpCompanyForm(WidgetTester tester) => pumpFields(
-        tester,
-        () => [
-          FormHost<CompanyForm>(
-            scopeId: 'validationMessages',
-            create: CompanyForm.new,
-            bind: (form) => form.bind(CompanyProfile()),
-            builder: (context, form) => Column(
-              children: [
-                form.name.widget,
-                form.taxId.widget,
-                form.website.widget,
-              ],
-            ),
-          ),
-        ],
-      );
+    tester,
+    () => [
+      FormHost<CompanyForm>(
+        scopeId: 'validationMessages',
+        create: CompanyForm.new,
+        bind: (form) => form.bind(CompanyProfile()),
+        builder: (context, form) => Column(
+          children: [form.name.widget, form.taxId.widget, form.website.widget],
+        ),
+      ),
+    ],
+  );
 
   /// Type [text] into the input at [index] and let the field validate itself.
   ///
@@ -100,21 +94,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('a malformed tax ID resolves error.taxIdFormat to its message',
-      (tester) async {
+  testWidgets('a malformed tax ID resolves error.taxIdFormat to its message', (
+    tester,
+  ) async {
     await pumpCompanyForm(tester);
     await typeAndAwaitValidation(tester, 1, 'de 1234');
 
     expect(
       find.text(showcaseValidationTexts['error.taxIdFormat']),
       findsOneWidget,
-      reason: 'the pattern validator emits error.taxIdFormat; the field must '
+      reason:
+          'the pattern validator emits error.taxIdFormat; the field must '
           'resolve it through the registered bundle, not render the key',
     );
   });
 
-  testWidgets('a malformed website resolves error.invalidUrl to its message',
-      (tester) async {
+  testWidgets('a malformed website resolves error.invalidUrl to its message', (
+    tester,
+  ) async {
     await pumpCompanyForm(tester);
     await typeAndAwaitValidation(tester, 2, 'not a url');
 
@@ -125,8 +122,9 @@ void main() {
     );
   });
 
-  testWidgets('clearing a required field resolves error.required',
-      (tester) async {
+  testWidgets('clearing a required field resolves error.required', (
+    tester,
+  ) async {
     await pumpCompanyForm(tester);
     // The bound [CompanyProfile] seeds empty, but a pristine field has not
     // validated yet — so the field is filled and then *emptied*, which is the
@@ -137,28 +135,38 @@ void main() {
     expect(
       find.text(showcaseValidationTexts['error.required']),
       findsOneWidget,
-      reason: 'the built-in required validator emits error.required, which '
+      reason:
+          'the built-in required validator emits error.required, which '
           'the bundle must define like any other message',
     );
   });
 
-  testWidgets('error.minLength interpolates its {min} parameter',
-      (tester) async {
+  testWidgets('error.minLength interpolates its {min} parameter', (
+    tester,
+  ) async {
     await pumpCompanyForm(tester);
     await typeAndAwaitValidation(tester, 0, 'A');
 
     // The bundle stores a `{min}` placeholder; the field substitutes the
     // validator's param. Asserting the *substituted* string is what proves the
     // interpolation happened — a template rendered verbatim would fail here.
-    expect(find.text('Use at least 2 characters.'), findsOneWidget,
-        reason: 'minLength(2) passes params {min: 2}, which the resolver '
-            'interpolates into the resource template');
-    expect(find.textContaining('{min}'), findsNothing,
-        reason: 'an uninterpolated placeholder reaching the screen is a bug');
+    expect(
+      find.text('Use at least 2 characters.'),
+      findsOneWidget,
+      reason:
+          'minLength(2) passes params {min: 2}, which the resolver '
+          'interpolates into the resource template',
+    );
+    expect(
+      find.textContaining('{min}'),
+      findsNothing,
+      reason: 'an uninterpolated placeholder reaching the screen is a bug',
+    );
   });
 
-  testWidgets('an autoValidate field resolves error.invalidInteger',
-      (tester) async {
+  testWidgets('an autoValidate field resolves error.invalidInteger', (
+    tester,
+  ) async {
     // `OrderItemForm.quantity` is the only `autoValidate: true` field in the
     // sample, and its validator is hand-written rather than a `Validators`
     // built-in — so it is the one that proves a bespoke `ValidationError` key
@@ -183,8 +191,9 @@ void main() {
     );
   });
 
-  testWidgets('no validation message renders as a raw resource key',
-      (tester) async {
+  testWidgets('no validation message renders as a raw resource key', (
+    tester,
+  ) async {
     await pumpCompanyForm(tester);
     await typeAndAwaitValidation(tester, 1, 'de 1234');
     await typeAndAwaitValidation(tester, 2, 'not a url');
@@ -199,9 +208,13 @@ void main() {
       (w) => w is Text && (w.data?.startsWith('error.') ?? false),
       description: 'a Text still showing a raw error.* resource key',
     );
-    expect(keyish, findsNothing,
-        reason: 'every error.* key the sample can emit must be defined in '
-            'showcaseValidationTexts — see chrome_texts.dart');
+    expect(
+      keyish,
+      findsNothing,
+      reason:
+          'every error.* key the sample can emit must be defined in '
+          'showcaseValidationTexts — see chrome_texts.dart',
+    );
   });
 
   test('every error key the library emits is defined by the bundle', () {
@@ -212,10 +225,11 @@ void main() {
     // *could* emit must have a sentence, whether or not a test can provoke it.
     final emitted = <String>{};
     final literal = RegExp(r"'(error\.[A-Za-z0-9_]+)'");
-    for (final file in Directory('lib')
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))) {
+    for (final file
+        in Directory('lib')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart'))) {
       // The bundle itself declares these keys rather than emitting them, and
       // the generated reflection output is not hand-written source.
       if (file.path.endsWith('chrome_texts.dart')) continue;
@@ -225,12 +239,16 @@ void main() {
       }
     }
 
-    expect(emitted, isNotEmpty,
-        reason: 'the scan must actually find keys, or it proves nothing');
+    expect(
+      emitted,
+      isNotEmpty,
+      reason: 'the scan must actually find keys, or it proves nothing',
+    );
     expect(
       emitted.difference(showcaseValidationTexts.keys.toSet()),
       isEmpty,
-      reason: 'a validator names a key with no sentence behind it; it would '
+      reason:
+          'a validator names a key with no sentence behind it; it would '
           'render as its own name — add it to showcaseValidationTexts',
     );
   });

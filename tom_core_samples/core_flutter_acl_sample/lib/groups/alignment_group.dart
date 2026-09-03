@@ -17,15 +17,18 @@ import '../common/showcase_section.dart';
 final ShowcaseGroup alignmentGroup = ShowcaseGroup(
   id: 'alignment',
   title: 'Alignment (row main & cross axis)',
-  summary: 'setRowAlignLeft/Center/Right place a row horizontally; '
+  summary:
+      'setRowAlignLeft/Center/Right place a row horizontally; '
       'setRowAlignTop/Middle/Bottom align differing heights vertically.',
   icon: Icons.format_align_center_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'Centre the row — setRowAlignCenter',
-      note: 'With slack to spare, the components cluster in the middle instead '
+      note:
+          'With slack to spare, the components cluster in the middle instead '
           'of hugging the left edge.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('A', teal))\n"
           "    .append(demoBox('B', orange))\n"
           '    .setRowAlignCenter()\n'
@@ -38,7 +41,8 @@ final ShowcaseGroup alignmentGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Push the row right — setRowAlignRight',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('A', indigo))\n"
           "    .append(demoBox('B', cyan))\n"
           '    .setRowAlignRight()\n'
@@ -51,11 +55,13 @@ final ShowcaseGroup alignmentGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'Cross-axis bottom — setRowAlignBottom',
-      note: 'A short cell next to a tall one: bottom alignment lines up their '
+      note:
+          'A short cell next to a tall one: bottom alignment lines up their '
           'bottom edges, not their text baselines. ACL cross-axis alignment is '
           'edge-based — AclRowCrossAlignment is {top, center, bottom}, with no '
           'baseline member.',
-      code: 'AclBuilder()\n'
+      code:
+          'AclBuilder()\n'
           "    .append(demoBox('tall', red))\n"
           '    .setPSize(110, 88)\n'
           "    .append(demoBox('short', green))\n"

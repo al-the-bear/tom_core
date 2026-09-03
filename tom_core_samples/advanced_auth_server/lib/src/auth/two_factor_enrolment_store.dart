@@ -46,7 +46,7 @@ class LegacyBridging2FAEnrolmentStore implements Tom2FAEnrolmentStore {
 
   /// Wraps [persistent] — normally a [TomPersistent2FAEnrolmentStore].
   const LegacyBridging2FAEnrolmentStore(Tom2FAEnrolmentStore persistent)
-      : _persistent = persistent;
+    : _persistent = persistent;
 
   @override
   Future<List<Tom2FAEnrolment>> enrolmentsFor(Tom2FAContext context) async {

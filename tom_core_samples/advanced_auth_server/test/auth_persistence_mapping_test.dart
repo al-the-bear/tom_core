@@ -123,18 +123,23 @@ void main() {
     });
 
     test('createUserRequestToRecord seeds active with no hash yet', () {
-      final record = createUserRequestToRecord(CreateUserRequest(
-        username: 'grace',
-        password: 'plaintext',
-        displayName: 'Grace',
-        email: 'grace@example.com',
-      ));
+      final record = createUserRequestToRecord(
+        CreateUserRequest(
+          username: 'grace',
+          password: 'plaintext',
+          displayName: 'Grace',
+          email: 'grace@example.com',
+        ),
+      );
       expect(record.id, isNull);
       expect(record.username, 'grace');
       expect(record.email, 'grace@example.com');
       expect(record.status, UserStatus.active.name);
-      expect(record.passwordHash, isNull,
-          reason: 'hashing is applyPassword\'s job, not the mapper\'s');
+      expect(
+        record.passwordHash,
+        isNull,
+        reason: 'hashing is applyPassword\'s job, not the mapper\'s',
+      );
     });
   });
 
@@ -178,7 +183,12 @@ void main() {
     });
 
     test('a group with no members maps to an empty member list', () {
-      final dto = groupToDto(GroupRecord()..id = 5..name = 'Empty', const []);
+      final dto = groupToDto(
+        GroupRecord()
+          ..id = 5
+          ..name = 'Empty',
+        const [],
+      );
       expect(dto.memberUserIds, isEmpty);
     });
 

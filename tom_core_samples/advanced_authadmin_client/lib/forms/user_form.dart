@@ -45,12 +45,12 @@ class UserForm extends TomForm<UserDraft> {
 
   /// The fields the screen renders, in order, for the current mode.
   List<TomField<dynamic>> get editableFields => [
-        username,
-        if (isCreate) password,
-        displayName,
-        email,
-        if (!isCreate) status,
-      ];
+    username,
+    if (isCreate) password,
+    displayName,
+    email,
+    if (!isCreate) status,
+  ];
 
   /// Creates the fields (implementation half of the three-part split, G-UI-5).
   /// The status source is built here — after login installs the console bundle
@@ -101,8 +101,12 @@ class UserForm extends TomForm<UserDraft> {
 /// i.e. after the session installs the server-sent bundle — so the options
 /// render server-delivered text rather than any hardcoded string.
 TomSelectableSource<String> _statusSource() => StaticSelectableSource([
-      SelectableItem<String>(
-          value: 'active', label: TomCtr.text('user.status.active')),
-      SelectableItem<String>(
-          value: 'suspended', label: TomCtr.text('user.status.suspended')),
-    ]);
+  SelectableItem<String>(
+    value: 'active',
+    label: TomCtr.text('user.status.active'),
+  ),
+  SelectableItem<String>(
+    value: 'suspended',
+    label: TomCtr.text('user.status.suspended'),
+  ),
+]);

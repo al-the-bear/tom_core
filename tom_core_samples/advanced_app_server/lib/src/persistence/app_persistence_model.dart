@@ -95,7 +95,11 @@ const String itemVisibilityScope = 'visible:item';
 /// C-5/C-6 visibility is enforced at the database rather than by a service-layer
 /// `ResourceRoleResolver` pass (which RCB8 drops).
 @tomReflector
-@TomDbTable(datasource: appDatasource, table: 'app_workspaces', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: appDatasource,
+  table: 'app_workspaces',
+  primaryKeyField: 'id',
+)
 @TomDbScope(field: 'ownerId')
 class WorkspaceRecord {
   /// Surrogate primary key (`null` until first persisted).
@@ -132,7 +136,11 @@ final workspaceRepository = WorkspaceRepository();
 /// share delegations folded over the containment chain, computed by
 /// `VisibleResourceResolver`.
 @tomReflector
-@TomDbTable(datasource: appDatasource, table: 'app_projects', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: appDatasource,
+  table: 'app_projects',
+  primaryKeyField: 'id',
+)
 @TomDbScope(field: 'id', scope: projectVisibilityScope)
 class ProjectRecord {
   /// Surrogate primary key.
@@ -162,7 +170,8 @@ class ProjectRecord {
 }
 
 /// Repository for [ProjectRecord].
-class ProjectRepository extends TomSqlDatasourceRepository<ProjectRecord, int> {}
+class ProjectRepository
+    extends TomSqlDatasourceRepository<ProjectRecord, int> {}
 
 /// Process-wide singleton repository instance.
 final projectRepository = ProjectRepository();
@@ -172,7 +181,11 @@ final projectRepository = ProjectRepository();
 /// Read-scoped by the async [listVisibilityScope] on its surrogate `id` (RCB8);
 /// see [ProjectRecord] for why the scope is on `id`.
 @tomReflector
-@TomDbTable(datasource: appDatasource, table: 'app_lists', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: appDatasource,
+  table: 'app_lists',
+  primaryKeyField: 'id',
+)
 @TomDbScope(field: 'id', scope: listVisibilityScope)
 class ListRecord {
   /// Surrogate primary key.
@@ -211,7 +224,10 @@ final listRepository = ListRepository();
 /// see [ProjectRecord] for why the scope is on `id`.
 @tomReflector
 @TomDbTable(
-    datasource: appDatasource, table: appItemsTable, primaryKeyField: 'id')
+  datasource: appDatasource,
+  table: appItemsTable,
+  primaryKeyField: 'id',
+)
 @TomDbScope(field: 'id', scope: itemVisibilityScope)
 class ItemRecord {
   /// Surrogate primary key.
@@ -321,7 +337,11 @@ final itemRepository = ItemRepository();
 
 /// A comment row in `app_comments` — a discussion entry on an [ItemRecord].
 @tomReflector
-@TomDbTable(datasource: appDatasource, table: 'app_comments', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: appDatasource,
+  table: 'app_comments',
+  primaryKeyField: 'id',
+)
 class CommentRecord {
   /// Surrogate primary key.
   @TomEntityId()
@@ -346,14 +366,19 @@ class CommentRecord {
 }
 
 /// Repository for [CommentRecord].
-class CommentRepository extends TomSqlDatasourceRepository<CommentRecord, int> {}
+class CommentRepository
+    extends TomSqlDatasourceRepository<CommentRecord, int> {}
 
 /// Process-wide singleton repository instance.
 final commentRepository = CommentRepository();
 
 /// A subtask row in `app_subtasks` — a checklist row on an [ItemRecord].
 @tomReflector
-@TomDbTable(datasource: appDatasource, table: 'app_subtasks', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: appDatasource,
+  table: 'app_subtasks',
+  primaryKeyField: 'id',
+)
 class SubtaskRecord {
   /// Surrogate primary key.
   @TomEntityId()
@@ -378,7 +403,8 @@ class SubtaskRecord {
 }
 
 /// Repository for [SubtaskRecord].
-class SubtaskRepository extends TomSqlDatasourceRepository<SubtaskRecord, int> {}
+class SubtaskRepository
+    extends TomSqlDatasourceRepository<SubtaskRecord, int> {}
 
 /// Process-wide singleton repository instance.
 final subtaskRepository = SubtaskRepository();

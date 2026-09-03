@@ -24,35 +24,40 @@ void main() {
   setUpAll(initializeReflection);
 
   testWidgets(
-      'TC-8-02: the admin login screen renders server-delivered chrome after the '
-      'bootstrap fetch (no hardcoded string)', (tester) async {
-    // Start from an empty provider: every chrome key falls back to itself, which
-    // is only possible because the widget carries no client-side strings.
-    TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(const <String, dynamic>{}),
-    );
+    'TC-8-02: the admin login screen renders server-delivered chrome after the '
+    'bootstrap fetch (no hardcoded string)',
+    (tester) async {
+      // Start from an empty provider: every chrome key falls back to itself, which
+      // is only possible because the widget carries no client-side strings.
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from(const <String, dynamic>{}),
+      );
 
-    final session = AdminSession(InMemoryAdminBackend());
-    await tester.pumpWidget(AdminConsoleApp(session: session));
-    await tester.pumpAndSettle();
+      final session = AdminSession(InMemoryAdminBackend());
+      await tester.pumpWidget(AdminConsoleApp(session: session));
+      await tester.pumpAndSettle();
 
-    // Before the fetch: the title shows the raw key, never a baked-in label.
-    expect(find.text('adminLogin.title'), findsOneWidget);
-    expect(find.text('adminLogin.intro'), findsOneWidget);
-    expect(find.text('Advanced Todo — Admin sign in'), findsNothing);
+      // Before the fetch: the title shows the raw key, never a baked-in label.
+      expect(find.text('adminLogin.title'), findsOneWidget);
+      expect(find.text('adminLogin.intro'), findsOneWidget);
+      expect(find.text('Advanced Todo — Admin sign in'), findsNothing);
 
-    // Fetch + install the public login bundle through the backend seam, exactly
-    // as the bootstrap ([main]) does. notifyListeners rebuilds the screen.
-    await session.loadLoginResources();
-    await tester.pumpAndSettle();
+      // Fetch + install the public login bundle through the backend seam, exactly
+      // as the bootstrap ([main]) does. notifyListeners rebuilds the screen.
+      await session.loadLoginResources();
+      await tester.pumpAndSettle();
 
-    // After: the screen renders the server-delivered texts; the raw keys are gone.
-    expect(find.text('Advanced Todo — Admin sign in'), findsOneWidget);
-    expect(
-        find.text('Sign in as admin (password pw). A non-admin (alice, bob, '
-            'carol) is rejected.'),
-        findsOneWidget);
-    expect(find.text('adminLogin.title'), findsNothing);
-    expect(find.text('adminLogin.intro'), findsNothing);
-  });
+      // After: the screen renders the server-delivered texts; the raw keys are gone.
+      expect(find.text('Advanced Todo — Admin sign in'), findsOneWidget);
+      expect(
+        find.text(
+          'Sign in as admin (password pw). A non-admin (alice, bob, '
+          'carol) is rejected.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('adminLogin.title'), findsNothing);
+      expect(find.text('adminLogin.intro'), findsNothing);
+    },
+  );
 }

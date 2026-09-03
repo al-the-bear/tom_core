@@ -31,11 +31,7 @@ class LoginForm extends TomForm<LoginCredentials> {
   /// Account login name. Label/hint resolve from `login.username.label` and
   /// `login.username.hintText`; its `required` validator from
   /// `login.username.validators`.
-  late final username = TomFormStringInput(
-    'username',
-    '',
-    form: this,
-  );
+  late final username = TomFormStringInput('username', '', form: this);
 
   /// Account password (the demo backend accepts any non-empty value). Label
   /// resolves from `login.password.label`; its `required` validator from

@@ -65,8 +65,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('TC-D12-09: the editor renders the avatar field from the bundle',
-      (tester) async {
+  testWidgets('TC-D12-09: the editor renders the avatar field from the bundle', (
+    tester,
+  ) async {
     await openBobEditor(tester, InMemoryAdminBackend());
 
     // The label comes from `admin.users.avatar.label` and the caption from the
@@ -77,19 +78,22 @@ void main() {
     expect(find.text('Choose image…'), findsOneWidget);
   });
 
-  testWidgets('TC-D12-10: the avatar is edit-only — create offers no file field',
-      (tester) async {
-    // A slot is addressed by the row id, and on create there is no row yet.
-    await pumpSignedInConsole(tester, InMemoryAdminBackend());
-    await tester.tap(find.byKey(const Key('users-create')));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'TC-D12-10: the avatar is edit-only — create offers no file field',
+    (tester) async {
+      // A slot is addressed by the row id, and on create there is no row yet.
+      await pumpSignedInConsole(tester, InMemoryAdminBackend());
+      await tester.tap(find.byKey(const Key('users-create')));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Avatar'), findsNothing);
-    expect(find.text('Choose image…'), findsNothing);
-  });
+      expect(find.text('Avatar'), findsNothing);
+      expect(find.text('Choose image…'), findsNothing);
+    },
+  );
 
-  testWidgets("TC-D12-11: picking uploads into the account's slot",
-      (tester) async {
+  testWidgets("TC-D12-11: picking uploads into the account's slot", (
+    tester,
+  ) async {
     final store = TomMemoryFileTransferClient();
     await openBobEditor(tester, InMemoryAdminBackend(files: store));
     expect(store.slots, isEmpty);
@@ -133,11 +137,12 @@ void main() {
     final store = TomMemoryFileTransferClient();
     final uploaded = await store.upload(
       slot: bobSlot,
-      source: TomFileSource.bytes(
-        'face.png',
-        const [0x89, 0x50, 0x4E, 0x47],
-        mediaType: 'image/png',
-      ),
+      source: TomFileSource.bytes('face.png', const [
+        0x89,
+        0x50,
+        0x4E,
+        0x47,
+      ], mediaType: 'image/png'),
     );
     expect(uploaded.fileName, 'face.png');
 

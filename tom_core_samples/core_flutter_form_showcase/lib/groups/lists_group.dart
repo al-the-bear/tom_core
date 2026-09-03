@@ -70,7 +70,9 @@ class _InlineOrderListState extends TomState<_InlineOrderList> {
                           TomReorderHandle(index: index),
                           TomSizedBox(width: 8),
                           TomExpanded(
-                              flex: 3, child: rowForm.productName.widget),
+                            flex: 3,
+                            child: rowForm.productName.widget,
+                          ),
                           TomSizedBox(width: 8),
                           TomExpanded(child: rowForm.quantity.widget),
                         ],
@@ -97,13 +99,15 @@ class _InlineOrderListState extends TomState<_InlineOrderList> {
 final ShowcaseGroup listsGroup = ShowcaseGroup(
   id: 'lists',
   title: 'Editable lists',
-  summary: 'A TomListForm bound to a TomList<OrderItem>: inline row sub-forms, '
+  summary:
+      'A TomListForm bound to a TomList<OrderItem>: inline row sub-forms, '
       'drag-to-reorder handles and the standard add/remove/move toolbar.',
   icon: Icons.list_alt_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomInlineListForm + toolbar',
-      note: 'Tap a row to select it, then use the toolbar to remove or move '
+      note:
+          'Tap a row to select it, then use the toolbar to remove or move '
           'it; drag the handle to reorder. Add appends a fresh OrderItem.',
       // Verbatim `_InlineOrderListState.buildContent`, less the fixed-height
       // TomSizedBox that only the showcase cell needs (declared in the leading
@@ -111,7 +115,8 @@ final ShowcaseGroup listsGroup = ShowcaseGroup(
       // layout primitive is the Tom one, because that is the sample's own rule
       // (G-UI-1) — a snippet showing `Row`/`Expanded` here would teach the
       // opposite of what the surrounding code does.
-      code: "// The inline list shrink-wraps and never scrolls itself, so the\n"
+      code:
+          "// The inline list shrink-wraps and never scrolls itself, so the\n"
           "// bounded pane above the toolbar supplies the scrolling.\n"
           "TomColumn(\n"
           "  crossAxisAlignment: CrossAxisAlignment.stretch,\n"

@@ -33,12 +33,13 @@ class GrantMatrixDto {
   /// Wraps [grades] (role name → resourceKey → access) as a token map. A
   /// `null`/empty argument yields an empty matrix.
   GrantMatrixDto([Map<String, Map<String, TomAuthState>>? grades])
-      : matrix = _encode(grades ?? const {});
+    : matrix = _encode(grades ?? const {});
 
   /// Builds a matrix from per-role grade lists (the editor's natural shape).
   /// Later entries for the same `(role, resourceKey)` win.
   factory GrantMatrixDto.fromGrades(
-      Map<String, List<GradedFieldDto>> gradesByRole) {
+    Map<String, List<GradedFieldDto>> gradesByRole,
+  ) {
     final grades = <String, Map<String, TomAuthState>>{};
     gradesByRole.forEach((role, list) {
       final row = <String, TomAuthState>{};
@@ -93,7 +94,10 @@ class GrantMatrixDto {
   /// unparseable value elsewhere in the grid comes back as [TomAuthState.none]
   /// rather than failing the edit.
   GrantMatrixDto withAccess(
-      String role, String resourceKey, TomAuthState access) {
+    String role,
+    String resourceKey,
+    TomAuthState access,
+  ) {
     final decoded = <String, Map<String, TomAuthState>>{};
     matrix.forEach((r, row) {
       if (row is Map) {
@@ -108,7 +112,8 @@ class GrantMatrixDto {
   }
 
   static Map<String, Object?> _encode(
-      Map<String, Map<String, TomAuthState>> grades) {
+    Map<String, Map<String, TomAuthState>> grades,
+  ) {
     return {
       for (final entry in grades.entries)
         entry.key: <String, Object?>{

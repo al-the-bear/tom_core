@@ -18,45 +18,60 @@ void main() {
       final stored = hashPassword('correct horse battery staple');
 
       expect(
-        verifyPassword('correct horse battery staple',
-            hash: stored.hash, hashType: stored.hashType),
+        verifyPassword(
+          'correct horse battery staple',
+          hash: stored.hash,
+          hashType: stored.hashType,
+        ),
         isTrue,
       );
       expect(
-        verifyPassword('Tr0ubador&3',
-            hash: stored.hash, hashType: stored.hashType),
+        verifyPassword(
+          'Tr0ubador&3',
+          hash: stored.hash,
+          hashType: stored.hashType,
+        ),
         isFalse,
       );
     });
 
-    test('the same plaintext hashes to a different value each time (salted)', () {
-      final a = hashPassword('repeat-me');
-      final b = hashPassword('repeat-me');
+    test(
+      'the same plaintext hashes to a different value each time (salted)',
+      () {
+        final a = hashPassword('repeat-me');
+        final b = hashPassword('repeat-me');
 
-      expect(a.hash, isNot(b.hash), reason: 'a fresh salt is used per call');
-      // The algorithm spec is stable; only the salted hash differs.
-      expect(a.hashType, b.hashType);
-      // Both still verify — the salt travels inside the stored value.
-      expect(verifyPassword('repeat-me', hash: a.hash, hashType: a.hashType),
-          isTrue);
-      expect(verifyPassword('repeat-me', hash: b.hash, hashType: b.hashType),
-          isTrue);
-    });
+        expect(a.hash, isNot(b.hash), reason: 'a fresh salt is used per call');
+        // The algorithm spec is stable; only the salted hash differs.
+        expect(a.hashType, b.hashType);
+        // Both still verify — the salt travels inside the stored value.
+        expect(
+          verifyPassword('repeat-me', hash: a.hash, hashType: a.hashType),
+          isTrue,
+        );
+        expect(
+          verifyPassword('repeat-me', hash: b.hash, hashType: b.hashType),
+          isTrue,
+        );
+      },
+    );
 
     test('the stored hash is non-reversible — the plaintext never appears', () {
       const plaintext = 'super-secret-passphrase';
       final stored = hashPassword(plaintext);
 
-      expect(stored.hash, contains(r'$'),
-          reason: 'stored value is salt\$hash');
+      expect(stored.hash, contains(r'$'), reason: 'stored value is salt\$hash');
       expect(stored.hash, isNot(contains(plaintext)));
     });
 
     test('a hash from one password never verifies another', () {
       final stored = hashPassword('alice-password');
       expect(
-        verifyPassword('bob-password',
-            hash: stored.hash, hashType: stored.hashType),
+        verifyPassword(
+          'bob-password',
+          hash: stored.hash,
+          hashType: stored.hashType,
+        ),
         isFalse,
       );
     });

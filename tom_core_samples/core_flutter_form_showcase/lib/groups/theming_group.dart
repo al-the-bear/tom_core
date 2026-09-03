@@ -37,14 +37,16 @@ Widget _styledForm(String scopeId, TomFormStyle style) {
 final ShowcaseGroup themingGroup = ShowcaseGroup(
   id: 'theming',
   title: 'Theming (form styles)',
-  summary: 'One CompanyForm rendered under the material3, compact and '
+  summary:
+      'One CompanyForm rendered under the material3, compact and '
       'bordered presets, switched purely through a TomFormStyleScope.',
   icon: Icons.palette_outlined,
   cells: (context) => [
     ShowcaseCell(
       title: 'TomFormStyle.material3',
       note: 'The default: standard label placement and gaps.',
-      code: "TomFormStyleScope(\n"
+      code:
+          "TomFormStyleScope(\n"
           "  style: TomFormStyle.material3,\n"
           "  child: formLayout,\n"
           ")",
@@ -53,7 +55,8 @@ final ShowcaseGroup themingGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomFormStyle.compact',
       note: 'Floating labels and reduced label/error gaps for dense forms.',
-      code: "TomFormStyleScope(\n"
+      code:
+          "TomFormStyleScope(\n"
           "  style: TomFormStyle.compact,\n"
           "  child: formLayout,\n"
           ")",
@@ -62,7 +65,8 @@ final ShowcaseGroup themingGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomFormStyle.bordered',
       note: 'Outlined borders with floating labels and error-border visuals.',
-      code: "TomFormStyleScope(\n"
+      code:
+          "TomFormStyleScope(\n"
           "  style: TomFormStyle.bordered,\n"
           "  child: formLayout,\n"
           ")",

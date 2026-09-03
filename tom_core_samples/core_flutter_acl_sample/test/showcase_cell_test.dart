@@ -30,8 +30,9 @@ void main() {
     );
   });
 
-  testWidgets('renders both the code snippet and the live child',
-      (tester) async {
+  testWidgets('renders both the code snippet and the live child', (
+    tester,
+  ) async {
     const marker = Key('cell-child-marker');
 
     await tester.pumpWidget(
@@ -77,28 +78,42 @@ void main() {
 
     for (final group in aclGroups) {
       for (final cell in group.cells(capturedContext)) {
-        expect(cell.code.trim(), isNotEmpty,
-            reason: 'group ${group.id}: a cell has an empty code snippet');
+        expect(
+          cell.code.trim(),
+          isNotEmpty,
+          reason: 'group ${group.id}: a cell has an empty code snippet',
+        );
       }
     }
   });
 
-  testWidgets('no snippet names an API absent from its own group source',
-      (tester) async {
+  testWidgets('no snippet names an API absent from its own group source', (
+    tester,
+  ) async {
     late BuildContext capturedContext;
-    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) {
-      capturedContext = context;
-      return const SizedBox.shrink();
-    })));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
 
     for (final group in aclGroups) {
       // The group id doubles as the file name (README §"The snippet
       // contract"); a group whose file is renamed away from that mapping must
       // fail loudly rather than silently skip its snippets.
       final file = File('lib/groups/${group.id}_group.dart');
-      expect(file.existsSync(), isTrue,
-          reason: 'group ${group.id}: expected its source at ${file.path} — '
-              'the snippet check reads the live child from there');
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason:
+            'group ${group.id}: expected its source at ${file.path} — '
+            'the snippet check reads the live child from there',
+      );
       // Why the stripping matters: the snippets are themselves string literals
       // in this very file, so searching the raw text would find every name in
       // its own snippet and pass unconditionally.
@@ -106,13 +121,17 @@ void main() {
 
       for (final cell in group.cells(capturedContext)) {
         for (final name in _calledNames(cell.code)) {
-          expect(live, contains(RegExp('\\b${RegExp.escape(name)}\\s*\\(')),
-              reason: 'group ${group.id}, cell "${cell.title}": the snippet '
-                  'calls `$name(...)`, which is never called by the live code '
-                  'in ${file.path}. A snippet may abridge the live child, but '
-                  'it may not name an API that does not exist. If the call is '
-                  'genuine but reached indirectly, make the snippet say so — '
-                  'that is a real gap between what is shown and what runs.');
+          expect(
+            live,
+            contains(RegExp('\\b${RegExp.escape(name)}\\s*\\(')),
+            reason:
+                'group ${group.id}, cell "${cell.title}": the snippet '
+                'calls `$name(...)`, which is never called by the live code '
+                'in ${file.path}. A snippet may abridge the live child, but '
+                'it may not name an API that does not exist. If the call is '
+                'genuine but reached indirectly, make the snippet say so — '
+                'that is a real gap between what is shown and what runs.',
+          );
         }
       }
     }
@@ -182,17 +201,36 @@ String _executableSource(String dart) {
 /// Dart syntax, not API surface, and a snippet is free to use control flow the
 /// live child spells differently.
 Set<String> _calledNames(String code) {
-  var withoutComments = code.split('\n').map((line) {
-    final marker = line.indexOf('//');
-    return marker == -1 ? line : line.substring(0, marker);
-  }).join('\n');
+  var withoutComments = code
+      .split('\n')
+      .map((line) {
+        final marker = line.indexOf('//');
+        return marker == -1 ? line : line.substring(0, marker);
+      })
+      .join('\n');
   withoutComments = withoutComments
       .replaceAll(RegExp(r"'(?:[^'\\]|\\.)*'"), "''")
       .replaceAll(RegExp(r'"(?:[^"\\]|\\.)*"'), '""');
 
   const keywords = {
-    'if', 'for', 'while', 'switch', 'return', 'catch', 'assert', 'super',
-    'this', 'new', 'await', 'in', 'is', 'as', 'else', 'do', 'throw', 'yield',
+    'if',
+    'for',
+    'while',
+    'switch',
+    'return',
+    'catch',
+    'assert',
+    'super',
+    'this',
+    'new',
+    'await',
+    'in',
+    'is',
+    'as',
+    'else',
+    'do',
+    'throw',
+    'yield',
   };
 
   return RegExp(r'([A-Za-z_$][A-Za-z0-9_$]*)\s*\(')

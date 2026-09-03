@@ -27,8 +27,7 @@ void main() {
   // reflected domain tree in its constructor.
   setUpAll(initializeReflection);
 
-  testWidgets(
-      'TC-9-01: login installs the full bundle over the login bundle; logout '
+  testWidgets('TC-9-01: login installs the full bundle over the login bundle; logout '
       'resets to the login bundle', (tester) async {
     // Start from an empty provider so every key falls back to itself — no key
     // can resolve unless a bundle put it there.

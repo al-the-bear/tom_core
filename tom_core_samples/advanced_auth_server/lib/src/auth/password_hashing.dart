@@ -38,8 +38,7 @@ bool verifyPassword(
   String plaintext, {
   required String hash,
   required String hashType,
-}) =>
-    TomPasswordHasher.verifyPassword(plaintext, hash, hashType);
+}) => TomPasswordHasher.verifyPassword(plaintext, hash, hashType);
 
 /// Hashes [plaintext] and writes both halves onto [record]'s credential columns
 /// (the create-user / set-password path). Returns the same [record] for chaining.

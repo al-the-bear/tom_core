@@ -110,22 +110,27 @@ void main() {
       // root every hierarchy contains — has none. Add `config-resources_prod.
       // yaml` and this test says so.
       expect(
-        File('assets/config-resources_${environmentProd.env}.yaml').existsSync(),
+        File(
+          'assets/config-resources_${environmentProd.env}.yaml',
+        ).existsSync(),
         isFalse,
         reason:
             'the boot loads overlays optionally because this one does not exist',
       );
     });
 
-    test('a missing overlay leaves the accumulated configuration untouched', () {
-      final loaded = <String, dynamic>{};
-      mergeRequiredYaml(loaded, configResourcesAsset);
-      final beforeOverlay = Map<String, dynamic>.from(loaded);
+    test(
+      'a missing overlay leaves the accumulated configuration untouched',
+      () {
+        final loaded = <String, dynamic>{};
+        mergeRequiredYaml(loaded, configResourcesAsset);
+        final beforeOverlay = Map<String, dynamic>.from(loaded);
 
-      mergeOptionalYaml(loaded, _absentAsset);
+        mergeOptionalYaml(loaded, _absentAsset);
 
-      expect(loaded, equals(beforeOverlay));
-    });
+        expect(loaded, equals(beforeOverlay));
+      },
+    );
 
     test('a present overlay wins over the base', () {
       final loaded = <String, dynamic>{};
