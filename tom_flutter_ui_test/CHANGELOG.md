@@ -1,5 +1,42 @@
 ## Unreleased — cleanup pass
 
+- **A suite that did not compile reported "92 passing" and nothing turned red.**
+  When `lib/forms_demos/phase2_demos.dart` stopped compiling, the three suites
+  importing it — `widget_test.dart`, `forms_demos_logic_test.dart` and
+  `forms_dispose_test.dart` — did not fail. They failed to **load**, and a load
+  failure is not a test failure: no assertion in those files ever runs, so
+  nothing is reported as broken. The only visible symptom was a smaller green
+  number, which reads like a smaller suite rather than a broken one. It was
+  taken for the package's normal output long enough that twenty-one analyzer
+  errors sat behind it for weeks.
+
+  The compile fault itself was fixed upstream (`8aba6704`): the demos call the
+  kernel's `field >> callback`, and in Dart an extension is in scope only if its
+  own name is shown, so `TomObservableObservation` being absent from
+  `tom_flutter_ui`'s kernel bridge left the operator undefined for every
+  consumer of the barrel. What was still missing was any reason to expect the
+  next such fault to be noticed.
+
+  So `package_compiles_test.dart` now fails the run when `dart analyze` reports
+  an error under `lib/` or `test/`. The guard cannot be an assertion inside the
+  suite — a test that imports the code it checks shares that code's fate — so
+  it shells out and depends on nothing but `dart:io`. It checks **errors only**:
+  warnings and lints cannot stop a file loading, and a guard that failed on them
+  would fail for reasons unrelated to the property it protects, which is how a
+  guard gets weakened instead of fixed.
+
+  It was proved red before being accepted, and that is what caught its own bug:
+  the first version read the diagnostics off `stderr`, where `dart analyze`
+  writes nothing, and so passed cleanly against a package with a deliberate
+  compile error in it. It now reads `stdout`, and a second test cross-checks the
+  parsed diagnostics against the analyzer's exit code — the two state the same
+  fact independently, so anything that silently stops the diagnostics arriving
+  shows up as a disagreement rather than as a pass. A third test confirms the
+  analyzed paths actually hold Dart files, because a path that exists and holds
+  none exits 0 in silence, indistinguishable from a clean package.
+
+  The check costs about two seconds against a suite that runs in sixteen.
+
 - **The pubspec was still the `flutter create` output, description and all.**
   `description: "A new Flutter project."` sat at line 2 of a package whose
   README, CHANGELOG, catalogue and completion document all describe it

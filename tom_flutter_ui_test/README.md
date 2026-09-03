@@ -82,6 +82,7 @@ overflow gate build on. Everything else is a gate, and this is all of it:
 
 | Suite | What it asserts |
 | --- | --- |
+| `package_compiles_test.dart` | `dart analyze` reports no errors under `lib/` or `test/` — the one check that still runs when the package does not compile, because it shells out instead of importing. |
 | `demo_overflow_test.dart` | Every demo mounts in a 1280×2400 viewport without overflowing — one test per slug in `demos`. |
 | `demo_coverage_test.dart` | The harness can construct every screen the app actually offers, compared by runtime type across all four tabs. |
 | `demo_04_radio_group_test.dart` | The five radio groups in `demo_04_toggles.dart` start on their seed and move independently — wiring a missing `RadioGroup` ancestor would break silently. |
@@ -127,7 +128,7 @@ the striped banner in `test/screenshots/<demo>.png`.
 | `lib/forms_demos/` | Form-framework demos. |
 | `lib/common/` | Shared `DemoTile` / `DemoScaffold`. |
 | `doc/` | `demo_catalogue.md` (navigation map of every demo) plus developer notes on widget resource parameters and discovery. |
-| `test/` | The eleven gating suites inventoried under [Tests](#tests), plus the shared demo mount and the on-demand screenshot harness, neither of which the runner picks up. |
+| `test/` | The twelve gating suites inventoried under [Tests](#tests), plus the shared demo mount and the on-demand screenshot harness, neither of which the runner picks up. |
 
 ## Dependencies
 
