@@ -8,7 +8,7 @@
 /// [AppResourceRoleAdapter] the session installed at login → the principal's role
 /// on the item → the [TomResourceRoleRegistry]. It then **narrows** that ceiling
 /// by the field's per-role grade from the shared [projectRoleFieldGrades] matrix
-/// and stamps the result on the field. The composition reproduces the §A.4 matrix
+/// and stamps the result on the field. The composition reproduces that matrix
 /// exactly, so the *same* editor renders differently per role — `owner` edits
 /// every field; `viewer` sees read-only fields with a disabled status control and
 /// no estimate (an ungranted field resolves to [TomAuthState.none] and collapses)
@@ -162,9 +162,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     form.bind(_item);
     // Each gradable field's state is the framework-resolved resource ceiling
     // narrowed by the field's per-role grade. Because every role's field grades
-    // sit at or below its resource ceiling, the narrow reproduces the §A.4 matrix
-    // exactly — while keeping the registry load-bearing: no role → resource state
-    // none → the field collapses (closed-safe, D-A4).
+    // sit at or below its resource ceiling, the narrow reproduces
+    // [projectRoleFieldGrades] exactly — while keeping the registry
+    // load-bearing: no role → resource state none → the field collapses
+    // (closed-safe, D-A4).
     for (final field in form.gradableFields) {
       final fieldGrade = grades[field.basePath] ?? TomAuthState.none;
       field.authorizer = TomAuthorizer.fixed(resourceState.narrow(fieldGrade));

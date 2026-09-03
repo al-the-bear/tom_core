@@ -4,9 +4,10 @@
 /// owner-only path — and the headline "a created share immediately grants the
 /// grantee access" bar — verifies with no server or MariaDB.
 ///
-/// The fixture mirrors §A.10 (workspace 1 owned by alice=2) and the prior steps'
-/// seeds: bob=3 starts as an `editor` shared on project 1; carol=4 holds no
-/// share; dave=99 is a stranger. A share is now a C-6 `share`-mode
+/// The fixture mirrors the demo seed `[001]-app_demo_seed@dev,test.sql`
+/// (workspace 1 owned by alice=2) and the prior steps' seeds: bob=3 starts as
+/// an `editor` shared on project 1; carol=4 holds no share; dave=99 is a
+/// stranger. A share is now a C-6 `share`-mode
 /// [TomPrincipalDelegation]; because the same [InMemoryShareDelegationStore]
 /// instance is both the write seam and the framework [PrincipalDelegationStore]
 /// read seam, feeding the persisted share back into a [TomDelegationResolver]

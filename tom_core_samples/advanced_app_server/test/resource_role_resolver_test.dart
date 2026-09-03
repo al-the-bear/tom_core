@@ -4,9 +4,10 @@
 /// [ResourceContainmentStore] seam, so it verifies against seeded in-memory
 /// stores with no server or MariaDB.
 ///
-/// The seed mirrors the §A.10 demo data: workspace 1 owned by alice (auth user
-/// 2), a project 1 with two lists and an item, and two shares — bob (3) as
-/// `editor` and carol (4) as `viewer` on the project. RCC3 expresses those as an
+/// The seed mirrors the demo data `[001]-app_demo_seed@dev,test.sql` creates:
+/// workspace 1 owned by alice (auth user 2), a project 1 with two lists and an
+/// item, and two shares — bob (3) as `editor` and carol (4) as `viewer` on the
+/// project. RCC3 expresses those as an
 /// explicit C-5 owner grant (RCC1) and C-6 `share`-mode [TomPrincipalDelegation]
 /// rows, folded by the framework resolver into one flat `resourceKey → roleName`
 /// map; this resolver adds only the sample's containment rule.

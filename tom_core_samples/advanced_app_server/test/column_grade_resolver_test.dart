@@ -10,8 +10,8 @@
 /// upload over HTTP, is asserted by `advanced_client_core`'s file-transfer
 /// integration suite and by the cross-tier runner.
 ///
-/// The seed mirrors §A.10 exactly as `resource_role_resolver_test.dart` does —
-/// alice (2) owns the tree, bob (3) is `editor` and carol (4) `viewer` on
+/// The seed mirrors the demo data exactly as `resource_role_resolver_test.dart`
+/// does — alice (2) owns the tree, bob (3) is `editor` and carol (4) `viewer` on
 /// project 1, dave (99) is a stranger — crossed with the seeded attachment
 /// grants ([projectRoleAttachmentGrades]).
 library;

@@ -10,7 +10,7 @@
 /// [ProjectRole] maps to an interaction grade — so this single registration is
 /// the one place that vocabulary lives, called once at each runtime's boot.
 ///
-/// The mapping mirrors the sample's §A.4 resource-level policy: an `owner` or
+/// The mapping mirrors the sample's resource-level policy: an `owner` or
 /// `editor` interacts fully with a resource they hold; a `commenter` or `viewer`
 /// sees it read-only. (Field-level *grades* within a resource — e.g. a member who
 /// may see the title but not the priority — are a finer, separate concern the

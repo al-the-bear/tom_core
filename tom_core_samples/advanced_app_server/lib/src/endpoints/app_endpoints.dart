@@ -882,7 +882,7 @@ List<String> get gradableItemFieldKeys =>
 /// effective [ProjectRole] on the target through the step-17
 /// [ResourceRoleResolver] (no access → the resource is treated as not-found,
 /// closed/safe); the three workspace mutations carry no role resolution at all
-/// and rely on ownership instead, as below. The §A.4 policy is then enforced in
+/// and rely on ownership instead, as below. Authorization is then enforced in
 /// two layers:
 ///
 /// - **Role gating.** Six mutations check a minimum role through `_requireRole`:
@@ -1406,8 +1406,8 @@ const String appEndpointAccessDeniedKey =
 ///
 /// The services throw stable [TomEndpointHandlerException] keys rather than shelf
 /// responses (so they stay server-free and unit-testable). The boot composes this
-/// over [TomDefaultErrorHandler] to turn those keys into the HTTP contract §A.6
-/// promises:
+/// over [TomDefaultErrorHandler] to turn those keys into the HTTP contract
+/// `README_advanced_10_servers_endpoints.md` documents:
 ///
 /// - `app.item.not_found` / `app.share.not_found` / `app.subtask.not_found` →
 ///   **404** (a resource the caller cannot reach is reported missing, never

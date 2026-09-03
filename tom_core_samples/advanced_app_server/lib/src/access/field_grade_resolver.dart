@@ -3,7 +3,7 @@
 /// [TomResourceGrant]s and fold them into the per-field [TomAuthState] grades
 /// the client renders each form field through.
 ///
-/// This is the app server's **second** authorization layer (§A.4). The first
+/// This is the app server's **second** authorization layer. The first
 /// (resource access) answers "*may this principal touch this object, and as what
 /// role?*"; this one answers "*for that role, which fields may they see/edit?*"
 /// by resolving each gradable [TodoItem] field key to one of `full` / `read` /
@@ -21,7 +21,8 @@
 /// Reads sit behind a [GrantStore] seam so the resolver is pure over whichever
 /// store it is handed: [RepositoryGrantStore] is the live query-backed store
 /// wired at boot; [InMemoryGrantStore] is a seeded store for tests (step 18's
-/// "Done" bar — the §A.4 matrix reproduced for each role with no database).
+/// "Done" bar — [projectRoleFieldGrades] reproduced for each role with no
+/// database).
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';

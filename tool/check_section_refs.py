@@ -34,6 +34,16 @@ The check therefore covers ``lib/``, ``test/`` and ``example/`` -- the three
 places whose contents leave the workspace. Quest plans and other markdown are
 not scanned: cross-referencing its own sections is exactly what a plan is for.
 
+**Lettered sections count too.** A section number may carry an appendix letter
+-- ``§A.4``, ``§A.10`` -- and such a reference is no more resolvable than a
+plain ``§75``; if anything it is less, since a letter suggests an appendix the
+reader may go looking for. The advanced sample's ``§A.4``/``§A.6``/``§A.10``
+were the whole population of this form and indexed a specification document
+that no longer exists in any shape, so a reader could not have reached them
+even inside the workspace. A reference written ``§"Heading Name"`` is a
+different construction and deliberately out of scope: it quotes the heading, so
+it names what it indexes and can be found by title.
+
 **What counts as naming the document.** A document name is a markdown-quoted or
 bare ``.md`` filename, an ``RFC <n>``, or one of the specification names used in
 this tree (``CodeSpecs``, ``OIDC Core``). The reference resolves when such a
@@ -74,8 +84,11 @@ SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
 #: workspace-internal and may reference the plans freely.
 SHIPPED_DIRS = {"lib", "test", "example"}
 
-#: A section reference: the sign, optional space, a number.
-REFERENCE = re.compile(r"§\s*[0-9]+")
+#: A section reference: the sign, optional space, a section number. The number
+#: may carry a leading appendix letter (``§A.4``, ``§A.10``) as well as being
+#: plain (``§75``, ``§5.26``). Both forms index a section; only the letter form
+#: was invisible here, and what is invisible to a gate accumulates.
+REFERENCE = re.compile(r"§\s*[A-Za-z]?\.?[0-9]+")
 
 #: What has to sit immediately left of the sign for the reference to resolve on
 #: its own. Anchored at the end, so it is the *nearest* preceding token that

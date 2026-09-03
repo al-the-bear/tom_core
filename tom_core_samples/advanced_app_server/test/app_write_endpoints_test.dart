@@ -4,10 +4,10 @@
 /// grade enforcement — verifies against seeded in-memory stores with no server
 /// or MariaDB.
 ///
-/// The fixture mirrors §A.10 (workspace 1 owned by alice=2, project 1 → list 1,
-/// item 1 in list 1) and §A.4 (the grant matrix the auth server seeds), with
-/// bob=3 shared `editor`, erin=5 shared `commenter`, and carol=4 shared `viewer`
-/// on project 1. RCC3 expresses ownership as a C-5 owner grant (RCC1) and each
+/// The fixture mirrors the demo seed `[001]-app_demo_seed@dev,test.sql`
+/// (workspace 1 owned by alice=2, project 1 → list 1, item 1 in list 1) and the
+/// grant matrix `[001]-auth_authz_grants.sql` seeds, with bob=3 shared `editor`,
+/// erin=5 shared `commenter`, and carol=4 shared `viewer` on project 1. RCC3 expresses ownership as a C-5 owner grant (RCC1) and each
 /// share as a C-6 `share`-mode [TomPrincipalDelegation], folded by the framework
 /// resolver into the effective roles the containment rule walks. The step-20
 /// "Done" bar is the headline triple: a `viewer` `PUT` to `title` is rejected, an
@@ -35,9 +35,9 @@ const int carol = 4; // viewer, shared on project 1
 const int erin = 5; // commenter, shared on project 1
 const int dave = 99; // stranger — grantee of no share, owner of nothing
 
-// The §A.4 field-grade matrix — the per-field state for each role, the same
-// data the auth server's `[001]-auth_authz_grants.sql` seeds.
-const Map<ProjectRole, Map<String, TomAuthState>> a4Matrix = {
+// The field-grade matrix — the per-field state for each role, the same data
+// the auth server's `[001]-auth_authz_grants.sql` seeds.
+const Map<ProjectRole, Map<String, TomAuthState>> seededGrantMatrix = {
   ProjectRole.owner: {
     'todo.item.title': TomAuthState.full,
     'todo.item.status': TomAuthState.full,
@@ -76,9 +76,9 @@ const Map<ProjectRole, Map<String, TomAuthState>> a4Matrix = {
   },
 };
 
-/// Flattens [a4Matrix] into the grant rows the auth server seeds.
+/// Flattens [seededGrantMatrix] into the grant rows the auth server seeds.
 List<TomResourceGrant> seedGrants() => [
-      for (final role in a4Matrix.entries)
+      for (final role in seededGrantMatrix.entries)
         for (final field in role.value.entries)
           TomResourceGrant(
             roleName: role.key.name,
@@ -87,8 +87,9 @@ List<TomResourceGrant> seedGrants() => [
           ),
     ];
 
-// The §A.10 demo records. Fresh instances per call so the resource store and
-// the write store hold independent (but equal) copies.
+// The demo seed's records (`[001]-app_demo_seed@dev,test.sql`). Fresh instances
+// per call so the resource store and the write store hold independent (but
+// equal) copies.
 List<ProjectRecord> demoProjects() => [ProjectRecord()..id = 1..workspaceId = 1];
 List<ListRecord> demoLists() => [ListRecord()..id = 1..projectId = 1];
 
@@ -247,7 +248,7 @@ void main() {
 
     test('a commenter PUT to status succeeds but to title is rejected',
         () async {
-      // The §A.4 matrix grants a commenter `full` on status yet only `read` on
+      // The grant matrix gives a commenter `full` on status yet only `read` on
       // title — field granularity within a single role.
       final statusStore = seededWriteStore();
       await writeServiceOver(statusStore)

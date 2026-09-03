@@ -4,9 +4,9 @@
 /// fields against locally (RCC2) — verifies against seeded in-memory stores with
 /// no server or MariaDB.
 ///
-/// The fixture mirrors §A.10 (workspace 1 owned by alice=2, project 1 → lists
-/// 1,2; items 1,2 in list 1), with bob=3 shared `editor` and carol=4 shared
-/// `viewer` on the project. RCC3 expresses ownership as a C-5 owner grant (RCC1)
+/// The fixture mirrors the demo seed `[001]-app_demo_seed@dev,test.sql`
+/// (workspace 1 owned by alice=2, project 1 → lists 1,2; items 1,2 in list 1),
+/// with bob=3 shared `editor` and carol=4 shared `viewer` on the project. RCC3 expresses ownership as a C-5 owner grant (RCC1)
 /// and each share as a C-6 `share`-mode [TomPrincipalDelegation], folded by the
 /// framework resolver into the effective roles the containment rule then walks.
 /// The step-19 "Done" bar is the headline pair: a shared user sees the owner's
@@ -33,8 +33,9 @@ const int bob = 3; // editor, shared on project 1
 const int carol = 4; // viewer, shared on project 1
 const int dave = 99; // stranger — grantee of no share, owner of nothing
 
-// The §A.10 demo records. Fresh instances per call so the resource store and
-// the read store hold independent (but equal) copies.
+// The demo seed's records (`[001]-app_demo_seed@dev,test.sql`). Fresh instances
+// per call so the resource store and the read store hold independent (but
+// equal) copies.
 List<WorkspaceRecord> demoWorkspaces() => [WorkspaceRecord()..id = 1..ownerId = alice];
 List<ProjectRecord> demoProjects() => [ProjectRecord()..id = 1..workspaceId = 1];
 List<ListRecord> demoLists() => [

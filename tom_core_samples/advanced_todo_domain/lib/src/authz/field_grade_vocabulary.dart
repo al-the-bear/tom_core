@@ -1,5 +1,6 @@
-/// The §A.4 per-field grade matrix — the *finer* concern the resource-role
-/// registry ([registerProjectRoleVocabulary]) explicitly defers to.
+/// The per-field grade matrix ([projectRoleFieldGrades]) — the *finer* concern
+/// the resource-role registry ([registerProjectRoleVocabulary]) explicitly
+/// defers to.
 ///
 /// The framework's [TomResourceRoleRegistry] resolves a [ProjectRole] to a single
 /// **resource-level** [TomAuthState] (owner/editor → full, commenter/viewer →
@@ -15,8 +16,9 @@
 /// through the framework registry and **narrows** it by the field's grade from
 /// this matrix. Because every role's field grades sit at or below its
 /// resource-level ceiling, the narrow is an identity over this matrix — so the
-/// composition reproduces §A.4 exactly while making the registry the load-bearing
-/// resource-level gate (no role → resource state `none` → every field collapses).
+/// composition reproduces [projectRoleFieldGrades] exactly while making the
+/// registry the load-bearing resource-level gate (no role → resource state
+/// `none` → every field collapses).
 ///
 /// The same vocabulary carries one graded key that is **not** a form field:
 /// [itemAttachmentGradeKey], the item's file column. It is graded per role like

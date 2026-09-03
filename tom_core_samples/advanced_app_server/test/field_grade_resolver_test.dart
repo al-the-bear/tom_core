@@ -3,10 +3,10 @@
 /// the [GrantStore] seam, so it verifies against a seeded [InMemoryGrantStore]
 /// with no server or MariaDB.
 ///
-/// The seed is the §A.4 grant matrix transcribed exactly — the same data the
-/// auth server's `[001]-auth_authz_grants.sql` seeds — and each role's resolved
-/// field states are asserted to reproduce it. The grant records are plain
-/// classes, so no reflection setup is needed.
+/// The seed is the grant matrix the auth server's `[001]-auth_authz_grants.sql`
+/// seeds, transcribed exactly, and each role's resolved field states are
+/// asserted to reproduce it. The grant records are plain classes, so no
+/// reflection setup is needed.
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
@@ -14,7 +14,7 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
-// The §A.4 field-grade matrix: the expected per-field state for each role.
+// The seeded field-grade matrix: the expected per-field state for each role.
 //
 //   Field        owner  editor  commenter  viewer
 //   title        full   full    read       read
@@ -24,7 +24,7 @@ import 'package:test/test.dart';
 //   dueDate      full   full    read       read
 //   estimate     full   read    none       none
 //   description  full   full    read       read
-const Map<ProjectRole, Map<String, TomAuthState>> a4Matrix = {
+const Map<ProjectRole, Map<String, TomAuthState>> seededGrantMatrix = {
   ProjectRole.owner: {
     'todo.item.title': TomAuthState.full,
     'todo.item.status': TomAuthState.full,
@@ -63,9 +63,9 @@ const Map<ProjectRole, Map<String, TomAuthState>> a4Matrix = {
   },
 };
 
-/// Flattens [a4Matrix] into the grant rows the auth server seeds.
+/// Flattens [seededGrantMatrix] into the grant rows the auth server seeds.
 List<TomResourceGrant> seedGrants() => [
-      for (final role in a4Matrix.entries)
+      for (final role in seededGrantMatrix.entries)
         for (final field in role.value.entries)
           TomResourceGrant(
             roleName: role.key.name,
@@ -77,11 +77,11 @@ List<TomResourceGrant> seedGrants() => [
 void main() {
   final resolver = FieldGradeResolver(InMemoryGrantStore(seedGrants()));
 
-  group('reproduces the §A.4 matrix', () {
+  group('reproduces the seeded grant matrix', () {
     for (final role in ProjectRole.values) {
       test('${role.name} resolves every field to its seeded grade', () async {
         final states = await resolver.resolveItemFieldStates(role);
-        expect(states, a4Matrix[role]);
+        expect(states, seededGrantMatrix[role]);
       });
     }
   });
@@ -124,7 +124,7 @@ void main() {
 
     test('resolved states cover every gradable field, in display order', () async {
       final states = await resolver.resolveItemFieldStates(ProjectRole.owner);
-      expect(states.keys, orderedEquals(a4Matrix[ProjectRole.owner]!.keys));
+      expect(states.keys, orderedEquals(seededGrantMatrix[ProjectRole.owner]!.keys));
     });
 
     test('the gradable key set is derived from the server bundle (step 21)',

@@ -2,7 +2,7 @@
 /// (RCC3): given a principal and a target resource, compute the principal's
 /// effective [ProjectRole] from their framework-resolved roles.
 ///
-/// This is the first of the app server's two authorization layers (§A.4). It
+/// This is the first of the app server's two authorization layers. It
 /// answers "*may this principal touch this object at all, and as what role?*" —
 /// the field-level grade resolver (step 18) then maps the resolved role to
 /// per-field `TomAuthState`s.
@@ -16,7 +16,7 @@
 /// sample's **containment** rule — a role held on an ancestor covers its
 /// descendants — which is app-domain logic the framework does not own.
 ///
-/// The rule (§A.4, unchanged in behaviour):
+/// The rule (unchanged in behaviour by that replacement):
 ///
 /// - A principal's role on the target is the **strongest** role they hold on the
 ///   target *or any ancestor* in the containment chain (`item → list → project →
