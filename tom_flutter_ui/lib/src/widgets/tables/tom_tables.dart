@@ -7,6 +7,7 @@ import '../../groups/tom_auth_gate.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
+import '../labels/tom_labels.dart';
 
 /// Tom wrapper for [DataTable].
 ///
@@ -626,7 +627,7 @@ class TomDataCell extends DataCell {
             authorizer: authorizer,
             uiStateController: uiStateController,
             child: child ??
-                TomCtr.defaultTextOrEmpty(
+                TomText.defaultOrEmpty(
                     TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
           ),
           placeholder: placeholder,
@@ -740,7 +741,7 @@ class TomDataColumn extends DataColumn {
             authorizer: authorizer,
             uiStateController: uiStateController,
             child: label ??
-                TomCtr.defaultTextOrEmpty(
+                TomText.defaultOrEmpty(
                     TomCtr.childTomId(tomId, 'label'), scope, tomGroup),
           ),
           tooltip: tooltip ?? TomCtr.textOrNull(_p(tomId, scope, 'tooltip')),

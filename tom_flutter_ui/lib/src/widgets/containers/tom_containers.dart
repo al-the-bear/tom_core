@@ -10,6 +10,7 @@ import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
+import '../labels/tom_labels.dart';
 
 /// Tom wrapper for [Card].
 ///
@@ -2113,7 +2114,7 @@ class TomExpanded extends Expanded with TomWidgetMixin {
     super.flex,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+       super(child: child ?? TomText.defaultOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
     tomGroup?.register(this);
   }
 }
@@ -2165,7 +2166,7 @@ class TomFlexible extends Flexible with TomWidgetMixin {
     super.fit,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+       super(child: child ?? TomText.defaultOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
     tomGroup?.register(this);
   }
 }
@@ -2399,7 +2400,7 @@ class TomTableCell extends TableCell with TomWidgetMixin {
     super.verticalAlignment,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+       super(child: child ?? TomText.defaultOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
     tomGroup?.register(this);
   }
 }

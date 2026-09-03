@@ -12,8 +12,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // that is the hazard. They disagree in four ways that no reader would predict
 // from the signatures, and each disagreement is a real call site's behaviour:
 //
-//   * on a null basePath they return four different things (`''`, `null`,
-//     `false`, and a `SizedBox`);
+//   * on a null basePath they return three different things (`''`, `null` and
+//     `false`);
 //   * on an absent resource `text` returns the key while `value` returns null;
 //   * `color` accepts an int, `icon` does not;
 //   * `textOrNull` reports a non-String resource as absent while `value`
@@ -77,10 +77,6 @@ void main() {
       expect(TomCtr.exists(null, 'label'), isFalse);
     });
 
-    test('defaultTextOrEmpty yields a shrunken box, not null', () {
-      expect(TomCtr.defaultTextOrEmpty(null), isA<SizedBox>());
-    });
-
     test('every other lookup yields null', () {
       final lookups = <String, Object? Function()>{
         'textOrNull': () => TomCtr.textOrNull(null, 'label'),
@@ -94,7 +90,6 @@ void main() {
         'list': () => TomCtr.list(null, 'items'),
         'map': () => TomCtr.map(null, 'style'),
         'textStyle': () => TomCtr.textStyle(null, 'style'),
-        'defaultText': () => TomCtr.defaultText(null),
         'childTomId': () => TomCtr.childTomId(null, 'child'),
         'resolvePath': () => TomCtr.resolvePath(null),
       };
@@ -380,7 +375,12 @@ void main() {
     });
   });
 
-  group('TomCtr: the child-widget helpers', () {
+  group('TomCtr: the child-id helper', () {
+    // The widgets that fill an unclaimed slot from resources live in
+    // `widgets/labels/` — `TomText.defaultFor` and `TomText.defaultOrEmpty`,
+    // covered by `test/widgets/tom_text_defaults_test.dart`. What stays
+    // here is the half of that job which is pure string work, and therefore
+    // the half the foundation layer is allowed to do.
     test('childTomId joins parent and suffix', () {
       expect(TomCtr.childTomId('card', 'title'), 'card.title');
       expect(TomCtr.childTomId('a.b', 'c'), 'a.b.c');
@@ -391,38 +391,6 @@ void main() {
       // interpolation: `'$tomId.$suffix'` on a null parent yields the string
       // "null.title", which then resolves as a resource key and paints it.
       expect(TomCtr.childTomId(null, 'title'), isNull);
-    });
-
-    test('defaultText builds a TomText carrying id, scope and group', () {
-      install({'card': {'title': 'Hello'}});
-      final scope = TomScopeBase(scopeId: 'admin');
-      final group = TomAuthorizationGroup('editors');
-      final widget = TomCtr.defaultText('card.title', scope, group);
-      expect(widget, isNotNull);
-      expect(widget!.tomId, 'card.title');
-      expect(widget.scope, same(scope));
-      expect(widget.tomGroup, same(group));
-    });
-
-    test('defaultText returns null without an id', () {
-      expect(TomCtr.defaultText(null), isNull);
-    });
-
-    test('defaultTextOrEmpty builds the same widget when given an id', () {
-      install({'card': {'title': 'Hello'}});
-      final widget = TomCtr.defaultTextOrEmpty('card.title');
-      expect(widget, isA<TomText>());
-      expect((widget as TomText).tomId, 'card.title');
-    });
-
-    test('defaultTextOrEmpty substitutes an empty box without an id', () {
-      // The whole difference between the two: one is for an optional slot a
-      // caller may leave null, the other for a required slot that must always
-      // produce a widget. Neither throws.
-      final widget = TomCtr.defaultTextOrEmpty(null);
-      expect(widget, isA<SizedBox>());
-      expect((widget as SizedBox).width, 0.0);
-      expect(widget.height, 0.0);
     });
   });
 }

@@ -6,6 +6,7 @@ import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
+import '../labels/tom_labels.dart';
 
 // =============================================================================
 // Section II: Animated Widgets
@@ -652,7 +653,7 @@ class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
             authorizer: authorizer,
             uiStateController: uiStateController,
             child: child ??
-                TomCtr.defaultTextOrEmpty(
+                TomText.defaultOrEmpty(
                     TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
           ),
           left: left ?? TomCtr.doubleVal(_p(tomId, scope, 'left')),
@@ -728,7 +729,7 @@ class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
             authorizer: authorizer,
             uiStateController: uiStateController,
             child: child ??
-                TomCtr.defaultTextOrEmpty(
+                TomText.defaultOrEmpty(
                     TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
           ),
           start: start ?? TomCtr.doubleVal(_p(tomId, scope, 'start')),

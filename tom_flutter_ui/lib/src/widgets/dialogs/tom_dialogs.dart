@@ -26,6 +26,7 @@ import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_node_base.dart';
 import '../../widget_base/tom_scope_widgets.dart';
 import '../../widget_base/tom_style_resolvers.dart';
+import '../labels/tom_labels.dart';
 
 /// Tom wrapper for [AlertDialog].
 ///
@@ -550,7 +551,7 @@ class TomSnackBar extends SnackBar with TomWidgetMixin {
             authorizer: authorizer,
             uiStateController: uiStateController,
             child: content ??
-                TomCtr.defaultTextOrEmpty(
+                TomText.defaultOrEmpty(
                     TomCtr.childTomId(tomId, 'content'), scope, tomGroup),
           ),
           backgroundColor: backgroundColor ?? TomCtr.color(_p(tomId, scope, 'backgroundColor')),

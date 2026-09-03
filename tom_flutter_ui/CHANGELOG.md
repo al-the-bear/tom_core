@@ -1,5 +1,29 @@
 ## Unreleased
 
+### Changed
+
+- **`TomCtr.defaultText` / `defaultTextOrEmpty` are now `TomText.defaultFor` /
+  `TomText.defaultOrEmpty`.** The two helpers that build the `TomText` filling
+  an unclaimed `child:` slot lived on `TomCtr` in `widget_base/`, which made the
+  foundation layer import `widgets/labels/` — and since `TomText` extends
+  `TomFamilyBase` extends `TomPolicyNodeBase` extends `TomNodeBase`, a
+  `widget_base/` member depended on three of its own siblings by routing through
+  the layer built on top of them.
+
+  That cost was real rather than stylistic: when `TomNodeBase` needed the
+  scope-path rule that `TomCtr.resolvePath` already implemented, calling it
+  would have closed the loop, so the rule had to move to a new Flutter-free
+  `tom_scope_path.dart` instead. Returning a widget is the tell for which layer
+  a helper belongs to; all eight call sites were already in `widgets/`, so they
+  now import a sibling rather than reaching down.
+
+  `TomCtr.childTomId` stays — it composes the *id*, which is a `String`, and is
+  the half of the job the foundation is allowed to do.
+  `test/widget_base/widget_base_layering_test.dart` holds the arrow down, and
+  does so **transitively**: a direct-import check would pass the moment someone
+  routed the same dependency through one intermediate file, which is the shape
+  this kind of violation takes once a direct import has been forbidden.
+
 ### Fixed
 
 - **`TomStyleResolvers.parseEdgeInsets` built an `EdgeInsets` out of a value it

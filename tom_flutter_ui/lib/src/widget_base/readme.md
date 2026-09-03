@@ -8,6 +8,11 @@ The foundation every other module rests on: the base widget classes that carry a
 the screen-elements provider, and the construction-time resolvers (`TomCtr`,
 `TomStyleResolvers`) that turn resource entries into concrete Flutter values.
 
+Being the foundation, **nothing here imports `widgets/`** — the dependency arrow
+runs one way, and `test/widget_base/widget_base_layering_test.dart` checks it
+transitively. A helper that wants to *return a widget* belongs in `widgets/`,
+next to the callers it serves; the resolvers here return data and ids.
+
 ## Key types
 
 | Type | Responsibility |

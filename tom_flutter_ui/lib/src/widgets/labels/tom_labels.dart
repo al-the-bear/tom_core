@@ -102,6 +102,50 @@ class TomText extends TomLabelBase {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextHeightBehavior(basePath!, suffix);
   }
+
+  // ===========================================================================
+  // Default slot widgets
+  // ===========================================================================
+  //
+  // A Tom widget with an unfilled `child:` slot fills it from resources, and
+  // what it fills it with is a `TomText`. These two build that widget.
+  //
+  // They live on `TomText` rather than on `TomCtr` because they *return a
+  // widget*, which is the tell for which layer a helper belongs to. `TomCtr`
+  // reads resources and lives in `widget_base/`, the foundation `TomText`
+  // itself is built on — so hosting them there made the foundation import the
+  // layer above it, and every caller of these two is in `widgets/` anyway.
+  // `widget_base_layering_test.dart` holds that arrow down.
+
+  /// A `TomText` for the slot named by [tomId], or `null` when there is no id.
+  ///
+  /// [tomId] is the **relative** widget identifier, not the full canonical
+  /// path — pass `'$parentTomId.child'` and let the widget resolve the scope
+  /// prefix itself, exactly as a hand-written `TomText` would.
+  ///
+  /// Use [defaultOrEmpty] for a slot that cannot hold `null`.
+  static TomText? defaultFor(
+    String? tomId, [
+    TomScope? scope,
+    TomAuthorizationGroup? tomGroup,
+  ]) {
+    if (tomId == null) return null;
+    return TomText(tomId: tomId, scope: scope, tomGroup: tomGroup);
+  }
+
+  /// As [defaultFor], but substitutes `SizedBox.shrink()` for a null [tomId]
+  /// so the result is always a widget.
+  ///
+  /// This is the form the `child:` and `content:` slots use, because those
+  /// parameters are non-nullable and an absent id is not an error there — an
+  /// unidentified slot simply has nothing to resolve.
+  static Widget defaultOrEmpty(
+    String? tomId, [
+    TomScope? scope,
+    TomAuthorizationGroup? tomGroup,
+  ]) {
+    return defaultFor(tomId, scope, tomGroup) ?? const SizedBox.shrink();
+  }
 }
 
 /// Tom wrapper for [SelectableText].

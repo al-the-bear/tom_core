@@ -3,7 +3,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../resource_auth/tom_colors.dart';
 import '../resource_auth/tom_icons.dart';
-import '../widgets/labels/tom_labels.dart';
 import 'tom_node_base.dart';
 import 'tom_scope_path.dart';
 import 'tom_style_resolvers.dart';
@@ -605,47 +604,6 @@ class TomCtr {
       overrides.sort((a, b) => a.$1.compareTo(b.$1));
     }
     return (defaultValue, overrides);
-  }
-
-  // ===========================================================================
-  // Default Widget Creation
-  // ===========================================================================
-
-  /// Creates a default TomText widget for a Widget parameter.
-  ///
-  /// The [tomId] should be the **relative** widget identifier (not the full
-  /// canonical path). For example, pass `'$parentTomId.child'` not the full
-  /// path with scope prefix. TomText will resolve the scope path itself.
-  ///
-  /// Returns `null` if [tomId] is null.
-  static TomText? defaultText(
-    String? tomId, [
-    TomScope? scope,
-    TomAuthorizationGroup? tomGroup,
-  ]) {
-    if (tomId == null) return null;
-    return TomText(
-      tomId: tomId,
-      scope: scope,
-      tomGroup: tomGroup,
-    );
-  }
-
-  /// Creates a default TomText widget, or falls back to a placeholder.
-  ///
-  /// Unlike [defaultText], this never returns null — returns a `SizedBox.shrink()`
-  /// if [tomId] is null.
-  static Widget defaultTextOrEmpty(
-    String? tomId, [
-    TomScope? scope,
-    TomAuthorizationGroup? tomGroup,
-  ]) {
-    if (tomId == null) return const SizedBox.shrink();
-    return TomText(
-      tomId: tomId,
-      scope: scope,
-      tomGroup: tomGroup,
-    );
   }
 
   /// Helper for building a child tomId from parent tomId.

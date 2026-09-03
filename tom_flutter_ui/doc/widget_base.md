@@ -297,10 +297,19 @@ interpolating a scope path into an id.
 | Insets | `edgeInsets` (number / array / map forms, via `TomStyleResolvers.parseEdgeInsets`) |
 | Generic | `value`, `list`, `map` |
 | Composite | `textStyle`, `inputBorder`, `widgetStateColor`, `breakpointed<T>` |
-| Default widgets | `defaultText`, `defaultTextOrEmpty` |
 
 The plain variants return `null` (or the key string, for `text`, as a
 development indicator) when nothing resolves.
+
+Every one of them returns **data**, never a widget — that is the line that keeps
+`TomCtr` in this layer. The two helpers that build the `TomText` filling an
+unclaimed `child:` slot are `TomText.defaultFor` and `TomText.defaultOrEmpty`,
+and they live in `lib/src/widgets/labels/` with the eight slots that call them.
+Hosting them here made `widget_base/` import `widgets/` — a foundation
+depending on three of its own siblings by routing through the layer built on
+top of them. `test/widget_base/widget_base_layering_test.dart` now holds that
+arrow down transitively. `childTomId` stays because it composes the *id*, which
+is a `String`, and is the half of the job this layer is allowed to do.
 
 The five `…OrFail` variants are for values a widget genuinely cannot render
 without, and they can fail for two independent reasons: there is no `tomId`, so
