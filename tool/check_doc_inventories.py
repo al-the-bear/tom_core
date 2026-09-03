@@ -72,9 +72,9 @@ Eight faults are reported:
     of ``export`` directives in the file it labels.
 ``PKGINV``
     An atom of a package document's opening inventory -- the package's file
-    count, its Dart-file count, how many of those sit under ``lib/``, ``bin/``
-    or ``test/``, and the hand-written line totals -- disagreeing with the
-    package.
+    count, its Dart-file count, how many of those sit under ``lib/``, ``bin/``,
+    ``test/`` or ``example/``, and the hand-written file counts and line totals
+    beside them -- disagreeing with the package.
 ``INDEX``
     An entry in the completion overview whose restated file count or line total
     disagrees with the module it links to, or whose link names a document that
@@ -345,11 +345,22 @@ LAYOUT_LINES = re.compile(r"(~\s*)?(" + NUMBER + r")\s*(k\s+)?lines\b")
 #: match: the number must be the one immediately in front of `files`.
 PKG_FILES = re.compile(r"—\s*(" + NUMBER + r")\s+files\b")
 PKG_DART = re.compile(r"of\s+which\s+(" + NUMBER + r")\s+are\s+Dart\b")
-#: `21 under `lib/``, `2 under `bin/``, `12 under `test/`` -- Dart files only.
-PKG_UNDER = re.compile(r"(" + NUMBER + r")\s+under\s+`(lib|bin|test)/`")
-#: A parenthetical qualifying an `under `lib/`` / `under `test/`` mention, which
-#: is where the line totals and hand-written file counts live.
-PKG_SEGMENT = re.compile(r"under\s+`(lib|test)/`[^()]*\(([^)]*)\)", re.S)
+#: `21 under `lib/``, `2 under `bin/``, `12 under `test/``, `4 under `example/``
+#: -- Dart files only.
+PKG_UNDER = re.compile(r"(" + NUMBER + r")\s+under\s+`(lib|bin|test|example)/`")
+#: A parenthetical qualifying an `under `<folder>/`` mention, which is where the
+#: line totals and hand-written file counts live.
+#:
+#: Every folder `PKG_UNDER` counts is read here too. The pair used to disagree --
+#: a count under `bin/` was audited while the length beside it was not -- and the
+#: asymmetry was invisible in exactly the way an unread figure always is: a boot
+#: entrypoint's `(239 lines)` sat eleven lines stale beside a file count the gate
+#: checked on every run. A `bin/` entrypoint and an `example/` program are
+#: hand-written sources that decay as `lib/` does, so the same parenthetical is
+#: read wherever it is written.
+PKG_SEGMENT = re.compile(
+    r"under\s+`(lib|bin|test|example)/`[^()]*\(([^)]*)\)", re.S
+)
 PKG_LINES = re.compile(r"(" + NUMBER + r")\s+(?:hand-written\s+)?lines")
 #: `20 hand-written, 4 337 lines` -- a file count, not the line count beside it.
 PKG_HAND = re.compile(r"(" + NUMBER + r")\s+hand-written(?!\s+lines)")
