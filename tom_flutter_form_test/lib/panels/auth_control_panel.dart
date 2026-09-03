@@ -107,10 +107,7 @@ class AuthControlPanel extends StatelessWidget {
       isExpanded: true,
       value: current,
       items: TomAuthState.values
-          .map((s) => DropdownMenuItem(
-                value: s,
-                child: Text(s.name),
-              ))
+          .map((s) => DropdownMenuItem(value: s, child: Text(s.name)))
           .toList(),
       onChanged: (v) {
         if (v != null) onChanged(v);
@@ -135,12 +132,17 @@ class AuthControlPanel extends StatelessWidget {
     return SegmentedButton<AuthGroupMode>(
       segments: const [
         ButtonSegment(
-            value: AuthGroupMode.controlsAll, label: Text('controlsAll')),
+          value: AuthGroupMode.controlsAll,
+          label: Text('controlsAll'),
+        ),
         ButtonSegment(
-            value: AuthGroupMode.controlsWidest, label: Text('controlsWidest')),
+          value: AuthGroupMode.controlsWidest,
+          label: Text('controlsWidest'),
+        ),
         ButtonSegment(
-            value: AuthGroupMode.controlsNarrowest,
-            label: Text('controlsNarrowest')),
+          value: AuthGroupMode.controlsNarrowest,
+          label: Text('controlsNarrowest'),
+        ),
       ],
       selected: {groupMode},
       onSelectionChanged: (s) => onGroupModeChanged(s.first),
@@ -153,8 +155,10 @@ class AuthControlPanel extends StatelessWidget {
       return const [
         Padding(
           padding: EdgeInsets.symmetric(vertical: 4),
-          child: Text('(no per-field overrides configured)',
-              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+          child: Text(
+            '(no per-field overrides configured)',
+            style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+          ),
         ),
       ];
     }
@@ -171,9 +175,9 @@ class AuthControlPanel extends StatelessWidget {
             children: [
               SelectableText(
                 entry.key,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
               ),
               _buildAuthDropdown(
                 context,

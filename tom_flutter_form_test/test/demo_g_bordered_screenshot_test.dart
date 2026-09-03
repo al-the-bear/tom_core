@@ -99,8 +99,9 @@ void main() {
     await loadTestFonts();
   });
 
-  testWidgets('Bordered floating labels fit above the outline at 18 px theme',
-      (tester) async {
+  testWidgets('Bordered floating labels fit above the outline at 18 px theme', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1760, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -110,11 +111,9 @@ void main() {
     form.lead.bind(phase2ProjectBriefState.lead);
     form.reviewer.bind(phase2ProjectBriefState.reviewer);
 
-    await tester.pumpWidget(_buildHarness(
-      form: form,
-      style: TomFormStyle.bordered,
-      tag: 'raw',
-    ));
+    await tester.pumpWidget(
+      _buildHarness(form: form, style: TomFormStyle.bordered, tag: 'raw'),
+    );
     await tester.pumpAndSettle();
 
     await expectLater(

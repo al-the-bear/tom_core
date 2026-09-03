@@ -66,8 +66,11 @@ void main() {
       final form = TomScope.withScope('priceSyncTest', () => OrderItemForm());
       expect(form.unitPrice.get(), '0.00', reason: 'seed price before pick');
       form.productName.setValue('Brass gear (small)');
-      expect(form.unitPrice.get(), '4.20',
-          reason: 'catalog hit must auto-fill the formatted price');
+      expect(
+        form.unitPrice.get(),
+        '4.20',
+        reason: 'catalog hit must auto-fill the formatted price',
+      );
       form.dispose();
     });
 
@@ -75,8 +78,11 @@ void main() {
       final form = TomScope.withScope('priceSyncTest', () => OrderItemForm());
       form.unitPrice.setValue('9.99');
       form.productName.setValue('Bespoke widget not in catalog');
-      expect(form.unitPrice.get(), '9.99',
-          reason: 'a catalog miss must not overwrite a user-entered price');
+      expect(
+        form.unitPrice.get(),
+        '9.99',
+        reason: 'a catalog miss must not overwrite a user-entered price',
+      );
       form.dispose();
     });
 
@@ -84,9 +90,13 @@ void main() {
       final form = TomScope.withScope('priceSyncTest', () => OrderItemForm());
       form.unitPrice.setValue('5.00');
       form.productName.setValue('Conference badge');
-      expect(form.unitPrice.get(), '0.00',
-          reason: 'a genuine 0.00 catalog price must overwrite, not be '
-              'treated as a miss');
+      expect(
+        form.unitPrice.get(),
+        '0.00',
+        reason:
+            'a genuine 0.00 catalog price must overwrite, not be '
+            'treated as a miss',
+      );
       form.dispose();
     });
   });

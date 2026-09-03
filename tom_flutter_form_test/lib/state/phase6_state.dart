@@ -130,16 +130,20 @@ class DemoRController extends ChangeNotifier {
 class DemoRPageSource {
   static const int totalRows = 10000;
 
-  Future<List<String>> fetchPage(int page, int pageSize,
-      {bool failNext = false}) async {
+  Future<List<String>> fetchPage(
+    int page,
+    int pageSize, {
+    bool failNext = false,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (failNext) {
       throw StateError('Synthetic page-fetch failure (page=$page).');
     }
     final start = page * pageSize;
     if (start >= totalRows) return const [];
-    final end =
-        (start + pageSize > totalRows) ? totalRows : (start + pageSize);
-    return [for (var i = start; i < end; i++) 'Row #${i.toString().padLeft(5, '0')}'];
+    final end = (start + pageSize > totalRows) ? totalRows : (start + pageSize);
+    return [
+      for (var i = start; i < end; i++) 'Row #${i.toString().padLeft(5, '0')}',
+    ];
   }
 }

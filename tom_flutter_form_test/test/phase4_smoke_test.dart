@@ -18,8 +18,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -32,11 +31,14 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text(tile));
     await tester.pumpAndSettle();
   }
@@ -45,15 +47,17 @@ void main() {
     await openDemo(tester, 'Demo K: Enum, Object & Lookup');
     expect(find.text('Demo K — Enum, Object & Lookup'), findsOneWidget);
     // Section headers from _section() titles.
-    expect(find.text('Enum (Priority) — single-select variants'),
-        findsOneWidget);
+    expect(
+      find.text('Enum (Priority) — single-select variants'),
+      findsOneWidget,
+    );
     expect(find.text('Search (City) — ~5 000-item source'), findsOneWidget);
-    expect(find.text('Lookup dialog (Country) — modal browse'),
-        findsOneWidget);
+    expect(find.text('Lookup dialog (Country) — modal browse'), findsOneWidget);
   });
 
-  testWidgets('Demo L opens with file fields + nullable subform',
-      (tester) async {
+  testWidgets('Demo L opens with file fields + nullable subform', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo L: Files & Nullable Variants');
     expect(find.text('Demo L — File + Nullable Variants'), findsOneWidget);
     expect(find.text('File fields — upload + dropzone'), findsOneWidget);

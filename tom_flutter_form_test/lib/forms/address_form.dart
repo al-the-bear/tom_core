@@ -13,10 +13,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// `demoC.customer.billing.street` or `demoC.customer.shipping.street`.
 @tomReflector
 class AddressForm extends TomForm<TomClass> {
-  AddressForm({
-    required String tomId,
-    TomAuthorizationGroup? authGroup,
-  }) : super(formId: tomId) {
+  AddressForm({required String tomId, TomAuthorizationGroup? authGroup})
+    : super(formId: tomId) {
     authorizationGroup = authGroup;
   }
 
@@ -37,11 +35,7 @@ class AddressForm extends TomForm<TomClass> {
     validators: [Validators.required()],
   );
 
-  late final state = TomFormStringInput(
-    'state',
-    '',
-    form: this,
-  );
+  late final state = TomFormStringInput('state', '', form: this);
 
   late final zipCode = TomFormStringInput(
     'zipCode',

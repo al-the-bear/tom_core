@@ -33,8 +33,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -59,11 +58,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo I: Numeric Forms'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo I: Numeric Forms'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo I: Numeric Forms'));
     await tester.pumpAndSettle();
   }
@@ -91,11 +92,15 @@ void main() {
     );
   }
 
-  testWidgets('baseline — demo loads and live readouts show seed values',
-      (tester) async {
+  testWidgets('baseline — demo loads and live readouts show seed values', (
+    tester,
+  ) async {
     await openDemoI(tester);
-    expect(find.text('Bound TomInt value: 8'), findsOneWidget,
-        reason: 'quantity readout must echo the seeded TomInt');
+    expect(
+      find.text('Bound TomInt value: 8'),
+      findsOneWidget,
+      reason: 'quantity readout must echo the seeded TomInt',
+    );
     // Tax rate readout uses one decimal.
     expect(find.text('Tax rate: 7.5 %'), findsOneWidget);
     // Headcount + budget range readouts render.
@@ -103,15 +108,19 @@ void main() {
     expect(find.textContaining('Budget (k\$):'), findsOneWidget);
   });
 
-  testWidgets('typing in quantity input updates TomInt and slider',
-      (tester) async {
+  testWidgets('typing in quantity input updates TomInt and slider', (
+    tester,
+  ) async {
     await openDemoI(tester);
     final input = fieldByTomId('quantity').first;
     expect(input, findsOneWidget);
     await tester.enterText(input, '42');
     await tester.pumpAndSettle();
-    expect(find.text('Bound TomInt value: 42'), findsOneWidget,
-        reason: 'typing in input must propagate to the bound TomInt');
+    expect(
+      find.text('Bound TomInt value: 42'),
+      findsOneWidget,
+      reason: 'typing in input must propagate to the bound TomInt',
+    );
     // The readout reads the form's quantityInput TomInt — the same
     // observable the slider listens to via the demo's mirror observer
     // — so the find.text above is already the single-source-of-truth
@@ -119,8 +128,7 @@ void main() {
     // bindings are not guaranteed to be two-way for this demo's wiring.
   });
 
-  testWidgets('Stepper + button increments by step (5)',
-      (tester) async {
+  testWidgets('Stepper + button increments by step (5)', (tester) async {
     await openDemoI(tester);
     final plus = stepperButton(icon: Icons.add);
     expect(plus, findsOneWidget);
@@ -130,12 +138,14 @@ void main() {
     await tester.pumpAndSettle();
     // Brightness was 50; +5 → 55. The stepper renders the value as a
     // centred Text inside a 48px box.
-    expect(find.text('55'), findsAtLeastNWidgets(1),
-        reason: 'stepper + must increment by 5');
+    expect(
+      find.text('55'),
+      findsAtLeastNWidgets(1),
+      reason: 'stepper + must increment by 5',
+    );
   });
 
-  testWidgets('Stepper - button decrements by step (5)',
-      (tester) async {
+  testWidgets('Stepper - button decrements by step (5)', (tester) async {
     await openDemoI(tester);
     final minus = stepperButton(icon: Icons.remove);
     expect(minus, findsOneWidget);
@@ -143,12 +153,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(minus);
     await tester.pumpAndSettle();
-    expect(find.text('45'), findsAtLeastNWidgets(1),
-        reason: 'stepper − must decrement by 5');
+    expect(
+      find.text('45'),
+      findsAtLeastNWidgets(1),
+      reason: 'stepper − must decrement by 5',
+    );
   });
 
-  testWidgets('Stepper at min disables the - button',
-      (tester) async {
+  testWidgets('Stepper at min disables the - button', (tester) async {
     // The form's `brightnessStepper` is its own TomObject and
     // `_form.bind(phase3NumericState)` doesn't write into it (member
     // names don't match), so setting `phase3NumericState.brightness`
@@ -165,15 +177,20 @@ void main() {
       await tester.tap(minus);
       await tester.pumpAndSettle();
     }
-    expect(find.text('0'), findsAtLeastNWidgets(1),
-        reason: 'after 10 decrements the stepper readout must reach 0');
+    expect(
+      find.text('0'),
+      findsAtLeastNWidgets(1),
+      reason: 'after 10 decrements the stepper readout must reach 0',
+    );
     final btn = tester.widget<IconButton>(stepperButton(icon: Icons.remove));
-    expect(btn.onPressed, isNull,
-        reason: 'at brightness=0 the − button must be disabled');
+    expect(
+      btn.onPressed,
+      isNull,
+      reason: 'at brightness=0 the − button must be disabled',
+    );
   });
 
-  testWidgets('Stepper at max disables the + button',
-      (tester) async {
+  testWidgets('Stepper at max disables the + button', (tester) async {
     // Same reasoning as the min-disable test: walk the stepper up to
     // the maxValue (100) by repeated taps so we know the field's own
     // value reaches the boundary regardless of bind() propagation.
@@ -187,15 +204,22 @@ void main() {
       await tester.tap(plus);
       await tester.pumpAndSettle();
     }
-    expect(find.text('100'), findsAtLeastNWidgets(1),
-        reason: 'after 10 increments the stepper readout must reach 100');
+    expect(
+      find.text('100'),
+      findsAtLeastNWidgets(1),
+      reason: 'after 10 increments the stepper readout must reach 100',
+    );
     final btn = tester.widget<IconButton>(stepperButton(icon: Icons.add));
-    expect(btn.onPressed, isNull,
-        reason: 'at brightness=100 the + button must be disabled');
+    expect(
+      btn.onPressed,
+      isNull,
+      reason: 'at brightness=100 the + button must be disabled',
+    );
   });
 
-  testWidgets('switching currency chip from USD to EUR rebuilds the readout',
-      (tester) async {
+  testWidgets('switching currency chip from USD to EUR rebuilds the readout', (
+    tester,
+  ) async {
     await openDemoI(tester);
     // Initial readout includes "(code: USD)".
     expect(find.textContaining('(code: USD)'), findsOneWidget);
@@ -205,8 +229,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(eur);
     await tester.pumpAndSettle();
-    expect(find.textContaining('(code: EUR)'), findsOneWidget,
-        reason: 'tapping EUR must swap the live readout');
+    expect(
+      find.textContaining('(code: EUR)'),
+      findsOneWidget,
+      reason: 'tapping EUR must swap the live readout',
+    );
     // Pin: the EUR `€` symbol must actually be rendered in the field
     // after the swap. Pre-fix, the InputDecoration carried suffixText='€'
     // but the symbol was invisible in Demo I (regression captured by
@@ -215,23 +242,31 @@ void main() {
     // contains the substring from the readout label, NOT the field's
     // own symbol. Searching for '€' as a standalone Text widget proves
     // the field is actually displaying it.
-    expect(find.text('€'), findsAtLeastNWidgets(1),
-        reason: 'after swapping to EUR, the field must visibly render €');
+    expect(
+      find.text('€'),
+      findsAtLeastNWidgets(1),
+      reason: 'after swapping to EUR, the field must visibly render €',
+    );
   });
 
-  testWidgets('typing in plain double input updates the bound TomDouble',
-      (tester) async {
+  testWidgets('typing in plain double input updates the bound TomDouble', (
+    tester,
+  ) async {
     await openDemoI(tester);
     final input = fieldByTomId('priceGeneric').first;
     await tester.enterText(input, '321.45');
     await tester.pumpAndSettle();
     final tf = tester.widget<TextField>(fieldByTomId('priceGeneric'));
-    expect(tf.controller?.text, contains('321.45'),
-        reason: 'plain double input must echo the typed value');
+    expect(
+      tf.controller?.text,
+      contains('321.45'),
+      reason: 'plain double input must echo the typed value',
+    );
   });
 
-  testWidgets('discount readout reflects the percent input value',
-      (tester) async {
+  testWidgets('discount readout reflects the percent input value', (
+    tester,
+  ) async {
     await openDemoI(tester);
     // Discount seed = 0.15 → 15.0% → "Discount: 15.0%   (stored as fraction:
     // 0.150)".

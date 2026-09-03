@@ -39,8 +39,7 @@ class DemoHComplexAuthorization extends StatefulWidget {
       _DemoHComplexAuthorizationState();
 }
 
-class _DemoHComplexAuthorizationState
-    extends State<DemoHComplexAuthorization> {
+class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization> {
   late final _DemoHAdapter _adapter;
   late final ProjectBriefForm _form;
   double _widthFraction = 0.9;
@@ -87,12 +86,16 @@ class _DemoHComplexAuthorizationState
   Future<void> _save() async {
     final ok = await _form.save();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok
-          ? 'Saved — phase2ProjectBriefState updated.'
-          : 'Validation failed or blocked by auth — check field state.'),
-      duration: const Duration(seconds: 2),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Saved — phase2ProjectBriefState updated.'
+              : 'Validation failed or blocked by auth — check field state.',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   void _clear() {
@@ -125,15 +128,9 @@ class _DemoHComplexAuthorizationState
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -153,8 +150,10 @@ class _DemoHComplexAuthorizationState
   Widget _buildFormColumn(BuildContext context, BoxConstraints outer) {
     final isWide = outer.maxWidth >= 900;
     final maxPaneWidth = isWide ? outer.maxWidth * 0.6 : outer.maxWidth;
-    final paneWidth =
-        (maxPaneWidth * _widthFraction).clamp(300.0, maxPaneWidth);
+    final paneWidth = (maxPaneWidth * _widthFraction).clamp(
+      300.0,
+      maxPaneWidth,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -163,11 +162,7 @@ class _DemoHComplexAuthorizationState
         const SizedBox(height: 12),
         _splitterCard(context, maxPaneWidth, paneWidth),
         const SizedBox(height: 12),
-        projectBriefActionBar(
-          context: context,
-          onClear: _clear,
-          onSave: _save,
-        ),
+        projectBriefActionBar(context: context, onClear: _clear, onSave: _save),
         const SizedBox(height: 12),
         Align(
           alignment: AlignmentDirectional.centerStart,
@@ -195,17 +190,21 @@ class _DemoHComplexAuthorizationState
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const Text('Every feature from Demo G — the four-band style '
-                'preset swap, the four-band theme swap, the full set of '
-                'ACL breakpoints, and the responsive widget-type swap '
-                'on priority — plus a per-field / per-section / form-level '
-                'authorization overlay.'),
+            const Text(
+              'Every feature from Demo G — the four-band style '
+              'preset swap, the four-band theme swap, the full set of '
+              'ACL breakpoints, and the responsive widget-type swap '
+              'on priority — plus a per-field / per-section / form-level '
+              'authorization overlay.',
+            ),
             SizedBox(height: 6),
-            Text('Drive any auth dropdown on the right and watch the form '
-                'respond live: fields go read-only, disabled, or disappear. '
-                'Drag the splitter to verify the auth state survives the '
-                're-layout that fires as the pane crosses 400 / 800 / 1200 '
-                '/ 1600 px.'),
+            Text(
+              'Drive any auth dropdown on the right and watch the form '
+              'respond live: fields go read-only, disabled, or disappear. '
+              'Drag the splitter to verify the auth state survives the '
+              're-layout that fires as the pane crosses 400 / 800 / 1200 '
+              '/ 1600 px.',
+            ),
           ],
         ),
       ),
@@ -213,7 +212,10 @@ class _DemoHComplexAuthorizationState
   }
 
   Widget _splitterCard(
-      BuildContext context, double maxPaneWidth, double paneWidth) {
+    BuildContext context,
+    double maxPaneWidth,
+    double paneWidth,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -222,11 +224,15 @@ class _DemoHComplexAuthorizationState
           children: [
             Row(
               children: [
-                Text('Form pane width',
-                    style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  'Form pane width',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
                 const Spacer(),
-                Text('${paneWidth.toStringAsFixed(0)} px',
-                    style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  '${paneWidth.toStringAsFixed(0)} px',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ],
             ),
             Slider(
@@ -255,16 +261,20 @@ class _DemoHComplexAuthorizationState
             const InfoPanelHeading('Form-level ceiling'),
             _authDropdown('demoH.projectBrief'),
             const InfoPanelHeading('Sections'),
-            _sectionRow(context, 'Classification',
-                'demoH.projectBrief.classification'),
-            _sectionRow(context, 'Scope', 'demoH.projectBrief.scope'),
             _sectionRow(
-                context, 'Classic pair', 'demoH.projectBrief.classic'),
-            _sectionRow(context, 'Longform',
-                'demoH.projectBrief.longform'),
+              context,
+              'Classification',
+              'demoH.projectBrief.classification',
+            ),
+            _sectionRow(context, 'Scope', 'demoH.projectBrief.scope'),
+            _sectionRow(context, 'Classic pair', 'demoH.projectBrief.classic'),
+            _sectionRow(context, 'Longform', 'demoH.projectBrief.longform'),
             _sectionRow(context, 'Lead subform', 'demoH.projectBrief.lead'),
             _sectionRow(
-                context, 'Reviewer subform', 'demoH.projectBrief.reviewer'),
+              context,
+              'Reviewer subform',
+              'demoH.projectBrief.reviewer',
+            ),
             const InfoPanelHeading('Spot fields'),
             _sectionRow(context, 'Priority', 'demoH.projectBrief.priority'),
             _sectionRow(context, 'Budget', 'demoH.projectBrief.budget'),
@@ -289,16 +299,13 @@ class _DemoHComplexAuthorizationState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
           SelectableText(
             path,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontFamily: 'monospace',
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              fontFamily: 'monospace',
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           _authDropdown(path),
         ],

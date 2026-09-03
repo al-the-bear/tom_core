@@ -33,7 +33,10 @@ class _Demo4ValidationState extends State<Demo4Validation> {
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('companyBasicInfo', () => CompanyBasicInfoForm());
+    _form = TomScope.withScope(
+      'companyBasicInfo',
+      () => CompanyBasicInfoForm(),
+    );
     _form.addListener(_inspector);
     _form.bind(demoState.companyProfile);
   }
@@ -87,86 +90,102 @@ class _Demo4ValidationState extends State<Demo4Validation> {
 
   @override
   Widget build(BuildContext context) {
-    final formLayout = TomAclBuilder(
-      id: 'validationDemo',
-      elementProvider: _form,
-    )
-        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-        .setAclExpandXDefault(true)
-        // Company Name - required + minLength
-        .append((p) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                p.name.widget,
-                const SizedBox(height: 4),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Text('Validators: required, minLength(2) | ',
-                        style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    _buildValidationStatus(p.name),
-                  ],
-                ),
-              ],
-            ))
-        .newRow()
-        // Tax ID - pattern + SlowValidator
-        .append((p) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                p.taxId.widget,
-                const SizedBox(height: 4),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Text('Validators: required, pattern, SLOW (1s) | ',
-                        style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    _buildValidationStatus(p.taxId),
-                  ],
-                ),
-                const Text('Try: "X123" triggers SlowValidator error',
-                    style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
-              ],
-            ))
-        .newRow()
-        // Website - pattern URL
-        .append((p) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                p.website.widget,
-                const SizedBox(height: 4),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Text('Validators: pattern (URL) | ',
-                        style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    _buildValidationStatus(p.website),
-                  ],
-                ),
-              ],
-            ))
-        .newRow()
-        // Description - maxLength
-        .append((p) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                p.description.widget,
-                const SizedBox(height: 4),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Text('Validators: maxLength(500) | ',
-                        style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    _buildValidationStatus(p.description),
-                  ],
-                ),
-              ],
-            ))
-        .build(context);
+    final formLayout =
+        TomAclBuilder(id: 'validationDemo', elementProvider: _form)
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+            .setAclExpandXDefault(true)
+            // Company Name - required + minLength
+            .append(
+              (p) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  p.name.widget,
+                  const SizedBox(height: 4),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'Validators: required, minLength(2) | ',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      _buildValidationStatus(p.name),
+                    ],
+                  ),
+                ],
+              ),
+            )
+            .newRow()
+            // Tax ID - pattern + SlowValidator
+            .append(
+              (p) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  p.taxId.widget,
+                  const SizedBox(height: 4),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'Validators: required, pattern, SLOW (1s) | ',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      _buildValidationStatus(p.taxId),
+                    ],
+                  ),
+                  const Text(
+                    'Try: "X123" triggers SlowValidator error',
+                    style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ),
+            )
+            .newRow()
+            // Website - pattern URL
+            .append(
+              (p) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  p.website.widget,
+                  const SizedBox(height: 4),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'Validators: pattern (URL) | ',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      _buildValidationStatus(p.website),
+                    ],
+                  ),
+                ],
+              ),
+            )
+            .newRow()
+            // Description - maxLength
+            .append(
+              (p) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  p.description.widget,
+                  const SizedBox(height: 4),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'Validators: maxLength(500) | ',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      _buildValidationStatus(p.description),
+                    ],
+                  ),
+                ],
+              ),
+            )
+            .build(context);
 
     return DemoScaffold(
       title: 'Demo 4: Validation',
@@ -188,7 +207,9 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 4),
-                    Text('• Fast: required, email, minLength, maxLength, pattern'),
+                    Text(
+                      '• Fast: required, email, minLength, maxLength, pattern',
+                    ),
                     Text('• Slow: SlowValidator (shows pending spinner)'),
                     Text('• Debounce: Fast=300ms, Slow=600ms'),
                     SizedBox(height: 8),
@@ -203,10 +224,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
               ),
             ),
             const SizedBox(height: 16),
-            TomFormStyleScope(
-              style: TomFormStyle.material3,
-              child: formLayout,
-            ),
+            TomFormStyleScope(style: TomFormStyle.material3, child: formLayout),
             const SizedBox(height: 16),
             // Event log
             Card(
@@ -232,11 +250,17 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                       ],
                     ),
                     const Divider(),
-                    ..._inspector.events.reversed.take(5).map((e) => Text(
-                          '${e.runtimeType}: ${e.source}',
-                          style: const TextStyle(
-                              fontSize: 12, fontFamily: 'monospace'),
-                        )),
+                    ..._inspector.events.reversed
+                        .take(5)
+                        .map(
+                          (e) => Text(
+                            '${e.runtimeType}: ${e.source}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
                     if (_inspector.isEmpty)
                       const Text(
                         'No events yet',

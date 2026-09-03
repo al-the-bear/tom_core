@@ -51,27 +51,33 @@ Order phase2aTableOrder = _initialTableOrder();
 
 CustomerDirectory _initialCustomers() {
   final dir = CustomerDirectory();
-  dir.customers.add(_customer(
-    fullName: 'Ada Lovelace',
-    email: 'ada@analytical.example',
-    phone: '+44 20 7946 0958',
-    company: 'Analytical Engines Ltd.',
-    tier: 'gold',
-  ));
-  dir.customers.add(_customer(
-    fullName: 'Grace Hopper',
-    email: 'grace@navy.example',
-    phone: '+1 202 555 0140',
-    company: 'COBOL Systems Inc.',
-    tier: 'platinum',
-  ));
-  dir.customers.add(_customer(
-    fullName: 'Linus Torvalds',
-    email: 'torvalds@kernel.example',
-    phone: '+1 503 555 0177',
-    company: 'Linux Foundation',
-    tier: 'silver',
-  ));
+  dir.customers.add(
+    _customer(
+      fullName: 'Ada Lovelace',
+      email: 'ada@analytical.example',
+      phone: '+44 20 7946 0958',
+      company: 'Analytical Engines Ltd.',
+      tier: 'gold',
+    ),
+  );
+  dir.customers.add(
+    _customer(
+      fullName: 'Grace Hopper',
+      email: 'grace@navy.example',
+      phone: '+1 202 555 0140',
+      company: 'COBOL Systems Inc.',
+      tier: 'platinum',
+    ),
+  );
+  dir.customers.add(
+    _customer(
+      fullName: 'Linus Torvalds',
+      email: 'torvalds@kernel.example',
+      phone: '+1 503 555 0177',
+      company: 'Linux Foundation',
+      tier: 'silver',
+    ),
+  );
   return dir;
 }
 
@@ -95,10 +101,17 @@ Order _initialExpandableOrder() {
   final o = Order();
   o.orderNumber | 'ORD-1042';
   o.customer | 'Analytical Engines Ltd.';
-  o.items.add(_item('Difference Engine pinion', '12', '34.50',
-      'Brass; lot #B-117'));
-  o.items.add(_item('Punched-card deck (1000 pk)', '3', '49.00',
-      'Standard Hollerith perforation'));
+  o.items.add(
+    _item('Difference Engine pinion', '12', '34.50', 'Brass; lot #B-117'),
+  );
+  o.items.add(
+    _item(
+      'Punched-card deck (1000 pk)',
+      '3',
+      '49.00',
+      'Standard Hollerith perforation',
+    ),
+  );
   o.items.add(_item('Lubricating oil (1L)', '5', '6.75', ''));
   return o;
 }
@@ -215,10 +228,12 @@ TomSelectableSource<String> phase2aProductSource() {
   final items = <SelectableItem<String>>[];
   for (final p in phase2aProductCatalog) {
     if (!seen.add(p.name)) continue;
-    items.add(SelectableItem<String>(
-      value: p.name,
-      label: '${p.name}  —  \$${p.price.toStringAsFixed(2)}',
-    ));
+    items.add(
+      SelectableItem<String>(
+        value: p.name,
+        label: '${p.name}  —  \$${p.price.toStringAsFixed(2)}',
+      ),
+    );
   }
   return StaticSelectableSource<String>(items);
 }

@@ -94,21 +94,21 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
                       label: 'Scaffold A — no preselection',
                       child:
                           TomMasterDetailListForm<Customer, CustomerDetailForm>(
-                        listForm: _listForm,
-                        masterPaneWidth: 240,
-                        draggableSplitter: true,
-                        minMasterPaneWidth: 160,
-                        maxMasterPaneWidth: 600,
-                        masterBuilder:
-                            (context, listForm, selected, selectIndex) =>
-                                _CustomerMasterPane(
-                          listForm: listForm,
-                          selectedIndex: selected,
-                          selectIndex: selectIndex,
-                        ),
-                        detailBuilder: (context, _, rowForm) =>
-                            _DetailPane(form: rowForm),
-                      ),
+                            listForm: _listForm,
+                            masterPaneWidth: 240,
+                            draggableSplitter: true,
+                            minMasterPaneWidth: 160,
+                            maxMasterPaneWidth: 600,
+                            masterBuilder:
+                                (context, listForm, selected, selectIndex) =>
+                                    _CustomerMasterPane(
+                                      listForm: listForm,
+                                      selectedIndex: selected,
+                                      selectIndex: selectIndex,
+                                    ),
+                            detailBuilder: (context, _, rowForm) =>
+                                _DetailPane(form: rowForm),
+                          ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -117,22 +117,22 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
                       label: 'Scaffold B — preselects row 0',
                       child:
                           TomMasterDetailListForm<Customer, CustomerDetailForm>(
-                        listForm: _listForm,
-                        masterPaneWidth: 240,
-                        draggableSplitter: true,
-                        minMasterPaneWidth: 160,
-                        maxMasterPaneWidth: 600,
-                        initialSelectedIndex: 0,
-                        masterBuilder:
-                            (context, listForm, selected, selectIndex) =>
-                                _CustomerMasterPane(
-                          listForm: listForm,
-                          selectedIndex: selected,
-                          selectIndex: selectIndex,
-                        ),
-                        detailBuilder: (context, _, rowForm) =>
-                            _DetailPane(form: rowForm),
-                      ),
+                            listForm: _listForm,
+                            masterPaneWidth: 240,
+                            draggableSplitter: true,
+                            minMasterPaneWidth: 160,
+                            maxMasterPaneWidth: 600,
+                            initialSelectedIndex: 0,
+                            masterBuilder:
+                                (context, listForm, selected, selectIndex) =>
+                                    _CustomerMasterPane(
+                                      listForm: listForm,
+                                      selectedIndex: selected,
+                                      selectIndex: selectIndex,
+                                    ),
+                            detailBuilder: (context, _, rowForm) =>
+                                _DetailPane(form: rowForm),
+                          ),
                     ),
                   ),
                 ],
@@ -142,10 +142,7 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
             InfoPanel(
               title: 'Event log (shared list-form bus)',
               children: [
-                EventLogPanel(
-                  inspector: _inspector,
-                  rebuildOn: _eventTick,
-                ),
+                EventLogPanel(inspector: _inspector, rebuildOn: _eventTick),
               ],
             ),
           ],
@@ -166,18 +163,19 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Two TomMasterDetailListForm instances bound to the SAME '
-                'TomListForm. Scaffold B preselects row 0 via its '
-                'initialSelectedIndex parameter, while Scaffold A starts '
-                'with no selection. Each detail pane edits the row\'s own '
-                'sub-form (`listForm[selectedIndex]`) — no sibling form, '
-                'no rebinding. Click a customer to edit them on the '
-                'right; make a change and click another row to see the '
-                'unsaved-changes guard pop Save / Discard / Cancel before '
-                'switching. The toolbar (Add / Remove / Move up / Move '
-                'down) and the per-row drag handles both drive the same '
-                'TomListForm so events appear interleaved in the log '
-                'below.'),
+              'Two TomMasterDetailListForm instances bound to the SAME '
+              'TomListForm. Scaffold B preselects row 0 via its '
+              'initialSelectedIndex parameter, while Scaffold A starts '
+              'with no selection. Each detail pane edits the row\'s own '
+              'sub-form (`listForm[selectedIndex]`) — no sibling form, '
+              'no rebinding. Click a customer to edit them on the '
+              'right; make a change and click another row to see the '
+              'unsaved-changes guard pop Save / Discard / Cancel before '
+              'switching. The toolbar (Add / Remove / Move up / Move '
+              'down) and the per-row drag handles both drive the same '
+              'TomListForm so events appear interleaved in the log '
+              'below.',
+            ),
           ],
         ),
       ),
@@ -208,10 +206,12 @@ class _ScaffoldFrame extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
-              child: Text(label,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                  )),
+              child: Text(
+                label,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
             ),
             Expanded(child: child),
           ],
@@ -226,10 +226,7 @@ class _ScaffoldFrame extends StatelessWidget {
 // ---------------------------------------------------------------------------
 class CustomerListForm extends TomListForm<Customer, CustomerDetailForm> {
   CustomerListForm()
-      : super(
-          listId: 'customerDetail',
-          formFactory: (_) => CustomerDetailForm(),
-        );
+    : super(listId: 'customerDetail', formFactory: (_) => CustomerDetailForm());
 
   @override
   Customer createItem() {
@@ -268,8 +265,10 @@ class _CustomerMasterPane extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Text('Customers (${listForm.length})',
-                  style: theme.textTheme.titleSmall),
+              child: Text(
+                'Customers (${listForm.length})',
+                style: theme.textTheme.titleSmall,
+              ),
             ),
             const Divider(height: 8),
             Expanded(
@@ -331,18 +330,22 @@ class _DetailPane extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(children: [
-                    Expanded(
-                      child: Text('Detail (formId: ${form.formId})',
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Detail (formId: ${form.formId})',
                           style: Theme.of(context).textTheme.titleSmall,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                    if (form.isDirty)
-                      const Chip(
-                        label: Text('Dirty'),
-                        visualDensity: VisualDensity.compact,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                  ]),
+                      if (form.isDirty)
+                        const Chip(
+                          label: Text('Dirty'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   form.fullName.widget,
                   const SizedBox(height: 8),
@@ -367,9 +370,11 @@ class _DetailPane extends StatelessWidget {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(ok
-                                  ? 'Saved customer.'
-                                  : 'Validation failed — check errors.'),
+                              content: Text(
+                                ok
+                                    ? 'Saved customer.'
+                                    : 'Validation failed — check errors.',
+                              ),
                               duration: const Duration(seconds: 2),
                             ),
                           );
@@ -421,16 +426,16 @@ class _CustomerListTile extends StatelessWidget {
     }
     return TomMultiObservableBuilder(
       observables: [c.fullName, c.company],
-      builder: (context) => _tile(
-        context,
-        title: c.fullName.get(),
-        subtitle: c.company.get(),
-      ),
+      builder: (context) =>
+          _tile(context, title: c.fullName.get(), subtitle: c.company.get()),
     );
   }
 
-  Widget _tile(BuildContext context,
-      {required String title, required String subtitle}) {
+  Widget _tile(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+  }) {
     return ListTile(
       selected: isSelected,
       dense: true,

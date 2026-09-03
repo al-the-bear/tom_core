@@ -37,8 +37,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -66,11 +65,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo J: Date/Time/Duration Forms'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo J: Date/Time/Duration Forms'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo J: Date/Time/Duration Forms'));
     await tester.pumpAndSettle();
     if (finalSize != const Size(2400, 2400)) {
@@ -107,8 +108,11 @@ void main() {
       'readouts show seed values', (tester) async {
     await openDemoJ(tester);
     // Dialog pickers + inline calendar all present in the wide layout.
-    expect(adapterByTomId('eventDate'), findsOneWidget,
-        reason: 'wide layout includes the dialog date picker');
+    expect(
+      adapterByTomId('eventDate'),
+      findsOneWidget,
+      reason: 'wide layout includes the dialog date picker',
+    );
     expect(adapterByTomId('eventDateInline'), findsOneWidget);
     expect(adapterByTomId('startTime'), findsOneWidget);
     expect(adapterByTomId('eventDateTime'), findsOneWidget);
@@ -128,11 +132,18 @@ void main() {
     // The narrow demo branch keeps the time / date-time / range pickers
     // (no inline equivalents) but drops the eventDate dialog picker.
     await openDemoJ(tester, finalSize: const Size(600, 2400));
-    expect(adapterByTomId('eventDate'), findsNothing,
-        reason: 'narrow layout hides the dialog date picker because the '
-            'inline calendar offers the same affordance');
-    expect(adapterByTomId('eventDateInline'), findsOneWidget,
-        reason: 'inline calendar must still render in the narrow branch');
+    expect(
+      adapterByTomId('eventDate'),
+      findsNothing,
+      reason:
+          'narrow layout hides the dialog date picker because the '
+          'inline calendar offers the same affordance',
+    );
+    expect(
+      adapterByTomId('eventDateInline'),
+      findsOneWidget,
+      reason: 'inline calendar must still render in the narrow branch',
+    );
     expect(adapterByTomId('startTime'), findsOneWidget);
     expect(adapterByTomId('eventDateTime'), findsOneWidget);
     expect(adapterByTomId('bookingRange'), findsOneWidget);
@@ -151,18 +162,25 @@ void main() {
       of: adapterByTomId('eventDateInline'),
       matching: find.text('20'),
     );
-    expect(dayCell, findsAtLeastNWidgets(1),
-        reason: 'CalendarDatePicker must render a "20" day cell for May 2026');
+    expect(
+      dayCell,
+      findsAtLeastNWidgets(1),
+      reason: 'CalendarDatePicker must render a "20" day cell for May 2026',
+    );
     await tester.ensureVisible(dayCell.first);
     await tester.pumpAndSettle();
     await tester.tap(dayCell.first);
     await tester.pumpAndSettle();
-    expect(find.text('Selected (inline): 2026-05-20'), findsOneWidget,
-        reason: 'tapping day 20 must move the inline readout to 2026-05-20');
+    expect(
+      find.text('Selected (inline): 2026-05-20'),
+      findsOneWidget,
+      reason: 'tapping day 20 must move the inline readout to 2026-05-20',
+    );
   });
 
-  testWidgets('typing in the duration "h" segment updates both readouts',
-      (tester) async {
+  testWidgets('typing in the duration "h" segment updates both readouts', (
+    tester,
+  ) async {
     await openDemoJ(tester);
     final hSeg = durationSegment('h');
     expect(hSeg, findsOneWidget);
@@ -171,15 +189,23 @@ void main() {
     // into the IntSlider.
     await tester.enterText(hSeg, '3');
     await tester.pumpAndSettle();
-    expect(find.textContaining('Stored Duration: 3:30:00'), findsOneWidget,
-        reason: 'changing hours must update the stored duration readout');
-    expect(find.textContaining('(slider = 210 min)'), findsOneWidget,
-        reason: 'the demo-level mirror observer must push 3h30m=210 into '
-            'the minute-slider readout');
+    expect(
+      find.textContaining('Stored Duration: 3:30:00'),
+      findsOneWidget,
+      reason: 'changing hours must update the stored duration readout',
+    );
+    expect(
+      find.textContaining('(slider = 210 min)'),
+      findsOneWidget,
+      reason:
+          'the demo-level mirror observer must push 3h30m=210 into '
+          'the minute-slider readout',
+    );
   });
 
-  testWidgets('typing in the duration "m" segment updates both readouts',
-      (tester) async {
+  testWidgets('typing in the duration "m" segment updates both readouts', (
+    tester,
+  ) async {
     await openDemoJ(tester);
     final mSeg = durationSegment('m');
     expect(mSeg, findsOneWidget);

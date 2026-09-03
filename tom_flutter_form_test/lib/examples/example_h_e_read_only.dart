@@ -125,20 +125,22 @@ class _CustomerCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              _ReadOnlyGrid(rows: [
-                ('Full name', customer.fullName.get()),
-                ('Email', customer.email.get()),
-                ('Phone', customer.phone.get()),
-                ('Company', customer.company.get()),
-                ('Tier', customer.tier.get()),
-                ('VIP', customer.vip.get() ? 'yes' : 'no'),
-                ('Loyalty', customer.loyaltyPoints.get().toString()),
-                (
-                  'Credit limit',
-                  '\$${customer.creditLimit.get().toStringAsFixed(2)}'
-                ),
-                ('Member since', _shortDate(customer.memberSince.get())),
-              ]),
+              _ReadOnlyGrid(
+                rows: [
+                  ('Full name', customer.fullName.get()),
+                  ('Email', customer.email.get()),
+                  ('Phone', customer.phone.get()),
+                  ('Company', customer.company.get()),
+                  ('Tier', customer.tier.get()),
+                  ('VIP', customer.vip.get() ? 'yes' : 'no'),
+                  ('Loyalty', customer.loyaltyPoints.get().toString()),
+                  (
+                    'Credit limit',
+                    '\$${customer.creditLimit.get().toStringAsFixed(2)}',
+                  ),
+                  ('Member since', _shortDate(customer.memberSince.get())),
+                ],
+              ),
             ],
           ),
         ),
@@ -212,8 +214,10 @@ class _AddressesCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text('Addresses (${customer.addresses.length})',
-                      style: theme.textTheme.titleSmall),
+                  Text(
+                    'Addresses (${customer.addresses.length})',
+                    style: theme.textTheme.titleSmall,
+                  ),
                   const Spacer(),
                   TextButton.icon(
                     icon: const Icon(Icons.add, size: 16),
@@ -223,8 +227,10 @@ class _AddressesCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              ...List.generate(customer.addresses.length,
-                  (i) => _addressRow(context, i)),
+              ...List.generate(
+                customer.addresses.length,
+                (i) => _addressRow(context, i),
+              ),
             ],
           ),
         ),
@@ -240,9 +246,11 @@ class _AddressesCard extends StatelessWidget {
         dense: true,
         title: Text(addr.label.get().isEmpty ? '(unnamed)' : addr.label.get()),
         subtitle: Text(
-          [addr.line1.get(), addr.city.get(), addr.country.get()]
-              .where((p) => p.isNotEmpty)
-              .join(' · '),
+          [
+            addr.line1.get(),
+            addr.city.get(),
+            addr.country.get(),
+          ].where((p) => p.isNotEmpty).join(' · '),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -273,8 +281,7 @@ class _AddressesCard extends StatelessWidget {
     await _editAddress(context, addr);
   }
 
-  Future<void> _editAddress(
-      BuildContext context, ExampleAddress addr) async {
+  Future<void> _editAddress(BuildContext context, ExampleAddress addr) async {
     final form = ExampleAddressForm(family: family)..bind(addr);
     await _RowDialog.show(
       context: context,
@@ -324,8 +331,10 @@ class _OrdersCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text('Orders (${customer.orders.length})',
-                      style: theme.textTheme.titleSmall),
+                  Text(
+                    'Orders (${customer.orders.length})',
+                    style: theme.textTheme.titleSmall,
+                  ),
                   const Spacer(),
                   TextButton.icon(
                     icon: const Icon(Icons.add, size: 16),
@@ -335,8 +344,10 @@ class _OrdersCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              ...List.generate(customer.orders.length,
-                  (i) => _orderRow(context, i)),
+              ...List.generate(
+                customer.orders.length,
+                (i) => _orderRow(context, i),
+              ),
             ],
           ),
         ),
@@ -362,9 +373,9 @@ class _OrdersCard extends StatelessWidget {
         }
         return ListTile(
           dense: true,
-          title: Text(order.orderId.get().isEmpty
-              ? '(no id)'
-              : order.orderId.get()),
+          title: Text(
+            order.orderId.get().isEmpty ? '(no id)' : order.orderId.get(),
+          ),
           subtitle: Text(
             '${_shortDate(order.orderDate.get())} · '
             '${order.priority.get()} · '
@@ -433,11 +444,9 @@ class _OrdersCard extends StatelessWidget {
             const Divider(),
             SizedBox(
               height: 240,
-              child: TomInlineListForm<ExampleOrderItem,
-                  ExampleOrderItemForm>(
+              child: TomInlineListForm<ExampleOrderItem, ExampleOrderItemForm>(
                 listForm: form.items,
-                rowBuilder: (context, i, itemForm) =>
-                    _ItemRow(form: itemForm),
+                rowBuilder: (context, i, itemForm) => _ItemRow(form: itemForm),
               ),
             ),
             TomListFormToolbar<ExampleOrderItem, ExampleOrderItemForm>(
@@ -487,55 +496,60 @@ class _ReadOnlyGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return LayoutBuilder(builder: (context, constraints) {
-      // Two columns when wide, one when narrow — the same kind of
-      // breakpoint reflow that AclBuilder provides for editable rows.
-      final twoColumn = constraints.maxWidth >= 540;
-      if (!twoColumn) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: rows.map((r) => _row(theme, r.$1, r.$2)).toList(),
-        );
-      }
-      final left = <Widget>[];
-      final right = <Widget>[];
-      for (var i = 0; i < rows.length; i++) {
-        final row = _row(theme, rows[i].$1, rows[i].$2);
-        if (i.isEven) {
-          left.add(row);
-        } else {
-          right.add(row);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Two columns when wide, one when narrow — the same kind of
+        // breakpoint reflow that AclBuilder provides for editable rows.
+        final twoColumn = constraints.maxWidth >= 540;
+        if (!twoColumn) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: rows.map((r) => _row(theme, r.$1, r.$2)).toList(),
+          );
         }
-      }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Column(children: left)),
-          const SizedBox(width: 16),
-          Expanded(child: Column(children: right)),
-        ],
-      );
-    });
+        final left = <Widget>[];
+        final right = <Widget>[];
+        for (var i = 0; i < rows.length; i++) {
+          final row = _row(theme, rows[i].$1, rows[i].$2);
+          if (i.isEven) {
+            left.add(row);
+          } else {
+            right.add(row);
+          }
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: Column(children: left)),
+            const SizedBox(width: 16),
+            Expanded(child: Column(children: right)),
+          ],
+        );
+      },
+    );
   }
 
   Widget _row(ThemeData theme, String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 110,
-              child: Text(label,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.hintColor)),
-            ),
-            Expanded(
-              child: Text(value.isEmpty ? '—' : value,
-                  style: theme.textTheme.bodyMedium),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+          ),
         ),
-      );
+        Expanded(
+          child: Text(
+            value.isEmpty ? '—' : value,
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------

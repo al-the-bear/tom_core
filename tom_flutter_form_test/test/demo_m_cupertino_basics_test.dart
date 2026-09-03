@@ -30,8 +30,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -51,11 +50,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo M: Material vs Cupertino (Phase 5a)'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo M: Material vs Cupertino (Phase 5a)'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo M: Material vs Cupertino (Phase 5a)'));
     await tester.pumpAndSettle();
   }
@@ -74,10 +75,7 @@ void main() {
   /// "Material concretes" title text; the Cupertino panel is the
   /// second. Resolve them via ancestor lookup from the title Text.
   Finder panelByTitle(String title) {
-    return find.ancestor(
-      of: find.text(title),
-      matching: find.byType(Card),
-    );
+    return find.ancestor(of: find.text(title), matching: find.byType(Card));
   }
 
   /// Read the value cell from the shared-state panel. Each row is a
@@ -85,8 +83,11 @@ void main() {
   /// We locate the row by its name Text and return the value Text data.
   String sharedStateValue(WidgetTester tester, String name) {
     final nameFinder = find.text(name);
-    expect(nameFinder, findsAtLeastNWidgets(1),
-        reason: 'shared-state row "$name" must exist');
+    expect(
+      nameFinder,
+      findsAtLeastNWidgets(1),
+      reason: 'shared-state row "$name" must exist',
+    );
     final row = find.ancestor(
       of: nameFinder.last, // shared-state panel sits last in tree
       matching: find.byType(Row),
@@ -97,8 +98,11 @@ void main() {
         .evaluate()
         .map((e) => (e.widget as Text).data ?? '')
         .toList();
-    expect(texts.length, greaterThanOrEqualTo(2),
-        reason: 'shared-state row "$name" must have name + value Text');
+    expect(
+      texts.length,
+      greaterThanOrEqualTo(2),
+      reason: 'shared-state row "$name" must have name + value Text',
+    );
     return texts[1];
   }
 
@@ -110,11 +114,14 @@ void main() {
       'panel echoes the seeded values', (tester) async {
     await openDemoM(tester);
     // Style ChoiceChips.
-    expect(find.widgetWithText(ChoiceChip, 'TomFormStyle.material3'),
-        findsOneWidget);
     expect(
-        find.widgetWithText(ChoiceChip, 'TomCupertinoFormStyle.cupertino'),
-        findsOneWidget);
+      find.widgetWithText(ChoiceChip, 'TomFormStyle.material3'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(ChoiceChip, 'TomCupertinoFormStyle.cupertino'),
+      findsOneWidget,
+    );
     // Panel headers.
     expect(panelByTitle('Material concretes'), findsOneWidget);
     expect(panelByTitle('Cupertino concretes'), findsOneWidget);
@@ -128,15 +135,21 @@ void main() {
       'notifications',
       'darkMode',
     ]) {
-      expect(adaptersByTomId(id), findsNWidgets(2),
-          reason: 'field "$id" must render in both panels');
+      expect(
+        adaptersByTomId(id),
+        findsNWidgets(2),
+        reason: 'field "$id" must render in both panels',
+      );
     }
     // Shared-state panel reflects the seeds.
     expect(sharedStateValue(tester, 'name'), 'Apollo 11');
     expect(sharedStateValue(tester, 'color'), 'blue');
     expect(sharedStateValue(tester, 'size'), 'M');
-    expect(sharedStateValue(tester, 'search'), '—',
-        reason: 'empty search renders as em-dash placeholder');
+    expect(
+      sharedStateValue(tester, 'search'),
+      '—',
+      reason: 'empty search renders as em-dash placeholder',
+    );
     expect(sharedStateValue(tester, 'notifications'), 'true');
     expect(sharedStateValue(tester, 'darkMode'), 'false');
   });
@@ -146,8 +159,9 @@ void main() {
   // ---------------------------------------------------------------------
 
   testWidgets('pair-wise sync — typing in the Material name input '
-      'propagates to the Cupertino name input AND the shared state',
-      (tester) async {
+      'propagates to the Cupertino name input AND the shared state', (
+    tester,
+  ) async {
     await openDemoM(tester);
     // The Material name input lives inside the "Material concretes" Card.
     final matNameInput = find.descendant(
@@ -170,9 +184,13 @@ void main() {
     );
     expect(cupNameInput, findsOneWidget);
     final cupTf = tester.widget<CupertinoTextField>(cupNameInput);
-    expect(cupTf.controller?.text, 'Voyager 2',
-        reason: 'pair-wise sync must mirror the Material edit to the '
-            'Cupertino name field');
+    expect(
+      cupTf.controller?.text,
+      'Voyager 2',
+      reason:
+          'pair-wise sync must mirror the Material edit to the '
+          'Cupertino name field',
+    );
     // Shared-state panel echoes the new value.
     expect(sharedStateValue(tester, 'name'), 'Voyager 2');
   });
@@ -194,8 +212,11 @@ void main() {
     await tester.tap(matSwitch);
     await tester.pumpAndSettle();
     // Material side now off.
-    expect(tester.widget<Switch>(matSwitch).value, isFalse,
-        reason: 'tapping the Material switch must flip it');
+    expect(
+      tester.widget<Switch>(matSwitch).value,
+      isFalse,
+      reason: 'tapping the Material switch must flip it',
+    );
     // Shared state mirrors the change.
     expect(sharedStateValue(tester, 'notifications'), 'false');
   });
@@ -236,8 +257,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tagsOf('Material concretes'), ['beta']);
-    expect(tagsOf('Cupertino concretes'), ['beta'],
-        reason: '_pairList must propagate the list edit across the panels');
+    expect(
+      tagsOf('Cupertino concretes'),
+      ['beta'],
+      reason: '_pairList must propagate the list edit across the panels',
+    );
     expect(sharedStateValue(tester, 'tags'), 'beta');
   });
 
@@ -249,8 +273,10 @@ void main() {
       'updates the ChoiceChip selection state', (tester) async {
     await openDemoM(tester);
     final matChip = find.widgetWithText(ChoiceChip, 'TomFormStyle.material3');
-    final cupChip =
-        find.widgetWithText(ChoiceChip, 'TomCupertinoFormStyle.cupertino');
+    final cupChip = find.widgetWithText(
+      ChoiceChip,
+      'TomCupertinoFormStyle.cupertino',
+    );
     // Initial: material is selected.
     expect((tester.widget<ChoiceChip>(matChip)).selected, isTrue);
     expect((tester.widget<ChoiceChip>(cupChip)).selected, isFalse);
@@ -259,8 +285,11 @@ void main() {
     await tester.tap(cupChip);
     await tester.pumpAndSettle();
     expect((tester.widget<ChoiceChip>(matChip)).selected, isFalse);
-    expect((tester.widget<ChoiceChip>(cupChip)).selected, isTrue,
-        reason: 'tapping the cupertino chip must select it');
+    expect(
+      (tester.widget<ChoiceChip>(cupChip)).selected,
+      isTrue,
+      reason: 'tapping the cupertino chip must select it',
+    );
     // Both panels still render after the style swap.
     expect(panelByTitle('Material concretes'), findsOneWidget);
     expect(panelByTitle('Cupertino concretes'), findsOneWidget);

@@ -32,8 +32,7 @@ void main() {
     // Resources are needed because TomFormStringInput resolves labels
     // via TomCtr at construction-time-ish. Loading the demo resources
     // keeps that path quiet; the tests never check labels themselves.
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -159,8 +158,7 @@ void main() {
       final inspector = TomFormInspector();
       form.addListener(inspector);
       form.items.move(0, 1);
-      final reordered =
-          inspector.events.whereType<ListItemReorderedEvent>();
+      final reordered = inspector.events.whereType<ListItemReorderedEvent>();
       expect(reordered, hasLength(1));
       expect(reordered.first.fromIndex, 0);
       expect(reordered.first.toIndex, 1);
@@ -182,21 +180,23 @@ void main() {
       form.dispose();
     });
 
-    test('validate fires FormValidatedEvent with list error when empty',
-        () async {
-      final form = makeBoundForm();
-      form.items.removeAt(0);
-      form.items.removeAt(0);
-      final inspector = TomFormInspector();
-      form.addListener(inspector);
-      await form.items.validate();
-      final listEvent = inspector.events
-          .whereType<FormValidatedEvent>()
-          .lastWhere((e) => e.source == 'items');
-      expect(listEvent.errors, hasLength(1));
-      form.removeListener(inspector);
-      form.dispose();
-    });
+    test(
+      'validate fires FormValidatedEvent with list error when empty',
+      () async {
+        final form = makeBoundForm();
+        form.items.removeAt(0);
+        form.items.removeAt(0);
+        final inspector = TomFormInspector();
+        form.addListener(inspector);
+        await form.items.validate();
+        final listEvent = inspector.events
+            .whereType<FormValidatedEvent>()
+            .lastWhere((e) => e.source == 'items');
+        expect(listEvent.errors, hasLength(1));
+        form.removeListener(inspector);
+        form.dispose();
+      },
+    );
   });
 
   group('TomListForm — validation & save lifecycle', () {
@@ -226,27 +226,28 @@ void main() {
       form.dispose();
     });
 
-    test('hasStructuralChanges flips after add and resets after save',
-        () async {
-      final form = makeBoundForm();
-      expect(form.items.hasStructuralChanges, isFalse);
-      form.items.add();
-      expect(form.items.hasStructuralChanges, isTrue);
-      // The freshly-added sub-form has empty productName which fails the
-      // required-validator, so save will reject. Fill it before saving.
-      form.items[2].productName.set('Widget C');
-      form.items[2].quantity.set('1');
-      form.items[2].unitPrice.set('1.00');
-      final ok = await form.items.save();
-      expect(ok, isTrue);
-      expect(form.items.hasStructuralChanges, isFalse);
-      form.dispose();
-    });
+    test(
+      'hasStructuralChanges flips after add and resets after save',
+      () async {
+        final form = makeBoundForm();
+        expect(form.items.hasStructuralChanges, isFalse);
+        form.items.add();
+        expect(form.items.hasStructuralChanges, isTrue);
+        // The freshly-added sub-form has empty productName which fails the
+        // required-validator, so save will reject. Fill it before saving.
+        form.items[2].productName.set('Widget C');
+        form.items[2].quantity.set('1');
+        form.items[2].unitPrice.set('1.00');
+        final ok = await form.items.save();
+        expect(ok, isTrue);
+        expect(form.items.hasStructuralChanges, isFalse);
+        form.dispose();
+      },
+    );
   });
 
   group('TomListForm — discard', () {
-    test('discard restores the original membership after add/remove',
-        () {
+    test('discard restores the original membership after add/remove', () {
       final form = makeBoundForm();
       final order = form.currentBinding!;
       final originalLength = order.items.length;
@@ -271,30 +272,35 @@ void main() {
       form.dispose();
     });
 
-    test('parent validate aggregates list-level errors into one event',
-        () async {
-      final form = makeBoundForm();
-      form.items.removeAt(0);
-      form.items.removeAt(0);
-      final inspector = TomFormInspector();
-      form.addListener(inspector);
-      final errors = await form.validate();
-      expect(errors.any((e) => e.errorKey == 'error.items.minRequired'),
-          isTrue);
-      // The parent's FormValidatedEvent (last with source == formId)
-      // must carry the list error too — that's what TomErrorView
-      // subscribed to the parent will see.
-      final parentEvent = inspector.events
-          .whereType<FormValidatedEvent>()
-          .lastWhere((e) => e.source == 'order');
-      expect(
-          parentEvent.errors
-              .whereType<FormValidationError>()
-              .any((e) => e.errorKey == 'error.items.minRequired'),
-          isTrue);
-      form.removeListener(inspector);
-      form.dispose();
-    });
+    test(
+      'parent validate aggregates list-level errors into one event',
+      () async {
+        final form = makeBoundForm();
+        form.items.removeAt(0);
+        form.items.removeAt(0);
+        final inspector = TomFormInspector();
+        form.addListener(inspector);
+        final errors = await form.validate();
+        expect(
+          errors.any((e) => e.errorKey == 'error.items.minRequired'),
+          isTrue,
+        );
+        // The parent's FormValidatedEvent (last with source == formId)
+        // must carry the list error too — that's what TomErrorView
+        // subscribed to the parent will see.
+        final parentEvent = inspector.events
+            .whereType<FormValidatedEvent>()
+            .lastWhere((e) => e.source == 'order');
+        expect(
+          parentEvent.errors.whereType<FormValidationError>().any(
+            (e) => e.errorKey == 'error.items.minRequired',
+          ),
+          isTrue,
+        );
+        form.removeListener(inspector);
+        form.dispose();
+      },
+    );
 
     test('parent discard rolls back list structural changes', () {
       final form = makeBoundForm();
@@ -333,8 +339,7 @@ void main() {
     // `if (isDirty) return;` without firing `_changes`, leaving the outer
     // discard button permanently disabled even though the form had become
     // dirty via the sibling's edit.
-    test(
-        'outer form.changes fires when sibling list-form removes an element '
+    test('outer form.changes fires when sibling list-form removes an element '
         'and outer becomes dirty', () {
       final order = makeOrder();
       final outer = TomScope.withScope('listFormTest', () => OrderForm());
@@ -350,13 +355,19 @@ void main() {
       sibling.items.removeAt(0);
 
       // Outer's changes channel must fire so isDirty-bound UI re-renders.
-      expect(outerNotifications, greaterThan(0),
-          reason:
-              'outer.changes should fire after sibling structural mutation');
+      expect(
+        outerNotifications,
+        greaterThan(0),
+        reason: 'outer.changes should fire after sibling structural mutation',
+      );
       // And the outer form must actually report dirty.
-      expect(outer.isDirty, isTrue,
-          reason: 'outer.items.hasStructuralChanges should propagate '
-              'into outer.isDirty');
+      expect(
+        outer.isDirty,
+        isTrue,
+        reason:
+            'outer.items.hasStructuralChanges should propagate '
+            'into outer.isDirty',
+      );
 
       outer.changes.removeListener(onChange);
       outer.dispose();

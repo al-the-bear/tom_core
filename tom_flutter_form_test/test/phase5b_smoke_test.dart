@@ -19,36 +19,41 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
   });
 
-  Future<void> openDemo(WidgetTester tester, String tile,
-      {Size size = const Size(2400, 2400)}) async {
+  Future<void> openDemo(
+    WidgetTester tester,
+    String tile, {
+    Size size = const Size(2400, 2400),
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.ensureVisible(find.text(tile));
     await tester.pumpAndSettle();
     await tester.tap(find.text(tile), warnIfMissed: false);
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Demo N opens and renders all 9 Phase 5b field labels',
-      (tester) async {
-    await openDemo(
-        tester, 'Demo N: Cupertino numeric + date/time (Phase 5b)');
+  testWidgets('Demo N opens and renders all 9 Phase 5b field labels', (
+    tester,
+  ) async {
+    await openDemo(tester, 'Demo N: Cupertino numeric + date/time (Phase 5b)');
     expect(
       find.text('Demo N — Cupertino numeric + date/time (Phase 5b)'),
       findsOneWidget,
@@ -74,28 +79,27 @@ void main() {
     );
   });
 
-  testWidgets('Demo N breakpoint badge reflects wide vs narrow widths',
-      (tester) async {
+  testWidgets('Demo N breakpoint badge reflects wide vs narrow widths', (
+    tester,
+  ) async {
     // Wide layout — width >= 700px → "wide (light/airy)" themeSpec
     await openDemo(
-        tester, 'Demo N: Cupertino numeric + date/time (Phase 5b)',
-        size: const Size(1600, 2400));
-    expect(
-      find.textContaining('wide (light/airy)'),
-      findsOneWidget,
+      tester,
+      'Demo N: Cupertino numeric + date/time (Phase 5b)',
+      size: const Size(1600, 2400),
     );
+    expect(find.textContaining('wide (light/airy)'), findsOneWidget);
   });
 
   testWidgets('Demo N narrow layout swaps inner themeSpec', (tester) async {
     // Narrow layout — width < 700px → "narrow (dense/dark)" themeSpec.
     // Use a tall viewport so the tile in the demo list is reachable.
     await openDemo(
-        tester, 'Demo N: Cupertino numeric + date/time (Phase 5b)',
-        size: const Size(600, 3000));
-    expect(
-      find.textContaining('narrow (dense/dark)'),
-      findsOneWidget,
+      tester,
+      'Demo N: Cupertino numeric + date/time (Phase 5b)',
+      size: const Size(600, 3000),
     );
+    expect(find.textContaining('narrow (dense/dark)'), findsOneWidget);
     // First-section anchor label still rendered above the fold.
     expect(find.text('Quantity (int input)'), findsAtLeastNWidgets(1));
     // The Billing period row may be off-screen in narrow layout — use

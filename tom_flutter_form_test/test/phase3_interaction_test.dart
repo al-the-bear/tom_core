@@ -20,8 +20,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -37,17 +36,21 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text(tile));
     await tester.pumpAndSettle();
   }
 
-  testWidgets('(j) Demo I quantity slider updates the bound value text',
-      (tester) async {
+  testWidgets('(j) Demo I quantity slider updates the bound value text', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo I: Numeric Forms');
     // Bound value readout is the only feedback below the input + slider
     // pair. It reads the form's quantityInput field; for the user to see
@@ -66,17 +69,22 @@ void main() {
     );
   });
 
-  testWidgets('(k) Demo I tax slider moves and percent shows %',
-      (tester) async {
+  testWidgets('(k) Demo I tax slider moves and percent shows %', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo I: Numeric Forms');
     expect(find.text('Percent + tax slider'), findsOneWidget);
     // Percent suffix '%' must render somewhere in the discount field.
-    expect(find.text('%'), findsAtLeastNWidgets(1),
-        reason: 'Percent input should display the % suffix');
+    expect(
+      find.text('%'),
+      findsAtLeastNWidgets(1),
+      reason: 'Percent input should display the % suffix',
+    );
   });
 
-  testWidgets('(l) Demo I currency switch changes the displayed symbol',
-      (tester) async {
+  testWidgets('(l) Demo I currency switch changes the displayed symbol', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo I: Numeric Forms');
     expect(find.text('Currency input'), findsOneWidget);
     // Initial currency is USD — '$' appears in the formatted text.
@@ -85,12 +93,16 @@ void main() {
     await tester.tap(find.text('EUR'));
     await tester.pumpAndSettle();
     // After switching to EUR the formatted value should contain '€'.
-    expect(find.textContaining('€'), findsAtLeastNWidgets(1),
-        reason: 'Switching currency must re-render with the EUR symbol');
+    expect(
+      find.textContaining('€'),
+      findsAtLeastNWidgets(1),
+      reason: 'Switching currency must re-render with the EUR symbol',
+    );
   });
 
-  testWidgets('(m) Demo J inline calendar updates the bound event date',
-      (tester) async {
+  testWidgets('(m) Demo J inline calendar updates the bound event date', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo J: Date/Time/Duration Forms');
     expect(find.text('Inline calendar'), findsOneWidget);
     // The inline calendar shows day numbers — tap day 20 in May 2026.
@@ -106,7 +118,10 @@ void main() {
     // After tap, the inline calendar's selection should land on 20.
     // Verifying via a visible 'Selected: 2026-05-20' readout we expect
     // the demo to render.
-    expect(find.text('Selected (inline): 2026-05-20'), findsOneWidget,
-        reason: 'Inline calendar must drive a visible bound-date readout');
+    expect(
+      find.text('Selected (inline): 2026-05-20'),
+      findsOneWidget,
+      reason: 'Inline calendar must drive a visible bound-date readout',
+    );
   });
 }

@@ -93,10 +93,10 @@ class _ExampleHAMasterDetailState extends State<ExampleHAMasterDetail> {
             initialSelectedIndex: 0,
             masterBuilder: (context, listForm, selected, selectIndex) =>
                 _MasterPane(
-              listForm: listForm,
-              selectedIndex: selected,
-              selectIndex: selectIndex,
-            ),
+                  listForm: listForm,
+                  selectedIndex: selected,
+                  selectIndex: selectIndex,
+                ),
             detailBuilder: (context, _, rowForm) => _DetailPane(form: rowForm),
           ),
         ),

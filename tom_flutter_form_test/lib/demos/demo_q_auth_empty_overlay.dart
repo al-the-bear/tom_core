@@ -58,8 +58,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
     _orderForm.bind(_order);
     _orderForm.changes.addListener(_onFormChanged);
 
-    _validationForm =
-        TomScope.withScope('demoQ', () => ValidationForm());
+    _validationForm = TomScope.withScope('demoQ', () => ValidationForm());
     _validationForm.bind(TomClass());
     // Prime non-visible fields so the SlowValidator path (which we care
     // about) runs without unrelated required-field errors surfacing.
@@ -209,8 +208,10 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('TomAuthGuard — profile panel',
-                style: theme.textTheme.titleMedium),
+            Text(
+              'TomAuthGuard — profile panel',
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             TomAuthGuard(
               tomId: 'demoQ.profile',
@@ -235,20 +236,28 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(children: [
-                      const CircleAvatar(
-                          radius: 14, child: Icon(Icons.person, size: 16)),
-                      const SizedBox(width: 8),
-                      Text('Ada Lovelace',
+                    Row(
+                      children: [
+                        const CircleAvatar(
+                          radius: 14,
+                          child: Icon(Icons.person, size: 16),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Ada Lovelace',
                           style: theme.textTheme.titleSmall?.copyWith(
                             color: theme.colorScheme.onPrimaryContainer,
-                          )),
-                    ]),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 6),
-                    Text('ada@example.com',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
-                        )),
+                    Text(
+                      'ada@example.com',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     FilledButton(
                       onPressed: () {},
@@ -276,11 +285,12 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
             Row(
               children: [
                 Expanded(
-                  child: Text('TomEmptyState + TomLoadingOverlay',
-                      style: theme.textTheme.titleMedium),
+                  child: Text(
+                    'TomEmptyState + TomLoadingOverlay',
+                    style: theme.textTheme.titleMedium,
+                  ),
                 ),
-                Text('${items.length} items',
-                    style: theme.textTheme.bodySmall),
+                Text('${items.length} items', style: theme.textTheme.bodySmall),
               ],
             ),
             const SizedBox(height: 8),
@@ -305,7 +315,9 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
                           final row = items[i];
                           return Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 6),
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -316,12 +328,13 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
                                   child: row.productName.widget,
                                 ),
                                 const SizedBox(width: 8),
-                                SizedBox(
-                                    width: 72, child: row.quantity.widget),
+                                SizedBox(width: 72, child: row.quantity.widget),
                                 IconButton(
                                   tooltip: 'Remove',
-                                  icon: const Icon(Icons.delete_outline,
-                                      size: 18),
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                  ),
                                   onPressed: () {
                                     _orderForm.items.removeAt(i);
                                     setState(() {});
@@ -354,14 +367,13 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
           isExpanded: true,
           value: _controller.auth,
           items: const [
+            DropdownMenuItem(value: TomAuthState.full, child: Text('full')),
+            DropdownMenuItem(value: TomAuthState.read, child: Text('read')),
             DropdownMenuItem(
-                value: TomAuthState.full, child: Text('full')),
-            DropdownMenuItem(
-                value: TomAuthState.read, child: Text('read')),
-            DropdownMenuItem(
-                value: TomAuthState.disabled, child: Text('disabled')),
-            DropdownMenuItem(
-                value: TomAuthState.none, child: Text('none')),
+              value: TomAuthState.disabled,
+              child: Text('disabled'),
+            ),
+            DropdownMenuItem(value: TomAuthState.none, child: Text('none')),
           ],
           onChanged: (v) {
             if (v != null) _controller.setAuth(v, _adapter);
@@ -372,18 +384,9 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilledButton(
-              onPressed: _clearItems,
-              child: const Text('Clear'),
-            ),
-            OutlinedButton(
-              onPressed: _seedItems,
-              child: const Text('Seed'),
-            ),
-            OutlinedButton(
-              onPressed: _addOne,
-              child: const Text('+1 row'),
-            ),
+            FilledButton(onPressed: _clearItems, child: const Text('Clear')),
+            OutlinedButton(onPressed: _seedItems, child: const Text('Seed')),
+            OutlinedButton(onPressed: _addOne, child: const Text('+1 row')),
           ],
         ),
         const InfoPanelHeading('Loading overlay (TomLoadingOverlay)'),
@@ -399,9 +402,9 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
         FilledButton.icon(
           onPressed: _controller.isSaving ? null : _runSlowSave,
           icon: const Icon(Icons.save_outlined),
-          label: Text(_controller.isSaving
-              ? 'Saving…'
-              : 'Save (awaits SlowValidator)'),
+          label: Text(
+            _controller.isSaving ? 'Saving…' : 'Save (awaits SlowValidator)',
+          ),
         ),
       ],
     );

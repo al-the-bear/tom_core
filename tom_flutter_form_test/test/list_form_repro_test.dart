@@ -27,8 +27,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -62,109 +61,127 @@ void main() {
   }
 
   CustomerHDForm makeBound() {
-    final form =
-        TomScope.withScope('listFormReproTest', () => CustomerHDForm());
+    final form = TomScope.withScope(
+      'listFormReproTest',
+      () => CustomerHDForm(),
+    );
     form.bind(makeCustomer());
     return form;
   }
 
   group('H-D reproduction — deleting nested-list items + discard', () {
-    test(
-        'after items.removeAt + items.discard the items list is restored',
-        () {
+    test('after items.removeAt + items.discard the items list is restored', () {
       final form = makeBound();
       final orderForm = form.orders[0];
       final order = orderForm.currentBinding!;
       expect(order.items.length, 3);
       orderForm.items.removeAt(1);
-      expect(order.items.length, 2,
-          reason: 'sanity: removeAt removes from the bound list');
+      expect(
+        order.items.length,
+        2,
+        reason: 'sanity: removeAt removes from the bound list',
+      );
       orderForm.items.discard();
-      expect(order.items.length, 3,
-          reason: 'items.discard must restore the original 3 items');
-      expect(orderForm.items.length, 3,
-          reason: 'sub-forms must be recreated for the restored items');
+      expect(
+        order.items.length,
+        3,
+        reason: 'items.discard must restore the original 3 items',
+      );
+      expect(
+        orderForm.items.length,
+        3,
+        reason: 'sub-forms must be recreated for the restored items',
+      );
       form.dispose();
     });
 
     test(
-        'after items.removeAt + orderForm.discard the items list is restored',
-        () {
-      final form = makeBound();
-      final orderForm = form.orders[0];
-      final order = orderForm.currentBinding!;
-      orderForm.items.removeAt(1);
-      expect(order.items.length, 2);
-      orderForm.discard();
-      expect(order.items.length, 3,
-          reason: 'orderForm.discard must propagate to items.discard');
-      expect(orderForm.items.length, 3);
-      form.dispose();
-    });
+      'after items.removeAt + orderForm.discard the items list is restored',
+      () {
+        final form = makeBound();
+        final orderForm = form.orders[0];
+        final order = orderForm.currentBinding!;
+        orderForm.items.removeAt(1);
+        expect(order.items.length, 2);
+        orderForm.discard();
+        expect(
+          order.items.length,
+          3,
+          reason: 'orderForm.discard must propagate to items.discard',
+        );
+        expect(orderForm.items.length, 3);
+        form.dispose();
+      },
+    );
 
     test(
-        'after items.removeAt + customerForm.discard the items list is restored',
-        () {
-      final form = makeBound();
-      final orderForm = form.orders[0];
-      final order = orderForm.currentBinding!;
-      orderForm.items.removeAt(1);
-      expect(order.items.length, 2);
-      // The deepest possible discard — root form discards everything.
-      form.discard();
-      expect(form.currentBinding!.orders[0].items.length, 3,
-          reason:
-              'root discard must propagate two levels into items.discard');
-      // After root discard, the order forms have been recreated. Their
-      // items sub-list-forms must each have 3 sub-forms again.
-      expect(form.orders[0].items.length, 3,
-          reason: 'recreated order form must rebuild its items sub-list');
-      form.dispose();
-    });
+      'after items.removeAt + customerForm.discard the items list is restored',
+      () {
+        final form = makeBound();
+        final orderForm = form.orders[0];
+        final order = orderForm.currentBinding!;
+        orderForm.items.removeAt(1);
+        expect(order.items.length, 2);
+        // The deepest possible discard — root form discards everything.
+        form.discard();
+        expect(
+          form.currentBinding!.orders[0].items.length,
+          3,
+          reason: 'root discard must propagate two levels into items.discard',
+        );
+        // After root discard, the order forms have been recreated. Their
+        // items sub-list-forms must each have 3 sub-forms again.
+        expect(
+          form.orders[0].items.length,
+          3,
+          reason: 'recreated order form must rebuild its items sub-list',
+        );
+        form.dispose();
+      },
+    );
 
     test(
-        'after multiple items.removeAt across different orders + customerForm.discard',
-        () {
-      final form = makeBound();
-      // Add a second order so we exercise multi-order recreation.
-      final o2 = OrderHD();
-      o2.orderId | 'ORD-2';
-      o2.orderDate | '2026-02-02';
-      final i = OrderItemHD();
-      i.productName | 'Other';
-      i.quantity | '4';
-      i.unitPrice | '1.00';
-      o2.items.add(i);
-      // Use the form-side add so the list-form snapshot stays consistent.
-      // (We instead push directly through the binding then re-bind to keep
-      // _initialOrder aligned with reality.)
-      form.currentBinding!.orders.add(o2);
-      form.unbind();
-      form.bind(form.currentBinding ?? makeCustomer());
-      // Re-bind using a fresh customer where order 2 also exists.
-      // To keep the test self-contained, build a new bound form instead.
-      form.dispose();
+      'after multiple items.removeAt across different orders + customerForm.discard',
+      () {
+        final form = makeBound();
+        // Add a second order so we exercise multi-order recreation.
+        final o2 = OrderHD();
+        o2.orderId | 'ORD-2';
+        o2.orderDate | '2026-02-02';
+        final i = OrderItemHD();
+        i.productName | 'Other';
+        i.quantity | '4';
+        i.unitPrice | '1.00';
+        o2.items.add(i);
+        // Use the form-side add so the list-form snapshot stays consistent.
+        // (We instead push directly through the binding then re-bind to keep
+        // _initialOrder aligned with reality.)
+        form.currentBinding!.orders.add(o2);
+        form.unbind();
+        form.bind(form.currentBinding ?? makeCustomer());
+        // Re-bind using a fresh customer where order 2 also exists.
+        // To keep the test self-contained, build a new bound form instead.
+        form.dispose();
 
-      final form2 = makeBound();
-      // Append a second order via the binding before bind — easier: just
-      // add via the list form which keeps _initialOrder up to date when
-      // we save first.
-      form2.orders.add();
-      form2.orders[1].orderId.set('ORD-2');
-      form2.orders[1].orderDate.set('2026-02-02');
-      form2.orders[1].items.add();
-      form2.orders[1].items[0].productName.set('Other');
-      form2.orders[1].items[0].quantity.set('1');
-      form2.orders[1].items[0].unitPrice.set('1.00');
-      // Save so the new structure becomes the baseline.
-      // ignore: unawaited_futures
-      form2.save();
-    });
+        final form2 = makeBound();
+        // Append a second order via the binding before bind — easier: just
+        // add via the list form which keeps _initialOrder up to date when
+        // we save first.
+        form2.orders.add();
+        form2.orders[1].orderId.set('ORD-2');
+        form2.orders[1].orderDate.set('2026-02-02');
+        form2.orders[1].items.add();
+        form2.orders[1].items[0].productName.set('Other');
+        form2.orders[1].items[0].quantity.set('1');
+        form2.orders[1].items[0].unitPrice.set('1.00');
+        // Save so the new structure becomes the baseline.
+        // ignore: unawaited_futures
+        form2.save();
+      },
+    );
   });
 
-  group(
-      'H-D reproduction — nested-save preserves outer baseline (bug b\'\')',
-      () {
+  group('H-D reproduction — nested-save preserves outer baseline (bug b\'\')', () {
     // Bug (b''): when the user deletes rows inside an order and then
     // saves THAT order (the inner form), the outer customer form
     // currently loses its Discard option because every level's baseline
@@ -174,76 +191,97 @@ void main() {
     // the deleted items.
 
     test(
-        'after inner orderForm.save() the outer customerForm stays dirty',
-        () async {
-      final form = makeBound();
-      final orderForm = form.orders[0];
-      final order = orderForm.currentBinding!;
-      expect(order.items.length, 3);
-      orderForm.items.removeAt(1);
-      expect(order.items.length, 2,
-          reason: 'sanity: removeAt removes from the bound list');
+      'after inner orderForm.save() the outer customerForm stays dirty',
+      () async {
+        final form = makeBound();
+        final orderForm = form.orders[0];
+        final order = orderForm.currentBinding!;
+        expect(order.items.length, 3);
+        orderForm.items.removeAt(1);
+        expect(
+          order.items.length,
+          2,
+          reason: 'sanity: removeAt removes from the bound list',
+        );
 
-      final ok = await orderForm.save();
-      expect(ok, isTrue, reason: 'inner save itself succeeds');
+        final ok = await orderForm.save();
+        expect(ok, isTrue, reason: 'inner save itself succeeds');
 
-      // Spec (b''): order is committed in-memory, but the outer customer
-      // form still owns the transaction baseline — so it must report
-      // dirty so the Discard button stays visible.
-      expect(form.isDirty, isTrue,
+        // Spec (b''): order is committed in-memory, but the outer customer
+        // form still owns the transaction baseline — so it must report
+        // dirty so the Discard button stays visible.
+        expect(
+          form.isDirty,
+          isTrue,
           reason:
               'outer customerForm must remain dirty after inner orderForm.save() '
               'because the structural change to items is still pending against '
-              'the customer-form baseline');
-      form.dispose();
-    });
+              'the customer-form baseline',
+        );
+        form.dispose();
+      },
+    );
 
     test(
-        'after inner orderForm.save() + customerForm.discard restores items',
-        () async {
-      final form = makeBound();
-      final orderForm = form.orders[0];
-      orderForm.items.removeAt(1);
-      expect(orderForm.currentBinding!.items.length, 2);
+      'after inner orderForm.save() + customerForm.discard restores items',
+      () async {
+        final form = makeBound();
+        final orderForm = form.orders[0];
+        orderForm.items.removeAt(1);
+        expect(orderForm.currentBinding!.items.length, 2);
 
-      await orderForm.save();
-      // Outer-level discard must reach all the way down and restore the
-      // items list to its pre-edit length.
-      form.discard();
+        await orderForm.save();
+        // Outer-level discard must reach all the way down and restore the
+        // items list to its pre-edit length.
+        form.discard();
 
-      expect(form.currentBinding!.orders[0].items.length, 3,
+        expect(
+          form.currentBinding!.orders[0].items.length,
+          3,
           reason:
               'customer-level discard must restore items deleted before the '
-              'inner order save');
-      expect(form.orders[0].items.length, 3,
-          reason: 'recreated order form must rebuild its items sub-list');
-      form.dispose();
-    });
+              'inner order save',
+        );
+        expect(
+          form.orders[0].items.length,
+          3,
+          reason: 'recreated order form must rebuild its items sub-list',
+        );
+        form.dispose();
+      },
+    );
 
     test(
-        'after a top-level customerForm.save() the items baseline DOES update',
-        () async {
-      // Companion test: when the user saves at the top, the entire tree
-      // becomes the new baseline. A subsequent customer-level discard
-      // must NOT bring the deleted item back, because the deletion is
-      // now part of the saved state.
-      final form = makeBound();
-      final orderForm = form.orders[0];
-      orderForm.items.removeAt(1);
-      expect(orderForm.currentBinding!.items.length, 2);
+      'after a top-level customerForm.save() the items baseline DOES update',
+      () async {
+        // Companion test: when the user saves at the top, the entire tree
+        // becomes the new baseline. A subsequent customer-level discard
+        // must NOT bring the deleted item back, because the deletion is
+        // now part of the saved state.
+        final form = makeBound();
+        final orderForm = form.orders[0];
+        orderForm.items.removeAt(1);
+        expect(orderForm.currentBinding!.items.length, 2);
 
-      final ok = await form.save();
-      expect(ok, isTrue);
-      expect(form.isDirty, isFalse,
-          reason: 'top-level save commits the whole tree as the new baseline');
+        final ok = await form.save();
+        expect(ok, isTrue);
+        expect(
+          form.isDirty,
+          isFalse,
+          reason: 'top-level save commits the whole tree as the new baseline',
+        );
 
-      form.discard();
-      expect(form.currentBinding!.orders[0].items.length, 2,
+        form.discard();
+        expect(
+          form.currentBinding!.orders[0].items.length,
+          2,
           reason:
               'after a top-level save the deleted item is part of the new '
-              'baseline and must NOT be restored by discard');
-      form.dispose();
-    });
+              'baseline and must NOT be restored by discard',
+        );
+        form.dispose();
+      },
+    );
   });
 
   group('H-A reproduction — selection-driven detail rebuild', () {
@@ -254,15 +292,20 @@ void main() {
     // detail pane could not possibly swap.
     test('listForm[0] and listForm[1] are distinct sub-form instances', () {
       final form = makeBound();
-      expect(form.shippingAddresses.length, 0,
-          reason: 'sanity: starting with no shipping addresses');
+      expect(
+        form.shippingAddresses.length,
+        0,
+        reason: 'sanity: starting with no shipping addresses',
+      );
       // Put two rows in via the form-side API.
       form.shippingAddresses.add();
       form.shippingAddresses.add();
       expect(form.shippingAddresses.length, 2);
-      expect(identical(form.shippingAddresses[0], form.shippingAddresses[1]),
-          isFalse,
-          reason: 'each row must own its own sub-form instance');
+      expect(
+        identical(form.shippingAddresses[0], form.shippingAddresses[1]),
+        isFalse,
+        reason: 'each row must own its own sub-form instance',
+      );
       form.dispose();
     });
   });

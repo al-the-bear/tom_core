@@ -97,8 +97,7 @@ class _ExampleHBExpandableRowsState extends State<ExampleHBExpandableRows> {
                       _Body(form: rowForm, family: _family),
                   toolbarBuilder: (context, list) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
-                    child:
-                        TomListFormToolbar<ExampleOrder, ExampleOrderForm>(
+                    child: TomListFormToolbar<ExampleOrder, ExampleOrderForm>(
                       listForm: list,
                       addLabel: 'Add order',
                       removeLabel: 'Remove order',
@@ -125,8 +124,10 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
       child: Row(
         children: [
-          Text('Orders for ${form.fullName.get()}',
-              style: theme.textTheme.titleSmall),
+          Text(
+            'Orders for ${form.fullName.get()}',
+            style: theme.textTheme.titleSmall,
+          ),
           const Spacer(),
           if (form.isDirty)
             const Chip(
@@ -151,12 +152,7 @@ class _Summary extends StatelessWidget {
     final order = form.currentBinding;
     if (order == null) return const ListTile(title: Text('(unbound)'));
     return TomMultiObservableBuilder(
-      observables: [
-        order.orderId,
-        order.priority,
-        order.paid,
-        order.items,
-      ],
+      observables: [order.orderId, order.priority, order.paid, order.items],
       builder: (context) {
         var total = 0.0;
         for (var i = 0; i < order.items.length; i++) {
@@ -189,8 +185,10 @@ class _Summary extends StatelessWidget {
                   ],
                 ),
               ),
-              Text('\$${total.toStringAsFixed(2)}',
-                  style: theme.textTheme.titleSmall),
+              Text(
+                '\$${total.toStringAsFixed(2)}',
+                style: theme.textTheme.titleSmall,
+              ),
             ],
           ),
         );

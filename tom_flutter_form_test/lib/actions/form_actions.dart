@@ -23,18 +23,21 @@ class SaveFormAction extends TomSimpleAction<TomActionContext> {
   @override
   void executeSimple(TomActionContext context, TomActionTransaction tx) {
     status | (TomCtr.textOrNull(canonicalPath, 'validating') ?? 'Validating…');
-    Future.wait(forms.map((f) => f.save())).then((results) {
-      final allOk = results.every((r) => r);
-      status | (allOk
-          ? TomCtr.textOrNull(canonicalPath, 'success') ?? 'Saved!'
-          : _errorMessage);
-    }).catchError((Object _) {
-      // A save that *throws* (validator/back-write failure) must be reported
-      // exactly like a `false` result — otherwise the rejection escapes as an
-      // uncaught async error and `status` stays stuck on the transient
-      // "Validating…" message.
-      status | _errorMessage;
-    });
+    Future.wait(forms.map((f) => f.save()))
+        .then((results) {
+          final allOk = results.every((r) => r);
+          status |
+              (allOk
+                  ? TomCtr.textOrNull(canonicalPath, 'success') ?? 'Saved!'
+                  : _errorMessage);
+        })
+        .catchError((Object _) {
+          // A save that *throws* (validator/back-write failure) must be reported
+          // exactly like a `false` result — otherwise the rejection escapes as an
+          // uncaught async error and `status` stays stuck on the transient
+          // "Validating…" message.
+          status | _errorMessage;
+        });
   }
 
   String get _errorMessage =>
@@ -61,6 +64,7 @@ class DiscardFormAction extends TomSimpleAction<TomActionContext> {
     for (final f in forms) {
       f.discard();
     }
-    status | (TomCtr.textOrNull(canonicalPath, 'success') ?? 'Changes discarded');
+    status |
+        (TomCtr.textOrNull(canonicalPath, 'success') ?? 'Changes discarded');
   }
 }

@@ -57,10 +57,7 @@ class DateTimeDemoForm extends TomForm<DateTimeDemoState> {
 
   late final bookingRange = TomFormDateRangePicker(
     'bookingRange',
-    DateTimeRange(
-      start: DateTime(2026, 6, 1),
-      end: DateTime(2026, 6, 7),
-    ),
+    DateTimeRange(start: DateTime(2026, 6, 1), end: DateTime(2026, 6, 7)),
     form: this,
     firstDate: DateTime(2025, 1, 1),
     lastDate: DateTime(2030, 12, 31),
@@ -179,14 +176,18 @@ class DateTimeDemoForm extends TomForm<DateTimeDemoState> {
     // two views of the same logical "event date". Mirror in both
     // directions so picking a day in either widget updates the readout
     // and the other widget without a manual reload.
-    _inlineToPicker = eventDateInline >> (_) {
-      final v = eventDateInline.get();
-      if (eventDate.get() != v) eventDate.setValue(v);
-    };
-    _pickerToInline = eventDate >> (_) {
-      final v = eventDate.get();
-      if (eventDateInline.get() != v) eventDateInline.setValue(v);
-    };
+    _inlineToPicker =
+        eventDateInline >>
+        (_) {
+          final v = eventDateInline.get();
+          if (eventDate.get() != v) eventDate.setValue(v);
+        };
+    _pickerToInline =
+        eventDate >>
+        (_) {
+          final v = eventDate.get();
+          if (eventDateInline.get() != v) eventDateInline.setValue(v);
+        };
   }
 
   @override

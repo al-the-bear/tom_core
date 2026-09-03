@@ -23,8 +23,10 @@ void main() {
       f.set(99);
       await f.validate();
       expect(f.validationListenable.value, isA<ValidationError>());
-      expect((f.validationListenable.value as ValidationError).errorKey,
-          'error.max');
+      expect(
+        (f.validationListenable.value as ValidationError).errorKey,
+        'error.max',
+      );
     });
 
     test('TomFormIntInput in-range validates clean', () async {
@@ -39,8 +41,10 @@ void main() {
       f.set(-0.5);
       await f.validate();
       expect(f.validationListenable.value, isA<ValidationError>());
-      expect((f.validationListenable.value as ValidationError).errorKey,
-          'error.min');
+      expect(
+        (f.validationListenable.value as ValidationError).errorKey,
+        'error.min',
+      );
     });
 
     test('User-supplied validators run after built-in min/max', () async {
@@ -59,19 +63,27 @@ void main() {
       f.set(7);
       await f.validate();
       expect(f.validationListenable.value, isA<ValidationError>());
-      expect((f.validationListenable.value as ValidationError).errorKey,
-          'error.custom');
+      expect(
+        (f.validationListenable.value as ValidationError).errorKey,
+        'error.custom',
+      );
     });
   });
 
   group('Phase 3 — TimeRange value type', () {
     test('equatable + hashable', () {
-      const a = TimeRange(TimeOfDay(hour: 9, minute: 0),
-          TimeOfDay(hour: 17, minute: 30));
-      const b = TimeRange(TimeOfDay(hour: 9, minute: 0),
-          TimeOfDay(hour: 17, minute: 30));
-      const c = TimeRange(TimeOfDay(hour: 9, minute: 0),
-          TimeOfDay(hour: 18, minute: 0));
+      const a = TimeRange(
+        TimeOfDay(hour: 9, minute: 0),
+        TimeOfDay(hour: 17, minute: 30),
+      );
+      const b = TimeRange(
+        TimeOfDay(hour: 9, minute: 0),
+        TimeOfDay(hour: 17, minute: 30),
+      );
+      const c = TimeRange(
+        TimeOfDay(hour: 9, minute: 0),
+        TimeOfDay(hour: 18, minute: 0),
+      );
       expect(a, equals(b));
       expect(a.hashCode, equals(b.hashCode));
       expect(a, isNot(equals(c)));
@@ -79,16 +91,20 @@ void main() {
   });
 
   group('Phase 3 — Percent input no longer silent-clamps', () {
-    test('typed 150% surfaces as ValidationError instead of clamping to 100%',
-        () async {
-      final f = TomFormPercentDoubleInput('discount', 0.1);
-      // Simulate the _onChanged path: parse "150" → divide by 100 → 1.5.
-      f.set(1.5);
-      await f.validate();
-      expect(f.validationListenable.value, isA<ValidationError>());
-      expect((f.validationListenable.value as ValidationError).errorKey,
-          'error.max');
-    });
+    test(
+      'typed 150% surfaces as ValidationError instead of clamping to 100%',
+      () async {
+        final f = TomFormPercentDoubleInput('discount', 0.1);
+        // Simulate the _onChanged path: parse "150" → divide by 100 → 1.5.
+        f.set(1.5);
+        await f.validate();
+        expect(f.validationListenable.value, isA<ValidationError>());
+        expect(
+          (f.validationListenable.value as ValidationError).errorKey,
+          'error.max',
+        );
+      },
+    );
   });
 
   group('Phase 3 — CurrencyFormatProfile resolves locale', () {
@@ -104,8 +120,7 @@ void main() {
     });
 
     test('explicit code wins over locale', () {
-      final p =
-          CurrencyFormatProfile.resolve(locale: 'de_DE', code: 'JPY');
+      final p = CurrencyFormatProfile.resolve(locale: 'de_DE', code: 'JPY');
       expect(p.symbol, '¥');
       expect(p.decimals, 0);
     });
@@ -162,10 +177,7 @@ void main() {
       expect(
         () => TomFormDateRangePicker(
           'r',
-          DateTimeRange(
-            start: DateTime(2020, 1, 1),
-            end: DateTime(2020, 6, 1),
-          ),
+          DateTimeRange(start: DateTime(2020, 1, 1), end: DateTime(2020, 6, 1)),
           firstDate: DateTime(2024, 1, 1),
           lastDate: DateTime(2025, 1, 1),
         ),

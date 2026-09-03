@@ -30,19 +30,23 @@ class ExampleListScreen extends StatelessWidget {
               'Master-detail customer editor — Material field family. '
               'AclBuilder rows, breakpoint-aware master pane, static auth + '
               'resources from a constant map.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) =>
-                const ExampleHAMasterDetail(family: ExampleFamily.material),
-          )),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHAMasterDetail(family: ExampleFamily.material),
+            ),
+          ),
         ),
         _ExampleTile(
           icon: Icons.phone_iphone,
           title: 'Example H-A · Cupertino',
           description: 'Same master-detail editor — Cupertino field family.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) =>
-                const ExampleHAMasterDetail(family: ExampleFamily.cupertino),
-          )),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHAMasterDetail(family: ExampleFamily.cupertino),
+            ),
+          ),
         ),
         _SectionHeader(label: 'H-B — Expandable rows'),
         _ExampleTile(
@@ -52,20 +56,24 @@ class ExampleListScreen extends StatelessWidget {
               'Customer orders rendered with TomExpandableListForm: '
               'collapsible rows, drag reorder, and an editable items '
               'list inside each open row.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const ExampleHBExpandableRows(
-                family: ExampleFamily.material),
-          )),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHBExpandableRows(family: ExampleFamily.material),
+            ),
+          ),
         ),
         _ExampleTile(
           icon: Icons.unfold_more,
           title: 'Example H-B · Cupertino',
-          description:
-              'Same expandable orders list — Cupertino field family.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const ExampleHBExpandableRows(
-                family: ExampleFamily.cupertino),
-          )),
+          description: 'Same expandable orders list — Cupertino field family.',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const ExampleHBExpandableRows(
+                family: ExampleFamily.cupertino,
+              ),
+            ),
+          ),
         ),
         _SectionHeader(label: 'H-C — Editable table'),
         _ExampleTile(
@@ -75,19 +83,23 @@ class ExampleListScreen extends StatelessWidget {
               'Editable items table with int / double inputs, derived '
               'line totals, drag reorder, and a 720 px breakpoint that '
               'reflows columns into stacked cards on narrow viewports.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const ExampleHCEditableTable(
-                family: ExampleFamily.material),
-          )),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHCEditableTable(family: ExampleFamily.material),
+            ),
+          ),
         ),
         _ExampleTile(
           icon: Icons.table_rows_outlined,
           title: 'Example H-C · Cupertino',
           description: 'Same editable items table — Cupertino field family.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const ExampleHCEditableTable(
-                family: ExampleFamily.cupertino),
-          )),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHCEditableTable(family: ExampleFamily.cupertino),
+            ),
+          ),
         ),
         _SectionHeader(label: 'H-D — Full customer form'),
         _ExampleTile(
@@ -97,20 +109,23 @@ class ExampleListScreen extends StatelessWidget {
               'Rich customer form covering every field family: string, '
               'search, bool, int, double, date, plus address and order '
               'master-detail sub-lists. AclBuilder rows reflow at 700 px.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) =>
-                const ExampleHDCustomerForm(family: ExampleFamily.material),
-          )),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHDCustomerForm(family: ExampleFamily.material),
+            ),
+          ),
         ),
         _ExampleTile(
           icon: Icons.person_outline,
           title: 'Example H-D · Cupertino',
-          description:
-              'Same rich customer form — Cupertino field family.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) =>
-                const ExampleHDCustomerForm(family: ExampleFamily.cupertino),
-          )),
+          description: 'Same rich customer form — Cupertino field family.',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHDCustomerForm(family: ExampleFamily.cupertino),
+            ),
+          ),
         ),
         _SectionHeader(label: 'H-E — Read-only with edit dialogs'),
         _ExampleTile(
@@ -120,20 +135,24 @@ class ExampleListScreen extends StatelessWidget {
               'Same data graph as H-D rendered as compact read-only rows. '
               'Per-row Edit buttons open modal forms; Save commits, Cancel '
               'discards through the underlying observable.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) =>
-                const ExampleHEReadOnly(family: ExampleFamily.material),
-          )),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHEReadOnly(family: ExampleFamily.material),
+            ),
+          ),
         ),
         _ExampleTile(
           icon: Icons.receipt_long_outlined,
           title: 'Example H-E · Cupertino',
           description:
               'Same read-only customer + edit dialogs — Cupertino fields.',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) =>
-                const ExampleHEReadOnly(family: ExampleFamily.cupertino),
-          )),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExampleHEReadOnly(family: ExampleFamily.cupertino),
+            ),
+          ),
         ),
       ],
     );

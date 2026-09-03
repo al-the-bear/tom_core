@@ -40,15 +40,18 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
   DescriptionPlacement _descriptionPlacement = DescriptionPlacement.below;
 
   TomFormStyle _presetStyle() => switch (_preset) {
-        _PresetKind.material3 => TomFormStyle.material3,
-        _PresetKind.compact => TomFormStyle.compact,
-        _PresetKind.bordered => TomFormStyle.bordered,
-      };
+    _PresetKind.material3 => TomFormStyle.material3,
+    _PresetKind.compact => TomFormStyle.compact,
+    _PresetKind.bordered => TomFormStyle.bordered,
+  };
 
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('companyBasicInfo', () => CompanyBasicInfoForm());
+    _form = TomScope.withScope(
+      'companyBasicInfo',
+      () => CompanyBasicInfoForm(),
+    );
     // Start with empty fields so hints — and the hint required indicator —
     // are visible by default. Material's TextField hides hint text whenever
     // the field has a value, so pre-populated data would hide the indicator.
@@ -87,10 +90,7 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final formLayout = TomAclBuilder(
-      id: 'basicForm',
-      elementProvider: _form,
-    )
+    final formLayout = TomAclBuilder(id: 'basicForm', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
@@ -129,10 +129,7 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
               ],
             ),
             const SizedBox(height: 16),
-            TomFormStyleScope(
-              style: _style,
-              child: formLayout,
-            ),
+            TomFormStyleScope(style: _style, child: formLayout),
           ],
         ),
       ),
@@ -154,21 +151,45 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 6),
-            const DemoBullet('Style preset — picks the base TomFormStyle. material3 is the default. compact halves the gaps and floats labels. bordered adds an outlined border plus error-border and error-icon visuals.'),
-            const DemoBullet('The per-field overrides below (placement, indicators) layer on top of the selected preset via copyWith.'),
+            const DemoBullet(
+              'Style preset — picks the base TomFormStyle. material3 is the default. compact halves the gaps and floats labels. bordered adds an outlined border plus error-border and error-icon visuals.',
+            ),
+            const DemoBullet(
+              'The per-field overrides below (placement, indicators) layer on top of the selected preset via copyWith.',
+            ),
             const SizedBox(height: 6),
-            const DemoBullet('LabelPlacement.above — label sits on its own line above the input (default).'),
-            const DemoBullet('LabelPlacement.below — label sits directly below the input, above any description.'),
-            const DemoBullet('LabelPlacement.floating — Material floating label inside the input border.'),
-            const DemoBullet('LabelPlacement.inline — label on the left, input on the right in one row.'),
-            const DemoBullet('LabelPlacement.hidden — no label; use a hint or leave context to the form title.'),
+            const DemoBullet(
+              'LabelPlacement.above — label sits on its own line above the input (default).',
+            ),
+            const DemoBullet(
+              'LabelPlacement.below — label sits directly below the input, above any description.',
+            ),
+            const DemoBullet(
+              'LabelPlacement.floating — Material floating label inside the input border.',
+            ),
+            const DemoBullet(
+              'LabelPlacement.inline — label on the left, input on the right in one row.',
+            ),
+            const DemoBullet(
+              'LabelPlacement.hidden — no label; use a hint or leave context to the form title.',
+            ),
             const SizedBox(height: 6),
-            const DemoBullet('RequiredIndicator (label) — red * / " (required)" / none. Controls the label decoration.'),
-            const DemoBullet('RequiredIndicator — three text slots: (1) label (on top), (2) placeholder inside the input (code: hint, visible only while empty), (3) description below (code: description, helper text). Each has its own indicator setting.'),
-            const DemoBullet('This demo starts with fields cleared so the placeholder (hint) slot is visible — type or click Populate to hide the placeholder.'),
+            const DemoBullet(
+              'RequiredIndicator (label) — red * / " (required)" / none. Controls the label decoration.',
+            ),
+            const DemoBullet(
+              'RequiredIndicator — three text slots: (1) label (on top), (2) placeholder inside the input (code: hint, visible only while empty), (3) description below (code: description, helper text). Each has its own indicator setting.',
+            ),
+            const DemoBullet(
+              'This demo starts with fields cleared so the placeholder (hint) slot is visible — type or click Populate to hide the placeholder.',
+            ),
             const SizedBox(height: 6),
-            const DemoBullet('DescriptionPlacement.below — helper text under the field (default).'),
-            const DemoBullet('DescriptionPlacement.above — helper text between label and input (when label is above).'),
+            const DemoBullet(
+              'DescriptionPlacement.below — helper text under the field (default).',
+            ),
+            const DemoBullet(
+              'DescriptionPlacement.above — helper text between label and input (when label is above).',
+            ),
           ],
         ),
       ),
@@ -188,11 +209,17 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
             SegmentedButton<_PresetKind>(
               segments: const [
                 ButtonSegment(
-                    value: _PresetKind.material3, label: Text('material3')),
+                  value: _PresetKind.material3,
+                  label: Text('material3'),
+                ),
                 ButtonSegment(
-                    value: _PresetKind.compact, label: Text('compact')),
+                  value: _PresetKind.compact,
+                  label: Text('compact'),
+                ),
                 ButtonSegment(
-                    value: _PresetKind.bordered, label: Text('bordered')),
+                  value: _PresetKind.bordered,
+                  label: Text('bordered'),
+                ),
               ],
               selected: {_preset},
               onSelectionChanged: (s) => setState(() => _preset = s.first),
@@ -201,11 +228,26 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
             _LabelRow(label: 'LabelPlacement'),
             SegmentedButton<LabelPlacement>(
               segments: const [
-                ButtonSegment(value: LabelPlacement.above, label: Text('above')),
-                ButtonSegment(value: LabelPlacement.below, label: Text('below')),
-                ButtonSegment(value: LabelPlacement.floating, label: Text('floating')),
-                ButtonSegment(value: LabelPlacement.inline, label: Text('inline')),
-                ButtonSegment(value: LabelPlacement.hidden, label: Text('hidden')),
+                ButtonSegment(
+                  value: LabelPlacement.above,
+                  label: Text('above'),
+                ),
+                ButtonSegment(
+                  value: LabelPlacement.below,
+                  label: Text('below'),
+                ),
+                ButtonSegment(
+                  value: LabelPlacement.floating,
+                  label: Text('floating'),
+                ),
+                ButtonSegment(
+                  value: LabelPlacement.inline,
+                  label: Text('inline'),
+                ),
+                ButtonSegment(
+                  value: LabelPlacement.hidden,
+                  label: Text('hidden'),
+                ),
               ],
               selected: {_labelPlacement},
               onSelectionChanged: (s) =>
@@ -215,9 +257,18 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
             _LabelRow(label: 'RequiredIndicator — label'),
             SegmentedButton<RequiredIndicator>(
               segments: const [
-                ButtonSegment(value: RequiredIndicator.asterisk, label: Text('asterisk')),
-                ButtonSegment(value: RequiredIndicator.text, label: Text('text')),
-                ButtonSegment(value: RequiredIndicator.none, label: Text('none')),
+                ButtonSegment(
+                  value: RequiredIndicator.asterisk,
+                  label: Text('asterisk'),
+                ),
+                ButtonSegment(
+                  value: RequiredIndicator.text,
+                  label: Text('text'),
+                ),
+                ButtonSegment(
+                  value: RequiredIndicator.none,
+                  label: Text('none'),
+                ),
               ],
               selected: {_requiredIndicatorOnLabel},
               onSelectionChanged: (s) =>
@@ -227,9 +278,18 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
             _LabelRow(label: 'RequiredIndicator — placeholder (hint)'),
             SegmentedButton<RequiredIndicator>(
               segments: const [
-                ButtonSegment(value: RequiredIndicator.asterisk, label: Text('asterisk')),
-                ButtonSegment(value: RequiredIndicator.text, label: Text('text')),
-                ButtonSegment(value: RequiredIndicator.none, label: Text('none')),
+                ButtonSegment(
+                  value: RequiredIndicator.asterisk,
+                  label: Text('asterisk'),
+                ),
+                ButtonSegment(
+                  value: RequiredIndicator.text,
+                  label: Text('text'),
+                ),
+                ButtonSegment(
+                  value: RequiredIndicator.none,
+                  label: Text('none'),
+                ),
               ],
               selected: {_requiredIndicatorOnHint},
               onSelectionChanged: (s) =>
@@ -239,9 +299,18 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
             _LabelRow(label: 'RequiredIndicator — description (helper text)'),
             SegmentedButton<RequiredIndicator>(
               segments: const [
-                ButtonSegment(value: RequiredIndicator.asterisk, label: Text('asterisk')),
-                ButtonSegment(value: RequiredIndicator.text, label: Text('text')),
-                ButtonSegment(value: RequiredIndicator.none, label: Text('none')),
+                ButtonSegment(
+                  value: RequiredIndicator.asterisk,
+                  label: Text('asterisk'),
+                ),
+                ButtonSegment(
+                  value: RequiredIndicator.text,
+                  label: Text('text'),
+                ),
+                ButtonSegment(
+                  value: RequiredIndicator.none,
+                  label: Text('none'),
+                ),
               ],
               selected: {_requiredIndicatorOnDescription},
               onSelectionChanged: (s) =>
@@ -251,8 +320,14 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
             _LabelRow(label: 'DescriptionPlacement'),
             SegmentedButton<DescriptionPlacement>(
               segments: const [
-                ButtonSegment(value: DescriptionPlacement.above, label: Text('above')),
-                ButtonSegment(value: DescriptionPlacement.below, label: Text('below')),
+                ButtonSegment(
+                  value: DescriptionPlacement.above,
+                  label: Text('above'),
+                ),
+                ButtonSegment(
+                  value: DescriptionPlacement.below,
+                  label: Text('below'),
+                ),
               ],
               selected: {_descriptionPlacement},
               onSelectionChanged: (s) =>
@@ -273,10 +348,7 @@ class _LabelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelLarge,
-      ),
+      child: Text(label, style: Theme.of(context).textTheme.labelLarge),
     );
   }
 }

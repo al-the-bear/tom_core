@@ -245,13 +245,13 @@ class _Demo9PresetShowcaseState extends State<Demo9PresetShowcase> {
                   child: Text(
                     _applyTheme
                         ? 'withTheme(picked) is ON — the picked theme is '
-                            'baked into each TomFormStyle. The grid renders '
-                            'under a neutral grey Material theme, so any '
-                            'color/font you see comes from withTheme.'
+                              'baked into each TomFormStyle. The grid renders '
+                              'under a neutral grey Material theme, so any '
+                              'color/font you see comes from withTheme.'
                         : 'withTheme is OFF — presets carry only their own '
-                            'baked-in properties (label placement, gaps, '
-                            'border variant). Colors and fonts fall back to '
-                            'the grey render theme the grid lives under.',
+                              'baked-in properties (label placement, gaps, '
+                              'border variant). Colors and fonts fall back to '
+                              'the grey render theme the grid lives under.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -260,8 +260,10 @@ class _Demo9PresetShowcaseState extends State<Demo9PresetShowcase> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Text('Local theme:',
-                    style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  'Local theme:',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
                 const SizedBox(width: 12),
                 SegmentedButton<int>(
                   segments: [
@@ -300,42 +302,42 @@ class _Demo9PresetShowcaseState extends State<Demo9PresetShowcase> {
             const SizedBox(height: 6),
             const DemoBullet(
               'material3 — the vanilla Material-3 defaults: label above, '
-                  'standard gaps, no outline border.',
+              'standard gaps, no outline border.',
             ),
             const DemoBullet(
               'compact — floating labels and tighter vertical gaps. '
-                  'Good for dense forms.',
+              'Good for dense forms.',
             ),
             const DemoBullet(
               'bordered — floating labels on an outlined border with '
-                  'error-border recolour and trailing error icon enabled.',
+              'error-border recolour and trailing error icon enabled.',
             ),
             const SizedBox(height: 6),
             const DemoBullet(
               'withTheme(theme) snapshots the theme into the TomFormStyle. '
-                  'Label/input: take bodyMedium as-is — the theme creator\'s '
-                  'bodyMedium.color wins (null stays null so it inherits). '
-                  'Hint: bodyMedium recoloured to cs.onSurfaceVariant. '
-                  'Error: bodySmall + cs.error. Description: bodySmall + '
-                  'cs.onSurfaceVariant. Backgrounds: surfaceContainer*.',
+              'Label/input: take bodyMedium as-is — the theme creator\'s '
+              'bodyMedium.color wins (null stays null so it inherits). '
+              'Hint: bodyMedium recoloured to cs.onSurfaceVariant. '
+              'Error: bodySmall + cs.error. Description: bodySmall + '
+              'cs.onSurfaceVariant. Backgrounds: surfaceContainer*.',
             ),
             const DemoBullet(
               'In this demo the picked themes set bodyMedium.color to '
-                  'cs.primary so you can actually see the theme accent on '
-                  'labels and typed text. That\'s a demo choice — real apps '
-                  'usually leave bodyMedium.color null so labels adopt the '
-                  'standard onSurface text colour.',
+              'cs.primary so you can actually see the theme accent on '
+              'labels and typed text. That\'s a demo choice — real apps '
+              'usually leave bodyMedium.color null so labels adopt the '
+              'standard onSurface text colour.',
             ),
             const DemoBullet(
               'Border variant is preserved: null stays null, outlined stays '
-                  'outlined — only the stroke color follows the theme. So '
-                  'material3 and compact keep their underlined look; '
-                  'bordered keeps its outlined look and only recolors.',
+              'outlined — only the stroke color follows the theme. So '
+              'material3 and compact keep their underlined look; '
+              'bordered keeps its outlined look and only recolors.',
             ),
             const DemoBullet(
               'The grid below lives under a neutral grey Material theme, so '
-                  'any color/font difference between OFF and ON is the work '
-                  'of withTheme alone.',
+              'any color/font difference between OFF and ON is the work '
+              'of withTheme alone.',
             ),
           ],
         ),

@@ -16,11 +16,11 @@ enum Priority { low, medium, high, critical }
 
 extension PriorityX on Priority {
   String get label => switch (this) {
-        Priority.low => 'Low',
-        Priority.medium => 'Medium',
-        Priority.high => 'High',
-        Priority.critical => 'Critical',
-      };
+    Priority.low => 'Low',
+    Priority.medium => 'Medium',
+    Priority.high => 'High',
+    Priority.critical => 'Critical',
+  };
 }
 
 /// Closed-set enum used by the multi-select chips row.
@@ -28,12 +28,12 @@ enum Tag { backend, frontend, design, devops, qa }
 
 extension TagX on Tag {
   String get label => switch (this) {
-        Tag.backend => 'Backend',
-        Tag.frontend => 'Frontend',
-        Tag.design => 'Design',
-        Tag.devops => 'DevOps',
-        Tag.qa => 'QA',
-      };
+    Tag.backend => 'Backend',
+    Tag.frontend => 'Frontend',
+    Tag.design => 'Design',
+    Tag.devops => 'DevOps',
+    Tag.qa => 'QA',
+  };
 }
 
 /// Domain object for the object dropdown / object filter chips rows.
@@ -80,17 +80,16 @@ class City {
 class _PrioritySource extends TomSelectableSource<Priority> {
   @override
   Future<List<SelectableItem<Priority>>> getItems() async => [
-        for (final p in Priority.values)
-          SelectableItem<Priority>(value: p, label: p.label),
-      ];
+    for (final p in Priority.values)
+      SelectableItem<Priority>(value: p, label: p.label),
+  ];
 }
 
 class _TagSource extends TomSelectableSource<Tag> {
   @override
   Future<List<SelectableItem<Tag>>> getItems() async => [
-        for (final t in Tag.values)
-          SelectableItem<Tag>(value: t, label: t.label),
-      ];
+    for (final t in Tag.values) SelectableItem<Tag>(value: t, label: t.label),
+  ];
 }
 
 class _CountrySource extends TomSelectableSource<Country> {
@@ -106,9 +105,9 @@ class _CountrySource extends TomSelectableSource<Country> {
 
   @override
   Future<List<SelectableItem<Country>>> getItems() async => [
-        for (final c in _countries)
-          SelectableItem<Country>(value: c, label: c.toString()),
-      ];
+    for (final c in _countries)
+      SelectableItem<Country>(value: c, label: c.toString()),
+  ];
 }
 
 /// Synthesises a large list (~5 000) of `City` items by interleaving a
@@ -137,10 +136,9 @@ class _BigCitySource extends TomSelectableSource<City> {
       for (final (name, country) in _roots) {
         final fullName = i == 0 ? name : '$name $i';
         final city = City(id, fullName, country);
-        out.add(SelectableItem<City>(
-          value: city,
-          label: '$fullName, $country',
-        ));
+        out.add(
+          SelectableItem<City>(value: city, label: '$fullName, $country'),
+        );
         id++;
       }
     }
@@ -160,9 +158,8 @@ class _PointSizeSource extends TomSelectableSource<int> {
 
   @override
   Future<List<SelectableItem<int>>> getItems() async => [
-        for (final s in _sizes)
-          SelectableItem<int>(value: s, label: '$s pt'),
-      ];
+    for (final s in _sizes) SelectableItem<int>(value: s, label: '$s pt'),
+  ];
 }
 
 /// Smaller country list reused by the lookup-dialog row.
@@ -191,9 +188,9 @@ class _LookupCountrySource extends TomSelectableSource<Country> {
 
   @override
   Future<List<SelectableItem<Country>>> getItems() async => [
-        for (final c in _items)
-          SelectableItem<Country>(value: c, label: c.toString()),
-      ];
+    for (final c in _items)
+      SelectableItem<Country>(value: c, label: c.toString()),
+  ];
 }
 
 // Public source instances reused across the form definitions.

@@ -22,8 +22,8 @@ import '../../state/phase2a_state.dart';
 @tomReflector
 class ExampleCustomerForm extends TomForm<Customer> {
   ExampleCustomerForm({required FormFieldFamily family})
-      : _family = family,
-        super(formId: 'exampleCustomer');
+    : _family = family,
+      super(formId: 'exampleCustomer');
 
   final FormFieldFamily _family;
 
@@ -86,10 +86,10 @@ final _tierSource = StaticSelectableSource<String>(const [
 class ExampleCustomerListForm
     extends TomListForm<Customer, ExampleCustomerForm> {
   ExampleCustomerListForm({required FormFieldFamily family})
-      : super(
-          listId: 'exampleCustomer',
-          formFactory: (_) => ExampleCustomerForm(family: family),
-        );
+    : super(
+        listId: 'exampleCustomer',
+        formFactory: (_) => ExampleCustomerForm(family: family),
+      );
 
   @override
   Customer createItem() {

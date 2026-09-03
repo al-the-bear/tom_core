@@ -36,8 +36,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -50,11 +49,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo K: Enum, Object & Lookup'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo K: Enum, Object & Lookup'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo K: Enum, Object & Lookup'));
     await tester.pumpAndSettle();
   }
@@ -73,10 +74,16 @@ void main() {
   /// We locate the Row whose first Text matches and return the second.
   String bindingValue(WidgetTester tester, String fieldName) {
     final nameText = find.text(fieldName);
-    expect(nameText, findsAtLeastNWidgets(1),
-        reason: 'binding row for "$fieldName" must exist');
+    expect(
+      nameText,
+      findsAtLeastNWidgets(1),
+      reason: 'binding row for "$fieldName" must exist',
+    );
     // Walk up to the enclosing Row, then find the value Text inside it.
-    final rowFinder = find.ancestor(of: nameText.first, matching: find.byType(Row));
+    final rowFinder = find.ancestor(
+      of: nameText.first,
+      matching: find.byType(Row),
+    );
     expect(rowFinder, findsAtLeastNWidgets(1));
     // The first Row ancestor is the binding row; collect its descendant
     // Text widgets in build order — element [0] is the name, [1] is the
@@ -86,8 +93,11 @@ void main() {
         .evaluate()
         .map((e) => (e.widget as Text).data)
         .toList();
-    expect(texts.length, greaterThanOrEqualTo(2),
-        reason: 'binding row for "$fieldName" must have name + value Text');
+    expect(
+      texts.length,
+      greaterThanOrEqualTo(2),
+      reason: 'binding row for "$fieldName" must have name + value Text',
+    );
     return texts[1] ?? '';
   }
 
@@ -110,8 +120,11 @@ void main() {
       'lookupCountry',
       'pointSizes',
     ]) {
-      expect(adapterByTomId(id), findsOneWidget,
-          reason: 'field "$id" must render its adapter');
+      expect(
+        adapterByTomId(id),
+        findsOneWidget,
+        reason: 'field "$id" must render its adapter',
+      );
     }
     // Seed values reflected in the bindings panel.
     expect(bindingValue(tester, 'priorityDropdown'), 'Medium');
@@ -146,8 +159,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(critical);
     await tester.pumpAndSettle();
-    expect(bindingValue(tester, 'prioritySegmented'), 'Critical',
-        reason: 'tapping "Critical" must propagate to the live binding');
+    expect(
+      bindingValue(tester, 'prioritySegmented'),
+      'Critical',
+      reason: 'tapping "Critical" must propagate to the live binding',
+    );
   });
 
   testWidgets('T6: priority Radio — tapping the "High" radio row '
@@ -170,8 +186,11 @@ void main() {
   testWidgets('T6: Tag FilterChips — tapping "Frontend" adds it to the '
       'multi-select binding', (tester) async {
     await openDemoK(tester);
-    expect(bindingValue(tester, 'tags'), '[Backend, DevOps]',
-        reason: 'baseline tag selection');
+    expect(
+      bindingValue(tester, 'tags'),
+      '[Backend, DevOps]',
+      reason: 'baseline tag selection',
+    );
     final chip = find.descendant(
       of: adapterByTomId('tags'),
       matching: find.widgetWithText(FilterChip, 'Frontend'),
@@ -182,11 +201,18 @@ void main() {
     await tester.tap(chip);
     await tester.pumpAndSettle();
     final after = bindingValue(tester, 'tags');
-    expect(after.contains('Frontend'), isTrue,
-        reason: 'tapping the Frontend chip must add it to the binding '
-            '(was: $after)');
-    expect(after.contains('Backend'), isTrue,
-        reason: 'previously-selected Backend must still be present');
+    expect(
+      after.contains('Frontend'),
+      isTrue,
+      reason:
+          'tapping the Frontend chip must add it to the binding '
+          '(was: $after)',
+    );
+    expect(
+      after.contains('Backend'),
+      isTrue,
+      reason: 'previously-selected Backend must still be present',
+    );
   });
 
   testWidgets('T6: Tag FilterChips — tapping a SELECTED chip removes it '
@@ -203,9 +229,13 @@ void main() {
     await tester.tap(chip);
     await tester.pumpAndSettle();
     final after = bindingValue(tester, 'tags');
-    expect(after.contains('Backend'), isFalse,
-        reason: 'toggling Backend off must drop it from the binding '
-            '(was: $after)');
+    expect(
+      after.contains('Backend'),
+      isFalse,
+      reason:
+          'toggling Backend off must drop it from the binding '
+          '(was: $after)',
+    );
   });
 
   testWidgets('T6: Object dropdown — country dropdown menu renders all '
@@ -225,13 +255,19 @@ void main() {
     await tester.tap(dropdown);
     await tester.pumpAndSettle();
     // Menu items now render in an Overlay — Germany, France, etc.
-    expect(find.text('Germany (DE)'), findsAtLeastNWidgets(1),
-        reason: 'Germany must appear in the open dropdown menu');
+    expect(
+      find.text('Germany (DE)'),
+      findsAtLeastNWidgets(1),
+      reason: 'Germany must appear in the open dropdown menu',
+    );
     // Pick Germany.
     await tester.tap(find.text('Germany (DE)').last);
     await tester.pumpAndSettle();
-    expect(bindingValue(tester, 'country'), 'Germany (DE)',
-        reason: 'picking Germany must propagate to the live binding');
+    expect(
+      bindingValue(tester, 'country'),
+      'Germany (DE)',
+      reason: 'picking Germany must propagate to the live binding',
+    );
   });
 
   testWidgets('T6: Int FilterChips (pointSizes) — tapping "12 pt" '
@@ -249,9 +285,13 @@ void main() {
     await tester.tap(chip);
     await tester.pumpAndSettle();
     final after = bindingValue(tester, 'pointSizes');
-    expect(after.contains('12'), isTrue,
-        reason: 'tapping "12" must add it to the int multi-select '
-            '(was: $after)');
+    expect(
+      after.contains('12'),
+      isTrue,
+      reason:
+          'tapping "12" must add it to the int multi-select '
+          '(was: $after)',
+    );
     expect(after.contains('10'), isTrue, reason: 'baseline 10 must remain');
   });
 
@@ -266,12 +306,18 @@ void main() {
       of: adapterByTomId('city'),
       matching: find.byType(TextField),
     );
-    expect(tf, findsOneWidget,
-        reason: 'TomFormSearchInput must render an Autocomplete TextField');
+    expect(
+      tf,
+      findsOneWidget,
+      reason: 'TomFormSearchInput must render an Autocomplete TextField',
+    );
     // The TextField shows the current selection's label.
     final widget = tester.widget<TextField>(tf);
-    expect(widget.controller?.text, contains('Berlin'),
-        reason: 'seeded city is Berlin, DE');
+    expect(
+      widget.controller?.text,
+      contains('Berlin'),
+      reason: 'seeded city is Berlin, DE',
+    );
   });
 
   testWidgets('T5: lookup dialog — tapping the read-only field opens a '
@@ -287,8 +333,11 @@ void main() {
     await tester.tap(tf);
     await tester.pumpAndSettle();
     // The dialog title should now be in the widget tree.
-    expect(find.text('Pick a country'), findsOneWidget,
-        reason: 'tapping the lookup field must open the dialog');
+    expect(
+      find.text('Pick a country'),
+      findsOneWidget,
+      reason: 'tapping the lookup field must open the dialog',
+    );
     // Cancel the dialog so the Navigator stack is clean for teardown.
     final cancel = find.widgetWithText(TextButton, 'Cancel');
     if (cancel.evaluate().isNotEmpty) {

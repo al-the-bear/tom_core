@@ -170,13 +170,9 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                      flex: 3,
-                      child: SingleChildScrollView(child: left)),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: left)),
                   const SizedBox(width: 16),
-                  Expanded(
-                      flex: 2,
-                      child: SingleChildScrollView(child: right)),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: right)),
                 ],
               ),
             );
@@ -221,25 +217,35 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const DemoBullet('Both ACLs below call '
-                '`setAclDefaultHideUnauthorized(true)` — when a child '
-                'resolves to `TomAuthState.none` it is dropped from the '
-                'row entirely and the following gap collapses.'),
-            const DemoBullet('Row elision: set every field in a row (e.g. '
-                'password + confirmPassword) to `none` and the whole row '
-                'disappears, with the next row\'s gap dropped so the '
-                'layout tightens up.'),
-            const DemoBullet('`read` and `disabled` keep the element in place '
-                'but change its visual treatment — readonly style from the '
-                'theme scope, vs. dimmed & ignoring input.'),
-            const DemoBullet('Form-field widgets participate via '
-                'TomFieldWidgetAdapter; regular Tom widgets via '
-                'TomNodeBase / TomWidgetMixin. Same ACL filter for both.'),
-            const DemoBullet('Two form sections show the rule with default '
-                'gaps (no explicit `dist:` anywhere) and with non-default '
-                'gaps (explicit 32 / 48 px per append, 24 / 40 px between '
-                'rows). Toggling a field\'s auth on the right drives both '
-                'forms at once so you can compare side-by-side.'),
+            const DemoBullet(
+              'Both ACLs below call '
+              '`setAclDefaultHideUnauthorized(true)` — when a child '
+              'resolves to `TomAuthState.none` it is dropped from the '
+              'row entirely and the following gap collapses.',
+            ),
+            const DemoBullet(
+              'Row elision: set every field in a row (e.g. '
+              'password + confirmPassword) to `none` and the whole row '
+              'disappears, with the next row\'s gap dropped so the '
+              'layout tightens up.',
+            ),
+            const DemoBullet(
+              '`read` and `disabled` keep the element in place '
+              'but change its visual treatment — readonly style from the '
+              'theme scope, vs. dimmed & ignoring input.',
+            ),
+            const DemoBullet(
+              'Form-field widgets participate via '
+              'TomFieldWidgetAdapter; regular Tom widgets via '
+              'TomNodeBase / TomWidgetMixin. Same ACL filter for both.',
+            ),
+            const DemoBullet(
+              'Two form sections show the rule with default '
+              'gaps (no explicit `dist:` anywhere) and with non-default '
+              'gaps (explicit 32 / 48 px per append, 24 / 40 px between '
+              'rows). Toggling a field\'s auth on the right drives both '
+              'forms at once so you can compare side-by-side.',
+            ),
           ],
         ),
       ),
@@ -253,21 +259,19 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
     // the ACL's built-in default. This is the baseline view of the
     // carry-forward rule: hiding a component drops the following default
     // gap and (for row elision) the following default row gap.
-    final layout = TomAclBuilder(
-      id: 'demoDFormAclDefault',
-      elementProvider: _formDefault,
-    )
-        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-        .setAclExpandXDefault(true)
-        .setAclDefaultHideUnauthorized(true)
-        .append((p) => p.username.widget)
-        .append((p) => p.email.widget)
-        .newRow()
-        .append((p) => p.password.widget)
-        .append((p) => p.confirmPassword.widget)
-        .newRow()
-        .append((p) => p.website.widget)
-        .build(context);
+    final layout =
+        TomAclBuilder(id: 'demoDFormAclDefault', elementProvider: _formDefault)
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+            .setAclExpandXDefault(true)
+            .setAclDefaultHideUnauthorized(true)
+            .append((p) => p.username.widget)
+            .append((p) => p.email.widget)
+            .newRow()
+            .append((p) => p.password.widget)
+            .append((p) => p.confirmPassword.widget)
+            .newRow()
+            .append((p) => p.website.widget)
+            .build(context);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -276,8 +280,10 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Form A — hide on auth, default gaps',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Form A — hide on auth, default gaps',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             TomFormStyleScope(style: TomFormStyle.material3, child: layout),
           ],
@@ -309,21 +315,22 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
     //     row 1's own dist (24) is carried onto row 2 and row 2's own
     //     dist (40) is dropped, so `website` sits at
     //     `row0.bottom + 24` — exactly the old slot of row 1.
-    final layout = TomAclBuilder(
-      id: 'demoDFormAclNonDefault',
-      elementProvider: _formNonDefault,
-    )
-        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-        .setAclExpandXDefault(true)
-        .setAclDefaultHideUnauthorized(true)
-        .append((p) => p.username.widget)
-        .append((p) => p.email.widget, dist: 32)
-        .newRow(dist: 24)
-        .append((p) => p.password.widget)
-        .append((p) => p.confirmPassword.widget, dist: 48)
-        .newRow(dist: 40)
-        .append((p) => p.website.widget)
-        .build(context);
+    final layout =
+        TomAclBuilder(
+              id: 'demoDFormAclNonDefault',
+              elementProvider: _formNonDefault,
+            )
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+            .setAclExpandXDefault(true)
+            .setAclDefaultHideUnauthorized(true)
+            .append((p) => p.username.widget)
+            .append((p) => p.email.widget, dist: 32)
+            .newRow(dist: 24)
+            .append((p) => p.password.widget)
+            .append((p) => p.confirmPassword.widget, dist: 48)
+            .newRow(dist: 40)
+            .append((p) => p.website.widget)
+            .build(context);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -332,9 +339,11 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Form B — hide on auth, non-default gaps '
-                '(32 / 48 / 24 / 40 px)',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Form B — hide on auth, non-default gaps '
+              '(32 / 48 / 24 / 40 px)',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             TomFormStyleScope(style: TomFormStyle.material3, child: layout),
           ],
@@ -346,112 +355,106 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
   // ── Widget gallery (10 Tom widgets with hide-unauthorized) ───────────────
 
   List<_GalleryEntry> get _galleryEntries => [
-        _GalleryEntry(
-          tomId: 'saveBtn',
-          label: 'TomElevatedButton',
-          build: () => TomElevatedButton(
-            tomId: 'saveBtn',
-            scope: TomScope.current,
-            onPressed: () {},
-            label: 'Save',
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'cancelBtn',
-          label: 'TomTextButton',
-          build: () => TomTextButton(
-            tomId: 'cancelBtn',
-            scope: TomScope.current,
-            onPressed: () {},
-            label: 'Cancel',
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'detailsBtn',
-          label: 'TomOutlinedButton',
-          build: () => TomOutlinedButton(
-            tomId: 'detailsBtn',
-            scope: TomScope.current,
-            onPressed: () {},
-            label: 'Details',
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'submitBtn',
-          label: 'TomFilledButton',
-          build: () => TomFilledButton(
-            tomId: 'submitBtn',
-            scope: TomScope.current,
-            onPressed: () {},
-            label: 'Submit',
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'refreshBtn',
-          label: 'TomIconButton',
-          build: () => TomIconButton(
-            tomId: 'refreshBtn',
-            scope: TomScope.current,
-            onPressed: () {},
-            icon: const Icon(Icons.refresh),
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'featuredChip',
-          label: 'TomFilterChip',
-          build: () => TomFilterChip(
-            tomId: 'featuredChip',
-            scope: TomScope.current,
-            label: const Text('Featured'),
-            selected: true,
-            onSelected: (_) {},
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'statusIcon',
-          label: 'TomIcon',
-          build: () => TomIcon(
-            tomId: 'statusIcon',
-            scope: TomScope.current,
-            icon: Icons.verified,
-            size: 24,
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'hairline',
-          label: 'TomDivider',
-          build: () => SizedBox(
-            width: 120,
-            child: TomDivider(
-              tomId: 'hairline',
-              scope: TomScope.current,
-            ),
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'badge',
-          label: 'TomContainer',
-          build: () => TomContainer(
-            tomId: 'badge',
-            scope: TomScope.current,
-            color: Colors.amber.shade100,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: const Text('badge'),
-          ),
-        ),
-        _GalleryEntry(
-          tomId: 'infoCard',
-          label: 'TomCard',
-          build: () => TomCard(
-            tomId: 'infoCard',
-            scope: TomScope.current,
-            child: const Padding(
-              padding: EdgeInsets.all(10),
-              child: Text('Card'),
-            ),
-          ),
-        ),
-      ];
+    _GalleryEntry(
+      tomId: 'saveBtn',
+      label: 'TomElevatedButton',
+      build: () => TomElevatedButton(
+        tomId: 'saveBtn',
+        scope: TomScope.current,
+        onPressed: () {},
+        label: 'Save',
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'cancelBtn',
+      label: 'TomTextButton',
+      build: () => TomTextButton(
+        tomId: 'cancelBtn',
+        scope: TomScope.current,
+        onPressed: () {},
+        label: 'Cancel',
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'detailsBtn',
+      label: 'TomOutlinedButton',
+      build: () => TomOutlinedButton(
+        tomId: 'detailsBtn',
+        scope: TomScope.current,
+        onPressed: () {},
+        label: 'Details',
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'submitBtn',
+      label: 'TomFilledButton',
+      build: () => TomFilledButton(
+        tomId: 'submitBtn',
+        scope: TomScope.current,
+        onPressed: () {},
+        label: 'Submit',
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'refreshBtn',
+      label: 'TomIconButton',
+      build: () => TomIconButton(
+        tomId: 'refreshBtn',
+        scope: TomScope.current,
+        onPressed: () {},
+        icon: const Icon(Icons.refresh),
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'featuredChip',
+      label: 'TomFilterChip',
+      build: () => TomFilterChip(
+        tomId: 'featuredChip',
+        scope: TomScope.current,
+        label: const Text('Featured'),
+        selected: true,
+        onSelected: (_) {},
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'statusIcon',
+      label: 'TomIcon',
+      build: () => TomIcon(
+        tomId: 'statusIcon',
+        scope: TomScope.current,
+        icon: Icons.verified,
+        size: 24,
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'hairline',
+      label: 'TomDivider',
+      build: () => SizedBox(
+        width: 120,
+        child: TomDivider(tomId: 'hairline', scope: TomScope.current),
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'badge',
+      label: 'TomContainer',
+      build: () => TomContainer(
+        tomId: 'badge',
+        scope: TomScope.current,
+        color: Colors.amber.shade100,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: const Text('badge'),
+      ),
+    ),
+    _GalleryEntry(
+      tomId: 'infoCard',
+      label: 'TomCard',
+      build: () => TomCard(
+        tomId: 'infoCard',
+        scope: TomScope.current,
+        child: const Padding(padding: EdgeInsets.all(10), child: Text('Card')),
+      ),
+    ),
+  ];
 
   Widget _buildGallerySection(BuildContext context) {
     final entries = _galleryEntries;
@@ -476,11 +479,11 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
     //     the change is purely vertical (no trailing row, so the
     //     carried dist has nothing to apply to).
     const inRowGaps = <List<double>>[
-      [0, 20, 40, 12],   // row 0: explicit gaps after row-start and
-                         //         between each pair. First element's
-                         //         gap is ignored (no predecessor).
-      [0, 28, 20],       // row 1
-      [0, 16, 24],       // row 2
+      [0, 20, 40, 12], // row 0: explicit gaps after row-start and
+      //         between each pair. First element's
+      //         gap is ignored (no predecessor).
+      [0, 28, 20], // row 1
+      [0, 16, 24], // row 2
     ];
     const rowDists = <double>[0, 32, 56];
     final rowRanges = <(int, int)>[(0, 4), (4, 7), (7, 10)];
@@ -518,8 +521,10 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Non-form Tom widgets — same hide-unauthorized rule',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Non-form Tom widgets — same hide-unauthorized rule',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             layout,
           ],
@@ -571,8 +576,7 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
               label: 'Reset widgets',
               onPressed: () => setState(() {
                 for (final e in _galleryEntries) {
-                  _adapter.set(
-                      '$_galleryScope.${e.tomId}', TomAuthState.full);
+                  _adapter.set('$_galleryScope.${e.tomId}', TomAuthState.full);
                 }
               }),
             ),
@@ -596,19 +600,15 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
         children: [
           SelectableText(
             label,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(fontFamily: 'monospace'),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
           ),
           DropdownButton<TomAuthState>(
             isExpanded: true,
             value: current,
             items: TomAuthState.values
-                .map((s) => DropdownMenuItem(
-                      value: s,
-                      child: Text(s.name),
-                    ))
+                .map((s) => DropdownMenuItem(value: s, child: Text(s.name)))
                 .toList(),
             onChanged: (v) {
               if (v != null) onChanged(v);
@@ -619,8 +619,10 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
     );
   }
 
-  Widget _buildResetAllButton(
-      {required String label, required VoidCallback onPressed}) {
+  Widget _buildResetAllButton({
+    required String label,
+    required VoidCallback onPressed,
+  }) {
     return Align(
       alignment: AlignmentDirectional.centerStart,
       child: TextButton.icon(

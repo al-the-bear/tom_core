@@ -36,7 +36,8 @@ void main() {
     test('field and form validation both map to validation', () {
       expect(
         eventCategoryOf(
-            FieldValidatedEvent(source: 'f', result: const ValidationSuccess())),
+          FieldValidatedEvent(source: 'f', result: const ValidationSuccess()),
+        ),
         EventCategory.validation,
       );
       expect(
@@ -47,33 +48,48 @@ void main() {
 
     test('an effective-auth change maps to auth', () {
       expect(
-        eventCategoryOf(FieldAuthChangedEvent(
-          source: 'f',
-          oldState: TomAuthState.full,
-          newState: TomAuthState.read,
-        )),
+        eventCategoryOf(
+          FieldAuthChangedEvent(
+            source: 'f',
+            oldState: TomAuthState.full,
+            newState: TomAuthState.read,
+          ),
+        ),
         EventCategory.auth,
       );
     });
 
-    test('everything else (bind/commit/save/discard/list) maps to lifecycle',
-        () {
-      expect(eventCategoryOf(FieldBoundEvent(source: 'f')),
-          EventCategory.lifecycle);
-      expect(eventCategoryOf(FieldCommittedEvent(source: 'f')),
-          EventCategory.lifecycle);
-      expect(
-          eventCategoryOf(FormBoundEvent(source: 'f')), EventCategory.lifecycle);
-      expect(
-          eventCategoryOf(FormSavedEvent(source: 'f')), EventCategory.lifecycle);
-      expect(eventCategoryOf(FormDiscardedEvent(source: 'f')),
-          EventCategory.lifecycle);
-      expect(
-        eventCategoryOf(
-            ListItemAddedEvent(source: 'f', index: 0, itemFormId: 'i0')),
-        EventCategory.lifecycle,
-      );
-    });
+    test(
+      'everything else (bind/commit/save/discard/list) maps to lifecycle',
+      () {
+        expect(
+          eventCategoryOf(FieldBoundEvent(source: 'f')),
+          EventCategory.lifecycle,
+        );
+        expect(
+          eventCategoryOf(FieldCommittedEvent(source: 'f')),
+          EventCategory.lifecycle,
+        );
+        expect(
+          eventCategoryOf(FormBoundEvent(source: 'f')),
+          EventCategory.lifecycle,
+        );
+        expect(
+          eventCategoryOf(FormSavedEvent(source: 'f')),
+          EventCategory.lifecycle,
+        );
+        expect(
+          eventCategoryOf(FormDiscardedEvent(source: 'f')),
+          EventCategory.lifecycle,
+        );
+        expect(
+          eventCategoryOf(
+            ListItemAddedEvent(source: 'f', index: 0, itemFormId: 'i0'),
+          ),
+          EventCategory.lifecycle,
+        );
+      },
+    );
   });
 
   group('fieldAuthLabel — auth state → label', () {
@@ -90,8 +106,10 @@ void main() {
       expect(fieldValidationLabel(const ValidationPristine()), 'pristine');
       expect(fieldValidationLabel(const ValidationSuccess()), 'valid');
       expect(fieldValidationLabel(const ValidationPending()), 'pending');
-      expect(fieldValidationLabel(const ValidationError('minRequired')),
-          'error: minRequired');
+      expect(
+        fieldValidationLabel(const ValidationError('minRequired')),
+        'error: minRequired',
+      );
     });
   });
 
@@ -145,31 +163,39 @@ void main() {
     Future<TomFormInspector> pumpPanel(WidgetTester tester) async {
       final inspector = TomFormInspector()
         ..onFieldValueChanged(
-            FieldValueChangedEvent(source: 'a', newValue: '1'))
+          FieldValueChangedEvent(source: 'a', newValue: '1'),
+        )
         ..onFormValidated(FormValidatedEvent(source: 'f', errors: const []))
-        ..onFieldAuthChanged(FieldAuthChangedEvent(
-          source: 'a',
-          oldState: TomAuthState.full,
-          newState: TomAuthState.read,
-        ))
+        ..onFieldAuthChanged(
+          FieldAuthChangedEvent(
+            source: 'a',
+            oldState: TomAuthState.full,
+            newState: TomAuthState.read,
+          ),
+        )
         ..onFormBound(FormBoundEvent(source: 'f'));
       final rebuildOn = ValueNotifier<int>(0);
       addTearDown(rebuildOn.dispose);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: EventLogPanel(inspector: inspector, rebuildOn: rebuildOn),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EventLogPanel(inspector: inspector, rebuildOn: rebuildOn),
+          ),
         ),
-      ));
+      );
       return inspector;
     }
 
-    testWidgets('shows all events initially (one per category)',
-        (tester) async {
+    testWidgets('shows all events initially (one per category)', (
+      tester,
+    ) async {
       await pumpPanel(tester);
       expect(find.text('4 / 4 events'), findsOneWidget);
     });
 
-    testWidgets('deselecting a filter chip hides that category', (tester) async {
+    testWidgets('deselecting a filter chip hides that category', (
+      tester,
+    ) async {
       await pumpPanel(tester);
       // Toggle off the "value" chip — the single value event drops out.
       await tester.tap(find.widgetWithText(FilterChip, 'value'));
@@ -177,8 +203,9 @@ void main() {
       expect(find.text('3 / 4 events'), findsOneWidget);
     });
 
-    testWidgets('clear empties the log and shows the empty state',
-        (tester) async {
+    testWidgets('clear empties the log and shows the empty state', (
+      tester,
+    ) async {
       await pumpPanel(tester);
       await tester.tap(find.byTooltip('Clear log'));
       await tester.pumpAndSettle();

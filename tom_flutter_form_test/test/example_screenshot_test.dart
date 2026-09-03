@@ -81,19 +81,15 @@ import 'package:tom_flutter_form_test/main.reflection.dart';
 /// Wrap [child] in the same [MaterialApp] + theme the main app uses so
 /// colours and typography are consistent with production.
 Widget testApp(Widget child) => MaterialApp(
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: child,
-    );
+  theme: ThemeData(
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+    useMaterial3: true,
+  ),
+  home: child,
+);
 
 /// Pump [widget] at 1280 × 800 and take a golden screenshot at [path].
-Future<void> screenshot(
-  WidgetTester tester,
-  Widget widget,
-  String path,
-) async {
+Future<void> screenshot(WidgetTester tester, Widget widget, String path) async {
   tester.view.physicalSize = const Size(1280, 800);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
@@ -114,8 +110,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),

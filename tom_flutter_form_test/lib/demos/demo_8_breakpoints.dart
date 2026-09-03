@@ -61,7 +61,8 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
   /// Breakpoint-aware style. The override lists ride on `TomFieldStyle`;
   /// the scope feeds the live width into `resolveFieldStyle`.
   TomFormStyle get _style => TomFormStyle(
-        defaults: const TomFieldStyle(
+    defaults:
+        const TomFieldStyle(
           labelPlacement: LabelPlacement.floating,
           labelPlacementBpOverrides: [
             (400, LabelPlacement.above),
@@ -78,15 +79,9 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
             (700, TextStyle(fontSize: 15)),
           ],
           labelFieldGap: 2.0,
-          labelFieldGapBpOverrides: [
-            (400, 4.0),
-            (700, 8.0),
-          ],
+          labelFieldGapBpOverrides: [(400, 4.0), (700, 8.0)],
           errorFieldGap: 2.0,
-          errorFieldGapBpOverrides: [
-            (400, 4.0),
-            (700, 8.0),
-          ],
+          errorFieldGapBpOverrides: [(400, 4.0), (700, 8.0)],
           errorBorderEnabled: false,
           errorBorderEnabledBpOverrides: [(400, true)],
           errorIconEnabled: false,
@@ -100,7 +95,7 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
             borderSide: BorderSide(color: Color(0xFFBA1A1A), width: 2),
           ),
         ),
-      );
+  );
 
   void _triggerErrors() {
     _form.name.setValue('');
@@ -121,7 +116,10 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final totalWidth = constraints.maxWidth;
-          final paneWidth = (totalWidth * _widthFraction).clamp(140.0, totalWidth);
+          final paneWidth = (totalWidth * _widthFraction).clamp(
+            140.0,
+            totalWidth,
+          );
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -172,10 +170,7 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
   }
 
   Widget _buildForm() {
-    return TomAclBuilder(
-      id: 'basicForm',
-      elementProvider: _form,
-    )
+    return TomAclBuilder(id: 'basicForm', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
@@ -232,7 +227,9 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
     final gap = width >= 700 ? '8px' : (width >= 400 ? '4px' : '2px');
     final border = width >= 400 ? 'on' : 'off';
     final icon = width >= 500 ? 'on' : 'off';
-    final label = width >= 700 ? 'inline' : (width >= 400 ? 'above' : 'floating');
+    final label = width >= 700
+        ? 'inline'
+        : (width >= 400 ? 'above' : 'floating');
     final font = width >= 700 ? '15px' : (width >= 400 ? '13px' : '11px');
 
     return Card(
@@ -300,7 +297,8 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final on = value == 'on' ||
+    final on =
+        value == 'on' ||
         value == '8px' ||
         value == '4px' ||
         value == '15px' ||

@@ -145,15 +145,9 @@ class _DemoFBooleanVariantsState extends State<DemoFBooleanVariants> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -198,10 +192,10 @@ class _DemoFBooleanVariantsState extends State<DemoFBooleanVariants> {
   /// widget test needs a stable per-field anchor to scope its finders to one
   /// row. The key is the only thing here that exists for the tests.
   Widget _fieldRow(TomField<bool> field) => Padding(
-        key: ValueKey('field-${field.tomId}'),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: field.widget,
-      );
+    key: ValueKey('field-${field.tomId}'),
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: field.widget,
+  );
 
   Widget _buildIntroCard(BuildContext context) {
     final theme = Theme.of(context);
@@ -215,16 +209,21 @@ class _DemoFBooleanVariantsState extends State<DemoFBooleanVariants> {
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const DemoBullet(
-                'The three concrete boolean fields — TomFormBoolCheckbox, '
-                'TomFormBoolSwitch and TomFormBoolToggle — side-by-side, '
-                'each holding its own value so they can diverge.'),
-            const DemoBullet('A second row of the same three kept in '
-                'lock-step: flipping any one propagates to the other two '
-                'through the observable channel, no setState in this demo.'),
-            const DemoBullet('Every row draws its label from the field, not '
-                'from the demo — all three renderings share one label / '
-                'description / error anatomy via '
-                'TomGenericFieldDecorationMixin.'),
+              'The three concrete boolean fields — TomFormBoolCheckbox, '
+              'TomFormBoolSwitch and TomFormBoolToggle — side-by-side, '
+              'each holding its own value so they can diverge.',
+            ),
+            const DemoBullet(
+              'A second row of the same three kept in '
+              'lock-step: flipping any one propagates to the other two '
+              'through the observable channel, no setState in this demo.',
+            ),
+            const DemoBullet(
+              'Every row draws its label from the field, not '
+              'from the demo — all three renderings share one label / '
+              'description / error anatomy via '
+              'TomGenericFieldDecorationMixin.',
+            ),
           ],
         ),
       ),
@@ -278,9 +277,7 @@ class _DemoFBooleanVariantsState extends State<DemoFBooleanVariants> {
                       Expanded(
                         child: Text(
                           '${field.get()}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(fontFamily: 'monospace'),
                         ),
                       ),

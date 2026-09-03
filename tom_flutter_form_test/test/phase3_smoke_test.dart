@@ -19,8 +19,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -33,11 +32,14 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     // scrollUntilVisible only guarantees the tile is in the tree; tiles
     // near the list's end can straddle the viewport bottom. ensureVisible
     // nudges it on-screen, and we tap the ListTile ancestor (full-row hit
@@ -45,10 +47,9 @@ void main() {
     // the card padding so a tap on it silently misses.
     await tester.ensureVisible(find.text(tile));
     await tester.pumpAndSettle();
-    await tester.tap(find.ancestor(
-      of: find.text(tile),
-      matching: find.byType(ListTile),
-    ));
+    await tester.tap(
+      find.ancestor(of: find.text(tile), matching: find.byType(ListTile)),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -61,8 +62,9 @@ void main() {
     expect(find.text('Range sliders'), findsOneWidget);
   });
 
-  testWidgets('Demo J opens with date/time pickers + duration row',
-      (tester) async {
+  testWidgets('Demo J opens with date/time pickers + duration row', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo J: Date/Time/Duration Forms');
     expect(find.text('Demo J — Date/Time/Duration Forms'), findsOneWidget);
     expect(find.text('Dialog pickers'), findsOneWidget);

@@ -71,12 +71,16 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
   Future<void> _save() async {
     final ok = await _form.save();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok
-          ? 'Saved — phase2ProjectBriefState updated.'
-          : 'Validation failed — check field errors.'),
-      duration: const Duration(seconds: 2),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Saved — phase2ProjectBriefState updated.'
+              : 'Validation failed — check field errors.',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   /// Empties every string field in the form and its nested subforms.
@@ -102,15 +106,9 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -129,10 +127,11 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
 
   Widget _buildFormColumn(BuildContext context, BoxConstraints outer) {
     final isWide = outer.maxWidth >= 900;
-    final maxPaneWidth =
-        isWide ? outer.maxWidth * 0.6 : outer.maxWidth;
-    final paneWidth =
-        (maxPaneWidth * _widthFraction).clamp(300.0, maxPaneWidth);
+    final maxPaneWidth = isWide ? outer.maxWidth * 0.6 : outer.maxWidth;
+    final paneWidth = (maxPaneWidth * _widthFraction).clamp(
+      300.0,
+      maxPaneWidth,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -143,11 +142,7 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
         const SizedBox(height: 12),
         _activeBandBadge(context, paneWidth),
         const SizedBox(height: 12),
-        projectBriefActionBar(
-          context: context,
-          onClear: _clear,
-          onSave: _save,
-        ),
+        projectBriefActionBar(context: context, onClear: _clear, onSave: _save),
         const SizedBox(height: 12),
         Align(
           alignment: AlignmentDirectional.centerStart,
@@ -175,23 +170,33 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const DemoBullet('Four style presets swap at 400 / 800 / 1200 / '
-                '1600 px via styleBpOverrides (compact+1px → smaller fonts '
-                '→ material3+3px → bordered).'),
-            const DemoBullet('Four themes swap at the same widths via '
-                'themeBpOverrides — colour palette and font family both '
-                'change. withTheme() picks the new theme up automatically.'),
-            const DemoBullet('ACL exercises every breakpoint API: '
-                'addRowBreakpoint splits the classification and identity '
-                'rows at 800 and 400; setAclDefaultAppendGap scales gaps '
-                'per band; setAclDefaultRowHeight drives section row '
-                'heights; nested subforms stack below 1000.'),
-            const DemoBullet('The "priority" field is rendered as a '
-                'SegmentedButton above 1000 px and collapses to a '
-                'TomFormStringDropdown below — both write the same '
-                'observable, so type-swap is free of lost state.'),
-            const DemoBullet('Drag the splitter to cross every breakpoint '
-                'without resizing the window.'),
+            const DemoBullet(
+              'Four style presets swap at 400 / 800 / 1200 / '
+              '1600 px via styleBpOverrides (compact+1px → smaller fonts '
+              '→ material3+3px → bordered).',
+            ),
+            const DemoBullet(
+              'Four themes swap at the same widths via '
+              'themeBpOverrides — colour palette and font family both '
+              'change. withTheme() picks the new theme up automatically.',
+            ),
+            const DemoBullet(
+              'ACL exercises every breakpoint API: '
+              'addRowBreakpoint splits the classification and identity '
+              'rows at 800 and 400; setAclDefaultAppendGap scales gaps '
+              'per band; setAclDefaultRowHeight drives section row '
+              'heights; nested subforms stack below 1000.',
+            ),
+            const DemoBullet(
+              'The "priority" field is rendered as a '
+              'SegmentedButton above 1000 px and collapses to a '
+              'TomFormStringDropdown below — both write the same '
+              'observable, so type-swap is free of lost state.',
+            ),
+            const DemoBullet(
+              'Drag the splitter to cross every breakpoint '
+              'without resizing the window.',
+            ),
           ],
         ),
       ),
@@ -199,7 +204,10 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
   }
 
   Widget _splitterCard(
-      BuildContext context, double maxPaneWidth, double paneWidth) {
+    BuildContext context,
+    double maxPaneWidth,
+    double paneWidth,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -208,11 +216,15 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
           children: [
             Row(
               children: [
-                Text('Form pane width',
-                    style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  'Form pane width',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
                 const Spacer(),
-                Text('${paneWidth.toStringAsFixed(0)} px',
-                    style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  '${paneWidth.toStringAsFixed(0)} px',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ],
             ),
             Slider(
@@ -248,8 +260,10 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
       color: Theme.of(context).colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Text('Active band → $band',
-            style: Theme.of(context).textTheme.labelMedium),
+        child: Text(
+          'Active band → $band',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
       ),
     );
   }
@@ -273,24 +287,23 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
   }
 
   Widget _row(BuildContext context, String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 70,
-              child: Text(k,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontFamily: 'monospace',
-                      )),
-            ),
-            Expanded(
-              child:
-                  Text(v, style: Theme.of(context).textTheme.bodySmall),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            k,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+          ),
         ),
-      );
+        Expanded(child: Text(v, style: Theme.of(context).textTheme.bodySmall)),
+      ],
+    ),
+  );
 }
 
 // ===========================================================================
@@ -412,15 +425,27 @@ ThemeData _mkTheme({
   );
 }
 
-final _orangeMonoXs =
-    _mkTheme(seed: Colors.deepOrange, fontFamily: 'monospace', bodySize: 11);
-final _indigoMonoS =
-    _mkTheme(seed: Colors.indigo, fontFamily: 'monospace', bodySize: 12);
+final _orangeMonoXs = _mkTheme(
+  seed: Colors.deepOrange,
+  fontFamily: 'monospace',
+  bodySize: 11,
+);
+final _indigoMonoS = _mkTheme(
+  seed: Colors.indigo,
+  fontFamily: 'monospace',
+  bodySize: 12,
+);
 final _purpleSans = _mkTheme(seed: Colors.purple, bodySize: 14);
-final _tealSerifL =
-    _mkTheme(seed: Colors.teal, fontFamily: 'serif', bodySize: 16);
-final _blueSerifXl =
-    _mkTheme(seed: Colors.blue, fontFamily: 'serif', bodySize: 18);
+final _tealSerifL = _mkTheme(
+  seed: Colors.teal,
+  fontFamily: 'serif',
+  bodySize: 16,
+);
+final _blueSerifXl = _mkTheme(
+  seed: Colors.blue,
+  fontFamily: 'serif',
+  bodySize: 18,
+);
 
 final _styleBpOverrides = <(double, TomFormStyle)>[
   (800, _materialHeavy),
@@ -476,53 +501,53 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
         final prioritySegmented = width >= 1000;
 
         // ---- Identity row (code, title, budget) --------------------
-        final identity = TomAclBuilder(
-          id: 'identity',
-          elementProvider: widget.form,
-        )
-            .setAclExpandXDefault(true)
-            .setAclDefaultAppendGap(
-              16,
-              const [(400, 4), (800, 8), (1200, 16), (1600, 24)],
-            )
-            .append((p) => p.code.widget)
-            .append((p) => p.title.widget, dist: 16)
-            .addRowBreakpoint(atWidth: 900)
-            .append((p) => p.budget.widget, dist: 16)
-            .addRowBreakpoint(atWidth: 500);
+        final identity =
+            TomAclBuilder(id: 'identity', elementProvider: widget.form)
+                .setAclExpandXDefault(true)
+                .setAclDefaultAppendGap(16, const [
+                  (400, 4),
+                  (800, 8),
+                  (1200, 16),
+                  (1600, 24),
+                ])
+                .append((p) => p.code.widget)
+                .append((p) => p.title.widget, dist: 16)
+                .addRowBreakpoint(atWidth: 900)
+                .append((p) => p.budget.widget, dist: 16)
+                .addRowBreakpoint(atWidth: 500);
 
         // ---- Classification row with width-dependent splits ---------
-        final classification = TomAclBuilder(
-          id: 'classification',
-          elementProvider: widget.form,
-        )
-            .setAclExpandXDefault(true)
-            .setAclDefaultAppendGap(
-              12,
-              const [(400, 4), (800, 8), (1200, 12), (1600, 20)],
-            )
-            .append((p) => p.category.widget)
-            .append((p) => p.status.widget)
-            .addRowBreakpoint(atWidth: 1400)
-            .append((_) => _priorityWidget(prioritySegmented))
-            .append((p) => p.phase.widget)
-            .addRowBreakpoint(atWidth: 700)
-            .addRowBreakpoint(atWidth: 500);
+        final classification =
+            TomAclBuilder(id: 'classification', elementProvider: widget.form)
+                .setAclExpandXDefault(true)
+                .setAclDefaultAppendGap(12, const [
+                  (400, 4),
+                  (800, 8),
+                  (1200, 12),
+                  (1600, 20),
+                ])
+                .append((p) => p.category.widget)
+                .append((p) => p.status.widget)
+                .addRowBreakpoint(atWidth: 1400)
+                .append((_) => _priorityWidget(prioritySegmented))
+                .append((p) => p.phase.widget)
+                .addRowBreakpoint(atWidth: 700)
+                .addRowBreakpoint(atWidth: 500);
 
         // ---- Scope row (hours, deadline, location) ------------------
-        final scope = TomAclBuilder(
-          id: 'scope',
-          elementProvider: widget.form,
-        )
+        final scope = TomAclBuilder(id: 'scope', elementProvider: widget.form)
             .setAclExpandXDefault(true)
-            .setAclDefaultAppendGap(
-              12,
-              const [(400, 4), (800, 8), (1200, 12), (1600, 20)],
-            )
-            .setAclDefaultRowHeight(
-              null,
-              const [(400, 72), (800, null), (1200, null)],
-            )
+            .setAclDefaultAppendGap(12, const [
+              (400, 4),
+              (800, 8),
+              (1200, 12),
+              (1600, 20),
+            ])
+            .setAclDefaultRowHeight(null, const [
+              (400, 72),
+              (800, null),
+              (1200, null),
+            ])
             .append((p) => p.hoursEstimate.widget)
             .append((p) => p.deadline.widget)
             .addRowBreakpoint(atWidth: 900)
@@ -530,48 +555,39 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
             .addRowBreakpoint(atWidth: 500);
 
         // ---- Classic field row (still Phase-1 API) -------------------
-        final classic = TomAclBuilder(
-          id: 'classic',
-          elementProvider: widget.form,
-        )
-            .setAclExpandXDefault(true)
-            .setAclDefaultAppendGap(12)
-            .append((p) => p.internalRef.widget)
-            .append((p) => p.contactEmail.widget, dist: 16)
-            .addRowBreakpoint(atWidth: 900);
+        final classic =
+            TomAclBuilder(id: 'classic', elementProvider: widget.form)
+                .setAclExpandXDefault(true)
+                .setAclDefaultAppendGap(12)
+                .append((p) => p.internalRef.widget)
+                .append((p) => p.contactEmail.widget, dist: 16)
+                .addRowBreakpoint(atWidth: 900);
 
         // ---- Summary / description / risk (full-width multi-line) ---
         final summary = TomAclBuilder(
           id: 'summary',
           elementProvider: widget.form,
-        )
-            .setAclExpandXDefault(true)
-            .append((p) => p.summary.widget);
+        ).setAclExpandXDefault(true).append((p) => p.summary.widget);
         final description = TomAclBuilder(
           id: 'description',
           elementProvider: widget.form,
-        )
-            .setAclExpandXDefault(true)
-            .append((p) => p.description.widget);
+        ).setAclExpandXDefault(true).append((p) => p.description.widget);
         final riskNotes = TomAclBuilder(
           id: 'riskNotes',
           elementProvider: widget.form,
-        )
-            .setAclExpandXDefault(true)
-            .append((p) => p.riskNotes.widget);
+        ).setAclExpandXDefault(true).append((p) => p.riskNotes.widget);
 
         // ---- Nested Person subforms — side-by-side or stacked -------
         final lead = _personSubform(context, 'Lead', widget.form.lead);
-        final reviewer =
-            _personSubform(context, 'Reviewer', widget.form.reviewer);
+        final reviewer = _personSubform(
+          context,
+          'Reviewer',
+          widget.form.reviewer,
+        );
         final people = stackSubforms
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  lead,
-                  const SizedBox(height: 12),
-                  reviewer,
-                ],
+                children: [lead, const SizedBox(height: 12), reviewer],
               )
             : Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -617,10 +633,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
   Widget _sectionCard(Widget child) {
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: child,
-      ),
+      child: Padding(padding: const EdgeInsets.all(12), child: child),
     );
   }
 
@@ -668,8 +681,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
               ButtonSegment(value: 'critical', label: Text('critical')),
             ],
             selected: {value.isEmpty ? 'medium' : value},
-            onSelectionChanged: (s) =>
-                widget.form.priority.setValue(s.first),
+            onSelectionChanged: (s) => widget.form.priority.setValue(s.first),
             showSelectedIcon: false,
           ),
         );
@@ -677,14 +689,10 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
     );
   }
 
-  Widget _personSubform(
-      BuildContext context, String label, PersonSubform sub) {
+  Widget _personSubform(BuildContext context, String label, PersonSubform sub) {
     final layout = TomAclBuilder(id: label.toLowerCase(), elementProvider: sub)
         .setAclExpandXDefault(true)
-        .setAclDefaultAppendGap(
-          12,
-          const [(400, 4), (800, 8)],
-        )
+        .setAclDefaultAppendGap(12, const [(400, 4), (800, 8)])
         .append((p) => p.firstName.widget)
         .append((p) => p.lastName.widget)
         .addRowBreakpoint(atWidth: 500)
@@ -727,21 +735,28 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Flags (Phase 2 bool stand-ins)',
-                style: theme.textTheme.titleSmall),
+            Text(
+              'Flags (Phase 2 bool stand-ins)',
+              style: theme.textTheme.titleSmall,
+            ),
             Wrap(
               spacing: 12,
               runSpacing: 4,
               children: [
                 _boolSwitch(context, state.isPublic, 'Public'),
                 _boolSwitch(context, state.needsReview, 'Needs review'),
-                _boolSwitch(context, state.notifySubscribers,
-                    'Notify subscribers'),
+                _boolSwitch(
+                  context,
+                  state.notifySubscribers,
+                  'Notify subscribers',
+                ),
               ],
             ),
             const SizedBox(height: 8),
-            Text('Tags (Phase 2 multi-select stand-in)',
-                style: theme.textTheme.titleSmall),
+            Text(
+              'Tags (Phase 2 multi-select stand-in)',
+              style: theme.textTheme.titleSmall,
+            ),
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -749,8 +764,8 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
                 for (final t in state.tags.toList())
                   InputChip(
                     label: Text(t.get()),
-                    onDeleted: () => state.tags
-                        .removeWhere((o) => o.get() == t.get()),
+                    onDeleted: () =>
+                        state.tags.removeWhere((o) => o.get() == t.get()),
                   ),
               ],
             ),
@@ -764,10 +779,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Switch(
-          value: flag.get(),
-          onChanged: (v) => flag | v,
-        ),
+        Switch(value: flag.get(), onChanged: (v) => flag | v),
         Text(label),
       ],
     );

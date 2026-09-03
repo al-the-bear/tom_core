@@ -174,21 +174,26 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              Expanded(
-                  child: Text('Shipping addresses',
-                      style: theme.textTheme.titleSmall)),
-              FilledButton.tonalIcon(
-                icon: const Icon(Icons.edit, size: 14),
-                label: const Text('Edit list'),
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (_) =>
-                      _ShippingEditOverlay(listForm: _form.shippingAddresses),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Shipping addresses',
+                    style: theme.textTheme.titleSmall,
+                  ),
                 ),
-              ),
-            ]),
+                FilledButton.tonalIcon(
+                  icon: const Icon(Icons.edit, size: 14),
+                  label: const Text('Edit list'),
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) =>
+                        _ShippingEditOverlay(listForm: _form.shippingAddresses),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             _ShippingROList(listForm: _form.shippingAddresses),
           ],
@@ -205,19 +210,22 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              Expanded(
-                  child: Text('Orders', style: theme.textTheme.titleSmall)),
-              FilledButton.tonalIcon(
-                icon: const Icon(Icons.edit, size: 14),
-                label: const Text('Edit list'),
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (_) => _OrderEditOverlay(parentForm: _form),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Orders', style: theme.textTheme.titleSmall),
                 ),
-              ),
-            ]),
+                FilledButton.tonalIcon(
+                  icon: const Icon(Icons.edit, size: 14),
+                  label: const Text('Edit list'),
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => _OrderEditOverlay(parentForm: _form),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             _OrderROList(listForm: _form.orders),
           ],
@@ -241,9 +249,11 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(ok
-                            ? 'Customer saved.'
-                            : 'Validation failed — check errors.'),
+                        content: Text(
+                          ok
+                              ? 'Customer saved.'
+                              : 'Validation failed — check errors.',
+                        ),
                         duration: const Duration(seconds: 2),
                       ),
                     );
@@ -257,7 +267,9 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
           ),
           if (_form.isDirty)
             const Chip(
-                label: Text('Dirty'), visualDensity: VisualDensity.compact),
+              label: Text('Dirty'),
+              visualDensity: VisualDensity.compact,
+            ),
         ],
       ),
     );
@@ -311,8 +323,9 @@ class _ShippingROListState extends State<_ShippingROList>
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
         child: Text(
-            'No shipping addresses yet. Tap "Edit list" to add one.',
-            style: TextStyle(fontStyle: FontStyle.italic)),
+          'No shipping addresses yet. Tap "Edit list" to add one.',
+          style: TextStyle(fontStyle: FontStyle.italic),
+        ),
       );
     }
 
@@ -329,13 +342,14 @@ class _ShippingROListState extends State<_ShippingROList>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
               side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant),
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
             ),
             child: ListTile(
               leading: CircleAvatar(
-                  radius: 14,
-                  child:
-                      Text('${i + 1}', style: const TextStyle(fontSize: 11))),
+                radius: 14,
+                child: Text('${i + 1}', style: const TextStyle(fontSize: 11)),
+              ),
               title: Text(
                 addr?.label.get().isEmpty ?? true
                     ? '(unnamed)'
@@ -404,8 +418,10 @@ class _OrderROListState extends State<_OrderROList> implements TomObserver {
     if (widget.listForm.length == 0) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
-        child: Text('No orders yet. Tap "Edit list" to add one.',
-            style: TextStyle(fontStyle: FontStyle.italic)),
+        child: Text(
+          'No orders yet. Tap "Edit list" to add one.',
+          style: TextStyle(fontStyle: FontStyle.italic),
+        ),
       );
     }
 
@@ -422,13 +438,14 @@ class _OrderROListState extends State<_OrderROList> implements TomObserver {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
               side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant),
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
             ),
             child: ListTile(
               leading: CircleAvatar(
-                  radius: 14,
-                  child:
-                      Text('${i + 1}', style: const TextStyle(fontSize: 11))),
+                radius: 14,
+                child: Text('${i + 1}', style: const TextStyle(fontSize: 11)),
+              ),
               title: Text(
                 order?.orderId.get().isEmpty ?? true
                     ? '(new order)'
@@ -474,33 +491,41 @@ class _ShippingEditOverlay extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(children: [
-                Expanded(
-                    child: Text('Edit shipping addresses',
-                        style: theme.textTheme.titleMedium)),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ]),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Edit shipping addresses',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
               const Divider(),
               const SizedBox(height: 8),
               Expanded(
-                child: TomMasterDetailListForm<ShippingAddressHD,
-                    ShippingAddressHDForm>(
-                  listForm: listForm,
-                  masterPaneWidth: 220,
-                  masterBuilder:
-                      (context, listForm, selected, selectIndex) =>
-                          AddressMasterPane(
-                    listForm: listForm,
-                    selectedIndex: selected,
-                    selectIndex: selectIndex,
-                  ),
-                  detailBuilder: (context, _, rowForm) =>
-                      AddressDetailPane(form: rowForm),
-                ),
+                child:
+                    TomMasterDetailListForm<
+                      ShippingAddressHD,
+                      ShippingAddressHDForm
+                    >(
+                      listForm: listForm,
+                      masterPaneWidth: 220,
+                      masterBuilder:
+                          (context, listForm, selected, selectIndex) =>
+                              AddressMasterPane(
+                                listForm: listForm,
+                                selectedIndex: selected,
+                                selectIndex: selectIndex,
+                              ),
+                      detailBuilder: (context, _, rowForm) =>
+                          AddressDetailPane(form: rowForm),
+                    ),
               ),
               const SizedBox(height: 12),
               Align(
@@ -539,29 +564,33 @@ class _OrderEditOverlay extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(children: [
-                Expanded(
-                    child: Text('Edit orders',
-                        style: theme.textTheme.titleMedium)),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ]),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Edit orders',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
               const Divider(),
               const SizedBox(height: 8),
               Expanded(
                 child: TomMasterDetailListForm<OrderHD, OrderHDForm>(
                   listForm: parentForm.orders,
                   masterPaneWidth: 220,
-                  masterBuilder:
-                      (context, listForm, selected, selectIndex) =>
-                          OrderMasterPane(
-                    listForm: listForm,
-                    selectedIndex: selected,
-                    selectIndex: selectIndex,
-                  ),
+                  masterBuilder: (context, listForm, selected, selectIndex) =>
+                      OrderMasterPane(
+                        listForm: listForm,
+                        selectedIndex: selected,
+                        selectIndex: selectIndex,
+                      ),
                   detailBuilder: (context, _, rowForm) =>
                       OrderDetailPane(form: rowForm),
                 ),

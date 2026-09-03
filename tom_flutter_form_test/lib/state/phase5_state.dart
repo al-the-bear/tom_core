@@ -45,32 +45,32 @@ Phase5DemoState phase5DemoState = Phase5DemoState();
 class _ColorSource extends TomSelectableSource<String> {
   @override
   Future<List<SelectableItem<String>>> getItems() async => const [
-        SelectableItem<String>(value: 'red', label: 'Red'),
-        SelectableItem<String>(value: 'green', label: 'Green'),
-        SelectableItem<String>(value: 'blue', label: 'Blue'),
-        SelectableItem<String>(value: 'yellow', label: 'Yellow'),
-        SelectableItem<String>(value: 'purple', label: 'Purple'),
-      ];
+    SelectableItem<String>(value: 'red', label: 'Red'),
+    SelectableItem<String>(value: 'green', label: 'Green'),
+    SelectableItem<String>(value: 'blue', label: 'Blue'),
+    SelectableItem<String>(value: 'yellow', label: 'Yellow'),
+    SelectableItem<String>(value: 'purple', label: 'Purple'),
+  ];
 }
 
 class _SizeSource extends TomSelectableSource<String> {
   @override
   Future<List<SelectableItem<String>>> getItems() async => const [
-        SelectableItem<String>(value: 'S', label: 'S'),
-        SelectableItem<String>(value: 'M', label: 'M'),
-        SelectableItem<String>(value: 'L', label: 'L'),
-      ];
+    SelectableItem<String>(value: 'S', label: 'S'),
+    SelectableItem<String>(value: 'M', label: 'M'),
+    SelectableItem<String>(value: 'L', label: 'L'),
+  ];
 }
 
 class _TagSource extends TomSelectableSource<String> {
   @override
   Future<List<SelectableItem<String>>> getItems() async => const [
-        SelectableItem<String>(value: 'alpha', label: 'Alpha'),
-        SelectableItem<String>(value: 'beta', label: 'Beta'),
-        SelectableItem<String>(value: 'gamma', label: 'Gamma'),
-        SelectableItem<String>(value: 'delta', label: 'Delta'),
-        SelectableItem<String>(value: 'epsilon', label: 'Epsilon'),
-      ];
+    SelectableItem<String>(value: 'alpha', label: 'Alpha'),
+    SelectableItem<String>(value: 'beta', label: 'Beta'),
+    SelectableItem<String>(value: 'gamma', label: 'Gamma'),
+    SelectableItem<String>(value: 'delta', label: 'Delta'),
+    SelectableItem<String>(value: 'epsilon', label: 'Epsilon'),
+  ];
 }
 
 final TomSelectableSource<String> phase5ColorSource = _ColorSource();

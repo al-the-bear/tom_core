@@ -92,8 +92,7 @@ class _DemoNCupertinoNumericDateTimeState
                             children: [
                               Expanded(child: _formColumn(context)),
                               const SizedBox(width: 16),
-                              SizedBox(
-                                  width: 280, child: _statePanel(context)),
+                              SizedBox(width: 280, child: _statePanel(context)),
                             ],
                           )
                         : Column(
@@ -123,7 +122,9 @@ class _DemoNCupertinoNumericDateTimeState
       child: Row(
         children: [
           Icon(
-            wide ? CupertinoIcons.rectangle_split_3x1 : CupertinoIcons.rectangle,
+            wide
+                ? CupertinoIcons.rectangle_split_3x1
+                : CupertinoIcons.rectangle,
             size: 18,
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -246,8 +247,7 @@ class _DemoNCupertinoNumericDateTimeState
               ('quantity', '${_form.quantity.get()}'),
               ('brightness', '${_form.brightness.get()}'),
               ('ratio', _form.ratio.get().toStringAsFixed(2)),
-              ('price (USD)',
-                  _form.price.get().toStringAsFixed(2)),
+              ('price (USD)', _form.price.get().toStringAsFixed(2)),
               ('eventDate', dateStr(_form.eventDate.get())),
               ('eventTime', timeStr(_form.eventTime.get())),
               ('eventDateTime', dtStr(_form.eventDateTime.get())),
@@ -266,8 +266,7 @@ class _DemoNCupertinoNumericDateTimeState
                       children: [
                         SizedBox(
                           width: 110,
-                          child: Text(name,
-                              style: theme.textTheme.bodySmall),
+                          child: Text(name, style: theme.textTheme.bodySmall),
                         ),
                         Expanded(
                           child: Text(

@@ -32,12 +32,12 @@ import 'package:tom_flutter_form_test/main.reflection.dart';
 // ---------------------------------------------------------------------------
 
 Widget _wrap(Widget child) => MaterialApp(
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: child,
-    );
+  theme: ThemeData(
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+    useMaterial3: true,
+  ),
+  home: child,
+);
 
 Future<void> _pump(WidgetTester tester, Widget widget) async {
   tester.view.physicalSize = const Size(1280, 800);
@@ -58,8 +58,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -69,7 +68,9 @@ void main() {
 
   // ── Example list screen ─────────────────────────────────────────────────
 
-  testWidgets('Example list screen renders all section headers', (tester) async {
+  testWidgets('Example list screen renders all section headers', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -90,7 +91,9 @@ void main() {
 
   testWidgets('H-A Material — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHAMasterDetail(family: ExampleFamily.material));
+      tester,
+      const ExampleHAMasterDetail(family: ExampleFamily.material),
+    );
     // Seed data: Ada Lovelace should appear in the master pane and detail pane.
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
     expect(find.textContaining('Full name'), findsAtLeastNWidgets(1));
@@ -98,7 +101,9 @@ void main() {
 
   testWidgets('H-A Cupertino — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHAMasterDetail(family: ExampleFamily.cupertino));
+      tester,
+      const ExampleHAMasterDetail(family: ExampleFamily.cupertino),
+    );
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
   });
 
@@ -106,7 +111,9 @@ void main() {
 
   testWidgets('H-B Material — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHBExpandableRows(family: ExampleFamily.material));
+      tester,
+      const ExampleHBExpandableRows(family: ExampleFamily.material),
+    );
     // Header shows the customer name; row summary shows order id.
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
     expect(find.textContaining('ORD-'), findsAtLeastNWidgets(1));
@@ -114,7 +121,9 @@ void main() {
 
   testWidgets('H-B Cupertino — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHBExpandableRows(family: ExampleFamily.cupertino));
+      tester,
+      const ExampleHBExpandableRows(family: ExampleFamily.cupertino),
+    );
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
   });
 
@@ -122,7 +131,9 @@ void main() {
 
   testWidgets('H-C Material — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHCEditableTable(family: ExampleFamily.material));
+      tester,
+      const ExampleHCEditableTable(family: ExampleFamily.material),
+    );
     // Wide viewport: table header columns should be visible.
     expect(find.text('Items'), findsOneWidget);
     expect(find.textContaining('Difference Engine'), findsAtLeastNWidgets(1));
@@ -130,7 +141,9 @@ void main() {
 
   testWidgets('H-C Cupertino — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHCEditableTable(family: ExampleFamily.cupertino));
+      tester,
+      const ExampleHCEditableTable(family: ExampleFamily.cupertino),
+    );
     expect(find.text('Items'), findsOneWidget);
   });
 
@@ -138,14 +151,18 @@ void main() {
 
   testWidgets('H-D Material — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHDCustomerForm(family: ExampleFamily.material));
+      tester,
+      const ExampleHDCustomerForm(family: ExampleFamily.material),
+    );
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
     expect(find.textContaining('Full name'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('H-D Cupertino — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHDCustomerForm(family: ExampleFamily.cupertino));
+      tester,
+      const ExampleHDCustomerForm(family: ExampleFamily.cupertino),
+    );
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
   });
 
@@ -153,14 +170,18 @@ void main() {
 
   testWidgets('H-E Material — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHEReadOnly(family: ExampleFamily.material));
+      tester,
+      const ExampleHEReadOnly(family: ExampleFamily.material),
+    );
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
     expect(find.textContaining('ada@example.com'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('H-E Cupertino — mounts without exceptions', (tester) async {
     await _pump(
-        tester, const ExampleHEReadOnly(family: ExampleFamily.cupertino));
+      tester,
+      const ExampleHEReadOnly(family: ExampleFamily.cupertino),
+    );
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
   });
 }

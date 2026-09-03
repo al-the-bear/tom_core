@@ -27,8 +27,9 @@ void main() {
     );
   });
 
-  testWidgets('Demo G title field keeps focus across multiple keypresses',
-      (tester) async {
+  testWidgets('Demo G title field keeps focus across multiple keypresses', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(2400, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -41,21 +42,30 @@ void main() {
     final titleField = tester
         .widgetList<TextField>(find.byType(TextField))
         .firstWhere(
-            (t) => t.controller?.text == 'Responsive dashboard refresh');
+          (t) => t.controller?.text == 'Responsive dashboard refresh',
+        );
 
     await tester.tap(find.byWidget(titleField));
     await tester.pumpAndSettle();
-    expect(titleField.focusNode?.hasFocus, isTrue,
-        reason: 'Tap should give the title field focus.');
+    expect(
+      titleField.focusNode?.hasFocus,
+      isTrue,
+      reason: 'Tap should give the title field focus.',
+    );
 
     // Type three characters. If focus were lost after the first one,
     // only the first character would land.
-    await tester.enterText(find.byWidget(titleField),
-        '${titleField.controller?.text}!!!');
+    await tester.enterText(
+      find.byWidget(titleField),
+      '${titleField.controller?.text}!!!',
+    );
     await tester.pumpAndSettle();
 
     expect(titleField.controller?.text, 'Responsive dashboard refresh!!!');
-    expect(titleField.focusNode?.hasFocus, isTrue,
-        reason: 'Typing must not unfocus the field.');
+    expect(
+      titleField.focusNode?.hasFocus,
+      isTrue,
+      reason: 'Typing must not unfocus the field.',
+    );
   });
 }

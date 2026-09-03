@@ -82,8 +82,9 @@ void main() {
 
   // ─── Test 2: Demo 1 renders without overflow ──────────────────────────────
 
-  testWidgets('T02: Demo 1 - Basic Form renders without overflow',
-      (tester) async {
+  testWidgets('T02: Demo 1 - Basic Form renders without overflow', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -148,8 +149,9 @@ void main() {
 
   // ─── Test 5: Demo 2 renders nested forms ──────────────────────────────────
 
-  testWidgets('T05: Demo 2 - Nested Forms renders both sections',
-      (tester) async {
+  testWidgets('T05: Demo 2 - Nested Forms renders both sections', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo2NestedForms()));
     await tester.pumpAndSettle();
 
@@ -177,22 +179,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // Check pre-populated values are displayed in TextFields
-    expect(
-      find.widgetWithText(TextField, '123 Main St'),
-      findsOneWidget,
-    );
-    expect(
-      find.widgetWithText(TextField, 'San Francisco'),
-      findsOneWidget,
-    );
-    expect(
-      find.widgetWithText(TextField, 'Jane'),
-      findsOneWidget,
-    );
-    expect(
-      find.widgetWithText(TextField, 'Doe'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(TextField, '123 Main St'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'San Francisco'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Jane'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Doe'), findsOneWidget);
   });
 
   // ─── Test 7: Demo 3 renders authorization controls ────────────────────────
@@ -219,8 +209,9 @@ void main() {
 
   // ─── Test 8: Demo 3 toggle name read-only ─────────────────────────────────
 
-  testWidgets('T08: Demo 3 - Toggle name read-only changes status',
-      (tester) async {
+  testWidgets('T08: Demo 3 - Toggle name read-only changes status', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo3Authorization()));
     await tester.pumpAndSettle();
 
@@ -239,8 +230,9 @@ void main() {
 
   // ─── Test 9: Demo 4 renders validation info ──────────────────────────────
 
-  testWidgets('T09: Demo 4 - Validation demo renders field labels',
-      (tester) async {
+  testWidgets('T09: Demo 4 - Validation demo renders field labels', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo4Validation()));
     await tester.pumpAndSettle();
 
@@ -255,15 +247,17 @@ void main() {
       find.textContaining('Validators: required, minLength(2)'),
       findsOneWidget,
     );
-    expect(find.textContaining('Validators: required, pattern'), findsOneWidget);
+    expect(
+      find.textContaining('Validators: required, pattern'),
+      findsOneWidget,
+    );
 
     expect(tester.takeException(), isNull);
   });
 
   // ─── Test 10: Demo 5 renders settings form ────────────────────────────────
 
-  testWidgets('T10: Demo 5 - Settings form renders all fields',
-      (tester) async {
+  testWidgets('T10: Demo 5 - Settings form renders all fields', (tester) async {
     await tester.pumpWidget(buildTestApp(const Demo5SettingsForm()));
     await tester.pumpAndSettle();
 

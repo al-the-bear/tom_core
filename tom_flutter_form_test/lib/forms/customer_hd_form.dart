@@ -81,13 +81,9 @@ class OrderItemHDForm extends TomForm<OrderItemHD> {
 // 2. Order items list form
 // ---------------------------------------------------------------------------
 
-class OrderItemHDListForm
-    extends TomListForm<OrderItemHD, OrderItemHDForm> {
+class OrderItemHDListForm extends TomListForm<OrderItemHD, OrderItemHDForm> {
   OrderItemHDListForm({required super.parentForm})
-      : super(
-          listId: 'orderItemHD',
-          formFactory: (_) => OrderItemHDForm(),
-        );
+    : super(listId: 'orderItemHD', formFactory: (_) => OrderItemHDForm());
 
   @override
   OrderItemHD createItem() {
@@ -116,9 +112,9 @@ class OrderHDForm extends TomForm<OrderHD> {
   /// search picker over the customer's current shipping address labels.
   /// Falls back to a plain text input when null (e.g. in stand-alone tests).
   OrderHDForm({TomSelectableSource<String>? shippingLabelSource})
-      : _shippingLabelSource =
-            shippingLabelSource ?? StaticSelectableSource<String>([]),
-        super(formId: 'orderHD');
+    : _shippingLabelSource =
+          shippingLabelSource ?? StaticSelectableSource<String>([]),
+      super(formId: 'orderHD');
 
   final TomSelectableSource<String> _shippingLabelSource;
 
@@ -149,8 +145,7 @@ class OrderHDForm extends TomForm<OrderHD> {
     hintTextOverride: 'Select or type an address label…',
   );
 
-  late final OrderItemHDListForm items =
-      OrderItemHDListForm(parentForm: this);
+  late final OrderItemHDListForm items = OrderItemHDListForm(parentForm: this);
 
   double get totalAmount {
     double total = 0;
@@ -185,17 +180,16 @@ class OrderHDListForm extends TomListForm<OrderHD, OrderHDForm> {
     required super.parentForm,
     TomSelectableSource<String>? shippingLabelSource,
   }) : super(
-          listId: 'orderHD',
-          formFactory: (_) =>
-              OrderHDForm(shippingLabelSource: shippingLabelSource),
-        );
+         listId: 'orderHD',
+         formFactory: (_) =>
+             OrderHDForm(shippingLabelSource: shippingLabelSource),
+       );
 
   @override
   OrderHD createItem() {
     final o = OrderHD();
     final now = DateTime.now();
-    o.orderId |
-        'ORD-${now.millisecondsSinceEpoch % 10000}'.padLeft(7, '0');
+    o.orderId | 'ORD-${now.millisecondsSinceEpoch % 10000}'.padLeft(7, '0');
     o.orderDate |
         '${now.year}-${now.month.toString().padLeft(2, '0')}'
             '-${now.day.toString().padLeft(2, '0')}';
@@ -282,10 +276,10 @@ class ShippingAddressHDForm extends TomForm<ShippingAddressHD> {
 class ShippingAddressHDListForm
     extends TomListForm<ShippingAddressHD, ShippingAddressHDForm> {
   ShippingAddressHDListForm({required super.parentForm})
-      : super(
-          listId: 'shippingAddressHD',
-          formFactory: (_) => ShippingAddressHDForm(),
-        );
+    : super(
+        listId: 'shippingAddressHD',
+        formFactory: (_) => ShippingAddressHDForm(),
+      );
 
   @override
   ShippingAddressHD createItem() {

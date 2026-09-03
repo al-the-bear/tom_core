@@ -21,26 +21,31 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
   });
 
-  Future<void> openDemo(WidgetTester tester, String tile,
-      {Size size = const Size(2400, 2400)}) async {
+  Future<void> openDemo(
+    WidgetTester tester,
+    String tile, {
+    Size size = const Size(2400, 2400),
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.ensureVisible(find.text(tile));
     await tester.pumpAndSettle();
     await tester.tap(find.text(tile), warnIfMissed: false);
@@ -51,10 +56,13 @@ void main() {
   // Demo O — Cupertino search / lookup / file + nullable
   // -------------------------------------------------------------------
 
-  testWidgets('Demo O opens and renders all 7 Phase 5c field labels',
-      (tester) async {
+  testWidgets('Demo O opens and renders all 7 Phase 5c field labels', (
+    tester,
+  ) async {
     await openDemo(
-        tester, 'Demo O: Cupertino search / lookup / file (Phase 5c)');
+      tester,
+      'Demo O: Cupertino search / lookup / file (Phase 5c)',
+    );
     expect(
       find.text('Demo O — Cupertino search / lookup / file (Phase 5c)'),
       findsOneWidget,
@@ -82,20 +90,20 @@ void main() {
   // Demo P — FormFieldFamily swap by breakpoint
   // -------------------------------------------------------------------
 
-  testWidgets('Demo P opens at wide width — Material family active',
-      (tester) async {
+  testWidgets('Demo P opens at wide width — Material family active', (
+    tester,
+  ) async {
     await openDemo(
-        tester, 'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
-        size: const Size(1600, 2400));
+      tester,
+      'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
+      size: const Size(1600, 2400),
+    );
     expect(
       find.text('Demo P — FormFieldFamily swap by breakpoint (Phase 5c)'),
       findsOneWidget,
     );
     // Breakpoint badge — wide branch shows Material kind
-    expect(
-      find.textContaining('wide \u2192 Material'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('wide \u2192 Material'), findsOneWidget);
     // Active-family section header reflects Material
     expect(find.text('Active family: material'), findsOneWidget);
     // All five family-form anchor labels render
@@ -108,22 +116,19 @@ void main() {
     // concretes that the mixin's `=> null` had shadowed).
     expect(find.text('Event date'), findsAtLeastNWidgets(1));
     // Shared-state panel header
-    expect(
-      find.text('Shared state (Phase5cFamilyState)'),
-      findsOneWidget,
-    );
+    expect(find.text('Shared state (Phase5cFamilyState)'), findsOneWidget);
   });
 
-  testWidgets('Demo P swaps to Cupertino family at narrow width',
-      (tester) async {
+  testWidgets('Demo P swaps to Cupertino family at narrow width', (
+    tester,
+  ) async {
     await openDemo(
-        tester, 'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
-        size: const Size(600, 3000));
-    // Breakpoint badge — narrow branch shows Cupertino kind
-    expect(
-      find.textContaining('narrow \u2192 Cupertino'),
-      findsOneWidget,
+      tester,
+      'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
+      size: const Size(600, 3000),
     );
+    // Breakpoint badge — narrow branch shows Cupertino kind
+    expect(find.textContaining('narrow \u2192 Cupertino'), findsOneWidget);
     // Active-family section header reflects Cupertino
     expect(find.text('Active family: cupertino'), findsOneWidget);
     // First-section anchor label still rendered above the fold

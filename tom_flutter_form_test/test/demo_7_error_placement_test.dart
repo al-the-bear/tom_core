@@ -28,8 +28,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -51,34 +50,39 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo 7: Error Placement'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo 7: Error Placement'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo 7: Error Placement'));
     await tester.pumpAndSettle();
   }
 
   Future<void> tapOutlined(WidgetTester tester, String label) async {
     final btn = find.widgetWithText(OutlinedButton, label);
-    expect(btn, findsAtLeastNWidgets(1),
-        reason: 'OutlinedButton "$label" must exist');
+    expect(
+      btn,
+      findsAtLeastNWidgets(1),
+      reason: 'OutlinedButton "$label" must exist',
+    );
     await tester.ensureVisible(btn.first);
     await tester.pumpAndSettle();
     await tester.tap(btn.first);
     await tester.pumpAndSettle();
   }
 
-  Future<void> tapPlacement(
-    WidgetTester tester,
-    String label,
-  ) async {
+  Future<void> tapPlacement(WidgetTester tester, String label) async {
     final segmented = find.byType(SegmentedButton<ErrorPlacement>);
     expect(segmented, findsOneWidget);
     final seg = find.descendant(of: segmented, matching: find.text(label));
-    expect(seg, findsOneWidget,
-        reason: 'segment "$label" must exist on the placement control');
+    expect(
+      seg,
+      findsOneWidget,
+      reason: 'segment "$label" must exist on the placement control',
+    );
     await tester.ensureVisible(seg);
     await tester.pumpAndSettle();
     await tester.tap(seg);
@@ -86,8 +90,9 @@ void main() {
   }
 
   Set<ErrorPlacement> selected(WidgetTester tester) {
-    final w = find.byType(SegmentedButton<ErrorPlacement>).evaluate().first
-        .widget as SegmentedButton<ErrorPlacement>;
+    final w =
+        find.byType(SegmentedButton<ErrorPlacement>).evaluate().first.widget
+            as SegmentedButton<ErrorPlacement>;
     return w.selected;
   }
 
@@ -101,15 +106,17 @@ void main() {
     );
   }
 
-  testWidgets('baseline — controls render and no error text is visible',
-      (tester) async {
+  testWidgets('baseline — controls render and no error text is visible', (
+    tester,
+  ) async {
     await openDemo7(tester);
     expect(find.byType(SegmentedButton<ErrorPlacement>), findsOneWidget);
     expect(selected(tester), {ErrorPlacement.below});
-    expect(find.widgetWithText(OutlinedButton, 'Trigger errors'),
-        findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Clear errors'),
-        findsOneWidget);
+    expect(
+      find.widgetWithText(OutlinedButton, 'Trigger errors'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(OutlinedButton, 'Clear errors'), findsOneWidget);
     // The bound state is valid → no error text on screen.
     expect(find.text('Company name is required.'), findsNothing);
     expect(find.textContaining('Please enter a valid URL'), findsNothing);
@@ -119,37 +126,48 @@ void main() {
     expect(fieldByTomId('website'), findsOneWidget);
   });
 
-  testWidgets('Trigger errors surfaces required + invalid-URL messages',
-      (tester) async {
+  testWidgets('Trigger errors surfaces required + invalid-URL messages', (
+    tester,
+  ) async {
     await openDemo7(tester);
     await tapOutlined(tester, 'Trigger errors');
     // Empty name → required. The resolved message uses the field's resource
     // path (`companyBasicInfo.name.error.required`).
-    expect(find.text('Company name is required.'), findsAtLeastNWidgets(1),
-        reason: 'empty name must surface the required error');
+    expect(
+      find.text('Company name is required.'),
+      findsAtLeastNWidgets(1),
+      reason: 'empty name must surface the required error',
+    );
     // Bad URL — field-scoped resource resolves to the long form.
     expect(
-      find.text(
-          'Please enter a valid URL starting with http:// or https://.'),
+      find.text('Please enter a valid URL starting with http:// or https://.'),
       findsAtLeastNWidgets(1),
       reason: 'non-URL value must surface the field-scoped invalidUrl error',
     );
   });
 
-  testWidgets('Clear errors restores the sample and removes error text',
-      (tester) async {
+  testWidgets('Clear errors restores the sample and removes error text', (
+    tester,
+  ) async {
     await openDemo7(tester);
     await tapOutlined(tester, 'Trigger errors');
     expect(find.text('Company name is required.'), findsAtLeastNWidgets(1));
     await tapOutlined(tester, 'Clear errors');
-    expect(find.text('Company name is required.'), findsNothing,
-        reason: 'Clear errors must remove the required error');
-    expect(find.textContaining('Please enter a valid URL'), findsNothing,
-        reason: 'Clear errors must remove the invalidUrl error');
+    expect(
+      find.text('Company name is required.'),
+      findsNothing,
+      reason: 'Clear errors must remove the required error',
+    );
+    expect(
+      find.textContaining('Please enter a valid URL'),
+      findsNothing,
+      reason: 'Clear errors must remove the invalidUrl error',
+    );
   });
 
-  testWidgets('picking each placement segment updates the selection',
-      (tester) async {
+  testWidgets('picking each placement segment updates the selection', (
+    tester,
+  ) async {
     await openDemo7(tester);
     await tapPlacement(tester, 'above');
     expect(selected(tester), {ErrorPlacement.above});
@@ -162,19 +180,21 @@ void main() {
   });
 
   testWidgets(
-      'placement = both renders error text twice (above AND below input)',
-      (tester) async {
-    await openDemo7(tester);
-    await tapPlacement(tester, 'both');
-    await tapOutlined(tester, 'Trigger errors');
-    // The website field's invalidUrl message must appear at least twice
-    // (once above, once below). Other fields don't share this exact text,
-    // so we can be specific.
-    expect(
-      find.text(
-          'Please enter a valid URL starting with http:// or https://.'),
-      findsNWidgets(2),
-      reason: 'placement=both must mirror the error text above and below',
-    );
-  });
+    'placement = both renders error text twice (above AND below input)',
+    (tester) async {
+      await openDemo7(tester);
+      await tapPlacement(tester, 'both');
+      await tapOutlined(tester, 'Trigger errors');
+      // The website field's invalidUrl message must appear at least twice
+      // (once above, once below). Other fields don't share this exact text,
+      // so we can be specific.
+      expect(
+        find.text(
+          'Please enter a valid URL starting with http:// or https://.',
+        ),
+        findsNWidgets(2),
+        reason: 'placement=both must mirror the error text above and below',
+      );
+    },
+  );
 }

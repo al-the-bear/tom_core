@@ -49,10 +49,7 @@ class _DemoScaffoldState extends State<DemoScaffold> {
         textDirection: _direction == AclDirection.rtl
             ? TextDirection.rtl
             : TextDirection.ltr,
-        child: AclDirectionScope(
-          direction: _direction,
-          child: widget.child,
-        ),
+        child: AclDirectionScope(direction: _direction, child: widget.child),
       ),
     );
   }

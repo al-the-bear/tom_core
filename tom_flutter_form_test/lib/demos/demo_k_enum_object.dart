@@ -77,7 +77,8 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
         Priority.medium,
         source: phase4PrioritySource,
         labelTextOverride: 'Priority (dropdown)',
-        descriptionTextOverride: 'Single-select enum via DropdownButtonFormField',
+        descriptionTextOverride:
+            'Single-select enum via DropdownButtonFormField',
       );
       _prioritySegmented = TomFormEnumSegmented<Priority>(
         'prioritySegmented',
@@ -106,16 +107,14 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
         const Country('US', 'United States'),
         source: phase4CountrySource,
         labelTextOverride: 'Country (object)',
-        descriptionTextOverride:
-            'Single-select Country object via dropdown',
+        descriptionTextOverride: 'Single-select Country object via dropdown',
       );
       _countriesChips = TomFormObjectFilterChips<Country>(
         'countries',
         const [Country('DE', 'Germany'), Country('FR', 'France')],
         source: phase4CountrySource,
         labelTextOverride: 'Countries (multi)',
-        descriptionTextOverride:
-            'Multi-select Country objects via FilterChips',
+        descriptionTextOverride: 'Multi-select Country objects via FilterChips',
       );
       _citySearch = TomFormSearchInput<City>(
         'city',
@@ -156,20 +155,22 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
       _priorityRadio >>
           (_) => _record('priorityRadio', _priorityRadio.get().label),
       _tagsChips >>
-          (_) => _record('tags',
-              '[${_tagsChips.get().map((t) => t.label).join(", ")}]'),
+          (_) => _record(
+            'tags',
+            '[${_tagsChips.get().map((t) => t.label).join(", ")}]',
+          ),
       _countryDropdown >>
           (_) => _record('country', _countryDropdown.get().toString()),
       _countriesChips >>
-          (_) => _record('countries',
-              '[${_countriesChips.get().map((c) => c.code).join(", ")}]'),
+          (_) => _record(
+            'countries',
+            '[${_countriesChips.get().map((c) => c.code).join(", ")}]',
+          ),
       _citySearch >> (_) => _record('city', _citySearch.get().toString()),
       _countryLookup >>
           (_) => _record('lookupCountry', _countryLookup.get().toString()),
       _pointSizes >>
-          (_) => _record(
-              'pointSizes',
-              '[${_pointSizes.get().join(", ")}]'),
+          (_) => _record('pointSizes', '[${_pointSizes.get().join(", ")}]'),
     ]);
   }
 
@@ -211,15 +212,9 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -308,12 +303,13 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                '• Phase 4 enum & object families — Dropdown / Segmented / '
-                'Radio (single) and FilterChips (multi).\n'
-                '• Object dropdowns + chips against a domain Country class.\n'
-                '• Search field with a ~5 000-item source (in-process '
-                'substring filter, capped at 50 visible results).\n'
-                '• Lookup dialog — read-only row + filterable modal picker.'),
+              '• Phase 4 enum & object families — Dropdown / Segmented / '
+              'Radio (single) and FilterChips (multi).\n'
+              '• Object dropdowns + chips against a domain Country class.\n'
+              '• Search field with a ~5 000-item source (in-process '
+              'substring filter, capped at 50 visible results).\n'
+              '• Lookup dialog — read-only row + filterable modal picker.',
+            ),
           ],
         ),
       ),
@@ -352,10 +348,7 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
           children: [_buildBindingsTable(context)],
         ),
         const SizedBox(height: 12),
-        InfoPanel(
-          title: 'Change log',
-          children: [_buildLog(context)],
-        ),
+        InfoPanel(title: 'Change log', children: [_buildLog(context)]),
       ],
     );
   }
@@ -379,11 +372,12 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
           ('priorityDropdown', _priorityDropdown.get().label),
           ('prioritySegmented', _prioritySegmented.get().label),
           ('priorityRadio', _priorityRadio.get().label),
-          ('tags',
-              '[${_tagsChips.get().map((t) => t.label).join(", ")}]'),
+          ('tags', '[${_tagsChips.get().map((t) => t.label).join(", ")}]'),
           ('country', _countryDropdown.get().toString()),
-          ('countries',
-              '[${_countriesChips.get().map((c) => c.code).join(", ")}]'),
+          (
+            'countries',
+            '[${_countriesChips.get().map((c) => c.code).join(", ")}]',
+          ),
           ('city', _citySearch.get().toString()),
           ('lookupCountry', _countryLookup.get().toString()),
           ('pointSizes', '[${_pointSizes.get().join(", ")}]'),
@@ -404,8 +398,9 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
                     Expanded(
                       child: Text(
                         value.isEmpty ? '—' : value,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(fontFamily: 'monospace'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ),
                   ],
@@ -451,15 +446,17 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
                   width: 110,
                   child: Text(
                     e.fieldName,
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 Expanded(
                   child: Text(
                     e.value.isEmpty ? '—' : e.value,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(fontFamily: 'monospace'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFamily: 'monospace',
+                    ),
                   ),
                 ),
               ],

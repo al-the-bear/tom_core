@@ -39,7 +39,10 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('companyBasicInfo', () => CompanyBasicInfoForm());
+    _form = TomScope.withScope(
+      'companyBasicInfo',
+      () => CompanyBasicInfoForm(),
+    );
     _form.bind(demoState.companyProfile);
   }
 
@@ -50,10 +53,10 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
   }
 
   TomFormStyle get _style => TomFormStyle.material3.copyWith(
-        defaults: TomFormStyle.material3.defaults.copyWith(
-          errorPlacement: _errorPlacement,
-        ),
-      );
+    defaults: TomFormStyle.material3.defaults.copyWith(
+      errorPlacement: _errorPlacement,
+    ),
+  );
 
   void _triggerErrors() {
     // Empty name → required error.
@@ -72,10 +75,7 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
 
   @override
   Widget build(BuildContext context) {
-    final formLayout = TomAclBuilder(
-      id: 'basicForm',
-      elementProvider: _form,
-    )
+    final formLayout = TomAclBuilder(id: 'basicForm', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
@@ -96,10 +96,7 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
             const SizedBox(height: 16),
             _buildControls(),
             const SizedBox(height: 16),
-            TomFormStyleScope(
-              style: _style,
-              child: formLayout,
-            ),
+            TomFormStyleScope(style: _style, child: formLayout),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -136,16 +133,20 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
             ),
             const SizedBox(height: 6),
             const DemoBullet(
-                'below (default) — error caption renders under the input; the row grows downward.'),
+              'below (default) — error caption renders under the input; the row grows downward.',
+            ),
             const DemoBullet(
-                'above — error caption renders above the input, between the label and the field.'),
+              'above — error caption renders above the input, between the label and the field.',
+            ),
             const DemoBullet(
-                'both — caption is mirrored above and below. Useful when users may not see one side.'),
+              'both — caption is mirrored above and below. Useful when users may not see one side.',
+            ),
             const DemoBullet(
-                'replaceDescription — error text takes over the description (helper-text) slot '
-                'below the field. If no description was set, the slot materialises for the error. '
-                'Compact layouts benefit: no extra error row, but the error stays visible while '
-                'typing (unlike the placeholder).'),
+              'replaceDescription — error text takes over the description (helper-text) slot '
+              'below the field. If no description was set, the slot materialises for the error. '
+              'Compact layouts benefit: no extra error row, but the error stays visible while '
+              'typing (unlike the placeholder).',
+            ),
             const SizedBox(height: 8),
             Text(
               'Message resolution',
@@ -156,13 +157,20 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
               'Error text is resolved in three steps — whichever matches first wins:',
             ),
             const SizedBox(height: 4),
-            const DemoBullet('1. basePath.errorKey         e.g. companyBasicInfo.name.error.required'),
-            const DemoBullet('2. formScope.errorKey        e.g. companyBasicInfo.error.required'),
-            const DemoBullet('3. errorKey (global)         e.g. error.required'),
+            const DemoBullet(
+              '1. basePath.errorKey         e.g. companyBasicInfo.name.error.required',
+            ),
+            const DemoBullet(
+              '2. formScope.errorKey        e.g. companyBasicInfo.error.required',
+            ),
+            const DemoBullet(
+              '3. errorKey (global)         e.g. error.required',
+            ),
             const SizedBox(height: 4),
             const Text(
-                'In real apps the field-scoped message ("Tax ID is required") is preferred '
-                'because it names the field; the form/global levels are fallbacks.'),
+              'In real apps the field-scoped message ("Tax ID is required") is preferred '
+              'because it names the field; the form/global levels are fallbacks.',
+            ),
           ],
         ),
       ),
@@ -183,12 +191,19 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
             const SizedBox(height: 6),
             SegmentedButton<ErrorPlacement>(
               segments: const [
-                ButtonSegment(value: ErrorPlacement.below, label: Text('below')),
-                ButtonSegment(value: ErrorPlacement.above, label: Text('above')),
+                ButtonSegment(
+                  value: ErrorPlacement.below,
+                  label: Text('below'),
+                ),
+                ButtonSegment(
+                  value: ErrorPlacement.above,
+                  label: Text('above'),
+                ),
                 ButtonSegment(value: ErrorPlacement.both, label: Text('both')),
                 ButtonSegment(
-                    value: ErrorPlacement.replaceDescription,
-                    label: Text('replaceDescription')),
+                  value: ErrorPlacement.replaceDescription,
+                  label: Text('replaceDescription'),
+                ),
               ],
               selected: {_errorPlacement},
               onSelectionChanged: (s) =>

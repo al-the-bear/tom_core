@@ -37,8 +37,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -58,14 +57,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo P: FormFieldFamily swap by breakpoint (Phase 5c)'),
-        200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo P: FormFieldFamily swap by breakpoint (Phase 5c)'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(
-        find.text('Demo P: FormFieldFamily swap by breakpoint (Phase 5c)'));
+      find.text('Demo P: FormFieldFamily swap by breakpoint (Phase 5c)'),
+    );
     await tester.pumpAndSettle();
     if (finalSize != const Size(2400, 2400)) {
       tester.view.physicalSize = finalSize;
@@ -88,10 +89,7 @@ void main() {
     expect(nameFinder, findsAtLeastNWidgets(1));
     // Last instance of the name — in the state panel on wide layout
     // (active form column doesn't render fixed name labels).
-    final row = find.ancestor(
-      of: nameFinder.last,
-      matching: find.byType(Row),
-    );
+    final row = find.ancestor(of: nameFinder.last, matching: find.byType(Row));
     expect(row, findsAtLeastNWidgets(1));
     final texts = find
         .descendant(of: row.first, matching: find.byType(Text))
@@ -106,8 +104,11 @@ void main() {
       'reads "wide → Material", state-panel echoes seeds', (tester) async {
     await openDemoP(tester);
     // Active-family section header.
-    expect(find.text('Active family: material'), findsOneWidget,
-        reason: 'wide branch must render the Material family form');
+    expect(
+      find.text('Active family: material'),
+      findsOneWidget,
+      reason: 'wide branch must render the Material family form',
+    );
     // Family + breakpoint badge.
     expect(find.textContaining('wide → Material'), findsOneWidget);
     // All five fields render exactly once (only the active form is in
@@ -121,8 +122,11 @@ void main() {
       'notifyMe',
       'eventDate',
     ]) {
-      expect(adaptersByTomId(id), findsOneWidget,
-          reason: 'field "$id" must render in the active family');
+      expect(
+        adaptersByTomId(id),
+        findsOneWidget,
+        reason: 'field "$id" must render in the active family',
+      );
     }
     // Phase5cFamilyState seeds.
     expect(stateValue(tester, 'fullName'), 'Ada Lovelace');
@@ -135,8 +139,11 @@ void main() {
   testWidgets('narrow viewport (<700 px) flips the active family to '
       'Cupertino', (tester) async {
     await openDemoP(tester, finalSize: const Size(600, 2400));
-    expect(find.text('Active family: cupertino'), findsOneWidget,
-        reason: 'narrow branch must render the Cupertino family form');
+    expect(
+      find.text('Active family: cupertino'),
+      findsOneWidget,
+      reason: 'narrow branch must render the Cupertino family form',
+    );
     expect(find.textContaining('narrow → Cupertino'), findsOneWidget);
     // Each field still renders exactly once in the active family.
     for (final id in [
@@ -160,9 +167,13 @@ void main() {
     expect(input, findsOneWidget);
     await tester.enterText(input, 'Grace Hopper');
     await tester.pumpAndSettle();
-    expect(stateValue(tester, 'fullName'), 'Grace Hopper',
-        reason: 'edit in the active Material family must reach the shared '
-            'TomString → state panel');
+    expect(
+      stateValue(tester, 'fullName'),
+      'Grace Hopper',
+      reason:
+          'edit in the active Material family must reach the shared '
+          'TomString → state panel',
+    );
   });
 
   testWidgets('state survives the family swap — wide-side edits are still '
@@ -179,9 +190,15 @@ void main() {
     // because both forms share the same Phase5cFamilyState.
     tester.view.physicalSize = const Size(600, 2400);
     await tester.pumpAndSettle();
-    expect(find.text('Active family: cupertino'), findsOneWidget,
-        reason: 'narrow branch must now render');
-    expect(stateValue(tester, 'fullName'), 'Linus Torvalds',
-        reason: 'wide-side edit must survive into the Cupertino form');
+    expect(
+      find.text('Active family: cupertino'),
+      findsOneWidget,
+      reason: 'narrow branch must now render',
+    );
+    expect(
+      stateValue(tester, 'fullName'),
+      'Linus Torvalds',
+      reason: 'wide-side edit must survive into the Cupertino form',
+    );
   });
 }

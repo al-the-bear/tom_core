@@ -18,8 +18,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -32,17 +31,21 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text(tile));
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Demo H-A opens with master pane + detail editor',
-      (tester) async {
+  testWidgets('Demo H-A opens with master pane + detail editor', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo H-A: Master-Detail Customer Editor');
     expect(
       find.text('Demo H-A — Master-Detail Customer Editor'),
@@ -61,8 +64,9 @@ void main() {
     expect(find.text('Scaffold B — preselects row 0'), findsOneWidget);
   });
 
-  testWidgets('Demo H-B opens with expandable order-items rows',
-      (tester) async {
+  testWidgets('Demo H-B opens with expandable order-items rows', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo H-B: Expandable Rows (Order Items)');
     expect(
       find.text('Demo H-B — Expandable Rows (Order Items)'),
@@ -72,20 +76,13 @@ void main() {
     expect(find.text('Items (3)'), findsOneWidget);
   });
 
-  testWidgets('Demo H-C opens with editable order-items table',
-      (tester) async {
+  testWidgets('Demo H-C opens with editable order-items table', (tester) async {
     await openDemo(tester, 'Demo H-C: Editable Order-Items Table');
-    expect(
-      find.text('Demo H-C — Editable Order-Items Table'),
-      findsOneWidget,
-    );
+    expect(find.text('Demo H-C — Editable Order-Items Table'), findsOneWidget);
     // H-C now renders TWO variants (in-cell errors + error strip below).
     // Each card shows the live item count in its header — both should
     // read 3 because both bind the same `_form.items` list.
-    expect(
-      find.text('Variant A — in-cell errors  (Items: 3)'),
-      findsOneWidget,
-    );
+    expect(find.text('Variant A — in-cell errors  (Items: 3)'), findsOneWidget);
     expect(
       find.text('Variant B — error strip below row  (Items: 3)'),
       findsOneWidget,

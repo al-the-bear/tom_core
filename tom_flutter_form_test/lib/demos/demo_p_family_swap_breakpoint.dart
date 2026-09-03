@@ -103,10 +103,7 @@ class _DemoPFamilySwapBreakpointState extends State<DemoPFamilySwapBreakpoint> {
                             children: [
                               Expanded(child: _formColumn(context, form)),
                               const SizedBox(width: 16),
-                              SizedBox(
-                                width: 280,
-                                child: _statePanel(context),
-                              ),
+                              SizedBox(width: 280, child: _statePanel(context)),
                             ],
                           )
                         : Column(
@@ -128,7 +125,10 @@ class _DemoPFamilySwapBreakpointState extends State<DemoPFamilySwapBreakpoint> {
   }
 
   Widget _buildBpBadge(
-      BuildContext context, double width, FormFieldFamily family) {
+    BuildContext context,
+    double width,
+    FormFieldFamily family,
+  ) {
     final theme = Theme.of(context);
     final wide = width >= _phase5cBreakpoint;
     return Container(
@@ -165,10 +165,7 @@ class _DemoPFamilySwapBreakpointState extends State<DemoPFamilySwapBreakpoint> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _sectionHeader(
-              context,
-              'Active family: ${form.family.kind.name}',
-            ),
+            _sectionHeader(context, 'Active family: ${form.family.kind.name}'),
             form.fullName.widget,
             const SizedBox(height: 8),
             form.quantity.widget,
@@ -233,8 +230,7 @@ class _DemoPFamilySwapBreakpointState extends State<DemoPFamilySwapBreakpoint> {
                       children: [
                         SizedBox(
                           width: 110,
-                          child:
-                              Text(name, style: theme.textTheme.bodySmall),
+                          child: Text(name, style: theme.textTheme.bodySmall),
                         ),
                         Expanded(
                           child: Text(

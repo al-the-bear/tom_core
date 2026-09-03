@@ -34,13 +34,24 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
   final _status = TomString('Ready');
 
   late final _controller = TomActionController(controllerId: 'demo1');
-  late final _save = SaveFormAction(_controller, forms: [_form], status: _status);
-  late final _discard = DiscardFormAction(_controller, forms: [_form], status: _status);
+  late final _save = SaveFormAction(
+    _controller,
+    forms: [_form],
+    status: _status,
+  );
+  late final _discard = DiscardFormAction(
+    _controller,
+    forms: [_form],
+    status: _status,
+  );
 
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('companyBasicInfo', () => CompanyBasicInfoForm());
+    _form = TomScope.withScope(
+      'companyBasicInfo',
+      () => CompanyBasicInfoForm(),
+    );
     _form.bind(demoState.companyProfile);
   }
 
@@ -52,10 +63,7 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
 
   @override
   Widget build(BuildContext context) {
-    final formLayout = TomAclBuilder(
-      id: 'basicForm',
-      elementProvider: _form,
-    )
+    final formLayout = TomAclBuilder(id: 'basicForm', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .setAclDefaultAppendGap(0)
@@ -77,10 +85,7 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TomFormStyleScope(
-              style: TomFormStyle.material3,
-              child: formLayout,
-            ),
+            TomFormStyleScope(style: TomFormStyle.material3, child: formLayout),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -113,10 +118,16 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('${TomCtr.text('demo1.status', 'label')}: ${_status.get()}'),
+                        Text(
+                          '${TomCtr.text('demo1.status', 'label')}: ${_status.get()}',
+                        ),
                         const SizedBox(height: 4),
-                        Text('${TomCtr.text('demo1.status', 'dirty')}: ${_form.isDirty}'),
-                        Text('${TomCtr.text('demo1.status', 'valid')}: ${_form.isValid}'),
+                        Text(
+                          '${TomCtr.text('demo1.status', 'dirty')}: ${_form.isDirty}',
+                        ),
+                        Text(
+                          '${TomCtr.text('demo1.status', 'valid')}: ${_form.isValid}',
+                        ),
                       ],
                     ),
                   ),

@@ -85,22 +85,25 @@ void main() {
   group('SaveFormAction — status resolution', () {
     test('a single failing save writes the resolved error message', () async {
       final status = TomString('idle');
-      _action([_ScriptedForm(result: false)], status).execute(
-        TomActionContext(),
-        TomActionTransaction(label: 'save'),
-      );
+      _action(
+        [_ScriptedForm(result: false)],
+        status,
+      ).execute(TomActionContext(), TomActionTransaction(label: 'save'));
       // Let the fire-and-forget Future.wait settle.
       await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(status.get(), 'Validation failed — check fields',
-          reason: 'allOk == false must surface the .error fallback on status');
+      expect(
+        status.get(),
+        'Validation failed — check fields',
+        reason: 'allOk == false must surface the .error fallback on status',
+      );
     });
 
     test('a single successful save writes the success message', () async {
       final status = TomString('idle');
-      _action([_ScriptedForm(result: true)], status).execute(
-        TomActionContext(),
-        TomActionTransaction(label: 'save'),
-      );
+      _action(
+        [_ScriptedForm(result: true)],
+        status,
+      ).execute(TomActionContext(), TomActionTransaction(label: 'save'));
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(status.get(), 'Saved!');
     });
@@ -110,17 +113,20 @@ void main() {
       _action(
         [_ScriptedForm(result: true, delay: const Duration(milliseconds: 50))],
         status,
-      ).execute(
-        TomActionContext(),
-        TomActionTransaction(label: 'save'),
-      );
+      ).execute(TomActionContext(), TomActionTransaction(label: 'save'));
       // execute() returns before the delayed save resolves: the transient
       // status must already be visible.
-      expect(status.get(), 'Validating…',
-          reason: 'status must show the transient message before save resolves');
+      expect(
+        status.get(),
+        'Validating…',
+        reason: 'status must show the transient message before save resolves',
+      );
       await Future<void>.delayed(const Duration(milliseconds: 80));
-      expect(status.get(), 'Saved!',
-          reason: 'once the save resolves the transient status is replaced');
+      expect(
+        status.get(),
+        'Saved!',
+        reason: 'once the save resolves the transient status is replaced',
+      );
     });
   });
 
@@ -142,26 +148,33 @@ void main() {
         status,
       ).execute(TomActionContext(), TomActionTransaction(label: 'save'));
       await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(status.get(), 'Validation failed — check fields',
-          reason: 'results.every must report failure if any form is invalid');
+      expect(
+        status.get(),
+        'Validation failed — check fields',
+        reason: 'results.every must report failure if any form is invalid',
+      );
     });
   });
 
   group('SaveFormAction — thrown save (bug §36)', () {
-    test('a save that throws is reported on status like a false result',
-        () async {
-      final status = TomString('idle');
-      _action([_ScriptedForm(throws: true)], status).execute(
-        TomActionContext(),
-        TomActionTransaction(label: 'save'),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(status.get(), 'Validation failed — check fields',
-          reason: 'a thrown save must not leave status stuck on "Validating…"');
-    });
+    test(
+      'a save that throws is reported on status like a false result',
+      () async {
+        final status = TomString('idle');
+        _action(
+          [_ScriptedForm(throws: true)],
+          status,
+        ).execute(TomActionContext(), TomActionTransaction(label: 'save'));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(
+          status.get(),
+          'Validation failed — check fields',
+          reason: 'a thrown save must not leave status stuck on "Validating…"',
+        );
+      },
+    );
 
-    test('a thrown save in a multi-form batch still reports failure',
-        () async {
+    test('a thrown save in a multi-form batch still reports failure', () async {
       final status = TomString('idle');
       _action(
         [_ScriptedForm(result: true), _ScriptedForm(throws: true)],

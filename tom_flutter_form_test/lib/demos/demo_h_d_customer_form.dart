@@ -104,8 +104,7 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('What this demo covers',
-                style: theme.textTheme.titleSmall),
+            Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
               'A full customer record bound to one CustomerHDForm. '
@@ -191,23 +190,25 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
             const SizedBox(height: 8),
             SizedBox(
               height: 380,
-              child: TomMasterDetailListForm<ShippingAddressHD,
-                  ShippingAddressHDForm>(
-                listForm: _form.shippingAddresses,
-                masterPaneWidth: 200,
-                draggableSplitter: true,
-                minMasterPaneWidth: 140,
-                maxMasterPaneWidth: 600,
-                masterBuilder:
-                    (context, listForm, selected, selectIndex) =>
+              child:
+                  TomMasterDetailListForm<
+                    ShippingAddressHD,
+                    ShippingAddressHDForm
+                  >(
+                    listForm: _form.shippingAddresses,
+                    masterPaneWidth: 200,
+                    draggableSplitter: true,
+                    minMasterPaneWidth: 140,
+                    maxMasterPaneWidth: 600,
+                    masterBuilder: (context, listForm, selected, selectIndex) =>
                         AddressMasterPane(
-                  listForm: listForm,
-                  selectedIndex: selected,
-                  selectIndex: selectIndex,
-                ),
-                detailBuilder: (context, _, rowForm) =>
-                    AddressDetailPane(form: rowForm),
-              ),
+                          listForm: listForm,
+                          selectedIndex: selected,
+                          selectIndex: selectIndex,
+                        ),
+                    detailBuilder: (context, _, rowForm) =>
+                        AddressDetailPane(form: rowForm),
+                  ),
             ),
           ],
         ),
@@ -233,13 +234,12 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
                 draggableSplitter: true,
                 minMasterPaneWidth: 140,
                 maxMasterPaneWidth: 600,
-                masterBuilder:
-                    (context, listForm, selected, selectIndex) =>
-                        OrderMasterPane(
-                  listForm: listForm,
-                  selectedIndex: selected,
-                  selectIndex: selectIndex,
-                ),
+                masterBuilder: (context, listForm, selected, selectIndex) =>
+                    OrderMasterPane(
+                      listForm: listForm,
+                      selectedIndex: selected,
+                      selectIndex: selectIndex,
+                    ),
                 detailBuilder: (context, _, rowForm) =>
                     OrderDetailPane(form: rowForm),
               ),
@@ -265,9 +265,11 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(ok
-                            ? 'Customer saved.'
-                            : 'Validation failed — check errors.'),
+                        content: Text(
+                          ok
+                              ? 'Customer saved.'
+                              : 'Validation failed — check errors.',
+                        ),
                         duration: const Duration(seconds: 2),
                       ),
                     );
@@ -281,8 +283,9 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
           ),
           if (_form.isDirty)
             const Chip(
-                label: Text('Dirty'),
-                visualDensity: VisualDensity.compact),
+              label: Text('Dirty'),
+              visualDensity: VisualDensity.compact,
+            ),
         ],
       ),
     );

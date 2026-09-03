@@ -159,14 +159,11 @@ class _DemoOCupertinoSearchLookupFileState
                 'upload',
                 upload == null
                     ? '— null —'
-                    : '${upload.name} (${upload.sizeBytes} B)'
+                    : '${upload.name} (${upload.sizeBytes} B)',
               ),
               ('notes', _form.notes.get() ?? '— null —'),
               ('age', _form.age.get()?.toString() ?? '— null —'),
-              (
-                'score',
-                _form.score.get()?.toStringAsFixed(2) ?? '— null —'
-              ),
+              ('score', _form.score.get()?.toStringAsFixed(2) ?? '— null —'),
               ('birthday', dateStr(_form.birthday.get())),
             ];
             return Column(
@@ -180,8 +177,7 @@ class _DemoOCupertinoSearchLookupFileState
                       children: [
                         SizedBox(
                           width: 110,
-                          child:
-                              Text(name, style: theme.textTheme.bodySmall),
+                          child: Text(name, style: theme.textTheme.bodySmall),
                         ),
                         Expanded(
                           child: Text(

@@ -35,8 +35,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -56,14 +55,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo N: Cupertino numeric + date/time (Phase 5b)'),
-        200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo N: Cupertino numeric + date/time (Phase 5b)'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(
-        find.text('Demo N: Cupertino numeric + date/time (Phase 5b)'));
+      find.text('Demo N: Cupertino numeric + date/time (Phase 5b)'),
+    );
     await tester.pumpAndSettle();
     if (finalSize != const Size(2400, 2400)) {
       tester.view.physicalSize = finalSize;
@@ -82,10 +83,12 @@ void main() {
   /// Expanded value Text).
   String stateValue(WidgetTester tester, String name) {
     final nameFinder = find.text(name);
-    expect(nameFinder, findsAtLeastNWidgets(1),
-        reason: 'state row "$name" must exist');
-    final row =
-        find.ancestor(of: nameFinder.first, matching: find.byType(Row));
+    expect(
+      nameFinder,
+      findsAtLeastNWidgets(1),
+      reason: 'state row "$name" must exist',
+    );
+    final row = find.ancestor(of: nameFinder.first, matching: find.byType(Row));
     expect(row, findsAtLeastNWidgets(1));
     final texts = find
         .descendant(of: row.first, matching: find.byType(Text))
@@ -97,8 +100,9 @@ void main() {
   }
 
   testWidgets('baseline at wide viewport — every Phase 5b adapter renders, '
-      'state panel echoes seeds, breakpoint badge reads "wide"',
-      (tester) async {
+      'state panel echoes seeds, breakpoint badge reads "wide"', (
+    tester,
+  ) async {
     await openDemoN(tester);
     for (final id in [
       'quantity',
@@ -111,8 +115,11 @@ void main() {
       'downtime',
       'billingPeriod',
     ]) {
-      expect(adapterByTomId(id), findsOneWidget,
-          reason: 'field "$id" must render');
+      expect(
+        adapterByTomId(id),
+        findsOneWidget,
+        reason: 'field "$id" must render',
+      );
     }
     // Seeds.
     expect(stateValue(tester, 'quantity'), '8');
@@ -125,15 +132,21 @@ void main() {
     expect(stateValue(tester, 'downtime'), '1h 30m');
     expect(stateValue(tester, 'billingPeriod'), '2026-05-01 → 2026-05-31');
     // Wide-branch breakpoint badge text.
-    expect(find.textContaining('inner themeSpec: wide'), findsOneWidget,
-        reason: 'wide viewport must produce the "wide" badge branch');
+    expect(
+      find.textContaining('inner themeSpec: wide'),
+      findsOneWidget,
+      reason: 'wide viewport must produce the "wide" badge branch',
+    );
   });
 
   testWidgets('narrow viewport (<700 px) flips the breakpoint badge to '
       '"narrow" while keeping every field rendered', (tester) async {
     await openDemoN(tester, finalSize: const Size(600, 2400));
-    expect(find.textContaining('inner themeSpec: narrow'), findsOneWidget,
-        reason: 'narrow viewport must produce the "narrow" badge branch');
+    expect(
+      find.textContaining('inner themeSpec: narrow'),
+      findsOneWidget,
+      reason: 'narrow viewport must produce the "narrow" badge branch',
+    );
     // Adapters still all present in the narrow stacked layout.
     for (final id in [
       'quantity',
@@ -146,8 +159,11 @@ void main() {
       'downtime',
       'billingPeriod',
     ]) {
-      expect(adapterByTomId(id), findsOneWidget,
-          reason: 'field "$id" must still render in the narrow branch');
+      expect(
+        adapterByTomId(id),
+        findsOneWidget,
+        reason: 'field "$id" must still render in the narrow branch',
+      );
     }
   });
 
@@ -158,12 +174,18 @@ void main() {
       of: adapterByTomId('quantity'),
       matching: find.byType(CupertinoTextField),
     );
-    expect(qtyInput, findsOneWidget,
-        reason: 'TomCupertinoFormIntInput must render a CupertinoTextField');
+    expect(
+      qtyInput,
+      findsOneWidget,
+      reason: 'TomCupertinoFormIntInput must render a CupertinoTextField',
+    );
     await tester.enterText(qtyInput, '17');
     await tester.pumpAndSettle();
-    expect(stateValue(tester, 'quantity'), '17',
-        reason: 'typing must propagate to the bound TomInt → state panel');
+    expect(
+      stateValue(tester, 'quantity'),
+      '17',
+      reason: 'typing must propagate to the bound TomInt → state panel',
+    );
   });
 
   testWidgets('typing in the ratio Cupertino double input updates the '
@@ -176,7 +198,10 @@ void main() {
     expect(ratioInput, findsOneWidget);
     await tester.enterText(ratioInput, '3.25');
     await tester.pumpAndSettle();
-    expect(stateValue(tester, 'ratio'), '3.25',
-        reason: 'typing must propagate to the bound TomDouble → state panel');
+    expect(
+      stateValue(tester, 'ratio'),
+      '3.25',
+      reason: 'typing must propagate to the bound TomDouble → state panel',
+    );
   });
 }

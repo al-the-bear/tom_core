@@ -66,10 +66,7 @@ bool _subtreeContainsText(Widget? root, String data) {
 // star Text as the leading widget.
 // ---------------------------------------------------------------------------
 
-Widget _materialHarness({
-  required Widget child,
-  required TomFormStyle style,
-}) {
+Widget _materialHarness({required Widget child, required TomFormStyle style}) {
   return MaterialApp(
     home: Scaffold(
       body: SingleChildScrollView(
@@ -102,12 +99,15 @@ void main() {
 
     setUp(() {
       form = TomScope.withScope(
-          'companyBasicInfo', () => CompanyBasicInfoForm());
+        'companyBasicInfo',
+        () => CompanyBasicInfoForm(),
+      );
     });
     tearDown(() => form.dispose());
 
-    testWidgets('leadingWidget lands in InputDecoration.prefixIcon',
-        (tester) async {
+    testWidgets('leadingWidget lands in InputDecoration.prefixIcon', (
+      tester,
+    ) async {
       final style = TomFormStyle.material3.copyWith(
         defaults: TomFormStyle.material3.defaults.copyWith(
           leadingWidget: const Text('★'),
@@ -115,21 +115,27 @@ void main() {
           leadingWidgetSet: true,
         ),
       );
-      await tester.pumpWidget(_materialHarness(
-        style: style,
-        child: form.name.widget,
-      ));
+      await tester.pumpWidget(
+        _materialHarness(style: style, child: form.name.widget),
+      );
       await tester.pumpAndSettle();
 
       final tf = tester.widget<TextField>(find.byType(TextField));
-      expect(tf.decoration?.prefixIcon, isNotNull,
-          reason: 'leadingWidget must land in prefixIcon');
-      expect(_subtreeContainsText(tf.decoration!.prefixIcon, '★'), isTrue,
-          reason: 'leadingWidget Text must survive the Padding wrapper');
+      expect(
+        tf.decoration?.prefixIcon,
+        isNotNull,
+        reason: 'leadingWidget must land in prefixIcon',
+      );
+      expect(
+        _subtreeContainsText(tf.decoration!.prefixIcon, '★'),
+        isTrue,
+        reason: 'leadingWidget Text must survive the Padding wrapper',
+      );
     });
 
-    testWidgets('trailingWidget lands in InputDecoration.suffixIcon',
-        (tester) async {
+    testWidgets('trailingWidget lands in InputDecoration.suffixIcon', (
+      tester,
+    ) async {
       final style = TomFormStyle.material3.copyWith(
         defaults: TomFormStyle.material3.defaults.copyWith(
           trailingWidget: const Text('☆'),
@@ -137,21 +143,27 @@ void main() {
           trailingWidgetSet: true,
         ),
       );
-      await tester.pumpWidget(_materialHarness(
-        style: style,
-        child: form.name.widget,
-      ));
+      await tester.pumpWidget(
+        _materialHarness(style: style, child: form.name.widget),
+      );
       await tester.pumpAndSettle();
 
       final tf = tester.widget<TextField>(find.byType(TextField));
-      expect(tf.decoration?.suffixIcon, isNotNull,
-          reason: 'trailingWidget must land in suffixIcon');
-      expect(_subtreeContainsText(tf.decoration!.suffixIcon, '☆'), isTrue,
-          reason: 'trailingWidget Text must survive the Padding wrapper');
+      expect(
+        tf.decoration?.suffixIcon,
+        isNotNull,
+        reason: 'trailingWidget must land in suffixIcon',
+      );
+      expect(
+        _subtreeContainsText(tf.decoration!.suffixIcon, '☆'),
+        isTrue,
+        reason: 'trailingWidget Text must survive the Padding wrapper',
+      );
     });
 
-    testWidgets('both leading + trailing land in their respective slots',
-        (tester) async {
+    testWidgets('both leading + trailing land in their respective slots', (
+      tester,
+    ) async {
       final style = TomFormStyle.material3.copyWith(
         defaults: TomFormStyle.material3.defaults.copyWith(
           leadingWidget: const Text('L'),
@@ -160,10 +172,9 @@ void main() {
           trailingWidgetSet: true,
         ),
       );
-      await tester.pumpWidget(_materialHarness(
-        style: style,
-        child: form.name.widget,
-      ));
+      await tester.pumpWidget(
+        _materialHarness(style: style, child: form.name.widget),
+      );
       await tester.pumpAndSettle();
 
       final tf = tester.widget<TextField>(find.byType(TextField));
@@ -171,22 +182,31 @@ void main() {
       expect(_subtreeContainsText(tf.decoration?.suffixIcon, 'T'), isTrue);
     });
 
-    testWidgets('absence — no leading/trailing widget = both slots null',
-        (tester) async {
+    testWidgets('absence — no leading/trailing widget = both slots null', (
+      tester,
+    ) async {
       // Sanity baseline: with the stock material3 style, a plain string
       // input has no prefixIcon/suffixIcon. This guards against accidental
       // injection from the new code path.
-      await tester.pumpWidget(_materialHarness(
-        style: TomFormStyle.material3,
-        child: form.name.widget,
-      ));
+      await tester.pumpWidget(
+        _materialHarness(
+          style: TomFormStyle.material3,
+          child: form.name.widget,
+        ),
+      );
       await tester.pumpAndSettle();
 
       final tf = tester.widget<TextField>(find.byType(TextField));
-      expect(tf.decoration?.prefixIcon, isNull,
-          reason: 'no leadingWidget = no prefixIcon');
-      expect(tf.decoration?.suffixIcon, isNull,
-          reason: 'no trailingWidget = no suffixIcon');
+      expect(
+        tf.decoration?.prefixIcon,
+        isNull,
+        reason: 'no leadingWidget = no prefixIcon',
+      );
+      expect(
+        tf.decoration?.suffixIcon,
+        isNull,
+        reason: 'no trailingWidget = no suffixIcon',
+      );
     });
   });
 
@@ -197,84 +217,96 @@ void main() {
   // demo wrapper.
   // -------------------------------------------------------------------------
 
-  group('T13 — Cupertino prefix/suffix slots carry leading/trailing widgets',
-      () {
-    Widget cupertinoHarness({
-      required TomFormStyle style,
-      required Widget Function() build,
-    }) {
-      return CupertinoApp(
-        home: CupertinoPageScaffold(
-          child: SafeArea(
-            child: SingleChildScrollView(
-              child: SizedBox(
-                width: 400,
-                child: TomFormStyleScope(
-                  tomId: 't13CupertinoScope',
-                  style: style,
-                  child: Builder(builder: (_) => build()),
+  group(
+    'T13 — Cupertino prefix/suffix slots carry leading/trailing widgets',
+    () {
+      Widget cupertinoHarness({
+        required TomFormStyle style,
+        required Widget Function() build,
+      }) {
+        return CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SafeArea(
+              child: SingleChildScrollView(
+                child: SizedBox(
+                  width: 400,
+                  child: TomFormStyleScope(
+                    tomId: 't13CupertinoScope',
+                    style: style,
+                    child: Builder(builder: (_) => build()),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-    }
+        );
+      }
 
-    testWidgets('Cupertino string input — leadingWidget reaches prefix slot',
+      testWidgets(
+        'Cupertino string input — leadingWidget reaches prefix slot',
         (tester) async {
-      late TomCupertinoFormStringInput field;
-      TomScope.withScope('t13Cupertino', () {
-        field = TomCupertinoFormStringInput('t13s', '');
-      });
-      addTearDown(field.dispose);
+          late TomCupertinoFormStringInput field;
+          TomScope.withScope('t13Cupertino', () {
+            field = TomCupertinoFormStringInput('t13s', '');
+          });
+          addTearDown(field.dispose);
 
-      final style = TomFormStyle.material3.copyWith(
-        defaults: TomFormStyle.material3.defaults.copyWith(
-          leadingWidget: const Text('★'),
-          leadingWidgetSet: true,
-        ),
+          final style = TomFormStyle.material3.copyWith(
+            defaults: TomFormStyle.material3.defaults.copyWith(
+              leadingWidget: const Text('★'),
+              leadingWidgetSet: true,
+            ),
+          );
+
+          await tester.pumpWidget(
+            cupertinoHarness(style: style, build: () => field.widget),
+          );
+          await tester.pumpAndSettle();
+
+          final ctf = tester.widget<CupertinoTextField>(
+            find.byType(CupertinoTextField),
+          );
+          expect(
+            ctf.prefix,
+            isNotNull,
+            reason: 'leadingWidget must reach CupertinoTextField.prefix',
+          );
+          expect(_subtreeContainsText(ctf.prefix, '★'), isTrue);
+        },
       );
 
-      await tester.pumpWidget(cupertinoHarness(
-        style: style,
-        build: () => field.widget,
-      ));
-      await tester.pumpAndSettle();
-
-      final ctf =
-          tester.widget<CupertinoTextField>(find.byType(CupertinoTextField));
-      expect(ctf.prefix, isNotNull,
-          reason: 'leadingWidget must reach CupertinoTextField.prefix');
-      expect(_subtreeContainsText(ctf.prefix, '★'), isTrue);
-    });
-
-    testWidgets('Cupertino string input — trailingWidget reaches suffix slot',
+      testWidgets(
+        'Cupertino string input — trailingWidget reaches suffix slot',
         (tester) async {
-      late TomCupertinoFormStringInput field;
-      TomScope.withScope('t13Cupertino', () {
-        field = TomCupertinoFormStringInput('t13s2', '');
-      });
-      addTearDown(field.dispose);
+          late TomCupertinoFormStringInput field;
+          TomScope.withScope('t13Cupertino', () {
+            field = TomCupertinoFormStringInput('t13s2', '');
+          });
+          addTearDown(field.dispose);
 
-      final style = TomFormStyle.material3.copyWith(
-        defaults: TomFormStyle.material3.defaults.copyWith(
-          trailingWidget: const Text('☆'),
-          trailingWidgetSet: true,
-        ),
+          final style = TomFormStyle.material3.copyWith(
+            defaults: TomFormStyle.material3.defaults.copyWith(
+              trailingWidget: const Text('☆'),
+              trailingWidgetSet: true,
+            ),
+          );
+
+          await tester.pumpWidget(
+            cupertinoHarness(style: style, build: () => field.widget),
+          );
+          await tester.pumpAndSettle();
+
+          final ctf = tester.widget<CupertinoTextField>(
+            find.byType(CupertinoTextField),
+          );
+          expect(
+            ctf.suffix,
+            isNotNull,
+            reason: 'trailingWidget must reach CupertinoTextField.suffix',
+          );
+          expect(_subtreeContainsText(ctf.suffix, '☆'), isTrue);
+        },
       );
-
-      await tester.pumpWidget(cupertinoHarness(
-        style: style,
-        build: () => field.widget,
-      ));
-      await tester.pumpAndSettle();
-
-      final ctf =
-          tester.widget<CupertinoTextField>(find.byType(CupertinoTextField));
-      expect(ctf.suffix, isNotNull,
-          reason: 'trailingWidget must reach CupertinoTextField.suffix');
-      expect(_subtreeContainsText(ctf.suffix, '☆'), isTrue);
-    });
-  });
+    },
+  );
 }

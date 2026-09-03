@@ -28,8 +28,7 @@ class ExampleHCEditableTable extends StatefulWidget {
   final ExampleFamily family;
 
   @override
-  State<ExampleHCEditableTable> createState() =>
-      _ExampleHCEditableTableState();
+  State<ExampleHCEditableTable> createState() => _ExampleHCEditableTableState();
 }
 
 class _ExampleHCEditableTableState extends State<ExampleHCEditableTable> {
@@ -108,10 +107,7 @@ class _OrderHeaderCard extends StatelessWidget {
     acl.addRowBreakpoint(atWidth: 600);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: acl.build(),
-      ),
+      child: Padding(padding: const EdgeInsets.all(12), child: acl.build()),
     );
   }
 }
@@ -134,8 +130,10 @@ class _ItemsCard extends StatelessWidget {
               children: [
                 Text('Items', style: theme.textTheme.titleSmall),
                 const Spacer(),
-                Text('Total: \$${form.total.toStringAsFixed(2)}',
-                    style: theme.textTheme.titleSmall),
+                Text(
+                  'Total: \$${form.total.toStringAsFixed(2)}',
+                  style: theme.textTheme.titleSmall,
+                ),
               ],
             ),
             const Divider(height: 16),
@@ -156,14 +154,16 @@ class _ItemsCard extends StatelessWidget {
                         (i) => wide
                             ? _TableRow(
                                 key: ValueKey(
-                                    'h-c-row-${form.items[i].hashCode}'),
+                                  'h-c-row-${form.items[i].hashCode}',
+                                ),
                                 index: i,
                                 form: form.items[i],
                                 onRemove: () => form.items.removeAt(i),
                               )
                             : _StackedRow(
                                 key: ValueKey(
-                                    'h-c-stacked-${form.items[i].hashCode}'),
+                                  'h-c-stacked-${form.items[i].hashCode}',
+                                ),
                                 index: i,
                                 form: form.items[i],
                                 onRemove: () => form.items.removeAt(i),
@@ -192,10 +192,9 @@ class _TableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context)
-        .textTheme
-        .bodySmall
-        ?.copyWith(fontWeight: FontWeight.w600);
+    final style = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       child: Row(
@@ -211,8 +210,7 @@ class _TableHeader extends StatelessWidget {
           const SizedBox(width: 8),
           SizedBox(
             width: 90,
-            child: Text('Total',
-                style: style, textAlign: TextAlign.right),
+            child: Text('Total', style: style, textAlign: TextAlign.right),
           ),
           const SizedBox(width: 32),
         ],
@@ -244,8 +242,7 @@ class _TableRow extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 14),
-              child: SizedBox(
-                  width: 32, child: TomReorderHandle(index: index)),
+              child: SizedBox(width: 32, child: TomReorderHandle(index: index)),
             ),
             Expanded(flex: 4, child: form.productName.widget),
             const SizedBox(width: 8),

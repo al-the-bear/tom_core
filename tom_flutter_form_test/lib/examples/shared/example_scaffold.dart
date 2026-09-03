@@ -8,11 +8,7 @@ import 'package:flutter/material.dart';
 /// app — what you see here is the same scaffolding any host app would
 /// already provide.
 class ExampleScaffold extends StatelessWidget {
-  const ExampleScaffold({
-    super.key,
-    required this.title,
-    required this.child,
-  });
+  const ExampleScaffold({super.key, required this.title, required this.child});
 
   final String title;
   final Widget child;

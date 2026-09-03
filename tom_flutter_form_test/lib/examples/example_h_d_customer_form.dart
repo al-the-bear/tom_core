@@ -190,12 +190,11 @@ class _AddressesCard extends StatelessWidget {
           initialSelectedIndex: form.addresses.isEmpty ? null : 0,
           masterBuilder: (context, listForm, selected, selectIndex) =>
               _AddressMaster(
-            listForm: listForm,
-            selectedIndex: selected,
-            selectIndex: selectIndex,
-          ),
-          detailBuilder: (context, _, rowForm) =>
-              _AddressDetail(form: rowForm),
+                listForm: listForm,
+                selectedIndex: selected,
+                selectIndex: selectIndex,
+              ),
+          detailBuilder: (context, _, rowForm) => _AddressDetail(form: rowForm),
         ),
       ),
     );
@@ -221,8 +220,10 @@ class _AddressMaster extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-          child: Text('Addresses (${listForm.length})',
-              style: theme.textTheme.titleSmall),
+          child: Text(
+            'Addresses (${listForm.length})',
+            style: theme.textTheme.titleSmall,
+          ),
         ),
         const Divider(height: 8),
         Expanded(
@@ -241,16 +242,16 @@ class _AddressMaster extends StatelessWidget {
                   selected: sel,
                   leading: TomReorderHandle(index: i),
                   title: Text(
-                    addr.label.get().isEmpty
-                        ? '(unnamed)'
-                        : addr.label.get(),
+                    addr.label.get().isEmpty ? '(unnamed)' : addr.label.get(),
                     style: TextStyle(
                       fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text(addr.city.get(),
-                      overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    addr.city.get(),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   onTap: () => selectIndex(i),
                 ),
               );
@@ -351,12 +352,11 @@ class _OrdersCard extends StatelessWidget {
           initialSelectedIndex: form.orders.isEmpty ? null : 0,
           masterBuilder: (context, listForm, selected, selectIndex) =>
               _OrderMaster(
-            listForm: listForm,
-            selectedIndex: selected,
-            selectIndex: selectIndex,
-          ),
-          detailBuilder: (context, _, rowForm) =>
-              _OrderDetail(form: rowForm),
+                listForm: listForm,
+                selectedIndex: selected,
+                selectIndex: selectIndex,
+              ),
+          detailBuilder: (context, _, rowForm) => _OrderDetail(form: rowForm),
         ),
       ),
     );
@@ -382,8 +382,10 @@ class _OrderMaster extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-          child: Text('Orders (${listForm.length})',
-              style: theme.textTheme.titleSmall),
+          child: Text(
+            'Orders (${listForm.length})',
+            style: theme.textTheme.titleSmall,
+          ),
         ),
         const Divider(height: 8),
         Expanded(
@@ -394,39 +396,39 @@ class _OrderMaster extends StatelessWidget {
               final o = rowForm.currentBinding;
               if (o == null) return const ListTile(title: Text('(unbound)'));
               final sel = i == selectedIndex;
-              return LayoutBuilder(builder: (context, constraints) {
-                // Wider master → richer master rows.
-                final showSubtitle = constraints.maxWidth >= 240;
-                return TomMultiObservableBuilder(
-                  key: ValueKey('example-h-d-order-${rowForm.hashCode}'),
-                  observables: [o.orderId, o.priority, o.paid],
-                  builder: (context) => ListTile(
-                    dense: true,
-                    selected: sel,
-                    leading: TomReorderHandle(index: i),
-                    title: Text(
-                      o.orderId.get().isEmpty ? '(no id)' : o.orderId.get(),
-                      style: TextStyle(
-                        fontWeight: sel
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  // Wider master → richer master rows.
+                  final showSubtitle = constraints.maxWidth >= 240;
+                  return TomMultiObservableBuilder(
+                    key: ValueKey('example-h-d-order-${rowForm.hashCode}'),
+                    observables: [o.orderId, o.priority, o.paid],
+                    builder: (context) => ListTile(
+                      dense: true,
+                      selected: sel,
+                      leading: TomReorderHandle(index: i),
+                      title: Text(
+                        o.orderId.get().isEmpty ? '(no id)' : o.orderId.get(),
+                        style: TextStyle(
+                          fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
+                      subtitle: showSubtitle
+                          ? Text(
+                              '${o.priority.get()} · '
+                              '${o.paid.get() ? "paid" : "unpaid"}',
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          : null,
+                      trailing: o.paid.get()
+                          ? const Icon(Icons.check_circle, size: 18)
+                          : null,
+                      onTap: () => selectIndex(i),
                     ),
-                    subtitle: showSubtitle
-                        ? Text(
-                            '${o.priority.get()} · '
-                            '${o.paid.get() ? "paid" : "unpaid"}',
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        : null,
-                    trailing: o.paid.get()
-                        ? const Icon(Icons.check_circle, size: 18)
-                        : null,
-                    onTap: () => selectIndex(i),
-                  ),
-                );
-              });
+                  );
+                },
+              );
             },
           ),
         ),
@@ -475,8 +477,10 @@ class _OrderDetail extends StatelessWidget {
               children: [
                 Text('Items', style: theme.textTheme.titleSmall),
                 const Spacer(),
-                Text('Total: \$${form.total.toStringAsFixed(2)}',
-                    style: theme.textTheme.titleSmall),
+                Text(
+                  'Total: \$${form.total.toStringAsFixed(2)}',
+                  style: theme.textTheme.titleSmall,
+                ),
               ],
             ),
             const Divider(height: 12),

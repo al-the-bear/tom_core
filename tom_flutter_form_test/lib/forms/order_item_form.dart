@@ -70,13 +70,15 @@ class OrderItemForm extends TomForm<OrderItem> {
     // When the product changes to a known catalog entry, mirror its
     // price into `unitPrice`. Free-form entries (anything not in the
     // catalog) leave the price untouched.
-    _priceSync = productName >> (_) {
-      final price = phase2aLookupProductPrice(productName.get());
-      if (price != null) {
-        final next = price.toStringAsFixed(2);
-        if (unitPrice.get() != next) unitPrice.setValue(next);
-      }
-    };
+    _priceSync =
+        productName >>
+        (_) {
+          final price = phase2aLookupProductPrice(productName.get());
+          if (price != null) {
+            final next = price.toStringAsFixed(2);
+            if (unitPrice.get() != next) unitPrice.setValue(next);
+          }
+        };
   }
 
   @override

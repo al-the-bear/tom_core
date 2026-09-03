@@ -106,7 +106,7 @@ final _emailDomainValidator = SlowValidator<String>((value) async {
 @tomReflector
 class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   CompanyBasicInfoForm({TomAuthorizationGroup? authGroup})
-      : super(formId: 'companyBasicInfo') {
+    : super(formId: 'companyBasicInfo') {
     authorizationGroup = authGroup;
   }
 
@@ -197,10 +197,7 @@ class AddressForm extends TomForm<Address> {
     validators: [Validators.required()],
   );
 
-  late final street2 = TomFormStringInput(
-    'street2',
-    '',
-  );
+  late final street2 = TomFormStringInput('street2', '');
 
   late final city = TomFormStringInput(
     'city',
@@ -208,10 +205,7 @@ class AddressForm extends TomForm<Address> {
     validators: [Validators.required()],
   );
 
-  late final state = TomFormStringInput(
-    'state',
-    '',
-  );
+  late final state = TomFormStringInput('state', '');
 
   late final zipCode = TomFormStringInput(
     'zipCode',
@@ -260,7 +254,11 @@ class PersonForm extends TomForm<Person> {
   late final email = TomFormStringInput(
     'email',
     '',
-    validators: [Validators.required(), Validators.email(), _emailDomainValidator],
+    validators: [
+      Validators.required(),
+      Validators.email(),
+      _emailDomainValidator,
+    ],
     keyboardType: TextInputType.emailAddress,
   );
 
@@ -270,10 +268,7 @@ class PersonForm extends TomForm<Person> {
     keyboardType: TextInputType.phone,
   );
 
-  late final title = TomFormStringInput(
-    'title',
-    '',
-  );
+  late final title = TomFormStringInput('title', '');
 }
 
 // ---------------------------------------------------------------------------
@@ -302,7 +297,10 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
     'locale',
     'en_US',
     validators: [
-      Validators.pattern(RegExp(r'^[a-z]{2}_[A-Z]{2}$'), errorKey: 'invalidLocale'),
+      Validators.pattern(
+        RegExp(r'^[a-z]{2}_[A-Z]{2}$'),
+        errorKey: 'invalidLocale',
+      ),
     ],
   );
 
@@ -315,10 +313,7 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
     ],
   );
 
-  late final dateFormat = TomFormStringInput(
-    'dateFormat',
-    'yyyy-MM-dd',
-  );
+  late final dateFormat = TomFormStringInput('dateFormat', 'yyyy-MM-dd');
 
   late final notificationEmail = TomFormStringInput(
     'notificationEmail',

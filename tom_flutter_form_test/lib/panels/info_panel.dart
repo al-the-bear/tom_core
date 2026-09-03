@@ -49,10 +49,9 @@ class InfoPanelHeading extends StatelessWidget {
       padding: const EdgeInsets.only(top: 12, bottom: 4),
       child: Text(
         label,
-        style: Theme.of(context)
-            .textTheme
-            .labelLarge
-            ?.copyWith(fontWeight: FontWeight.w600),
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }

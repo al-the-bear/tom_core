@@ -31,38 +31,50 @@ void main() {
     );
   });
 
-  testWidgets('Demo H title field keeps focus across multiple keypresses',
-      (tester) async {
+  testWidgets('Demo H title field keeps focus across multiple keypresses', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(2400, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo H: Complex Authorization Scenarios'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo H: Complex Authorization Scenarios'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo H: Complex Authorization Scenarios'));
     await tester.pumpAndSettle();
 
     final titleField = tester
         .widgetList<TextField>(find.byType(TextField))
         .firstWhere(
-            (t) => t.controller?.text == 'Responsive dashboard refresh');
+          (t) => t.controller?.text == 'Responsive dashboard refresh',
+        );
 
     await tester.tap(find.byWidget(titleField));
     await tester.pumpAndSettle();
-    expect(titleField.focusNode?.hasFocus, isTrue,
-        reason: 'Tap should give the title field focus.');
+    expect(
+      titleField.focusNode?.hasFocus,
+      isTrue,
+      reason: 'Tap should give the title field focus.',
+    );
 
-    await tester.enterText(find.byWidget(titleField),
-        '${titleField.controller?.text}!!!');
+    await tester.enterText(
+      find.byWidget(titleField),
+      '${titleField.controller?.text}!!!',
+    );
     await tester.pumpAndSettle();
 
     expect(titleField.controller?.text, 'Responsive dashboard refresh!!!');
-    expect(titleField.focusNode?.hasFocus, isTrue,
-        reason: 'Typing must not unfocus the field.');
+    expect(
+      titleField.focusNode?.hasFocus,
+      isTrue,
+      reason: 'Typing must not unfocus the field.',
+    );
   });
 }

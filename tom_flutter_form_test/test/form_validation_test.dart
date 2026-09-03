@@ -58,8 +58,9 @@ void main() {
   // TextField order in Demo 1 (dropdowns excluded):
   //   0 = name  |  1 = taxId  |  2 = website  |  3 = description
 
-  testWidgets('T01: Demo 1 — empty name field shows required error',
-      (tester) async {
+  testWidgets('T01: Demo 1 — empty name field shows required error', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -72,8 +73,9 @@ void main() {
     expect(find.text('Company name is required.'), findsOneWidget);
   });
 
-  testWidgets('T02: Demo 1 — single-character name shows minLength error',
-      (tester) async {
+  testWidgets('T02: Demo 1 — single-character name shows minLength error', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -87,8 +89,9 @@ void main() {
     );
   });
 
-  testWidgets('T03: Demo 1 — lowercase taxId fails pattern validator',
-      (tester) async {
+  testWidgets('T03: Demo 1 — lowercase taxId fails pattern validator', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -99,13 +102,15 @@ void main() {
 
     expect(
       find.text(
-          'Tax ID must contain only uppercase letters, numbers, and dashes.'),
+        'Tax ID must contain only uppercase letters, numbers, and dashes.',
+      ),
       findsOneWidget,
     );
   });
 
-  testWidgets('T04: Demo 1 — invalid URL in website shows pattern error',
-      (tester) async {
+  testWidgets('T04: Demo 1 — invalid URL in website shows pattern error', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -114,8 +119,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text(
-          'Please enter a valid URL starting with http:// or https://.'),
+      find.text('Please enter a valid URL starting with http:// or https://.'),
       findsOneWidget,
     );
   });
@@ -124,8 +128,9 @@ void main() {
   // Demo 1 — slow validation via debounce
   // ═══════════════════════════════════════════════════════════════════════════
 
-  testWidgets('T05: Demo 1 — taxId starting with X shows taxIdTaken error',
-      (tester) async {
+  testWidgets('T05: Demo 1 — taxId starting with X shows taxIdTaken error', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -142,8 +147,9 @@ void main() {
   // Demo 1 — save button flows
   // ═══════════════════════════════════════════════════════════════════════════
 
-  testWidgets('T06: Demo 1 — save with valid pre-populated data shows Saved!',
-      (tester) async {
+  testWidgets('T06: Demo 1 — save with valid pre-populated data shows Saved!', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -159,32 +165,35 @@ void main() {
     expect(find.text('Status: Saved!'), findsOneWidget);
   });
 
-  testWidgets('T07: Demo 1 — save with empty required name shows failure status',
-      (tester) async {
-    await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'T07: Demo 1 — save with empty required name shows failure status',
+    (tester) async {
+      await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
+      await tester.pumpAndSettle();
 
-    // Clear the required name field.
-    await tester.enterText(find.byType(TextField).at(0), '');
+      // Clear the required name field.
+      await tester.enterText(find.byType(TextField).at(0), '');
 
-    final saveButton = find.widgetWithText(FilledButton, 'Save');
-    await tester.ensureVisible(saveButton);
-    await tester.tap(saveButton);
-    await tester.pump();
-    // Allow slow validators to finish before checking the final status.
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+      final saveButton = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pump();
+      // Allow slow validators to finish before checking the final status.
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
 
-    expect(
-      find.text('Status: Validation failed \u2014 check fields'),
-      findsOneWidget,
-    );
-    // Required-error annotation must appear on the name field.
-    expect(find.text('Company name is required.'), findsOneWidget);
-  });
+      expect(
+        find.text('Status: Validation failed \u2014 check fields'),
+        findsOneWidget,
+      );
+      // Required-error annotation must appear on the name field.
+      expect(find.text('Company name is required.'), findsOneWidget);
+    },
+  );
 
-  testWidgets('T08: Demo 1 — discard restores field and shows discard status',
-      (tester) async {
+  testWidgets('T08: Demo 1 — discard restores field and shows discard status', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -209,7 +218,9 @@ void main() {
   // TextField order mirrors Demo 1 (same CompanyBasicInfoForm, same ACL order):
   //   0 = name  |  1 = taxId  |  2 = website  |  3 = description
 
-  testWidgets('T09: Demo 4 — all four fields start as Pristine', (tester) async {
+  testWidgets('T09: Demo 4 — all four fields start as Pristine', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo4Validation()));
     await tester.pumpAndSettle();
 
@@ -217,8 +228,9 @@ void main() {
     expect(find.text('Pristine'), findsNWidgets(4));
   });
 
-  testWidgets('T10: Demo 4 — valid company name shows Valid status',
-      (tester) async {
+  testWidgets('T10: Demo 4 — valid company name shows Valid status', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo4Validation()));
     await tester.pumpAndSettle();
 
@@ -230,8 +242,9 @@ void main() {
     expect(find.text('Valid'), findsWidgets);
   });
 
-  testWidgets('T11: Demo 4 — single-character name shows Error status',
-      (tester) async {
+  testWidgets('T11: Demo 4 — single-character name shows Error status', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo4Validation()));
     await tester.pumpAndSettle();
 
@@ -248,8 +261,9 @@ void main() {
     );
   });
 
-  testWidgets('T12: Demo 4 — X-prefix taxId shows Validating… then Error',
-      (tester) async {
+  testWidgets('T12: Demo 4 — X-prefix taxId shows Validating… then Error', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo4Validation()));
     await tester.pumpAndSettle();
 
@@ -279,8 +293,9 @@ void main() {
   // TextField order in Demo 5 (dropdowns excluded):
   //   0 = locale  |  1 = currency  |  2 = dateFormat  |  3 = notificationEmail
 
-  testWidgets('T13: Demo 5 — invalid locale shows invalidLocale error',
-      (tester) async {
+  testWidgets('T13: Demo 5 — invalid locale shows invalidLocale error', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo5SettingsForm()));
     await tester.pumpAndSettle();
 
@@ -295,8 +310,9 @@ void main() {
     );
   });
 
-  testWidgets('T14: Demo 5 — lowercase currency shows invalidCurrency error',
-      (tester) async {
+  testWidgets('T14: Demo 5 — lowercase currency shows invalidCurrency error', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo5SettingsForm()));
     await tester.pumpAndSettle();
 
@@ -311,8 +327,9 @@ void main() {
     );
   });
 
-  testWidgets('T15: Demo 5 — save with invalid currency shows failure status',
-      (tester) async {
+  testWidgets('T15: Demo 5 — save with invalid currency shows failure status', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo5SettingsForm()));
     await tester.pumpAndSettle();
 
@@ -343,8 +360,9 @@ void main() {
   //   Address: 0=street  1=street2  2=city  3=state  4=zipCode
   //   CEO:     5=firstName  6=lastName  7=email  8=phone  9=title
 
-  testWidgets('T16: Demo 2 — save with empty required street field fails',
-      (tester) async {
+  testWidgets('T16: Demo 2 — save with empty required street field fails', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo2NestedForms()));
     await tester.pumpAndSettle();
 
@@ -366,21 +384,24 @@ void main() {
     expect(find.text('Street address is required.'), findsWidgets);
   });
 
-  testWidgets('T17: Demo 2 — invalid CEO email shows email error via debounce',
-      (tester) async {
-    await tester.pumpWidget(buildTestApp(const Demo2NestedForms()));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'T17: Demo 2 — invalid CEO email shows email error via debounce',
+    (tester) async {
+      await tester.pumpWidget(buildTestApp(const Demo2NestedForms()));
+      await tester.pumpAndSettle();
 
-    // Email field is pre-populated with 'jane.doe@acme.example.com'.
-    await tester.enterText(find.byType(TextField).at(7), 'not-an-email');
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pumpAndSettle();
+      // Email field is pre-populated with 'jane.doe@acme.example.com'.
+      await tester.enterText(find.byType(TextField).at(7), 'not-an-email');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Please enter a valid email address.'), findsOneWidget);
-  });
+      expect(find.text('Please enter a valid email address.'), findsOneWidget);
+    },
+  );
 
-  testWidgets('T18: Demo 2 — discard nested forms shows discard status',
-      (tester) async {
+  testWidgets('T18: Demo 2 — discard nested forms shows discard status', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo2NestedForms()));
     await tester.pumpAndSettle();
 

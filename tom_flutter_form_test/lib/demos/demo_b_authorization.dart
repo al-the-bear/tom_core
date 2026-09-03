@@ -108,10 +108,11 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
     _form?.removeListener(_inspector);
     _form?.dispose();
 
-    final billingGroup =
-        TomAuthorizationGroup('billing', mode: _billingMode);
-    final shippingGroup =
-        TomAuthorizationGroup('shipping', mode: _shippingMode);
+    final billingGroup = TomAuthorizationGroup('billing', mode: _billingMode);
+    final shippingGroup = TomAuthorizationGroup(
+      'shipping',
+      mode: _shippingMode,
+    );
 
     final form = TomScope.withScope(
       'demoB',
@@ -146,11 +147,13 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
         final newState = field.effectiveAuthState;
         final previous = _lastAuthSeen[path];
         if (previous != null && previous != newState) {
-          _inspector.onFieldAuthChanged(FieldAuthChangedEvent(
-            source: field.tomId,
-            oldState: previous,
-            newState: newState,
-          ));
+          _inspector.onFieldAuthChanged(
+            FieldAuthChangedEvent(
+              source: field.tomId,
+              oldState: previous,
+              newState: newState,
+            ),
+          );
         }
         _lastAuthSeen[path] = newState;
       }
@@ -173,10 +176,9 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
       // narrow the address sections to read via authorizerNarrowsOnly.
       final authorizer = TomAuthorizer(
         strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
-        resolve: (resourceAuth) =>
-            form.customerTier.get() == 'platinum'
-                ? TomAuthState.read
-                : resourceAuth,
+        resolve: (resourceAuth) => form.customerTier.get() == 'platinum'
+            ? TomAuthState.read
+            : resourceAuth,
       );
       for (final f in form.billing.fields.values) {
         f.authorizer = authorizer;
@@ -229,8 +231,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
     _snapshotAuthAndRebuild();
   }
 
-  void _onGroupSelected(String id) =>
-      setState(() => _selectedGroupId = id);
+  void _onGroupSelected(String id) => setState(() => _selectedGroupId = id);
 
   void _onGroupModeChanged(AuthGroupMode mode) {
     setState(() {
@@ -287,15 +288,9 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -316,10 +311,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
     final form = _form;
     if (form == null) return const SizedBox.shrink();
 
-    final layout = TomAclBuilder(
-      id: 'demoBLayout',
-      elementProvider: form,
-    )
+    final layout = TomAclBuilder(id: 'demoBLayout', elementProvider: form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.fullName.widget)
@@ -332,35 +324,31 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
         .append((p) => p.notes.widget)
         .build(context);
 
-    final billingLayout = TomAclBuilder(
-      id: 'demoBBilling',
-      elementProvider: form.billing,
-    )
-        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-        .setAclExpandXDefault(true)
-        .append((p) => p.street.widget)
-        .newRow()
-        .append((p) => p.city.widget)
-        .append((p) => p.state.widget, dist: 16)
-        .newRow()
-        .append((p) => p.zipCode.widget)
-        .append((p) => p.country.widget, dist: 16)
-        .build(context);
+    final billingLayout =
+        TomAclBuilder(id: 'demoBBilling', elementProvider: form.billing)
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+            .setAclExpandXDefault(true)
+            .append((p) => p.street.widget)
+            .newRow()
+            .append((p) => p.city.widget)
+            .append((p) => p.state.widget, dist: 16)
+            .newRow()
+            .append((p) => p.zipCode.widget)
+            .append((p) => p.country.widget, dist: 16)
+            .build(context);
 
-    final shippingLayout = TomAclBuilder(
-      id: 'demoBShipping',
-      elementProvider: form.shipping,
-    )
-        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-        .setAclExpandXDefault(true)
-        .append((p) => p.street.widget)
-        .newRow()
-        .append((p) => p.city.widget)
-        .append((p) => p.state.widget, dist: 16)
-        .newRow()
-        .append((p) => p.zipCode.widget)
-        .append((p) => p.country.widget, dist: 16)
-        .build(context);
+    final shippingLayout =
+        TomAclBuilder(id: 'demoBShipping', elementProvider: form.shipping)
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+            .setAclExpandXDefault(true)
+            .append((p) => p.street.widget)
+            .newRow()
+            .append((p) => p.city.widget)
+            .append((p) => p.state.widget, dist: 16)
+            .newRow()
+            .append((p) => p.zipCode.widget)
+            .append((p) => p.country.widget, dist: 16)
+            .build(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -395,18 +383,28 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const DemoBullet('Four auth states per field; form-level ceiling '
-                'narrows everything at once.'),
-            const DemoBullet('Billing and shipping live in dedicated '
-                'TomAuthorizationGroups — pick a group on the right to '
-                'toggle its mode (controlsAll / controlsWidest / controlsNarrowest).'),
-            const DemoBullet('TomAuthorizer: when on, customer tier "platinum" '
-                'narrows both address sections to read.'),
-            const DemoBullet('TomUIStateController: when on, email is disabled '
-                'until the phone field is non-empty.'),
-            const DemoBullet('Every transition shows up in the event log — '
-                'value changes, validations, and synthetic '
-                'FieldAuthChangedEvent entries emitted on auth swaps.'),
+            const DemoBullet(
+              'Four auth states per field; form-level ceiling '
+              'narrows everything at once.',
+            ),
+            const DemoBullet(
+              'Billing and shipping live in dedicated '
+              'TomAuthorizationGroups — pick a group on the right to '
+              'toggle its mode (controlsAll / controlsWidest / controlsNarrowest).',
+            ),
+            const DemoBullet(
+              'TomAuthorizer: when on, customer tier "platinum" '
+              'narrows both address sections to read.',
+            ),
+            const DemoBullet(
+              'TomUIStateController: when on, email is disabled '
+              'until the phone field is non-empty.',
+            ),
+            const DemoBullet(
+              'Every transition shows up in the event log — '
+              'value changes, validations, and synthetic '
+              'FieldAuthChangedEvent entries emitted on auth swaps.',
+            ),
           ],
         ),
       ),
@@ -470,9 +468,11 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
             children: [
               EventLogPanel(
                 inspector: _inspector,
-                rebuildOn: Listenable.merge(
-                  [form.changes, form.billing.changes, form.shipping.changes],
-                ),
+                rebuildOn: Listenable.merge([
+                  form.changes,
+                  form.billing.changes,
+                  form.shipping.changes,
+                ]),
               ),
             ],
           ),

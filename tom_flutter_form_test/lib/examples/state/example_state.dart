@@ -108,14 +108,18 @@ ExampleCustomerRich _seedRichCustomer() {
   c.addresses.add(_addr('Main Office', '1 Analytical Way', 'London', 'UK'));
   c.addresses.add(_addr('Warehouse', '7 Engine Works', 'Manchester', 'UK'));
 
-  c.orders.add(_order('ORD-1001', DateTime(2026, 1, 15), 'priority', true, [
-    _item('Difference Engine pinion', 12, 34.50, 'Brass; lot #B-117'),
-    _item('Punched-card deck (1000 pk)', 3, 49.00, null),
-  ]));
-  c.orders.add(_order('ORD-1002', DateTime(2026, 2, 28), 'standard', false, [
-    _item('Bearing block', 4, 18.75, null),
-    _item('Mainspring assembly', 1, 58.50, 'Replacement unit'),
-  ]));
+  c.orders.add(
+    _order('ORD-1001', DateTime(2026, 1, 15), 'priority', true, [
+      _item('Difference Engine pinion', 12, 34.50, 'Brass; lot #B-117'),
+      _item('Punched-card deck (1000 pk)', 3, 49.00, null),
+    ]),
+  );
+  c.orders.add(
+    _order('ORD-1002', DateTime(2026, 2, 28), 'standard', false, [
+      _item('Bearing block', 4, 18.75, null),
+      _item('Mainspring assembly', 1, 58.50, 'Replacement unit'),
+    ]),
+  );
   return c;
 }
 
@@ -147,7 +151,11 @@ ExampleOrder _order(
 }
 
 ExampleOrderItem _item(
-    String productName, int quantity, double unitPrice, String? notes) {
+  String productName,
+  int quantity,
+  double unitPrice,
+  String? notes,
+) {
   final i = ExampleOrderItem();
   i.productName | productName;
   i.quantity | quantity;

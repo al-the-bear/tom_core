@@ -140,24 +140,24 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('What this demo covers',
-                style: theme.textTheme.titleSmall),
+            Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Tap a row to expand the OrderItemForm inline — only ONE '
-                'row is open at a time. The product field is a type-ahead '
-                'search over the catalog; selecting an entry auto-fills '
-                'the unit price. Quantity = 0 is an error.\n\n'
-                'Switching to another row while the open row has '
-                'validation errors is refused — the open row stays '
-                'expanded and a snackbar tells you why. Saving the order '
-                'collapses the open row on success.\n\n'
-                'Each row also carries a drag handle (left edge of the '
-                'summary) that lets you reorder rows; the open row stays '
-                'open at its new position after the drop. The toolbar '
-                'below the rows is the reusable TomListFormToolbar — '
-                'Add / Remove / Move up / Move down all operate on the '
-                'currently-open row.'),
+              'Tap a row to expand the OrderItemForm inline — only ONE '
+              'row is open at a time. The product field is a type-ahead '
+              'search over the catalog; selecting an entry auto-fills '
+              'the unit price. Quantity = 0 is an error.\n\n'
+              'Switching to another row while the open row has '
+              'validation errors is refused — the open row stays '
+              'expanded and a snackbar tells you why. Saving the order '
+              'collapses the open row on success.\n\n'
+              'Each row also carries a drag handle (left edge of the '
+              'summary) that lets you reorder rows; the open row stays '
+              'open at its new position after the drop. The toolbar '
+              'below the rows is the reusable TomListFormToolbar — '
+              'Add / Remove / Move up / Move down all operate on the '
+              'currently-open row.',
+            ),
           ],
         ),
       ),
@@ -172,25 +172,27 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              Text('Order header', style: theme.textTheme.titleSmall),
-              const Spacer(),
-              if (_form.isDirty)
-                const Padding(
-                  padding: EdgeInsets.only(right: 6),
-                  child: Chip(
-                    label: Text('Form dirty'),
-                    visualDensity: VisualDensity.compact,
+            Row(
+              children: [
+                Text('Order header', style: theme.textTheme.titleSmall),
+                const Spacer(),
+                if (_form.isDirty)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 6),
+                    child: Chip(
+                      label: Text('Form dirty'),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
+                Chip(
+                  label: Text(_form.isValid ? 'Form valid' : 'Form invalid'),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: _form.isValid
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.errorContainer,
                 ),
-              Chip(
-                label: Text(_form.isValid ? 'Form valid' : 'Form invalid'),
-                visualDensity: VisualDensity.compact,
-                backgroundColor: _form.isValid
-                    ? theme.colorScheme.primaryContainer
-                    : theme.colorScheme.errorContainer,
-              ),
-            ]),
+              ],
+            ),
             const SizedBox(height: 12),
             _form.orderNumber.widget,
             const SizedBox(height: 8),
@@ -214,20 +216,23 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
           reorderable: true,
           headerBuilder: (context, list) => Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-            child: Row(children: [
-              Text('Items (${list.length})',
-                  style: theme.textTheme.titleSmall),
-              const Spacer(),
-              Text(
-                'Order total: \$${_orderTotal().toStringAsFixed(2)}',
-                style: theme.textTheme.titleSmall,
-              ),
-            ]),
+            child: Row(
+              children: [
+                Text(
+                  'Items (${list.length})',
+                  style: theme.textTheme.titleSmall,
+                ),
+                const Spacer(),
+                Text(
+                  'Order total: \$${_orderTotal().toStringAsFixed(2)}',
+                  style: theme.textTheme.titleSmall,
+                ),
+              ],
+            ),
           ),
           summaryBuilder: (context, index, rowForm) =>
               _summary(context, index, rowForm),
-          bodyBuilder: (context, index, rowForm) =>
-              _rowBody(context, rowForm),
+          bodyBuilder: (context, index, rowForm) => _rowBody(context, rowForm),
           footerBuilder: (context, list) => const Divider(height: 16),
           toolbarBuilder: (context, list) => Padding(
             padding: const EdgeInsets.all(8),
@@ -237,10 +242,9 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               // selection from the toolbar's perspective. Wire the
               // controller's expanded set into the toolbar so Move-up /
               // Move-down / Remove operate on the open row.
-              selectedIndex:
-                  _expandController.expanded.isEmpty
-                      ? null
-                      : _expandController.expanded.first,
+              selectedIndex: _expandController.expanded.isEmpty
+                  ? null
+                  : _expandController.expanded.first,
               addLabel: 'Add item',
               removeLabel: 'Remove item',
               // Adding a row also "switches" away from the open row —
@@ -298,8 +302,10 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
                   ],
                 ),
               ),
-              Text('\$${total.toStringAsFixed(2)}',
-                  style: theme.textTheme.titleSmall),
+              Text(
+                '\$${total.toStringAsFixed(2)}',
+                style: theme.textTheme.titleSmall,
+              ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
                 tooltip: 'Remove row',
@@ -323,11 +329,13 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(children: [
-            Expanded(child: form.quantity.widget),
-            const SizedBox(width: 12),
-            Expanded(child: form.unitPrice.widget),
-          ]),
+          child: Row(
+            children: [
+              Expanded(child: form.quantity.widget),
+              const SizedBox(width: 12),
+              Expanded(child: form.unitPrice.widget),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         Padding(
@@ -401,11 +409,15 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
                   // bypasses the row-switch veto by design.
                   _expandController.collapseAll();
                 }
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(ok
-                      ? 'Saved order + items.'
-                      : 'Validation failed — see errors below the rows.'),
-                ));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      ok
+                          ? 'Saved order + items.'
+                          : 'Validation failed — see errors below the rows.',
+                    ),
+                  ),
+                );
               },
             ),
             OutlinedButton.icon(
@@ -460,19 +472,24 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
   /// errors exist — that's the "validate-before-switch" gate from
   /// spec §16. Opens are always allowed.
   Future<bool> _onBeforeRowExpansionChange(
-      int index, OrderItemForm form, bool willOpen) async {
+    int index,
+    OrderItemForm form,
+    bool willOpen,
+  ) async {
     if (willOpen) return true;
     final errors = await form.validate();
     if (errors.isEmpty) return true;
     if (!mounted) return false;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-        'Row ${index + 1} has ${errors.length} '
-        '${errors.length == 1 ? "error" : "errors"} — fix them or '
-        'discard before switching.',
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Row ${index + 1} has ${errors.length} '
+          '${errors.length == 1 ? "error" : "errors"} — fix them or '
+          'discard before switching.',
+        ),
+        duration: const Duration(seconds: 3),
       ),
-      duration: const Duration(seconds: 3),
-    ));
+    );
     return false;
   }
 
@@ -490,7 +507,6 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
   }
 
   double _orderTotal() {
-    return _form.items.forms
-        .fold<double>(0, (sum, f) => sum + f.computedTotal);
+    return _form.items.forms.fold<double>(0, (sum, f) => sum + f.computedTotal);
   }
 }

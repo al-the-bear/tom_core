@@ -21,26 +21,31 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
     );
   });
 
-  Future<void> openDemo(WidgetTester tester, String tile,
-      {Size size = const Size(2400, 2400)}) async {
+  Future<void> openDemo(
+    WidgetTester tester,
+    String tile, {
+    Size size = const Size(2400, 2400),
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.ensureVisible(find.text(tile));
     await tester.pumpAndSettle();
     await tester.tap(find.text(tile), warnIfMissed: false);
@@ -61,8 +66,9 @@ void main() {
   // Demo Q — Auth / Empty / Overlay
   // -------------------------------------------------------------------
 
-  testWidgets('Demo Q opens and renders the three Phase 6 anchor cards',
-      (tester) async {
+  testWidgets('Demo Q opens and renders the three Phase 6 anchor cards', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo Q: Auth / Empty / Overlay (Phase 6)');
     expect(
       find.text('Demo Q — Auth / Empty / Overlay (Phase 6)'),
@@ -70,10 +76,7 @@ void main() {
     );
     // Stage cards
     expect(find.text('TomAuthGuard — profile panel'), findsOneWidget);
-    expect(
-      find.text('TomEmptyState + TomLoadingOverlay'),
-      findsOneWidget,
-    );
+    expect(find.text('TomEmptyState + TomLoadingOverlay'), findsOneWidget);
     // Profile-card content (auth = full default → child is rendered)
     expect(find.text('Ada Lovelace'), findsOneWidget);
     expect(find.text('ada@example.com'), findsOneWidget);
@@ -92,8 +95,9 @@ void main() {
     expect(find.text('Save (awaits SlowValidator)'), findsOneWidget);
   });
 
-  testWidgets('Demo Q empty-state slot renders when items are cleared',
-      (tester) async {
+  testWidgets('Demo Q empty-state slot renders when items are cleared', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo Q: Auth / Empty / Overlay (Phase 6)');
     expect(find.text('Alpha'), findsOneWidget);
     // Tap Clear in the right-hand control pane.
@@ -102,14 +106,17 @@ void main() {
     expect(find.text('Alpha'), findsNothing);
     expect(find.text('No items'), findsOneWidget);
     expect(
-      find.text('Use Seed to insert sample rows, or +1 to '
-          'append a single row.'),
+      find.text(
+        'Use Seed to insert sample rows, or +1 to '
+        'append a single row.',
+      ),
       findsOneWidget,
     );
   });
 
-  testWidgets('Demo Q profile auth = none hides the guarded subtree',
-      (tester) async {
+  testWidgets('Demo Q profile auth = none hides the guarded subtree', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo Q: Auth / Empty / Overlay (Phase 6)');
     expect(find.text('Ada Lovelace'), findsOneWidget);
     // Open the auth dropdown and pick "none".
@@ -123,9 +130,9 @@ void main() {
     expect(find.text('Profile hidden — auth = none'), findsOneWidget);
   });
 
-  testWidgets(
-      'Demo Q save button drives TomLoadingOverlay via SlowValidator',
-      (tester) async {
+  testWidgets('Demo Q save button drives TomLoadingOverlay via SlowValidator', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo Q: Auth / Empty / Overlay (Phase 6)');
     // Baseline: no overlay before pressing save.
     expect(find.text('Saving — SlowValidator pending…'), findsNothing);
@@ -150,10 +157,10 @@ void main() {
   // Demo R — Tree / Radio / Infinite scroll
   // -------------------------------------------------------------------
 
-  testWidgets('Demo R opens and renders all Phase 6 anchor cards',
-      (tester) async {
-    await openDemo(
-        tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
+  testWidgets('Demo R opens and renders all Phase 6 anchor cards', (
+    tester,
+  ) async {
+    await openDemo(tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
     // Settle once more so the post-frame first-page fetch completes.
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
@@ -164,8 +171,7 @@ void main() {
     // Three card titles.
     expect(find.text('TomAuthTreeView'), findsOneWidget);
     expect(find.text('TomRadioGroup'), findsOneWidget);
-    expect(find.text('TomInfiniteScroll + TomErrorBoundary'),
-        findsOneWidget);
+    expect(find.text('TomInfiniteScroll + TomErrorBoundary'), findsOneWidget);
     // Tree visible nodes — `admin` is seeded to `none` → hidden.
     expect(find.text('Dashboard'), findsOneWidget);
     expect(find.text('Users'), findsOneWidget);
@@ -187,10 +193,10 @@ void main() {
     await unmountDemo(tester);
   });
 
-  testWidgets('Demo R synthetic fetch failure renders error slot',
-      (tester) async {
-    await openDemo(
-        tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
+  testWidgets('Demo R synthetic fetch failure renders error slot', (
+    tester,
+  ) async {
+    await openDemo(tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
@@ -209,10 +215,8 @@ void main() {
     await unmountDemo(tester);
   });
 
-  testWidgets(
-      'Demo R synthetic tile throw is contained to the failing row '
-      'and Retry restores it',
-      (tester) async {
+  testWidgets('Demo R synthetic tile throw is contained to the failing row '
+      'and Retry restores it', (tester) async {
     // Regression for round-4 feedback `t`: the row-level error
     // boundary used to collapse the *entire* list to the default
     // 'Something went wrong' card because the synthetic throw lived
@@ -221,8 +225,7 @@ void main() {
     // has its own boundary with a compact fallback, and sibling rows
     // must keep rendering while row 3 shows a `Row #3 failed to
     // render` tile.
-    await openDemo(
-        tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
+    await openDemo(tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
     // Baseline: first rows are visible, no fallback tile.

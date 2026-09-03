@@ -49,8 +49,13 @@ import 'support/test_fonts.dart';
 
 CustomerDirectory _seedCustomers() {
   final dir = CustomerDirectory();
-  void add(String name, String email, String phone, String company,
-      String tier) {
+  void add(
+    String name,
+    String email,
+    String phone,
+    String company,
+    String tier,
+  ) {
     final c = Customer();
     c.fullName | name;
     c.email | email;
@@ -60,15 +65,29 @@ CustomerDirectory _seedCustomers() {
     dir.customers.add(c);
   }
 
-  add('Ada Lovelace', 'ada@analytical.example', '+44 20 7946 0958',
-      'Analytical Engines Ltd.', 'gold');
-  add('Grace Hopper', 'grace@navy.example', '+1 202 555 0140',
-      'COBOL Systems Inc.', 'platinum');
-  add('Linus Torvalds', 'torvalds@kernel.example', '+1 503 555 0177',
-      'Linux Foundation', 'silver');
+  add(
+    'Ada Lovelace',
+    'ada@analytical.example',
+    '+44 20 7946 0958',
+    'Analytical Engines Ltd.',
+    'gold',
+  );
+  add(
+    'Grace Hopper',
+    'grace@navy.example',
+    '+1 202 555 0140',
+    'COBOL Systems Inc.',
+    'platinum',
+  );
+  add(
+    'Linus Torvalds',
+    'torvalds@kernel.example',
+    '+1 503 555 0177',
+    'Linux Foundation',
+    'silver',
+  );
   return dir;
 }
-
 
 void main() {
   setUpAll(() async {
@@ -90,24 +109,26 @@ void main() {
     tester.view.physicalSize = const Size(1400, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
-    await tester.pumpWidget(MaterialApp(
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
+        ),
+        home: widget,
       ),
-      home: widget,
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
   /// Locate a Tom field's underlying [TextField] by the field's [tomId].
   Finder fieldByTomId(String tomId) => find.descendant(
-        of: find.byWidgetPredicate(
-          (w) => w is TomFieldWidgetAdapter && w.field.tomId == tomId,
-          description: 'TomFieldWidgetAdapter[$tomId]',
-        ),
-        matching: find.byType(TextField),
-      );
+    of: find.byWidgetPredicate(
+      (w) => w is TomFieldWidgetAdapter && w.field.tomId == tomId,
+      description: 'TomFieldWidgetAdapter[$tomId]',
+    ),
+    matching: find.byType(TextField),
+  );
 
   /// Current text in the (single) detail-pane field with [tomId].
   String fieldText(WidgetTester tester, String tomId) =>
@@ -120,8 +141,11 @@ void main() {
     if (finder.evaluate().isEmpty) {
       finder = find.widgetWithText(OutlinedButton, label);
     }
-    expect(finder, findsAtLeastNWidgets(1),
-        reason: 'No FilledButton/OutlinedButton labelled "$label"');
+    expect(
+      finder,
+      findsAtLeastNWidgets(1),
+      reason: 'No FilledButton/OutlinedButton labelled "$label"',
+    );
     await tester.ensureVisible(finder.first);
     await tester.pumpAndSettle();
     await tester.tap(finder.first);
@@ -129,10 +153,13 @@ void main() {
   }
 
   group('Example H-A — master/detail interaction', () {
-    testWidgets('selecting a master row rebinds the detail pane',
-        (tester) async {
-      await pump(tester,
-          const ExampleHAMasterDetail(family: ExampleFamily.material));
+    testWidgets('selecting a master row rebinds the detail pane', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const ExampleHAMasterDetail(family: ExampleFamily.material),
+      );
 
       // initialSelectedIndex: 0 → the detail pane shows Ada to start.
       expect(fieldText(tester, 'fullName'), 'Ada Lovelace');
@@ -146,30 +173,48 @@ void main() {
       expect(fieldText(tester, 'email'), 'grace@navy.example');
     });
 
-    testWidgets('editing a detail field marks dirty; Discard reverts it',
-        (tester) async {
-      await pump(tester,
-          const ExampleHAMasterDetail(family: ExampleFamily.material));
+    testWidgets('editing a detail field marks dirty; Discard reverts it', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const ExampleHAMasterDetail(family: ExampleFamily.material),
+      );
 
-      expect(find.widgetWithText(Chip, 'Dirty'), findsNothing,
-          reason: 'A freshly-bound detail form is pristine');
+      expect(
+        find.widgetWithText(Chip, 'Dirty'),
+        findsNothing,
+        reason: 'A freshly-bound detail form is pristine',
+      );
 
       await tester.enterText(fieldByTomId('fullName'), 'Ada Lovelace (edited)');
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(Chip, 'Dirty'), findsOneWidget,
-          reason: 'Editing a field marks the detail form dirty');
+      expect(
+        find.widgetWithText(Chip, 'Dirty'),
+        findsOneWidget,
+        reason: 'Editing a field marks the detail form dirty',
+      );
 
       await tapLabeled(tester, 'Discard');
-      expect(find.widgetWithText(Chip, 'Dirty'), findsNothing,
-          reason: 'Discard clears the dirty state');
-      expect(fieldText(tester, 'fullName'), 'Ada Lovelace',
-          reason: 'Discard reverts the edited field to the bound value');
+      expect(
+        find.widgetWithText(Chip, 'Dirty'),
+        findsNothing,
+        reason: 'Discard clears the dirty state',
+      );
+      expect(
+        fieldText(tester, 'fullName'),
+        'Ada Lovelace',
+        reason: 'Discard reverts the edited field to the bound value',
+      );
     });
 
-    testWidgets('Save with an invalid email surfaces the detail error view',
-        (tester) async {
-      await pump(tester,
-          const ExampleHAMasterDetail(family: ExampleFamily.material));
+    testWidgets('Save with an invalid email surfaces the detail error view', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const ExampleHAMasterDetail(family: ExampleFamily.material),
+      );
 
       await tester.enterText(fieldByTomId('email'), 'not-an-email');
       await tester.pumpAndSettle();
@@ -181,18 +226,27 @@ void main() {
 
       // TomErrorView collapses to SizedBox.shrink() when there are no
       // errors, so its title only renders once validation fails.
-      expect(find.text('Detail form errors'), findsOneWidget,
-          reason: 'An invalid Save must surface the detail error view');
+      expect(
+        find.text('Detail form errors'),
+        findsOneWidget,
+        reason: 'An invalid Save must surface the detail error view',
+      );
       // The error key must be resolved through the resource provider, not
       // leaked raw into the UI.
-      expect(find.textContaining('error.email'), findsNothing,
-          reason: 'The raw validator key must not reach the user');
+      expect(
+        find.textContaining('error.email'),
+        findsNothing,
+        reason: 'The raw validator key must not reach the user',
+      );
     });
 
-    testWidgets('Add appends a customer the bound observable list reflects',
-        (tester) async {
-      await pump(tester,
-          const ExampleHAMasterDetail(family: ExampleFamily.material));
+    testWidgets('Add appends a customer the bound observable list reflects', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const ExampleHAMasterDetail(family: ExampleFamily.material),
+      );
 
       expect(phase2aCustomers.customers.length, 3);
       expect(find.text('Customers (3)'), findsOneWidget);
@@ -201,16 +255,23 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
       await tester.pumpAndSettle();
 
-      expect(phase2aCustomers.customers.length, 4,
-          reason: 'Add must append a row to the bound observable list');
-      expect(find.text('Customers (4)'), findsOneWidget,
-          reason: 'The master header reflects the new list length');
+      expect(
+        phase2aCustomers.customers.length,
+        4,
+        reason: 'Add must append a row to the bound observable list',
+      );
+      expect(
+        find.text('Customers (4)'),
+        findsOneWidget,
+        reason: 'The master header reflects the new list length',
+      );
     });
 
-    testWidgets('Move-down reorders the bound observable list',
-        (tester) async {
-      await pump(tester,
-          const ExampleHAMasterDetail(family: ExampleFamily.material));
+    testWidgets('Move-down reorders the bound observable list', (tester) async {
+      await pump(
+        tester,
+        const ExampleHAMasterDetail(family: ExampleFamily.material),
+      );
 
       // Row 0 (Ada) is selected initially, so Move-down is enabled.
       expect(phase2aCustomers.customers[0].fullName.get(), 'Ada Lovelace');
@@ -224,8 +285,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // The reorder lands on the bound observable list, not just the view.
-      expect(phase2aCustomers.customers[0].fullName.get(), 'Grace Hopper',
-          reason: 'Move-down swaps the selected row past its successor');
+      expect(
+        phase2aCustomers.customers[0].fullName.get(),
+        'Grace Hopper',
+        reason: 'Move-down swaps the selected row past its successor',
+      );
       expect(phase2aCustomers.customers[1].fullName.get(), 'Ada Lovelace');
     });
   });

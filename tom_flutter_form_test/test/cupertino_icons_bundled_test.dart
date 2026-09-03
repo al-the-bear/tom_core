@@ -38,13 +38,12 @@ void main() {
     // Flutter resolves when an `IconData` carries both `fontFamily`
     // and `fontPackage`. So the assertion looks for either form.
     const cupertinoFamily = 'CupertinoIcons';
-    const cupertinoPackagedFamily =
-        'packages/cupertino_icons/CupertinoIcons';
+    const cupertinoPackagedFamily = 'packages/cupertino_icons/CupertinoIcons';
     expect(
-      families.any((f) =>
-          f == cupertinoFamily || f == cupertinoPackagedFamily),
+      families.any((f) => f == cupertinoFamily || f == cupertinoPackagedFamily),
       isTrue,
-      reason: 'CupertinoIcons font missing from FontManifest — '
+      reason:
+          'CupertinoIcons font missing from FontManifest — '
           'Cupertino widget icons will render as placeholder '
           'rectangles. Make sure `cupertino_icons` is in '
           'pubspec.yaml dependencies. Got families: $families',
@@ -53,17 +52,20 @@ void main() {
     // Drill in once: the family declaration should reference the
     // .ttf asset shipped by the cupertino_icons package, not a stub.
     final cupertino = manifest.cast<Map<String, dynamic>>().firstWhere(
-        (e) =>
-            e['family'] == cupertinoFamily ||
-            e['family'] == cupertinoPackagedFamily);
+      (e) =>
+          e['family'] == cupertinoFamily ||
+          e['family'] == cupertinoPackagedFamily,
+    );
     final fonts = (cupertino['fonts'] as List).cast<Map<String, dynamic>>();
-    final assets =
-        fonts.map((f) => f['asset'] as String).toList(growable: false);
+    final assets = fonts
+        .map((f) => f['asset'] as String)
+        .toList(growable: false);
     expect(assets, isNotEmpty);
     expect(
       assets.any((a) => a.endsWith('CupertinoIcons.ttf')),
       isTrue,
-      reason: 'Expected at least one font asset to be CupertinoIcons.ttf, '
+      reason:
+          'Expected at least one font asset to be CupertinoIcons.ttf, '
           'got: $assets',
     );
   });

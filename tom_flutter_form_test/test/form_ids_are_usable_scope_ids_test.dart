@@ -55,7 +55,13 @@ const _interpolationPlaceholder = 'x';
 
 /// Where an id was written, so a failure names the line to edit. [id] is the
 /// literal as written; [testable] is it with interpolations substituted.
-typedef _IdSite = ({String file, int line, String kind, String id, String testable});
+typedef _IdSite = ({
+  String file,
+  int line,
+  String kind,
+  String id,
+  String testable,
+});
 
 List<_IdSite> _idSites() {
   final sites = <_IdSite>[];
@@ -85,7 +91,8 @@ void main() {
     expect(
       sites,
       isNotEmpty,
-      reason: 'no formId/listId literal was found under lib/. Either the '
+      reason:
+          'no formId/listId literal was found under lib/. Either the '
           'forms moved or the pattern this test scans with no longer matches '
           'how they are written; an empty list must not read as "every id is '
           'fine".',
@@ -98,7 +105,8 @@ void main() {
         expect(
           () => TomScope.withScope(site.testable, () {}),
           returnsNormally,
-          reason: 'a ${site.kind} is used directly as a scope id and joined '
+          reason:
+              'a ${site.kind} is used directly as a scope id and joined '
               'into the form\'s basePath, so it has to be one the kernel will '
               'accept. Rename it to a single segment — the examples spell the '
               'prefix inside the id (`exampleCustomer`, not '

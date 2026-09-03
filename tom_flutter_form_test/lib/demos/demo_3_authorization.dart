@@ -125,10 +125,7 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
 
   @override
   Widget build(BuildContext context) {
-    final formLayout = TomAclBuilder(
-      id: 'authDemo',
-      elementProvider: _form,
-    )
+    final formLayout = TomAclBuilder(id: 'authDemo', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
@@ -205,10 +202,7 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
               ),
             ),
             const SizedBox(height: 16),
-            TomFormStyleScope(
-              style: TomFormStyle.material3,
-              child: formLayout,
-            ),
+            TomFormStyleScope(style: TomFormStyle.material3, child: formLayout),
           ],
         ),
       ),

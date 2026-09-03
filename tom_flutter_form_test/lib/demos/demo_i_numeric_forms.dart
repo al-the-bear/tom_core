@@ -49,14 +49,18 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
     _form.bind(phase3NumericState);
     _currencyField = _buildCurrencyField(_currency);
 
-    _quantityInputObserver = _form.quantityInput >> (_) {
-      final v = _form.quantityInput.get();
-      if (_form.quantitySlider.get() != v) _form.quantitySlider.setValue(v);
-    };
-    _quantitySliderObserver = _form.quantitySlider >> (_) {
-      final v = _form.quantitySlider.get();
-      if (_form.quantityInput.get() != v) _form.quantityInput.setValue(v);
-    };
+    _quantityInputObserver =
+        _form.quantityInput >>
+        (_) {
+          final v = _form.quantityInput.get();
+          if (_form.quantitySlider.get() != v) _form.quantitySlider.setValue(v);
+        };
+    _quantitySliderObserver =
+        _form.quantitySlider >>
+        (_) {
+          final v = _form.quantitySlider.get();
+          if (_form.quantityInput.get() != v) _form.quantityInput.setValue(v);
+        };
   }
 
   @override
@@ -138,12 +142,13 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Every numeric concrete from Phase 3 in one place. The '
-                '"Quantity" row shares one TomInt across input + slider — '
-                'edit either side and the other follows. The currency '
-                'row uses an in-app currency switcher to demonstrate the '
-                'CurrencyDoubleInput formatter swap. Range sliders show '
-                'the live (low, high) preview in their value labels.'),
+              'Every numeric concrete from Phase 3 in one place. The '
+              '"Quantity" row shares one TomInt across input + slider — '
+              'edit either side and the other follows. The currency '
+              'row uses an in-app currency switcher to demonstrate the '
+              'CurrencyDoubleInput formatter swap. Range sliders show '
+              'the live (low, high) preview in their value labels.',
+            ),
           ],
         ),
       ),
@@ -158,8 +163,10 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Shared TomInt — input ↔ slider',
-                style: theme.textTheme.titleSmall),
+            Text(
+              'Shared TomInt — input ↔ slider',
+              style: theme.textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             _form.quantityInput.widget,
             const SizedBox(height: 8),
@@ -168,8 +175,9 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
             ListenableBuilder(
               listenable: _form.changes,
               builder: (context, _) => Text(
-                  'Bound TomInt value: ${_form.quantityInput.get()}',
-                  style: theme.textTheme.bodySmall),
+                'Bound TomInt value: ${_form.quantityInput.get()}',
+                style: theme.textTheme.bodySmall,
+              ),
             ),
           ],
         ),
@@ -207,13 +215,15 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
             Wrap(
               spacing: 6,
               children: ['USD', 'EUR', 'GBP', 'JPY']
-                  .map((code) => ChoiceChip(
-                        label: Text(code),
-                        selected: _currency == code,
-                        onSelected: (sel) {
-                          if (sel) _setCurrency(code);
-                        },
-                      ))
+                  .map(
+                    (code) => ChoiceChip(
+                      label: Text(code),
+                      selected: _currency == code,
+                      onSelected: (sel) {
+                        if (sel) _setCurrency(code);
+                      },
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 8),
@@ -235,7 +245,7 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
             // _currency is part of the demo's State.
             Text(
               'Formatted: ${_currencyField!.formatProfile.format(_form.priceUSD.get())}'
-                  '   (code: $_currency)',
+              '   (code: $_currency)',
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 8),
@@ -267,8 +277,8 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
               listenable: _form.changes,
               builder: (context, _) => Text(
                 'Discount: ${(_form.discount.get() * 100).toStringAsFixed(1)}%'
-                    '   (stored as fraction: '
-                    '${_form.discount.get().toStringAsFixed(3)})',
+                '   (stored as fraction: '
+                '${_form.discount.get().toStringAsFixed(3)})',
                 style: theme.textTheme.bodySmall,
               ),
             ),

@@ -33,8 +33,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -47,11 +46,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo 3: Authorization'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo 3: Authorization'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo 3: Authorization'));
     await tester.pumpAndSettle();
   }
@@ -59,8 +60,7 @@ void main() {
   /// Tap an [OutlinedButton] in the auth-controls card by its label.
   Future<void> tapOutlined(WidgetTester tester, String label) async {
     final btn = find.widgetWithText(OutlinedButton, label);
-    expect(btn, findsOneWidget,
-        reason: 'OutlinedButton "$label" must exist');
+    expect(btn, findsOneWidget, reason: 'OutlinedButton "$label" must exist');
     await tester.ensureVisible(btn);
     await tester.pumpAndSettle();
     await tester.tap(btn);
@@ -81,16 +81,23 @@ void main() {
     );
   }
 
-  testWidgets('baseline — controls render and Status reads "Ready"',
-      (tester) async {
+  testWidgets('baseline — controls render and Status reads "Ready"', (
+    tester,
+  ) async {
     await openDemo3(tester);
     expect(find.text('Authorization Controls'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Toggle Name R/O'),
-        findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Cycle Industry Auth'),
-        findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Toggle Section'),
-        findsOneWidget);
+    expect(
+      find.widgetWithText(OutlinedButton, 'Toggle Name R/O'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(OutlinedButton, 'Cycle Industry Auth'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(OutlinedButton, 'Toggle Section'),
+      findsOneWidget,
+    );
     expect(find.text('Status: Ready'), findsOneWidget);
     // String inputs (TextField underneath the adapter).
     expect(fieldByTomId('name'), findsOneWidget);
@@ -109,21 +116,27 @@ void main() {
     );
   });
 
-  testWidgets('Toggle Name R/O cycles status between EDITABLE and READ-ONLY',
-      (tester) async {
+  testWidgets('Toggle Name R/O cycles status between EDITABLE and READ-ONLY', (
+    tester,
+  ) async {
     await openDemo3(tester);
     // First press: full → read.
     await tapOutlined(tester, 'Toggle Name R/O');
-    expect(find.text('Status: Name field: READ-ONLY'), findsOneWidget,
-        reason: 'first press must mark name READ-ONLY');
+    expect(
+      find.text('Status: Name field: READ-ONLY'),
+      findsOneWidget,
+      reason: 'first press must mark name READ-ONLY',
+    );
     // Second press: read → full again.
     await tapOutlined(tester, 'Toggle Name R/O');
-    expect(find.text('Status: Name field: EDITABLE'), findsOneWidget,
-        reason: 'second press must restore EDITABLE');
+    expect(
+      find.text('Status: Name field: EDITABLE'),
+      findsOneWidget,
+      reason: 'second press must restore EDITABLE',
+    );
   });
 
-  testWidgets('Cycle Industry Auth walks the four-state cycle',
-      (tester) async {
+  testWidgets('Cycle Industry Auth walks the four-state cycle', (tester) async {
     await openDemo3(tester);
     // Initial industry auth = full → first press → READ.
     await tapOutlined(tester, 'Cycle Industry Auth');
@@ -138,56 +151,76 @@ void main() {
     // effectiveAuthState reported by the adapter.
     await tapOutlined(tester, 'Cycle Industry Auth');
     expect(find.text('Status: Industry field: HIDDEN'), findsOneWidget);
-    final hiddenAdapter = find
-        .byWidgetPredicate(
-          (w) => w is TomFieldWidgetAdapter && w.field.tomId == 'industry',
-        )
-        .evaluate()
-        .first
-        .widget as TomFieldWidgetAdapter;
-    expect(hiddenAdapter.effectiveAuthState, TomAuthState.none,
-        reason: 'industry field must report none auth after HIDDEN');
+    final hiddenAdapter =
+        find
+                .byWidgetPredicate(
+                  (w) =>
+                      w is TomFieldWidgetAdapter && w.field.tomId == 'industry',
+                )
+                .evaluate()
+                .first
+                .widget
+            as TomFieldWidgetAdapter;
+    expect(
+      hiddenAdapter.effectiveAuthState,
+      TomAuthState.none,
+      reason: 'industry field must report none auth after HIDDEN',
+    );
     // HIDDEN → FULL.
     await tapOutlined(tester, 'Cycle Industry Auth');
     expect(find.text('Status: Industry field: FULL'), findsOneWidget);
-    final fullAdapter = find
-        .byWidgetPredicate(
-          (w) => w is TomFieldWidgetAdapter && w.field.tomId == 'industry',
-        )
-        .evaluate()
-        .first
-        .widget as TomFieldWidgetAdapter;
-    expect(fullAdapter.effectiveAuthState, TomAuthState.full,
-        reason: 'industry field must report full auth after FULL');
+    final fullAdapter =
+        find
+                .byWidgetPredicate(
+                  (w) =>
+                      w is TomFieldWidgetAdapter && w.field.tomId == 'industry',
+                )
+                .evaluate()
+                .first
+                .widget
+            as TomFieldWidgetAdapter;
+    expect(
+      fullAdapter.effectiveAuthState,
+      TomAuthState.full,
+      reason: 'industry field must report full auth after FULL',
+    );
   });
 
-  testWidgets('Toggle Section flips between ENABLED and DISABLED',
-      (tester) async {
+  testWidgets('Toggle Section flips between ENABLED and DISABLED', (
+    tester,
+  ) async {
     await openDemo3(tester);
     // First press: full → disabled.
     await tapOutlined(tester, 'Toggle Section');
-    expect(find.text('Status: Section: DISABLED (grayed out)'),
-        findsOneWidget);
+    expect(find.text('Status: Section: DISABLED (grayed out)'), findsOneWidget);
     // Second press: disabled → enabled.
     await tapOutlined(tester, 'Toggle Section');
     expect(find.text('Status: Section: ENABLED'), findsOneWidget);
   });
 
-  testWidgets('description field reports none auth in baseline',
-      (tester) async {
+  testWidgets('description field reports none auth in baseline', (
+    tester,
+  ) async {
     await openDemo3(tester);
     // The description field has auth = none seeded by the adapter. Demo 3
     // does NOT use `setAclDefaultHideUnauthorized`, so the adapter remains
     // in the tree but reports `effectiveAuthState == none`. (Demo D
     // exercises the elision path.)
-    final adapter = find
-        .byWidgetPredicate(
-          (w) => w is TomFieldWidgetAdapter && w.field.tomId == 'description',
-        )
-        .evaluate()
-        .first
-        .widget as TomFieldWidgetAdapter;
-    expect(adapter.effectiveAuthState, TomAuthState.none,
-        reason: 'description must report none auth from the seeded rule');
+    final adapter =
+        find
+                .byWidgetPredicate(
+                  (w) =>
+                      w is TomFieldWidgetAdapter &&
+                      w.field.tomId == 'description',
+                )
+                .evaluate()
+                .first
+                .widget
+            as TomFieldWidgetAdapter;
+    expect(
+      adapter.effectiveAuthState,
+      TomAuthState.none,
+      reason: 'description must report none auth from the seeded rule',
+    );
   });
 }

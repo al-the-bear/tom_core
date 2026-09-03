@@ -25,8 +25,9 @@ void main() {
     );
   });
 
-  testWidgets('phone stays top-aligned when email shows an error below',
-      (tester) async {
+  testWidgets('phone stays top-aligned when email shows an error below', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -42,14 +43,12 @@ void main() {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Builder(
-                builder: (context) => TomAclBuilder(
-                  id: 'demoCTop',
-                  elementProvider: form,
-                )
-                    .setAclExpandXDefault(true)
-                    .append((p) => p.email.widget)
-                    .append((p) => p.phone.widget, dist: 16)
-                    .build(context),
+                builder: (context) =>
+                    TomAclBuilder(id: 'demoCTop', elementProvider: form)
+                        .setAclExpandXDefault(true)
+                        .append((p) => p.email.widget)
+                        .append((p) => p.phone.widget, dist: 16)
+                        .build(context),
               ),
             ),
           ),
@@ -64,14 +63,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Locate each field's TextField by controller text.
-    final allFields = tester.widgetList<TextField>(find.byType(TextField)).toList();
+    final allFields = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .toList();
     final phoneField = allFields.firstWhere(
       (t) => t.controller?.text == '+1 555 0100',
     );
     // Blank email now, so the controller text is empty — find by elimination.
-    final emailField = allFields.firstWhere(
-      (t) => t.controller?.text == '',
-    );
+    final emailField = allFields.firstWhere((t) => t.controller?.text == '');
 
     final emailTop = tester.getTopLeft(find.byWidget(emailField)).dy;
     final phoneTop = tester.getTopLeft(find.byWidget(phoneField)).dy;
@@ -80,10 +79,13 @@ void main() {
 
     // Both input rows should share the same top (they sit under label,
     // which has the same height on both sides).
-    expect(phoneTop, closeTo(emailTop, 0.5),
-        reason:
-            'With row-default top alignment, phone.input and email.input '
-            'should sit at the same Y. If phone drifts down, the Row is '
-            'centring despite AclRowCrossAlignment.top.');
+    expect(
+      phoneTop,
+      closeTo(emailTop, 0.5),
+      reason:
+          'With row-default top alignment, phone.input and email.input '
+          'should sit at the same Y. If phone drifts down, the Row is '
+          'centring despite AclRowCrossAlignment.top.',
+    );
   });
 }

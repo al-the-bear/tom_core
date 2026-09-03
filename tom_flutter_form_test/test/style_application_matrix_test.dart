@@ -44,8 +44,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -73,23 +72,27 @@ void main() {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
-    final form =
-        TomScope.withScope(scopeId, () => CompanyBasicInfoForm());
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: TomFormStyleScope(
-          style: style,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: form.name.widget,
+    final form = TomScope.withScope(scopeId, () => CompanyBasicInfoForm());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TomFormStyleScope(
+            style: style,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: form.name.widget,
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     final tfFinder = nameTextField();
-    expect(tfFinder, findsOneWidget,
-        reason: 'CompanyBasicInfoForm.name must render a single TextField');
+    expect(
+      tfFinder,
+      findsOneWidget,
+      reason: 'CompanyBasicInfoForm.name must render a single TextField',
+    );
     return tester.widget<TextField>(tfFinder);
   }
 
@@ -99,26 +102,44 @@ void main() {
 
   testWidgets('material3 preset — TextField decoration carries no '
       'OutlineInputBorder', (tester) async {
-    final tf = await pumpProbe(tester,
-        style: TomFormStyle.material3, scopeId: 'styleProbeMaterial');
-    expect(tf.decoration?.border, isNot(isA<OutlineInputBorder>()),
-        reason: 'material3 preset must not paint an outline border');
+    final tf = await pumpProbe(
+      tester,
+      style: TomFormStyle.material3,
+      scopeId: 'styleProbeMaterial',
+    );
+    expect(
+      tf.decoration?.border,
+      isNot(isA<OutlineInputBorder>()),
+      reason: 'material3 preset must not paint an outline border',
+    );
   });
 
   testWidgets('compact preset — TextField decoration carries no '
       'OutlineInputBorder', (tester) async {
-    final tf = await pumpProbe(tester,
-        style: TomFormStyle.compact, scopeId: 'styleProbeCompact');
-    expect(tf.decoration?.border, isNot(isA<OutlineInputBorder>()),
-        reason: 'compact preset must not paint an outline border');
+    final tf = await pumpProbe(
+      tester,
+      style: TomFormStyle.compact,
+      scopeId: 'styleProbeCompact',
+    );
+    expect(
+      tf.decoration?.border,
+      isNot(isA<OutlineInputBorder>()),
+      reason: 'compact preset must not paint an outline border',
+    );
   });
 
   testWidgets('bordered preset — TextField decoration carries an '
       'OutlineInputBorder', (tester) async {
-    final tf = await pumpProbe(tester,
-        style: TomFormStyle.bordered, scopeId: 'styleProbeBordered');
-    expect(tf.decoration?.border, isA<OutlineInputBorder>(),
-        reason: 'bordered preset must paint an outlined input border');
+    final tf = await pumpProbe(
+      tester,
+      style: TomFormStyle.bordered,
+      scopeId: 'styleProbeBordered',
+    );
+    expect(
+      tf.decoration?.border,
+      isA<OutlineInputBorder>(),
+      reason: 'bordered preset must paint an outlined input border',
+    );
   });
 
   // -------------------------------------------------------------------
@@ -126,40 +147,49 @@ void main() {
   // -------------------------------------------------------------------
 
   testWidgets('runtime swap — flipping the scope style from material3 to '
-      'bordered repaints the TextField with an OutlineInputBorder',
-      (tester) async {
+      'bordered repaints the TextField with an OutlineInputBorder', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     final form = TomScope.withScope(
-        'styleProbeSwap', () => CompanyBasicInfoForm());
+      'styleProbeSwap',
+      () => CompanyBasicInfoForm(),
+    );
     final styleNotifier = ValueNotifier<TomFormStyle>(TomFormStyle.material3);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: ValueListenableBuilder<TomFormStyle>(
-          valueListenable: styleNotifier,
-          builder: (context, style, _) => TomFormStyleScope(
-            style: style,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: form.name.widget,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ValueListenableBuilder<TomFormStyle>(
+            valueListenable: styleNotifier,
+            builder: (context, style, _) => TomFormStyleScope(
+              style: style,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: form.name.widget,
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     final tfFinder = nameTextField();
     // Initial: material3 → no outline border.
-    expect(tester.widget<TextField>(tfFinder).decoration?.border,
-        isNot(isA<OutlineInputBorder>()),
-        reason: 'starts in material3 — no outline border');
+    expect(
+      tester.widget<TextField>(tfFinder).decoration?.border,
+      isNot(isA<OutlineInputBorder>()),
+      reason: 'starts in material3 — no outline border',
+    );
     // Swap to bordered.
     styleNotifier.value = TomFormStyle.bordered;
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(tfFinder).decoration?.border,
-        isA<OutlineInputBorder>(),
-        reason: 'swapping to bordered must repaint with an outline border');
+    expect(
+      tester.widget<TextField>(tfFinder).decoration?.border,
+      isA<OutlineInputBorder>(),
+      reason: 'swapping to bordered must repaint with an outline border',
+    );
   });
 
   // -------------------------------------------------------------------
@@ -172,25 +202,32 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     final form = TomScope.withScope(
-        'styleProbeNested', () => CompanyBasicInfoForm());
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: TomFormStyleScope(
-          style: TomFormStyle.material3,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: TomFormStyleScope(
-              style: TomFormStyle.bordered,
-              child: form.name.widget,
+      'styleProbeNested',
+      () => CompanyBasicInfoForm(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TomFormStyleScope(
+            style: TomFormStyle.material3,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: TomFormStyleScope(
+                style: TomFormStyle.bordered,
+                child: form.name.widget,
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     final tf = tester.widget<TextField>(nameTextField());
-    expect(tf.decoration?.border, isA<OutlineInputBorder>(),
-        reason: 'inner bordered scope must win over outer material3');
+    expect(
+      tf.decoration?.border,
+      isA<OutlineInputBorder>(),
+      reason: 'inner bordered scope must win over outer material3',
+    );
   });
 
   // -------------------------------------------------------------------
@@ -198,38 +235,45 @@ void main() {
   // -------------------------------------------------------------------
 
   testWidgets('styleBpOverrides — base material3 + bordered override at '
-      '1000 px swaps the resolved preset across the breakpoint',
-      (tester) async {
+      '1000 px swaps the resolved preset across the breakpoint', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(800, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     final form = TomScope.withScope(
-        'styleProbeBp', () => CompanyBasicInfoForm());
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: TomFormStyleScope(
-          style: TomFormStyle.material3,
-          styleBpOverrides: [
-            (1000.0, TomFormStyle.bordered),
-          ],
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: form.name.widget,
+      'styleProbeBp',
+      () => CompanyBasicInfoForm(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TomFormStyleScope(
+            style: TomFormStyle.material3,
+            styleBpOverrides: [(1000.0, TomFormStyle.bordered)],
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: form.name.widget,
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
     final tfFinder = nameTextField();
     // Below 1000 px the base material3 style applies → no outline.
-    expect(tester.widget<TextField>(tfFinder).decoration?.border,
-        isNot(isA<OutlineInputBorder>()),
-        reason: 'narrow viewport (<1000) must resolve to base material3');
+    expect(
+      tester.widget<TextField>(tfFinder).decoration?.border,
+      isNot(isA<OutlineInputBorder>()),
+      reason: 'narrow viewport (<1000) must resolve to base material3',
+    );
     // Resize past the breakpoint.
     tester.view.physicalSize = const Size(1400, 800);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(tfFinder).decoration?.border,
-        isA<OutlineInputBorder>(),
-        reason: 'wide viewport (>=1000) must resolve to bordered override');
+    expect(
+      tester.widget<TextField>(tfFinder).decoration?.border,
+      isA<OutlineInputBorder>(),
+      reason: 'wide viewport (>=1000) must resolve to bordered override',
+    );
   });
 }

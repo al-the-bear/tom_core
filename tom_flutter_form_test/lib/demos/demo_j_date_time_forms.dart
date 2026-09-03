@@ -44,14 +44,18 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
     // Duration and int can share state cleanly even though they're two
     // different field types. Uses the codebase-standard `>>` operator
     // (returns a TomFunctionObserver registered on the LHS observable).
-    _durationObserver = _form.taskDuration >> (_) {
-      final mins = _form.taskDuration.get().inMinutes;
-      if (_form.taskMinutes.get() != mins) _form.taskMinutes.set(mins);
-    };
-    _minutesObserver = _form.taskMinutes >> (_) {
-      final d = Duration(minutes: _form.taskMinutes.get());
-      if (_form.taskDuration.get() != d) _form.taskDuration.set(d);
-    };
+    _durationObserver =
+        _form.taskDuration >>
+        (_) {
+          final mins = _form.taskDuration.get().inMinutes;
+          if (_form.taskMinutes.get() != mins) _form.taskMinutes.set(mins);
+        };
+    _minutesObserver =
+        _form.taskMinutes >>
+        (_) {
+          final d = Duration(minutes: _form.taskMinutes.get());
+          if (_form.taskDuration.get() != d) _form.taskDuration.set(d);
+        };
   }
 
   @override
@@ -76,9 +80,7 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 700;
-                return wide
-                    ? _wideLayout(context)
-                    : _narrowLayout(context);
+                return wide ? _wideLayout(context) : _narrowLayout(context);
               },
             ),
             const SizedBox(height: 12),
@@ -103,15 +105,16 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Date-only / time-only / date-time pickers wired to the '
-                'same DateTimeDemoState. The duration card pairs the '
-                'segmented h/m DurationInput with an equivalent IntSlider '
-                'in minutes (sync is two-way). Breakpoint swap: at ≥ 700 px '
-                'the date column shows the dialog DatePicker alongside the '
-                'inline calendar; under 700 px it collapses to the inline '
-                'calendar only — the dialog picker is hidden because the '
-                'calendar provides the same affordance without taking a '
-                'modal screen.'),
+              'Date-only / time-only / date-time pickers wired to the '
+              'same DateTimeDemoState. The duration card pairs the '
+              'segmented h/m DurationInput with an equivalent IntSlider '
+              'in minutes (sync is two-way). Breakpoint swap: at ≥ 700 px '
+              'the date column shows the dialog DatePicker alongside the '
+              'inline calendar; under 700 px it collapses to the inline '
+              'calendar only — the dialog picker is hidden because the '
+              'calendar provides the same affordance without taking a '
+              'modal screen.',
+            ),
           ],
         ),
       ),
@@ -143,7 +146,10 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
     );
   }
 
-  Widget _pickerColumn(BuildContext context, {required bool includeDateDialog}) {
+  Widget _pickerColumn(
+    BuildContext context, {
+    required bool includeDateDialog,
+  }) {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
@@ -189,7 +195,7 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
               listenable: _form.changes,
               builder: (context, _) => Text(
                 'Selected (inline): '
-                    '${_isoDate(_form.eventDateInline.get())}',
+                '${_isoDate(_form.eventDateInline.get())}',
                 style: theme.textTheme.bodySmall,
               ),
             ),
@@ -213,8 +219,10 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Text input + picker icon — configurable format',
-                style: theme.textTheme.titleSmall),
+            Text(
+              'Text input + picker icon — configurable format',
+              style: theme.textTheme.titleSmall,
+            ),
             const SizedBox(height: 4),
             const Text(
               'Each field accepts typed input in the configured format and '
@@ -275,8 +283,10 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Duration vs. minute slider',
-                style: theme.textTheme.titleSmall),
+            Text(
+              'Duration vs. minute slider',
+              style: theme.textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             _form.taskDuration.widget,
             const SizedBox(height: 8),
@@ -296,4 +306,3 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
     );
   }
 }
-

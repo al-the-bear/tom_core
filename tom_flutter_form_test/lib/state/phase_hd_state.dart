@@ -86,44 +86,52 @@ CustomerHD _initialCustomer() {
   c.billZip | 'EC1A 1BB';
   c.billCountry | 'United Kingdom';
 
-  c.shippingAddresses.add(_addr(
-    label: 'Main Office',
-    line1: '1 Analytical Way',
-    line2: 'Suite 42',
-    city: 'London',
-    stateRegion: 'England',
-    zipCode: 'EC1A 1BB',
-    country: 'United Kingdom',
-  ));
-  c.shippingAddresses.add(_addr(
-    label: 'Warehouse',
-    line1: '7 Engine Works',
-    line2: '',
-    city: 'Manchester',
-    stateRegion: 'England',
-    zipCode: 'M1 2JL',
-    country: 'United Kingdom',
-  ));
+  c.shippingAddresses.add(
+    _addr(
+      label: 'Main Office',
+      line1: '1 Analytical Way',
+      line2: 'Suite 42',
+      city: 'London',
+      stateRegion: 'England',
+      zipCode: 'EC1A 1BB',
+      country: 'United Kingdom',
+    ),
+  );
+  c.shippingAddresses.add(
+    _addr(
+      label: 'Warehouse',
+      line1: '7 Engine Works',
+      line2: '',
+      city: 'Manchester',
+      stateRegion: 'England',
+      zipCode: 'M1 2JL',
+      country: 'United Kingdom',
+    ),
+  );
 
-  c.orders.add(_order(
-    orderId: 'ORD-1001',
-    orderDate: '2026-01-15',
-    shippingLabel: 'Main Office',
-    items: [
-      _item('Difference Engine pinion', '12', '34.50', 'Brass; lot #B-117'),
-      _item('Punched-card deck (1000 pk)', '3', '49.00', 'Hollerith'),
-      _item('Lubricating oil (1L)', '5', '6.75', ''),
-    ],
-  ));
-  c.orders.add(_order(
-    orderId: 'ORD-1002',
-    orderDate: '2026-02-28',
-    shippingLabel: 'Warehouse',
-    items: [
-      _item('Bearing block', '4', '18.75', ''),
-      _item('Mainspring assembly', '1', '58.50', 'Replacement unit'),
-    ],
-  ));
+  c.orders.add(
+    _order(
+      orderId: 'ORD-1001',
+      orderDate: '2026-01-15',
+      shippingLabel: 'Main Office',
+      items: [
+        _item('Difference Engine pinion', '12', '34.50', 'Brass; lot #B-117'),
+        _item('Punched-card deck (1000 pk)', '3', '49.00', 'Hollerith'),
+        _item('Lubricating oil (1L)', '5', '6.75', ''),
+      ],
+    ),
+  );
+  c.orders.add(
+    _order(
+      orderId: 'ORD-1002',
+      orderDate: '2026-02-28',
+      shippingLabel: 'Warehouse',
+      items: [
+        _item('Bearing block', '4', '18.75', ''),
+        _item('Mainspring assembly', '1', '58.50', 'Replacement unit'),
+      ],
+    ),
+  );
 
   return c;
 }
@@ -165,7 +173,11 @@ OrderHD _order({
 }
 
 OrderItemHD _item(
-    String productName, String quantity, String unitPrice, String notes) {
+  String productName,
+  String quantity,
+  String unitPrice,
+  String notes,
+) {
   final i = OrderItemHD();
   i.productName | productName;
   i.quantity | quantity;

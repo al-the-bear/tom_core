@@ -35,11 +35,14 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text(tile));
     await tester.pumpAndSettle();
   }
@@ -66,8 +69,11 @@ void main() {
     // Resources should supply descriptions on at least one field — this
     // check guards against future accidental removal of demoC resource
     // entries that would make the theming toggles a no-op.
-    expect(find.text('Primary contact for order updates.'), findsOneWidget,
-        reason: 'demoC.customer.email.description must resolve to text.');
+    expect(
+      find.text('Primary contact for order updates.'),
+      findsOneWidget,
+      reason: 'demoC.customer.email.description must resolve to text.',
+    );
   });
 
   testWidgets('Demo D opens with the form + widget gallery', (tester) async {
@@ -75,44 +81,55 @@ void main() {
     expect(find.text('Demo D — Hide on Authorization'), findsOneWidget);
     expect(find.text('Form A — hide on auth, default gaps'), findsOneWidget);
     expect(
-        find.text(
-            'Form B — hide on auth, non-default gaps (32 / 48 / 24 / 40 px)'),
-        findsOneWidget);
-    expect(find.text('Non-form Tom widgets — same hide-unauthorized rule'),
-        findsOneWidget);
+      find.text(
+        'Form B — hide on auth, non-default gaps (32 / 48 / 24 / 40 px)',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Non-form Tom widgets — same hide-unauthorized rule'),
+      findsOneWidget,
+    );
     expect(find.text('Form field auth'), findsOneWidget);
     expect(find.text('Widget gallery auth'), findsOneWidget);
   });
 
-  testWidgets('Demo E opens with the selection-variants scaffold',
-      (tester) async {
+  testWidgets('Demo E opens with the selection-variants scaffold', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo E: Selection Variants');
     expect(find.text('Demo E — Selection Variants'), findsOneWidget);
     // Each variant card has a spec-class title with a subtitle that names
     // its binding shape. Verify both the multi-select and single-select
     // flavours render + the live bindings panel is active.
     expect(
-        find.text('TomFormStringFilterChips — multi-select'), findsOneWidget);
+      find.text('TomFormStringFilterChips — multi-select'),
+      findsOneWidget,
+    );
     expect(
-        find.text('TomFormStringChoiceChips — single-select'), findsOneWidget);
+      find.text('TomFormStringChoiceChips — single-select'),
+      findsOneWidget,
+    );
     expect(find.text('Live bindings'), findsOneWidget);
     // The shared source supplies six labels to every variant section.
     expect(find.text('Technology'), findsWidgets);
   });
 
-  testWidgets('Demo F opens with the boolean-variants scaffold',
-      (tester) async {
+  testWidgets('Demo F opens with the boolean-variants scaffold', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo F: Boolean Variants');
     expect(find.text('Demo F — Boolean Variants'), findsOneWidget);
-    expect(
-        find.text('Independent (one field per rendering)'), findsOneWidget);
+    expect(find.text('Independent (one field per rendering)'), findsOneWidget);
     expect(find.text('Lock-step trio — flip any, flip all'), findsOneWidget);
   });
 
   testWidgets('Demo G opens with the breakpoint splitter', (tester) async {
     await openDemo(tester, 'Demo G: Complex Breakpoint Scenarios');
-    expect(find.text('Demo G — Complex Breakpoint & Theming Scenarios'),
-        findsOneWidget);
+    expect(
+      find.text('Demo G — Complex Breakpoint & Theming Scenarios'),
+      findsOneWidget,
+    );
     // ProjectBrief sections visible in the complex form pane.
     expect(find.text('Identity'), findsWidgets);
     expect(find.text('Classification'), findsWidgets);
@@ -121,8 +138,10 @@ void main() {
 
   testWidgets('Demo H opens with the complex-auth controls', (tester) async {
     await openDemo(tester, 'Demo H: Complex Authorization Scenarios');
-    expect(find.text('Demo H — Complex Authorization + Responsive Layout'),
-        findsOneWidget);
+    expect(
+      find.text('Demo H — Complex Authorization + Responsive Layout'),
+      findsOneWidget,
+    );
     expect(find.text('Authorization controls'), findsOneWidget);
     expect(find.text('Form-level ceiling'), findsOneWidget);
     expect(find.text('Field state (live)'), findsOneWidget);

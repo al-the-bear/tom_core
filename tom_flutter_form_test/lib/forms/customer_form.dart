@@ -29,7 +29,7 @@ class CustomerForm extends TomForm<TomClass> {
   final TomAuthorizationGroup? shippingGroup;
 
   CustomerForm({this.billingGroup, this.shippingGroup})
-      : super(formId: 'customer');
+    : super(formId: 'customer');
 
   late final fullName = TomFormStringInput(
     'fullName',
@@ -79,14 +79,8 @@ class CustomerForm extends TomForm<TomClass> {
 
   @override
   void createFormElements() {
-    billing = AddressForm(
-      tomId: 'billing',
-      authGroup: billingGroup,
-    );
-    shipping = AddressForm(
-      tomId: 'shipping',
-      authGroup: shippingGroup,
-    );
+    billing = AddressForm(tomId: 'billing', authGroup: billingGroup);
+    shipping = AddressForm(tomId: 'shipping', authGroup: shippingGroup);
   }
 }
 

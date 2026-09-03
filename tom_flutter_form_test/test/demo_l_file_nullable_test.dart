@@ -28,8 +28,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -50,11 +49,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo L: Files & Nullable Variants'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo L: Files & Nullable Variants'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo L: Files & Nullable Variants'));
     await tester.pumpAndSettle();
   }
@@ -68,8 +69,11 @@ void main() {
 
   Future<void> tapOutlined(WidgetTester tester, String label) async {
     final btn = find.widgetWithText(OutlinedButton, label);
-    expect(btn, findsAtLeastNWidgets(1),
-        reason: 'OutlinedButton "$label" must exist');
+    expect(
+      btn,
+      findsAtLeastNWidgets(1),
+      reason: 'OutlinedButton "$label" must exist',
+    );
     await tester.ensureVisible(btn.first);
     await tester.pumpAndSettle();
     await tester.tap(btn.first);
@@ -79,8 +83,7 @@ void main() {
   /// Read the three-column row for a nullable field on the bindings
   /// panel and return (stateLabel, valueText). The row has three Text
   /// descendants: [name, state, value].
-  ({String state, String value}) nullableRow(
-      WidgetTester tester, String name) {
+  ({String state, String value}) nullableRow(WidgetTester tester, String name) {
     final nameFinder = find.text(name);
     expect(nameFinder, findsAtLeastNWidgets(1));
     final row = find.ancestor(of: nameFinder.first, matching: find.byType(Row));
@@ -90,8 +93,11 @@ void main() {
         .evaluate()
         .map((e) => (e.widget as Text).data ?? '')
         .toList();
-    expect(texts.length, greaterThanOrEqualTo(3),
-        reason: 'nullable row "$name" must have name + state + value Text');
+    expect(
+      texts.length,
+      greaterThanOrEqualTo(3),
+      reason: 'nullable row "$name" must have name + state + value Text',
+    );
     return (state: texts[1], value: texts[2]);
   }
 
@@ -107,8 +113,11 @@ void main() {
     expect(adapterByTomId('dropzone'), findsOneWidget);
     // Nullable fields.
     for (final id in ['notes', 'age', 'score', 'birthday', 'priority']) {
-      expect(adapterByTomId(id), findsOneWidget,
-          reason: 'nullable adapter "$id" must render');
+      expect(
+        adapterByTomId(id),
+        findsOneWidget,
+        reason: 'nullable adapter "$id" must render',
+      );
     }
     // The "Choose file…" button + "Tap to choose a file" dropzone copy.
     expect(find.text('Choose file…'), findsOneWidget);
@@ -116,10 +125,12 @@ void main() {
     // Every nullable row starts pristine and reads 'null'.
     for (final name in ['notes', 'age', 'score', 'birthday', 'priority']) {
       final row = nullableRow(tester, name);
-      expect(row.state, 'pristine',
-          reason: 'row "$name" must start pristine');
-      expect(row.value, 'null',
-          reason: 'row "$name" must read "null" before any edit');
+      expect(row.state, 'pristine', reason: 'row "$name" must start pristine');
+      expect(
+        row.value,
+        'null',
+        reason: 'row "$name" must read "null" before any edit',
+      );
     }
     // form.isDirty starts false.
     expect(find.text('form.isDirty = false'), findsOneWidget);
@@ -207,8 +218,9 @@ void main() {
   });
 
   testWidgets('T9: "Set all → null" drives every nullable row to the '
-      '"explicit-null" state when the initial values were NON-null',
-      (tester) async {
+      '"explicit-null" state when the initial values were NON-null', (
+    tester,
+  ) async {
     // The "explicit-null" state requires the form to be dirty AND the
     // value to be null. With the default all-null initial, tapping
     // "Set all → null" after "Set all (non-null)" returns the form to
@@ -233,9 +245,13 @@ void main() {
     // Bound rows are now dirty + null → explicit-null.
     for (final name in ['notes', 'age', 'score', 'birthday']) {
       final row = nullableRow(tester, name);
-      expect(row.state, 'explicit-null',
-          reason: 'row "$name" must report explicit-null after clearing '
-              'a previously non-null initial');
+      expect(
+        row.state,
+        'explicit-null',
+        reason:
+            'row "$name" must report explicit-null after clearing '
+            'a previously non-null initial',
+      );
       expect(row.value, 'null');
     }
     expect(find.text('form.isDirty = true'), findsOneWidget);
@@ -248,8 +264,11 @@ void main() {
     await tapOutlined(tester, 'Reset (pristine)');
     for (final name in ['notes', 'age', 'score', 'birthday', 'priority']) {
       final row = nullableRow(tester, name);
-      expect(row.state, 'pristine',
-          reason: 'row "$name" must reset to pristine');
+      expect(
+        row.state,
+        'pristine',
+        reason: 'row "$name" must reset to pristine',
+      );
       expect(row.value, 'null');
     }
     expect(find.text('form.isDirty = false'), findsOneWidget);
@@ -266,8 +285,11 @@ void main() {
     await tester.enterText(notesField, 'a typed note');
     await tester.pumpAndSettle();
     final row = nullableRow(tester, 'notes');
-    expect(row.state, 'set',
-        reason: 'typing into the nullable string input must flip notes to set');
+    expect(
+      row.state,
+      'set',
+      reason: 'typing into the nullable string input must flip notes to set',
+    );
     expect(row.value, 'a typed note');
   });
 }

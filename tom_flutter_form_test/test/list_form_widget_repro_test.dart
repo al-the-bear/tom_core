@@ -25,8 +25,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -44,17 +43,19 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text(tile));
     await tester.pumpAndSettle();
   }
 
-  testWidgets(
-      '(a) H-A — tapping a different row swaps the detail pane to that '
+  testWidgets('(a) H-A — tapping a different row swaps the detail pane to that '
       'row\'s sub-form (scoped to scaffold A)', (tester) async {
     await openDemo(tester, 'Demo H-A: Master-Detail Customer Editor');
 
@@ -70,27 +71,35 @@ void main() {
     // This way the assertion can never accidentally match scaffold B's
     // detail pane (which has its own separate selection observable).
 
-    final scaffoldAFrame = find.ancestor(
-      of: find.text('Scaffold A — no preselection'),
-      matching: find.byType(Card),
-    ).first;
+    final scaffoldAFrame = find
+        .ancestor(
+          of: find.text('Scaffold A — no preselection'),
+          matching: find.byType(Card),
+        )
+        .first;
     expect(scaffoldAFrame, findsOneWidget);
 
     // Before any tap, scaffold A's detail pane is the empty placeholder —
     // there should be NO filled TextField inside scaffold A's frame.
     final tfInsideAInitial = tester
-        .widgetList<TextField>(find
-            .descendant(of: scaffoldAFrame, matching: find.byType(TextField)))
+        .widgetList<TextField>(
+          find.descendant(of: scaffoldAFrame, matching: find.byType(TextField)),
+        )
         .where((tf) => tf.controller != null && tf.controller!.text.isNotEmpty)
         .toList();
-    expect(tfInsideAInitial, isEmpty,
-        reason: 'Scaffold A starts with no selection so no detail '
-            'TextField is rendered yet');
+    expect(
+      tfInsideAInitial,
+      isEmpty,
+      reason:
+          'Scaffold A starts with no selection so no detail '
+          'TextField is rendered yet',
+    );
 
     // Pick a non-empty master row title inside scaffold A.
     final aTiles = tester
-        .widgetList<ListTile>(find
-            .descendant(of: scaffoldAFrame, matching: find.byType(ListTile)))
+        .widgetList<ListTile>(
+          find.descendant(of: scaffoldAFrame, matching: find.byType(ListTile)),
+        )
         .toList();
     expect(aTiles, isNotEmpty);
     String? targetName;
@@ -102,154 +111,216 @@ void main() {
       targetName = txt;
       break;
     }
-    expect(targetName, isNotNull,
-        reason: 'Scaffold A master pane must list at least one named row');
+    expect(
+      targetName,
+      isNotNull,
+      reason: 'Scaffold A master pane must list at least one named row',
+    );
 
     // Tap that row INSIDE scaffold A (not the same name in scaffold B).
-    await tester.tap(find
-        .descendant(of: scaffoldAFrame, matching: find.text(targetName!))
-        .first);
+    await tester.tap(
+      find
+          .descendant(of: scaffoldAFrame, matching: find.text(targetName!))
+          .first,
+    );
     await tester.pumpAndSettle();
 
     // After the tap, scaffold A's detail pane must render a TextField
     // whose controller holds the tapped row's fullName.
     final tfInsideAAfter = tester
-        .widgetList<TextField>(find
-            .descendant(of: scaffoldAFrame, matching: find.byType(TextField)))
+        .widgetList<TextField>(
+          find.descendant(of: scaffoldAFrame, matching: find.byType(TextField)),
+        )
         .where((tf) => tf.controller?.text == targetName)
         .toList();
-    expect(tfInsideAAfter, isNotEmpty,
-        reason: 'Scaffold A\'s detail pane must render a TextField '
-            'holding the tapped row\'s fullName ("$targetName")');
+    expect(
+      tfInsideAAfter,
+      isNotEmpty,
+      reason:
+          'Scaffold A\'s detail pane must render a TextField '
+          'holding the tapped row\'s fullName ("$targetName")',
+    );
   });
 
   testWidgets(
-      '(a\') H-A — on scaffold B, tapping a different row swaps the detail '
-      'pane to that row\'s sub-form', (tester) async {
-    await openDemo(tester, 'Demo H-A: Master-Detail Customer Editor');
+    '(a\') H-A — on scaffold B, tapping a different row swaps the detail '
+    'pane to that row\'s sub-form',
+    (tester) async {
+      await openDemo(tester, 'Demo H-A: Master-Detail Customer Editor');
 
-    final scaffoldBFrame = find.ancestor(
-      of: find.text('Scaffold B — preselects row 0'),
-      matching: find.byType(Card),
-    ).first;
-    expect(scaffoldBFrame, findsOneWidget);
+      final scaffoldBFrame = find
+          .ancestor(
+            of: find.text('Scaffold B — preselects row 0'),
+            matching: find.byType(Card),
+          )
+          .first;
+      expect(scaffoldBFrame, findsOneWidget);
 
-    // Scaffold B's preselect runs in a postFrameCallback — pumpAndSettle
-    // (already done by openDemo) lets it complete.
-    final tfInBInitial = tester
-        .widgetList<TextField>(find
-            .descendant(of: scaffoldBFrame, matching: find.byType(TextField)))
-        .where((tf) => tf.controller != null && tf.controller!.text.isNotEmpty)
-        .toList();
-    expect(tfInBInitial, isNotEmpty,
-        reason: 'Scaffold B preselects row 0 so its detail pane must '
-            'render at least one filled TextField');
-    final initialName = tfInBInitial.first.controller!.text;
+      // Scaffold B's preselect runs in a postFrameCallback — pumpAndSettle
+      // (already done by openDemo) lets it complete.
+      final tfInBInitial = tester
+          .widgetList<TextField>(
+            find.descendant(
+              of: scaffoldBFrame,
+              matching: find.byType(TextField),
+            ),
+          )
+          .where(
+            (tf) => tf.controller != null && tf.controller!.text.isNotEmpty,
+          )
+          .toList();
+      expect(
+        tfInBInitial,
+        isNotEmpty,
+        reason:
+            'Scaffold B preselects row 0 so its detail pane must '
+            'render at least one filled TextField',
+      );
+      final initialName = tfInBInitial.first.controller!.text;
 
-    // Pick a row inside scaffold B's master pane whose title differs
-    // from the currently rendered detail.
-    final bTiles = tester
-        .widgetList<ListTile>(find
-            .descendant(of: scaffoldBFrame, matching: find.byType(ListTile)))
-        .toList();
-    String? targetName;
-    for (final tile in bTiles) {
-      final title = tile.title;
-      if (title is! Text) continue;
-      final txt = title.data ?? '';
-      if (txt.isEmpty || txt == '(unnamed)' || txt == initialName) continue;
-      targetName = txt;
-      break;
-    }
-    expect(targetName, isNotNull,
-        reason: 'Scaffold B master pane must list at least two distinct '
-            'named rows');
+      // Pick a row inside scaffold B's master pane whose title differs
+      // from the currently rendered detail.
+      final bTiles = tester
+          .widgetList<ListTile>(
+            find.descendant(
+              of: scaffoldBFrame,
+              matching: find.byType(ListTile),
+            ),
+          )
+          .toList();
+      String? targetName;
+      for (final tile in bTiles) {
+        final title = tile.title;
+        if (title is! Text) continue;
+        final txt = title.data ?? '';
+        if (txt.isEmpty || txt == '(unnamed)' || txt == initialName) continue;
+        targetName = txt;
+        break;
+      }
+      expect(
+        targetName,
+        isNotNull,
+        reason:
+            'Scaffold B master pane must list at least two distinct '
+            'named rows',
+      );
 
-    final masterTapFinder = find
-        .descendant(of: scaffoldBFrame, matching: find.text(targetName!))
-        .first;
-    await tester.tap(masterTapFinder);
-    await tester.pumpAndSettle();
+      final masterTapFinder = find
+          .descendant(of: scaffoldBFrame, matching: find.text(targetName!))
+          .first;
+      await tester.tap(masterTapFinder);
+      await tester.pumpAndSettle();
 
-    // Scaffold B's detail pane now holds the new fullName.
-    final tfInBAfter = tester
-        .widgetList<TextField>(find
-            .descendant(of: scaffoldBFrame, matching: find.byType(TextField)))
-        .where((tf) => tf.controller?.text == targetName)
-        .toList();
-    expect(tfInBAfter, isNotEmpty,
-        reason: 'Scaffold B\'s detail pane must swap to the new row\'s '
-            'fullName ("$targetName") after tap');
-  });
-
-  testWidgets(
-      '(b) H-D — removing an items row inside an order then "Discard" on '
-      'the order restores the removed rows', (tester) async {
-    await openDemo(tester, 'Demo H-D: Customer Form (master-detail)');
-
-    // The orders master pane lists ORD-1001 and ORD-1002. Tap order 0 to
-    // open its detail pane (already preselected? No — H-D doesn't pass
-    // initialSelectedIndex, so we tap explicitly).
-    await tester.tap(find.text('ORD-1001'));
-    await tester.pumpAndSettle();
-
-    // Confirm the items header reads "Items (3)" — the seeded ORD-1001
-    // has three items.
-    expect(find.text('Items (3)'), findsOneWidget,
-        reason: 'order 0 starts with 3 seeded items');
-
-    // Remove one item using the per-row delete IconButton.
-    final deleteButtons =
-        find.widgetWithIcon(IconButton, Icons.delete_outline);
-    expect(deleteButtons, findsAtLeastNWidgets(1));
-    await tester.tap(deleteButtons.first);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Items (2)'), findsOneWidget,
-        reason: 'after deleting one row, the items header should read '
-            '"Items (2)"');
-
-    // Click the order's "Discard" button (in the OrderDetailPane). The
-    // button sits inside the OrderDetailPane's own SingleChildScrollView
-    // (the SizedBox(height: 560) constrains it) so the button may be
-    // scrolled out of view — ensureVisible scrolls it in before tap.
-    final discardBtns = find.widgetWithText(OutlinedButton, 'Discard');
-    expect(discardBtns, findsAtLeastNWidgets(1));
-    await tester.ensureVisible(discardBtns.first);
-    await tester.pumpAndSettle();
-    await tester.tap(discardBtns.first);
-    await tester.pumpAndSettle();
-
-    // After Discard the order's items list must restore to 3 rows.
-    expect(find.text('Items (3)'), findsOneWidget,
-        reason: 'after Discard, the items list must restore to 3 rows');
-  });
+      // Scaffold B's detail pane now holds the new fullName.
+      final tfInBAfter = tester
+          .widgetList<TextField>(
+            find.descendant(
+              of: scaffoldBFrame,
+              matching: find.byType(TextField),
+            ),
+          )
+          .where((tf) => tf.controller?.text == targetName)
+          .toList();
+      expect(
+        tfInBAfter,
+        isNotEmpty,
+        reason:
+            'Scaffold B\'s detail pane must swap to the new row\'s '
+            'fullName ("$targetName") after tap',
+      );
+    },
+  );
 
   testWidgets(
-      '(b\') H-D — removing an items row + "Discard all" on the customer '
-      'restores the removed rows', (tester) async {
-    await openDemo(tester, 'Demo H-D: Customer Form (master-detail)');
+    '(b) H-D — removing an items row inside an order then "Discard" on '
+    'the order restores the removed rows',
+    (tester) async {
+      await openDemo(tester, 'Demo H-D: Customer Form (master-detail)');
 
-    await tester.tap(find.text('ORD-1001'));
-    await tester.pumpAndSettle();
-    expect(find.text('Items (3)'), findsOneWidget);
+      // The orders master pane lists ORD-1001 and ORD-1002. Tap order 0 to
+      // open its detail pane (already preselected? No — H-D doesn't pass
+      // initialSelectedIndex, so we tap explicitly).
+      await tester.tap(find.text('ORD-1001'));
+      await tester.pumpAndSettle();
 
-    final deleteButtons =
-        find.widgetWithIcon(IconButton, Icons.delete_outline);
-    await tester.tap(deleteButtons.first);
-    await tester.pumpAndSettle();
-    expect(find.text('Items (2)'), findsOneWidget);
+      // Confirm the items header reads "Items (3)" — the seeded ORD-1001
+      // has three items.
+      expect(
+        find.text('Items (3)'),
+        findsOneWidget,
+        reason: 'order 0 starts with 3 seeded items',
+      );
 
-    // Click "Discard all" on the root customer form.
-    final discardAll = find.widgetWithText(OutlinedButton, 'Discard all');
-    expect(discardAll, findsOneWidget);
-    await tester.tap(discardAll);
-    await tester.pumpAndSettle();
+      // Remove one item using the per-row delete IconButton.
+      final deleteButtons = find.widgetWithIcon(
+        IconButton,
+        Icons.delete_outline,
+      );
+      expect(deleteButtons, findsAtLeastNWidgets(1));
+      await tester.tap(deleteButtons.first);
+      await tester.pumpAndSettle();
 
-    expect(find.text('Items (3)'), findsOneWidget,
-        reason: 'after "Discard all" the order\'s items list must restore '
-            'to 3 rows');
-  });
+      expect(
+        find.text('Items (2)'),
+        findsOneWidget,
+        reason:
+            'after deleting one row, the items header should read '
+            '"Items (2)"',
+      );
+
+      // Click the order's "Discard" button (in the OrderDetailPane). The
+      // button sits inside the OrderDetailPane's own SingleChildScrollView
+      // (the SizedBox(height: 560) constrains it) so the button may be
+      // scrolled out of view — ensureVisible scrolls it in before tap.
+      final discardBtns = find.widgetWithText(OutlinedButton, 'Discard');
+      expect(discardBtns, findsAtLeastNWidgets(1));
+      await tester.ensureVisible(discardBtns.first);
+      await tester.pumpAndSettle();
+      await tester.tap(discardBtns.first);
+      await tester.pumpAndSettle();
+
+      // After Discard the order's items list must restore to 3 rows.
+      expect(
+        find.text('Items (3)'),
+        findsOneWidget,
+        reason: 'after Discard, the items list must restore to 3 rows',
+      );
+    },
+  );
+
+  testWidgets(
+    '(b\') H-D — removing an items row + "Discard all" on the customer '
+    'restores the removed rows',
+    (tester) async {
+      await openDemo(tester, 'Demo H-D: Customer Form (master-detail)');
+
+      await tester.tap(find.text('ORD-1001'));
+      await tester.pumpAndSettle();
+      expect(find.text('Items (3)'), findsOneWidget);
+
+      final deleteButtons = find.widgetWithIcon(
+        IconButton,
+        Icons.delete_outline,
+      );
+      await tester.tap(deleteButtons.first);
+      await tester.pumpAndSettle();
+      expect(find.text('Items (2)'), findsOneWidget);
+
+      // Click "Discard all" on the root customer form.
+      final discardAll = find.widgetWithText(OutlinedButton, 'Discard all');
+      expect(discardAll, findsOneWidget);
+      await tester.tap(discardAll);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Items (3)'),
+        findsOneWidget,
+        reason:
+            'after "Discard all" the order\'s items list must restore '
+            'to 3 rows',
+      );
+    },
+  );
 }
 
 /// Build a fresh [CustomerHD] mirroring `phaseHdCustomer`'s seed data so
@@ -266,24 +337,53 @@ CustomerHD _freshCustomer() {
   c.billState | 'England';
   c.billZip | 'EC1A 1BB';
   c.billCountry | 'United Kingdom';
-  c.shippingAddresses.add(_addr('Main Office', '1 Analytical Way', 'Suite 42',
-      'London', 'England', 'EC1A 1BB', 'United Kingdom'));
-  c.shippingAddresses.add(_addr('Warehouse', '7 Engine Works', '',
-      'Manchester', 'England', 'M1 2JL', 'United Kingdom'));
-  c.orders.add(_order('ORD-1001', '2026-01-15', 'Main Office', [
-    _item('Difference Engine pinion', '12', '34.50', 'Brass; lot #B-117'),
-    _item('Punched-card deck (1000 pk)', '3', '49.00', 'Hollerith'),
-    _item('Lubricating oil (1L)', '5', '6.75', ''),
-  ]));
-  c.orders.add(_order('ORD-1002', '2026-02-28', 'Warehouse', [
-    _item('Bearing block', '4', '18.75', ''),
-    _item('Mainspring assembly', '1', '58.50', 'Replacement unit'),
-  ]));
+  c.shippingAddresses.add(
+    _addr(
+      'Main Office',
+      '1 Analytical Way',
+      'Suite 42',
+      'London',
+      'England',
+      'EC1A 1BB',
+      'United Kingdom',
+    ),
+  );
+  c.shippingAddresses.add(
+    _addr(
+      'Warehouse',
+      '7 Engine Works',
+      '',
+      'Manchester',
+      'England',
+      'M1 2JL',
+      'United Kingdom',
+    ),
+  );
+  c.orders.add(
+    _order('ORD-1001', '2026-01-15', 'Main Office', [
+      _item('Difference Engine pinion', '12', '34.50', 'Brass; lot #B-117'),
+      _item('Punched-card deck (1000 pk)', '3', '49.00', 'Hollerith'),
+      _item('Lubricating oil (1L)', '5', '6.75', ''),
+    ]),
+  );
+  c.orders.add(
+    _order('ORD-1002', '2026-02-28', 'Warehouse', [
+      _item('Bearing block', '4', '18.75', ''),
+      _item('Mainspring assembly', '1', '58.50', 'Replacement unit'),
+    ]),
+  );
   return c;
 }
 
-ShippingAddressHD _addr(String label, String l1, String l2, String city,
-    String state, String zip, String country) {
+ShippingAddressHD _addr(
+  String label,
+  String l1,
+  String l2,
+  String city,
+  String state,
+  String zip,
+  String country,
+) {
   final a = ShippingAddressHD();
   a.label | label;
   a.line1 | l1;
@@ -295,8 +395,12 @@ ShippingAddressHD _addr(String label, String l1, String l2, String city,
   return a;
 }
 
-OrderHD _order(String id, String date, String shipping,
-    List<OrderItemHD> items) {
+OrderHD _order(
+  String id,
+  String date,
+  String shipping,
+  List<OrderItemHD> items,
+) {
   final o = OrderHD();
   o.orderId | id;
   o.orderDate | date;

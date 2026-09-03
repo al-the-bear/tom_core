@@ -84,15 +84,9 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -134,15 +128,16 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                '• File fields — compact upload button vs. large drop-zone '
-                'affordance, both wired to the same in-memory picker '
-                'callback (so the demo runs deterministically).\n'
-                '• Nullable input variants — String / Int / Double / Date — '
-                'bound into a FileNullableDemoState TomClass.\n'
-                '• The right column distinguishes pristine / set / '
-                'explicitly-null states. Use the action buttons to drive '
-                'the form into each state and watch the inspector counts '
-                'change.'),
+              '• File fields — compact upload button vs. large drop-zone '
+              'affordance, both wired to the same in-memory picker '
+              'callback (so the demo runs deterministically).\n'
+              '• Nullable input variants — String / Int / Double / Date — '
+              'bound into a FileNullableDemoState TomClass.\n'
+              '• The right column distinguishes pristine / set / '
+              'explicitly-null states. Use the action buttons to drive '
+              'the form into each state and watch the inspector counts '
+              'change.',
+            ),
           ],
         ),
       ),
@@ -157,8 +152,10 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('File fields — upload + dropzone',
-                style: theme.textTheme.titleSmall),
+            Text(
+              'File fields — upload + dropzone',
+              style: theme.textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             LayoutBuilder(
               builder: (context, constraints) {
@@ -197,8 +194,7 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Nullable input variants',
-                style: theme.textTheme.titleSmall),
+            Text('Nullable input variants', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             _form.notes.widget,
             const SizedBox(height: 8),
@@ -273,10 +269,7 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        InfoPanel(
-          title: 'File fields',
-          children: [_buildFileTable(context)],
-        ),
+        InfoPanel(title: 'File fields', children: [_buildFileTable(context)]),
         const SizedBox(height: 12),
         InfoPanel(
           title: 'Nullable values + state',
@@ -315,8 +308,9 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
                     Expanded(
                       child: Text(
                         value,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(fontFamily: 'monospace'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ),
                   ],
@@ -375,8 +369,9 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
                         Expanded(
                           child: Text(
                             value == null ? 'null' : _formatValue(value),
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(fontFamily: 'monospace'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontFamily: 'monospace',
+                            ),
                           ),
                         ),
                       ],
@@ -385,8 +380,9 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
                 const SizedBox(height: 6),
                 Text(
                   'form.isDirty = $dirty',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             );
@@ -423,13 +419,10 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
       builder: (context, _) {
         final theme = Theme.of(context);
         final total = _inspector.length;
-        final fieldChanges =
-            _inspector.ofType<FieldValueChangedEvent>().length;
-        final fieldCommitted =
-            _inspector.ofType<FieldCommittedEvent>().length;
+        final fieldChanges = _inspector.ofType<FieldValueChangedEvent>().length;
+        final fieldCommitted = _inspector.ofType<FieldCommittedEvent>().length;
         final formBound = _inspector.ofType<FormBoundEvent>().length;
-        final formDiscarded =
-            _inspector.ofType<FormDiscardedEvent>().length;
+        final formDiscarded = _inspector.ofType<FormDiscardedEvent>().length;
         final rows = [
           ('total events', '$total'),
           ('FieldValueChanged', '$fieldChanges'),
@@ -452,8 +445,9 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
                     Expanded(
                       child: Text(
                         value,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(fontFamily: 'monospace'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ),
                   ],

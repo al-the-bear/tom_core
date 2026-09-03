@@ -96,19 +96,21 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
     final ok = await _form.save(); // recurses through the nested tree
     if (!mounted) return;
     setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      duration: const Duration(seconds: 2),
-      content: Text(ok ? 'Saved nested tree.' : 'Save failed (validation).'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text(ok ? 'Saved nested tree.' : 'Save failed (validation).'),
+      ),
+    );
   }
 
   // --- Style resolution -----------------------------------------------------
 
   TomFormStyle _basePresetStyle() => switch (_preset) {
-        _Preset.material3 => TomFormStyle.material3,
-        _Preset.compact => TomFormStyle.compact,
-        _Preset.bordered => TomFormStyle.bordered,
-      };
+    _Preset.material3 => TomFormStyle.material3,
+    _Preset.compact => TomFormStyle.compact,
+    _Preset.bordered => TomFormStyle.bordered,
+  };
 
   TomFormStyle _outerStyle(BuildContext context) {
     final base = _basePresetStyle();
@@ -140,7 +142,9 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
         hintOpacitySet: true,
       ),
     );
-    return _withTheme ? withOverrides.withTheme(Theme.of(context)) : withOverrides;
+    return _withTheme
+        ? withOverrides.withTheme(Theme.of(context))
+        : withOverrides;
   }
 
   // --- Build ---------------------------------------------------------------
@@ -160,15 +164,9 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -186,10 +184,7 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
   }
 
   Widget _buildFormColumn(BuildContext context) {
-    final topLayout = TomAclBuilder(
-      id: 'demoCTop',
-      elementProvider: _form,
-    )
+    final topLayout = TomAclBuilder(id: 'demoCTop', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.fullName.widget)
@@ -202,35 +197,31 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
         .append((p) => p.notes.widget)
         .build(context);
 
-    final billingLayout = TomAclBuilder(
-      id: 'demoCBilling',
-      elementProvider: _form.billing,
-    )
-        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-        .setAclExpandXDefault(true)
-        .append((p) => p.street.widget)
-        .newRow()
-        .append((p) => p.city.widget)
-        .append((p) => p.state.widget, dist: 16)
-        .newRow()
-        .append((p) => p.zipCode.widget)
-        .append((p) => p.country.widget, dist: 16)
-        .build(context);
+    final billingLayout =
+        TomAclBuilder(id: 'demoCBilling', elementProvider: _form.billing)
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+            .setAclExpandXDefault(true)
+            .append((p) => p.street.widget)
+            .newRow()
+            .append((p) => p.city.widget)
+            .append((p) => p.state.widget, dist: 16)
+            .newRow()
+            .append((p) => p.zipCode.widget)
+            .append((p) => p.country.widget, dist: 16)
+            .build(context);
 
-    final shippingLayout = TomAclBuilder(
-      id: 'demoCShipping',
-      elementProvider: _form.shipping,
-    )
-        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-        .setAclExpandXDefault(true)
-        .append((p) => p.street.widget)
-        .newRow()
-        .append((p) => p.city.widget)
-        .append((p) => p.state.widget, dist: 16)
-        .newRow()
-        .append((p) => p.zipCode.widget)
-        .append((p) => p.country.widget, dist: 16)
-        .build(context);
+    final shippingLayout =
+        TomAclBuilder(id: 'demoCShipping', elementProvider: _form.shipping)
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+            .setAclExpandXDefault(true)
+            .append((p) => p.street.widget)
+            .newRow()
+            .append((p) => p.city.widget)
+            .append((p) => p.state.widget, dist: 16)
+            .newRow()
+            .append((p) => p.zipCode.widget)
+            .append((p) => p.country.widget, dist: 16)
+            .build(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -311,24 +302,33 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const DemoBullet(
-                'Nested tree — customer → billing, customer → shipping — '
-                'each nested form binds/saves/discards independently.'),
+              'Nested tree — customer → billing, customer → shipping — '
+              'each nested form binds/saves/discards independently.',
+            ),
             const DemoBullet(
-                'Live theming panel on the right drives the outer form; '
-                'the billing/shipping scopes override with their own presets '
-                'to demonstrate per-section styling.'),
-            const DemoBullet('Shipping section adds styleBpOverrides — resize '
-                'the window (or narrow the right pane) to cross the tablet '
-                'and desktop breakpoints and watch the preset flip.'),
+              'Live theming panel on the right drives the outer form; '
+              'the billing/shipping scopes override with their own presets '
+              'to demonstrate per-section styling.',
+            ),
             const DemoBullet(
-                'The notes field is a TomFormStringInputClassic — old API '
-                'rendering side-by-side with the spec-conforming fields.'),
-            const DemoBullet('Form inspection card on the right prints the '
-                'live value map, the initial snapshot diff, and the dirty '
-                'field list.'),
-            const DemoBullet('Hint styling (hintFontWeight / hintOpacity) is '
-                'only visible while a field is empty — press Clear to '
-                'observe the sliders.'),
+              'Shipping section adds styleBpOverrides — resize '
+              'the window (or narrow the right pane) to cross the tablet '
+              'and desktop breakpoints and watch the preset flip.',
+            ),
+            const DemoBullet(
+              'The notes field is a TomFormStringInputClassic — old API '
+              'rendering side-by-side with the spec-conforming fields.',
+            ),
+            const DemoBullet(
+              'Form inspection card on the right prints the '
+              'live value map, the initial snapshot diff, and the dirty '
+              'field list.',
+            ),
+            const DemoBullet(
+              'Hint styling (hintFontWeight / hintOpacity) is '
+              'only visible while a field is empty — press Clear to '
+              'observe the sliders.',
+            ),
           ],
         ),
       ),
@@ -419,40 +419,97 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
           onChanged: (v) => setState(() => _withTheme = v),
         ),
         const InfoPanelHeading('Label placement'),
-        _enumRow<LabelPlacement>(LabelPlacement.values, _labelPlacement,
-            (v) => setState(() => _labelPlacement = v)),
+        _enumRow<LabelPlacement>(
+          LabelPlacement.values,
+          _labelPlacement,
+          (v) => setState(() => _labelPlacement = v),
+        ),
         const InfoPanelHeading('Error placement'),
-        _enumRow<ErrorPlacement>(ErrorPlacement.values, _errorPlacement,
-            (v) => setState(() => _errorPlacement = v)),
+        _enumRow<ErrorPlacement>(
+          ErrorPlacement.values,
+          _errorPlacement,
+          (v) => setState(() => _errorPlacement = v),
+        ),
         const InfoPanelHeading('Required — label'),
-        _enumRow<RequiredIndicator>(RequiredIndicator.values, _requiredLabel,
-            (v) => setState(() => _requiredLabel = v)),
+        _enumRow<RequiredIndicator>(
+          RequiredIndicator.values,
+          _requiredLabel,
+          (v) => setState(() => _requiredLabel = v),
+        ),
         const InfoPanelHeading('Required — placeholder (hint)'),
-        _enumRow<RequiredIndicator>(RequiredIndicator.values, _requiredHint,
-            (v) => setState(() => _requiredHint = v)),
+        _enumRow<RequiredIndicator>(
+          RequiredIndicator.values,
+          _requiredHint,
+          (v) => setState(() => _requiredHint = v),
+        ),
         const InfoPanelHeading('Required — description'),
-        _enumRow<RequiredIndicator>(RequiredIndicator.values,
-            _requiredDescription, (v) => setState(() => _requiredDescription = v)),
+        _enumRow<RequiredIndicator>(
+          RequiredIndicator.values,
+          _requiredDescription,
+          (v) => setState(() => _requiredDescription = v),
+        ),
         const InfoPanelHeading('Spacing'),
-        _sliderRow('labelFieldGap', _labelFieldGap, 0, 16,
-            (v) => setState(() => _labelFieldGap = v)),
-        _sliderRow('errorFieldGap', _errorFieldGap, 0, 16,
-            (v) => setState(() => _errorFieldGap = v)),
-        _sliderRow('descriptionFieldGap', _descriptionFieldGap, 0, 16,
-            (v) => setState(() => _descriptionFieldGap = v)),
-        _sliderRow('borderRadius', _borderRadius, 0, 24,
-            (v) => setState(() => _borderRadius = v)),
-        _sliderRow('borderWidth', _borderWidth, 0, 6,
-            (v) => setState(() => _borderWidth = v), divisions: 12),
-        _sliderRow('focusedBorderWidth', _focusedBorderWidth, 0, 6,
-            (v) => setState(() => _focusedBorderWidth = v), divisions: 12),
+        _sliderRow(
+          'labelFieldGap',
+          _labelFieldGap,
+          0,
+          16,
+          (v) => setState(() => _labelFieldGap = v),
+        ),
+        _sliderRow(
+          'errorFieldGap',
+          _errorFieldGap,
+          0,
+          16,
+          (v) => setState(() => _errorFieldGap = v),
+        ),
+        _sliderRow(
+          'descriptionFieldGap',
+          _descriptionFieldGap,
+          0,
+          16,
+          (v) => setState(() => _descriptionFieldGap = v),
+        ),
+        _sliderRow(
+          'borderRadius',
+          _borderRadius,
+          0,
+          24,
+          (v) => setState(() => _borderRadius = v),
+        ),
+        _sliderRow(
+          'borderWidth',
+          _borderWidth,
+          0,
+          6,
+          (v) => setState(() => _borderWidth = v),
+          divisions: 12,
+        ),
+        _sliderRow(
+          'focusedBorderWidth',
+          _focusedBorderWidth,
+          0,
+          6,
+          (v) => setState(() => _focusedBorderWidth = v),
+          divisions: 12,
+        ),
         const InfoPanelHeading('Hint tuning'),
-        _sliderRow('hintFontWeight', _hintWeight.toDouble(), 100, 900,
-            (v) => setState(() => _hintWeight = (v / 100).round() * 100),
-            divisions: 8),
-        _sliderRow('hintOpacity', _hintOpacity, 0, 1,
-            (v) => setState(() => _hintOpacity = v),
-            divisions: 10),
+        _sliderRow(
+          'hintFontWeight',
+          _hintWeight.toDouble(),
+          100,
+          900,
+          (v) => setState(() => _hintWeight = (v / 100).round() * 100),
+          divisions: 8,
+        ),
+        _sliderRow(
+          'hintOpacity',
+          _hintOpacity,
+          0,
+          1,
+          (v) => setState(() => _hintOpacity = v),
+          divisions: 10,
+        ),
       ],
     );
   }
@@ -464,8 +521,10 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
       children: [
         for (final v in values)
           ChoiceChip(
-            label: Text((v as Enum).name,
-                style: Theme.of(context).textTheme.labelSmall),
+            label: Text(
+              (v as Enum).name,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
             selected: v == current,
             visualDensity: VisualDensity.compact,
             onSelected: (sel) {
@@ -560,10 +619,7 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
       ..._form.shipping.fieldsWithErrors.map((f) => 'shipping.${f.tomId}'),
     ];
 
-    final mono = const TextStyle(
-      fontFamily: 'monospace',
-      fontSize: 11,
-    );
+    final mono = const TextStyle(fontFamily: 'monospace', fontSize: 11);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -580,14 +636,19 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
           ],
         ),
         const SizedBox(height: 6),
-        Text('Dirty: ${dirtyFieldIds.isEmpty ? "(none)" : dirtyFieldIds.join(", ")}',
-            style: Theme.of(context).textTheme.bodySmall),
         Text(
-            'Errors: ${errorFieldIds.isEmpty ? "(none)" : errorFieldIds.join(", ")}',
-            style: Theme.of(context).textTheme.bodySmall),
+          'Dirty: ${dirtyFieldIds.isEmpty ? "(none)" : dirtyFieldIds.join(", ")}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        Text(
+          'Errors: ${errorFieldIds.isEmpty ? "(none)" : errorFieldIds.join(", ")}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const InfoPanelHeading('getValues()'),
-        SelectableText(const JsonEncoder.withIndent('  ').convert(values),
-            style: mono),
+        SelectableText(
+          const JsonEncoder.withIndent('  ').convert(values),
+          style: mono,
+        ),
         const InfoPanelHeading('Diff vs initialSnapshot'),
         if (diff.isEmpty)
           Text('(no changes)', style: Theme.of(context).textTheme.bodySmall)
@@ -612,8 +673,10 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: color),
       ),
-      child: Text('$label: $on',
-          style: theme.textTheme.labelSmall?.copyWith(color: color)),
+      child: Text(
+        '$label: $on',
+        style: theme.textTheme.labelSmall?.copyWith(color: color),
+      ),
     );
   }
 

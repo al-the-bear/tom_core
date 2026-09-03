@@ -24,8 +24,7 @@ import 'package:tom_flutter_form_test/state/phase2a_state.dart';
 import 'package:tom_flutter_form_test/state/phase6_state.dart';
 
 void main() {
-  group('phase2aLookupProductPrice — duplicate-name return-first invariant',
-      () {
+  group('phase2aLookupProductPrice — duplicate-name return-first invariant', () {
     test('returns the (shared) price for each duplicated catalog name', () {
       // Each of these names appears twice in the catalog; the linear lookup
       // returns the *first* match — correct only because the pair agrees.
@@ -34,8 +33,7 @@ void main() {
       expect(phase2aLookupProductPrice('Conference badge'), 0.00);
     });
 
-    test(
-        'every duplicated catalog name shares a single price '
+    test('every duplicated catalog name shares a single price '
         '(the latent invariant the return-first lookup relies on)', () {
       // Group prices by name; any name mapping to >1 distinct price would make
       // phase2aLookupProductPrice depend on catalog *order* — a silent bug.
@@ -47,15 +45,22 @@ void main() {
           .where((e) => e.value.length > 1)
           .map((e) => '${e.key}: ${e.value}')
           .toList();
-      expect(conflicting, isEmpty,
-          reason: 'duplicate catalog names must agree on price so the '
-              'return-first lookup is order-independent');
+      expect(
+        conflicting,
+        isEmpty,
+        reason:
+            'duplicate catalog names must agree on price so the '
+            'return-first lookup is order-independent',
+      );
 
       // And there genuinely are duplicates to protect (otherwise this test
       // would be vacuously green if the catalog were ever fully deduped).
       final names = phase2aProductCatalog.map((p) => p.name).toList();
-      expect(names.length, greaterThan(names.toSet().length),
-          reason: 'the fixture is expected to contain duplicate names');
+      expect(
+        names.length,
+        greaterThan(names.toSet().length),
+        reason: 'the fixture is expected to contain duplicate names',
+      );
     });
   });
 
@@ -65,12 +70,14 @@ void main() {
       final values = items.map((i) => i.value).toList();
 
       // No value appears twice.
-      expect(values.length, values.toSet().length,
-          reason: 'the picker source must not list a product name twice');
+      expect(
+        values.length,
+        values.toSet().length,
+        reason: 'the picker source must not list a product name twice',
+      );
 
       // The deduped count equals the number of *distinct* catalog names …
-      final distinctNames =
-          phase2aProductCatalog.map((p) => p.name).toSet();
+      final distinctNames = phase2aProductCatalog.map((p) => p.name).toSet();
       expect(values.toSet(), distinctNames);
 
       // … and is strictly fewer than the raw catalog (dedup did collapse).
@@ -85,8 +92,11 @@ void main() {
         'Maintainer T-shirt',
         'Conference badge',
       ]) {
-        expect(values.where((v) => v == dup), hasLength(1),
-            reason: '$dup should be deduped to a single picker entry');
+        expect(
+          values.where((v) => v == dup),
+          hasLength(1),
+          reason: '$dup should be deduped to a single picker entry',
+        );
       }
     });
 
@@ -112,8 +122,11 @@ void main() {
       // start=9900 .. start+pageSize=10200, clamped to 10000 → 100 rows.
       final page = await source.fetchPage(33, 300);
       expect(page, hasLength(100));
-      expect(page.last, 'Row #09999',
-          reason: 'the clamp must stop exactly at the last row');
+      expect(
+        page.last,
+        'Row #09999',
+        reason: 'the clamp must stop exactly at the last row',
+      );
     });
 
     test('a page entirely past the last row returns []', () async {
@@ -123,12 +136,11 @@ void main() {
       expect(await source.fetchPage(500, 50), isEmpty);
     });
 
-    test('failNext makes the fetch throw instead of returning a slice',
-        () async {
-      expect(
-        () => source.fetchPage(0, 50, failNext: true),
-        throwsStateError,
-      );
-    });
+    test(
+      'failNext makes the fetch throw instead of returning a slice',
+      () async {
+        expect(() => source.fetchPage(0, 50, failNext: true), throwsStateError);
+      },
+    );
   });
 }

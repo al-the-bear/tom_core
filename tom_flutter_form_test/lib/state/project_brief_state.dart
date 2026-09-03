@@ -84,8 +84,9 @@ ProjectBrief _buildProjectBrief() {
   s.tags.add(TomString('sla'));
   s.watchers.add(TomString('anna'));
   s.watchers.add(TomString('bruno'));
-  s.description | 'Introduce SLA-compliance trend charts and incident-to-'
-      'resolution timelines; retire the legacy per-service cards.';
+  s.description |
+      'Introduce SLA-compliance trend charts and incident-to-'
+          'resolution timelines; retire the legacy per-service cards.';
   s.riskNotes | 'Risk of dependency on the (still-draft) metrics API v2.';
   s.lead.firstName | 'Alex';
   s.lead.lastName | 'Rivera';

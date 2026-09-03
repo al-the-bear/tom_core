@@ -20,7 +20,7 @@ final TomSelectableSource<Priority> _demoLPrioritySource = phase4PrioritySource;
 @tomReflector
 class FileNullableDemoForm extends TomForm<FileNullableDemoState> {
   FileNullableDemoForm({required this.picker})
-      : super(formId: 'fileNullableDemo');
+    : super(formId: 'fileNullableDemo');
 
   final FilePicker picker;
 
@@ -134,7 +134,8 @@ TomFormNEnumDropdown<Priority> makeDemoLPriorityField() =>
 Future<FileRef?> demoFilePicker(_) async {
   // Simulate the user choosing a small text file.
   final bytes = Uint8List.fromList(
-      'Hello from the in-memory demo picker.\n'.codeUnits);
+    'Hello from the in-memory demo picker.\n'.codeUnits,
+  );
   return FileRef(
     name: 'demo_picked_file.txt',
     sizeBytes: bytes.length,

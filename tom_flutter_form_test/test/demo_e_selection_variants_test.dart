@@ -25,8 +25,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -39,11 +38,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo E: Selection Variants'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo E: Selection Variants'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo E: Selection Variants'));
     await tester.pumpAndSettle();
   }
@@ -69,8 +70,11 @@ void main() {
     String label,
   ) async {
     final finder = inVariant<W>(variantTitle, label);
-    expect(finder, findsAtLeastNWidgets(1),
-        reason: 'No $W with label "$label" inside "$variantTitle" card');
+    expect(
+      finder,
+      findsAtLeastNWidgets(1),
+      reason: 'No $W with label "$label" inside "$variantTitle" card',
+    );
     await tester.ensureVisible(finder.first);
     await tester.pumpAndSettle();
     await tester.tap(finder.first);
@@ -81,8 +85,9 @@ void main() {
   // bindings panel AND the change-log panel after a tap, so all
   // post-tap assertions use `findsAtLeastNWidgets(1)`.
 
-  testWidgets('baseline — every variant card and binding row renders',
-      (tester) async {
+  testWidgets('baseline — every variant card and binding row renders', (
+    tester,
+  ) async {
     await openDemoE(tester);
     expect(find.textContaining('TomFormStringFilterChips'), findsOneWidget);
     expect(find.textContaining('TomFormStringMultiCheckbox'), findsOneWidget);
@@ -100,8 +105,9 @@ void main() {
     expect(find.text('choiceChips'), findsOneWidget);
   });
 
-  testWidgets(
-      'tap a FilterChip — filterChips binding gains the value', (tester) async {
+  testWidgets('tap a FilterChip — filterChips binding gains the value', (
+    tester,
+  ) async {
     await openDemoE(tester);
     await tapInVariant<FilterChip>(
       tester,
@@ -110,8 +116,11 @@ void main() {
     );
     // The bindings table renders the list as `[tech]`. The change-log
     // panel echoes the same value so we accept >= 1.
-    expect(find.text('[tech]'), findsAtLeastNWidgets(1),
-        reason: 'filterChips binding must show [tech] after selecting it');
+    expect(
+      find.text('[tech]'),
+      findsAtLeastNWidgets(1),
+      reason: 'filterChips binding must show [tech] after selecting it',
+    );
   });
 
   testWidgets('tap a CheckboxListTile in the multi-check variant updates '
@@ -122,12 +131,16 @@ void main() {
       'TomFormStringMultiCheckbox',
       'Finance',
     );
-    expect(find.text('[finance]'), findsAtLeastNWidgets(1),
-        reason: 'multiCheckbox binding must show [finance] after toggling');
+    expect(
+      find.text('[finance]'),
+      findsAtLeastNWidgets(1),
+      reason: 'multiCheckbox binding must show [finance] after toggling',
+    );
   });
 
-  testWidgets('tap a RadioListTile updates the radioGroup binding',
-      (tester) async {
+  testWidgets('tap a RadioListTile updates the radioGroup binding', (
+    tester,
+  ) async {
     await openDemoE(tester);
     await tapInVariant<RadioListTile<String>>(
       tester,
@@ -138,8 +151,9 @@ void main() {
     expect(find.text('manufacturing'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('tap a ChoiceChip updates the choiceChips binding',
-      (tester) async {
+  testWidgets('tap a ChoiceChip updates the choiceChips binding', (
+    tester,
+  ) async {
     await openDemoE(tester);
     await tapInVariant<ChoiceChip>(
       tester,
@@ -150,8 +164,9 @@ void main() {
     expect(find.text('retail'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('tap the boolean checkbox flips the boolCheckbox binding',
-      (tester) async {
+  testWidgets('tap the boolean checkbox flips the boolCheckbox binding', (
+    tester,
+  ) async {
     await openDemoE(tester);
     // Initial value: false → bindings table shows 'false'. After tap → true.
     await tapInVariant<CheckboxListTile>(
@@ -161,31 +176,42 @@ void main() {
     );
     // Bindings table value is rendered as the literal 'true'.
     final trueCells = find.text('true');
-    expect(trueCells, findsAtLeastNWidgets(1),
-        reason: 'boolCheckbox should be true after a tap');
+    expect(
+      trueCells,
+      findsAtLeastNWidgets(1),
+      reason: 'boolCheckbox should be true after a tap',
+    );
   });
 
-  testWidgets('tap the boolean switch flips the boolSwitch binding',
-      (tester) async {
+  testWidgets('tap the boolean switch flips the boolSwitch binding', (
+    tester,
+  ) async {
     await openDemoE(tester);
     await tapInVariant<SwitchListTile>(
       tester,
       'TomFormBoolSwitch',
       'Enable notifications',
     );
-    expect(find.text('true'), findsAtLeastNWidgets(1),
-        reason: 'boolSwitch should be true after a tap');
+    expect(
+      find.text('true'),
+      findsAtLeastNWidgets(1),
+      reason: 'boolSwitch should be true after a tap',
+    );
   });
 
-  testWidgets('toggling Filtered source narrows visible items to two',
-      (tester) async {
+  testWidgets('toggling Filtered source narrows visible items to two', (
+    tester,
+  ) async {
     await openDemoE(tester);
     // Baseline: full catalogue → "Manufacturing" appears in multiple
     // variant cards (FilterChips + MultiCheckbox + Segmented + Radio +
     // ChoiceChip = at least 5 occurrences).
     expect(find.text('Manufacturing'), findsAtLeastNWidgets(1));
     // Toggle the source switch.
-    final filteredSwitch = find.widgetWithText(SwitchListTile, 'Filtered source');
+    final filteredSwitch = find.widgetWithText(
+      SwitchListTile,
+      'Filtered source',
+    );
     expect(filteredSwitch, findsOneWidget);
     await tester.ensureVisible(filteredSwitch);
     await tester.pumpAndSettle();
@@ -193,11 +219,17 @@ void main() {
     await tester.pumpAndSettle();
     // After toggle the subtitle should reflect the 2-item subset. The
     // intro card also mentions '2-item subset', so we accept >= 1.
-    expect(find.textContaining('2-item subset'), findsAtLeastNWidgets(1),
-        reason: 'subtitle must reflect the active filtered source');
+    expect(
+      find.textContaining('2-item subset'),
+      findsAtLeastNWidgets(1),
+      reason: 'subtitle must reflect the active filtered source',
+    );
     // "Manufacturing" should disappear from every variant card.
-    expect(find.text('Manufacturing'), findsNothing,
-        reason: 'filtered source has no Manufacturing item');
+    expect(
+      find.text('Manufacturing'),
+      findsNothing,
+      reason: 'filtered source has no Manufacturing item',
+    );
     // "Technology" must still be present (it's in the 2-item subset).
     expect(find.text('Technology'), findsAtLeastNWidgets(1));
   });
@@ -213,7 +245,10 @@ void main() {
     );
     expect(find.text('manufacturing'), findsAtLeastNWidgets(1));
     // Toggle to filtered source — should prune the now-invalid selection.
-    final filteredSwitch = find.widgetWithText(SwitchListTile, 'Filtered source');
+    final filteredSwitch = find.widgetWithText(
+      SwitchListTile,
+      'Filtered source',
+    );
     await tester.ensureVisible(filteredSwitch);
     await tester.pumpAndSettle();
     await tester.tap(filteredSwitch);

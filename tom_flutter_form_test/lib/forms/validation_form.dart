@@ -55,10 +55,7 @@ class ValidationForm extends TomForm<TomClass> {
     '',
     form: this,
     obscureText: true,
-    validators: [
-      Validators.required(),
-      Validators.minLength(8),
-    ],
+    validators: [Validators.required(), Validators.minLength(8)],
   );
 
   late final confirmPassword = TomFormStringInput(
@@ -91,10 +88,12 @@ class ValidationForm extends TomForm<TomClass> {
     if (password.get().isNotEmpty &&
         confirmPassword.get().isNotEmpty &&
         password.get() != confirmPassword.get()) {
-      errors.add(FormValidationError(
-        errorKey: 'error.passwordsMismatch',
-        fields: [password, confirmPassword],
-      ));
+      errors.add(
+        FormValidationError(
+          errorKey: 'error.passwordsMismatch',
+          fields: [password, confirmPassword],
+        ),
+      );
     }
     return errors;
   }

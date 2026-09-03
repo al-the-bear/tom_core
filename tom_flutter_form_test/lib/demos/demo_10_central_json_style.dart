@@ -39,42 +39,42 @@ class Demo10CentralJsonStyle extends StatefulWidget {
 typedef _ThemeEntry = ({String label, ThemeData data});
 
 List<_ThemeEntry> _buildThemes() => [
-      (
-        label: 'Default (M3 blue)',
-        data: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6750A4)),
-          useMaterial3: true,
-        ),
-      ),
-      (
-        label: 'Purple',
-        data: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5E35B1)),
-          useMaterial3: true,
-        ),
-      ),
-      (
-        label: 'Indigo',
-        data: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1A237E)),
-          useMaterial3: true,
-        ),
-      ),
-      (
-        label: 'Teal',
-        data: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00695C)),
-          useMaterial3: true,
-        ),
-      ),
-      (
-        label: 'Crimson',
-        data: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFC62828)),
-          useMaterial3: true,
-        ),
-      ),
-    ];
+  (
+    label: 'Default (M3 blue)',
+    data: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6750A4)),
+      useMaterial3: true,
+    ),
+  ),
+  (
+    label: 'Purple',
+    data: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5E35B1)),
+      useMaterial3: true,
+    ),
+  ),
+  (
+    label: 'Indigo',
+    data: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1A237E)),
+      useMaterial3: true,
+    ),
+  ),
+  (
+    label: 'Teal',
+    data: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00695C)),
+      useMaterial3: true,
+    ),
+  ),
+  (
+    label: 'Crimson',
+    data: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFC62828)),
+      useMaterial3: true,
+    ),
+  ),
+];
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -90,7 +90,10 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('companyBasicInfo', () => CompanyBasicInfoForm());
+    _form = TomScope.withScope(
+      'companyBasicInfo',
+      () => CompanyBasicInfoForm(),
+    );
     _form.bind(demoState.companyProfile);
   }
 
@@ -107,8 +110,10 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final totalWidth = constraints.maxWidth;
-          final paneWidth =
-              (totalWidth * _widthFraction).clamp(200.0, totalWidth);
+          final paneWidth = (totalWidth * _widthFraction).clamp(
+            200.0,
+            totalWidth,
+          );
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -184,10 +189,7 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
   }
 
   Widget _buildFormFields(BuildContext context) {
-    return TomAclBuilder(
-      id: 'demo10Layout',
-      elementProvider: _form,
-    )
+    return TomAclBuilder(id: 'demo10Layout', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
@@ -209,7 +211,10 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Flutter theme', style: Theme.of(context).textTheme.labelLarge),
+            Text(
+              'Flutter theme',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
             const SizedBox(height: 4),
             Wrap(
               spacing: 8,
@@ -243,7 +248,10 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
   // ── Splitter ──────────────────────────────────────────────────────────────
 
   Widget _buildSplitter(
-      BuildContext context, double totalWidth, double paneWidth) {
+    BuildContext context,
+    double totalWidth,
+    double paneWidth,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -252,11 +260,15 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
           children: [
             Row(
               children: [
-                Text('Form pane width',
-                    style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  'Form pane width',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
                 const Spacer(),
-                Text('${paneWidth.toStringAsFixed(0)} px',
-                    style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  '${paneWidth.toStringAsFixed(0)} px',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ],
             ),
             Slider(
@@ -285,13 +297,16 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
   Widget _buildBreakpointBadges(double width) {
     String active;
     if (width >= TomBreakpoint.desktop) {
-      active = '≥ desktop — padding 16×20, body size 17. '
+      active =
+          '≥ desktop — padding 16×20, body size 17. '
           'Theme from Flutter selector (only typography changes at bp).';
     } else if (width >= TomBreakpoint.tablet) {
-      active = '≥ tablet — label above, body size 15, weights bumped. '
+      active =
+          '≥ tablet — label above, body size 15, weights bumped. '
           'Theme from Flutter selector (only typography changes at bp).';
     } else if (width >= TomBreakpoint.mobile) {
-      active = '≥ mobile — padding 14×18, font size 15. Theme from '
+      active =
+          '≥ mobile — padding 14×18, font size 15. Theme from '
           'Flutter selector.';
     } else {
       active = '< mobile (base) — font size 14. Theme from Flutter selector.';
@@ -300,8 +315,10 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
       color: Theme.of(context).colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Text('Active block → $active',
-            style: Theme.of(context).textTheme.labelMedium),
+        child: Text(
+          'Active block → $active',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
       ),
     );
   }
@@ -316,8 +333,10 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('What this demo shows',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'What this demo shows',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 6),
             const DemoBullet(
               'style: TomFormStyle() is the fallback base — it supplies '
@@ -363,8 +382,10 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('demo_resources.json excerpt',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'demo_resources.json excerpt',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 6),
             const SelectableText(
               _jsonExcerpt,
@@ -400,7 +421,9 @@ class _ThemeChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? primaryColor : Theme.of(context).colorScheme.surface,
+          color: selected
+              ? primaryColor
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
@@ -427,13 +450,13 @@ class _ThemeChip extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected
-                        ? ThemeData.estimateBrightnessForColor(primaryColor) ==
-                                Brightness.dark
-                            ? Colors.white
-                            : Colors.black
-                        : null,
-                  ),
+                color: selected
+                    ? ThemeData.estimateBrightnessForColor(primaryColor) ==
+                              Brightness.dark
+                          ? Colors.white
+                          : Colors.black
+                    : null,
+              ),
             ),
           ],
         ),

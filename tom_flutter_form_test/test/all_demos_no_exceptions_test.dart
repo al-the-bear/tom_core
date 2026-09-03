@@ -69,8 +69,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -106,10 +105,11 @@ void main() {
       find.text(tile),
       80,
       duration: const Duration(milliseconds: 500),
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     // `scrollUntilVisible` sometimes leaves the tile's centre just
     // beyond the viewport edge — `ensureVisible` nudges it fully
     // on-screen so the subsequent tap actually hits.
@@ -124,8 +124,11 @@ void main() {
       of: find.text(tile),
       matching: find.byType(ListTile),
     );
-    expect(tileFinder, findsOneWidget,
-        reason: 'ListTile ancestor of "$tile" must exist');
+    expect(
+      tileFinder,
+      findsOneWidget,
+      reason: 'ListTile ancestor of "$tile" must exist',
+    );
     await tester.tap(tileFinder);
     // pumpAndSettle covers route animations + any post-frame
     // initialisation work that might throw lazily.
@@ -150,7 +153,8 @@ void main() {
       expect(
         errors,
         isEmpty,
-        reason: 'Opening "$tile" produced ${errors.length} '
+        reason:
+            'Opening "$tile" produced ${errors.length} '
             'FlutterError(s):\n${summarise(errors)}',
       );
     });

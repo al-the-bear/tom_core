@@ -36,9 +36,7 @@ class OrderForm extends TomForm<Order> {
   /// The list-of-sub-forms — events bubble up to this form's bus so
   /// EventLogPanel listeners attached at the parent see add/remove/
   /// reorder events alongside per-field events.
-  late final OrderItemsListForm items = OrderItemsListForm(
-    parentForm: this,
-  );
+  late final OrderItemsListForm items = OrderItemsListForm(parentForm: this);
 
   @override
   void createFormElements() {}
@@ -61,10 +59,7 @@ class OrderForm extends TomForm<Order> {
 /// it to surface "at least one item required" through `TomErrorView`.
 class OrderItemsListForm extends TomListForm<OrderItem, OrderItemForm> {
   OrderItemsListForm({super.parentForm})
-      : super(
-          listId: 'items',
-          formFactory: (_) => OrderItemForm(),
-        );
+    : super(listId: 'items', formFactory: (_) => OrderItemForm());
 
   @override
   OrderItem createItem() => OrderItem();

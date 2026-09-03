@@ -168,10 +168,7 @@ class CupertinoPhase5bForm extends TomForm<Phase5bDemoState> {
   // Date range is form-local — DateTimeRange has no TomObject wrapper.
   late final billingPeriod = TomCupertinoFormDateRangePicker(
     'billingPeriod',
-    DateTimeRange(
-      start: DateTime(2026, 5, 1),
-      end: DateTime(2026, 5, 31),
-    ),
+    DateTimeRange(start: DateTime(2026, 5, 1), end: DateTime(2026, 5, 31)),
     form: this,
     firstDate: DateTime(2020),
     lastDate: DateTime(2030),
@@ -357,7 +354,7 @@ class CupertinoPhase5cForm extends TomForm<Phase5cDemoState> {
 @tomReflector
 class Phase5cFamilyForm extends TomForm<Phase5cFamilyState> {
   Phase5cFamilyForm({required this.family})
-      : super(formId: 'phase5cFamily-${family.kind.name}');
+    : super(formId: 'phase5cFamily-${family.kind.name}');
 
   /// Which family this form was instantiated against (Material vs
   /// Cupertino). Stored for inspection in the demo — the actual concrete

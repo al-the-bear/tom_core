@@ -42,10 +42,16 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
   final _status = TomString('Bound — pristine (no errors shown yet)');
 
   late final _controller = TomActionController(controllerId: 'demoA');
-  late final _save =
-      SaveFormAction(_controller, forms: [_form], status: _status);
-  late final _discard =
-      DiscardFormAction(_controller, forms: [_form], status: _status);
+  late final _save = SaveFormAction(
+    _controller,
+    forms: [_form],
+    status: _status,
+  );
+  late final _discard = DiscardFormAction(
+    _controller,
+    forms: [_form],
+    status: _status,
+  );
 
   @override
   void initState() {
@@ -105,15 +111,9 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -131,10 +131,7 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
   }
 
   Widget _buildFormColumn(BuildContext context) {
-    final layout = TomAclBuilder(
-      id: 'demoALayout',
-      elementProvider: _form,
-    )
+    final layout = TomAclBuilder(id: 'demoALayout', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.username.widget)
@@ -181,24 +178,35 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const DemoBullet('bind() / save() / discard() roundtrip against '
-                'phase1ValidationState'),
-            const DemoBullet('setValue(T) — "Clear" and "Populate" demonstrate '
-                'programmatic entry alongside user typing'),
-            const DemoBullet('Sync validators: required, email, minLength, '
-                'pattern (username)'),
             const DemoBullet(
-                'Async validator: "admin*" usernames fail after ~800ms '
-                '(pending spinner visible)'),
+              'bind() / save() / discard() roundtrip against '
+              'phase1ValidationState',
+            ),
             const DemoBullet(
-                'Cross-field: password must equal confirmPassword — '
-                'surfaced by the TomFormErrorBanner above the form'),
+              'setValue(T) — "Clear" and "Populate" demonstrate '
+              'programmatic entry alongside user typing',
+            ),
             const DemoBullet(
-                'Pristine: no errors on first bind — only after typing or '
-                'attempting Save. commit() after a successful Save resets '
-                'all fields to pristine again'),
-            const DemoBullet('Resources: labels, hints, error messages all '
-                'resolve against demoA.validationForm.* in demo_resources.json'),
+              'Sync validators: required, email, minLength, '
+              'pattern (username)',
+            ),
+            const DemoBullet(
+              'Async validator: "admin*" usernames fail after ~800ms '
+              '(pending spinner visible)',
+            ),
+            const DemoBullet(
+              'Cross-field: password must equal confirmPassword — '
+              'surfaced by the TomFormErrorBanner above the form',
+            ),
+            const DemoBullet(
+              'Pristine: no errors on first bind — only after typing or '
+              'attempting Save. commit() after a successful Save resets '
+              'all fields to pristine again',
+            ),
+            const DemoBullet(
+              'Resources: labels, hints, error messages all '
+              'resolve against demoA.validationForm.* in demo_resources.json',
+            ),
           ],
         ),
       ),
@@ -278,16 +286,15 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
       children: [
         InfoPanel(
           title: 'Field state',
-          children: [FieldStateTable(forms: [_form])],
+          children: [
+            FieldStateTable(forms: [_form]),
+          ],
         ),
         const SizedBox(height: 12),
         InfoPanel(
           title: 'Event log',
           children: [
-            EventLogPanel(
-              inspector: _inspector,
-              rebuildOn: _form.changes,
-            ),
+            EventLogPanel(inspector: _inspector, rebuildOn: _form.changes),
           ],
         ),
       ],

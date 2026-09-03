@@ -34,8 +34,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -54,11 +53,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo D: Hide on Authorization'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo D: Hide on Authorization'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo D: Hide on Authorization'));
     await tester.pumpAndSettle();
   }
@@ -88,10 +89,12 @@ void main() {
     int index,
     String optionName,
   ) async {
-    final dropdown =
-        find.byType(DropdownButton<TomAuthState>).at(index);
-    expect(dropdown, findsOneWidget,
-        reason: 'auth dropdown #$index must exist');
+    final dropdown = find.byType(DropdownButton<TomAuthState>).at(index);
+    expect(
+      dropdown,
+      findsOneWidget,
+      reason: 'auth dropdown #$index must exist',
+    );
     await tester.ensureVisible(dropdown);
     await tester.pumpAndSettle();
     await tester.tap(dropdown);
@@ -112,8 +115,9 @@ void main() {
   const saveBtnDD = 5;
   const featuredChipDD = 10;
 
-  testWidgets('baseline — every field and gallery anchor widget renders',
-      (tester) async {
+  testWidgets('baseline — every field and gallery anchor widget renders', (
+    tester,
+  ) async {
     await openDemoD(tester);
     // Both form sections share the same field set, so every tomId
     // appears at least twice (Form A + Form B).
@@ -127,21 +131,26 @@ void main() {
     expect(find.text('Featured'), findsOneWidget);
   });
 
-  testWidgets('hide a single field — that field disappears, others stay',
-      (tester) async {
+  testWidgets('hide a single field — that field disappears, others stay', (
+    tester,
+  ) async {
     await openDemoD(tester);
     expect(fieldByTomId('username'), findsNWidgets(2));
     await setAuthAt(tester, usernameDD, 'none');
     // Username is hidden in BOTH forms (single auth path drives both).
-    expect(fieldByTomId('username'), findsNothing,
-        reason: 'username should be elided when auth = none');
+    expect(
+      fieldByTomId('username'),
+      findsNothing,
+      reason: 'username should be elided when auth = none',
+    );
     // Sibling fields untouched.
     expect(fieldByTomId('email'), findsNWidgets(2));
     expect(fieldByTomId('password'), findsNWidgets(2));
   });
 
-  testWidgets('hide every field in row 2 — entire row is elided',
-      (tester) async {
+  testWidgets('hide every field in row 2 — entire row is elided', (
+    tester,
+  ) async {
     await openDemoD(tester);
     expect(fieldByTomId('password'), findsNWidgets(2));
     expect(fieldByTomId('confirmPassword'), findsNWidgets(2));
@@ -155,14 +164,18 @@ void main() {
     expect(fieldByTomId('website'), findsNWidgets(2));
   });
 
-  testWidgets('hide a gallery widget — only that widget disappears',
-      (tester) async {
+  testWidgets('hide a gallery widget — only that widget disappears', (
+    tester,
+  ) async {
     await openDemoD(tester);
     expect(find.text('Save'), findsOneWidget);
     expect(find.text('Featured'), findsOneWidget);
     await setAuthAt(tester, saveBtnDD, 'none');
-    expect(find.text('Save'), findsNothing,
-        reason: 'TomElevatedButton "Save" should be elided');
+    expect(
+      find.text('Save'),
+      findsNothing,
+      reason: 'TomElevatedButton "Save" should be elided',
+    );
     // Sibling gallery widgets unaffected.
     expect(find.text('Featured'), findsOneWidget);
     expect(find.text('Cancel'), findsOneWidget);
@@ -170,26 +183,35 @@ void main() {
     expect(fieldByTomId('username'), findsNWidgets(2));
   });
 
-  testWidgets('readonly state keeps the field present (not hidden)',
-      (tester) async {
+  testWidgets('readonly state keeps the field present (not hidden)', (
+    tester,
+  ) async {
     await openDemoD(tester);
     await setAuthAt(tester, emailDD, 'read');
     // `read` is a visual treatment, NOT a hide — the field stays in the
     // tree.
-    expect(fieldByTomId('email'), findsNWidgets(2),
-        reason: 'read auth should keep the field in the tree');
+    expect(
+      fieldByTomId('email'),
+      findsNWidgets(2),
+      reason: 'read auth should keep the field in the tree',
+    );
   });
 
-  testWidgets('disabled state keeps the field present (not hidden)',
-      (tester) async {
+  testWidgets('disabled state keeps the field present (not hidden)', (
+    tester,
+  ) async {
     await openDemoD(tester);
     await setAuthAt(tester, emailDD, 'disabled');
-    expect(fieldByTomId('email'), findsNWidgets(2),
-        reason: 'disabled auth should keep the field in the tree');
+    expect(
+      fieldByTomId('email'),
+      findsNWidgets(2),
+      reason: 'disabled auth should keep the field in the tree',
+    );
   });
 
-  testWidgets('Reset form fields restores everything that was hidden',
-      (tester) async {
+  testWidgets('Reset form fields restores everything that was hidden', (
+    tester,
+  ) async {
     await openDemoD(tester);
     await setAuthAt(tester, usernameDD, 'none');
     await setAuthAt(tester, emailDD, 'none');
@@ -201,14 +223,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(reset);
     await tester.pumpAndSettle();
-    expect(fieldByTomId('username'), findsNWidgets(2),
-        reason: 'Reset must restore the username field');
-    expect(fieldByTomId('email'), findsNWidgets(2),
-        reason: 'Reset must restore the email field');
+    expect(
+      fieldByTomId('username'),
+      findsNWidgets(2),
+      reason: 'Reset must restore the username field',
+    );
+    expect(
+      fieldByTomId('email'),
+      findsNWidgets(2),
+      reason: 'Reset must restore the email field',
+    );
   });
 
-  testWidgets('hiding a chip leaves form fields unaffected',
-      (tester) async {
+  testWidgets('hiding a chip leaves form fields unaffected', (tester) async {
     await openDemoD(tester);
     expect(find.text('Featured'), findsOneWidget);
     await setAuthAt(tester, featuredChipDD, 'none');

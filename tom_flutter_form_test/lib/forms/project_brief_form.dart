@@ -95,11 +95,7 @@ class ProjectBriefForm extends TomForm<TomClass> {
     form: this,
     hintTextOverride: 'YYYY-MM-DD',
   );
-  late final location = TomFormStringInput(
-    'location',
-    '',
-    form: this,
-  );
+  late final location = TomFormStringInput('location', '', form: this);
 
   // --- Classic-field targets — keep Classic coexistence live ------------
 
@@ -184,11 +180,7 @@ class PersonSubform extends TomForm<TomClass> {
     form: this,
     keyboardType: TextInputType.phone,
   );
-  late final title = TomFormStringInput(
-    'title',
-    '',
-    form: this,
-  );
+  late final title = TomFormStringInput('title', '', form: this);
 }
 
 // ---------------------------------------------------------------------------

@@ -30,9 +30,7 @@ class FieldStateTable extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final form in forms) _buildFormSection(context, form),
-      ],
+      children: [for (final form in forms) _buildFormSection(context, form)],
     );
   }
 
@@ -48,8 +46,9 @@ class FieldStateTable extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4, bottom: 4),
             child: Text(
               form.formId,
-              style: theme.textTheme.labelMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           Table(
@@ -60,10 +59,7 @@ class FieldStateTable extends StatelessWidget {
               3: FlexColumnWidth(2),
               4: FlexColumnWidth(1),
             },
-            border: TableBorder.all(
-              color: theme.dividerColor,
-              width: 0.5,
-            ),
+            border: TableBorder.all(color: theme.dividerColor, width: 0.5),
             children: [
               _headerRow(theme),
               for (final field in form.fields.values) _row(theme, field),
@@ -75,8 +71,9 @@ class FieldStateTable extends StatelessWidget {
   }
 
   TableRow _headerRow(ThemeData theme) {
-    final style = theme.textTheme.labelSmall
-        ?.copyWith(fontWeight: FontWeight.w600);
+    final style = theme.textTheme.labelSmall?.copyWith(
+      fontWeight: FontWeight.w600,
+    );
     return TableRow(
       decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHigh),
       children: [
@@ -117,14 +114,9 @@ class FieldStateTable extends StatelessWidget {
       s.length > 24 ? '${s.substring(0, 24)}…' : s;
 
   static Widget _cell(String text, TextStyle? style) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Text(
-          text,
-          style: style,
-          overflow: TextOverflow.ellipsis,
-        ),
-      );
-
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+    child: Text(text, style: style, overflow: TextOverflow.ellipsis),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -139,33 +131,31 @@ class FieldStateTable extends StatelessWidget {
 /// The short auth label shown in the table's Auth column.
 @visibleForTesting
 String fieldAuthLabel(TomAuthState s) => switch (s) {
-      TomAuthState.full => 'full',
-      TomAuthState.read => 'read',
-      TomAuthState.disabled => 'disabled',
-      TomAuthState.none => 'none',
-    };
+  TomAuthState.full => 'full',
+  TomAuthState.read => 'read',
+  TomAuthState.disabled => 'disabled',
+  TomAuthState.none => 'none',
+};
 
 /// The short validation label shown in the table's Validation column.
 @visibleForTesting
 String fieldValidationLabel(ValidationResult r) => switch (r) {
-      ValidationPristine() => 'pristine',
-      ValidationSuccess() => 'valid',
-      ValidationPending() => 'pending',
-      ValidationError(:final errorKey) => 'error: $errorKey',
-    };
+  ValidationPristine() => 'pristine',
+  ValidationSuccess() => 'valid',
+  ValidationPending() => 'pending',
+  ValidationError(:final errorKey) => 'error: $errorKey',
+};
 
 /// The row background colour: a disabled/none auth state dominates (greyed
 /// out); otherwise the validation state drives the colour.
 @visibleForTesting
-Color fieldRowColour(
-  ThemeData theme,
-  TomAuthState auth,
-  ValidationResult v,
-) {
+Color fieldRowColour(ThemeData theme, TomAuthState auth, ValidationResult v) {
   if (auth == TomAuthState.disabled) return theme.colorScheme.surfaceContainer;
   if (auth == TomAuthState.none) return theme.colorScheme.surfaceContainerLow;
   return switch (v) {
-    ValidationError() => theme.colorScheme.errorContainer.withValues(alpha: 0.4),
+    ValidationError() => theme.colorScheme.errorContainer.withValues(
+      alpha: 0.4,
+    ),
     ValidationPending() => Colors.amber.withValues(alpha: 0.25),
     ValidationSuccess() => Colors.green.withValues(alpha: 0.12),
     ValidationPristine() => theme.colorScheme.surface,

@@ -17,7 +17,8 @@ library;
 
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart' show CupertinoButton, CupertinoTextField;
+import 'package:flutter/cupertino.dart'
+    show CupertinoButton, CupertinoTextField;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,8 +34,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -51,14 +51,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo O: Cupertino search / lookup / file (Phase 5c)'),
-        200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo O: Cupertino search / lookup / file (Phase 5c)'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(
-        find.text('Demo O: Cupertino search / lookup / file (Phase 5c)'));
+      find.text('Demo O: Cupertino search / lookup / file (Phase 5c)'),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -72,8 +74,7 @@ void main() {
   String stateValue(WidgetTester tester, String name) {
     final nameFinder = find.text(name);
     expect(nameFinder, findsAtLeastNWidgets(1));
-    final row =
-        find.ancestor(of: nameFinder.first, matching: find.byType(Row));
+    final row = find.ancestor(of: nameFinder.first, matching: find.byType(Row));
     expect(row, findsAtLeastNWidgets(1));
     final texts = find
         .descendant(of: row.first, matching: find.byType(Text))
@@ -85,8 +86,9 @@ void main() {
   }
 
   testWidgets('baseline at wide viewport — every Phase 5c Cupertino adapter '
-      'renders, state panel echoes seeds (incl. null nullables)',
-      (tester) async {
+      'renders, state panel echoes seeds (incl. null nullables)', (
+    tester,
+  ) async {
     await openDemoO(tester);
     for (final id in [
       'citySearch',
@@ -97,8 +99,11 @@ void main() {
       'score',
       'birthday',
     ]) {
-      expect(adapterByTomId(id), findsOneWidget,
-          reason: 'field "$id" must render');
+      expect(
+        adapterByTomId(id),
+        findsOneWidget,
+        reason: 'field "$id" must render',
+      );
     }
     // Upload + nullable seeds.
     expect(stateValue(tester, 'upload'), '— null —');
@@ -118,17 +123,24 @@ void main() {
       of: adapterByTomId('upload'),
       matching: find.byType(CupertinoButton),
     );
-    expect(btn, findsAtLeastNWidgets(1),
-        reason: 'TomCupertinoFormFileUpload must render a CupertinoButton');
+    expect(
+      btn,
+      findsAtLeastNWidgets(1),
+      reason: 'TomCupertinoFormFileUpload must render a CupertinoButton',
+    );
     await tester.ensureVisible(btn.first);
     await tester.pumpAndSettle();
     await tester.tap(btn.first);
     await tester.pumpAndSettle();
     // phase5cFilePicker returns "cupertino_demo_file.txt".
     final v = stateValue(tester, 'upload');
-    expect(v.contains('cupertino_demo_file.txt'), isTrue,
-        reason: 'state panel upload row must show the picked filename '
-            '(was: $v)');
+    expect(
+      v.contains('cupertino_demo_file.txt'),
+      isTrue,
+      reason:
+          'state panel upload row must show the picked filename '
+          '(was: $v)',
+    );
   });
 
   testWidgets('typing into the Cupertino nullable string input flips notes '
@@ -141,7 +153,10 @@ void main() {
     expect(notesField, findsOneWidget);
     await tester.enterText(notesField, 'a cupertino note');
     await tester.pumpAndSettle();
-    expect(stateValue(tester, 'notes'), 'a cupertino note',
-        reason: 'typing must propagate to the bound TomNString → state panel');
+    expect(
+      stateValue(tester, 'notes'),
+      'a cupertino note',
+      reason: 'typing must propagate to the bound TomNString → state panel',
+    );
   });
 }

@@ -31,8 +31,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -60,11 +59,14 @@ void main() {
     // outside the viewport. ensureVisible scrolls until the widget is
     // fully on-screen (matches the pattern in tapOutlined). Adding more
     // demos to the home list shouldn't break this helper.
-    await tester.scrollUntilVisible(tile, 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      tile,
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.ensureVisible(tile);
     await tester.pumpAndSettle();
     await tester.tap(tile);
@@ -74,8 +76,11 @@ void main() {
   /// Tap an [OutlinedButton] (icon variant) by its label text.
   Future<void> tapOutlined(WidgetTester tester, String label) async {
     final btn = find.widgetWithText(OutlinedButton, label);
-    expect(btn, findsAtLeastNWidgets(1),
-        reason: 'OutlinedButton "$label" must exist');
+    expect(
+      btn,
+      findsAtLeastNWidgets(1),
+      reason: 'OutlinedButton "$label" must exist',
+    );
     await tester.ensureVisible(btn.first);
     await tester.pumpAndSettle();
     await tester.tap(btn.first);
@@ -96,11 +101,13 @@ void main() {
   /// Tap a labelled segment inside the SegmentedButton parameterised on [V].
   Future<void> tapSegment<V>(WidgetTester tester, String label) async {
     final segmented = find.byType(SegmentedButton<V>);
-    expect(segmented, findsOneWidget,
-        reason: 'SegmentedButton<$V> must exist');
+    expect(segmented, findsOneWidget, reason: 'SegmentedButton<$V> must exist');
     final seg = find.descendant(of: segmented, matching: find.text(label));
-    expect(seg, findsOneWidget,
-        reason: 'segment "$label" must exist inside SegmentedButton<$V>');
+    expect(
+      seg,
+      findsOneWidget,
+      reason: 'segment "$label" must exist inside SegmentedButton<$V>',
+    );
     await tester.ensureVisible(seg);
     await tester.pumpAndSettle();
     await tester.tap(seg);
@@ -110,31 +117,32 @@ void main() {
   /// Read the current `selected` set of the (single) SegmentedButton<V> on
   /// screen.
   Set<V> selectedOf<V>(WidgetTester tester) {
-    final widget = find.byType(SegmentedButton<V>).evaluate().first.widget
-        as SegmentedButton<V>;
+    final widget =
+        find.byType(SegmentedButton<V>).evaluate().first.widget
+            as SegmentedButton<V>;
     return widget.selected;
   }
 
-  testWidgets('baseline — all segmented controls and action buttons render',
-      (tester) async {
+  testWidgets('baseline — all segmented controls and action buttons render', (
+    tester,
+  ) async {
     await openDemo6(tester);
     expect(find.byType(SegmentedButton<LabelPlacement>), findsOneWidget);
-    expect(find.byType(SegmentedButton<DescriptionPlacement>),
-        findsOneWidget);
+    expect(find.byType(SegmentedButton<DescriptionPlacement>), findsOneWidget);
     // Three RequiredIndicator segmented buttons (label / hint / description).
     expect(find.byType(SegmentedButton<RequiredIndicator>), findsNWidgets(3));
-    expect(find.widgetWithText(OutlinedButton, 'Clear fields'),
-        findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Populate with demo data'),
-        findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Clear fields'), findsOneWidget);
+    expect(
+      find.widgetWithText(OutlinedButton, 'Populate with demo data'),
+      findsOneWidget,
+    );
     // Form fields render too.
     expect(fieldByTomId('name'), findsOneWidget);
     expect(fieldByTomId('taxId'), findsOneWidget);
     expect(fieldByTomId('website'), findsOneWidget);
   });
 
-  testWidgets('Clear fields blanks the name TextField',
-      (tester) async {
+  testWidgets('Clear fields blanks the name TextField', (tester) async {
     await openDemo6(tester);
     // Demo 6 starts unbound — fields are empty until Populate. Populate
     // first so we have a known non-empty starting value.
@@ -142,58 +150,78 @@ void main() {
     final nameField = fieldByTomId('name');
     expect(nameField, findsOneWidget);
     var widget = tester.widget<TextField>(nameField);
-    expect(widget.controller?.text, 'Acme Corporation',
-        reason: 'Populate must seed the name field');
+    expect(
+      widget.controller?.text,
+      'Acme Corporation',
+      reason: 'Populate must seed the name field',
+    );
     await tapOutlined(tester, 'Clear fields');
     widget = tester.widget<TextField>(fieldByTomId('name'));
-    expect(widget.controller?.text, '',
-        reason: 'Clear must blank the name TextField');
+    expect(
+      widget.controller?.text,
+      '',
+      reason: 'Clear must blank the name TextField',
+    );
   });
 
-  testWidgets('Populate refills the website field with the sample URL',
-      (tester) async {
+  testWidgets('Populate refills the website field with the sample URL', (
+    tester,
+  ) async {
     await openDemo6(tester);
     await tapOutlined(tester, 'Clear fields');
     var widget = tester.widget<TextField>(fieldByTomId('website'));
     expect(widget.controller?.text, '');
     await tapOutlined(tester, 'Populate with demo data');
     widget = tester.widget<TextField>(fieldByTomId('website'));
-    expect(widget.controller?.text, 'https://acme.example.com',
-        reason: 'Populate should rebind the canonical sample URL');
+    expect(
+      widget.controller?.text,
+      'https://acme.example.com',
+      reason: 'Populate should rebind the canonical sample URL',
+    );
   });
 
-  testWidgets('picking LabelPlacement.below updates the segmented selection',
-      (tester) async {
+  testWidgets('picking LabelPlacement.below updates the segmented selection', (
+    tester,
+  ) async {
     await openDemo6(tester);
-    expect(selectedOf<LabelPlacement>(tester), {LabelPlacement.above},
-        reason: 'baseline LabelPlacement is `above`');
+    expect(
+      selectedOf<LabelPlacement>(tester),
+      {LabelPlacement.above},
+      reason: 'baseline LabelPlacement is `above`',
+    );
     await tapSegment<LabelPlacement>(tester, 'below');
     expect(selectedOf<LabelPlacement>(tester), {LabelPlacement.below});
   });
 
   testWidgets(
-      'picking LabelPlacement.floating updates the segmented selection',
-      (tester) async {
-    await openDemo6(tester);
-    await tapSegment<LabelPlacement>(tester, 'floating');
-    expect(selectedOf<LabelPlacement>(tester), {LabelPlacement.floating});
-  });
+    'picking LabelPlacement.floating updates the segmented selection',
+    (tester) async {
+      await openDemo6(tester);
+      await tapSegment<LabelPlacement>(tester, 'floating');
+      expect(selectedOf<LabelPlacement>(tester), {LabelPlacement.floating});
+    },
+  );
 
-  testWidgets('picking LabelPlacement.hidden updates the segmented selection',
-      (tester) async {
+  testWidgets('picking LabelPlacement.hidden updates the segmented selection', (
+    tester,
+  ) async {
     await openDemo6(tester);
     await tapSegment<LabelPlacement>(tester, 'hidden');
     expect(selectedOf<LabelPlacement>(tester), {LabelPlacement.hidden});
   });
 
-  testWidgets('picking DescriptionPlacement.above updates the selection',
-      (tester) async {
+  testWidgets('picking DescriptionPlacement.above updates the selection', (
+    tester,
+  ) async {
     await openDemo6(tester);
-    expect(selectedOf<DescriptionPlacement>(tester),
-        {DescriptionPlacement.below},
-        reason: 'baseline DescriptionPlacement is `below`');
-    await tapSegment<DescriptionPlacement>(tester, 'above');
     expect(
-        selectedOf<DescriptionPlacement>(tester), {DescriptionPlacement.above});
+      selectedOf<DescriptionPlacement>(tester),
+      {DescriptionPlacement.below},
+      reason: 'baseline DescriptionPlacement is `below`',
+    );
+    await tapSegment<DescriptionPlacement>(tester, 'above');
+    expect(selectedOf<DescriptionPlacement>(tester), {
+      DescriptionPlacement.above,
+    });
   });
 }

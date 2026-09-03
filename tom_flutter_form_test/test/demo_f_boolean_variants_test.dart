@@ -85,8 +85,11 @@ void main() {
       of: row(tomId),
       matching: find.text(segment),
     );
-    expect(finder, findsOneWidget,
-        reason: 'Segment "$segment" must exist inside field row "$tomId"');
+    expect(
+      finder,
+      findsOneWidget,
+      reason: 'Segment "$segment" must exist inside field row "$tomId"',
+    );
     await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
     await tester.tap(finder);
@@ -108,8 +111,11 @@ void main() {
         )
         .evaluate();
     expect(candidates, isNotEmpty, reason: '$tomId binding row not found');
-    expect((candidates.first.widget as Text).data, '$value',
-        reason: '$tomId must be $value');
+    expect(
+      (candidates.first.widget as Text).data,
+      '$value',
+      reason: '$tomId must be $value',
+    );
   }
 
   void expectAll(Iterable<String> tomIds, bool value) {
@@ -138,12 +144,21 @@ void main() {
     // six real fields (each field wraps its rendering in a
     // TomFieldWidgetAdapter) and none of the old stand-ins.
     await openDemoF(tester);
-    expect(find.byType(TomFieldWidgetAdapter), findsNWidgets(6),
-        reason: 'six real TomFormBool* fields must render');
-    expect(find.byType(CheckboxListTile), findsNothing,
-        reason: 'the Material stand-ins must be gone');
-    expect(find.byType(SwitchListTile), findsNothing,
-        reason: 'the Material stand-ins must be gone');
+    expect(
+      find.byType(TomFieldWidgetAdapter),
+      findsNWidgets(6),
+      reason: 'six real TomFormBool* fields must render',
+    );
+    expect(
+      find.byType(CheckboxListTile),
+      findsNothing,
+      reason: 'the Material stand-ins must be gone',
+    );
+    expect(
+      find.byType(SwitchListTile),
+      findsNothing,
+      reason: 'the Material stand-ins must be gone',
+    );
     // Each rendering appears twice: once independent, once lock-step.
     expect(find.byType(Checkbox), findsNWidgets(2));
     expect(find.byType(Switch), findsNWidgets(2));
@@ -159,32 +174,36 @@ void main() {
     expectAll([...independent, ...shared], false);
   });
 
-  testWidgets('tap the independent checkbox — only checkboxFlag flips',
-      (tester) async {
+  testWidgets('tap the independent checkbox — only checkboxFlag flips', (
+    tester,
+  ) async {
     await openDemoF(tester);
     await tapField<Checkbox>(tester, 'checkboxFlag');
     expectBinding('checkboxFlag', true);
     expectAll(['switchFlag', 'toggleFlag', ...shared], false);
   });
 
-  testWidgets('tap the independent switch — only switchFlag flips',
-      (tester) async {
+  testWidgets('tap the independent switch — only switchFlag flips', (
+    tester,
+  ) async {
     await openDemoF(tester);
     await tapField<Switch>(tester, 'switchFlag');
     expectBinding('switchFlag', true);
     expectAll(['checkboxFlag', 'toggleFlag', ...shared], false);
   });
 
-  testWidgets('tap the independent toggle — only toggleFlag flips',
-      (tester) async {
+  testWidgets('tap the independent toggle — only toggleFlag flips', (
+    tester,
+  ) async {
     await openDemoF(tester);
     await tapSegment(tester, 'toggleFlag', 'On');
     expectBinding('toggleFlag', true);
     expectAll(['checkboxFlag', 'switchFlag', ...shared], false);
   });
 
-  testWidgets('lock-step — flipping the checkbox moves all three',
-      (tester) async {
+  testWidgets('lock-step — flipping the checkbox moves all three', (
+    tester,
+  ) async {
     await openDemoF(tester);
     await tapField<Checkbox>(tester, 'sharedCheckbox');
     expectAll(shared, true);
@@ -192,24 +211,27 @@ void main() {
     expectAll(independent, false);
   });
 
-  testWidgets('lock-step — flipping the switch moves all three',
-      (tester) async {
+  testWidgets('lock-step — flipping the switch moves all three', (
+    tester,
+  ) async {
     await openDemoF(tester);
     await tapField<Switch>(tester, 'sharedSwitch');
     expectAll(shared, true);
     expectAll(independent, false);
   });
 
-  testWidgets('lock-step — flipping the toggle moves all three',
-      (tester) async {
+  testWidgets('lock-step — flipping the toggle moves all three', (
+    tester,
+  ) async {
     await openDemoF(tester);
     await tapSegment(tester, 'sharedToggle', 'On');
     expectAll(shared, true);
     expectAll(independent, false);
   });
 
-  testWidgets('lock-step — the peer widgets rerender, not just the bindings',
-      (tester) async {
+  testWidgets('lock-step — the peer widgets rerender, not just the bindings', (
+    tester,
+  ) async {
     // The structural promise: propagation reaches the peers' own rendered
     // state, not merely the inspector panel that reads the values back.
     await openDemoF(tester);
@@ -217,22 +239,26 @@ void main() {
 
     await tapField<Checkbox>(tester, 'sharedCheckbox');
 
-    expect(toggleSelection(tester, 'sharedToggle'), isTrue,
-        reason: 'shared toggle must follow the checkbox');
-    final peerSwitch = tester.widget<Switch>(
-      find.descendant(
-        of: row('sharedSwitch'),
-        matching: find.byType(Switch),
-      ),
+    expect(
+      toggleSelection(tester, 'sharedToggle'),
+      isTrue,
+      reason: 'shared toggle must follow the checkbox',
     );
-    expect(peerSwitch.value, isTrue,
-        reason: 'shared switch must follow the checkbox');
+    final peerSwitch = tester.widget<Switch>(
+      find.descendant(of: row('sharedSwitch'), matching: find.byType(Switch)),
+    );
+    expect(
+      peerSwitch.value,
+      isTrue,
+      reason: 'shared switch must follow the checkbox',
+    );
     // The independent toggle is untouched — propagation is scoped to the trio.
     expect(toggleSelection(tester, 'toggleFlag'), isFalse);
   });
 
-  testWidgets('lock-step — flipping back off returns the whole trio to false',
-      (tester) async {
+  testWidgets('lock-step — flipping back off returns the whole trio to false', (
+    tester,
+  ) async {
     await openDemoF(tester);
     await tapField<Checkbox>(tester, 'sharedCheckbox');
     expectAll(shared, true);

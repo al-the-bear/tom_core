@@ -33,8 +33,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -64,11 +63,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo A: Lifecycle & Validation'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ));
+      find.text('Demo A: Lifecycle & Validation'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo A: Lifecycle & Validation'));
     await tester.pumpAndSettle();
   }
@@ -82,9 +83,13 @@ void main() {
     if (finder.evaluate().isEmpty) {
       finder = find.widgetWithText(TextButton, label);
     }
-    expect(finder, findsAtLeastNWidgets(1),
-        reason: 'No FilledButton/TextButton labelled "$label" in the '
-            'action row');
+    expect(
+      finder,
+      findsAtLeastNWidgets(1),
+      reason:
+          'No FilledButton/TextButton labelled "$label" in the '
+          'action row',
+    );
     await tester.ensureVisible(finder.first);
     await tester.pumpAndSettle();
     await tester.tap(finder.first);
@@ -106,35 +111,50 @@ void main() {
     );
   }
 
-  testWidgets('pristine on first bind — no required-error text visible',
-      (tester) async {
+  testWidgets('pristine on first bind — no required-error text visible', (
+    tester,
+  ) async {
     await openDemoA(tester);
     // Seed values for password / confirmPassword are empty in
     // phase1ValidationState. Required validators run, but ValidationPristine
     // suppresses error display until the user types or attempts Save.
-    expect(find.text('Password is required.'), findsNothing,
-        reason: 'Pristine bind must not surface required-error text');
-    expect(find.text('Please confirm your password.'), findsNothing,
-        reason: 'Pristine bind must not surface required-error text');
+    expect(
+      find.text('Password is required.'),
+      findsNothing,
+      reason: 'Pristine bind must not surface required-error text',
+    );
+    expect(
+      find.text('Please confirm your password.'),
+      findsNothing,
+      reason: 'Pristine bind must not surface required-error text',
+    );
     // Initial status set in initState.
     expect(find.textContaining('Bound — pristine'), findsOneWidget);
   });
 
-  testWidgets('Clear blanks every string field and surfaces required errors',
-      (tester) async {
+  testWidgets('Clear blanks every string field and surfaces required errors', (
+    tester,
+  ) async {
     await openDemoA(tester);
     await tapButton(tester, 'Clear');
     // After Clear the username (which had 'janedoe') is blank, triggering
     // the required validator. Pristine is broken because setValue fired,
     // so the error becomes visible.
-    expect(find.text('Username is required.'), findsAtLeastNWidgets(1),
-        reason: 'Clear should reveal username required error');
-    expect(find.text('Email is required.'), findsAtLeastNWidgets(1),
-        reason: 'Clear should reveal email required error');
+    expect(
+      find.text('Username is required.'),
+      findsAtLeastNWidgets(1),
+      reason: 'Clear should reveal username required error',
+    );
+    expect(
+      find.text('Email is required.'),
+      findsAtLeastNWidgets(1),
+      reason: 'Clear should reveal email required error',
+    );
   });
 
-  testWidgets('Populate fills sample values and clears required errors',
-      (tester) async {
+  testWidgets('Populate fills sample values and clears required errors', (
+    tester,
+  ) async {
     await openDemoA(tester);
     // First Clear so we have visible required errors to assert against.
     await tapButton(tester, 'Clear');
@@ -142,15 +162,22 @@ void main() {
     // Then Populate sets the canonical valid sample.
     await tapButton(tester, 'Populate');
     await tester.pumpAndSettle();
-    expect(find.text('Email is required.'), findsNothing,
-        reason: 'Populate filled email so the required error must clear');
-    expect(find.text('Password is required.'), findsNothing,
-        reason: 'Populate filled password so required error must clear');
+    expect(
+      find.text('Email is required.'),
+      findsNothing,
+      reason: 'Populate filled email so the required error must clear',
+    );
+    expect(
+      find.text('Password is required.'),
+      findsNothing,
+      reason: 'Populate filled password so required error must clear',
+    );
     expect(find.textContaining('Populated with sample'), findsOneWidget);
   });
 
-  testWidgets('Save with mismatched passwords surfaces cross-field banner',
-      (tester) async {
+  testWidgets('Save with mismatched passwords surfaces cross-field banner', (
+    tester,
+  ) async {
     await openDemoA(tester);
     // Populate fills password=confirmPassword=strongpass1. Mutate just one
     // to break the cross-field rule.
@@ -159,8 +186,11 @@ void main() {
     // Locate confirmPassword by its tomId (label text isn't an ancestor of
     // the TextField in TomField widgets — see `fieldByTomId`).
     final confirmField = fieldByTomId('confirmPassword');
-    expect(confirmField, findsOneWidget,
-        reason: 'Confirm password TextField must be in the tree');
+    expect(
+      confirmField,
+      findsOneWidget,
+      reason: 'Confirm password TextField must be in the tree',
+    );
     await tester.enterText(confirmField, 'different-value');
     await tester.pumpAndSettle();
     await tapButton(tester, 'Save');
@@ -168,21 +198,28 @@ void main() {
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
     // TomFormErrorBanner shows a "Form Errors" header when it has any
     // cross-field errors to display.
-    expect(find.text('Form Errors'), findsOneWidget,
-        reason:
-            'TomFormErrorBanner must surface cross-field validation errors');
+    expect(
+      find.text('Form Errors'),
+      findsOneWidget,
+      reason: 'TomFormErrorBanner must surface cross-field validation errors',
+    );
     // KNOWN GAP: TomFormErrorBanner currently renders the raw `errorKey`
     // (`error.passwordsMismatch`) instead of resolving it through
     // `TomCtr.text(...)` like TomErrorView does. Once that's fixed (the
     // banner needs the form's basePath as a scoping context), update this
     // expectation to `find.text('Passwords do not match.')`.
-    expect(find.text('error.passwordsMismatch'), findsOneWidget,
-        reason: 'TomFormErrorBanner currently shows the raw error key — '
-            'see resolution gap noted above');
+    expect(
+      find.text('error.passwordsMismatch'),
+      findsOneWidget,
+      reason:
+          'TomFormErrorBanner currently shows the raw error key — '
+          'see resolution gap noted above',
+    );
   });
 
-  testWidgets('Save with valid populated state reports success status',
-      (tester) async {
+  testWidgets('Save with valid populated state reports success status', (
+    tester,
+  ) async {
     await openDemoA(tester);
     await tapButton(tester, 'Populate');
     await tester.pumpAndSettle();
@@ -190,41 +227,57 @@ void main() {
     // SaveFormAction does Future.wait — give async validators a beat to
     // resolve before checking status.
     await tester.pumpAndSettle(const Duration(milliseconds: 1200));
-    expect(find.textContaining('Saved'), findsAtLeastNWidgets(1),
-        reason: 'After valid save the status card should report success');
+    expect(
+      find.textContaining('Saved'),
+      findsAtLeastNWidgets(1),
+      reason: 'After valid save the status card should report success',
+    );
     // Dirty must be false after a successful commit.
-    expect(find.textContaining('Dirty: false'), findsAtLeastNWidgets(1),
-        reason: 'Successful save commits and returns the form to pristine');
+    expect(
+      find.textContaining('Dirty: false'),
+      findsAtLeastNWidgets(1),
+      reason: 'Successful save commits and returns the form to pristine',
+    );
   });
 
-  testWidgets('Discard reverts an edited field to the bound value',
-      (tester) async {
+  testWidgets('Discard reverts an edited field to the bound value', (
+    tester,
+  ) async {
     await openDemoA(tester);
     // Edit username so the form becomes dirty.
     final usernameField = fieldByTomId('username');
     expect(usernameField, findsOneWidget);
     await tester.enterText(usernameField, 'someoneelse');
     await tester.pumpAndSettle();
-    expect(find.textContaining('Dirty: true'), findsAtLeastNWidgets(1),
-        reason: 'Editing a field should mark the form dirty');
+    expect(
+      find.textContaining('Dirty: true'),
+      findsAtLeastNWidgets(1),
+      reason: 'Editing a field should mark the form dirty',
+    );
     await tapButton(tester, 'Discard');
     await tester.pumpAndSettle();
-    expect(find.textContaining('Dirty: false'), findsAtLeastNWidgets(1),
-        reason: 'Discard should clear the dirty state');
+    expect(
+      find.textContaining('Dirty: false'),
+      findsAtLeastNWidgets(1),
+      reason: 'Discard should clear the dirty state',
+    );
     // Status text should reflect the discard message.
     expect(find.textContaining('discarded'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('async validator fires for admin* username after its delay',
-      (tester) async {
+  testWidgets('async validator fires for admin* username after its delay', (
+    tester,
+  ) async {
     await openDemoA(tester);
     final usernameField = fieldByTomId('username');
     expect(usernameField, findsOneWidget);
     await tester.enterText(usernameField, 'admin42');
     // SlowValidator delays ~800 ms.
     await tester.pumpAndSettle(const Duration(milliseconds: 1200));
-    expect(find.text('That username is already taken.'),
-        findsAtLeastNWidgets(1),
-        reason: 'admin* triggers the async SlowValidator after ~800ms');
+    expect(
+      find.text('That username is already taken.'),
+      findsAtLeastNWidgets(1),
+      reason: 'admin* triggers the async SlowValidator after ~800ms',
+    );
   });
 }

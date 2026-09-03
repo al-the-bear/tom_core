@@ -41,8 +41,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -69,11 +68,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo A: Lifecycle & Validation'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo A: Lifecycle & Validation'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo A: Lifecycle & Validation'));
     await tester.pumpAndSettle();
   }
@@ -111,14 +112,21 @@ void main() {
     expect(emailField, findsOneWidget);
     await tester.enterText(emailField, 'not-an-email');
     await tester.pumpAndSettle();
-    expect(find.text('Enter a valid email address.'), findsAtLeastNWidgets(1),
-        reason: 'invalid email must surface the validation_form.email '
-            'errorKey resolved string');
+    expect(
+      find.text('Enter a valid email address.'),
+      findsAtLeastNWidgets(1),
+      reason:
+          'invalid email must surface the validation_form.email '
+          'errorKey resolved string',
+    );
     // Now type a valid email.
     await tester.enterText(emailField, 'someone@example.com');
     await tester.pumpAndSettle();
-    expect(find.text('Enter a valid email address.'), findsNothing,
-        reason: 'fixing the email must clear the inline error');
+    expect(
+      find.text('Enter a valid email address.'),
+      findsNothing,
+      reason: 'fixing the email must clear the inline error',
+    );
   });
 
   // -------------------------------------------------------------------
@@ -183,13 +191,19 @@ void main() {
     final f = fieldByTomId('website');
     await tester.enterText(f, 'not a url');
     await tester.pumpAndSettle();
-    expect(find.text('Enter a valid http(s) URL.'), findsAtLeastNWidgets(1),
-        reason: 'malformed URL must surface the website.invalidUrl errorKey');
+    expect(
+      find.text('Enter a valid http(s) URL.'),
+      findsAtLeastNWidgets(1),
+      reason: 'malformed URL must surface the website.invalidUrl errorKey',
+    );
     // Fix it.
     await tester.enterText(f, 'https://example.org');
     await tester.pumpAndSettle();
-    expect(find.text('Enter a valid http(s) URL.'), findsNothing,
-        reason: 'a valid http(s) URL must clear the inline error');
+    expect(
+      find.text('Enter a valid http(s) URL.'),
+      findsNothing,
+      reason: 'a valid http(s) URL must clear the inline error',
+    );
   });
 
   // -------------------------------------------------------------------
@@ -204,14 +218,20 @@ void main() {
     await tester.pumpAndSettle();
     await tapButton(tester, 'Save');
     await tester.pumpAndSettle(const Duration(milliseconds: 1200));
-    expect(find.text('Form Errors'), findsOneWidget,
-        reason: 'mismatched passwords must surface the cross-field banner');
+    expect(
+      find.text('Form Errors'),
+      findsOneWidget,
+      reason: 'mismatched passwords must surface the cross-field banner',
+    );
     // Repair: confirm matches password again, save, banner must clear.
     await tester.enterText(fieldByTomId('confirmPassword'), 'strongpass1');
     await tester.pumpAndSettle();
     await tapButton(tester, 'Save');
     await tester.pumpAndSettle(const Duration(milliseconds: 1200));
-    expect(find.text('Form Errors'), findsNothing,
-        reason: 'fixing the mismatch must remove the cross-field banner');
+    expect(
+      find.text('Form Errors'),
+      findsNothing,
+      reason: 'fixing the mismatch must remove the cross-field banner',
+    );
   });
 }

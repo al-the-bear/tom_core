@@ -45,45 +45,51 @@ class AddressMasterPane extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Text('Addresses (${listForm.length})',
-                  style: theme.textTheme.titleSmall),
+              child: Text(
+                'Addresses (${listForm.length})',
+                style: theme.textTheme.titleSmall,
+              ),
             ),
             const Divider(height: 8),
             Expanded(
-              child: TomInlineListForm<ShippingAddressHD,
-                  ShippingAddressHDForm>(
-                listForm: listForm,
-                reorderable: true,
-                onReorder: (from, to) =>
-                    _trackSelection(from, to, selectedIndex, selectIndex),
-                rowBuilder: (context, i, rowForm) {
-                  final addr = rowForm.currentBinding;
-                  final sel = i == selectedIndex;
-                  return TomMultiObservableBuilder(
-                    key: ValueKey('h-d-addr-${rowForm.hashCode}'),
-                    observables:
-                        addr == null ? [] : [addr.label, addr.city],
-                    builder: (context) => ListTile(
-                      dense: true,
-                      selected: sel,
-                      leading: TomReorderHandle(index: i),
-                      title: Text(
-                        addr?.label.get().isEmpty ?? true
-                            ? '(unnamed)'
-                            : addr!.label.get(),
-                        style: TextStyle(
-                            fontWeight: sel
-                                ? FontWeight.w600
-                                : FontWeight.normal),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(addr?.city.get() ?? '',
-                          overflow: TextOverflow.ellipsis),
-                      onTap: () => selectIndex(i),
-                    ),
-                  );
-                },
-              ),
+              child:
+                  TomInlineListForm<ShippingAddressHD, ShippingAddressHDForm>(
+                    listForm: listForm,
+                    reorderable: true,
+                    onReorder: (from, to) =>
+                        _trackSelection(from, to, selectedIndex, selectIndex),
+                    rowBuilder: (context, i, rowForm) {
+                      final addr = rowForm.currentBinding;
+                      final sel = i == selectedIndex;
+                      return TomMultiObservableBuilder(
+                        key: ValueKey('h-d-addr-${rowForm.hashCode}'),
+                        observables: addr == null
+                            ? []
+                            : [addr.label, addr.city],
+                        builder: (context) => ListTile(
+                          dense: true,
+                          selected: sel,
+                          leading: TomReorderHandle(index: i),
+                          title: Text(
+                            addr?.label.get().isEmpty ?? true
+                                ? '(unnamed)'
+                                : addr!.label.get(),
+                            style: TextStyle(
+                              fontWeight: sel
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            addr?.city.get() ?? '',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () => selectIndex(i),
+                        ),
+                      );
+                    },
+                  ),
             ),
             const Divider(height: 8),
             TomListFormToolbar<ShippingAddressHD, ShippingAddressHDForm>(
@@ -118,15 +124,21 @@ class AddressDetailPane extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(children: [
-                  Expanded(
-                      child: Text('Address detail',
-                          style: Theme.of(context).textTheme.titleSmall)),
-                  if (form.isDirty)
-                    const Chip(
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Address detail',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    if (form.isDirty)
+                      const Chip(
                         label: Text('Dirty'),
-                        visualDensity: VisualDensity.compact),
-                ]),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 form.label.widget,
                 const SizedBox(height: 8),
@@ -136,42 +148,46 @@ class AddressDetailPane extends StatelessWidget {
                 const SizedBox(height: 8),
                 form.city.widget,
                 const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: form.stateRegion.widget),
-                  const SizedBox(width: 8),
-                  SizedBox(width: 110, child: form.zipCode.widget),
-                ]),
+                Row(
+                  children: [
+                    Expanded(child: form.stateRegion.widget),
+                    const SizedBox(width: 8),
+                    SizedBox(width: 110, child: form.zipCode.widget),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 form.country.widget,
                 const SizedBox(height: 12),
                 TomErrorView(form: form, title: 'Address errors'),
                 const SizedBox(height: 8),
-                Wrap(spacing: 8, children: [
-                  FilledButton.icon(
-                    icon: const Icon(Icons.save, size: 14),
-                    label: const Text('Save'),
-                    onPressed: form.isDirty
-                        ? () async {
-                            final ok = await form.save();
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(ok
-                                    ? 'Address saved.'
-                                    : 'Check errors.'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        : null,
-                  ),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.undo, size: 14),
-                    label: const Text('Discard'),
-                    onPressed:
-                        form.isDirty ? () => form.discard() : null,
-                  ),
-                ]),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      icon: const Icon(Icons.save, size: 14),
+                      label: const Text('Save'),
+                      onPressed: form.isDirty
+                          ? () async {
+                              final ok = await form.save();
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    ok ? 'Address saved.' : 'Check errors.',
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          : null,
+                    ),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.undo, size: 14),
+                      label: const Text('Discard'),
+                      onPressed: form.isDirty ? () => form.discard() : null,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -208,8 +224,10 @@ class OrderMasterPane extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Text('Orders (${listForm.length})',
-                  style: theme.textTheme.titleSmall),
+              child: Text(
+                'Orders (${listForm.length})',
+                style: theme.textTheme.titleSmall,
+              ),
             ),
             const Divider(height: 8),
             Expanded(
@@ -235,13 +253,14 @@ class OrderMasterPane extends StatelessWidget {
                             ? '(new order)'
                             : order!.orderId.get(),
                         style: TextStyle(
-                            fontWeight: sel
-                                ? FontWeight.w600
-                                : FontWeight.normal),
+                          fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      subtitle: Text(order?.orderDate.get() ?? '',
-                          overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                        order?.orderDate.get() ?? '',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       onTap: () => selectIndex(i),
                     ),
                   );
@@ -282,21 +301,29 @@ class OrderDetailPane extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(children: [
-                  Expanded(
-                      child: Text('Order detail',
-                          style: theme.textTheme.titleSmall)),
-                  if (form.isDirty)
-                    const Chip(
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Order detail',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ),
+                    if (form.isDirty)
+                      const Chip(
                         label: Text('Dirty'),
-                        visualDensity: VisualDensity.compact),
-                ]),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: form.orderId.widget),
-                  const SizedBox(width: 8),
-                  Expanded(child: form.orderDate.widget),
-                ]),
+                Row(
+                  children: [
+                    Expanded(child: form.orderId.widget),
+                    const SizedBox(width: 8),
+                    Expanded(child: form.orderDate.widget),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 form.shippingLabel.widget,
                 const SizedBox(height: 12),
@@ -308,8 +335,10 @@ class OrderDetailPane extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Items (${list.length})',
-                            style: theme.textTheme.labelLarge),
+                        Text(
+                          'Items (${list.length})',
+                          style: theme.textTheme.labelLarge,
+                        ),
                         TomListFormToolbar<OrderItemHD, OrderItemHDForm>(
                           listForm: list,
                           // No selection in an inline table — the
@@ -326,8 +355,10 @@ class OrderDetailPane extends StatelessWidget {
                   ),
                   emptyBuilder: (_) => const Padding(
                     padding: EdgeInsets.all(12),
-                    child: Text('No items yet. Tap "Add item" to begin.',
-                        style: TextStyle(fontStyle: FontStyle.italic)),
+                    child: Text(
+                      'No items yet. Tap "Add item" to begin.',
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
                   ),
                   rowBuilder: (context, i, itemForm) => _ItemRow(
                     key: ValueKey('h-d-item-${itemForm.hashCode}'),
@@ -348,32 +379,34 @@ class OrderDetailPane extends StatelessWidget {
                 const SizedBox(height: 8),
                 TomErrorView(form: form, title: 'Order errors'),
                 const SizedBox(height: 8),
-                Wrap(spacing: 8, children: [
-                  FilledButton.icon(
-                    icon: const Icon(Icons.save, size: 14),
-                    label: const Text('Save order'),
-                    onPressed: form.isDirty
-                        ? () async {
-                            final ok = await form.save();
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(ok
-                                    ? 'Order saved.'
-                                    : 'Check errors.'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        : null,
-                  ),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.undo, size: 14),
-                    label: const Text('Discard'),
-                    onPressed:
-                        form.isDirty ? () => form.discard() : null,
-                  ),
-                ]),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      icon: const Icon(Icons.save, size: 14),
+                      label: const Text('Save order'),
+                      onPressed: form.isDirty
+                          ? () async {
+                              final ok = await form.save();
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    ok ? 'Order saved.' : 'Check errors.',
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          : null,
+                    ),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.undo, size: 14),
+                      label: const Text('Discard'),
+                      onPressed: form.isDirty ? () => form.discard() : null,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -425,17 +458,13 @@ class _ItemRow extends StatelessWidget {
               index: index,
             ),
             const SizedBox(width: 4),
-            SizedBox(
-                width: 180, child: _cellStyle(form.productName.widget)),
+            SizedBox(width: 180, child: _cellStyle(form.productName.widget)),
             const SizedBox(width: 8),
-            SizedBox(
-                width: 60, child: _cellStyle(form.quantity.widget)),
+            SizedBox(width: 60, child: _cellStyle(form.quantity.widget)),
             const SizedBox(width: 8),
-            SizedBox(
-                width: 80, child: _cellStyle(form.unitPrice.widget)),
+            SizedBox(width: 80, child: _cellStyle(form.unitPrice.widget)),
             const SizedBox(width: 8),
-            SizedBox(
-                width: 120, child: _cellStyle(form.notes.widget)),
+            SizedBox(width: 120, child: _cellStyle(form.notes.widget)),
             const SizedBox(width: 8),
             SizedBox(
               width: 70,

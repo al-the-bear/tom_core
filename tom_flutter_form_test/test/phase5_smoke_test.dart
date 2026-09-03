@@ -17,8 +17,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -31,20 +30,26 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+    await tester.scrollUntilVisible(
+      find.text(tile),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text(tile));
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Demo M opens with both Material and Cupertino panels',
-      (tester) async {
+  testWidgets('Demo M opens with both Material and Cupertino panels', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo M: Material vs Cupertino (Phase 5a)');
-    expect(find.text('Demo M — Material vs Cupertino (Phase 5a)'),
-        findsOneWidget);
+    expect(
+      find.text('Demo M — Material vs Cupertino (Phase 5a)'),
+      findsOneWidget,
+    );
     expect(find.text('Material concretes'), findsOneWidget);
     expect(find.text('Cupertino concretes'), findsOneWidget);
     // Header bar lets the user swap the page-root style.
@@ -54,8 +59,9 @@ void main() {
     expect(find.text('Shared state (Phase5DemoState)'), findsOneWidget);
   });
 
-  testWidgets('Demo M cupertino style chip swaps the active scope style',
-      (tester) async {
+  testWidgets('Demo M cupertino style chip swaps the active scope style', (
+    tester,
+  ) async {
     await openDemo(tester, 'Demo M: Material vs Cupertino (Phase 5a)');
     // Tapping the cupertino chip should not throw and should leave both
     // panels still rendered (anatomy reflows but widgets persist).

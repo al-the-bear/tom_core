@@ -46,7 +46,10 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
   @override
   void initState() {
     super.initState();
-    _addressForm = TomScope.withScope('address', () => AddressForm(tomId: 'headquarters'));
+    _addressForm = TomScope.withScope(
+      'address',
+      () => AddressForm(tomId: 'headquarters'),
+    );
     _ceoForm = TomScope.withScope('person', () => PersonForm(tomId: 'ceo'));
     _addressForm.bind(demoState.companyProfile.headquarters);
     _ceoForm.bind(demoState.companyProfile.ceo);
@@ -61,27 +64,22 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
 
   @override
   Widget build(BuildContext context) {
-    final addressLayout = TomAclBuilder(
-      id: 'addressSection',
-      elementProvider: _addressForm,
-    )
-        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
-        .setAclExpandXDefault(true)
-        .append((p) => p.street.widget)
-        .newRow()
-        .append((p) => p.street2.widget)
-        .newRow()
-        .append((p) => p.city.widget)
-        .append((p) => p.state.widget, dist: 16)
-        .append((p) => p.zipCode.widget, dist: 16)
-        .newRow()
-        .append((p) => p.country.widget)
-        .build(context);
+    final addressLayout =
+        TomAclBuilder(id: 'addressSection', elementProvider: _addressForm)
+            .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+            .setAclExpandXDefault(true)
+            .append((p) => p.street.widget)
+            .newRow()
+            .append((p) => p.street2.widget)
+            .newRow()
+            .append((p) => p.city.widget)
+            .append((p) => p.state.widget, dist: 16)
+            .append((p) => p.zipCode.widget, dist: 16)
+            .newRow()
+            .append((p) => p.country.widget)
+            .build(context);
 
-    final ceoLayout = TomAclBuilder(
-      id: 'ceoSection',
-      elementProvider: _ceoForm,
-    )
+    final ceoLayout = TomAclBuilder(id: 'ceoSection', elementProvider: _ceoForm)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.firstName.widget)
@@ -128,8 +126,10 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
               ),
               const SizedBox(height: 8),
               ListenableBuilder(
-                listenable: Listenable.merge(
-                    [_addressForm.changes, _ceoForm.changes]),
+                listenable: Listenable.merge([
+                  _addressForm.changes,
+                  _ceoForm.changes,
+                ]),
                 builder: (context, _) => TomMultiObservableBuilder(
                   observables: [_status],
                   builder: (context) => Card(
@@ -138,10 +138,16 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${TomCtr.text('demo2.status', 'label')}: ${_status.get()}'),
+                          Text(
+                            '${TomCtr.text('demo2.status', 'label')}: ${_status.get()}',
+                          ),
                           const SizedBox(height: 4),
-                          Text('${TomCtr.text('demo2.status', 'addressDirty')}: ${_addressForm.isDirty}'),
-                          Text('${TomCtr.text('demo2.status', 'ceoDirty')}: ${_ceoForm.isDirty}'),
+                          Text(
+                            '${TomCtr.text('demo2.status', 'addressDirty')}: ${_addressForm.isDirty}',
+                          ),
+                          Text(
+                            '${TomCtr.text('demo2.status', 'ceoDirty')}: ${_ceoForm.isDirty}',
+                          ),
                         ],
                       ),
                     ),

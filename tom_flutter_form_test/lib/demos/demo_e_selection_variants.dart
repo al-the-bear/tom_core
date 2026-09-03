@@ -187,15 +187,9 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(child: form),
-                  ),
+                  Expanded(flex: 3, child: SingleChildScrollView(child: form)),
                   const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(child: info),
-                  ),
+                  Expanded(flex: 2, child: SingleChildScrollView(child: info)),
                 ],
               ),
             );
@@ -280,44 +274,44 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
   }
 
   Widget _buildBoolCheckbox() => TomMultiObservableBuilder(
-        observables: [_boolCheckbox],
-        builder: (context) => CheckboxListTile(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Agree to terms'),
-          value: _boolCheckbox.get(),
-          onChanged: (v) => _boolCheckbox | (v ?? false),
-        ),
-      );
+    observables: [_boolCheckbox],
+    builder: (context) => CheckboxListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: const Text('Agree to terms'),
+      value: _boolCheckbox.get(),
+      onChanged: (v) => _boolCheckbox | (v ?? false),
+    ),
+  );
 
   Widget _buildBoolSwitch() => TomMultiObservableBuilder(
-        observables: [_boolSwitch],
-        builder: (context) => SwitchListTile(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Enable notifications'),
-          value: _boolSwitch.get(),
-          onChanged: (v) => _boolSwitch | v,
-        ),
-      );
+    observables: [_boolSwitch],
+    builder: (context) => SwitchListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: const Text('Enable notifications'),
+      value: _boolSwitch.get(),
+      onChanged: (v) => _boolSwitch | v,
+    ),
+  );
 
   Widget _buildBoolToggle() => TomMultiObservableBuilder(
-        observables: [_boolToggle],
-        builder: (context) => Row(
-          children: [
-            const Expanded(child: Text('Public visibility')),
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('off')),
-                ButtonSegment(value: true, label: Text('on')),
-              ],
-              selected: {_boolToggle.get()},
-              onSelectionChanged: (s) => _boolToggle | s.first,
-              showSelectedIcon: false,
-            ),
+    observables: [_boolToggle],
+    builder: (context) => Row(
+      children: [
+        const Expanded(child: Text('Public visibility')),
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: false, label: Text('off')),
+            ButtonSegment(value: true, label: Text('on')),
           ],
+          selected: {_boolToggle.get()},
+          onSelectionChanged: (s) => _boolToggle | s.first,
+          showSelectedIcon: false,
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _buildIntroCard(BuildContext context) {
     final theme = Theme.of(context);
@@ -331,22 +325,26 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const DemoBullet(
-                'Every single- and multi-select flavour renders against '
-                'one shared TomSelectableSource<String>.'),
+              'Every single- and multi-select flavour renders against '
+              'one shared TomSelectableSource<String>.',
+            ),
             const DemoBullet(
-                'Each variant is wired to the Phase 2 binding shape: '
-                'multi-select → TomList<TomString>, single-select → '
-                'TomString. The right-hand inspector shows every write '
-                'live and keeps a change log so the shape is obvious.'),
+              'Each variant is wired to the Phase 2 binding shape: '
+              'multi-select → TomList<TomString>, single-select → '
+              'TomString. The right-hand inspector shows every write '
+              'live and keeps a change log so the shape is obvious.',
+            ),
             const DemoBullet(
-                'Switch "Filtered source" to swap the shared source '
-                'between the full catalogue and a 2-item subset at '
-                'runtime — demonstrates source observability and verifies '
-                'invalid selections are dropped on shrink.'),
+              'Switch "Filtered source" to swap the shared source '
+              'between the full catalogue and a 2-item subset at '
+              'runtime — demonstrates source observability and verifies '
+              'invalid selections are dropped on shrink.',
+            ),
             const DemoBullet(
-                'Material widgets act as stand-ins; Phase 2 drops in '
-                'TomFormString{FilterChips,MultiCheckbox,Segmented,'
-                'RadioGroup,ChoiceChips} one line per block.'),
+              'Material widgets act as stand-ins; Phase 2 drops in '
+              'TomFormString{FilterChips,MultiCheckbox,Segmented,'
+              'RadioGroup,ChoiceChips} one line per block.',
+            ),
           ],
         ),
       ),
@@ -358,9 +356,11 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
       child: SwitchListTile(
         dense: true,
         title: const Text('Filtered source'),
-        subtitle: Text(_useFiltered
-            ? 'Active: 2-item subset (tech, healthcare)'
-            : 'Active: full 6-item catalogue'),
+        subtitle: Text(
+          _useFiltered
+              ? 'Active: 2-item subset (tech, healthcare)'
+              : 'Active: full 6-item catalogue',
+        ),
         value: _useFiltered,
         onChanged: _toggleSource,
       ),
@@ -383,13 +383,11 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
           children: [
             Text(
               title,
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontFamily: 'monospace'),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontFamily: 'monospace',
+              ),
             ),
-            Text(
-              subtitle,
-              style: theme.textTheme.bodySmall,
-            ),
+            Text(subtitle, style: theme.textTheme.bodySmall),
             const SizedBox(height: 8),
             child,
           ],
@@ -438,7 +436,10 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
                 title: Text(item.label),
                 value: sel.contains(item.value),
                 onChanged: (v) => _toggleMulti(
-                    _multiCheckboxSelection, item.value, v ?? false),
+                  _multiCheckboxSelection,
+                  item.value,
+                  v ?? false,
+                ),
               ),
           ],
         );
@@ -452,8 +453,9 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
       builder: (context) {
         if (_items.isEmpty) return const SizedBox.shrink();
         final value = _segmented.get();
-        final selected =
-            _items.any((i) => i.value == value) ? {value} : <String>{};
+        final selected = _items.any((i) => i.value == value)
+            ? {value}
+            : <String>{};
         return SegmentedButton<String>(
           segments: [
             for (final item in _items)
@@ -529,10 +531,7 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
           children: [_buildBindingsTable(context)],
         ),
         const SizedBox(height: 12),
-        InfoPanel(
-          title: 'Change log',
-          children: [_buildLog(context)],
-        ),
+        InfoPanel(title: 'Change log', children: [_buildLog(context)]),
       ],
     );
   }
@@ -572,16 +571,14 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
                   children: [
                     SizedBox(
                       width: 110,
-                      child: Text(
-                        name,
-                        style: theme.textTheme.bodySmall,
-                      ),
+                      child: Text(name, style: theme.textTheme.bodySmall),
                     ),
                     Expanded(
                       child: Text(
                         value.isEmpty ? '—' : value,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(fontFamily: 'monospace'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ),
                   ],
@@ -627,8 +624,9 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
                   width: 92,
                   child: Text(
                     e.variant,
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 Expanded(

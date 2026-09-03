@@ -74,8 +74,9 @@ void main() {
   // T03: Demo 1 — fields in same row don't overlap and share width
   // ═══════════════════════════════════════════════════════════════════════════
 
-  testWidgets('T03: Demo 1 — multi-field row has non-overlapping fields',
-      (tester) async {
+  testWidgets('T03: Demo 1 — multi-field row has non-overlapping fields', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
@@ -99,8 +100,11 @@ void main() {
     );
 
     // Industry's right edge should be to the left of Tax ID's left edge
-    expect(industryBox.right, lessThanOrEqualTo(taxIdBox.left + 1),
-        reason: 'Industry label should not overlap Tax ID label');
+    expect(
+      industryBox.right,
+      lessThanOrEqualTo(taxIdBox.left + 1),
+      reason: 'Industry label should not overlap Tax ID label',
+    );
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -116,8 +120,9 @@ void main() {
   // T05: Demo 2 — address section three-field row (city/state/zip)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  testWidgets('T05: Demo 2 — city/state/zip row non-overlapping',
-      (tester) async {
+  testWidgets('T05: Demo 2 — city/state/zip row non-overlapping', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo2NestedForms()));
     await tester.pumpAndSettle();
 
@@ -139,10 +144,16 @@ void main() {
     expect((stateBox.top - zipBox.top).abs(), lessThan(40));
 
     // Non-overlapping: city < state < zip
-    expect(cityBox.right, lessThanOrEqualTo(stateBox.left + 1),
-        reason: 'City should not overlap State');
-    expect(stateBox.right, lessThanOrEqualTo(zipBox.left + 1),
-        reason: 'State should not overlap ZIP');
+    expect(
+      cityBox.right,
+      lessThanOrEqualTo(stateBox.left + 1),
+      reason: 'City should not overlap State',
+    );
+    expect(
+      stateBox.right,
+      lessThanOrEqualTo(zipBox.left + 1),
+      reason: 'State should not overlap ZIP',
+    );
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -190,8 +201,9 @@ void main() {
   // T10: Demo 5 — two-field rows share width equally
   // ═══════════════════════════════════════════════════════════════════════════
 
-  testWidgets('T10: Demo 5 — paired fields share width roughly equally',
-      (tester) async {
+  testWidgets('T10: Demo 5 — paired fields share width roughly equally', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp(const Demo5SettingsForm()));
     await tester.pumpAndSettle();
 

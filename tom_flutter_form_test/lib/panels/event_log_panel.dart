@@ -4,12 +4,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// Categorical filter for [EventLogPanel]. Matches the four groups called
 /// out in §24b: "Filter buttons by event type (value change, validation,
 /// auth, lifecycle)".
-enum EventCategory {
-  value,
-  validation,
-  auth,
-  lifecycle,
-}
+enum EventCategory { value, validation, auth, lifecycle }
 
 /// Maps a [TomFormEvent] to the [EventCategory] that drives the filter chips.
 ///
@@ -75,18 +70,18 @@ class _EventLogPanelState extends State<EventLogPanel> {
   }
 
   IconData _iconOf(EventCategory c) => switch (c) {
-        EventCategory.value => Icons.edit,
-        EventCategory.validation => Icons.rule,
-        EventCategory.auth => Icons.shield_outlined,
-        EventCategory.lifecycle => Icons.history,
-      };
+    EventCategory.value => Icons.edit,
+    EventCategory.validation => Icons.rule,
+    EventCategory.auth => Icons.shield_outlined,
+    EventCategory.lifecycle => Icons.history,
+  };
 
   Color _colorOf(ThemeData theme, EventCategory c) => switch (c) {
-        EventCategory.value => theme.colorScheme.primary,
-        EventCategory.validation => theme.colorScheme.tertiary,
-        EventCategory.auth => theme.colorScheme.secondary,
-        EventCategory.lifecycle => theme.colorScheme.outline,
-      };
+    EventCategory.value => theme.colorScheme.primary,
+    EventCategory.validation => theme.colorScheme.tertiary,
+    EventCategory.auth => theme.colorScheme.secondary,
+    EventCategory.lifecycle => theme.colorScheme.outline,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -138,15 +133,14 @@ class _EventLogPanelState extends State<EventLogPanel> {
   Widget _buildToolbar(ThemeData theme, int shown, int total) {
     return Row(
       children: [
-        Text(
-          '$shown / $total events',
-          style: theme.textTheme.labelSmall,
-        ),
+        Text('$shown / $total events', style: theme.textTheme.labelSmall),
         const Spacer(),
         IconButton(
           tooltip: _autoScroll ? 'Auto-scroll: on' : 'Auto-scroll: off',
           icon: Icon(
-            _autoScroll ? Icons.vertical_align_bottom : Icons.vertical_align_center,
+            _autoScroll
+                ? Icons.vertical_align_bottom
+                : Icons.vertical_align_center,
             size: 18,
           ),
           onPressed: () => setState(() => _autoScroll = !_autoScroll),
@@ -210,15 +204,18 @@ class _EventLogPanelState extends State<EventLogPanel> {
         children: [
           Icon(_iconOf(category), size: 14, color: color),
           const SizedBox(width: 4),
-          Text(timeLabel,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontFeatures: const [FontFeature.tabularFigures()],
-              )),
+          Text(
+            timeLabel,
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
           const SizedBox(width: 6),
           Text(
             event.source,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(width: 6),
           Expanded(

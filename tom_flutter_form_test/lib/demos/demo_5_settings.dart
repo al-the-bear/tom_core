@@ -33,8 +33,16 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
   final _status = TomString('Ready');
 
   late final _controller = TomActionController(controllerId: 'demo5');
-  late final _save = SaveFormAction(_controller, forms: [_form], status: _status);
-  late final _discard = DiscardFormAction(_controller, forms: [_form], status: _status);
+  late final _save = SaveFormAction(
+    _controller,
+    forms: [_form],
+    status: _status,
+  );
+  late final _discard = DiscardFormAction(
+    _controller,
+    forms: [_form],
+    status: _status,
+  );
 
   @override
   void initState() {
@@ -51,10 +59,7 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
 
   @override
   Widget build(BuildContext context) {
-    final formLayout = TomAclBuilder(
-      id: 'settingsForm',
-      elementProvider: _form,
-    )
+    final formLayout = TomAclBuilder(id: 'settingsForm', elementProvider: _form)
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.timezone.widget)
@@ -96,10 +101,7 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
               ),
             ),
             const SizedBox(height: 16),
-            TomFormStyleScope(
-              style: TomFormStyle.compact,
-              child: formLayout,
-            ),
+            TomFormStyleScope(style: TomFormStyle.compact, child: formLayout),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -132,9 +134,13 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('${TomCtr.text('demo5.status', 'label')}: ${_status.get()}'),
+                        Text(
+                          '${TomCtr.text('demo5.status', 'label')}: ${_status.get()}',
+                        ),
                         const SizedBox(height: 4),
-                        Text('${TomCtr.text('demo5.status', 'dirty')}: ${_form.isDirty}'),
+                        Text(
+                          '${TomCtr.text('demo5.status', 'dirty')}: ${_form.isDirty}',
+                        ),
                       ],
                     ),
                   ),

@@ -121,21 +121,21 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('What this demo covers',
-                style: theme.textTheme.titleSmall),
+            Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Two side-by-side renderers over the SAME OrderForm.items '
-                'list. Variant A shows the standard in-cell error visuals; '
-                'Variant B promotes the error text into a tooltip and shows '
-                'a per-row error strip beneath the row instead, so the '
-                'fields never shift their alignment when an error appears. '
-                'Both tables are kept in sync via the shared list — typing '
-                'in either one updates the other.\n\n'
-                'The product cell is a type-ahead search over the catalog; '
-                'selecting an entry auto-fills the unit price. Quantity = 0 '
-                'and a non-numeric price both trip inline validation '
-                '(autoValidate is on for those two fields).'),
+              'Two side-by-side renderers over the SAME OrderForm.items '
+              'list. Variant A shows the standard in-cell error visuals; '
+              'Variant B promotes the error text into a tooltip and shows '
+              'a per-row error strip beneath the row instead, so the '
+              'fields never shift their alignment when an error appears. '
+              'Both tables are kept in sync via the shared list — typing '
+              'in either one updates the other.\n\n'
+              'The product cell is a type-ahead search over the catalog; '
+              'selecting an entry auto-fills the unit price. Quantity = 0 '
+              'and a non-numeric price both trip inline validation '
+              '(autoValidate is on for those two fields).',
+            ),
           ],
         ),
       ),
@@ -150,31 +150,35 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              Text('Order header', style: theme.textTheme.titleSmall),
-              const Spacer(),
-              if (_form.isDirty)
-                const Padding(
-                  padding: EdgeInsets.only(right: 6),
-                  child: Chip(
-                    label: Text('Form dirty'),
-                    visualDensity: VisualDensity.compact,
+            Row(
+              children: [
+                Text('Order header', style: theme.textTheme.titleSmall),
+                const Spacer(),
+                if (_form.isDirty)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 6),
+                    child: Chip(
+                      label: Text('Form dirty'),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
+                Chip(
+                  label: Text(_form.isValid ? 'Form valid' : 'Form invalid'),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: _form.isValid
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.errorContainer,
                 ),
-              Chip(
-                label: Text(_form.isValid ? 'Form valid' : 'Form invalid'),
-                visualDensity: VisualDensity.compact,
-                backgroundColor: _form.isValid
-                    ? theme.colorScheme.primaryContainer
-                    : theme.colorScheme.errorContainer,
-              ),
-            ]),
+              ],
+            ),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: _form.orderNumber.widget),
-              const SizedBox(width: 12),
-              Expanded(child: _form.customer.widget),
-            ]),
+            Row(
+              children: [
+                Expanded(child: _form.orderNumber.widget),
+                const SizedBox(width: 12),
+                Expanded(child: _form.customer.widget),
+              ],
+            ),
           ],
         ),
       ),
@@ -196,16 +200,20 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Row(children: [
-                Text('Variant A — in-cell errors  '
+              child: Row(
+                children: [
+                  Text(
+                    'Variant A — in-cell errors  '
                     '(Items: ${items.length})',
-                    style: theme.textTheme.titleSmall),
-                const Spacer(),
-                Text(
-                  'Order total: \$${_orderTotal().toStringAsFixed(2)}',
-                  style: theme.textTheme.titleSmall,
-                ),
-              ]),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Order total: \$${_orderTotal().toStringAsFixed(2)}',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
@@ -276,7 +284,11 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
   }
 
   DataRow _buildVariantARow(
-      BuildContext context, int index, OrderItemForm form, ThemeData theme) {
+    BuildContext context,
+    int index,
+    OrderItemForm form,
+    ThemeData theme,
+  ) {
     return DataRow(
       key: ValueKey('vA-row-$index'),
       cells: [
@@ -287,20 +299,22 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
         DataCell(_topCell(330, form.productName.widget)),
         DataCell(_topCell(70, form.quantity.widget)),
         DataCell(_topCell(110, form.unitPrice.widget)),
-        DataCell(_topCell(
-          80,
-          ListenableBuilder(
-            listenable: form.changes,
-            builder: (context, _) => Padding(
-              padding: const EdgeInsets.only(top: 14),
-              child: Text(
-                '\$${form.computedTotal.toStringAsFixed(2)}',
-                style: theme.textTheme.bodyMedium,
-                textAlign: TextAlign.right,
+        DataCell(
+          _topCell(
+            80,
+            ListenableBuilder(
+              listenable: form.changes,
+              builder: (context, _) => Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: Text(
+                  '\$${form.computedTotal.toStringAsFixed(2)}',
+                  style: theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.right,
+                ),
               ),
             ),
           ),
-        )),
+        ),
         DataCell(_rowActions(index)),
       ],
     );
@@ -322,16 +336,20 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Row(children: [
-                Text('Variant B — error strip below row  '
+              child: Row(
+                children: [
+                  Text(
+                    'Variant B — error strip below row  '
                     '(Items: ${items.length})',
-                    style: theme.textTheme.titleSmall),
-                const Spacer(),
-                Text(
-                  'Same data — edits propagate to Variant A above.',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ]),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Same data — edits propagate to Variant A above.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
             ),
             const Divider(height: 8),
             SingleChildScrollView(
@@ -363,8 +381,9 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
   }
 
   Widget _variantBHeaderRow(ThemeData theme) {
-    final style = theme.textTheme.labelMedium
-        ?.copyWith(fontWeight: FontWeight.w600);
+    final style = theme.textTheme.labelMedium?.copyWith(
+      fontWeight: FontWeight.w600,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
       child: Row(
@@ -374,18 +393,19 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
           SizedBox(width: 330, child: Text('Product', style: style)),
           const SizedBox(width: 12),
           SizedBox(
-              width: 70,
-              child: Text('Qty', style: style, textAlign: TextAlign.right)),
+            width: 70,
+            child: Text('Qty', style: style, textAlign: TextAlign.right),
+          ),
           const SizedBox(width: 12),
           SizedBox(
-              width: 110,
-              child: Text('Unit price',
-                  style: style, textAlign: TextAlign.right)),
+            width: 110,
+            child: Text('Unit price', style: style, textAlign: TextAlign.right),
+          ),
           const SizedBox(width: 12),
           SizedBox(
-              width: 80,
-              child: Text('Total',
-                  style: style, textAlign: TextAlign.right)),
+            width: 80,
+            child: Text('Total', style: style, textAlign: TextAlign.right),
+          ),
           const SizedBox(width: 12),
           const Spacer(),
         ],
@@ -394,7 +414,11 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
   }
 
   Widget _variantBRow(
-      BuildContext context, int index, OrderItemForm form, ThemeData theme) {
+    BuildContext context,
+    int index,
+    OrderItemForm form,
+    ThemeData theme,
+  ) {
     return ListenableBuilder(
       key: ValueKey('vB-row-$index'),
       listenable: form.changes,
@@ -451,22 +475,18 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
         color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-            color: theme.colorScheme.error.withValues(alpha: 0.4)),
+          color: theme.colorScheme.error.withValues(alpha: 0.4),
+        ),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline,
-              size: 16, color: theme.colorScheme.error),
+          Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               [
                 for (final f in errors)
-                  '${f.tomId}: ${resolveFieldValidationMessage(
-                        validationState: f.validationState,
-                        basePath: f.basePath,
-                        scope: f.scope,
-                      ) ?? (f.validationState as ValidationError).errorKey}'
+                  '${f.tomId}: ${resolveFieldValidationMessage(validationState: f.validationState, basePath: f.basePath, scope: f.scope) ?? (f.validationState as ValidationError).errorKey}',
               ].join('  •  '),
               style: theme.textTheme.bodySmall,
             ),
@@ -620,11 +640,15 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
               onPressed: () async {
                 final ok = await _form.save();
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(ok
-                      ? 'Saved order + items.'
-                      : 'Validation failed — see error panels.'),
-                ));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      ok
+                          ? 'Saved order + items.'
+                          : 'Validation failed — see error panels.',
+                    ),
+                  ),
+                );
               },
             ),
             OutlinedButton.icon(
@@ -684,39 +708,43 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                 ),
               ),
               Expanded(
-                child: TomAclBuilder<OrderItemForm>(
-                  id: 'orderItemRow',
-                  elementProvider: form,
-                )
-                    // Round-6 (e): the previous round wrapped each cell
-                    // in `SizedBox(width: …)` but the ACL layout engine
-                    // ignores the inner widget's intrinsic width — every
-                    // cell rendered at an equal share of the row, so the
-                    // product field stayed cramped no matter what
-                    // SizedBox value we passed. The fix is to size the
-                    // ACL component itself via `setPSize`. Product is
-                    // doubled relative to the previous demo width so
-                    // long catalog names finally have breathing room.
-                    .append((f) => f.productName.widget).setPSize(720)
-                    .append((f) => f.quantity.widget).setPSize(70)
-                    .append((f) => f.unitPrice.widget).setPSize(110)
-                    .append(
-                      (f) => SizedBox(
-                        width: 80,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 14),
-                          child: ListenableBuilder(
-                            listenable: f.changes,
-                            builder: (context, _) => Text(
-                              '\$${f.computedTotal.toStringAsFixed(2)}',
-                              style: theme.textTheme.bodyMedium,
-                              textAlign: TextAlign.right,
+                child:
+                    TomAclBuilder<OrderItemForm>(
+                          id: 'orderItemRow',
+                          elementProvider: form,
+                        )
+                        // Round-6 (e): the previous round wrapped each cell
+                        // in `SizedBox(width: …)` but the ACL layout engine
+                        // ignores the inner widget's intrinsic width — every
+                        // cell rendered at an equal share of the row, so the
+                        // product field stayed cramped no matter what
+                        // SizedBox value we passed. The fix is to size the
+                        // ACL component itself via `setPSize`. Product is
+                        // doubled relative to the previous demo width so
+                        // long catalog names finally have breathing room.
+                        .append((f) => f.productName.widget)
+                        .setPSize(720)
+                        .append((f) => f.quantity.widget)
+                        .setPSize(70)
+                        .append((f) => f.unitPrice.widget)
+                        .setPSize(110)
+                        .append(
+                          (f) => SizedBox(
+                            width: 80,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 14),
+                              child: ListenableBuilder(
+                                listenable: f.changes,
+                                builder: (context, _) => Text(
+                                  '\$${f.computedTotal.toStringAsFixed(2)}',
+                                  style: theme.textTheme.bodyMedium,
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    )
-                    .build(context),
+                        )
+                        .build(context),
               ),
               IconButton(
                 tooltip: 'Remove row',
@@ -732,8 +760,7 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
   }
 
   double _orderTotal() {
-    return _form.items.forms
-        .fold<double>(0, (sum, f) => sum + f.computedTotal);
+    return _form.items.forms.fold<double>(0, (sum, f) => sum + f.computedTotal);
   }
 }
 

@@ -54,36 +54,36 @@ bool _subtreeContainsText(Widget? root, String needle) {
 }
 
 Widget _materialHarness(Widget child) => MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: SizedBox(
-            width: 400,
-            child: TomFormStyleScope(
-              tomId: 'currencyT13Material',
-              style: TomFormStyle.material3,
-              child: Builder(builder: (_) => child),
-            ),
-          ),
+  home: Scaffold(
+    body: SingleChildScrollView(
+      child: SizedBox(
+        width: 400,
+        child: TomFormStyleScope(
+          tomId: 'currencyT13Material',
+          style: TomFormStyle.material3,
+          child: Builder(builder: (_) => child),
         ),
       ),
-    );
+    ),
+  ),
+);
 
 Widget _cupertinoHarness(Widget child) => CupertinoApp(
-      home: CupertinoPageScaffold(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: SizedBox(
-              width: 400,
-              child: TomFormStyleScope(
-                tomId: 'currencyT13Cupertino',
-                style: TomFormStyle.material3,
-                child: Builder(builder: (_) => child),
-              ),
-            ),
+  home: CupertinoPageScaffold(
+    child: SafeArea(
+      child: SingleChildScrollView(
+        child: SizedBox(
+          width: 400,
+          child: TomFormStyleScope(
+            tomId: 'currencyT13Cupertino',
+            style: TomFormStyle.material3,
+            child: Builder(builder: (_) => child),
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
 
 void main() {
   setUpAll(() async {
@@ -101,190 +101,251 @@ void main() {
   // -------------------------------------------------------------------------
 
   group(
-      'Material TomFormCurrencyDoubleInput — fixed-symbol prefixText/suffixText',
-      () {
-    testWidgets('USD: symbol is in InputDecoration.prefixText',
-        (tester) async {
-      late TomFormCurrencyDoubleInput field;
-      TomScope.withScope('curUSD', () {
-        field = TomFormCurrencyDoubleInput(
-          'priceUSD',
-          199.99,
-          currencyCode: 'USD',
+    'Material TomFormCurrencyDoubleInput — fixed-symbol prefixText/suffixText',
+    () {
+      testWidgets('USD: symbol is in InputDecoration.prefixText', (
+        tester,
+      ) async {
+        late TomFormCurrencyDoubleInput field;
+        TomScope.withScope('curUSD', () {
+          field = TomFormCurrencyDoubleInput(
+            'priceUSD',
+            199.99,
+            currencyCode: 'USD',
+          );
+        });
+        addTearDown(field.dispose);
+
+        await tester.pumpWidget(_materialHarness(field.widget));
+        await tester.pumpAndSettle();
+
+        final tf = tester.widget<TextField>(find.byType(TextField));
+
+        // Controller contains amount only — never the symbol.
+        expect(
+          tf.controller!.text,
+          isNot(contains(r'$')),
+          reason: 'currency symbol must NOT live in the editable text',
         );
-      });
-      addTearDown(field.dispose);
+        expect(
+          tf.controller!.text,
+          equals('199.99'),
+          reason: 'controller holds the formatted amount only',
+        );
 
-      await tester.pumpWidget(_materialHarness(field.widget));
-      await tester.pumpAndSettle();
-
-      final tf = tester.widget<TextField>(find.byType(TextField));
-
-      // Controller contains amount only — never the symbol.
-      expect(tf.controller!.text, isNot(contains(r'$')),
-          reason: 'currency symbol must NOT live in the editable text');
-      expect(tf.controller!.text, equals('199.99'),
-          reason: 'controller holds the formatted amount only');
-
-      // Symbol is the InputDecoration.prefixText (Material's own slot for
-      // baseline-aligned, non-editable inline prefix text).
-      expect(tf.decoration?.prefixText, equals(r'$'),
-          reason: 'USD symbol must land in prefixText (leading)');
-      expect(tf.decoration?.suffixText, isNull);
-      // Sanity: we are NOT using the prefixIcon path any more.
-      expect(tf.decoration?.prefixIcon, isNull,
+        // Symbol is the InputDecoration.prefixText (Material's own slot for
+        // baseline-aligned, non-editable inline prefix text).
+        expect(
+          tf.decoration?.prefixText,
+          equals(r'$'),
+          reason: 'USD symbol must land in prefixText (leading)',
+        );
+        expect(tf.decoration?.suffixText, isNull);
+        // Sanity: we are NOT using the prefixIcon path any more.
+        expect(
+          tf.decoration?.prefixIcon,
+          isNull,
           reason:
-              'switched away from prefixIcon — must not regress to that slot');
-    });
-
-    testWidgets('EUR: symbol is in InputDecoration.suffixText',
-        (tester) async {
-      late TomFormCurrencyDoubleInput field;
-      TomScope.withScope('curEUR', () {
-        field = TomFormCurrencyDoubleInput(
-          'priceEUR',
-          199.99,
-          currencyCode: 'EUR',
+              'switched away from prefixIcon — must not regress to that slot',
         );
       });
-      addTearDown(field.dispose);
 
-      await tester.pumpWidget(_materialHarness(field.widget));
-      await tester.pumpAndSettle();
+      testWidgets('EUR: symbol is in InputDecoration.suffixText', (
+        tester,
+      ) async {
+        late TomFormCurrencyDoubleInput field;
+        TomScope.withScope('curEUR', () {
+          field = TomFormCurrencyDoubleInput(
+            'priceEUR',
+            199.99,
+            currencyCode: 'EUR',
+          );
+        });
+        addTearDown(field.dispose);
 
-      final tf = tester.widget<TextField>(find.byType(TextField));
+        await tester.pumpWidget(_materialHarness(field.widget));
+        await tester.pumpAndSettle();
 
-      expect(tf.controller!.text, isNot(contains('€')),
-          reason: 'currency symbol must NOT live in the editable text');
-      // EUR uses '.' group, ',' decimal: 199,99
-      expect(tf.controller!.text, equals('199,99'),
-          reason: 'EUR amount uses comma decimal separator');
+        final tf = tester.widget<TextField>(find.byType(TextField));
 
-      expect(tf.decoration?.suffixText, equals('€'),
-          reason: 'EUR symbol must land in suffixText (trailing)');
-      expect(tf.decoration?.prefixText, isNull);
-      expect(tf.decoration?.suffixIcon, isNull,
-          reason: 'must not regress to suffixIcon path');
-    });
+        expect(
+          tf.controller!.text,
+          isNot(contains('€')),
+          reason: 'currency symbol must NOT live in the editable text',
+        );
+        // EUR uses '.' group, ',' decimal: 199,99
+        expect(
+          tf.controller!.text,
+          equals('199,99'),
+          reason: 'EUR amount uses comma decimal separator',
+        );
 
-    testWidgets(
+        expect(
+          tf.decoration?.suffixText,
+          equals('€'),
+          reason: 'EUR symbol must land in suffixText (trailing)',
+        );
+        expect(tf.decoration?.prefixText, isNull);
+        expect(
+          tf.decoration?.suffixIcon,
+          isNull,
+          reason: 'must not regress to suffixIcon path',
+        );
+      });
+
+      testWidgets(
         'visual: USD prefix text and EUR suffix text actually render in the '
-        'widget tree (not just InputDecoration metadata)', (tester) async {
-      // Regression: pinning a bug where the InputDecoration carried the
-      // correct prefixText/suffixText but the EUR suffix never appeared
-      // on screen — verified directly via find.text on the rendered tree.
-      late TomFormCurrencyDoubleInput usd;
-      late TomFormCurrencyDoubleInput eur;
-      TomScope.withScope('curUsdVisual', () {
-        usd = TomFormCurrencyDoubleInput('priceUSDvis', 199.99,
-            currencyCode: 'USD');
-      });
-      TomScope.withScope('curEurVisual', () {
-        eur = TomFormCurrencyDoubleInput('priceEURvis', 199.99,
-            currencyCode: 'EUR');
-      });
-      addTearDown(usd.dispose);
-      addTearDown(eur.dispose);
-
-      await tester.pumpWidget(_materialHarness(Column(children: [
-        usd.widget,
-        eur.widget,
-      ])));
-      await tester.pumpAndSettle();
-
-      expect(find.text(r'$'), findsOneWidget,
-          reason: 'USD symbol must be rendered visibly');
-      expect(find.text('€'), findsOneWidget,
-          reason: 'EUR symbol must be rendered visibly');
-    });
-
-    testWidgets('symbol survives clearing the editable text',
+        'widget tree (not just InputDecoration metadata)',
         (tester) async {
-      // Pin the bug: with the OLD code path, calling controller.clear()
-      // (or Backspace at position 0) would wipe the symbol along with the
-      // amount because the symbol was part of controller.text. With the
-      // fix the symbol lives in prefixText (InputDecoration metadata),
-      // which is independent of the controller.
-      late TomFormCurrencyDoubleInput field;
-      TomScope.withScope('curClear', () {
-        field = TomFormCurrencyDoubleInput(
-          'priceClear',
-          50.00,
-          currencyCode: 'USD',
+          // Regression: pinning a bug where the InputDecoration carried the
+          // correct prefixText/suffixText but the EUR suffix never appeared
+          // on screen — verified directly via find.text on the rendered tree.
+          late TomFormCurrencyDoubleInput usd;
+          late TomFormCurrencyDoubleInput eur;
+          TomScope.withScope('curUsdVisual', () {
+            usd = TomFormCurrencyDoubleInput(
+              'priceUSDvis',
+              199.99,
+              currencyCode: 'USD',
+            );
+          });
+          TomScope.withScope('curEurVisual', () {
+            eur = TomFormCurrencyDoubleInput(
+              'priceEURvis',
+              199.99,
+              currencyCode: 'EUR',
+            );
+          });
+          addTearDown(usd.dispose);
+          addTearDown(eur.dispose);
+
+          await tester.pumpWidget(
+            _materialHarness(Column(children: [usd.widget, eur.widget])),
+          );
+          await tester.pumpAndSettle();
+
+          expect(
+            find.text(r'$'),
+            findsOneWidget,
+            reason: 'USD symbol must be rendered visibly',
+          );
+          expect(
+            find.text('€'),
+            findsOneWidget,
+            reason: 'EUR symbol must be rendered visibly',
+          );
+        },
+      );
+
+      testWidgets('symbol survives clearing the editable text', (tester) async {
+        // Pin the bug: with the OLD code path, calling controller.clear()
+        // (or Backspace at position 0) would wipe the symbol along with the
+        // amount because the symbol was part of controller.text. With the
+        // fix the symbol lives in prefixText (InputDecoration metadata),
+        // which is independent of the controller.
+        late TomFormCurrencyDoubleInput field;
+        TomScope.withScope('curClear', () {
+          field = TomFormCurrencyDoubleInput(
+            'priceClear',
+            50.00,
+            currencyCode: 'USD',
+          );
+        });
+        addTearDown(field.dispose);
+
+        await tester.pumpWidget(_materialHarness(field.widget));
+        await tester.pumpAndSettle();
+
+        final beforeTf = tester.widget<TextField>(find.byType(TextField));
+        beforeTf.controller!.clear();
+        await tester.pump();
+
+        final afterTf = tester.widget<TextField>(find.byType(TextField));
+        expect(
+          afterTf.controller!.text,
+          isEmpty,
+          reason: 'sanity: clear() emptied the controller',
+        );
+        expect(
+          afterTf.decoration?.prefixText,
+          equals(r'$'),
+          reason:
+              'prefixText (the symbol) must persist after a wipe — '
+              'it lives outside the controller',
         );
       });
-      addTearDown(field.dispose);
-
-      await tester.pumpWidget(_materialHarness(field.widget));
-      await tester.pumpAndSettle();
-
-      final beforeTf = tester.widget<TextField>(find.byType(TextField));
-      beforeTf.controller!.clear();
-      await tester.pump();
-
-      final afterTf = tester.widget<TextField>(find.byType(TextField));
-      expect(afterTf.controller!.text, isEmpty,
-          reason: 'sanity: clear() emptied the controller');
-      expect(afterTf.decoration?.prefixText, equals(r'$'),
-          reason: 'prefixText (the symbol) must persist after a wipe — '
-              'it lives outside the controller');
-    });
-  });
+    },
+  );
 
   // -------------------------------------------------------------------------
   // Cupertino side — same three checks against CupertinoTextField.prefix /
   // .suffix.
   // -------------------------------------------------------------------------
 
-  group('Cupertino TomCupertinoFormCurrencyDoubleInput — fixed-symbol slots',
-      () {
-    testWidgets('USD: symbol is in prefix slot, not in controller text',
-        (tester) async {
-      late TomCupertinoFormCurrencyDoubleInput field;
-      TomScope.withScope('cupCurUSD', () {
-        field = TomCupertinoFormCurrencyDoubleInput(
-          'cupPriceUSD',
-          199.99,
-          currencyCode: 'USD',
+  group(
+    'Cupertino TomCupertinoFormCurrencyDoubleInput — fixed-symbol slots',
+    () {
+      testWidgets('USD: symbol is in prefix slot, not in controller text', (
+        tester,
+      ) async {
+        late TomCupertinoFormCurrencyDoubleInput field;
+        TomScope.withScope('cupCurUSD', () {
+          field = TomCupertinoFormCurrencyDoubleInput(
+            'cupPriceUSD',
+            199.99,
+            currencyCode: 'USD',
+          );
+        });
+        addTearDown(field.dispose);
+
+        await tester.pumpWidget(_cupertinoHarness(field.widget));
+        await tester.pumpAndSettle();
+
+        final ctf = tester.widget<CupertinoTextField>(
+          find.byType(CupertinoTextField),
         );
-      });
-      addTearDown(field.dispose);
-
-      await tester.pumpWidget(_cupertinoHarness(field.widget));
-      await tester.pumpAndSettle();
-
-      final ctf = tester.widget<CupertinoTextField>(
-          find.byType(CupertinoTextField));
-      expect(ctf.controller!.text, isNot(contains(r'$')),
-          reason: 'symbol must NOT live in the controller text');
-      expect(ctf.controller!.text, equals('199.99'));
-      expect(ctf.prefix, isNotNull,
-          reason: 'USD symbol must land in CupertinoTextField.prefix');
-      expect(_subtreeContainsText(ctf.prefix, r'$'), isTrue);
-    });
-
-    testWidgets('EUR: symbol is in suffix slot (locale convention)',
-        (tester) async {
-      late TomCupertinoFormCurrencyDoubleInput field;
-      TomScope.withScope('cupCurEUR', () {
-        field = TomCupertinoFormCurrencyDoubleInput(
-          'cupPriceEUR',
-          199.99,
-          currencyCode: 'EUR',
+        expect(
+          ctf.controller!.text,
+          isNot(contains(r'$')),
+          reason: 'symbol must NOT live in the controller text',
         );
+        expect(ctf.controller!.text, equals('199.99'));
+        expect(
+          ctf.prefix,
+          isNotNull,
+          reason: 'USD symbol must land in CupertinoTextField.prefix',
+        );
+        expect(_subtreeContainsText(ctf.prefix, r'$'), isTrue);
       });
-      addTearDown(field.dispose);
 
-      await tester.pumpWidget(_cupertinoHarness(field.widget));
-      await tester.pumpAndSettle();
+      testWidgets('EUR: symbol is in suffix slot (locale convention)', (
+        tester,
+      ) async {
+        late TomCupertinoFormCurrencyDoubleInput field;
+        TomScope.withScope('cupCurEUR', () {
+          field = TomCupertinoFormCurrencyDoubleInput(
+            'cupPriceEUR',
+            199.99,
+            currencyCode: 'EUR',
+          );
+        });
+        addTearDown(field.dispose);
 
-      final ctf = tester.widget<CupertinoTextField>(
-          find.byType(CupertinoTextField));
-      expect(ctf.controller!.text, isNot(contains('€')));
-      expect(ctf.controller!.text, equals('199,99'));
-      expect(ctf.suffix, isNotNull,
-          reason: 'EUR symbol must land in CupertinoTextField.suffix');
-      expect(_subtreeContainsText(ctf.suffix, '€'), isTrue);
-    });
-  });
+        await tester.pumpWidget(_cupertinoHarness(field.widget));
+        await tester.pumpAndSettle();
+
+        final ctf = tester.widget<CupertinoTextField>(
+          find.byType(CupertinoTextField),
+        );
+        expect(ctf.controller!.text, isNot(contains('€')));
+        expect(ctf.controller!.text, equals('199,99'));
+        expect(
+          ctf.suffix,
+          isNotNull,
+          reason: 'EUR symbol must land in CupertinoTextField.suffix',
+        );
+        expect(_subtreeContainsText(ctf.suffix, '€'), isTrue);
+      });
+    },
+  );
 }

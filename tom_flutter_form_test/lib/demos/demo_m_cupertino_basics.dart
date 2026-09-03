@@ -103,15 +103,17 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
   /// re-entry the propagation itself causes: writing to the peer fires the
   /// peer's own observer, which would write straight back.
   void _observe(TomObservable source, void Function() propagate) {
-    final observer = source >> (_) {
-      if (_syncing) return;
-      _syncing = true;
-      try {
-        propagate();
-      } finally {
-        _syncing = false;
-      }
-    };
+    final observer =
+        source >>
+        (_) {
+          if (_syncing) return;
+          _syncing = true;
+          try {
+            propagate();
+          } finally {
+            _syncing = false;
+          }
+        };
     _observerCancels.add(() => source.removeObserver(observer));
   }
 
@@ -136,9 +138,9 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
   }
 
   TomFormStyle get _activeStyle => switch (_styleChoice) {
-        _StyleChoice.material => const TomFormStyle(),
-        _StyleChoice.cupertino => TomCupertinoFormStyle.cupertino,
-      };
+    _StyleChoice.material => const TomFormStyle(),
+    _StyleChoice.cupertino => TomCupertinoFormStyle.cupertino,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -196,8 +198,10 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Text('Page-root TomFormStyleScope.style:',
-              style: theme.textTheme.bodyMedium),
+          Text(
+            'Page-root TomFormStyleScope.style:',
+            style: theme.textTheme.bodyMedium,
+          ),
           const SizedBox(width: 12),
           ...[_StyleChoice.material, _StyleChoice.cupertino].map(
             (choice) => Padding(
@@ -241,8 +245,7 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
         _cupertinoForm.darkMode.widget,
       ]);
 
-  Widget _panelCard(
-      BuildContext context, String title, List<Widget> children) {
+  Widget _panelCard(BuildContext context, String title, List<Widget> children) {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
@@ -252,10 +255,7 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
           children: [
             Text(title, style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
-            for (final w in children) ...[
-              w,
-              const SizedBox(height: 8),
-            ],
+            for (final w in children) ...[w, const SizedBox(height: 8)],
           ],
         ),
       ),
@@ -303,8 +303,9 @@ class _DemoMCupertinoBasicsState extends State<DemoMCupertinoBasics> {
                         Expanded(
                           child: Text(
                             value.isEmpty ? '—' : value,
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(fontFamily: 'monospace'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontFamily: 'monospace',
+                            ),
                           ),
                         ),
                       ],

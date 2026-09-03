@@ -28,8 +28,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    final jsonStr =
-        await rootBundle.loadString('assets/demo_resources.json');
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(resources),
@@ -57,11 +56,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo 8: Breakpoints'), 200,
-        scrollable: find.descendant(
-          of: find.byType(DemoListScreen),
-          matching: find.byType(Scrollable),
-        ),);
+      find.text('Demo 8: Breakpoints'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(DemoListScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tester.tap(find.text('Demo 8: Breakpoints'));
     await tester.pumpAndSettle();
     if (finalSize != const Size(2400, 2000)) {
@@ -92,20 +93,21 @@ void main() {
   /// Read the live value of a single badge by its label prefix. Each badge
   /// renders as a [Text] with content "label: value"; we strip the prefix.
   String badgeValue(String label) {
-    final t = find
-        .byWidgetPredicate(
-          (w) =>
-              w is Text &&
-              (w.data?.startsWith('$label:') ?? false),
-        )
-        .evaluate()
-        .first
-        .widget as Text;
+    final t =
+        find
+                .byWidgetPredicate(
+                  (w) => w is Text && (w.data?.startsWith('$label:') ?? false),
+                )
+                .evaluate()
+                .first
+                .widget
+            as Text;
     return t.data!.substring(label.length + 2); // strip "label: "
   }
 
-  testWidgets('baseline at wide viewport — all badges report >=700px values',
-      (tester) async {
+  testWidgets('baseline at wide viewport — all badges report >=700px values', (
+    tester,
+  ) async {
     await openDemo8(tester, finalSize: const Size(2400, 2000));
     expect(badgeValue('labelPlacement'), 'inline');
     expect(badgeValue('labelStyle'), '15px');
@@ -122,20 +124,23 @@ void main() {
     expect(fieldByTomId('website'), findsOneWidget);
   });
 
-  testWidgets('mid viewport (~568px) lands in the 400-699 band',
-      (tester) async {
+  testWidgets('mid viewport (~568px) lands in the 400-699 band', (
+    tester,
+  ) async {
     // 600 wide minus 16x2 padding ≈ 568 pane width.
     await openDemo8(tester, finalSize: const Size(600, 2000));
     expect(badgeValue('labelPlacement'), 'above');
     expect(badgeValue('labelStyle'), '13px');
     expect(badgeValue('labelFieldGap'), '4px');
     expect(badgeValue('errorBorderEnabled'), 'on');
-    expect(badgeValue('errorIconEnabled'), 'on',
-        reason: 'icon turns on at 500px and we are at ~568px');
+    expect(
+      badgeValue('errorIconEnabled'),
+      'on',
+      reason: 'icon turns on at 500px and we are at ~568px',
+    );
   });
 
-  testWidgets('narrow viewport lands below all breakpoints',
-      (tester) async {
+  testWidgets('narrow viewport lands below all breakpoints', (tester) async {
     // The demo's auxiliary chrome (action button row, info card) overflows
     // at very narrow widths. That's not what we're testing here, so we
     // swallow render-overflow errors during this single test — the badge
@@ -150,22 +155,31 @@ void main() {
     expect(badgeValue('labelPlacement'), 'floating');
     expect(badgeValue('labelStyle'), '11px');
     expect(badgeValue('labelFieldGap'), '2px');
-    expect(badgeValue('errorBorderEnabled'), 'off',
-        reason: 'border is off below 400px');
-    expect(badgeValue('errorIconEnabled'), 'off',
-        reason: 'icon is off below 500px');
+    expect(
+      badgeValue('errorBorderEnabled'),
+      'off',
+      reason: 'border is off below 400px',
+    );
+    expect(
+      badgeValue('errorIconEnabled'),
+      'off',
+      reason: 'icon is off below 500px',
+    );
   });
 
-  testWidgets('Trigger errors surfaces an error caption',
-      (tester) async {
+  testWidgets('Trigger errors surfaces an error caption', (tester) async {
     await openDemo8(tester, finalSize: const Size(2400, 2000));
     await tapOutlined(tester, 'Trigger errors');
-    expect(find.text('Company name is required.'), findsAtLeastNWidgets(1),
-        reason: 'empty name → required error must surface');
+    expect(
+      find.text('Company name is required.'),
+      findsAtLeastNWidgets(1),
+      reason: 'empty name → required error must surface',
+    );
   });
 
-  testWidgets('Clear errors restores the sample and removes error text',
-      (tester) async {
+  testWidgets('Clear errors restores the sample and removes error text', (
+    tester,
+  ) async {
     await openDemo8(tester, finalSize: const Size(2400, 2000));
     await tapOutlined(tester, 'Trigger errors');
     expect(find.text('Company name is required.'), findsAtLeastNWidgets(1));
@@ -173,8 +187,9 @@ void main() {
     expect(find.text('Company name is required.'), findsNothing);
   });
 
-  testWidgets('dragging the slider left shrinks the form pane width',
-      (tester) async {
+  testWidgets('dragging the slider left shrinks the form pane width', (
+    tester,
+  ) async {
     // Dragging the slider can shrink the form below thresholds where the
     // demo's own DropdownButtonFormField overflows; that's a demo chrome
     // artefact unrelated to the breakpoint resolution under test.
@@ -197,7 +212,8 @@ void main() {
     expect(
       badgeValue('labelPlacement'),
       isNot('inline'),
-      reason: 'after dragging the slider left the pane should fall below '
+      reason:
+          'after dragging the slider left the pane should fall below '
           'the 700px breakpoint',
     );
   });

@@ -167,8 +167,7 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Text('TomAuthTreeView',
-                  style: theme.textTheme.titleSmall),
+              child: Text('TomAuthTreeView', style: theme.textTheme.titleSmall),
             ),
             const Divider(height: 1),
             Expanded(
@@ -214,8 +213,10 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
                   TomAuthTreeNode(
                     tomId: 'demoR.tree.admin',
                     title: const Text('Admin'),
-                    leading: const Icon(Icons.admin_panel_settings_outlined,
-                        size: 18),
+                    leading: const Icon(
+                      Icons.admin_panel_settings_outlined,
+                      size: 18,
+                    ),
                     children: [
                       TomAuthTreeNode(
                         tomId: 'demoR.tree.admin.audit',
@@ -296,8 +297,10 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
             Row(
               children: [
                 Expanded(
-                  child: Text('TomInfiniteScroll + TomErrorBoundary',
-                      style: theme.textTheme.titleSmall),
+                  child: Text(
+                    'TomInfiniteScroll + TomErrorBoundary',
+                    style: theme.textTheme.titleSmall,
+                  ),
                 ),
                 Text(
                   'loaded: ${_scrollKey.currentState?.loadedCount ?? 0}',
@@ -319,8 +322,11 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
                 child: TomInfiniteScroll<String>(
                   key: _scrollKey,
                   pageSize: 25,
-                  fetcher: (page, size) => _pageSource.fetchPage(page, size,
-                      failNext: _controller.failNext),
+                  fetcher: (page, size) => _pageSource.fetchPage(
+                    page,
+                    size,
+                    failNext: _controller.failNext,
+                  ),
                   itemBuilder: _buildRow,
                 ),
               ),
@@ -371,7 +377,9 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
             DropdownMenuItem(value: TomAuthState.full, child: Text('full')),
             DropdownMenuItem(value: TomAuthState.read, child: Text('read')),
             DropdownMenuItem(
-                value: TomAuthState.disabled, child: Text('disabled')),
+              value: TomAuthState.disabled,
+              child: Text('disabled'),
+            ),
             DropdownMenuItem(value: TomAuthState.none, child: Text('none')),
           ],
           onChanged: (v) {
@@ -383,8 +391,7 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
           dense: true,
           contentPadding: EdgeInsets.zero,
           title: const Text('Fail next page fetch'),
-          subtitle: const Text(
-              'Triggers the error slot on the next prefetch.'),
+          subtitle: const Text('Triggers the error slot on the next prefetch.'),
           value: _controller.failNext,
           onChanged: (_) => _controller.toggleFailNext(),
         ),
@@ -403,8 +410,9 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
           contentPadding: EdgeInsets.zero,
           title: const Text('Throw in row tile'),
           subtitle: Text(
-              'Row #${DemoRController.throwRowIndex.toString().padLeft(5, '0')} '
-              'throws — exercises the per-tile TomErrorBoundary.'),
+            'Row #${DemoRController.throwRowIndex.toString().padLeft(5, '0')} '
+            'throws — exercises the per-tile TomErrorBoundary.',
+          ),
           value: _controller.throwOnTile,
           onChanged: (_) => _controller.toggleThrowOnTile(),
         ),
@@ -426,13 +434,21 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
                   isDense: true,
                   items: const [
                     DropdownMenuItem(
-                        value: TomAuthState.full, child: Text('full')),
+                      value: TomAuthState.full,
+                      child: Text('full'),
+                    ),
                     DropdownMenuItem(
-                        value: TomAuthState.read, child: Text('read')),
+                      value: TomAuthState.read,
+                      child: Text('read'),
+                    ),
                     DropdownMenuItem(
-                        value: TomAuthState.disabled, child: Text('disabled')),
+                      value: TomAuthState.disabled,
+                      child: Text('disabled'),
+                    ),
                     DropdownMenuItem(
-                        value: TomAuthState.none, child: Text('none')),
+                      value: TomAuthState.none,
+                      child: Text('none'),
+                    ),
                   ],
                   onChanged: (v) {
                     if (v != null) _setTreeAuth(entry.key, v);
@@ -501,12 +517,16 @@ class _DemoRRowErrorTile extends StatelessWidget {
     final theme = Theme.of(context);
     return ListTile(
       dense: true,
-      leading: Icon(Icons.error_outline,
-          color: theme.colorScheme.error, size: 20),
+      leading: Icon(
+        Icons.error_outline,
+        color: theme.colorScheme.error,
+        size: 20,
+      ),
       title: Text(
         'Row #$index failed to render',
-        style: theme.textTheme.bodyMedium
-            ?.copyWith(color: theme.colorScheme.error),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.error,
+        ),
       ),
       subtitle: Text(
         details.exceptionAsString(),
