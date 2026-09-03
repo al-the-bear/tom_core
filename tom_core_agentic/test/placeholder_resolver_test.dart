@@ -129,7 +129,7 @@ void main() {
     });
 
     test(r'the optional marker does not apply to ${env:NAME?}', () {
-      // Optionality is scoped to the simple binding form only (spec §13/§2);
+      // Optionality is scoped to the simple binding form only;
       // an env name carrying a trailing ? is just an unresolvable env lookup.
       final r = PlaceholderResolver(environment: const {'TOKEN': 'secret'});
       expect(
@@ -203,10 +203,10 @@ void main() {
       },
     );
 
-    // The docs used to call `${name}` "equivalent to `${{ name }}`". It is
-    // not: the forms agree on exactly one case and diverge on three axes.
-    // The three tests below pin each axis so the corrected wording in
-    // `doc/placeholders.md` and the resolver header cannot drift back.
+    // Calling `${name}` "equivalent to `${{ name }}`" is the natural summary
+    // and is wrong: the forms agree on exactly one case and diverge on three
+    // axes. The three tests below pin each axis so the wording in
+    // `doc/placeholders.md` and the resolver header cannot drift to it.
 
     test('the two forms agree only on a bound name via resolve + backing', () {
       // The single case in which substituting one form for the other is
@@ -365,11 +365,11 @@ void main() {
     });
   });
 
-  // Characterization tests (tests §22). These pin behaviours the resolver and
-  // its failure types already implement so a future refactor cannot silently
-  // change them: the typed wire codes, the brace-balanced expression scan, and
-  // the unterminated-`${{` passthrough. No production change accompanies them.
-  group('PlaceholderResolver — typed failure wire codes (§22)', () {
+  // Characterization tests. These pin behaviours the resolver and its failure
+  // types already implement so a future refactor cannot silently change them:
+  // the typed wire codes, the brace-balanced expression scan, and the
+  // unterminated-`${{` passthrough.
+  group('PlaceholderResolver — typed failure wire codes', () {
     test('recursion failure carries its code and a descriptive message', () {
       const e = PlaceholderRecursionException(
         maxRecursion: 3,
@@ -398,7 +398,7 @@ void main() {
     });
   });
 
-  group('PlaceholderResolver — expression brace balancing (§22)', () {
+  group('PlaceholderResolver — expression brace balancing', () {
     test(r'a ${{ … }} body with a nested { } is captured whole', () async {
       // The scan must track the inner `{ }` of a map literal so the closing
       // `}}` is the *outer* one, not the inner brace.

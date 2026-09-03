@@ -7,14 +7,15 @@
 // WebSocket handshake, or a queue message envelope — none of the types
 // below name a transport, and none of them should.
 //
-// This file used to sit inside `mcp_auth/` next to the MCP wire
-// constants. Bundling them meant a non-MCP edge could not reuse the
-// taxonomy without importing MCP concepts it had no use for, so edges
-// re-declared it instead; `tom_brain_access`'s HTTP edge carries a
-// byte-identical copy of `BearerAuthFailure` to this day. The types are
-// here, transport-free, so that reuse costs nothing. The MCP-specific
-// wire constants stayed behind in `mcp_auth/mcp_bearer_wire.dart` and
-// import this contract, not the other way round.
+// The natural home for this file is inside `mcp_auth/` next to the MCP
+// wire constants, since MCP is the edge that first needs it. Bundling
+// them means a non-MCP edge cannot reuse the taxonomy without importing
+// MCP concepts it has no use for, so edges re-declare it instead —
+// `tom_brain_access`'s HTTP edge carries a byte-identical copy of
+// `BearerAuthFailure` for exactly that reason. The types are here,
+// transport-free, so that reuse costs nothing. The MCP-specific wire
+// constants stay in `mcp_auth/mcp_bearer_wire.dart` and import this
+// contract, not the other way round.
 //
 // What stays domain-specific (and therefore does *not* live here): the
 // concrete authenticators that turn a token into a framework principal

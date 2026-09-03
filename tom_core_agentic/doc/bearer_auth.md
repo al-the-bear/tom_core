@@ -34,14 +34,15 @@ matters: MCP depends on the taxonomy, the taxonomy does not depend on MCP.
 
 ## Why It Is Its Own Module
 
-These three types used to sit in the same file as the MCP wire constants, under
-`mcp_auth/`. They were transport-independent even then, but a non-MCP edge could
-not reach them without importing a `_meta` key and a JSON-RPC error code it had
-no use for — so edges re-declared the taxonomy instead of importing it.
-`tom_brain_access`'s HTTP edge still carries a copy of `BearerAuthFailure` whose
-`toString` is byte-identical to the one here, and it carries that copy *while
-already depending on `tom_core_agentic`*: the dependency was there, the reuse
-was not. Bundling, not availability, was the obstacle.
+The natural home for these three types is the same file as the MCP wire
+constants, under `mcp_auth/` — MCP is the edge that first needs them. They are
+transport-independent there too, but a non-MCP edge cannot reach them without
+importing a `_meta` key and a JSON-RPC error code it has no use for, so edges
+re-declare the taxonomy instead of importing it. `tom_brain_access`'s HTTP edge
+carries a copy of `BearerAuthFailure` whose `toString` is byte-identical to the
+one here, and it carries that copy *while already depending on
+`tom_core_agentic`*: the dependency is there, the reuse is not. Bundling, not
+availability, is the obstacle.
 
 Splitting the file is what makes the reuse claim checkable rather than
 aspirational. `test/bearer_auth_test.dart` imports

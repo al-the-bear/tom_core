@@ -3,7 +3,7 @@
 // The planning loop (`planning_specification.md` § 4.4) orders a decomposed
 // step set over its `depends-on` edges before persisting the plan: a
 // dependency must come before the step that needs it, and a cyclic graph is
-// rejected with the cycle named (§ 9 failure mode). The graph arithmetic that
+// rejected with the cycle named. The graph arithmetic that
 // does this — Kahn's algorithm over a step-id → dependency-id adjacency — is
 // domain-free: it knows nothing about plans, steps, or memory nodes, only
 // about ids and the edges between them. So it lives here, consumed natively by

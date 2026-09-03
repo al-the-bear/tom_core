@@ -3,7 +3,7 @@
 // Ported from the VS Code extension's prompt-template store for the TomSpecs
 // editor (§11.4). A template's [body] is authored with the §11.5 placeholder
 // forms (`${name}`, `{{name}}`, `${env:NAME}`) and resolved through the same
-// composer the chat composer uses, giving the prompt-templates editor (§12) a
+// composer the chat composer uses, giving the prompt-templates editor a
 // live preview. The body is stored verbatim; resolution happens at use time so
 // late-bound built-ins (`date`/`time`) reflect the moment of send.
 library;

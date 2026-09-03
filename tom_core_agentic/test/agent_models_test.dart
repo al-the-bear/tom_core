@@ -1,5 +1,5 @@
-// Round-trip coverage for the editor-facing agent data models (§20 step 2)
-// and the editor placeholder binder (§11.5). Each model is serialised to a
+// Round-trip coverage for the editor-facing agent data models and the editor
+// placeholder binder. Each model is serialised to a
 // real YAML document via `encodeAgentYaml`, parsed back via
 // `decodeAgentYaml`, and reconstructed through its `fromYaml` factory — so
 // the assertions prove the full Map → YAML-text → Map → object path, not

@@ -91,12 +91,13 @@ void main() {
       expect(reg.pendingCancelCount, equals(1));
     });
 
-    // Bug §73: a cancel that arrives *after* the request closed (register →
-    // dispose → cancel) hit the same "unknown token" branch as a pre-open
-    // cancel and was remembered in _pendingCancellations forever — a token is
-    // never recycled, so that entry could never be consumed by a later
-    // register. The post-close cancel must be dropped instead of leaking.
-    test('cancel after dispose is dropped, not leaked (bug §73)', () {
+    // A cancel that arrives *after* the request closed (register → dispose →
+    // cancel) reaches the same "unknown token" branch as a pre-open cancel, and
+    // a registry that treats the branch as one case remembers it in
+    // _pendingCancellations forever — a token is never recycled, so that entry
+    // can never be consumed by a later register. The post-close cancel must be
+    // dropped instead of leaking.
+    test('cancel after dispose is dropped, not leaked', () {
       final reg = IsolateCancellationRegistry();
       final tok = const IsolateCancellationToken(1);
       final h = reg.register(tok);
@@ -164,7 +165,7 @@ void main() {
     });
 
     test('a pre-open cancel is still remembered after an earlier request closed'
-        ' (bug §73 discriminator)', () {
+        ' (the high-water discriminator)', () {
       // Earlier request (id 1) completes; a genuine pre-open cancel for a newer
       // token (id 2, never registered) must still be remembered — the drop only
       // applies to ids that already passed through the registry.
@@ -287,13 +288,14 @@ void main() {
       expect(t.waiterCount, equals(0));
     });
 
-    // Bug §72: grant(n) looped `while (waiters.isNotEmpty && _credits > 0)`
-    // without decrementing per wake. Since waking does not consume a credit
-    // (the producer consumes after pushing), a single grant woke *every* parked
-    // waiter, so n+1 producers would push against only n credits and consume()
-    // would cascade StateErrors. grant(n) must release at most n waiters.
+    // grant(n) must release at most n waiters, and the loop condition that
+    // looks right does not enforce it: `while (waiters.isNotEmpty && _credits >
+    // 0)` with no per-wake decrement. Waking does not itself consume a credit
+    // (the producer consumes after pushing), so a single grant wakes *every*
+    // parked waiter; n+1 producers then push against only n credits and
+    // consume() cascades StateErrors.
     test(
-      'grant(1) wakes exactly one of three parked waiters (bug §72)',
+      'grant(1) wakes exactly one of three parked waiters',
       () async {
         final t = BackpressureTracker(initialCredits: 0);
         var woken = 0;
@@ -338,10 +340,11 @@ void main() {
     });
 
     // Closing stops the ledger accounting, it does not stop the ledger
-    // checking its arguments. `grant` used to return on the closed flag
-    // before validating, so grant(0) threw while open and passed in
-    // silence once closed — the same call, two answers, decided by state
-    // the caller may not know. A nonsensical n is a caller bug either way.
+    // checking its arguments. Returning on the closed flag *before*
+    // validating is the natural shape and the wrong one: grant(0) then
+    // throws while open and passes in silence once closed — the same call,
+    // two answers, decided by state the caller may not know. A nonsensical
+    // n is a caller bug either way.
     test('argument validation survives close', () {
       final t = BackpressureTracker(initialCredits: 1)..close();
       expect(() => t.grant(0), throwsArgumentError);
@@ -350,8 +353,8 @@ void main() {
     });
 
     // The other half: state-dependent effects *are* skipped once closed,
-    // and both mutators skip them the same way. consume had no closed
-    // check at all, so it kept drawing down a ledger nobody was keeping.
+    // and both mutators must skip them the same way. A consume with no closed
+    // check keeps drawing down a ledger nobody is keeping.
     test('grant and consume are no-ops once closed', () {
       final t = BackpressureTracker(initialCredits: 3)..close();
       t.grant(5);

@@ -4,7 +4,7 @@
 // editor (§11.2 / §11.4). A queue template names an ordered list of prompt
 // bodies; applying it appends those prompts (each still placeholder-bearing,
 // resolved at send time) to the live prompt queue. The queue-templates editor
-// (§12) saves/loads these as `*.template.queue.yaml`.
+// saves/loads these as `*.template.queue.yaml`.
 library;
 
 /// A named, ordered set of prompt bodies identified by [id].

@@ -1,4 +1,4 @@
-// Tests for the reconnect protocol (§6.1, C2, N1, N10): the back-off retry
+// Tests for the reconnect protocol (§6.1): the back-off retry
 // loop, same/different/still-gone classification, and the interrupt-retry
 // prefix composition. The scan service is faked and the back-off delay is made
 // instant, so the whole protocol runs without sockets or real waits.

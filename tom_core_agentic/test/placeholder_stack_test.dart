@@ -76,9 +76,10 @@ void main() {
     });
 
     test('it does not constrain what bind accepts or the stack stores', () {
-      // The predicate used to be documented as "the shape the simple ${name}
-      // fast path accepts". Nothing in this package applies it: bind takes any
-      // string, and flatten hands every binding to the backing unfiltered. The
+      // Reading the predicate as "the shape the simple ${name} fast path
+      // accepts" is the plausible one and overstates it: nothing in this package
+      // applies it. bind takes any string, and flatten hands every binding to
+      // the backing unfiltered. The
       // filtering happens in the backing (D4rtExpressionContext), because the
       // constraint is d4rt's, not the stack's.
       final stack = PlaceholderStack();

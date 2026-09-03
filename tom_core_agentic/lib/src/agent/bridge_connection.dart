@@ -1,4 +1,4 @@
-// Bridge connection discovery + choice persistence (§6, Q4, C1).
+// Bridge connection discovery + choice persistence.
 //
 // The TomSpecs editor connects to a running VS Code CLI Integration Server to
 // reach Claude Code over the bridge. Multiple VS Code windows each run a
@@ -139,7 +139,7 @@ Future<Map<int, String>> _defaultScanner({
   required int maxPort,
 }) => scanBridgePorts(host: host, minPort: minPort, maxPort: maxPort);
 
-/// Discovers live VS Code bridge servers (§6).
+/// Discovers live VS Code bridge servers.
 ///
 /// Wraps the port scan so the UI controller depends only on `tom_core_agentic`
 /// and never touches the transport package directly.
@@ -236,7 +236,7 @@ class BridgeChoice {
 }
 
 /// Persists the picked bridge server to a YAML sidecar so the binding is
-/// restored on the next launch ("the choice persists per spec", §6).
+/// restored on the next launch.
 ///
 /// Mirrors the editor's other sidecars: a small YAML file written
 /// synchronously on every change. The file lives outside the document so it is
@@ -277,7 +277,7 @@ class BridgeChoiceStore {
   void save(BridgeChoice choice) {
     final buffer = StringBuffer()
       ..writeln('# TomSpecs editor — bound VS Code bridge server.')
-      ..writeln('# Written by the agent connection picker (§6).')
+      ..writeln('# Written by the agent connection picker.')
       ..writeln('version: 1')
       ..writeln('bridge:')
       ..writeln('  host: ${choice.host}')

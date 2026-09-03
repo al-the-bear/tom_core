@@ -1,5 +1,6 @@
 // Agent send pipeline — assemble SDK `Options`, stream a `query`, and keep a
-// per-specification session id with the §7.2 refresh rule (TomSpecs editor §7).
+// per-specification session id under the §7.2 refresh rule of
+// `tom_specs_editor_specification.md`.
 //
 // This is the **non-UI** half (no Flutter): the editor's Flutter controller in
 // `tom_forge_agentic` drives [AgentSendEngine] and renders its [AgentSendEvent]
@@ -7,12 +8,12 @@
 // [AgentSdkClient]:
 //
 //   * assemble an [Options] from the active profile + global settings (+ the
-//     navigation/mutation MCP tools, wired in §8/step 14) via [AgentSendConfig];
+//     navigation/mutation MCP tools) via [AgentSendConfig];
 //   * stream `query(prompt, options)`, translating each `SdkAssistantMessage`'s
 //     `TextBlock`s into [AgentSendChunk]s and the terminal `SdkResultMessage`
 //     into [AgentSendCompleted];
 //   * hold a per-spec SDK session id in a YAML sidecar ([SpecSessionStore]),
-//     auto-refreshed on a session error per §7.2 / N3.
+//     auto-refreshed on a session error per §7.2.
 //
 // It is intentionally **separate** from the substrate `AgentSdkLlmProvider`
 // (also in this package): that provider serves the brain's `LlmProvider` seam
@@ -32,7 +33,7 @@ import 'agent_profile.dart' show AgentProfile;
 import 'agent_sidecar.dart';
 
 /// True when [message] should be treated as an SDK **session error** under the
-/// editor rule (§7.2, N3): its text contains `session`, `message`, or `msg`
+/// editor rule (§7.2): its text contains `session`, `message`, or `msg`
 /// (case-insensitive).
 ///
 /// Deliberately broad — unlike the brain's conservative matcher
@@ -102,10 +103,10 @@ class SpecSessionStore {
 /// session id (which the engine supplies from [SpecSessionStore]).
 ///
 /// Built from the active **profile** + global **agent settings** + the
-/// navigation/mutation **MCP tools** (§8). Step 12 wires the profile + the few
-/// global knobs the send needs; the full §7.1 surface and the MCP tool server
-/// are filled by later steps (the [mcpServers] seam is already here so step 14
-/// only has to populate it).
+/// navigation/mutation **MCP tools**. It carries the profile plus the global
+/// knobs the send itself needs; the [mcpServers] seam is a field rather than a
+/// constructor requirement so a tool server can be supplied without reshaping
+/// the config.
 class AgentSendConfig {
   const AgentSendConfig({
     this.model,
@@ -129,11 +130,10 @@ class AgentSendConfig {
   /// Claude Code's agentic-loop turn cap, or `null` for the SDK default.
   final int? maxTurns;
 
-  /// The agent working directory — the document/spec folder (A1/N2), or `null`.
+  /// The agent working directory — the document/spec folder, or `null`.
   final String? cwd;
 
-  /// The navigation/mutation MCP servers (§8), or `null` until step 14 wires
-  /// them.
+  /// The navigation/mutation MCP servers, or `null` when none are wired.
   final Map<String, McpServerConfig>? mcpServers;
 
   /// Assembles a send config from the active [profile] plus global settings.
@@ -218,11 +218,11 @@ class AgentSendFailed extends AgentSendEvent {
 }
 
 /// Builds (and connects) an [AgentSdkClient] over the VS Code bridge at
-/// [host]:[port] (§7, the editor's transport seam).
+/// [host]:[port] — the editor's transport seam.
 ///
 /// Lives here, in the pure-Dart model layer, rather than in the Flutter
 /// `tom_forge_agentic` controller because the UI layer "never owns transport
-/// specifics" (N7): it hands the controller this factory (or a fake) and stays
+/// specifics": it hands the controller this factory (or a fake) and stays
 /// transport-agnostic. Throws a [StateError] if the bridge socket does not come
 /// up, so the caller can surface a connect failure to the user.
 typedef AgentSdkClientFactory =

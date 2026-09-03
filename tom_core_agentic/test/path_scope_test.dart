@@ -84,12 +84,12 @@ void main() {
     });
   });
 
-  // Security §1 / tests §21: the lexical [PathScope.admits] cannot see a
-  // symlink whose path is contained but whose *target* escapes every root.
+  // The lexical [PathScope.admits] cannot see a symlink whose path is
+  // contained but whose *target* escapes every root.
   // `PathScopeIo.admitsCanonical` resolves symlinks before the containment
   // check, so the escape is rejected. These tests stand up a real symlink to
   // make the lexical/canonical distinction concrete.
-  group('PathScopeIo — symlink-aware containment (§21)', () {
+  group('PathScopeIo — symlink-aware containment', () {
     test('a symlink inside the root pointing outside is rejected', () {
       final base = Directory.systemTemp.createTempSync('path_scope_io_');
       addTearDown(() => base.deleteSync(recursive: true));

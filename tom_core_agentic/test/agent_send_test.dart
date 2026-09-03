@@ -1,4 +1,4 @@
-// Tests for the editor agent send pipeline (§7): streaming a prompt through the
+// Tests for the editor agent send pipeline: streaming a prompt through the
 // Agent SDK and refreshing the per-spec session id on a session error (§7.2).
 //
 // The SDK transport is faked so the loop is unit-testable without a socket: the

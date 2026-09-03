@@ -1,4 +1,4 @@
-// Reconnect protocol (§6.1, C2, N1, N10).
+// Reconnect protocol (§6.1).
 //
 // When the bound VS Code bridge stops responding the transport itself is gone
 // — there is no way to hold the live socket / in-flight exchange open (N1). We
@@ -14,7 +14,7 @@ library;
 
 import 'bridge_connection.dart';
 
-/// Composes the auto-resend body for an interrupted prompt (§6.1 step 3, N10):
+/// Composes the auto-resend body for an interrupted prompt (§6.1 step 3):
 /// the active profile's [prefix] followed by the original [prompt].
 ///
 /// An empty [prefix] yields the prompt unchanged. The original prompt is used

@@ -1,4 +1,4 @@
-// Persistence for the reusable prompt-template set (§11.4, §12).
+// Persistence for the reusable prompt-template set (§11.4).
 //
 // Prompt templates (user-message seeds + reusable prompt bodies) are editor
 // configuration held in the spec workspace as a YAML file. Mirrors

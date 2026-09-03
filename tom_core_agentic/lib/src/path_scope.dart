@@ -35,7 +35,7 @@ typedef ScopedPath = ({String root, String path});
 /// it is not). When the scope guards real filesystem access against untrusted
 /// input, use the filesystem-aware `resolveCanonical` / `admitsCanonical`
 /// (extension `PathScopeIo` in `path_scope_io.dart`), which resolve symlinks
-/// before the containment check and reject such an escape (security §1).
+/// before the containment check and reject such an escape.
 final class PathScope {
   /// The normalised, absolute roots, in their configured priority order.
   final List<String> roots;

@@ -128,7 +128,7 @@ void main() {
     });
   });
 
-  group('parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9)', () {
+  group('parseToolCallsFromText — JSON family robustness', () {
     test('a single JSON object wrapped in surrounding prose is recovered', () {
       // Not a delimited dialect (no fence, no <tool_call>, no [TOOL_CALLS]):
       // a bare object the model buried in a sentence. The whole-text decode
@@ -251,14 +251,14 @@ void main() {
       );
     });
 
-    // Security §5 / tests §56: the bare-JSON scan was quadratic on a long run
-    // of unbalanced openers — for every `{`/`[` it scanned to end-of-string and
-    // the outer loop advanced one char and rescanned, Θ(n²). A model completion
-    // (steerable by prompt injection) of a few hundred KB of a single bracket
-    // char pegged the agent isolate for minutes. The work is now bounded, so a
+    // An unbounded bare-JSON scan is quadratic on a long run of unbalanced
+    // openers — for every `{`/`[` it scans to end-of-string, then the outer
+    // loop advances one char and rescans, Θ(n²). A model completion (steerable
+    // by prompt injection) of a few hundred KB of a single bracket char would
+    // peg the agent isolate for minutes. The work is bounded instead, so a
     // large unbalanced run returns empty well within a small fixed time budget.
     test(
-      'a large unbalanced bracket run is bounded and yields no calls (§56)',
+      'a large unbalanced bracket run is bounded and yields no calls',
       () {
         final huge = '{' * 200000; // ~200 KB of unbalanced openers
         final sw = Stopwatch()..start();
@@ -277,7 +277,7 @@ void main() {
     );
 
     test(
-      'a balanced JSON call embedded after prose is still recovered (§56)',
+      'a balanced JSON call embedded after prose is still recovered',
       () {
         // The work bound must not blind the scanner to a real call once the
         // (well-formed) input is comfortably under budget.

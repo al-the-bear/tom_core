@@ -9,7 +9,7 @@
 //
 // This extension adds the I/O-backed counterpart. It resolves filesystem
 // symlinks on the candidate's existing prefix before the containment check, so
-// a link that escapes its root is rejected (security §1). It lives in a
+// a link that escapes its root is rejected. It lives in a
 // separate, `dart:io`-importing file so the pure lexical [PathScope] API does
 // not drag `dart:io` into web builds — callers opt into the filesystem-aware
 // check explicitly by importing/using these methods.

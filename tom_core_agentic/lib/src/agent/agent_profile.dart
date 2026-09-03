@@ -2,11 +2,11 @@
 //
 // Ported from the VS Code extension's `AnthropicProfile`
 // (`tom_vscode_extension/src/handlers/anthropic-handler.ts`) for the
-// TomSpecs editor's Profiles editor (§11.4 / §12). Persisted as YAML in
+// TomSpecs editor's Profiles editor (§11.4). Persisted as YAML in
 // the spec workspace.
 //
 // Beyond the VS Code field set this gains one editor-specific field:
-// [interruptRetryPrefix] (N10) — the prefix prepended to an
+// [interruptRetryPrefix] — the prefix prepended to an
 // auto-resent interrupted prompt during the reconnect protocol (§6.1).
 library;
 
@@ -80,7 +80,7 @@ final class AgentProfile {
   final bool? autoInjectMemory;
   final String? userPromptWrapper;
 
-  /// Editor-specific (N10): prefix for an auto-resent interrupted prompt.
+  /// Editor-specific: prefix for an auto-resent interrupted prompt.
   final String interruptRetryPrefix;
 
   factory AgentProfile.fromYaml(Map<String, dynamic> yaml) => AgentProfile(

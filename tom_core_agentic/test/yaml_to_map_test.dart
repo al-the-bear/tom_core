@@ -185,16 +185,16 @@ list:
     });
   });
 
-  // Security §4 / tests §55: `package:yaml` resolves aliases by sharing the
+  // `package:yaml` resolves aliases by sharing the
   // *same* node object, so a "billion-laughs" document (each anchor referencing
   // the previous one a handful of times) is tiny on the wire but expands
   // exponentially when `_toPlain` deep-copies every alias into a fresh
   // collection. An untrusted YAML boundary (model- or user-supplied config)
-  // could exhaust memory before the load returns. The conversion now debits a
+  // could exhaust memory before the load returns. The conversion debits a
   // bounded node budget (`maxNodes`) and throws via `errorFactory` when the
   // materialised tree would exceed it — a located, deterministic rejection
   // instead of an OOM.
-  group('loadYamlAsMap — expansion bound (§55)', () {
+  group('loadYamlAsMap — expansion bound', () {
     /// A classic alias-amplification document: each level references the prior
     /// anchor several times, so the materialised node count grows
     /// multiplicatively while the source stays small.

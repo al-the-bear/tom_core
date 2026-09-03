@@ -80,7 +80,7 @@ bool deepValueEquals(Object? a, Object? b) {
 /// recursively** (so a nested list contributes its contents' hash, not its
 /// identity), and every other value uses its own `hashCode`. Recursing mirrors
 /// [deepValueEquals], keeping the equals/hash contract: values that compare
-/// equal hash equal (bug §71).
+/// equal hash equal.
 int deepValueHash(Object? v) {
   if (v == null) return 0;
   if (v is List) return Object.hashAll(v.map(deepValueHash));

@@ -2,7 +2,7 @@
 //
 // Ported from `tom_vscode_scripting_api`'s `TimedRequest` /
 // `tom_vscode_extension` for the TomSpecs editor's Timed Requests editor
-// (§11.2 / §12). Persisted as YAML in the spec workspace
+// (§11.2). Persisted as YAML in the spec workspace
 // (`*.timed.yaml`).
 library;
 

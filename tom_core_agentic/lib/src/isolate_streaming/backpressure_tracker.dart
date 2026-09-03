@@ -114,8 +114,7 @@ final class BackpressureTracker {
   /// by an explicit per-grant budget (`n`), not by the credit balance: granting
   /// `n` credits releases `n` producers, each of which will claim one of the
   /// `n` credits. Releasing more than `n` would let `n + k` producers push
-  /// against only `n` credits, and the surplus [consume] calls would throw
-  /// (bug §72).
+  /// against only `n` credits, and the surplus [consume] calls would throw.
   ///
   /// A no-op once [close] has been called — but the argument is checked
   /// first, so a bad `n` is reported whether or not the tracker is still

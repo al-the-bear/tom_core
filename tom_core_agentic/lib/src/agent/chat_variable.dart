@@ -26,7 +26,7 @@ final class ChatVariable {
   /// The text substituted for the placeholder.
   final String value;
 
-  /// Optional human-readable note shown in the chat-variables editor (§12).
+  /// Optional human-readable note shown in the chat-variables editor.
   final String description;
 
   /// Whether this is a composer-supplied built-in (read-only in the editor)

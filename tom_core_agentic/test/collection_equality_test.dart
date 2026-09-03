@@ -135,12 +135,13 @@ void main() {
       expect(deepValueHash([1, 2, 3]), deepValueHash([1, 2, 3]));
     });
 
-    // Bug §71: the list arm hashed elements by their own hashCode
-    // (Object.hashAll(v)), so a nested List hashed by identity. Two
-    // structurally-equal nested values then hashed differently even though
-    // deepValueEquals reports them equal — breaking the equals/hash contract.
-    // The hash must recurse like the equality does.
-    test('equal nested-list values hash equal (bug §71)', () {
+    // The hash must recurse exactly as the equality does, and the shape that
+    // does not is the obvious one: hash the list arm's elements by their own
+    // hashCode (`Object.hashAll(v)`) and a nested List hashes by identity, so
+    // two structurally-equal nested values hash differently while
+    // deepValueEquals reports them equal — the equals/hash contract broken with
+    // nothing at either call site looking wrong.
+    test('equal nested-list values hash equal', () {
       final a = [
         1,
         [2, 3],
@@ -151,11 +152,11 @@ void main() {
       ];
       // The two share the same notion of equality...
       expect(deepValueEquals(a, b), isTrue);
-      // ...so they must hash equal (before §71 these differed by identity).
+      // ...so they must hash equal; an identity hash would make them differ.
       expect(deepValueHash(a), deepValueHash(b));
     });
 
-    test('deeply nested equal values hash equal (bug §71)', () {
+    test('deeply nested equal values hash equal', () {
       final a = [
         1,
         [

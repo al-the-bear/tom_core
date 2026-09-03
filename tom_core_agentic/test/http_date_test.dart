@@ -35,15 +35,16 @@ void main() {
       expect(() => HttpDate.parse('not-a-date'), throwsFormatException);
     });
 
-    // Rejection-path hardening (bugs §31/§32, tests §20). The earlier parser
-    // mishandled the *rejection* path: a truncated month token threw a
-    // low-level RangeError from `substring(0, 3)` instead of a FormatException
-    // (§31), and `DateTime.utc` silently normalised out-of-range day/time
-    // fields into a plausible-but-wrong instant rather than rejecting them
-    // (§32). These pin the corrected behaviour.
-    group('rejection-path hardening (§20)', () {
+    // Rejection-path hardening. The accept path is the easy half; the two ways
+    // a parser gets the *rejection* path wrong are both silent. A truncated
+    // month token reaches `substring(0, 3)`, which raises a low-level
+    // RangeError rather than a FormatException — so a caller catching
+    // FormatException does not catch it. And `DateTime.utc` normalises
+    // out-of-range day/time fields instead of rejecting them, so a malformed
+    // header parses to a plausible-but-wrong instant and nothing throws at all.
+    group('rejection-path hardening', () {
       test('a truncated month token throws FormatException, not RangeError', () {
-        // `Oc` is < 3 chars: `substring(0, 3)` would have thrown a RangeError.
+        // `Oc` is < 3 chars: an unguarded `substring(0, 3)` raises RangeError.
         expect(
           () => HttpDate.parse('Wed, 21 Oc 2026 07:28:00 GMT'),
           throwsFormatException,

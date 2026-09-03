@@ -3,7 +3,7 @@
 // The planning loop (`planning_specification.md` § 4.4) orders a decomposed
 // step set before persisting it: every `depends-on` edge must point backwards
 // in the final sequence, and a cyclic graph is rejected with the offending
-// steps named (§ 9). That is pure graph arithmetic — Kahn's algorithm over a
+// steps named. That is pure graph arithmetic — Kahn's algorithm over a
 // step-id → dependency-id adjacency — and knows nothing about plans, memory
 // nodes, or LLM roles, only about ids and the edges between them. So it lives
 // here, exactly like `scoreProcedureCandidate`, reusable from any agent

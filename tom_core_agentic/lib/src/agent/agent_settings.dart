@@ -1,4 +1,4 @@
-// Global agent settings (§7.1 Options surface + bridge host/port, §12).
+// Global agent settings (§7.1 Options surface + bridge host/port).
 //
 // A single editor-configuration value (not a list): the bridge connection
 // target and the global Agent SDK option defaults that overlay a profile when
@@ -27,13 +27,13 @@ final class AgentSettings {
     this.toolApprovalMode,
   });
 
-  /// Host the bridge port-scan connects to (§6).
+  /// Host the bridge port-scan connects to.
   final String bridgeHost;
 
-  /// First port of the §6 scan range (inclusive).
+  /// First port of the bridge scan range (inclusive).
   final int portScanStart;
 
-  /// Last port of the §6 scan range (inclusive).
+  /// Last port of the bridge scan range (inclusive).
   final int portScanEnd;
 
   /// Profile selected on launch; null = first available.

@@ -183,8 +183,8 @@ List<ParsedToolCall> _jsonCalls(String text) {
 List<ParsedToolCall> _scanBareJsonCalls(String text) {
   final cleaned = _stripFence(text);
   final out = <ParsedToolCall>[];
-  // Bound the total scan work to keep this linear in the input length
-  // (security §5). A balanced span the loop matches is jumped past, so a
+  // Bound the total scan work to keep this linear in the input length.
+  // A balanced span the loop matches is jumped past, so a
   // well-formed input is scanned ~once and stays far under budget. The
   // pathological case is a long run of *unbalanced* openers: each one makes
   // `_matchBalanced` sweep to the end of the string and the outer loop then
@@ -215,7 +215,7 @@ List<ParsedToolCall> _scanBareJsonCalls(String text) {
 /// span, or `(end: null, scanned: n)` when the span is unbalanced, its brackets
 /// mismatch, or the [maxScan] character budget is exhausted before it balances.
 /// `scanned` is always how many characters were examined, so the caller can
-/// debit a shared work budget and keep the overall scan linear (security §5).
+/// debit a shared work budget and keep the overall scan linear.
 /// String contents (single or double quoted, with backslash escapes) are
 /// skipped so a `{`, `}`, `[` or `]` inside a value does not affect the depth.
 ({int? end, int scanned}) _matchBalanced(String s, int start, int maxScan) {

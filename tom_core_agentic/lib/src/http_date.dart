@@ -81,7 +81,7 @@ class HttpDate {
   /// `DateTime.utc` *silently normalises* out-of-range components (e.g. day 32
   /// rolls into the next month, hour 25 into the next day), so a malformed
   /// header would otherwise parse to a plausible-but-wrong instant instead of
-  /// being rejected (bug §32). Each field is bounded here so an invalid header
+  /// being rejected. Each field is bounded here so an invalid header
   /// throws [FormatException] rather than yielding a misleading date.
   static DateTime _buildUtc(
     String input,
@@ -115,7 +115,7 @@ class HttpDate {
 
   static int _monthOrThrow(String token) {
     // A short month token (e.g. truncated `Oc`) must be a FormatException, not
-    // a RangeError from `substring(0, 3)` on a <3-char string (bug §31).
+    // a RangeError from `substring(0, 3)` on a <3-char string.
     if (token.length < 3) {
       throw FormatException('Unknown HTTP-date month: $token');
     }

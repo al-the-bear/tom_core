@@ -1,5 +1,4 @@
-// Round-trip tests for the config-editor YAML stores added for §12 step 18:
-// agent profiles, prompt templates, queue templates, timed requests, and the
+// Round-trip tests for the config-editor YAML stores: agent profiles, prompt templates, queue templates, timed requests, and the
 // singleton agent settings. Each store writes to a temp file and reloads to an
 // equal model, and degrades to the empty/default value on a missing/malformed
 // file — mirroring the existing PromptQueueStore/ChatVariableStore behaviour.
