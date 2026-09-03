@@ -10,6 +10,12 @@ import 'package:core_client_sample/resources/app_texts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+/// Builds the todo form the way production does — inside the enclosing
+/// [todoScopeId] scope, so its fields resolve their `<basePath>.validators`
+/// declarations under `todo.item.<tomId>`.
+TodoItemForm buildForm() =>
+    TomScope.withScope(todoScopeId, () => TodoItemForm(const {}));
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -31,7 +37,7 @@ void main() {
 
   testWidgets('CCS-VAL-02: the title field merges a code + a resource validator',
       (tester) async {
-    final form = TodoItemForm(const {});
+    final form = buildForm();
     // One code-supplied validator (_noSurroundingSpace) + one resource-declared
     // (`required`) = two effective validators, proving TomField merges both.
     expect(form.title.validators.length, 2);
@@ -49,7 +55,7 @@ void main() {
   testWidgets(
       'CCS-VAL-04: the code-supplied validator message also resolves as a resource',
       (tester) async {
-    final form = TodoItemForm(const {});
+    final form = buildForm();
     form.title.set(' padded ');
     await form.title.validate();
     expect(form.title.resolvedErrorMessage,
@@ -59,7 +65,7 @@ void main() {
   testWidgets(
       'CCS-VAL-05: an empty title falls through the code rule to resource `required`',
       (tester) async {
-    final form = TodoItemForm(const {});
+    final form = buildForm();
     // The whitespace rule passes on '' (trim == value), so `required` is the
     // validator that reports — demonstrating the merge runs both in order.
     form.title.set('');

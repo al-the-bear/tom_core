@@ -3,11 +3,20 @@
 // composed from (`<basePath>.label`) — is byte-identical to the wire/authz key
 // used to look the field's grade up in the session matrix. There is no second
 // `todoItem.*` addressing scheme living beside the form's `todo.item.*` labels.
+//
+// The form is built under the `todo` scope with `formId: 'item'` (a scope id is
+// one path segment; the kernel refuses a dotted one), so the two join to the
+// `todo.item` base asserted below.
 
 import 'package:core_client_sample/reflection_seed.dart';
 import 'package:core_client_sample/resources/app_texts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+/// Builds the form the way production does: inside the enclosing [todoScopeId]
+/// scope, so `scope` + `formId` compose the `todo.item` base path.
+TodoItemForm buildForm([Map<String, TomAuthState> fieldStates = const {}]) =>
+    TomScope.withScope(todoScopeId, () => TodoItemForm(fieldStates));
 
 void main() {
   setUpAll(initializeReflection);
@@ -21,23 +30,27 @@ void main() {
   testWidgets(
       'CCS-FORM-01: each gradable field basePath equals its wire/authz key',
       (tester) async {
-    final form = TodoItemForm(const {});
-    // The label key is `<basePath>.label`; the grant key is `<scope>.<tomId>`.
-    // Deriving both from the single production scope constant proves the two
+    final form = buildForm();
+    // The label key is `<basePath>.label`; the grant key is `<prefix>.<tomId>`.
+    // Deriving both from the single production key constant proves the two
     // addressing schemes have collapsed into one identity.
-    expect(form.title.basePath, '$todoItemScope.title');
-    expect(form.done.basePath, '$todoItemScope.done');
-    expect(form.priority.basePath, '$todoItemScope.priority');
-    expect(form.assigneeId.basePath, '$todoItemScope.assigneeId');
-    // And that scope resolves to the exact server-seeded wire prefix.
-    expect(todoItemScope, 'todo.item');
+    expect(form.title.basePath, '$todoItemKey.title');
+    expect(form.done.basePath, '$todoItemKey.done');
+    expect(form.priority.basePath, '$todoItemKey.priority');
+    expect(form.assigneeId.basePath, '$todoItemKey.assigneeId');
+    // And that prefix resolves to the exact server-seeded wire prefix. Pinned
+    // against the literal so the two-segment composition cannot quietly change
+    // the path while every relative assertion above still passes.
+    expect(todoItemKey, 'todo.item');
+    expect(form.basePath, 'todo.item');
+    expect(form.title.basePath, 'todo.item.title');
   });
 
   testWidgets(
       'CCS-FORM-02: the grade stamped under the wire key drives the field',
       (tester) async {
     // A matrix keyed purely by the wire keys — the same identity as basePath.
-    final form = TodoItemForm(const {
+    final form = buildForm(const {
       'todo.item.title': TomAuthState.read,
       'todo.item.done': TomAuthState.disabled,
       'todo.item.priority': TomAuthState.none,
@@ -52,7 +65,7 @@ void main() {
   testWidgets(
       'CCS-FORM-03: a gradable field absent from the matrix is closed-safe (none)',
       (tester) async {
-    final form = TodoItemForm(const {});
+    final form = buildForm();
     expect(form.title.effectiveAuthState, TomAuthState.none);
     expect(form.assigneeId.effectiveAuthState, TomAuthState.none);
     // `description` is declared without an authorizer, so it is not addressed
@@ -65,7 +78,7 @@ void main() {
 
   testWidgets('CCS-FORM-04: the label resolves from the same field identity',
       (tester) async {
-    final form = TodoItemForm(const {});
+    final form = buildForm();
     // `<basePath>.label` → `todo.item.title.label` in the installed bundle.
     expect(form.title.resolvedLabel, 'Title');
     expect(form.priority.resolvedLabel, 'Priority');

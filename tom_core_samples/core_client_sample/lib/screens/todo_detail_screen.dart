@@ -43,7 +43,13 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   void initState() {
     super.initState();
     _item = widget.item ?? TodoItem();
-    _form = TodoItemForm(widget.session.fieldStates);
+    // Built inside the enclosing `todo` scope: the form's id is the single
+    // segment `item`, and the two join to the `todo.item` base every field's
+    // label and grant key is composed from.
+    _form = TomScope.withScope(
+      todoScopeId,
+      () => TodoItemForm(widget.session.fieldStates),
+    );
     _form.bind(_item);
   }
 

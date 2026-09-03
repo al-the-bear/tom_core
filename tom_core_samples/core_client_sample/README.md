@@ -277,15 +277,24 @@ The flow is: **role → matrix → per-field authorizer → render**.
    resulting `Map<String, TomAuthState>` (keyed by the plain gradable-field
    resource keys — `todo.item.title`, `todo.item.done`, … — there is no
    `*ResourceKeys` catalogue class, G-RES-6).
-2. The detail screen constructs `TodoItemForm(session.fieldStates)`.
+2. The detail screen constructs the form inside the enclosing `todo` scope:
+   `TomScope.withScope(todoScopeId, () => TodoItemForm(session.fieldStates))`.
+   The form's own `formId` is the single segment `item`, and `TomForm` joins the
+   two into the `todo.item` base path. A scope id must be **one** segment — the
+   kernel refuses a dotted one, since `'todo.item'` under no parent would render
+   identically to the unrelated chain `'todo'` → `'item'`, letting a scope named
+   from data reach another scope's resources.
 3. The form turns each entry into a `TomAuthorizer.fixed(state)` on the matching
    field:
 
    ```dart
-   // The field's own tomId composes both its label key and its grant key,
-   // from the one scope constant — so the two can never diverge.
-   TomAuthorizer _authFor(String tomId) => TomAuthorizer.fixed(
-       fieldStates['$todoItemScope.$tomId'] ?? TomAuthState.none);
+   // The field's own tomId composes both its label key and its grant key, from
+   // the one key constant — so the two can never diverge. And that constant is
+   // itself joined from the same two segments the framework joins
+   // (`'$todoScopeId.$todoItemFormId'`), so it cannot drift from the basePath
+   // the fields actually carry.
+   TomAuthorizer _authFor(String tomId) =>
+       TomAuthorizer.fixed(fieldStates['$todoItemKey.$tomId'] ?? TomAuthState.none);
 
    late final priority = TomFormStringDropdown(
      'priority', TodoPriority.medium.name,
