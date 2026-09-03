@@ -32,11 +32,21 @@ transport; each primitive is a building block a host/worker pair assembles.
 | `IsolateCancellationException` | final class | Thrown by `throwIfCancelled` when the token is cancelled |
 | `IsolateStreamCloseSignal` | final class | Per-stream close flag + future a producer reacts to without busy-waiting |
 | `BackpressureTracker` | final class | FIFO credit ledger gating a producer to the consumer's drain rate |
-| `IsolateRequestGuard` | class | Host-side per-request completion guard: fails in-flight requests on worker death or deadline |
+| `IsolateRequestGuard` | final class | Host-side per-request completion guard: fails in-flight requests on worker death or deadline |
 | `IsolateRequestFailureReason` | enum | `workerDeath` or `timeout` |
 | `IsolateRequestFailure` | final class | The failure delivered to a guarded request |
-| `IsolateExceptionRegistry` | class | Maps type tags to factories that rebuild typed errors across the boundary |
+| `IsolateExceptionRegistry` | final class | Maps type tags to factories that rebuild typed errors across the boundary |
 | `IsolateExceptionFactory` | typedef | `Object Function(String message, Map<String, Object?> details)` |
+
+**Every class here is `final`, and that is uniform on purpose.** None of these
+types is varied by subclassing: each is adjusted by what you pass it — a
+`defaultTimeout`, a registered [`IsolateExceptionFactory`], a credit limit — so
+a subclass would have nothing to override that is not already a parameter.
+Closing them says so, and leaves opening one later as a deliberate act rather
+than an accident of whichever modifier the file happened to be written with.
+The private helpers inside the module carry no modifier, because one there
+would restrict nothing: a modifier governs subtyping from outside the
+declaring library, and a private class is not visible outside it.
 
 ## Cancellation
 

@@ -1,5 +1,34 @@
 ## 1.8.0
 
+### Changed
+
+- **`isolate_streaming` closed its last two open classes.**
+  `IsolateRequestGuard` and `IsolateExceptionRegistry` were plain `class` while
+  the module's other eight public types were `final`. Nothing in the workspace
+  extended, implemented or mixed in either — the two consumers
+  (`tom_brain_substrate`, `tom_brain_memory`) use both by composition — so the
+  split bought no extension point and recorded no decision; it read as
+  whichever modifier each file happened to be written with.
+  Both are now `final`, and each says in its dartdoc *why*, because that is the
+  part a modifier alone cannot convey: neither type is varied by subclassing.
+  The guard is adjusted by `defaultTimeout` and `guard`'s per-call `timeout`,
+  and learns of a death through `markWorkerDead` rather than an overridable
+  hook; the registry is specialised by the `IsolateExceptionFactory` closures
+  you register, which is already a function type. A subclass of either would
+  have nothing to override that is not already a parameter.
+  The module's two *private* helpers, `_GuardEntry` and `_RegistryEntry`, were
+  deliberately **not** given the keyword. A class modifier governs subtyping
+  from outside the declaring library and a private class is invisible there, so
+  `final` on them would permit exactly what its absence permits while reading
+  as a decision. Each now carries a line saying so, which is the honest form of
+  the same consistency.
+  No API is lost: both classes were only ever constructed and called, and both
+  consumer packages still analyze clean.
+  `doc/isolate_streaming.md` moves to `final class` in both rows, which is what
+  makes this stick — `tool/check_doc_kinds.py` compares the `Kind` cell to the
+  declaration's modifiers verbatim, so dropping `final` again now fails a gate
+  rather than passing unnoticed as it did before.
+
 ### Fixed
 
 - **`isSimpleIdentifier` was documented as the simple form's grammar. The

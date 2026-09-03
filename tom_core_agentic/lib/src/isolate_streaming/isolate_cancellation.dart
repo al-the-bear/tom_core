@@ -204,6 +204,12 @@ final class IsolateCancellationRegistry {
   }
 }
 
+/// Per-token state: the cancelled flag and the future that fires with it.
+///
+/// Carries no class modifier, unlike the public types in this module. A
+/// modifier restricts subtyping from *outside* the declaring library, and a
+/// private class is not visible there — `final` here would read as a decision
+/// while permitting exactly what its absence permits.
 class _RegistryEntry {
   bool _cancelled;
 

@@ -50,7 +50,12 @@ typedef IsolateExceptionFactory = Object Function(
 /// One registry per isolate host. Domain-free: the concrete adapter
 /// registers its closed taxonomy's factories; the registry owns only the
 /// lookup and the unknown-type fallback (`reconstruct` returns `null`).
-class IsolateExceptionRegistry {
+///
+/// `final` because the registry is specialised by *what you register*,
+/// not by subtyping — [IsolateExceptionFactory] is the extension point,
+/// and it is already a function type, so an adapter with unusual
+/// reconstruction needs supplies a closure rather than a subclass.
+final class IsolateExceptionRegistry {
   final Map<String, IsolateExceptionFactory> _factories =
       <String, IsolateExceptionFactory>{};
 

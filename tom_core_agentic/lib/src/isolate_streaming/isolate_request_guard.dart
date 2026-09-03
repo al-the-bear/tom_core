@@ -74,7 +74,13 @@ final class IsolateRequestFailure implements Exception {
 /// boundary. It does not (and cannot) unblock the underlying
 /// `Completer` the kernel worker leaks on a dead isolate; it bounds
 /// the *caller's* await so the host stays responsive.
-class IsolateRequestGuard {
+///
+/// `final` because the guard is varied by *configuration*, not by
+/// subtyping: [defaultTimeout] and [guard]'s per-call `timeout` are the
+/// designed adjustment points, and the death signal arrives through
+/// [markWorkerDead] rather than through an overridable hook. A subclass
+/// would have nothing to override that is not already a parameter.
+final class IsolateRequestGuard {
   /// Default per-request deadline applied when [guard] is called
   /// without an explicit `timeout`. `null` (the default) means no
   /// deadline — worker-death protection still applies, but a request
@@ -198,6 +204,11 @@ class IsolateRequestGuard {
 /// The closure captures the request's `Completer<T>` so the guard's
 /// untyped `Set<_GuardEntry>` can fail any request without itself
 /// being generic.
+///
+/// Carries no class modifier, unlike the public types in this module. A
+/// modifier restricts subtyping from *outside* the declaring library, and a
+/// private class is not visible there — `final` here would read as a decision
+/// while permitting exactly what its absence permits.
 class _GuardEntry {
   final String label;
   final void Function(IsolateRequestFailure failure) fail;
