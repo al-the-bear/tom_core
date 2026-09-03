@@ -11,7 +11,7 @@
 /// names the endpoint id that ties the two together.
 ///
 /// Methods return the reflected domain entities (the app's working currency,
-/// projected to/from JSON at the transport boundary) and the step-4 DTOs.
+/// projected to/from JSON at the transport boundary) and the wire DTOs.
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';

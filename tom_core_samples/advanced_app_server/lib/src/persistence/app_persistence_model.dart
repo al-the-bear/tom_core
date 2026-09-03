@@ -15,7 +15,7 @@
 /// and whose ids are display strings, while the object-persistence layer needs
 /// the opposite shape — plain typed fields, an integer surrogate primary key,
 /// explicit integer foreign-key columns, and no nested collections. The pure
-/// conversions between the two worlds live in `app_mapping.dart` (step 15).
+/// conversions between the two worlds live in `app_mapping.dart`.
 ///
 /// Each record is `@tomReflector` + `@TomDbTable` on the `app_db` datasource and
 /// is loaded/saved through a process-wide singleton `TomSqlDatasourceRepository`,
@@ -38,7 +38,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 /// The `app_db` datasource name every record below binds to.
 ///
-/// The app-server boot (step 21) registers this connection; the reused
+/// The app-server boot registers this connection; the reused
 /// framework `TomResourceGrant` (the field-grade matrix the auth server seeds)
 /// is read through the framework default `main` datasource, which the boot
 /// points at the same physical schema.
@@ -204,7 +204,7 @@ final listRepository = ListRepository();
 ///
 /// `status` / `priority` / `label` are stored as their enum's name (the
 /// `advanced_todo_domain` convention). `tags` is stored as a single serialized
-/// text column rather than a child table — the mapping layer (step 15) owns the
+/// text column rather than a child table — the mapping layer owns the
 /// join/split codec, keeping this row flat like every other record.
 ///
 /// Read-scoped by the async [itemVisibilityScope] on its surrogate `id` (RCB8);

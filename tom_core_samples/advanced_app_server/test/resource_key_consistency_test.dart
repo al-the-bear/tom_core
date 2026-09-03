@@ -10,9 +10,9 @@
 /// label, and no stray label for a field the domain does not grade.
 ///
 /// (G-RES-6: addressing is by scope + `tomId`, so there is no catalogue class.
-/// Step 21 derives the *server's* gradable set from the resource bundle
-/// ([AppResourceBundles.gradableItemKeys], asserted below); steps 24/26 derive
-/// the *client's* set from the form. The anchor both derivations are checked
+/// The *server's* gradable set is derived from the resource bundle
+/// ([AppResourceBundles.gradableItemKeys], asserted below); the *client's* set
+/// is derived from the form. The anchor both derivations are checked
 /// against is the shared domain's own [gradableItemKeys], not a list re-typed
 /// here — the same anchor the auth server's grant-matrix guard uses.)
 ///
@@ -95,10 +95,9 @@ void main() {
       }
     });
 
-    test('the bundle derives the gradable key set in display order (step 21)',
-        () {
-      // Step 21: the server no longer holds a hand-maintained gradable-key
-      // list — the resolver and the write path both address
+    test('the bundle derives the gradable key set in display order', () {
+      // The server holds no hand-maintained gradable-key list — the resolver
+      // and the write path both address
       // AppResourceBundles.gradableItemKeys(). Pin that derivation (set + order)
       // to the shared domain vocabulary, so a reordered or renamed label is
       // caught, and so is a regrade applied to `gradableItemKeys` alone. The
@@ -107,8 +106,7 @@ void main() {
       expect(AppResourceBundles.gradableItemKeys(), orderedEquals(gradableItemKeys));
     });
 
-    test('the write path enforces exactly the bundle-derived keys (step 21)',
-        () {
+    test('the write path enforces exactly the bundle-derived keys', () {
       // The write path's field-binding table is built from the same bundle keys,
       // so a bundle field without a read/copy binding (or a stray binding) would
       // surface here as a mismatch.

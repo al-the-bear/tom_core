@@ -68,7 +68,7 @@ class AppResourceBundles {
 
   /// The gradable `todo.item.<field>` keys, in the display order the served
   /// bundle labels them — the app server's **single source** for the gradable
-  /// item set (step 21). Derived from the fields labelled under `todo.item.*` in
+  /// item set. Derived from the fields labelled under `todo.item.*` in
   /// [texts] rather than a hand-maintained list, so a field added to or removed
   /// from the resource tree changes the graded set with it. Both the field-grade
   /// resolver (which reports a [TomAuthState] per key) and the write path (which

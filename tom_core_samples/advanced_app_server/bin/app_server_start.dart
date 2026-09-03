@@ -28,8 +28,8 @@
 /// `TomBearerAuthentication` singleton, which is a token store the server
 /// middleware never populates (and is not request-scoped, so it is unsafe
 /// under concurrent requests). The server-level [appServerErrorHandler] maps
-/// the service layer's closed/safe denial keys to HTTP 403/404 (the mapping
-/// step 20 deferred to the boot).
+/// the service layer's closed/safe denial keys to HTTP 403/404 — the mapping
+/// the services deliberately leave to the boot.
 ///
 /// Two datasources are wired (`assets/datasources_default.yaml`): `app_db` holds
 /// the app's own tables, and `main` points at the auth server's `auth_db` — home

@@ -1,5 +1,5 @@
 /// Field-level grade resolution: given a principal's effective [ProjectRole]
-/// (from the step-17 resource-access resolver), load that role's
+/// (from the resource-access resolver), load that role's
 /// [TomResourceGrant]s and fold them into the per-field [TomAuthState] grades
 /// the server enforces against.
 ///
@@ -37,9 +37,8 @@
 ///
 /// Reads sit behind a [GrantStore] seam so the resolver is pure over whichever
 /// store it is handed: [RepositoryGrantStore] is the live query-backed store
-/// wired at boot; [InMemoryGrantStore] is a seeded store for tests (step 18's
-/// "Done" bar — [projectRoleFieldGrades] reproduced for each role with no
-/// database).
+/// wired at boot; [InMemoryGrantStore] is a seeded store for tests
+/// ([projectRoleFieldGrades] reproduced for each role with no database).
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
@@ -76,7 +75,7 @@ class FieldGradeResolver {
 
   /// The gradable `todo.item.<field>` keys the resolver reports a [TomAuthState]
   /// for, in display order. Defaults to the server resource bundle's gradable
-  /// set ([AppResourceBundles.gradableItemKeys], step 21) so the server derives
+  /// set ([AppResourceBundles.gradableItemKeys]) so the server derives
   /// the graded set from the texts it serves rather than a hand-maintained list;
   /// tests may inject an explicit set.
   final List<String> gradableItemKeys;

@@ -7,7 +7,7 @@
 /// foreign-key columns, and a single serialized `tags` column. Each
 /// `*ToRecord` flattens a domain entity into its row; each `*FromRecord`
 /// rebuilds the observable entity. Every conversion here is **pure and total**,
-/// so the whole boundary unit-tests without a database (step 15's "Done" bar):
+/// so the whole boundary unit-tests without a database:
 ///
 /// - **Unpersisted → null PK.** A domain entity whose id is still empty maps to
 ///   a `null` surrogate key, so the repository issues an INSERT, not an UPDATE.

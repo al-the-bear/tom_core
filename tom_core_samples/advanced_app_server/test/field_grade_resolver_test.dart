@@ -1,4 +1,4 @@
-/// Database-free unit tests for the field-grade resolver (step 18): folding a
+/// Database-free unit tests for the field-grade resolver: folding a
 /// role's [TomResourceGrant]s into per-field [TomAuthState] grades is pure over
 /// the [GrantStore] seam, so it verifies against a seeded [InMemoryGrantStore]
 /// with no server or MariaDB.
@@ -127,11 +127,10 @@ void main() {
       expect(states.keys, orderedEquals(seededGrantMatrix[ProjectRole.owner]!.keys));
     });
 
-    test('the gradable key set is derived from the server bundle (step 21)',
-        () {
-      // Step 21: the resolver no longer carries an inline key list — its default
-      // set is the server resource bundle's gradable keys, so the graded set
-      // tracks the texts the server serves.
+    test('the gradable key set is derived from the server bundle', () {
+      // The resolver carries no inline key list — its default set is the
+      // server resource bundle's gradable keys, so the graded set tracks the
+      // texts the server serves.
       expect(resolver.gradableItemKeys,
           orderedEquals(AppResourceBundles.gradableItemKeys()));
     });

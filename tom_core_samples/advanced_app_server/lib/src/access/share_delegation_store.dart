@@ -16,7 +16,7 @@
 /// seeded, database-free store the share tests drive — and, because it *also*
 /// implements the framework read seam [PrincipalDelegationStore], the same
 /// instance can be handed to a [TomDelegationResolver] to prove a written share
-/// takes effect immediately (the step-21 "Done" bar, RCC3-migrated).
+/// takes effect immediately (RCC3-migrated).
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';

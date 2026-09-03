@@ -1,5 +1,5 @@
-/// Database-free integration tests for the read endpoints (step 19, RCC3): the
-/// [AppReadService] composes the step-17 [ResourceRoleResolver], so the read
+/// Database-free integration tests for the read endpoints (RCC3): the
+/// [AppReadService] composes the [ResourceRoleResolver], so the read
 /// path — visibility filtering plus the flat resource-role map the client grades
 /// fields against locally (RCC2) — verifies against seeded in-memory stores with
 /// no server or MariaDB.
@@ -9,8 +9,8 @@
 /// with bob=3 shared `editor` and carol=4 shared `viewer` on the project. RCC3 expresses ownership as a C-5 owner grant (RCC1)
 /// and each share as a C-6 `share`-mode [TomPrincipalDelegation], folded by the
 /// framework resolver into the effective roles the containment rule then walks.
-/// The step-19 "Done" bar is the headline pair: a shared user sees the owner's
-/// project, a stranger does not.
+/// The headline pair is: a shared user sees the owner's project, a stranger
+/// does not.
 ///
 /// The list endpoints return observable domain entities (built through the
 /// mapping layer), so the registry must be live before they run; the grant and
@@ -235,7 +235,7 @@ void main() {
     });
   });
 
-  group('a shared user sees the owner project (the step-19 Done bar)', () {
+  group('a shared user sees the owner project', () {
     test('the editor grantee sees the shared project and its descendants', () async {
       // bob is shared `editor` on project 1 — he sees the owner's project and
       // the lists/items it contains, even though he owns nothing.
@@ -253,7 +253,7 @@ void main() {
     });
   });
 
-  group('a stranger sees nothing (the step-19 Done bar)', () {
+  group('a stranger sees nothing', () {
     test('every list endpoint is empty for an unshared, non-owner user', () async {
       expect(await service.listWorkspaces(dave), isEmpty);
       expect(await service.listProjects(dave, 1), isEmpty);

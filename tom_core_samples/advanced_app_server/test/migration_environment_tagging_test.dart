@@ -1,4 +1,4 @@
-/// Step 20 done-bar guard (G-MIG-1/2/3): the `app_db` migration filenames are
+/// Migration-naming guard (G-MIG-1/2/3): the `app_db` migration filenames are
 /// numbered consecutively and the demo seed is tagged so a **production** apply
 /// creates the schema but skips the demo content (the app comes up empty).
 ///
@@ -34,7 +34,7 @@ List<({int version, TomMigrationFileName parsed})> _migrations(String dir) {
 }
 
 void main() {
-  group('app_db migration environment tagging (Step 20 / G-MIG-1/2/3)', () {
+  group('app_db migration environment tagging (G-MIG-1/2/3)', () {
     late final List<({int version, TomMigrationFileName parsed})> migrations;
 
     setUpAll(() => migrations = _migrations(_appSchemaDir));

@@ -1,4 +1,4 @@
-/// Database-free tests for the share endpoints (step 21, RCC3): the
+/// Database-free tests for the share endpoints (RCC3): the
 /// [AppShareService] composes the [ResourceRoleResolver] over a seeded in-memory
 /// share-delegation store, so the whole `POST /share` / `DELETE /share/{id}`
 /// owner-only path — and the headline "a created share immediately grants the
@@ -103,9 +103,7 @@ void main() {
       expect(saved.delegatorId, '$alice'); // the sharer is recorded as delegator
     });
 
-    test(
-        'a created share immediately grants the grantee access (the step-21 Done bar)',
-        () async {
+    test('a created share immediately grants the grantee access', () async {
       final store = InMemoryShareDelegationStore(delegations: demoShares());
       // carol has no role on project 1 to begin with.
       expect(

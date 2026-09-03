@@ -4,7 +4,7 @@
 ///
 /// This is the first of the app server's two authorization layers. It
 /// answers "*may this principal touch this object at all, and as what role?*" —
-/// the field-level grade resolver (step 18) then maps the resolved role to
+/// the field-level grade resolver then maps the resolved role to
 /// per-field `TomAuthState`s.
 ///
 /// It **replaces** the sample's earlier bespoke resolver, which walked an

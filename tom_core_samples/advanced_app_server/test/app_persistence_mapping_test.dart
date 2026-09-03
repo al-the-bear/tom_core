@@ -1,10 +1,11 @@
 /// Database-free unit tests for the `app_db` persistence boundary: the domain
 /// ↔ record mapping is pure and total, so it verifies without a server or
-/// MariaDB (step 15's "Done" bar).
+/// MariaDB.
 ///
-/// The live schema boot + seed rows are the gate of step 16; the live endpoint
-/// round-trips against Docker MariaDB land in steps 19–21. These tests cover the
-/// whole conversion surface that needs no database: id↔key handling
+/// The live schema boot, the seed rows and the endpoint round-trips against
+/// Docker MariaDB are covered by the cross-tier integration run
+/// (`advanced_client_core/tool/run_cross_tier_integration.sh`). These tests
+/// cover the whole conversion surface that needs no database: id↔key handling
 /// (unpersisted→null PK), foreign keys, enum-token leniency, and the tags codec.
 library;
 

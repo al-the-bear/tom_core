@@ -1,6 +1,6 @@
-/// Database-free integration tests for the write endpoints (step 20, RCC3): the
-/// [AppWriteService] composes the step-17 [ResourceRoleResolver] and the step-18
-/// field-grade resolver, so the whole write path — role gating plus per-field
+/// Database-free integration tests for the write endpoints (RCC3): the
+/// [AppWriteService] composes the [ResourceRoleResolver] and the field-grade
+/// resolver, so the whole write path — role gating plus per-field
 /// grade enforcement — verifies against seeded in-memory stores with no server
 /// or MariaDB.
 ///
@@ -9,8 +9,8 @@
 /// grant matrix `[001]-auth_authz_grants.sql` seeds, with bob=3 shared `editor`,
 /// erin=5 shared `commenter`, and carol=4 shared `viewer` on project 1. RCC3 expresses ownership as a C-5 owner grant (RCC1) and each
 /// share as a C-6 `share`-mode [TomPrincipalDelegation], folded by the framework
-/// resolver into the effective roles the containment rule walks. The step-20
-/// "Done" bar is the headline triple: a `viewer` `PUT` to `title` is rejected, an
+/// resolver into the effective roles the containment rule walks. The headline
+/// triple is: a `viewer` `PUT` to `title` is rejected, an
 /// `editor` `PUT` succeeds, and the persisted row reflects only the permitted
 /// fields.
 ///
@@ -184,7 +184,7 @@ void main() {
   // layer, which self-observe through reflection; the registry must be live.
   setUpAll(initializeReflection);
 
-  group('updateItem field-grade enforcement (the step-20 Done bar)', () {
+  group('updateItem field-grade enforcement', () {
     test('a viewer PUT to title is rejected (read-only field)', () async {
       final store = seededWriteStore();
       final service = writeServiceOver(store);

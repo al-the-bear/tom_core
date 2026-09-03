@@ -15,9 +15,9 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 
-/// The gradable item field tokens (plain field names). Step 21 derives the
-/// server's gradable set from this bundle; here it is the inline expectation the
-/// bundle labels.
+/// The gradable item field tokens (plain field names). The server derives its
+/// gradable set from this bundle; here it is the inline expectation the bundle
+/// labels.
 const _gradableItemFields = <String>[
   'title',
   'status',

@@ -1,33 +1,33 @@
 /// The app server's HTTP surface — the todo board's read/write/share endpoints
 /// (the registry's `app` API).
 ///
-/// The same three-collaborator split the auth server uses (the step-10
-/// `AuthUserStore`, the step-11 `AuthTokenService`, the step-12 `AdminService`):
+/// The same three-collaborator split the auth server uses (`AuthUserStore`,
+/// `AuthTokenService`, `AdminService`):
 ///
 /// - [AppReadStore] is the listing seam the read operations enumerate through.
-///   [RepositoryAppReadStore] is the live query-backed store over the step-14
-///   `app_db` repository singletons; [InMemoryAppReadStore] is a seeded,
+///   [RepositoryAppReadStore] is the live query-backed store over the `app_db`
+///   repository singletons; [InMemoryAppReadStore] is a seeded,
 ///   database-free store for tests.
 /// - [AppReadService] is the pure read logic over an [AppReadStore]. Every list
 ///   endpoint filters against the principal's visible id-set from
 ///   [VisibleResourceResolver] (owned ∪ shared, per entity type — the same set
 ///   the async `@TomDbScope` pushes to the database, so the service-layer and
 ///   database answers cannot diverge), and [AppReadService.resourceRoles]
-///   expands the step-17 [ResourceRoleResolver]'s effective grants down each
+///   expands the [ResourceRoleResolver]'s effective grants down each
 ///   containment subtree into the flat `resourceKey → roleName` map the client
 ///   grades its own fields from. **Reads never grade a field.** Per-field grades
-///   are a write-time and file-column concern, resolved by the step-18
+///   are a write-time and file-column concern, resolved by the
 ///   [FieldGradeResolver] on behalf of [AppWriteService] and
 ///   `ItemAttachmentGradeResolver`; [AppReadService] holds no grade resolver at
 ///   all. It has no server/zone dependency either (only the resolvers' own
 ///   seams), so the visibility filter and the role-map expansion are unit-tested
 ///   directly against seeded stores — no server, no MariaDB.
-/// - [AppWriteStore] / [AppWriteService] are the write counterpart (step 20):
+/// - [AppWriteStore] / [AppWriteService] are the write counterpart:
 ///   the service gates each mutation by the principal's resolved [ProjectRole]
 ///   (role minimums for create/delete/comment) and, for item writes, enforces
 ///   the four-state field grade — a change to any field the caller is not `full`
 ///   on rejects the write, and the persisted row overlays only permitted fields.
-/// - [AppShareService] is the cross-user sharing counterpart (step 21, RCC3):
+/// - [AppShareService] is the cross-user sharing counterpart (RCC3):
 ///   only an `owner` of the target resource may create a `share`-mode
 ///   `TomPrincipalDelegation` (which immediately grants the grantee access, since
 ///   the resource-role resolver folds delegations into the effective roles) or
@@ -38,10 +38,10 @@
 ///   the bearer token, and delegates reads to [AppReadService], writes to
 ///   [AppWriteService], and shares to [AppShareService].
 ///
-/// This file delivers steps 19 (reads), 20 (writes), and 21 (shares). The
-/// component is exercised end-to-end at boot (step 21), where its reflection is
-/// generated from the `bin/app_server_start.dart` import graph; the step-19/20/21
-/// "Done" bars are the database-free [AppReadService]/[AppWriteService]/
+/// This file delivers all three surfaces — reads, writes, and shares. The
+/// component is exercised end-to-end at boot, where its reflection is generated
+/// from the `bin/app_server_start.dart` import graph; the behaviour itself is
+/// pinned by the database-free [AppReadService]/[AppWriteService]/
 /// [AppShareService] integration tests (a shared user sees the owner's project; a
 /// `viewer` write to a read-only field is rejected while an `editor` write
 /// persists only the permitted fields; a created share grants the grantee
@@ -298,7 +298,7 @@ class AppReadService {
   /// The listing seam candidate rows are enumerated through.
   final AppReadStore store;
 
-  /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
+  /// Resolves a principal's effective [ProjectRole] on a resource.
   /// Still used by [resourceRoles] to expand the client's grading map; the
   /// list endpoints resolve visibility through [visibleResolver] instead (RCB8).
   final ResourceRoleResolver accessResolver;
@@ -536,8 +536,9 @@ class AppReadService {
 /// Mirrors the [AppReadStore]/[ResourceContainmentStore] split: the write service needs
 /// to load a single item (to diff a `PUT` against the stored row), insert/update
 /// items, projects and comments, and delete an item. [RepositoryAppWriteStore]
-/// is the live store over the step-14 repository singletons; [InMemoryAppWriteStore]
-/// is a seeded, database-free store the field-grade enforcement tests drive.
+/// is the live store over the `app_db` repository singletons;
+/// [InMemoryAppWriteStore] is a seeded, database-free store the field-grade
+/// enforcement tests drive.
 abstract class AppWriteStore {
   /// Inserts or updates [record], returning the saved workspace row.
   ///
@@ -836,12 +837,12 @@ class _GradableItemField {
 }
 
 /// The read/copy binding for every gradable `todo.item.*` field, keyed by its
-/// full resource key. Only the closures live here; the *set and order* of graded
-/// fields is the server resource bundle's [AppResourceBundles.gradableItemKeys]
-/// (step 21), so a bundle key without a binding fails loudly when
-/// [_gradableItemFields] is built. The non-gradable columns (`label`, `tags`)
-/// are absent by design — `updateItem` preserves them from the stored row,
-/// `createItem` takes them from the creator's payload.
+/// full resource key. Only the closures live here; the *set and order* of
+/// graded fields is the server resource bundle's
+/// [AppResourceBundles.gradableItemKeys], so a bundle key without a binding
+/// fails loudly when [_gradableItemFields] is built. The non-gradable columns
+/// (`label`, `tags`) are absent by design — `updateItem` preserves them from
+/// the stored row, `createItem` takes them from the creator's payload.
 ///
 /// The `@TomFileReference` columns (`attachment`, `internalNote`) are absent for
 /// a stronger reason than grading: a blob key is *server-minted* by
@@ -868,7 +869,7 @@ final Map<String, _GradableItemBinding> _gradableItemBindings = {
 
 /// The field-graded [ItemRecord] columns, in the display order the server
 /// resource bundle labels them — the same set the field-grade resolver answers
-/// and the matrix the auth server seeds (step 21). The order and membership come
+/// and the matrix the auth server seeds. The order and membership come
 /// from [AppResourceBundles.gradableItemKeys]; [_gradableItemBindings] supplies
 /// each key's read/copy closures. A gradable key with no binding throws here.
 final List<_GradableItemField> _gradableItemFields = [
@@ -886,11 +887,10 @@ List<String> get gradableItemFieldKeys =>
 /// layers the reads use.
 ///
 /// Item, comment, subtask and project mutations first resolve the principal's
-/// effective [ProjectRole] on the target through the step-17
-/// [ResourceRoleResolver] (no access → the resource is treated as not-found,
-/// closed/safe); the three workspace mutations carry no role resolution at all
-/// and rely on ownership instead, as below. Authorization is then enforced in
-/// two layers:
+/// effective [ProjectRole] on the target through the [ResourceRoleResolver] (no
+/// access → the resource is treated as not-found, closed/safe); the three
+/// workspace mutations carry no role resolution at all and rely on ownership
+/// instead, as below. Authorization is then enforced in two layers:
 ///
 /// - **Role gating.** Six mutations check a minimum role through `_requireRole`:
 ///   `createProject` and `createItem` require `editor` or above on the parent,
@@ -904,7 +904,7 @@ List<String> get gradableItemFieldKeys =>
 ///   against, recording the creator's C-5 ownership instead.
 /// - **Field-grade enforcement.** For item writes every gradable field the
 ///   caller *changes* must be graded [TomAuthState.full] for their role (the
-///   step-18 [FieldGradeResolver]); the first violation rejects the whole write.
+///   [FieldGradeResolver]); the first violation rejects the whole write.
 ///   The persisted row overlays only the `full`-graded fields, so server-owned
 ///   columns (`id`, `listId`, `reporterId`, `createdAt`) and non-`full` fields
 ///   always keep their stored value — the persisted row reflects only permitted
@@ -912,15 +912,15 @@ List<String> get gradableItemFieldKeys =>
 ///
 /// Like [AppReadService] it has no server/zone dependency (only the store and the
 /// two resolvers' seams), so the whole write path unit-tests against seeded
-/// stores — the step-20 "Done" bar with no MariaDB.
+/// stores, with no MariaDB.
 class AppWriteService {
   /// The persistence seam mutations are applied through.
   final AppWriteStore store;
 
-  /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
+  /// Resolves a principal's effective [ProjectRole] on a resource.
   final ResourceRoleResolver accessResolver;
 
-  /// Resolves a [ProjectRole]'s per-field grades (step 18).
+  /// Resolves a [ProjectRole]'s per-field grades.
   final FieldGradeResolver gradeResolver;
 
   /// Records the creator's C-5 ownership grant when a resource is created (RCC1).
@@ -1299,18 +1299,17 @@ class AppWriteService {
     ..updatedAt = record.updatedAt;
 }
 
-/// Cross-user sharing — the `POST /share` / `DELETE /share/{id}` logic (step 21,
-/// RCC3-migrated to framework delegation).
+/// Cross-user sharing — the `POST /share` / `DELETE /share/{id}` logic
+/// (RCC3-migrated to framework delegation).
 ///
 /// Both operations are **owner-only**: the principal must resolve to
-/// [ProjectRole.owner] on the shared resource (via the step-17
-/// [ResourceRoleResolver]). Creating a share writes a `share`-mode
-/// [TomPrincipalDelegation] through the [ShareDelegationStore] — the framework
-/// [TomDelegationResolver] the resolver reads folds it into the grantee's
-/// effective roles on their next request, so the grant takes effect immediately
-/// with no parallel share table. Revoking deletes the delegation row, authorized
-/// against the share's own target (parsed back from the delegation's
-/// `resourceKey`).
+/// [ProjectRole.owner] on the shared resource (via the [ResourceRoleResolver]).
+/// Creating a share writes a `share`-mode [TomPrincipalDelegation] through the
+/// [ShareDelegationStore] — the framework [TomDelegationResolver] the resolver
+/// reads folds it into the grantee's effective roles on their next request, so
+/// the grant takes effect immediately with no parallel share table. Revoking
+/// deletes the delegation row, authorized against the share's own target
+/// (parsed back from the delegation's `resourceKey`).
 ///
 /// Like the read/write services it has no server/zone dependency (only the store
 /// and the resolver's seam), so the share path unit-tests against seeded stores.
@@ -1318,7 +1317,7 @@ class AppShareService {
   /// The delegation-write seam shares are persisted and revoked through.
   final ShareDelegationStore store;
 
-  /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
+  /// Resolves a principal's effective [ProjectRole] on a resource.
   final ResourceRoleResolver accessResolver;
 
   /// Builds the service over its collaborators (live stores at boot, seeded
@@ -1617,7 +1616,7 @@ class AdvancedAppApiService implements AppApiService {
   Future<List<Subtask>> listSubtasks(EntityIdRequest request) =>
       _reads.listSubtasks(_principalId, int.tryParse(request.id) ?? -1);
 
-  // ----- Write endpoints (step 20) -----------------------------------------
+  // ----- Write endpoints ---------------------------------------------------
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateProject')
   @override
@@ -1658,7 +1657,7 @@ class AdvancedAppApiService implements AppApiService {
   Future<Subtask> updateSubtask(Subtask subtask) => _writes.updateSubtask(
       _principalId, int.tryParse(subtask.id.get()) ?? -1, subtask);
 
-  // ----- Share endpoints (step 21) -----------------------------------------
+  // ----- Share endpoints ---------------------------------------------------
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appShare')
   @override
