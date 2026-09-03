@@ -18,7 +18,6 @@ library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart' show TomObservableEnum;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../actions/app_actions.dart';
