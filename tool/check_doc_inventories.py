@@ -48,7 +48,7 @@ and opens by sizing the package as a whole::
     `tom_core_samples/advanced_todo_domain/` — 23 files, of which 17 are Dart:
     14 under `lib/` (619 lines, all hand-written) and 3 under `test/`, ...
 
-Seven faults are reported:
+Eight faults are reported:
 
 ``LINES``
     A file whose claimed length is not its length -- in an inventory table's
@@ -75,6 +75,11 @@ Seven faults are reported:
     count, its Dart-file count, how many of those sit under ``lib/``, ``bin/``
     or ``test/``, and the hand-written line totals -- disagreeing with the
     package.
+``INDEX``
+    An entry in the completion overview whose restated file count or line total
+    disagrees with the module it links to, or whose link names a document that
+    does not exist. The census is stated twice -- once in its own document,
+    once in the index -- and it is the second copy that goes stale.
 
 ``PKGINV`` exists because the opening inventory of a *package* document was
 the one measurement in these documents that nothing checked. It drifted
@@ -183,9 +188,77 @@ Those agree here only because ``test/`` happens to be flat and all Dart, and a
 rule that is determinate by accident is the kind that reports a fault the first
 time the accident ends.
 
-``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT``, ``BARREL`` and ``PKGINV``
+**The overview restates every census, and the restatement is what drifts.**
+``tom_core_completion_overview.md`` is an index: seventy-nine entries, each a
+heading, a link to a completion document, and a paragraph summarising it. Most
+of those paragraphs repeat the linked document's file count or line total, a
+thousand lines away from the census they copy, and until ``INDEX`` nothing read
+the two together -- the header audit stops at the *first* module path in a
+document, so an index of seventy-nine modules was audited once and then not at
+all. Forty of the fifty-nine figures in it were stale, several by a third.
+
+An ``INDEX`` claim is measured against the module, not against the wording of
+the census it restates. Comparing text to text is the tempting reading, since
+the fault class really is a copy drifting from its original, and it is wrong:
+the two are written in different nouns and would disagree where they are both
+right. ``widgets/`` is ``25 files (24 Dart ..., plus the module readme)`` in its
+own document and ``24 Dart files`` in the index. Measuring each claim in the
+noun it was written in -- `counted_files` is shared by both audits for exactly
+this reason -- makes them agree by construction, so an entry faults only when
+it is actually wrong.
+
+What an entry may say, and what is read from it:
+
+* a file count -- ``nine files``, ``Twelve files``, ``73 Dart files``, ``three
+  small files``. One adjective may sit between the count and the noun; the
+  noun decides whether the module readme is in the figure, on the same rule the
+  header audit uses. ``besides the barrel`` is read and subtracts one.
+* a line total -- ``4 480 lines``, or ``one 808-line file``.
+* an approximation, marked ``~`` or ``roughly``, which is skipped. Three
+  entries hedge deliberately and demanding they be exact would fault forever.
+
+Only the entry's *first* paragraph is read, and within it only the first figure
+of each kind: an entry is prose, and its later paragraphs are as full of
+unrelated numbers as any completion document's.
+
+**What ``INDEX`` does not cover.** An entry linking to a *package* document is
+declined outright. Package figures are about ``lib/`` and ``test/`` trees, and
+the index writes them in prose that shares no grammar with either a module
+census or the package atoms -- ``64 Dart files under `lib/` ... 14 under
+`test/` ... four documents under `doc/```. Nineteen entries are in that class;
+their figures are true as of this writing and are held true by hand. The rule
+for them, until the gate reaches them, is the one this audit exists to enforce
+elsewhere: **a figure restated in an index entry must be the figure its
+document's census states, in the census's own noun.** Widening the gate to read
+them means first normalising those nineteen paragraphs onto one grammar, which
+is a change to the documents rather than to this tool.
+
+**The rule for every figure no gate reads.** A completion document states its
+census once, at the top, where ``HEADER`` or ``PKGINV`` holds it to the tree.
+Every *later* mention of the same measurement is a copy, and a copy is what
+drifts -- the index above is the extreme case, but the same thing happens
+inside a single document, in a sentence a thousand lines below the census
+saying ``1 892 lines of widget test``. Two rules keep those honest, and they
+are both about writing rather than about tooling:
+
+1. **Prefer not to restate a census figure.** If the body needs to refer to the
+   module's size, refer to the census; a second copy of a number is a second
+   thing to keep true.
+2. **Where a figure must be restated, close the arithmetic on the page.**
+   ``1 892 lines of widget test (1 820 in the thirteen suites above, 72 in the
+   shared harness)`` states where every line came from, so a reader can catch a
+   drift without leaving the document and a later editor can see which part
+   moved. ``advanced_authadmin_client`` is written this way and is the model.
+
+``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT``, ``BARREL``, ``PKGINV`` and
+``INDEX``
 by writing the measurement back, so keeping the numbers true costs one command
-rather than a manual pass. It never touches ``UNKNOWN`` or ``ABSENT``, nor a
+rather than a manual pass. A count spelled out is repaired spelled out, with
+its capitalisation, since an index entry routinely opens its sentence with one
+and ``13 files, all exported`` would be a worse sentence than it was. What
+``--fix`` never does is re-wrap: a repaired figure with more digits than the
+stale one can push its line past the margin, so read the diff.
+It never touches ``UNKNOWN`` or ``ABSENT``, nor a
 missing map row: adding or retiring a row means writing the sentence that says
 what the file or folder carries, and only a reader of it can do that.
 
@@ -321,7 +394,19 @@ NUMBER_WORDS = {
     "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20,
 }
 
-#: Longest first, so `six` cannot win against `sixteen`.
+#: Compounds, because a module of twenty-three files says so in words. Written
+#: out rather than assembled from the tens so the alternation stays a literal
+#: list -- the same thing `_WORDS` is, and readable in a traceback.
+NUMBER_WORDS |= {
+    f"{ten}-{unit}": value + digit
+    for ten, value in (("twenty", 20), ("thirty", 30), ("forty", 40))
+    for unit, digit in list(NUMBER_WORDS.items())[:9]
+}
+
+#: Longest first, so `six` cannot win against `sixteen` -- and so `twenty-three`
+#: wins against the `three` inside it, which is what a shorter-first alternation
+#: would read and did: the `agent` module's `Twenty-three files` was measured as
+#: three against a directory of twenty-four.
 _WORDS = "|".join(sorted(NUMBER_WORDS, key=len, reverse=True))
 
 #: A module header's file count, in whichever words the header used. Taken only
@@ -421,6 +506,7 @@ def audit(path: Path) -> Report | None:
     measured = audit_barrel_exports(text, report)
     measured |= audit_layout_lines(text, report)
     measured |= audit_package_inventory(text, report)
+    measured |= audit_index_sections(text, report)
 
     module_match = MODULE_PATH.search(text)
     if module_match is not None:
@@ -630,15 +716,27 @@ def as_count(written: str) -> int:
     return as_number(written) if word is None else word
 
 
+#: The inverse of `NUMBER_WORDS`, so a count spelled out can be repaired
+#: spelled out. Built from the map rather than beside it, because a second list
+#: is a second thing to keep in step.
+_NUMBER_WORD = {value: word for word, value in reversed(NUMBER_WORDS.items())}
+
+
 def as_written(written: str, value: int) -> str:
     """Render `value` the way `written` was written.
 
-    A figure keeps its grouping. A count spelled out becomes digits: `--fix`
-    can say the module holds three files, but not that it holds `three`
-    without knowing the case and the grammar around it.
+    A figure keeps its grouping, and a count spelled out stays spelled out with
+    its capitalisation: the index sections open sentences with their count, so
+    turning `Twelve files` into `13 files` would mid-sentence a figure that the
+    prose deliberately wrote in words. Only a value with no word for it falls
+    back to digits -- above twenty the documents write digits anyway.
     """
-    if written.strip().lower() in NUMBER_WORDS:
-        return str(value)
+    stripped = written.strip()
+    if stripped.lower() in NUMBER_WORDS:
+        word = _NUMBER_WORD.get(value)
+        if word is None:
+            return str(value)
+        return word.capitalize() if stripped[:1].isupper() else word
     return like(written, value)
 
 
@@ -678,13 +776,7 @@ def audit_module_header(text: str, module: Path, report: Report) -> bool:
 
     on_disk = module_files(module)
     dart = [p for p in on_disk if p.suffix == ".dart"]
-
-    qualified = (files.group(2) or "").strip()
-    counts_readme = not qualified and (
-        BREAKDOWN_README.match(text, files.end(), end) is not None
-    )
-    counted = on_disk if counts_readme else dart
-    noun = "files" if counts_readme else "source files"
+    counted, noun = counted_files(text, files, end, module)
 
     written = files.group(1)
     if as_count(written) != len(counted):
@@ -875,6 +967,194 @@ def audit_file_inventory(text: str, module: Path, report: Report) -> bool:
     for name in on_disk:
         if name not in rows:
             report.faults.append(f"ABSENT   `{name}` is on disk, not in the table")
+
+    return True
+
+
+def census_module(text: str) -> Path | None:
+    """The module a document's census measures, or None if it measures a package.
+
+    A package document's figures are about `lib/` and `test/` trees, counted by
+    the package atoms and in nouns of their own -- hand-written lines, files
+    under a folder. They are not module headers and must not be read as one, so
+    a document whose first path reference is a package path is declined here
+    rather than half-understood: `tom_core_codespecs` opens on
+    ``tom_core_codespecs/lib/`` and mentions a module path only much later, and
+    reading that later path would measure a directory the census never spoke
+    about.
+    """
+    module = MODULE_PATH.search(text)
+    if module is None:
+        return None
+    package = PACKAGE_PATH.search(text)
+    if package is not None and package.start() < module.start():
+        return None
+    path = REPO_ROOT / module.group(1)
+    return path if path.is_dir() else None
+
+
+def counted_files(
+    text: str, files: re.Match[str], end: int, module: Path
+) -> tuple[list[Path], str]:
+    """The files a ``N files`` claim counts, and the noun it counted them in.
+
+    The noun is the claim: `source files` and `Dart files` exclude the module
+    readme, a bare `files` includes it -- but only when a breakdown says so,
+    since the documents write both meanings identically. Shared by the header
+    audit and the index audit so the rule is stated once; the index restates
+    the header's figure, and a restatement read by a different rule than the
+    original would drift by construction.
+    """
+    on_disk = module_files(module)
+    if (files.group(2) or "").strip():
+        return [p for p in on_disk if p.suffix == ".dart"], "source files"
+    if BREAKDOWN_README.match(text, files.end(), end) is not None:
+        return on_disk, "files"
+    return [p for p in on_disk if p.suffix == ".dart"], "source files"
+
+
+#: An index entry: a level-four heading naming the module or package, the link
+#: line to its completion document, and the paragraph that summarises it. The
+#: paragraph is the one the entry's figures live in; later ones describe the
+#: same module in prose full of numbers, exactly as in a completion document,
+#: and are left alone for the same reason.
+INDEX_SECTION = re.compile(
+    r"^#### +`[^`]+`\s*\n+\[`([^`]+\.md)`\]\([^)]*\)\s*\n+(.+?)(?=\n\n|\Z)",
+    re.M | re.S,
+)
+
+#: The entry's file count. Unlike `MODULE_FILES` this is not anchored to an em
+#: dash: an index entry writes its count in whatever grammar the sentence wants
+#: -- ``across six files``, ``Twelve files, all exported``, ``in nine files``.
+#: The anchor that replaces it is the comparison itself. The figure is checked
+#: against the linked document's own count rather than against a directory, so
+#: a mis-read number is a number that disagrees with a *document*, not with a
+#: convention this regex would otherwise have to encode.
+#:
+#: One adjective is allowed between the count and the noun. An index entry is
+#: prose and writes ``three small files`` where a census would write ``3 source
+#: files``; without the slot that entry was read as making no claim at all,
+#: which is how it came to say three about a directory of four.
+INDEX_FILES = re.compile(
+    r"\b(" + NUMBER + r"|" + _WORDS + r")\s+(source\s+|Dart\s+)?(?:[a-z]+\s+)?files?\b",
+    re.I,
+)
+
+#: ``nine Dart files besides the barrel`` counts one fewer than the directory
+#: holds. The phrase is the entry's own arithmetic, stated plainly, and reading
+#: it is cheaper than rewriting two entries to drop it. `\s+` between the words
+#: because the documents are hard-wrapped and both uses of it straddle a line
+#: break -- a literal space matched neither, and the audit read both entries as
+#: understating a count they state exactly.
+BESIDES_BARREL = re.compile(r"\s*(?:,[^.]*?)?\bbesides\s+the\s+barrel\b")
+
+#: The entry's line total, in the two shapes the index uses: ``4118 lines`` and
+#: ``one 808-line file``. An approximation is skipped -- ``~``, and ``roughly``,
+#: which `MODULE_LINES` does not know because no census hedges but three index
+#: entries do.
+INDEX_LINES = re.compile(
+    r"(~\s*|\broughly\s+)?(" + NUMBER + r")[\s-]+lines?\b|"
+    r"(~\s*|\broughly\s+)?(" + NUMBER + r")-line\b"
+)
+
+
+def index_claims(text: str, start: int, end: int) -> dict[str, re.Match[str]]:
+    """The figures an index entry states, by name.
+
+    Both are optional and most entries state one or neither: an entry is prose
+    first, and only says a number where the number is the point. Matched in
+    `text` rather than in a slice of it so the spans are the document's own and
+    `--fix` can write through them.
+
+    Only the *first* line figure counts, and only if it is not an
+    approximation. An entry that leads with a rounded total has hedged its
+    measurement deliberately and the audit takes it at its word rather than
+    reaching past it for the next number, which would be a figure about
+    something else.
+    """
+    claims: dict[str, re.Match[str]] = {}
+    files = INDEX_FILES.search(text, start, end)
+    if files is not None:
+        claims["files"] = files
+    lines = INDEX_LINES.search(text, start, end)
+    if lines is not None and not (lines.group(1) or lines.group(3)):
+        claims["lines"] = lines
+    return claims
+
+
+def audit_index_sections(text: str, report: Report) -> bool:
+    """Check each index entry's figures against the document it links to.
+
+    Returns whether the document is an index at all.
+
+    The overview restates every module's size beside its link, which is what
+    makes it usable as an index -- and what makes it drift. The figure is a
+    *copy*, sitting a thousand lines away from the census it copies, and
+    nothing until now read the two together: the header audit stops at the
+    first module path in a document, so an index of seventy-nine of them was
+    audited once and then not at all.
+
+    The entry is measured against the module, not against the wording of the
+    census it copies. Comparing text to text is the tempting reading -- the
+    fault class *is* a copy drifting from its original -- but the two are
+    written in different nouns and the comparison would be invalid where it
+    matters most: `widgets/` is ``25 files (24 Dart ..., plus the module
+    readme)`` in its own document and ``24 Dart files`` in the index, and both
+    are right. Measuring each claim in the noun it was written in makes the two
+    audits agree by construction, and the entry is then wrong only when it is
+    actually wrong.
+
+    Only entries linking to a module document are read. A package entry states
+    figures about `lib/` and `test/` trees in the package atoms' vocabulary,
+    which this audit does not speak; declining them is a coverage limit, not a
+    silent pass, and `audit_package_inventory` covers the same figures where
+    they are stated in the package's own document.
+    """
+    sections = list(INDEX_SECTION.finditer(text))
+    if not sections:
+        return False
+
+    for section in sections:
+        linked = DOCS_ROOT / section.group(1)
+        if not linked.is_file():
+            report.faults.append(f"INDEX    `{section.group(1)}` is not a document")
+            continue
+        module = census_module(linked.read_text(encoding="utf-8", errors="replace"))
+        if module is None:
+            continue
+        end = section.end(2)
+        claims = index_claims(text, section.start(2), end)
+
+        claim = claims.get("files")
+        if claim is not None:
+            counted, noun = counted_files(text, claim, end, module)
+            measured = len(counted)
+            if BESIDES_BARREL.match(text, claim.end(), end) is not None:
+                measured -= 1
+                noun = f"{noun} besides the barrel"
+            if as_count(claim.group(1)) != measured:
+                report.faults.append(
+                    f"INDEX    `{section.group(1)}` says"
+                    f" {claim.group(1).strip()} {noun}; is {measured}"
+                )
+                report.edits.append(
+                    rewrite_groups(claim, {1: as_written(claim.group(1), measured)})
+                )
+
+        claim = claims.get("lines")
+        if claim is not None:
+            group = 2 if claim.group(2) is not None else 4
+            measured = sum(
+                line_count(p) for p in module_files(module) if p.suffix == ".dart"
+            )
+            if as_number(claim.group(group)) != measured:
+                report.faults.append(
+                    f"INDEX    `{section.group(1)}` says"
+                    f" {claim.group(group).strip()} lines; is {measured}"
+                )
+                report.edits.append(
+                    rewrite_groups(claim, {group: like(claim.group(group), measured)})
+                )
 
     return True
 
