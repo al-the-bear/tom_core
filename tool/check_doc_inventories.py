@@ -51,8 +51,10 @@ and opens by sizing the package as a whole::
 Seven faults are reported:
 
 ``LINES``
-    A tabulated file whose line count is not the file's line count. The common
-    defect: the module was edited, the table was not.
+    A file whose claimed length is not its length -- in an inventory table's
+    ``Lines`` column, or beside its row in a layout block (``main.dart
+    bootstrap + backend injection (107 lines)``). The common defect: the module
+    was edited, the claim was not.
 ``UNKNOWN``
     A tabulated file that is not in the directory -- renamed or deleted.
 ``ABSENT``
@@ -131,6 +133,45 @@ number was right about what the barrel was *for* and wrong about what it
 *was*, and only counting the directives tells the two apart. Three of the nine
 labels in this set were wrong when the check was written.
 
+**Which layout styles are read, and what in them is a claim.** The blocks come
+in two hands. Most indent with spaces::
+
+    lib/
+      main.dart      bootstrap + backend injection (107 lines)
+
+while others draw the tree::
+
+    ├── bin/
+    │   └── ops_server_start.dart   # boot + reflection root (282 lines)
+
+Both are walked, and a row's directory is the chain of folder rows above it at
+smaller indents either way -- the box-drawing characters are simply part of the
+indent. That is worth saying because for a while only the first hand was read:
+``stripped.split()[0]`` on a drawn row yields ``├──`` rather than a filename, so
+every drawn block was skipped in silence. It was not a false pass, because the
+drawn blocks happened to carry no labels -- but coverage that depends on which
+characters a document indents with, and says so nowhere, is a false pass
+waiting for the next document.
+
+A claim is a number immediately in front of the word ``lines``, on a row that
+names a file. The noun is required. Two of these documents also wrote a length
+as a bare number in the trailing comment (``ops_jobs.dart  # 172 -- the three
+job declarations``), and all seven such figures were true; they are still not
+read, because a bare number is not a measurement a checker can recognise
+without guessing, and the fix is to write the noun rather than to teach the
+gate to guess. A rounded figure (``~324 k lines``) is skipped for the reason
+the module header skips one: demanding an approximation be exact reports a
+fault on every run.
+
+A row naming a *folder* is not read, even when it carries a length --
+``test/  12 suites, 2 153 lines`` is the one instance in this set, and it is
+true. It is left alone because it is an aggregate rather than a file's length,
+and the sum it aggregates is undefined in general: over every file in the
+directory, over the Dart files, or over the twelve suites the same row counts.
+Those agree here only because ``test/`` happens to be flat and all Dart, and a
+rule that is determinate by accident is the kind that reports a fault the first
+time the accident ends.
+
 ``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT``, ``BARREL`` and ``PKGINV``
 by writing the measurement back, so keeping the numbers true costs one command
 rather than a manual pass. It never touches ``UNKNOWN`` or ``ABSENT``, nor a
@@ -185,6 +226,11 @@ LAYOUT_FENCE = re.compile(r"^```text\n(.*?)^```", re.M | re.S)
 # matched wherever it falls rather than required to start the label.
 BARREL_LABEL = re.compile(r"\bbarrel\s+—\s+(\d+)\s+exports")
 
+#: The characters a drawn tree indents with. Treated as indentation rather than
+#: as content, which is what lets one walk read both hands -- see the module
+#: docstring on layout styles.
+BRANCH = " │├└─"
+
 #: An `export` directive, counted the way the barrels are written -- one per
 #: line, at the left margin. A `part` is not an export and is not counted.
 EXPORT = re.compile(r"^export\s", re.M)
@@ -198,6 +244,13 @@ EXPORT = re.compile(r"^export\s", re.M)
 #: would overwrite that space along with the number -- turning
 #: `20 hand-written, 4 337 lines` into `20 hand-written,4 337 lines`.
 NUMBER = r"\d(?:[\d   ]*\d)?"
+
+#: A length claim beside a layout row: a number immediately in front of `lines`,
+#: parenthesised (`(107 lines)`) or not (`# 429 lines`). Grouped figures are
+#: read (`1 159 lines`). A rounded one is matched so it can be recognised and
+#: skipped -- `~324 k lines` is an approximation, and a gate that demands an
+#: approximation be exact reports a fault every run.
+LAYOUT_LINES = re.compile(r"(~\s*)?(" + NUMBER + r")\s*(k\s+)?lines\b")
 
 #: The package's own file count, taken only where it sits directly after the em
 #: dash that opens the inventory. `— 14 hand-written library files` does not
@@ -332,12 +385,15 @@ class Report:
 def audit(path: Path) -> Report | None:
     """Return a Report, or None if the document measures nothing.
 
-    Four independent audits, any of which may find nothing to say: a document
+    Five independent audits, any of which may find nothing to say: a document
     carries an opening header, a file inventory, a sub-folder map, a layout
-    block, or none of them. The barrel audit runs first and on its own terms,
-    because a package document has a layout block and no module directory to
-    resolve -- the two shapes describe different things and neither implies
-    the other.
+    block, or none of them. The two layout audits run first and on their own
+    terms, because a package document has a layout block and no module
+    directory to resolve -- the two shapes describe different things and
+    neither implies the other. They walk the block separately rather than
+    sharing a pass: a row may carry a barrel label, a length, both or neither,
+    and reading each claim where it falls costs one more walk of a thirty-line
+    block.
 
     The header audit stands beside the table audit rather than inside it, which
     is where it used to sit. A document whose header states its size and whose
@@ -348,6 +404,7 @@ def audit(path: Path) -> Report | None:
 
     report = Report(path)
     measured = audit_barrel_exports(text, report)
+    measured |= audit_layout_lines(text, report)
     measured |= audit_package_inventory(text, report)
 
     module_match = MODULE_PATH.search(text)
@@ -361,35 +418,50 @@ def audit(path: Path) -> Report | None:
     return report if measured else None
 
 
-def layout_barrels(text: str, package: Path):
-    """Yield `(path, match)` for every barrel label in a layout block.
+def layout_rows(text: str, package: Path):
+    """Yield `(path, start, end)` for every layout-block row that names a file.
 
-    The block is an indented tree, so a file's directory is the chain of
-    folder lines above it at smaller indents -- the same reading a person
-    gives it. The root line names the package the tree is rooted at and is
-    dropped, since `package` already points there.
+    The block is an indented tree, so a file's directory is the chain of folder
+    rows above it at smaller indents -- the same reading a person gives it. The
+    root row names the package the tree is rooted at and is dropped, since
+    `package` already points there. `start`/`end` bound the row in `text`, so a
+    caller can look for its own label there and get a span `--fix` can write
+    through.
+
+    Indentation is the leading run of spaces *and* box-drawing characters, which
+    is what makes the walk read a drawn tree and a space-indented one alike; the
+    two hands differ only in what they fill the indent with. A row that names a
+    folder is consumed into the stack rather than yielded -- it locates the rows
+    below it, and its own labels are aggregates rather than facts about a file.
     """
     for fence in LAYOUT_FENCE.finditer(text):
         body, offset = fence.group(1), fence.start(1)
         stack: list[tuple[int, str]] = []
         position = offset
         for line in body.splitlines(keepends=True):
-            stripped = line.strip()
-            indent = len(line) - len(line.lstrip())
-            if stripped:
+            rest = line.lstrip(BRANCH)
+            indent = len(line) - len(rest)
+            words = rest.split()
+            if words:
                 while stack and stack[-1][0] >= indent:
                     stack.pop()
-                name = stripped.split()[0]
+                name = words[0]
                 if name.endswith("/"):
                     stack.append((indent, name))
                 else:
-                    end = position + len(line)
-                    label = BARREL_LABEL.search(text, position, end)
-                    if label:
-                        # `stack[1:]` drops the tree's root line.
-                        folders = "".join(f for _, f in stack[1:])
-                        yield package / (folders + name), label
+                    # `stack[1:]` drops the tree's root line.
+                    folders = "".join(f for _, f in stack[1:])
+                    yield package / (folders + name), position, position + len(line)
             position += len(line)
+
+
+def layout_package(text: str) -> Path | None:
+    """The package a layout block is rooted at, or None if there is no block."""
+    package_match = PACKAGE_PATH.search(text)
+    if package_match is None:
+        return None
+    package = REPO_ROOT / package_match.group(1)
+    return package if package.is_dir() else None
 
 
 def audit_barrel_exports(text: str, report: Report) -> bool:
@@ -397,15 +469,15 @@ def audit_barrel_exports(text: str, report: Report) -> bool:
 
     Returns whether the document has a layout block with labels at all.
     """
-    package_match = PACKAGE_PATH.search(text)
-    if package_match is None:
-        return False
-    package = REPO_ROOT / package_match.group(1)
-    if not package.is_dir():
+    package = layout_package(text)
+    if package is None:
         return False
 
     found = False
-    for path, label in layout_barrels(text, package):
+    for path, start, end in layout_rows(text, package):
+        label = BARREL_LABEL.search(text, start, end)
+        if label is None:
+            continue
         found = True
         shown = path.relative_to(package)
         if not path.is_file():
@@ -421,6 +493,42 @@ def audit_barrel_exports(text: str, report: Report) -> bool:
                 f"BARREL   `{shown}` says {claimed} exports, has {actual}"
             )
             report.edits.append(rewrite_groups(label, {1: str(actual)}))
+    return found
+
+
+def audit_layout_lines(text: str, report: Report) -> bool:
+    """Check each layout-block row's length claim against the file it names.
+
+    Returns whether the document makes such a claim at all.
+
+    These are the same measurement the inventory tables carry, written beside a
+    row instead of in a column, and they decay the same way -- two consecutive
+    dartdoc edits falsified four of them here before anything read them.
+    """
+    package = layout_package(text)
+    if package is None:
+        return False
+
+    found = False
+    for path, start, end in layout_rows(text, package):
+        claim = LAYOUT_LINES.search(text, start, end)
+        # A rounded figure is a deliberate approximation, not a measurement.
+        if claim is None or claim.group(1) or claim.group(3):
+            continue
+        found = True
+        shown = path.relative_to(package)
+        if not path.is_file():
+            report.faults.append(f"LINES    `{shown}` is not in {package.name}/")
+            continue
+        written = claim.group(2)
+        measured = line_count(path)
+        if as_number(written) != measured:
+            report.faults.append(
+                f"LINES    `{shown}` says {written.strip()}, is {measured}"
+            )
+            report.edits.append(
+                rewrite_groups(claim, {2: like(written, measured)})
+            )
     return found
 
 
