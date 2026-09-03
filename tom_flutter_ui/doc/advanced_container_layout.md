@@ -64,9 +64,9 @@ direction — so this index is complete by construction rather than by review.
 | ------ | ---- | ------- |
 | `AclBuilder` | class | Fluent builder; `build()` returns an `Acl` widget. |
 | `AclBuilderExtensions` | extension | Shorthand over `setAttr` and the row-alignment setters — `expandX()`, `setRowAlignCenter()`, … |
-| `Acl` | widget | The built layout: an `AclLayout` that additionally draws a [container title](#container-titles). |
-| `AclLayout` | widget | The title-less layout widget `Acl` extends. An `Acl` with no title renders exactly this. |
-| `AclContainer` | widget | The stateful render engine that lays rows/components out. |
+| `Acl` | class | The built layout: an `AclLayout` that additionally draws a [container title](#container-titles). |
+| `AclLayout` | class | The title-less layout widget `Acl` extends. An `Acl` with no title renders exactly this. |
+| `AclContainer` | class | The stateful render engine that lays rows/components out. |
 | `AclComponent` / `AclRow` | class | The engine's data model — one placed child, and an ordered row of them. |
 
 ### Sizing, flags and alignment
@@ -94,7 +94,7 @@ direction — so this index is complete by construction rather than by review.
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `AclFlowContainer` | widget | Generates rows from a flat child list and renders them through an `AclContainer` it composes — not a subclass of one. |
+| `AclFlowContainer` | class | Generates rows from a flat child list and renders them through an `AclContainer` it composes — not a subclass of one. |
 | `AclFlowKind` | enum | `wrap` / `grid` — the two row-generation rules. |
 | `aclWrapRows` / `aclGridRows` | function | The pure row generators behind those rules. |
 | `aclResolveBreakpointed<T>` | function | The one `(minWidth, value)` "widest match wins" rule. |
@@ -112,13 +112,13 @@ direction — so this index is complete by construction rather than by review.
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `AclScope` | InheritedWidget | Propagates container/component/row/group id paths. |
-| `AclGroupVisibilityController` | class | Drives a named group's `visible`/`hidden`/`disabled` state. |
+| `AclScope` | class | Propagates container/component/row/group id paths. |
+| `AclGroupVisibilityController` | abstract class | Drives a named group's `visible`/`hidden`/`disabled` state. |
 | `AclGroupVisibilityMode` | enum | The three states that controller publishes. |
 | `AclBinaryVisibilityController` | class | Direct toggle — assign `controller.mode`. |
 | `AclCallbackVisibilityController<T>` | class | Derives the mode from an external `ValueListenable<T>`. |
 | `AclDirection` | enum | [Layout direction](#layout-direction--ltr-and-rtl) — `ltr` / `rtl`. |
-| `AclDirectionScope` | InheritedWidget | Supplies an `AclDirection` to every descendant container that sets none of its own. |
+| `AclDirectionScope` | class | Supplies an `AclDirection` to every descendant container that sets none of its own. |
 
 ## `AclBuilder` and `Acl`
 

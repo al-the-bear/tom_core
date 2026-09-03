@@ -21,12 +21,12 @@ through.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomUserPreference` | reflected entity | The `tom_user_preference` row; carries the row scope |
-| `TomUserPreferenceRepository` | CRUD repository | Persists that entity |
-| `TomUserPreferences` | bean-installed service | Typed reads and writes of the caller's preferences |
-| `TomUserPreferenceException` | exception | Raised when an operation cannot identify the caller |
-| `TomUserPreferencesServer` | reflected API implementation | The `/preferences/*` handlers |
-| `TomUserPreferencesErrorHandler` | endpoint error handler | Maps `preferences.not_found` to a `404` and `preferences.key.invalid` to a `400`, and no other key to anything |
+| `TomUserPreference` | class | The `tom_user_preference` row; carries the row scope |
+| `TomUserPreferenceRepository` | class | Persists that entity |
+| `TomUserPreferences` | class | Typed reads and writes of the caller's preferences |
+| `TomUserPreferenceException` | class | Raised when an operation cannot identify the caller |
+| `TomUserPreferencesServer` | class | The `/preferences/*` handlers |
+| `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` to a `404` and `preferences.key.invalid` to a `400`, and no other key to anything |
 
 The *contract* is not here. The keys (`TomUserPreferenceKeys`), the wire DTOs
 (`TomUserPreferenceDto` and friends), the value codec

@@ -1,5 +1,24 @@
 ## Unreleased
 
+### Documentation
+
+- **44 `Kind` cells across seven documents answered a question the column does
+  not ask.** The `Kind` column exists so a reader can tell what they may *do*
+  with a symbol before reading further — `abstract interface class` says
+  implement me but do not extend me, `final class` says neither. Cells reading
+  `StatefulWidget`, `widget`, `action`, `adapter`, `static helpers` or
+  `interface` are all true statements about the symbol's *role*, and none of
+  them answers that question; `interface` is worse than useless, because
+  `TomScreenElementsProvider` is an `abstract interface class` and
+  `TomScreenElementsProviderBase` is a plain `class`, and the row spent one word
+  on both.
+
+  Every such cell now carries the declaration exactly as Dart writes it. Where
+  the cell also carried a *fact* — `Validators` being static factories,
+  `TomScopePath` / `TomCtr` / `TomStyleResolvers` being static helpers — the
+  fact moved into `Purpose` rather than being dropped, since the neighbouring
+  column is where role belongs.
+
 ### Fixed
 
 - **Two documents said nine shipped widgets did not exist.** A planning table

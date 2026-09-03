@@ -34,18 +34,18 @@ in this module:
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `TomAuthorizable` | re-export | The kernel contract a Tom widget implements for group registration and auth participation. Re-exported from `tom_core_kernel` so existing imports keep working. |
-| `TomWidgetSurface` | abstract interface | What a Tom wrapper adds over the Flutter widget it wraps: `tomId`, `tomGroup`, `basePath`, `effectiveAuthState`. Extends `TomAuthorizable` with the one member it cannot carry — `basePath`, whose resolution reads the ambient scope. Both routes into the kit implement it, which is what lets the conformance suite enumerate every widget against one type. |
-| `TomNodeBase` | abstract `StatelessWidget` | Root of every Tom element. Holds `tomId`, `tomGroup`, `scope`, `authorizer`, and the resolved `basePath`. |
-| `TomPolicyNodeBase` | abstract | Adds the authorization gate: resolves the effective `TomAuthState` and routes to `buildContent` / `buildReadonly` / `buildDisabled` / hidden. |
-| `TomFamilyBase` | abstract | Adds widget-family reporting (`family`, `families`, `isFamily`). |
-| 20 family branch bases | abstract | One per family — `TomButtonBase`, `TomInputBase`, `TomSelectBase`, … — each fixes `family` to its `TomWidgetFamily` value. |
+| `TomAuthorizable` | abstract interface class | The kernel contract a Tom widget implements for group registration and auth participation. Re-exported from `tom_core_kernel` so existing imports keep working. |
+| `TomWidgetSurface` | abstract interface class | What a Tom wrapper adds over the Flutter widget it wraps: `tomId`, `tomGroup`, `basePath`, `effectiveAuthState`. Extends `TomAuthorizable` with the one member it cannot carry — `basePath`, whose resolution reads the ambient scope. Both routes into the kit implement it, which is what lets the conformance suite enumerate every widget against one type. |
+| `TomNodeBase` | abstract class | Root of every Tom element. Holds `tomId`, `tomGroup`, `scope`, `authorizer`, and the resolved `basePath`. |
+| `TomPolicyNodeBase` | abstract class | Adds the authorization gate: resolves the effective `TomAuthState` and routes to `buildContent` / `buildReadonly` / `buildDisabled` / hidden. |
+| `TomFamilyBase` | abstract class | Adds widget-family reporting (`family`, `families`, `isFamily`). |
+| 20 family branch bases | abstract class | One per family — `TomButtonBase`, `TomInputBase`, `TomSelectBase`, … — each fixes `family` to its `TomWidgetFamily` value. |
 | `TomWidgetFamily` | enum | The 26-value family taxonomy: 20 Flutter-derived values, each fixed by a branch base, plus 6 Tom form values that are reserved and claimed by nothing. |
-| `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | abstract | Scope-capturing base widgets for non-Tom wrappers that still need scope propagation. |
-| `TomScreenElementsProvider` / `TomScreenElementsProviderBase` | interface / class | Declarative, reflection-discoverable screen widget trees with chained scopes. |
-| `TomScopePath` | static helpers | The one place a scope path and a widget id are joined into a canonical resource path. Flutter-free, so the base classes can use it in an initialiser list. |
-| `TomCtr` | static helpers | The single entry point for resource resolution — text, colour, icon, numeric, `EdgeInsets`, `TextStyle`, `InputBorder`, `WidgetStateProperty<Color>`, breakpointed values. |
-| `TomStyleResolvers` | static helpers | Parsing of complex Material objects (`TextStyle`, `ButtonStyle`, `InputDecoration`, `ShapeBorder`, `Decoration`, …) from JSON resource maps. |
+| `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | abstract class | Scope-capturing base widgets for non-Tom wrappers that still need scope propagation. |
+| `TomScreenElementsProvider` / `TomScreenElementsProviderBase` | abstract interface class / class | Declarative, reflection-discoverable screen widget trees with chained scopes. |
+| `TomScopePath` | class | The one place a scope path and a widget id are joined into a canonical resource path, through static helpers. Flutter-free, so the base classes can use it in an initialiser list. |
+| `TomCtr` | class | The single entry point for resource resolution, through static helpers — text, colour, icon, numeric, `EdgeInsets`, `TextStyle`, `InputBorder`, `WidgetStateProperty<Color>`, breakpointed values. |
+| `TomStyleResolvers` | class | Static parsing of complex Material objects (`TextStyle`, `ButtonStyle`, `InputDecoration`, `ShapeBorder`, `Decoration`, …) from JSON resource maps. |
 
 ## The node hierarchy
 

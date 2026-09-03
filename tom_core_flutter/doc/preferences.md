@@ -25,15 +25,15 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomDevicePreferences` | interface | The typed API; resolved as a bean |
+| `TomDevicePreferences` | abstract class | The typed API; resolved as a bean |
 | `TomStoredDevicePreferences` | class | The shipped implementation — typed API over a store |
-| `TomDevicePreferenceStore` | interface | The narrow backend: read / write the whole set |
+| `TomDevicePreferenceStore` | abstract class | The narrow backend: read / write the whole set |
 | `TomPlatformDevicePreferenceStore` | class | The backend for the current target (file / `localStorage` / loud failure) |
 | `TomMemoryDevicePreferenceStore` | class | A store that persists nothing beyond the process |
 | `TomDevicePreferenceJson` | class | The stored JSON document, written once for every persistent backend |
-| `TomDevicePreferenceException` | exception | Device-store failures, keyed by stable dotted codes |
+| `TomDevicePreferenceException` | class | Device-store failures, keyed by stable dotted codes |
 | `TomUserPreferencesClient` | class | The **account** store: the same typed API, over the server's `/preferences/*` routes |
-| `TomUserPreferencesClientException` | exception | Client failures, keyed by stable dotted codes |
+| `TomUserPreferencesClientException` | class | Client failures, keyed by stable dotted codes |
 
 The *keys*, the *wire DTO* and the *value codec* are not here. `TomUserPreferenceKeys`,
 `TomUserPreferenceDto` and `TomUserPreferenceCodec` live in `tom_core_kernel`'s

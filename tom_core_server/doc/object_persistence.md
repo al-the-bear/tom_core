@@ -35,7 +35,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` | annotations | Map an entity class and its fields to a table and columns |
+| `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` | classes | The annotations that map an entity class and its fields to a table and columns |
 | `TomRepository<T, K>` | abstract class | The CRUD + query contract for entity `T` keyed by `K` |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL implementation of the contract |
 | `MariadbRepository<T, K>` | class | MariaDB driver binding (`@TomRepositoryType("mariadb")`) |
@@ -46,13 +46,13 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomGroupedRow` | class | One group's result: the group keys plus the aggregate values, keyed by alias |
 | `TomAnnotationAnalyzer` | mixin | Resolves an entity's persistence metadata by reflection |
 | `TomColumnInformation` | class | The resolved metadata for one entity field |
-| `TomDbScope` | annotation | Declares (or explicitly opts out of) an entity's row scope |
-| `TomDataScopeRegistry` | class (statics) | The named scope-kind resolvers, read and write |
-| `TomDataScope` | class (statics) | Renders a resolver's answer into a bound `IN` / union predicate |
-| `TomColumnAuthorization` | class (statics) | Applies a column's `authKey` grade — read masking and the write partition |
-| `TomRowColumnAuthorization` | class (statics) | Per-row column grades, for grades derived from the row's owning aggregate |
-| `TomFileReference` | annotation | Declares that a column holds a blob-storage key |
-| `TomFileReferenceKeys` | class (statics) | Resolves a file column's store and mints its keys |
+| `TomDbScope` | class | Declares (or explicitly opts out of) an entity's row scope |
+| `TomDataScopeRegistry` | class | The named scope-kind resolvers, read and write. Statics only |
+| `TomDataScope` | class | Renders a resolver's answer into a bound `IN` / union predicate. Statics only |
+| `TomColumnAuthorization` | class | Applies a column's `authKey` grade — read masking and the write partition. Statics only |
+| `TomRowColumnAuthorization` | class | Per-row column grades, for grades derived from the row's owning aggregate. Statics only |
+| `TomFileReference` | class | Declares that a column holds a blob-storage key |
+| `TomFileReferenceKeys` | class | Resolves a file column's store and mints its keys. Statics only |
 | `TomFileRepository<T, K>` | abstract class | The five-method file surface the HTTP file endpoint depends on |
 
 ## Mapping an Entity

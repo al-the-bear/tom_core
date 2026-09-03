@@ -24,8 +24,8 @@ line, in the environment, or in a `.env` file is interpreted identically.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomArgs` | class (static) | Parse `key=value` argv into a typed object or a map |
-| `TomEnvFile` | class (static) | Read / parse / merge `.env` files into a map |
+| `TomArgs` | class | Parse `key=value` argv into a typed object or a map. Statics only |
+| `TomEnvFile` | class | Read / parse / merge `.env` files into a map. Statics only |
 
 ## Parsing Arguments
 

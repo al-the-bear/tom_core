@@ -24,9 +24,8 @@
       "note": "Stale line counts and file tallies across 14 completion documents. `--fix` re-measures most of them; adding and retiring rows needs a hand, because a new row needs a sentence saying what the file carries."
     },
     "check_doc_kinds": {
-      "faults": 132,
-      "measured": "2026-09-03",
-      "note": "132 Kind cells naming something Dart does not declare, across 23 documents. Nearly all are one of eight substitutions: 'exception', 'annotation', 'widget', 'entity', 'value class' and 'reflected class' for 'class'; 'interface' and 'abstract' for 'abstract class'."
+      "faults": 0,
+      "measured": "2026-09-03"
     },
     "check_doc_samples": {
       "faults": 8,

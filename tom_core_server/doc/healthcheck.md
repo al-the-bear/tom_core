@@ -26,8 +26,8 @@ not a readiness endpoint — see
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomHealthService` | reflected service | Declares the `GET /health` endpoint |
-| `TomHealthServer` | reflected component | The default implementation; delegates to the analyzer |
+| `TomHealthService` | abstract class | Declares the `GET /health` endpoint |
+| `TomHealthServer` | class | The default implementation; delegates to the analyzer |
 | `TomHealthAnalyzer` | abstract class | The pluggable health-check contract (`analyzeHealth`) |
 | `TomDefaultHealthAnalyzer` | class | The default analyzer; always returns `"OK"` |
 

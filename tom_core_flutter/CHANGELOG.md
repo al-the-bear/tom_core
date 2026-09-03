@@ -1,5 +1,20 @@
 ## 1.2.1
 
+### Documentation
+
+- **13 `Kind` cells across three documents described the symbol instead of
+  declaring it.** `TomDevicePreferences` and `TomDevicePreferenceStore` both
+  read `interface` — a word Dart does not have — where both are `abstract
+  class`, which is precisely the difference between "implement this" and "you
+  may also extend it". The rest were role words (`exception`, `StatefulWidget`,
+  `value class`, `static registry`) that the `Purpose` cell beside them already
+  conveyed.
+
+  Each cell now carries the declaration. `Tom2FAClientRegistry` and
+  `Tom2FATexts` note in `Purpose` that they are entirely static, and
+  `TomClient2FAAdaptor` records there that it is the `const` annotation and is
+  reflected — the facts the old `Kind` cells were smuggling.
+
 ### Added
 
 - **`lib/src/tomclient/configuration/readme.md`** — the one artifact the module

@@ -2,6 +2,23 @@
 
 ### Documentation
 
+- **75 `Kind` cells across 13 documents named a role instead of a declaration.**
+  The column's whole purpose is to say what a reader may *do* with the symbol —
+  `abstract class` invites an `extends`, `abstract interface class` forbids it,
+  `final class` forbids both — so `exception`, `annotation`, `entity`,
+  `row type` and bare `abstract` answer a different question, however accurately
+  they describe the thing. `doc/authentication.md` alone carried 31, and there
+  the substitution actively misled: `Tom2FAService` and `Tom2FAPrerequisite`
+  both read `abstract`, which is not something Dart declares, so nothing in the
+  cell distinguished a type you subclass from one you implement.
+
+  Every cell now reads the declaration verbatim. The annotations that were
+  parenthesised into the `Kind` cell — `@tomReflector`, `@Tom2FAAdaptor('totp')`
+  and its siblings, `@TomDbTable`, `@TomApiImplementation` — moved into
+  `Purpose`, as did the `statics only` and `const` notes, so no fact was lost in
+  the narrowing; they are simply back in the column that carries what a symbol
+  is *for*.
+
 - **The transactions module advertised two-phase commit, which it does not
   implement (tcinc648).** "Two-phase" names a specific protocol, and its whole
   point is a prepare step: a participant may veto while nothing has been

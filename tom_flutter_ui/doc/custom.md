@@ -36,14 +36,14 @@ lookup and the plain data models — is what the example demonstrates.
 
 | Widget | Kind | What it does |
 | ------ | ---- | ------------ |
-| `TomAuthGuard` | `StatelessWidget` | Hide / disable a `child` by the `TomAuthState` resolved from a `tomId`. |
+| `TomAuthGuard` | class | Hide / disable a `child` by the `TomAuthState` resolved from a `tomId`. |
 | `TomAuthTreeView` / `TomAuthTreeNode` | `StatelessWidget` + data model | A tree where every node resolves its own auth; a `disabled` node **caps** its whole subtree. |
 | `TomRadioGroup` / `TomRadioGroupItem` | `StatelessWidget` + data model | A radio group whose whole selection is gated by one resource key. |
-| `TomEmptyState` | `StatelessWidget` | Icon + title + description + optional action for "no data" surfaces. |
-| `TomLoadingOverlay` | `StatelessWidget` | Translucent scrim + spinner (+ message) layered over a subtree while loading. |
-| `TomSkeletonLoader` | `StatefulWidget` | Shimmer placeholder for async surfaces (static when `enabled: false`). |
-| `TomErrorBoundary` | `StatefulWidget` | Catches build errors in `child` and renders a fallback instead of propagating. |
-| `TomInfiniteScroll` | `StatefulWidget` | Paginated list with a `PageFetcher`, reusing the empty / skeleton / error widgets above. |
+| `TomEmptyState` | class | Icon + title + description + optional action for "no data" surfaces. |
+| `TomLoadingOverlay` | class | Translucent scrim + spinner (+ message) layered over a subtree while loading. |
+| `TomSkeletonLoader` | class | Shimmer placeholder for async surfaces (static when `enabled: false`). |
+| `TomErrorBoundary` | class | Catches build errors in `child` and renders a fallback instead of propagating. |
+| `TomInfiniteScroll` | class | Paginated list with a `PageFetcher`, reusing the empty / skeleton / error widgets above. |
 
 All eight are exported from the package barrel via
 `lib/src/custom/tom_custom_widgets.dart`, together with the models and callback

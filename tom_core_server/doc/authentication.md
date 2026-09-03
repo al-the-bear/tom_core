@@ -24,66 +24,66 @@ principal into an authentication token and an authorization token.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomAuthenticationServer` | class (`@tomReflector`) | Orchestrates the login flow and issues JWTs |
-| `TomAuthenticationService` | abstract (`@tomReflector`) | The contract an app implements to verify a login |
-| `TomAuthenticationData` | class (`@tomReflector`) | The data carried into one authentication attempt |
+| `TomAuthenticationServer` | class | Orchestrates the login flow and issues JWTs; reflected (`@tomReflector`) |
+| `TomAuthenticationService` | abstract class | The contract an app implements to verify a login; reflected (`@tomReflector`) |
+| `TomAuthenticationData` | class | The data carried into one authentication attempt; reflected (`@tomReflector`) |
 | `TomAuthenticationInfo` | class | A service's success result: principal + access-control definition |
 | `TomDummyAuthenticationService` | class | Scaffolding-only default service (accepts any non-`GUEST` user) |
-| `TomLoginException` | exception | A login failure; carried back as a failed result |
-| `TomAuthenticationAdaptor` | annotation (`@tomReflector`) | Marks an adaptor and constrains it to guest/user flows |
-| `Tom2FAAdaptor` | annotation (`@tomReflector`) | Marks a 2FA adaptor for a mechanism `type` |
-| `Tom2FAService` | abstract (`@tomReflector`) | The contract a second-factor mechanism implements: issue a challenge, verify a submission |
-| `Tom2FARegistry` | class (statics only) | Maps a mechanism `type` to its adaptor; scans `@Tom2FAAdaptor` classes on first use |
-| `Tom2FAPrerequisite` | abstract | What an adaptor implements to say it cannot run here; the scan skips it and logs why |
+| `TomLoginException` | class | A login failure; carried back as a failed result |
+| `TomAuthenticationAdaptor` | class | The annotation that marks an adaptor and constrains it to guest/user flows; reflected (`@tomReflector`) |
+| `Tom2FAAdaptor` | class | The annotation that marks a 2FA adaptor for a mechanism `type`; reflected (`@tomReflector`) |
+| `Tom2FAService` | abstract class | The contract a second-factor mechanism implements: issue a challenge, verify a submission; reflected (`@tomReflector`) |
+| `Tom2FARegistry` | class | Maps a mechanism `type` to its adaptor; scans `@Tom2FAAdaptor` classes on first use. Statics only |
+| `Tom2FAPrerequisite` | abstract class | What an adaptor implements to say it cannot run here; the scan skips it and logs why |
 | `Tom2FAContext` | class | What the adaptor is told about the login: the principal and its request context |
 | `Tom2FAChallengeSpec` | class | What an adaptor returns from `issueChallenge` — hint, client blob, verification blob, attempts, validity |
 | `Tom2FASubmission` | class | What an adaptor is handed on `verifySubmission` — the submitted factor plus its challenge |
-| `TomTotp2FAService` | class (`@Tom2FAAdaptor('totp')`) | The shipped authenticator-app (RFC 6238 TOTP) mechanism |
-| `TomDeliveredCode2FAService` | abstract | The shape every *delivered* code shares: generate, seal, send, recognise, and prove the destination by enrolment |
-| `TomEmailCode2FAService` | class (`@Tom2FAAdaptor('email')`) | A one-time code mailed through the Messaging module |
-| `TomSmsCode2FAService` | class (`@Tom2FAAdaptor('sms')`) | A one-time code texted through the Messaging module |
-| `Tom2FAPolicy` | abstract | Decides per login whether a second factor is owed and which mechanisms may answer for it |
+| `TomTotp2FAService` | class | The shipped authenticator-app (RFC 6238 TOTP) mechanism, registered as `@Tom2FAAdaptor('totp')` |
+| `TomDeliveredCode2FAService` | abstract class | The shape every *delivered* code shares: generate, seal, send, recognise, and prove the destination by enrolment |
+| `TomEmailCode2FAService` | class | A one-time code mailed through the Messaging module, registered as `@Tom2FAAdaptor('email')` |
+| `TomSmsCode2FAService` | class | A one-time code texted through the Messaging module, registered as `@Tom2FAAdaptor('sms')` |
+| `Tom2FAPolicy` | abstract class | Decides per login whether a second factor is owed and which mechanisms may answer for it |
 | `Tom2FARequirement` | enum | `disabled` / `optional` / `required` — what a policy concluded |
 | `Tom2FADecision` | class | One policy answer: the requirement, the permitted mechanisms, and any grace logins |
-| `TomPrincipalFlag2FAPolicy` | class (const) | The default policy: reads `requires2FA` / `twoFactorType` off the principal |
+| `TomPrincipalFlag2FAPolicy` | class | The default policy, `const`-constructible: reads `requires2FA` / `twoFactorType` off the principal |
 | `TomRole2FAPolicy` | class | A requirement per role; the strictest matched role wins |
-| `Tom2FAGraceAccounting` | abstract | Implemented *by a policy* that wants to be told when a grace login is spent |
-| `Tom2FAEnrolmentStore` | abstract | Where a principal's set-up factors live. **No default** — see [Enrolment](#enrolment) |
+| `Tom2FAGraceAccounting` | abstract class | Implemented *by a policy* that wants to be told when a grace login is spent |
+| `Tom2FAEnrolmentStore` | abstract class | Where a principal's set-up factors live. **No default** — see [Enrolment](#enrolment) |
 | `TomMemory2FAEnrolmentStore` | class | In-memory store, for tests and single-process development |
 | `TomPersistent2FAEnrolmentStore` | class | Store over `TomUserTwoFactorEnrolment`, secrets encrypted at rest |
-| `TomUserTwoFactorEnrolment` | entity (`@TomDbTable`) | One persisted enrolment row (`tom_user_two_factor_enrolment`) |
+| `TomUserTwoFactorEnrolment` | class | One persisted enrolment row; the entity behind `@TomDbTable('tom_user_two_factor_enrolment')` |
 | `TomUserTwoFactorEnrolmentRepository` | class | The repository over that table |
 | `Tom2FAEnrolment` | class | One set-up factor: type, id, hint, primary flag, and the mechanism's secret data |
-| `Tom2FAEnrolmentSupport` | abstract | What an adaptor adds to become *enrollable*: begin an offer, confirm it |
+| `Tom2FAEnrolmentSupport` | abstract class | What an adaptor adds to become *enrollable*: begin an offer, confirm it |
 | `Tom2FAEnrolmentOffer` | class | What `beginEnrolment` returns — client blob, server blob, attempts, validity |
 | `Tom2FAEnrolmentState` | class | The server's view of a pending enrolment, carried in the interim token |
-| `Tom2FAException` | exception | A mis-wired 2FA deployment; never client-facing |
-| `TomServerSelfLogin` | class (statics only) | Logs the deployment in as itself and installs its principal |
+| `Tom2FAException` | class | A mis-wired 2FA deployment; never client-facing |
+| `TomServerSelfLogin` | class | Logs the deployment in as itself and installs its principal. Statics only |
 | `TomServiceCredential` | class | The deployment's own credential and where to present it |
-| `TomServiceLoginTransport` | abstract | The one JSON POST behind the self-login, so it is swappable and testable |
+| `TomServiceLoginTransport` | abstract class | The one JSON POST behind the self-login, so it is swappable and testable |
 | `TomHttpServiceLoginTransport` | class | The default transport, over `TomServerChannel` without bearer auth |
 | `TomServiceLoginResponse` | class | A raw status + body from that transport |
-| `TomServerSelfLoginException` | exception | A *configured* deployment that could not log itself in; never client-facing |
+| `TomServerSelfLoginException` | class | A *configured* deployment that could not log itself in; never client-facing |
 | `TomOAuthAuthenticationService` | class | A `TomAuthenticationService` that authenticates an authorization code |
 | `TomOAuthCredential` | class | The code + state pair carried in `TomAuthenticationData.key` |
-| `TomExternalIdentityDirectory` | abstract | What the deployment supplies: local account lookup and first-login provisioning |
+| `TomExternalIdentityDirectory` | abstract class | What the deployment supplies: local account lookup and first-login provisioning |
 | `TomOAuthProviderConfig` | class | One provider, as data: endpoints, client credentials, claim names, provisioning |
 | `TomOAuthProviders` | class | The configured provider set, read from `oauth.providers` |
 | `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse` or `autoProvision` |
 | `TomOAuthFlow` | class | The authorization-code + PKCE handshake |
 | `TomOAuthPkce` | class | A verifier / `S256` challenge pair |
 | `TomOAuthAuthorizationState` | class | One pending authorization: state handle, verifier, and the login context it started in |
-| `TomOAuthStateStore` | abstract | Where pending authorizations live; `TomOAuthMemoryStateStore` is the default |
+| `TomOAuthStateStore` | abstract class | Where pending authorizations live; `TomOAuthMemoryStateStore` is the default |
 | `TomSqlOAuthStateStore` | class | A state store over `tom_oauth_state`, so every node of a cluster sees the same pending authorizations |
-| `TomOAuthStateRow` | row type (`@tomReflector`) | One `tom_oauth_state` row, as the store reads it back |
+| `TomOAuthStateRow` | class | One `tom_oauth_state` row, as the store reads it back; reflected (`@tomReflector`) |
 | `TomOAuthStateStoreType` | enum | `memory` (the default) or `sql` — which store a deployment selected |
 | `TomOAuthStateStoreSettings` | class | The `oauth.stateStore` block as data, and `createStore()` for what it names |
-| `TomOAuthTokenTransport` | abstract | The provider HTTP calls, so a test can stub the provider |
+| `TomOAuthTokenTransport` | abstract class | The provider HTTP calls, so a test can stub the provider |
 | `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, raw claims |
-| `TomExternalIdentityStore` | abstract | The linking table: (issuer, subject) → local account |
-| `TomExternalIdentityLink` | entity (`@tomReflector`) | One persisted link row |
-| `TomOAuthServer` | class (`@TomApiImplementation`) | The three `/oauth/*` endpoints |
-| `TomOAuthException` | exception | A mis-configured provider set or a refused handshake |
+| `TomExternalIdentityStore` | abstract class | The linking table: (issuer, subject) → local account |
+| `TomExternalIdentityLink` | class | One persisted link row; reflected (`@tomReflector`) |
+| `TomOAuthServer` | class | The three `/oauth/*` endpoints, exposed via `@TomApiImplementation` |
+| `TomOAuthException` | class | A mis-configured provider set or a refused handshake |
 
 ## The Login Flow
 

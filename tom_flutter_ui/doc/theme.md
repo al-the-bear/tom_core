@@ -28,10 +28,10 @@ concept of:
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `TomStateStyle` | value class | Describes the treatment of one withheld state (opacity, pointer absorption, optional colour overlay, optional custom builder) and `apply`s it to a widget. |
-| `TomTheme` | value class | The Tom-specific theme — a `name` plus one `TomStateStyle` per withheld state (`readonlyStyle`, `disabledStyle`). Immutable, with `copyWith`. `applyAuthState` maps a `TomAuthState` to its appearance. |
-| `TomThemeScope` | `InheritedWidget` | Delivers a `TomTheme` to a subtree; `of` / `readonlyStyleOf` / `disabledStyleOf` / `applyAuthState` accessors fall back to defaults when no scope is present. |
-| `TomButtonVariants` | factory class | Produces standard `ButtonStyle` objects (`primary`, `secondary`, `auxiliary`, `destructive`) from a `ColorScheme`. |
+| `TomStateStyle` | class | Describes the treatment of one withheld state (opacity, pointer absorption, optional colour overlay, optional custom builder) and `apply`s it to a widget. |
+| `TomTheme` | class | The Tom-specific theme — a `name` plus one `TomStateStyle` per withheld state (`readonlyStyle`, `disabledStyle`). Immutable, with `copyWith`. `applyAuthState` maps a `TomAuthState` to its appearance. |
+| `TomThemeScope` | class | Delivers a `TomTheme` to a subtree; `of` / `readonlyStyleOf` / `disabledStyleOf` / `applyAuthState` accessors fall back to defaults when no scope is present. |
+| `TomButtonVariants` | class | Produces standard `ButtonStyle` objects (`primary`, `secondary`, `auxiliary`, `destructive`) from a `ColorScheme`. |
 
 ## `TomStateStyle` — withheld-state treatment
 

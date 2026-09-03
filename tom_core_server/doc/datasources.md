@@ -53,18 +53,18 @@ declared.
 | `isLostConnectionFailure` | function | Whether a failure left no live link to have run on, so one reconnect-and-retry is worth it |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | A query over a set of entity types |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect` | class | Concrete statements |
-| `TomTypePersistenceInfo` | reflected class | Per-type persistence metadata (table + columns) |
+| `TomTypePersistenceInfo` | class | Per-type persistence metadata (table + columns) |
 | `TomTypedPersistenceBase` | abstract class | Base for anything scoped to a set of entity types; analyses their annotations once and exposes the flattened column information |
 | `SqlPlaceholderScan` | class | Finds `:name` placeholders in generated SQL without mistaking one inside a quoted literal for a bind |
 | `TomDataSource` | abstract class | A connection to one data source (lifecycle + execution) |
 | `TomPreparedStatement<T>` | abstract class | A reusable compiled statement |
-| `TomDatasourceDriver` | annotation | Marks a `TomDataSource` as the driver for a named type |
+| `TomDatasourceDriver` | class | Marks a `TomDataSource` as the driver for a named type |
 | `TomDataSourceInfo` | class | The process-wide registry of named, configured data sources |
-| `TomDatasourceInitException` | exception | A data source could not be discovered, instantiated or initialised |
+| `TomDatasourceInitException` | class | A data source could not be discovered, instantiated or initialised |
 | `MariaDbDatasource` / `MariaDbXADatasource` / `MariadbSqlDialect` | class | The MariaDB implementation (plain + XA transactions) |
 | `MariadbPreparedStatement<T>` | class | A MariaDB-backed `TomPreparedStatement` — the server-side statement, the ordered parameter list, and the type its rows map onto |
-| `MariadbDatasourceException` | exception | A MariaDB connect, execute or result-mapping failure |
-| `MariadbPreparedStatementException` | exception | A statement failed with no live link to have run on; raising it *is* the decision to retry once |
+| `MariadbDatasourceException` | class | A MariaDB connect, execute or result-mapping failure |
+| `MariadbPreparedStatementException` | class | A statement failed with no live link to have run on; raising it *is* the decision to retry once |
 | `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` | class | The single declaration of a table the framework itself owns, from which its DDL, column lists and inserts are derived |
 | `unknownFrameworkColumns` | function | Audits a hand-written statement for column references no framework table declares |
 

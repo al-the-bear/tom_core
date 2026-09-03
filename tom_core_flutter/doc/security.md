@@ -24,16 +24,16 @@ reflection annotation that tags client 2FA adaptors.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `Tom2FAFlowPanel` | `StatefulWidget` | Renders whichever stop of the second-factor login the controller reports |
+| `Tom2FAFlowPanel` | class | Renders whichever stop of the second-factor login the controller reports |
 | `Tom2FAFlowController` | abstract class | The seam an application implements over its own auth client — five moves, two pieces of state |
 | `Tom2FAClientMechanism` | abstract class | One mechanism's client-side rendering, registered under its mechanism key |
-| `Tom2FAClientRegistry` | static registry | The mechanism catalog the flow dispatches through |
-| `Tom2FAEnrolmentPanelContext` | value class | What an enrolment panel is given to render itself |
-| `Tom2FAChallengePanelContext` | value class | What a challenge panel is given to render itself |
-| `TomTotp2FAClientMechanism` | `Tom2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'` |
-| `Tom2FATexts` | static keys + lookup | Every resource key this feature resolves, and the one helper that resolves them |
-| `TomQrCodeView` | `StatefulWidget` | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes |
-| `TomClient2FAAdaptor` | `const` annotation (`@tomReflector`) | Tags a class as a client 2FA adaptor for a given `type` |
+| `Tom2FAClientRegistry` | class | The mechanism catalog the flow dispatches through; entirely static |
+| `Tom2FAEnrolmentPanelContext` | class | What an enrolment panel is given to render itself |
+| `Tom2FAChallengePanelContext` | class | What a challenge panel is given to render itself |
+| `TomTotp2FAClientMechanism` | class | The shipped authenticator-app mechanism, registered under `'totp'` |
+| `Tom2FATexts` | class | Every resource key this feature resolves, and the one helper that resolves them — all static |
+| `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes |
+| `TomClient2FAAdaptor` | class | The `const` annotation that tags a class as a client 2FA adaptor for a given `type`; reflected via `@tomReflector` |
 
 The division of labour is the point of the module. Everything about a
 second-factor login that is the *same* whichever mechanism is in play — the

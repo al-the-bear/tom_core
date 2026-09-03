@@ -35,12 +35,12 @@ method, and converts the result (or any error) into a `Response`.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomEndpoint` | annotation | Declares an HTTP endpoint inline on a method (route, methods, mime types, CORS, …) |
-| `TomApiEndpointImplementation` | annotation | Binds a method to an endpoint defined in the remote-API registry |
+| `TomEndpoint` | class | Declares an HTTP endpoint inline on a method (route, methods, mime types, CORS, …) |
+| `TomApiEndpointImplementation` | class | Binds a method to an endpoint defined in the remote-API registry |
 | `TomService` / `tomService` | annotation | Marks a class as an interface-based service to scan |
-| `TomApiImplementation` | annotation | Marks a class as the implementation of a registry-defined API |
-| `TomComponentReference` | annotation | Points a service at its implementation bean (by name or type) |
-| `TomTransactional` | annotation | Requests transaction wrapping for an endpoint method |
+| `TomApiImplementation` | class | Marks a class as the implementation of a registry-defined API |
+| `TomComponentReference` | class | Points a service at its implementation bean (by name or type) |
+| `TomTransactional` | class | Requests transaction wrapping for an endpoint method |
 | `TomErrorHandler` / `TomDefaultErrorHandler` | class | Turns an error into a `Response` (default: opaque `500`) |
 | `TomEndpointRouting` | class | Scans the annotated classes and builds the `Router` |
 | `TomEndpointHandler` | class | Serves one endpoint (the per-request pipeline) |

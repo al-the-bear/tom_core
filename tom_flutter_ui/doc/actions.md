@@ -28,17 +28,17 @@ keeps widgets dumb and reusable, and keeps logic testable without a widget tree.
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `TomAction<TContext, TUndo>` | abstract base | A single unit of behaviour: typed context, authorization, optional undo. |
-| `TomSimpleAction<TContext>` | abstract base | A `TomAction` that produces no undo state. |
+| `TomAction<TContext, TUndo>` | abstract class | A single unit of behaviour: typed context, authorization, optional undo. |
+| `TomSimpleAction<TContext>` | abstract class | A `TomAction` that produces no undo state. |
 | `TomActionController` | class | Owns a group of related actions and supplies the first segment of their canonical path. |
 | `TomActionContext` | class | Base for the typed inputs an action needs; domain contexts extend it. |
-| `TomActionUndo` | tag interface | Marker for undo-state objects returned from `execute`. |
+| `TomActionUndo` | abstract interface class | Marker for undo-state objects returned from `execute`. |
 | `TomActionTransaction` | class | Groups sub-actions into one atomic undo entry. |
 | `TomUndoHistory` | class | Application-level undo/redo stack of transactions. |
 | `TomActionTrigger<TContext, TUndo>` | class | Adapts an action to a `VoidCallback` for a widget, recording undo state. |
-| `TomCompositeAction` | action | Runs a list of guarded steps as one action. |
-| `TomDualAction` | action | Sibling of the composite: two independent actions, each with its own context and guard. |
-| `TomUndoAction` / `TomRedoAction` | actions | Coordinator actions that drive a `TomUndoHistory`. |
+| `TomCompositeAction` | class | Runs a list of guarded steps as one action. |
+| `TomDualAction` | class | Sibling of the composite: two independent actions, each with its own context and guard. |
+| `TomUndoAction` / `TomRedoAction` | classes | Coordinator actions that drive a `TomUndoHistory`. |
 
 ## `TomAction` — the unit of behaviour
 

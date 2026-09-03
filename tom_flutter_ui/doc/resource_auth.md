@@ -31,15 +31,15 @@ data** resolved here.
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `TomUIColorAdapter` | interface | Contract: resolve a colour `name` → `Color?`, plus `colorExists`. |
-| `TomUIColors` | singleton | Global colour resolver; delegates to the installed adapter. |
-| `AllColorsAdapter` | adapter | Resolves named (`mRed`, `cSystemBlue`), hex (`#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` — alpha first), and `rgb()/rgba()` colours; supports custom registration. |
-| `MaterialOnlyColorAdapter` / `CupertinoOnlyColorAdapter` | adapters | Single-family colour resolvers for smaller bundles. |
-| `TomUIIconAdapter` | interface | Contract: resolve an icon `name` → `IconData?`, plus `iconExists`. |
-| `TomUIIcons` | singleton | Global icon resolver; delegates to the installed adapter. |
-| `AllIconsAdapter` | adapter | Resolves the full Material + Cupertino icon set; supports custom registration. |
-| `MaterialOnlyIconAdapter` / `CupertinoOnlyIconAdapter` | adapters | Single-family icon resolvers for smaller bundles. |
-| `TomConfigProvider` | singleton | Environment, platform, and feature-flag configuration. |
+| `TomUIColorAdapter` | abstract class | Contract: resolve a colour `name` → `Color?`, plus `colorExists`. |
+| `TomUIColors` | class | Global colour resolver; delegates to the installed adapter. |
+| `AllColorsAdapter` | class | Resolves named (`mRed`, `cSystemBlue`), hex (`#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` — alpha first), and `rgb()/rgba()` colours; supports custom registration. |
+| `MaterialOnlyColorAdapter` / `CupertinoOnlyColorAdapter` | classes | Single-family colour resolvers for smaller bundles. |
+| `TomUIIconAdapter` | abstract class | Contract: resolve an icon `name` → `IconData?`, plus `iconExists`. |
+| `TomUIIcons` | class | Global icon resolver; delegates to the installed adapter. |
+| `AllIconsAdapter` | class | Resolves the full Material + Cupertino icon set; supports custom registration. |
+| `MaterialOnlyIconAdapter` / `CupertinoOnlyIconAdapter` | classes | Single-family icon resolvers for smaller bundles. |
+| `TomConfigProvider` | class | Environment, platform, and feature-flag configuration. |
 | `TomEnvironment` / `TomPlatform` | enums | `development`/`staging`/`production`; `mobile`/`web`/`desktop`. |
 
 ## Colour resolution

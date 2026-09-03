@@ -63,10 +63,10 @@ them run against a live server.
 | ---- | ---- | ------- |
 | `TomDbMigrations` | class | The orchestrator; `migrateDatabases(directory)` drives a whole tree |
 | `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`) |
-| `TomDbMigrationAdaptor` | annotation | Binds a migrator to a data-source type for reflection discovery |
+| `TomDbMigrationAdaptor` | class | Binds a migrator to a data-source type for reflection discovery |
 | `TomMigrationFileName` | class | A migration file name parsed into version, description and environment tags |
-| `MariadbMigrationAdaptor` | reflected class | The MariaDB migrator |
-| `TomDbVersion` | reflected class | One row of a `<schema>_versioning` table |
+| `MariadbMigrationAdaptor` | class | The MariaDB migrator |
+| `TomDbVersion` | class | One row of a `<schema>_versioning` table |
 | `TomDbMigrationException` | class | Orchestration / discovery / parsing failures |
 | `MariadbMigrationException` | class | MariaDB migration failures |
 
@@ -80,7 +80,7 @@ them run against a live server.
 | `TomSchemaDivergence` | class | One disagreement: kind, table, column, origin, message |
 | `TomSchemaDivergenceKind` | enum | Which of the nine disagreements it is — each a different culprit |
 | `TomFrameworkSchemaCheck` | class | The same comparison for the tables the framework itself owns |
-| `TomInformationSchemaColumnRow` | reflected class | One `information_schema.COLUMNS` row, as the live check reads it |
+| `TomInformationSchemaColumnRow` | class | One `information_schema.COLUMNS` row, as the live check reads it |
 | `frameworkOwnedTables` | function | Every framework-owned table, at its default name |
 
 ### The shared schema model and DDL replay

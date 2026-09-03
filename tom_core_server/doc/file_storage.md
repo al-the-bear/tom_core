@@ -64,7 +64,7 @@ without the second; the second is built entirely on the first.
 | `TomAwsV4Signer` / `TomAwsCredentials` | class | AWS SigV4 request signing |
 | `TomBlobStoreInfo` | class | The configured stores, by name, with a default |
 | `TomBlobStoreFactory` | typedef | A backend: settings in, a store out |
-| `TomFileReference` | annotation | Marks a column as holding a storage key |
+| `TomFileReference` | class | Marks a column as holding a storage key |
 | `TomFileReferenceKeys` | class | Key generation and store resolution for that annotation |
 | `TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` / `.clearFile` | methods | The entity-level file API |
 | `TomFileRepository` | abstract class | The five-method file contract — `findById`, `saveFile`, `openFile`, `describeFile`, `clearFile` — independent of SQL |

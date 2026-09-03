@@ -26,7 +26,7 @@ handle around.
 | ------ | ---- | ------- |
 | `TomTransactionParticipant` | abstract class | A resource that can enlist in a transaction |
 | `TomTransaction` | class | One unit of work coordinating its participants |
-| `TomTransactionManager` | abstract class (statics) | Zone-scoped ambient access to the current transaction |
+| `TomTransactionManager` | abstract class | Zone-scoped ambient access to the current transaction. Statics only |
 | `TomTransactionException` | class | Raised on an invalid transaction operation |
 
 ## The Participant Contract

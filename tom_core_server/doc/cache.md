@@ -27,10 +27,10 @@ bounded, and can expire entries by age or clear itself on a schedule.
 | `TomCache` | class | A named cache; static helpers read/store/remove by cache name or type |
 | `TomCacheEntry` | class | A cached value plus its optional `deletionTime` |
 | `TomCacheManager` | class | Registry of named caches; decides local vs. forwarded operation |
-| `TomCacheException` | exception | Missing cache, or a cached value whose type does not match |
-| `TomCacheStoreMessage` | `TomCommand` | Cross-isolate store, run in the main isolate |
-| `TomCacheRemoveMessage` | `TomCommand` | Cross-isolate remove, run in the main isolate |
-| `TomCacheRetrieveMessage` | `TomCommand` | Cross-isolate read, run in the main isolate |
+| `TomCacheException` | class | Missing cache, or a cached value whose type does not match |
+| `TomCacheStoreMessage` | class | Cross-isolate store, run in the main isolate |
+| `TomCacheRemoveMessage` | class | Cross-isolate remove, run in the main isolate |
+| `TomCacheRetrieveMessage` | class | Cross-isolate read, run in the main isolate |
 
 ## Registering a Cache
 

@@ -20,7 +20,7 @@ web, or a neutral fallback).
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `clientPlatformUtils` | getter → `TomPlatformUtils` | The platform utilities for the current Flutter target |
+| `clientPlatformUtils` | getter | The `TomPlatformUtils` for the current Flutter target |
 
 The returned object answers platform predicates (`isDesktop`, `isMobile`,
 `isWeb`, `isWindows`, `isLinux`, `isMacOs`, `isAndroid`, `isIos`, `isFuchsia`),

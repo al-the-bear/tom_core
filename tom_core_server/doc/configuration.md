@@ -30,8 +30,8 @@ environment-variable substitution.
 | `TomServerConfigResourceProvider` | class | Holds the configuration tree; answers `exists`/`get` (dotted paths) |
 | `TomConfig<T>` | class | A typed, eagerly-resolved view of one property |
 | `TomStringConfig` / `TomIntConfig` / `TomDoubleConfig` / `TomBoolConfig` | class | `TomConfig` specialised to a concrete type |
-| `TomConfigurationException` | exception | A property failed the cast to `T`; chains the `TypeError` |
-| `TomBaseServerConfiguration` | reflected class | Base for a server's settings; merges all sources on construction |
+| `TomConfigurationException` | class | A property failed the cast to `T`; chains the `TypeError` |
+| `TomBaseServerConfiguration` | abstract class | Base for a server's settings; merges all sources on construction |
 | `TomYaml` | class | Loads YAML files with `${VAR:default}` substitution |
 | `tomAppId` | getter | Process-wide application id, read from the active configuration's `appId` |
 
