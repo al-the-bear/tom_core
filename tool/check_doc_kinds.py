@@ -3,10 +3,15 @@
 
 Run from anywhere::
 
-    python3 tool/check_doc_kinds.py                  # whole repo
-    python3 tool/check_doc_kinds.py tom_core_agentic # one subtree
+    python3 tool/check_doc_kinds.py                  # every document root
+    python3 tool/check_doc_kinds.py tom_core_agentic # one package subtree
+    python3 tool/check_doc_kinds.py _ai              # the completion set
 
 Exits non-zero when a claim disagrees with the source, so it can gate a build.
+
+The argument is a prefix filter on the path each document is *reported* under,
+not a root -- it narrows the default set, it cannot widen it. The roots
+themselves are ``DOCUMENT_ROOTS``.
 
 Most module documents open with an Overview table whose second column is
 ``Kind``, and a reader uses that column to decide what they are allowed to do
@@ -51,6 +56,19 @@ four false positives per real one when this was first measured. A symbol the
 repo does not declare is skipped rather than reported: these documents name
 Flutter and Dart core types freely, and this checker has no index for them.
 
+**Which documents, and why two roots.** The package documents under
+``<package>/doc/`` are one set; the completion write-ups in
+``_ai/quests/tom_core/completion/`` are the other. They carry the same tables,
+written in the same pass, and for a long time only the first set was reachable
+-- not unconfigured but *unreachable*, because the single root was this repo and
+the CLI argument filters that root rather than replacing it. The completion set
+was measured the moment it was reached: 111 role-words across 19 documents,
+against a gated set that was reporting clean. A gate whose scope stops short of
+half its corpus reports the half it can see, and the report reads like the
+whole. The quest folder is a separate clone, so a missing root is skipped rather
+than fatal -- but every root that *is* present is audited by default, because a
+root you have to ask for is a root nobody asks for.
+
 **What counts as correct** is the declaration's modifiers verbatim, in source
 order: ``final class``, ``abstract interface class``, ``sealed class``,
 ``enum``, ``typedef``, ``mixin``, ``extension type``, ``extension``. Bare ``class`` is
@@ -59,6 +77,18 @@ accepted for the two top-level forms that have no keyword of their own -- the
 completion documents already use both words and each names a real declaration
 form. A top-level ``const`` / ``final`` is written the way the documents write
 it, as the modifier plus the type: ``const String``, ``const int``.
+
+The vocabulary is closed, and deliberately admits no decoration: not
+``top-level getter`` for ``getter``, not ``class (static)`` or ``class ×3`` for
+``class``, not the supertype (``StatelessWidget``, ``State``) in place of the
+kind. Every one of those was in the corpus, and each is *true* -- which is the
+problem, because a cell that is true and unparseable trains the reader to read
+the column as prose. Whatever the decoration was carrying (that a class is a
+static-only namespace, that it is reflected, that three variant files declare
+it, that it extends ``StatelessWidget``) is a fact about the symbol's role, and
+the ``Purpose`` cell beside it is where roles are described. Keeping the
+vocabulary closed is what lets a disagreement mean something; accepting synonyms
+would make the gate agree with the decay it exists to catch.
 
 **Why constants are indexed at all**, given they are two rows in the whole
 corpus: they are the two rows of ``mcp_auth.md``, the document that prompted
@@ -84,6 +114,16 @@ from pathlib import Path
 from gate_report import report_faults
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+WORKSPACE_ROOT = REPO_ROOT.parent.parent
+
+# Every place a Kind table lives, as (base, glob). The package documents sit
+# inside the repo; the completion write-ups sit in the quest folder beside it.
+# A base that is not on disk is skipped -- `_ai` is a separate clone and the
+# gate has to run without it.
+DOCUMENT_ROOTS: tuple[tuple[Path, str], ...] = (
+    (REPO_ROOT, "**/doc/*.md"),
+    (WORKSPACE_ROOT / "_ai" / "quests" / "tom_core" / "completion", "*.md"),
+)
 
 # A type declaration and its modifiers. The modifier group is deliberately
 # permissive about order -- Dart fixes it, but a checker that assumed the order
@@ -191,6 +231,35 @@ def record(kinds: dict[str, str], name: str, kind: str) -> None:
         kinds.setdefault(name, kind)
 
 
+def display_path(document: Path) -> str:
+    """How a document is named in reports, and what the prefix filter matches.
+
+    Repo documents stay repo-relative so the filter keeps naming packages
+    (`tom_core_agentic`); anything outside is workspace-relative
+    (`_ai/quests/...`). Falling back to the absolute path matters more than it
+    looks: `relative_to` *raises* for a path under neither root, and rendering a
+    report is the moment a checker is least able to afford an exception.
+    """
+    for base in (REPO_ROOT, WORKSPACE_ROOT):
+        if document.is_relative_to(base):
+            return str(document.relative_to(base))
+    return str(document)
+
+
+def collect_documents(prefix: str) -> list[Path]:
+    """Every document under every present root whose display path starts with
+    `prefix`, deduplicated in case the roots ever overlap."""
+    found: dict[str, Path] = {}
+    for base, pattern in DOCUMENT_ROOTS:
+        if not base.is_dir():
+            continue
+        for document in base.glob(pattern):
+            shown = display_path(document)
+            if shown.startswith(prefix):
+                found[shown] = document
+    return [found[shown] for shown in sorted(found)]
+
+
 @dataclass
 class Report:
     document: Path
@@ -202,7 +271,7 @@ class Report:
         return not self.faults
 
     def render(self) -> str:
-        lines = [str(self.document.relative_to(REPO_ROOT))]
+        lines = [display_path(self.document)]
         for line_no, symbol, claimed, actual in self.faults:
             lines.append(
                 f"  :{line_no:<4} {symbol:<38} says {claimed!r}, is {actual!r}"
@@ -259,17 +328,14 @@ def main(argv: list[str]) -> int:
         print(f"no declarations found under {REPO_ROOT}", file=sys.stderr)
         return 2
 
-    documents = sorted(
-        p
-        for p in REPO_ROOT.rglob("doc/*.md")
-        if str(p.relative_to(REPO_ROOT)).startswith(prefix)
-    )
+    documents = collect_documents(prefix)
     reports = [r for r in (audit(p, kinds) for p in documents) if r is not None]
 
     # A checker that quietly stops finding kind tables reports a clean tree,
     # which is the one way this kind of audit fails without anyone noticing.
     if not reports:
-        print(f"no Kind tables found under {REPO_ROOT}", file=sys.stderr)
+        roots = ", ".join(str(base) for base, _ in DOCUMENT_ROOTS)
+        print(f"no Kind tables found under {roots}", file=sys.stderr)
         return 2
 
     defective = [r for r in reports if not r.clean]
