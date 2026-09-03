@@ -177,11 +177,11 @@ void main() async {
 
         // Two statements: one that takes a known, non-trivial amount of time,
         // then one the server rejects. A migration that spent time and *then*
-        // failed is the case where "how long did it take" matters most, and it
-        // was the one case that recorded nothing — the stopwatch used to be
-        // read inside the `try`, after the loop, so the catch path left the
-        // duration at its initial 0. The sleep makes that falsifiable without
-        // depending on how fast the server rejects bad syntax.
+        // failed is the case where "how long did it take" matters most, and the
+        // one a stopwatch read inside the `try`, after the loop, records
+        // nothing for: the catch path never reaches it and the duration stays
+        // at its initial 0. The sleep makes that falsifiable without depending
+        // on how fast the server rejects bad syntax.
         await expectLater(
           adaptor.applyMigration(
             dsi,

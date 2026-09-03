@@ -1284,10 +1284,10 @@ void main() {
       sink.close();
       await expectLater(queued, throwsA(isA<TomAuditException>()));
 
-      // The refusal is half the claim; the file is the other half. Reaching
-      // `_ensureOpen` with `_sink` already nulled used to call `openWrite`
-      // again, so the sink reopened the very file it had just closed and
-      // appended to it — while the unawaited close of the old handle was still
+      // The refusal is half the claim; the file is the other half. An
+      // `_ensureOpen` that reads a nulled `_sink` as "not opened yet" calls
+      // `openWrite` again, reopening the very file it has just closed and
+      // appending to it — while the unawaited close of the old handle is still
       // in flight on the same path.
       expect(sink.files, hasLength(1));
       expect(sink.files.single.readAsLinesSync(), hasLength(1));

@@ -249,10 +249,10 @@ abstract class FixtureApiService {
 
   /// Returns a **list** of DTOs, which no single object hook can render.
   ///
-  /// The container shapes are the reason the pipeline used to carry a chain of
+  /// The container shapes are what tempt a transport into carrying a chain of
   /// its own: `getValues` refuses a `List` outright, so a handler returning one
-  /// could not reach the outbound entry point and the transport encoded it
-  /// itself. This endpoint is what makes that no longer true.
+  /// looks like a case the outbound entry point cannot reach and the transport
+  /// encodes it itself. This endpoint is the one that says otherwise.
   @TomPublicAccess()
   @TomEndpoint(
     methods: [TomHttpMethod.post],

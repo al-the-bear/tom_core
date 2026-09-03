@@ -2985,9 +2985,10 @@ void main() {
       );
     });
 
-    // The whole reason this todo landed after the 2FA chain: the policy must
-    // apply to an externally-authenticated principal too, and it does because
-    // nothing on the external path knows there is a policy.
+    // The policy has to apply to an externally-authenticated principal too,
+    // and it does for a reason worth stating: nothing on the external path
+    // knows there is a policy. An external path that reimplemented the
+    // decision would be free to reach a different one.
     test('the 2FA policy still applies to an externally-authenticated '
         'principal', () async {
       final adaptor = _FakeAdaptor();

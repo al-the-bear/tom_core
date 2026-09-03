@@ -239,10 +239,10 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
         rootException: error,
       );
     }
-    // Read on both paths. A script that ran for a while and then failed is
-    // precisely when the duration is worth having; reading the stopwatch only
-    // where it used to be read — inside the `try`, after the loop — recorded a
-    // flat 0 for every failed migration.
+    // Read on both paths, and outside the `try` for that reason. A script that
+    // ran for a while and then failed is precisely when the duration is worth
+    // having; reading the stopwatch after the loop instead would record a flat
+    // 0 for every failed migration.
     final int timeElapsedMs = (timer..stop()).elapsedMilliseconds;
     // Record the outcome with bound parameters rather than interpolating the
     // values into the SQL text. The script ([script]) routinely contains quote

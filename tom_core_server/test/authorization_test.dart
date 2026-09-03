@@ -672,7 +672,8 @@ void main() {
         // it back. Each test above crosses the boundary once and has the main
         // isolate supply the other half, so this is the only one that would
         // notice the two halves agreeing with the main isolate but not with each
-        // other — and it lands on the expiry, the answer that used to be lost.
+        // other — and it lands on the expiry, the answer that goes missing when
+        // they do.
         final token = _token('helen', validFor: const Duration(hours: -1));
 
         final stored = await worker
@@ -699,7 +700,7 @@ void main() {
       // group would notice it not travelling: a store that returns normally
       // and a store that never happened look identical from the worker, so
       // without the throw the worker reads the second as the first — the same
-      // failure shape as the expiry that used to be lost, one method along.
+      // failure shape as the lost expiry above, one method along.
       final token = _tokenWithPayload({'userId': 'ivan'});
 
       final answer = await worker

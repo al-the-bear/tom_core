@@ -151,10 +151,11 @@ void main() {
 
   group('an apostrophe is written by doubling it', () {
     test("'O''Brien, Ltd' carries exactly one apostrophe", () {
-      // The regression. `''` is the sentence-level escape; the parser decodes
-      // it to a single `'`, and the dialect escapes that back to `''` for SQL.
-      // Before the fix the decode step was missing, so the dialect escaped the
-      // author's two characters into four and the value gained an apostrophe.
+      // `''` is the sentence-level escape; the parser decodes it to a single
+      // `'`, and the dialect escapes that back to `''` for SQL. Both steps are
+      // needed and each looks redundant beside the other: drop the decode and
+      // the dialect escapes the author's two characters into four, so the
+      // value silently gains an apostrophe.
       expect(
         where("find by title = 'O''Brien, Ltd'"),
         "WHERE fixture_export.title = 'O''Brien, Ltd'",

@@ -2,14 +2,15 @@
 /// `skip`/`offset` — in a query sentence.
 ///
 /// Each of these keywords takes exactly one numeric token after it, and the
-/// four ways of getting that token wrong all used to be indistinguishable from
-/// each other *and* from a correct sentence: one `try`/`catch` around
-/// `int.parse` returned `1` for anything it could not read. `find first x by …`
-/// capped at one row, and so did `find first by …` with no argument at all —
-/// the missing element threw `RangeError` inside the same `try`. A caller who
-/// mistyped a page size got a page of one row and no indication that anything
-/// had gone wrong, which is the one failure mode a query language cannot
-/// afford: quietly returning a different result set than the one asked for.
+/// four ways of getting that token wrong are what a single `try`/`catch`
+/// around `int.parse` collapses into one — indistinguishable from each other
+/// *and* from a correct sentence, because the fallback is `1`. Under that
+/// shape `find first x by …` caps at one row, and so does `find first by …`
+/// with no argument at all, the missing element throwing `RangeError` inside
+/// the same `try`. A caller who mistypes a page size gets a page of one row
+/// and no indication that anything has gone wrong, which is the one failure
+/// mode a query language cannot afford: quietly returning a different result
+/// set than the one asked for.
 ///
 /// Zero is *not* an error here. `TomPageRequest` treats `limit: 0` as "no cap"
 /// (`isUnpaged`, and `assertWindow` rejects only negative bounds), so a

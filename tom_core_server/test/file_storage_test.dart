@@ -958,11 +958,11 @@ void main() {
 
     group('one key cannot reach another key\'s bookkeeping', () {
       // The backend keeps two auxiliary files beside each blob — the sidecar
-      // and the partial a write is staged in. Both used to be named with a
-      // suffix the key grammar can spell, so a caller who chose `a.meta` or
-      // `a.part` was addressing another caller's bookkeeping without either of
-      // them doing anything wrong: `.` is an ordinary key character, and only
-      // the segments `.` and `..` are reserved.
+      // and the partial a write is staged in. Name either with a suffix the key
+      // grammar can spell and a caller who picks `a.meta` or `a.part` is
+      // addressing another caller's bookkeeping without either of them doing
+      // anything wrong: `.` is an ordinary key character, and only the segments
+      // `.` and `..` are reserved.
 
       test('the auxiliary suffixes are unspellable in a key', () {
         // The load-bearing assertion. Every case below follows from this one,
@@ -2012,13 +2012,13 @@ void main() {
     });
 
     test('a non-store entry is not a store for either purpose', () async {
-      // Entries that are not maps are skipped, which used to be visible only
-      // in the returned count and so was never asserted. It matters more now
-      // that the same collection decides the implicit default: a scalar
-      // sitting beside the stores — a comment key, a stray setting a hand-
-      // edited config grew — must not make a one-store deployment look like a
-      // two-store one and take its default away. Skipped and uncounted are the
-      // same claim, so this pins both.
+      // Entries that are not maps are skipped, and the only outward sign of
+      // that is the returned count — so asserting the count alone would leave
+      // the part that matters unpinned. The same collection decides the
+      // implicit default: a scalar sitting beside the stores — a comment key,
+      // a stray setting a hand-edited config grew — must not make a one-store
+      // deployment look like a two-store one and take its default away.
+      // Skipped and uncounted are the same claim, so this pins both.
       final count = await TomBlobStoreInfo.initializeBlobStores({
         'note': 'files live on the SAN now',
         'files': {'type': 'memory'},

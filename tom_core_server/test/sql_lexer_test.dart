@@ -4,13 +4,14 @@ import 'package:test/test.dart';
 /// Tests for [TomSqlLexer], the one place this package decides where a quoted
 /// run ends and where one statement ends and the next begins.
 ///
-/// The scan used to be hand-rolled five times over — once in the migration
-/// applier, four times in the DDL reader — and no two copies agreed. Each was
-/// wrong exactly where the other was right: the applier handled a backslash
-/// inside a backtick identifier correctly and mishandled one inside a string
-/// literal, and the reader did the reverse. The matrix below is therefore not
-/// decoration; it is the whole point of the consolidation, and it is asserted
-/// against the semantics a real MariaDB server was observed to have:
+/// Hand-rolling the scan is cheap enough that it happens once per caller —
+/// the migration applier, and four times over in the DDL reader — and no two
+/// such copies agree. They fail in complementary places: one handles a
+/// backslash inside a backtick identifier correctly and mishandles one inside
+/// a string literal, the next does the reverse, and both look right in
+/// isolation. The matrix below is therefore not decoration; it is the whole
+/// point of having one lexer, and it is asserted against the semantics a real
+/// MariaDB server was observed to have:
 ///
 /// | Quote | `''` doubling | `\'` backslash |
 /// | ----- | ------------- | -------------- |
@@ -66,10 +67,10 @@ void main() {
   //
   // A table because the matrix has to be asserted against *every* splitter this
   // package builds on the lexer, and a splitter with its own copy of the cases
-  // is a splitter whose copy can fall behind. That is not hypothetical: it is
-  // the shape of the original defect. Five hand-rolled scanners each had their
-  // own idea of the rules and their own tests, so each stayed green while
-  // disagreeing with the others (tcinc476).
+  // is a splitter whose copy can fall behind. That is the shape the defect
+  // takes every time: hand-rolled scanners each carry their own idea of the
+  // rules *and* their own tests, so each stays green while disagreeing with
+  // the others, and nothing in either suite is in a position to notice.
   //
   // Every case is a semicolon that must NOT split, because that is the
   // observable consequence of getting a cell wrong: a scanner that loses track
@@ -473,19 +474,19 @@ const List<_EscapeCase> _escapeMatrix = [
   // The three cases below are the only ones in this table that the *reader*
   // can fail, and without them its half of the matrix is decoration.
   //
-  // The reason is worth stating, because it is not obvious and it cost this
-  // table a rewrite. `stripComments` copies quoted text through verbatim, so
-  // whether it tracks a run correctly or not, the characters it emits are
-  // identical — unless the misparse lands a comment marker outside a run that
-  // should have contained it, or inside one that should not. A case without a
-  // comment marker therefore cannot observe the reader's scan at all: the first
-  // draft of this table had nine such cases, and a `stripComments` rewritten to
-  // scan naively passed all 2836 tests in the package.
+  // The reason is worth stating, because it is not obvious and a table written
+  // without it is worthless. `stripComments` copies quoted text through
+  // verbatim, so whether it tracks a run correctly or not, the characters it
+  // emits are identical — unless the misparse lands a comment marker outside a
+  // run that should have contained it, or inside one that should not. A case
+  // without a comment marker therefore cannot observe the reader's scan at
+  // all: fill the table with such cases and a `stripComments` rewritten to
+  // scan naively passes every test in the package.
   //
-  // The two failure directions need different cases, because they are different
-  // bugs — and they are precisely the two that were found in the wild
-  // (tcinc476). Under-escaping (a scan that ignores backslashes) ends a literal
-  // early and exposes the marker inside it. Over-escaping (a scan that honours
+  // The two failure directions need different cases, because they are
+  // different bugs, and both are ones a hand-rolled scanner reaches on its
+  // own. Under-escaping (a scan that ignores backslashes) ends a literal early
+  // and exposes the marker inside it. Over-escaping (a scan that honours
   // backslashes inside identifiers too) runs past the closing backtick and
   // swallows a marker that was genuinely outside.
   _EscapeCase(

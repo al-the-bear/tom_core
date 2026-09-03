@@ -1558,11 +1558,11 @@ void main() {
 
     test('a write does not stage over a same-named neighbour', () async {
       // The staging file is inside the key space unless its suffix uses a
-      // character the grammar cannot produce. It used to be `<key>.part`,
-      // which a caller may legitimately spell, so storing `a.csv` overwrote
-      // the export held under `a.csv.part` and then renamed it away. Same
-      // defect as the blob store's sidecar — see `TomBlobStore
-      // .auxiliaryMarker`, which both backends now hang their suffixes off.
+      // character the grammar cannot produce. A suffix like `<key>.part` is one
+      // a caller may legitimately spell, so storing `a.csv` would overwrite the
+      // export held under `a.csv.part` and then rename it away. Same shape as
+      // the blob store's sidecar — see `TomBlobStore.auxiliaryMarker`, which
+      // both backends hang their suffixes off.
       final store = TomDirectoryExportStore(root);
       await store.store(
         key: 'a.csv.part',
@@ -2119,9 +2119,10 @@ void main() {
     group('every backend failure arrives in the export vocabulary', () {
       // The adaptor's reason to exist: which backend is configured is a
       // deployment decision, and a caller of the export module should not have
-      // to catch a second error type because of it. `not_found` used to be the
-      // only translated case — every other storage failure, and every failure
-      // from store/exists/delete, reached the caller as TomStorageException.
+      // to catch a second error type because of it. Translating only the
+      // obvious case — `not_found` — would leave every other storage failure,
+      // and every failure from store/exists/delete, reaching the caller as
+      // TomStorageException.
       late TomBlobExportStore failing;
 
       setUp(() {

@@ -93,8 +93,8 @@ class TomTextLocale {
   /// language.
   ///
   /// Enforced, not merely described: the constructor refuses anything else.
-  /// It used to be a comment, which is how a four-letter script subtag came to
-  /// sit here and produce the key `zh_HANS`.
+  /// Left as prose, the rule admits a four-letter script subtag and yields the
+  /// key `zh_HANS`.
   final String? country;
 
   /// Names a locale, normalising case and treating a blank country as none.

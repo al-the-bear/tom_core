@@ -318,12 +318,13 @@ void main() {
     });
   });
 
-  // The encoding every table that stores an instant shares. It was reachable
-  // only through its callers — the dialect's `dateTimeOp`, `TomDbDateTime.of`,
-  // the MariaDB bind boundary, the scheduling stores — so the convention itself
-  // was asserted nowhere, and `doc/datasources.md` now states it as a rule. A
-  // stated rule with no test is the shape of claim tcinc466 and tcinc467 were
-  // both about: it goes stale silently.
+  // The encoding every table that stores an instant shares, and
+  // `doc/datasources.md` states it as a rule. Reached only through its callers
+  // — the dialect's `dateTimeOp`, `TomDbDateTime.of`, the MariaDB bind
+  // boundary, the scheduling stores — the convention itself would be asserted
+  // nowhere, and a stated rule with no test of its own is the claim that goes
+  // stale silently: every caller can be corrected into agreement with itself,
+  // and not one of them is the rule.
   group('sqlInstant / parseSqlInstant (the one encoding of an instant)', () {
     test('renders UTC with six fractional digits', () {
       expect(
@@ -979,8 +980,9 @@ void main() {
   group('isLostConnectionFailure (the prepared-statement retry decision)', () {
     // MariadbPreparedStatement.execute retries once, on a fresh connection,
     // when _execute raises MariadbPreparedStatementException. Which failures
-    // earn that used to be decided by "$e".contains("connection closed") —
-    // the wording of a third-party toString, which no contract holds still.
+    // earn that is not decided by `"$e".contains("connection closed")`: that
+    // matches the wording of a third-party toString, which no contract holds
+    // still.
     //
     // The driver gives nothing better to match on directly: it reports a link
     // it already knows is gone as a bare MySQLClientException with no error
@@ -1671,8 +1673,8 @@ void main() {
       // "Always succeeds" is not a formality: the coordinator ands every
       // participant's end result into the outcome, so a `false` here would fail
       // a transaction that had in fact completed. The no-open-transaction case
-      // is reachable today — a participant whose start returned `false` is
-      // enlisted anyway (tcincb113), and still gets ended.
+      // is reachable today: `registerParticipant` enlists a participant whose
+      // start returned `false`, and that participant still gets ended.
       final ds = _ScriptedDatasource(failing: {'START TRANSACTION'});
       expect(await ds.startTransaction(), isFalse);
       expect(await ds.endTransaction(), isTrue);
@@ -1686,12 +1688,12 @@ void main() {
   // source that is *already* in a transaction is the caller's own mistake, and
   // no retry fixes it — so it is thrown rather than reported.
   //
-  // That distinction only reaches the caller if the type carries it. Both
-  // guards used to throw a bare `Exception`, which is the supertype of every
-  // failure there is: a `catch` narrow enough to act on this one case could not
-  // be written, and the DB-backed test could assert nothing better than
-  // `isA<Exception>()`. The tests below pin the type, the key and the detail
-  // that says *which* data source and *which* branch.
+  // That distinction only reaches the caller if the type carries it. A bare
+  // `Exception` does not: it is the supertype of every failure there is, so no
+  // `catch` narrow enough to act on this one case can be written, and a
+  // DB-backed test can assert nothing better than `isA<Exception>()`. The tests
+  // below pin the type, the key and the detail that says *which* data source
+  // and *which* branch.
   group('MariaDb transaction guard: a second concurrent transaction', () {
     /// Matches the refusal, optionally requiring the named branch in the
     /// parameters — the two lifecycles differ only in whether they have an id.

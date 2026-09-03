@@ -377,14 +377,13 @@ void main() {
   // Dart. So a regression here reaches production intact and surfaces as "the
   // web app cannot call the API" with nothing in the server log to explain it.
   //
-  // The preflight test that used to live in the group above sent an OPTIONS and
-  // asserted `inInclusiveRange(200, 299)`. That did not check what it claimed:
-  // it was captioned "returns without invoking", but `/fixture/health` answers
-  // 200 when it *is* invoked, so the assertion held either way and no
-  // Access-Control header was read anywhere in the package. Its two real claims
-  // — that the method is not invoked, and that the three headers carry the
-  // values the endpoint and the defaults resolve to — are asserted here
-  // instead.
+  // The tempting shape for a preflight test — send an OPTIONS to
+  // `/fixture/health` and assert `inInclusiveRange(200, 299)` — checks neither
+  // claim it appears to. That endpoint answers 200 when it *is* invoked, so a
+  // "returns without invoking" caption holds either way, and no Access-Control
+  // header is read at all. Both real claims are asserted here instead: that the
+  // method is not invoked, and that the three headers carry the values the
+  // endpoint and the defaults resolve to.
   group('CORS preflight', () {
     late Router router;
     late String originalOrigin;
@@ -1539,9 +1538,10 @@ void main() {
     test(
       'an unannotated endpoint is silent when the global default is false',
       () async {
-        // The other direction, and the one that shows the setting is a *setting*:
-        // before the fix both directions produced the same output, because the
-        // raw annotation was null in both and `null == true` is false either way.
+        // The other direction, and the one that shows the setting is a
+        // *setting*. Resolve the annotation with `raw == true` and both
+        // directions produce the same output, because the raw annotation is
+        // null in both and `null == true` is false either way.
         TomEndpointHandler.globalSettingLogRequestsDefault = false;
         expect(await pipelineLogged('/fixture/default_logging'), isFalse);
       },
@@ -1825,7 +1825,7 @@ void main() {
     test('a body that is JSON but not an object surfaces the same key', () {
       // `[1,2,3]` decodes without complaint and then fails the cast to a field
       // map. Same remedy for the client — send an object — so the same key,
-      // rather than leaving this one as the bare TypeError it used to be.
+      // rather than the bare TypeError an unguarded cast would surface.
       expect(
         () => parseHandler.bindParameters(_post('/fixture/parse', '[1,2,3]')),
         throwsA(

@@ -432,15 +432,16 @@ void main() {
     });
   });
 
-  // `fillFromArgs` and `parseArgsToMap` are one syntax with two return types.
-  // They used to be two byte-identical loops, which is why the first-"=" split
-  // and the bare-flag rule each had to be corrected twice; both now run through
-  // the private `_parseArgs`.
+  // `fillFromArgs` and `parseArgsToMap` are one syntax with two return types,
+  // and both run through the private `_parseArgs` for that reason. Written as
+  // two byte-identical loops they invite exactly one kind of maintenance: a
+  // rule such as the first-"=" split or the bare-flag handling gets corrected
+  // in one of them.
   //
   // The two tests below guard the two different failure modes that fact has,
   // and neither substitutes for the other. Duplication does not announce itself
-  // as disagreement — the original copies agreed perfectly, which is exactly
-  // why nothing caught them — so only the source-level test sees a
+  // as disagreement — byte-identical copies agree perfectly, which is exactly
+  // why nothing catches them — so only the source-level test sees a
   // re-duplication on the day it happens. The behavioural test sees the
   // consequence that duplication makes possible afterwards: two copies drifting
   // apart, one rule fixed in one of them.

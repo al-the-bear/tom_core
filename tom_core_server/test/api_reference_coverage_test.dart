@@ -2689,29 +2689,25 @@ const Set<String> _tablesPendingReconciliation = {
 };
 
 /// The modules whose summary `Source:` list has not been reconciled against the
-/// barrel yet — quest todo `tcincb121_ahxs`.
+/// barrel yet.
 ///
-/// `object_persistence` left this set with tcinc597: its list named ten of the
-/// twelve files the barrel exports, omitting `file_reference.dart` and
-/// `paging.dart`. The first was the source of a feature area the summary
-/// documented nowhere, so the two gaps had one cause.
+/// The debt is characteristically a list that names most of what the barrel
+/// exports and drops one or two files without saying so. An omitted source is
+/// often the source of a whole feature area the summary documents nowhere, so
+/// the missing line and the missing chapter are one gap seen twice.
 const Set<String> _sourceListsPendingReconciliation = {'authorization'};
 
 /// The modules whose class sections do not yet name every member their classes
-/// declare — quest todo `tcincb123_ahxt`.
+/// declare.
 ///
-/// `object_persistence` left this set with tcinc598. Its debt was three classes,
-/// and they were one omission seen three times: the members that make
-/// grant-driven scoping the *default* rather than an annotation someone must
-/// remember. `TomAnnotationAnalyzer` was missing `autoScopeFor` and the three
-/// resource-key constants it decides by, `TomDbScope` was missing
-/// `resourceScope`, `noScope`, `unscoped()` and `isOptOut` — the whole opt-out
-/// half of the mechanism — and `TomDataScope` was missing `allowedValuesAsync`,
-/// the async resolver path the grant scope actually runs on.
+/// The debt is rarely spread evenly across a module's classes. It clusters on
+/// whichever mechanism spans several of them, so one omission shows up as three
+/// — and the members most likely to be missing are the ones that make a
+/// behaviour the *default* rather than an annotation someone has to remember,
+/// which is exactly the half a reader will not think to go looking for.
 const Set<String> _memberListsPendingReconciliation = {'authentication'};
 
-/// The modules the index does not yet describe fully — quest todo
-/// `tcincb122_ahxs`.
+/// The modules the index does not yet describe fully.
 ///
 /// Gates **two** checks, deliberately one set for both: that every exported name
 /// appears in the index at all, and that the type appears under its own module's
@@ -2721,17 +2717,17 @@ const Set<String> _memberListsPendingReconciliation = {'authentication'};
 /// it. Sharing the set means a module stays quarantined while *either* is
 /// outstanding, and leaves in one step when both are met.
 ///
-/// `endpoints`, `audit`, `authorization` and `configuration` left this set with
-/// tcinc513: the Endpoints table had been listing eighteen types from two of the
-/// unit's six sources, omitting form binding, redirects, WebSockets and the file
-/// surface entirely, and the other three were one name each.
+/// A module's index debt is usually not a handful of scattered names. A table
+/// that covers two of a unit's six sources looks complete — it lists plenty of
+/// types — while omitting whole feature areas, so the count of missing entries
+/// says nothing about how much of the module is undescribed.
 const Set<String> _indexPendingReconciliation = {
   'authentication',
   'object_persistence',
 };
 
 /// The modules whose `lib/src/tomserver/<module>/readme.md` still leaves at
-/// least one exported file unmentioned — quest todo `tcincb131_ahyb`.
+/// least one exported file unmentioned.
 const Set<String> _moduleReadmesPendingReconciliation = {
   'authentication',
   'datasources',
@@ -2740,17 +2736,15 @@ const Set<String> _moduleReadmesPendingReconciliation = {
   'scheduling',
 };
 
-/// The modules with no `readme.md` at all — quest todo `tcincb131_ahyb`.
+/// The modules with no `readme.md` at all.
 ///
 /// Separate from the set above because it is the stronger failure. An
 /// incomplete table is a document that under-describes its module; a missing
 /// readme is the source directory answering a reader's first question with
 /// nothing, and it is invisible to every check that reads a table, because
-/// there is no table to read.
-/// `messaging` left this set with tcinc577: nine exported files, four layers,
-/// and nothing in the directory saying which file held which — the module whose
-/// structure was least recoverable from its file names was the one with no
-/// readme at all.
+/// there is no table to read. The cost rises with the module: nine exported
+/// files across four layers, and nothing in the directory saying which file
+/// holds which, leaves the structure recoverable only by reading all of it.
 const Set<String> _modulesWithoutReadme = {
   'audit',
   'export',
@@ -3677,12 +3671,11 @@ None — this module exposes no top-level functions or constants.
     // by the shape-specific groups, and a second strict rule laid over them
     // would start rejecting documentation they accept.
     //
-    // Unlike its neighbours this group has no quarantine set. It had one, and
-    // tcinc597 emptied it: `object_persistence` was the last module holding
-    // debt here. An empty quarantine is worse than none — it keeps a `skip:`
-    // that can never fire and a staleness meta-test that can never fail, which
-    // is the dead rule the next reader cannot recognise as dead. Should a
-    // module need parking again, five siblings above show the shape.
+    // Unlike its neighbours this group has no quarantine set, because no module
+    // holds debt here. An empty quarantine is worse than none — it keeps a
+    // `skip:` that can never fire and a staleness meta-test that can never
+    // fail, which is the dead rule the next reader cannot recognise as dead.
+    // Should a module need parking again, five siblings above show the shape.
     for (final module in _modules()) {
       test(module, () {
         final unnamed = _unnamedApi(module);
@@ -6334,11 +6327,10 @@ One: `TomKind`, documented beside the type that carries it.
         caseSensitive: false,
       ),
       // Every prefix the quest that wrote this package has issued todos under.
-      // `csexd` is here because it was missing: `cluster_verify.dart` carried
-      // "the four claims csexd15 asks for" through every green run of this
-      // group, since the pattern only knew the two prefixes in use when it was
-      // written. A marker that names its own vocabulary has to be widened when
-      // the vocabulary grows.
+      // A marker that names its own vocabulary is only as good as that list: a
+      // prefix missing from it makes every sentence built on an id of that
+      // shape invisible to this group, and the group stays green throughout. So
+      // the list is widened whenever the vocabulary grows.
       'todo ids': RegExp(r'\b(tc(inc|open)b?|csexd)\d+', caseSensitive: false),
       'internal bug numbers': RegExp(r'\bbug\s+§|\bRCK\d+'),
       // The indefinite article is the tell: an unnamed follow-up cannot be

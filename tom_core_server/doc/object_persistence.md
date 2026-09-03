@@ -370,11 +370,12 @@ syntax error (`…build_expression.separator_in_operand_position`) — there is 
 form in which a comparison is written against a parenthesised expression.
 
 This is uniform: it holds for all six operators over all six column families.
-**A boolean column is not special.** It used to be — `=` and `<>` parsed a
-boolean right-hand side as a whole predicate, so `done = TRUE and priority > 3`
-was refused and `not ( done = TRUE ) and priority > 3` compiled to
+**A boolean column is not special.** The tempting exception — letting `=` and
+`<>` swallow a boolean right-hand side as a whole predicate — would change what
+ordinary queries mean: `done = TRUE and priority > 3` would be refused, and
+`not ( done = TRUE ) and priority > 3` would compile to
 `NOT ( done = true AND priority > 3 )`, a different question from the one
-written. Both now behave as the table above says.
+written. Both behave as the table above says instead.
 
 `and`, `or` and `not` combine predicates, and brackets set their scope. `not`
 binds to the single predicate or bracketed group that follows it, so

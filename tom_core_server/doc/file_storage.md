@@ -266,14 +266,14 @@ details are load-bearing:
   `rsync` — is still readable.
 - **Both auxiliary suffixes hang off `~`**, which the
   [key grammar](#keys-are-a-grammar-not-a-string) cannot produce: it admits
-  `[A-Za-z0-9._/-]` and nothing else. The suffixes used to be `.part` and
-  `.meta`, which the grammar *can* spell, and that was not a cosmetic
-  problem — two callers picking ordinary keys destroyed
-  each other's data. `put('a')` then `put('a.meta')` overwrote the first blob's
-  sidecar with the second blob's bytes, so `a` silently lost its media type;
-  `delete('a')` then deleted `a.meta` unconditionally and reported success,
-  taking a blob its caller had never named. The marker closes both by making the
-  bookkeeping unaddressable rather than by policing keys.
+  `[A-Za-z0-9._/-]` and nothing else. Suffixes the grammar *can* spell —
+  `.part` and `.meta` — would not be a cosmetic difference: two callers picking
+  ordinary keys would destroy each other's data. `put('a')` followed by
+  `put('a.meta')` would overwrite the first blob's sidecar with the second
+  blob's bytes, so `a` silently loses its media type; `delete('a')` would then
+  delete `a.meta` unconditionally and report success, taking a blob its caller
+  never named. The marker closes both by making the bookkeeping unaddressable
+  rather than by policing keys.
 
   It stays in this backend rather than moving into the shared grammar for the
   reason the grammar is shared: a key the directory backend refused would be a

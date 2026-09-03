@@ -2796,10 +2796,10 @@ void main() {
       expect(enrollable.begun, 0);
     });
 
-    // The mechanism used to be read off `principal.twoFactorType`, which can
-    // name only one factor and is set by whichever adaptor built the principal.
-    // The store is the authority now, so a user holding several factors is
-    // challenged for the one they nominated.
+    // `principal.twoFactorType` is the field that looks like the answer and is
+    // not: it names only one factor, and it is set by whichever adaptor built
+    // the principal. The store is the authority, so a user holding several
+    // factors is challenged for the one they nominated.
     test(
       'the challenge follows the primary enrolment, not the policy order',
       () async {
@@ -2830,7 +2830,11 @@ void main() {
 
         final (result, _) = await login();
 
-        expect(result.error, isEmpty, reason: 'this used to be a hard failure');
+        expect(
+          result.error,
+          isEmpty,
+          reason: 'an unenrolled user under a required policy is not an error',
+        );
         expect(result.requires2FAEnrolment, isTrue);
         expect(
           result.requires2FA,

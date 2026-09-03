@@ -393,8 +393,9 @@ void main() {
     test('a delete rejects a field the entity does not have', () {
       // Sort names routinely arrive from outside and an ORDER BY cannot bind
       // them as parameters, so the lookup is also what keeps an arbitrary
-      // string out of the statement text. Before the fix a delete had no
-      // lookup at all, and so no such guard.
+      // string out of the statement text. A delete looks like the one form
+      // that has no use for a field lookup — it selects rows, it does not
+      // project them — and skipping it there drops the guard with it.
       expect(
         () => compiler
             .compileQuerySentence('delete by title = :t order by nosuchfield')

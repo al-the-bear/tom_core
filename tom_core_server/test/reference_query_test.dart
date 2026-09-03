@@ -9,13 +9,13 @@
 /// category silently produces a sentence that either matches everything or
 /// nothing.
 ///
-/// The construction used to be welded into the middle of the MariaDB result
-/// mapper, reachable only behind a live connection — so none of it was
-/// exercised, including seven distinct rejections it already implemented.
-/// Splitting the *computation* of the sentence from the *execution* of it is
-/// what makes this file possible: nothing here needs a database, a reflector,
-/// or even an entity, because the owning row is represented by the field-read
-/// callback the caller passes in.
+/// Welded into the middle of the MariaDB result mapper — the natural place for
+/// it, since that is where the owning row is in hand — the construction is
+/// reachable only behind a live connection, and every rejection it implements
+/// goes unexercised for that reason alone. Splitting the *computation* of the
+/// sentence from the *execution* of it is what makes this file possible:
+/// nothing here needs a database, a reflector, or even an entity, because the
+/// owning row is represented by the field-read callback the caller passes in.
 library;
 
 import 'package:test/test.dart';

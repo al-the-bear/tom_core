@@ -262,9 +262,9 @@ Future<void> run() async {
   _configure(Tom2FARequirement.required);
 
   // Example 1: pass 1 offers, it does not lock out. A required policy meeting a
-  // user with nothing enrolled used to be a hard failure; it is now a third
-  // outcome, distinct from a challenge -- `requires2FAEnrolment` and
-  // `requires2FA` are never both set, so a client can switch on which arrived.
+  // user with nothing enrolled is a third outcome rather than a hard failure,
+  // and distinct from a challenge -- `requires2FAEnrolment` and `requires2FA`
+  // are never both set, so a client can switch on which arrived.
   //
   // Only the app is offered. SMS is permitted by the policy and registered, but
   // it cannot be set up from a login, and advertising it would give the chooser

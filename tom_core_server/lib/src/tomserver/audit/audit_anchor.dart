@@ -17,7 +17,7 @@
 /// The missing ingredient is the standard one. The head hash must be recorded
 /// somewhere the attacker does not control, at a moment they cannot revisit.
 /// Then a rewrite is no longer invisible: the rewritten chain has a different
-/// hash at the anchored position, and the recorded one says what it used to be.
+/// hash at the anchored position, and the recorded one contradicts it.
 ///
 /// ## What an anchor is
 ///

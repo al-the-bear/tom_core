@@ -1056,9 +1056,9 @@ void main() {
     });
   });
 
-  // The guard that used to sit here — this module's dartdoc and document may
-  // not gesture at "the quest completion steps" — now covers every source under
-  // `lib/` and every hand-written document in the package, in
-  // `api_reference_coverage_test.dart` ('shipped text stands on its own'). The
-  // rule was never specific to configuration; it was only discovered here.
+  // The rule that a dartdoc or document may not gesture at "the quest
+  // completion steps" is not specific to configuration, so it is not guarded
+  // here: `api_reference_coverage_test.dart` ('shipped text stands on its own')
+  // applies it to every source under `lib/` and every hand-written document in
+  // the package.
 }

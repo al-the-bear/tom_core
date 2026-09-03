@@ -72,11 +72,11 @@ void main() {
     });
 
     test('a DateTime column compiles', () {
-      // The regression. Before the fix the `DateTime` arm constructed its
-      // `DateTimeCol` and discarded it, so control fell out of the switch and
-      // into the "could not determine type" throw — making any sentence with a
-      // timestamp predicate uncompilable unless the entity spelled out
-      // `columnType:` by hand.
+      // The arm that is easiest to get wrong: construct the `DateTimeCol` and
+      // omit the return, and control falls out of the switch into the "could
+      // not determine type" throw — making any sentence with a timestamp
+      // predicate uncompilable unless the entity spells out `columnType:` by
+      // hand. Nothing in the arm itself looks incomplete.
       expect(
         select('find by created_at >= :from').generateQuery(dialect),
         contains('fixture_export.created_at >= :from'),

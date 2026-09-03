@@ -750,12 +750,12 @@ void main() {
     });
 
     test('both factories return their own subtype', () {
-      // The pair used to be lopsided: `permanent` returned
-      // `TomPermanentDeliveryException` and `transient` returned the base,
-      // because the base *was* the transient case. Nothing about the design
-      // meant that — it was the shape the classes happened to have — and it
-      // left `on ... catch` usable for one half of a deliberately symmetric
-      // pair.
+      // The lopsided pair is the one to guard against: `permanent` returning
+      // `TomPermanentDeliveryException` while `transient` returns the base,
+      // because the base doubles as the transient case. Nothing about the
+      // design asks for that — it is what the class shapes fall into on their
+      // own — and it leaves `on ... catch` usable for one half of a
+      // deliberately symmetric pair.
       expect(
         TomDeliveryException.permanent('k', 'm'),
         isA<TomPermanentDeliveryException>(),
@@ -790,12 +790,12 @@ void main() {
     });
 
     test('isPermanent is read from the marker, not stored beside it', () {
-      // The point of the change this test guards. `isPermanent` used to be a
-      // constructor parameter set independently of the mixin, so the public
-      // general constructor could build a failure that printed `(permanent)`
-      // while carrying no marker — and the scheduler branches on the *marker*
+      // Carrying `isPermanent` as a constructor parameter set independently of
+      // the mixin is the obvious shape and the unusable one: the public general
+      // constructor can then build a failure that prints `(permanent)` while
+      // carrying no marker — and the scheduler branches on the *marker*
       // (`scheduler.dart`: `if (error is TomPermanentFailure || ...)`), so it
-      // would have retried that failure forever.
+      // retries that failure forever.
       //
       // These two subclasses pass no classification anywhere. Their answers
       // come entirely from whether they mix in the marker, which is the only

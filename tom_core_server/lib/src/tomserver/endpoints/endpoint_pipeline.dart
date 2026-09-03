@@ -907,11 +907,11 @@ class TomEndpointHandler {
       // returns one has already written the body, and encoding it again would
       // wrap it in quotes. Everything else is the kernel's outbound entry
       // point, which honours every rendering hook the framework recognises and
-      // takes the JSON containers as well — so the chain this used to be
-      // (TomClass, TomJsonSerializable, Map, List, then reflection) is not
-      // shortened here but *removed*: repeating that policy in a transport is
-      // how the server and the client came to disagree about which hooks a
-      // type had.
+      // takes the JSON containers as well. So the chain a transport is tempted
+      // to write here (TomClass, TomJsonSerializable, Map, List, then
+      // reflection) is not shortened but *absent*: restating that policy in a
+      // transport is how a server and a client come to disagree about which
+      // hooks a type has.
       String? resultString = result == null
           ? null
           : result is String

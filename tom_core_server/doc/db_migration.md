@@ -501,14 +501,14 @@ that means the same thing everywhere: `MariadbMigrationAdaptor.checksumOf`
 returns the lowercase hex **SHA-256 of the script's UTF-8 bytes**, and the
 comparison is a string comparison of that text.
 
-It used to be `String.hashCode`, stored as a decimal string. Dart guarantees
-that value only within a single run: it varies with the SDK release, the
-platform, and the isolate's hash seed. Nothing would have gone wrong until it
-changed — and then *every row already recorded, in every deployed database,
-would have become a mismatch at the same moment*. The failure is total, it
+`String.hashCode` stored as a decimal string is the obvious cheaper choice and
+is not usable here. Dart guarantees that value only within a single run: it
+varies with the SDK release, the platform, and the isolate's hash seed. Nothing
+shows until it changes — and then *every row already recorded, in every deployed
+database, becomes a mismatch at the same moment*. The failure is total, it
 happens at startup, and it presents as `checksum_mismatch`, which is the module
-saying "someone edited a migration". An operator's first instinct would have
-been to look for the edit that never happened.
+saying "someone edited a migration". An operator's first instinct would be to
+look for an edit that never happened.
 
 A digest is checkable in a way a hash code is not: a test pins
 `checksumOf('CREATE TABLE orders (id INT PRIMARY KEY);')` to the literal

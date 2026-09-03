@@ -608,8 +608,8 @@ Future<void> run() async {
   //     neither. A `Content-Disposition` filename is a Latin-1 quoted string
   //     and a storage key is a relative path of unreserved characters, so the
   //     space survives on one side and becomes `_` on the other. What must not
-  //     differ is which names are *accepted* — `keyFor` used to throw on this
-  //     one while `respondWith` served it.
+  //     differ is which names are *accepted*: a `keyFor` that rejected this one
+  //     while `respondWith` served it would split the pair in two.
   check(
     response.headers['content-disposition']!.contains('"Q3 sales.xlsx"'),
     'the space survives into the download name',

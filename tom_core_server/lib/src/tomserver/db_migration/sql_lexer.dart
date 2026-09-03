@@ -9,17 +9,18 @@
 /// syntactically broken fragment to the server, or it swallows a closing quote
 /// and glues two statements into one.
 ///
-/// It used to be answered five times, by five hand-rolled scanners, no two of
-/// which agreed with each other **or** with the server. So the scan lives here
-/// once, in [endOfQuotedRun], and everything else is written on top of it.
+/// Answered separately by each of them, it comes out five different ways — five
+/// hand-rolled scanners, no two agreeing with each other **or** with the
+/// server. So the scan lives here once, in [endOfQuotedRun], and everything
+/// else is written on top of it.
 library;
 
 /// Lexing primitives shared by every consumer of raw SQL text in this module.
 ///
 /// ## Escaping, as MariaDB actually does it
 ///
-/// The rules are not uniform across the three quote characters, which is what
-/// made the hand-rolled copies wrong in different places:
+/// The rules are not uniform across the three quote characters, which is where
+/// a hand-rolled copy goes wrong — each one in a different place:
 ///
 /// | Quote | `''` doubling | `\'` backslash |
 /// | ----- | ------------- | -------------- |
