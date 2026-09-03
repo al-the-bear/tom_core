@@ -308,15 +308,14 @@ void main() {
   });
 
   group('the weak-reference contract is documented consistently', () {
-    // tcinc661 — `doc/observing.md` used to close its lifecycle section with
-    // "a long-lived observable that outlives the widget is therefore not
-    // retained", which inverts the contract in both directions it could be
-    // read: the observable holds observers *weakly* (so deregistration is not
-    // what releases the `State`), and the widget holds the observable
-    // *strongly* (so deregistration does nothing about that reference either).
-    // The claim had been copied into the widget's dartdoc and the API summary,
-    // which is why the guard checks every file that discusses the lifecycle
-    // rather than only the one the finding named.
+    // Closing the lifecycle section with "a long-lived observable that outlives
+    // the widget is therefore not retained" would invert the contract in both
+    // directions it could be read: the observable holds observers *weakly* (so
+    // deregistration is not what releases the `State`), and the widget holds
+    // the observable *strongly* (so deregistration does nothing about that
+    // reference either). A claim of that shape does not stay in one file — it
+    // gets copied into the widget's dartdoc and the API summary — which is why
+    // the guard checks every file that discusses the lifecycle rather than one.
 
     /// Every file in this module that tells a reader what `dispose` does.
     const lifecycleFiles = <String>[
@@ -387,14 +386,14 @@ void main() {
   });
 
   group('the single-listener deviation is documented at both ends', () {
-    // tcinc662 — `ValueListenableObserver` departs from the `ValueListenable`
-    // contract in two independent ways: `addListener` replaces instead of
-    // appending, and `removeListener` ignores its argument and clears the slot
-    // regardless. Every consumer-facing document stated the first and none
-    // stated the second, which left the module's own example unexplainable —
-    // it clears the adaptor by passing a closure it never registered. A
-    // half-stated deviation is worse than an undocumented one, because the
-    // half that is written implies the other half behaves normally.
+    // `ValueListenableObserver` departs from the `ValueListenable` contract in
+    // two independent ways: `addListener` replaces instead of appending, and
+    // `removeListener` ignores its argument and clears the slot regardless.
+    // State the first and omit the second — the tempting split, since only the
+    // first sounds like a deviation — and the module's own example becomes
+    // unexplainable: it clears the adaptor by passing a closure it never
+    // registered. A half-stated deviation is worse than an undocumented one,
+    // because the half that is written implies the other half behaves normally.
 
     /// Every file in this module that carries the single-listener callout.
     const calloutFiles = <String>[

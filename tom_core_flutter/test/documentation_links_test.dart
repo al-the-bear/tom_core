@@ -309,7 +309,7 @@ void main() {
       // document makes that happen. A section added without its entry is
       // invisible to a reader who navigates by the contents — which is how
       // `doc/preferences.md` could have gained its Scope section and still not
-      // offered it (tcinc666).
+      // offered it.
       //
       // Only top-level (`##`) sections are *required* to be listed. The API
       // summaries additionally nest their `###` classes under them, which is
@@ -422,12 +422,12 @@ void main() {
       // A Dependencies section is the one part of a module document that
       // describes the *code* rather than the behaviour, so it goes stale in a
       // way prose does not: delete the code that used a type and the line
-      // naming it survives, still telling the reader to go and install it. That
-      // is what happened here (tcinc668) — `doc/resources.md` kept listing
-      // `TomTextResourceProvider` after the translation lookup that used it was
-      // removed, and because the text and config providers are separate
-      // families with separate installation calls, a reader who followed it
-      // installed the wrong one and found that no property resolved.
+      // naming it survives, still telling the reader to go and install it. Let
+      // `doc/resources.md` go on listing `TomTextResourceProvider` once the
+      // translation lookup that needs it is gone and, because the text and
+      // config providers are separate families with separate installation
+      // calls, a reader who follows the line installs the wrong one and finds
+      // that no property resolves.
       //
       // The check is deliberately weak: *referred to somewhere in the module*,
       // dartdoc included, not "used in code". A dependency is legitimately

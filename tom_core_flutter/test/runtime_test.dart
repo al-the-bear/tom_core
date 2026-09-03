@@ -345,9 +345,10 @@ void main() {
       // and calls it the kernel's. Naming the kernel beside the type is only
       // legitimate when the line says what the kernel actually is here — the
       // barrel that re-exports the type — so those two words are what the rule
-      // permits. Anything else on such a line is the claim this todo removed,
-      // and it had reappeared in six places across three documents, which is
-      // why prose review alone was never going to hold it.
+      // permits. Anything else on such a line is the misattribution, and it is
+      // the kind that multiplies — one plausible sentence copied into every
+      // document that introduces the type — which is why prose review alone
+      // does not hold it.
       final documents = [
         'doc/runtime.md',
         'doc/api_reference/api_summary_runtime.md',

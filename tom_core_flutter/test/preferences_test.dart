@@ -475,13 +475,13 @@ void main() {
   });
 
   group('the scope rule reaches the documents a reader starts from', () {
-    // The behaviour above is settled and correct; what failed was telling
-    // anyone about it. The rule lived only in the module `readme.md`, beside
-    // the source, while `doc/preferences.md` had no Scope section at all and
-    // the API summary described `location` as a path and nothing more. A
-    // reader who follows the published documentation rather than the source
-    // tree therefore built a multi-account application on a single store and
-    // heard about it from a user (tcinc666).
+    // The behaviour above is settled and correct; the exposure is in telling
+    // anyone about it. Let the rule live only in the module `readme.md`, beside
+    // the source, with no Scope section in `doc/preferences.md` and `location`
+    // described in the API summary as a path and nothing more, and a reader who
+    // follows the published documentation rather than the source tree builds a
+    // multi-account application on a single store and hears about it from a
+    // user.
     //
     // Documentation is prose and must stay free to be rewritten, so these
     // check for the two load-bearing *facts* rather than any sentence: that
@@ -631,9 +631,9 @@ void main() {
       expect(TomDevicePreferenceJson.decode('   \n'), isEmpty);
     });
 
-    // tcinc160: the document is meant to move between devices, so an
-    // updatedAt with no zone would be read as the *importing* device's local
-    // time — silently, and differently on each one.
+    // The document is meant to move between devices, so an updatedAt with no
+    // zone would be read as the *importing* device's local time — silently, and
+    // differently on each one.
     test('rejects an updatedAt that names no time zone', () {
       const content =
           '[{"key":"device.theme","valueType":"String",'
@@ -1179,13 +1179,13 @@ void main() {
     // the compiler only says so once someone builds for the second platform,
     // which is the worst moment to find out.
     //
-    // tcinc665: io and web declared `const` and neutral cannot, so
-    // `const TomPlatformDevicePreferenceStore(location)` compiled on device and
-    // web and failed to compile on the target whose entire purpose is to fail
+    // Declaring `const` on io and web, which neutral cannot, would let
+    // `const TomPlatformDevicePreferenceStore(location)` compile on device and
+    // web and fail to compile on the one target whose entire purpose is to fail
     // *at run time*. That trades a deliberate, locatable run-time diagnostic
-    // for a compile error at an unrelated call site. This is the same defect
-    // tcopen198 fixed for `TomFileClientConfigurationStore`, which is why the
-    // resolution is the same: none of the variants is const.
+    // for a compile error at an unrelated call site.
+    // `TomFileClientConfigurationStore` has the same shape and therefore the
+    // same resolution: none of the variants is const.
     const io =
         'lib/src/tomclient/preferences/platform_device_preference_store_io.dart';
     const web =
@@ -1267,18 +1267,17 @@ void main() {
   });
 
   group('the API summary mirrors the preferences exception sources', () {
-    // tcinc664. The `stack` parameter in these two constructor blocks has now
-    // been reported as mistyped once (and the same claim was made about
-    // `little_things` in tcinc654 and about the server's summary in tcinc617).
-    // It is not mistyped: `TomException`'s constructor declares
+    // The `stack` parameter in these two constructor blocks reads as mistyped
+    // and is not — a reading it attracts here, in `little_things` and in the
+    // server's summary alike. `TomException`'s constructor declares
     // `StackTrace? stack` outright, and `super.stack` resolves against *that*,
     // not against the `Object? stack` field on `TomBaseException`. Reading the
     // field is the plausible-looking wrong answer, which is why the mistake
     // keeps being made by eye.
     //
     // So this guard exists as much to reject the "correction" as to catch real
-    // drift — and there was real drift in the same two blocks: both showed
-    // `bool autoLog` with the inherited `= false` default dropped.
+    // drift — and the real drift these blocks attract is the opposite kind:
+    // `bool autoLog` written with the inherited `= false` default dropped.
     //
     // The checks live in `support/exception_constructor_mirror.dart`, shared
     // with `little_things` and `configuration`; the parser they use is pinned

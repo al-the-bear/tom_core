@@ -8,10 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// other places *describe* that set — the refactoring guide's Target Modules
 /// table, its per-module checklist and its prose counts, the package barrel,
 /// and the four per-module artifact families — and every one of them is written
-/// by hand. For weeks they disagreed with the folder and with each other:
-/// `configuration` and `preferences` were added and `forms/` was deleted while
-/// the guide went on naming the deleted module and omitting the two live ones
-/// (tcinc1111).
+/// by hand, and nothing about adding or deleting a module touches any of them.
+/// So the two drifts that matter both pass unremarked: a new module is missing
+/// from every list that is supposed to describe it, and a deleted one goes on
+/// being named by all of them.
 ///
 /// Nothing caught it, because the sibling guard in
 /// `example_instructions_test.dart` is deliberately a **floor** — its own
@@ -45,7 +45,7 @@ void main() {
   test('the guide\'s Target Modules table names every module and no other', () {
     // The table's own caption is "keep in sync with the folder", so it states
     // the contract this asserts. It is the inventory a reader meets first, and
-    // the one that named `forms/` for four weeks after `forms/` was deleted.
+    // the first to go stale when a module arrives or leaves.
     final tabled = RegExp(
       r'^\| `([a-z_]+)/` \|',
       multiLine: true,
@@ -64,8 +64,7 @@ void main() {
     // keeps its checklist entry as the record of the pass that removed it
     // (`camera/`, `forms/`, `localstorage/`, `qrcode/`). An entry for a module
     // that no longer exists is therefore history and correct. A live module
-    // with no entry is the fault — it reads as never having been visited,
-    // which is what `configuration` read as until tcinc1111.
+    // with no entry is the fault — it reads as never having been visited.
     final listed = RegExp(
       r'Per-module pass — `([a-z_]+)/`',
     ).allMatches(guide).map((m) => m.group(1)!).toSet();

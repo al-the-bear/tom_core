@@ -9,8 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// stale test comment costs more than stale prose elsewhere: there is nothing
 /// to contradict it, because the test underneath is passing.
 ///
-/// Two ways of going stale have actually happened here, and each has a check
-/// below.
+/// Two ways of going stale are specific enough to be checked for mechanically,
+/// and each has a check below.
 ///
 /// A comment can record the phase of its own authorship — that the test failed
 /// against the implementation as it stood while the test was being written.
@@ -19,9 +19,9 @@ import 'package:flutter_test/flutter_test.dart';
 /// note. What is left tells every later reader that the production code lacks
 /// something it has, which is the strongest possible claim to get wrong.
 ///
-/// A comment can also cite a numbered section of another document. Every such
-/// citation this package ever carried pointed into a code-review working paper
-/// that was never committed, so the context the comment promised had nowhere
+/// A comment can also cite a numbered section of another document. For these
+/// files the only document with such numbering is a code-review working paper
+/// that is not committed, so the context such a comment promises has nowhere
 /// to lead. The check is deliberately scoped to the files listed here rather
 /// than being a package-wide ban: `codespecs_mapping.md` and
 /// `completion/README.md` are cited elsewhere by number and both exist.
@@ -50,11 +50,12 @@ void main() {
   // match the source you are reading and the guard would report itself.
   //
   // The needles in `mustKeepSaying` need no such treatment, and the difference
-  // is worth naming: they are checked against *other* files. While this guard
-  // lived inside the suite it policed, a needle written here was also a needle
-  // present in the file being read, and the positive check passed against its
-  // own argument — it went green with the comment it was guarding deleted.
-  // Moving the guard out of the file it reads is what fixed that, not care.
+  // is worth naming: they are checked against *other* files. Were a positive
+  // needle written here to also name this file, it would be present in the text
+  // being read purely because the guard states it, and the check would pass
+  // against its own argument — green with the comment it guards deleted. That
+  // the guard lives outside the files it requires claims of is what prevents
+  // it, not care.
   final tddPhaseMarker = RegExp(
     'RED '
     r'(against|before)',

@@ -612,13 +612,13 @@ void main() {
     // which is the worst moment to find out.
     //
     // The checks live in `support/conditional_export_variants.dart`, shared
-    // with the preferences module's three-variant store (tcinc665). They read
-    // the sources with comments stripped, which this copy needed and did not
-    // do: the dartdoc recording why the io variant is not const has to quote
-    // the `const TomFileClientConfigurationStore(path)` expression it warns
-    // about, and this guard passed only because that quotation happened to wrap
-    // between the keyword and the class name. One reflow of that paragraph
-    // would have turned the guard green-on-anything.
+    // with the preferences module's three-variant store. They read the sources
+    // with comments stripped, which this copy needs: the dartdoc recording why
+    // the io variant is not const has to quote the
+    // `const TomFileClientConfigurationStore(path)` expression it warns about,
+    // so a guard that read comments too would match the quotation instead of
+    // the declaration, and a single reflow of that paragraph would decide
+    // whether it does. That makes it green-on-anything by accident.
     const io =
         'lib/src/tomclient/configuration/file_configuration_store_io.dart';
     const neutral =
@@ -755,14 +755,14 @@ void main() {
 
     test('the exception constructor is typed as the kernel types it', () {
       // The constructor-shape test above only checks that a call shape is
-      // *shown*; it cannot see a wrong type inside one. This block had drifted
-      // to `bool? autoLog`, which no call site can pass — `autoLog` is
-      // non-nullable with an inherited default.
+      // *shown*; it cannot see a wrong type inside one. Writing `bool? autoLog`
+      // here would read plausibly and be unusable — `autoLog` is non-nullable
+      // with an inherited default, so no call site can pass a null.
       //
       // It also pins `stack` as `StackTrace?` against the recurring correction
-      // to `Object?` (tcinc617, tcinc654, tcinc664): `super.stack` resolves
-      // against `TomException`'s constructor, which narrows the `Object?` field
-      // to `StackTrace?`, not against the field declaration. See
+      // to `Object?`: `super.stack` resolves against `TomException`'s
+      // constructor, which narrows the `Object?` field to `StackTrace?`, not
+      // against the field declaration. See
       // `support/exception_constructor_mirror.dart`.
       const exceptionSource =
           'lib/src/tomclient/configuration/client_configuration_store.dart';

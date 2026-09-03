@@ -14,19 +14,18 @@
 /// therefore must not be: otherwise `const Store(location)` compiles on the
 /// working targets and breaks the build on the one whose intended behaviour was
 /// a run-time failure — converting a locatable startup diagnostic into a build
-/// break at an unrelated call site. tcopen198 established this for
-/// `configuration`, tcinc665 for `preferences`.
+/// break at an unrelated call site. It holds for both modules alike: no variant
+/// of either store is const.
 ///
 /// **Why the source is read with comments stripped, and the summary only in its
 /// code fences.** The rationale above is written into the very dartdoc these
 /// checks scan — and again into the API summary beside the signature — and both
 /// copies have to quote the `const Store(...)` expression they are warning
 /// about. Matched against the raw text, the guard reports a `const` declaration
-/// that does not exist and fails on correct code. That is not hypothetical: it
-/// is what these checks did, in both places, the moment the explanatory prose
-/// was written. The `configuration` source copy escaped only because its
-/// paragraph happened to wrap between `const` and the class name — a false pass
-/// one reflow away.
+/// that does not exist and fails on correct code — and whether it does depends
+/// on nothing better than where the paragraph happens to wrap: a quotation
+/// broken between `const` and the class name slips past, so a copy that passes
+/// is one reflow from failing.
 ///
 /// Both fixes are the same idea: **read the declaration, not the discussion of
 /// it.** In Dart that means dropping comments; in a Markdown summary it means

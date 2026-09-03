@@ -14,10 +14,9 @@
 /// (`tom_basics`) declares the field `Object? stack`, but `TomException`'s
 /// constructor narrows the parameter to `StackTrace?` and forwards
 /// `stack ?? StackTrace.current`. Documenting the parameter from the field
-/// declaration therefore gives the wrong answer — plausibly enough that it has
-/// been reported as a defect three times (tcinc617, tcinc654, tcinc664). Reading
-/// the kernel constructor is not a convenience here; it is the only place the
-/// answer is.
+/// declaration therefore gives the wrong answer — plausibly enough that it gets
+/// reported as a defect in each of the three modules in turn. Reading the kernel
+/// constructor is not a convenience here; it is the only place the answer is.
 ///
 /// The parser's own self-check lives in `little_things_test.dart` ("the kernel
 /// constructor parser reports the types it should"): without it, every check
