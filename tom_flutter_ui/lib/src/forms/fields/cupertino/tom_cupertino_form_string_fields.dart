@@ -455,8 +455,9 @@ class _CupertinoStringPickerWidgetState
 
   String _displayLabel() {
     final v = field.get();
-    if (v.isEmpty)
+    if (v.isEmpty) {
       return field.hintText ?? TomFormLabels.choose(field.basePath);
+    }
     final found = _items
         .where((i) => i.value == v)
         .map((i) => i.label)
