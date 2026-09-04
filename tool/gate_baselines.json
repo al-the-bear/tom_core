@@ -102,7 +102,8 @@
     },
     "check_source_citations": {
       "faults": 0,
-      "measured": "2026-09-03"
+      "measured": "2026-09-04",
+      "note": "Holds at zero across a scope that widened twice. Markdown was first excluded outright (173 citations in tom_core_samples), then admitted for that subtree once they had been rewritten by hand to name declarations, and now covers every document that navigates -- doc/ pages, package READMEs and the sample guides, 177 files against the previous 39. The widening cost twelve repairs, nine of them in doc/ pages shipped to consumers, and one was the class of failure this gate exists for: form_authorizers.md cited tom_authorization.dart:352 for `class TomAuthorizer`, which is a doc comment belonging to a different class eighty lines above it -- resolving, fluent and wrong. Three sites named their target and cited a line as well, and one cited `(line 151)` into a file that had since been deleted; both are the argument against validating the numbers rather than removing them. CHANGELOGs, _copilot_guidelines/ and the repo's own README stay out, each for a stated reason rather than a suppression entry -- the last so the suite can go on quoting the shapes it forbids."
     },
     "check_test_inventories": {
       "faults": 0,

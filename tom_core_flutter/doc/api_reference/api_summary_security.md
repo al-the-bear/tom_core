@@ -24,7 +24,7 @@ TOTP mechanism, the resource keys and the QR view.
 ## Overview
 
 Sources, all five exported from the package barrel
-(`lib/tom_core_flutter.dart:22-26`):
+(`lib/tom_core_flutter.dart`):
 
 | File | Declares |
 | ---- | -------- |

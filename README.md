@@ -207,7 +207,7 @@ reports and never gates.
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
 | [`tool/check_comments_read_as_is.py`](tool/check_comments_read_as_is.py) | Finds work-item ids and history narration in shipped text |
 | [`tool/check_test_inventories.py`](tool/check_test_inventories.py) | Audits a document that claims to inventory a package's test files against the files the runner discovers |
-| [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and sample guides that cite a line number instead of naming the thing |
+| [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and navigating documentation that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/check_unimplemented_claims.py`](tool/check_unimplemented_claims.py) | Finds documentation that calls a shipped `Tom*` type unimplemented |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
@@ -596,9 +596,9 @@ python3 tool/check_source_citations.py                 # the whole repository
 python3 tool/check_source_citations.py tom_flutter_ui  # one subtree
 ```
 
-It reports Dart comments — and every line of an SVG figure or a
-`tom_core_samples/` guide — that cite a line number rather than naming what they
-point at: `SELF` when no file is named, so
+It reports Dart comments — and every line of an SVG figure or of documentation
+written to be read beside the code — that cite a line number rather than naming
+what they point at: `SELF` when no file is named, so
 the citation lands in its own file, and `CROSS` when one is. `// Per the class
 contract (lines 13-17)` was the case that prompted it. That citation was
 accurate the day it was written, and any insertion above it would have left it
@@ -614,8 +614,33 @@ its claims in both the comment and the drawing — and all three had rotted: one
 pointed a whole layer away from the layer it named, one named a path that no
 longer existed, one had a stale end line. Nothing reported any of it.
 
-The rule now fires **zero** times across 1502 Dart files, 9 figures and 39
-guide documents, and that is the argument for it rather than against. A gate
+**Markdown is scanned where it navigates**, which is a property of the document
+rather than a list of paths: `doc/` pages, package `README.md` files and the
+sample guides are written to be read beside the code, so there a `file.dart:12`
+is an instruction to go and look. The scope was originally drawn around
+`tom_core_samples/` alone — around where the fault had *accumulated* rather than
+where it could *do harm* — and twelve citations outside it went on rotting
+unwatched, nine of them in `doc/` pages shipped to consumers. One had failed in
+the worst available way: `form_authorizers.md` opened its section on the real
+`TomAuthorizer` API by citing `tom_authorization.dart:352`, a doc comment
+belonging to a different class eighty lines above the one it named. It resolved,
+it read fluently, and it was wrong. Three others named their target *and* cited
+a line, and one cited `(line 151)` for a declaration whose file had since been
+deleted — which is the argument against the tempting alternative of *validating*
+the numbers instead: where the annotation exists it has already made the number
+redundant, and where it doesn't the citation is unverifiable.
+
+CHANGELOGs, `_copilot_guidelines/` and this README are out, each for a reason
+that can be stated rather than listed. A CHANGELOG is a dated record, so its
+citations describe a tree that no longer exists and repairing one would falsify
+the entry. `_copilot_guidelines/` is workspace tooling that ships with neither
+the package nor its pub.dev page — the same seam `check_doc_links.py` draws.
+And this README is where the suite explains its rules, which it cannot do
+without quoting the shapes it forbids; excluding it is what lets the gate keep
+its documentation instead of acquiring a per-site suppression list.
+
+The rule now fires **zero** times across 1506 Dart files, 9 figures and 177
+documents, and that is the argument for it rather than against. A gate
 earns its place by whether the fault would be caught if it came back, not by how
 much it currently finds; this fault is invisible by construction, and a
 convention met once a year is one no reviewer can be asked to hold. Because the

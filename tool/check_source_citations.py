@@ -62,15 +62,25 @@ So the scan covers ``.svg``, and there it reads **every line**, not just the
 comment: the citation a reader of the rendered figure sees is the drawn one, so
 checking only the comment would miss the copy that matters most.
 
-**Markdown was deliberately left out, and then let in for one subtree.** The
-original argument was arithmetic: the pattern occurred 173 times across 18 files
-of guide prose, and switching the rule on would have meant 173 judgement calls
-on day one -- the noise threshold this suite has twice declined to cross (353
-for the cross-library dartdoc rule, 519 for "name every public type"). What
-changed is that the judgement calls were *made*. Every one of those citations in
-``tom_core_samples/`` was resolved by hand and replaced with the name of the
-declaration it pointed at, so the subtree now sits where the figures already sat:
-zero violations, and a rule that costs nothing to switch on.
+**Markdown was deliberately left out, then let in for one subtree, then let in
+wherever documentation navigates.** The original argument was arithmetic: the
+pattern occurred 173 times across 18 files of guide prose, and switching the
+rule on would have meant 173 judgement calls on day one -- the noise threshold
+this suite has twice declined to cross (353 for the cross-library dartdoc rule,
+519 for "name every public type"). What changed is that the judgement calls were
+*made*. Every one of those citations in ``tom_core_samples/`` was resolved by
+hand and replaced with the name of the declaration it pointed at, so the subtree
+sat where the figures already sat: zero violations, and a rule that cost nothing
+to switch on.
+
+The subtree boundary then turned out to be the wrong shape. It was drawn around
+the place the fault had *accumulated*, not around the place it can *do harm*,
+and twelve citations outside it went on rotting unwatched -- nine of them in
+``doc/`` pages shipped to consumers. One had already failed in the worst
+available way: ``form_authorizers.md`` opened its "The real ``TomAuthorizer``
+API" section by citing ``tom_authorization.dart:352``, which is a doc comment
+belonging to a *different* class eighty lines above the one it names. It
+resolved, it read fluently, and it was wrong.
 
 That work also settled the empirical question. Sampling the anchors against the
 files they named found the failure was not occasional -- *essentially every* one
@@ -84,16 +94,37 @@ attached: the guides are the sample's primary teaching artifact, so a reader
 following a citation into unrelated code is the worst place for this fault to
 live, and it is exactly where it had accumulated most.
 
-**The scope stays at ``tom_core_samples``, on principle rather than convenience.**
-Eighteen sites elsewhere in the repo match these patterns, and they are a
-different kind of sentence: ``README.md`` and this suite's own documentation
-*quote* the fault as the object under discussion, ``little_things.md`` shows a
-stack trace, and a CHANGELOG records the anchor a commit removed. Gating those
-would force the gate's documentation to stop naming its own pattern, or add the
+**The boundary is now "documentation that navigates", which is a property of
+the document rather than a list of paths.** A ``doc/`` page, a package
+``README.md`` and a sample guide are all written to be read beside the code, so
+in them a ``file.dart:12`` is an instruction to go and look, and the rule is
+unambiguous. The sites that still match these patterns elsewhere are a different
+kind of sentence, and each is excluded for a reason that can be stated rather
+than listed: a CHANGELOG is a dated record, so its citations describe a tree
+that no longer exists and "repairing" one would falsify the entry;
+``_copilot_guidelines/`` is workspace tooling that ships with neither the
+package nor its pub.dev page, the same seam ``check_doc_links.py`` draws; and
+this repository's own ``README.md`` is where the suite explains its rules, which
+it cannot do without quoting the shapes it forbids. That last exclusion is what
+lets the gate keep its documentation instead of acquiring the per-site
 suppression list this suite does not have. ``check_doc_source_paths.py`` draws
-the same line: naming a thing in prose is not the same as pointing at it. Inside
-``tom_core_samples`` every ``file.dart:12`` is an instruction to go and read, so
-there the two coincide and the rule is unambiguous.
+the same line from the other end: naming a thing in prose is not the same as
+pointing at it.
+
+**The repair is never "check the number harder".** It is tempting to gate these
+by *validating* them -- many citations are annotated, naming what should be at
+the line in a parenthetical or the fenced block below it, and a checker could
+assert the line still contains it. That gate would be strictly weaker. It can
+only speak about the annotated ones, so it has to report the rest as
+*unverifiable*, and a gate with an unverifiable category does not gate; and
+where the annotation is present the number has already been made redundant by
+it. Both halves of that showed up in the repair: three of the twelve sites named
+their target and then cited a line as well (``api_summary_runtime.md`` said
+"``lib/tom_core_flutter.dart:21`` exports
+``src/tomclient/runtime/platform_detection_client.dart``" -- the sentence is
+complete without the number), and one cited ``(line 151)`` for a declaration in
+a file that had since been deleted. Naming the declaration is the fix in every
+case, and it is the one that survives the next edit.
 
 **A bare ``:12`` is not matched, for the reason ``line 2`` is not.** The guides
 also carried about 77 bare backticked continuations (``` `:809` ``` after a full
@@ -134,16 +165,47 @@ SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
 SKIP_SUFFIXES = (".reflection.dart", "_generated.dart", "_bridges.dart", ".g.dart")
 SUFFIXES = (".dart", ".svg", ".md")
 
-# Markdown is scanned only under here -- see the docstring. Outside this
-# subtree the same shapes appear in prose that is *about* the fault.
+# Markdown is scanned where it *navigates* -- see the docstring. A `doc/` page,
+# a package README and a sample guide are written to be followed; everything
+# else that carries these shapes is prose *about* them.
 GUIDE_ROOT = REPO_ROOT / "tom_core_samples"
+DOC_DIR = "doc"
+GUIDELINES = "_copilot_guidelines"
+
+
+def navigates(path: Path) -> bool:
+    """Is *path* documentation a reader is meant to follow into the source?
+
+    In: a ``doc/`` page, a package ``README.md``, and the sample guides -- all
+    of them written to be read *beside* the code, so a ``file.dart:12`` in one
+    is an instruction to go and look.
+
+    Out, and each for its own reason. A ``CHANGELOG`` is a dated record, so its
+    citations describe a tree that no longer exists and repairing them would
+    falsify the entry. ``_copilot_guidelines/`` is workspace tooling that ships
+    with neither the package nor its pub.dev page -- the same seam
+    [check_doc_links] draws. And this repository's own ``README.md`` is where
+    the suite explains its rules, which it cannot do without quoting the shapes
+    it forbids; excluding it is what lets the gate keep its documentation
+    rather than acquire a suppression list.
+    """
+    if GUIDELINES in path.parts or path == REPO_ROOT / "README.md":
+        return False
+    return (
+        DOC_DIR in path.parts
+        or path.name == "README.md"
+        or path.is_relative_to(GUIDE_ROOT)
+    )
 
 # A comment line, `//` or `///`, capturing the prose after the slashes.
 COMMENT = re.compile(r"^\s*///?(?!/)(.*)$")
 # A URL, blanked before matching: `.../blob/<sha>/a.dart#L42` is a pinned
 # permalink into some other repository, which is exactly the stable form this
-# check is asking for rather than an instance of the fault.
-URL = re.compile(r"\bhttps?://\S+")
+# check is asking for rather than an instance of the fault. `file://` is here
+# for the opposite reason -- it is how a Dart stack frame prints
+# (`#0 Foo.bar (file:///…/foo.dart:12:5)`), and a pasted trace is a transcript
+# of what the program said, not a citation anyone wrote or can repair.
+URL = re.compile(r"\b(?:https?|file)://\S+")
 
 CROSS = re.compile(r"\b[\w/.]*\w\.dart\s*:\s*\d+")
 SELF = re.compile(
@@ -164,7 +226,7 @@ def source_files(root: Path):
             continue
         if path.name.endswith(SKIP_SUFFIXES):
             continue
-        if path.suffix == ".md" and not path.is_relative_to(GUIDE_ROOT):
+        if path.suffix == ".md" and not navigates(path):
             continue
         yield path
 

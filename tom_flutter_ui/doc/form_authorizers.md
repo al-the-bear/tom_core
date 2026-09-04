@@ -27,7 +27,8 @@ authorizer ever receives is the widget's own resource-auth result.
 
 ## The real `TomAuthorizer` API
 
-See [tom_core_kernel/lib/src/tombase/security/tom_authorization.dart:352](../../tom_core_kernel/lib/src/tombase/security/tom_authorization.dart#L352).
+See [`TomAuthorizer`](../../tom_core_kernel/lib/src/tombase/security/tom_authorization.dart)
+in `tom_core_kernel`.
 
 ```dart
 class TomAuthorizer {
@@ -58,7 +59,7 @@ class TomAuthorizer {
 ### Evaluation pipeline
 
 Every Tom widget routes its auth through
-[tom_policy_node_base.dart:49](../lib/src/widget_base/tom_policy_node_base.dart#L49):
+[`TomPolicyNodeBase.resolveEffectiveAuth`](../lib/src/widget_base/tom_policy_node_base.dart):
 
 ```dart
 TomAuthState resolveEffectiveAuth() {
@@ -236,7 +237,7 @@ return ListenableBuilder(
 ```
 
 That's exactly the pattern demo_a_lifecycle.dart uses — see
-[demo_a_lifecycle.dart:243](../../tom_flutter_form_test/lib/demos/demo_a_lifecycle.dart#L243).
+[`_buildActionRow`](../../tom_flutter_form_test/lib/demos/demo_a_lifecycle.dart).
 
 ### Why not just listen on `state` as one object?
 
@@ -253,7 +254,7 @@ one rebuild per frame.
 
 Everything above treats the authorizer as if it were the only hook. It
 isn't. The auth pipeline in
-[tom_policy_node_base.dart:49](../lib/src/widget_base/tom_policy_node_base.dart#L49)
+[`TomPolicyNodeBase.resolveEffectiveAuth`](../lib/src/widget_base/tom_policy_node_base.dart)
 runs **both** an authorizer *and* a `TomUIStateController`, in that order,
 and the controller runs **last of all**:
 
@@ -270,7 +271,7 @@ state outright under `controlsAll`, so a group applied after the controller
 would undo the narrowing the controller had just performed and the "can only
 narrow" promise would not hold. Fields insert a fifth layer — the enclosing
 form, which always narrows — between the group and the authorizer; see
-[`tom_form.dart:810`](../lib/src/forms/tom_form.dart#L810).
+[`TomField.resolveEffectiveAuth`](../lib/src/forms/tom_form.dart).
 
 They look similar but have different jobs:
 
@@ -290,7 +291,8 @@ textbook `TomUIStateController` — nothing about it is authorization.
 
 ### Minimal controller recap
 
-[tom_core_kernel/.../tom_authorization.dart:521](../../tom_core_kernel/lib/src/tombase/security/tom_authorization.dart#L521):
+[`TomUIStateController`](../../tom_core_kernel/lib/src/tombase/security/tom_authorization.dart),
+in `tom_core_kernel`:
 
 ```dart
 class TomUIStateController {
@@ -405,7 +407,7 @@ form.email.uiStateController = TomUIStateController(
 );
 ```
 
-See [demo_b_authorization.dart:196](../../tom_flutter_form_test/lib/demos/demo_b_authorization.dart#L196).
+See [`_applyUIStateController`](../../tom_flutter_form_test/lib/demos/demo_b_authorization.dart).
 Combine it with an authorizer on the same field — for example a role-
 based `authorizerNarrowsOnly` narrowing to `read` for non-admins — and
 you get the same two-lane composition the Save button above describes.

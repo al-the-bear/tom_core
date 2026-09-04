@@ -52,7 +52,7 @@ predicate has to override, are in `tom_basics`.
 ## Exported Surface
 
 The package barrel exports exactly one file from this module —
-`lib/tom_core_flutter.dart:21` exports
+`lib/tom_core_flutter.dart` exports
 `src/tomclient/runtime/platform_detection_client.dart` — and that file reaches
 the per-target variants with a conditional **`import`**, not an `export`. So
 **`clientPlatformUtils` is the only symbol this module publishes.** Everything

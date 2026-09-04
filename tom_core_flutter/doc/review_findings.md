@@ -42,7 +42,7 @@ Date: 10 January 2026
 
 | Priority | File | Issue |
 |----------|------|-------|
-| 🟡 Medium | `lib/src/tomclient/forms/tom_fields.dart` | Unused private declaration `_onChange` (line 151) |
+| 🟡 Medium | `lib/src/tomclient/forms/tom_fields.dart` | Unused private declaration `_onChange` |
 | 🟡 Medium | `lib/src/tomclient/security/authentication.dart` | Not exported in `tom_core_flutter.dart` barrel file |
 
 ## Documentation Issues
