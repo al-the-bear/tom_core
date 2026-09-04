@@ -17,6 +17,60 @@
 
 ### Added
 
+- **`@TomClient2FAAdaptor` now registers the mechanism it annotates
+  (tcincb1_ahzv).** The
+  annotation was exported, documented, tested and used in the example, and
+  nothing in `lib/` read it — so the only way a mechanism reached
+  `Tom2FAClientRegistry` was an explicit `register()` call at start-up. That
+  made `Tom2FAClientMechanism`'s own dartdoc false where it promises a mechanism
+  "can ship as a package that adds a server adaptor and a client mechanism and
+  touches no framework file": the server half was wired, the client half was a
+  marker.
+
+  `Tom2FAClientRegistry` now scans the reflected program for annotated
+  mechanisms, mirroring what `Tom2FARegistry` in `tom_core_server` already did
+  for `@Tom2FAAdaptor`. **Reads scan; writes do not** — `find`, `has` and
+  `types` run the scan before answering, `register` does not. That single rule
+  is what makes precedence fall out with no ordering to remember:
+  `Tom2FAFlowPanel.registerBuiltInMechanisms` asks `has('totp')` first, so an
+  application's annotated TOTP mechanism is already installed by the time the
+  built-in would be, and wins without a rule saying so.
+
+  Where an explicit registration and an annotation claim one key, the
+  **explicit registration wins and the discovered one is skipped silently** —
+  which is a deliberate divergence from the server, whose `register` *rejects* a
+  duplicate. Substituting a shipped panel is a documented normal case on the
+  client, so it cannot be an error. Two *annotated* classes claiming one key do
+  throw: that has no decision behind it, and its winner would otherwise depend
+  on reflection ordering.
+
+  The annotation keeps its `type` field, which is now checked against the
+  built mechanism's own `type`. Dropping the field would break the idiomatic
+  mirror with `@Tom2FAAdaptor('sms')`; trusting it over `mechanism.type` would
+  leave two sources of truth free to diverge in silence. The check is what makes
+  keeping both safe.
+
+  `TomTotp2FAClientMechanism` is deliberately **not** annotated. A shipped
+  mechanism discovered by reflection would be present only in applications that
+  generate reflection — exactly the inconsistency `registerBuiltInMechanisms`
+  exists to remove.
+
+- **`Tom2FAClientException`** (`lib/src/tomclient/security/two_factor_client.dart`)
+  — the wiring failures the scan can raise, under stable dotted keys:
+  `two_factor_client.duplicate_adaptor`,
+  `.adaptor_instantiation_failed`, `.adaptor_does_not_implement_mechanism` and
+  `.adaptor_type_mismatch`. There is deliberately no key for "no mechanism
+  registered for this type": that is a deployment state, not a wiring bug, and
+  `find` returns `null` for it.
+
+  A failed scan rolls the registry back to the registrations it held before, so
+  a program that catches the failure is not left with half a catalog.
+
+- **`Tom2FAClientRegistry.registerAnnotated`** — the scan's body, taking the
+  candidate mirrors directly, so the rules can be tested against hand-built
+  mirrors without a generated program. `reset()` (test-only) now also re-arms
+  the scan.
+
 - **`lib/src/tomclient/configuration/readme.md`** — the one artifact the module
   lacked. Its six siblings each carry a module readme; `configuration` shipped
   with dartdoc, a doc page, an API summary, an example and a suite, but no
@@ -98,6 +152,23 @@
   corpus overview and README, which it read from disk — so the name was still
   present and the rule stayed silent for the wrong reason. The harness now takes
   the whole corpus from the revision under test.
+
+### Changed
+
+- **A program with no generated reflection is no longer an error.** Reading the
+  registry in a build that generates no reflection logs one `info` line and
+  carries on with whatever was registered by hand, and the scan is re-armed for
+  the next access — only a *successful* scan is remembered. This matches
+  `Tom2FARegistry`'s behaviour on the server and keeps pure-widget tests, which
+  never generate reflection, working unchanged.
+
+- **`test/security_test.dart`'s `AnnotatedAdaptor` fixture is now a real
+  mechanism.** It lives in a reflected library, so with the scan wired an
+  annotated-but-unusable class there would throw in every other test in the
+  process. Malformed candidates are exercised through a hand-built
+  `ClassMirror` handed to `registerAnnotated` instead. The example's
+  `TotpAdaptor` — an empty annotated class that could not have rendered
+  anything — became `SmsClientMechanism`, a mechanism that works.
 
 ### Fixed
 

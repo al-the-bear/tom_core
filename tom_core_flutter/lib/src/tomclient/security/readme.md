@@ -21,13 +21,14 @@ whose auth client already handles refresh.
 | `Tom2FAFlowPanel` | Renders whichever stop the login is at — chooser, enrolment or challenge — reading the position from the controller each build. Registers the built-in mechanisms on first build. |
 | `Tom2FAFlowController` | The seam the application implements over its own auth client: five moves (choose, confirm, skip, answer, cancel) and two pieces of read-only state. |
 | `Tom2FAClientMechanism` | One mechanism's client-side rendering, paired with its server adaptor by `type` alone. |
-| `Tom2FAClientRegistry` | Process-wide catalog the flow dispatches through; `register` replaces, so an application can substitute a built-in. |
+| `Tom2FAClientRegistry` | Process-wide catalog the flow dispatches through; scans the reflected program for annotated mechanisms on first read, and `register` replaces, so an application can substitute a built-in. |
 | `Tom2FAEnrolmentPanelContext` | What an enrolment panel is given: `type`, `clientData`, `accountLabel`, `onSubmit`, `busy`. |
 | `Tom2FAChallengePanelContext` | What a challenge panel is given: the same, plus `hint` and `attemptsRemaining`. |
 | `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'`. Also the public `digitsOf` / `groupSecret` helpers. |
 | `Tom2FATexts` | Every resource key this feature resolves, and the `text` / `textWith` helpers that resolve them. No literal user-facing text exists anywhere in the feature. |
 | `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, so it themes like any other widget. Never throws on its payload: empty, or too long to encode, renders an empty square. Re-encodes and repaints only when the payload or the styling changes, not on every parent rebuild. |
-| `TomClient2FAAdaptor` | Reflection-discoverable annotation (`@tomReflector`-registered) marking a class as a client 2FA adaptor. Not the flow's dispatch route — see below. |
+| `TomClient2FAAdaptor` | Annotation that registers a mechanism under its key with no start-up wiring — the client mirror of the server's `@Tom2FAAdaptor`. See below. |
+| `Tom2FAClientException` | The wiring failures the annotation scan raises, keyed `two_factor_client.*`. |
 
 ## Quick start
 
@@ -42,26 +43,49 @@ if (session.needsSecondFactor) {
 ```
 
 TOTP is registered by the panel itself on first build, so the common case needs
-no set-up. Adding or substituting a mechanism is one call at start-up, before
-the first build:
-
-```dart
-Tom2FAClientRegistry.register(SmsClientMechanism());
-```
+no set-up.
 
 `MyFlowController` is the one piece an application writes.
 [`example/security/security_example.dart`](../../../../example/security/security_example.dart)
 implements one and walks it through all three stops; the panels themselves are
 widgets, so they are shown in `test/two_factor_client_test.dart` instead.
 
-## A note on the annotation
+## Adding a mechanism
 
-`TomClient2FAAdaptor` is **not** what the flow dispatches on. `Tom2FAFlowPanel`
-resolves a mechanism through `Tom2FAClientRegistry`, keyed by mechanism string,
-and never consults reflection; nothing in this package reads the annotation. It
-is the discovery route for a runtime that would rather enumerate annotated
-classes than have each one register itself. Annotating a class does not make it
-renderable by the flow — register the mechanism for that.
+Two routes, one registry.
+
+**Annotate it** — no start-up code at all, and the client mirror of what the
+server adaptor already does, so one package can ship both halves and touch no
+framework file:
+
+```dart
+@tomReflector
+@TomClient2FAAdaptor('sms')
+class SmsClientMechanism extends Tom2FAClientMechanism {
+  const SmsClientMechanism() : super('sms');
+  // ... buildEnrolmentPanel / buildChallengePanel
+}
+```
+
+`Tom2FAClientRegistry` scans the reflected program the first time anything reads
+it and installs every annotated mechanism. That requires generated reflection,
+an unnamed argument-free constructor, and a `type` matching the annotation; each
+of the three fails with a named `Tom2FAClientException` rather than quietly, and
+a build with no generated reflection logs once and carries on with whatever was
+registered by hand.
+
+**Register it** — for a mechanism whose constructor needs arguments, for an
+application that does not run the reflection generator, and for substituting a
+panel someone else provides:
+
+```dart
+Tom2FAClientRegistry.register(SmsClientMechanism(smsGateway));
+```
+
+Registering wins: it replaces a built-in, and the scan skips a key an explicit
+registration already holds. Two *annotated* classes claiming one key are refused
+instead — replacing is a decision an application takes on purpose, whereas that
+is a wiring bug whose winner would otherwise depend on reflection ordering.
 
 ---
 

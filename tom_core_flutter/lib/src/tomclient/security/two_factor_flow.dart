@@ -127,6 +127,14 @@ class Tom2FAFlowPanel extends StatefulWidget {
   /// would be advertising an extension point while charging rent on the common
   /// case. Idempotent, and it never overwrites a mechanism an application
   /// registered under the same key first.
+  ///
+  /// "Registered first" includes a mechanism the application only *annotated*:
+  /// [Tom2FAClientRegistry.has] is a read, so it runs the annotation scan
+  /// before answering, and an `@TomClient2FAAdaptor('totp')` class is therefore
+  /// already installed by the time this line is reached. That is why the
+  /// built-in below is not itself annotated — a shipped mechanism discovered by
+  /// reflection would be present only in applications that generate it, which
+  /// is exactly the inconsistency this method exists to remove.
   static void registerBuiltInMechanisms() {
     if (Tom2FAClientRegistry.has(TomTotp2FAClientMechanism.mechanismType)) {
       return;

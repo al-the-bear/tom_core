@@ -3,7 +3,7 @@
 The client half of the framework's second-factor design: a ready-made
 enrol-and-challenge flow, a seam onto the application's own auth client, a
 registry of pluggable per-mechanism panels, the shipped TOTP mechanism, and the
-reflection annotation that tags client 2FA adaptors.
+annotation that registers a client mechanism with no start-up wiring.
 
 ## Table of Contents
 
@@ -27,13 +27,14 @@ reflection annotation that tags client 2FA adaptors.
 | `Tom2FAFlowPanel` | class | Renders whichever stop of the second-factor login the controller reports |
 | `Tom2FAFlowController` | abstract class | The seam an application implements over its own auth client — five moves, two pieces of state |
 | `Tom2FAClientMechanism` | abstract class | One mechanism's client-side rendering, registered under its mechanism key |
-| `Tom2FAClientRegistry` | class | The mechanism catalog the flow dispatches through; entirely static |
+| `Tom2FAClientRegistry` | class | The mechanism catalog the flow dispatches through, scanning for annotated mechanisms on first read; entirely static |
 | `Tom2FAEnrolmentPanelContext` | class | What an enrolment panel is given to render itself |
 | `Tom2FAChallengePanelContext` | class | What a challenge panel is given to render itself |
 | `TomTotp2FAClientMechanism` | class | The shipped authenticator-app mechanism, registered under `'totp'` |
 | `Tom2FATexts` | class | Every resource key this feature resolves, and the one helper that resolves them — all static |
 | `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes |
-| `TomClient2FAAdaptor` | class | The `const` annotation that tags a class as a client 2FA adaptor for a given `type`; reflected via `@tomReflector` |
+| `TomClient2FAAdaptor` | class | The `const` annotation that registers a mechanism under a given `type`, discovered by the registry's reflection scan |
+| `Tom2FAClientException` | class | The wiring failures the annotation scan raises, keyed `two_factor_client.*` |
 
 The division of labour is the point of the module. Everything about a
 second-factor login that is the *same* whichever mechanism is in play — the
@@ -229,11 +230,12 @@ token pair afterwards, is the flow's business.
 
 | Member | Purpose |
 | ------ | ------- |
-| `register(mechanism)` | Registers under the mechanism's `type`, replacing any previous entry |
-| `find(type)` | The registered mechanism, or `null` |
-| `has(type)` | Whether one is registered |
-| `types` | Every registered key |
-| `reset()` | Drops every registration — `@visibleForTesting` |
+| `register(mechanism)` | Registers under the mechanism's `type`, replacing any previous entry. Does not scan |
+| `registerAnnotated(candidates)` | Registers every annotated class in a supplied candidate set — see [The Discovery Annotation](#the-discovery-annotation) |
+| `find(type)` | The registered mechanism, or `null`. Scans first |
+| `has(type)` | Whether one is registered. Scans first |
+| `types` | Every registered key. Scans first |
+| `reset()` | Drops every registration and re-arms the scan — `@visibleForTesting` |
 
 It is process-wide rather than injected because it is consulted from inside
 widget builds, several levels below whoever configured it; threading it down
@@ -256,6 +258,13 @@ Tom2FAClientRegistry.register(MyOwnTotpPanel());
 The flow installs a built-in only where nothing is registered under that key
 (`Tom2FAFlowPanel.registerBuiltInMechanisms`, called from the panel's
 `initState` and idempotent), so registering first wins.
+
+**Reads scan; writes do not.** The three lookups run the annotation scan on
+first use, `register` does not. That asymmetry is what makes "an explicit
+registration beats a discovered one" need no ordering rules: `has` is the first
+thing `registerBuiltInMechanisms` calls, so an annotated custom TOTP is already
+installed by the time the built-in would be, and a `register` call cannot be
+overtaken by a scan it did not trigger.
 
 ## The Shipped TOTP Mechanism
 
@@ -415,44 +424,75 @@ the base32 fallback string beside it, not a transcription of the code.
 ## The Discovery Annotation
 
 `TomClient2FAAdaptor` is a `const` annotation carrying one positional `type`.
-It is itself `@tomReflector`-registered, so it appears in generated reflection
-data and a runtime can enumerate the classes carrying it and recover each one's
-mechanism key:
+Annotating a mechanism with it is the whole wiring — there is no start-up call
+to forget:
 
 ```dart
 @tomReflector
-@TomClient2FAAdaptor('totp')
-class TotpAdaptor { /* ... */ }
+@TomClient2FAAdaptor('sms')
+class SmsClientMechanism extends Tom2FAClientMechanism {
+  const SmsClientMechanism() : super('sms');
+  // ... buildEnrolmentPanel / buildChallengePanel
+}
 ```
 
-```dart
-tomReflector
-    .reflectType(TotpAdaptor)
-    .metadata
-    .whereType<TomClient2FAAdaptor>();
-```
+This is the client mirror of the server's `@Tom2FAAdaptor`, deliberately down to
+the spelling. The two tiers pair by mechanism key alone and neither imports the
+other, so one package can ship a server adaptor and a client mechanism, annotate
+both `'sms'`, and touch no framework file on either side. Symmetry is the point:
+a mechanism whose server half is discovered and whose client half needs a line
+of set-up somewhere central is a mechanism the framework has not really made
+pluggable.
 
-For a class to be discoverable this way it must also be `@tomReflector`-
-registered and public, so the generated reflection library can reference it.
-The round-trip is pinned by `test/security_test.dart`. Because the class
-participates in reflection, its signature — name, the `type` field, the `const`
-constructor — is a contract: changing it requires regenerating reflection for
-consumers.
+### What the scan requires
 
-**It is not what the shipped flow dispatches on.** `Tom2FAFlowPanel` resolves a
-mechanism through `Tom2FAClientRegistry`, keyed by the same string, and never
-consults reflection. The annotation is the discovery route for a runtime that
-would rather enumerate annotated classes than have each one register itself;
-nothing in this package reads it. Annotating a class therefore does *not* make
-it renderable by the flow — register the mechanism for that.
+`Tom2FAClientRegistry` reads `tomReflector.annotatedClasses` the first time
+anything reads the registry, and instantiates each annotated candidate. Three
+things must hold, and each fails with a named `Tom2FAClientException` rather
+than quietly:
+
+| Requirement | Failure key |
+| ----------- | ----------- |
+| Constructible by an unnamed, argument-free constructor | `two_factor_client.adaptor_instantiation_failed` |
+| Extends `Tom2FAClientMechanism` | `two_factor_client.adaptor_does_not_implement_mechanism` |
+| Its own `type` equals the annotation's | `two_factor_client.adaptor_type_mismatch` |
+
+Two annotated classes claiming one key fail too
+(`two_factor_client.duplicate_adaptor`), naming both. That is where the scan
+parts company with `register`: replacing is a decision an application takes on
+purpose, whereas two annotations claiming one key is a wiring bug nobody
+decided, and picking a winner would make it depend on reflection ordering. A key
+an *explicit* registration already holds is the third case and is skipped
+silently — that is the documented way to substitute a panel.
+
+The key appearing twice, on the annotation and on the mechanism, is what the
+mismatch check pays for. Dropping the field would break the pairing with the
+server annotation; trusting one over the other would leave two silently
+divergent sources of truth, and a panel registered under a key it does not
+answer for surfaces as a blank challenge screen.
+
+### When there is no reflection
+
+The class must also be `@tomReflector`-registered and public, so the generated
+reflection library can reference it. A program with no generated reflection has
+nothing to scan: the registry logs once, at info, and carries on with whatever
+was registered by hand — discovery is a convenience on top of `register`, not a
+precondition of it. Only a *successful* scan is remembered, so a reflector that
+is initialised later in start-up is picked up by the next read.
+
+Because the annotation class participates in reflection, its signature — name,
+the `type` field, the `const` constructor — is a contract: changing it requires
+regenerating reflection for consumers. Both halves, the metadata round-trip and
+the scan, are pinned by `test/security_test.dart`.
 
 ## Dependencies
 
 - **`tom_core_kernel`**: the wire types the controller surfaces
   (`Tom2FAPendingEnrolment`, `Tom2FAChallenge`, `Tom2FAMethodDescriptor` and
   its resource-key convention), `TomTextResourceProvider` for text lookup,
-  `TomTotp` for the default code width, and the `tomReflector` marker that
-  makes the annotation reflection-discoverable.
+  `TomTotp` for the default code width, `TomException` (via
+  `TomClientException`) for the scan's failures, and the `tomReflector` marker
+  and `ClassMirror` the annotation scan enumerates.
 - **`tom_flutter_ui`**: the widget vocabulary every panel is built from —
   `TomText`, `TomListTile`, `TomTextButton`, `TomSelectableText`,
   `TomTextField` and `TomFilledButton` — plus `TomUIIcons`, which resolves the
