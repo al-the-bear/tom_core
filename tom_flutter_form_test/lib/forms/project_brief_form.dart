@@ -13,8 +13,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 ///    handful, multiline on summary/description/riskNotes.
 ///  * `TomFormStringDropdown` for category / priority / status / phase so
 ///    breakpoint-driven dropdown ↔ segmented swaps have real dropdowns.
-///  * `TomFormStringInputClassic` and `TomFormEmailStringInputClassic` to
-///    keep Classic ↔ new-spec coexistence exercised in the same tree.
+///  * `TomTextFormFieldBase<String>` used directly, twice, to keep the
+///    Classic ↔ new-spec coexistence exercised in the same tree.
 ///  * Nested `PersonSubform` for `lead` and `reviewer` so the form is a
 ///    proper tree, not a flat bag. Both are built in `createFormElements`
 ///    for correct scope; top-level fields pass `form: this` so their
@@ -99,8 +99,7 @@ class ProjectBriefForm extends TomForm<TomClass> {
 
   // --- Classic-field targets — keep Classic coexistence live ------------
 
-  // ignore: deprecated_member_use
-  late final internalRef = TomFormStringInputClassic(
+  late final internalRef = TomTextFormFieldBase<String>(
     'internalRef',
     '',
     form: this,
@@ -108,13 +107,21 @@ class ProjectBriefForm extends TomForm<TomClass> {
     hintText: 'Free-form internal slug',
   );
 
-  // ignore: deprecated_member_use
-  late final contactEmail = TomFormEmailStringInputClassic(
+  // The Classic path validates with a plain `String? Function(String)` that
+  // returns a resource key, rather than with the `Validators` pipeline the
+  // spec-conforming fields use — so the shape check lives here at the call
+  // site. New code wanting a validated email writes a `TomFormStringInput`
+  // with `Validators.email()`, as `CustomerForm.email` does.
+  late final contactEmail = TomTextFormFieldBase<String>(
     'contactEmail',
     '',
     form: this,
     labelText: 'Contact email (Classic email)',
     hintText: 'name@example.com',
+    valueValidator: (value) =>
+        value.isEmpty || RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)
+        ? null
+        : 'contactEmail.errors.validEmail',
   );
 
   // --- Long-form ---------------------------------------------------------

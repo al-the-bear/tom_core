@@ -273,8 +273,6 @@ void main() {
       'MaterialOnlyIconAdapter',
       // advanced_container_layout — an ACL type that took neither prefix.
       'RowAlignment',
-      // forms — a test fixture that ships in lib and should not.
-      'TestFormClassic',
     };
 
     /// Every public type a consumer receives from the package barrel.
@@ -333,7 +331,7 @@ void main() {
       // says out loud which direction it went.
       expect(
         knownUnprefixed,
-        hasLength(43),
+        hasLength(42),
         reason:
             'the known-unprefixed set changed size. Fewer is the goal — lower '
             'this number. More is not: prefix the type instead',

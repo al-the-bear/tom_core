@@ -1,3 +1,15 @@
+/// `TomTextFormFieldBase` validates at two different moments, and only one of
+/// them is reachable from the rest of the kit.
+///
+/// A `valueValidator` runs against the parsed value; an `inputValidator` runs
+/// against the raw text on every keystroke and can *reject* it, reverting the
+/// controller to the last text the field accepted. The spec-conforming fields
+/// ([TomFormStringInput] and the rest) have no equivalent — they validate
+/// through the `Validators` pipeline, which reports on a value rather than
+/// vetoing a character. So these tests can only be written against the base
+/// class, and that is not a shortcut around a public API.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
@@ -11,16 +23,15 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
-  // Classic-path input validators must keep their error message after an
-  // invalid keystroke is reverted. The failure mode is that the controller
-  // revert re-enters `_onTextChanged`, which re-validates the now valid
-  // reverted text and wipes the error it had just set.
+  // Input validators must keep their error message after an invalid keystroke
+  // is reverted. The failure mode is that the controller revert re-enters
+  // `_onTextChanged`, which re-validates the now valid reverted text and wipes
+  // the error it had just set.
   group('TomTextFormFieldBase — input-validator revert', () {
     testWidgets('keeps the input error after reverting an invalid keystroke', (
       tester,
     ) async {
-      // ignore: deprecated_member_use
-      final field = TomFormStringInputClassic(
+      final field = TomTextFormFieldBase<String>(
         'amount',
         '',
         inputValidator: (value) =>
@@ -59,8 +70,7 @@ void main() {
     testWidgets('clears the error once a valid value is entered again', (
       tester,
     ) async {
-      // ignore: deprecated_member_use
-      final field = TomFormStringInputClassic(
+      final field = TomTextFormFieldBase<String>(
         'amount',
         '',
         inputValidator: (value) =>

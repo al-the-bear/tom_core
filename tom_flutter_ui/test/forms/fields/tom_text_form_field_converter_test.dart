@@ -14,8 +14,8 @@
 ///
 /// The tests below pin both halves — the refusal, and that the supported
 /// combinations still work — because the constructor guard is exactly the kind
-/// of check that is easy to make too strict and thereby break the two
-/// non-`String` fields that ship with the library.
+/// of check that is easy to make too strict, and the caller it would break is
+/// a consumer's subclass rather than anything in this package.
 library;
 
 import 'package:flutter/material.dart';
@@ -146,36 +146,30 @@ void main() {
       expect(field.get(), 37);
     });
 
-    testWidgets('TomFormIntInputClassic converts to int', (tester) async {
-      // The two shipped non-String fields are the regression guard for the
-      // constructor check: they pass valueConverter from their own super
-      // call, so a guard that read the argument wrongly would break them.
-      // ignore: deprecated_member_use
-      final field = TomFormIntInputClassic('age', 0, min: 0, max: 150);
+    testWidgets('a subclass may supply the converter from its super call', (
+      tester,
+    ) async {
+      // Passing valueConverter through `super` is a different arrival path
+      // from passing it directly, and it is the one a subclass uses. A
+      // constructor guard that read the argument wrongly would reject every
+      // such subclass while the direct-construction cases above stayed green,
+      // so the path is covered here rather than left to a consumer to find.
+      final field = _Celsius('temperature', 0);
       addTearDown(field.dispose);
       await tester.pumpWidget(_wrap(field.widget));
 
-      await tester.enterText(find.byType(TextField), '42');
+      await tester.enterText(find.byType(TextField), '21');
       await tester.pump();
 
-      expect(field.get(), 42);
-    });
-
-    testWidgets('TomFormDoubleInputClassic converts to double', (tester) async {
-      // ignore: deprecated_member_use
-      final field = TomFormDoubleInputClassic(
-        'rating',
-        0.0,
-        min: 0.0,
-        max: 5.0,
-      );
-      addTearDown(field.dispose);
-      await tester.pumpWidget(_wrap(field.widget));
-
-      await tester.enterText(find.byType(TextField), '3.5');
-      await tester.pump();
-
-      expect(field.get(), 3.5);
+      expect(field.get(), 21);
     });
   });
+}
+
+/// A minimal non-`String` subclass, standing in for the shape a consumer
+/// writes: the type argument and the converter are fixed by the subclass, and
+/// the caller supplies neither.
+class _Celsius extends TomTextFormFieldBase<int> {
+  _Celsius(super.tomId, super.initialValue)
+    : super(valueConverter: (s) => int.tryParse(s) ?? 0);
 }

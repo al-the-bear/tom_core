@@ -245,7 +245,7 @@ void main() {
   });
 
   group('tccf1: the kit ships no deprecated surface', () {
-    test('tccf1-13: no public type under widgets/ carries @Deprecated', () {
+    test('tccf1-13: no public type under widgets/ or forms/ is @Deprecated', () {
       // `TomMaterialButton` and `TomButtonBar` sat behind a "wrapped for
       // migration of existing codebases" banner. There were no existing
       // codebases: nothing in tom_core is published. A deprecation marker is a
@@ -256,11 +256,27 @@ void main() {
       //
       // The rule for an unpublished kit is therefore simply: delete it now.
       // Deprecating instead defers a free removal until it is expensive.
+      //
+      // `forms/` is scanned for the same rule because a guard that covers one
+      // module states a package-wide rule while enforcing a local one. Five
+      // deprecated form fields survived years under exactly that gap — they
+      // were not overlooked, they were simply somewhere this test did not
+      // look. The two modules named here are the ones that hold the public
+      // widget and field surface; a third would be added when a third grows
+      // one.
       final faults = <String>[];
-      final files = Directory('lib/src/widgets')
-          .listSync(recursive: true)
+      final files = ['lib/src/widgets', 'lib/src/forms']
+          .map(Directory.new)
+          .expand((d) => d.listSync(recursive: true))
           .whereType<File>()
-          .where((f) => f.path.endsWith('.dart'));
+          .where((f) => f.path.endsWith('.dart'))
+          .toList();
+      // Guards the guard: a mistyped root would scan nothing and pass.
+      expect(
+        files,
+        isNotEmpty,
+        reason: 'the widgets/ and forms/ modules should hold dart files',
+      );
       for (final file in files) {
         final lines = file.readAsStringSync().split('\n');
         for (var i = 0; i < lines.length; i++) {

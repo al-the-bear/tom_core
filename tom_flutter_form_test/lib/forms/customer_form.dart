@@ -64,8 +64,12 @@ class CustomerForm extends TomForm<TomClass> {
   /// Classic field mixed alongside new spec-conforming fields. Demo C
   /// exposes this to demonstrate Classic ↔ new field coexistence inside
   /// the same form.
-  // ignore: deprecated_member_use
-  late final notes = TomFormStringInputClassic(
+  ///
+  /// The Classic path is [TomTextFormFieldBase] used directly: it renders its
+  /// own `TextField` against a `TextEditingController` and takes plain
+  /// string-returning validators, where the spec-conforming fields above
+  /// render through the decoration mixins and validate through `Validators`.
+  late final notes = TomTextFormFieldBase<String>(
     'notes',
     '',
     form: this,

@@ -1035,7 +1035,15 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 /// correctly and then dies on the user's first character is far harder to
 /// diagnose than one that refuses to exist.
 ///
-/// [TomFormIntInputClassic] and [TomFormDoubleInputClassic] show the shape.
+/// A subclass fixes both the type argument and the converter, so its own
+/// callers supply neither:
+///
+/// ```dart
+/// class Celsius extends TomTextFormFieldBase<int> {
+///   Celsius(super.tomId, super.initialValue)
+///     : super(valueConverter: (s) => int.tryParse(s) ?? 0);
+/// }
+/// ```
 ///
 /// ## Resource lookup
 ///
@@ -1101,8 +1109,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
         'valueConverter',
         'TomTextFormFieldBase<$T> has no way to turn typed text back into a '
             '$T — only TomTextFormFieldBase<String> has a usable default. '
-            'Pass valueConverter, as TomFormIntInputClassic does with '
-            '(s) => int.tryParse(s) ?? 0',
+            'Pass valueConverter, e.g. (s) => int.tryParse(s) ?? 0',
       );
     }
 
@@ -1256,219 +1263,5 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     // against, so the error no longer has a subject.
     _errorText.value = null;
     return result;
-  }
-}
-
-/// **Legacy** standard string form field for text input.
-///
-/// Prefer [TomFormStringInput] for new code.
-@Deprecated('Use TomFormStringInput instead')
-class TomFormStringInputClassic extends TomTextFormFieldBase<String> {
-  TomFormStringInputClassic(
-    super.tomId,
-    super.initialValue, {
-    super.form,
-    super.obscureText,
-    super.labelText,
-    super.helperText,
-    super.hintText,
-    super.prefixIcon,
-    super.suffixIcon,
-    super.enabled,
-    super.inputValidator,
-    super.valueValidator,
-  });
-}
-
-/// **Legacy** password form field with obscured text.
-///
-/// Prefer [TomFormStringInput] with `obscureText: true` for new code.
-@Deprecated('Use TomFormStringInput with obscureText: true instead')
-class TomFormPasswordStringInputClassic extends TomTextFormFieldBase<String> {
-  TomFormPasswordStringInputClassic(
-    super.tomId,
-    super.initialValue, {
-    super.form,
-    super.labelText,
-    super.helperText,
-    super.hintText,
-    super.prefixIcon,
-    super.suffixIcon,
-    super.enabled,
-    super.inputValidator,
-    super.valueValidator,
-  }) : super(obscureText: true);
-}
-
-/// **Legacy** email form field with built-in email validation.
-///
-/// Prefer [TomFormStringInput] with email validators for new code.
-@Deprecated('Use TomFormStringInput with email validators instead')
-class TomFormEmailStringInputClassic extends TomTextFormFieldBase<String> {
-  TomFormEmailStringInputClassic(
-    super.tomId,
-    super.initialValue, {
-    super.form,
-    super.obscureText,
-    super.labelText,
-    super.helperText,
-    super.hintText,
-    super.prefixIcon,
-    super.suffixIcon,
-    super.enabled,
-    super.inputValidator,
-  }) {
-    _valueValidators.add((value) {
-      if (value.isEmpty) {
-        return "$tomId.errors.required";
-      }
-      if (!isValidEmail(value)) {
-        return "$tomId.errors.validEmail";
-      }
-      return null;
-    });
-  }
-
-  static bool isValidEmail(String s) {
-    return RegExp(
-      r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?)+$",
-    ).hasMatch(s);
-  }
-}
-
-/// **Legacy** integer form field with int conversion and optional min/max validation.
-@Deprecated('Use the typed form fields instead')
-class TomFormIntInputClassic extends TomTextFormFieldBase<int> {
-  final int? min;
-  final int? max;
-
-  TomFormIntInputClassic(
-    super.tomId,
-    super.initialValue, {
-    super.form,
-    this.min,
-    this.max,
-    super.labelText,
-    super.helperText,
-    super.hintText,
-    super.prefixIcon,
-    super.suffixIcon,
-    super.enabled,
-    super.inputValidator,
-    super.valueValidator,
-  }) : super(
-         valueConverter: (s) => int.tryParse(s) ?? 0,
-         valueToTextConverter: (v) => v.toString(),
-       ) {
-    // Add input validator to only allow digits and optional leading minus
-    _inputValidators.add((value) {
-      if (value.isEmpty) return null;
-      if (int.tryParse(value) == null) {
-        return "$tomId.errors.invalidNumber";
-      }
-      return null;
-    });
-
-    // Add min/max validation
-    if (min != null || max != null) {
-      _valueValidators.add((value) {
-        final intVal = int.tryParse(value);
-        if (intVal == null) return null; // handled by input validator
-        if (min != null && intVal < min!) {
-          return "$tomId.errors.min";
-        }
-        if (max != null && intVal > max!) {
-          return "$tomId.errors.max";
-        }
-        return null;
-      });
-    }
-  }
-}
-
-/// **Legacy** double/decimal form field with double conversion and optional min/max validation.
-@Deprecated('Use the typed form fields instead')
-class TomFormDoubleInputClassic extends TomTextFormFieldBase<double> {
-  final double? min;
-  final double? max;
-
-  TomFormDoubleInputClassic(
-    super.tomId,
-    super.initialValue, {
-    super.form,
-    this.min,
-    this.max,
-    super.labelText,
-    super.helperText,
-    super.hintText,
-    super.prefixIcon,
-    super.suffixIcon,
-    super.enabled,
-    super.inputValidator,
-    super.valueValidator,
-  }) : super(
-         valueConverter: (s) => double.tryParse(s) ?? 0.0,
-         valueToTextConverter: (v) => v.toString(),
-       ) {
-    // Add input validator to only allow valid decimal numbers
-    _inputValidators.add((value) {
-      if (value.isEmpty) return null;
-      if (double.tryParse(value) == null) {
-        return "$tomId.errors.invalidNumber";
-      }
-      return null;
-    });
-
-    // Add min/max validation
-    if (min != null || max != null) {
-      _valueValidators.add((value) {
-        final doubleVal = double.tryParse(value);
-        if (doubleVal == null) return null; // handled by input validator
-        if (min != null && doubleVal < min!) {
-          return "$tomId.errors.min";
-        }
-        if (max != null && doubleVal > max!) {
-          return "$tomId.errors.max";
-        }
-        return null;
-      });
-    }
-  }
-}
-
-/// Legacy test form demonstrating the classic form field system.
-@tomReflector
-class TestFormClassic extends TomForm<TomClass> {
-  TestFormClassic() : super(formId: "test_form");
-
-  // ignore: deprecated_member_use_from_same_package
-  late final TomFormEmailStringInputClassic email;
-  // ignore: deprecated_member_use_from_same_package
-  late final TomFormPasswordStringInputClassic password;
-  // ignore: deprecated_member_use_from_same_package
-  late final TomFormStringInputClassic username;
-  // ignore: deprecated_member_use_from_same_package
-  late final TomFormIntInputClassic age;
-  // ignore: deprecated_member_use_from_same_package
-  late final TomFormDoubleInputClassic rating;
-
-  @override
-  void createFormElements() {
-    // ignore: deprecated_member_use_from_same_package
-    email = TomFormEmailStringInputClassic('email', '', form: this);
-    // ignore: deprecated_member_use_from_same_package
-    password = TomFormPasswordStringInputClassic('password', '', form: this);
-    // ignore: deprecated_member_use_from_same_package
-    username = TomFormStringInputClassic('username', '', form: this);
-    // ignore: deprecated_member_use_from_same_package
-    age = TomFormIntInputClassic('age', 0, form: this, min: 0, max: 150);
-    // ignore: deprecated_member_use_from_same_package
-    rating = TomFormDoubleInputClassic(
-      'rating',
-      0.0,
-      form: this,
-      min: 0.0,
-      max: 5.0,
-    );
   }
 }

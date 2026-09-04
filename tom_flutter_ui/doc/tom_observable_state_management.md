@@ -461,7 +461,7 @@ This wraps any `TomObservable` (here `AppErrorInfo extends TomClass`) into a `Va
 **Source:** `tom_flutter_ui/lib/src/forms/`  
 **Full spec:** [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md)
 
-The `TomForm` / `TomField` pattern in `tom_core_flutter` is **superseded** by the Tom Forms Framework in `tom_flutter_ui`. The legacy wrappers (`TomFormStringInputClassic`, `TomFormEmailStringInputClassic`, `TomFormPasswordStringInputClassic`, `TomFormIntInputClassic`, `TomFormDoubleInputClassic`) still compile — `@Deprecated` — for the Classic-field coexistence story in Demo C, but no new code should add to them.
+The `TomForm` / `TomField` pattern in `tom_core_flutter` is **superseded** by the Tom Forms Framework in `tom_flutter_ui`. One field of the older tier remains: `TomTextFormFieldBase<T>`, which renders its own `TextField` against a `TextEditingController` and validates through plain string-returning callbacks rather than the `Validators` pipeline. It has no subclasses in the package — a caller who wants it uses it directly, as `tom_flutter_form_test` does for the Classic-coexistence story in Demo C — and new fields are built on `TomFormStringField` and its siblings instead.
 
 **Shape of the new framework (condensed; see the full spec for §-level detail):**
 
@@ -649,10 +649,7 @@ TomObservable (base class)
         │   ├── TomFormStringInput
         │   └── TomFormStringDropdown
         ├── (Phase 2+ field types)
-        └── TomTextFormFieldBase<T> — Classic tier (deprecated)
-            ├── TomFormStringInputClassic, TomFormEmailStringInputClassic,
-            ├── TomFormPasswordStringInputClassic, TomFormIntInputClassic,
-            └── TomFormDoubleInputClassic
+        └── TomTextFormFieldBase<T> — Classic tier, used directly
 
 ValueListenable<T> (Flutter interface)
 └── ValueListenableObserver<T>  — Adapter: TomObservable → ValueListenable

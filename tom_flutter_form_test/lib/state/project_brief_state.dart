@@ -31,9 +31,9 @@ class ProjectBrief extends TomClass {
   late final location = TomString('');
 
   // --- Classic-field targets ---------------------------------------------
-  // These back `TomFormStringInputClassic` / `TomFormEmailStringInputClassic`
-  // in the ProjectBriefForm so the Classic ↔ new-spec coexistence is
-  // covered inside the same complex form.
+  // These back the two `TomTextFormFieldBase<String>` fields in the
+  // ProjectBriefForm so the Classic ↔ new-spec coexistence is covered inside
+  // the same complex form.
   late final internalRef = TomString('');
   late final contactEmail = TomString('');
 

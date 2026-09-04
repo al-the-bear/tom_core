@@ -32,7 +32,7 @@ import 'demo_widgets.dart';
 ///   * `styleBpOverrides` — shipping's scope swaps to `compact` at tablet
 ///     width and `bordered` at desktop width without touching the tree.
 ///   * Classic ↔ new coexistence — `notes` renders via
-///     `TomFormStringInputClassic`, inside the same outer form as the new
+///     `TomTextFormFieldBase<String>`, inside the same outer form as the new
 ///     `TomFormStringInput` fields.
 ///   * Form inspection panel — values as JSON, dirty fields, `initialSnapshot`
 ///     vs current diff, fields with errors, and aggregate isDirty/isValid.
@@ -316,7 +316,7 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
               'and desktop breakpoints and watch the preset flip.',
             ),
             const DemoBullet(
-              'The notes field is a TomFormStringInputClassic — old API '
+              'The notes field is a TomTextFormFieldBase — the Classic API '
               'rendering side-by-side with the spec-conforming fields.',
             ),
             const DemoBullet(

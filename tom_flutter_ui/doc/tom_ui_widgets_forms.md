@@ -1552,13 +1552,14 @@ The existing code in `tom_flutter_ui/lib/src/forms/tom_form.dart` provides:
 |-------|--------|-------|
 | `TomForm` | **Implemented** | Base form with reflection discovery, scope, bind, validate, save |
 | `TomField<T>` | **Implemented** | Base field with scope and `getField()` |
-| `TomTextFormFieldBase<T>` | **Implemented** (→ rename to `TomFormStringField`) | Generic text-based field with converters, validators, TextEditingController |
-| `TomFormStringField` | **Implemented** (→ currently named `TomFormStringField`) | String text field — becomes the abstract type; current impl becomes `TomFormStringInputClassic` |
-| `TomFormPasswordField` | **Implemented** (→ rename to `TomFormPasswordStringInputClassic`) | Obscured string field; new name: `TomFormPasswordStringInput` |
-| `TomFormEmailField` | **Implemented** (→ rename to `TomFormEmailStringInputClassic`) | Email with RFC 5322 validation; new name: `TomFormEmailStringInput` |
-| `TomFormIntField` | **Implemented** (→ rename to `TomFormIntInputClassic`) | Integer with min/max |
-| `TomFormDoubleField` | **Implemented** (→ rename to `TomFormDoubleInputClassic`) | Decimal with min/max |
-| `TestForm` | **Implemented** | Example form (email, password, username, age, rating) |
+| `TomTextFormFieldBase<T>` | **Implemented** | The whole Classic tier. Concrete and used directly: `TextEditingController`, converters, keystroke-level input validators, `InputDecoration` rendering. No subclasses ship |
+
+The Classic tier is one class. It once carried five one-line subclasses — a
+string field, a password field, an email field, an int field and a double
+field — each of which fixed a constructor argument or added a validator that
+its caller could equally have passed. They are gone; a caller who wants the
+Classic rendering constructs `TomTextFormFieldBase` and supplies what it
+needs. The spec-conforming tier below is where field *types* live.
 
 ### Extensions Needed
 
@@ -4399,17 +4400,20 @@ The right-side panels are reusable across demos:
 
 **Migration policy:** The existing `TomField` and `TomForm` classes in `tom_flutter_ui` are **modified in-place** to match this specification. There is no backward-compatibility constraint — old APIs (method names, parameter names, signatures) are replaced, not preserved alongside new ones. Every phase may rename, restructure, or delete existing code to align with the spec.
 
-**Legacy naming convention — IMPORTANT:** All existing concrete field implementations that predate this specification must be renamed to follow the new naming convention with a `*Classic` suffix. The naming must be consistent:
+**There is no `*Classic` suffix tier.** The plan once called for renaming every
+pre-specification field implementation to `TomForm{Type}{Widget}Classic` and
+keeping the results alongside the new ones. That produced five subclasses whose
+whole content was a fixed constructor argument or a validator the caller could
+have passed, each carrying a deprecation marker promising a migration that no
+consumer needed — nothing in this package is published. They were deleted
+rather than renamed again.
 
-| Old Name | New Name (Classic) | Reason |
-|----------|-------------------|--------|
-| `TomStringFormField` | `TomFormStringInputClassic` | Follows `TomForm{Type}{Widget}Classic` pattern |
-| `TomPasswordFormField` | `TomFormPasswordStringInputClassic` | Type is `String`, widget is password input |
-| `TomEmailFormField` | `TomFormEmailStringInputClassic` | Type is `String`, widget is email input |
-| `TomIntFormField` | `TomFormIntInputClassic` | Type is `int`, widget is text input |
-| `TomDoubleFormField` | `TomFormDoubleInputClassic` | Type is `double`, widget is text input |
-
-**`TomTextFormFieldBase`** — This is an **abstract base class** for all text-based Classic field implementations. It must NOT be renamed or deprecated — it is not a field implementation itself. It provides shared behavior (TextEditingController management, InputDecoration rendering) for Classic text fields.
+**`TomTextFormFieldBase`** — the surviving Classic field, and the only one. It
+is concrete and instantiated directly: it owns the `TextEditingController`,
+the `T` ⇄ text converters, the keystroke-level input validators and the
+`InputDecoration` rendering. A caller wanting an obscured Classic field passes
+`obscureText: true`; one wanting a validated Classic field passes
+`valueValidator`. New code uses the spec-conforming tier instead.
 
 **Widget-layer `TomForm`** — The existing `TomForm` widget class in `tom_inputs.dart` (the Flutter widget that builds a form UI from a `TomForm` data model) must be renamed to `TomFormClassic`. This avoids name collision with the data-model `TomForm<T extends TomClass>` class. After renaming, both Classic and new fields must be usable together in the same form — a `TomFormClassic` widget should be able to render both `*Classic` fields and new spec-conforming fields.
 

@@ -567,42 +567,6 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // Legacy class renames
-  // -------------------------------------------------------------------------
-
-  group('Legacy class renames', () {
-    test('TomFormStringInputClassic exists and works', () {
-      // ignore: deprecated_member_use
-      final field = TomFormStringInputClassic('name', '');
-      expect(field, isNotNull);
-      expect(field.tomId, 'name');
-    });
-
-    test('TomFormPasswordStringInputClassic exists and works', () {
-      // ignore: deprecated_member_use
-      final field = TomFormPasswordStringInputClassic('pass', '');
-      expect(field.obscureText, isTrue);
-    });
-
-    test('TomFormIntInputClassic exists and works', () {
-      // ignore: deprecated_member_use
-      final field = TomFormIntInputClassic('age', 0, min: 0, max: 150);
-      expect(field, isNotNull);
-    });
-
-    test('TomFormDoubleInputClassic exists and works', () {
-      // ignore: deprecated_member_use
-      final field = TomFormDoubleInputClassic(
-        'rating',
-        0.0,
-        min: 0.0,
-        max: 5.0,
-      );
-      expect(field, isNotNull);
-    });
-  });
-
-  // -------------------------------------------------------------------------
   // TomField.setValue — event and debounce behavior
   // -------------------------------------------------------------------------
 

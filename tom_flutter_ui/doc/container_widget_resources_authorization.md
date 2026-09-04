@@ -38,10 +38,10 @@ shipped class in the right column.
 | Named in this spec | Shipped as | Where |
 | ------------------ | ---------- | ----- |
 | `TomStringFormField` | `TomFormStringField` / `TomFormStringInput` | `forms/fields/tom_form_string_field.dart` |
-| `TomEmailFormField` | `TomFormEmailStringInputClassic` (+ `Validators.email`) | `forms/tom_form.dart` |
-| `TomPasswordFormField` | `TomFormPasswordStringInputClassic` | `forms/tom_form.dart` |
-| `TomIntFormField` | `TomFormIntInput` / `TomFormIntInputClassic` | `forms/fields/tom_form_int_field.dart` |
-| `TomDoubleFormField` | `TomFormDoubleInput` / `TomFormDoubleInputClassic` | `forms/fields/tom_form_double_field.dart` |
+| `TomEmailFormField` | `TomFormStringInput` (+ `Validators.email()`) | `forms/fields/tom_form_string_field.dart` |
+| `TomPasswordFormField` | `TomFormStringInput` (`obscureText: true`) | `forms/fields/tom_form_string_field.dart` |
+| `TomIntFormField` | `TomFormIntInput` | `forms/fields/tom_form_int_field.dart` |
+| `TomDoubleFormField` | `TomFormDoubleInput` | `forms/fields/tom_form_double_field.dart` |
 | `TomTextFormFieldBase` | `TomTextFormFieldBase` / `TomInputBase` | `forms/tom_form.dart`, `widget_base/tom_family_base.dart` |
 | `TomInputField` | `TomTextField` (widget) / `TomFormStringInput` (form) | `widgets/inputs/`, `forms/fields/` |
 | `TomDropdown` | `TomFormStringDropdown` / `TomFormEnumDropdown` (+ `TomDropdownStyle`) | `forms/fields/` |
@@ -115,7 +115,7 @@ Resources are locale-aware (language + region) and process-context-aware (e.g., 
 
 ### Migration note
 
-**Migration complete.** The `TomForm`, `TomField`, and related classes have been implemented in `tom_flutter_ui` (in `lib/src/forms/`). The old sample code in `tom_core_flutter` and `tom_uam_client` has been superseded. Current implementations: `TomForm`, `TomField<T>`, `TomTextFormFieldBase<T>`, `TomFormStringInput`, `TomFormPasswordStringInputClassic`, `TomFormEmailStringInputClassic`, `TomFormIntInput`, `TomFormDoubleInput`, `TestForm`.
+**Migration complete.** The `TomForm`, `TomField`, and related classes have been implemented in `tom_flutter_ui` (in `lib/src/forms/`). The old sample code in `tom_core_flutter` and `tom_uam_client` has been superseded. Current implementations: `TomForm`, `TomField<T>`, `TomTextFormFieldBase<T>`, `TomFormStringInput`, `TomFormIntInput`, `TomFormDoubleInput`.
 
 ---
 
@@ -1584,15 +1584,13 @@ abstract class TomField<T> extends TomObject<T> {
 }
 ```
 
-Concrete implementations: `TomTextFormFieldBase<T>` (with `TextEditingController`, input/value validators, pattern validation from resources), `TomFormStringInput`, `TomFormPasswordStringInputClassic`, `TomFormEmailStringInputClassic`, `TomFormIntInput`, `TomFormDoubleInput`, `TestForm`.
+Concrete implementations: `TomTextFormFieldBase<T>` (with `TextEditingController`, input/value validators, pattern validation from resources), `TomFormStringInput`, `TomFormIntInput`, `TomFormDoubleInput`.
 
 ### Implemented field types
 
 | Class | Type | Description |
 |-------|------|-------------|
-| `TomFormStringInput` | `String` | Standard text input |
-| `TomFormPasswordStringInputClassic` | `String` | Obscured text |
-| `TomFormEmailStringInputClassic` | `String` | Email with built-in RFC validation |
+| `TomFormStringInput` | `String` | Standard text input; `obscureText: true` for passwords, `Validators.email()` for email |
 | `TomFormIntInput` | `int` | Integer with optional min/max |
 | `TomFormDoubleInput` | `double` | Decimal with optional min/max |
 
@@ -2470,7 +2468,7 @@ List views participate in the same authorization model:
 - Resource resolution: `TomUIIcons`, `TomUIColors`, `TomStyleResolvers` (1100+ lines with 17 style parsers), backed by kernel `TomTextResourceProvider` / `TomConfigResourceProvider`
 - `TomCtr` construction helpers for resource resolution at widget construction time
 - Action system: `TomAction`, `TomSimpleAction`, `TomActionContext`, `TomActionController`, `TomActionTrigger`, `TomActionTransaction`, `TomCompositeAction`, `TomUndoHistory`
-- Forms: `TomForm`, `TomField<T>`, `TomTextFormFieldBase<T>`, `TomFormStringField` / `TomFormStringInput`, `TomFormPasswordStringInputClassic`, `TomFormEmailStringInputClassic`, `TomFormIntInput` / `TomFormIntInputClassic`, `TomFormDoubleInput` / `TomFormDoubleInputClassic`, `TomFormBoolCheckbox` / `TomFormBoolSwitch`, `TomFormStringDropdown` / `TomFormEnumDropdown`, `TomFormDateTextInput`, `TomListForm`
+- Forms: `TomForm`, `TomField<T>`, `TomTextFormFieldBase<T>`, `TomFormStringField` / `TomFormStringInput`, `TomFormIntField` / `TomFormIntInput`, `TomFormDoubleField` / `TomFormDoubleInput`, `TomFormBoolCheckbox` / `TomFormBoolSwitch`, `TomFormStringDropdown` / `TomFormEnumDropdown`, `TomFormDateTextInput`, `TomListForm`
 - `TomWidgetMixin` for extension-pattern widgets (18 widgets)
 
 ### Remaining (planned — intended future work)
