@@ -21,9 +21,12 @@
 ///     be testing on.
 ///
 /// The three `file_opener*` files are deliberately not exported from the
-/// barrel — this is internal plumbing — so the behavioural assertions go
-/// through `TomFilePickers.toFileRef`, which is both the only call site and
-/// the public entry a picker adaptor uses.
+/// barrel — this is internal plumbing — so they are the only imports here
+/// naming a `src/` path, and the sole reason this file is exempt from the
+/// barrel rule in `test/package_barrel_test.dart`. Everything public it
+/// touches, `TomFilePickers.toFileRef` above all — both the trio's only call
+/// site and the public entry a picker adaptor uses — comes through the barrel
+/// like any consumer's would, so the exemption stays as narrow as its reason.
 library;
 
 import 'dart:io';
@@ -34,7 +37,7 @@ import 'package:tom_flutter_ui/src/forms/files/file_opener.dart' as resolved;
 import 'package:tom_flutter_ui/src/forms/files/file_opener_io.dart' as io_half;
 import 'package:tom_flutter_ui/src/forms/files/file_opener_stub.dart'
     as web_half;
-import 'package:tom_flutter_ui/src/forms/files/tom_file_picker_registry.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
 // Harness

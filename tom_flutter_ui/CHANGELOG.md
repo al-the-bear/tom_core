@@ -64,6 +64,24 @@
 
 ### Fixed
 
+- **The barrel rule's exemption list was granted per file, not per import.**
+  A test may reach into `lib/src` only where the barrel cannot express what it
+  needs, and `package_barrel_test.dart` records each such file with its reason.
+  But the check was membership: once a file appeared on the list, *every* one of
+  its `src/` imports was licensed, including the ones the barrel offered
+  perfectly well. `file_opener_test.dart` earns its place with the `file_opener`
+  trio, three files deliberately not exported because they are internal plumbing
+  — and carried a fourth import in behind them,
+  `src/forms/files/tom_file_picker_registry.dart`, exported all along through
+  `src/forms/tom_forms.dart`. It now imports the package barrel like every other
+  test, and the exemption is as narrow as its stated reason.
+
+  A new check re-derives the licence from the export graph rather than trusting
+  the list: `barrelReachableFiles()` walks the `export` chain from
+  `lib/tom_flutter_ui.dart`, and an exempt file reaching a library in that set
+  fails with the pair named. The exemption cannot silently widen again, because
+  widening it now requires the library to be genuinely unexported.
+
 - **A root screen provider prefixed every lookup with `default.`.**
   `TomScreenElementsProviderBase` built with no scope id is meant to add no
   segment, and it implemented that by copying the surrounding scope's `id` and

@@ -108,6 +108,12 @@ private additions allowed):
   cannot express what the file needs, that is what the exemption is for.
   `test/package_barrel_test.dart` enforces all of this, over `test/` and
   `example/` alike, for `export` as well as `import`.
+
+  The exemption licenses the *imports the reason covers*, not the file. An
+  exempt file may still only reach libraries the barrel does not export; the
+  suite re-derives that from the export chain rather than taking the list's
+  word for it, so an exported library imported by path fails even from an
+  exempt file.
 - **Observable integration:** widgets bind to observable state; demonstrate the
   ValueListenable / observer patterns in examples.
 - **Reflection:** only regenerate reflection on signature changes; use the

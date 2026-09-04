@@ -118,6 +118,33 @@ Set<String> reachableTypes(String path, Map<String, Set<String>> surfaces) {
   return reachable;
 }
 
+/// The files under `lib/` a consumer can reach through the package barrel:
+/// `lib/tom_flutter_ui.dart` and everything its `export` chain leads to.
+///
+/// [exportSurfaces] answers "which *names* does the barrel carry"; this
+/// answers "which *files* stand behind it", which is the question a file
+/// reaching into `src/` raises. If the library it names is in this set, the
+/// barrel already offers it and the reach is a holdout; if it is not, the
+/// library is internal and the reach may be the only way to say what the file
+/// means.
+Set<String> barrelReachableFiles() {
+  const barrel = 'lib/tom_flutter_ui.dart';
+  final reached = <String>{barrel};
+  final pending = <String>[barrel];
+  while (pending.isNotEmpty) {
+    final path = pending.removeLast();
+    final file = File(path);
+    if (!file.existsSync()) continue;
+    for (final m in directive.allMatches(file.readAsStringSync())) {
+      if (m.group(1) != 'export') continue;
+      final target = directiveTarget(path, m.group(2)!);
+      if (target == null || !reached.add(target)) continue;
+      pending.add(target);
+    }
+  }
+  return reached;
+}
+
 /// Where each type under `lib/` is declared, as `name -> repo-relative path`.
 ///
 /// First declaration wins. A duplicated type name would make the entry

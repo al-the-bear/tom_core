@@ -99,6 +99,13 @@ void main() {
     /// defensible when the barrel *cannot* express what the file needs, and
     /// writing that down is what stops the map from becoming the place
     /// inconvenient files go.
+    /// An exemption licenses only the libraries the barrel genuinely cannot
+    /// offer: the check below re-derives that from the export graph, so a file
+    /// on this list still cannot reach an *exported* library by path. Without
+    /// it the exemption is granted per file, and the first unexported import
+    /// carries the rest of that file's imports in behind it — which is exactly
+    /// how `tom_file_picker_registry.dart`, exported all along through
+    /// `src/forms/tom_forms.dart`, went unnoticed here.
     const exempt = <String, String>{
       'test/forms/files/file_opener_test.dart':
           'asserts that the two halves of a conditional import agree with the '
@@ -200,6 +207,44 @@ void main() {
         );
         expect(entry.value, isNotEmpty);
       }
+    });
+
+    test('an exempt file reaches only libraries the barrel cannot offer', () {
+      final reachable = barrelReachableFiles();
+      // Guards the guard: a barrel that resolved to nothing would find every
+      // reach unexported and pass.
+      expect(
+        reachable.length,
+        greaterThan(1),
+        reason: 'the barrel should export something',
+      );
+
+      final srcImport = RegExp(
+        '^(?:import|export) [\'"](package:tom_flutter_ui/src/[^\'"]+)',
+        multiLine: true,
+      );
+      final holdouts = <String>[];
+      for (final path in exempt.keys) {
+        for (final m in srcImport.allMatches(File(path).readAsStringSync())) {
+          final target = m.group(1)!.replaceFirst(
+            'package:tom_flutter_ui/',
+            'lib/',
+          );
+          if (reachable.contains(target)) holdouts.add('  $path -> $target');
+        }
+      }
+
+      expect(
+        holdouts..sort(),
+        isEmpty,
+        reason:
+            'these reaches are exempt but did not need to be — the library is '
+            'already exported through package:tom_flutter_ui/tom_flutter_ui.'
+            'dart, so importing it by path buys nothing and loses the '
+            'regression the barrel rule exists to catch:\n\n'
+            '${holdouts.join('\n')}\n\n'
+            'Import the barrel for these; keep the exemption for the rest',
+      );
     });
   });
 
