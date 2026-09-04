@@ -1,6 +1,11 @@
 {
   "about": "Fault counts the gates in tool/ are held to. Read by tool/check_gates.py, which fails when a gate's count moves in either direction: up means a new fault, down means a baseline that should be lowered so the repair sticks. 'measured' is the date the count last changed. Regenerate with `python3 tool/check_gates.py --update`; write 'note' by hand.",
   "gates": {
+    "check_barrel_exports": {
+      "faults": 0,
+      "measured": "2026-09-04",
+      "note": "Lands at zero because all four faults it found were legitimate omissions, and each was declared with a marker in its barrel in the same pass: reflection_seed.dart in advanced_client_core, reflection_entry.dart in todo_domain, and the two generated colour/icon tables behind tom_colors.dart and tom_icons.dart in tom_flutter_ui. Zero is the expected steady state -- the gate exists for recurrence, not backlog, and the one defect of this class (session_two_factor_controller.dart, absent from advanced_app_client's app.dart) was already repaired by tcinc947. 39 barrels across 23 packages are in scope. A directory with no barrel is deliberately not covered: the six Flutter sample applications correctly re-export nothing from screens/ and groups/, and demanding it would produce some ninety faults, all wrong."
+    },
     "check_comments_read_as_is": {
       "faults": 38,
       "measured": "2026-09-04",

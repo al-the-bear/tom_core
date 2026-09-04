@@ -214,6 +214,7 @@ reports and never gates.
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
+| [`tool/check_barrel_exports.py`](tool/check_barrel_exports.py) | Finds a Dart file beside a barrel that no barrel reaches and no marker declares |
 | [`tool/check_kernel_bridge.py`](tool/check_kernel_bridge.py) | Audits the kernel bridge registrations against the types the bridge declares |
 | [`tool/check_demo_counts.py`](tool/check_demo_counts.py) | Pins the demo screen/tile counts printed in `tom_flutter_ui_test/README.md` to the source |
 | [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
@@ -920,6 +921,51 @@ stale checkout, not like a file that is present, visually correct, and rejected
 over two characters in a comment nobody reads. Well-formedness is decidable, so
 the check is total for the fault it names — and it fires zero times on the nine
 figures today.
+
+```bash
+python3 tool/check_barrel_exports.py                 # the whole repository
+python3 tool/check_barrel_exports.py tom_flutter_ui  # one package
+```
+
+Holds every barrel to the directory it claims to inventory.
+`advanced_app_client/lib/app/app.dart` declared three exports beside four
+exportable files, and the missing one was a real public type — imported by a
+screen, documented in its own section, and unreachable by name to anyone
+importing the barrel. `check_doc_inventories.py` caught that one only by
+accident: its `barrel — N exports` label happened to say 4 while the barrel said
+3, so the number was right about what the barrel was *for*. Had the label
+agreed, the type would still have been unreachable. That gate compares a claim
+against the code; this one compares the code against itself.
+
+A barrel is a file that declares nothing of its own and carries at least one
+unconditional `export`. Both halves matter: the first separates a barrel from a
+library that happens to re-export a neighbour, and the second excludes the
+platform shims — `export 'file_opener_stub.dart' if (dart.library.io)
+'file_opener_io.dart';` names a *variant*, not an inventory, and reading it as
+one would demand it export the other six files in its directory.
+
+The claim is the barrel, not the directory. A directory with no barrel is
+reported on by nothing, which is what keeps the six Flutter sample applications
+out: their `screens/` and `groups/` directories correctly re-export nothing, and
+demanding coverage there would produce some ninety faults, every one wrong.
+Coverage is then reachability across *all* the package's barrels rather than the
+one beside the file, so a sub-barrel works: `dtos.dart` should not export the
+two neighbours that are not DTOs, and the package barrel already offers them.
+
+Correct omissions are declared in the barrel itself, where they survive a file
+move and are visible to whoever is editing the exports:
+
+```dart
+// not-exported: reflection_seed.dart — the apps install their own
+// initializeReflection; exporting this one would collide with theirs.
+```
+
+The reason is required, and the marker is held to being real: one naming a file
+that is not there, or one the barrels reach after all, is a fault. Generated
+output (`*.reflection.dart`, `*.versioner.dart`, `*.g.dart`, `*.freezed.dart`)
+is skipped by shape instead, since a marker about a file the next build rewrites
+gives a reader nothing to weigh. Four markers exist today and the gate is at
+zero.
 
 ```bash
 python3 tool/check_kernel_bridge.py    # the whole repository

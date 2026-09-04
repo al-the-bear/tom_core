@@ -15,6 +15,14 @@
 /// This barrel is their stable public entry point.
 library;
 
+// not-exported: reflection_seed.dart — the generated `initializeReflection()`
+// assigns the reflection registry rather than adding to it, so exactly one seed
+// may run per program. The Flutter apps that consume this package build their
+// own combined seed, covering their forms as well; exporting this one from the
+// public barrel would put a second `initializeReflection` in their namespace and
+// silently decide which of the two they get. The client core's own tests import
+// it by path, which is the only place it is wanted.
+
 export 'src/api/admin_api_client.dart';
 export 'src/api/app_api_client.dart';
 export 'src/auth/auth_client.dart';

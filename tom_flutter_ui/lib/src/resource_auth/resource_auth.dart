@@ -19,6 +19,15 @@
 /// Prose: `doc/resource_auth.md`.
 library;
 
+// not-exported: tom_colors_generated.dart — 355 raw `Color` constants scraped
+// from the Flutter SDK, wrapped by `tom_colors.dart`. The catalogue is the
+// public surface; the table behind it is an implementation detail an
+// application extends by registering a `TomUIColorAdapter`, never by naming a
+// constant. Exporting it would also breach the package's namespacing rule,
+// since the constants carry no `Tom` prefix.
+// not-exported: tom_icons_generated.dart — the same, for the 10147 `IconData`
+// constants behind `tom_icons.dart`.
+
 export 'tom_colors.dart';
 export 'tom_config_provider.dart';
 export 'tom_icons.dart';

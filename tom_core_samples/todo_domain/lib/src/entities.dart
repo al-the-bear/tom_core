@@ -6,6 +6,12 @@
 /// output.
 library;
 
+// not-exported: reflection_entry.dart — the reflection generator's root, which
+// exists only to give the generator a `main()` to follow imports from. It is
+// never called at runtime, and exporting it would put that `main` into the
+// namespace of everyone importing the model. What consumers want from it,
+// `initializeReflection`, reaches them through `todo_domain.dart` instead.
+
 export 'enums.dart';
 export 'project.dart';
 export 'todo_item.dart';

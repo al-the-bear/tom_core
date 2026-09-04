@@ -62,6 +62,20 @@
   fact moved into `Purpose` rather than being dropped, since the neighbouring
   column is where role belongs.
 
+- **`src/resource_auth/resource_auth.dart` now states why it omits the two
+  generated tables.** The barrel exports three of the five Dart files beside
+  it; the other two, `tom_colors_generated.dart` and `tom_icons_generated.dart`,
+  hold 355 `Color` and 10147 `IconData` constants that `tom_colors.dart` and
+  `tom_icons.dart` wrap. That they are wrapped rather than re-exported is a
+  decision — the catalogue is the public surface, an application extends it by
+  registering an adapter, and the raw constants carry no `Tom` prefix, so
+  exporting them would breach the package's namespacing rule as well. The
+  reason is now written in the barrel, next to the decision, in two
+  `// not-exported: <file> — <reason>` markers. A new repository gate,
+  `tool/check_barrel_exports.py`, reports any Dart file beside a barrel that no
+  barrel reaches and no marker declares, and holds the markers themselves to
+  naming a file that exists and is genuinely unreachable.
+
 ### Fixed
 
 - **The barrel rule's exemption list was granted per file, not per import.**
