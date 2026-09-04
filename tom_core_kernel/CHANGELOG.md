@@ -188,6 +188,31 @@ anyone who was writing them.
 
 ### Changed
 
+- **`Tom2FAPendingEnrolment.isExhausted` is false at the choosing stop
+  (tcincb1).** It read `attemptsRemaining <= 0`, with no `hasOffer` guard, while
+  the server's `Tom2FAEnrolmentState.isExhausted` — the state this type is the
+  client-side view of — has always read `hasOffer && attemptsRemaining <= 0`.
+  The two tiers disagreed about the *choosing* stop, and the disagreement was
+  not a corner case: the attempt budget belongs to the mechanism's offer, so a
+  chooser carries no `attemptsAllowed` claim at all, and an absent claim falls
+  back to `0` (deliberately, so an unreadable budget on a begun offer arrives
+  already spent). Every chooser therefore reported itself exhausted — attempts
+  burned against a mechanism that was never generated. This is the same reading
+  the type already gives the *deadline*, whose nullability is documented as
+  "the deadline belongs to the mechanism's offer, not to the choice"; the
+  budget is the same kind of thing and now gets the same treatment. The
+  fail-closed fallback is untouched, because it only bites where `hasOffer` is
+  true and the guard is transparent. `TomBearerAuthentication`
+  `.pendingTwoFactorEnrolment` had been working around the defect since
+  tcinc273 with `if (enrolment.hasOffer && enrolment.isExhausted)`; that
+  workaround is gone, and the getter now reads exhaustion as plainly as it
+  reads the deadline. **Behaviour change for direct readers**: a chooser that
+  answered `true` now answers `false`. One existing test asserted the defective
+  reading (`'the choosing stop survives the freshness filter'`) and its premise
+  was rewritten — the assertion it was really making, that the getter does not
+  delete the chooser, is unchanged and now pins `attemptsRemaining` as the raw
+  count instead.
+
 - **A minted token is redacted against its own subject, not against the ambient
   zone (tcincb1).** `convertPrincipalToTokenPayload` takes the principal the
   token is for and then decided which of *that principal's* fields to include by

@@ -518,13 +518,32 @@ class Tom2FAPendingEnrolment {
   }
 
   /// How many confirmation attempts are still available. Never negative.
+  ///
+  /// Zero while the user is still choosing, because the budget belongs to the
+  /// *mechanism's* offer and no mechanism has been picked — there is nothing
+  /// to attempt, not nothing left. Read [isExhausted] rather than this for the
+  /// question "may this still be answered", which accounts for the difference.
   int get attemptsRemaining {
     final remaining = attemptsAllowed - attempt;
     return remaining < 0 ? 0 : remaining;
   }
 
   /// Whether every allowed confirmation attempt has been consumed.
-  bool get isExhausted => attemptsRemaining <= 0;
+  ///
+  /// Always false while the user is still choosing — the same reading
+  /// [isExpired] gives the deadline, and for the same reason. The attempt
+  /// budget belongs to the *mechanism's* offer, so the choosing stop carries no
+  /// budget claim at all, and an absent claim reads back as zero
+  /// ([fromClaims]' fail-closed fallback). Without the [hasOffer] guard a
+  /// chooser would report attempts burned against a mechanism that was never
+  /// generated.
+  ///
+  /// The guard is transparent to the fail-closed rule it sits next to: on a
+  /// *begun* offer [hasOffer] is true, so an unreadable budget still arrives
+  /// already exhausted. It matches `Tom2FAEnrolmentState.isExhausted` on the
+  /// server, which has to be read the same way or a client would restart a
+  /// login the server is still willing to continue.
+  bool get isExhausted => hasOffer && attemptsRemaining <= 0;
 
   /// Reads a pending enrolment back from a token's public [payload], or returns
   /// `null` when the payload carries none.

@@ -1329,11 +1329,14 @@ by hand:
 - **A wrong confirmation code is a loop, not a restart** — exactly as it is for
   a challenge. `attempt` advances in a fresh interim token and the block above
   repeats. The loop terminates on a lapsed or burned offer because the getter
-  filters those out, the same way `pendingTwoFactorChallenge` does. One
-  difference, and it is the same one that makes `expiresAt` nullable here: the
-  attempt budget belongs to the *mechanism's* offer, so the choosing stop is
-  never filtered out for exhaustion — a chooser owes no attempts, because
-  nothing has been generated to attempt yet.
+  filters those out, the same way `pendingTwoFactorChallenge` does. Neither
+  filter deletes the chooser, and for one reason stated twice in the type: both
+  the deadline and the attempt budget belong to the *mechanism's* offer, so at
+  the choosing stop there is nothing that could go stale and nothing that could
+  be spent. `isExpired()` and `isExhausted` therefore both answer `false` there
+  — read either of them directly and it says the same thing the getter does.
+  `attemptsRemaining` is the one member that does not account for the stop: it
+  reports `0` for a chooser, meaning "nothing to attempt", not "nothing left".
 - **A skip is the server's decision.** `skippable` was decided on the pass that
   made the offer and is carried in the signed token, so a client that shows a
   "not now" button anyway achieves nothing: the server checks the same claim

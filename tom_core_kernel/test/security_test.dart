@@ -3592,7 +3592,44 @@ void main() {
           reason: 'the offer is still renderable — only its budget is not',
         );
         expect(pending!.attemptsAllowed, isZero);
-        expect(pending.isExhausted, isTrue);
+        expect(
+          pending.isExhausted,
+          isTrue,
+          reason: 'a mechanism is in flight, so its budget is a real claim',
+        );
+      });
+
+      // Exhaustion is read the same way the deadline is, and for the same
+      // reason: the attempt budget belongs to the *mechanism's* offer, so the
+      // choosing stop carries no budget claim at all, and an absent claim
+      // reads back as 0. Answering "exhausted" there would report attempts
+      // burned against a mechanism that was never generated. The server's
+      // Tom2FAEnrolmentState.isExhausted guards on hasOffer for exactly this,
+      // and the two tiers have to agree — a client that thinks the chooser is
+      // spent would restart a login the server is still happy to continue.
+      test('the choosing stop has burned nothing', () {
+        final choosing = Tom2FAPendingEnrolment.fromClaims(claims());
+
+        expect(choosing!.hasOffer, isFalse);
+        expect(
+          choosing.attemptsAllowed,
+          isZero,
+          reason: 'precondition: no budget claim travels at this stop',
+        );
+        expect(choosing.isExhausted, isFalse);
+      });
+
+      // The mirror, so the guard cannot be read as "exhaustion never applies":
+      // once a mechanism is in flight the budget is a real claim and spending
+      // it ends the offer.
+      test('a begun offer still burns its budget', () {
+        final begun = Tom2FAPendingEnrolment.fromClaims(
+          claims(type: 'totp')..[Tom2FAEnrolmentClaims.attempt] = 3,
+        );
+
+        expect(begun!.hasOffer, isTrue);
+        expect(begun.attemptsRemaining, isZero);
+        expect(begun.isExhausted, isTrue);
       });
 
       // The two flags cross the wire as JSON booleans today, but the sibling
@@ -3677,10 +3714,11 @@ void main() {
 
       // The trap in filtering this getter on exhaustion. The attempt budget
       // belongs to the *mechanism's* offer, so the choosing stop carries no
-      // such claim — and an absent budget reads back as 0, i.e. `isExhausted`.
-      // Filtering on exhaustion unconditionally would therefore delete the
-      // chooser, which owes no attempts because nothing has been generated to
-      // attempt yet. Exactly the reading `expiresAt` already gets.
+      // such claim, and an absent budget reads back as 0 attempts remaining.
+      // Filtering on `attemptsRemaining` would therefore delete the chooser,
+      // which owes no attempts because nothing has been generated to attempt
+      // yet. `isExhausted` accounts for that itself, so this getter can read
+      // it plainly — the same way it reads the deadline.
       test('the choosing stop survives the freshness filter', () {
         final interim = _makeJwt(claims()..['username'] = 'alice');
         TomBearerAuthentication.setTokens(interim, interim, false);
@@ -3689,10 +3727,12 @@ void main() {
         expect(pending, isNotNull);
         expect(pending!.hasOffer, isFalse);
         expect(
-          pending.isExhausted,
-          isTrue,
-          reason: 'no budget claim at this stop — the filter must not read it',
+          pending.attemptsRemaining,
+          isZero,
+          reason: 'no budget claim at this stop — the raw count is not the '
+              'question the filter asks',
         );
+        expect(pending.isExhausted, isFalse);
       });
     });
   });

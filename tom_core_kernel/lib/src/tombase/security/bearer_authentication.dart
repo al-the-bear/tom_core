@@ -230,18 +230,15 @@ class TomBearerAuthentication {
   /// Filtered for freshness exactly like [pendingTwoFactorChallenge], and it
   /// matters more here: the documented client loop re-reads this getter until
   /// it answers `null`, so a lapsed offer that kept reporting itself would
-  /// spin. One asymmetry, and it follows the one [Tom2FAPendingEnrolment]
-  /// already has for its deadline: the attempt budget belongs to the
-  /// *mechanism's* offer, so the choosing stop carries no budget claim and
-  /// reads back as [Tom2FAPendingEnrolment.isExhausted]. Exhaustion is
-  /// therefore only disqualifying once [Tom2FAPendingEnrolment.hasOffer] — a
-  /// chooser owes no attempts because nothing has been generated to attempt.
+  /// spin. The two stops need no distinction at this level —
+  /// [Tom2FAPendingEnrolment.isExpired] and
+  /// [Tom2FAPendingEnrolment.isExhausted] both already answer false at the
+  /// choosing stop, where nothing has been generated that could go stale or be
+  /// spent.
   static Tom2FAPendingEnrolment? get pendingTwoFactorEnrolment {
     final enrolment = Tom2FAPendingEnrolment.fromClaims(_currentTokenPayload);
     if (enrolment == null) return null;
-    if (enrolment.isExpired()) return null;
-    if (enrolment.hasOffer && enrolment.isExhausted) return null;
-    return enrolment;
+    return enrolment.isExpired() || enrolment.isExhausted ? null : enrolment;
   }
 
   /// The public claims of the token the 2FA getters read, or `null` when no

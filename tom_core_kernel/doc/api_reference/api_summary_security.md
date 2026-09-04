@@ -1089,7 +1089,7 @@ TomBearerAuthentication()
 | `clientJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authentication JWT token. |
 | `clientAuthorizationJwtToken` | `TomClientJwtToken?` | *(getter)* The parsed authorization JWT token. |
 | `pendingTwoFactorChallenge` | `Tom2FAChallenge?` | *(getter)* The challenge carried by the currently held token, or `null` when the login is complete. Reads the authorization token if present, otherwise the authentication token. Also `null` when the challenge has expired or burned its last attempt: it is no longer answerable, so a client holding a stale token restarts at pass 1 instead of looping. The freshness check lives here, not in `Tom2FAChallenge.fromClaims`, which stays a clock-free wire decoder. |
-| `pendingTwoFactorEnrolment` | `Tom2FAPendingEnrolment?` | *(getter)* The enrolment the currently held token is part-way through, or `null` when the login owes no set-up. Read and freshness-filtered the same way as `pendingTwoFactorChallenge`, with one asymmetry: exhaustion disqualifies an offer only once `hasOffer` is true, because the choosing stop carries no attempt budget and would otherwise read as exhausted. Both getters can answer non-null at once — a principal forced to enrol who already holds a factor is being asked for both, and the client renders the challenge first. |
+| `pendingTwoFactorEnrolment` | `Tom2FAPendingEnrolment?` | *(getter)* The enrolment the currently held token is part-way through, or `null` when the login owes no set-up. Read and freshness-filtered the same way as `pendingTwoFactorChallenge`, and with no special case: `isExpired` and `isExhausted` both already answer false at the choosing stop, where nothing has been generated that could go stale or be spent. Both getters can answer non-null at once — a principal forced to enrol who already holds a factor is being asked for both, and the client renders the challenge first. |
 
 #### Static Methods
 
@@ -1277,8 +1277,8 @@ Tom2FAPendingEnrolment({
 | `skippable` | `bool` | Whether the user may decline and complete the login without a factor. |
 | `skipSpendsGrace` | `bool` | Whether declining spends one of the principal's grace logins. |
 | `hasOffer` | `bool` | *(getter)* Whether a mechanism has been chosen and its enrolment begun — i.e. render the mechanism's panel rather than the chooser. |
-| `attemptsRemaining` | `int` | *(getter)* `attemptsAllowed - attempt`, floored at zero. |
-| `isExhausted` | `bool` | *(getter)* True once no confirmation attempts remain. |
+| `attemptsRemaining` | `int` | *(getter)* `attemptsAllowed - attempt`, floored at zero. Zero while choosing, where no budget claim travels — nothing to attempt, not nothing left. |
+| `isExhausted` | `bool` | *(getter)* True once no confirmation attempts remain. **Always false while choosing**, the same reading `isExpired` gives the deadline and for the same reason: the budget belongs to the mechanism's offer, so the choosing stop carries no budget claim, and an absent claim reads back as zero. Only disqualifying once [hasOffer] — which leaves the fail-closed fallback below intact, since that only bites on a begun offer. Matches the server's `Tom2FAEnrolmentState.isExhausted`. |
 
 #### Methods
 
