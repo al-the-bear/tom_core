@@ -1494,11 +1494,25 @@ Use per-widget overrides only when needed. Prefer family or variant configuratio
 
 ## 11. Separation with json-Acl-layout
 
-The model separates two concerns and references the ACL JSON definition as the canonical layout contract.
+The model separates two concerns: *what* a screen contains, and *how* those
+contents are arranged.
 
-Reference:
+The canonical layout contract is the shipped `AclBuilder` / `TomAclBuilder`
+command surface, specified in
+[`acl_design_specification.md`](acl_design_specification.md). It is not a JSON
+document. A declarative JSON form of the *same* commands is intended future
+work rather than a second layout system: JSON names each slot with a string
+`ref` and feeds into `AclBuilder` through `processJson` / `buildFromJson`, so
+the arrangement it expresses is the arrangement the builder already
+understands. Its shape is given in
+[§13.7](#137-json-acl-layout-as-aclbuilder-alternative) below and in
+[`acl_design_specification.md`, "JSON-ACL Support (future)"](acl_design_specification.md#json-acl-support-future).
 
-- `_ai/quests/flutter_ui/acl_json_layout.md`
+An earlier proposal instead gave the JSON its own entry-point class,
+`AclJsonLayout`, which resolved widget names against a `Map<String, Widget>`
+passed to `build()`. That name is abandoned — see
+[A.2](#a2--abandoned-removed-framework-covers-the-need-a-different-way) — and
+nothing in this document defers to it.
 
 ## 11.1 Screen element definition
 

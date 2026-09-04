@@ -705,20 +705,25 @@ The following extensions are planned to bring the Tom observable state managemen
 
 **Goal:** Use the `TomForm` pattern to provide named widgets that the ACL JSON layout system can reference by name.
 
-**Context:** The ACL JSON Layout format (see `_ai/quests/flutter_ui/acl_json_layout.md`) resolves widgets by string name from a `Map<String, Widget>`:
+**Context:** The JSON-ACL layout format names each slot it lays out with a string
+`ref` and resolves that name, at build time, against a set of named widgets the
+caller supplies. The layout document therefore carries arrangement only; the
+widgets stay in code. JSON-ACL is intended future work rather than a shipped
+runtime, and it is not a separate layout system — the JSON feeds into the same
+`AclBuilder` that programmatic layout uses. See
+[§13.7 in container_widget_resources_authorization.md](container_widget_resources_authorization.md#137-json-acl-layout-as-aclbuilder-alternative)
+and ["JSON-ACL Support (future)" in acl_design_specification.md](acl_design_specification.md#json-acl-support-future).
 
-```dart
-final widget = layout.build(widgets: {
-  'firstName': firstNameField,
-  'lastName': lastNameField,
-  'submit': submitButton,
-});
+```json
+{ "rows": [ { "elements": [{ "ref": "firstName" }, { "ref": "lastName" }] },
+            { "elements": [{ "ref": "submit" }], "dist": 16 } ] }
 ```
 
-**Planned integration:**
+**Planned integration:** the named-widget set the format needs is precisely what
+a `TomForm` already holds, which is what makes the two fit without an adapter.
 
 - A `TomForm` instance generates its widget map via `getFields()` (already returns `List<Widget>`) — extend this to return `Map<String, Widget>` keyed by field name
-- This map is passed directly to `AclJsonLayout.build(widgets: form.getWidgetMap())`
+- The form is handed to the builder as its element provider — `TomAclBuilder(elementProvider: form).buildFromJson(layoutJson)` — so the `ref` names resolve against the form's fields
 - The form's field names become the ACL component `ref` names
 - The form handles validation, state sync, and error display; the ACL handles layout
 - This cleanly separates **what widgets exist** (TomForm) from **how they are arranged** (ACL JSON)

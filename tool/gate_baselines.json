@@ -18,6 +18,11 @@
       "faults": 0,
       "measured": "2026-09-03"
     },
+    "check_doc_ai_citations": {
+      "faults": 0,
+      "measured": "2026-09-04",
+      "note": "Lands at zero because the two faults it was written for were repaired in the same pass. Both were in tom_flutter_ui/doc/ and both cited _ai/quests/flutter_ui/acl_json_layout.md; one of them, under 'Separation with json-Acl-layout', called that document the canonical layout contract, so a shipped document deferred its authority to a file its reader cannot obtain. The cited file exists, which is what makes this class of defect survive a scan: neither find nor git ls-files follows the _ai symlink, so the citation reads as 'file does not exist' to any tool run from the container root. Keying on the citation rather than on the target is what makes the answer stable. _copilot_guidelines/, CHANGELOG.md and tool/ are out of scope because _ai/ is genuinely reachable for their readers."
+    },
     "check_doc_artifacts": {
       "faults": 1,
       "measured": "2026-09-04",

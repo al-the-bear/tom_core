@@ -218,6 +218,7 @@ reports and never gates.
 | [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
 | [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
 | [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
+| [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped documents citing a path under `_ai/`, which no reader of the package can open |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -882,6 +883,32 @@ current one without finding the live path and comparing dates — a reader who
 trusts it is misled, and a reader who does not gains nothing. The kernel's
 captured test run being 934 KB was the smaller problem; its being eleven weeks
 out of date was the real one.
+
+```bash
+python3 tool/check_doc_ai_citations.py                 # the whole repository
+python3 tool/check_doc_ai_citations.py tom_flutter_ui  # one subtree
+```
+
+Finds shipped documents — `doc/` and package `README.md` files — that cite a
+path under `_ai/`. That layer is a separate repository (`tom_agent_state`)
+mounted by symlink, absent from any checkout of `tom_ai/core`, so such a
+citation cannot resolve for the audience `doc/` is written for. Two sites in
+`tom_flutter_ui/doc/` cited a quest planning document, and the section doing so
+called it *the canonical layout contract* — a shipped document deferring its
+authority to a file its reader cannot obtain, which leaves the contract
+effectively unstated.
+
+The cited file existed, so this is not a dangling link but an unreachable one,
+and that distinction is why the defect survives a scan: neither `find` nor `git
+ls-files` follows the `_ai` symlink, so a citation of a file that is present
+reads as "file does not exist" to any tool run from the container root. Keying
+on the citation rather than on the target is what makes the answer stable.
+
+`_copilot_guidelines/` and `CHANGELOG.md` are out of scope, both because `_ai/`
+is genuinely reachable for their readers: development documentation is written
+for the agent working in this workspace, where the mount is present, and a
+changelog naming a completion folder is recording how a change was verified
+rather than pointing at a contract.
 
 The rule keys on what a person authors rather than on a list of known generated
 filenames, which only ever catches the artifact someone already found.
