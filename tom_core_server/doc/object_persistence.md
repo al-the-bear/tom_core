@@ -359,6 +359,26 @@ position within a day with no day. Comparing a clock reading against a calendar
 one is a question with no answer, so the compiler keeps them apart even though
 `TomZonedDate` and `TomZonedTime` are both Dart `DateTime`s by inheritance.
 
+Which family a column belongs to is resolved **once** per mention, and the
+column node and its bind parameter then dispatch on that one answer. The
+precedence is:
+
+1. the entity's explicit `@TomDbColumn(columnType: ...)`, if it declares one;
+2. otherwise the field's declared Dart type.
+
+`columnType:` is the escape hatch for a column whose storage type is not the one
+its Dart declaration implies — a flag held as `0`/`1` in an `int`, a rank carried
+as text and stored as a number — and it decides everything downstream: which
+literals the column admits, how its bind parameter is typed, and what an
+aggregate over it returns. It accepts both spellings, a `TomDb…` box and a plain
+Dart type.
+
+A `columnType:` naming something outside the seven families is **refused** with
+`create_column.failed`, not quietly replaced by the inferred type. Falling back
+would make the hatch fail open: the entity states one storage type, the compiler
+builds another, and the first symptom is a value written to a column of the wrong
+kind rather than a rejection naming the annotation.
+
 ### What a comparison compares
 
 The six comparison operators — `=`, `<>`, `<`, `<=`, `>`, `>=` — each take a

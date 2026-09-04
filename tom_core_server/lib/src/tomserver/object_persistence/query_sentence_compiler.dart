@@ -26,6 +26,40 @@ typedef _ComparisonFactory =
 typedef _UnaryPredicateFactory =
     TomOperator<TomDbBool> Function<T>(TomOperator<T>);
 
+/// The SQL type a named column is compiled as.
+///
+/// Interposed between an entity's annotations and the two nodes a predicate
+/// builds from them — the column and the parameter bound against it — so that
+/// the two cannot answer the same question differently. They did:
+/// `_createColumn` honoured an explicit `@TomDbColumn(columnType: ...)` and
+/// `_createParameter` read only the declared Dart type, so an entity using that
+/// escape hatch produced a column of one type and a parameter of another. The
+/// two meet at a cast, so the disagreement surfaced as a bare `TypeError` —
+/// outside the exception family this module documents, and naming neither the
+/// column nor the annotation that caused it.
+///
+/// Both dispatches are `switch` **expressions** over this enum, so they are
+/// exhaustiveness-checked: a type family added here fails to compile until both
+/// are extended. That is the property worth having, because the three previous
+/// defects in this file were all one dispatch of a set being missed — `double`
+/// was absent from three of them at once.
+///
+/// Deliberately not [TomSqlTypeFamily]. That answers a neighbouring but
+/// different question — how a value is *stored*, folding in `isJson` and the
+/// `TomDbColumn<,>` type arguments — and it resolves an explicit `columnType:`
+/// naming a bare Dart type differently from this compiler. Sharing the
+/// vocabulary without sharing the resolution would suggest an agreement that
+/// does not hold.
+enum _CompiledColumnType {
+  text,
+  integer,
+  decimal,
+  boolean,
+  dateTime,
+  date,
+  time,
+}
+
 /// One kind of scalar value a query sentence can spell **inline**, as opposed
 /// to binding it — `find by priority > 3`, `find by due = 2026-07-05`.
 ///
@@ -1642,116 +1676,116 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     return (options, scanAt);
   }
 
-  Parameter<QT> _createParameter<QT>(
+  /// Every spelling a compiled column type may be written with, on either of
+  /// the two routes into [_compiledColumnType].
+  ///
+  /// One map for both routes rather than one per route. A field cannot be
+  /// *declared* with a `TomDb…` box — those name SQL types, not Dart values —
+  /// so the declared-type vocabulary is a strict subset of the explicit one,
+  /// and splitting the map would buy nothing but a second thing to keep in
+  /// step. The extra keys are unreachable on the declared route, not wrong on
+  /// it.
+  static const Map<Type, _CompiledColumnType> _compiledColumnTypes = {
+    String: _CompiledColumnType.text,
+    TomDbString: _CompiledColumnType.text,
+    TomString: _CompiledColumnType.text,
+    TomNString: _CompiledColumnType.text,
+    int: _CompiledColumnType.integer,
+    TomDbInt: _CompiledColumnType.integer,
+    TomInt: _CompiledColumnType.integer,
+    TomNInt: _CompiledColumnType.integer,
+    double: _CompiledColumnType.decimal,
+    TomDbDouble: _CompiledColumnType.decimal,
+    TomDouble: _CompiledColumnType.decimal,
+    TomNDouble: _CompiledColumnType.decimal,
+    bool: _CompiledColumnType.boolean,
+    TomDbBool: _CompiledColumnType.boolean,
+    TomBool: _CompiledColumnType.boolean,
+    TomNBool: _CompiledColumnType.boolean,
+    DateTime: _CompiledColumnType.dateTime,
+    TomDbDateTime: _CompiledColumnType.dateTime,
+    TomZonedDateTime: _CompiledColumnType.dateTime,
+    TomNDateTime: _CompiledColumnType.dateTime,
+    TomZonedDate: _CompiledColumnType.date,
+    TomDbDate: _CompiledColumnType.date,
+    TomZonedTime: _CompiledColumnType.time,
+    TomDbTime: _CompiledColumnType.time,
+  };
+
+  /// The type [field]'s column is compiled as.
+  ///
+  /// An explicit `@TomDbColumn(columnType: ...)` wins over the field's declared
+  /// Dart type — being able to say "this Dart value is stored as *that*" is the
+  /// entire purpose of the annotation, and the declared type is only ever a
+  /// fallback inference.
+  ///
+  /// An explicit type this compiler cannot build a column for is **refused**,
+  /// not quietly replaced by the inferred one. Falling back would make the
+  /// escape hatch fail open: the entity states one storage type, the compiler
+  /// builds another, and the disagreement first shows up as a value written to
+  /// the wrong kind of column rather than as a rejection naming the annotation.
+  /// The fall-through that did this was invisible for as long as it was: no
+  /// fixture entity declared `columnType:` at all, so neither the honouring nor
+  /// the refusal had ever run.
+  ///
+  /// Both failures carry `create_column.failed`. A caller that has already
+  /// built the column node — [_createParameter] is the only one — cannot reach
+  /// either, because the same column resolved once already.
+  _CompiledColumnType _compiledColumnType(
     TomColumnInformation column,
     String field,
   ) {
-    // Complete for all types
-    switch (column.declaredType) {
-      case TomString:
-      case String:
-      case TomNString:
-        return Parameter<TomDbString>(field) as Parameter<QT>;
-      case int:
-      case TomInt:
-      case TomNInt:
-        return Parameter<TomDbInt>(field) as Parameter<QT>;
-      case double:
-      case TomDouble:
-      case TomNDouble:
-        return Parameter<TomDbDouble>(field) as Parameter<QT>;
-      case bool:
-      case TomBool:
-      case TomNBool:
-        return Parameter<TomDbBool>(field) as Parameter<QT>;
-      case DateTime:
-      case TomZonedDateTime:
-      case TomNDateTime:
-        return Parameter<TomDbDateTime>(field) as Parameter<QT>;
-      case TomZonedDate:
-        return Parameter<TomDbDate>(field) as Parameter<QT>;
-      case TomZonedTime:
-        return Parameter<TomDbTime>(field) as Parameter<QT>;
+    final declaredColumnType = column.column?.columnType;
+    if (declaredColumnType != null) {
+      final explicit = _compiledColumnTypes[declaredColumnType];
+      if (explicit != null) return explicit;
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.create_column.failed",
+        "The column $field declares columnType: $declaredColumnType, which is "
+            "not a type this compiler can build a column for. @ $column",
+      );
     }
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_parameter.failed",
-      "Could not determine type for parameter $field for column $column",
-    );
-  }
-
-  DbCol _createColumn(TomColumnInformation column, String field) {
-    // Complete for all types
-    if (column.column?.columnType != null) {
-      switch (column.column!.columnType) {
-        case String:
-        case TomDbString:
-        case TomString:
-        case TomNString:
-          return StringCol(column.tableType, field, column);
-        case int:
-        case TomDbInt:
-        case TomInt:
-        case TomNInt:
-          return IntCol(column.tableType, field, column);
-        case double:
-        case TomDbDouble:
-        case TomDouble:
-        case TomNDouble:
-          return DoubleCol(column.tableType, field, column);
-        case bool:
-        case TomDbBool:
-        case TomBool:
-        case TomNBool:
-          return BoolCol(column.tableType, field, column);
-        case DateTime:
-        case TomDbDateTime:
-        case TomZonedDateTime:
-        case TomNDateTime:
-          return DateTimeCol(column.tableType, field, column);
-        case TomZonedDate:
-        case TomDbDate:
-          return DateCol(column.tableType, field, column);
-        case TomZonedTime:
-        case TomDbTime:
-          return TimeCol(column.tableType, field, column);
-      }
-    }
-    switch (column.declaredType) {
-      case String:
-      case TomString:
-      case TomNString:
-        return StringCol(column.tableType, field, column);
-      case int:
-      case TomInt:
-      case TomNInt:
-        return IntCol(column.tableType, field, column);
-      case double:
-      case TomDouble:
-      case TomNDouble:
-        return DoubleCol(column.tableType, field, column);
-      case bool:
-      case TomBool:
-      case TomNBool:
-        return BoolCol(column.tableType, field, column);
-      case DateTime:
-      case TomZonedDateTime:
-      case TomNDateTime:
-        // The `return` is load-bearing. Without it the node was
-        // constructed and dropped, control fell out of the switch, and a
-        // timestamp column with no explicit `columnType:` was reported as
-        // untypeable — so no query sentence could carry a date predicate
-        // unless the entity spelled the type out by hand.
-        return DateTimeCol(column.tableType, field, column);
-      case TomZonedDate:
-        return DateCol(column.tableType, field, column);
-      case TomZonedTime:
-        return TimeCol(column.tableType, field, column);
-    }
+    final inferred = _compiledColumnTypes[column.declaredType];
+    if (inferred != null) return inferred;
     throw TomQuerySyntaxException(
       "query_sentence_compiler.create_column.failed",
       "Could not determine type for column $field @ $column",
     );
   }
+
+  Parameter<QT> _createParameter<QT>(
+    TomColumnInformation column,
+    String field,
+  ) => switch (_compiledColumnType(column, field)) {
+    _CompiledColumnType.text => Parameter<TomDbString>(field) as Parameter<QT>,
+    _CompiledColumnType.integer => Parameter<TomDbInt>(field) as Parameter<QT>,
+    _CompiledColumnType.decimal =>
+      Parameter<TomDbDouble>(field) as Parameter<QT>,
+    _CompiledColumnType.boolean => Parameter<TomDbBool>(field) as Parameter<QT>,
+    _CompiledColumnType.dateTime =>
+      Parameter<TomDbDateTime>(field) as Parameter<QT>,
+    _CompiledColumnType.date => Parameter<TomDbDate>(field) as Parameter<QT>,
+    _CompiledColumnType.time => Parameter<TomDbTime>(field) as Parameter<QT>,
+  };
+
+  DbCol _createColumn(TomColumnInformation column, String field) =>
+      switch (_compiledColumnType(column, field)) {
+        _CompiledColumnType.text => StringCol(column.tableType, field, column),
+        _CompiledColumnType.integer => IntCol(column.tableType, field, column),
+        _CompiledColumnType.decimal => DoubleCol(
+          column.tableType,
+          field,
+          column,
+        ),
+        _CompiledColumnType.boolean => BoolCol(column.tableType, field, column),
+        _CompiledColumnType.dateTime => DateTimeCol(
+          column.tableType,
+          field,
+          column,
+        ),
+        _CompiledColumnType.date => DateCol(column.tableType, field, column),
+        _CompiledColumnType.time => TimeCol(column.tableType, field, column),
+      };
 
   /// The characters that end a token on their own, outside a quoted region.
   static const _separatorCharacters = {',', '(', ')', '=', '<', '>'};

@@ -362,7 +362,7 @@ apps get the full kernel API through one dependency. See the
 ## Status
 
 - **Version:** 1.3.0
-- **Tests:** 3626 test cases across 95 module suites (run with `testkit :test`
+- **Tests:** 3633 test cases across 95 module suites (run with `testkit :test`
   or `dart test`). 408 of them live in the 20 suites tagged `db` and skip
   unless a live MySQL is reachable — bring one up with `tool/run_db_tests.sh`.
 - **Conformance guards:** some of those suites check the package rather than the

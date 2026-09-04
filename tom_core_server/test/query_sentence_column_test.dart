@@ -2,39 +2,55 @@
 /// query sentence.
 ///
 /// A sentence addresses a column by name and the compiler has to decide which
-/// `DbCol` node represents it. It decides twice: first from an explicit
-/// `@TomDbColumn(columnType: ...)` when one is given, and otherwise from the
-/// field's *declared Dart type*. The two paths are separate switches over
-/// separate values, so a type can be handled by one and not the other — and
-/// a `DateTime` field with no explicit `columnType` must not fall through the
-/// declared-type switch and leave the compiler reporting it as untypeable.
+/// `DbCol` node represents it. It reads the entity's explicit
+/// `@TomDbColumn(columnType: ...)` when one is given, and otherwise infers from
+/// the field's *declared Dart type* — and a `DateTime` field with no explicit
+/// `columnType` must not fall out of that inference and leave the compiler
+/// reporting the column as untypeable.
 ///
-/// Connection-free: only the entity's annotations are read, so
-/// [FixtureExportRecord] needs no table. It is the fixture used here rather
+/// Both routes end in the same answer, which the column node and the bind
+/// parameter then dispatch on separately. That is the arrangement worth
+/// testing: for as long as the two dispatches read *different* values, a type
+/// could be handled by one and not the other, and every defect this file
+/// records was one member of such a set being missed.
+///
+/// Connection-free: only the entity's annotations are read, so neither fixture
+/// needs a table. [FixtureExportRecord] is used for the inferred route rather
 /// than `FixtureTaskRecord` because it declares every column family — and in
 /// particular a `DateTime`, which the task fixture does not have. That absence
 /// is why the bug survived the existing suites, and it is why the fixture
 /// gained a `TomZonedTime` field: a family no fixture declares is a family no
 /// suite can reach, however completely the compiler handles it.
+/// [FixtureColumnTypeRecord] is the same argument one level up — until it
+/// existed, no entity in the workspace wrote `columnType:` at all.
 library;
 
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-import 'fixtures/reflection_fixture.dart' show FixtureExportRecord;
+import 'fixtures/reflection_fixture.dart'
+    show FixtureColumnTypeRecord, FixtureExportRecord;
 import 'fixtures/reflection_fixture.reflection.dart';
 
 void main() {
   late TomQuerySentenceCompiler compiler;
+  late TomQuerySentenceCompiler explicit;
   final dialect = MariadbSqlDialect();
 
   setUpAll(() {
     initializeReflection();
     compiler = TomQuerySentenceCompiler([FixtureExportRecord]);
+    // A compiler of its own rather than a second entity on the first: the two
+    // fixtures share column names (`id`), and resolving a name against two
+    // tables is a different question from the one this file asks.
+    explicit = TomQuerySentenceCompiler([FixtureColumnTypeRecord]);
   });
 
   TomSelect select(String sentence) =>
       compiler.compileQuerySentence(sentence) as TomSelect;
+
+  TomSelect selectExplicit(String sentence) =>
+      explicit.compileQuerySentence(sentence) as TomSelect;
 
   group('column typing from the declared Dart type', () {
     // One test per column family, because the defect was a single missing
@@ -311,6 +327,121 @@ void main() {
           'find by created_at >= 2026-01-02T09:30:00Z',
         ).generateQuery(dialect),
         contains("fixture_export.created_at >= '2026-01-02 09:30:00.000000'"),
+      );
+    });
+  });
+
+  // The other route into the same answer, and the one that had never been
+  // taken. `@TomDbColumn(columnType: ...)` exists so an entity can say that a
+  // column is stored as something other than its Dart declaration implies —
+  // and no entity in this package, its examples or the sample servers had ever
+  // said so. Both halves of the branch were therefore dead: the honouring, and
+  // the refusal that should close it.
+  group('column typing from an explicit @TomDbColumn(columnType:)', () {
+    test('an explicit columnType is honoured over the declared Dart type', () {
+      // `legacy_rank` is declared `String?` and annotated `columnType:
+      // TomDbInt`. Inference would make it a text column; the annotation makes
+      // it an integer one. The compiled node says which won.
+      final query = selectExplicit('find by legacy_rank >= :rank');
+      expect(query.query, isA<Gte<TomDbInt>>());
+      expect(
+        query.generateQuery(dialect),
+        contains('fixture_column_type.legacy_rank >= :rank'),
+      );
+    });
+
+    test('an explicit columnType decides which literals the column admits', () {
+      // The same claim without reading the node, because admissibility is what
+      // the typing is *for*: a literal is checked against the column's compiled
+      // type, so an integer standing against a `String?`-declared field is only
+      // accepted if the annotation was honoured, and a string literal against
+      // it is only refused for the same reason.
+      expect(
+        selectExplicit('find by legacy_rank >= 5').generateQuery(dialect),
+        contains('fixture_column_type.legacy_rank >= 5'),
+      );
+      expect(
+        () => explicit.compileQuerySentence("find by legacy_rank = 'five'"),
+        throwsA(isA<TomQuerySyntaxException>()),
+        reason:
+            'a text literal must not be admitted against a column the entity '
+            'declares as integer-typed',
+      );
+    });
+
+    test('a bare Dart type is honoured in columnType too', () {
+      // `columnType:` takes both spellings — a `TomDb…` box and a plain Dart
+      // type — and they enter the same map, so a fixture exercising only one
+      // would leave the other's keys unproven. `legacy_flag` is declared `int?`
+      // and annotated `columnType: bool`.
+      final query = selectExplicit('find by legacy_flag = :flag');
+      expect(query.query, isA<Eq<TomDbBool>>());
+      expect(
+        () => explicit.compileQuerySentence('find by legacy_flag = 5'),
+        throwsA(isA<TomQuerySyntaxException>()),
+        reason:
+            'an integer literal must not be admitted against a column the '
+            'entity declares as boolean-typed, however the field is declared',
+      );
+    });
+
+    test('the bind parameter is typed from the explicit type as well', () {
+      // The dispatch that used to disagree. A predicate types its column from
+      // the annotation and then binds a parameter against it, and the parameter
+      // is cast to the type the column gave the comparison — so while the
+      // parameter was typed from the *declared* Dart type instead, every one of
+      // these sentences died on a bare `TypeError` naming neither the column
+      // nor the annotation. Compiling at all is the assertion; the node type
+      // says which answer both dispatches reached.
+      final query = selectExplicit('find by legacy_rank >= :rank');
+      expect(query.getParameters(dialect), ['rank']);
+      expect(query.query, isA<Gte<TomDbInt>>());
+    });
+
+    test('a column with no explicit columnType is still inferred', () {
+      // The control. Precedence is only meaningful if the fallback still
+      // happens, and it has to still happen *in an entity that overrides
+      // elsewhere* — a per-column decision, not a per-entity mode.
+      expect(
+        selectExplicit('find by label = :label').query,
+        isA<Eq<TomDbString>>(),
+      );
+    });
+
+    test('an unsupported columnType is refused, not silently inferred', () {
+      // `span` is declared `String?` and annotated `columnType: Duration`, a
+      // type no column can hold. The explicit switch used to have no terminal
+      // arm, so an unrecognised type fell through into the declared-type
+      // inference: the entity said the column was one thing, the compiler
+      // built another, and nothing said so. That fails open — the first symptom
+      // is a value in a column of the wrong kind — which is why an
+      // uninterpretable `columnType:` is now an error rather than a hint.
+      expect(
+        () => explicit.compileQuerySentence('find by span = :span'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.create_column.failed',
+          ),
+        ),
+      );
+    });
+
+    test('an aggregate over an explicitly typed column takes that type', () {
+      // The fourth dispatch: `_createAggregate` switches on the *node* the
+      // column dispatch produced, so it inherits the annotation without reading
+      // it. Asserted because inheriting is a property of the arrangement rather
+      // than something written down anywhere.
+      final query =
+          explicit.compileQuerySentence(
+                'group max ( legacy_rank ) as hi over label by id > 0',
+              )
+              as TomGroupedSelect;
+      expect(query.aggregates.single, isA<Max<TomDbInt, int>>());
+      expect(
+        query.generateQuery(dialect),
+        contains('MAX(fixture_column_type.legacy_rank) AS hi'),
       );
     });
   });

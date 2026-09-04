@@ -1539,6 +1539,82 @@ class FixtureExportRecordV2 {
   String? owner;
 }
 
+/// A reflected entity whose columns state their SQL type **outright**, with
+/// `@TomDbColumn(columnType: ...)`.
+///
+/// That argument is the escape hatch for a column whose storage type is not the
+/// one its Dart declaration implies — a flag held as `0`/`1` in an `int`, a
+/// rank held as text on the Dart side and as a number in the database. The
+/// query-sentence compiler reads it in preference to the declared type, which
+/// is the whole point of writing it: a predicate against such a column has to
+/// be built, bound and compared as the *stored* type, not the carried one.
+///
+/// It is a fixture of its own because until it existed **no entity anywhere
+/// declared `columnType:` at all** — not in this fixture, not in the examples,
+/// not in the sample servers. So the branch that honours it and the refusal
+/// that closes it had both never run, and the divergence between the column
+/// dispatch (which read the annotation) and the bind-parameter dispatch (which
+/// did not) could not be observed from any test.
+///
+/// The four mapped columns are the four cases that differ:
+///
+/// - [label] declares no `columnType:` — the control, showing inference still
+///   decides when nothing overrides it, in an entity where something does;
+/// - [legacyRank] names a `TomDb…` box that **disagrees** with its `String`
+///   declaration, so which of the two won is visible in the compiled node;
+/// - [legacyFlag] names a bare Dart type that disagrees with its `int`
+///   declaration — the other spelling the argument accepts, and one whose
+///   effect a sentence can see directly, since a `TRUE` literal is admissible
+///   only against a column compiled as boolean;
+/// - [span] names a type the compiler can build no column for, which must be
+///   refused rather than quietly replaced by the inferred one.
+///
+/// It maps to no table in `test_database.dart` and needs none: only the
+/// annotations are read. [span] in particular describes a column no migration
+/// could create — it exists to be rejected.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_column_type',
+  primaryKeyField: 'id',
+)
+class FixtureColumnTypeRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A column with no explicit type: inferred from the declaration, as every
+  /// other fixture's columns are.
+  @TomDbColumn(columnName: 'label')
+  String? label;
+
+  /// Carried as text in Dart, **stored as an integer**.
+  ///
+  /// The disagreement is deliberate and is what makes the precedence visible:
+  /// compiled from the annotation this is an integer column, compiled from the
+  /// declaration it would be a text one, and the two admit different literals.
+  @TomDbColumn(columnName: 'legacy_rank', columnType: TomDbInt)
+  String? legacyRank;
+
+  /// Carried as `0`/`1` in Dart, **stored as a boolean**.
+  ///
+  /// Spelled with a bare Dart type rather than a `TomDb…` box, because
+  /// `columnType:` accepts both and a fixture that only ever used one spelling
+  /// would leave the other's arms unexercised.
+  @TomDbColumn(columnName: 'legacy_flag', columnType: bool)
+  int? legacyFlag;
+
+  /// A column type the compiler can build nothing for.
+  ///
+  /// `Duration` is not a storable type in any dialect here, so naming it is a
+  /// mistake — and the point of the fixture is that it is reported as one. The
+  /// alternative, inferring `String` from the declaration and carrying on,
+  /// would write values into a column the entity says is something else.
+  @TomDbColumn(columnName: 'span', columnType: Duration)
+  String? span;
+}
+
 /// A reflected entity that has **declared itself out** of the audit trail.
 ///
 /// The escape hatch for high-volume machine-written tables (sessions, job runs)

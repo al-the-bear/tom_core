@@ -1,5 +1,39 @@
 ## 1.3.0
 
+### Fixed
+
+- **`@TomDbColumn(columnType: ...)` is now honoured by the whole predicate, and
+  refused when it names nothing storable (tcincb1_ahzf).** The annotation exists
+  so an entity can say that a column is stored as something other than its Dart
+  declaration implies — a flag held as `0`/`1` in an `int`, a rank carried as
+  text and stored as a number. No entity in this package, its examples or the
+  sample servers had ever written it, so neither of the two things it does had
+  ever run, and both were wrong.
+
+  The column node read the annotation and the bind parameter did not. A
+  parameter is cast to the type the column gave the comparison, so any entity
+  that actually used the hatch produced a column of one type and a parameter of
+  another and died on a bare `TypeError` — outside the exception family this
+  module documents, naming neither the column nor the annotation. The two now
+  resolve the family **once**, through one map, and dispatch on the result as
+  exhaustiveness-checked `switch` expressions: a family added to one no longer
+  compiles until it is added to the other.
+
+  An unrecognised `columnType:` fell *through* into the declared-type inference
+  rather than being refused, because the explicit switch had no terminal arm. So
+  an entity naming an unstorable type had its statement silently discarded and
+  the column built from the declaration instead — failing open, with the first
+  symptom a value written to a column of the wrong kind. It now raises
+  `query_sentence_compiler.create_column.failed`, naming the type.
+
+  `create_parameter.failed` is gone with the second switch; the parameter cannot
+  fail to type a column the column node already typed.
+
+  `FixtureColumnTypeRecord` in `test/fixtures/reflection_fixture.dart` is the
+  reflected fixture that made any of this reachable — an override spelled with a
+  `TomDb…` box, one spelled with a plain Dart type, an unstorable one, and a
+  column with no override at all to show the fallback is still per column.
+
 ### Added
 
 - **The committed reflection metadata can now be told current from stale
@@ -10,7 +44,7 @@
   initialized" or a null member, from a place that names neither the class nor
   the file. Two checks now answer the question at two costs.
   `tool/check_reflection_current.sh` regenerates and compares exactly (two to
-  three minutes, and it reverts its own output so a red run cannot be mistaken
+  four minutes, and it reverts its own output so a red run cannot be mistaken
   for the fix). `test/reflection_currency_test.dart` runs in milliseconds: it
   extracts every `@tomReflector` class, `exampleReflectedTypes` entry and
   `@TomDbColumn` field from the roots' hand-written sources and asserts each name
