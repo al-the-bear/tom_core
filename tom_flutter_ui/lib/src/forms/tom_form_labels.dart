@@ -13,7 +13,7 @@
 /// every string now *has* a key, which is the difference between "not
 /// translated yet" and "not translatable".
 ///
-/// This is the same façade [TomFileLabels] is for the file widgets, and the
+/// This is the same façade `TomFileLabels` is for the file widgets, and the
 /// division between them is by vocabulary rather than by widget: a caption that
 /// only ever appears beside a file (`file.choose`, `file.uploading`) belongs
 /// there, a caption any field might show (`form.cancel`, `form.done`) belongs
@@ -70,7 +70,7 @@
 /// application collapse them itself by giving all three the same text.
 ///
 /// The one-error and many-errors row captions are split instead of
-/// interpolating a count into one template, for the reason [TomFileLabels]
+/// interpolating a count into one template, for the reason `TomFileLabels`
 /// splits its progress captions: a language whose plural rule differs from
 /// English cannot be served by a single string with a number in it.
 ///

@@ -7,8 +7,8 @@
 /// `CupertinoTextField` / `CupertinoSwitch` / etc.
 ///
 /// Cupertino concretes (e.g. `TomCupertinoFormStringInput`) render their
-/// own native control inside the same [TomGenericFieldDecorationMixin] /
-/// [TomStringInputDecorationMixin] anatomy that Material concretes use,
+/// own native control inside the same `TomGenericFieldDecorationMixin` /
+/// `TomStringInputDecorationMixin` anatomy that Material concretes use,
 /// so the entire properties surface stays meaningful — `borderRadius`
 /// and `fieldContentPadding` flow into the `CupertinoTextField`
 /// `decoration: BoxDecoration(borderRadius: ...)` and `padding: ...`

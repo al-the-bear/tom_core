@@ -3,9 +3,9 @@
 /// Every node carries its own resource key and resolves its
 /// [TomAuthState] independently, so one tree can surface a different
 /// shape per user role — which is what nav and permissions UIs need.
-/// Contrast [TomTreeView], whose authorization is widget-level: the
+/// Contrast `TomTreeView`, whose authorization is widget-level: the
 /// whole tree is hidden or disabled together. Pick this pair when the
-/// grant varies *within* the tree, [TomTreeView] when it does not.
+/// grant varies *within* the tree, `TomTreeView` when it does not.
 ///
 /// Lookup rules per node:
 ///

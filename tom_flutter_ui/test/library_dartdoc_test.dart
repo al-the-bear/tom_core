@@ -44,9 +44,9 @@
 /// member by subclass-overriding, which no test does). Both checks re-derive
 /// the real declaration kind from source rather than trusting a list.
 ///
-/// **The final group polices where a library dartdoc may point**, in two
-/// checks that between them take only the questions a single file — or a
-/// single folder — can answer.
+/// **The final group polices where a library dartdoc may point**, in three
+/// checks, each taking a question it can answer exactly rather than guessing
+/// at the rest.
 ///
 /// A library dartdoc resolves in *library* scope, so a bare
 /// `[fallbackBuilder]` — an instance field — links to nothing no matter what
@@ -59,9 +59,15 @@
 /// file never imports. `tom_infinite_scroll.dart` claimed its default builders
 /// rendered `[TomErrorBoundary]` while importing two siblings and building its
 /// error slot from raw Material widgets — a dead link wrapped around a false
-/// claim. Types from further afield are left alone: `[TomAction]` in a barrel
-/// is unresolvable and entirely correct, since a barrel exports rather than
-/// imports.
+/// claim.
+///
+/// The third widens that to the whole package by resolving the import graph
+/// instead of approximating it. `[TomAction]` in a barrel is unresolvable and
+/// entirely correct — a barrel `export`s rather than `import`s — so the check
+/// computes each file's transitive *export* surface and treats "this file
+/// exports the type" as the barrel's licence to name it. That distinction is
+/// exact rather than heuristic, which is what lets the rule leave the folder
+/// boundary behind: see [_exportSurfaces].
 library;
 
 import 'dart:io';
@@ -247,22 +253,6 @@ List<({int line, String text})> _libraryDartdocLines(String path) {
   return const [];
 }
 
-/// The names [path] declares, split by what a *library* dartdoc is allowed to
-/// reach: [topLevel] is in scope there, [members] never is.
-///
-/// The split is the whole point. A library dartdoc is resolved in library
-/// scope, so `[fallbackBuilder]` — an instance field — resolves to nothing no
-/// matter what is imported, while `[TomErrorBoundary.fallbackBuilder]` resolves
-/// through the class. Column position is what separates the two: Dart's
-/// formatter puts top-level declarations at column 0 and members under an
-/// indent, so "is this a member" is decidable by reading one file.
-///
-/// Both sets are gathered leniently, and in opposite directions on purpose.
-/// [topLevel] over-collects, because every name in it is one the check stays
-/// silent about. [members] is built from the shapes that actually carry widget
-/// configuration — `this.x` constructor parameters above all — because a name
-/// missing from it is only a defect this check declines to report, never a
-/// false alarm.
 /// The type names declared by the files sitting beside [path], as
 /// `name -> file name`.
 ///
@@ -298,6 +288,129 @@ Set<String> _sameDirectoryLinks(String path) => RegExp(
   multiLine: true,
 ).allMatches(File(path).readAsStringSync()).map((m) => m.group(1)!).toSet();
 
+/// Every `import` / `export` in a source file, as `(keyword, target)`.
+final _directive = RegExp(r"^\s*(import|export)\s+'([^']+)'", multiLine: true);
+
+/// The file a directive in [from] names, as a repo-relative path under `lib/`,
+/// or `null` when it leaves this package (`dart:…`, another `package:`).
+///
+/// Both spellings resolve, because both occur: relative targets inside a
+/// module, and `package:tom_flutter_ui/…` where a file reaches across the tree.
+/// Reducing them to one form is what lets the export graph be a plain map.
+String? _directiveTarget(String from, String target) {
+  const own = 'package:tom_flutter_ui/';
+  if (target.startsWith('package:')) {
+    return target.startsWith(own)
+        ? 'lib/${target.substring(own.length)}'
+        : null;
+  }
+  if (target.contains(':')) return null; // dart:…
+  final segments = from.split('/')..removeLast();
+  for (final segment in target.split('/')) {
+    if (segment == '.') continue;
+    if (segment == '..') {
+      if (segments.isNotEmpty) segments.removeLast();
+      continue;
+    }
+    segments.add(segment);
+  }
+  return segments.join('/');
+}
+
+/// For every file under `lib/`, the type names it *offers* to a reader: the
+/// types it declares, plus everything its `export` directives surface,
+/// transitively.
+///
+/// This is the distinction that lets the cross-directory check widen past the
+/// folder boundary the sibling rule stops at. A library dartdoc resolves in
+/// library scope, where `export` brings in nothing — so a barrel naming
+/// `[TomAction]` is unresolvable. It is also entirely correct: the barrel is
+/// the reason that name is reachable at all, and the alternative is importing a
+/// type purely so prose can link it, several of them cycles. Asking "does this
+/// file export the type" separates the two populations *exactly*, where the
+/// heuristics considered instead — counting `export` directives, or asking
+/// whether the type appears anywhere outside the dartdoc — merely correlate
+/// with the answer, and a two-export barrel defeats the first of them.
+///
+/// Computed to a fixpoint rather than by recursion, so an export cycle
+/// terminates instead of needing a visited set carried through the walk.
+Map<String, Set<String>> _exportSurfaces() {
+  final sources = _allLibrarySources();
+  final exports = <String, List<String>>{};
+  final surfaces = <String, Set<String>>{};
+  for (final path in sources) {
+    final source = File(path).readAsStringSync();
+    surfaces[path] = _declaredTypes(source);
+    exports[path] = [
+      for (final m in _directive.allMatches(source))
+        if (m.group(1) == 'export') ?_directiveTarget(path, m.group(2)!),
+    ];
+  }
+  var changed = true;
+  while (changed) {
+    changed = false;
+    for (final path in sources) {
+      for (final target in exports[path]!) {
+        final offered = surfaces[target];
+        if (offered == null) continue; // Left the package.
+        if (surfaces[path]!.containsAll(offered)) continue;
+        surfaces[path]!.addAll(offered);
+        changed = true;
+      }
+    }
+  }
+  return surfaces;
+}
+
+/// The type names a library dartdoc in [path] can actually link: what the file
+/// declares, plus the export surface of everything it imports.
+///
+/// `import` is the only directive that puts a name in library scope, which is
+/// why [_exportSurfaces] is consulted *through* the imports rather than folded
+/// into one set.
+Set<String> _reachableTypes(String path, Map<String, Set<String>> surfaces) {
+  final source = File(path).readAsStringSync();
+  final reachable = <String>{..._declaredTypes(source)};
+  for (final m in _directive.allMatches(source)) {
+    if (m.group(1) != 'import') continue;
+    final target = _directiveTarget(path, m.group(2)!);
+    if (target == null) continue;
+    reachable.addAll(surfaces[target] ?? const <String>{});
+  }
+  return reachable;
+}
+
+/// Where each type under `lib/` is declared, as `name -> repo-relative path`.
+///
+/// First declaration wins. A duplicated type name would make the entry
+/// arbitrary, but only for the path an offence message prints — membership,
+/// which is what the check branches on, is unaffected.
+Map<String, String> _typeHomes() {
+  final homes = <String, String>{};
+  for (final path in _allLibrarySources()) {
+    for (final name in _declaredTypes(File(path).readAsStringSync())) {
+      homes.putIfAbsent(name, () => path);
+    }
+  }
+  return homes;
+}
+
+/// The names [path] declares, split by what a *library* dartdoc is allowed to
+/// reach: `topLevel` is in scope there, `members` never is.
+///
+/// The split is the whole point. A library dartdoc is resolved in library
+/// scope, so `[fallbackBuilder]` — an instance field — resolves to nothing no
+/// matter what is imported, while `[TomErrorBoundary.fallbackBuilder]` resolves
+/// through the class. Column position is what separates the two: Dart's
+/// formatter puts top-level declarations at column 0 and members under an
+/// indent, so "is this a member" is decidable by reading one file.
+///
+/// Both sets are gathered leniently, and in opposite directions on purpose.
+/// `topLevel` over-collects, because every name in it is one the check stays
+/// silent about. `members` is built from the shapes that actually carry widget
+/// configuration — `this.x` constructor parameters above all — because a name
+/// missing from it is only a defect this check declines to report, never a
+/// false alarm.
 ({Set<String> topLevel, Set<String> members}) _declaredNames(String path) {
   final lines = File(path).readAsLinesSync();
   var i = 0;
@@ -807,11 +920,12 @@ void main() {
       //
       // Measured on this package before the rule was adopted: 55 sibling
       // references across 40 library dartdocs, of which exactly one was wrong.
-      // Widening the identical rule to any type declared anywhere under `lib/`
-      // would flag 20 more, and nearly all of those are the package barrel
-      // naming what it exports — unresolvable and entirely correct, the same
-      // shape the check above refuses to touch. So the rule stops at the
-      // folder boundary, where the answer is unambiguous.
+      //
+      // Types from further afield are the next check's business, and it
+      // subsumes this one — a sibling is imported through the same graph as
+      // anything else. This one is kept because it is answerable by reading a
+      // single folder, so it stays correct if the graph walk ever needs to be
+      // narrowed, and because its message names the neighbouring file directly.
       final offences = <String>[];
       for (final path in _allLibrarySources()) {
         final doc = _libraryDartdocLines(path);
@@ -846,6 +960,81 @@ void main() {
         reason:
             'these library dartdocs link uses they do not have:\n\n'
             '${offences.join('\n\n')}',
+      );
+    });
+
+    test('no library dartdoc links a package type it neither imports nor '
+        'exports', () {
+      // The same defect one directory further out, and milder: here the prose
+      // is true and only the link is dead. `tom_auth_tree.dart` read "Contrast
+      // [TomTreeView], whose authorization is widget-level" — an accurate
+      // cross-reference to `widgets/trees/`, which `custom/` does not import
+      // and should not import for the sake of a sentence. The reader is not
+      // misled; they simply do not get the navigation the brackets promise.
+      //
+      // The rule the sibling check above declined to widen into is decidable
+      // after all, because "the file exports the type" is an exact statement
+      // about the import graph rather than a proxy for one — see
+      // [_exportSurfaces] for why the two heuristics considered instead were
+      // rejected.
+      //
+      // Measured on this package before the rule was adopted: 106 library
+      // dartdoc references to a type declared under `lib/` that library scope
+      // cannot reach. 100 of them are a barrel naming what it exports and are
+      // carved out with no false positives; the remaining 6 were dead links in
+      // three implementation files, all now written as backticks. That the
+      // carve-out is still doing that work is asserted below, so a change that
+      // quietly stopped it matching would fail here rather than start
+      // reporting a hundred correct references.
+      final surfaces = _exportSurfaces();
+      final homes = _typeHomes();
+      final offences = <String>[];
+      var carvedOut = 0;
+
+      for (final path in _allLibrarySources()) {
+        final doc = _libraryDartdocLines(path);
+        if (doc.isEmpty) continue;
+        final reachable = _reachableTypes(path, surfaces);
+        final exported = surfaces[path] ?? const <String>{};
+
+        for (final entry in doc) {
+          for (final m in RegExp(r'\[([A-Z]\w*)\]').allMatches(entry.text)) {
+            final name = m.group(1)!;
+            final home = homes[name];
+            // Declared elsewhere — the Flutter SDK, the kernel, or nowhere at
+            // all. `tool/check_dartdoc_refs.py` owns the phantom case.
+            if (home == null) continue;
+            if (reachable.contains(name)) continue;
+            if (exported.contains(name)) {
+              carvedOut++;
+              continue;
+            }
+
+            offences.add(
+              '$path:${entry.line}\n'
+              '    [$name] is declared in $home, which this file neither '
+              'imports nor exports\n'
+              '    → write it as `$name`, or import $home if the file uses it',
+            );
+          }
+        }
+      }
+
+      expect(
+        offences,
+        isEmpty,
+        reason:
+            'these library dartdocs promise links they cannot deliver:\n\n'
+            '${offences.join('\n\n')}',
+      );
+      expect(
+        carvedOut,
+        greaterThan(50),
+        reason:
+            'the barrel carve-out matched $carvedOut references, far below the '
+            '100 measured — either the barrels stopped naming what they '
+            'export, or the export surface is no longer being computed, and '
+            'in the second case this check is silent for the wrong reason',
       );
     });
   });
