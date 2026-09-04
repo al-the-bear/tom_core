@@ -64,15 +64,24 @@ without the second; the second is built entirely on the first.
 | `TomAwsV4Signer` / `TomAwsCredentials` | class | AWS SigV4 request signing |
 | `TomBlobStoreInfo` | class | The configured stores, by name, with a default |
 | `TomBlobStoreFactory` | typedef | A backend: settings in, a store out |
-| `TomFileReference` | class | Marks a column as holding a storage key |
-| `TomFileReferenceKeys` | class | Key generation and store resolution for that annotation |
-| `TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` / `.clearFile` | methods | The entity-level file API |
-| `TomFileRepository` | abstract class | The five-method file contract — `findById`, `saveFile`, `openFile`, `describeFile`, `clearFile` — independent of SQL |
-| `TomFileSlots` / `TomFileSlot` | class | Reflection-derived `<table>/<column>` slot registry |
-| `TomFileEndpoint` | class | The HTTP handler: POST / GET / HEAD / DELETE over a slot |
-| `TomFileService` / `TomFileServer` | service / component | Mounts the handler at `/files/{entity}/{id}/{column}` |
-| `TomFileSlotException` | class | Slot registration and resolution errors |
-| `TomBlobExportStore` | class | The export module's store, over any blob backend |
+
+This module is the bottom of a stack, and the rest of the file story is not in
+it. Everything above the blob contract lives where its *other* concern lives —
+an annotation among the persistence annotations, an HTTP handler among the
+endpoints — and is named here because a reader arriving at "how do I store a
+file" needs the whole route, not one layer of it:
+
+| Name | Module | Purpose |
+| ---- | ------ | ------- |
+| `TomFileReference` | `object_persistence` | Marks a column as holding a storage key |
+| `TomFileReferenceKeys` | `object_persistence` | Key generation and store resolution for that annotation |
+| `TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` / `.clearFile` | `object_persistence` | The entity-level file API |
+| `TomFileRepository` | `object_persistence` | The five-method file contract — `findById`, `saveFile`, `openFile`, `describeFile`, `clearFile` — independent of SQL |
+| `TomFileSlots` / `TomFileSlot` | `endpoints` | Reflection-derived `<table>/<column>` slot registry |
+| `TomFileEndpoint` | `endpoints` | The HTTP handler: POST / GET / HEAD / DELETE over a slot |
+| `TomFileService` / `TomFileServer` | `endpoints` | Mounts the handler at `/files/{entity}/{id}/{column}` |
+| `TomFileSlotException` | `endpoints` | Slot registration and resolution errors |
+| `TomBlobExportStore` | `export` | The export module's store, over any blob backend |
 
 ## The Shape of the Design
 

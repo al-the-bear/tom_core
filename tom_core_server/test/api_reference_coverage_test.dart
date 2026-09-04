@@ -494,8 +494,8 @@ Set<String> _declaredApi(String source) => {
   ..._declaredFunctions(source),
 };
 
-/// The type names the first column of `doc/<module>.md`'s Overview table
-/// carries, sorted — or `null` when the guide has no such table.
+/// The type names `doc/<module>.md`'s Overview table carries, sorted — or
+/// `null` when the guide has no such table.
 ///
 /// A cell may name more than one type (the delegation row names three), so
 /// every backticked identifier in the cell counts.
@@ -506,11 +506,53 @@ Set<String> _declaredApi(String source) => {
 /// module's oldest rows read as naming types the barrel does not export.
 List<String>? _overviewTableTypes(String module) {
   final lines = File('doc/$module.md').readAsLinesSync();
-  if (!lines.any((line) => line.startsWith('| Type |'))) return null;
+  if (!lines.any((line) => _typeTableNameColumn(line) != null)) return null;
   return _typeTableNames(lines).toList()..sort();
 }
 
-/// The type names the first column of a `| Type |` table in [markdown] carries.
+/// The index of the column a type-table heading [line] carries names in, or
+/// `null` when [line] is not such a heading.
+///
+/// A `Kind` column identifies the table, and the names sit immediately to its
+/// left; where there is none, a **leading** `Type` or `Symbol` column does.
+/// Three families of document use the shape and this one rule reads all of
+/// them: the guides' Overview (`| Type | Kind | Purpose |`, `| Symbol | Kind |
+/// Purpose |` where the module's surface is mostly free functions, and `| Layer
+/// | Type | Kind | Purpose |` in `audit`, whose Overview is organised by the
+/// four layers a type can belong to), the module readmes' Key types (`| Type |
+/// Responsibility |`, `| Type | What it is |`, `| Type | Implements | Backing
+/// |`), and the API index (`| Type | Kind | Description |`).
+///
+/// Anchoring on the *first* column alone instead cost more than it looks. It
+/// missed `server`, `transactions` and `audit` — they fell out of the Overview
+/// check entirely, which is exactly the silence the check exists to break.
+///
+/// The two clauses have to stay in that order, because `Type` in a *later*
+/// column is the opposite of a name column: `| Setting | Type | What it decides
+/// |` and `| Column | Type | Role |` tabulate the type *of* each row's subject,
+/// so accepting a second-position `Type` unconditionally reads `String`, `int`
+/// and `BIGINT` as types the module fails to export. Only `Kind` licenses
+/// looking past the first column.
+///
+/// A heading cell holding a **backticked** name disqualifies the table
+/// outright, which is how the export guide's `` | Type | `naturalWidth` |
+/// Because | `` stays out. Its first column holds `TomColumnType` *values*, so
+/// on the column test alone its five rows reached the orphan check as five
+/// missing exports. The distinction is not a special case: a heading that
+/// quotes an identifier is tabulating that identifier's values, not declaring a
+/// column of types.
+int? _typeTableNameColumn(String line) {
+  final cells = line.split('|').map((cell) => cell.trim()).toList();
+  if (cells.length < 4 || cells.first.isNotEmpty || cells.last.isNotEmpty) {
+    return null;
+  }
+  if (cells.any((cell) => cell.contains('`'))) return null;
+  final kind = cells.indexOf('Kind');
+  if (kind >= 2) return kind - 1;
+  return cells[1] == 'Type' || cells[1] == 'Symbol' ? 1 : null;
+}
+
+/// The type names the name column of an Overview table in [markdown] carries.
 ///
 /// Extracted from the table text rather than from a path so both callers can
 /// drive it: the guide's Overview table and the module readme's Key types
@@ -535,28 +577,31 @@ Set<String> _typeTableNames(List<String> markdown) =>
 List<String> _typeTableRows(List<String> markdown) {
   final names = <String>[];
   for (var i = 0; i < markdown.length; i++) {
-    if (!markdown[i].startsWith('| Type |')) continue;
+    final column = _typeTableNameColumn(markdown[i]);
+    if (column == null) continue;
     // +2 skips the heading and the `| ---- |` separator beneath it.
     for (final line in markdown.skip(i + 2)) {
       if (!line.startsWith('|')) break;
+      final cells = line.split('|');
+      if (cells.length <= column) break;
       names.addAll(
         RegExp(
           r'`([A-Za-z_][A-Za-z0-9_]*)(?:<[^`]*>)?`',
-        ).allMatches(line.split('|')[1]).map((match) => match.group(1)!),
+        ).allMatches(cells[column]).map((match) => match.group(1)!),
       );
     }
   }
   return names;
 }
 
-/// The number of `| Type |` tables [markdown] holds.
+/// The number of Overview tables [markdown] holds.
 ///
 /// A guide that groups its Overview has more than one, and that is the property
 /// [_typeTableRows] exists to read across. Counting them is how the sweep proves
 /// it is reading a grouped document rather than passing because it found one
 /// table and stopped.
 int _typeTableCount(List<String> markdown) =>
-    markdown.where((line) => line.startsWith('| Type |')).length;
+    markdown.where((line) => _typeTableNameColumn(line) != null).length;
 
 /// The type names [module]'s `readme.md` Key types table carries — or `null`
 /// when the module has no readme, or one with no such table.
@@ -2629,25 +2674,6 @@ const Set<String> _verificationPendingAttribution = {
   'transactions',
 };
 
-/// The modules whose Overview table has not been reconciled against its
-/// exports yet.
-///
-/// A quarantine rather than an opt-in list, so that the default for a *new*
-/// module is checked. The debt is deliberately spent as a visible skip on every
-/// run: the trap this file exists to close is an invariant nobody was looking
-/// at, and a list of modules silently exempted from the check would be the same
-/// trap wearing the check's clothes.
-const Set<String> _tablesPendingReconciliation = {
-  'authentication',
-  'configuration',
-  'endpoints',
-  'export',
-  'file_storage',
-  'object_persistence',
-  'preferences',
-  'scheduling',
-};
-
 /// The modules whose summary `Source:` list has not been reconciled against the
 /// barrel yet.
 ///
@@ -2893,52 +2919,61 @@ void main() {
       final table = _overviewTableTypes(module);
       if (table == null) continue;
 
-      test(
-        module,
-        () {
-          final exported = _exportedApi(module);
+      test(module, () {
+        final exported = _exportedApi(module);
 
-          final missing = exported.where((t) => !table.contains(t)).toList();
-          expect(
-            missing,
-            isEmpty,
-            reason:
-                'doc/$module.md\'s Overview table does not list these exported '
-                'names: ${missing.join(', ')}. The table is the first thing '
-                'the guide shows, so a reader takes it for the module\'s '
-                'surface and concludes an unlisted name does not exist — which '
-                'is how three of this module\'s ten files became invisible.',
-          );
+        final missing = exported.where((t) => !table.contains(t)).toList();
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              'doc/$module.md\'s Overview table does not list these exported '
+              'names: ${missing.join(', ')}. The table is the first thing '
+              'the guide shows, so a reader takes it for the module\'s '
+              'surface and concludes an unlisted name does not exist — which '
+              'is how three of this module\'s ten files became invisible.',
+        );
 
-          final orphaned = table.where((t) => !exported.contains(t)).toList();
-          expect(
-            orphaned,
-            isEmpty,
-            reason:
-                'doc/$module.md\'s Overview table names these, which the '
-                'barrel does not export from $module: ${orphaned.join(', ')}. '
-                'Either it was renamed or removed, or it belongs to another '
-                'module\'s table.',
-          );
-        },
-        skip: _tablesPendingReconciliation.contains(module)
-            ? 'Overview table not reconciled yet.'
-            : null,
-      );
+        // The two sides are deliberately asymmetric. What the table *must*
+        // carry is [_exportedApi]; what it *may* carry is [_exportedNames],
+        // which adds the top-level constants. A guide that gives a row to
+        // `defaultBlobManifestTable` is documenting the default a caller
+        // overrides, not claiming a type — required rows would drag every
+        // module's constants in behind it, and forbidding the row would
+        // delete documentation the check has no business deleting.
+        final nameable = _exportedNames(module);
+        final orphaned = table.where((t) => !nameable.contains(t)).toList();
+        expect(
+          orphaned,
+          isEmpty,
+          reason:
+              'doc/$module.md\'s Overview table names these, which the '
+              'barrel does not export from $module: ${orphaned.join(', ')}. '
+              'Either it was renamed or removed, or it belongs to another '
+              'module\'s table.',
+        );
+      });
     }
 
-    test('every quarantined module still has a table to reconcile', () {
-      final stale = _tablesPendingReconciliation
+    // The loop above can only check a guide that *has* an Overview table, so
+    // the `continue` that skips one is the whole check's blind spot: a guide
+    // whose table is deleted, or a new module whose guide never grows one,
+    // leaves no failure behind — it leaves no test behind. This is what the
+    // quarantine list used to hold open, and it outlives the quarantine,
+    // because the escape it covers was never really "not reconciled yet" but
+    // "not looked at at all".
+    test('every module\'s guide has an Overview table', () {
+      final tableless = _modules()
           .where((module) => _overviewTableTypes(module) == null)
           .toList();
       expect(
-        stale,
+        tableless,
         isEmpty,
         reason:
-            'These modules are quarantined but have no Overview table: '
-            '${stale.join(', ')}. A quarantine entry that names nothing '
-            'suppresses no check and reads as outstanding debt that is not, '
-            'so remove it.',
+            'These guides have no Overview table, so the check above generated '
+            'no test for them: ${tableless.join(', ')}. An Overview table is '
+            'recognised by its `Kind` column; give the guide one rather than '
+            'letting the module fall out of the sweep in silence.',
       );
     });
 
@@ -2998,16 +3033,16 @@ void main() {
         // document and send its author to delete the sections.
         final found = _typeTableNames(
           '''
-| Type | What it is |
-| ---- | ---------- |
-| `TomFirst` | in the opening table. |
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomFirst` | class | in the opening table. |
 
 ## Another concern
 
-| Type | What it is |
-| ---- | ---------- |
-| `TomSecond` | in a later table. |
-| `TomThird` | and its neighbour. |
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomSecond` | class | in a later table. |
+| `TomThird` | class | and its neighbour. |
 '''
               .split('\n'),
         );
@@ -3015,6 +3050,79 @@ void main() {
         expect(found, {'TomFirst', 'TomSecond', 'TomThird'});
       },
     );
+
+    test('a heading that quotes an identifier is not a type table', () {
+      // The export guide's width table is the live example: `integer`,
+      // `decimal`, `text`, `boolean` and `timestamp` are `TomColumnType`
+      // *values*, and on the column test alone they arrived at the orphan
+      // check as five types the module fails to export.
+      final markdown =
+          '''
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomTabularColumn` | class | the module's own surface. |
+
+## How wide a column is
+
+| Type | `naturalWidth` | Because |
+| ---- | -------------- | ------- |
+| `integer` | 11 | a value of a type, not a type. |
+'''
+              .split('\n');
+
+      expect(_typeTableNames(markdown), {'TomTabularColumn'});
+      expect(_typeTableCount(markdown), 1);
+    });
+
+    test('a later Type column is the row\'s type, not the row\'s name', () {
+      // `configuration` and `scheduling` are the live examples: a settings
+      // table and a DDL column table both put `Type` second, and reading it as
+      // the name column scores `String`, `int`, `BIGINT` and `LONGTEXT` as
+      // types the module fails to export. Only a `Kind` column licenses looking
+      // past the first — which is what makes `audit`'s `| Layer | Type | Kind |
+      // Purpose |` readable without letting these two in behind it.
+      final markdown =
+          '''
+| Layer | Type | Kind | Purpose |
+| ----- | ---- | ---- | ------- |
+| Sink | `TomAuditSink` | abstract class | where entries go. |
+
+| Setting | Type | What it decides |
+| ------- | ---- | --------------- |
+| `authServerLoginUri` | `String?` | not a type of this module's. |
+
+| Column | Type | Role |
+| ------ | ---- | ---- |
+| `seq` | `BIGINT AUTO_INCREMENT` | also not. |
+'''
+              .split('\n');
+
+      expect(_typeTableNames(markdown), {'TomAuditSink'});
+      expect(_typeTableCount(markdown), 1);
+    });
+
+    test('a companion table naming another module\'s types is not read', () {
+      // Four guides name a sibling module's type because the reader's route
+      // runs through it — `scheduling` cites `classifySqlFailure`,
+      // `file_storage` the whole file stack above the blob contract. Those rows
+      // are documentation the check has no business deleting, and they are also
+      // not a claim about *this* module's exports, so they sit in a `| Name |
+      // Module | Purpose |` table the extractor does not read.
+      final markdown =
+          '''
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomOwn` | class | this module's surface. |
+
+| Name | Module | Purpose |
+| ---- | ------ | ------- |
+| `TomElsewhere` | `datasources` | on the reader's route, but not ours. |
+'''
+              .split('\n');
+
+      expect(_typeTableNames(markdown), {'TomOwn'});
+      expect(_typeTableCount(markdown), 1);
+    });
 
     test('the row reader keeps a repeat the name reader collapses', () {
       // No guide repeats a name today, so the duplicate check above has no live

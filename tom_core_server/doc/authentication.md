@@ -29,7 +29,6 @@ principal into an authentication token and an authorization token.
 | `TomAuthenticationData` | class | The data carried into one authentication attempt; reflected (`@tomReflector`) |
 | `TomAuthenticationInfo` | class | A service's success result: principal + access-control definition |
 | `TomDummyAuthenticationService` | class | Scaffolding-only default service (accepts any non-`GUEST` user) |
-| `TomLoginException` | class | A login failure; carried back as a failed result |
 | `TomAuthenticationAdaptor` | class | The annotation that marks an adaptor and constrains it to guest/user flows; reflected (`@tomReflector`) |
 | `Tom2FAAdaptor` | class | The annotation that marks a 2FA adaptor for a mechanism `type`; reflected (`@tomReflector`) |
 | `Tom2FAService` | abstract class | The contract a second-factor mechanism implements: issue a challenge, verify a submission; reflected (`@tomReflector`) |
@@ -39,6 +38,7 @@ principal into an authentication token and an authorization token.
 | `Tom2FAChallengeSpec` | class | What an adaptor returns from `issueChallenge` — hint, client blob, verification blob, attempts, validity |
 | `Tom2FASubmission` | class | What an adaptor is handed on `verifySubmission` — the submitted factor plus its challenge |
 | `TomTotp2FAService` | class | The shipped authenticator-app (RFC 6238 TOTP) mechanism, registered as `@Tom2FAAdaptor('totp')` |
+| `TomTotpSecretResolver` | typedef | The fallback hook `TomTotp2FAService` reads when no `Tom2FAEnrolmentStore` is installed: a user in, their base32 secret or `null` out |
 | `TomDeliveredCode2FAService` | abstract class | The shape every *delivered* code shares: generate, seal, send, recognise, and prove the destination by enrolment |
 | `TomEmailCode2FAService` | class | A one-time code mailed through the Messaging module, registered as `@Tom2FAAdaptor('email')` |
 | `TomSmsCode2FAService` | class | A one-time code texted through the Messaging module, registered as `@Tom2FAAdaptor('sms')` |
@@ -73,17 +73,38 @@ principal into an authentication token and an authorization token.
 | `TomOAuthFlow` | class | The authorization-code + PKCE handshake |
 | `TomOAuthPkce` | class | A verifier / `S256` challenge pair |
 | `TomOAuthAuthorizationState` | class | One pending authorization: state handle, verifier, and the login context it started in |
+| `TomOAuthExchange` | class | A completed code exchange: which provider it was against, who that provider says this is, and which pending flow it completes |
 | `TomOAuthStateStore` | abstract class | Where pending authorizations live; `TomOAuthMemoryStateStore` is the default |
+| `TomOAuthMemoryStateStore` | class | The default in-process store, with expiry enforced on read and a sweep on each write, so no library timer has to be shut down |
 | `TomSqlOAuthStateStore` | class | A state store over `tom_oauth_state`, so every node of a cluster sees the same pending authorizations |
 | `TomOAuthStateRow` | class | One `tom_oauth_state` row, as the store reads it back; reflected (`@tomReflector`) |
+| `oauthStateTable` | function | The `tom_oauth_state` declaration, from which its DDL, its statements and the convergence guard's schema model all derive |
+| `oauthStateTableDdl` | function | The `CREATE TABLE` text of that declaration, for a deployment that applies schema by hand |
 | `TomOAuthStateStoreType` | enum | `memory` (the default) or `sql` — which store a deployment selected |
 | `TomOAuthStateStoreSettings` | class | The `oauth.stateStore` block as data, and `createStore()` for what it names |
 | `TomOAuthTokenTransport` | abstract class | The provider HTTP calls, so a test can stub the provider |
+| `TomHttpOAuthTokenTransport` | class | The live transport, over `package:http` |
 | `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, raw claims |
 | `TomExternalIdentityStore` | abstract class | The linking table: (issuer, subject) → local account |
+| `TomMemoryExternalIdentityStore` | class | Links in a map, for tests and bring-up **only** — links that vanish on restart cost a user their account |
+| `TomPersistentExternalIdentityStore` | class | The store over `tom_external_identity` |
 | `TomExternalIdentityLink` | class | One persisted link row; reflected (`@tomReflector`) |
+| `TomExternalIdentityLinkRepository` | class | The repository over that table |
+| `TomOAuthTokenGrant` | class | One token grant as a provider issued it, with `expires_in` already resolved against a clock so nothing downstream needs to know when the response arrived |
+| `TomOAuthTokenStore` | abstract class | Where grants live — separate from the link store, so holding credentials and holding links are two choices rather than one |
+| `TomMemoryOAuthTokenStore` | class | Grants in a map, for tests and bring-up; a grant lost on restart costs one re-consent |
+| `TomPersistentOAuthTokenStore` | class | The store over `tom_external_identity_token`, grant JSON encrypted at rest under its own optional cipher |
+| `TomExternalIdentityToken` | class | One persisted grant row; the encrypted `tokenData` is the source of truth and the plain columns beside it are the operator projection |
+| `TomExternalIdentityTokenRepository` | class | The repository over that table |
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints, exposed via `@TomApiImplementation` |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake |
+
+One type every service in the list throws lives in `little_things`, with the
+rest of the package's exception hierarchy:
+
+| Name | Module | Purpose |
+| ---- | ------ | ------- |
+| `TomLoginException` | `little_things` | A login failure; carried back as a failed result rather than propagated |
 
 ## The Login Flow
 

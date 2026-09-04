@@ -69,6 +69,7 @@ is a peer of the other three layers rather than an option on the sink.
 | Sink | `parseAuditLines` / `tomAuditGenesisHash` | function / constant | Reading JSON-Lines storage back; the sixty-four zeros a chain starts from |
 | Sink | `auditTrailTable` / `auditTrailTableDdl` / `defaultAuditTrailTable` | functions / constant | The relational trail's schema, declared once and derived from |
 | Sink | `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` | functions | The optional database-side guards that refuse `UPDATE` / `DELETE` |
+| Sink | `auditTrailNoUpdateTriggerName` / `auditTrailNoDeleteTriggerName` | functions | The names those two guards are installed under, so a deployment can drop or probe one without re-deriving the string |
 | Sink | `TomAuditWriteOnceCheck` | class | What a deployment's audit table actually permits, as observed |
 | Sink | `TomAuditTrailRow` / `TomAuditHeadRow` / `TomAuditSeqRow` / `TomAuditTriggerRow` | classes | The reflected row shapes `TomSqlAuditSink` reads through |
 | Sink | `TomAuditException` | class | A sink that could not store a record |

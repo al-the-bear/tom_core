@@ -37,6 +37,7 @@ method, and converts the result (or any error) into a `Response`.
 | ---- | ---- | ------- |
 | `TomEndpoint` | class | Declares an HTTP endpoint inline on a method (route, methods, mime types, CORS, …) |
 | `TomApiEndpointImplementation` | class | Binds a method to an endpoint defined in the remote-API registry |
+| `TomEndpointBase` | abstract class | What the two annotations above share: each can produce the concrete `TomEndpoint` the pipeline routes |
 | `TomService` / `tomService` | annotation | Marks a class as an interface-based service to scan |
 | `TomApiImplementation` | class | Marks a class as the implementation of a registry-defined API |
 | `TomComponentReference` | class | Points a service at its implementation bean (by name or type) |
@@ -45,7 +46,42 @@ method, and converts the result (or any error) into a `Response`.
 | `TomEndpointRouting` | class | Scans the annotated classes and builds the `Router` |
 | `TomEndpointHandler` | class | Serves one endpoint (the per-request pipeline) |
 | `TomMethodMetadata` / `TomClassScanResult` | class | Collected metadata / scan partitions |
+| `TomEndpointRouteKey` | typedef | `(uri, method)` — how `TomEndpointRouting` keys a mounted route, because one path may be divided between two endpoints |
+| `TomEndpointRoutingInfo` | class | What is mounted at one such key: the handler, the endpoint it was built from, and the method this mount answers |
+| `TomRedirect` | class | An endpoint result that answers `307` or `308`; `301`/`302` are omitted because their method-rewriting is ambiguous across clients |
 | `TomEndpointHandlerException` / `TomEndpointPipelineException` | class | Serving-time / build-time failures |
+
+Three concerns live in this module because each is a way of *serving a request*
+rather than a subject of its own.
+
+**Uploads over a raw body** — the whole request is the file and nothing is
+buffered:
+
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomFileSlots` / `TomFileSlot` | class | The reflection-derived `<table>/<column>` slot registry, and one registered slot; the interface is where the entity's `<T, K>` generics stop |
+| `TomFileEndpoint` | class | The HTTP handler: POST / GET / HEAD / DELETE over a slot. Stateless — everything it needs is in the request and the registry |
+| `TomFileService` / `TomFileServer` | service / component | Mounts that handler at `/files/{entity}/{id}/{column}`; one method for all four verbs, because the wire contract addresses one resource and varies only the method |
+| `TomFileSlotException` | class | Slot registration and resolution errors. Registration failures are *scan-time*, which is the point of deriving slots from reflection |
+
+**Uploads over a form** — for the request that carries a file *and* the fields
+describing it, which a raw body cannot express:
+
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomMultipartForm` | class | One decoded envelope: text parts for the request DTO, file parts for the handler's parameters |
+| `TomFormFile` | class | One file part — field, client file name, media type. All three are the caller's word and none is trusted |
+| `TomFormFileStorage` | extension | `TomFormFile.storeIn` — the join to the raw-body shape, through the *same* `TomFileSlot`, so exposure, row scope and column grade all apply unchanged |
+| `tomConsumesForm` / `tomConsumesMultipartForm` | function | Whether an endpoint declares a form body, and whether specifically the multipart one — the pipeline needs to know which reader to call |
+| `TomFormBindingException` | class | Always caused by what the caller sent, so it surfaces as a client error rather than an opaque `500` |
+
+**WebSockets** — a handshake the same annotations can declare:
+
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomWebSocketEndpoint` | class | Declares a socket endpoint; it answers `GET` and nothing else, because that is what a handshake is |
+| `TomWebSocketConnection` | class | The live socket, attached at the moment the connection is accepted — so from inside a handler it is always live |
+| `TomWebSocketException` | class | A socket endpoint declared or used in a way the pipeline cannot serve |
 
 ## Declaring an Endpoint
 

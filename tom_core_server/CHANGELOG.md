@@ -2,6 +2,42 @@
 
 ### Fixed
 
+- **Every guide's Overview table is now checked against the module's exports,
+  and eight guides that were exempt from that check have been reconciled
+  (tcincb3_ahwn-tom_core_server-reconcile-remaining-overview-tables).** The
+  Overview table is the first thing a guide shows, so a reader takes it for the
+  module's surface and concludes an unlisted name does not exist. Eight modules
+  sat in a `_tablesPendingReconciliation` quarantine that skipped the check for
+  them; `authentication` was missing fifteen rows — the whole OAuth and external
+  identity surface — `object_persistence` about twenty, including the entire
+  public expression tree, and `endpoints` the three transports above the plain
+  handler. All eight are reconciled and the quarantine is gone, so the check is
+  now unconditional.
+
+  Three further guides were not quarantined and were not checked either. The
+  extractor recognised an Overview table by the literal heading `| Type |`,
+  which `audit` (`| Layer | Type | Kind | Purpose |`), `server` and
+  `transactions` (`| Symbol | Kind | Purpose |`) do not use, so those three fell
+  out of the sweep in silence — the exact failure mode the check exists to
+  break. The heading rule now keys on the `Kind` column and takes the names from
+  the column to its left, falling back to a leading `Type` / `Symbol` column for
+  the module readmes and the API index, which have no `Kind`. A heading cell
+  that quotes an identifier disqualifies the table, which keeps the export
+  guide's `` | Type | `naturalWidth` | Because | `` out — its first column holds
+  `TomColumnType` *values*, and reading it as types produced five phantom
+  missing exports. `server` and `transactions` passed on the widened extractor
+  with no edit; `audit` needed one row.
+
+  Replacing the quarantine's stale-entry guard is a test that every module's
+  guide *has* an Overview table, because a guide without one still generates no
+  test rather than a failing one.
+
+  Guides that legitimately name a sibling module's type — `scheduling` citing
+  `classifySqlFailure`, `file_storage` the whole file stack above the blob
+  contract — now carry those names in a companion `| Name | Module | Purpose |`
+  table that the extractor does not read. The Overview keeps its claim precise
+  without the guide losing the reader's route.
+
 - **Every module readme's quick start is now either run by the suite or
   documented as a snippet that cannot be
   (tcincb2_ahwp-module-readme-quick-starts).** Fifteen modules open with a

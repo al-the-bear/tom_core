@@ -36,9 +36,15 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` | classes | The annotations that map an entity class and its fields to a table and columns |
+| `TomJoinTable` | class | A join-table annotation the persistence layer neither detects nor applies — declared, and inert |
+| `TomRepositoryType` | class | Binds a `TomSqlDatasourceRepository` subclass to a named datasource type, so discovery can pick an implementation |
+| `TomDartType` | class | Wraps a `Type` so it can be carried as a value, where a bare `Type` literal is awkward to pass |
 | `TomRepository<T, K>` | abstract class | The CRUD + query contract for entity `T` keyed by `K` |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL implementation of the contract |
 | `MariadbRepository<T, K>` | class | MariaDB driver binding (`@TomRepositoryType("mariadb")`) |
+| `TomPageRequest` | class | One page of a query. The repository appends the primary key as a final sort term, because "page 2" of an unordered query is otherwise not the complement of "page 1" |
+| `TomSortField` / `TomSortDirection` | class / enum | One sort term — a declared field name where the caller writes it, a rendered column expression by the time SQL is generated |
+| `TomCountResult` | class | The row a `COUNT` projects into; the column alias *is* the binding, and nothing checks it |
 | `TomQuerySentenceCompiler` | class | Parses a query sentence into a `TomQuery` |
 | `TomQueryBuilder` | mixin | Fluent factory for the `TomOperator` expression tree |
 | `TomAggregate` | abstract class | An aggregate function node (`CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max`) |
@@ -46,14 +52,41 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomGroupedRow` | class | One group's result: the group keys plus the aggregate values, keyed by alias |
 | `TomAnnotationAnalyzer` | mixin | Resolves an entity's persistence metadata by reflection |
 | `TomColumnInformation` | class | The resolved metadata for one entity field |
+| `TomPersistenceEventHandler` | class | A field-level lifecycle-callback annotation; resolved by the analyzer, and no callback is invoked yet |
 | `TomDbScope` | class | Declares (or explicitly opts out of) an entity's row scope |
 | `TomDataScopeRegistry` | class | The named scope-kind resolvers, read and write. Statics only |
 | `TomDataScope` | class | Renders a resolver's answer into a bound `IN` / union predicate. Statics only |
+| `TomDataScopeResolver` / `TomAsyncDataScopeResolver` | typedef | What a scope kind supplies: `null` opts out of scoping, an empty list denies every row — the secure default a `null` principal resolves to |
+| `TomDataScopePredicate` | class | A resolved scope: the boolean to AND into the `WHERE`, plus the parameters it binds |
+| `TomDataScopeBypass` | class | The marker `TomDataScope.runUnscoped` installs, so a resolver's own nested reads do not re-enter scope resolution and recurse |
+| `TomResourceScopeSource` | abstract class | The seam `authorization` implements and installs, so this module needs no dependency on it |
 | `TomColumnAuthorization` | class | Applies a column's `authKey` grade — read masking and the write partition. Statics only |
 | `TomRowColumnAuthorization` | class | Per-row column grades, for grades derived from the row's owning aggregate. Statics only |
+| `TomColumnAuthResolver` / `TomRowColumnAuthResolver` | typedef | The grade a principal holds on one authorized column, flat and per-row |
+| `TomColumnWriteDecision<C>` | class | The write partition: which columns the caller may write, and which are preserved from the baseline |
 | `TomFileReference` | class | Declares that a column holds a blob-storage key |
 | `TomFileReferenceKeys` | class | Resolves a file column's store and mints its keys. Statics only |
 | `TomFileRepository<T, K>` | abstract class | The five-method file surface the HTTP file endpoint depends on |
+| `TomRepositoryException` / `TomQuerySyntaxException` | class | A failed operation / a query sentence that will not parse |
+| `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | An entity the analyzer cannot resolve / annotation arguments it cannot read |
+| `TomDataScopeException` / `TomDataScopeAuthorizationException` / `TomColumnAuthorizationException` | class | A mis-wired scope or column grade / a read or write the scope refused / a write to a column the caller may not write |
+
+The expression tree the builder and the sentence compiler both produce is public,
+because a query built one way is inspected, extended and rendered exactly like a
+query built the other:
+
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomUnaryOperator<T, R>` / `TomBinaryOperator<T1, T2, R>` | abstract class | The two node shapes every operator below extends |
+| `And` / `Or` / `Not` / `Group` | class | Boolean composition, and explicit parenthesisation |
+| `Eq` / `Neq` / `Gt` / `Gte` / `Lt` / `Lte` | class | The six comparisons |
+| `Like` / `NotLike` / `Regexp` | class | Pattern matching |
+| `Between` / `In` / `IsNull` / `IsNotNull` | class | Range, membership and nullity |
+| `DbCol<R>` | abstract class | A column reference, typed by what the column holds |
+| `BoolCol` / `IntCol` / `DoubleCol` / `StringCol` / `DateCol` / `DateTimeCol` / `TimeCol` | class | The seven concrete column references |
+| `BoolLiteral` / `IntegerLiteral` / `DoubleLiteral` / `StringLiteral` / `DateLiteral` / `DateTimeLiteral` / `TimeLiteral` | class | The seven inline literals |
+| `Parameter<T>` | class | A bound placeholder — what a value becomes when it is not written inline |
+| `CountAll` / `Count` / `Sum` / `Avg` / `Min` / `Max` | class | The six aggregates `TomGroupedSelect` projects |
 
 ## Mapping an Entity
 

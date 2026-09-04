@@ -44,10 +44,19 @@ covers only what changes when the substrate is a database.
 | `TomSqlSchedulerNodes` | class | The cluster roll call: one row per node, so a *node* departing is noticed |
 | `TomSchedulerNode` | class | One node's published check-in instant and cadence |
 | `schedulerNodeFailedAfter` / `isSchedulerNodeFailed` | function | The failure test, as pure functions |
-| `classifySqlFailure` / `TomSqlFailureMode` | function / enum | Whether a failed write is definite or ambiguous |
+| `jobRunTable` / `leaseTable` / `schedulerNodeTable` | function | The three table declarations, from which the DDL, the statements and the convergence guard's schema model all derive |
 | `jobRunTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | function | The shipped DDL, parameterised by table name |
 | `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | constant | `tom_job_run`, `tom_lease`, `tom_scheduler_node` |
-| `sqlInstant` / `parseSqlInstant` | function | The UTC `DATETIME(6)` encoding the stores use |
+| `TomJobRunRow` / `TomLeaseRow` / `TomSchedulerNodeRow` | class | The reflected row types the stores' result mappers materialise, one per table |
+| `TomJobRunWindowRow` | class | The single aggregate column `TomSqlJobStore.lastWindow` projects — its own row type because the mapper binds by column name and that select has no other columns |
+
+Two things the stores lean on hardest belong to `datasources`, because nothing
+about them is specific to scheduling:
+
+| Name | Module | Purpose |
+| ---- | ------ | ------- |
+| `classifySqlFailure` / `TomSqlFailureMode` | `datasources` | Whether a failed write is definite or ambiguous — the distinction [When the Answer to a Claim Is Lost](#when-the-answer-to-a-claim-is-lost) turns on |
+| `sqlInstant` / `parseSqlInstant` | `datasources` | The UTC `DATETIME(6)` encoding the stores use |
 
 The two stores are ordinary implementations of contracts declared in the kernel.
 Nothing here extends, narrows or reinterprets those contracts, and both are

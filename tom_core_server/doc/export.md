@@ -53,6 +53,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | `TomDirectoryExportStore` / `TomMemoryExportStore` | classes | Filesystem and in-memory backends |
 | `TomBlobExportStore` | class | The same interface over the `file_storage` blob API — every configured backend at once |
 | `TomStoredExport` | class | What was stored, where, and how big it turned out |
+| `TomExportStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete`, each carrying a stable `export.store.*` error key, so the same failure reads the same whichever backend is configured |
 | `TomExportService` | class | The seam an endpoint calls: respond with, or store, an export |
 | `tomFormatCellAsText` | function | The one answer to "how does a value look as text" |
 | `TomExportException` | class | The module's base error |
