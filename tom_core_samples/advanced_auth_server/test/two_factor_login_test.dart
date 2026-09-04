@@ -1,4 +1,4 @@
-/// End-to-end tests for the auth server's two-pass login (csex3).
+/// End-to-end tests for the auth server's two-pass login.
 ///
 /// These cover the *sample's* half of the flow — the wire contract and the
 /// deployment wiring — over the real framework machinery underneath: the
@@ -352,8 +352,7 @@ void main() {
       // has answered, so it cannot tell this replay from the first presentation.
       // The attempt counter therefore bounds an honest client, and the
       // challenge's short expiry is what bounds a hostile one. Closing this
-      // needs server-side state that the fixed design deliberately omits —
-      // tracked as csexb3.
+      // needs server-side state that the fixed design deliberately omits.
       expect(replayed.requires2FA, isFalse);
       expect(replayed.authToken, isNotEmpty);
     });

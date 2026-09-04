@@ -72,8 +72,17 @@ WORKSPACE = REPO_ROOT.parent.parent
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__",
              "ztmp", ".venv"}
 
-#: The directories whose contents ship, matching `check_section_refs.py`.
-SHIPPED_DIRS = {"lib", "test", "example"}
+#: The file set that ships, matching `check_section_refs.py` exactly. The two
+#: gates ask consecutive questions about the same references -- does it name a
+#: document, and does that document have the section -- so a reference either
+#: gate cannot see is unchecked in a way neither report shows. Widening one
+#: without the other would leave that hole open in the shape hardest to notice:
+#: a green pair of gates.
+SHIPPED_DIRS = {"lib", "test", "example", "bin", "tool"}
+SHIPPED_DOC_DIR = "doc"
+EXEMPT_DOCS = {Path("README.md")}
+EXEMPT_DOC_NAMES = {"CHANGELOG.md"}
+GENERATED_SUFFIX = ".reflection.dart"
 
 #: A section number: dotted, with an optional single letter suffix.
 NUMBER = r"[0-9]+(?:\.[0-9]+)*[a-z]?"
@@ -130,39 +139,54 @@ def sections(path: Path) -> set[str]:
     return found
 
 
-def dart_files(root: Path):
-    """Every shipped Dart file under `root`."""
-    for path in sorted(root.rglob("*.dart")):
-        parts = set(path.parts)
-        if SKIP_DIRS & parts:
+def shipped_files(root: Path):
+    """Every shipped Dart file and shipped markdown document under `root`."""
+    for path in sorted(root.rglob("*")):
+        if path.is_dir() or SKIP_DIRS & set(path.parts):
             continue
-        if not (SHIPPED_DIRS & parts):
-            continue
-        yield path
+        if path.suffix == ".dart":
+            if not (SHIPPED_DIRS & set(path.parts)):
+                continue
+            if path.name.endswith(GENERATED_SUFFIX):
+                continue
+            yield path
+        elif path.suffix == ".md":
+            if SHIPPED_DOC_DIR not in path.parts and path.name != "README.md":
+                continue
+            if path.name in EXEMPT_DOC_NAMES:
+                continue
+            if path.relative_to(REPO_ROOT) in EXEMPT_DOCS:
+                continue
+            yield path
 
 
 def references(path: Path):
     """Yield `(line, document, number)` for every citation in `path`.
 
-    `document` is `None` when no filename has been named in the comment block
-    yet, which is `check_section_refs.py`'s business rather than this one's.
+    `document` is `None` when no filename has been named in the block yet,
+    which is `check_section_refs.py`'s business rather than this one's.
+
+    A citation carries to the continuation lines of whatever block it was
+    written in, and no further. In Dart that block is the comment; in markdown
+    it is the paragraph, since a wrapped sentence is where the name and the
+    number most often end up on different lines.
     """
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return
+    prose = path.suffix == ".md"
     document = None
-    in_comment = False
+    in_block = False
     for number, line in enumerate(text.split("\n"), start=1):
         stripped = line.lstrip()
-        is_comment = stripped.startswith("///") or stripped.startswith("//")
-        # A citation carries to its continuation lines but not past the
-        # comment block it was written in.
-        if is_comment and not in_comment:
+        if prose:
+            continues_block = stripped != ""
+        else:
+            continues_block = stripped.startswith("//")
+        if not continues_block or not in_block:
             document = None
-        if not is_comment:
-            document = None
-        in_comment = is_comment
+        in_block = continues_block
         for match in REFERENCE.finditer(line):
             named = DOCUMENT.search(line[: match.start()].rstrip())
             if named:
@@ -221,7 +245,7 @@ def main(argv: list[str]) -> int:
     faults: list[tuple[Path, int, str, str]] = []
     unlocatable: Counter[str] = Counter()
 
-    for path in dart_files(root):
+    for path in shipped_files(root):
         scanned += 1
         for line, document, number in references(path):
             if document is None:
@@ -246,7 +270,7 @@ def main(argv: list[str]) -> int:
             print(f"  {name}  ({count} references)")
 
     print()
-    print(f"dart files scanned       : {scanned}")
+    print(f"files scanned            : {scanned}")
     print(f"section numbers resolved : {checked}")
     print(f"citing a missing section : {len(faults)}")
     return report_faults(len(faults))

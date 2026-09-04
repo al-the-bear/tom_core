@@ -9,7 +9,7 @@
 /// font at a given size, which means font metrics, line breaking, and a layout
 /// pass that can split a row across a page boundary. That is the *whole* hard
 /// part of a PDF writer, none of it is specific to this package, and writing it
-/// again would be the format-encoder work `csex11` explicitly warns against.
+/// again would be exactly the format-encoder work this package declines to own.
 ///
 /// The dependency is pure Dart with no native or Flutter part, so it is usable
 /// from a plain server isolate.

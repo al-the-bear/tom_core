@@ -889,7 +889,7 @@ and therefore auditable in its own right.
 
 - **An audit reporting API, and an application over it** — queries by actor,
   target, outcome or time window, and export of the result (overlaps CE-RP
-  reporting — see `csex11`). This is the deferred feature that
+  reporting). This is the deferred feature that
   [Reading a trail back is per
   sink](#reading-a-trail-back-is-per-sink-deliberately) points at: a reporting
   surface is where paged, filtered, storage-aware reads belong, not

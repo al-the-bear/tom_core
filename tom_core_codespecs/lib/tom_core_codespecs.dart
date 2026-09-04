@@ -1,17 +1,17 @@
 /// CodeSpecs-only gap-filler for `tom_core`.
 ///
-/// **Core principle (csm1 / `codespecs_mapping.md` §1.1):** every actual class
+/// **Core principle (`codespecs_mapping.md` §1.1):** every actual class
 /// a CodeSpec instantiates must be a `tom_core`-family class — one of the four
 /// packages `tom_core_kernel`, `tom_core_flutter`, `tom_core_server`, and
-/// `tom_flutter_ui` (the fourth basis, dsb6 /
+/// `tom_flutter_ui` (the fourth basis,
 /// `codespecs_mapping.md` §1.1 pillar (b)). Prefer reusing an existing
 /// `tom_core` class directly; only the **concrete** gap classes `tom_core`
 /// genuinely lacks live here — **never abstract `Cs*` bases** (the framework
 /// carries annotations only, `codespecs_mapping.md` §1.1) — keeping
 /// `tom_core` clean of CodeSpecs-only concerns.
 ///
-/// The gap classes are authored by the CodeSpecs waves: csm4 surveys `tom_core`
-/// per part (reuse / extend / new-in-codespecs) and the genuine gaps land here.
+/// The gap classes are what survives a per-part survey of `tom_core` (reuse /
+/// extend / new-in-codespecs): only the genuine gaps land here.
 ///
 /// **The package is dependency-free, and that is an invariant.**
 /// `pubspec.yaml` declares `dependencies: {}` and nothing under `lib/` imports
@@ -23,7 +23,7 @@
 /// therefore not a gap class — it belongs in the package whose type it needs,
 /// since taking the dependency here would retract both of those decisions.
 ///
-/// **csm2r7 — the four new parts (`codespecs_mapping.md` §1.1 pillar (b)).**
+/// **The four new parts (`codespecs_mapping.md` §1.1 pillar (b)).**
 /// CE-AU (Authentication) reuses `tom_core_server`
 /// `TomAuthenticationService`* and CE-CF (ServerConfiguration) reuses
 /// `TomBaseServerConfiguration`, so neither needs a gap class. CE-CC
@@ -69,9 +69,9 @@
 /// would therefore hold nothing, and it would give labels a second home — which
 /// the closed-vocabulary rule forbids.
 ///
-/// **csra2 — the remaining catalogued gaps.** The `codespecs_mapping.md` §4.1
-/// catalogue marks four further parts *gap*, and the csra2 cross-check
-/// confirmed each against the current `tom_core`: [TomLayoutModel] (CE-LO,
+/// **The remaining catalogued gaps.** The `codespecs_mapping.md` §4.1
+/// catalogue marks four further parts *gap*, and each was cross-checked
+/// against the current `tom_core`: [TomLayoutModel] (CE-LO,
 /// `codespecs_mapping.md` §5.2/§5.12/§5.22 — the base/override two-layer model
 /// `tom_flutter_ui`'s rendering-leaf `AclComponent` has no equivalent of),
 /// [TomMessageKeyRegistry] (CE-TX, `codespecs_mapping.md` §5.8/§5.21 — the

@@ -3,8 +3,8 @@
 ///
 /// ## Why it belongs next to the relational queue
 ///
-/// csex8's finding was that the job store and the lock **must share a failure
-/// domain**. A lock in one system and a queue in another can each be healthy
+/// The job store and the lock **must share a failure domain**. A lock in one
+/// system and a queue in another can each be healthy
 /// while the other is unreachable, and the resulting disagreement — the queue
 /// says node A claimed the run, the lock says node B holds it — has no
 /// resolution. So this lock is meant to live in the same [TomDataSource] as

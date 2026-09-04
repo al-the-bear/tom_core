@@ -1,4 +1,4 @@
-/// DB-backed tests for the relational scheduling pair (CSEXB3, CSEXC2).
+/// DB-backed tests for the relational scheduling pair.
 ///
 /// Two halves, and the first is the important one.
 ///
@@ -8,9 +8,9 @@
 /// `tom_core_kernel/test/contracts/scheduling_contract.dart`. That is the point
 /// of extracting it: a second implementation is then verified against the
 /// required behaviour rather than merely resembling the first. The suite has
-/// already earned this once — during csex8 it caught a file-lock divergence in
-/// which the live holder re-acquiring its own lease was issued a *new* fencing
-/// token, quietly fencing itself out.
+/// already earned this once, catching a file-lock divergence in which the live
+/// holder re-acquiring its own lease was issued a *new* fencing token, quietly
+/// fencing itself out.
 ///
 /// **Integration.** What only a real server can substantiate: that the database
 /// arbitrates a contended claim to exactly one winner across independent

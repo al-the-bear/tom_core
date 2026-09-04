@@ -382,8 +382,8 @@ departure from a holder that vanished.
 matched rows, so an `UPDATE` writing values already present affects zero rows — a
 renewal landing in the same clock instant with the same TTL would look like a
 lost lease and fall through to takeover. That is precisely the class of bug the
-kernel's contract suite caught during csex8 (a self-re-acquisition that wrongly
-issued a new token). `version` makes a matching update always change the row, and
+kernel's contract suite exists to catch (a self-re-acquisition that wrongly
+issues a new token). `version` makes a matching update always change the row, and
 doubles as the compare-and-set guard that lets exactly one of several racing
 takeovers win.
 

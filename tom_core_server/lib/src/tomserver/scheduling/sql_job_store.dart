@@ -10,10 +10,10 @@
 /// database they are already talking to. The kernel has no persistence layer,
 /// so the relational implementation belongs here.
 ///
-/// It is not merely the durable option. csex8 established that the queue and
-/// the [TomLeaseLock] **must share a failure domain**: if the queue says one
-/// node claimed a run while the lock says another node holds it, the
-/// disagreement has no resolution. So this store is meant to be paired with
+/// It is not merely the durable option. The queue and the [TomLeaseLock]
+/// **must share a failure domain**: if the queue says one node claimed a run
+/// while the lock says another node holds it, the disagreement has no
+/// resolution. So this store is meant to be paired with
 /// `TomSqlLeaseLock` over the same [TomDataSource] — one connection, one thing
 /// to be up or down.
 ///

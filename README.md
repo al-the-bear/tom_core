@@ -203,7 +203,7 @@ reports and never gates.
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, or `const` one that is not |
 | [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, and every framework name in it must resolve |
-| [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code that name no resolvable document |
+| [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
 | [`tool/check_comments_read_as_is.py`](tool/check_comments_read_as_is.py) | Finds work-item ids and history narration in shipped text |
 | [`tool/check_test_inventories.py`](tool/check_test_inventories.py) | Audits a document that claims to inventory a package's test files against the files the runner discovers |
@@ -471,9 +471,20 @@ and a reader who could would find a build log rather than a rule. A test name is
 the sharpest case: it is read as a specification, and `bug §75` specifies
 nothing, so a failure reports an index entry instead of the contract that broke.
 
-The check covers `lib/`, `test/` and `example/` — the three directories whose
-contents leave the workspace. Plans and other markdown are not scanned, because
-cross-referencing its own sections is what a plan is for.
+The check covers everything that leaves the workspace: the Dart under `lib/`,
+`test/`, `example/`, `bin/` and `tool/`, and the prose in each package's `doc/`
+and `README.md`. Quest plans are not scanned, because cross-referencing its own
+sections is what a plan is for.
+
+Shipped prose was once excluded on the same reasoning, and the exclusion cost
+the gate its whole markdown population — the sample packages' documentation
+carried references the Dart-only scan could never see. Almost all of them are
+correct: a `§N` that indexes a numbered heading of the *citing* document, which
+a reader resolves by scrolling, so the gate resolves it the same way. What the
+widened scope catches is the one reference that looks identical and is not — a
+bare `§23` in a document that has no §23, which in this tree matched a numbered
+heading in two different specifications. That is worse than an unresolvable
+reference: a reader who follows it lands somewhere plausible and wrong.
 
 The question it asks is the one that matters to the reader: *can I see, from
 here, which document this indexes?* A document name is a markdown-quoted or bare
@@ -488,9 +499,7 @@ still cannot be resolved from anywhere and is still a fault.
 `comments_read_as_is_test.dart` is skipped: a rule has to be able to quote the
 shape it rejects.
 
-The five `tom_core_*` packages are clean and held there. `tom_flutter_ui`,
-`tom_flutter_form_test`, `tom_flutter_ui_test` and `tom_core_codespecs` carry
-the remaining backlog, so run those with a subtree argument.
+The whole repository is clean and held there, prose included.
 
 ```bash
 python3 tool/check_section_numbers.py                  # the whole repository
@@ -503,6 +512,12 @@ asks whether a `§` reference names a document a reader can reach;
 actually has that section. Both failures read identically in the source — a
 plausible number beside a plausible filename — and only the second survives the
 first check, so it needs its own pass.
+
+The two scan **exactly the same files**, and that is a property to preserve
+rather than a coincidence. They ask consecutive questions about one reference,
+so a file only one of them sees is half-checked in the shape hardest to notice:
+a green pair of gates. Widening the first to shipped prose therefore widened
+this one too, which brought 41 previously invisible markdown citations under it.
 
 ```bash
 python3 tool/check_comments_read_as_is.py                  # the whole repository
@@ -531,13 +546,40 @@ framework's published guideline, testkit and concept vocabularies rather than a
 work item. And `step 4` in an example refers to something the reader is holding;
 only `Todo <n>` and `plan step <n>` point outside the artefact.
 
-This is a Python gate rather than four more copies of
-`tom_core_kernel/test/comments_read_as_is_test.dart` because the rule is one
-rule: four hand-synchronised copies in two dialects — `tom_core_flutter` runs on
-`flutter_test`, and `tom_core_samples` is not a package at all — would drift,
-and Dart cannot share `test/` code across packages without publishing it. The
-kernel keeps its in-suite guard as the fastest signal for the package it guards;
-this gate covers every package, including the sample suite's orphan markdown.
+This is a Python gate rather than a copy of
+`tom_core_kernel/test/comments_read_as_is_test.dart` per package because the
+rule is one rule: hand-synchronised copies in two dialects — `tom_core_flutter`
+runs on `flutter_test`, and `tom_core_samples` is not a package at all — would
+drift, and Dart cannot share `test/` code across packages without publishing it.
+
+That drift is not a prediction. Two copies exist, and they no longer implement
+the same rule: the kernel's matches a list of known quest prefixes, while
+`advanced_ops_server`'s matches ids by *shape*, because the prefix list had let
+`csexd4` and `csexd6` open that package's authorization suite while reporting it
+clean. The fix was made in the copy and never travelled back — so the kernel's
+guard still had the blind spot, and so did this gate, by which time the same
+`cs` family had reached shipped `lib/` dartdoc in three further packages.
+Sixteen copies would not be sixteen guards, only sixteen places for the next fix
+to fail to leave. Coverage lives here, where there is one implementation to fix;
+the two in-suite guards stay as the fastest signal for the packages they guard.
+
+The gate keeps the prefix list rather than adopting the shape rule, which is the
+opposite conclusion to the one `advanced_ops_server` reaches — and both are
+right at their own scale. Shape-matching works there because a back-office
+sample's vocabulary is small enough to enumerate the exceptions. Repo-wide the
+same shape matches 397 further tokens across 4,582 lines and nearly every one is
+real (`demo01` and twenty-seven siblings, `material3`, `black54`, `operant1`),
+so the exemption list would grow without bound and start exempting things by
+accident. At that scale the enumerable set is the *ids*, so the list is widened
+when a family leaks in, as it was for `cs`.
+
+Generated Dart is skipped. `*.reflection.dart` carries whatever its sources
+carried and is repaired by regenerating, never by editing; both in-suite guards
+had always skipped it and this gate had not. The omission was invisible only
+because no generated name happened to collide with a quest prefix, and it nearly
+stopped being invisible — the reflection seed emits `prefix167`-style names, and
+one file alone carries 46,929 of them, so the first collision would have buried
+the report rather than sharpened it.
 
 ```bash
 python3 tool/check_test_inventories.py

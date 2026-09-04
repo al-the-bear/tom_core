@@ -19,16 +19,26 @@
 /// touched, so the link runs todo → code and no shipped artefact has to carry an
 /// identifier that outlives the work item.
 ///
-/// `tom_core_kernel/test/comments_read_as_is_test.dart` guards the same two
-/// habits over the kernel — including the three `codespecs_mapping.md` §5.26
-/// citations in `access_controls.dart` that this package's one was written
-/// alongside. It is a sibling rather than a shared rule because a test cannot be
-/// imported across packages, and the two have since diverged in two ways that
-/// are worth knowing about: this one scans `bin/`, which the kernel does not
-/// have, and it detects ids by [_identifier]'s *shape* rather than by a list of
-/// known quest prefixes. The prefix list is what let `csexd4` and `csexd6` — ids
-/// from the `webwork` quest — open this package's authorization suite while the
-/// guard reported it clean.
+/// **This guard is local; the rule is not.** `tool/check_comments_read_as_is.py`
+/// and `tool/check_section_refs.py` apply the same two habits to every package
+/// in the repository, and they are the authority. This test and its sibling in
+/// `tom_core_kernel` exist for a different reason: they run inside
+/// `testkit :test`, so a regression here surfaces in the ordinary test run
+/// rather than at the gate, and they can be package-specific where the
+/// repo-wide gate must be uniform — this one scans `bin/`, which most packages
+/// do not have.
+///
+/// **Why there are two of these and not sixteen.** The obvious next step is to
+/// copy this file into every sample package. It is the wrong step, and the two
+/// existing copies are why: they no longer implement the same rule. This one
+/// matches ids by [_identifier]'s *shape* because the kernel's list of known
+/// quest prefixes let `csexd4` and `csexd6` — ids from the `webwork` quest —
+/// open this package's authorization suite while the guard reported it clean.
+/// That fix was made here and travelled nowhere: the kernel's copy still had the
+/// blind spot, and so did the repo-wide gate, by which time the same family had
+/// reached shipped `lib/` dartdoc in three other packages. Sixteen copies would
+/// not be sixteen guards, only sixteen places for the next fix to fail to leave.
+/// Coverage belongs to the gate, which has one implementation to fix.
 library;
 
 import 'dart:io';
@@ -67,6 +77,17 @@ void main() {
 /// The word boundaries are load-bearing: they keep the rule off camelCase, where
 /// a digit run is followed by more letters (`sha256Digest` does not match, the
 /// standalone `sha256` does).
+///
+/// **The argument above is true of this package and false of the repository**,
+/// which is why `tool/check_comments_read_as_is.py` enumerates prefixes instead.
+/// It holds here because a back-office sample's vocabulary is small enough for
+/// [_knownTechnicalTokens] to close. Repo-wide the same shape matches 397
+/// further tokens across 4,582 lines and nearly every one is real — `demo01` and
+/// twenty-seven siblings, `material3`, `black54`, `operant1`, `pass2` — so the
+/// exemption list would have to grow without bound and would soon be exempting
+/// things by accident. At that scale the sets swap places: the identifiers worth
+/// catching are the enumerable ones, and the gate widens its prefix list when a
+/// family leaks in, as it did for `cs`.
 final _identifier = RegExp(r'\b[a-z]{2,10}\d+\b');
 
 /// Tokens of [_identifier]'s shape that name something a reader can look up.

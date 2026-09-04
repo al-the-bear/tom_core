@@ -8,8 +8,8 @@
 ///
 /// ## Why a controller and not just a `Future`
 ///
-/// Three of the four things csfs2 asks for — progress, cancel, retry — are not
-/// expressible as a future. Progress arrives *during* it, cancel has to reach
+/// Three of the four things a file field needs — progress, cancel, retry — are
+/// not expressible as a future. Progress arrives *during* it, cancel has to reach
 /// into it, and retry needs to know what the last attempt was. Holding those in
 /// one object is also what lets the field, the dialog and the preview all watch
 /// the same transfer.

@@ -84,7 +84,7 @@ TomFrameworkTable jobRunTable(String table) => TomFrameworkTable(
 /// an `UPDATE` that writes the values already present affects zero rows. A
 /// renewal landing in the same clock instant with the same TTL would therefore
 /// look like a lost lease and fall through to takeover — precisely the
-/// self-fencing bug the kernel's contract suite caught during csex8.
+/// self-fencing bug the kernel's scheduling contract suite exists to catch.
 /// Incrementing `version` on every write makes a matching update always change
 /// the row, and doubles as the compare-and-set guard for takeover.
 TomFrameworkTable leaseTable(String table) => TomFrameworkTable(

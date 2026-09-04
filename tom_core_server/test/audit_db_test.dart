@@ -3,7 +3,7 @@
 /// The pure audit surface — records, the hash chain, the sinks, policy
 /// resolution — is covered connection-free by `audit_test.dart`. This file
 /// exercises the one claim that only a real database can substantiate, and the
-/// one the csex9 done-bar names: *auditable actions produce attributable
+/// one the whole design turns on: *auditable actions produce attributable
 /// records through the chokepoint without per-handler opt-in*. Every test here
 /// therefore calls the ordinary [TomSqlDatasourceRepository] API that
 /// application code calls — `save`, `delete`, `deleteById`, `deleteAllById` —

@@ -30,9 +30,22 @@ sequence of states that produced it. A test name in particular is read as a
 specification, and ``bug §75`` specifies nothing: when it fails, the report
 names an index entry instead of the contract that broke.
 
-The check therefore covers ``lib/``, ``test/`` and ``example/`` -- the three
-places whose contents leave the workspace. Quest plans and other markdown are
-not scanned: cross-referencing its own sections is exactly what a plan is for.
+The check therefore covers everything that leaves the workspace: the Dart under
+``lib/``, ``test/``, ``example/``, ``bin/`` and ``tool/``, and the prose in each
+package's ``doc/`` and ``README.md``. Quest plans are not scanned:
+cross-referencing its own sections is exactly what a plan is for.
+
+**Why the prose is in scope, given that a document *can* cite itself.** It was
+once excluded on the reasoning that markdown is where cross-references belong,
+and the exclusion cost the gate its whole shipped-prose population: the sample
+packages' documentation carried section references the Dart gate could never
+see. Almost all of them turned out to be correct -- a numbered heading of the
+citing document, which a reader resolves by scrolling -- so the answer is not to
+fail them but to *resolve* them; see [own_sections]. What the widened scope
+actually catches is the one reference that looks identical and is not: a bare
+``§23`` in a document that has no §23, which in this tree matched a numbered
+heading in two different specifications. That is worse than an unresolvable
+reference, because a reader who follows it lands somewhere plausible and wrong.
 
 **Lettered sections count too.** A section number may carry an appendix letter
 -- ``§A.4``, ``§A.10`` -- and such a reference is no more resolvable than a
@@ -86,9 +99,16 @@ from gate_report import report_faults
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
 
-#: The directories whose contents ship. Everything else in a package is
-#: workspace-internal and may reference the plans freely.
-SHIPPED_DIRS = {"lib", "test", "example"}
+#: The directories whose Dart ships. Everything else in a package is
+#: workspace-internal and may reference the plans freely. ``bin`` and ``tool``
+#: are here because a package's entry points and its scripts are read by whoever
+#: runs them, which is the same reader ``lib`` and ``test`` are written for.
+SHIPPED_DIRS = {"lib", "test", "example", "bin", "tool"}
+
+#: The directory whose markdown ships, alongside each package's ``README.md``.
+#: Kept separate from [SHIPPED_DIRS] because prose resolves differently from
+#: code: a document may cite its own sections, and code has no sections.
+SHIPPED_DOC_DIR = "doc"
 
 #: Files that quote the forbidden constructions in order to forbid them. A rule
 #: has to be able to state the shape it rejects, so the in-suite guard's own
@@ -96,11 +116,22 @@ SHIPPED_DIRS = {"lib", "test", "example"}
 #: defect. Matched by filename, since the guard is copied per package.
 EXEMPT_FILES = {"comments_read_as_is_test.dart"}
 
+#: Markdown that is workspace-internal despite sitting where shipped prose does.
+#: The repo README indexes the quest's own working documents -- naming their
+#: sections is its job -- and a changelog is a record of the sequence of states
+#: this convention otherwise keeps out of shipped text. Relative to [REPO_ROOT].
+EXEMPT_DOCS = {Path("README.md")}
+EXEMPT_DOC_NAMES = {"CHANGELOG.md"}
+
+#: Generated Dart carries whatever its sources carried and is repaired by
+#: regenerating, never by editing.
+GENERATED_SUFFIX = ".reflection.dart"
+
 #: A section reference: the sign, optional space, a section number. The number
 #: may carry a leading appendix letter (``§A.4``, ``§A.10``) as well as being
 #: plain (``§75``, ``§5.26``). Both forms index a section; only the letter form
 #: was invisible here, and what is invisible to a gate accumulates.
-REFERENCE = re.compile(r"§\s*[A-Za-z]?\.?[0-9]+")
+REFERENCE = re.compile(r"§\s*([A-Za-z]?\.?[0-9]+(?:\.[0-9]+)*)")
 
 #: What has to sit immediately left of the sign for the reference to resolve on
 #: its own. Anchored at the end, so it is the *nearest* preceding token that
@@ -123,32 +154,70 @@ DOCUMENT_NAME = re.compile(
 #: block, and so whether a wrapped sentence may be read as a whole.
 COMMENT = re.compile(r"^\s*///?")
 
-
-def dart_files(root: Path):
-    """Every shipped Dart file under ``root``."""
-    for path in sorted(root.rglob("*.dart")):
-        parts = set(path.parts)
-        if SKIP_DIRS & parts:
-            continue
-        if not (SHIPPED_DIRS & parts):
-            continue
-        if path.name in EXEMPT_FILES:
-            continue
-        yield path
+#: A markdown heading that opens with its own section number, in either of the
+#: two styles this tree writes: ``## 23. Demo Requirements`` and
+#: ``### 5.16 User Settings``. The number is what a ``§`` in the same document
+#: indexes, so it is what makes such a reference resolvable.
+NUMBERED_HEADING = re.compile(r"^#{1,6}\s+([A-Za-z]?\.?[0-9]+(?:\.[0-9]+)*)(?:[.\s]|$)")
 
 
-def in_view(lines: list[str], index: int) -> str:
+def shipped_files(root: Path):
+    """Every shipped Dart file and shipped markdown document under ``root``."""
+    for path in sorted(root.rglob("*")):
+        if path.is_dir() or SKIP_DIRS & set(path.parts):
+            continue
+        if path.suffix == ".dart":
+            if not (SHIPPED_DIRS & set(path.parts)):
+                continue
+            if path.name in EXEMPT_FILES:
+                continue
+            if path.name.endswith(GENERATED_SUFFIX):
+                continue
+            yield path
+        elif path.suffix == ".md":
+            if SHIPPED_DOC_DIR not in path.parts and path.name != "README.md":
+                continue
+            if path.name in EXEMPT_DOC_NAMES:
+                continue
+            if path.relative_to(REPO_ROOT) in EXEMPT_DOCS:
+                continue
+            yield path
+
+
+def own_sections(lines: list[str]) -> set[str]:
+    """The section numbers a document gives its own headings.
+
+    A ``§5.16`` in a document that *has* a §5.16 names what it indexes as
+    plainly as a filename would: the reader scrolls. This is the whole reason
+    shipped prose can be scanned at all -- almost every reference in it is of
+    this kind, and a gate that failed them would be failing correct writing.
+    Empty for Dart, which has no headings, so the rule costs code nothing.
+    """
+    numbers = set()
+    for line in lines:
+        match = NUMBERED_HEADING.match(line)
+        if match:
+            numbers.add(match.group(1))
+    return numbers
+
+
+def in_view(lines: list[str], index: int, *, prose: bool) -> str:
     """The text a reader of ``lines[index]`` can take the document name from.
 
-    The line itself, plus either neighbour that is part of the same comment
-    block -- a wrapped sentence is one sentence, and the writer did not choose
-    where it broke. A reference on a *code* line gets only its own line, since
-    the comment above it is about the declaration, not about the reference.
+    The line itself, plus either neighbour it shares a block with -- a wrapped
+    sentence is one sentence, and the writer did not choose where it broke. In
+    Dart the block is the comment: a reference on a *code* line gets only its
+    own line, since the comment above it is about the declaration rather than
+    about the reference. In markdown the block is the paragraph, so the
+    neighbours are simply the adjacent non-blank lines.
     """
     span = [lines[index]]
-    if COMMENT.match(lines[index]):
+    joins_block = (
+        (lambda text: text.strip() != "") if prose else (lambda text: COMMENT.match(text))
+    )
+    if joins_block(lines[index]):
         for neighbour in (index - 1, index + 1):
-            if 0 <= neighbour < len(lines) and COMMENT.match(lines[neighbour]):
+            if 0 <= neighbour < len(lines) and joins_block(lines[neighbour]):
                 span.append(lines[neighbour])
     return " ".join(span)
 
@@ -160,12 +229,19 @@ def unresolved(path: Path) -> list[tuple[int, str]]:
     except (OSError, UnicodeDecodeError):
         return []
     lines = text.split("\n")
+    prose = path.suffix == ".md"
+    sections = own_sections(lines) if prose else set()
     faults = []
     for index, line in enumerate(lines):
+        if prose and NUMBERED_HEADING.match(line):
+            # The heading declares a section; it does not reference one.
+            continue
         for match in REFERENCE.finditer(line):
             if NAMED_SOURCE.search(line[: match.start()]):
                 continue
-            if DOCUMENT_NAME.search(in_view(lines, index)):
+            if match.group(1) in sections:
+                continue
+            if DOCUMENT_NAME.search(in_view(lines, index, prose=prose)):
                 continue
             faults.append((index + 1, line.strip()))
             break  # one report per line is enough to find it
@@ -180,7 +256,7 @@ def main(argv: list[str]) -> int:
 
     scanned = 0
     faults: list[tuple[Path, int, str]] = []
-    for path in dart_files(root):
+    for path in shipped_files(root):
         scanned += 1
         for line, text in unresolved(path):
             faults.append((path, line, text))
@@ -189,7 +265,7 @@ def main(argv: list[str]) -> int:
         print(f"{path.relative_to(REPO_ROOT)}:{line}: {text}")
 
     print()
-    print(f"dart files scanned       : {scanned}")
+    print(f"files scanned            : {scanned}")
     print(f"unresolvable references  : {len(faults)}")
     return report_faults(len(faults))
 

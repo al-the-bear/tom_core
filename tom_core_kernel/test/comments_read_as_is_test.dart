@@ -23,7 +23,16 @@ import 'package:test/test.dart';
 /// the code carrying an identifier that outlives the work item.
 ///
 /// This is a test rather than a shell script on purpose: it runs on every
-/// `testkit :test`, which is the only kind of guard that actually holds.
+/// `testkit :test`, so a regression surfaces in the ordinary test run.
+///
+/// **It covers this package only, and it is not the rule.**
+/// `tool/check_comments_read_as_is.py` and `tool/check_section_refs.py` apply
+/// the same two habits to every package in the repository and are the
+/// authority; this test is the fast half of the same convention. Keeping the
+/// coverage in one repo-wide gate rather than in a copy of this file per package
+/// is a decision the two existing copies earned — see the reasoning in
+/// `tom_core_samples/advanced_ops_server/test/comments_read_as_is_test.dart`,
+/// where a fix to the id rule was made and never travelled back here.
 void main() {
   // ===========================================================================
   // Comments read as-is

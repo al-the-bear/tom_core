@@ -6,9 +6,9 @@
 /// The kernel ships two implementations of each port (memory and file); the
 /// relational pair lives one layer up in `tom_core_server`, over the same
 /// contract. A second implementation that merely *resembles* the first is not
-/// good enough — during csex8 this very suite caught a file-lock divergence in
-/// which a live holder re-acquiring its own lease was issued a *new* fencing
-/// token, silently fencing itself out. So the suite is the shared artefact and
+/// good enough — this very suite caught a file-lock divergence in which a live
+/// holder re-acquiring its own lease was issued a *new* fencing token, silently
+/// fencing itself out. So the suite is the shared artefact and
 /// each implementation is a parameter.
 ///
 /// It sits in `test/` rather than `lib/` deliberately. Putting it in `lib/`

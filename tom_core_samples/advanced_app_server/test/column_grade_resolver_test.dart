@@ -3,8 +3,8 @@
 /// item's `attachment` is a *composition* of two layers the app server already
 /// had, so it verifies over their in-memory seams with no server and no MariaDB.
 ///
-/// This is the unit-level half of csexd13's centrepiece — *the file endpoint
-/// under the existing four-role matrix*. Here the composition is pinned per role
+/// This is the unit-level half of *the file endpoint under the existing
+/// four-role matrix*. Here the composition is pinned per role
 /// (a viewer resolves `read`, an owner `full`) and at every closed-safe edge; the
 /// live half, where `read` really does download and really is refused the
 /// upload over HTTP, is asserted by `advanced_client_core`'s file-transfer
