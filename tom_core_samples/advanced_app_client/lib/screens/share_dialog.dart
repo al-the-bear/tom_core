@@ -12,8 +12,11 @@
 /// directly. Offline the five seeded ids are `u-alice`, `u-bob`, `u-carol`,
 /// `u-dave` and `u-erin`; on the live stack the grantee is the numeric
 /// `auth_db` user id the server parses (alice `2` … erin `6`), so the id to
-/// type depends on the run mode. A denied share (only the project owner may
-/// share) surfaces inline rather than closing the dialog.
+/// type depends on the run mode. The dialog does not have to know which: the
+/// field's hint is `share.grantee.hint` out of the active bundle, and each
+/// backend's bundle hints its own `UserDto.id`s — `u-carol` offline, `4` live.
+/// A denied share (only the project owner may share) surfaces inline rather
+/// than closing the dialog.
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';

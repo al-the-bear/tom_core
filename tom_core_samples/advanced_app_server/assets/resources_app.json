@@ -82,8 +82,8 @@
   },
   "share": {
     "title": "Share project",
-    "granteeRequired": "Enter a grantee user id (e.g. u-carol).",
-    "grantee": { "label": "Grantee user id", "hint": "u-carol" },
+    "granteeRequired": "Enter a numeric grantee user id (e.g. 4, which is carol).",
+    "grantee": { "label": "Grantee user id", "hint": "4" },
     "role": "Role",
     "cancel": "Cancel"
   },

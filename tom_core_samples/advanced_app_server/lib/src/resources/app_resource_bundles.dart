@@ -35,6 +35,21 @@
 /// under `todo.item.*`: [AppResourceBundles.gradableItemKeys] derives the
 /// graded field set from the `todo.item.*` keys, and the attachment is not a
 /// graded field — it is a file slot, authorized by the item's resource state.
+///
+/// **`share.grantee.hint` is a live id, and deliberately unlike the client's.**
+/// A hint is an instruction to type something, so it has to name a value *this*
+/// server accepts. `ShareRequest.granteeUserId` carries a `UserDto.id`, and
+/// this stack's `UserDto.id` is the numeric `auth_db` surrogate rendered as a
+/// string (alice `2` … erin `6`, via `userRecordToDto`) — `AppShareService
+/// .share` parses it with `int.tryParse` and raises `app.share.invalid` on
+/// anything else. So the bundle hints `4`.
+///
+/// The app client ships the same three `share.*` strings for its offline run
+/// and hints `u-carol`, which is right for the backend *it* serves: the
+/// in-memory fake keys its `UserDto.id`s `u-alice` … `u-erin`. The rule is the
+/// same on both sides — hint the backend's own `UserDto.id` — and it is why
+/// the two bundles say different things on purpose, and why neither may be
+/// copied over the other.
 library;
 
 import 'dart:convert';

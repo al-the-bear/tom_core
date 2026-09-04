@@ -206,6 +206,14 @@ class InMemoryAppBackend implements AppBackend {
     'board.item.subtask.hint': 'Add a step…',
     'board.item.subtask.submit': 'Add step',
     'board.share': 'Share',
+    // The share chrome, and the one block that deliberately says something
+    // different from the server bundle. A hint is an instruction to type
+    // something, and `ShareRequest.granteeUserId` carries a `UserDto.id`, so
+    // each bundle hints its own backend's ids: `u-carol` here, because [_users]
+    // keys them `u-alice` … `u-erin`; `4` in the live server's bundle, because
+    // there a `UserDto.id` is the numeric `auth_db` surrogate and `/share`
+    // parses it with `int.tryParse`. Same rule, different ids — so neither
+    // bundle may be copied over the other.
     'share.title': 'Share project',
     'share.granteeRequired': 'Enter a grantee user id (e.g. u-carol).',
     'share.grantee.label': 'Grantee user id',
