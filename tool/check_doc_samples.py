@@ -8,7 +8,7 @@ Run from anywhere::
 
 Exits non-zero when any sample is wrong, so it can gate a build.
 
-Three faults are reported. The first two are the two halves of one mistake:
+Four faults are reported. The first two are the two halves of one mistake:
 
 ``POSITIONAL``
     A constructor declared to take named parameters only, called with a
@@ -18,7 +18,35 @@ Three faults are reported. The first two are the two halves of one mistake:
     The reverse: a constructor whose first parameter is a required positional,
     called with a named argument first.
 
-The third is about a keyword rather than a bracket:
+The third counts rather than classifies:
+
+``ARITY``
+    A call passing the wrong *number* of arguments --
+    ``LiveAppBackend(auth, api)`` against a three-parameter constructor. Style
+    and count are independent failures: that call is positional against a
+    positional signature, so the two rules above pass it, and for a year no
+    arity fault could be reported because none could be detected.
+
+    **Only for a parameter list that is entirely required and positional** --
+    no ``[`` optional group, no ``{`` named group, no ``=`` default. For those
+    the required count is a single number decidable from the declaration text,
+    so a call whose top-level argument count differs is wrong with no context
+    needed. The moment a list carries any of the three the requirement becomes
+    a range, and a range is not what this file reports; ``parameter_arity``
+    returns ``None`` and the constructor is skipped. That is the narrow,
+    provably-noise-free slice, chosen over the wider one for the reason the
+    closing line of this docstring gives.
+
+    Both sides are counted by one scanner, which splits on commas at bracket
+    depth one and ignores a trailing comma. It differs between the two only
+    over angle brackets: in a declaration a ``<`` is always a type argument and
+    nests cleanly, so it is tracked; in a call it may be a comparison, so a
+    top-level ``<`` or ``>`` abandons the count instead of risking a wrong
+    split. ``=>`` is exempt from that, being a lambda arrow and never a
+    comparison -- without the exemption every sample passing a callback would
+    drop out of the check.
+
+The fourth is about a keyword rather than a bracket:
 
 ``CONST``
     A const instance of a class that has no ``const`` constructor. This is the
@@ -70,8 +98,22 @@ import graph there is no way to tell a genuine cross-package reference from a
 name collision, and the collisions are the common case -- the `User` a document
 sketches inside its own fence is not some other package's `User`. Argument
 shapes that cannot be resolved without a parser are skipped too, as are classes
-with more than one constructor signature of the same name across files. A rule
-that never cries wolf is one people leave switched on.
+with more than one constructor signature of the same name across files.
+
+**Text inside a ``//`` comment is not checked, and that is a documentation
+convention rather than a limitation to be lifted.** ``strip_noise`` blanks
+comments before any matching, because prose is the one real source of false
+positives here -- ``// principal.user -> TomUser (name, email)`` reads as a
+positional call to anything that only looks at brackets, and no tightening of
+the pattern makes English stop resembling Dart. The consequence is a rule for
+the documents: **an API construction is written as real code, never as comment
+prose.** ``// or LiveAppBackend(auth, api)`` rots exactly like code and is
+checked by nothing; the same claim written as a second fenced line, or as the
+call the sample actually makes, is inside this gate's field of view. A comment
+may say *why* a constructor is called as it is; it may not be where the call
+itself is shown.
+
+A rule that never cries wolf is one people leave switched on.
 """
 
 from __future__ import annotations
@@ -165,6 +207,107 @@ def parameter_style(text: str, paren: int) -> str:
     return POSITIONAL
 
 
+def top_level_segments(text: str, paren: int, *, generics: bool) -> list[str] | None:
+    """The comma-separated parts of the bracketed list opening at ``paren``.
+
+    Splits on commas at depth one, so nested calls, collections and function
+    types stay whole, and drops an empty trailing part so ``(a, b,)`` counts
+    two. Comments and string bodies inside the list are stepped over -- a comma
+    in either is punctuation, not a separator.
+
+    ``None`` means "do not answer": the list is unterminated (the fence showed
+    only part of the call), a block comment never closes, or -- with
+    ``generics`` off -- a bare ``<`` or ``>`` appears at the top level. That
+    last one is the whole reason the flag exists. In a *declaration* an angle
+    bracket is always a type argument and nests cleanly, so it is tracked; in a
+    *call* it may be a comparison, and there is no way to tell which from the
+    text. Guessing would split ``Foo(a < b, c)`` into three parts and report a
+    fault that is not there, so the count is abandoned instead. ``=>`` is the
+    one exemption -- a lambda arrow is never a comparison, and without it every
+    sample that passes a callback would drop out of the check.
+    """
+    depth = 0
+    angle = 0
+    segments: list[str] = []
+    buf: list[str] = []
+    i = paren
+    n = len(text)
+    while i < n:
+        char = text[i]
+        pair = text[i:i + 2]
+        if pair == "//":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        if pair == "/*":
+            close = text.find("*/", i + 2)
+            if close == -1:
+                return None
+            i = close + 2
+            continue
+        if pair == "=>":
+            buf.append(pair)
+            i += 2
+            continue
+        if char in "'\"":
+            quote = char
+            j = i + 1
+            while j < n and text[j] != quote:
+                j += 2 if text[j] == "\\" else 1
+            if j >= n:
+                return None
+            buf.append(text[i:j + 1])
+            i = j + 1
+            continue
+        if char in "([{":
+            depth += 1
+            if depth == 1:
+                i += 1
+                continue  # the opening bracket itself is not content
+        elif char in ")]}":
+            depth -= 1
+            if depth == 0:
+                segments.append("".join(buf))
+                return [part for part in (s.strip() for s in segments) if part]
+        elif char == "<" or char == ">":
+            if not generics:
+                return None
+            angle += 1 if char == "<" else -1
+            angle = max(angle, 0)
+        elif char == "," and depth == 1 and angle == 0:
+            segments.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+        buf.append(char)
+        i += 1
+    return None
+
+
+def parameter_arity(text: str, paren: int) -> int | None:
+    """How many arguments a call on the declaration at ``paren`` must pass.
+
+    ``None`` whenever that is not a single number. An optional-positional
+    ``[`` group, a named ``{`` group or an ``=`` default each turn the
+    requirement into a range, and this check reports counts rather than ranges
+    -- see the ``ARITY`` entry in the module docstring for why the slice is
+    drawn there.
+    """
+    segments = top_level_segments(text, paren, generics=True)
+    if segments is None:
+        return None
+    if any(bracket in segment for segment in segments for bracket in "[{="):
+        return None
+    return len(segments)
+
+
+def call_arity(text: str, paren: int) -> int | None:
+    """How many arguments the call at ``paren`` passes, or ``None`` if the
+    text does not say unambiguously."""
+    segments = top_level_segments(text, paren, generics=False)
+    return None if segments is None else len(segments)
+
+
 def package_of(path: Path) -> Path | None:
     """The nearest ancestor of ``path`` holding a ``pubspec.yaml``."""
     for parent in path.parents:
@@ -180,11 +323,19 @@ Index = dict[Path, dict[tuple[str, str], set[str]]]
 # not a bool, for the same reason ``Index`` holds a set of styles: two files
 # declaring the same name differently leave no single rule to apply.
 ConstIndex = dict[Path, dict[tuple[str, str], set[bool]]]
+# ``package -> (class, constructor name) -> {required argument count}``, with
+# ``None`` in the set for a declaration whose count is not a single number. A
+# set again, and for the sharper version of the same reason: a name declared
+# decidably in one file and undecidably in another yields ``{2, None}``, whose
+# size alone disqualifies it -- the undecidable declaration cannot be silently
+# outvoted by the decidable one.
+ArityIndex = dict[Path, dict[tuple[str, str], set[int | None]]]
 
 
-def constructor_index(root: Path) -> tuple[Index, ConstIndex]:
+def constructor_index(root: Path) -> tuple[Index, ConstIndex, ArityIndex]:
     """``package -> (class, constructor name) -> {styles}``, and the same
-    keys mapped to whether the declaration carries ``const``.
+    keys mapped to whether the declaration carries ``const`` and to how many
+    arguments it requires.
 
     **Indexed per package, and a document is only checked against its own
     package.** Indexing repository-wide is the tempting shortcut -- a document
@@ -198,6 +349,7 @@ def constructor_index(root: Path) -> tuple[Index, ConstIndex]:
     """
     index: Index = {}
     consts: ConstIndex = {}
+    arities: ArityIndex = {}
     for path in dart_files(root):
         package = package_of(path)
         if package is None:
@@ -219,7 +371,10 @@ def constructor_index(root: Path) -> tuple[Index, ConstIndex]:
             consts.setdefault(package, {}).setdefault(key, set()).add(
                 "const" in match.group("mods")
             )
-    return index, consts
+            arities.setdefault(package, {}).setdefault(key, set()).add(
+                parameter_arity(text, match.end() - 1)
+            )
+    return index, consts, arities
 
 
 def strip_noise(block: str) -> str:
@@ -277,13 +432,15 @@ def fenced_dart(text: str):
         index += 1
 
 
-def audit(path: Path, index: Index, consts: ConstIndex) -> list[tuple[int, str, str]]:
+def audit(path: Path, index: Index, consts: ConstIndex,
+          arities: ArityIndex) -> list[tuple[int, str, str]]:
     """``(line, fault, detail)`` for every miscalled constructor in ``path``."""
     package = package_of(path)
     if package is None:
         return []  # a document outside any package -- nothing to resolve against
     constructors = index.get(package, {})
     constness = consts.get(package, {})
+    required = arities.get(package, {})
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
@@ -308,22 +465,43 @@ def audit(path: Path, index: Index, consts: ConstIndex) -> list[tuple[int, str, 
             )
         for match in CALL.finditer(clean):
             key = (match.group(1), match.group(2) or "")
+            paren = match.end() - 1
+            label = key[0] + ("." + key[1] if key[1] else "")
+            line = first_line + clean[: match.start()].count("\n")
+            argument = first_argument(clean, paren)
+            # A document quoting the signature rather than calling it. Checked
+            # once here because both rules below need the same exemption.
+            quoted = argument is not None and DECLARATION.match(argument)
+
+            counts = required.get(key)
+            if counts is not None and len(counts) == 1 and not quoted:
+                expected = next(iter(counts))
+                passed = call_arity(clean, paren)
+                # `None` on either side is this check declining to answer, not
+                # agreement: an undecidable signature or an unreadable call.
+                if (expected is not None and passed is not None
+                        and passed != expected
+                        and parameter_style(clean, paren) != NAMED_ONLY):
+                    plural = "" if expected == 1 else "s"
+                    faults.append((
+                        line, "ARITY",
+                        f"{label} takes {expected} argument{plural}, "
+                        f"the sample passes {passed}",
+                    ))
+
             styles = constructors.get(key)
             if styles is None or len(styles) != 1:
                 continue  # unknown, or overloaded across files -- no single rule
             style = next(iter(styles))
             if style == EMPTY:
                 continue
-            if parameter_style(clean, match.end() - 1) != POSITIONAL:
+            if parameter_style(clean, paren) != POSITIONAL:
                 continue  # `Foo({` / `Foo([` -- a signature, not a call
-            argument = first_argument(clean, match.end() - 1)
             if not argument:
                 continue  # empty call, or a call the fence cut in half
-            if DECLARATION.match(argument):
+            if quoted:
                 continue  # this is the signature being documented, not a call
             is_named = re.match(r"^\w+\s*:", argument) is not None
-            label = key[0] + ("." + key[1] if key[1] else "")
-            line = first_line + clean[: match.start()].count("\n")
             if style == NAMED_ONLY and not is_named:
                 faults.append(
                     (line, "POSITIONAL", f"{label} takes named parameters only")
@@ -341,7 +519,7 @@ def main(argv: list[str]) -> int:
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
-    index, consts = constructor_index(REPO_ROOT)
+    index, consts, arities = constructor_index(REPO_ROOT)
 
     documents = 0
     samples = 0
@@ -357,7 +535,7 @@ def main(argv: list[str]) -> int:
             continue
         documents += 1
         samples += len(blocks)
-        for line, fault, detail in audit(path, index, consts):
+        for line, fault, detail in audit(path, index, consts, arities):
             faults.append((path, line, fault, detail))
 
     for path, line, fault, detail in faults:
