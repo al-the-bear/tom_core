@@ -34,6 +34,14 @@
 /// dart run bin/ops_server_start.dart
 /// ```
 ///
+/// Getting that directory wrong is a caught error rather than a puzzle: the
+/// three assets the boot cannot work without are loaded through
+/// [mergeRequiredYaml], which names the absolute path it tried and the
+/// directory it resolved against. Only the per-environment overlay may be
+/// missing — see [mergeOptionalYaml]. This matters more here than in the two
+/// HTTP servers: nothing binds a port, so a misconfigured process has no
+/// failing request to make the problem visible.
+///
 /// Nothing is delivered to a real mail server by default: `OPS_SMTP_HOST` is
 /// unset, so digests are written as `.eml` files under `OPS_MAIL_DIR`
 /// (`./ztmp/ops_mail`) where they can be opened and read. That is the honest
@@ -116,33 +124,83 @@ void initializeRuntime() {
   TomRuntime.initializePlatform();
 }
 
-/// Loads `assets/config-resources_default.yaml` plus the active overlay.
+/// The base configuration asset — required; the boot has no configuration
+/// without it.
+const String configResourcesAsset = 'assets/config-resources_default.yaml';
+
+/// The datasource asset — required; the boot has no database without it.
+const String datasourcesAsset = 'assets/datasources_default.yaml';
+
+/// The blob-store asset — required; `initializeBlobStores` is called
+/// unconditionally, so without it the weekly export has nowhere to write.
+const String blobStoresAsset = 'assets/blobstores_default.yaml';
+
+/// Loads [configResourcesAsset] plus the active overlay.
+///
+/// The base is required and the overlay is not, which is the whole of the
+/// difference between [mergeRequiredYaml] and [mergeOptionalYaml]: every
+/// environment in the hierarchy is asked for an overlay, and the root one
+/// (`prod`) ships none.
 Map<String, dynamic> configLoaderFunction() {
   final result = <String, dynamic>{};
-  _mergeYamlIfPresent(result, 'assets/config-resources_default.yaml');
+  mergeRequiredYaml(result, configResourcesAsset);
   for (final env in TomRuntime.getEnvironmentHierarchy()) {
-    _mergeYamlIfPresent(result, 'assets/config-resources_${env.env}.yaml');
+    mergeOptionalYaml(result, 'assets/config-resources_${env.env}.yaml');
   }
   return result;
 }
 
-/// Loads `assets/datasources_default.yaml` (with `${VAR:default}` substitution).
+/// Loads [datasourcesAsset] (with `${VAR:default}` substitution).
 Map<String, dynamic> datasourceLoaderFunction() {
   final result = <String, dynamic>{};
-  _mergeYamlIfPresent(result, 'assets/datasources_default.yaml');
+  mergeRequiredYaml(result, datasourcesAsset);
   return result;
 }
 
-/// Loads `assets/blobstores_default.yaml` — where the scheduled export's bytes
-/// land, and where the app server's attachments already are.
+/// Loads [blobStoresAsset] — where the scheduled export's bytes land, and where
+/// the app server's attachments already are.
 Map<String, dynamic> blobStoreLoaderFunction() {
   final result = <String, dynamic>{};
-  _mergeYamlIfPresent(result, 'assets/blobstores_default.yaml');
+  mergeRequiredYaml(result, blobStoresAsset);
   return result;
 }
 
-void _mergeYamlIfPresent(Map<String, dynamic> into, String path) {
+/// Merges [path] into [into], throwing a [StateError] if it is not there.
+///
+/// The message names the *absolute* path that was tried and the directory it
+/// was resolved against, because the cause is almost never a missing file — the
+/// assets ship with the package — but a wrong working directory, and the
+/// relative path alone only repeats what the reader already wrote. Skipping
+/// instead would start a back-office process with no configuration, no
+/// datasource and no blob store, whose first symptom appears several layers
+/// later as a connection or missing-key error that says nothing about the real
+/// cause — and this process has no HTTP surface to report it on, so its jobs
+/// would simply run against nothing.
+void mergeRequiredYaml(Map<String, dynamic> into, String path) {
+  final file = File(path);
+  if (!file.existsSync()) {
+    throw StateError(
+      'Required boot asset not found: ${file.absolute.path}\n'
+      'Resolved against the working directory ${Directory.current.path}.\n'
+      'Run the server from the package root, where assets/ and '
+      'database_migrations/ live.',
+    );
+  }
+  _mergeYaml(into, path);
+}
+
+/// Merges [path] into [into] if it exists, and does nothing if it does not.
+///
+/// Only the per-environment overlay may be absent: [configLoaderFunction] asks
+/// every environment in the hierarchy for one, and the root (`prod`) ships
+/// none. A wrong working directory does not reach this function undiagnosed —
+/// the required base asset is loaded first and throws.
+void mergeOptionalYaml(Map<String, dynamic> into, String path) {
   if (!File(path).existsSync()) return;
+  _mergeYaml(into, path);
+}
+
+void _mergeYaml(Map<String, dynamic> into, String path) {
   mergeMapsOneSided(into, TomYaml.loadYamlFile(path));
 }
 

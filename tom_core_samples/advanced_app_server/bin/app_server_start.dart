@@ -50,6 +50,12 @@
 /// dart run bin/app_server_start.dart # HTTP on port 8080
 /// ```
 ///
+/// Getting that directory wrong is a caught error rather than a puzzle: the
+/// three assets the boot cannot work without are loaded through
+/// [mergeRequiredYaml], which names the absolute path it tried and the
+/// directory it resolved against. Only the per-environment overlay may be
+/// missing — see [mergeOptionalYaml].
+///
 /// This file is also the reflection-generation root (`build.yaml`): the generator
 /// follows its import graph to discover every `@tomReflector` / `@tomComponent`
 /// type — this config class, the `AppApiService` implementation, the `app_db`
@@ -157,39 +163,87 @@ void initializeRuntime() {
   TomRuntime.initializePlatform();
 }
 
-/// Loads `assets/config-resources_default.yaml` plus the active environment
-/// overlay (`_<env>.yaml`); env/`.env`/args win on top inside the base config.
+/// The base configuration asset — required; the boot has no configuration
+/// without it.
+const String configResourcesAsset = 'assets/config-resources_default.yaml';
+
+/// The datasource asset — required; the boot has no database without it.
+const String datasourcesAsset = 'assets/datasources_default.yaml';
+
+/// The blob-store asset — required; `initializeBlobStores` is called
+/// unconditionally, so without it the file columns have nowhere to put bytes.
+const String blobStoresAsset = 'assets/blobstores_default.yaml';
+
+/// Loads [configResourcesAsset] plus the active environment overlay
+/// (`_<env>.yaml`); env/`.env`/args win on top inside the base config.
+///
+/// The base is required and the overlay is not, which is the whole of the
+/// difference between [mergeRequiredYaml] and [mergeOptionalYaml]: every
+/// environment in the hierarchy is asked for an overlay, and the root one
+/// (`prod`) ships none.
 Map<String, dynamic> configLoaderFunction() {
   final result = <String, dynamic>{};
-  _mergeYamlIfPresent(result, 'assets/config-resources_default.yaml');
+  mergeRequiredYaml(result, configResourcesAsset);
   for (final env in TomRuntime.getEnvironmentHierarchy()) {
-    _mergeYamlIfPresent(result, 'assets/config-resources_${env.env}.yaml');
+    mergeOptionalYaml(result, 'assets/config-resources_${env.env}.yaml');
   }
   return result;
 }
 
-/// Loads `assets/datasources_default.yaml` (with `${VAR:default}` substitution).
+/// Loads [datasourcesAsset] (with `${VAR:default}` substitution).
 Map<String, dynamic> datasourceLoaderFunction() {
   final result = <String, dynamic>{};
-  _mergeYamlIfPresent(result, 'assets/datasources_default.yaml');
+  mergeRequiredYaml(result, datasourcesAsset);
   return result;
 }
 
-/// Loads `assets/blobstores_default.yaml` — where the bytes behind this
-/// server's `@TomFileReference` columns live.
+/// Loads [blobStoresAsset] — where the bytes behind this server's
+/// `@TomFileReference` columns live.
 ///
-/// Deliberately a separate file from `datasources_default.yaml` even though the
-/// only configured store is backed by a data source: the two answer different
+/// Deliberately a separate file from [datasourcesAsset] even though the only
+/// configured store is backed by a data source: the two answer different
 /// questions ("which databases do we talk to" vs "where do files go"), and a
 /// deployment that moves its files to S3 edits this file alone.
 Map<String, dynamic> blobStoreLoaderFunction() {
   final result = <String, dynamic>{};
-  _mergeYamlIfPresent(result, 'assets/blobstores_default.yaml');
+  mergeRequiredYaml(result, blobStoresAsset);
   return result;
 }
 
-void _mergeYamlIfPresent(Map<String, dynamic> into, String path) {
+/// Merges [path] into [into], throwing a [StateError] if it is not there.
+///
+/// The message names the *absolute* path that was tried and the directory it
+/// was resolved against, because the cause is almost never a missing file — the
+/// assets ship with the package — but a wrong working directory, and the
+/// relative path alone only repeats what the reader already wrote. Skipping
+/// instead would start a server with no configuration, no datasource and no
+/// blob store, whose first symptom appears several layers later as a connection
+/// or missing-key error that says nothing about the real cause.
+void mergeRequiredYaml(Map<String, dynamic> into, String path) {
+  final file = File(path);
+  if (!file.existsSync()) {
+    throw StateError(
+      'Required boot asset not found: ${file.absolute.path}\n'
+      'Resolved against the working directory ${Directory.current.path}.\n'
+      'Run the server from the package root, where assets/ and '
+      'database_migrations/ live.',
+    );
+  }
+  _mergeYaml(into, path);
+}
+
+/// Merges [path] into [into] if it exists, and does nothing if it does not.
+///
+/// Only the per-environment overlay may be absent: [configLoaderFunction] asks
+/// every environment in the hierarchy for one, and the root (`prod`) ships
+/// none. A wrong working directory does not reach this function undiagnosed —
+/// the required base asset is loaded first and throws.
+void mergeOptionalYaml(Map<String, dynamic> into, String path) {
   if (!File(path).existsSync()) return;
+  _mergeYaml(into, path);
+}
+
+void _mergeYaml(Map<String, dynamic> into, String path) {
   mergeMapsOneSided(into, TomYaml.loadYamlFile(path));
 }
 
