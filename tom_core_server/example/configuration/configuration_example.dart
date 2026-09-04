@@ -196,7 +196,7 @@ server:
     TomServerConfigResourceProvider.from(
       TomBaseServerConfiguration.getDefaultValues([
         'DB_PORT=3307',
-        'accountNumber="00420"',
+        'accountNumber=00420',
       ]).cast<String, dynamic>(),
     ),
   );
@@ -204,7 +204,10 @@ server:
   final account = ~TomStringConfig('accountNumber');
   print('11. DB_PORT / accountNumber  : $dbPort / $account');
   check(dbPort == 3307, 'DB_PORT arrives as an int, not the string "3307"');
-  check(account == '00420', 'a quoted value keeps its leading zeros');
+  // Unquoted, and still a String: a digit run with leading zeros is an
+  // identifier, so the converter leaves it as the text it was written as. Only
+  // an unpadded run becomes the int above.
+  check(account == '00420', 'a padded account number keeps its leading zeros');
   check(
     TomStringConfig('PATH').get()!.isNotEmpty,
     'the environment resolves once the merged map is the provider',

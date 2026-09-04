@@ -20,8 +20,9 @@
 /// Every other [TomEnvFile] method appears below, as do [TomArgs]'s three
 /// parsing entry points. [TomArgs.unquote] and the [TomArgs.intPattern] /
 /// [TomArgs.doublePattern] matchers are the shared machinery behind the
-/// conversions shown here — step 4's quoted value is `unquote` at work, and the
-/// `int` and `double` in steps 1 and 3 are the two patterns — rather than
+/// conversions shown here — step 4's quoted value is `unquote` at work, the
+/// `int` and `double` in steps 1 and 3 are the two patterns, and step 4's
+/// padded phone number is the shape those patterns refuse — rather than
 /// operations a caller performs separately.
 ///
 /// Run with `dart run example/cmdline/cmdline_example.dart`.
@@ -87,6 +88,7 @@ DB_POOL=16
 SERVER_PORT=8080
 SERVER_NAME="my service"   # inline comment is stripped
 ENABLED=true
+SUPPORT_PHONE=004917612345678901
 ''');
   final env = TomEnvFile.read(envFile.path);
   print('4. read .env                 : $env');
@@ -96,6 +98,14 @@ ENABLED=true
     'a quoted value keeps its spaces, loses its quotes, and stays a String',
   );
   check(env['ENABLED'] == true, 'an unquoted "true" converts to bool');
+  // A digit run with leading zeros is an identifier, not a quantity: an int has
+  // no notion of the padding, so converting it would hand back a different
+  // phone number and report nothing. It stays a String, and it needs no quotes
+  // to do so.
+  check(
+    env['SUPPORT_PHONE'] == '004917612345678901',
+    'a zero-padded identifier keeps its zeros, unquoted',
+  );
 
   // 5. The same file read without blocking the isolate. Prefer this wherever
   //    the call site can await — start-up usually can.

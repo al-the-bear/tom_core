@@ -66,8 +66,8 @@ value type.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `intPattern` | `RegExp` | Matches a run of digits; a value parses as `int` only when this matches the whole string **and** the number fits a 64-bit `int` — the pattern constrains shape, not magnitude (static, final). |
-| `doublePattern` | `RegExp` | Matches a decimal number (`digits . digits*` — the fractional part is zero or more digits, not one optional digit); a value parses as `double` only when this matches the whole string and it is not already an `int` (static, final). |
+| `intPattern` | `RegExp` | Matches an **unpadded** run of digits (`0` itself, or a run starting with a non-zero digit); a value parses as `int` only when this matches the whole string **and** the number fits a 64-bit `int` — the pattern constrains shape, not magnitude (static, final). |
+| `doublePattern` | `RegExp` | Matches a decimal number (`digits . digits*` — the fractional part is zero or more digits, not one optional digit) whose integer part is unpadded like `intPattern`; a value parses as `double` only when this matches the whole string and it is not already an `int` (static, final). |
 
 Value-conversion table (shared by all entry points):
 
@@ -76,17 +76,27 @@ Value-conversion table (shared by all entry points):
 | `"true"` / `null` | `bool` `true` |
 | `"false"` | `bool` `false` |
 | wrapped in a matched pair of `"` or `'` | the unquoted contents |
-| all digits, and it fits a 64-bit `int` | `int` |
-| decimal number, `digits . digits*` (`5.` included) | `double` |
+| all digits, unpadded, and it fits a 64-bit `int` | `int` |
+| decimal number, `digits . digits*` (`5.` included), integer part unpadded | `double` |
 | anything else | the original `String` |
 
 Quotes are stripped only as a pair (see `unquote`), so an unbalanced quote is
 data rather than a syntax error: `"` and `"hello` pass through unchanged.
 
-The magnitude limit is part of the rule: `9223372036854775807` converts,
-`9223372036854775808` and longer runs stay `String`. Overflow is not a parse
-failure — an account number or device id arrives as the text it was written as,
-instead of aborting the whole argument list or `.env` file.
+Two restrictions on a digit run are part of the rule, and both say the same
+thing — a type is produced only when it can carry the value faithfully:
+
+- **Magnitude.** `9223372036854775807` converts, `9223372036854775808` and
+  longer runs stay `String`. Overflow is not a parse failure — an account
+  number or device id arrives as the text it was written as, instead of
+  aborting the whole argument list or `.env` file.
+- **Padding.** A run with leading zeros stays a `String`, because an `int` has
+  no notion of the padding and `007` would arrive as `7`. A lone `0` is not
+  padding and converts. The rule reaches the integer part of a decimal too
+  (`00.5` stays a `String`, `0.5` converts) but not the fractional part, since
+  `1.50` and `1.5` are one quantity while `007` and `7` are two identifiers.
+  The consequence for a reflected object is that `port=08080` is refused at
+  assignment rather than binding 8080.
 
 The fractional part of a decimal is zero or more digits, so a value ending in a
 bare `.` converts rather than staying a `String`: `5.` becomes the `double`

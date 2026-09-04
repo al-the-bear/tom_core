@@ -651,7 +651,8 @@ void main() {
           TomBaseServerConfiguration.getDefaultValues([
             'DB_PORT=3307',
             '--verbose',
-            'accountNumber="00420"',
+            'quantity="420"',
+            'accountNumber=00420',
           ]).cast<String, dynamic>(),
         ),
       );
@@ -664,8 +665,12 @@ void main() {
       // which is the one case where the dashed spelling is useful: it is read
       // back as a key rather than bound to a field of that name.
       expect(~TomBoolConfig('--verbose'), isTrue);
-      // Quoting is how a value that looks numeric stays textual; the quotes
-      // are stripped as a pair, so the leading zeros survive.
+      // Quoting is how a value that would otherwise convert stays textual; the
+      // quotes are stripped as a pair, so the digits arrive without them.
+      expect(~TomStringConfig('quantity'), '420');
+      // Padding needs no quotes to survive: a digit run with leading zeros is
+      // an identifier, so the converter never turns it into a number in the
+      // first place.
       expect(~TomStringConfig('accountNumber'), '00420');
     });
   });

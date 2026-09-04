@@ -46,24 +46,40 @@ class TomArgs {
     return fillIn;
   }
 
-  /// Matches a run of digits. A value is parsed as an `int` only when this
-  /// pattern matches the *whole* string, so a leading sign or trailing text
-  /// keeps the value a `String` (e.g. `-5` and `12px` stay strings).
+  /// Matches an unpadded run of digits — `0` itself, or a run starting with a
+  /// non-zero digit. A value is parsed as an `int` only when this pattern
+  /// matches the *whole* string, so a leading sign or trailing text keeps the
+  /// value a `String` (e.g. `-5` and `12px` stay strings).
+  ///
+  /// The padding restriction is part of the rule, not a quirk of the regular
+  /// expression. A leading zero is only ever written when the zeros carry
+  /// meaning — nobody writes `port=08080` intending 8080 — so a padded run is
+  /// an identifier: a phone number written with its international prefix, a
+  /// zero-padded account or article number, a postcode, a country code.
+  /// Converting one produces a *different* identifier and reports nothing, so
+  /// `007` stays the `String` `007`. A lone `0` is not padding and converts to
+  /// the `int` 0.
   ///
   /// Matching is necessary but not sufficient: the pattern constrains shape,
   /// not magnitude, and a run too long for a 64-bit `int` also stays a
   /// `String`.
-  static final RegExp intPattern = RegExp("[0-9]+");
+  static final RegExp intPattern = RegExp("0|[1-9][0-9]*");
 
   /// Matches a decimal number (`digits . digits*`). A value is parsed as a
   /// `double` only when this pattern matches the *whole* string and it is not
   /// already an `int`; a leading sign or a missing integer part keeps the value
   /// a `String` (e.g. `-1.5` and `.5` stay strings).
   ///
+  /// The integer part obeys the same padding rule as [intPattern] — it is a
+  /// digit run and loses its zeros the same way — so `00.5` stays a `String`
+  /// while `0.5` converts. The *fractional* part is deliberately unrestricted:
+  /// a trailing zero after the point is not identity, since `1.50` and `1.5`
+  /// are one quantity, whereas `007` and `7` are two identifiers.
+  ///
   /// The fractional part is `*`, zero or more digits — not one optional digit.
   /// So `3.14` converts, and so does a value ending in a bare `.`: `5.` becomes
   /// the `double` `5.0` rather than staying a `String`.
-  static final RegExp doublePattern = RegExp("[0-9]+[.][0-9]*");
+  static final RegExp doublePattern = RegExp("(?:0|[1-9][0-9]*)[.][0-9]*");
 
   /// Parses `key=value` [args] into a loose map, type-converting each value.
   ///
@@ -84,18 +100,30 @@ class TomArgs {
   /// | `"true"` / `null` | `bool` `true` |
   /// | `"false"` | `bool` `false` |
   /// | wrapped in a matched pair of `"` or `'` | the unquoted contents |
-  /// | all digits, and it fits a 64-bit `int` | `int` |
-  /// | decimal number, `digits . digits*` (`5.` included) | `double` |
+  /// | all digits, unpadded, and it fits a 64-bit `int` | `int` |
+  /// | decimal number, `digits . digits*` (`5.` included), integer part unpadded | `double` |
   /// | anything else | the original `String` |
   ///
   /// Quotes are only stripped as a **pair** (see [unquote]): an unbalanced
   /// quote is not a quoted value, so a lone `"` and an unterminated `"hello`
   /// are both passed through unchanged rather than truncated.
   ///
-  /// The magnitude limit is part of the rule, not an edge case: Dart's `int` is
-  /// 64-bit, so a digit run larger than `9223372036854775807` has no `int` to
-  /// become and stays a `String` — an account number or a device id arrives as
-  /// the text it was written as, rather than aborting the parse.
+  /// Two restrictions on a digit run are part of the rule rather than edge
+  /// cases, and both say the same thing: a type is produced only when it can
+  /// carry the value faithfully, and otherwise the text arrives as it was
+  /// written rather than as something else.
+  ///
+  /// - **Magnitude.** Dart's `int` is 64-bit, so a digit run larger than
+  ///   `9223372036854775807` has no `int` to become and stays a `String` — an
+  ///   account number or a device id arrives whole, rather than aborting the
+  ///   parse.
+  /// - **Padding.** A run with leading zeros stays a `String`, because the
+  ///   zeros are part of the identifier and an `int` has no notion of them:
+  ///   `007` would arrive as `7`, and a phone number as a different phone
+  ///   number, with nothing reporting the change (see [intPattern]). A lone
+  ///   `0` is not padding and converts. The consequence a deployment sees is
+  ///   that a padded number no longer reaches an `int` field at all —
+  ///   `port=08080` is refused at assignment instead of silently binding 8080.
   static Map<String, dynamic> convertToObjectMap(Map<String, String> map) {
     Map<String, dynamic> result = {};
     for (var key in map.keys) {
@@ -187,12 +215,13 @@ class TomArgs {
       return unquoted;
     }
     if (intPattern.stringMatch(value) == value) {
-      // tryParse, not parse: the pattern says "all digits", which is a claim
-      // about shape and not about magnitude. Dart's int is 64-bit, so a longer
-      // run has no int to become and tryParse returns null — the value then
-      // falls through to the String at the end, exactly as `-5` and `12px` do.
-      // parse would instead throw a FormatException naming neither the key nor
-      // the source, aborting the whole parse over one account number.
+      // tryParse, not parse: the pattern says "an unpadded digit run", which
+      // is a claim about shape and not about magnitude. Dart's int is 64-bit,
+      // so a longer run has no int to become and tryParse returns null — the
+      // value then falls through to the String at the end, exactly as `-5`,
+      // `12px` and `007` do. parse would instead throw a FormatException
+      // naming neither the key nor the source, aborting the whole parse over
+      // one account number.
       final asInt = int.tryParse(value);
       if (asInt != null) {
         return asInt;

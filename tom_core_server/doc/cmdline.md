@@ -111,8 +111,8 @@ Both classes share one conversion table (implemented once in `TomArgs`):
 | `true` | `bool` `true` |
 | `false` | `bool` `false` |
 | wrapped in a matched pair of `"` or `'` | the unquoted contents |
-| all digits, fitting a 64-bit `int` (e.g. `8080`) | `int` |
-| decimal, `digits . digits*` (e.g. `3.14`, `5.`) | `double` |
+| all digits, unpadded, fitting a 64-bit `int` (e.g. `8080`) | `int` |
+| decimal, `digits . digits*` (e.g. `3.14`, `5.`), integer part unpadded | `double` |
 | empty (`.env` only) | `null` |
 | anything else | the original `String` |
 
@@ -147,6 +147,37 @@ number, a device identifier, or a phone number written without punctuation is a
 label that happens to be spelled in digits, and a `String` is what the caller
 wanted anyway. Treating the overflow as a parse failure would have cost the
 whole argument list or `.env` file, not just the one value.
+
+### A digit run with leading zeros stays a `String`
+
+The same principle, applied to the other way a digit run has no faithful `int`.
+An `int` has no notion of padding, so `007` would arrive as `7` — a *different*
+identifier, with nothing reporting the change. The converter therefore accepts a
+digit run only when it is unpadded: `0` itself, or a run starting with a
+non-zero digit.
+
+| Value | Result |
+| ----- | ------ |
+| `0` | `int` `0` — a lone zero is not padding |
+| `8080` | `int` `8080` |
+| `007` | `String` — the zeros are part of the identifier |
+| `004917612345678901` | `String` — fits 64 bits, so only this rule saves it |
+| `01067` | `String` — a postcode, not the number 1067 |
+| `0.5` | `double` `0.5` |
+| `00.5` | `String` — the integer part is padded |
+| `1.50` | `double` `1.5` — a fractional trailing zero is not identity |
+
+A leading zero is only ever written when the zeros carry meaning: nobody writes
+`port=08080` intending 8080. The values that carry them — phone numbers with an
+international prefix, zero-padded account and article numbers, postcodes,
+country codes — are identifiers rather than quantities, and they arrive as the
+text the deployment wrote.
+
+The magnitude limit does not cover this case, which is why it is a rule of its
+own: `004917612345678901` fits comfortably in 64 bits, so it converted happily
+and lost its prefix. The *fractional* part of a decimal is deliberately left
+unrestricted, because a trailing zero after the point is not identity — `1.50`
+and `1.5` are one quantity, whereas `007` and `7` are two identifiers.
 
 ### Quotes are stripped only in pairs
 
@@ -259,12 +290,13 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   than a number. A negative setting therefore has to be carried some other way
   (a positive value with a separate direction flag, or a `String` field the
   application parses itself).
-- **Leading zeros are dropped.** A padded run of digits is still all digits, so
-  it converts, and an `int` has no notion of the padding: `007` becomes `7` and
-  a zero-padded phone number `004917612345678901` loses its prefix. Nothing
-  reports it. The values that carry leading zeros — phone numbers, padded
-  account numbers, postcodes — are identifiers rather than quantities, so quote
-  them (`phone="004917..."`) to keep them the text they were written as.
+- **A zero-padded number cannot fill an `int` field.** Leading zeros keep a
+  value a `String` (above), so `port=08080` is refused at assignment with
+  `TomReflectorException` rather than silently binding 8080 — the same outcome
+  as a negative number, and for the same reason. This is the price of the
+  padding rule and is the intended one: a deployment that pads a number learns
+  it at start-up. Write the number unpadded (`port=8080`) when the target is an
+  `int` field.
 - **No entry point reports a setting that no source supplied.** `merge`
   overlays maps and returns; `fillFromArgs` binds the keys it was given. A
   required setting that nobody supplied is indistinguishable from one that was

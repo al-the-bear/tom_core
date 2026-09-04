@@ -2,6 +2,14 @@
 
 ### Changed
 
+- **A zero-padded number no longer converts, so it no longer fills an `int`
+  field.** `TomArgs.intPattern` is now `0|[1-9][0-9]*` and `doublePattern`'s
+  integer part matches it, so `port=08080` reaches `setValues` as a `String`
+  and is refused with `TomReflectorException` instead of silently binding
+  8080 — the same outcome a negative number already had, and for the same
+  reason. Write the number unpadded when the target is an `int` field. Nothing
+  in the workspace passed a padded value to a numeric field.
+
 - **A `null` is no longer a storable cache value.** `TomCache.toNameCache`,
   `TomCache.toTypeCache` and `TomCacheStoreMessage.value` now take a
   non-nullable `Object`, and `TomCacheEntry.value` is non-nullable — so both
@@ -12,6 +20,23 @@
   storing a sentinel of its own that a read can hand back.
 
 ### Fixed
+
+- **A digit run with leading zeros lost them on the way into a field, with
+  nothing reporting it.** `007` arrived as `7`, and a phone number written with
+  its international prefix, `004917612345678901`, arrived as
+  `4917612345678901` — a different number in a `String` field that no cast and
+  no exception objected to. The magnitude limit did not cover this: the phone
+  number fits 64 bits comfortably, so it converted happily and the digits were
+  simply gone. The values that carry leading zeros are the ones this module
+  ingests most — phone numbers, zero-padded account and article numbers,
+  postcodes, country codes — and for all of them the zeros are part of the
+  identifier.
+  A padded run now stays a `String`, which is the rule the magnitude limit
+  already followed: a type is produced only when it can carry the value
+  faithfully, and `007` -> `7` is not faithful. A lone `0` is not padding and
+  still converts. The rule reaches the integer part of a decimal (`00.5` stays
+  a `String`) but deliberately not the fractional part, since `1.50` and `1.5`
+  are one quantity while `007` and `7` are two identifiers.
 
 - **A cached `null` read back as three different answers, none of them the one
   the caller asked for.** It was storable, and stored like any other value.

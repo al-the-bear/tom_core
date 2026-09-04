@@ -185,13 +185,39 @@ void main() {
       expect(convert('12px'), '12px');
     });
 
-    // A padded run is still all digits, so it converts — and the padding is
-    // gone, because an int has no notion of it. The values that carry leading
-    // zeros are identifiers rather than quantities, so this is a documented
-    // limitation; pinned so that changing it cannot pass unnoticed.
-    test('leading zeros are dropped by the int conversion', () {
-      expect(convert('007'), 7);
-      expect(convert('004917612345678901'), 4917612345678901);
+    // A leading zero is only ever written when the zeros carry meaning —
+    // nobody writes `port=08080` intending 8080 — so a padded run is an
+    // identifier (a phone number, a zero-padded account or article number, a
+    // postcode, a country code) and converting it yields a *different*
+    // identifier with nothing reporting the change. It is the same rule the
+    // magnitude limit follows: the converter produces a type only when it can
+    // represent the value faithfully, and `007` -> `7` is not faithful.
+    test('leading zeros keep the value a String', () {
+      expect(convert('007'), '007');
+      expect(convert('004917612345678901'), '004917612345678901');
+      expect(convert('01'), '01');
+      expect(convert('00'), '00');
+    });
+
+    // The one exception, and the reason the rule is about *padding* rather
+    // than about a leading zero character: a lone `0` is not a padded value,
+    // it is zero written the only way zero can be written.
+    test('a lone zero is not padding and still converts', () {
+      expect(convert('0'), 0);
+      expect(convert('0'), isA<int>());
+    });
+
+    // The integer part of a decimal is a digit run too and loses its padding
+    // the same way, so the same rule governs it — otherwise the module would
+    // have to document one answer for `007` and another for `007.5`. The
+    // fractional part is deliberately left alone: a trailing zero after the
+    // point is not identity (`1.50` and `1.5` are one quantity), whereas
+    // `007` and `7` are two identifiers.
+    test('leading zeros in the integer part keep a decimal a String', () {
+      expect(convert('00.5'), '00.5');
+      expect(convert('007.5'), '007.5');
+      expect(convert('0.5'), 0.5);
+      expect(convert('1.50'), 1.5);
     });
 
     // The patterns are unanchored, so `doublePattern` matches the "1.2" prefix
@@ -413,6 +439,23 @@ void main() {
       );
     });
 
+    // The visible cost of refusing to drop leading zeros, and the reason it is
+    // worth paying: `port=08080` is refused at assignment instead of quietly
+    // binding 8080, so a deployment that pads a number learns it at start-up
+    // rather than never. The same padding on a String field is what the rule
+    // exists to protect — the identifier arrives as it was written.
+    test('a zero-padded value cannot fill an int field', () {
+      expect(
+        () => TomArgs.fillFromArgs(['port=08080'], FixtureServerConfig()),
+        throwsA(isA<TomReflectorException>()),
+      );
+
+      final config = TomArgs.fillFromArgs([
+        'name=004917612345678901',
+      ], FixtureServerConfig());
+      expect(config.name, '004917612345678901');
+    });
+
     // The same first-"=" rule reaches the reflected object, not just the map:
     // a connection string is exactly the kind of value a configuration field
     // holds, so the binding path is where the truncation would have hurt.
@@ -481,7 +524,9 @@ void main() {
       ],
       'a digit run too large for an int': ['name=9223372036854775808'],
       'a negative number': ['name=-5'],
-      'leading zeros': ['port=007'],
+      // On the String field, like the negative number above: a padded run no
+      // longer converts, so it is a value the int field cannot accept.
+      'leading zeros': ['name=007'],
       'a decimal': ['rate=1.5'],
       'a trailing dot': ['rate=5.'],
       'a whole number on a double field': ['rate=2'],
@@ -647,6 +692,26 @@ void main() {
       final env = TomEnvFile.parse(['BIG=99999999999999999999', 'PORT=8080']);
       expect(env['BIG'], '99999999999999999999');
       expect(env['PORT'], 8080);
+    });
+
+    // The .env counterpart of the padding rule, and the shapes that actually
+    // motivate it: a phone number written with its international prefix, a
+    // zero-padded article number, a German postcode. All three fit a 64-bit
+    // int, so magnitude does not save them — the padding rule does. Written
+    // for the .env side as well as the command line because the two sources
+    // are documented as one syntax, and a rule stated for both is only tested
+    // if it is tested on both.
+    test('a zero-padded identifier arrives as a String', () {
+      final env = TomEnvFile.parse([
+        'PHONE=004917612345678901',
+        'ARTICLE=007',
+        'POSTCODE=01067',
+        'PORT=8080',
+      ]);
+      expect(env['PHONE'], '004917612345678901');
+      expect(env['ARTICLE'], '007');
+      expect(env['POSTCODE'], '01067');
+      expect(env['PORT'], 8080); // an unpadded number still converts
     });
   });
 
