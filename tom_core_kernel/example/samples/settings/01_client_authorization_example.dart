@@ -699,21 +699,187 @@ class ApplicationContextExample {
 // =============================================================================
 
 void run() {
+  print('=== 01: Client Authorization Example ===\n');
+
   SettingsRequestExample.example1SettingsRequest();
+  print('1. The request carries nothing but the bearer token:');
+  print('   authorizationToken : ${SettingsRequestExample.messageToken}');
+  print('   token present      : ${SettingsRequestExample.hasToken}');
+  print('');
+
   AnonymousRequestExample.example2AnonymousRequest();
+  print('2. A request without a token asks for the anonymous settings:');
+  print(
+    '   authorizationToken  : '
+    '"${AnonymousRequestExample.anonymousToken}" (the empty default)',
+  );
+  print('   treated as anonymous: ${AnonymousRequestExample.isAnonymous}');
+  print('');
+
   BasicResultExample.example3BasicResult();
+  print('3. A default result starts out empty rather than null:');
+  print('   texts    : ${BasicResultExample.textsCount} entries');
+  print('   config   : ${BasicResultExample.configCount} entries');
+  print('   roles    : ${BasicResultExample.rolesCount} entries');
+  print('   all empty: ${BasicResultExample.defaultsToEmpty}');
+  print('');
+
   FullResultExample.example4FullResult();
+  print('4. What the server sends a signed-in user, every field set:');
+  print('   texts             : ${FullResultExample.textsCount}');
+  print('   config            : ${FullResultExample.configCount}');
+  print('   roles             : ${FullResultExample.rolesCount}');
+  print('   groups            : ${FullResultExample.groupsCount}');
+  print('   entitlements      : ${FullResultExample.entitlementsCount}');
+  print('   fields on the wire: ${FullResultExample.fieldCount}');
+  print('   left unset        : ${FullResultExample.unsetFields.length}');
+  print('');
+
   AccessTextsExample.example5AccessTexts();
+  print('5. Texts are read by key, and an absent key reads back null:');
+  print('   welcome     : ${AccessTextsExample.welcomeText}');
+  print('   logout      : ${AccessTextsExample.logoutText}');
+  print('   nonexistent : ${AccessTextsExample.missingText}');
+  print('');
+
   AccessConfigExample.example6AccessConfig();
+  print('6. Config values keep their JSON types, so each is cast on read:');
+  print('   theme              : ${AccessConfigExample.theme}');
+  print('   maxItemsPerPage    : ${AccessConfigExample.maxItems}');
+  print('   enableNotifications: ${AccessConfigExample.notifications}');
+  print('');
+
   CheckRolesExample.example7CheckRoles();
+  print(
+    '7. Role membership, asked of a result carrying [admin, editor, '
+    'viewer]:',
+  );
+  print('   admin       → ${CheckRolesExample.hasAdminRole}');
+  print('   editor      → ${CheckRolesExample.hasEditorRole}');
+  print('   super-admin → ${CheckRolesExample.hasSuperRole}');
+  print('');
+
   CheckEntitlementsExample.example8CheckEntitlements();
+  print('8. Entitlements answer the same question per feature:');
+  print(
+    '   feature.dashboard.view → '
+    '${CheckEntitlementsExample.canViewDashboard}',
+  );
+  print(
+    '   feature.dashboard.edit → '
+    '${CheckEntitlementsExample.canEditDashboard}',
+  );
+  print(
+    '   admin.users.delete     → '
+    '${CheckEntitlementsExample.canDeleteUsers}',
+  );
+  print('');
+
   SettingsEndpointExample.example9BuildEndpoint();
+  print('9. The endpoint that carries the exchange, built but not called:');
+  print('   method       : ${SettingsEndpointExample.method}');
+  print('   url          : ${SettingsEndpointExample.url}');
+  print('   bearer token : ${SettingsEndpointExample.sendsBearerToken}');
+  print('');
+
   LocalizationPairsExample.example10LocalizationPairs();
+  print('10. Localization resolves as server ?? client:');
+  print('   effective country  : ${LocalizationPairsExample.effectiveCountry}');
+  print(
+    '   effective language : ${LocalizationPairsExample.effectiveLanguage}',
+  );
+  print(
+    '   effective timezone : ${LocalizationPairsExample.effectiveTimezone}',
+  );
+  print(
+    '   timezone overridden by the server: '
+    '${LocalizationPairsExample.timezoneOverridden}',
+  );
+  print(
+    '   language overridden by the server: '
+    '${LocalizationPairsExample.languageOverridden}',
+  );
+  print('');
+
   IncrementalBuildExample.example11IncrementalBuild();
+  print('11. A server fills the result in from several sources:');
+  print('   started empty : ${IncrementalBuildExample.startedEmpty}');
+  print('   roles         : ${IncrementalBuildExample.rolesCount}');
+  print('   entitlements  : ${IncrementalBuildExample.entitlementsCount}');
+  print('   config[theme] : ${IncrementalBuildExample.theme}');
+  print('   texts[welcome]: ${IncrementalBuildExample.welcome}');
+  print('');
+
   PerInstanceIsolationExample.example12PerInstanceIsolation();
+  print('12. Two results never share their collections:');
+  print(
+    '   roles on the first  : '
+    '${PerInstanceIsolationExample.firstRolesCount}',
+  );
+  print(
+    '   roles on the second : '
+    '${PerInstanceIsolationExample.secondRolesCount}',
+  );
+  print(
+    '   second untouched    : '
+    '${PerInstanceIsolationExample.secondUnaffected}',
+  );
+  print('');
+
   ReflectedRoundTripExample.example13ReflectedRoundTrip();
+  print('13. Serialize, deserialize, and get the same value back:');
+  print(
+    '   payload              : '
+    '${ReflectedRoundTripExample.json!.substring(0, 48)}...',
+  );
+  print(
+    '   restored roles       : '
+    '${ReflectedRoundTripExample.restoredRolesCount}',
+  );
+  print('   restored theme       : ${ReflectedRoundTripExample.restoredTheme}');
+  print(
+    '   restored organization: '
+    '${ReflectedRoundTripExample.restoredOrganization}',
+  );
+  print(
+    '   survived the wire    : '
+    '${ReflectedRoundTripExample.survivedRoundTrip}',
+  );
+  print('');
+
   UnsetStringDefaultsExample.example14UnsetStringDefaults();
+  print('14. Unset is null, and empty is a value the server chose:');
+  print('   organization  : ${UnsetStringDefaultsExample.organization}');
+  print('   clientLanguage: ${UnsetStringDefaultsExample.clientLanguage}');
+  print(
+    '   all nine string fields unset are null: '
+    '${UnsetStringDefaultsExample.allUnsetAreNull}',
+  );
+  print(
+    '   "" is set-to-empty, not unset       : '
+    '${UnsetStringDefaultsExample.emptyIsNotNull}',
+  );
+  print(
+    '   null survives the round trip        : '
+    '${UnsetStringDefaultsExample.nullSurvivesTheWire}',
+  );
+  print('');
+
   ApplicationContextExample.example15ApplicationContext();
+  print('15. The context triple is the scope everything else is stated in:');
+  print('   organization : ${ApplicationContextExample.organization}');
+  print('   process      : ${ApplicationContextExample.process}');
+  print('   application  : ${ApplicationContextExample.application}');
+  print('   cache key    : ${ApplicationContextExample.scopeKey}');
+  print(
+    '   equal roles, different scope: '
+    '${ApplicationContextExample.sameRolesDifferentScope}',
+  );
+  print(
+    '   an unscoped result leaves all three null: '
+    '${ApplicationContextExample.unscoped}',
+  );
+  print('');
 }
 
 void main() {

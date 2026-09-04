@@ -377,10 +377,40 @@ class _NoOpCommand extends TomCommand {
 // =============================================================================
 
 Future<void> run() async {
+  print('=== 02: Declared Job Example ===\n');
+
   await DiscoveryExample.example1TheClassIsTheRegistration();
+  print('1. One line of start-up, read back off the annotated classes:');
+  print('   registered jobs : ${DiscoveryExample.registeredNames}');
+  print('   rollup schedule : ${DiscoveryExample.rollupSchedule.runtimeType}');
+  print('   retry attempts  : ${DiscoveryExample.reconciliationAttempts}');
+  print('   timeout         : ${DiscoveryExample.reconciliationTimeout}');
+  print('   missed window   : ${DiscoveryExample.reconciliationPolicy}');
+  print('');
+
   await DeclaredRunExample.example2ADeclaredJobRuns();
+  print('2. The discovered job runs, and knows its window:');
+  print('   runs after planning : ${DeclaredRunExample.runsAfterPlanning}');
+  print('   window handed to it : ${DeclaredRunExample.window}');
+  print('   attempt             : ${DeclaredRunExample.attempt}');
+  print('   stored run state    : ${DeclaredRunExample.storedState}');
+  print('');
+
   await ScanValidationExample.example3ABadDeclarationStopsStartUp();
+  print('3. A bad declaration stops start-up, naming the class:');
+  print('   error key          : ${ScanValidationExample.errorKey}');
+  print(
+    '   names the class    : '
+    '${ScanValidationExample.messageNamesTheClass}',
+  );
+  print('   nothing registered : ${ScanValidationExample.nothingRegistered}');
+  print('');
+
   await CoexistenceExample.example4DeclaredAndHandWrittenCoexist();
+  print('4. Declared and hand-written jobs in one scheduler:');
+  print('   both registered : ${CoexistenceExample.bothRegistered}');
+  print('   collision key   : ${CoexistenceExample.collisionKey}');
+  print('');
 }
 
 Future<void> main() async {

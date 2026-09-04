@@ -29,24 +29,17 @@ Future<void> main() async {
 Future<void> run() async {
   print('Running Context Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Basic Context Example');
-  print('-' * 40);
   basic_context.run();
   print('✓ Basic context examples passed\n');
 
-  print('02: Context Nesting Example');
-  print('-' * 40);
   context_nesting.run();
   print('✓ Context nesting examples passed\n');
 
-  print('03: Context Providers Example');
-  print('-' * 40);
   context_providers.run();
   print('✓ Context providers examples passed\n');
 
-  print('04: Async and Zone Values Example');
-  print('-' * 40);
   await async_zonevalues.run();
   print('✓ Async and zone-values examples passed\n');
 

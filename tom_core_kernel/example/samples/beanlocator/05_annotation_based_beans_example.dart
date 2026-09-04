@@ -384,13 +384,7 @@ class AnnotationBasedBeansExample {
   // Run all examples
   // -------------------------------------------------------------------------
   static void run() {
-    print(
-      '═══════════════════════════════════════════════════════════════════',
-    );
-    print('05: ANNOTATION-BASED BEANS EXAMPLE');
-    print(
-      '═══════════════════════════════════════════════════════════════════\n',
-    );
+    print('=== 05: Annotation-Based Beans Example ===\n');
 
     _registerBeansByDiscovery();
 

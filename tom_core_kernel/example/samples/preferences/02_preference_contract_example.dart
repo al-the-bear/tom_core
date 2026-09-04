@@ -95,6 +95,8 @@ class PreferenceKeyRuleExample {
 class PreferenceDtoExample {
   static String dtoKey = '';
   static String dtoType = '';
+  static String dtoValue = '';
+  static DateTime? dtoUpdatedAt;
   static bool writeRequestHasNoTimestamp = false;
 
   static void example3PreferenceDtos() {
@@ -107,6 +109,8 @@ class PreferenceDtoExample {
 
     dtoKey = dto.key;
     dtoType = dto.valueType;
+    dtoValue = dto.value;
+    dtoUpdatedAt = dto.updatedAt;
 
     // The write request is the result minus the timestamp: *when* a preference
     // was written is the server's answer, never the client's claim. There is
@@ -255,12 +259,82 @@ class RegisterApiExample {
 
 /// Runs every contract example in this file.
 void run() {
+  print('=== 02: Preference Contract Example ===\n');
+
   PreferenceKeysExample.example1PreferenceKeys();
+  print('1. The keys the framework itself reads are declared once:');
+  print('   timezone key : ${PreferenceKeysExample.timezoneKey}');
+  print('   language key : ${PreferenceKeysExample.languageKey}');
+  print(
+    '   every framework key is namespaced "tom.": '
+    '${PreferenceKeysExample.allNamespaced}',
+  );
+  print('');
+
   PreferenceKeyRuleExample.example2PreferenceKeyRule();
+  print('2. What an application may name its own key:');
+  print(
+    '   "shop.cart.last_currency" accepted: '
+    '${PreferenceKeyRuleExample.appKeyAccepted}',
+  );
+  print(
+    '   refusals for "", "1st", "a/b", "aaa…": '
+    '${PreferenceKeyRuleExample.refusedCauses}',
+  );
+  print(
+    '   maximum key length (the column width): '
+    '${PreferenceKeyRuleExample.capEqualsColumnWidth}',
+  );
+  print('');
+
   PreferenceDtoExample.example3PreferenceDtos();
+  print('3. The DTO the wire carries:');
+  print('   key        : ${PreferenceDtoExample.dtoKey}');
+  print('   value type : ${PreferenceDtoExample.dtoType}');
+  print('   value      : ${PreferenceDtoExample.dtoValue}');
+  print('   updatedAt  : ${PreferenceDtoExample.dtoUpdatedAt}');
+  print(
+    '   the write request mirrors it, minus the timestamp: '
+    '${PreferenceDtoExample.writeRequestHasNoTimestamp}',
+  );
+  print('');
+
   BuildWriteRequestExample.example4BuildWriteRequest();
+  print('4. A write request built from a value, with the shared codec:');
+  print('   declared type : ${BuildWriteRequestExample.requestType}');
+  print('   value as JSON : ${BuildWriteRequestExample.requestJson}');
+  print('');
+
   PreferencesApiExample.example5PreferencesApi();
+  print('5. The API both halves bind to:');
+  print('   base URI       : ${PreferencesApiExample.baseUri}');
+  print('   endpoint count : ${PreferencesApiExample.endpointCount}');
+  print('   read URI       : ${PreferencesApiExample.readUri}');
+  print(
+    '   write URI      : "${PreferencesApiExample.writeUri}" '
+    '(the key is stated in the body)',
+  );
+  print(
+    '   every endpoint requires a principal: '
+    '${PreferencesApiExample.everyEndpointAuthenticated}',
+  );
+  print(
+    '   no endpoint takes a principal parameter: '
+    '${PreferencesApiExample.noPrincipalInAnyUri}',
+  );
+  print('');
+
   RegisterApiExample.example6RegisterApi();
+  print('6. Registering the API, explicitly and idempotently:');
+  print(
+    '   in the registry after registering : '
+    '${RegisterApiExample.registered}',
+  );
+  print(
+    '   registering twice registers once  : '
+    '${RegisterApiExample.idempotent}',
+  );
+  print('');
 }
 
 void main() {

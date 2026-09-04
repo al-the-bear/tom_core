@@ -444,11 +444,7 @@ class TomExceptionExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('03: TOM EXCEPTION DETAILED USAGE EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 03: TomException Detailed Usage Example ===\n');
 
   TomExceptionExample.example1BasicException();
   TomExceptionExample.example2CustomUuid();

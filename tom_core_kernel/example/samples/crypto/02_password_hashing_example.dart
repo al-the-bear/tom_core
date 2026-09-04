@@ -271,13 +271,89 @@ class CaseSensitivityExample {
 // =============================================================================
 
 void run() {
+  print('=== 02: Password Hashing Example ===\n');
+
   BasicHashingExample.example1BasicHashing();
+  print('1. Hashing a password produces a salt and a hash:');
+  print('   password    : ${BasicHashingExample.password}');
+  print('   salt        : ${BasicHashingExample.salt}');
+  print('   hash length : ${BasicHashingExample.hashValue?.length}');
+  print('   spec        : ${BasicHashingExample.spec}');
+  print('');
+
   PasswordVerificationExample.example2PasswordVerification();
+  print('2. Verifying a candidate password against the stored hash:');
+  print(
+    '   correct password verifies: '
+    '${PasswordVerificationExample.correctResult}',
+  );
+  print(
+    '   wrong password verifies  : '
+    '${PasswordVerificationExample.wrongResult}',
+  );
+  print('');
+
   HashSpecificationExample.example3HashSpecification();
+  print('3. The parameters encoded in the default hash spec:');
+  print('   spec       : ${HashSpecificationExample.defaultSpec}');
+  print('   algorithm  : ${HashSpecificationExample.algorithm}');
+  print('   variant    : ${HashSpecificationExample.variant}');
+  print('   version    : ${HashSpecificationExample.version}');
+  print('   iterations : ${HashSpecificationExample.iterations}');
+  print('   memory     : ${HashSpecificationExample.memory}');
+  print('   lanes      : ${HashSpecificationExample.lanes}');
+  print('   key length : ${HashSpecificationExample.keyLength}');
+  print('');
+
   SaltGenerationExample.example4SaltGeneration();
+  print('4. Generating random salts:');
+  print('   16-byte salt : ${SaltGenerationExample.salt16a}');
+  print('   another one  : ${SaltGenerationExample.salt16b}');
+  print('   the two differ: ${SaltGenerationExample.saltsAreUnique}');
+  print('   32-byte salt hex chars: ${SaltGenerationExample.salt32?.length}');
+  print('');
+
   DifferentHashesExample.example5DifferentHashes();
+  print('5. The same password hashed twice:');
+  print(
+    '   first hash  : '
+    '${DifferentHashesExample.hash1!.substring(0, 24)}...',
+  );
+  print(
+    '   second hash : '
+    '${DifferentHashesExample.hash2!.substring(0, 24)}...',
+  );
+  print('   hashes differ    : ${DifferentHashesExample.hashesAreDifferent}');
+  print('   specs identical  : ${DifferentHashesExample.specsAreSame}');
+  print('   both verify      : ${DifferentHashesExample.bothVerifyCorrectly}');
+  print('');
+
   RegistrationLoginExample.example6RegistrationLogin();
+  print('6. Registering a user, then two login attempts:');
+  print(
+    '   registration complete : '
+    '${RegistrationLoginExample.registrationComplete}',
+  );
+  print(
+    '   stored hash length    : '
+    '${RegistrationLoginExample.storedHash?.length}',
+  );
+  print(
+    '   login, right password : '
+    '${RegistrationLoginExample.loginWithCorrectPassword}',
+  );
+  print(
+    '   login, wrong password : '
+    '${RegistrationLoginExample.loginWithWrongPassword}',
+  );
+  print('');
+
   CaseSensitivityExample.example7CaseSensitivity();
+  print('7. Password matching is case sensitive:');
+  print('   "MyPassword" : ${CaseSensitivityExample.originalVerifies}');
+  print('   "mypassword" : ${CaseSensitivityExample.lowercaseVerifies}');
+  print('   "MYPASSWORD" : ${CaseSensitivityExample.uppercaseVerifies}');
+  print('');
 }
 
 void main() {

@@ -216,16 +216,32 @@ package *hands out* — anywhere in it, not just in a sample header:
   command gets a run that verifies something;
 - every sample's `main()` **calls `requireAsserts()`**, so a reader who types the
   command from memory and omits the flag is refused rather than shown a hollow
-  green.
+  green;
+- every sample **contains at least one `assert`** — one that asserts nothing
+  exits 0 whatever the API does, and has no verification for a missing flag to
+  strip, so it slips past the check above as well;
+- every sample **opens `run()` with `print('=== NN: Title ===\n')` carrying its
+  own file number**, so that a reader watching a group runner's single
+  continuous stream can tell which file each block came from. A sample that
+  prints nothing contributes no block at all; one whose banner carries somebody
+  else's number sends a reader to the wrong file, which is worse.
+
+And after the sweep, one check that reads its output rather than the source:
+every sample **appears in its own group's stream**. The check above sees a
+banner anywhere in the file, which is not the same thing — a banner in `main()`
+names the sample on the standalone path and leaves it anonymous inside the group
+runner, which calls `run()`. Reading the group runners' logs is what tells the
+two apart, and the sweep has just produced them.
 
 ```bash
 ./tool/run_standalone_examples.sh              # all of them
 ./tool/run_standalone_examples.sh observable   # one group
 ```
 
-The group argument narrows the *sweep* only — the three checks always cover the
-whole package, because a wrong command is wrong for every reader, not only for
-the group under test.
+The group argument narrows the *sweep* only — the five static checks always cover
+the whole package, because a wrong command is wrong for every reader, not only
+for the group under test. The stream check necessarily follows the sweep, so it
+covers whichever groups ran.
 
 > **Cross-package sample.** Beyond these per-module examples, the shared
 > [`tom_core_samples/todo_domain`](../tom_core_samples/todo_domain/README.md)

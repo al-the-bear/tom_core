@@ -411,11 +411,7 @@ class GlobalSettingsExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('03: ADVANCED ACCESS CONTROL EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 03: Advanced Access Control Example ===\n');
 
   // Entitlement access examples
   EntitlementAccessExample.example1ExactEntitlementMatch();

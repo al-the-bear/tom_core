@@ -55,9 +55,24 @@
 # `bootstrapSamples()`, which calls it), so a flagless run refuses instead of
 # reporting a success it did not verify.
 #
+# And two checks about the output rather than the run. Every sample must open
+# `run()` with `print('=== NN: Title ===\n')` carrying its own file number, so
+# that a reader watching a group runner's single continuous stream can tell
+# which file each block came from. A sample that prints nothing contributes no
+# block at all; one that opens with a heading of its own devising, or with
+# somebody else's number, contributes a block filed under the wrong name.
+#
+# That much is visible in the source, so it is checked there. Whether the banner
+# is *reached* is not: a banner in `main()` names the sample on this sweep's
+# standalone path and leaves it anonymous in the group runner, which calls
+# `run()`. So the group runners' own logs are read after the sweep, and every
+# sample must appear in its group's stream. Two checks, because they answer two
+# different questions and each passes while the other fails.
+#
 # Exits non-zero if any sample fails, any documented command omits the flag or
-# names a file that does not exist, or any sample verifies nothing — either by
-# asserting nothing, or by running hollow without the flag.
+# names a file that does not exist, any sample verifies nothing — either by
+# asserting nothing, or by running hollow without the flag — or any sample does
+# not name itself, in its source or in its group's stream.
 
 set -uo pipefail
 
@@ -187,6 +202,58 @@ if [ ${#unverified[@]} -gt 0 ]; then
   echo
 fi
 
+# Whether a sample says which sample it is.
+#
+# The checks above are about a sample running honestly. This one is about the
+# reader being able to tell which one just ran. `00_run_all_examples.dart` runs
+# a whole group back to back, so its output is one long stream, and the only
+# thing separating one sample's contribution from the next is what the samples
+# themselves print. Twenty-seven of them printed nothing at all — they ran,
+# asserted, exited 0 and left no trace in the stream, so a reader watching it
+# could not have told they were there. Another eighteen printed freely but
+# opened with no heading, or with a heading in a shape of their own, so their
+# output arrived attached to whichever sample had last named itself.
+#
+# So every sample opens `run()` with its own banner, carrying the number it is
+# filed under:
+#
+#     print('=== 03: Resource Fallback Example ===\n');
+#
+# Both halves are checked, because both fail. A missing banner is the obvious
+# one. A banner whose number disagrees with the filename is the worse one: it
+# reads as an answer, and it sends a reader who wants the source to the wrong
+# file. That arrives by copying a neighbouring sample as a starting point and
+# editing everything except the number — which is exactly how samples get
+# written.
+#
+# Checked statically, and against the filename rather than against a list: a
+# list is a second place to update, and the number is already on the file.
+# Group runners are excluded by name — a runner is not a sample, and the samples
+# it delegates to name themselves. For the same reason a runner must not print a
+# per-file heading of its own: that is a second title for one file, and ten
+# runners carried one until five of them had drifted out of step with the
+# sample they introduced.
+unattributable=()
+while IFS= read -r file; do
+  case "${file##*/}" in 00_run_all_examples.dart) continue ;; esac
+  name="${file##*/}"
+  banner=$(grep -oE "print\('=== [0-9]{2}: [^']*'\);" "$file" | head -1)
+  if [ -z "$banner" ]; then
+    unattributable+=("$file -> no '=== NN: Title ===' banner")
+    continue
+  fi
+  said=$(printf '%s\n' "$banner" | sed -E "s/.*=== ([0-9]{2}):.*/\1/")
+  if [ "$said" != "${name:0:2}" ]; then
+    unattributable+=("$file -> banner says $said")
+  fi
+done < <(find example/samples -name '[0-9][0-9]_*.dart' | sort)
+
+if [ ${#unattributable[@]} -gt 0 ]; then
+  echo "Samples a reader cannot attribute in a group stream (${#unattributable[@]}):"
+  printf '    %s\n' "${unattributable[@]}"
+  echo
+fi
+
 # A third way a documented command fails the reader, and the one nothing above
 # catches: the path it names does not exist.
 #
@@ -273,13 +340,63 @@ for file in "${files[@]}"; do
 done
 
 echo
+
+# The other half of the attribution question, and the half a static check cannot
+# answer: whether the banner is *reachable from `run()`*.
+#
+# The check above reads each sample as text, so it sees a banner anywhere in the
+# file. `logging/05` had one in `main()` and nowhere else: it named itself
+# perfectly on the standalone path this sweep exercises, and was anonymous inside
+# its group runner, which calls `run()` and never `main()`. That is precisely the
+# failure the banner exists to prevent, passing the check written to prevent it.
+#
+# Tightening the static check is the wrong repair. "In `run()`" is not the
+# property that matters — `beanlocator/05`'s `run()` is a one-line delegation to
+# a class method that holds the banner, and is correct. The property that matters
+# is that the banner reaches the stream, and the only honest way to know that is
+# to read the stream.
+#
+# Which the sweep has already produced: `00_run_all_examples.dart` matches the
+# sample glob, so every group runner has just run and been logged. So this costs
+# a `grep` per sample and no further VM starts.
+#
+# A group whose runner failed or hung is skipped: its stream stops where it
+# stopped, and reporting every sample after that point as anonymous would bury
+# the one failure that explains them under a dozen that do not.
+anonymous=()
+for runner in "${files[@]}"; do
+  case "$runner" in */00_run_all_examples.dart) ;; *) continue ;; esac
+  log="$LOG_DIR/$(echo "${runner#example/}" | tr '/' '_').log"
+  [ -f "$log" ] || continue
+  skip=false
+  for bad in ${failed[@]+"${failed[@]}"} ${hung[@]+"${hung[@]}"}; do
+    [ "$bad" = "$runner" ] && skip=true && break
+  done
+  $skip && continue
+  group="${runner%/00_run_all_examples.dart}"
+  while IFS= read -r sample; do
+    name="${sample##*/}"
+    grep -q "=== ${name:0:2}: " "$log" \
+      || anonymous+=("$sample -> banner never reaches ${group#example/samples/} group stream")
+  done < <(find "$group" -name '[0-9][0-9]_*.dart' ! -name '00_*' | sort)
+done
+
+if [ ${#anonymous[@]} -gt 0 ]; then
+  echo "Samples anonymous in their own group's stream (${#anonymous[@]}):"
+  printf '    %s\n' "${anonymous[@]}"
+  echo
+fi
+
 if [ ${#failed[@]} -eq 0 ] && [ ${#hung[@]} -eq 0 ] && [ ${#flagless[@]} -eq 0 ] \
   && [ ${#unguarded[@]} -eq 0 ] && [ ${#unverified[@]} -eq 0 ] \
+  && [ ${#unattributable[@]} -eq 0 ] && [ ${#anonymous[@]} -eq 0 ] \
   && [ ${#missing_path[@]} -eq 0 ]; then
   echo "All ${#files[@]} samples ran standalone and exited 0,"
   echo "every documented command names a file that exists and passes"
-  echo "--enable-asserts, every sample asserts something, and every"
-  echo "sample refuses to run without the flag."
+  echo "--enable-asserts, every sample asserts something, every sample"
+  echo "refuses to run without the flag, and every sample names itself"
+  echo "with the number it is filed under — in its own group's stream,"
+  echo "not merely somewhere in its source."
   exit 0
 fi
 
@@ -304,6 +421,14 @@ fi
 if [ ${#unverified[@]} -gt 0 ]; then
   echo "No assert at all (${#unverified[@]}):"
   printf '    %s\n' "${unverified[@]}"
+fi
+if [ ${#unattributable[@]} -gt 0 ]; then
+  echo "No banner, or a banner carrying the wrong number (${#unattributable[@]}):"
+  printf '    %s\n' "${unattributable[@]}"
+fi
+if [ ${#anonymous[@]} -gt 0 ]; then
+  echo "Banner never reaches the group stream (${#anonymous[@]}):"
+  printf '    %s\n' "${anonymous[@]}"
 fi
 if [ ${#missing_path[@]} -gt 0 ]; then
   echo "Documented path does not exist (${#missing_path[@]}):"

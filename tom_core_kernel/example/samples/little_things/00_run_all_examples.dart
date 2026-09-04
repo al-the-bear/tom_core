@@ -29,24 +29,17 @@ Future<void> main() async {
 Future<void> run() async {
   print('Running Little Things Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Utility Functions Example');
-  print('-' * 40);
   utility_functions.run();
   print('✓ Utility functions examples passed\n');
 
-  print('02: Zone Helpers Example');
-  print('-' * 40);
   await zone_helpers.run();
   print('✓ Zone helpers examples passed\n');
 
-  print('03: TomException Example');
-  print('-' * 40);
   tom_exception.run();
   print('✓ TomException examples passed\n');
 
-  print('04: Formatting and Exceptions Example');
-  print('-' * 40);
   await formatting_exceptions.run();
   print('✓ Formatting and exception examples passed\n');
 

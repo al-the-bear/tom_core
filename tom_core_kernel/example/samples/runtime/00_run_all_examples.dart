@@ -29,24 +29,17 @@ void main() {
 void run() {
   print('Running Runtime Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Platform Detection Example');
-  print('-' * 40);
   platform_detection.run();
   print('✓ Platform detection examples passed\n');
 
-  print('02: Environment Platform Example');
-  print('-' * 40);
   environment_platform.run();
   print('✓ Environment platform examples passed\n');
 
-  print('03: Initialization Sequence Example');
-  print('-' * 40);
   initialization_sequence.run();
   print('✓ Initialization sequence examples passed\n');
 
-  print('04: Advanced Runtime Example');
-  print('-' * 40);
   advanced_runtime.run();
   print('✓ Advanced runtime examples passed\n');
 

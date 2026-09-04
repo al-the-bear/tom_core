@@ -313,11 +313,7 @@ class AdvancedRuntimeExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('04: ADVANCED RUNTIME EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 04: Advanced Runtime Example ===\n');
 
   // Clear the process-global environment/platform registries so this sample
   // starts from a clean runtime — the master samples runner executes every

@@ -106,6 +106,7 @@ class ConsoleOutputConfigExample {
 class CapturingOutputExample {
   static int capturedCount = 0;
   static List<String> capturedLevels = [];
+  static String? firstCapturedMessage;
   static bool customOutputWorks = false;
 
   static void example2CapturingOutput() {
@@ -122,6 +123,9 @@ class CapturingOutputExample {
 
     capturedCount = capturingOutput.messages.length;
     capturedLevels = List.from(capturingOutput.levels);
+    firstCapturedMessage = capturingOutput.messages.isNotEmpty
+        ? capturingOutput.messages.first
+        : null;
 
     customOutputWorks =
         capturedCount == 3 &&
@@ -278,6 +282,7 @@ class CallerDeterminationExample {
 class TimestampExample {
   static bool hasTimestamp = false;
   static bool timestampIsRecent = false;
+  static String? loggedTimestamp;
 
   static void example6Timestamp() {
     final originalLogOutput = tomLog.logOutput;
@@ -293,6 +298,7 @@ class TimestampExample {
 
     if (jsonOutput.entries.isNotEmpty) {
       final timestampStr = jsonOutput.entries.first['timestamp'] as String?;
+      loggedTimestamp = timestampStr;
       hasTimestamp = timestampStr != null && timestampStr.isNotEmpty;
 
       if (hasTimestamp) {
@@ -316,12 +322,67 @@ class TimestampExample {
 // =============================================================================
 
 void run() {
+  print('=== 03: Log Formatting Example ===\n');
+
   ConsoleOutputConfigExample.example1ConsoleOutputConfig();
+  print('1. The console output splits the levels across stderr and stdout:');
+  print('   stderr level bits: ${ConsoleOutputConfigExample.stderrLevelBit}');
+  print('   stdout level bits: ${ConsoleOutputConfigExample.stdoutLevelBit}');
+  print(
+    '   stderr takes error: '
+    '${ConsoleOutputConfigExample.stderrMatchesError}',
+  );
+  print(
+    '   stderr takes info : '
+    '${ConsoleOutputConfigExample.stderrMatchesInfo}',
+  );
+  print('');
+
   CapturingOutputExample.example2CapturingOutput();
+  print(
+    '2. A custom TomLogOutput receives the records instead of the console:',
+  );
+  print('   records captured : ${CapturingOutputExample.capturedCount}');
+  print('   their levels     : ${CapturingOutputExample.capturedLevels}');
+  print('   first record as this output formats it:');
+  print('     ${CapturingOutputExample.firstCapturedMessage}');
+  print('');
+
   JsonOutputExample.example3JsonOutput();
+  print('3. The same records, formatted as JSON-like maps instead of lines:');
+  print('   entries          : ${JsonOutputExample.jsonEntryCount}');
+  print('   first level      : ${JsonOutputExample.firstEntryLevel}');
+  print('   first message    : ${JsonOutputExample.firstEntryMessage}');
+  print('');
+
   LevelFilteringExample.example4LevelFiltering();
+  print('4. The logger level decides what ever reaches the output at all:');
+  print(
+    '   production: debug + info sent, records arrived: '
+    '${LevelFilteringExample.prodModeCount}',
+  );
+  print(
+    '   development: debug + info sent, records arrived: '
+    '${LevelFilteringExample.devModeCount}',
+  );
+  print('   filtering worked : ${LevelFilteringExample.filteringWorks}');
+  print('');
+
   CallerDeterminationExample.example5CallerDetermination();
+  print('5. Caller determination stamps each record with its calling member:');
+  print('   with it on : "${CallerDeterminationExample.originWhenEnabled}"');
+  print('   with it off: "${CallerDeterminationExample.originWhenDisabled}"');
+  print('');
+
   TimestampExample.example6Timestamp();
+  print('6. Every record is stamped with the time it was logged:');
+  print('   timestamp        : ${TimestampExample.loggedTimestamp}');
+  print('   timestamp present: ${TimestampExample.hasTimestamp}');
+  print(
+    '   within the window around the call: '
+    '${TimestampExample.timestampIsRecent}',
+  );
+  print('');
 }
 
 void main() {

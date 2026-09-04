@@ -89,6 +89,8 @@ class ScalarEncodingExample {
 // =============================================================================
 
 class ScalarRoundTripExample {
+  static String storedKey = '';
+  static String storedJson = '';
   static String? timezone;
   static int? fontSize;
   static bool? compact;
@@ -102,6 +104,8 @@ class ScalarRoundTripExample {
       'Europe/Berlin',
     );
 
+    storedKey = stored.key;
+    storedJson = stored.value;
     timezone = TomUserPreferenceCodec.decode<String>(stored);
     fontSize = TomUserPreferenceCodec.decode<int>(
       TomUserPreferenceCodec.encode('ui.fontSize', 14),
@@ -159,6 +163,10 @@ class DateTimeRoundTripExample {
 // =============================================================================
 
 class ZonelessTimestampExample {
+  /// The text a client might put on the wire: well-formed and completely
+  /// ambiguous — a wall-clock reading whose instant depends on who reads it.
+  static const String zoneless = '"2026-03-04T05:06:07"';
+
   static bool writeRejected = false;
   static bool readRejected = false;
   static String errorKey = '';
@@ -166,10 +174,6 @@ class ZonelessTimestampExample {
   static void example3bZonelessTimestamp() {
     // Nothing forces a client to use `encodeValue` — a hand-built write
     // request, or any non-Dart client, can put its own text on the wire.
-    // `2026-03-04T05:06:07` is well-formed and completely ambiguous: it is a
-    // wall-clock reading, and which instant it denotes depends on who reads it.
-    const zoneless = '"2026-03-04T05:06:07"';
-
     try {
       TomUserPreferenceCodec.validateEncoded(
         TomUserPreferenceCodec.dateTimeType,
@@ -223,6 +227,7 @@ class ReflectedRoundTripExample {
   static int? fontSize;
   static bool? compact;
   static String valueType = '';
+  static String storedText = '';
   static bool isDistinctInstance = false;
 
   static void example4ReflectedRoundTrip() {
@@ -235,6 +240,7 @@ class ReflectedRoundTripExample {
     final restored = TomUserPreferenceCodec.decode<DisplayPreference>(stored);
 
     valueType = stored.valueType;
+    storedText = stored.value;
     theme = restored.theme;
     fontSize = restored.fontSize;
     compact = restored.compact;
@@ -387,6 +393,7 @@ class CollectionRoundTripExample {
 class TypeMismatchExample {
   static bool mismatchRejected = false;
   static String errorKey = '';
+  static String errorMessage = '';
 
   static void example5TypeMismatch() {
     final stored = TomUserPreferenceCodec.encode('ui.fontSize', 14);
@@ -398,6 +405,7 @@ class TypeMismatchExample {
     } on TomUserPreferenceCodecException catch (error) {
       mismatchRejected = true;
       errorKey = error.key;
+      errorMessage = error.defaultUserMessage;
     }
 
     assert(mismatchRejected, 'A type mismatch throws');
@@ -555,17 +563,128 @@ class RefusalCauseExample {
 
 /// Runs every codec example in this file.
 void run() {
+  print('=== 01: Preference Codec Example ===\n');
+
   ScalarEncodingExample.example1ScalarEncoding();
+  print('1. A scalar travels as a type name beside its JSON text:');
+  print('   typeNameOf("Europe/Berlin") : ${ScalarEncodingExample.stringType}');
+  print('   typeNameOf(14)              : ${ScalarEncodingExample.intType}');
+  print('   typeNameOf(true)            : ${ScalarEncodingExample.boolType}');
+  print('   encodeValue("Europe/Berlin"): ${ScalarEncodingExample.stringJson}');
+  print('   encodeValue(14)             : ${ScalarEncodingExample.intJson}');
+  print('');
+
   ScalarRoundTripExample.example2ScalarRoundTrip();
+  print('2. A scalar comes back as the type it went in as:');
+  print('   stored key   : ${ScalarRoundTripExample.storedKey}');
+  print('   stored JSON  : ${ScalarRoundTripExample.storedJson}');
+  print('   String back  : ${ScalarRoundTripExample.timezone}');
+  print('   int back     : ${ScalarRoundTripExample.fontSize}');
+  print('   bool back    : ${ScalarRoundTripExample.compact}');
+  print('   double back  : ${ScalarRoundTripExample.scale}');
+  print('');
+
   DateTimeRoundTripExample.example3DateTimeRoundTrip();
+  print('3. A DateTime preference is stored, and read back, in UTC:');
+  print('   stored text : ${DateTimeRoundTripExample.storedText}');
+  print('   decoded     : ${DateTimeRoundTripExample.decoded}');
+  print(
+    '   same moment as the local value written: '
+    '${DateTimeRoundTripExample.sameMoment}',
+  );
+  print('');
+
   ZonelessTimestampExample.example3bZonelessTimestamp();
+  print('3b. A timestamp that names no zone is refused, not guessed:');
+  print('   offered text      : ${ZonelessTimestampExample.zoneless}');
+  print('   write refused     : ${ZonelessTimestampExample.writeRejected}');
+  print('   refusal error key : ${ZonelessTimestampExample.errorKey}');
+  print('   read refused too  : ${ZonelessTimestampExample.readRejected}');
+  print('');
+
   ReflectedRoundTripExample.example4ReflectedRoundTrip();
+  print('4. A reflected object round-trips as an object:');
+  print('   stored type : ${ReflectedRoundTripExample.valueType}');
+  print('   stored text : ${ReflectedRoundTripExample.storedText}');
+  print('   theme       : ${ReflectedRoundTripExample.theme}');
+  print('   fontSize    : ${ReflectedRoundTripExample.fontSize}');
+  print('   compact     : ${ReflectedRoundTripExample.compact}');
+  print(
+    '   rebuilt rather than passed through: '
+    '${ReflectedRoundTripExample.isDistinctInstance}',
+  );
+  print('');
+
   EnumRoundTripExample.example4bEnumRoundTrip();
+  print('4b. An enum is stored by its name, never by its index:');
+  print('   stored type      : ${EnumRoundTripExample.valueType}');
+  print('   stored text      : ${EnumRoundTripExample.storedText}');
+  print('   decoded constant : ${EnumRoundTripExample.restored}');
+  print(
+    '   a constant the enum no longer declares is refused: '
+    '${EnumRoundTripExample.unknownConstantRejected}',
+  );
+  print('   refusal error key: ${EnumRoundTripExample.errorKey}');
+  print('');
+
   CollectionRoundTripExample.example4cCollectionRoundTrip();
+  print('4c. A collection of scalars is a value in its own right:');
+  print('   list type    : ${CollectionRoundTripExample.listType}');
+  print('   list text    : ${CollectionRoundTripExample.listText}');
+  print('   list back    : ${CollectionRoundTripExample.restoredList}');
+  print('   map type     : ${CollectionRoundTripExample.mapType}');
+  print('   map back     : ${CollectionRoundTripExample.restoredMap}');
+  print(
+    '   zoneless element in a List<DateTime> refused: '
+    '${CollectionRoundTripExample.zonelessElementRejected}',
+  );
+  print(
+    '   List<Object> refused: '
+    '${CollectionRoundTripExample.mixedListRefused} '
+    '(${CollectionRoundTripExample.errorKey})',
+  );
+  print('');
+
   TypeMismatchExample.example5TypeMismatch();
+  print('5. An int read back as a String is refused, not coerced:');
+  print('   read refused      : ${TypeMismatchExample.mismatchRejected}');
+  print('   refusal error key : ${TypeMismatchExample.errorKey}');
+  print('   refusal message   : ${TypeMismatchExample.errorMessage}');
+  print('');
+
   ValidateEncodedExample.example6ValidateEncoded();
+  print('6. An already-encoded pair is checked before it is stored:');
+  print(
+    '   ("int", 14) accepted            : '
+    '${ValidateEncodedExample.matchingPairAccepted}',
+  );
+  print(
+    '   ("int", "fourteen") rejected    : '
+    '${ValidateEncodedExample.mismatchedPairRejected}',
+  );
+  print(
+    '   ("String", not json) rejected   : '
+    '${ValidateEncodedExample.invalidJsonRejected}',
+  );
+  print('');
+
   NonFiniteNumberExample.example7NonFiniteNumber();
+  print('7. A number JSON cannot represent is refused by the codec:');
+  print('   0.0 / 0.0 refused : ${NonFiniteNumberExample.nanRejected}');
+  print('   refusal error key : ${NonFiniteNumberExample.errorKey}');
+  print('   offending type    : ${NonFiniteNumberExample.reportedType}');
+  print('');
+
   RefusalCauseExample.example7bRefusalCauses();
+  print('7b. A write refusal names the cause it detected:');
+  print('   double.nan              : ${RefusalCauseExample.topLevelCause}');
+  print('   [1.0, infinity]         : ${RefusalCauseExample.elementCause}');
+  print('   <int, String>{1: "one"} : ${RefusalCauseExample.mapKeyCause}');
+  print('   [UnnamedWindowState()]  : ${RefusalCauseExample.elementTypeCause}');
+  print('   <int>{1, 2}             : ${RefusalCauseExample.setCause}');
+  print('   UnnamedWindowState()    : ${RefusalCauseExample.unreflectedCause}');
+  print('   the Set refusal reads   : ${RefusalCauseExample.setMessage}');
+  print('');
 }
 
 void main() {

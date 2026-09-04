@@ -64,6 +64,7 @@ class RetryIdempotenceExample {
 
   static int attemptsMade = 0;
   static int finalAttempt = 0;
+  static TomJobRunState? finalState;
 
   static Future<void> example1TheDuplicateYouArePromised() async {
     appended.clear();
@@ -114,6 +115,7 @@ class RetryIdempotenceExample {
       (r) => r.scheduledFor == DateTime.utc(2026, 3, 2, 10),
     );
     finalAttempt = run.attempt;
+    finalState = run.state;
 
     scheduler.close();
 
@@ -517,11 +519,52 @@ class BackoffCurveExample {
 // =============================================================================
 
 Future<void> run() async {
+  print('=== 04: Execution Guarantee Example ===\n');
+
   await RetryIdempotenceExample.example1TheDuplicateYouArePromised();
+  print('1. The duplicate you are promised — a retry:');
+  print('   body executions  : ${RetryIdempotenceExample.attemptsMade}');
+  print('   final attempt    : ${RetryIdempotenceExample.finalAttempt}');
+  print('   final run state  : ${RetryIdempotenceExample.finalState}');
+  print('   unkeyed rows     : ${RetryIdempotenceExample.appended.length}');
+  print('   window-keyed rows: ${RetryIdempotenceExample.upserted.length}');
+  print(
+    '   idempotence key  : '
+    '${RetryIdempotenceExample.upserted.keys.single}',
+  );
+  print('');
+
   await ReservedAndLostExample.example2ReservedAndLost();
+  print('2. Reserved and lost — free to re-offer, nothing had run:');
+  print('   state         : ${ReservedAndLostExample.stateAfterRecovery}');
+  print('   attempt       : ${ReservedAndLostExample.attemptAfterRecovery}');
+  print('   claim cleared : ${ReservedAndLostExample.claimCleared}');
+  print('');
+
   await InterruptedMidExecutionExample.example3InterruptedMidExecution();
+  print('3. Interrupted mid-execution — recovery is the job\'s call:');
+  print('   charge-cards : ${InterruptedMidExecutionExample.declinedState}');
+  print('   why refused  : ${InterruptedMidExecutionExample.declinedError}');
+  print('   search-index : ${InterruptedMidExecutionExample.recoveredState}');
+  print('');
+
   await FencingTokenExample.example4TheFencingToken();
+  print('4. The pause no store can rule out, fenced by the token:');
+  print('   node-a token        : ${FencingTokenExample.firstToken}');
+  print('   node-b token        : ${FencingTokenExample.secondToken}');
+  print('   stale write refused : ${FencingTokenExample.staleWriteRejected}');
+  print('   ledger contents     : ${FencingTokenExample.finalContents}');
+  print('   renewal refused     : ${FencingTokenExample.renewRefused}');
+  print('');
+
   await BackoffCurveExample.example5TheCurveAndItsCeiling();
+  print('5. The backoff curve, and the plateau below its ceiling:');
+  print('   steep curve 1..4 : ${BackoffCurveExample.steepCurve}');
+  print('   plateau          : ${BackoffCurveExample.plateau}');
+  print('   jittered lowest  : ${BackoffCurveExample.lowestJittered}');
+  print('   jittered highest : ${BackoffCurveExample.highestJittered}');
+  print('   default curve    : ${BackoffCurveExample.defaultCurve}');
+  print('');
 }
 
 Future<void> main() {

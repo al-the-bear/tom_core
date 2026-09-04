@@ -335,6 +335,8 @@ class StaticZoneAccessExample {
 // =============================================================================
 
 void run() {
+  print('=== 01: Basic Context Example ===\n');
+
   BasicContextCreationExample.example1CreatingSimpleContext();
   ContextExecutionExample.example2RunningCodeInContext();
   DynamicEntriesExample.example3AddingEntriesDynamically();

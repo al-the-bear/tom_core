@@ -448,10 +448,42 @@ class ClaimIsNotAtomicExample {
 // =============================================================================
 
 Future<void> run() async {
+  print('=== 05: Durable Store Example ===\n');
+
   await QueueOutlivesProcessExample.example1AQueueOutlivesItsProcess();
+  print('1. A planned window outlives the process that planned it:');
+  print('   json array   : ${QueueOutlivesProcessExample.fileIsJsonArray}');
+  print('   rows on disk : ${QueueOutlivesProcessExample.rowsOnDisk}');
+  print('   planned id   : ${QueueOutlivesProcessExample.plannedId}');
+  print('   executed id  : ${QueueOutlivesProcessExample.executedId}');
+  print('   what ran     : ${QueueOutlivesProcessExample.ran}');
+  print('');
+
   await InFlightRunSurvivesExample.example2AnInFlightRunComesBack();
+  print('2. An in-flight run comes back as an expired claim:');
+  print('   rows       : ${InFlightRunSurvivesExample.rowsAfterRestart}');
+  print('   state      : ${InFlightRunSurvivesExample.stateAfterRestart}');
+  print('   claimed by : ${InFlightRunSurvivesExample.claimedByAfterRestart}');
+  print('   startedAt  : ${InFlightRunSurvivesExample.startedAtSurvived}');
+  print('   recovered  : ${InFlightRunSurvivesExample.stateAfterRecovery}');
+  print('   attempt    : ${InFlightRunSurvivesExample.attemptAfterRecovery}');
+  print('');
+
   await FileLeaseLockExample.example3ALeaseOutlivesItsProcess();
+  print('3. A lease outlives the process that took it:');
+  print('   first token        : ${FileLeaseLockExample.firstToken}');
+  print('   held after restart : ${FileLeaseLockExample.heldAfterRestart}');
+  print('   owner              : ${FileLeaseLockExample.ownerAfterRestart}');
+  print('   refused while live : ${FileLeaseLockExample.refusedWhileLive}');
+  print('   token on takeover  : ${FileLeaseLockExample.tokenAfterTakeover}');
+  print('');
+
   await ClaimIsNotAtomicExample.example4WhyTheFilePairIsAPair();
+  print('4. Why the file pair is a pair:');
+  print('   both claimed the run : ${ClaimIsNotAtomicExample.bothClaimed}');
+  print('   lease winner         : ${ClaimIsNotAtomicExample.leaseWinner}');
+  print('   loser refused        : ${ClaimIsNotAtomicExample.loserRefused}');
+  print('');
 }
 
 Future<void> main() {

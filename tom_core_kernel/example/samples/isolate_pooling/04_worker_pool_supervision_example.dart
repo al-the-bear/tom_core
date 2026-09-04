@@ -45,6 +45,8 @@ class CrashCommand extends TomCommand {
 
 /// Run the liveness supervision example.
 Future<void> run() async {
+  print('=== 04: Worker Pool Supervision Example ===\n');
+
   final context = TomWorkerContext(
     defaultTomEnvironment,
     platformLinux,

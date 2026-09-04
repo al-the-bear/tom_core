@@ -12,8 +12,8 @@
 /// - [TomPlatformUtils.envVars] carries configuration that must not come from
 ///   `Platform.environment`, because on the web there is no such thing
 ///
-/// The example is silent by design: every claim it makes is an `assert`, so a
-/// mistake fails the run instead of scrolling past in a transcript.
+/// Every claim the example makes is also an `assert`, so a mistake fails the
+/// run instead of scrolling past in the printed transcript.
 ///
 /// `02_environment_platform_example.dart` and
 /// `03_initialization_sequence_example.dart` install the real
@@ -140,6 +140,8 @@ class CapturingPlatformUtils extends SamplePlatformUtils {
 
 /// Runs the platform-detection demonstrations.
 void run() {
+  print('=== 01: Platform Detection Example ===\n');
+
   // ---------------------------------------------------------------------------
   // Example 1: the fallback serves console output and refuses detection
   // ---------------------------------------------------------------------------
@@ -173,6 +175,12 @@ void run() {
     'The fallback must refuse a detection question, not answer it',
   );
 
+  print('1. The fallback serves output and declines to detect anything:');
+  print('   getBrowserLocation() : "$fallbackBrowserLocation" (empty)');
+  print('   getIsolateName()     : "$fallbackIsolateName" (empty)');
+  print('   isDesktop() threw UnimplementedError: $fallbackRefusedDetection');
+  print('');
+
   // ---------------------------------------------------------------------------
   // Example 2: current is the implementation that was installed
   // ---------------------------------------------------------------------------
@@ -202,6 +210,15 @@ void run() {
     stubIsolateName == 'android-main',
     'Isolate identity comes from the implementation too',
   );
+
+  print('2. The answers come from the installed implementation, not the host:');
+  print('   isMobile()       : $stubSaysMobile');
+  print('   isAndroid()      : $stubSaysAndroid');
+  print(
+    '   isDesktop()      : $stubSaysDesktop (the host really is a desktop)',
+  );
+  print('   getIsolateName() : $stubIsolateName');
+  print('');
 
   // ---------------------------------------------------------------------------
   // Example 3: the predicates partition the host
@@ -248,6 +265,13 @@ void run() {
   );
   assert(!platform.isWeb(), 'A Dart VM run is not a browser run');
 
+  print('3. The predicates partition the host — one OS, one environment:');
+  print('   operating-system flags   : $operatingSystems');
+  print('   reporting true           : $detectedOs');
+  print('   [desktop, mobile, web]   : $environments');
+  print('   environment flags true   : $environmentCount');
+  print('');
+
   // ---------------------------------------------------------------------------
   // Example 4: environment variables
   // ---------------------------------------------------------------------------
@@ -269,6 +293,11 @@ void run() {
     'getTomEnvVars() is a view of that map, not a copy taken at startup',
   );
 
+  print('4. Environment variables are held by TomPlatformUtils itself:');
+  print('   getTomEnvVars()["testKey"] after setting  : $readThroughPlatform');
+  print('   getTomEnvVars()["testKey"] after removing : $readAfterRemoval');
+  print('');
+
   // ---------------------------------------------------------------------------
   // Example 5: console output goes where it is addressed
   // ---------------------------------------------------------------------------
@@ -286,6 +315,11 @@ void run() {
     capturing.writtenToError.single == 'error message',
     'outError() is a separate channel, not a relabelled out()',
   );
+
+  print('5. Console output reaches the channel it was addressed to:');
+  print('   out() was handed      : ${capturing.written}');
+  print('   outError() was handed : ${capturing.writtenToError}');
+  print('');
 
   // ---------------------------------------------------------------------------
   // Example 6: the HTTP client factory
@@ -318,6 +352,11 @@ void run() {
     fallbackRefusedClient,
     'The fallback declines to invent an HTTP client',
   );
+
+  print('6. Every call to the HTTP client factory owns its own client:');
+  print('   two calls handed back distinct clients : $clientsAreDistinct');
+  print('   the fallback refuses to invent one     : $fallbackRefusedClient');
+  print('');
 
   // Leave a working implementation installed for whatever runs next.
   TomPlatformUtils.setCurrentPlatform(sample);

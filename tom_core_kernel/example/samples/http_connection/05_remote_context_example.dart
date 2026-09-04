@@ -331,11 +331,7 @@ class RemoteContextExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('05: REMOTE CONTEXT CONFIGURATION EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 05: Remote Context Configuration Example ===\n');
 
   RemoteContextExample.example1ContextStructure();
   RemoteContextExample.example2SeparateAuthServer();

@@ -38,29 +38,20 @@ Future<void> main() async {
 Future<void> run() async {
   print('Running Scheduling Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Memory Substrate Example');
-  print('-' * 40);
   await memory_substrate.run();
   print('✓ Memory substrate examples passed\n');
 
-  print('02: Declared Job Example');
-  print('-' * 40);
   await declared_job.run();
   print('✓ Declared job examples passed\n');
 
-  print('03: Schedule Kinds Example');
-  print('-' * 40);
   await schedule_kinds.run();
   print('✓ Schedule kind examples passed\n');
 
-  print('04: Execution Guarantee Example');
-  print('-' * 40);
   await execution_guarantee.run();
   print('✓ Execution guarantee examples passed\n');
 
-  print('05: Durable Store Example');
-  print('-' * 40);
   await durable_store.run();
   print('✓ Durable store examples passed\n');
 

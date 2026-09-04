@@ -31,34 +31,23 @@ void main() {
 void run() {
   print('Running Crypto Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: RSA Encryption Example');
-  print('-' * 40);
   rsa_encryption.run();
   print('✓ RSA encryption examples passed\n');
 
-  print('02: Password Hashing Example');
-  print('-' * 40);
   password_hashing.run();
   print('✓ Password hashing examples passed\n');
 
-  print('03: Key Generation Example');
-  print('-' * 40);
   key_generation.run();
   print('✓ Key generation examples passed\n');
 
-  print('04: Digital Signatures Example');
-  print('-' * 40);
   digital_signatures.run();
   print('✓ Digital signatures examples passed\n');
 
-  print('05: JWT Token Example');
-  print('-' * 40);
   jwt_token.run();
   print('✓ JWT token examples passed\n');
 
-  print('06: Advanced JWT Example');
-  print('-' * 40);
   advanced_jwt.run();
   print('✓ Advanced JWT examples passed\n');
 

@@ -30,14 +30,11 @@ void main() {
 void run() {
   print('Running Preferences Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Preference Codec Example');
-  print('-' * 40);
   codec.run();
   print('✓ Preference codec examples passed\n');
 
-  print('\n02: Preference Contract Example');
-  print('-' * 40);
   contract.run();
   print('✓ Preference contract examples passed\n');
 

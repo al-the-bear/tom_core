@@ -493,11 +493,7 @@ class ApiEndpointDefinitionExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('04: API AND ENDPOINT DEFINITION EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 04: API and Endpoint Definition Example ===\n');
 
   ApiEndpointDefinitionExample.example1CreateApi();
   ApiEndpointDefinitionExample.example2BracketNotation();

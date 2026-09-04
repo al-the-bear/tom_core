@@ -405,11 +405,7 @@ class WorkerSetupAndGuardsExample {
 // ============================================================================
 
 Future<void> run() async {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('03: WORKER SETUP AND CREATOR-SIDE GUARDS EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 03: Worker Setup and Creator-Side Guards Example ===\n');
 
   WorkerSetupAndGuardsExample.example1CreatorHasNoBackChannel();
   WorkerSetupAndGuardsExample.example2SendToCreatorRefuses();

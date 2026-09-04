@@ -275,14 +275,77 @@ class TokenRoundTripExample {
 // =============================================================================
 
 void run() {
+  print('=== 05: JWT Token Example ===\n');
+
   BasicJwtCreationExample.example1BasicJwtCreation();
+  print('1. Creating a signed JWT:');
+  print(
+    '   token starts with : '
+    '${BasicJwtCreationExample.jwtString!.substring(0, 24)}...',
+  );
+  print('   token chars       : ${BasicJwtCreationExample.jwtString?.length}');
+  print(
+    '   dot-separated parts: ${BasicJwtCreationExample.jwtPartCount} '
+    '(header.payload.signature)',
+  );
+  print('');
+
   JwtParsingExample.example2JwtParsing();
+  print('2. Parsing the token on the client side:');
+  print('   issuer  : ${JwtParsingExample.parsedIssuer}');
+  print('   userId  : ${JwtParsingExample.parsedUserId}');
+  print('   role    : ${JwtParsingExample.parsedRole}');
+  print('   carries validUntil: ${JwtParsingExample.hasValidUntil}');
+  print('');
+
   EncryptedJwtExample.example3EncryptedData();
+  print('3. A token carrying an encrypted section:');
+  print('   public userId    : ${EncryptedJwtExample.publicUserId}');
+  print('   secret sessionKey: ${EncryptedJwtExample.sessionKey}');
+  print('   secret permissions: ${EncryptedJwtExample.permissions}');
+  print('   secret data present: ${EncryptedJwtExample.hasSecretData}');
+  print('');
+
   JwtConfigurationExample.example4Configuration();
+  print('4. The default signing configuration:');
+  print('   is a dummy dev config: ${JwtConfigurationExample.isDummy}');
+  print('   public key present   : ${JwtConfigurationExample.hasPublicKey}');
+  print('   private key present  : ${JwtConfigurationExample.hasPrivateKey}');
+  print('');
+
   TokenExpirationExample.example5TokenExpiration();
+  print('5. Two tokens with different lifetimes:');
+  print(
+    '   15-minute token valid until: '
+    '${TokenExpirationExample.shortValidUntil}',
+  );
+  print(
+    '   30-day token valid until   : '
+    '${TokenExpirationExample.longValidUntil}',
+  );
+  print('');
+
   DelayedValidityExample.example6DelayedValidity();
+  print('6. A token that only becomes valid later (notBefore):');
+  print('   valid from  : ${DelayedValidityExample.validFrom}');
+  print('   valid until : ${DelayedValidityExample.validUntil}');
+  print('');
+
   FullTokenPropertiesExample.example7FullTokenProperties();
+  print('7. Every property of a parsed token:');
+  print('   issuer           : ${FullTokenPropertiesExample.fullIssuer}');
+  print('   payload keys     : ${FullTokenPropertiesExample.payloadKeys}');
+  print('   secret data keys : ${FullTokenPropertiesExample.secretDataKeys}');
+  print('   decrypted apiKey : ${FullTokenPropertiesExample.apiKey}');
+  print('');
+
   TokenRoundTripExample.example8TokenRoundTrip();
+  print('8. Create, serialize, parse — nothing is lost:');
+  print('   userId before : ${TokenRoundTripExample.originalUserId}');
+  print('   userId after  : ${TokenRoundTripExample.parsedUserId}');
+  print('   issuer preserved : ${TokenRoundTripExample.issuerPreserved}');
+  print('   round-trip succeeded: ${TokenRoundTripExample.roundTripSuccess}');
+  print('');
 }
 
 void main() {

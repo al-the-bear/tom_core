@@ -113,11 +113,7 @@ class UnreachableCache {
 /// entry points do that: the group runner (`00_run_all_examples.dart`) and this
 /// file's own `main()` each call `bootstrapSamples()` first.
 Future<void> run() async {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('02: ADVANCED SHUTDOWN CLEANUP EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 02: Advanced Shutdown Cleanup Example ===\n');
 
   // ---------------------------------------------------------------------------
   // Example 1: close() is found without being named

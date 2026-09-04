@@ -383,11 +383,7 @@ class AdvancedJwtExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('06: ADVANCED JWT TOKEN EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 06: Advanced JWT Token Example ===\n');
 
   AdvancedJwtExample.example1DecryptionException();
   AdvancedJwtExample.example2CatchingException();

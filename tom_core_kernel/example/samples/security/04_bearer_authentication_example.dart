@@ -330,11 +330,7 @@ class BearerAuthenticationExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('04: BEARER AUTHENTICATION EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 04: Bearer Authentication Example ===\n');
 
   BearerAuthenticationExample.example1AuthenticationStructure();
   BearerAuthenticationExample.example2ConvertPrincipalToPayload();

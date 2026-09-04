@@ -247,13 +247,83 @@ class KeyComparisonExample {
 // =============================================================================
 
 void run() {
+  print('=== 03: Key Generation Example ===\n');
+
   SecureRandomExample.example1SecureRandom();
+  print('1. A seeded secure random number generator:');
+  print('   first  uint32 : ${SecureRandomExample.randomValue1}');
+  print('   second uint32 : ${SecureRandomExample.randomValue2}');
+  print('   values differ : ${SecureRandomExample.valuesAreDifferent}');
+  print('');
+
   KeyPairGenerationExample.example2GenerateKeyPair();
+  print('2. Generating a fresh RSA key pair:');
+  print('   modulus bits    : ${KeyPairGenerationExample.modulusBitLength}');
+  print('   public exponent : ${KeyPairGenerationExample.exponent}');
+  print(
+    '   private key has p and q: '
+    '${KeyPairGenerationExample.hasPrivateKeyComponents}',
+  );
+  print('');
+
   PemEncodingExample.example3PemEncoding();
+  print('3. Encoding both keys to PEM:');
+  print('   public PEM chars  : ${PemEncodingExample.publicPemLength}');
+  print('   private PEM chars : ${PemEncodingExample.privatePemLength}');
+  print('   public PEM header : ${PemEncodingExample.publicPemHasHeader}');
+  print('   public PEM footer : ${PemEncodingExample.publicPemHasFooter}');
+  print('   private PEM header: ${PemEncodingExample.privatePemHasHeader}');
+  print('   private PEM footer: ${PemEncodingExample.privatePemHasFooter}');
+  print('');
+
   PemParsingExample.example4PemParsing();
+  print('4. Parsing the PEM text back into keys:');
+  print(
+    '   public modulus matches   : ${PemParsingExample.publicModulusMatch}',
+  );
+  print(
+    '   private modulus matches  : ${PemParsingExample.privateModulusMatch}',
+  );
+  print(
+    '   public exponent matches  : ${PemParsingExample.publicExponentMatch}',
+  );
+  print(
+    '   private exponent matches : ${PemParsingExample.privateExponentMatch}',
+  );
+  print('');
+
   EncryptionVerificationExample.example5VerifyEncryption();
+  print('5. The generated pair really encrypts and decrypts:');
+  print('   plaintext        : ${EncryptionVerificationExample.testMessage}');
+  print(
+    '   after round-trip : '
+    '${EncryptionVerificationExample.decryptedMessage}',
+  );
+  print(
+    '   round-trip succeeded: '
+    '${EncryptionVerificationExample.roundTripSuccess}',
+  );
+  print('');
+
   DevelopmentKeysExample.example6DevelopmentKeys();
+  print('6. The built-in development key pair:');
+  print('   modulus bits         : ${DevelopmentKeysExample.devModulusBits}');
+  print('   public exponent      : ${DevelopmentKeysExample.devExponent}');
+  print('   private exponent set : ${DevelopmentKeysExample.devPrivateExists}');
+  print('   standard properties  : ${DevelopmentKeysExample.isDevelopmentKey}');
+  print('');
+
   KeyComparisonExample.example7KeyComparison();
+  print('7. Comparing the moduli of two key pairs:');
+  print(
+    '   public and private share a modulus: '
+    '${KeyComparisonExample.publicPrivateModulusMatch}',
+  );
+  print(
+    '   generated pair differs from the dev pair: '
+    '${KeyComparisonExample.generatedDifferentFromDev}',
+  );
+  print('');
 }
 
 void main() {

@@ -248,13 +248,78 @@ class PushPopLogLevelExample {
 // =============================================================================
 
 void run() {
+  print('=== 02: Log Levels Example ===\n');
+
   LogLevelBitPatternsExample.example1BitPatterns();
+  print('1. Each single level is one bit of the level pattern:');
+  print('   trace            : ${LogLevelBitPatternsExample.traceBit}');
+  print('   debug            : ${LogLevelBitPatternsExample.debugBit}');
+  print('   info             : ${LogLevelBitPatternsExample.infoBit}');
+  print('   error            : ${LogLevelBitPatternsExample.errorBit}');
+  print('');
+
   CompoundLogLevelsExample.example2CompoundLevels();
+  print('2. The predefined levels are combinations of those bits:');
+  print('   development      : ${CompoundLogLevelsExample.developmentBit}');
+  print('   production       : ${CompoundLogLevelsExample.productionBit}');
+  print('   silent           : ${CompoundLogLevelsExample.silentBit}');
+  print('   off              : ${CompoundLogLevelsExample.offBit}');
+  print('');
+
   CombiningLogLevelsExample.example3CombiningLevels();
+  print('3. The + operator ORs two levels together:');
+  print('   info             : ${CombiningLogLevelsExample.infoOnlyBit}');
+  print('   error            : ${CombiningLogLevelsExample.errorOnlyBit}');
+  print('   info + error     : ${CombiningLogLevelsExample.combinedBit}');
+  print(
+    '   matches info / error / debug: '
+    '${CombiningLogLevelsExample.matchesInfo} / '
+    '${CombiningLogLevelsExample.matchesError} / '
+    '${CombiningLogLevelsExample.matchesDebug}',
+  );
+  print('');
+
   RemovingLogLevelsExample.example4RemovingLevels();
+  print('4. The - operator clears one level out of a compound one:');
+  print('   production       : ${RemovingLogLevelsExample.prodBit}');
+  print('   production - info: ${RemovingLogLevelsExample.noInfoBit}');
+  print(
+    '   production matches info      : '
+    '${RemovingLogLevelsExample.prodMatchesInfo}',
+  );
+  print(
+    '   after removal matches info   : '
+    '${RemovingLogLevelsExample.noInfoMatchesInfo}',
+  );
+  print(
+    '   after removal still has warn : '
+    '${RemovingLogLevelsExample.noInfoMatchesWarn}',
+  );
+  print('');
+
   LevelByNameExample.example5LevelByName();
+  print('5. byName looks a level up from a string, case-insensitively:');
+  print('   byName("DEBUG") bits     : ${LevelByNameExample.debugByNameBit}');
+  print('   byName("PRODUCTION") bits: ${LevelByNameExample.prodByNameBit}');
+  print('   byName("INVALID")        : ${LevelByNameExample.invalidName}');
+  print('   byName("trace")          : ${LevelByNameExample.caseInsensitive}');
+  print('');
+
   SetLogLevelExample.example6SetLogLevel();
+  print('6. Setting the logger level, by value and by name:');
+  print('   after development: ${SetLogLevelExample.devLevel}');
+  print('   after production : ${SetLogLevelExample.prodLevel}');
+  print('   after "EXTENDED" : ${SetLogLevelExample.extLevel}');
+  print('   every set stuck  : ${SetLogLevelExample.levelChangesWork}');
+  print('');
+
   PushPopLogLevelExample.example7PushPopLogLevel();
+  print('7. push/pop raise the level for a stretch, then put it back:');
+  print('   base (production): ${PushPopLogLevelExample.baseLevelBit}');
+  print('   pushed (dev)     : ${PushPopLogLevelExample.pushedLevelBit}');
+  print('   after pop        : ${PushPopLogLevelExample.afterPopBit}');
+  print('   restored exactly : ${PushPopLogLevelExample.pushPopWorks}');
+  print('');
 }
 
 void main() {

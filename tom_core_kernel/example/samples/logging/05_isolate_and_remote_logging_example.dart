@@ -80,6 +80,8 @@ class _CapturingLogOutput extends TomLogOutput {
 /// surfaces through the server's configured local output — prefixed with the
 /// client's sender id so the origin is identifiable.
 void run() {
+  print('=== 05: Isolate and Remote Logging Example ===\n');
+
   print(
     '1. Remote logging — client message received and re-emitted by server:',
   );
@@ -336,7 +338,6 @@ Future<void> runIsolateLoggingDemo(List<String> args) async {
 /// [TomRemoteLogMessage]. The aggregate runner does this for its own path, so
 /// this call is what makes the file runnable on its own.
 Future<void> main(List<String> args) async {
-  print('=== 05: Isolate and Remote Logging Example ===\n');
   bootstrapSamples();
   run();
   await runIsolateLoggingDemo(args);

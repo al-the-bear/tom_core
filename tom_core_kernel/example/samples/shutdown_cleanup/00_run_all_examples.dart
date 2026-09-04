@@ -28,19 +28,14 @@ Future<void> main() async {
 Future<void> run() async {
   print('Running Shutdown Cleanup Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Shutdown Handler Example');
-  print('-' * 40);
   await shutdown_handler.run();
   print('✓ Shutdown handler examples passed\n');
 
-  print('02: Advanced Shutdown Example');
-  print('-' * 40);
   await advanced_shutdown.run();
   print('✓ Advanced shutdown examples passed\n');
 
-  print('03: Shutdown Execution Example');
-  print('-' * 40);
   await shutdown_execution.run();
   print('✓ Shutdown execution examples passed\n');
 

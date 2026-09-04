@@ -31,37 +31,26 @@ Future<void> main() async {
 Future<void> run() async {
   print('Running Logging Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Basic Logging Example');
-  print('-' * 40);
   basic_logging.run();
   print('✓ Basic logging examples passed\n');
 
-  print('02: Log Levels Example');
-  print('-' * 40);
   log_levels.run();
   print('✓ Log levels examples passed\n');
 
-  print('03: Log Formatting Example');
-  print('-' * 40);
   log_formatting.run();
   print('✓ Log formatting examples passed\n');
 
-  print('04: Advanced Logging Example');
-  print('-' * 40);
   advanced_logging.run();
   print('✓ Advanced logging examples passed\n');
 
-  print('05: Isolate and Remote Logging Example');
-  print('-' * 40);
   // Only the deterministic remote round-trip participates in the aggregate
   // runner; the isolate demonstration spawns a real background isolate and is
   // exposed through that example's standalone main() only.
   isolate_remote.run();
   print('✓ Remote logging round-trip examples passed\n');
 
-  print('06: Log Replay and Isolate Plumbing Example');
-  print('-' * 40);
   await log_replay_plumbing.run();
   print('✓ Log replay and isolate plumbing examples passed\n');
 

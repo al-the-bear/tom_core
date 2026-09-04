@@ -197,12 +197,57 @@ void run() {
   // module in one process, so a prior sample's registrations would otherwise
   // leak in and shadow the environments registered here.
   TomRuntime.reset();
+
+  print('=== 02: Environment and Platform Example ===\n');
+
   CustomEnvironmentsExample.example1CustomEnvironments();
+  print('1. An environment is a named value, and it may name a parent:');
+  print('   base environment : ${CustomEnvironmentsExample.baseEnvName}');
+  print('   dev environment  : ${CustomEnvironmentsExample.devEnvName}');
+  print('   dev inherits from: ${CustomEnvironmentsExample.devParentName}');
+  print(
+    '   names, parent and development flag all hold: '
+    '${CustomEnvironmentsExample.environmentsWork}',
+  );
+  print('');
+
   EnvironmentInitializerExample.example2EnvironmentInitializer();
+  print('2. An initializer runs when its environment is initialized:');
+  print(
+    '   initializer calls before initialize(): '
+    '${EnvironmentInitializerExample.initCountBefore}',
+  );
+  print(
+    '   initializer calls after initialize() : '
+    '${EnvironmentInitializerExample.initCountAfter}',
+  );
+  print('   the environment it was handed        : $lastInitializedEnv');
+  print('');
+
   PlatformConstantsExample.example3PlatformConstants();
+  print('3. The platforms the framework declares for you:');
+  print('   platformWeb.name     : ${PlatformConstantsExample.webName}');
+  print('   platformMacos.name   : ${PlatformConstantsExample.macosName}');
+  print('   platformAndroid.name : ${PlatformConstantsExample.androidName}');
+  print('');
+
   RuntimeSetupExample.example4RuntimeSetup();
+  print('4. Registering environments and selecting the current one:');
+  print('   current environment : ${RuntimeSetupExample.currentEnvName}');
+  print('   isDevelopment       : ${RuntimeSetupExample.isDevelopment}');
+  print('   setup holds         : ${RuntimeSetupExample.runtimeWorks}');
+  print('');
+
   EnvironmentHierarchyExample.example5EnvironmentHierarchy();
+  print('5. The hierarchy of the current environment, root first:');
+  print('   depth        : ${EnvironmentHierarchyExample.hierarchyLength}');
+  print('   environments : ${EnvironmentHierarchyExample.hierarchyEnvs}');
+  print('');
+
   RuntimeReportExample.example6RuntimeReport();
+  print('6. What the runtime says about itself:');
+  print('   ${RuntimeReportExample.report}');
+  print('');
 }
 
 void main() {

@@ -326,14 +326,79 @@ class ZoneInheritanceExample {
 // =============================================================================
 
 Future<void> run() async {
+  print('=== 02: Zone Helpers Example ===\n');
+
   BasicZoneRetrievalExample.example1BasicTypedZoneRetrieval();
+  print('1. getFromCurrentZone reads a value back out of the zone by type:');
+  print(
+    '   environment      : ${BasicZoneRetrievalExample.retrievedEnvironment}',
+  );
+  print(
+    '   max connections  : '
+    '${BasicZoneRetrievalExample.retrievedMaxConnections}',
+  );
+  print(
+    '   retrieval worked : ${BasicZoneRetrievalExample.retrievalSuccessful}',
+  );
+  print('');
+
   MultipleZoneValuesExample.example2MultipleZoneValues();
+  print('2. One zone can carry several values, each keyed by its own type:');
+  print('   AppConfig  env   : ${MultipleZoneValuesExample.configEnv}');
+  print('   UserContext name : ${MultipleZoneValuesExample.userName}');
+  print('   UserContext roles: ${MultipleZoneValuesExample.userRoles}');
+  print(
+    '   all retrieved    : ${MultipleZoneValuesExample.allValuesRetrieved}',
+  );
+  print('');
+
   MissingZoneValueExample.example3MissingZoneValue();
+  print('3. A type the zone never got is simply null, not an error:');
+  print('   AppConfig present   : ${MissingZoneValueExample.hasConfig}');
+  print('   UserContext present : ${MissingZoneValueExample.hasUser}');
+  print(
+    '   missing one is null : ${MissingZoneValueExample.missingValueIsNull}',
+  );
+  print('');
+
   UntypedZoneRetrievalExample.example4UntypedZoneRetrieval();
+  print('4. getObjectFromCurrentZone takes the Type as an argument instead:');
+  print('   value            : ${UntypedZoneRetrievalExample.untypedConfig}');
+  print('   runtime type     : ${UntypedZoneRetrievalExample.configType}');
+  print(
+    '   untyped read ok  : '
+    '${UntypedZoneRetrievalExample.untypedRetrievalWorks}',
+  );
+  print('');
+
   NestedZoneShadowingExample.example5NestedZoneShadowing();
+  print('5. An inner zone shadows the same type held by the outer zone:');
+  print('   outer environment: ${NestedZoneShadowingExample.outerEnvironment}');
+  print('   inner environment: ${NestedZoneShadowingExample.innerEnvironment}');
+  print('   shadowing worked : ${NestedZoneShadowingExample.shadowingWorks}');
+  print('');
+
   await AsyncCheckedExecutionExample.example6AsyncCheckedExecution();
+  print('6. runChecked awaits the body and returns its value:');
+  print('   awaited result   : ${AsyncCheckedExecutionExample.asyncResult}');
+  print(
+    '   execution ok     : '
+    '${AsyncCheckedExecutionExample.asyncExecutionSuccessful}',
+  );
+  print('');
+
   await AsyncCheckedErrorExample.example7AsyncCheckedError();
+  print('7. An error thrown inside the awaited body arrives as TomException:');
+  print('   exception key    : ${AsyncCheckedErrorExample.asyncErrorKey}');
+  print('   error caught     : ${AsyncCheckedErrorExample.asyncErrorCaught}');
+  print('');
+
   ZoneInheritanceExample.example8ZoneInheritance();
+  print('8. A child zone inherits what the parent zone holds:');
+  print('   parent AppConfig : ${ZoneInheritanceExample.parentValue}');
+  print('   child-only value : ${ZoneInheritanceExample.childOnlyValue}');
+  print('   inheritance works: ${ZoneInheritanceExample.inheritanceWorks}');
+  print('');
 }
 
 /// Standalone entry point.

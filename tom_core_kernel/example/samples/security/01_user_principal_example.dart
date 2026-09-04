@@ -78,6 +78,9 @@ class GuestUserExample {
 // =============================================================================
 
 class AccessControlInfoExample {
+  static List<String> roles = const [];
+  static List<String> groups = const [];
+  static List<String> entitlements = const [];
   static int rolesCount = 0;
   static int groupsCount = 0;
   static int entitlementsCount = 0;
@@ -96,6 +99,9 @@ class AccessControlInfoExample {
       resourceKeys: ['user.email', 'user.phone'],
     );
 
+    roles = aci.roles;
+    groups = aci.groups;
+    entitlements = aci.entitlements;
     rolesCount = aci.roles.length;
     groupsCount = aci.groups.length;
     entitlementsCount = aci.entitlements.length;
@@ -115,6 +121,8 @@ class AccessControlInfoExample {
 // =============================================================================
 
 class ClientLimitsInfoExample {
+  static List<String> enabledModules = const [];
+  static Map<String, dynamic> quotas = const {};
   static int modulesCount = 0;
   static bool hasReporting = false;
   static int? apiQuota;
@@ -130,6 +138,8 @@ class ClientLimitsInfoExample {
       },
     );
 
+    enabledModules = cli.enabledModules;
+    quotas = cli.quotas;
     modulesCount = cli.enabledModules.length;
     hasReporting = cli.enabledModules.contains('reporting');
     apiQuota = cli.quotas['api_calls_per_day'] as int?;
@@ -259,13 +269,60 @@ class TwoFactorPrincipalExample {
 // =============================================================================
 
 void run() {
+  print('=== 01: User Principal Example ===\n');
+
   BasicUserExample.example1BasicUser();
+  print('1. A TomUser carries identity plus free-form attributes:');
+  print('   id         : ${BasicUserExample.userId}');
+  print('   username   : ${BasicUserExample.userUsername}');
+  print('   email      : ${BasicUserExample.userEmail}');
+  print('   timezone   : ${BasicUserExample.userTimezone}');
+  print('   department : ${BasicUserExample.userDepartment} (from attributes)');
+  print('');
+
   GuestUserExample.example2GuestUser();
+  print('2. A default TomUser is the guest identity:');
+  print('   username             : ${GuestUserExample.guestUsername}');
+  print('   TomUser.guestUsername: ${GuestUserExample.guestConstant}');
+  print('   is the guest         : ${GuestUserExample.isGuest}');
+  print('');
+
   AccessControlInfoExample.example3AccessControlInfo();
+  print('3. What the ACI grants the user:');
+  print('   roles         : ${AccessControlInfoExample.roles}');
+  print('   groups        : ${AccessControlInfoExample.groups}');
+  print('   entitlements  : ${AccessControlInfoExample.entitlements}');
+  print('   has admin role: ${AccessControlInfoExample.hasAdminRole}');
+  print('');
+
   ClientLimitsInfoExample.example4ClientLimitsInfo();
+  print('4. What the client licence enables and caps:');
+  print('   enabled modules  : ${ClientLimitsInfoExample.enabledModules}');
+  print('   quotas           : ${ClientLimitsInfoExample.quotas}');
+  print('   reporting enabled: ${ClientLimitsInfoExample.hasReporting}');
+  print('   api calls per day: ${ClientLimitsInfoExample.apiQuota}');
+  print('');
+
   TomPrincipalExample.example5TomPrincipal();
+  print('5. The principal joins the user to their ACI, limits and scope:');
+  print('   authenticated : ${TomPrincipalExample.authenticated}');
+  print('   username      : ${TomPrincipalExample.principalUsername}');
+  print('   id            : ${TomPrincipalExample.principalId}');
+  print('   organization  : ${TomPrincipalExample.organization}');
+  print('');
+
   PrincipalContextExample.example6PrincipalContext();
+  print('6. Per-session facts added to the principal context:');
+  print('   sessionStart : ${PrincipalContextExample.sessionStart}');
+  print('   ipAddress    : ${PrincipalContextExample.ipAddress}');
+  print('   context size : ${PrincipalContextExample.contextSize}');
+  print('');
+
   TwoFactorPrincipalExample.example7TwoFactorPrincipal();
+  print('7. A principal still owing a second factor:');
+  print('   requires2FA   : ${TwoFactorPrincipalExample.requires2FA}');
+  print('   twoFactorType : ${TwoFactorPrincipalExample.twoFactorType}');
+  print('');
 }
 
 void main() {

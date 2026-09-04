@@ -45,6 +45,8 @@ const environmentDev = TomEnvironment(
 
 class SetEnvVarsExample {
   static String? envValue;
+  static String? remoteLoggingValue;
+  static String? apiBaseUrlValue;
   static bool envVarsSet = false;
 
   static void example1SetEnvVars() {
@@ -53,6 +55,8 @@ class SetEnvVarsExample {
     TomPlatformUtils.envVars['apiBaseUrl'] = 'http://localhost:9080/';
 
     envValue = TomPlatformUtils.envVars['env'];
+    remoteLoggingValue = TomPlatformUtils.envVars['useRemoteLogging'];
+    apiBaseUrlValue = TomPlatformUtils.envVars['apiBaseUrl'];
     envVarsSet = envValue == 'dev';
 
     assert(TomPlatformUtils.envVars['env'] == 'dev', 'Env should be dev');
@@ -211,12 +215,54 @@ void run() {
   // module in one process, so a prior sample's registrations would otherwise
   // leak in and shadow the environments registered here.
   TomRuntime.reset();
+
+  print('=== 03: Initialization Sequence Example ===\n');
+
   SetEnvVarsExample.example1SetEnvVars();
+  print('1. First, the configuration the rest of the sequence reads:');
+  print('   env              : ${SetEnvVarsExample.envValue}');
+  print('   useRemoteLogging : ${SetEnvVarsExample.remoteLoggingValue}');
+  print('   apiBaseUrl       : ${SetEnvVarsExample.apiBaseUrlValue}');
+  print('');
+
   SetPlatformUtilsExample.example2SetPlatformUtilities();
+  print('2. Then the platform implementation the process answers with:');
+  print(
+    '   TomPlatformUtils.current : ${SetPlatformUtilsExample.platformType}',
+  );
+  print('   it is the standalone one : ${SetPlatformUtilsExample.platformSet}');
+  print('');
+
   InitializeRuntimeExample.example3InitializeRuntime();
+  print('3. Then the runtime, chosen from those variables and initialized:');
+  print('   current environment  : ${InitializeRuntimeExample.currentEnvName}');
+  print(
+    '   isDevelopment / isTest: '
+    '${InitializeRuntimeExample.isDevelopment} / '
+    '${InitializeRuntimeExample.isTest}',
+  );
+  print('   initializers that ran: $initializerCalls');
+  print('   configured log level : $configuredLogLevel');
+  print('   configured endpoint  : $configuredEndpoint');
+  print('');
+
   VerifyRuntimeStateExample.example4VerifyRuntimeState();
+  print('4. The state the rest of the application will read:');
+  print('   environment        : ${VerifyRuntimeStateExample.envName}');
+  print('   parent environment : ${VerifyRuntimeStateExample.parentEnvName}');
+  print('   detected platform  : ${VerifyRuntimeStateExample.platformName}');
+  print('');
+
   GetHierarchyExample.example5GetHierarchy();
+  print('5. The environment hierarchy, root first:');
+  print('   depth        : ${GetHierarchyExample.hierarchyLength}');
+  print('   environments : ${GetHierarchyExample.hierarchyEnvs}');
+  print('');
+
   GetRuntimeReportExample.example6GetRuntimeReport();
+  print('6. What the runtime says about itself once the sequence is done:');
+  print('   ${GetRuntimeReportExample.report}');
+  print('');
 }
 
 void main() {

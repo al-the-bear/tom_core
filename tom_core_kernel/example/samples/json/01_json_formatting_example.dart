@@ -200,13 +200,67 @@ class RoundTripExample {
 // =============================================================================
 
 void run() {
+  print('=== 01: JSON Formatting Example ===\n');
+
   BasicPrettyPrintingExample.example1BasicPrettyPrinting();
+  print('1. prettyJson turns compact JSON into an indented document:');
+  print('   input : ${BasicPrettyPrintingExample.compactJson}');
+  print('   output:');
+  for (final line in BasicPrettyPrintingExample.prettyOutput!.split('\n')) {
+    print('     $line');
+  }
+  print('');
+
   NestedJsonExample.example2NestedJsonStructures();
+  print('2. The same formatter over a nested document:');
+  print('   compact input length : ${NestedJsonExample.nestedJson!.length}');
+  print('   pretty output length : ${NestedJsonExample.prettyNested!.length}');
+  print('   "host": "localhost"  : ${NestedJsonExample.containsHost}');
+  print('   "pool_size": 10      : ${NestedJsonExample.containsPoolSize}');
+  print('   "enabled": true      : ${NestedJsonExample.containsEnabled}');
+  print('');
+
   JsonArraysExample.example3JsonWithArrays();
+  print('3. Arrays, including an array of objects:');
+  print('   compact input length : ${JsonArraysExample.arrayJson!.length}');
+  print('   pretty output length : ${JsonArraysExample.prettyArray!.length}');
+  print('   feature "auth"       : ${JsonArraysExample.containsAuth}');
+  print('   feature "logging"    : ${JsonArraysExample.containsLogging}');
+  print('   server "primary"     : ${JsonArraysExample.containsPrimary}');
+  print('');
+
   SingleLinePrettyExample.example4SingleLinePretty();
+  print('4. prettyJsonLine spaces the JSON out but stays on one line:');
+  print('   input  : ${SingleLinePrettyExample.simpleJson}');
+  print('   output : ${SingleLinePrettyExample.oneLineOutput}');
+  print('   no newlines : ${SingleLinePrettyExample.hasNoNewlines}');
+  print('');
+
   ComplexSingleLineExample.example5ComplexSingleLine();
+  print('5. A nested document folded onto one log line:');
+  print('   input  : ${ComplexSingleLineExample.complexJson}');
+  print('   output : ${ComplexSingleLineExample.oneLineComplex}');
+  print('   no newlines : ${ComplexSingleLineExample.hasNoNewlines}');
+  print('');
+
   IndentEncoderExample.example6IndentEncoder();
+  print('6. Encoding a Dart map straight through indentEncoder:');
+  print('   source map     : ${IndentEncoderExample.dartMap}');
+  print('   encoded length : ${IndentEncoderExample.encodedFromMap!.length}');
+  print(
+    '   "application": "tom_core": '
+    '${IndentEncoderExample.containsApplication}',
+  );
+  print('   "debug": false           : ${IndentEncoderExample.containsDebug}');
+  print('');
+
   RoundTripExample.example7RoundTrip();
+  print('7. Pretty-printing and back again preserves the data:');
+  print('   original compact : ${RoundTripExample.originalCompact}');
+  print('   prettified length: ${RoundTripExample.prettified!.length}');
+  print('   compact again    : ${RoundTripExample.compactAgain}');
+  print('   data preserved   : ${RoundTripExample.roundTripPreservesData}');
+  print('');
 }
 
 void main() {

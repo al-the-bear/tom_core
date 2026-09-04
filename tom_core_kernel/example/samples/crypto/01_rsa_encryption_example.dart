@@ -239,12 +239,68 @@ class SecureStorageExample {
 // =============================================================================
 
 void run() {
+  print('=== 01: RSA Encryption Example ===\n');
+
   BasicRsaEncryptionExample.example1BasicEncryption();
+  print('1. Encrypt with the public key, decrypt with the private key:');
+  print('   plaintext        : ${BasicRsaEncryptionExample.originalMessage}');
+  print('   after round-trip : ${BasicRsaEncryptionExample.decryptedMessage}');
+  print(
+    '   ciphertext longer than plaintext: '
+    '${BasicRsaEncryptionExample.encryptedIsLarger}',
+  );
+  print('');
+
   JsonEncryptionExample.example2JsonEncryption();
+  print('2. Encrypting a JSON payload:');
+  print('   original  : ${JsonEncryptionExample.originalData}');
+  print('   decrypted : ${JsonEncryptionExample.decryptedData}');
+  print(
+    '   base64 ciphertext length: '
+    '${JsonEncryptionExample.encryptedLength}',
+  );
+  print('');
+
   RsaKeyHelperExample.example3RsaKeyHelperMethods();
+  print('3. The same round-trip through RsaKeyHelper:');
+  print('   plaintext        : ${RsaKeyHelperExample.helperMessage}');
+  print('   after round-trip : ${RsaKeyHelperExample.helperResult}');
+  print('   round-trip succeeded: ${RsaKeyHelperExample.roundTripSuccess}');
+  print('');
+
   TransportEncodingExample.example4Base64Transport();
+  print('4. Base64 encoding the ciphertext for transport:');
+  print('   plaintext        : ${TransportEncodingExample.transportMessage}');
+  print('   after round-trip : ${TransportEncodingExample.transportResult}');
+  print('   base64 length    : ${TransportEncodingExample.base64Length}');
+  print('');
+
   EncryptionRandomnessExample.example5EncryptionRandomness();
+  print('5. OAEP padding makes each encryption of one message unique:');
+  print(
+    '   first  ciphertext: '
+    '${EncryptionRandomnessExample.encrypted1Base64!.substring(0, 24)}...',
+  );
+  print(
+    '   second ciphertext: '
+    '${EncryptionRandomnessExample.encrypted2Base64!.substring(0, 24)}...',
+  );
+  print(
+    '   ciphertexts differ: '
+    '${EncryptionRandomnessExample.ciphertextsAreDifferent}',
+  );
+  print(
+    '   both decrypt to the same plaintext: '
+    '${EncryptionRandomnessExample.bothDecryptCorrectly}',
+  );
+  print('');
+
   SecureStorageExample.example6SecureStorage();
+  print('6. Credentials held encrypted at rest:');
+  print('   stored keys      : ${SecureStorageExample.storedCredentials.keys}');
+  print('   decrypted user   : ${SecureStorageExample.retrievedUsername}');
+  print('   decrypted secret : ${SecureStorageExample.retrievedPassword}');
+  print('');
 }
 
 void main() {

@@ -333,14 +333,114 @@ class GuestAccessExample {
 // =============================================================================
 
 void run() {
+  print('=== 02: Access Control Example ===\n');
+
+  print('The three principals every control below is asked about:');
+  print(
+    '   admin_user   → roles ${adminPrincipal.aci.roles}, '
+    'groups ${adminPrincipal.aci.groups}',
+  );
+  print(
+    '   regular_user → roles ${regularPrincipal.aci.roles}, '
+    'groups ${regularPrincipal.aci.groups}',
+  );
+  print(
+    '   guest        → username ${guestPrincipal.username}, '
+    'authenticated ${guestPrincipal.authenticated}',
+  );
+  print('');
+
   PublicAccessExample.example1PublicAccess();
+  print('1. TomPublicAccess admits everyone, session or not:');
+  print('   admin_user → ${PublicAccessExample.adminResult}');
+  print('   guest      → ${PublicAccessExample.guestResult}');
+  print('   no session → ${PublicAccessExample.nullResult}');
+  print('');
+
   NoAccessExample.example2NoAccess();
+  print('2. TomNoAccess refuses everyone:');
+  print('   admin_user → ${NoAccessExample.adminResult}');
+  print('   guest      → ${NoAccessExample.guestResult}');
+  print('');
+
   AuthenticatedAccessExample.example3AuthenticatedAccess();
+  print('3. TomAuthenticatedAccess admits only a logged-in session:');
+  print('   admin_user   → ${AuthenticatedAccessExample.adminResult}');
+  print('   regular_user → ${AuthenticatedAccessExample.regularResult}');
+  print('   guest        → ${AuthenticatedAccessExample.guestResult}');
+  print('   no session   → ${AuthenticatedAccessExample.nullResult}');
+  print('');
+
   RoleAccessExample.example4RoleAccess();
+  print('4. TomRoleAccess names the roles that are enough:');
+  print('   [admin] vs admin_user   → ${RoleAccessExample.adminOnlyAdmin}');
+  print('   [admin] vs regular_user → ${RoleAccessExample.adminOnlyRegular}');
+  print('   [user]  vs admin_user   → ${RoleAccessExample.userRoleAdmin}');
+  print('   [user]  vs regular_user → ${RoleAccessExample.userRoleRegular}');
+  print('');
+
   GroupAccessExample.example5GroupAccess();
+  print('5. TomGroupAccess asks the same question of group membership:');
+  print(
+    '   [administrators] vs admin_user   → '
+    '${GroupAccessExample.adminsGroupAdmin}',
+  );
+  print(
+    '   [administrators] vs regular_user → '
+    '${GroupAccessExample.adminsGroupRegular}',
+  );
+  print(
+    '   [developers]     vs admin_user   → '
+    '${GroupAccessExample.devsGroupAdmin}',
+  );
+  print(
+    '   [developers]     vs regular_user → '
+    '${GroupAccessExample.devsGroupRegular}',
+  );
+  print('');
+
   EntitlementAccessExample.example6EntitlementAccess();
+  print('6. TomEntitlementAccess matches a single named feature:');
+  print(
+    '   feature.dashboard.edit vs admin_user   → '
+    '${EntitlementAccessExample.dashboardEditAdmin}',
+  );
+  print(
+    '   feature.dashboard.edit vs regular_user → '
+    '${EntitlementAccessExample.dashboardEditRegular}',
+  );
+  print(
+    '   feature.dashboard.view vs admin_user   → '
+    '${EntitlementAccessExample.dashboardViewAdmin}',
+  );
+  print(
+    '   feature.dashboard.view vs regular_user → '
+    '${EntitlementAccessExample.dashboardViewRegular}',
+  );
+  print('');
+
   MultipleRolesExample.example7MultipleRoles();
+  print('7. Several roles in one control are an OR, not an AND:');
+  print(
+    '   [manager, admin] vs admin_user   → '
+    '${MultipleRolesExample.managerOrAdminAdmin}',
+  );
+  print(
+    '   [manager, admin] vs regular_user → '
+    '${MultipleRolesExample.managerOrAdminRegular}',
+  );
+  print('');
+
   GuestAccessExample.example8GuestAccess();
+  print('8. TomGuestAccess differs from example 3 on exactly one caller:');
+  print('   admin_user                → ${GuestAccessExample.adminResult}');
+  print('   guest                     → ${GuestAccessExample.guestResult}');
+  print('   no session                → ${GuestAccessExample.nullResult}');
+  print(
+    '   named but unauthenticated → '
+    '${GuestAccessExample.authenticatedGuestResult}',
+  );
+  print('');
 }
 
 void main() {

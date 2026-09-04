@@ -255,12 +255,59 @@ class AllLogLevelsExample {
 // =============================================================================
 
 void run() {
+  print('=== 01: Basic Logging Example ===\n');
+
   BasicLogMethodsExample.example1BasicLogMethods();
+  print('1. The three log lines above came from these calls:');
+  print('   tomLog.info called : ${BasicLogMethodsExample.infoLogged}');
+  print('   tomLog.debug called: ${BasicLogMethodsExample.debugLogged}');
+  print('   tomLog.error called: ${BasicLogMethodsExample.errorLogged}');
+  print('');
+
   LogObjectTypesExample.example2LogObjectTypes();
+  print('2. The values the four lines above interpolated into their message:');
+  print('   string           : ${LogObjectTypesExample.stringMessage}');
+  print('   number           : ${LogObjectTypesExample.numericValue}');
+  print('   map              : ${LogObjectTypesExample.configMap}');
+  print('   list             : ${LogObjectTypesExample.items}');
+  print('');
+
   TomLoggableExample.example3TomLoggable();
+  print('3. TomLoggable lets an object keep secrets out of the log:');
+  print('   toString()       : ${TomLoggableExample.userToString}');
+  print('   logRepresentation: ${TomLoggableExample.userLogRepr}');
+  print('   email left out   : ${TomLoggableExample.emailExcluded}');
+  print('');
+
   LazyEvaluationExample.example4LazyEvaluation();
+  print('4. A closure message is only evaluated if the level lets it through:');
+  print(
+    '   evaluations after the development-level call: '
+    '${LazyEvaluationExample.afterDevEval}',
+  );
+  print(
+    '   evaluations after the production-level call : '
+    '${LazyEvaluationExample.afterProdEval}',
+  );
+  print(
+    '   the filtered call never ran the closure     : '
+    '${LazyEvaluationExample.lazyEvaluationWorks}',
+  );
+  print('');
+
   LimitedUtilityExample.example5LimitedUtility();
+  print('5. limited() shortens a value before it reaches the log:');
+  print('   original length  : ${LimitedUtilityExample.originalLength}');
+  print('   limited to 20    : ${LimitedUtilityExample.truncated20}');
+  print('   limited to 50    : ${LimitedUtilityExample.truncated50}');
+  print('   stayed in budget : ${LimitedUtilityExample.truncationWorks}');
+  print('');
+
   AllLogLevelsExample.example6AllLogLevels();
+  print('6. The nine lines above are one call per level, most verbose first:');
+  print('   trace, debug, traffic, info, warn, status, error, severe, fatal');
+  print('   all nine executed: ${AllLogLevelsExample.allLevelsExecuted}');
+  print('');
 }
 
 void main() {

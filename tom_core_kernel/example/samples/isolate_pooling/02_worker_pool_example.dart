@@ -285,12 +285,76 @@ class PoolCleanupExample {
 // =============================================================================
 
 Future<void> run() async {
+  print('=== 02: Worker Pool Example ===\n');
+
   final pool = await WorkerPoolCreationExample.example1CreatePool();
+  print('1. Creating a pool, and why an empty one is refused:');
+  print('   pool size            : ${WorkerPoolCreationExample.poolSize}');
+  print('   pool created         : ${WorkerPoolCreationExample.poolCreated}');
+  print(
+    '   withSize(0) rejected : '
+    '${WorkerPoolCreationExample.emptyPoolRejected}',
+  );
+  print('');
+
   await PoolCommandExecutionExample.example2ExecuteCommands(pool);
+  print('2. Dispatching commands through the pool:');
+  print(
+    '   isPrime by number     : '
+    '${PoolCommandExecutionExample.primeResults}',
+  );
+  print(
+    '   all commands executed : '
+    '${PoolCommandExecutionExample.allCommandsExecuted}',
+  );
+  print('');
+
   await ParallelExecutionExample.example3ParallelExecution(pool);
+  print('3. Fanning four counts out over the pool with Future.wait:');
+  print(
+    '   primes up to 1000/2000/3000/4000: '
+    '${ParallelExecutionExample.parallelResults}',
+  );
+  print(
+    '   elapsed                        : '
+    '${ParallelExecutionExample.executionTimeMs} ms',
+  );
+  print('');
+
   await WorkDistributionExample.example4WorkDistribution(pool);
+  print('4. Eight identified tasks spread across the workers:');
+  print('   tasks dispatched   : ${WorkDistributionExample.taskCount}');
+  print('   first task result  : ${WorkDistributionExample.taskResults.first}');
+  print('   last task result   : ${WorkDistributionExample.taskResults.last}');
+  print(
+    '   all tasks completed: '
+    '${WorkDistributionExample.allTasksCompleted}',
+  );
+  print('');
+
   await SequentialVsParallelExample.example5SequentialVsParallel(pool);
+  print('5. The same four counts, sequentially then in parallel:');
+  print(
+    '   sequential      : '
+    '${SequentialVsParallelExample.sequentialTimeMs} ms',
+  );
+  print(
+    '   parallel        : '
+    '${SequentialVsParallelExample.parallelTimeMs} ms',
+  );
+  print(
+    '   parallel faster : '
+    '${SequentialVsParallelExample.parallelWasFaster}',
+  );
+  print('');
+
   await PoolCleanupExample.example6PoolCleanup(pool);
+  print('6. Closing the pool, then dispatching to it anyway:');
+  print(
+    '   execute() after close() threw: '
+    '${PoolCleanupExample.poolClosedSuccessfully}',
+  );
+  print('');
 }
 
 /// Standalone entry point.

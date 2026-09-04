@@ -379,6 +379,8 @@ class PrincipalCreationExample {
 // =============================================================================
 
 void run() {
+  print('=== 03: Context Providers Example ===\n');
+
   DefaultProvidersExample.example1DefaultProviders();
   PrincipalProvidersExample.example2PrincipalProviders();
   ClientContextExample.example3ClientContextValues();

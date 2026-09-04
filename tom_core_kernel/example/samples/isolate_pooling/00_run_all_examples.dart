@@ -52,29 +52,20 @@ Future<void> main() async {
 Future<void> run() async {
   print('Running Isolate Pooling Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Worker Basics Example');
-  print('-' * 40);
   await worker_basics.run();
   print('✓ Worker basics examples passed\n');
 
-  print('02: Worker Pool Example');
-  print('-' * 40);
   await worker_pool.run();
   print('✓ Worker pool examples passed\n');
 
-  print('03: Worker Setup and Creator-Side Guards Example');
-  print('-' * 40);
   await worker_setup.run();
   print('✓ Worker setup and guard examples passed\n');
 
-  print('04: Worker Pool Liveness Supervision Example');
-  print('-' * 40);
   await worker_pool_supervision.run();
   print('✓ Worker pool supervision examples passed\n');
 
-  print('05: Creator Back-Channel Example');
-  print('-' * 40);
   await creator_backchannel.run();
   print('✓ Creator back-channel examples passed\n');
 

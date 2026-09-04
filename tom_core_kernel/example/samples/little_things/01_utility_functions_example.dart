@@ -305,15 +305,112 @@ class RootExceptionExample {
 // RUN ALL EXAMPLES
 // =============================================================================
 
+/// Renders one formatted frame short enough to read in a terminal.
+///
+/// A frame repeats the source path at both ends of the line; the middle names
+/// the position and the member, which is the part that identifies the frame.
+String _frameSummary(String frame) {
+  final parts = frame.split(' ');
+  return parts.length > 2
+      ? parts.sublist(1, parts.length - 1).join(' ')
+      : frame;
+}
+
 void run() {
+  print('=== 01: Utility Functions Example ===\n');
+
   SyncCheckedSuccessExample.example1SyncCheckedSuccess();
+  print('1. runCheckedSync hands back the body result when the body works:');
+  print('   parsed name      : ${SyncCheckedSuccessExample.parsedName}');
+  print('   parsed value     : ${SyncCheckedSuccessExample.parsedValue}');
+  print('   parsing succeeded: ${SyncCheckedSuccessExample.parsingSuccessful}');
+  print('');
+
   SyncCheckedErrorExample.example2SyncCheckedError();
+  print('2. A throwing body is turned into the TomException you supplied:');
+  print('   exception key    : ${SyncCheckedErrorExample.caughtErrorKey}');
+  print('   user message     : ${SyncCheckedErrorExample.caughtErrorMessage}');
+  print('   root exception   : ${SyncCheckedErrorExample.rootExceptionType}');
+  print('   exception caught : ${SyncCheckedErrorExample.exceptionCaught}');
+  print('');
+
   StackTraceFormattingExample.example3StackTraceFormatting();
+  print('3. tomGetStackTrace formats a trace and caps it at a frame count:');
+  print(
+    '   frames unlimited : '
+    '${StackTraceFormattingExample.unlimitedLineCount}',
+  );
+  print('   frames at depth 5: ${StackTraceFormattingExample.stackLineCount}');
+  print('   the kept frames, nearest the throw site first:');
+  for (final frame in StackTraceFormattingExample.capturedLines) {
+    print('     ${_frameSummary(frame)}');
+  }
+  print('');
+
   StackTraceAsListExample.example4StackTraceAsList();
+  print('4. tomGetStackTraceAsList returns the frames already split:');
+  print('   frame count      : ${StackTraceAsListExample.frameCount}');
+  print(
+    '   first frame      : '
+    '${_frameSummary(StackTraceAsListExample.firstFrame ?? '')}',
+  );
+  print('');
+
   StackTraceAsTupleExample.example5StackTraceAsTuple();
+  final tupleFirstLine =
+      StackTraceAsTupleExample.tupleStackString?.split('\n').first ?? '';
+  print('5. tomGetStackTraceAsTuple returns both shapes of the same trace:');
+  print(
+    '   list frame count : '
+    '${StackTraceAsTupleExample.tupleStackList.length}',
+  );
+  print('   string first line: ${_frameSummary(tupleFirstLine)}');
+  print(
+    '   string and list agree: '
+    '${StackTraceAsTupleExample.stringAndListMatch}',
+  );
+  print('');
+
   TomExceptionPropertiesExample.example6TomExceptionProperties();
+  print('6. What a TomException carries once constructed:');
+  print('   key              : ${TomExceptionPropertiesExample.exceptionKey}');
+  print(
+    '   user message     : '
+    '${TomExceptionPropertiesExample.exceptionMessage}',
+  );
+  print('   uuid             : ${TomExceptionPropertiesExample.exceptionUuid}');
+  print(
+    '   request uuid     : '
+    '${TomExceptionPropertiesExample.exceptionRequestUuid}',
+  );
+  print(
+    '   parameters       : '
+    '${TomExceptionPropertiesExample.exceptionParameters}',
+  );
+  print(
+    '   has timestamp / stack trace: '
+    '${TomExceptionPropertiesExample.hasTimestamp} / '
+    '${TomExceptionPropertiesExample.hasStackTrace}',
+  );
+  print('');
+
   CustomUuidExceptionExample.example7CustomUuidException();
+  print('7. A caller-supplied uuid is kept instead of a generated one:');
+  print(
+    '   key              : ${CustomUuidExceptionExample.customExceptionKey}',
+  );
+  print(
+    '   uuid             : ${CustomUuidExceptionExample.customExceptionUuid}',
+  );
+  print('   uuid was kept    : ${CustomUuidExceptionExample.uuidMatches}');
+  print('');
+
   RootExceptionExample.example8RootException();
+  print('8. The original error stays reachable as the root exception:');
+  print('   root exception   : ${RootExceptionExample.rootException}');
+  print('   its message      : ${RootExceptionExample.rootExceptionMessage}');
+  print('   root attached    : ${RootExceptionExample.hasRootException}');
+  print('');
 }
 
 void main() {

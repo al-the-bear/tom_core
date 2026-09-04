@@ -42,7 +42,7 @@ class _RecordingLogOutput extends TomLogOutput {
 }
 
 Future<void> run() async {
-  print('--- Formatting & Exceptions Example ---\n');
+  print('=== 04: Formatting and Exceptions Example ===\n');
 
   // ---------------------------------------------------------------------------
   // 1. convertMinutesToUtcOffset — ISO 8601 UTC offset formatting.

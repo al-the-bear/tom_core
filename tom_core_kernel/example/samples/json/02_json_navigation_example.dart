@@ -259,6 +259,7 @@ class MapSanitizationExample {
 // =============================================================================
 
 class MissingPathExample {
+  static Object? foundValue;
   static dynamic missingValue;
   static bool throwsForMissing = false;
   static bool clearedIsNull = false;
@@ -270,7 +271,7 @@ class MissingPathExample {
       },
     };
 
-    final foundValue = getObjectFromTree(config, 'level1.level2.value');
+    foundValue = getObjectFromTree(config, 'level1.level2.value');
 
     // getObjectFromTree throws an exception for missing paths.
     try {
@@ -298,13 +299,75 @@ class MissingPathExample {
 // =============================================================================
 
 void run() {
+  print('=== 02: JSON Navigation Example ===\n');
+
   BasicMergingExample.example1BasicMapMerging();
+  print('1. mergeMapsOneSided overlays an override onto a base config:');
+  print('   database.host  : ${BasicMergingExample.mergedHost} (overridden)');
+  print('   database.port  : ${BasicMergingExample.mergedPort} (kept)');
+  print('   cache.enabled  : ${BasicMergingExample.mergedCacheEnabled}');
+  print('   cache.ttl      : ${BasicMergingExample.mergedCacheTtl} (added)');
+  print('   as expected    : ${BasicMergingExample.mergeSuccessful}');
+  print('');
+
   ArrayMergingExample.example2MergingWithArrays();
+  print('2. A list in the override replaces the list in the base:');
+  print('   features       : ${ArrayMergingExample.mergedFeatures}');
+  print('   feature count  : ${ArrayMergingExample.featuresCount}');
+  print('   has "metrics"  : ${ArrayMergingExample.hasMetrics}');
+  print('');
+
   TreeTraversalExample.example3TreeTraversal();
+  print('3. traverseAndProcess rewrites only the strings that match:');
+  print('   api.baseUrl    : ${TreeTraversalExample.processedBaseUrl}');
+  print('   static.assets  : ${TreeTraversalExample.processedAssets}');
+  print(
+    '   name           : ${TreeTraversalExample.unchangedName} (untouched)',
+  );
+  print('   as expected    : ${TreeTraversalExample.processingComplete}');
+  print('');
+
   PathAccessExample.example4PathBasedAccess();
+  print('4. getPathFromTree reaches a nested map by dotted path:');
+  print('   services.database.primary.host : ${PathAccessExample.primaryHost}');
+  print('   services.database.primary.port : ${PathAccessExample.primaryPort}');
+  print(
+    '   path access works              : '
+    '${PathAccessExample.pathAccessWorks}',
+  );
+  print('');
+
   ObjectFromTreeExample.example5GetObjectFromTree();
+  print('5. getObjectFromTree returns leaves or whole subtrees:');
+  print('   ...cache.redis.host      : ${ObjectFromTreeExample.redisHost}');
+  print('   ...cache.redis.port      : ${ObjectFromTreeExample.redisPort}');
+  print('   ...database.replica      : ${ObjectFromTreeExample.replicaConfig}');
+  print(
+    '   object access works      : '
+    '${ObjectFromTreeExample.objectAccessWorks}',
+  );
+  print('');
+
   MapSanitizationExample.example6MapSanitization();
+  print('6. makeCleanJsonMap drops entries JSON cannot represent:');
+  print('   entries before  : ${MapSanitizationExample.originalEntryCount}');
+  print('   entries after   : ${MapSanitizationExample.cleanedEntryCount}');
+  print('   all keys String : ${MapSanitizationExample.hasStringKeysOnly}');
+  print('   cleaning works  : ${MapSanitizationExample.cleaningWorks}');
+  print('');
+
   MissingPathExample.example7MissingPathHandling();
+  print('7. Missing, present-but-null, and present paths differ:');
+  print('   level1.level2.value    : ${MissingPathExample.foundValue}');
+  print(
+    '   level1.level2.notHere  : threw an Exception '
+    '(${MissingPathExample.throwsForMissing})',
+  );
+  print(
+    '   level1.level2.cleared  : null, returned not thrown '
+    '(${MissingPathExample.clearedIsNull})',
+  );
+  print('');
 }
 
 void main() {

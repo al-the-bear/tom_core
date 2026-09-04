@@ -29,24 +29,17 @@ void main() {
 void run() {
   print('Running JSON Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: JSON Formatting Example');
-  print('-' * 40);
   json_formatting.run();
   print('✓ JSON formatting examples passed\n');
 
-  print('02: JSON Navigation Example');
-  print('-' * 40);
   json_navigation.run();
   print('✓ JSON navigation examples passed\n');
 
-  print('03: JSON Config Resolution Example');
-  print('-' * 40);
   json_config_resolution.run();
   print('✓ JSON config resolution examples passed\n');
 
-  print('04: JSON Serialization Example');
-  print('-' * 40);
   json_serialization.run();
   print('✓ JSON serialization examples passed\n');
 

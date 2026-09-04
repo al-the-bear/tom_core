@@ -139,6 +139,9 @@ class ScheduleKindsExample {
 /// including the case where an event does not produce a run at all.
 class EventTriggerExample {
   static List<Object?> payloads = [];
+
+  /// How many runs the three events produced, before any tick executed one.
+  static int enqueued = 0;
   static int runCount = 0;
   static List<DateTime> windows = [];
 
@@ -178,7 +181,7 @@ class EventTriggerExample {
     events.add('invoice-44');
     await settle();
 
-    final enqueued = (await store.all()).length;
+    enqueued = (await store.all()).length;
 
     // The subscription enqueued the runs; the tick dispatches what is due,
     // exactly as it does for a clock-driven job. Only the *source* of the
@@ -701,13 +704,81 @@ class CalendarWeekdayExample {
 // =============================================================================
 
 Future<void> run() async {
+  print('=== 03: Schedule Kinds Example ===\n');
+
   await ScheduleKindsExample.example1WhatEachKindAnswers();
+  print('1. The next window each kind of schedule answers with, at 09:30:');
+  print('   cron 0 3 * * *    : ${ScheduleKindsExample.cronWindow}');
+  print('   interval 15 min   : ${ScheduleKindsExample.intervalWindow}');
+  print('   calendar last day : ${ScheduleKindsExample.calendarWindow}');
+  print('   once (deadline)   : ${ScheduleKindsExample.onceWindow}');
+  print('   once, asked again : ${ScheduleKindsExample.onceAgain}');
+  print('   event             : ${ScheduleKindsExample.eventWindow}');
+  print('   event clock-driven: ${ScheduleKindsExample.eventIsClockDriven}');
+  print('');
+
   await EventTriggerExample.example2AnEventJobInMotion();
+  print('2. An event job in motion — the arrival instant is the window:');
+  print('   runs enqueued by 3 events : ${EventTriggerExample.enqueued}');
+  print('   runs after two ticks      : ${EventTriggerExample.runCount}');
+  print('   windows                   : ${EventTriggerExample.windows}');
+  print('   payloads the bodies saw   : ${EventTriggerExample.payloads}');
+  print('');
+
   await MissedWindowPolicyExample.example3WhatAPolicyGoverns();
+  print('3. What a missed-window policy governs, across an outage:');
+  print('   (each replays the 10:00 row planned before the outage)');
+  print(
+    '   skip    : ${MissedWindowPolicyExample.skipRan.length} ran, '
+    'last ${MissedWindowPolicyExample.skipRan.last}',
+  );
+  print(
+    '   runOnce : ${MissedWindowPolicyExample.runOnceRan.length} ran, '
+    'last ${MissedWindowPolicyExample.runOnceRan.last}',
+  );
+  print(
+    '   runAll  : ${MissedWindowPolicyExample.runAllRan.length} ran, '
+    'last ${MissedWindowPolicyExample.runAllRan.last}',
+  );
+  print('');
+
   await OneShotSurvivesExample.example4AOneShotSurvivesAnOutage();
+  print('4. A one-shot deadline slept through, under skip:');
+  print('   windows that ran  : ${OneShotSurvivesExample.ran}');
+  print('   rows in the store : ${OneShotSurvivesExample.storedRuns}');
+  print('   alerts raised     : ${OneShotSurvivesExample.alertKinds.length}');
+  print('   runs a day later  : ${OneShotSurvivesExample.ranAfterMoreTicks}');
+  print('');
+
   await OneShotAlreadyPastExample.example5AOneShotAlreadyPast();
+  print('5. A one-shot deadline that was already past when registered:');
+  print('   windows that ran : ${OneShotAlreadyPastExample.ran.length}');
+  print('   rows planned     : ${OneShotAlreadyPastExample.storedRuns}');
+  print('   alerts           : ${OneShotAlreadyPastExample.alertKinds}');
+  print('   alert schedule   : ${OneShotAlreadyPastExample.alertSchedule}');
+  print(
+    '   alerts after another tick : '
+    '${OneShotAlreadyPastExample.alertsAfterMoreTicks}',
+  );
+  print('');
+
   await CronInMotionExample.example6ACronJobInMotion();
+  print('6. A cron job in motion, and the OR-ed day fields:');
+  print('   nights that ran     : ${CronInMotionExample.ran}');
+  print('   next window planned : ${CronInMotionExample.nextPlanned}');
+  print('   0 12 */2 3 MON      : March days ${CronInMotionExample.orDays}');
+  print(
+    '   0 12 * 3 MON        : March days ${CronInMotionExample.mondayDays}',
+  );
+  print('');
+
   await CalendarWeekdayExample.example7TheRuleCronCannotSpell();
+  print('7. The rule cron cannot spell:');
+  print('   quarterly rule    : ${CalendarWeekdayExample.described}');
+  print('   last Fridays      : ${CalendarWeekdayExample.quarterlyFridays}');
+  print('   5th Mondays       : ${CalendarWeekdayExample.fifthMondays}');
+  print('   last Mondays      : ${CalendarWeekdayExample.lastMondays}');
+  print('');
 }
 
 Future<void> main() {

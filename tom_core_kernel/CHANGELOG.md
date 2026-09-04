@@ -1427,6 +1427,68 @@ anyone who was writing them.
 
 ### Examples
 
+- **Half the sample tree could not be traced back to a file from the output it
+  produced (tcincb2).** A group's `00_run_all_examples.dart` runs its samples
+  back to back into one continuous stream, so the only thing separating one
+  sample's contribution from the next is what the samples themselves print. Of
+  98 numbered samples, 53 opened with `=== NN: Title ===` and 45 did not: 27
+  printed *nothing at all* — they ran, asserted, exited 0 and left no trace, so a
+  reader watching the stream could not have told they were there — and 18 printed
+  freely under a heading of their own devising, or none, so their output arrived
+  attached to whichever sample had last named itself. All 98 now open `run()`
+  with a banner carrying the number the file is filed under.
+
+  The 27 silent samples gained real output, not decoration. Each already
+  computed and stored every interesting value in `static` fields so its
+  assertions could check them, so the new blocks surface state that was there
+  all along, in the numbered-section style `resources/03` established: `1. what
+  this shows:` then indented `key: value` lines. Section numbers follow the
+  method ordinal rather than being renumbered 1..N, so `example3bZonelessTimestamp`
+  prints `3b.` and a reader who sees a block can find the method that produced
+  it. Six values that had been locals were hoisted to `static` fields to be
+  printable; no assertion anywhere was added, removed or weakened.
+
+  Two further defects surfaced on the way and are fixed here. Ten group runners
+  printed a per-file heading of their own before delegating — a second title for
+  one file, and **five of the ten had drifted out of step** with the sample they
+  introduced, so the stream announced one number and the sample then announced
+  another. All 44 such headings are gone; the sample names itself and the runner
+  names the group. And `logging/05` carried its banner in `main()` only, so it
+  named itself on the standalone path and was anonymous inside the group runner,
+  which calls `run()`.
+
+  That last one is why `tool/run_standalone_examples.sh` gains **two** checks
+  rather than one. A static check (banner present, its number equal to the
+  filename's) catches the missing or mistyped banner cheaply, before 118 VM
+  starts — but it reads the file as text, so it saw `logging/05`'s banner and
+  passed it. Tightening it to "the banner must be inside `run()`" would be the
+  wrong repair: `beanlocator/05`'s `run()` is a one-line delegation to a class
+  method that holds the banner, and is correct. The property that matters is
+  that the banner *reaches the stream*, and the only honest way to know is to
+  read the stream — which the sweep already produces, since the group runners
+  match the sample glob and are logged. So a second check reads those logs
+  afterwards and requires every sample to appear in its group's. A group whose
+  runner failed is skipped, so one failure is not reported as a dozen
+  consequential anonymous samples.
+
+  `test/example_numbering_test.dart` is rewritten to the convention this
+  established, and two of its rules are now different rules. It had asserted
+  that *the samples which announce themselves* use the right ordinal, which was
+  as much as could be asked when 45 did not announce themselves at all; it now
+  asserts that **every** sample announces itself, and checks the ordinal of
+  each. And where it had asserted that a runner's per-file label agrees with the
+  file it introduces, it now asserts that **no runner prints one**: the
+  agreement it used to check is unreachable if the second label does not exist,
+  and the drift it used to catch is unreachable with it. The label-pairing
+  machinery and the boxed-banner branch went with them — no boxed sample banner
+  survives, and there is one banner shape rather than two.
+
+  An emptiness rule cannot prove its own scan by finding something, so the
+  floor test that guarded the old label scan (which required ≥ 35 labels and
+  would now find 0) is replaced by running the label pattern against the two
+  shapes of the line it exists to keep out. Both new rules were falsified before
+  their zeroes were believed, as was each fault class of the new stream check.
+
 - **The two timezoned samples that advertised a "full serialized" string were
   printing one no parser accepts (tcinc327).** Both prepended
   `getSerializationPrefix()` to the value's own rendering, which already

@@ -258,13 +258,94 @@ class MultipleSignaturesExample {
 // =============================================================================
 
 void run() {
+  print('=== 04: Digital Signatures Example ===\n');
+
   BasicSigningExample.example1BasicSigning();
+  print('1. Sign with the private key, verify with the public key:');
+  print('   message          : ${BasicSigningExample.message}');
+  print('   signature bytes  : ${BasicSigningExample.signatureLength}');
+  print('   signature valid  : ${BasicSigningExample.isValid}');
+  print('');
+
   TamperDetectionExample.example2TamperDetection();
+  print('2. A changed message no longer matches its signature:');
+  print('   original message : ${TamperDetectionExample.originalMessage}');
+  print('   tampered message : ${TamperDetectionExample.tamperedMessage}');
+  print('   original verifies: ${TamperDetectionExample.originalValid}');
+  print('   tampered verifies: ${TamperDetectionExample.tamperedValid}');
+  print('   tampering detected: ${TamperDetectionExample.tamperingDetected}');
+  print('');
+
   JsonSigningExample.example3JsonSigning();
+  print('3. Signing a JSON payload:');
+  print('   signed fields : ${JsonSigningExample.jsonData?.keys.join(', ')}');
+  print(
+    '   transaction id: '
+    '${JsonSigningExample.jsonData?['transactionId']}',
+  );
+  print(
+    '   base64 signature chars: ${JsonSigningExample.signatureBase64Length}',
+  );
+  print('   signature valid       : ${JsonSigningExample.jsonValid}');
+  print('');
+
   RsaKeyHelperSignExample.example4RsaKeyHelperSign();
+  print('4. Signing a string through RsaKeyHelper.sign:');
+  print('   text signed      : ${RsaKeyHelperSignExample.textToSign}');
+  print(
+    '   base64 signature : '
+    '${RsaKeyHelperSignExample.base64Signature!.substring(0, 24)}...',
+  );
+  print('   signature valid  : ${RsaKeyHelperSignExample.textValid}');
+  print('');
+
   ModifiedSignatureExample.example5ModifiedSignature();
+  print('5. Flipping bits in the signature invalidates it:');
+  print('   message           : ${ModifiedSignatureExample.testMessage}');
+  print(
+    '   intact signature verifies  : '
+    '${ModifiedSignatureExample.validSigResult}',
+  );
+  print(
+    '   modified signature verifies: '
+    '${ModifiedSignatureExample.modifiedSigResult}',
+  );
+  print(
+    '   modification detected      : '
+    '${ModifiedSignatureExample.modificationDetected}',
+  );
+  print('');
+
   DocumentSigningExample.example6DocumentSigning();
+  print('6. A document signing and verification workflow:');
+  print('   document title  : ${DocumentSigningExample.document?['title']}');
+  print('   parties         : ${DocumentSigningExample.document?['parties']}');
+  print(
+    '   packaged keys   : '
+    '${DocumentSigningExample.signedDocument?.keys.join(', ')}',
+  );
+  print(
+    '   recipient verified document: '
+    '${DocumentSigningExample.documentValid}',
+  );
+  print('');
+
   MultipleSignaturesExample.example7MultipleSignatures();
+  print('7. Signing one message twice:');
+  print(
+    '   first  signature : '
+    '${MultipleSignaturesExample.signature1Base64!.substring(0, 24)}...',
+  );
+  print(
+    '   second signature : '
+    '${MultipleSignaturesExample.signature2Base64!.substring(0, 24)}...',
+  );
+  print(
+    '   signatures differ: '
+    '${MultipleSignaturesExample.signaturesAreDifferent}',
+  );
+  print('   both verify      : ${MultipleSignaturesExample.bothVerify}');
+  print('');
 }
 
 void main() {

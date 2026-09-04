@@ -632,11 +632,7 @@ class AdvancedLoggingExample {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('04: ADVANCED LOGGING CONFIGURATION EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 04: Advanced Logging Configuration Example ===\n');
 
   AdvancedLoggingExample.example1LogLevelStack();
   AdvancedLoggingExample.example2NameLevels();

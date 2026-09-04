@@ -381,11 +381,7 @@ abstract class _NonExistentService {
 // ============================================================================
 
 void run() {
-  print('═══════════════════════════════════════════════════════════════════');
-  print('04: INTERFACE AND TYPE REGISTRATION EXAMPLE');
-  print(
-    '═══════════════════════════════════════════════════════════════════\n',
-  );
+  print('=== 04: Interface and Type Registration Example ===\n');
 
   InterfaceAndTypeRegistrationExample.example1ManualTypeRegistration();
   InterfaceAndTypeRegistrationExample.example2GetBeanByType();

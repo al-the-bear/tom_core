@@ -26,9 +26,8 @@ void main() {
 void run() {
   print('Running Settings Examples...\n');
   print('=' * 60);
+  print('');
 
-  print('\n01: Client Authorization Example');
-  print('-' * 40);
   client_authorization.run();
   print('✓ Client authorization examples passed\n');
 

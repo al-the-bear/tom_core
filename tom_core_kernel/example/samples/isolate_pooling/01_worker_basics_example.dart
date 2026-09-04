@@ -223,6 +223,7 @@ class ExecutorExample {
 class UnhandledMessageExample {
   static Object? unclaimedResult;
   static bool wasReportedAsUnhandled = false;
+  static int? followUpResult;
   static bool workerStillUsable = false;
 
   static Future<void> example6UnhandledMessage(TomWorker worker) async {
@@ -235,8 +236,8 @@ class UnhandledMessageExample {
     wasReportedAsUnhandled = identical(unclaimedResult, TomExecutor.noResult);
 
     // And the worker carries on normally afterwards.
-    final followUp = await worker.executeCommand(FactorialCommand(4));
-    workerStillUsable = followUp == 24;
+    followUpResult = await worker.executeCommand(FactorialCommand(4)) as int?;
+    workerStillUsable = followUpResult == 24;
 
     assert(
       wasReportedAsUnhandled,
@@ -290,13 +291,80 @@ class WorkerLifecycleExample {
 // =============================================================================
 
 Future<void> run() async {
+  print('=== 01: Worker Basics Example ===\n');
+
   final worker = await WorkerSpawningExample.example1SpawningWorker();
+  print('1. Spawning a worker isolate from a worker context:');
+  print('   worker is ready      : ${WorkerSpawningExample.workerIsReady}');
+  print('   worker is closed     : ${WorkerSpawningExample.workerIsClosed}');
+  print(
+    '   spawned successfully : '
+    '${WorkerSpawningExample.workerSpawnedSuccessfully}',
+  );
+  print('');
+
   await SimpleCommandExample.example2ExecutingCommand(worker);
+  print('2. Running a TomCommand on the worker:');
+  print('   factorial(5)     : ${SimpleCommandExample.factorialResult}');
+  print('   command executed : ${SimpleCommandExample.commandExecuted}');
+  print('');
+
   await CpuIntensiveCommandExample.example3CpuIntensiveCommand(worker);
+  print('3. Offloading a CPU-bound computation:');
+  print('   fibonacci(20)        : ${CpuIntensiveCommandExample.fibResult}');
+  print(
+    '   computation complete : '
+    '${CpuIntensiveCommandExample.computationComplete}',
+  );
+  print('');
+
   await ComplexDataCommandExample.example4ComplexDataCommand(worker);
+  print('4. A command returning several values in one Map:');
+  print('   sum     : ${ComplexDataCommandExample.dataSum}');
+  print('   average : ${ComplexDataCommandExample.dataAvg}');
+  print('   max     : ${ComplexDataCommandExample.dataMax}');
+  print('   min     : ${ComplexDataCommandExample.dataMin}');
+  print('   count   : ${ComplexDataCommandExample.dataCount}');
+  print('');
+
   await ExecutorExample.example5UsingExecutor(worker);
+  print('5. A TomExecutor registered inside the worker isolate:');
+  print('   reverse("Hello World")   : ${ExecutorExample.reverseResult}');
+  print('   uppercase("hello world") : ${ExecutorExample.uppercaseResult}');
+  print('   executor handled both    : ${ExecutorExample.executorWorks}');
+  print('');
+
   await UnhandledMessageExample.example6UnhandledMessage(worker);
+  print('6. A message that no executor claims:');
+  print(
+    '   answered with TomExecutor.noResult : '
+    '${UnhandledMessageExample.wasReportedAsUnhandled}',
+  );
+  print(
+    '   follow-up factorial(4)             : '
+    '${UnhandledMessageExample.followUpResult}',
+  );
+  print(
+    '   worker still usable                : '
+    '${UnhandledMessageExample.workerStillUsable}',
+  );
+  print('');
+
   await WorkerLifecycleExample.example7WorkerLifecycle(worker);
+  print('7. Closing the worker, then dispatching to it anyway:');
+  print(
+    '   ready before close()       : '
+    '${WorkerLifecycleExample.wasReadyBeforeClose}',
+  );
+  print(
+    '   closed after close()       : '
+    '${WorkerLifecycleExample.isClosedAfterClose}',
+  );
+  print(
+    '   dispatch after close threw : '
+    '${WorkerLifecycleExample.dispatchAfterCloseRefused}',
+  );
+  print('');
 }
 
 /// Standalone entry point.

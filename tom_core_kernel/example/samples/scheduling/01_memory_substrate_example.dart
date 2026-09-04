@@ -311,9 +311,37 @@ class LeaseLockExample {
 // =============================================================================
 
 Future<void> run() async {
+  print('=== 01: Memory Substrate Example ===\n');
+
   await LifecycleExample.example1OneWindowEndToEnd();
+  print('1. One window, from registration to a completed row:');
+  print('   rows after planning : ${LifecycleExample.rowsAfterPlanning}');
+  print('   planned row state   : ${LifecycleExample.plannedState}');
+  print('   windows processed   : ${LifecycleExample.processed}');
+  print('   completed window    : ${LifecycleExample.completedWindow}');
+  print('   final state         : ${LifecycleExample.finalState}');
+  print('   rows in the store   : ${LifecycleExample.runCount}');
+  print('   next window planned : ${LifecycleExample.lookAheadWindow}');
+  print('');
+
   await StoreRecordExample.example2TheStoreIsTheRecord();
+  print('2. What the durable run record carries:');
+  print('   job name       : ${StoreRecordExample.jobName}');
+  print('   window         : ${StoreRecordExample.scheduledFor}');
+  print('   due at         : ${StoreRecordExample.runAt}');
+  print('   attempt        : ${StoreRecordExample.attempt}');
+  print('   startedAt set  : ${StoreRecordExample.startedAtRecorded}');
+  print('   claim released : ${StoreRecordExample.claimReleased}');
+  print('');
+
   await LeaseLockExample.example3TheLeaseAndItsResource();
+  print('3. The lease, and the resource it was taken on:');
+  print('   lease resource  : ${LeaseLockExample.leaseResource}');
+  print('   fencing token   : ${LeaseLockExample.token}');
+  print('   held during run : ${LeaseLockExample.heldDuringRun}');
+  print('   released after  : ${LeaseLockExample.releasedAfterRun}');
+  print('   holder vanished : ${LeaseLockExample.holderVanished}');
+  print('');
 }
 
 Future<void> main() {
