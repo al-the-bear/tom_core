@@ -48,7 +48,7 @@ and opens by sizing the package as a whole::
     `tom_core_samples/advanced_todo_domain/` — 23 files, of which 17 are Dart:
     14 under `lib/` (619 lines, all hand-written) and 3 under `test/`, ...
 
-Eight faults are reported:
+Nine faults are reported:
 
 ``LINES``
     A file whose claimed length is not its length -- in an inventory table's
@@ -73,8 +73,15 @@ Eight faults are reported:
 ``PKGINV``
     An atom of a package document's opening inventory -- the package's file
     count, its Dart-file count, how many of those sit under ``lib/``, ``bin/``,
-    ``test/`` or ``example/``, and the hand-written file counts and line totals
-    beside them -- disagreeing with the package.
+    ``test/`` or ``example/``, the hand-written file counts and line totals
+    beside them, and the counts of SQL migrations and of ``assets/`` files --
+    disagreeing with the package. Also an atom the package *has* and the census
+    does not state: a silent omission is the same defect as a wrong figure, one
+    step earlier.
+``LIBSIZE``
+    The standalone ``lib/`` size paragraph of a server package document --
+    ``lib/` totals 3 513 lines, of which `app_endpoints.dart` is 1 748`` --
+    disagreeing with the library.
 ``INDEX``
     An entry in the completion overview whose restated file count or line total
     disagrees with the module it links to, or whose link names a document that
@@ -87,6 +94,43 @@ exactly as the docstring above predicts: ``advanced_todo_domain`` claimed 24
 files when it had 23, and its line total went stale the next time anyone
 edited a dartdoc -- a one-line comment change silently falsifies the paragraph
 a reader trusts most, because it is the first one they read.
+
+**The census is one sentence in one grammar, and that is what makes it
+gateable.** The eight advanced package documents once wrote it in three
+different hands -- ``13 tests`` beside ``13 under `test/```, ``runtime assets``
+beside ``assets``, a Dart split introduced by a colon in one document and by a
+parenthesis in the next -- and a regex set tolerant of all of them is a regex
+set that will not survive the ninth. So the sentence has a shape, and the audit
+reads only that shape:
+
+1. ``` `<package path>/` — N files, of which D are Dart ```, then the Dart split.
+2. Each folder the package actually has, as ``` K under `<folder>/` ```,
+   optionally followed **immediately** by a parenthetical carrying its line
+   total and hand-written file count.
+3. ``S are SQL migrations`` and ``A are assets``, each stated where the package
+   has any, each with the verb between the count and the noun.
+4. Then prose.
+
+**A count in this sentence is a count of files, and nothing else.** That rule is
+what ``A are assets`` encodes, and it was bought with a defect.
+``advanced_auth_server`` used to say ``4 are runtime assets and 2 are JSON
+resource bundles`` -- but the 2 bundles are a *subset* of the 6 files under
+``assets/``, written as though they were 2 more, so the atoms summed to 45
+against a package of 44 and no reader could tell which figure was wrong. A gate
+derived from ``git ls-files`` sees only "``assets/`` holds 6 files"; it cannot
+know which of them a person would call runtime. So the number is always the
+total, and any semantic split is written after it, parenthesised and **spelled
+out in words** -- ``6 are assets (four runtime configuration bundles and two
+JSON resource bundles)``. Words rather than digits is not decoration: it puts
+the split visibly outside the class of things that are measurements, so nobody
+later mistakes it for one and nothing has to teach the gate about file
+semantics.
+
+The census is also required to be *complete*. Checking only the atoms a sentence
+happens to mention makes the audit exactly as good as the sentence, which is the
+wrong way round: a package that gains its first migration would keep a census
+silent about migrations and go on passing. A document may omit an atom only when
+the package does not have it.
 
 ``HEADER`` reads the module header as a sentence rather than as a template,
 because the template was the fault. It once required the literal ``N source
@@ -250,8 +294,8 @@ are both about writing rather than about tooling:
    drift without leaving the document and a later editor can see which part
    moved. ``advanced_authadmin_client`` is written this way and is the model.
 
-``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT``, ``BARREL``, ``PKGINV`` and
-``INDEX``
+``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT``, ``BARREL``, ``PKGINV``,
+``LIBSIZE`` and ``INDEX``
 by writing the measurement back, so keeping the numbers true costs one command
 rather than a manual pass. A count spelled out is repaired spelled out, with
 its capitalisation, since an index entry routinely opens its sentence with one
@@ -259,8 +303,10 @@ and ``13 files, all exported`` would be a worse sentence than it was. What
 ``--fix`` never does is re-wrap: a repaired figure with more digits than the
 stale one can push its line past the margin, so read the diff.
 It never touches ``UNKNOWN`` or ``ABSENT``, nor a
-missing map row: adding or retiring a row means writing the sentence that says
-what the file or folder carries, and only a reader of it can do that.
+missing map row, nor a ``says nothing about`` fault: adding or retiring a row --
+or naming a part of the package the census is silent about -- means writing the
+sentence that says what the file or folder carries, and only a reader of it can
+do that.
 
 Note what ``--fix`` means for a ``BARREL`` fault: it makes the *document*
 agree with the code, which is right when the label is stale and wrong when the
@@ -358,12 +404,32 @@ PKG_UNDER = re.compile(r"(" + NUMBER + r")\s+under\s+`(lib|bin|test|example)/`")
 #: checked on every run. A `bin/` entrypoint and an `example/` program are
 #: hand-written sources that decay as `lib/` does, so the same parenthetical is
 #: read wherever it is written.
-PKG_SEGMENT = re.compile(
-    r"under\s+`(lib|bin|test|example)/`[^()]*\(([^)]*)\)", re.S
-)
+#:
+#: The parenthetical must follow the folder *immediately*. It once did not, and
+#: the scan would run past a folder that carried no parenthetical to whatever one
+#: came next -- measuring `test/`'s figures against `lib/` if the two happened to
+#: be written in that order with no bracket between them. Nothing in this set was
+#: mis-read, which is the only kind of luck a loose pattern ever has.
+PKG_SEGMENT = re.compile(r"under\s+`(lib|bin|test|example)/`\s*\(([^)]*)\)", re.S)
 PKG_LINES = re.compile(r"(" + NUMBER + r")\s+(?:hand-written\s+)?lines")
 #: `20 hand-written, 4 337 lines` -- a file count, not the line count beside it.
 PKG_HAND = re.compile(r"(" + NUMBER + r")\s+hand-written(?!\s+lines)")
+#: `5 are SQL migrations`, `1 is a SQL migration`. Singular and plural both, and
+#: the verb between count and noun is what keeps `[001]-auth_authz_grants.sql`
+#: and other prose near the word out of the measurement.
+PKG_SQL = re.compile(
+    r"(" + NUMBER + r")\s+(?:are|is)\s+(?:an?\s+)?SQL\s+migrations?\b"
+)
+#: `6 are assets`. The noun is bare on purpose. It used to be qualified --
+#: `4 are runtime assets and 2 are JSON resource bundles` -- and the qualifier
+#: is what made the sentence unaddable: the 2 bundles are a *subset* of the 6
+#: files under `assets/`, stated as though they were a further 2, so the atoms
+#: summed to 45 against a package of 44. A count deriveable from `git ls-files`
+#: can only ever be "how many files are under `assets/`", so that is the only
+#: figure the documents state as a number; any semantic split is written after
+#: it, parenthesised and spelled out in words, where it is prose rather than a
+#: claim -- see the `PKGINV` note in the module docstring.
+PKG_ASSETS = re.compile(r"(" + NUMBER + r")\s+(?:are|is)\s+(?:an?\s+)?assets?\b")
 
 TABLE_HEADER = re.compile(r"^\|\s*File\s*\|\s*Lines\s*\|")
 TABLE_ROW = re.compile(r"^\|\s*`([^`]+)`\s*\|\s*(\d+)\s*\|", re.M)
@@ -450,6 +516,23 @@ MODULE_LINES = re.compile(r"(~\s*)?(" + NUMBER + r")\s+lines\b")
 # hard-wrapped, so the claim routinely straddles a line break.
 README_CLAIM = re.compile(r"`readme\.md`\s+\((\d+)\s+lines\)")
 
+#: The standalone paragraph in which a *server* package document sizes its
+#: library, written after the layout tree rather than inside the opening census:
+#: ``lib/` totals 3 513 lines`, ``lib/` is 1 894 lines across nine files`.
+#: Anchored at a line start so the phrase cannot be picked up mid-sentence.
+LIB_TOTAL = re.compile(r"^`lib/`\s+(?:totals|is)\s+(" + NUMBER + r")\s+lines\b", re.M)
+
+#: A file count in the same paragraph -- `across nine files`. Optional; only
+#: `advanced_ops_server` states one.
+LIB_FILES = re.compile(r"across\s+(" + NUMBER + r"|" + _WORDS + r")\s+files\b", re.I)
+
+#: A per-file claim in the same paragraph, in the two hands the documents use:
+#: ``app_endpoints.dart` is 1 748` and ``admin_endpoints.dart` 742`. The word
+#: `lines` is not required, because the aggregate one sentence earlier has
+#: already named the unit and repeating it reads badly; the backticked `.dart`
+#: name immediately in front of the figure is what makes it a measurement.
+LIB_FILE = re.compile(r"`([\w.]+\.dart)`\s+(?:is\s+)?(" + NUMBER + r")\b")
+
 
 def line_count(path: Path) -> int:
     """Count lines the way ``wc -l`` does -- the tool the numbers came from."""
@@ -517,6 +600,7 @@ def audit(path: Path) -> Report | None:
     measured = audit_barrel_exports(text, report)
     measured |= audit_layout_lines(text, report)
     measured |= audit_package_inventory(text, report)
+    measured |= audit_library_size(text, report)
     measured |= audit_index_sections(text, report)
 
     module_match = MODULE_PATH.search(text)
@@ -867,10 +951,38 @@ def audit_package_inventory(text: str, report: Report) -> bool:
         claims.append((file_claim, len(files), "files"))
     if dart_claim is not None:
         claims.append((dart_claim, len(dart), "Dart files"))
+    stated = set()
     for match in PKG_UNDER.finditer(text, start, end):
         folder = match.group(2)
+        stated.add(folder)
         noun = f"Dart files under {folder}/"
         claims.append((match, len(under(folder)), noun))
+
+    # A census states every part of the package that has one. Checking only the
+    # parts it happens to mention makes the audit exactly as complete as the
+    # sentence is, which is the wrong way round: a package that *gains* a
+    # `bin/` or a first migration would keep a census that is silent about it
+    # and go on passing. What a document may leave out is a part the package
+    # does not have.
+    for folder in ("lib", "bin", "test", "example"):
+        if under(folder) and folder not in stated:
+            report.faults.append(
+                f"PKGINV   says nothing about the "
+                f"{len(under(folder))} Dart files under {folder}/"
+            )
+
+    for pattern, present, noun in (
+        (PKG_SQL, [f for f in files if f.endswith(".sql")], "SQL migrations"),
+        (PKG_ASSETS, [f for f in files if f.startswith("assets/")], "assets"),
+    ):
+        match = pattern.search(text, start, end)
+        if match is not None:
+            claims.append((match, len(present), noun))
+        elif present:
+            report.faults.append(
+                f"PKGINV   says nothing about the {len(present)} {noun}"
+            )
+
     for segment in PKG_SEGMENT.finditer(text, start, end):
         folder = segment.group(1)
         hand = handwritten(under(folder))
@@ -891,6 +1003,94 @@ def audit_package_inventory(text: str, report: Report) -> bool:
             f"PKGINV   says {written.strip()} {noun}; is {measured}"
         )
         report.edits.append(rewrite_groups(match, {1: like(written, measured)}))
+    return True
+
+
+def audit_library_size(text: str, report: Report) -> bool:
+    """Check the standalone ``lib/`` size paragraph against the package.
+
+    Returns whether the document has such a paragraph at all.
+
+    Three of the eight package documents state their library's length here,
+    after the layout tree, rather than in the opening census -- ``lib/` totals
+    3 513 lines, of which `app_endpoints.dart` is 1 748`. It is the same
+    measurement the census parenthetical carries elsewhere, in a different place
+    and a different grammar, and a gate scoped to the census alone would leave
+    all of it unread. That is not a hypothetical gap: when this audit first ran,
+    four of the six figures in these three paragraphs were stale, one of them a
+    regression introduced by two documentation todos that had each checked their
+    collateral for `file.dart:NNN` *citations* and neither for line *counts*.
+
+    **The denominator is `lib/**`, not `lib/src/**`.** That is the one detail
+    worth stating, because getting it wrong is silent and plausible: every one
+    of these packages has a barrel outside `lib/src/`, so a `lib/src/`-only sum
+    is always a little smaller and always looks like a believable answer.
+    `advanced_auth_server`'s figure was wrong the day it was written for exactly
+    that reason -- a `lib/src/` count published under the label `lib/`, dropping
+    the 21-line barrel -- and it survived several passes because a reviewer
+    spot-checking `lib/src/` reproduces the printed number and concludes it is
+    fine. A gate recomputing from `lib/src/` would ratify the bug it exists to
+    catch.
+
+    Generated code is excluded, as it is everywhere else here. No server package
+    has a `*.reflection.dart` under `lib/` today, so the two readings agree; they
+    would stop agreeing the moment one gained a reflection seed, and a 90 000-line
+    generated file is not what any of these sentences means by "totals".
+    """
+    package = layout_package(text)
+    if package is None:
+        return False
+    total = LIB_TOTAL.search(text)
+    if total is None:
+        return False
+
+    # The paragraph the claim opens: later paragraphs discuss the same library
+    # in prose, and one of them names a file beside a number that is not its
+    # length -- `app_endpoints.dart:1527` is a citation, not a measurement.
+    blank = text.find("\n\n", total.start())
+    end = len(text) if blank < 0 else blank
+
+    tracked = tracked_files(package)
+    if tracked is None:
+        return False
+    sources = [
+        f for f in tracked
+        if f.startswith("lib/") and f.endswith(".dart")
+        and not f.endswith(".reflection.dart")
+    ]
+    measured = sum(line_count(package / f) for f in sources)
+    written = total.group(1)
+    if as_number(written) != measured:
+        report.faults.append(
+            f"LIBSIZE  says lib/ totals {written.strip()} lines; is {measured}"
+        )
+        report.edits.append(rewrite_groups(total, {1: like(written, measured)}))
+
+    count = LIB_FILES.search(text, total.end(), end)
+    if count is not None and as_count(count.group(1)) != len(sources):
+        report.faults.append(
+            f"LIBSIZE  says lib/ is {count.group(1).strip()} files;"
+            f" is {len(sources)}"
+        )
+        report.edits.append(
+            rewrite_groups(count, {1: as_written(count.group(1), len(sources))})
+        )
+
+    by_name = {f.rsplit("/", 1)[-1]: f for f in sources}
+    for claim in LIB_FILE.finditer(text, total.end(), end):
+        name = claim.group(1)
+        source = by_name.get(name)
+        if source is None:
+            report.faults.append(f"LIBSIZE  `{name}` is not under lib/")
+            continue
+        length = line_count(package / source)
+        if as_number(claim.group(2)) != length:
+            report.faults.append(
+                f"LIBSIZE  `{name}` says {claim.group(2).strip()}; is {length}"
+            )
+            report.edits.append(
+                rewrite_groups(claim, {2: like(claim.group(2), length)})
+            )
     return True
 
 
