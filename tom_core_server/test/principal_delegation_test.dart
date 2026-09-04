@@ -456,6 +456,50 @@ void main() {
         expect(sql(), contains('tom_principal_delegation.revoked = :revoked'));
       });
 
+      test('the boolean conjunct carries no bracket of its own', () {
+        // The sentence used to read `AND ( revoked = :revoked )`, and the
+        // bracket was load-bearing: a boolean comparison parsed its right-hand
+        // side with the statement-level entry point, so it claimed the `AND`
+        // after it and the whole window tail became its operand. The bracket
+        // stopped it. The comparison now ends at its operand like every other
+        // one, so the bracket says something about the predicate that is not
+        // true — that the conjunct is a group — and the next reader would copy
+        // it.
+        //
+        // Two claims, because the absence of a bracket in the sentence is not
+        // by itself the interesting one. First: the comparison compiles as a
+        // conjunct in its own right, sitting bare between the delegate test and
+        // the first window group — a shape the old grammar could not produce,
+        // since it would have read the `AND` after it as part of its operand.
+        // Second: bracketing it changes the SQL by exactly that one bracket
+        // pair and nothing else, which is what "the bracket was decoration"
+        // means. Were the tail to be swallowed again, the two compiles would
+        // diverge well beyond it — or the bare one would not compile at all.
+        expect(
+          RepositoryPrincipalDelegationStore.activeDelegationsQuery,
+          isNot(contains('( revoked')),
+        );
+        const bare = 'tom_principal_delegation.revoked = :revoked';
+        expect(
+          sql(),
+          contains(
+            'tom_principal_delegation.delegate_id = :delegateId '
+            'AND $bare '
+            'AND ( tom_principal_delegation.valid_from IS NULL',
+          ),
+        );
+        final bracketed =
+            (compiler.compileQuerySentence(
+                      'FIND BY delegate_id = :delegateId '
+                      'AND ( revoked = :revoked ) '
+                      'AND ( valid_from IS NULL OR valid_from <= :at ) '
+                      'AND ( valid_to IS NULL OR valid_to >= :at )',
+                    )
+                    as TomSelect)
+                .generateQuery(dialect);
+        expect(bracketed, sql().replaceFirst(bare, '( $bare )'));
+      });
+
       test('the window bounds are tested in SQL, each admitting null', () {
         // `null` is unbounded on that side, so neither bound can be a bare
         // comparison: SQL's three-valued logic makes `NULL <= :at` unknown,

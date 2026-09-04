@@ -358,17 +358,17 @@ class RepositoryPrincipalDelegationStore implements PrincipalDelegationStore {
   /// unknown rather than true — a bare comparison would silently drop every
   /// open-ended delegation, which is most of them.
   ///
-  /// Every conjunct is parenthesised: the sentence compiler builds `AND`/`OR`
-  /// right-recursively, and against a *boolean* column it parses the whole tail
-  /// of the sentence as the right-hand operand — so an unbracketed
-  /// `revoked = :revoked AND …` swallows the window tests and fails to compile.
-  /// The brackets are what the grammar needs, not decoration.
+  /// Only the two window bounds are bracketed. The sentence compiler builds
+  /// `AND`/`OR` right-recursively, so an `OR` written bare among the conjuncts
+  /// would take everything after it as its right-hand side and the sentence
+  /// would mean something else; the brackets say where each alternation ends.
+  /// The three comparisons need none — each ends at its own operand.
   ///
   /// A named constant rather than a literal at the call site so a test can
   /// compile *this* sentence and inspect the SQL, instead of a copy that would
   /// go on passing after the real one changed.
   static const String activeDelegationsQuery =
-      'FIND BY delegate_id = :delegateId AND ( revoked = :revoked ) '
+      'FIND BY delegate_id = :delegateId AND revoked = :revoked '
       'AND ( valid_from IS NULL OR valid_from <= :at ) '
       'AND ( valid_to IS NULL OR valid_to >= :at )';
 

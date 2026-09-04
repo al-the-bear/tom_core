@@ -104,6 +104,23 @@ void main() {
       }
     });
 
+    test('a null test after it is a null test', () {
+      // The shape the defect was first met in — a liveness query reading
+      // `revoked = :revoked AND valid_from IS NULL OR …`. It is worth its own
+      // case because what follows the comparison here is not another
+      // comparison: `IS NULL` is built by a different arm, so a boolean operand
+      // that ran on would reach it by a different route than the cases above
+      // cover.
+      for (final (written, rendered) in operators) {
+        expect(
+          where('find by done $written TRUE and created_at IS NULL'),
+          'WHERE fixture_export.done $rendered true AND '
+          'fixture_export.created_at IS NULL',
+          reason: 'the null test after a [$written] comparison should survive',
+        );
+      }
+    });
+
     test('a second boolean comparison is a second predicate', () {
       // This one rendered correctly even with the flag, and is here as a guard
       // rather than as a repair: `=` built `done = (true AND done = false)`,
