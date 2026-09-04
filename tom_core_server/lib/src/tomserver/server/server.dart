@@ -72,13 +72,64 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
   return (resultA, resultB);
 }
 
+/// Resolves the effective [TomPrincipal] for a request from its credentials.
+///
+/// Two answers are available: what [TomAuthorizationCache] holds for
+/// [clientToken], and [tokenPrincipal] — the one [extractAuthentication]
+/// derived from the token itself. A cache hit wins; a cache miss, and a request
+/// with no token at all, fall back to the token principal.
+///
+/// An expired cache entry is neither, and resolves to `null` — the same answer
+/// a request bearing no credentials gets. That is deliberate and is the reason
+/// this lives in its own function:
+///
+/// - It must not throw. The expiry is raised as a distinct exception type
+///   precisely because it is a prompt to re-authorize rather than a failure, so
+///   letting it escape would hand the client whatever the generic error handler
+///   makes of an unrecognised exception (an HTTP 500, by default) instead of an
+///   answer it can act on.
+/// - It must not fall back to [tokenPrincipal]. The cache entry's lifetime *is*
+///   the token's — `TomAuthorizationCache` reads it from the token's
+///   `validUntil` claim — so an expired entry means *this token* has expired,
+///   while [TomBearerAuthentication.convertTokenPayloadToPrincipal] performs no
+///   expiry check and would happily rebuild the session as authenticated. The
+///   fallback would therefore serve a dead session, turning a wrong-response
+///   bug into an authentication bypass.
+///
+/// Resolving to no principal keeps the cache from changing the answer in the
+/// dangerous direction: a protected endpoint refuses the request through the
+/// ordinary access-denied path, while an unauthenticated one — a refresh or
+/// re-login endpoint, say — is still reachable, and still receives the token
+/// itself from the request zone.
+Future<TomPrincipal?> _resolveRequestPrincipal(
+  TomClientJwtToken? clientToken,
+  TomPrincipal? tokenPrincipal,
+) async {
+  if (clientToken == null) return tokenPrincipal;
+  try {
+    return await TomAuthorizationCache.getPrincipal(clientToken) ??
+        tokenPrincipal;
+  } on TomAuthorizationCacheException catch (e) {
+    // Logged at info, not warning: an aged-out session is the cache working,
+    // not a fault. It is worth a line because the request that follows will be
+    // refused for a reason the endpoint cannot name — from there it looks like
+    // an unauthenticated caller, which is exactly what it now is.
+    tomLog.info(
+      "Cached principal for the presented token has expired (${e.key}); "
+      "the request proceeds unauthenticated",
+    );
+    return null;
+  }
+}
+
 /// The default authentication [Middleware] of a [TomServer].
 ///
 /// For each request it:
 /// 1. extracts bearer credentials with [extractAuthentication];
 /// 2. resolves the effective [TomPrincipal] — preferring a principal cached for
 ///    the client token by [TomAuthorizationCache], falling back to the one
-///    derived directly from the token;
+///    derived directly from the token, and resolving to *no* principal when the
+///    cache reports the entry expired (see [_resolveRequestPrincipal]);
 /// 3. runs the inner handler inside a [runZoned] scope whose [TomZoneValues]
 ///    expose the shelf [Request], the ambient [TomExecutionContext], the
 ///    resolved [TomPrincipal], the [TomClientJwtToken], and a fresh
@@ -109,11 +160,10 @@ Middleware tomDefaultAuthenticationMiddleware(
       tomLog.trace(
         "extracted $callPrincipal and $clientToken from incoming request to ${request.requestedUri}",
       );
-      var principal =
-          (clientToken != null
-              ? await TomAuthorizationCache.getPrincipal(clientToken)
-              : null) ??
-          callPrincipal;
+      var principal = await _resolveRequestPrincipal(
+        clientToken,
+        callPrincipal,
+      );
       TomZoneValues zoneValues = TomZoneValues({
         Request: request,
         TomExecutionContext: tomExecutionContext,

@@ -265,6 +265,82 @@ void main() {
       await handler(_get({'authorization': 'Bearer $jwt'}));
       expect(zoneToken, isNotNull);
     });
+
+    // An entry the cache has aged out. The two tests below drive the same
+    // request; the first pins that the pipeline still answers it, the second
+    // pins *what* the request is answered as.
+    //
+    // The token is minted already expired because the entry's lifetime *is* the
+    // token's — `TomAuthorizationCache` reads its expiry from the token's
+    // `validUntil` claim and refuses to invent one — so "the cached entry has
+    // expired" and "this token has expired" are one fact, not two. A fixture
+    // pairing a dead entry with a live token would be testing a state the cache
+    // cannot reach.
+    group('when the cached principal has expired', () {
+      /// The bearer header for a token that expired an hour ago, with a
+      /// principal cached under it. `username` is set so that
+      /// [extractAuthentication] derives an *authenticated* principal from the
+      /// token itself — which is precisely the principal that must not be used.
+      Future<Map<String, String>> expiredCredentials() async {
+        final token = TomClientJwtToken(
+          TomServerJwtToken({
+            'userId': 'u',
+            'username': 'alice',
+          }, expiresIn: const Duration(hours: -1)).getJWT('tom'),
+        );
+        await TomAuthorizationCache.storePrincipal(
+          token,
+          TomPrincipal(user: TomUser(username: 'alice'), authenticated: true),
+        );
+        addTearDown(TomAuthorizationCache.instance.dispose);
+        return {'authorization': 'Bearer ${token.tokenString}'};
+      }
+
+      test('the request is still served, not failed', () async {
+        var handlerRan = false;
+        final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
+          handlerRan = true;
+          return Response.ok('ok');
+        });
+        // The expiry must not escape as an exception: the outer error
+        // middleware would turn it into a generic HTTP 500 — an answer no
+        // client can act on, and one a cold cache would not produce for this
+        // same request, so the cache's mere presence would decide it.
+        final response = await handler(_get(await expiredCredentials()));
+        expect(handlerRan, isTrue);
+        expect(response.statusCode, 200);
+      });
+
+      test('the token-derived principal is not used in its place', () async {
+        TomPrincipal? zonePrincipal;
+        final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
+          zonePrincipal = getFromCurrentZone<TomPrincipal>();
+          return Response.ok('ok');
+        });
+        await handler(_get(await expiredCredentials()));
+        // The expired session resolves to *no* principal — the same answer a
+        // request bearing no credentials gets. Falling back to the principal
+        // `extractAuthentication` derived would serve the dead session as
+        // `alice`, authenticated: that reader performs no expiry check, so the
+        // fallback would turn a wrong-response bug into an authentication
+        // bypass. A protected endpoint now refuses this request through the
+        // ordinary access-denied path instead.
+        expect(zonePrincipal, isNull);
+      });
+
+      test('the token itself still reaches the request zone', () async {
+        TomClientJwtToken? zoneToken;
+        final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
+          zoneToken = getFromCurrentZone<TomClientJwtToken>();
+          return Response.ok('ok');
+        });
+        await handler(_get(await expiredCredentials()));
+        // Dropping the principal does not drop the credentials: a refresh or
+        // re-login endpoint is reached with exactly this token, and it is the
+        // only thing left identifying who is asking.
+        expect(zoneToken, isNotNull);
+      });
+    });
   });
 
   // The TomServer constructor is the socket-free half of the class: it wires the

@@ -64,16 +64,35 @@ request itself:
 var (TomPrincipal? callPrincipal, TomClientJwtToken? clientToken) =
     extractAuthentication(request);
 
-var principal =
-    (clientToken != null
-        ? await TomAuthorizationCache.getPrincipal(clientToken)
-        : null) ??
-    callPrincipal;
+// A cache hit wins; a miss falls back to callPrincipal; an *expired* entry
+// resolves to no principal at all.
+var principal = await _resolveRequestPrincipal(clientToken, callPrincipal);
 ```
 
 The authorization layer that resolves a principal calls
 `TomAuthorizationCache.storePrincipal(token, principal)` once, so subsequent
 requests bearing the same token short-circuit straight to the cached value.
+
+### An expired entry resolves to no principal
+
+The third answer is the one worth stating, because it is neither of the other
+two. `getPrincipal` reports an expired entry by throwing (see
+[Lifetime and Expiry](#lifetime-and-expiry)), and the middleware catches that,
+logs it, and resolves the request's principal to `null` — the same answer a
+request bearing no credentials gets.
+
+It does **not** fall back to `callPrincipal`, even though one is sitting right
+there. An entry's expiry *is* the token's `validUntil`, so an expired entry
+means this token has expired; `TomBearerAuthentication.convertTokenPayloadToPrincipal`
+performs no expiry check and would rebuild the dead session as authenticated.
+Falling back would make the cache's presence decide whether an expired token is
+honoured, in the dangerous direction.
+
+Nor does the middleware answer 401 itself. An unauthenticated request is a
+legitimate thing for this pipeline to carry: a protected endpoint refuses it
+through the ordinary `enforceAccess` path, while a refresh or re-login endpoint
+stays reachable — and still receives the token itself from the request zone,
+which is the only thing left identifying who is asking.
 
 ### The cache does not decide access
 

@@ -138,6 +138,16 @@ Three channels carry per-request state:
 returning nulls when the header is absent, not a bearer token, or fails to parse
 (an invalid token is treated as "no credentials", not an error).
 
+The principal the zone finally carries is resolved from those two: a principal
+`TomAuthorizationCache` holds for the token wins, a cache miss falls back to the
+one `extractAuthentication` decoded, and an entry the cache reports as **expired**
+resolves to no principal at all — the same answer an uncredentialed request
+gets. The middleware itself never refuses; a protected endpoint refuses the
+request downstream, and a refresh or re-login endpoint stays reachable with the
+token still in the zone. See
+[authorization.md](authorization.md#an-expired-entry-resolves-to-no-principal)
+for why the token-derived principal is not used as the fallback there.
+
 ## Error Mapping
 
 `TomServer.errorHandler` turns a thrown error into an HTTP 500 JSON response
@@ -206,9 +216,12 @@ somewhere other than the call site.
   [The Pipeline](#the-pipeline)), so whatever is decided above it — the outer
   error handler, or a substitute `authenticationMiddleware` that rejects —
   returns without ever reaching it. `tomDefaultAuthenticationMiddleware` never
-  rejects, so under the default the way in is a throw from principal
-  resolution; a deployment that supplies a rejecting middleware loses the line
-  for every rejection, which is the class of request most worth having one.
+  rejects — an expired cached principal resolves to no principal rather than to
+  a refusal, and the request is logged like any other — so under the default
+  the way in is narrow: a cache read forwarded to another isolate that fails, or
+  a transaction scope that cannot be opened. A deployment that supplies a
+  rejecting middleware loses the line for every rejection, which is the class of
+  request most worth having one.
 - **`extractAuthentication` cannot report a bad token.** An absent header, a
   non-bearer scheme and a bearer token that will not parse all answer
   `(null, null)`, so a malformed credential is indistinguishable from no
