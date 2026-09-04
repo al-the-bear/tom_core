@@ -7,7 +7,7 @@
 
 | Document | Purpose |
 | -------- | ------- |
-| [refactoring_plan.md](refactoring_plan.md) | Step-by-step refactor / test / example / document plan; reference target state is `tom_core_kernel` |
+| [refactoring_plan.md](refactoring_plan.md) | Step-by-step refactor / test / example / document plan; reference target state is `tom_core_kernel`. Its *Project-Specific Notes* carry the standing package conventions, including the package-barrel import rule for tests and examples |
 
 ## Applicable Global Guidelines
 

@@ -19,11 +19,12 @@ import 'support/export_surface.dart';
 ///   export resolves. This catches what no import can: a newly added module
 ///   that was never wired in, whose own tests reach it through `src/` and
 ///   therefore pass.
-/// - **Discipline** — no test reaches past the barrel. Switching a module's
-///   test onto the barrel makes that module's exports load-bearing, but only
-///   incidentally: the guard is a side effect of an import somebody could
-///   rewrite back, and a *new* test file starts from whatever its author
-///   copied. Checking the property directly is what makes it stay true.
+/// - **Discipline** — nothing under `test/` or `example/` reaches past the
+///   barrel, by `import` or by `export`. Switching a module's test onto the
+///   barrel makes that module's exports load-bearing, but only incidentally:
+///   the guard is a side effect of an import somebody could rewrite back, and
+///   a *new* file starts from whatever its author copied. Checking the
+///   property directly is what makes it stay true.
 /// - **Namespacing** — every public type the barrel carries is `Tom`- or
 ///   `Acl`-prefixed. The first two guards are about what the barrel exports;
 ///   this one is about what those exports are *called*, which is a separate
@@ -92,7 +93,7 @@ void main() {
   });
 
   group('the suite reaches the package the way consumers do', () {
-    /// Files allowed to import `package:tom_flutter_ui/src/`, and why.
+    /// Files allowed to reach `package:tom_flutter_ui/src/`, and why.
     ///
     /// A reason is required rather than decorative. The exemption is only
     /// defensible when the barrel *cannot* express what the file needs, and
@@ -106,38 +107,61 @@ void main() {
           'plumbing behind TomFilePickers.toFileRef',
     };
 
-    /// Every `.dart` file under `test/`, generated output aside.
+    /// Every `.dart` file under `test/` and `example/`, generated output aside.
+    ///
+    /// `example/` is held to the same rule as `test/`, for a stronger reason:
+    /// an example is code a consumer copies, so one reaching into `src/` hands
+    /// them an import they cannot write themselves. It is clean today, and
+    /// scanning it is what keeps it so.
     ///
     /// `*.reflection.dart` is emitted by the reflection generator, which
     /// writes prefixed `src/` imports by design. Editing it would be undone by
     /// the next build, so it is skipped by shape rather than listed above —
     /// there is nothing for a reader to weigh.
-    Iterable<File> testSources() => Directory('test')
-        .listSync(recursive: true)
+    Iterable<File> scannedSources() => ['test', 'example']
+        .map(Directory.new)
+        .expand((d) => d.listSync(recursive: true))
         .whereType<File>()
         .where((f) => f.path.endsWith('.dart'))
         .where((f) => !f.path.endsWith('.reflection.dart'));
 
-    /// An import *directive* naming `lib/src`, not the mere mention of one.
+    /// A *directive* naming `lib/src`, not the mere mention of one.
     ///
     /// Anchored to the start of a line because a directive can only appear at
     /// top level: matching the bare string would flag this file, whose own
     /// pattern and failure message have to name the thing they forbid.
-    final srcImport = RegExp(
-      '^import [\'"]package:tom_flutter_ui/src/',
+    ///
+    /// `export` counts as well as `import`, and is the more dangerous of the
+    /// two. A support file that re-exports an internal launders it: every test
+    /// then reaches that internal through an ordinary relative import of the
+    /// support file, and an import-only rule sees nothing wrong anywhere.
+    /// Nothing else covers this — `implementation_imports`, enabled in
+    /// `analysis_options.yaml`, governs *other* packages' `src/`, so a
+    /// re-export within this package analyzes clean.
+    ///
+    /// The third spelling, a relative reach like `../lib/src/x.dart`, is
+    /// deliberately not matched here: `avoid_relative_lib_imports` arrives
+    /// with `flutter_lints` and already rejects it. Restating it would put one
+    /// rule in two places that can disagree.
+    final srcDirective = RegExp(
+      '^(?:import|export) [\'"]package:tom_flutter_ui/src/',
       multiLine: true,
     );
 
-    test('no test file imports past the barrel', () {
-      final sources = testSources().toList();
+    test('no test or example file reaches past the barrel', () {
+      final sources = scannedSources().toList();
       // Guards the guard: a wrong root would scan nothing and pass.
-      expect(sources, isNotEmpty, reason: 'test/ should hold dart files');
+      expect(
+        sources,
+        isNotEmpty,
+        reason: 'test/ and example/ should hold dart files',
+      );
 
       final offenders =
           sources
               .map((f) => f.path)
               .where((p) => !exempt.containsKey(p))
-              .where((p) => srcImport.hasMatch(File(p).readAsStringSync()))
+              .where((p) => srcDirective.hasMatch(File(p).readAsStringSync()))
               .toList()
             ..sort();
 
@@ -145,11 +169,11 @@ void main() {
         offenders,
         isEmpty,
         reason:
-            'these tests reach into lib/src, so they would stay green if '
+            'these files reach into lib/src, so they would stay green if '
             'the symbol they use were dropped from the module barrel or the '
             'package barrel — the break would surface in a consumer instead. '
             'Import package:tom_flutter_ui/tom_flutter_ui.dart. If the barrel '
-            'genuinely cannot express what the test needs, add it to `exempt` '
+            'genuinely cannot express what the file needs, add it to `exempt` '
             'above with the reason',
       );
     });
@@ -168,10 +192,10 @@ void main() {
               'exist; drop the entry',
         );
         expect(
-          srcImport.hasMatch(file.readAsStringSync()),
+          srcDirective.hasMatch(file.readAsStringSync()),
           isTrue,
           reason:
-              '${entry.key} no longer imports lib/src, so its exemption '
+              '${entry.key} no longer reaches lib/src, so its exemption '
               'is stale; drop the entry',
         );
         expect(entry.value, isNotEmpty);

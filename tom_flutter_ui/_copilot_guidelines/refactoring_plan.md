@@ -92,6 +92,22 @@ private additions allowed):
 
 ## Project-Specific Notes
 
+- **Import convention — always the package barrel.** Tests and examples import
+  `package:tom_flutter_ui/tom_flutter_ui.dart`, never
+  `package:tom_flutter_ui/src/...`. That barrel is the only path the
+  documentation offers a consumer, so it is the only path that verifies what a
+  consumer actually gets: a symbol dropped from a module barrel has to fail the
+  suite rather than surface downstream. It also makes a `tom_core_kernel`
+  import redundant in most files, because the barrel re-exports the kernel
+  types through `kernel_types`.
+
+  Reaching into `src/` is therefore a deliberate signal that a test is
+  white-box, and needs an entry in the `exempt` map in
+  `test/package_barrel_test.dart` giving the reason. There is one today. Never
+  widen the public API purely so a test can import differently — if the barrel
+  cannot express what the file needs, that is what the exemption is for.
+  `test/package_barrel_test.dart` enforces all of this, over `test/` and
+  `example/` alike, for `export` as well as `import`.
 - **Observable integration:** widgets bind to observable state; demonstrate the
   ValueListenable / observer patterns in examples.
 - **Reflection:** only regenerate reflection on signature changes; use the
