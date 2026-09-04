@@ -357,6 +357,30 @@ abstract class FixtureApiService {
   )
   Future<Object> moved();
 
+  /// An endpoint that declares no result and whose implementation nevertheless
+  /// completes with one — see [FixtureApiServer.silent].
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.delete],
+    uri: '/fixture/silent',
+    logRequests: false,
+  )
+  Future<void> silent();
+
+  /// An endpoint that declares no result and whose implementation completes
+  /// with one that *is* renderable — see [FixtureApiServer.silentRenderable].
+  ///
+  /// The distinction from [silent] matters: a leaked value the converter can
+  /// render would otherwise reach the client as a body nothing in the contract
+  /// announces, which is the quieter half of the same defect.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.delete],
+    uri: '/fixture/silent_renderable',
+    logRequests: false,
+  )
+  Future<void> silentRenderable();
+
   /// A `@TomTransactional` endpoint that reports the transaction it ran in.
   ///
   /// It parks on [FixtureApiServer.transactionalRelease] in the middle of its
@@ -780,6 +804,23 @@ class FixtureApiServer implements FixtureApiService {
 
   @override
   Future<Object> moved() async => TomRedirect.seeOther('/fixture/health');
+
+  /// Narrows [FixtureApiService.silent] to `Future<int>`, the way a delete
+  /// endpoint that tail-calls `TomRepository.deleteById` does.
+  ///
+  /// Dart permits the narrowing and `Future<void>` does not erase the value, so
+  /// the `1` arrives at the pipeline intact while every static type along the
+  /// way says there is nothing there. `int` carries no `@tomReflector`
+  /// annotation, so rendering it is not merely unwanted but impossible.
+  @override
+  Future<int> silent() async => 1;
+
+  /// The same leak as [silent] with a value the outbound converter *can*
+  /// render, so the two halves of the defect are separable in a test.
+  @override
+  Future<Map<String, Object>> silentRenderable() async => <String, Object>{
+    'leaked': true,
+  };
 
   @override
   Future<Map<String, Object>> multiMethod() async => <String, Object>{

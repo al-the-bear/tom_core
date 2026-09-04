@@ -343,6 +343,37 @@ A `String` is the one thing passed through rather than serialized: a handler
 returning one has already written the body, and encoding it again would wrap it
 in quotes. `null` produces an empty body.
 
+### An endpoint declaring `Future<void>` answers with no body
+
+A method whose declared return type is `Future<void>` (or `void`) is answered
+with an empty body whatever its implementation completes with. The declaration
+decides, not the value that arrives — and it has to, because at runtime there is
+no difference between the two cases.
+
+`Future<void>` does not *erase* the value the future completes with, and Dart
+permits an implementation to narrow the return type it overrides. So a method
+declared
+
+```dart
+Future<void> deleteWorkspace(int id) => workspaceRepository.deleteById(id);
+```
+
+completes with the `int` that `TomRepository.deleteById` returns, invisible in
+every static type between the two. Rendering it would be wrong twice over: the
+client's typed proxy is generated from the same declaration and has nowhere to
+put a body, and `int` carries no `@tomReflector`, so the attempt fails and a
+successful delete is reported as an HTTP 500.
+
+The declaration consulted is the one the `@TomEndpoint` annotation sits on — the
+service interface's, where the endpoint is routed through one. That is the
+contract the client is generated from, and it is the wider of the two
+declarations whenever they differ, since narrowing is the only divergence Dart
+allows.
+
+This is a rule about *declared* absence only. An endpoint that declares a result
+and returns something the converter cannot render still fails, loudly, because
+there the failure is the whole story.
+
 ## Taking Over the Request and the Response
 
 Most endpoint methods take bound parameters and return a value the pipeline

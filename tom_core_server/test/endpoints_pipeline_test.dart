@@ -65,6 +65,13 @@ Request _get(String path) => Request(
   context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
 );
 
+/// A DELETE for [path], carrying the same request context as [_get].
+Request _delete(String path) => Request(
+  'DELETE',
+  Uri.parse('http://localhost$path'),
+  context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
+);
+
 /// A CORS preflight for [path].
 ///
 /// A browser sends this before a cross-origin call and reads only the
@@ -351,6 +358,40 @@ void main() {
         expect(body['guarded'], isFalse);
       },
     );
+
+    // An endpoint declared `Future<void>` promises the caller nothing, but
+    // `Future<void>` does not *erase* a value: an implementation that narrows to
+    // `Future<int>` — which Dart permits, and which any method tail-calling
+    // `TomRepository.deleteById` does — completes with the int, and it travels
+    // to the pipeline invisible in every static type along the way.
+    //
+    // The declaration is the authority here, not the value that arrives: the
+    // client's typed proxy is generated from the same declaration and has
+    // nowhere to put a body, so a body is at best unread and at worst — as
+    // below — unrenderable. Asserted through the router rather than on the
+    // handler, because the claim is about what the *caller* receives.
+    group('an endpoint declaring no result answers with no body', () {
+      test('a leaked value the converter cannot render is not a 500', () async {
+        // `int` carries no @tomReflector, so the outbound converter's last
+        // fallback throws `reflector.type.not_annotated` on it. Before the
+        // declaration was consulted this turned a successful delete into an
+        // HTTP 500 — the work done, and reported as a server fault.
+        final response = await router.call(_delete('/fixture/silent'));
+        expect(response.statusCode, 200);
+        expect(await response.readAsString(), isEmpty);
+      });
+
+      test('a leaked value the converter *can* render is dropped too', () async {
+        // The quieter half: a Map renders happily, so the leak would surface as
+        // a body the contract never announced rather than as an error. Both are
+        // the same defect, and one rule answers both.
+        final response = await router.call(
+          _delete('/fixture/silent_renderable'),
+        );
+        expect(response.statusCode, 200);
+        expect(await response.readAsString(), isEmpty);
+      });
+    });
 
     test('createRoutesForEndpoint records mounted routes in routingInfo', () {
       expect(

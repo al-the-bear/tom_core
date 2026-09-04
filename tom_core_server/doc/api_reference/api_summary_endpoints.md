@@ -464,6 +464,7 @@ TomEndpointHandler({
 | `implementation` | `ClassMirror` | The concrete implementation class mirror. |
 | `methodName` | `String` | The method's own name, unqualified, as it appears in a resource key (`<Interface>.<methodName>`). |
 | `metadata` | `TomMethodMetadata` | The collected annotation metadata (endpoint, access, transaction, API). |
+| `declaresNoResult` | `late final bool` | Whether the endpoint's declaration promises the caller no result, so that the response body is empty whatever the invocation completes with. Read off the annotated declaration (`metadata.methodMirror`) rather than the implementation's mirror, which may narrow `Future<void>` to something that carries a value. |
 | `globalSettingLogRequestsDefault` | `static bool` | Whether requests are logged when an endpoint does not specify `logRequests`. |
 | `globalSettingCorsAllowedOriginsDefault` | `static String` | Default `Access-Control-Allow-Origin` when an endpoint does not override it. |
 | `globalSettingCorsAllowedMethodsDefault` | `static String` | Default `Access-Control-Allow-Methods` when an endpoint does not override it. |

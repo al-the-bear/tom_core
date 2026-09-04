@@ -68,6 +68,25 @@ class _UnboundParameter {
 /// can be mistaken for it.
 const _UnboundParameter _unbound = _UnboundParameter();
 
+/// The [Type] object for [T].
+///
+/// The detour through a type parameter exists for one member of
+/// [_noResultReturnTypes]: `void` is not writable in a value position, so
+/// `void` alone is a syntax error while `_typeOf<void>()` is not.
+Type _typeOf<T>() => T;
+
+/// The declared return types that say an endpoint answers with no body.
+///
+/// Both spellings of the same promise: `Future<void>` for the asynchronous
+/// endpoints that are nearly all of them, `void` for a synchronous one. Neither
+/// erases a value at runtime, which is exactly why the declaration has to be
+/// consulted rather than the result inspected — see
+/// [TomEndpointHandler.declaresNoResult].
+final Set<Type> _noResultReturnTypes = {
+  _typeOf<Future<void>>(),
+  _typeOf<void>(),
+};
+
 /// Serves one endpoint: binds a reflected service [method] to a route and runs
 /// the per-request pipeline.
 ///
@@ -114,6 +133,30 @@ class TomEndpointHandler {
     required this.methodName,
     required this.metadata,
   });
+
+  /// Whether this endpoint's declaration promises the caller no result, so that
+  /// the response body is empty whatever the invocation completes with.
+  ///
+  /// `Future<void>` does not erase the value it completes with, and Dart lets an
+  /// implementation narrow the return type: a method declared `Future<void>`
+  /// whose body tail-calls one returning `Future<int>` — every delete endpoint
+  /// forwarding to [TomRepository.deleteById] does — hands the pipeline an `int`
+  /// while every static type between the two says there is nothing there. The
+  /// value cannot be recognised once it arrives, so the declaration is asked
+  /// instead.
+  ///
+  /// Read off [TomMethodMetadata.methodMirror] — the declaration the
+  /// `@TomEndpoint` annotation sits on — rather than off [method], the
+  /// implementation's. They differ exactly when the implementation narrows, and
+  /// the annotated one is both the wider of the two and the contract: the
+  /// client's typed proxy is generated from it and has nowhere to put a body.
+  ///
+  /// A reflector without `reflectedTypeCapability` cannot answer, and then the
+  /// endpoint keeps the ordinary treatment — an unrenderable result is a failure
+  /// there, which is the right answer for a *genuinely* unrenderable one.
+  late final bool declaresNoResult =
+      metadata.methodMirror.hasReflectedReturnType &&
+      _noResultReturnTypes.contains(metadata.methodMirror.reflectedReturnType);
 
   /// Coerces a raw URL string (a matched path variable *or* a query-string
   /// value) into the method parameter's primitive [type], or returns `null`
@@ -903,6 +946,11 @@ class TomEndpointHandler {
         }
         return result;
       }
+      // What the caller is owed, which is not always what arrived: an endpoint
+      // declaring no result answers with no body however its implementation
+      // completed (see [declaresNoResult]). `result` itself is left alone — the
+      // error paths below report the value that really came back.
+      final Object? body = declaresNoResult ? null : result;
       // A String is passed through rather than serialized: a handler that
       // returns one has already written the body, and encoding it again would
       // wrap it in quotes. Everything else is the kernel's outbound entry
@@ -912,11 +960,11 @@ class TomEndpointHandler {
       // reflection) is not shortened but *absent*: restating that policy in a
       // transport is how a server and a client come to disagree about which
       // hooks a type has.
-      String? resultString = result == null
+      String? resultString = body == null
           ? null
-          : result is String
-          ? result
-          : tomReflectionInfo.convertToJsonString(result);
+          : body is String
+          ? body
+          : tomReflectionInfo.convertToJsonString(body);
 
       Response? response;
       if (resultString != null) {
@@ -938,7 +986,7 @@ class TomEndpointHandler {
           encoding: Encoding.getByName(metadata.endpoint.produces.charset),
         );
       }
-      if (result == null) {
+      if (body == null) {
         response = Response.ok("");
       }
       response ??= Response.internalServerError(
