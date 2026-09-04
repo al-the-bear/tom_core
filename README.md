@@ -216,6 +216,7 @@ reports and never gates.
 | [`tool/check_demo_counts.py`](tool/check_demo_counts.py) | Pins the demo screen/tile counts printed in `tom_flutter_ui_test/README.md` to the source |
 | [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
 | [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
+| [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -834,6 +835,32 @@ There is no exemption for history documents. Naming a removed type in prose is
 fine and often necessary; `**Source:**` is different, because it is an
 instruction to go and read something, and that instruction is false once the
 target is gone.
+
+```bash
+python3 tool/check_doc_artifacts.py                  # the whole repository
+python3 tool/check_doc_artifacts.py tom_core_kernel  # one subtree
+```
+
+Finds machine-generated files that version control carries under a package's
+`doc/`. That folder holds the documentation a person wrote, which three places
+already state — the repository `.gitignore`, testkit's `trackingDirName`, and
+the documentation-placement guideline. None of the three could notice being
+broken, and all three were: six generated files sat in `doc/` across three
+packages, the youngest months stale.
+
+Staleness is the defect, not weight. A tracked artifact photographs one
+machine's build and nothing updates it, so it cannot be told apart from a
+current one without finding the live path and comparing dates — a reader who
+trusts it is misled, and a reader who does not gains nothing. The kernel's
+captured test run being 934 KB was the smaller problem; its being eleven weeks
+out of date was the real one.
+
+The rule keys on what a person authors rather than on a list of known generated
+filenames, which only ever catches the artifact someone already found.
+Documentation is markdown, with diagrams and the occasional released PDF beside
+it; anything else under `doc/` was put there by a tool. And the question is what
+version control carries, so the inventory comes from `git ls-files` — a tool
+writing under `doc/` on one machine costs nobody anything until it is committed.
 
 ## License
 
