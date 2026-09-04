@@ -258,13 +258,22 @@ one.
 
 **Identity fields are resource-key protected on the way into a token.**
 `convertPrincipalToTokenPayload` runs every optional field through
-[`tomProtect`](#resource-key-protection) under the key `tom.user.<field>` —
-`tom.user.email`, `tom.user.phone`, `tom.user.attributes`, and so on — falling
-back to `null` (or `const {}` for attributes) when the key is protected. Three
-fields are *not* filtered and always travel in the clear: `username`, `id` and
-`timezone`. Note the prefix: `tom.user.email` is a different key from the
-`user.email` used as an application-level example elsewhere in this document,
-and protecting one does not protect the other.
+[`TomResourceKeyProtection.protectFor`](#resource-key-protection) under the key
+`tom.user.<field>` — `tom.user.email`, `tom.user.phone`,
+`tom.user.attributes`, and so on — falling back to `null` (or `const {}` for
+attributes) when the key is protected. Three fields are *not* filtered and
+always travel in the clear: `username`, `id` and `timezone`. Note the prefix:
+`tom.user.email` is a different key from the `user.email` used as an
+application-level example elsewhere in this document, and protecting one does
+not protect the other.
+
+**The subject's own keys decide, not the ambient zone's.** The operand is the
+principal the token is being minted *for*. That is what makes the filter usable
+on the login path, which is where tokens are actually minted: the subject is
+being authenticated at that moment, so no principal is installed on the zone
+yet, and the zone-reading form ([`tomProtect`](#resource-key-protection)) is
+fail-closed on an empty zone — with protection switched on it would blank every
+protected field of every token the server issues.
 
 Runnable:
 [`example/samples/security/01_user_principal_example.dart`](../../example/samples/security/01_user_principal_example.dart).
@@ -514,7 +523,13 @@ The rule lives in one place, `TomResourceKeyProtection.isProtectedFor`, and is
 reached two ways. The helpers above — `tomProtect`, `tomProtected` and
 `isProtected` — apply it to whoever the **ambient zone** names, which is what
 you want at a field you are rendering for the current request. Where a
-principal is already in hand, name it:
+principal is already in hand, name it. Each zone-reading form has a `For`
+sibling that takes the operand explicitly:
+
+| Ambient zone | Explicit principal | Answers with |
+| ------------ | ------------------ | ------------ |
+| `tomProtect(data, fallback, key)` | `TomResourceKeyProtection.protectFor(principal, data, fallback, key)` | the value or its fallback |
+| `tomProtected(key)` / `isProtected(key)` | `TomResourceKeyProtection.isProtectedFor(principal, key)` | a bool |
 
 ```dart
 // Answers about `principal`, whatever the zone happens to hold.
@@ -524,9 +539,10 @@ if (!TomResourceKeyProtection.isProtectedFor(principal, 'user.salary')) {
 ```
 
 This is the distinction `TomResourceKeyAccess` sits on: as an access control it
-is asked about a principal, so it takes the second form. Reading the zone when
-the caller has named someone answers a different question — and outside a
-request zone, a fail-closed one.
+is asked about a principal, so it takes the second form. So does
+`convertPrincipalToTokenPayload`, which filters the fields of the principal it
+was handed. Reading the zone when the caller has named someone answers a
+different question — and outside a request zone, a fail-closed one.
 
 ---
 
@@ -1204,8 +1220,11 @@ test — *every* protected field therefore serves its fallback. That is the safe
 direction to fail, but it means a value that renders correctly inside a request
 comes back as `null` from a job that reuses the same serializer. Where the
 principal is already in hand, name it with
-`TomResourceKeyProtection.isProtectedFor(principal, key)` rather than reading the
-zone. See [Resource Key Protection](#resource-key-protection).
+`TomResourceKeyProtection.protectFor(principal, data, fallback, key)` — or
+`isProtectedFor(principal, key)` for the bool — rather than reading the zone. A
+serializer that takes the principal it is serializing should always use the
+`For` form; it then behaves the same inside a request and out of one. See
+[Resource Key Protection](#resource-key-protection).
 
 Resource keys are all-or-nothing: the value is served or it is replaced. When a
 field needs a middle ground — payroll edits it, managers see it, everyone else

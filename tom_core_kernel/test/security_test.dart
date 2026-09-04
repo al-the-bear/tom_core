@@ -2618,6 +2618,150 @@ void main() {
       });
     });
 
+    group('convertPrincipalToTokenPayload redacts against its subject', () {
+      // Every other test in this file runs with protection off, which is the
+      // library default and makes redaction a no-op. These tests are the only
+      // ones that switch it on, so they are the only ones that can observe
+      // *whose* keys decide the payload.
+      setUp(() {
+        TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      });
+
+      tearDown(() {
+        TomResourceKeyProtection.globalSettingProtectionDefault = false;
+      });
+
+      /// A principal carrying every field the payload runs through protection,
+      /// holding exactly the [resourceKeys] given.
+      TomPrincipal subject({List<String> resourceKeys = const []}) =>
+          TomPrincipal(
+            authenticated: true,
+            user: TomUser(
+              id: 7,
+              username: 'alice',
+              firstname: 'Alice',
+              lastname: 'Anders',
+              email: 'alice@example.com',
+              phone: '+1-555-0100',
+              mobile: '+1-555-0199',
+              addressLine1: '1 Main St',
+              addressLine2: 'Apt 2',
+              city: 'Springfield',
+              postcode: '12345',
+              stateRegion: 'IL',
+              timezone: 'America/Chicago',
+              attributes: {'department': 'engineering'},
+            ),
+            aci: TomAccessControlInformation(resourceKeys: resourceKeys),
+          );
+
+      test(
+        'the subject keeps the fields its own keys unlock, on an empty zone',
+        () {
+          // The login path: the principal is being authenticated right now, so
+          // nothing is installed on the zone. Reading the zone here would be
+          // fail-closed and blank every protected field in every minted token.
+          final (publicInfo, _) =
+              TomBearerAuthentication.convertPrincipalToTokenPayload(
+                subject(
+                  resourceKeys: [
+                    'tom.user.firstname',
+                    'tom.user.lastname',
+                    'tom.user.email',
+                    'tom.user.attributes',
+                  ],
+                ),
+                null,
+                'US',
+                'en',
+              );
+
+          expect(publicInfo['firstname'], equals('Alice'));
+          expect(publicInfo['lastname'], equals('Anders'));
+          expect(publicInfo['email'], equals('alice@example.com'));
+          expect(
+            publicInfo['attributes'],
+            equals({'department': 'engineering'}),
+          );
+        },
+      );
+
+      test('fields the subject holds no key for fall back', () {
+        final (publicInfo, _) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+              subject(resourceKeys: ['tom.user.email']),
+              null,
+              'US',
+              'en',
+            );
+
+        expect(publicInfo['email'], equals('alice@example.com'));
+        expect(publicInfo['firstname'], isNull);
+        expect(publicInfo['phone'], isNull);
+        expect(publicInfo['mobile'], isNull);
+        expect(publicInfo['addressLine1'], isNull);
+        expect(publicInfo['addressLine2'], isNull);
+        expect(publicInfo['city'], isNull);
+        expect(publicInfo['postcode'], isNull);
+        expect(publicInfo['stateRegion'], isNull);
+        expect(publicInfo['attributes'], isEmpty);
+      });
+
+      test('the three unfiltered fields travel in the clear regardless', () {
+        final (publicInfo, _) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+              subject(),
+              null,
+              'US',
+              'en',
+            );
+
+        expect(publicInfo['username'], equals('alice'));
+        expect(publicInfo['userId'], equals(7));
+        expect(publicInfo['userTimezone'], equals('America/Chicago'));
+      });
+
+      test('a principal on the zone does not decide another one\'s token', () {
+        // A privileged principal is installed on the zone; the token is minted
+        // for someone who holds no keys at all. The zone must not lend its keys
+        // to a subject that does not have them.
+        final onZone = subject(
+          resourceKeys: ['tom.user.firstname', 'tom.user.email'],
+        );
+
+        final publicInfo = runZoned(
+          () =>
+              TomBearerAuthentication.convertPrincipalToTokenPayload(
+                subject(),
+                null,
+                'US',
+                'en',
+              ).$1,
+          zoneValues: {TomPrincipal: onZone},
+        );
+
+        expect(publicInfo['firstname'], isNull);
+        expect(publicInfo['email'], isNull);
+      });
+
+      test('nor does it withhold from a subject that holds the key', () {
+        // The mirror case: an unprivileged principal on the zone must not
+        // redact fields the subject's own keys unlock.
+        final publicInfo = runZoned(
+          () =>
+              TomBearerAuthentication.convertPrincipalToTokenPayload(
+                subject(resourceKeys: ['tom.user.email']),
+                null,
+                'US',
+                'en',
+              ).$1,
+          zoneValues: {TomPrincipal: subject()},
+        );
+
+        expect(publicInfo['email'], equals('alice@example.com'));
+      });
+    });
+
     group('convertTokenPayloadToPrincipal malformed tokens', () {
       test('throws a clean StateError when the payload is null', () {
         final token = _FakeClientJwtToken(payload: null);

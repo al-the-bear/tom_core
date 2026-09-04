@@ -487,6 +487,24 @@ class TomBearerAuthentication {
   /// - [twoFactorSatisfied]: Set on the second pass, once the factor has been
   ///   verified, to clear the requirement the principal still carries
   ///
+  /// ## Which principal decides redaction
+  ///
+  /// Eleven identity fields are filtered through
+  /// [TomResourceKeyProtection.protectFor] under the key `tom.user.<field>`,
+  /// and the operand is **[principal] itself** — the subject the token is being
+  /// minted for — not whoever the ambient zone names. A field survives when the
+  /// subject's own ACI holds its key, and falls back to `null` (or `const {}`
+  /// for `attributes`) when it does not.
+  ///
+  /// The distinction is load-bearing on the login path, which is where this is
+  /// called from: the subject is being authenticated at that moment, so nothing
+  /// is installed on the zone yet, and reading the zone would be fail-closed —
+  /// with [TomResourceKeyProtection.globalSettingProtectionDefault] on, every
+  /// protected field in every minted token would come back empty.
+  ///
+  /// `username`, `userId` and `userTimezone` are not filtered and always travel
+  /// in the clear.
+  ///
   /// ## The `requires2FA` claim
   ///
   /// The claim is **fail-safe**: it is true whenever a [challenge] is being
@@ -520,52 +538,65 @@ class TomBearerAuthentication {
     Map<String, Object?>? twoFactorVerification,
     bool twoFactorSatisfied = false,
   }) {
+    // Redaction is decided by the principal the token is *for*, never by
+    // whoever the ambient zone names. On the login path — the caller that
+    // matters — the subject is being authenticated right now, so no principal
+    // is installed yet and the zone-reading form would be fail-closed, blanking
+    // every protected field in every minted token.
+    T protectField<T>(T data, T fallback, String resourceKey) =>
+        TomResourceKeyProtection.protectFor<T>(
+          principal,
+          data,
+          fallback,
+          resourceKey,
+        );
+
     // TODO: consider adding access rights-based filtering or sorting in public/private
     Map<String, Object?> publicInfo = {
       "username": principal.username,
       "userId": principal.user.id,
-      "firstname": tomProtect<String?>(
+      "firstname": protectField<String?>(
         principal.user.firstname,
         null,
         "tom.user.firstname",
       ),
-      "lastname": tomProtect<String?>(
+      "lastname": protectField<String?>(
         principal.user.lastname,
         null,
         "tom.user.lastname",
       ),
-      "email": tomProtect<String?>(
+      "email": protectField<String?>(
         principal.user.email,
         null,
         "tom.user.email",
       ),
-      "phone": tomProtect<String?>(
+      "phone": protectField<String?>(
         principal.user.phone,
         null,
         "tom.user.phone",
       ),
-      "mobile": tomProtect<String?>(
+      "mobile": protectField<String?>(
         principal.user.mobile,
         null,
         "tom.user.mobile",
       ),
-      "addressLine1": tomProtect<String?>(
+      "addressLine1": protectField<String?>(
         principal.user.addressLine1,
         null,
         "tom.user.addressLine1",
       ),
-      "addressLine2": tomProtect<String?>(
+      "addressLine2": protectField<String?>(
         principal.user.addressLine2,
         null,
         "tom.user.addressLine2",
       ),
-      "city": tomProtect<String?>(principal.user.city, null, "tom.user.city"),
-      "postcode": tomProtect<String?>(
+      "city": protectField<String?>(principal.user.city, null, "tom.user.city"),
+      "postcode": protectField<String?>(
         principal.user.postcode,
         null,
         "tom.user.postcode",
       ),
-      "stateRegion": tomProtect<String?>(
+      "stateRegion": protectField<String?>(
         principal.user.stateRegion,
         null,
         "tom.user.stateRegion",
@@ -584,7 +615,7 @@ class TomBearerAuthentication {
       "clientLanguage": clientLanguage,
       "clientCountry": clientCountry,
       "clientTimezone": principal.clientTimezone,
-      "attributes": tomProtect<Map<String, Object?>>(
+      "attributes": protectField<Map<String, Object?>>(
         principal.user.attributes,
         const {},
         "tom.user.attributes",

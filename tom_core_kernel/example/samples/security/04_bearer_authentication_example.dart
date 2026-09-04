@@ -168,9 +168,14 @@ class BearerAuthenticationExample {
   static void example4ResourceProtection() {
     print('\n4. Resource protection in payloads:');
 
-    // When resource protection is enabled, sensitive fields
-    // in the payload are masked using tomProtect
-    print('   - Payload generation uses tomProtect() for sensitive fields');
+    // When resource protection is enabled, sensitive fields in the payload are
+    // masked — against the subject's own resource keys, not the ambient zone's,
+    // because a token is minted while its subject is being authenticated and
+    // nothing is on the zone yet.
+    print(
+      '   - Payload generation uses TomResourceKeyProtection.protectFor(), '
+      'keyed on the principal the token is for',
+    );
     print('   - Protected fields include:');
     print('     * firstname, lastname');
     print('     * email, phone, mobile');

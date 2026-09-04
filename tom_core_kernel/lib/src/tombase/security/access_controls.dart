@@ -131,10 +131,42 @@ class TomResourceKeyProtection {
   /// **Not implemented.** Nothing reads this flag.
   static bool globalSettingUseAutomaticActionProtectionForDisabling = false;
 
-  /// Protects a value based on resource key access.
+  /// Protects a value based on [principal]'s resource key access.
   ///
-  /// Returns [data] if the current user has access to [resourceKey],
-  /// otherwise returns [fallback].
+  /// Returns [data] if [principal] holds [resourceKey], otherwise [fallback].
+  /// A `null` principal holds no keys, so it gets [fallback].
+  ///
+  /// This is [protect] stated over an explicit operand, and it is the form to
+  /// reach for whenever a principal is already in hand — reading the zone when
+  /// the caller named someone answers a different question. It matters most
+  /// where the two differ irreconcilably: minting a token for a principal
+  /// *being authenticated* means there is no principal on the zone yet, so the
+  /// zone-reading form is fail-closed and blanks every protected field.
+  ///
+  /// **Requires [globalSettingProtectionDefault] to be `true`.** It defaults to
+  /// `false`, and while it is off this returns [data] for every key and every
+  /// principal — so a call added for protection protects nothing until the
+  /// switch is set.
+  ///
+  /// - [principal]: The principal whose keys decide access, or `null`
+  /// - [data]: The actual value to return if access is granted
+  /// - [fallback]: The value to return if access is denied
+  /// - [resourceKey]: The key identifying the protected resource
+  static T protectFor<T>(
+    TomPrincipal? principal,
+    T data,
+    T fallback,
+    String resourceKey,
+  ) {
+    if (isProtectedFor(principal, resourceKey)) return fallback;
+    return data;
+  }
+
+  /// Protects a value based on the current user's resource key access.
+  ///
+  /// Returns [data] if the current user — the principal installed on the
+  /// ambient zone — has access to [resourceKey], otherwise returns [fallback].
+  /// Where a principal is already in hand, call [protectFor] instead.
   ///
   /// **Requires [globalSettingProtectionDefault] to be `true`.** It defaults to
   /// `false`, and while it is off this returns [data] for every key and every

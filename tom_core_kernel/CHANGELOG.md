@@ -188,6 +188,40 @@ anyone who was writing them.
 
 ### Changed
 
+- **A minted token is redacted against its own subject, not against the ambient
+  zone (tcincb1).** `convertPrincipalToTokenPayload` takes the principal the
+  token is for and then decided which of *that principal's* fields to include by
+  calling `tomProtect`, which reads `getFromCurrentZone<TomPrincipal>()` — never
+  the argument. Eleven identity fields went through it (`tom.user.firstname`,
+  `.lastname`, `.email`, `.phone`, `.mobile`, the four address fields,
+  `.stateRegion`, `.attributes`). The caller that matters is the login path:
+  `TomAuthenticationServer._issueTokens` mints for a principal being
+  authenticated *right now*, so nothing is installed on the zone yet — a login
+  request carries no token for the pipeline to derive one from. Because
+  `isProtectedFor` treats a `null` principal as holding no keys, every protected
+  field of every minted token came back `null` the moment
+  `globalSettingProtectionDefault` was switched on: the feature was unusable in
+  exactly the configuration that turns it on. The eleven call sites now redact
+  through the new `TomResourceKeyProtection.protectFor(principal, …)`, so a
+  field survives when the subject's own ACI holds its key, in a request zone or
+  out of one. `username`, `userId` and `userTimezone` remain unfiltered as
+  before. This is the same shape as tcinc270 — a function holding a principal
+  that asked the zone instead — and lands on the same answer: where the caller
+  has named someone, answer about them. The defect was latent because the master
+  switch defaults to `false`, which is what every test and sample used, so the
+  suite was green either way; the five new tests are the first in the file to
+  switch protection on.
+
+- **`TomResourceKeyProtection.protectFor` completes the `For` pair.**
+  `isProtected`/`isProtectedFor` had had both forms since tcinc270 — the rule
+  stated over the ambient zone and over an explicit operand — but the
+  value-returning `protect` had no sibling, so a caller with a principal in hand
+  could ask *whether* a key was protected but not *apply* the protection without
+  going back through the zone. `protectFor(principal, data, fallback, key)` is
+  `protect` over a named operand and is now the form to reach for whenever the
+  subject is already an argument, which is what serializers and token minters
+  always are.
+
 - **One outbound and one inbound entry point now honour all four serialization
   hooks (tcinc1117).** Four hook names are part of the reflection contract —
   `toJson`, `jsonEncode`, `fromJson`, `jsonDecode` — and no single code path
