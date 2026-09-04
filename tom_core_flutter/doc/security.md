@@ -2,8 +2,7 @@
 
 The client half of the framework's second-factor design: a ready-made
 enrol-and-challenge flow, a seam onto the application's own auth client, a
-registry of pluggable per-mechanism panels, the shipped TOTP mechanism, and the
-reflection annotation that tags client 2FA adaptors.
+registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
 
 ## Table of Contents
 
@@ -15,7 +14,6 @@ reflection annotation that tags client 2FA adaptors.
 - [The Shipped TOTP Mechanism](#the-shipped-totp-mechanism)
 - [Text Resources](#text-resources)
 - [The QR View](#the-qr-view)
-- [The Discovery Annotation](#the-discovery-annotation)
 - [Dependencies](#dependencies)
 
 ---
@@ -33,7 +31,6 @@ reflection annotation that tags client 2FA adaptors.
 | `TomTotp2FAClientMechanism` | class | The shipped authenticator-app mechanism, registered under `'totp'` |
 | `Tom2FATexts` | class | Every resource key this feature resolves, and the one helper that resolves them — all static |
 | `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes |
-| `TomClient2FAAdaptor` | class | The `const` annotation that tags a class as a client 2FA adaptor for a given `type`; reflected via `@tomReflector` |
 
 The division of labour is the point of the module. Everything about a
 second-factor login that is the *same* whichever mechanism is in play — the
@@ -412,47 +409,12 @@ generic renderer with no opinion about where strings come from, and the caller
 does have one. A screen-reader user needs the widget's *purpose* announced and
 the base32 fallback string beside it, not a transcription of the code.
 
-## The Discovery Annotation
-
-`TomClient2FAAdaptor` is a `const` annotation carrying one positional `type`.
-It is itself `@tomReflector`-registered, so it appears in generated reflection
-data and a runtime can enumerate the classes carrying it and recover each one's
-mechanism key:
-
-```dart
-@tomReflector
-@TomClient2FAAdaptor('totp')
-class TotpAdaptor { /* ... */ }
-```
-
-```dart
-tomReflector
-    .reflectType(TotpAdaptor)
-    .metadata
-    .whereType<TomClient2FAAdaptor>();
-```
-
-For a class to be discoverable this way it must also be `@tomReflector`-
-registered and public, so the generated reflection library can reference it.
-The round-trip is pinned by `test/security_test.dart`. Because the class
-participates in reflection, its signature — name, the `type` field, the `const`
-constructor — is a contract: changing it requires regenerating reflection for
-consumers.
-
-**It is not what the shipped flow dispatches on.** `Tom2FAFlowPanel` resolves a
-mechanism through `Tom2FAClientRegistry`, keyed by the same string, and never
-consults reflection. The annotation is the discovery route for a runtime that
-would rather enumerate annotated classes than have each one register itself;
-nothing in this package reads it. Annotating a class therefore does *not* make
-it renderable by the flow — register the mechanism for that.
-
 ## Dependencies
 
 - **`tom_core_kernel`**: the wire types the controller surfaces
   (`Tom2FAPendingEnrolment`, `Tom2FAChallenge`, `Tom2FAMethodDescriptor` and
-  its resource-key convention), `TomTextResourceProvider` for text lookup,
-  `TomTotp` for the default code width, and the `tomReflector` marker that
-  makes the annotation reflection-discoverable.
+  its resource-key convention), `TomTextResourceProvider` for text lookup, and
+  `TomTotp` for the default code width.
 - **`tom_flutter_ui`**: the widget vocabulary every panel is built from —
   `TomText`, `TomListTile`, `TomTextButton`, `TomSelectableText`,
   `TomTextField` and `TomFilledButton` — plus `TomUIIcons`, which resolves the

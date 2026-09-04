@@ -4,9 +4,8 @@
 /// `Tom2FAFlowController` — by walking one through every stop of a
 /// second-factor login: choosing a mechanism, setting it up, being refused,
 /// and answering a challenge on the next sign-in. Along the way it shows the
-/// registry rule that decides what the chooser may list, `Tom2FATexts`
-/// resolution including its deliberately conspicuous failure, and the
-/// `TomClient2FAAdaptor` marker annotation.
+/// registry rule that decides what the chooser may list, and `Tom2FATexts`
+/// resolution including its deliberately conspicuous failure.
 ///
 /// The *panels* are not rendered here. `Tom2FAFlowPanel`,
 /// `TomTotp2FAClientMechanism` and `TomQrCodeView` are widgets, and a widget
@@ -28,12 +27,6 @@
 library;
 
 import 'package:tom_core_flutter/tom_core_flutter.dart';
-
-// A client 2FA adaptor tagged with its mechanism. A runtime can discover this
-// class by reflection and route TOTP authentication to it. Note that this is
-// *not* how the flow finds a panel to render — that is the registry below.
-@TomClient2FAAdaptor('totp')
-class TotpAdaptor {}
 
 /// The application's one typed backend failure, with a message already written
 /// for the user. Its existence is why [DemoFlowController.describeError] is
@@ -342,23 +335,6 @@ Future<void> run() async {
 
   assert(controller.pendingChallenge == null);
   assert(controller.settled);
-
-  // Example 10: the marker annotation is a const value object carrying its
-  // type, canonicalized like any other, and applicable to a real class. A
-  // runtime enumerates it by reflection to dispatch — see
-  // `test/security_test.dart` for that half, which needs the generated mirrors.
-  const totpMarker = TomClient2FAAdaptor('totp');
-  const smsMarker = TomClient2FAAdaptor('sms');
-  const totpAgain = TomClient2FAAdaptor('totp');
-  print(
-    'adaptor types: ${totpMarker.type}, ${smsMarker.type}; '
-    'canonicalized: ${identical(totpMarker, totpAgain)}; '
-    'annotated: ${TotpAdaptor().runtimeType}',
-  );
-
-  assert(totpMarker.type == 'totp');
-  assert(smsMarker.type == 'sms');
-  assert(identical(totpMarker, totpAgain));
 }
 
 Future<void> main() => run();

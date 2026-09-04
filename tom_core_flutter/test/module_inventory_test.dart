@@ -109,8 +109,8 @@ void main() {
   test('the barrel exports exactly the live modules', () {
     // Equality both ways: an export of a deleted module would not compile, but
     // a module absent from the barrel compiles perfectly and is simply
-    // unreachable for every consumer — the failure `security/authentication`
-    // had before OT2.
+    // unreachable for every consumer, which is the failure this direction
+    // catches and the compiler cannot.
     final barrel = File('lib/tom_core_flutter.dart').readAsStringSync();
     // Anchored to the line start, so a *commented-out* export does not count
     // as one — which is how a module most plausibly drops out of the barrel,

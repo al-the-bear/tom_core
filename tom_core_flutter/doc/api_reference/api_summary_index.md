@@ -17,7 +17,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Device-stored preferences (`TomDevicePreferences`, per-platform stores) and the account store's client (`TomUserPreferencesClient`). |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Typed config properties (`TomProperty` and typed subclasses). |
 | Runtime | [api_summary_runtime.md](api_summary_runtime.md) | Compile-time platform selection (`clientPlatformUtils`). |
-| Security | [api_summary_security.md](api_summary_security.md) | Client 2FA annotation (`TomClient2FAAdaptor`). |
+| Security | [api_summary_security.md](api_summary_security.md) | The client second-factor flow (`Tom2FAFlowPanel`, `Tom2FAFlowController`), its pluggable mechanism registry and the shipped TOTP mechanism. |
 
 ## Modules
 
@@ -84,7 +84,15 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomClient2FAAdaptor` | class | Annotation declaring a client 2FA adaptor's mechanism. |
+| `Tom2FAFlowPanel` | class | Renders whichever stop of a second-factor login the controller reports — chooser, enrolment or challenge. |
+| `Tom2FAFlowController` | abstract class | The seam an application implements over its own auth client: five moves, two pieces of read-only state. |
+| `Tom2FAClientMechanism` | abstract class | One mechanism's client-side rendering, paired with its server adaptor by mechanism key alone. |
+| `Tom2FAClientRegistry` | class | The process-wide mechanism catalog the flow dispatches through; entirely static. |
+| `Tom2FAEnrolmentPanelContext` | class | What an enrolment panel is given to render itself. |
+| `Tom2FAChallengePanelContext` | class | What a challenge panel is given to render itself. |
+| `TomTotp2FAClientMechanism` | class | The shipped authenticator-app mechanism, registered under `'totp'`. |
+| `Tom2FATexts` | class | Every resource key the second-factor UI resolves, and the helpers that resolve them; entirely static. |
+| `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes. |
 
 ## Alphabetical Type Index
 
@@ -93,9 +101,15 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `allowsBadCertificateForHost` | Runtime (internal — not exported) |
 | `clientPlatformUtils` | Runtime |
 | `coerceSettingValue` | Configuration |
+| `Tom2FAChallengePanelContext` | Security |
+| `Tom2FAClientMechanism` | Security |
+| `Tom2FAClientRegistry` | Security |
+| `Tom2FAEnrolmentPanelContext` | Security |
+| `Tom2FAFlowController` | Security |
+| `Tom2FAFlowPanel` | Security |
+| `Tom2FATexts` | Security |
 | `TomBaseClientConfiguration` | Configuration |
 | `TomBoolProperty` | Resources |
-| `TomClient2FAAdaptor` | Security |
 | `TomClientConfigurationException` | Configuration |
 | `TomClientConfigurationStore` | Configuration |
 | `TomClientException` | Little Things |
@@ -114,9 +128,11 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomObservingWidgetState<T>` | Observing |
 | `TomPlatformDevicePreferenceStore` | Preferences |
 | `TomProperty<T>` | Resources |
+| `TomQrCodeView` | Security |
 | `TomSetting<T>` | Configuration |
 | `TomStoredDevicePreferences` | Preferences |
 | `TomStringProperty` | Resources |
+| `TomTotp2FAClientMechanism` | Security |
 | `TomUserPreferencesClient` | Preferences |
 | `TomUserPreferencesClientException` | Preferences |
 | `ValueListenableObserver<T>` | Observing |

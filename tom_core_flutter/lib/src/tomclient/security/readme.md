@@ -27,7 +27,6 @@ whose auth client already handles refresh.
 | `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'`. Also the public `digitsOf` / `groupSecret` helpers. |
 | `Tom2FATexts` | Every resource key this feature resolves, and the `text` / `textWith` helpers that resolve them. No literal user-facing text exists anywhere in the feature. |
 | `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, so it themes like any other widget. Never throws on its payload: empty, or too long to encode, renders an empty square. Re-encodes and repaints only when the payload or the styling changes, not on every parent rebuild. |
-| `TomClient2FAAdaptor` | Reflection-discoverable annotation (`@tomReflector`-registered) marking a class as a client 2FA adaptor. Not the flow's dispatch route — see below. |
 
 ## Quick start
 
@@ -54,14 +53,17 @@ Tom2FAClientRegistry.register(SmsClientMechanism());
 implements one and walks it through all three stops; the panels themselves are
 widgets, so they are shown in `test/two_factor_client_test.dart` instead.
 
-## A note on the annotation
+## How a mechanism becomes renderable
 
-`TomClient2FAAdaptor` is **not** what the flow dispatches on. `Tom2FAFlowPanel`
-resolves a mechanism through `Tom2FAClientRegistry`, keyed by mechanism string,
-and never consults reflection; nothing in this package reads the annotation. It
-is the discovery route for a runtime that would rather enumerate annotated
-classes than have each one register itself. Annotating a class does not make it
-renderable by the flow — register the mechanism for that.
+`Tom2FAClientRegistry.register` is the only route into the registry, and the
+registry is the only thing `Tom2FAFlowPanel` consults. There is no annotation
+and no scan: a mechanism the application has not registered does not appear in
+the chooser, whatever else it declares about itself.
+
+That is a deliberate asymmetry with the server, where `@Tom2FAAdaptor` *is*
+enumerated by reflection. The server owns the set of adaptors a deployment
+offers and discovers them at start-up; a client build renders only the ones it
+has panels for, which the build itself knows and states in one place.
 
 ---
 

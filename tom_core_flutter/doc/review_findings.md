@@ -6,7 +6,7 @@ Date: 10 January 2026
 > document is kept as a historical record. Every issue below has been fixed:
 > the broken `Awesome` test/example are gone; `pubspec.yaml` has
 > `publish_to: none` and an accurate description; the unused `_onChange` is
-> removed; `security/authentication.dart` is exported from the barrel; the
+> removed; `security/authentication.dart` was exported from the barrel; the
 > README is customized (~10 KB); the empty `iding/` folder and the four
 > placeholder modules (`camera/`, `localstorage/`, `preferences/`, `qrcode/`)
 > were removed (see `CHANGELOG.md` 1.1.0). The package now passes `dart analyze`
@@ -21,6 +21,14 @@ Date: 10 January 2026
 > lands on after following a "where did local storage go?" redirection to
 > `preferences`, and on its own it answers that the destination was deleted.
 > `camera/`, `localstorage/`, `qrcode/` and `iding/` are still gone.
+>
+> **`security/authentication.dart` has since been deleted, not fixed.** The
+> finding below — that its `TomClient2FAAdaptor` was missing from the barrel —
+> was resolved in 1.1.0 by exporting it. Exporting it made the deeper problem
+> visible: nothing anywhere read the annotation, so the export published a
+> dispatch route that did not exist. The file and the type are gone (1.2.1);
+> `Tom2FAClientRegistry.register` is the module's only route. The tables below
+> are a record of 10 January 2026 and are left as written.
 
 ## Critical Issues
 

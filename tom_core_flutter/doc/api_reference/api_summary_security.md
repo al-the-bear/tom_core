@@ -2,8 +2,7 @@
 
 The client half of the framework's second-factor design — the flow widget, the
 controller seam, the pluggable mechanism contract and its registry, the shipped
-TOTP mechanism, the resource keys, the QR view, and the reflection annotation
-that tags client 2FA adaptors.
+TOTP mechanism, the resource keys and the QR view.
 
 ## Table of Contents
 
@@ -19,14 +18,13 @@ that tags client 2FA adaptors.
   - [TomTotp2FAClientMechanism](#tomtotp2faclientmechanism)
   - [Tom2FATexts](#tom2fatexts)
   - [TomQrCodeView](#tomqrcodeview)
-  - [TomClient2FAAdaptor](#tomclient2faadaptor)
 - [Global Functions and Constants](#global-functions-and-constants)
 - [Internal Symbols (not exported)](#internal-symbols-not-exported)
 
 ## Overview
 
-Sources, all six exported from the package barrel
-(`lib/tom_core_flutter.dart:22-27`):
+Sources, all five exported from the package barrel
+(`lib/tom_core_flutter.dart:22-26`):
 
 | File | Declares |
 | ---- | -------- |
@@ -35,9 +33,8 @@ Sources, all six exported from the package barrel
 | `lib/src/tomclient/security/two_factor_totp_client.dart` | `TomTotp2FAClientMechanism` |
 | `lib/src/tomclient/security/two_factor_texts.dart` | `Tom2FATexts` |
 | `lib/src/tomclient/security/qr_code_view.dart` | `TomQrCodeView` |
-| `lib/src/tomclient/security/authentication.dart` | `TomClient2FAAdaptor` |
 
-Ten public types. The flow widget renders whichever stop of a second-factor
+Nine public types. The flow widget renders whichever stop of a second-factor
 login the application's controller reports; per-mechanism rendering is resolved
 through a process-wide registry keyed by mechanism string. See
 [`security.md`](../security.md) for the design and the integration narrative.
@@ -60,7 +57,6 @@ Tom2FAEnrolmentPanelContext       (value)
 Tom2FAChallengePanelContext       (value)
 Tom2FAClientRegistry              (static-only)
 Tom2FATexts                       (static-only)
-TomClient2FAAdaptor               (const annotation)
 ```
 
 ## Classes
@@ -406,39 +402,6 @@ const TomQrCodeView({
 Encoding uses medium error correction — the standard authenticator level. Higher
 levels buy damage tolerance a screen-displayed code has no use for, at the cost
 of a denser grid that scans worse on small displays.
-
-### TomClient2FAAdaptor
-
-Annotation marking a class as a client-side two-factor adaptor. It is
-`@tomReflector`-registered, so a runtime can enumerate the annotated classes and
-dispatch by `type`.
-
-```dart
-@tomReflector
-@TomClient2FAAdaptor('totp')
-class TotpAdaptor { /* ... */ }
-```
-
-**Not the flow's dispatch route.** `Tom2FAFlowPanel` resolves a mechanism
-through `Tom2FAClientRegistry`, keyed by the same string, and never consults
-reflection; nothing in this package reads the annotation. It exists for a
-runtime that would rather enumerate annotated classes than have each one
-register itself.
-
-Because the class participates in reflection, its signature is a contract:
-changing it requires regenerating reflection for consumers.
-
-#### Constructors
-
-```dart
-const TomClient2FAAdaptor(String type)
-```
-
-#### Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `type` | `String` | The 2FA mechanism this adaptor implements (e.g. `'totp'`, `'sms'`). |
 
 ## Global Functions and Constants
 

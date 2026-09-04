@@ -23,7 +23,7 @@ Located in `lib/src/tomclient/` (keep in sync with the folder):
 | `preferences/` | Device-local preferences and the typed client for the account's server-held ones |
 | `resources/` | Typed, eagerly-resolved config values (`TomProperty` and its variants) |
 | `runtime/` | Flutter runtime / platform detection — the compile-time-selected `TomPlatformUtils` |
-| `security/` | The framework-owned second-factor flow, its mechanism registry and the `TomClient2FAAdaptor` marker |
+| `security/` | The framework-owned second-factor flow, its mechanism registry and the shipped TOTP mechanism |
 
 > **This table is a census, not a floor** — it must name every directory under
 > `lib/src/tomclient/` and nothing else. It is enforced by
@@ -160,10 +160,10 @@ Iterate in order. Each step states its **done** condition.
 9. **Per-module pass — `qrcode/`.** ✅ **Done (OT2) — removed** (placeholder).
 10. **Per-module pass — `resources/`.** ✅ **Done (OT2).** Deepening → RCE3.
 11. **Per-module pass — `runtime/`.** ✅ **Done (OT2).** Deepening → RCE3.
-12. **Per-module pass — `security/`.** ✅ **Done (OT2).** `security/authentication.dart`
-    is exported from the package barrel.
+12. **Per-module pass — `security/`.** ✅ **Done (OT2).** Every file in the
+    module is exported from the package barrel.
 13. **Barrel exports & dead code.** ✅ **Done (OT2, 2026-07-15).** Barrel exports
-    every module incl. `authentication.dart` — six at OT2, **seven** today; the
+    every module — six at OT2, **seven** today; the
     unused `_onChange` is gone;
     `dart analyze` clean. Verify every public symbol is exported from
     `lib/`; remove unused private declarations. *Done when `flutter analyze` is

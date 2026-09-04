@@ -1,8 +1,37 @@
 ## 1.2.1
 
+### Removed
+
+- **`TomClient2FAAdaptor`, and with it `lib/src/tomclient/security/authentication.dart`
+  (tcincb1_ahzv).** The annotation was exported from the barrel, carried
+  dartdoc, held four tests, appeared in the example and had a section in every
+  document the module publishes — and nothing in `lib/` read it. Nothing
+  anywhere read it: the flow finds a panel through `Tom2FAClientRegistry`, and
+  no Tom runtime enumerates client-side annotations. It described a dispatch
+  route that did not exist.
+
+  An unread annotation is not inert. A reader who finds one in a barrel
+  reasonably concludes that annotating a class *does* something, ships a
+  mechanism annotated and unregistered, and discovers at the chooser that their
+  mechanism is absent — the API having promised registration it never
+  performed. So the type is gone rather than documented-as-decorative:
+  `Tom2FAClientRegistry.register` is now the only route into the registry, and
+  it is the only one the module ever had.
+
+  The server's `@Tom2FAAdaptor` is unaffected — `tom_core_server` does scan for
+  it, so it dispatches on what it declares. The two tiers are deliberately
+  asymmetric: the server discovers adaptors, the client registers mechanisms.
+
+  Nine public types remain in the module: `Tom2FAChallengePanelContext`,
+  `Tom2FAClientMechanism`, `Tom2FAClientRegistry`, `Tom2FAEnrolmentPanelContext`,
+  `Tom2FAFlowController`, `Tom2FAFlowPanel`, `Tom2FATexts`, `TomQrCodeView` and
+  `TomTotp2FAClientMechanism`. `test/security_test.dart` keeps only the example run and no longer needs
+  generated mirrors, so it leaves `build.yaml`'s `generate_for` and its
+  `*.reflection.dart` companion is deleted.
+
 ### Documentation
 
-- **13 `Kind` cells across three documents described the symbol instead of
+- **12 `Kind` cells across three documents described the symbol instead of
   declaring it.** `TomDevicePreferences` and `TomDevicePreferenceStore` both
   read `interface` — a word Dart does not have — where both are `abstract
   class`, which is precisely the difference between "implement this" and "you
@@ -11,9 +40,8 @@
   conveyed.
 
   Each cell now carries the declaration. `Tom2FAClientRegistry` and
-  `Tom2FATexts` note in `Purpose` that they are entirely static, and
-  `TomClient2FAAdaptor` records there that it is the `const` annotation and is
-  reflected — the facts the old `Kind` cells were smuggling.
+  `Tom2FATexts` note in `Purpose` that they are entirely static — the fact the
+  old `Kind` cells were smuggling.
 
 ### Added
 
@@ -364,8 +392,7 @@
   and its `describeError` rendering, the confirmation, and a challenge on the
   next sign-in with its attempt budget counting down. It also shows the
   registry rule that decides what the chooser may list, and the deliberately
-  conspicuous missing-key behaviour of `Tom2FATexts`. The annotation is still
-  covered, as the last of ten numbered examples rather than as the whole file.
+  conspicuous missing-key behaviour of `Tom2FATexts`.
 
   A controller is what the *tests* cannot show: the one in
   `two_factor_client_test.dart` is a stub whose moves record their argument and
@@ -571,14 +598,10 @@
   already knowing it existed. All three are rewritten from the source, and the
   package README's two descriptions of the module with them.
 
-  One relationship the documents had never stated, now stated in all four:
-  `TomClient2FAAdaptor` is **not** what the flow dispatches on. `Tom2FAFlowPanel`
-  resolves a mechanism through `Tom2FAClientRegistry`, keyed by the same
-  mechanism string, and nothing in the package reads the annotation. Annotating
-  a class therefore does not make it renderable — a reader who inferred
-  otherwise from documents that described the annotation *as* the module's
-  dispatch mechanism would have had no way to discover the difference except by
-  it not working.
+  Stating the module from its source is also what surfaced the defect the
+  `Removed` entry above records: the documents had described the marker
+  annotation *as* the module's dispatch mechanism, and writing down what the
+  code actually did made it plain that nothing read it.
 
 - **runtime: the example prints the Flutter target beside the predicates it
   explains (tcinc684).** Run as its header prescribes, the example printed
