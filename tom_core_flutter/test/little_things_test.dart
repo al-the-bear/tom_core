@@ -358,8 +358,10 @@ void main() {
   });
 
   group('the API summary mirrors the little_things sources', () {
-    // `completion/README.md` §6 says the doc/ mirror is to be verified, not
-    // trusted. It had drifted to `bool? autoLog`, which no call site can pass.
+    // The `doc/` API summary is a mirror of the source, and a mirror is to be
+    // verified rather than trusted: nothing regenerates it, so a hand-edit that
+    // gets a parameter's type wrong stands until a reader trusts it and writes
+    // a call the compiler rejects. This performs the verification on every run.
     //
     // The checks themselves live in `support/exception_constructor_mirror.dart`
     // because `preferences` and `configuration` need the identical ones — their

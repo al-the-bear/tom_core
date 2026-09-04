@@ -1,15 +1,16 @@
 // PlaceholderResolver — expands the four placeholder forms in a scaffold.
 //
-// The single, shared placeholder engine for the whole brain stack, specified
-// by `tom_brain_procedure_specification.md` § 21.7, § 21.10 and living in
-// `tom_core_agentic` so the substrate / access / memory config loaders and
-// the engine all resolve through one mechanism.
+// The single, shared placeholder engine for the whole brain stack. It lives
+// in `tom_core_agentic` so the substrate / access / memory config loaders and
+// the engine all resolve through one mechanism: a `${…}` must mean the same
+// thing in a config file as in a prompt template, which it cannot if each
+// layer carries its own expander.
 //
 // Forms:
 //   ${name}      simple-identifier fast path — reads a binding from the
 //                current scope. It is NOT interchangeable with
 //                `${{ name }}`; see "Simple vs expression form" below.
-//   ${name?}     OPTIONAL simple lookup (`prompt_configuration.md` §2 / §13):
+//   ${name?}     OPTIONAL simple lookup:
 //                an unbound name renders as the empty string regardless of
 //                the resolver's strict/lenient mode — the injection slot
 //                simply vanishes. A bound name renders its value exactly like

@@ -1,8 +1,10 @@
 // Domain-free file-scope containment (G-C3).
 //
-// `PathScope` is the path-normalisation / containment primitive the creation
-// loop's file-scope sandbox is built on (`creation_specification.md` § 7). It is
-// deliberately domain-free — it knows nothing about brain tools or wire error
+// `PathScope` is the path-normalisation / containment primitive an agent's
+// file-scope sandbox is built on: a creation invocation declares the set of
+// paths it may read and write, and cannot widen it, so a read or write outside
+// that set is refused rather than performed. It is deliberately domain-free —
+// it knows nothing about brain tools or wire error
 // codes — so the brain's `FileScopeViolation`-throwing wrapper and any other
 // agent runtime can share one containment rule. A path is in scope when, after
 // normalisation, it lands inside the *union* of the configured roots; a `..`

@@ -1,22 +1,25 @@
 // Placeholder-system failure types.
 //
-// Part of the shared placeholder system specified by
-// `tom_brain_procedure_specification.md` § 21.7, § 21.10, and living in
-// `tom_core_agentic`. The three wire codes mirror that specification's
-// failure table verbatim. Each is kept as a named `const` so callers can route on
-// the code without string-matching the message.
+// Part of the shared placeholder system, which lives in `tom_core_agentic` so
+// that every layer above it — the substrate / access / memory / run config
+// loaders and the procedure engine — expands `${…}` through one mechanism and
+// therefore fails in one vocabulary.
+//
+// The three codes below are **wire contract**, not internal labels: they leave
+// the process in trail entries and error payloads, and consumers route on the
+// exact string. Renaming one is a breaking change to every such consumer, so
+// the spellings are fixed even where a tidier word exists. Each is a named
+// `const` so a caller matches the identifier rather than retyping the literal.
 
 /// Wire code for a placeholder expansion that did not converge inside the
-/// recursion cap. Matches the `placeholder.recursion.exceeded` failure row.
+/// recursion cap.
 const String placeholderRecursionExceededCode =
     'placeholder.recursion.exceeded';
 
 /// Wire code for an unknown `${name}` (or `${env:NAME}`) under strict mode.
-/// Matches the `placeholder.unresolved` failure row.
 const String placeholderUnresolvedCode = 'placeholder.unresolved';
 
 /// Wire code for a `${{ … }}` expression that threw or would not parse.
-/// Matches the `placeholder.expression.failed` failure row.
 const String placeholderExpressionFailedCode = 'placeholder.expression.failed';
 
 /// Raised when recursive placeholder expansion does not terminate within

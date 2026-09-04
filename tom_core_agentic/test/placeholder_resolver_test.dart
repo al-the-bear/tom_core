@@ -1,7 +1,8 @@
 // Tests for the shared `PlaceholderResolver` — the single `${…}` engine the
-// whole brain stack resolves through (relocated to `tom_core_agentic` so the
+// whole brain stack resolves through. It lives in `tom_core_agentic` so the
 // substrate / access / memory / run config loaders and the engine all share
-// one mechanism; `tom_brain_procedure_specification.md` § 21.7, § 21.10).
+// one mechanism, and a `${…}` therefore means the same thing wherever it is
+// written.
 //
 // What this file pins (the four forms + the two entry points):
 //   * `${env:NAME}` is the *only* way to reach the environment.

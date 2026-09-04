@@ -39,11 +39,19 @@ markdown filename nearest to its left; a bare ``§`` inherits the document
 named earlier in the same comment block, which is how ``§5.2/§5.12/§5.22``
 and multi-line dartdoc citations are written here.
 
-**Documents that are not in the workspace are reported, not failed.** A name
-this check cannot locate may be external, may be ambiguous (several
-``README.md``), or may be genuinely lost -- three different problems, none of
-which is "the number is wrong". Failing on them would mean this gate could
-never go green without first settling questions it is not equipped to answer.
+**How a name is resolved.** A citation is read the way its reader reads it:
+from where it is written. So the cited spelling -- prefix included -- is first
+tried against each directory from the citing file up to the repo root, and only
+then against the workspace-wide basename index. That ordering is what makes
+``README.md §5`` in ``core_flutter_acl_responsive/lib/`` checkable: the reader
+opens *that package's* README, and so does this check, where the basename index
+alone sees one ambiguous name among dozens and gives up.
+
+**Documents that are not resolved are reported, not failed.** A name that
+neither pass locates may be external, may be ambiguous, or may be genuinely
+lost -- three different problems, none of which is "the number is wrong".
+Failing on them would mean this gate could never go green without first
+settling questions it is not equipped to answer.
 """
 
 from __future__ import annotations
@@ -73,9 +81,11 @@ NUMBER = r"[0-9]+(?:\.[0-9]+)*[a-z]?"
 REFERENCE = re.compile(rf"§\s*({NUMBER})")
 
 #: The markdown file nearest to the left of the sign, bare or backquoted.
-#: A path prefix is allowed and dropped -- `doc/acl_design_specification.md`
-#: and the bare name cite the same document.
-DOCUMENT = re.compile(r"`?(?:[A-Za-z0-9_./-]*/)?([A-Za-z0-9_.-]+\.md)`?\s*\(?$")
+#: A path prefix is allowed and *kept* (group 1), because it is what makes a
+#: citation resolvable from where it was written; group 2 is the bare name the
+#: workspace-wide fallback looks up.
+DOCUMENT = re.compile(
+    r"`?((?:[A-Za-z0-9_./-]*/)?([A-Za-z0-9_.-]+\.md))`?\s*\(?$")
 
 HEADING = re.compile(rf"^#{{1,6}}\s+({NUMBER})\.?\s")
 
@@ -167,15 +177,44 @@ def main(argv: list[str]) -> int:
         return 2
 
     index = markdown_index()
-    cache: dict[str, set[str] | None] = {}
+    located: dict[tuple[str, Path], Path | None] = {}
+    numbered: dict[Path, set[str]] = {}
 
-    def known(name: str) -> set[str] | None:
-        """`name`'s section numbers, or `None` if it does not resolve to one
-        file."""
-        if name not in cache:
-            paths = index.get(name, [])
-            cache[name] = sections(paths[0]) if len(paths) == 1 else None
-        return cache[name]
+    def locate(cited: str, source: Path) -> Path | None:
+        """The document `cited` names, read from `source`, or `None`.
+
+        The nearest enclosing directory that actually holds the cited path
+        wins, which is the document the citation's own reader would open. The
+        workspace-wide basename index is the fallback, and only answers when
+        the name is unambiguous.
+        """
+        directory = source.parent
+        key = (cited, directory)
+        if key in located:
+            return located[key]
+        found: Path | None = None
+        while True:
+            candidate = directory / cited
+            if candidate.is_file():
+                found = candidate
+                break
+            if directory == REPO_ROOT or directory.parent == directory:
+                break
+            directory = directory.parent
+        if found is None:
+            paths = index.get(cited.rsplit("/", 1)[-1], [])
+            found = paths[0] if len(paths) == 1 else None
+        located[key] = found
+        return found
+
+    def known(cited: str, source: Path) -> set[str] | None:
+        """`cited`'s section numbers, or `None` if it does not resolve."""
+        path = locate(cited, source)
+        if path is None:
+            return None
+        if path not in numbered:
+            numbered[path] = sections(path)
+        return numbered[path]
 
     scanned = 0
     checked = 0
@@ -187,7 +226,7 @@ def main(argv: list[str]) -> int:
         for line, document, number in references(path):
             if document is None:
                 continue
-            defined = known(document)
+            defined = known(document, path)
             if defined is None:
                 unlocatable[document] += 1
                 continue

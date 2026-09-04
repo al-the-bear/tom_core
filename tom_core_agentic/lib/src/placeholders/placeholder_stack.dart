@@ -1,24 +1,26 @@
 // PlaceholderStack — the lexical scope chain placeholders resolve against.
 //
-// Part of the shared placeholder system specified by
-// `tom_brain_procedure_specification.md` § 21.7, and living in
-// `tom_core_agentic` so every config layer — substrate / access / memory /
-// run — and the engine share one resolver.
+// Part of the shared placeholder system, which lives in `tom_core_agentic` so
+// every config layer — substrate / access / memory / run — and the engine
+// share one resolver.
 //
-// That specification frames the scope stack as "the d4rt lexical scope
-// chain": each
-// nested procedure / `sub.llm` frame pushes a child scope; a child may
-// bind its own variables — **even same-named** ones, shadowing the parent;
-// on pop the child is discarded and the parent's bindings are restored, so
-// lower-level writes never leak upward.
+// The rule it implements is lexical scoping over nested call frames: each
+// nested procedure or sub-call frame pushes a child scope; a child may bind
+// its own variables — **even same-named** ones, shadowing the parent; on pop
+// the child is discarded and the parent's bindings are restored, so a
+// lower-level write never leaks upward. A nested call returns its result
+// through the caller's return value, never by binding a name the parent later
+// reads: the two channels stay distinct so a child cannot smuggle data out.
 //
-// The chain is modelled here as a Dart-side stack of frames: the simple
-// `${name}` form reads a binding directly from this stack, and the
-// `${{ … }}` form receives the *flattened* stack as the locals it evaluates
-// against. Keeping the namespace here (a) gives the requested
-// push/pop shadow/restore semantics exactly, and (b) keeps the two forms
-// reading one set of bindings, the "unifies the simple and expression forms
-// under one variable namespace" property the specification calls for.
+// The chain is modelled here as a Dart-side stack of frames rather than as
+// the expression backing's own scopes, because a backing need not expose
+// push/pop of its interpreter environment (d4rt, the engine's backing, does
+// not). The simple `${name}` form reads a binding directly from this stack,
+// and the `${{ … }}` form receives the *flattened* stack as the locals it
+// evaluates against. Keeping the namespace here (a) gives push / same-name
+// shadow / pop-restores-parent / no-upward-leak exactly, and (b) keeps both
+// forms reading one set of bindings — the two spellings must never disagree
+// about what a name means.
 //
 // One namespace, but not one *visible* namespace: a binding name is any
 // string here, whereas a d4rt local must be an identifier, so a backing

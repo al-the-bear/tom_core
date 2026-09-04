@@ -1,10 +1,11 @@
 // Domain-free wall-clock deadline (G-C3).
 //
-// `Deadline` is the wall-clock-budget primitive the creation loop uses to bound
-// each iteration (`creation_specification.md` § 7 — a per-iteration deadline,
-// default five minutes). It is domain-free and driven by an injectable clock so
-// the loop, and any other timed agent runtime, can share one expiry rule under
-// deterministic tests.
+// `Deadline` is the wall-clock-budget primitive an agent's creation loop uses
+// to bound each iteration: an iteration that outlives its budget is aborted
+// rather than left to run, so a loop that will not converge costs a bounded
+// amount of time instead of an unbounded one. It is domain-free and driven by
+// an injectable clock so the loop, and any other timed agent runtime, can share
+// one expiry rule under deterministic tests.
 
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 import 'package:test/test.dart';

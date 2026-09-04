@@ -1,6 +1,6 @@
 // Tests for `PlaceholderStack` — the scope-frame namespace the resolver's
-// `${name}` / `${{ … }}` forms read (relocated to `tom_core_agentic`
-// alongside the resolver; `tom_brain_procedure_specification.md` § 21.7).
+// `${name}` / `${{ … }}` forms read. It sits in `tom_core_agentic` beside the
+// resolver, because both spellings must read one set of bindings.
 //
 // The stack models nested call frames: a root frame, `push` to enter a
 // child, `bind` to add/shadow a name, `pop` to leave. `flatten` collapses

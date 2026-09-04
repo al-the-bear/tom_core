@@ -638,10 +638,12 @@ void main() {
   });
 
   group('the API summary mirrors the configuration sources', () {
-    // `completion/README.md` §6 says the doc/ mirror is to be verified, not
-    // trusted. This performs that verification on every run instead of leaving
-    // it to whoever remembers: the summary had drifted to omit six public
-    // members that the source declares.
+    // The `doc/` API summary is a mirror of the source, and a mirror is to be
+    // verified rather than trusted: nothing in the toolchain regenerates it, so
+    // it only stays true for as long as someone remembers to update it by hand,
+    // and a summary that omits a public member the source declares reads as if
+    // the member does not exist. This performs the verification on every run
+    // instead of leaving it to whoever remembers.
     const summaryPath = 'doc/api_reference/api_summary_configuration.md';
     const sources = [
       'lib/src/tomclient/configuration/client_configuration.dart',

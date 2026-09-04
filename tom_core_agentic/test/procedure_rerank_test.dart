@@ -3,7 +3,7 @@
 // The procedure subsystem (`tom_brain_procedure`) ranks candidate procedures
 // for an incoming request by four factors: intent-embedding similarity,
 // `requires`-set overlap with available capabilities, recent success rate, and
-// recency of the last successful run (`procedure_specification.md` § 7.3). The
+// recency of the last successful run. The
 // arithmetic that folds those four scalars into one comparable score is
 // domain-free — it knows nothing about procedures, only about four numbers in
 // [0,1] and their weights — so it lives here, reusable from any agent runtime.

@@ -1,9 +1,10 @@
 // Tests for the domain-free plan-step topological ordering helper.
 //
-// The planning loop (`planning_specification.md` § 4.4) orders a decomposed
-// step set over its `depends-on` edges before persisting the plan: a
-// dependency must come before the step that needs it, and a cyclic graph is
-// rejected with the cycle named. The graph arithmetic that
+// A planning loop orders a decomposed step set over its `depends-on` edges
+// before persisting the plan: a dependency must come before the step that
+// needs it, and a cyclic graph is rejected with the cycle named rather than
+// silently dropped, so the caller can see which steps made it cyclic. The
+// graph arithmetic that
 // does this — Kahn's algorithm over a step-id → dependency-id adjacency — is
 // domain-free: it knows nothing about plans, steps, or memory nodes, only
 // about ids and the edges between them. So it lives here, consumed natively by
