@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.2
 
 - Docs only, no API change: five test comments cited a bare section number of
   `codespecs_mapping.md`, which does not ship with this package, so the
