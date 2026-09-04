@@ -48,13 +48,20 @@ and opens by sizing the package as a whole::
     `tom_core_samples/advanced_todo_domain/` — 23 files, of which 17 are Dart:
     14 under `lib/` (619 lines, all hand-written) and 3 under `test/`, ...
 
-Nine faults are reported:
+Ten faults are reported:
 
 ``LINES``
     A file whose claimed length is not its length -- in an inventory table's
     ``Lines`` column, or beside its row in a layout block (``main.dart
     bootstrap + backend injection (107 lines)``). The common defect: the module
     was edited, the claim was not.
+``LAYOUT``
+    A layout-block row naming a file the package does not have. This is
+    ``UNKNOWN`` for the drawn tree rather than the table, and it is separate
+    because the tree is the *only* inventory some documents draw: a package with
+    a flat ``lib/`` and no per-file lengths, or an asset folder with no Dart in
+    it at all, tabulates nothing and so was audited for nothing until this read
+    its tree.
 ``UNKNOWN``
     A tabulated file that is not in the directory -- renamed or deleted.
 ``ABSENT``
@@ -302,11 +309,13 @@ its capitalisation, since an index entry routinely opens its sentence with one
 and ``13 files, all exported`` would be a worse sentence than it was. What
 ``--fix`` never does is re-wrap: a repaired figure with more digits than the
 stale one can push its line past the margin, so read the diff.
-It never touches ``UNKNOWN`` or ``ABSENT``, nor a
+It never touches ``UNKNOWN``, ``ABSENT`` or ``LAYOUT``, nor a
 missing map row, nor a ``says nothing about`` fault: adding or retiring a row --
 or naming a part of the package the census is silent about -- means writing the
 sentence that says what the file or folder carries, and only a reader of it can
-do that.
+do that. A ``LAYOUT`` row is the sharpest case of it: a tree row is a file's
+place in a structure, and where its replacement belongs in that structure is
+exactly the judgement a rewrite cannot make.
 
 Note what ``--fix`` means for a ``BARREL`` fault: it makes the *document*
 agree with the code, which is right when the label is stale and wrong when the
@@ -638,6 +647,20 @@ def layout_rows(text: str, package: Path):
     claim about a file called `wrote`. Requiring a root directory row also makes
     honest an assumption the walk already had: `stack[1:]` drops the first folder
     as the tree's root, which is only right if there is one.
+
+    Two hands write a row's name in a way a bare `split()[0]` mis-reads, and both
+    appear in these trees:
+
+    - a trailing comment glued to the name with no space, `main.dart# the boot
+      entrypoint`, which reads as a file called `main.dart#`;
+    - a *listing* row that names several files at once, `build.yaml,
+      reflection_generation.sh, pubspec.yaml`, whose first word reads as a file
+      called `build.yaml,`.
+
+    The comment is cut off; the listing row is dropped entirely rather than split.
+    A listing is a row about a folder's leftovers, so it has no single file for a
+    label beside it to describe -- and yielding its members would attach one row's
+    label to each of them. Dropping it costs nothing a tree row would have given.
     """
     for fence in LAYOUT_FENCE.finditer(text):
         body, offset = fence.group(1), fence.start(1)
@@ -657,10 +680,10 @@ def layout_rows(text: str, package: Path):
             if words and not words[0].startswith("#"):
                 while stack and stack[-1][0] >= indent:
                     stack.pop()
-                name = words[0]
+                name = words[0].partition("#")[0]
                 if name.endswith("/"):
                     stack.append((indent, name))
-                else:
+                elif name and not name.endswith(","):
                     # `stack[1:]` drops the tree's root line.
                     folders = "".join(f for _, f in stack[1:])
                     yield package / (folders + name), position, position + len(line)
@@ -727,13 +750,23 @@ def audit_barrel_exports(text: str, report: Report) -> bool:
 
 
 def audit_layout_lines(text: str, report: Report) -> bool:
-    """Check each layout-block row's length claim against the file it names.
+    """Check each layout-block row against the file it names: that the file is
+    there, and -- where the row carries one -- that its length claim is true.
 
-    Returns whether the document makes such a claim at all.
+    Returns whether the document draws such a block at all.
 
-    These are the same measurement the inventory tables carry, written beside a
-    row instead of in a column, and they decay the same way -- two consecutive
-    dartdoc edits falsified four of them here before anything read them.
+    The length claims are the same measurement the inventory tables carry,
+    written beside a row instead of in a column, and they decay the same way --
+    two consecutive dartdoc edits falsified four of them here before anything
+    read them.
+
+    Existence is checked on *every* row, not only on the rows that carry a
+    length. It used to be checked only on those, which made the drawn tree of a
+    package whose files are labelled nowhere -- an asset folder, a sample with a
+    flat `lib/` -- an inventory nothing read: a renamed file left a row naming a
+    path that had not existed for weeks, and the document still passed. The row
+    names a file whether or not it also measures it, and naming one that is not
+    there is the plainer error of the two.
     """
     package = layout_package(text)
     if package is None:
@@ -741,14 +774,14 @@ def audit_layout_lines(text: str, report: Report) -> bool:
 
     found = False
     for path, start, end in layout_rows(text, package):
+        found = True
+        shown = path.relative_to(package)
+        if not path.exists():
+            report.faults.append(f"LAYOUT   `{shown}` is not in {package.name}/")
+            continue
         claim = LAYOUT_LINES.search(text, start, end)
         # A rounded figure is a deliberate approximation, not a measurement.
         if claim is None or claim.group(1) or claim.group(3):
-            continue
-        found = True
-        shown = path.relative_to(package)
-        if not path.is_file():
-            report.faults.append(f"LINES    `{shown}` is not in {package.name}/")
             continue
         written = claim.group(2)
         measured = line_count(path)

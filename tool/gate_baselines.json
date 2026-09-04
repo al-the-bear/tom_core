@@ -40,13 +40,13 @@
     },
     "check_doc_error_keys": {
       "faults": 1,
-      "measured": "2026-09-03",
-      "note": "One key listed in an \"Error keys\" section that no code raises: `storage.blob.exists` in tom_core_server_file_storage_new.md."
+      "measured": "2026-09-04",
+      "note": "One key listed in an \"Error keys\" section that no code raises: `storage.blob.exists` in tom_core_server_file_storage_new.md. The count survived a widening from 3 audited documents to 9: the gate now also reads a package document anchored on its opening `tom_*/...` path, its key literals in camelCase as well as snake_case, and `Error(`/`errorKey:` raise sites beside `Exception(`. That widening surfaced 8 keys the sample documents raised and never named -- three `app.*.invalid` in advanced_app_server, three `admin.*.not_found` and two `login.error.2fa.no-*` in advanced_auth_server -- all documented in the same pass, which is why the number did not move."
     },
     "check_doc_inventories": {
       "faults": 0,
       "measured": "2026-09-03",
-      "note": "Zero because all 94 faults were repaired by `--fix` in one pass. The repair was forced: the repo-wide `dart format` of tcincb1_ahti reflowed 777 Dart files, and an INDEX/HEADER/LINES claim is measured against the module's source line totals, not against the wording of the document -- so the reflow invalidated 46 figures on top of the 48 already stale here. `--fix` cannot repair only the 46: a figure is right or wrong, so the same pass also discharged the 48 that tcfinal1_aicl_stale_module_header_figures owned. 33 documents, 90 substitutions, every line identical in length before and after, so no line needed re-wrapping. Adding or retiring a table row still needs a hand, because a new row needs a sentence saying what the file carries."
+      "note": "Zero because all 94 faults were repaired by `--fix` in one pass. The repair was forced: the repo-wide `dart format` of tcincb1_ahti reflowed 777 Dart files, and an INDEX/HEADER/LINES claim is measured against the module's source line totals, not against the wording of the document -- so the reflow invalidated 46 figures on top of the 48 already stale here. `--fix` cannot repair only the 46: a figure is right or wrong, so the same pass also discharged the 48 that tcfinal1_aicl_stale_module_header_figures owned. 33 documents, 90 substitutions, every line identical in length before and after, so no line needed re-wrapping. Adding or retiring a table row still needs a hand, because a new row needs a sentence saying what the file carries. Still zero after the LAYOUT widening, which checks every layout-tree row's file for existence rather than only the rows that also claim a length: 264 rows across 16 documents, all present, and one more document audited (tom_core_samples_assets_new.md, whose drawn tree of 9 SVGs is the only inventory it has)."
     },
     "check_doc_kinds": {
       "faults": 0,

@@ -37,8 +37,9 @@ Two faults are reported:
 literal -- plenty of dotted lowercase literals are configuration keys, claim
 names or table names. It works in two passes:
 
-1. Every ``SomethingException(`` whose *first* argument is a string literal
-   contributes that literal. Requiring it to be the immediately following token
+1. Every ``SomethingException(`` or ``SomethingError(`` whose *first* argument
+   is a string literal contributes that literal, as does every ``errorKey:``
+   named argument. Requiring the literal to be the immediately following token
    is what separates a raise from the exception's own constructor declaration,
    where ``super.key`` comes first instead.
 2. Those keys establish the module's *families* (see ``family``). Any other
@@ -53,18 +54,59 @@ local ``_error`` helper that builds a response. Deriving the families from pass
 edit to this file -- while still excluding ``oauth.providers``, a configuration
 key no exception establishes a family for.
 
+``Error`` and ``errorKey:`` sit in pass 1 beside ``Exception`` because a form's
+validation vocabulary is raised in neither of the other two hands: a validator
+returns ``ValidationError('error.taxIdTaken')`` or is declared with
+``errorKey: 'error.invalidUrl'``, and the resulting key is exactly as public as
+a thrown one -- more so, since an undeclared one does not throw but *renders as
+itself*. Requiring the first argument to be a dotted literal is what keeps
+``StateError('cannot ...')`` and its siblings out: a message is a sentence, and
+a sentence is not key-shaped.
+
+A key segment may be camelCase. The server vocabulary is snake_case throughout
+and the pattern used to say so, which made every ``error.taxIdTaken`` in the
+sample packages invisible -- not mis-read but *unseen*, which is the failure
+mode that inflates a pass rate rather than a fault count.
+
 The same two-pass definition is applied to the document, so that a backticked
 ``result.error`` in the section's prose is read as the field access it is rather
 than as a key nothing raises.
 
-Documents are matched to their module the way ``check_doc_inventories.py`` does
-it: the backticked source path in the document's opening.
+**Two kinds of document are audited, and they are read differently.**
+
+A *module* document carries an ``Error keys`` section: a reference table a
+client author branches on. It is matched to its module the way
+``check_doc_inventories.py`` does it, by the backticked source path in the
+document's opening, and both faults are reported -- the section promises
+completeness in both directions, so a key it names and nothing raises is as much
+a defect as one raised and unnamed.
+
+A *package* document -- the ``tom_core_samples`` set -- has no such section, and
+should not be made to grow one: a sample's keys are named where the feature that
+raises them is described, and the sections they sit in are about resource
+bundles and HTTP error mapping rather than about a vocabulary. So a package
+document is anchored on its opening package path (the same line
+``check_doc_inventories.py`` reads for its inventory, so no document needs an
+edit to be reachable), its keys are read as tokens *anywhere* in the document,
+and only ``ABSENT`` is reported.
+
+That asymmetry is deliberate rather than a shortcut. A sample document names
+framework keys it does not raise, because teaching the framework is what it is
+for: ``advanced_auth_server`` names ``login.error.2fa.invalid-code``, which
+``tom_core_server`` throws, and ``core_flutter_acl_responsive`` names
+``error.email``, which ``Validators`` does. Reported as ``UNKNOWN`` those are
+false alarms, and a gate that cries wolf gets turned off. ``ABSENT`` -- a key
+the sample can emit that its own document never names -- has no such ambiguity,
+and it is the defect this extension was written for: four of seven validation
+keys in the form showcase were undocumented, and the gate named for that class
+could not see the document at all.
 """
 
 from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from gate_report import report_faults
@@ -76,21 +118,56 @@ DOCS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completio
 # `check_doc_inventories.py` reads, taken from the "On disk at ..." opening.
 MODULE_PATH = re.compile(r"`(tom_core_\w+/lib/src/[\w/]+?)/?`")
 
+#: A package document's "path on disk" line, in the grammar
+#: `check_doc_inventories.py` already requires of it: the backticked package
+#: directory opening a line, followed by the em dash that introduces its file
+#: count. Anchored at the line start so a mid-sentence mention of a neighbour
+#: package -- of which these documents have several -- cannot be taken for the
+#: subject.
+PACKAGE_PATH = re.compile(r"^`(tom_\w+/[\w/]+?)/?`\s+—", re.M)
+
+#: The folders of a package whose sources carry its error vocabulary. `test/` is
+#: not among them, and that is the point of listing them rather than walking the
+#: package: a suite constructs exceptions with invented keys to drive the handler
+#: under test -- `advanced_app_server` raises `app.share.invalid` in a test with
+#: a message of `'bad'` -- and reading those as vocabulary would require every
+#: document to name the fixtures of its own suite.
+PACKAGE_SOURCE_FOLDERS = ("lib", "bin", "example")
+
 SECTION_HEADING = re.compile(r"^(#{2,4})\s+Error keys\s*$", re.M)
 
-# A dotted, lowercase key: two or more segments, hyphens allowed after the
-# first. Matches how every key in the tree is spelled. A segment may also be an
-# interpolation -- `authentication.2fa.$type.no_service` is one raise standing
-# for every key it can produce, and a regex that stopped at the `$` would read
-# it as the family `authentication.2fa` and then fail on the missing quote,
-# losing the raise entirely.
-SEGMENT = r"(?:\$\{?\w+\}?|[a-z0-9_-]+)"
+# A dotted key: two or more segments, starting lowercase. Hyphens are allowed
+# after the first character of a segment, and so is camelCase -- the server
+# vocabulary is snake_case throughout, but a form's validation keys are not
+# (`error.taxIdTaken`, `error.mustBeNonNegative`), and a pattern that spelled the
+# server convention as a rule did not merely mis-read those, it could not see
+# them. A segment may also be an interpolation --
+# `authentication.2fa.$type.no_service` is one raise standing for every key it
+# can produce, and a regex that stopped at the `$` would read it as the family
+# `authentication.2fa` and then fail on the missing quote, losing the raise
+# entirely.
+SEGMENT = r"(?:\$\{?\w+\}?|[a-z0-9_-][A-Za-z0-9_-]*)"
 KEY = rf"[a-z][a-z0-9_]*(?:\.{SEGMENT})+"
 KEY_LITERAL = re.compile(rf"['\"]({KEY})['\"]")
 
-# A raise: a constructor whose name ends in `Exception`, whose first argument is
-# a string literal. `\s*` spans the line break the formatter puts after the `(`.
-RAISED_KEY = re.compile(rf"\b[A-Za-z_][A-Za-z0-9_]*Exception\(\s*['\"]({KEY})['\"]")
+# A raise: a constructor whose name ends in `Exception` or `Error` and whose
+# first argument is a string literal, or an `errorKey:` named argument. `\s*`
+# spans the line break the formatter puts after the `(`. Requiring the argument
+# to be a dotted *key* is what keeps `StateError('cannot ...')` out -- a message
+# is a sentence, and a sentence is not key-shaped.
+RAISED_KEY = re.compile(
+    rf"(?:\b[A-Za-z_][A-Za-z0-9_]*(?:Exception|Error)\(\s*|\berrorKey:\s*)"
+    rf"['\"]({KEY})['\"]"
+)
+
+#: A key as a package document writes it: a bare token in prose, a table cell or
+#: a fenced block. Unlike `DOC_KEY` below it is not read out of a backtick pair,
+#: because a whole-document backtick walk cannot stay in phase -- these documents
+#: are full of triple-backtick fences, and one unpaired run silently inverts
+#: every pair after it. The boundaries keep the match maximal: nothing word-like
+#: before it, and no letter or hyphen after, so a trailing sentence period ends
+#: the key rather than defeating the match.
+DOC_TOKEN = re.compile(rf"(?<![\w.$])({KEY})(?![\w-])")
 
 # Keys as the documents write them: backticked, and in the shorthand rows that
 # hang several suffixes off one prefix --
@@ -135,20 +212,33 @@ def matches(pattern: str, key: str) -> bool:
     return re.fullmatch(expression, key) is not None
 
 
-def sources_of(root: Path) -> list[str]:
-    return [p.read_text(encoding="utf-8", errors="replace") for p in root.rglob("*.dart")]
+def sources_of(roots: Sequence[Path]) -> list[str]:
+    """Every hand-written Dart source under `roots`.
+
+    Generated code is skipped. A reflection seed is 300 000 lines of emitted
+    symbol tables that no reader of a completion document is answerable for, and
+    reading them costs more than the rest of the audit put together.
+    """
+    return [
+        path.read_text(encoding="utf-8", errors="replace")
+        for root in roots
+        for path in sorted(root.rglob("*.dart"))
+        if not path.name.endswith(".reflection.dart")
+    ]
 
 
-def raised_families(root: Path) -> set[str]:
-    """The families `root` establishes by throwing them."""
+def raised_families(roots: Sequence[Path]) -> set[str]:
+    """The families `roots` establish by throwing them."""
     return {
         family(m.group(1))
-        for text in sources_of(root)
+        for text in sources_of(roots)
         for m in RAISED_KEY.finditer(text)
     }
 
 
-def families_of(module: Path, project: Path, listed: set[str]) -> set[str]:
+def families_of(
+    module: Sequence[Path], project: Sequence[Path], listed: set[str]
+) -> set[str]:
     """The families this document is answerable for.
 
     Every family the module itself raises, plus any family the document already
@@ -163,7 +253,9 @@ def families_of(module: Path, project: Path, listed: set[str]) -> set[str]:
     )
 
 
-def census(project: Path, families: set[str]) -> tuple[set[str], set[str]]:
+def census(
+    project: Sequence[Path], families: set[str]
+) -> tuple[set[str], set[str]]:
     """The `(keys, patterns)` of `families` raised anywhere in the project.
 
     Widened past the module on purpose: a family is owned by the module that
@@ -220,11 +312,22 @@ def documented(text: str) -> set[str] | None:
     return keys
 
 
+def named_in(text: str) -> set[str]:
+    """Every key-shaped token anywhere in a package document.
+
+    A package document has no reference section to bound the read, so the whole
+    text is scanned and the family filter does the separating -- which is what
+    `family` is for. Tokens rather than backtick pairs: these documents are full
+    of fenced blocks, and a walk that pairs backticks goes out of phase at the
+    first triple-backtick fence and silently reads the *gaps* between keys from
+    there on.
+    """
+    return {match.group(1) for match in DOC_TOKEN.finditer(text)}
+
+
 class Report:
-    def __init__(self, path: Path, module: Path, project: Path) -> None:
+    def __init__(self, path: Path) -> None:
         self.path = path
-        self.module = module
-        self.project = project
         self.keys: set[str] = set()
         self.faults: list[str] = []
 
@@ -238,9 +341,19 @@ class Report:
 
 
 def audit(path: Path) -> Report | None:
-    """Return a Report, or None if the document carries no "Error keys" section."""
-    text = path.read_text(encoding="utf-8", errors="replace")
+    """Return a Report, or None if the document states no error vocabulary.
 
+    A document is either a module document with an ``Error keys`` section or a
+    package document anchored on its opening package path. The two are disjoint
+    -- a module path reaches into `lib/src/`, a package path stops at the
+    package -- so the order is a fallback rather than a precedence.
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return audit_section(path, text) or audit_package(path, text)
+
+
+def audit_section(path: Path, text: str) -> Report | None:
+    """Audit a module document's ``Error keys`` section against its module."""
     module_match = MODULE_PATH.search(text)
     if module_match is None:
         return None
@@ -255,9 +368,9 @@ def audit(path: Path) -> Report | None:
     if listed is None:
         return None
 
-    report = Report(path, module, project)
-    families = families_of(module, project, listed)
-    keys, patterns = census(project, families)
+    report = Report(path)
+    families = families_of([module], [project], listed)
+    keys, patterns = census([project], families)
     report.keys = keys
 
     # The same rule pass 2 applies to the source, applied to the document: a
@@ -276,6 +389,40 @@ def audit(path: Path) -> Report | None:
         if any(matches(pattern, key) for pattern in patterns):
             continue
         report.faults.append(f"UNKNOWN  {key}")
+    return report
+
+
+def audit_package(path: Path, text: str) -> Report | None:
+    """Audit a package document against the keys its package can emit.
+
+    ``ABSENT`` only -- see the module docstring for why ``UNKNOWN`` is unsound
+    here. Returns None when the document names no package, when the path it
+    names is not a package, or when the package raises nothing: a sample that
+    has no error vocabulary owes its document no section about one.
+    """
+    package_match = PACKAGE_PATH.search(text)
+    if package_match is None:
+        return None
+    package = REPO_ROOT / package_match.group(1)
+    if not (package / "pubspec.yaml").is_file():
+        return None
+
+    roots = [
+        package / folder
+        for folder in PACKAGE_SOURCE_FOLDERS
+        if (package / folder).is_dir()
+    ]
+    families = raised_families(roots)
+    if not families:
+        return None
+
+    report = Report(path)
+    keys, _ = census(roots, families)
+    report.keys = keys
+
+    listed = {key for key in named_in(text) if family(key) in families}
+    for key in sorted(keys - listed):
+        report.faults.append(f"ABSENT   {key}")
     return report
 
 
