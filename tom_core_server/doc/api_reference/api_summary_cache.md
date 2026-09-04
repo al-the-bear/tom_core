@@ -160,9 +160,14 @@ out forwarding, which it never does.
 A named in-memory cache of `TomCacheEntry` values keyed by string, either
 unbounded or bounded (LRU).
 
-Both constructors throw an `ArgumentError` when `maximumEntries` is present and
-not positive — the bound is the module's only capacity guarantee, and zero or
-less cannot be honoured as one.
+Both constructors throw an `ArgumentError`, naming the parameter, when any of
+`maximumEntries`, `deletionIntervalSeconds`, `clearIntervalSeconds` or
+`deleteEntriesAfterSeconds` is present and not positive. `null` switches each of
+them off, so zero is not a second way of saying that: a non-positive
+`maximumEntries` or `deleteEntriesAfterSeconds` would make the cache accept
+every store and miss every read, and a non-positive interval would make that
+sweep a busy loop, since `Timer.periodic` reads a zero (or negative) period as
+*as fast as the event loop allows* rather than as *never*.
 
 #### Constructors
 
@@ -200,9 +205,9 @@ factory TomCache.forType(
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `cacheName` | `String` | The name this cache is registered under in `TomCacheManager` (final). |
-| `deletionIntervalSeconds` | `int?` | How often (seconds) the deletion timer sweeps expired entries; `null` disables it (default 3600, final). |
-| `deleteEntriesAfterSeconds` | `int?` | Default lifetime (seconds) applied when no explicit deletion time is given; `null` means no age expiry (final). |
-| `clearIntervalSeconds` | `int?` | How often (seconds) the clearance timer empties the whole cache; `null` disables it (final). |
+| `deletionIntervalSeconds` | `int?` | How often (seconds) the deletion timer sweeps expired entries; `null` disables it, a value must be positive (default 3600, final). |
+| `deleteEntriesAfterSeconds` | `int?` | Default lifetime (seconds) applied when no explicit deletion time is given; `null` means no age expiry, a value must be positive (final). |
+| `clearIntervalSeconds` | `int?` | How often (seconds) the clearance timer empties the whole cache; `null` disables it, a value must be positive (final). |
 | `maximumEntries` | `int?` | Upper bound on entries; `null` makes the cache unbounded, a positive value turns on LRU eviction (final). |
 | `deletionTimer` | `Timer?` | The periodic timer that sweeps expired entries, or `null` when none is running — the interval is unset, or `stopTimers` has since cleared it. |
 | `clearanceTimer` | `Timer?` | The periodic timer that clears the whole cache, or `null` when none is running — the interval is unset, or `stopTimers` has since cleared it. |

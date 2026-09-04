@@ -1108,6 +1108,35 @@
 
 ### Fixed
 
+- **`TomCache` accepted a zero or negative timer interval, installing a
+  busy-loop periodic timer (tcincb1_ahwo).** `deletionIntervalSeconds` and
+  `clearIntervalSeconds` went straight to `Duration(seconds: …)` in
+  `createDeletionTimer` / `createClearanceTimer` with no check. `Timer.periodic`
+  does not read a zero period as "never" — it reads it as *as fast as the event
+  loop will run it*, and treats a negative period the same way. Measured, a
+  zero-period timer ticked ~73,000 times in 50 ms and a negative-period one
+  ~86,000: a cache configured that way burnt a core sweeping a map and reported
+  nothing anywhere.
+
+  The fix generalises tcinc408's `maximumEntries` check rather than adding a
+  second one beside it. All four of the constructor's numbers are now positive
+  or `null`, validated through one routine and reported as an `ArgumentError`
+  naming the parameter — four numbers share one constructor, so an error that
+  gave only the value would leave the caller guessing which of its own settings
+  produced it. `deleteEntriesAfterSeconds` is included because it was the
+  remaining unchecked number and fails the same way `maximumEntries` did: a
+  non-positive lifetime stores every entry already expired, so the cache accepts
+  every store and misses every read. `null` still switches each feature off, and
+  `1` upwards is unchanged.
+
+  All four checks run before `createTimers()`. That ordering is load-bearing for
+  the intervals in a way it was not for the bound: `createTimers` builds the
+  clearance timer *first*, so a check made inside the builders would install a
+  good clearance timer and only then refuse the bad deletion interval beside it,
+  stranding a live periodic timer that no caller holds a reference to. A test
+  drives exactly that construction. No call site in the workspace passed a
+  non-positive value, so nothing downstream changes.
+
 - **The endpoint pipeline serialized differently from the HTTP client, so a
   type could round-trip on one side and fail on the other (tcinc1118).** The
   pipeline ran its own five-way chain on the way out — `String`, `TomClass`,

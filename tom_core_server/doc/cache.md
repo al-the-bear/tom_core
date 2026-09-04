@@ -106,18 +106,30 @@ A cache has two independent eviction mechanisms plus an optional periodic clear:
   first place.
 - **LRU bound** — when `maximumEntries` is set the entries form a
   most-recently-used list; reading or writing an entry moves it to the front,
-  and exceeding the bound evicts the least-recently-used entry. The bound must
-  be positive: a non-positive value is refused at construction with an
-  `ArgumentError`, since a cache permitted to hold nothing would accept every
-  store and miss on every read. When `maximumEntries` is **not** set there is no
-  bound at all — see [Not Yet Implemented](#not-yet-implemented) before leaving
-  a cache unbounded.
+  and exceeding the bound evicts the least-recently-used entry. When
+  `maximumEntries` is **not** set there is no bound at all — see
+  [Not Yet Implemented](#not-yet-implemented) before leaving a cache unbounded.
 - **Periodic clear** — when `clearIntervalSeconds` is set a *clearance timer*
   empties the whole cache on that interval.
 
 None of the three is on by default. `TomCache('x')` with no further arguments is
 unbounded, holds its entries forever, and runs an hourly sweep that finds
 nothing to sweep.
+
+**All four configuration numbers must be positive or `null`.** `null` is how
+each is switched off, so zero is never a second way of saying that — it is a
+caller whose arithmetic produced a number the cache cannot honour, and the
+constructor refuses it with an `ArgumentError` naming the parameter. What the
+number would otherwise do differs by parameter, and none of it is visible from
+outside: a non-positive `maximumEntries` or `deleteEntriesAfterSeconds` makes
+the cache a black hole that accepts every store and misses every read — for want
+of room in the first case, because the entry is stored already expired in the
+second — while a non-positive `deletionIntervalSeconds` or
+`clearIntervalSeconds` makes that sweep a busy loop. `Timer.periodic` reads a
+zero period as *as fast as the event loop will run it* rather than as *never*,
+and treats a negative period the same way; measured, a zero-period timer ticks
+tens of thousands of times per 50 ms, burning a core on a sweep that reports
+nothing.
 
 That last one costs more than the wasted sweep: **a live timer keeps the isolate
 alive**. The deletion sweep is installed by the constructor and is on by

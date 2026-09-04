@@ -241,15 +241,17 @@ class TomCache {
   final String cacheName;
 
   /// How often (seconds) the deletion timer sweeps expired entries. `null`
-  /// disables the timer. Defaults to one hour.
+  /// disables the timer; a value must be positive — see the constructor.
+  /// Defaults to one hour.
   final int? deletionIntervalSeconds;
 
   /// Default lifetime (seconds) applied to a stored value when no explicit
-  /// deletion time is given. `null` means entries do not expire by age.
+  /// deletion time is given. `null` means entries do not expire by age; a value
+  /// must be positive — see the constructor.
   final int? deleteEntriesAfterSeconds;
 
   /// How often (seconds) the clearance timer empties the whole cache. `null`
-  /// disables it.
+  /// disables it; a value must be positive — see the constructor.
   final int? clearIntervalSeconds;
 
   /// Upper bound on the number of entries. `null` makes the cache unbounded; a
@@ -263,12 +265,22 @@ class TomCache {
   /// [maximumEntries] the LRU bound, and [clearIntervalSeconds] a full-clear
   /// period.
   ///
-  /// Throws an [ArgumentError] if [maximumEntries] is not positive. Zero and
-  /// below cannot be honoured as an upper bound: a cache allowed to hold no
-  /// entries would report every store as successful and miss on every read.
-  /// Refusing the value tells the caller — typically one that computed the
-  /// bound — instead of quietly handing back a cache that contradicts the
-  /// number it was given.
+  /// **Every one of the four must be positive or `null`**, and an
+  /// [ArgumentError] naming the offending parameter is thrown otherwise. `null`
+  /// is how each is switched off — no bound, no deletion sweep, no clearance
+  /// sweep, no expiry by age — so zero is not a second way of saying that; it
+  /// is a caller whose arithmetic produced a number the cache cannot honour.
+  /// Refusing it tells that caller, instead of handing back a cache that
+  /// quietly contradicts the numbers it was given:
+  ///
+  /// - a non-positive [maximumEntries] or [deleteEntriesAfterSeconds] makes the
+  ///   cache a black hole — every store reports success and every read misses,
+  ///   for want of room in the first case and because the entry is stored
+  ///   already expired in the second;
+  /// - a non-positive interval makes the corresponding sweep a busy loop.
+  ///   [Timer.periodic] reads a zero period as "as fast as the event loop will
+  ///   run it" rather than as "never", and treats a negative period as zero, so
+  ///   the sweep burns a core walking the map and reports nothing.
   TomCache(
     this.cacheName, {
     this.deleteEntriesAfterSeconds,
@@ -276,17 +288,47 @@ class TomCache {
     this.maximumEntries,
     this.clearIntervalSeconds,
   }) {
-    // Why: before createTimers(). A throw after the timers were installed would
-    // strand a live periodic timer in the isolate — the construction failed, so
-    // no caller holds the object through which to cancel it.
-    if (maximumEntries != null && maximumEntries! <= 0) {
-      throw ArgumentError.value(
-        maximumEntries,
-        'maximumEntries',
-        'must be positive; pass null for an unbounded cache',
-      );
-    }
+    // Why: all four checks before createTimers(). A throw after a timer was
+    // installed would strand it in the isolate — the construction failed, so no
+    // caller holds the object through which to cancel it. createTimers builds
+    // the clearance timer first, so checking inside the builders instead would
+    // strand exactly that one whenever the deletion interval beside it is the
+    // bad number.
+    _requirePositive(
+      maximumEntries,
+      'maximumEntries',
+      'pass null for an unbounded cache',
+    );
+    _requirePositive(
+      deletionIntervalSeconds,
+      'deletionIntervalSeconds',
+      'pass null to run no deletion sweep',
+    );
+    _requirePositive(
+      clearIntervalSeconds,
+      'clearIntervalSeconds',
+      'pass null to run no clearance sweep',
+    );
+    _requirePositive(
+      deleteEntriesAfterSeconds,
+      'deleteEntriesAfterSeconds',
+      'pass null for entries that do not expire by age',
+    );
     createTimers();
+  }
+
+  /// Refuses a configuration number the cache cannot honour.
+  ///
+  /// One routine for all four of the constructor's numbers, because they share
+  /// the rule — positive or `null` — and differ only in what to pass instead,
+  /// which [remedy] supplies. Naming the parameter is the point of the message:
+  /// four numbers arrive through one constructor, so an error that reported
+  /// only the value would leave the caller to guess which of its own settings
+  /// produced it.
+  static void _requirePositive(int? value, String name, String remedy) {
+    if (value != null && value <= 0) {
+      throw ArgumentError.value(value, name, 'must be positive; $remedy');
+    }
   }
 
   /// Creates a cache named after [type] (`type.toString()`), so callers can key

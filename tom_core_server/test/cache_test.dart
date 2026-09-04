@@ -50,6 +50,7 @@ class _TimerCountingCache extends TomCache {
   _TimerCountingCache(
     super.cacheName, {
     super.maximumEntries,
+    super.deletionIntervalSeconds,
     super.clearIntervalSeconds,
   });
 
@@ -979,34 +980,142 @@ void main() {
     });
   });
 
-  group('A non-positive bound is rejected at construction', () {
-    // `maximumEntries` is the module's only capacity guarantee, and every
-    // document states it as an upper bound. A zero or negative value cannot be
-    // honoured under that reading — a cache that may hold no entries at all is
-    // a black hole, storing successfully and missing on every read — so it is
-    // refused where the caller can still see it, rather than degrading into a
-    // one-entry cache that silently contradicts the number it was given.
-    test('rejects a bound of zero', () {
-      expect(() => TomCache('z', maximumEntries: 0), throwsArgumentError);
+  group('Non-positive configuration is rejected at construction', () {
+    // The constructor takes four numbers, and not one of them has a meaning at
+    // or below zero. `null` is how each is switched off, and each already
+    // works: no bound, no deletion sweep, no clearance sweep, no expiry by age.
+    // So a zero is never a caller saying "off" — there is already a way to say
+    // that. It is a caller whose arithmetic produced a number the cache cannot
+    // honour.
+    //
+    // What the number then does differs per parameter, which is why all four
+    // are pinned rather than one standing in for the rest:
+    //
+    //   * `maximumEntries` — a cache allowed to hold no entries at all is a
+    //     black hole: every store reports success and every read misses.
+    //   * `deletionIntervalSeconds` / `clearIntervalSeconds` — a zero
+    //     [Duration] does not mean "never" to [Timer.periodic], it means "as
+    //     fast as the event loop will run it". Measured: a zero-period timer
+    //     ticked ~73,000 times in 50 ms and a negative-period one ~86,000
+    //     (a negative period is treated as zero). That is a core burnt sweeping
+    //     a map, and nothing reports it.
+    //   * `deleteEntriesAfterSeconds` — every entry is stored already expired,
+    //     so the cache is a black hole again, by the other mechanism.
+    //
+    // None of the four announces itself. The constructor is the last point at
+    // which the caller that computed the number is still there to be told.
+
+    /// Each configuration number as a construction that passes [value] for that
+    /// parameter and leaves the rest switched off, so a failure names one
+    /// parameter rather than a combination.
+    final parameters = <String, TomCache Function(int)>{
+      'maximumEntries': (v) =>
+          TomCache('x', deletionIntervalSeconds: null, maximumEntries: v),
+      'deletionIntervalSeconds': (v) =>
+          TomCache('x', deletionIntervalSeconds: v),
+      'clearIntervalSeconds': (v) =>
+          TomCache('x', deletionIntervalSeconds: null, clearIntervalSeconds: v),
+      'deleteEntriesAfterSeconds': (v) => TomCache(
+        'x',
+        deletionIntervalSeconds: null,
+        deleteEntriesAfterSeconds: v,
+      ),
+    };
+
+    for (final parameter in parameters.entries) {
+      test('${parameter.key} rejects zero and negative values', () {
+        // The error is asserted by name and value, not merely by type. An
+        // ArgumentError that named the wrong parameter would send the caller
+        // to the wrong number in its own configuration, which for four numbers
+        // sharing one constructor is the whole difference between a usable
+        // message and a puzzle.
+        for (final value in [0, -1]) {
+          expect(
+            () => parameter.value(value),
+            throwsA(
+              isA<ArgumentError>()
+                  .having((e) => e.name, 'name', parameter.key)
+                  .having((e) => e.invalidValue, 'invalidValue', value),
+            ),
+            reason: '$value should be refused for ${parameter.key}',
+          );
+        }
+      });
+    }
+
+    test('null still switches each of them off', () {
+      // `null` is the documented "off" for all four, and is what makes zero
+      // unnecessary as a second way of saying it. Refusing zero must not have
+      // been implemented by refusing everything that is not a positive number.
+      final cache = TomCache(
+        'off',
+        deletionIntervalSeconds: null,
+        clearIntervalSeconds: null,
+        deleteEntriesAfterSeconds: null,
+        maximumEntries: null,
+      );
+      expect(cache.deletionTimer, isNull);
+      expect(cache.clearanceTimer, isNull);
+      expect(cache.maximumEntries, isNull);
+      expect(cache.deleteEntriesAfterSeconds, isNull);
     });
 
-    test('rejects a negative bound', () {
-      expect(() => TomCache('n', maximumEntries: -1), throwsArgumentError);
+    test('one is accepted for each of them', () {
+      // One is the smallest value every one of the four can honour, and it is
+      // the edge the rule has to stop at: reject `<= 0`, not `< 2`.
+      final cache = TomCache(
+        'one',
+        deletionIntervalSeconds: 1,
+        clearIntervalSeconds: 1,
+        deleteEntriesAfterSeconds: 1,
+        maximumEntries: 1,
+      );
+      addTearDown(cache.stopTimers);
+      expect(cache.deletionTimer!.isActive, isTrue);
+      expect(cache.clearanceTimer!.isActive, isTrue);
+      expect(cache.maximumEntries, 1);
+      expect(cache.deleteEntriesAfterSeconds, 1);
     });
 
-    test('forType rejects it too', () {
+    test('forType is validated the same way', () {
       // forType delegates to the main constructor, so this pins that the
-      // validation sits where both entry points pass through it.
+      // validation sits where both entry points pass through it — for every
+      // parameter, since forType restates the whole signature by hand and could
+      // have diverged on any one of them.
       expect(
-        () => TomCache.forType(String, maximumEntries: 0),
+        () => TomCache.forType(
+          String,
+          deletionIntervalSeconds: null,
+          maximumEntries: 0,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => TomCache.forType(String, deletionIntervalSeconds: 0),
+        throwsArgumentError,
+      );
+      expect(
+        () => TomCache.forType(
+          String,
+          deletionIntervalSeconds: null,
+          clearIntervalSeconds: -1,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => TomCache.forType(
+          String,
+          deletionIntervalSeconds: null,
+          deleteEntriesAfterSeconds: 0,
+        ),
         throwsArgumentError,
       );
     });
 
     test('a bound of one is accepted and holds exactly one entry', () {
-      // One is the smallest bound that *can* be honoured, and it is the edge
-      // the rule has to stop at: reject `<= 0`, not `< 2`.
-      final cache = _cache('one', maximumEntries: 1);
+      // The edge test above reads the bound back off the cache; this one asks
+      // the cache to honour it, which is the claim that matters.
+      final cache = _cache('one-behaviour', maximumEntries: 1);
       cache.putEntry('a', TomCacheEntry(1));
       cache.putEntry('b', TomCacheEntry(2));
       expect(cache.getEntry('a'), isNull);
@@ -1018,16 +1127,33 @@ void main() {
       expect(_cache('u2').maximumEntries, isNull);
     });
 
-    test('a rejected bound leaves no timer running', () {
+    test('a rejected value leaves no timer running', () {
       // The validation has to precede createTimers(). A throw after the timers
-      // were installed would leave a live periodic timer in the isolate with
+      // were installed would strand a live periodic timer in the isolate with
       // no reference by which to cancel it — the construction failed, so the
-      // caller never got the object holding it. Counting the builders the
-      // constructor reaches is what makes the ordering observable at all.
+      // caller never got the object holding it.
+      //
+      // A rejected *interval* is the sharp case, and the reason this test is
+      // not satisfied by the bound alone: createTimers builds the clearance
+      // timer before the deletion one, so a check made inside the builders
+      // rather than here would let a good clearance interval install its timer
+      // and only then refuse the bad deletion interval beside it — stranding
+      // precisely the timer this ordering exists to prevent.
       _TimerCountingCache.built = 0;
       expect(
         () => _TimerCountingCache(
           't',
+          deletionIntervalSeconds: 0,
+          clearIntervalSeconds: 60,
+        ),
+        throwsArgumentError,
+      );
+      expect(_TimerCountingCache.built, 0);
+
+      _TimerCountingCache.built = 0;
+      expect(
+        () => _TimerCountingCache(
+          't2',
           maximumEntries: 0,
           clearIntervalSeconds: 60,
         ),
@@ -1035,11 +1161,11 @@ void main() {
       );
       expect(_TimerCountingCache.built, 0);
 
-      // And the counter would have said so: the same construction with a bound
-      // it can honour reaches both builders. Without this the assertion above
+      // And the counter would have said so: the same construction with values
+      // it can honour reaches both builders. Without this the assertions above
       // would hold just as well for a counter that never counts anything.
       final accepted = _TimerCountingCache(
-        't2',
+        't3',
         maximumEntries: 1,
         clearIntervalSeconds: 60,
       );
