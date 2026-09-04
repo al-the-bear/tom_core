@@ -13,7 +13,7 @@ physically live). Static helpers key a cache by Dart type or by name.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomCache` | A named cache; constructor takes `cacheName` plus `deleteEntriesAfterSeconds`, `maximumEntries`, and clear/deletion intervals. `TomCache.forType(Type)` names it after a type. |
+| `TomCache` | A named cache; constructor takes `cacheName` plus `deleteEntriesAfterSeconds`, `maximumEntries`, and clear/deletion intervals. `TomCache.forType(Type)` names it after a type. Its clear and deletion timers run in `Zone.root` rather than the zone that constructed the cache, and stop through `stopTimers()`. |
 | `TomCacheEntry` | One cached value (`value`) with an optional `deletionTime`. |
 | `TomCacheManager` | Per-isolate registry; `getCache(name)` / `addCache`, and the cross-isolate forwarding decision (`useInThisIsolate`). |
 | Static helpers | `TomCache.toTypeCache<T>` / `fromTypeCache<T>` / `removeFromTypeCache<T>` and the `*NameCache` variants store/retrieve/remove by type or name. |

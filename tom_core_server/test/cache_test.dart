@@ -37,6 +37,37 @@ Future<TomCacheException> _raised(Future<Object?> Function() op) async {
   fail('expected a TomCacheException');
 }
 
+/// A cache that counts the timer builders its construction reaches.
+///
+/// Used to observe *whether* the constructor got as far as installing timers.
+/// The count is static because the construction under test is the one that
+/// throws: no instance ever reaches the caller to be asked. It is counted
+/// through an override rather than through a `ZoneSpecification` because both
+/// timers are created in [Zone.root] (see "both timers belong to the root
+/// zone"), which no forked zone can see — a zone counter would read zero
+/// whatever the constructor did.
+class _TimerCountingCache extends TomCache {
+  _TimerCountingCache(
+    super.cacheName, {
+    super.maximumEntries,
+    super.clearIntervalSeconds,
+  });
+
+  static int built = 0;
+
+  @override
+  Timer createDeletionTimer() {
+    built++;
+    return super.createDeletionTimer();
+  }
+
+  @override
+  Timer createClearanceTimer() {
+    built++;
+    return super.createClearanceTimer();
+  }
+}
+
 /// A plain LRU of the same bound, used as the reference the cache is checked
 /// against.
 ///
@@ -991,22 +1022,29 @@ void main() {
       // The validation has to precede createTimers(). A throw after the timers
       // were installed would leave a live periodic timer in the isolate with
       // no reference by which to cancel it — the construction failed, so the
-      // caller never got the object holding it. Counting timer creations in a
-      // zone is what makes the ordering observable at all.
-      var created = 0;
-      final spec = ZoneSpecification(
-        createPeriodicTimer: (self, parent, zone, period, f) {
-          created++;
-          return parent.createPeriodicTimer(zone, period, f);
-        },
+      // caller never got the object holding it. Counting the builders the
+      // constructor reaches is what makes the ordering observable at all.
+      _TimerCountingCache.built = 0;
+      expect(
+        () => _TimerCountingCache(
+          't',
+          maximumEntries: 0,
+          clearIntervalSeconds: 60,
+        ),
+        throwsArgumentError,
       );
-      runZoned(() {
-        expect(
-          () => TomCache('t', maximumEntries: 0, clearIntervalSeconds: 60),
-          throwsArgumentError,
-        );
-      }, zoneSpecification: spec);
-      expect(created, 0);
+      expect(_TimerCountingCache.built, 0);
+
+      // And the counter would have said so: the same construction with a bound
+      // it can honour reaches both builders. Without this the assertion above
+      // would hold just as well for a counter that never counts anything.
+      final accepted = _TimerCountingCache(
+        't2',
+        maximumEntries: 1,
+        clearIntervalSeconds: 60,
+      );
+      addTearDown(accepted.stopTimers);
+      expect(_TimerCountingCache.built, 2);
     });
   });
 
@@ -1303,6 +1341,82 @@ void main() {
       expect(cache.deletionTimer, isNot(same(first)));
       expect(cache.deletionTimer!.isActive, isTrue);
     });
+
+    test(
+      'both timers belong to the root zone, not to whoever constructed the '
+      'cache',
+      () async {
+        // The scenario this pins: a cache is a process-lifetime object --
+        // TomCacheManager holds it in a static map for the life of the isolate
+        // -- but nothing says where it is constructed, and `TomCache.forType`
+        // is reached lazily from endpoint code. The pipeline runs each request
+        // in its own zone to carry the principal, so timers created with
+        // Zone.current would be parented to one request's zone: process-lifetime
+        // work answering to that request's error handling and teardown long
+        // after the request is gone, in a zone chosen by whichever caller
+        // happened to arrive first.
+        //
+        // The caller's zone is instrumented rather than inspected: a timer a
+        // zone owns is one it was asked to create (createPeriodicTimer) and
+        // whose callback it later runs (runUnary, with the Timer as argument).
+        // Both counters staying at zero is what "not this zone's timer" means,
+        // and either would rise again the moment Zone.current came back.
+        var timersCreatedHere = 0;
+        var callbacksRunHere = 0;
+        final requestZoneSpec = ZoneSpecification(
+          createPeriodicTimer: (self, parent, zone, period, f) {
+            timersCreatedHere++;
+            return parent.createPeriodicTimer(zone, period, f);
+          },
+          runUnary: <R, T>(self, parent, zone, f, arg) {
+            if (arg is Timer) callbacksRunHere++;
+            return parent.runUnary(zone, f, arg);
+          },
+        );
+
+        // One cache per timer kind, so each callback can be shown to have run
+        // its own work. A single cache with both timers at the same interval
+        // would leave the clearance sweep able to explain the deletion sweep's
+        // result, and neither would be pinned.
+        late final TomCache sweeper;
+        late final TomCache clearer;
+        runZoned(() {
+          sweeper = TomCache('zone-pinned-sweeper', deletionIntervalSeconds: 1);
+          clearer = TomCache(
+            'zone-pinned-clearer',
+            deletionIntervalSeconds: null,
+            clearIntervalSeconds: 1,
+          );
+        }, zoneSpecification: requestZoneSpec);
+        addTearDown(sweeper.stopTimers);
+        addTearDown(clearer.stopTimers);
+        expect(timersCreatedHere, 0, reason: 'neither timer is this zone\'s');
+
+        // Outside the zone now -- as a server is once the request has finished.
+        sweeper.putEntry(
+          'stale',
+          TomCacheEntry(
+            'gone',
+            DateTime.now().subtract(const Duration(hours: 1)),
+          ),
+        );
+        sweeper.putEntry('fresh', TomCacheEntry('kept'));
+        clearer.putEntry('anything', TomCacheEntry('also gone'));
+
+        await Future<void>.delayed(const Duration(milliseconds: 1200));
+
+        expect(callbacksRunHere, 0, reason: 'nor does this zone run them');
+        // And they are working timers, not merely ones this zone never saw. The
+        // deletion sweep is the discriminating case: it took the expired entry
+        // and left the live one, which a clear could not have done.
+        expect(sweeper.getEntry('stale'), isNull);
+        expect(sweeper.getEntry('fresh')!.value, 'kept');
+        expect(clearer.getEntry('anything'), isNull);
+      },
+      // Both timers are periodic at the shortest interval the seconds-based
+      // configuration allows, so this test cannot be faster than one tick.
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
   });
 
   group('The limits the documentation records', () {

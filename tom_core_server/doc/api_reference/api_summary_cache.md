@@ -25,7 +25,9 @@ Source: `lib/src/tomserver/cache/server_cache.dart`.
 A cache may be unbounded (a plain map with optional time-based expiry) or
 bounded (`maximumEntries` set, LRU eviction). Two background timers can be
 installed: a deletion timer that drops expired entries and a clearance timer that
-empties the whole cache. The static `…NameCache` / `…TypeCache` helpers look the
+empties the whole cache. Both are created in `Zone.root`, not in the zone that
+constructed the cache, so a cache first built on a request path does not leave
+two process-lifetime timers answering to that one request. The static `…NameCache` / `…TypeCache` helpers look the
 cache up through `TomCacheManager` and, in a worker isolate that does not hold
 the cache, forward the operation to the main isolate. A forwarded operation that
 fails there fails here too: a read of a cache that exists nowhere raises rather
@@ -212,10 +214,10 @@ factory TomCache.forType(
 | `removeEntry` | `void removeEntry(String key)` | Removes the entry stored under `key`, unlinking it from the MRU list if the cache is bounded; a no-op when the key is absent. The module's only chain-unlink routine — the deletion sweep and both of `putEntry`'s removals (replacing a key, evicting the least-recently-used entry) go through it. |
 | `getEntry` | `TomCacheEntry? getEntry(String key)` | Returns the entry under `key`, or `null` if absent; in a bounded cache the entry is promoted to most-recently-used. Does not check expiry. |
 | `putEntry` | `void putEntry(String key, TomCacheEntry entry)` | Stores `entry` under `key` at the most-recently-used position; in a bounded cache, exceeding `maximumEntries` evicts the least-recently-used entry. Storing under a key the cache already holds replaces the entry — the previous one is unlinked through `removeEntry` first, so it leaves the MRU chain rather than staying in it unreachable and later being evicted in the replacement's place. |
-| `createTimers` | `void createTimers()` | Cancels any running timers and installs the deletion and/or clearance timers for which an interval is configured. |
+| `createTimers` | `void createTimers()` | Cancels any running timers and installs the deletion and/or clearance timers for which an interval is configured. Both are created in `Zone.root`, so it does not matter where the cache was constructed or from where this is called. |
 | `stopTimers` | `void stopTimers()` | Cancels the deletion and clearance timers if they are running and clears both fields; the intervals are untouched, so `createTimers` restarts the cache. |
-| `createDeletionTimer` | `Timer createDeletionTimer()` | Builds the periodic timer that removes entries past their `deletionTime`. |
-| `createClearanceTimer` | `Timer createClearanceTimer()` | Builds the periodic timer that empties the entire cache. |
+| `createDeletionTimer` | `Timer createDeletionTimer()` | Builds the periodic timer that removes entries past their `deletionTime`, in `Zone.root`. |
+| `createClearanceTimer` | `Timer createClearanceTimer()` | Builds the periodic timer that empties the entire cache, in `Zone.root`. |
 
 ### TomCacheStoreMessage
 

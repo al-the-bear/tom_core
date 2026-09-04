@@ -310,8 +310,27 @@ class TomCache {
 
   /// Cancels any running timers and installs the deletion and/or clearance
   /// timers for which an interval is configured.
+  ///
+  /// Both timers are created in [Zone.root], so it does not matter where the
+  /// cache was constructed or from where this is called.
   void createTimers() {
     stopTimers();
+    // Why: Zone.root, not Zone.current. A cache lives as long as the process --
+    // TomCacheManager holds it in a static map for the life of the isolate --
+    // but nothing constrains where it is constructed, and `TomCache.forType` is
+    // reached lazily from endpoint code. The endpoint pipeline runs each request
+    // in its own zone to carry the principal, so a cache first needed on a
+    // request path would parent both process-lifetime timers to that one
+    // request's zone: answering to its error handling and teardown long after
+    // the request is gone, with the zone decided by whichever caller happened to
+    // arrive first rather than by anyone.
+    //
+    // Root rather than a zone the server installs at boot, because neither sweep
+    // needs anything a zone could give it: both walk a plain map, want no
+    // principal and no transaction, and an error in either belongs to the
+    // process rather than to any request. Their log lines carry no request
+    // logging context for the same reason. This matches
+    // TomAuthorizationCache._startEviction, which made the same call.
     if (clearIntervalSeconds != null) {
       clearanceTimer = createClearanceTimer();
     }
@@ -342,8 +361,10 @@ class TomCache {
   Timer? deletionTimer;
 
   /// Builds the periodic timer that removes entries past their `deletionTime`.
+  ///
+  /// The timer is created in [Zone.root]; see [createTimers] for why.
   Timer createDeletionTimer() {
-    return Zone.current.createPeriodicTimer(
+    return Zone.root.createPeriodicTimer(
       Duration(seconds: deletionIntervalSeconds!),
       (Timer t) {
         var now = DateTime.now();
@@ -375,8 +396,10 @@ class TomCache {
   Timer? clearanceTimer;
 
   /// Builds the periodic timer that empties the entire cache.
+  ///
+  /// The timer is created in [Zone.root]; see [createTimers] for why.
   Timer createClearanceTimer() {
-    return Zone.current.createPeriodicTimer(
+    return Zone.root.createPeriodicTimer(
       Duration(seconds: clearIntervalSeconds!),
       (Timer t) {
         tomLog.debug(

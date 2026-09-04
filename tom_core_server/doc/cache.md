@@ -128,6 +128,19 @@ explicitly — to return at all. The module readme's quick start ends that way,
 and a test runs it to keep the promise honest — see
 [Verification](#verification).
 
+Both timers run in **`Zone.root`**, wherever the cache was constructed. That
+matters because a cache is a process-lifetime object — `TomCacheManager` holds it
+for the life of the isolate — while nothing constrains where it is built, and
+`TomCache.forType` is reached lazily from endpoint code. The endpoint pipeline
+runs each request in its own zone to carry the principal, so timers created with
+`Zone.current` would leave process-lifetime work answering to one request's error
+handling and teardown, with the zone decided by whichever caller happened to
+arrive first. Root rather than a zone the server installs at boot, because
+neither sweep wants anything a zone can give it: both walk a plain map, need no
+principal and no transaction, and a failure in either belongs to the process
+rather than to any request. Constructing a cache at start-up is therefore not a
+way of getting the zone right — it was already right.
+
 ## Isolate Model
 
 The caches live in the **main isolate**. `TomCacheManager.useInThisIsolate` is
