@@ -206,6 +206,43 @@ void main() {
       expect(const TomMessageBody('text/html', 'x').isHtml, isTrue);
     });
 
+    test('every way of building a part agrees on the default charset', () {
+      // Stated as "these four agree" rather than "these four are utf-8",
+      // deliberately. The defect was four independent spellings of the same
+      // default, and a test that spells it a fifth time is a fifth site to
+      // update — it would pass while the class disagreed with itself, so long
+      // as whoever changed the default also changed the test.
+      //
+      // A set of size one is the property itself: it holds for any default and
+      // fails the moment one entry point stops sharing it.
+      const primary = TomMessageBody('text/markdown', 'x');
+      const plain = TomMessageBody.text('x');
+      const html = TomMessageBody.html('x');
+      final decoded = TomMessageBody.fromJson({
+        'mediaType': 'text/markdown',
+        'content': 'x',
+      });
+      expect({
+        primary.charset,
+        plain.charset,
+        html.charset,
+        decoded.charset,
+      }, hasLength(1));
+    });
+
+    test('a part built by name is recognised by the predicate for it', () {
+      // The constructor and the predicate have to name the same media type, and
+      // nothing above checks that they do: the case-insensitivity tests spell
+      // the type themselves, so they would keep passing if `.text` started
+      // building something `isPlainText` does not match. This is the pairing,
+      // asserted without naming either type — the only way it can fail is the
+      // two disagreeing.
+      expect(const TomMessageBody.text('x').isPlainText, isTrue);
+      expect(const TomMessageBody.text('x').isHtml, isFalse);
+      expect(const TomMessageBody.html('x').isHtml, isTrue);
+      expect(const TomMessageBody.html('x').isPlainText, isFalse);
+    });
+
     test('the predicates stay mutually exclusive', () {
       // Case-insensitivity must not widen either predicate into the other's
       // territory, and neither should claim a type that is simply something

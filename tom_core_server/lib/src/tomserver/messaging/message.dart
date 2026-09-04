@@ -195,6 +195,32 @@ class TomRecipient {
 /// least-preferred first, matching MIME's `multipart/alternative` convention,
 /// so the richest representation is last.
 class TomMessageBody {
+  /// The character set a part carries when the caller names none.
+  ///
+  /// Written once and referenced, because it was written four times: the
+  /// primary constructor's default, both named constructors, and the
+  /// [TomMessageBody.fromJson] fallback. They agreed only because nobody had
+  /// changed them — altering the default meant finding four sites, and missing
+  /// one would leave the class disagreeing with itself about what a body built
+  /// without a charset contains. That is the same failure [_mediaTypeIs]
+  /// records having already suffered once, in this same class.
+  ///
+  /// Public, so that a caller deciding whether a part needs a charset
+  /// conversion can ask what the default *is* rather than restating it and
+  /// becoming a fifth site itself.
+  static const String defaultCharset = 'utf-8';
+
+  /// The media type [TomMessageBody.text] builds and [isPlainText] recognises.
+  ///
+  /// The constructor and the predicate must name the same type or a part built
+  /// by one is invisible to the other, so they name it through here rather than
+  /// each spelling it. Lower case is load-bearing: [_mediaTypeIs] lowercases
+  /// only the *left* side of its comparison.
+  static const String _plainTextMediaType = 'text/plain';
+
+  /// The media type [TomMessageBody.html] builds and [isHtml] recognises.
+  static const String _htmlMediaType = 'text/html';
+
   /// The IANA media type, e.g. `text/plain` or `text/html`.
   final String mediaType;
 
@@ -205,17 +231,22 @@ class TomMessageBody {
   final String charset;
 
   /// Creates a body part.
-  const TomMessageBody(this.mediaType, this.content, {this.charset = 'utf-8'});
+  const TomMessageBody(
+    this.mediaType,
+    this.content, {
+    this.charset = defaultCharset,
+  });
 
   /// A `text/plain` part.
-  const TomMessageBody.text(this.content)
-    : mediaType = 'text/plain',
-      charset = 'utf-8';
+  ///
+  /// Redirects rather than initialising the fields itself, so that it cannot
+  /// hold a stale opinion about any default the primary constructor applies —
+  /// including one added after this line was written.
+  const TomMessageBody.text(String content)
+    : this(_plainTextMediaType, content);
 
   /// A `text/html` part.
-  const TomMessageBody.html(this.content)
-    : mediaType = 'text/html',
-      charset = 'utf-8';
+  const TomMessageBody.html(String content) : this(_htmlMediaType, content);
 
   /// Whether [mediaType] names [type], which is spelled in lower case.
   ///
@@ -231,10 +262,10 @@ class TomMessageBody {
   bool _mediaTypeIs(String type) => mediaType.toLowerCase() == type;
 
   /// Whether this part is plain text.
-  bool get isPlainText => _mediaTypeIs('text/plain');
+  bool get isPlainText => _mediaTypeIs(_plainTextMediaType);
 
   /// Whether this part is HTML.
-  bool get isHtml => _mediaTypeIs('text/html');
+  bool get isHtml => _mediaTypeIs(_htmlMediaType);
 
   /// Encodes this part as a JSON-native map.
   Map<String, Object?> toJson() => {
@@ -247,7 +278,7 @@ class TomMessageBody {
   factory TomMessageBody.fromJson(Map<String, Object?> map) => TomMessageBody(
     map['mediaType'] as String,
     map['content'] as String,
-    charset: map['charset'] as String? ?? 'utf-8',
+    charset: map['charset'] as String? ?? defaultCharset,
   );
 
   @override

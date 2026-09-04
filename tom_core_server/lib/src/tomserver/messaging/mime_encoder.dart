@@ -222,9 +222,14 @@ class TomMimeEncoder {
   void _writeAlternatives(StringBuffer out, TomMessage message) {
     final bodies = message.bodies;
     if (bodies.isEmpty) {
-      _header(out, 'Content-Type', 'text/plain; charset=utf-8');
-      _header(out, 'Content-Transfer-Encoding', 'base64');
-      out.write(tomMimeLineEnding);
+      // An empty plain-text part, written by the same path as a real one rather
+      // than by hand-spelling its headers. The hand-written version repeated
+      // the media type and the default charset that TomMessageBody already
+      // owns, so changing either there would have left this line advertising
+      // the old one — and it is the branch nobody looks at, since it only fires
+      // for a message with no body at all. The output is unchanged: the part
+      // differs from a real one only in having no content to encode.
+      _writePart(out, const TomMessageBody.text(''));
       return;
     }
     if (bodies.length == 1) {

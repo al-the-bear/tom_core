@@ -5800,6 +5800,41 @@
 
 ### Internal
 
+- **`TomMessageBody` spelled its own defaults five times, so changing one meant
+  finding five (tcincb1).** The `'utf-8'` charset default appeared in the
+  primary constructor, in both named constructors, in `fromJson`'s fallback,
+  and once more in `TomMimeEncoder._writeAlternatives`, which hand-wrote
+  `text/plain; charset=utf-8` for a message with no body at all. The media
+  types were spelled twice each — once by the constructor that builds them and
+  once by the predicate that recognises them. Everything agreed, so nothing was
+  broken; the cost was that agreement rested on nobody having edited any single
+  site. That is the failure `_mediaTypeIs` already exists to record having
+  suffered once, in this same class.
+
+  Each default now has one home: the new public
+  `TomMessageBody.defaultCharset`, and private `_plainTextMediaType` /
+  `_htmlMediaType`. The charset constant is public because the duplication does
+  not stop at the class boundary — a caller deciding whether a part needs
+  converting had no way to ask what the default *is*, so it would restate
+  `'utf-8'` and become another site. The media types stay private: no caller
+  was restating those, and two more documented constants would be surface
+  nobody asked for.
+
+  The named constructors now redirect to the primary
+  (`: this(_plainTextMediaType, content)`) rather than initialising fields
+  themselves, so they cannot hold a stale opinion about any default the primary
+  applies — including one added later. `TomMimeEncoder`'s empty branch writes
+  `_writePart(out, const TomMessageBody.text(''))`, which is byte-identical
+  because `wrapBase64('')` is `''`.
+
+  Behaviour is unchanged: `charset` still defaults to `utf-8`, only its
+  spelling moved. Two tests in `messaging_test.dart` pin the properties rather
+  than the values: one asserts that the four ways of building a part yield a
+  *set of size one* of charsets (spelling `'utf-8'` a fifth time would have
+  been a fifth site), the other that a part built by name is recognised by the
+  predicate for it. Both were verified by mutation, the defect being latent and
+  so not showable red.
+
 - **`TomUserPreferences` read the zone twice for every write (tcinc621).**
   `_write` resolved the principal for itself — it needs one, because the row it
   may be *inserting* has no id to copy one from — and then called `_rowFor`,

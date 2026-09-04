@@ -297,7 +297,7 @@ plain-text fallback — with ordering least-preferred first, matching MIME's
 #### Constructors
 
 ```dart
-const TomMessageBody(String mediaType, String content, {String charset = 'utf-8'})
+const TomMessageBody(String mediaType, String content, {String charset = defaultCharset})
 
 const TomMessageBody.text(String content)
 
@@ -316,7 +316,7 @@ factory TomMessageBody.fromJson(Map<String, Object?> map)
 | -------- | ---- | ----------- |
 | `mediaType` | `String` | The IANA media type, e.g. `text/plain` or `text/html` (final). |
 | `content` | `String` | The content itself (final). |
-| `charset` | `String` | The character set the content is in; defaults to `utf-8` (final). |
+| `charset` | `String` | The character set the content is in; defaults to `defaultCharset` (final). |
 | `isPlainText` | `bool` | *(getter)* Whether `mediaType` is `text/plain`, case-insensitively. |
 | `isHtml` | `bool` | *(getter)* Whether `mediaType` is `text/html`, case-insensitively. |
 
@@ -326,6 +326,12 @@ factory TomMessageBody.fromJson(Map<String, Object?> map)
 | ------ | --------- | ----------- |
 | `toJson` | `Map<String, Object?> toJson()` | Encodes the part as a JSON-native map. |
 | `toString` | `String toString()` | *(override)* The media type and the content's length in characters. |
+
+#### Static Constants
+
+| Constant | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultCharset` | `String` | The character set a part carries when the caller names none: `utf-8`. Both constructors and `fromJson` read the default from here, so it has one home; code deciding whether a part needs converting should compare against it rather than restate the value and become another. |
 
 ### TomAttachment
 
