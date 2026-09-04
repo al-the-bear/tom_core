@@ -239,6 +239,12 @@ manual registration.
 
   where `order` and `details` are nested provider scope segments under the
   `demo23` zone scope.
+- A provider constructed with **no scope id** contributes no segment: it passes
+  through to the surrounding scope, so its path and the path of everything it
+  declares are exactly the surrounding one. That is the shape of a root screen
+  provider — inside a `TomScope.withScope('demo23')` zone it resolves under
+  `demo23`, and outside any zone it resolves under the root scope, whose path
+  is empty, so its widgets address their resources by bare id.
 
 ## Path composition: `TomScopePath`
 

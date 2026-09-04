@@ -21,6 +21,38 @@
 
 ### Fixed
 
+- **A root screen provider prefixed every lookup with `default.`.**
+  `TomScreenElementsProviderBase` built with no scope id is meant to add no
+  segment, and it implemented that by copying the surrounding scope's `id` and
+  `parent` onto itself. For an ordinary surrounding scope the copy renders the
+  same path, so the intent held. For the root it did not:
+  `TomScope.buildScopePath` elides the root by **identity** and never by name —
+  deliberately, so that a domain scope legitimately named `default` keeps its
+  segment — and a copy can reproduce an id and a parent but not an identity.
+  So the copy stopped being elided and contributed a `default` segment the
+  original does not have.
+
+  A provider with no surrounding zone is the default shape, not an edge case,
+  so the path affected was the common one: `default.field` instead of `field`
+  for its own widgets, `default.order` for every provider nested beneath it,
+  and a `default` segment injected into anything run through its `runInScope`.
+  Resource and authorization lookups then addressed a subtree that does not
+  exist, which does not throw — `TomCtr` echoes the unresolved key — so the
+  screen renders with its keys showing rather than failing anywhere a stack
+  trace would name.
+
+  The provider now *holds* the scope it passes through to instead of copying
+  its identity, and forwards `scope`, `getScopePath()` and `runInScope()` to
+  it. Forwarding `scope` is what fixes the nested case, since a child provider
+  parents onto `parent.scope` and so now reaches the original rather than the
+  copy. It still initialises its own identity, so it remains usable wherever a
+  scope with an identity is required.
+
+  Six tests in `scope_propagation_test.dart` cover it, paired with two that
+  pin what must **not** change: adoption of a non-root scope still yields that
+  scope's path, and a provider whose scope id genuinely is `default` still
+  keeps its segment.
+
 - **Two documents said nine shipped widgets did not exist.** A planning table
   headed `Implemented` listed eleven custom widgets as `No`, and a verbatim copy
   of it sat in a second document. Nine of the eleven ship — seven of them with

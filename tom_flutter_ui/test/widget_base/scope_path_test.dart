@@ -32,10 +32,15 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// - `acl_container.dart` builds *multi-segment* policy paths whose middle
 ///   segments are opt-in (`idScope`), which is a different rule, not this one
 ///   with extra steps.
+/// - `tom_screen_elements_provider.dart` forwards its own scope path to the
+///   scope it passes through to, and to `super` otherwise. It composes
+///   nothing: both operands of a join would have to exist for that, and here
+///   there is one path and no id.
 const _rawScopePathReaders = <String, int>{
   'lib/src/widget_base/tom_scope_path.dart': 1,
   'lib/src/forms/tom_form.dart': 2,
   'lib/src/advanced_container_layout/acl_container.dart': 2,
+  'lib/src/widget_base/tom_screen_elements_provider.dart': 2,
 };
 
 /// Every `.dart` file under `lib/`, as workspace-relative paths.
@@ -48,15 +53,23 @@ List<String> _libSources() =>
         .toList()
       ..sort();
 
-/// Counts `getScopePath()` calls in [path], ignoring comment lines.
+/// Matches the signature of a `getScopePath()` override, which declares the
+/// method rather than calling it.
+final _scopePathDeclaration = RegExp(r'\bString\s+getScopePath\s*\(');
+
+/// Counts `getScopePath()` calls in [path], ignoring comment lines and the
+/// method's own declaration.
 ///
 /// Dartdoc regularly names the method in prose (`[TomScope.current
 /// .getScopePath()]`), and a documentation mention is not a second
-/// implementation — only executable code can drift.
+/// implementation — only executable code can drift. A class that *implements*
+/// the method is likewise not reading a scope path, so its signature line does
+/// not count; the calls in its body still do.
 int _scopePathCalls(String path) => File(path)
     .readAsLinesSync()
     .where((line) => !line.trimLeft().startsWith('//'))
     .where((line) => line.contains('getScopePath()'))
+    .where((line) => !_scopePathDeclaration.hasMatch(line))
     .length;
 
 void main() {

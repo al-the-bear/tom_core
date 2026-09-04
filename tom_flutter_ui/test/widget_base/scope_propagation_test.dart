@@ -67,6 +67,19 @@ class _OrderDetailsProvider extends TomScreenElementsProviderBase {
   late final name = _ProbeNode(tomId: 'name', scope: this);
 }
 
+/// A provider that adopts whatever scope surrounds it instead of adding a
+/// segment — the shape a root screen provider takes when it expects to be
+/// constructed inside a [TomScope.withScope] zone.
+///
+/// Used here for the case the zone is *absent*, which is the default for a
+/// provider and the one the adoption branch got wrong.
+class _AdoptingProvider extends TomScreenElementsProviderBase {
+  _AdoptingProvider([TomScreenElementsProvider? parent]) : super(null, parent);
+
+  late final field = _ProbeNode(tomId: 'field', scope: this);
+  late final order = _OrderProvider(this);
+}
+
 Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
@@ -210,6 +223,78 @@ void main() {
           'checkout',
         );
       });
+    });
+  });
+
+  group('TomScreenElementsProviderBase adopting the root scope', () {
+    // Adoption with no surrounding zone is the *default* shape for a provider,
+    // and the one the group above does not reach: with an ambient 'checkout'
+    // an adopted copy of the parent renders the same path, so the copy passes
+    // for the original. The root sentinel is the case where it cannot, because
+    // TomScope.buildScopePath elides the root by identity and never by name —
+    // deliberately, so a domain scope legitimately named 'default' keeps its
+    // segment. A copy reproduces the id and the parent faithfully; it cannot
+    // reproduce identity, so it stops being elided and contributes a segment.
+
+    test('adopting the root scope yields the empty path', () {
+      expect(_AdoptingProvider().scope.getScopePath(), '');
+    });
+
+    test('a widget it declares resolves unprefixed', () {
+      // The consequence a reader notices: every resource and authorization
+      // lookup below a root provider would be prefixed with 'default.'.
+      expect(_AdoptingProvider().field.basePath, 'field');
+    });
+
+    test('a nested provider does not inherit a root segment', () {
+      expect(_AdoptingProvider().order.scope.getScopePath(), 'order');
+    });
+
+    test('widgets under a nested provider resolve without a root segment', () {
+      expect(_AdoptingProvider().order.submit.basePath, 'order.submit');
+    });
+
+    test('running in the adopted scope adds no segment', () {
+      final path = _AdoptingProvider().scope.runInScope(
+        () => TomScope.withScope('checkout', () => TomScope.current)
+            .getScopePath(),
+      );
+      expect(path, 'checkout');
+    });
+
+    test('adopting a non-root scope still yields that scope path', () {
+      // The case that already worked, kept as the other half of the pair so a
+      // fix for the root case cannot silently break the ordinary one.
+      TomScope.withScope('checkout', () {
+        expect(_AdoptingProvider().scope.getScopePath(), 'checkout');
+      });
+    });
+
+    test('a provider named default keeps its segment', () {
+      // The behaviour the identity check exists to protect: eliding by name
+      // would make this path empty. It has to stay 'default'.
+      expect(
+        TomScreenElementsProviderBase('default').scope.getScopePath(),
+        'default',
+      );
+    });
+  });
+
+  group('root-adopted resource resolution', () {
+    testWidgets('a root-adopted widget reads the unscoped resource', (
+      tester,
+    ) async {
+      // End-to-end: the bundle holds 'field.label' at its root and
+      // 'checkout.field.label' below. A provider that adopted a *copy* of the
+      // root resolves 'default.field.label' and finds neither, so the key
+      // echoes back — which is the silent failure, since nothing throws.
+      final provider = _AdoptingProvider();
+
+      await tester.pumpWidget(_host(provider.field));
+      await tester.pumpAndSettle();
+
+      expect(find.text('unscoped value'), findsOneWidget);
+      expect(find.text('default.field.label'), findsNothing);
     });
   });
 
