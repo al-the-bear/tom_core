@@ -7,7 +7,11 @@
 /// value, a [TomCacheEntry] stored verbatim to carry its own lifetime, stopping
 /// a cache's periodic timers, and replacing the current [TomCacheManager].
 ///
-/// Its ten steps run in that order, one per item.
+/// Its ten steps run in that order, one per item, and are reproduced as the
+/// ten subsections of the "Walkthrough" section of `doc/cache.md` — one for
+/// one and in order. `test/cache_test.dart` counts both sides and fails when
+/// they disagree, so a step added here without a subsection there, or the
+/// reverse, turns a test red rather than leaving the guide quietly wrong.
 ///
 /// Run with `dart run example/cache/cache_example.dart`. Every step checks its
 /// own result and the run fails when one does not hold, so a green run is a

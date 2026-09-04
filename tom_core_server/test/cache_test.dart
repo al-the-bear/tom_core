@@ -1726,12 +1726,42 @@ void main() {
 
   group('The example runs green', () {
     final examplePath = p.join('example', 'cache', 'cache_example.dart');
+    final guidePath = p.join('doc', 'cache.md');
+
+    /// The numbers of the example's numbered steps, in the order they appear.
+    ///
+    /// A step is a top-level comment in `run()` opening with `// <n>.`, which is
+    /// the shape every one of them has and nothing else in the file does — the
+    /// continuation lines of a step's comment are indented past it.
+    List<int> exampleStepNumbers() => RegExp(r'^  // (\d+)\. ', multiLine: true)
+        .allMatches(File(examplePath).readAsStringSync())
+        .map((m) => int.parse(m.group(1)!))
+        .toList();
+
+    /// The numbers of the `### <n>.` subsections under the guide's
+    /// "Walkthrough" heading, in the order they appear.
+    List<int> walkthroughStepNumbers() {
+      final lines = File(guidePath).readAsLinesSync();
+      final heading = lines.indexWhere((l) => l.trim() == '## Walkthrough');
+      expect(
+        heading,
+        greaterThanOrEqualTo(0),
+        reason: 'no Walkthrough heading',
+      );
+      final next = lines.indexWhere((l) => l.startsWith('## '), heading + 1);
+      final section = lines.sublist(heading, next < 0 ? lines.length : next);
+      return section
+          .map((l) => RegExp(r'^### (\d+)\. ').firstMatch(l))
+          .whereType<RegExpMatch>()
+          .map((m) => int.parse(m.group(1)!))
+          .toList();
+    }
 
     test('under exactly the command its header documents', () async {
       // The example is the module's worked demonstration and the source of the
-      // completion document's snippets, so it drifts silently unless something
-      // runs it. Run it the way a reader would — plain `dart run`, no extra
-      // flags — and require the exit code its own checks produce.
+      // guide's walkthrough, so it drifts silently unless something runs it.
+      // Run it the way a reader would — plain `dart run`, no extra flags — and
+      // require the exit code its own checks produce.
       final result = await Process.run(Platform.resolvedExecutable, [
         'run',
         examplePath,
@@ -1742,10 +1772,40 @@ void main() {
         reason: 'example failed: ${result.stdout}${result.stderr}',
       );
       // A crash before the last step would also exit 0 if it were swallowed,
-      // so pin that every numbered step actually reported.
-      for (var step = 1; step <= 10; step++) {
+      // so pin that every numbered step actually reported. The numbers come
+      // from the file rather than from a literal here, so adding a step does
+      // not leave this loop checking a prefix of the example.
+      final steps = exampleStepNumbers();
+      expect(
+        steps,
+        isNotEmpty,
+        reason: 'no numbered steps found in the example',
+      );
+      for (final step in steps) {
         expect(result.stdout, contains('$step. '));
       }
+    });
+
+    test('with its steps matching the guide walkthrough one for one', () {
+      // `doc/cache.md` reproduces the example as its "Walkthrough", and both
+      // the guide and the example's header say the correspondence is one for
+      // one and in order. That claim is the reason the walkthrough is worth
+      // reading — it is what makes the snippets code the suite has run — so it
+      // has to be checked rather than merely asserted in prose.
+      //
+      // The check is against the *shipped* guide deliberately: that is the copy
+      // a reader of the package can reach, so it is the one whose drift would
+      // mislead. A stated correspondence that nothing counts is worth exactly
+      // the reader's willingness to believe it.
+      expect(walkthroughStepNumbers(), exampleStepNumbers());
+
+      // Numbering that starts at 1 and never skips, so "step 7" means the same
+      // thing on both sides. The equality above would be satisfied by two
+      // identically-wrong sequences.
+      expect(
+        exampleStepNumbers(),
+        List<int>.generate(exampleStepNumbers().length, (i) => i + 1),
+      );
     });
 
     test('with its expectations checked rather than asserted', () async {

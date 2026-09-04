@@ -2,6 +2,35 @@
 
 ### Fixed
 
+- **The cache example's worked walkthrough now ships with the package
+  (tcincb2_ahwp).** `example/cache/cache_example.dart` said its steps
+  corresponded one for one with the snippets in the cache module's *completion
+  document* — quest material, which a reader holding the package cannot reach.
+  tcinc639 had already taken that pointer out of the header, leaving the
+  correspondence anchored nowhere at all.
+
+  The snippets are now a `## Walkthrough` section of `doc/cache.md`, ten
+  numbered subsections matching the example's ten numbered steps, and the
+  header points there. The invariant stopped being a promise: `cache_test.dart`
+  reads the step numbers out of the example and the `### <n>.` headings out of
+  the guide and requires the sequences to be equal and gap-free, so a step added
+  on one side and not the other is a red test rather than a quietly wrong guide.
+
+  The unguarded copy had already rotted, which is the argument for the guard. It
+  was missing a section for the example's step 7 — the refusal of a `null`,
+  added after the correspondence was written — so its own claim to describe
+  "nine steps" was false. And its "Stopping the timers" snippet still showed
+  `clearanceTimer?.isActive` answering `false` after a stop, with prose saying
+  the fields "do not become `null`" — the behaviour that same document records,
+  further down, as having been changed to null them. The example had been right
+  throughout, because something ran it.
+
+  The overlap the move created was reconciled: the `TomCacheEntry`-verbatim
+  snippet under "Reading, Storing, Removing" became a link to step 8, which
+  shows the same thing against a past instant that makes it observable, and
+  "Registering a Cache" now names the steps that demonstrate each constructor
+  knob rather than restating them.
+
 - **`@TomDbColumn(columnType: ...)` is now honoured by the whole predicate, and
   refused when it names nothing storable (tcincb1_ahzf).** The annotation exists
   so an entity can say that a column is stored as something other than its Dart

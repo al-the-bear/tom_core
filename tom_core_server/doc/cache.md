@@ -8,6 +8,7 @@ bounded, and can expire entries by age or clear itself on a schedule.
 ## Table of Contents
 
 - [Overview](#overview)
+- [Walkthrough](#walkthrough)
 - [Registering a Cache](#registering-a-cache)
 - [Reading, Storing, Removing](#reading-storing-removing)
 - [Expiry and Bounds](#expiry-and-bounds)
@@ -32,10 +33,232 @@ bounded, and can expire entries by age or clear itself on a schedule.
 | `TomCacheRemoveMessage` | class | Cross-isolate remove, run in the main isolate |
 | `TomCacheRetrieveMessage` | class | Cross-isolate read, run in the main isolate |
 
+## Walkthrough
+
+The ten subsections below are the ten numbered steps of
+`example/cache/cache_example.dart`, one for one and in order. The snippets are
+that file with its `print` and `check` lines taken out, so each is code the
+suite has run rather than code that merely reads well — the example checks every
+result and `test/cache_test.dart` requires it to exit 0, which is what keeps
+these honest once nobody runs it by hand.
+
+The pairing is not a convention someone has to remember: the same suite counts
+the example's numbered steps and the subsections here and fails when the two
+disagree, so a step added on one side and not the other turns a test red. The
+sections after this one are the reference — they say *why* each rule is what it
+is, and are linked from the steps that demonstrate them.
+
+### 1. Registering a cache and using it
+
+```dart
+TomCacheManager.addCache(
+  TomCache('greetings', deleteEntriesAfterSeconds: 300),
+);
+
+await TomCache.toNameCache('greetings', 'en', 'hello');
+final greeting = await TomCache.fromNameCache<String>('greetings', 'en');
+
+greeting;   // hello
+```
+
+`deleteEntriesAfterSeconds: 300` gives every entry stored without an explicit
+deletion time a five-minute lifetime.
+
+### 2. An expired entry reads as a miss
+
+```dart
+await TomCache.toNameCache(
+  'greetings',
+  'old',
+  'stale',
+  DateTime.now().subtract(const Duration(seconds: 1)),
+);
+
+final expired = await TomCache.fromNameCache<String>('greetings', 'old');
+
+expired;   // null
+```
+
+The read drops the stale entry as it returns, so the space is reclaimed on
+access rather than waiting for the deletion timer.
+
+### 3. Caching forever
+
+```dart
+TomCacheManager.addCache(TomCache('forever'));
+
+await TomCache.toNameCache('forever', 'pi', '3.14159');
+final kept = await TomCache.fromNameCache<String>('forever', 'pi');
+
+kept;   // 3.14159
+```
+
+With no `deleteEntriesAfterSeconds` and no explicit deletion time the entry
+carries no expiry instant at all. This is the other half of step 2's rule: an
+entry expires only if it *has* a deletion time that has passed, so one with none
+never expires on its own.
+
+### 4. LRU eviction in a bounded cache
+
+```dart
+TomCacheManager.addCache(
+  TomCache('lru', maximumEntries: 2, deleteEntriesAfterSeconds: 300),
+);
+
+await TomCache.toNameCache('lru', 'a', 1);
+await TomCache.toNameCache('lru', 'b', 2);
+await TomCache.toNameCache('lru', 'c', 3);   // evicts 'a', the least recent
+
+await TomCache.fromNameCache<int>('lru', 'a');   // null
+await TomCache.fromNameCache<int>('lru', 'c');   // 3
+```
+
+A read counts as a touch: reading `a` before storing `c` would have made `b` the
+eviction candidate instead. See [Expiry and Bounds](#expiry-and-bounds).
+
+### 5. A cache named after the type it holds
+
+```dart
+class User {
+  final String id;
+  User(this.id);
+}
+
+TomCacheManager.addCache(
+  TomCache.forType(User, deleteEntriesAfterSeconds: 300),
+);
+
+await TomCache.toTypeCache<User>('u-42', User('42'));
+final user = await TomCache.fromTypeCache<User>('u-42');
+
+user?.id;   // 42
+
+await TomCache.removeFromTypeCache<User>('u-42');
+await TomCache.fromTypeCache<User>('u-42');   // null
+```
+
+`TomCache.forType(User, …)` names the cache `User.toString()`, which is exactly
+the name `toTypeCache<User>` and `fromTypeCache<User>` compute — so the two sides
+agree without a shared constant.
+
+### 6. Reading a value as the wrong type
+
+```dart
+await TomCache.toNameCache('greetings', 'num', 123);
+
+try {
+  await TomCache.fromNameCache<String>('greetings', 'num');
+} on TomCacheException catch (e) {
+  e.key;   // error.cache_retrieve.types_dont_match
+}
+```
+
+The cache stores `Object`, so nothing prevents a heterogeneous cache; the type
+parameter is checked at the point of reading. The exception carries the cast's
+`TypeError` as `e.rootException` and the cast site's trace as `e.stack`, so the
+mismatch can be diagnosed from the log without reproducing it — see
+[Failures Are Internal](#failures-are-internal).
+
+### 7. A `null` is not a storable value
+
+```dart
+// Does not compile: `toNameCache` takes a non-nullable `Object`.
+// await TomCache.toNameCache('greetings', 'nothing', null);
+
+final dynamic store = TomCache.toNameCache;
+var refused = false;
+try {
+  await store('greetings', 'nothing', null);
+} on TypeError {
+  refused = true;
+}
+
+refused;   // true
+
+await TomCache.fromNameCache<String>('greetings', 'nothing');   // null
+```
+
+Both entrances refuse one, so the key simply stays absent: the analyzer stops an
+ordinary call site before the program runs, and the dynamic call above — how a
+script or a reflective caller reaches the same helper — is refused with a
+`TypeError` at the call. The reason is step 2's rule, spelled out under
+[Reading, Storing, Removing](#reading-storing-removing).
+
+### 8. Storing an entry with its own lifetime
+
+```dart
+await TomCache.toNameCache(
+  'greetings',
+  'flash',
+  TomCacheEntry(
+    'short-lived',
+    DateTime.now().subtract(const Duration(seconds: 1)),
+  ),
+);
+
+final flash = await TomCache.fromNameCache<String>('greetings', 'flash');
+
+flash;   // null
+```
+
+Passing a `TomCacheEntry` as the value stores it directly and keeps its own
+`deletionTime`, overriding the cache's default lifetime for that one entry. The
+past instant is what makes that observable rather than merely stated: `greetings`
+carries a 300-second default that would have kept this entry readable, so the
+miss can only come from the entry's own instant having been the one used.
+
+### 9. Stopping the timers
+
+```dart
+final ticking = TomCache('ticking', clearIntervalSeconds: 60);
+TomCacheManager.addCache(ticking);
+
+ticking.clearanceTimer?.isActive;   // true
+
+ticking.stopTimers();
+
+ticking.clearanceTimer;   // null
+```
+
+A cache installs its periodic timers on construction, and a running timer keeps
+the isolate alive. A program that finishes while a cache exists must either stop
+the timers or exit explicitly — the example does the latter, with `exit(0)`.
+
+`stopTimers` cancels each timer **and clears the field**, so `clearanceTimer ==
+null` is a straight answer to "is this cache still ticking?" rather than one that
+holds only until the first stop.
+
+### 10. Installing a manager
+
+```dart
+TomCacheManager.getCache('greetings');   // the cache registered in step 1
+
+TomCacheManager.setCurrent(TomCacheManager(true));
+
+TomCacheManager.getCache('greetings');   // null
+```
+
+Replacing the current manager discards the registered caches with it, which is
+what makes it useful between tests. The positional flag says caches are served
+from this isolate; in the main isolate it is forced to `true` regardless.
+
+What it discards is the **registry**, not the caches' timers. A discarded cache
+is unreachable but still installed in the event loop, still firing and still
+keeping the isolate alive — so timers have to be stopped *before* the manager
+holding them goes, at which point there is no longer any handle to stop them
+with. That is why step 9 comes first.
+
 ## Registering a Cache
 
-Create a cache and register it once at startup. `TomCache.forType` names the
-cache after the Dart type it holds, which pairs with the `…TypeCache` helpers:
+Create a cache and register it once at startup — `TomCacheManager.addCache` is
+the only entrance, and there is no counterpart that removes one (see
+[Not Yet Implemented](#not-yet-implemented)). A cache is named either by a string
+or, through `TomCache.forType`, after the Dart type it holds, which is what pairs
+it with the `…TypeCache` helpers. The constructor's four knobs are independent
+and all optional: [step 1](#1-registering-a-cache-and-using-it) registers a named
+cache with a default lifetime, [step 4](#4-lru-eviction-in-a-bounded-cache) adds
+an LRU bound, and [step 5](#5-a-cache-named-after-the-type-it-holds) registers a
+type cache. Combining them is just passing more than one:
 
 ```dart
 TomCacheManager.addCache(
@@ -88,15 +311,8 @@ replacement, or a removal from a no-op. Do not branch on it; see
 
 A value that *is already* a `TomCacheEntry` is stored verbatim, so it keeps its
 own `deletionTime` and the cache's `deleteEntriesAfterSeconds` does not apply to
-it. This is how a single entry opts out of the cache-wide default:
-
-```dart
-await TomCache.toNameCache(
-  'greetings',
-  'flash',
-  TomCacheEntry('short-lived', DateTime.now().add(const Duration(seconds: 30))),
-);
-```
+it. This is how a single entry opts out of the cache-wide default — see
+[step 8](#8-storing-an-entry-with-its-own-lifetime).
 
 > **Entries without a deletion time are kept forever.** A value stored with
 > neither a `deleteEntriesAfterSeconds` default nor an explicit `deletionTime`
@@ -301,7 +517,8 @@ than an outcome, and pinning it would mean asserting a shape.
 isolate and with no setup of any kind — store and read, expiry, the entry that
 never expires, LRU eviction, the type cache, the mismatch, the refusal of a
 `null`, an entry carrying its own lifetime, stopping the timers, and replacing
-the manager. Every step checks
+the manager. Those ten steps are reproduced above as the
+[Walkthrough](#walkthrough). Every step checks
 its own result through the shared `example/_support/check.dart` and the run
 fails when one does not hold, so a green run is a verification rather than a
 transcript — see
@@ -321,13 +538,16 @@ external server and carries no tag, so all of it runs in the default
 
 The two are linked in both directions — the example's header names the suite,
 and the suite runs the example, under exactly the command that header documents,
-requiring exit 0. A second group extracts the `dart` block under the module
+requiring exit 0. The suite also holds the [Walkthrough](#walkthrough) to the
+example, counting the numbered steps in one and the subsections in the other and
+failing when they disagree, so the pairing the walkthrough claims cannot quietly
+stop being true. A second group extracts the `dart` block under the module
 readme's "Quick start" heading and runs that too, under a 20-second watchdog:
 the regression it guards is a program that never returns, and a hang reported as
 a hang says less than a hang reported as a named failure.
 
 So each of this module's prose artefacts is falsifiable from the suite: the
-example, the readme's quick start, and all but one of the
+example, the walkthrough above, the readme's quick start, and all but one of the
 [Not Yet Implemented](#not-yet-implemented) items above, which that section
 itself accounts for. None of them can drift quietly while nobody is reading.
 
