@@ -12,13 +12,17 @@
 /// principal and stopped again at the end, which is what lets this program
 /// terminate on its own.
 ///
-/// Run with `dart run example/authorization/authorization_example.dart`.
-/// The same behaviour is covered by `test/authorization_test.dart`.
+/// Run with `dart run example/authorization/authorization_example.dart`. Every
+/// step checks its own result and the run fails when one does not hold, so a
+/// green run is a verification and not just a transcript. The same behaviour is
+/// covered by `test/authorization_test.dart`.
 library;
 
 import 'dart:convert';
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 /// Builds a client JWT token whose `validUntil` claim is [validFor] from now.
 /// Pass a negative duration to obtain an already-expired token.
@@ -41,7 +45,11 @@ Future<void> run() async {
 
   final cached = await TomAuthorizationCache.getPrincipal(aliceToken);
   print('1. cached principal username : ${cached?.username}');
-  assert(cached != null && cached.username == 'alice');
+  check(
+    cached != null && cached.username == 'alice',
+    'a token presented a second time is answered from the cache, so the '
+    'authorization lookup behind it runs once',
+  );
 
   // 2. An unknown token is a cache miss and returns null (not an error).
   final strangerToken = _token('stranger');
@@ -49,7 +57,11 @@ Future<void> run() async {
   print(
     '2. unknown token -> miss     : ${miss == null ? 'null (miss)' : miss.username}',
   );
-  assert(miss == null);
+  check(
+    miss == null,
+    'a token nobody has resolved yet is simply absent, not an error the '
+    'caller has to handle',
+  );
 
   // 3. A token whose validUntil is already in the past yields an expired entry.
   //    Reading it throws TomAuthorizationCacheException so the caller can
@@ -67,13 +79,20 @@ Future<void> run() async {
     threw = true;
     print('3. expired entry threw       : ${e.key}');
   }
-  assert(threw);
+  check(
+    threw,
+    'an expired entry is reported as "re-authorize", not quietly as a miss',
+  );
   final afterExpiry = await TomAuthorizationCache.getPrincipal(bobToken);
   print(
     '   the same token again      : '
     '${afterExpiry == null ? 'null (miss - the entry is gone)' : afterExpiry.username}',
   );
-  assert(afterExpiry == null);
+  check(
+    afterExpiry == null,
+    'the read that rejected the dead entry also dropped it, so the expiry is '
+    'reported once and never again',
+  );
 
   // 4. The cross-isolate command objects simply carry their payload; in a
   //    worker isolate getPrincipal/storePrincipal forward one of these to the
@@ -95,10 +114,18 @@ Future<void> run() async {
     '4. executor store -> completed, '
     'unknown command -> noResult: ${identical(executor.execute('nope'), TomExecutor.noResult)}',
   );
-  assert(identical(executor.execute('nope'), TomExecutor.noResult));
+  check(
+    identical(executor.execute('nope'), TomExecutor.noResult),
+    'a message this executor does not own is declined rather than mishandled, '
+    'leaving the next executor free to claim it',
+  );
   // The retrieve command resolves (asynchronously) to the stored principal.
   final retrieved = await (executor.execute(retrieve) as Future<TomPrincipal?>);
-  assert(retrieved?.username == 'alice');
+  check(
+    retrieved?.username == 'alice',
+    "a worker isolate reaches the main isolate's cache through the command "
+    'pair and gets the principal held there',
+  );
 
   // 5. A token whose validUntil claim is unreadable is refused rather than
   //    cached under an invented expiry: the entry's lifetime IS the token's,
@@ -115,13 +142,21 @@ Future<void> run() async {
       malformed,
       _principal('mallory'),
     );
-    assert(false, 'a malformed validUntil must not be cached');
+    check(
+      false,
+      'a token whose lifetime cannot be read is refused, since the entry would '
+      'otherwise outlive the token authorizing it',
+    );
   } on TomAuthorizationCacheException catch (e) {
     print(
       '5. malformed validUntil     : ${e.key} (claim ${e.parameters?['claim']})',
     );
   }
-  assert(await TomAuthorizationCache.getPrincipal(malformed) == null);
+  check(
+    await TomAuthorizationCache.getPrincipal(malformed) == null,
+    'the refusal left nothing behind, so the malformed token authorizes '
+    'nothing on the next request either',
+  );
 
   // 6. Storing the first principal also started the eviction sweep, which
   //    bounds the map by dropping entries past their expiry. Its interval is
@@ -152,8 +187,15 @@ Future<void> run() async {
   );
   // A miss rather than a rejection: the sweep removed the row, so nothing is
   // left for the read to recognise as expired.
-  assert(swept == null);
-  assert(survivor?.username == 'alice');
+  check(
+    swept == null,
+    'the sweep bounds the map by shedding the dead tokens nobody ever comes '
+    'back for',
+  );
+  check(
+    survivor?.username == 'alice',
+    'the sweep takes only what has expired and leaves the live entries alone',
+  );
 }
 
 Future<void> main() async {

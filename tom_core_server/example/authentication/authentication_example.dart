@@ -16,10 +16,14 @@
 /// and `oauth_login_example.dart` (the authorization-code handshake).
 ///
 /// Run with `dart run example/authentication/authentication_example.dart`.
-/// The same behaviour is covered by `test/authentication_test.dart`.
+/// Every step checks its own result and the run fails when one does not hold,
+/// so a green run is a verification and not just a transcript. The same
+/// behaviour is covered by `test/authentication_test.dart`.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 /// Builds the data for one login attempt with sensible example defaults.
 TomAuthenticationData _login(String username, {Object? password}) =>
@@ -245,31 +249,97 @@ Future<void> run() async {
     '${await tokens.read(providers['calendar'].issuer, 'user-99') != null}',
   );
 
-  // Assertions
-  assert(guest.principal.authenticated == false);
-  assert(user.principal.authenticated == true);
-  assert(ok.principal.user.username == 'alice');
-  assert(guestAdaptor.guestOnly && !guestAdaptor.userOnly);
-  assert(totp.type == 'totp');
-  assert(singleNode.type == TomOAuthStateStoreType.memory);
-  assert(clustered.type == TomOAuthStateStoreType.sql);
-  assert(clustered.table == defaultOAuthStateTable);
-  assert(providers['login_only'].storeTokens == false);
-  assert(providers['calendar'].storeTokens == true);
-  assert(providers['calendar'].authorizationParameters.length == 2);
+  // Checks
+  check(
+    guest.principal.authenticated == false,
+    'the scaffolding service leaves a GUEST login unauthenticated',
+  );
+  check(
+    user.principal.authenticated == true,
+    'the scaffolding service authenticates any other user',
+  );
+  check(
+    ok.principal.user.username == 'alice',
+    'the accepted credential resolves to the user who owns it',
+  );
+  check(
+    guestAdaptor.guestOnly && !guestAdaptor.userOnly,
+    'a guest-only adaptor is offered to guests and to nobody else',
+  );
+  check(
+    totp.type == 'totp',
+    'the annotation carries the mechanism the adaptor was declared for',
+  );
+  check(
+    singleNode.type == TomOAuthStateStoreType.memory,
+    'a single node keeps pending authorizations in memory, unconfigured',
+  );
+  check(
+    clustered.type == TomOAuthStateStoreType.sql,
+    'a cluster moves them to storage every node can read the redirect from',
+  );
+  check(
+    clustered.table == defaultOAuthStateTable,
+    'naming only the data source still yields the default table',
+  );
+  check(
+    providers['login_only'].storeTokens == false,
+    'holding a provider grant is opt-in, so plain sign-in keeps nothing',
+  );
+  check(
+    providers['calendar'].storeTokens == true,
+    'a registration for delegated access keeps the grant it was given',
+  );
+  check(
+    providers['calendar'].authorizationParameters.length == 2,
+    'the extra parameters an offline grant needs reach the provider',
+  );
   // One IdP, two registrations: the issuer does not tell them apart.
-  assert(providers['login_only'].issuer == providers['calendar'].issuer);
-  assert(clocks['well_synced'].clockSkew == const Duration(seconds: 60));
-  assert(clocks['slow_clock'].clockSkew == const Duration(minutes: 5));
-  assert(held.hasRefreshToken);
-  assert(!held.isExpired());
-  assert(!'$held'.contains('rt-long-lived'));
-  assert(linked.length == 1);
-  assert(stillLinkedTo == 'alice');
-  assert(await tokens.read(identity.issuer, identity.subject) == null);
-  assert(await identities.localUsernameFor(identity) == null);
-  assert(dead == null);
-  assert(await tokens.read(providers['calendar'].issuer, 'user-99') == null);
+  check(
+    providers['login_only'].issuer == providers['calendar'].issuer,
+    'the two registrations are one identity provider, keyed by their own '
+    'ids rather than by the issuer they share',
+  );
+  check(
+    clocks['well_synced'].clockSkew == const Duration(seconds: 60),
+    'an ID token expiry is read against a minute of tolerance by default',
+  );
+  check(
+    clocks['slow_clock'].clockSkew == const Duration(minutes: 5),
+    'the drift forgiven is widened for the one provider that needs it',
+  );
+  check(
+    held.hasRefreshToken,
+    'the stored grant can still obtain a fresh access token',
+  );
+  check(!held.isExpired(), 'the stored grant is still usable');
+  check(
+    !'$held'.contains('rt-long-lived'),
+    'a grant names itself in log output instead of printing its credentials',
+  );
+  check(
+    linked.length == 1,
+    'the account lists the single external identity it linked',
+  );
+  check(
+    stillLinkedTo == 'alice',
+    'a listed link is a detached snapshot, so editing one does not edit '
+    'the store',
+  );
+  check(
+    await tokens.read(identity.issuer, identity.subject) == null,
+    'disconnecting an identity leaves no live credential for its mailbox',
+  );
+  check(
+    await identities.localUsernameFor(identity) == null,
+    'the link is gone too, not just the grant that hung off it',
+  );
+  check(dead == null, 'an expired grant with no refresh token yields no token');
+  check(
+    await tokens.read(providers['calendar'].issuer, 'user-99') == null,
+    'a grant that can never mint another token is deleted rather than left '
+    'for an operator to mistake for a live but idle one',
+  );
 }
 
 void main() => run();

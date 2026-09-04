@@ -26,12 +26,16 @@
 /// doubt ([classifySqlFailure]) — and the wiring, including the error you get
 /// when the named data source is not registered.
 ///
-/// Run with `dart run example/scheduling/scheduling_example.dart`.
+/// Run with `dart run example/scheduling/scheduling_example.dart`. Every step
+/// checks its own result and the run fails when one does not hold, so a green
+/// run is a verification and not just a transcript.
 /// The same behaviour is covered by `test/scheduling_schema_test.dart` (schema
 /// and encoding) and `test/scheduling_db_test.dart` (the live behaviour).
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 void run() {
   // 1. The queue table. The unique key on (job_name, scheduled_for) is the
@@ -41,11 +45,12 @@ void run() {
   final queueDdl = jobRunTableDdl(defaultJobRunTable);
   print('1. queue table `$defaultJobRunTable`:');
   print(queueDdl);
-  assert(
+  check(
     queueDdl.contains(
       'UNIQUE KEY uq_tom_job_run_window '
       '(job_name, scheduled_for)',
     ),
+    'the database itself enforces one run per job per window',
   );
 
   // 2. The lease table. `token` is the fencing counter and is why a released
@@ -58,8 +63,14 @@ void run() {
   final leaseDdl = leaseTableDdl(defaultLeaseTable);
   print('\n2. lease table `$defaultLeaseTable`:');
   print(leaseDdl);
-  assert(leaseDdl.contains('token       BIGINT       NOT NULL'));
-  assert(leaseDdl.contains('version     BIGINT       NOT NULL DEFAULT 1'));
+  check(
+    leaseDdl.contains('token       BIGINT       NOT NULL'),
+    'a lease carries a fencing counter every holder must present',
+  );
+  check(
+    leaseDdl.contains('version     BIGINT       NOT NULL DEFAULT 1'),
+    'a renewal that writes the same values still touches a row',
+  );
 
   // 3. The table name is a constructor argument, so the index names follow it.
   //    Two queues over one schema would otherwise collide on `uq_..._window`.
@@ -68,7 +79,10 @@ void run() {
   print(
     '   ${other.contains('uq_billing_job_run_window') ? 'uq_billing_job_run_window' : '(missing)'}',
   );
-  assert(other.contains('uq_billing_job_run_window'));
+  check(
+    other.contains('uq_billing_job_run_window'),
+    'two queues can share one schema without colliding',
+  );
 
   // 4. Instants are stored as fixed-width UTC DATETIME(6) literals. Fixed width
   //    keeps the text ordered in SQL exactly as the instants are ordered in
@@ -78,9 +92,12 @@ void run() {
   final encoded = sqlInstant(window);
   final decoded = parseSqlInstant(encoded);
   print('\n4. instant encoding: $window -> "$encoded" -> $decoded');
-  assert(encoded == '2026-03-01 10:20:30.400500');
-  assert(decoded == window);
-  assert(decoded.isUtc);
+  check(
+    encoded == '2026-03-01 10:20:30.400500',
+    'an instant is fixed width, so SQL orders text as Dart orders time',
+  );
+  check(decoded == window, 'an encoded instant round-trips unchanged');
+  check(decoded.isUtc, 'a decoded instant is never a wall clock');
 
   // A local instant round-trips as the same *moment*, labelled UTC — the store
   // hands every caller back a UTC instant regardless of what it was given.
@@ -90,7 +107,10 @@ void run() {
     '   a local instant comes back as UTC: '
     '$normalised (same moment: ${normalised.isAtSameMomentAs(local)})',
   );
-  assert(normalised.isUtc && normalised.isAtSameMomentAs(local));
+  check(
+    normalised.isUtc && normalised.isAtSameMomentAs(local),
+    'a local instant comes back as the same moment, labelled UTC',
+  );
 
   // 5. The roll call. One row per node, rewritten on every check-in, so the
   //    cluster can notice a departed *node* rather than only an expired lease.
@@ -99,8 +119,14 @@ void run() {
   final nodeDdl = schedulerNodeTableDdl(defaultSchedulerNodeTable);
   print('\n5. roll call table `$defaultSchedulerNodeTable`:');
   print(nodeDdl);
-  assert(nodeDdl.contains('node_id          VARCHAR(191) NOT NULL'));
-  assert(nodeDdl.contains('checkin_interval BIGINT       NOT NULL'));
+  check(
+    nodeDdl.contains('node_id          VARCHAR(191) NOT NULL'),
+    'the roll call keys on the same node id a claim runs under',
+  );
+  check(
+    nodeDdl.contains('checkin_interval BIGINT       NOT NULL'),
+    'each node publishes the interval it wants to be judged by',
+  );
 
   // 6. The failure test is Quartz's, and it is a pure function — which is the
   //    whole reason it can be shown here at all, and asserted in a test with no
@@ -122,8 +148,9 @@ void run() {
     '   a peer silent for 40s, judged by a node that is itself current: '
     '${isSchedulerNodeFailed(peer: peer, now: healthy, lastSelfCheckin: healthy) ? 'failed' : 'alive'}',
   );
-  assert(
+  check(
     isSchedulerNodeFailed(peer: peer, now: healthy, lastSelfCheckin: healthy),
+    'a peer that has missed its check-in window is named failed',
   );
 
   // The same peer, same instant — but the accuser has itself been silent for
@@ -134,12 +161,13 @@ void run() {
     '   the same peer, judged by a node that was itself stalled 2m: '
     '${isSchedulerNodeFailed(peer: peer, now: healthy, lastSelfCheckin: stalledSince) ? 'failed' : 'alive'}',
   );
-  assert(
+  check(
     !isSchedulerNodeFailed(
       peer: peer,
       now: healthy,
       lastSelfCheckin: stalledSince,
     ),
+    'a node that was itself stalled cannot accuse its peers of its outage',
   );
 
   // It accelerates recovery; it never replaces the lease. The lease TTL stays
@@ -161,20 +189,23 @@ void run() {
     '   the connection broke:   '
     '${classifySqlFailure(MySQLClientException('socket closed')).name}',
   );
-  assert(
+  check(
     classifySqlFailure(MySQLServerException('deadlock', 1213)) ==
         TomSqlFailureMode.definite,
+    'a write the server answered has a settled outcome',
   );
-  assert(
+  check(
     classifySqlFailure(MySQLClientException('socket closed')) ==
         TomSqlFailureMode.ambiguous,
+    'a lost acknowledgement leaves the claim in doubt',
   );
   // Anything unrecognised is ambiguous too, and that asymmetry is deliberate: a
   // false "ambiguous" costs one extra SELECT, a false "definite" an abandoned
   // run.
-  assert(
+  check(
     classifySqlFailure(StateError('anything at all')) ==
         TomSqlFailureMode.ambiguous,
+    'an unrecognised failure costs a SELECT rather than a run',
   );
 
   // 8. In a deployment the schema is created by the migration orchestrator, not
@@ -211,19 +242,29 @@ void run() {
     TomSqlJobStore.named('not_registered');
   } on TomServerException catch (e) {
     print('\n9. TomSqlJobStore.named on an unknown data source: ${e.key}');
-    assert(e.key == 'scheduling.store.unknown_datasource');
+    check(
+      e.key == 'scheduling.store.unknown_datasource',
+      'a queue on a missing data source is a configuration error, '
+      'not an empty queue',
+    );
   }
   try {
     TomSqlLeaseLock.named('not_registered');
   } on TomServerException catch (e) {
     print('   TomSqlLeaseLock.named on an unknown data source: ${e.key}');
-    assert(e.key == 'scheduling.lock.unknown_datasource');
+    check(
+      e.key == 'scheduling.lock.unknown_datasource',
+      'the lock refuses a missing data source just as plainly',
+    );
   }
   try {
     TomSqlSchedulerNodes.named('not_registered', nodeId: 'node-a');
   } on TomServerException catch (e) {
     print('   TomSqlSchedulerNodes.named on an unknown data source: ${e.key}');
-    assert(e.key == 'scheduling.nodes.unknown_datasource');
+    check(
+      e.key == 'scheduling.nodes.unknown_datasource',
+      'the roll call refuses a missing data source too',
+    );
   }
 
   // 10. The set, as a scheduler would take them. All must address the *same*

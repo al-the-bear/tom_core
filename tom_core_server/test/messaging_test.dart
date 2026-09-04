@@ -1874,7 +1874,11 @@ void _exampleRunsGreen(String examplePath, {required int steps}) {
         isNot(contains('assert(')),
         reason: 'an assert in the example does not run under `dart run`',
       );
-      expect(source, contains('void check(bool ok, String expectation)'));
+      expect(
+        source,
+        contains("import '../_support/check.dart'"),
+        reason: 'the example states its expectations through the shared helper',
+      );
     });
   });
 }

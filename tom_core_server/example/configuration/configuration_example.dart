@@ -29,18 +29,7 @@ import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 
-/// Throws when [ok] does not hold, naming the [expectation] that failed.
-///
-/// Deliberately not `assert`: `dart run` leaves assertions **disabled** — that
-/// is what its `--enable-asserts` flag is for — so an `assert` here compiles
-/// out under the very command this file's header gives. An example whose
-/// checks vanish under its own documented invocation is worse than one with no
-/// checks at all, because it still prints a plausible transcript and still
-/// exits 0 while every expectation in it is violated. A plain `if`/`throw`
-/// holds however the file is run.
-void check(bool ok, String expectation) {
-  if (!ok) throw StateError('configuration example failed: $expectation');
-}
+import '../_support/check.dart';
 
 Future<void> run() async {
   // 1. The `loader` hook builds the tree on FIRST ACCESS, not when it is set.

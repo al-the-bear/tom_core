@@ -8,7 +8,9 @@
 /// this example is about. See `doc/healthcheck.md` for how the route is
 /// declared and wired.
 ///
-/// Run with `dart run example/healthcheck/healthcheck_example.dart`.
+/// Run with `dart run example/healthcheck/healthcheck_example.dart`. Every step
+/// checks its own result and the run fails when one does not hold, so a green
+/// run is a verification and not just a transcript.
 ///
 /// The behaviour shown here is pinned by `test/healthcheck_test.dart`; the
 /// mounted route is pinned by `test/endpoints_pipeline_test.dart`, in the group
@@ -16,6 +18,8 @@
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 /// A custom analyzer that reports a degraded status from injected flags.
 class _DemoAnalyzer extends TomHealthAnalyzer {
@@ -34,12 +38,18 @@ Future<void> run() async {
   // 1. The default analyzer always reports OK.
   final defaultStatus = await TomDefaultHealthAnalyzer().analyzeHealth();
   print('1. default analyzer => $defaultStatus');
-  assert(defaultStatus == 'OK');
+  check(
+    defaultStatus == 'OK',
+    'a server that has plugged in no analyzer still reports itself healthy',
+  );
 
   // 2. TomHealthServer.health() delegates to the global analyzer (OK default).
   final healthDefault = await server.health();
   print('2. health() with default analyzer => $healthDefault');
-  assert(healthDefault == 'OK');
+  check(
+    healthDefault == 'OK',
+    'health() reports whatever the global analyzer says, not its own verdict',
+  );
 
   // 3. Swapping the global analyzer changes what every request returns.
   final previous = TomHealthServer.healthAnalyzer;
@@ -47,7 +57,10 @@ Future<void> run() async {
     TomHealthServer.healthAnalyzer = _DemoAnalyzer(dbOk: true, cacheOk: false);
     final degraded = await server.health();
     print('3. health() with degraded analyzer => $degraded');
-    assert(degraded == 'DEGRADED: db=true, cache=false');
+    check(
+      degraded == 'DEGRADED: db=true, cache=false',
+      'one failing dependency degrades the report and names which one',
+    );
   } finally {
     TomHealthServer.healthAnalyzer = previous;
   }

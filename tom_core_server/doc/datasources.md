@@ -903,13 +903,11 @@ dart run example/datasources/datasources_example.dart
 requires it to exit 0 having printed exactly those nine steps, in order and with
 no others — an added step nothing lists is a surface nothing checks. So the
 transcript in the file is what the module currently does rather than what it did
-when the file was written. Its expectations are written as a local
-`check(bool, String)`
-that throws, not as `assert`: `dart run` leaves assertions disabled — that is
-what its `--enable-asserts` flag is for — so an `assert` would compile out under
-the very command documented above, leaving an example that prints a plausible
-transcript and exits 0 with every expectation in it violated. A second test
-holds that line, failing if `assert(` reappears in the file.
+when the file was written. Its expectations are written through the shared
+`example/_support/check.dart`, which throws rather than asserting — see
+[A green run is a verification](../README.md#a-green-example-run-is-a-verification)
+for why, and for the suite that holds that line across every example. A second
+test here requires this file in particular to keep using it.
 
 ## Core Components
 

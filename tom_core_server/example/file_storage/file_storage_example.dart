@@ -28,18 +28,9 @@ import 'dart:io';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:yaml/yaml.dart';
 
-// ignore_for_file: avoid_print
+import '../_support/check.dart';
 
-/// Fails the run when [ok] is false, naming the [expectation] that did not
-/// hold.
-///
-/// Deliberately not `assert`, which `dart run` compiles out — under the very
-/// command this file's header gives, an asserting example still prints a
-/// plausible transcript and still exits 0 with every expectation in it
-/// violated. A plain `if`/`throw` holds however the file is run.
-void check(bool ok, String expectation) {
-  if (!ok) throw StateError('file storage example failed: $expectation');
-}
+// ignore_for_file: avoid_print
 
 /// A payload of [count] bytes, delivered in 64 KiB events — a stand-in for a
 /// socket or a file read, neither of which hands over the whole thing at once.

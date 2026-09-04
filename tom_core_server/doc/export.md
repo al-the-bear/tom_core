@@ -849,14 +849,16 @@ dart run example/export/export_example.dart
 ```
 
 `test/export_test.dart` runs it under precisely that command and requires it to
-exit 0 having reported all fourteen steps. Its expectations are a local
-`check(bool, String)` that **throws**, not `assert`: `dart run` leaves assertions
-disabled — that is what `--enable-asserts` is for — so an `assert` here would
-compile out under the command above, leaving an example that prints a plausible
-transcript and exits 0 with every expectation in it violated. The suite guards
-all three halves of that: the steps reported, the absence of `assert(`, and —
-by importing the example and calling `check` — that the helper fails the run
-rather than narrating it.
+exit 0 having reported all fourteen steps, and requires the file to keep stating
+its expectations through the shared `example/_support/check.dart` — see
+[A green run is a verification](../README.md#a-green-example-run-is-a-verification)
+for why that helper **throws** rather than asserting.
+
+That the helper fails the run rather than narrating it is the third guard, and
+the one neither test above can make: both are satisfied by a `check` that merely
+printed. It lives in `test/examples_test.dart`, once for the whole example
+suite, because all twenty-three examples share one definition and checking it
+per example would be twenty-three tests of one function.
 
 ## Core Components
 

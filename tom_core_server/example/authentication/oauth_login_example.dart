@@ -33,13 +33,17 @@
 /// sessions issued here are genuinely signed, and this program configures no
 /// keys of its own.
 ///
-/// Run with `dart run example/authentication/oauth_login_example.dart`.
-/// The same behaviour is covered by `test/oauth_test.dart`.
+/// Run with `dart run example/authentication/oauth_login_example.dart`. Every
+/// step checks its own result and the run fails when one does not hold, so a
+/// green run is a verification and not just a transcript. The same behaviour is
+/// covered by `test/oauth_test.dart`.
 library;
 
 import 'dart:convert';
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 /// The scripted provider's issuer and the client id it registered us under.
 const String _issuer = 'https://idp.example.test';
@@ -405,37 +409,105 @@ Future<void> run() async {
   print('directory asked for:       ${directory.lookups}');
   print('login recorded:            ${link.lastLoginAt != null}');
 
-  // Assertions
-  assert(uri.queryParameters['response_type'] == 'code');
-  assert(uri.queryParameters['scope'] == 'openid email profile');
-  assert(uri.queryParameters['code_challenge_method'] == 'S256');
-  assert(!started.authorizationUri.contains(pending.pkce!.verifier));
-  assert(uri.queryParameters['code_challenge'] == pending.pkce!.challenge);
-  assert(pending.organization == 'acme');
-  assert(pending.clientTimezone == 'Europe/Berlin');
-  assert(provider.postedForm!['grant_type'] == 'authorization_code');
-  assert(provider.postedForm!['code_verifier'] == pending.pkce!.verifier);
-  assert(
+  // What the seven examples above had to be true for.
+  check(
+    uri.queryParameters['response_type'] == 'code',
+    'the user is sent on the authorization-code flow',
+  );
+  check(
+    uri.queryParameters['scope'] == 'openid email profile',
+    'the scopes the deployment configured are the scopes requested',
+  );
+  check(
+    uri.queryParameters['code_challenge_method'] == 'S256',
+    'the challenge is a digest of the verifier and not the verifier itself',
+  );
+  check(
+    !started.authorizationUri.contains(pending.pkce!.verifier),
+    'the PKCE verifier never travels through the browser',
+  );
+  check(
+    uri.queryParameters['code_challenge'] == pending.pkce!.challenge,
+    'the digest the provider is given is the one held against this pending '
+    'login',
+  );
+  check(
+    pending.organization == 'acme',
+    'the organization the login began in is remembered, because the callback '
+    'cannot carry it',
+  );
+  check(
+    pending.clientTimezone == 'Europe/Berlin',
+    'the caller locale is remembered with it',
+  );
+  check(
+    provider.postedForm!['grant_type'] == 'authorization_code',
+    'the code is redeemed as an authorization-code grant',
+  );
+  check(
+    provider.postedForm!['code_verifier'] == pending.pkce!.verifier,
+    'the verifier is presented at the token endpoint, which an interceptor of '
+    'the redirect could not do',
+  );
+  check(
     provider.postedForm!['redirect_uri'] ==
         'https://console.example.test/oauth/callback',
+    'the redirect URI presented is the configured one',
   );
-  assert(basic == '$_clientId:sh-sh-secret');
-  assert(exchange.identity.subject == 'sub-1');
-  assert(exchange.identity.username == 'alice@example.test');
-  assert(exchange.provider.id == 'idp');
-  assert(exchange.tokens!.accessToken == 'at-1');
-  assert(replayKey.isNotEmpty, 'a replayed state must not complete');
-  assert(refusedKey == 'login.error.oauth.no-local-account');
-  assert(info.principal.user.username == 'ext_alice@example.test');
-  assert(directory.provisioned.single.subject == 'sub-1');
-  assert(
+  check(
+    basic == '$_clientId:sh-sh-secret',
+    'the client secret is presented as HTTP Basic rather than in the form',
+  );
+  check(
+    exchange.identity.subject == 'sub-1',
+    'the identity is the subject the ID token asserted',
+  );
+  check(
+    exchange.identity.username == 'alice@example.test',
+    'the asserted username comes from the claims and not from the request',
+  );
+  check(
+    exchange.provider.id == 'idp',
+    'the exchange names the registration it completed against, not merely the '
+    'issuer',
+  );
+  check(
+    exchange.tokens!.accessToken == 'at-1',
+    'the grant that lets the deployment call the provider is surfaced',
+  );
+  check(replayKey.isNotEmpty, 'a replayed state must not complete');
+  check(
+    refusedKey == 'login.error.oauth.no-local-account',
+    'a provider configured to refuse says so by key instead of inventing an '
+    'account',
+  );
+  check(
+    info.principal.user.username == 'ext_alice@example.test',
+    'the auto-provisioned login lands on the username the directory settled on',
+  );
+  check(
+    directory.provisioned.single.subject == 'sub-1',
+    'the account was created from the identity the provider vouched for',
+  );
+  check(
     await identities.localUsernameFor(exchange.identity) ==
         'ext_alice@example.test',
+    'the link points at the account that exists rather than at the claim',
   );
-  assert(info.principal.organization == 'acme');
-  assert(info.principal.clientLanguage == 'de');
-  assert(returning.principal.user.username == 'ext_alice@example.test');
-  assert(directory.provisioned.length == 1, 'provisioned once, not twice');
+  check(
+    info.principal.organization == 'acme',
+    'the session is issued in the organization the flow began in, not the '
+    'blank one the callback carried',
+  );
+  check(
+    info.principal.clientLanguage == 'de',
+    'the session carries the locale captured when the login started',
+  );
+  check(
+    returning.principal.user.username == 'ext_alice@example.test',
+    'a returning user is resolved through the stored link',
+  );
+  check(directory.provisioned.length == 1, 'provisioned once, not twice');
 }
 
 /// Runs one external login for a person with no local account, and answers the

@@ -14,8 +14,10 @@
 /// server too and lives in `test/audit_sql_db_test.dart`. Here the records are
 /// produced by hand so the example stays connection-free.
 ///
-/// Run with `dart run example/audit/audit_example.dart`.
-/// The same behaviour is covered by `test/audit_test.dart`.
+/// Run with `dart run example/audit/audit_example.dart`. Every step checks its
+/// own result and the run fails when one does not hold, so a green run is a
+/// verification and not just a transcript. The same behaviour is covered by
+/// `test/audit_test.dart`.
 library;
 
 import 'dart:async';
@@ -23,13 +25,18 @@ import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 
+import '../_support/check.dart';
+
 // ignore_for_file: avoid_print
 
 Future<void> run() async {
   // 1. Nothing is audited until a sink is installed. That is what makes the
   //    trail switchable at startup rather than compiled into every call site.
   print('1. enabled before install    : ${TomAuditTrail.isEnabled}');
-  assert(!TomAuditTrail.isEnabled);
+  check(
+    !TomAuditTrail.isEnabled,
+    'nothing is audited until a sink is installed',
+  );
 
   final sink = TomMemoryAuditSink();
   TomAuditTrail.install(sink);
@@ -41,7 +48,10 @@ Future<void> run() async {
   final after = {'email': 'ada@new.example', 'name': 'Ada'};
   final diff = auditDiff(before, after);
   print('2. changed fields            : ${diff.before} -> ${diff.after}');
-  assert(diff.after.keys.single == 'email');
+  check(
+    diff.after.keys.single == 'email',
+    'a mutation record carries only the fields that actually changed',
+  );
 
   // 3. Attribution comes from the ambient zone, not from a parameter threaded
   //    through every layer. Outside a request there is still an actor: SYSTEM.
@@ -51,7 +61,10 @@ Future<void> run() async {
     outcome: TomAuditOutcome.succeeded,
   );
   print('3. background actor          : ${sink.records.single.actor.username}');
-  assert(sink.records.single.actor.username == TomAuditActor.systemUsername);
+  check(
+    sink.records.single.actor.username == TomAuditActor.systemUsername,
+    'work done outside a request is still attributed, to SYSTEM',
+  );
 
   sink.clear();
   final principal = TomPrincipal(
@@ -71,7 +84,10 @@ Future<void> run() async {
     '   in-request actor          : ${attributed.actor.username} '
     '(id ${attributed.actor.userId}, request ${attributed.requestId})',
   );
-  assert(attributed.actor.userId == 42);
+  check(
+    attributed.actor.userId == 42,
+    'inside a request the actor is taken from the ambient zone, unthreaded',
+  );
 
   // 4. The declared-versus-automatic split. Mutations are audited by default —
   //    forgetting to declare one would be a silent gap — while reads are never
@@ -84,8 +100,14 @@ Future<void> run() async {
   print(
     '   default audits read       : ${byDefault.audits(TomAuditAction.read)}',
   );
-  assert(byDefault.audits(TomAuditAction.update));
-  assert(!byDefault.audits(TomAuditAction.read));
+  check(
+    byDefault.audits(TomAuditAction.update),
+    'mutations are audited without being declared, so none can be forgotten',
+  );
+  check(
+    !byDefault.audits(TomAuditAction.read),
+    'reads are not, so the entries that matter are not buried under them',
+  );
 
   // The declarations that change it, as they appear on an entity or endpoint —
   // `TomAuditPolicy.from` is exactly what the reflector applies to the
@@ -105,9 +127,13 @@ Future<void> run() async {
     '   any policy audits read    : '
     '${[byDefault, optedOut, redacted].any((p) => p.audits(TomAuditAction.read))}',
   );
-  assert(!optedOut.audits(TomAuditAction.update));
-  assert(
+  check(
+    !optedOut.audits(TomAuditAction.update),
+    'a type can opt out of the trail entirely, visibly at its source',
+  );
+  check(
     ![byDefault, optedOut, redacted].any((p) => p.audits(TomAuditAction.read)),
+    'no declaration turns reads on, because the read path records nothing',
   );
 
   // Recording who looked is therefore explicit. `recordAction` consults no
@@ -126,7 +152,10 @@ Future<void> run() async {
     '   hand-recorded read        : ${sink.records.single.action.name} '
     'of ${sink.records.single.target}#${sink.records.single.targetKey}',
   );
-  assert(sink.records.single.action == TomAuditAction.read);
+  check(
+    sink.records.single.action == TomAuditAction.read,
+    'a read reaches the trail only when a caller records it by hand',
+  );
 
   // 5. Redaction is not a column grade: it keeps the value from existing in a
   //    *second* place at all. The field still shows as changed.
@@ -136,8 +165,14 @@ Future<void> run() async {
     'secret': 'hunter2',
   });
   print('5. redacted                  : $masked');
-  assert(masked['secret'] == tomAuditRedactedPlaceholder);
-  assert(!masked.values.contains('hunter2'));
+  check(
+    masked['secret'] == tomAuditRedactedPlaceholder,
+    'a redacted field still shows as changed, without naming what it became',
+  );
+  check(
+    !masked.values.contains('hunter2'),
+    'the secret does not come to exist in a second place at all',
+  );
 
   // 6. Each entry hashes the previous one, so editing, removing or reordering a
   //    single entry invalidates every hash after it. On its own that is
@@ -153,7 +188,7 @@ Future<void> run() async {
     );
   }
   print('6. chain of ${sink.entries.length} entries        : ${sink.verify()}');
-  assert(sink.verify().isValid);
+  check(sink.verify().isValid, 'an untouched chain verifies end to end');
 
   // 7. runUnaudited exists so the trail's own machinery can persist without
   //    auditing itself into an infinite regress. It is not a general opt-out —
@@ -167,7 +202,10 @@ Future<void> run() async {
     ),
   );
   print('7. records inside bypass     : ${sink.records.length}');
-  assert(sink.records.isEmpty);
+  check(
+    sink.records.isEmpty,
+    'the trail can persist itself without auditing its own writes forever',
+  );
 
   // 8. The file sink appends JSON Lines, one file per *UTC* day — the calendar
   //    the records are stamped on, so the day in the file name is the day to
@@ -199,8 +237,14 @@ Future<void> run() async {
       '8. head hash recovered       : ${reopened.headHash.substring(0, 12)}…',
     );
     print('   entries on disk           : ${reopened.readAll().length}');
-    assert(reopened.readAll().length == 1);
-    assert(reopened.verify().isValid);
+    check(
+      reopened.readAll().length == 1,
+      'a reopened sink finds everything the previous run put on disk',
+    );
+    check(
+      reopened.verify().isValid,
+      'and recovers the head hash, so a restart continues the same chain',
+    );
 
     // What a queued record meets at each of the two doors, side by side.
     final queued = reopened.write(
@@ -223,10 +267,16 @@ Future<void> run() async {
       outcome = 'refused (${e.key})';
     }
     print('   a record queued at close  : $outcome');
-    assert(outcome.startsWith('refused'));
+    check(
+      outcome.startsWith('refused'),
+      'the synchronous close cannot wait, so it turns a queued record away',
+    );
     // Refused, not silently dropped and not written behind the sink's back:
     // the caller is told, and the file the sink just closed stays closed.
-    assert(reopened.readAll().length == 1);
+    check(
+      reopened.readAll().length == 1,
+      'a refused record is not written behind the back of the closed file',
+    );
   } finally {
     await dir.delete(recursive: true);
     TomAuditTrail.uninstall();
@@ -247,7 +297,10 @@ Future<void> run() async {
   print('   ${ddl.split('\n').firstWhere((l) => l.contains('uq_')).trim()}');
   // Two entries claiming the same predecessor is a fork. As a convention it
   // holds until two writers share a name; as a unique index it holds always.
-  assert(ddl.contains('UNIQUE KEY uq_tom_audit_trail_link'));
+  check(
+    ddl.contains('UNIQUE KEY uq_tom_audit_trail_link'),
+    'the shipped schema makes chain linearity a constraint, not a convention',
+  );
 
   // The posture a deployment should aim for: a serving credential holding
   // INSERT and SELECT and nothing else.
@@ -257,7 +310,10 @@ Future<void> run() async {
     grantsDelete: false,
   );
   print('   restricted credential     : ${granted.summary}');
-  assert(granted.isAppendOnly);
+  check(
+    granted.isAppendOnly,
+    'a credential granted neither UPDATE nor DELETE can only append',
+  );
 
   // The fallback for a deployment that cannot separate credentials: the guard
   // triggers. Defence in depth, not the mechanism — a connection holding SUPER
@@ -271,7 +327,10 @@ Future<void> run() async {
   // The case a privilege probe alone cannot see: a zero-row UPDATE fires no
   // FOR EACH ROW trigger, so a protected table looks perfectly mutable.
   print('   trigger-guarded           : ${guarded.summary}');
-  assert(guarded.updatesBlocked && !guarded.isAppendOnly);
+  check(
+    guarded.updatesBlocked && !guarded.isAppendOnly,
+    'a trigger guard is defence in depth, not a substitute for the grant',
+  );
 
   // And the posture to recognise rather than assume: nothing stops a rewrite.
   const open = TomAuditWriteOnceCheck(
@@ -280,7 +339,10 @@ Future<void> run() async {
     grantsDelete: true,
   );
   print('   unprotected               : ${open.summary}');
-  assert(!open.isAppendOnly);
+  check(
+    !open.isAppendOnly,
+    'an unguarded table with both grants is reported as rewritable',
+  );
 
   // 10. The chain says nobody edited *an* entry. An anchor says nobody rewrote
   //     *all* of them: it publishes the head hash and the entry count somewhere
@@ -338,12 +400,21 @@ Future<void> run() async {
     previousHash = replacement.hash;
   }
   print('    forged chain verifies    : ${verifyAuditChain(forged).isValid}');
-  assert(verifyAuditChain(forged).isValid);
+  check(
+    verifyAuditChain(forged).isValid,
+    'a wholesale rewrite verifies perfectly, which the chain alone misses',
+  );
 
   final checked = verifyAgainstAnchor(forged, anchor, writer: 'node-a');
   print('    against the anchor       : ${checked.status.name}');
-  assert(checked.status == TomAuditAnchorStatus.diverged);
-  assert(checked.indicatesTampering);
+  check(
+    checked.status == TomAuditAnchorStatus.diverged,
+    'the published head the server cannot reach back into exposes the forgery',
+  );
+  check(
+    checked.indicatesTampering,
+    'and a divergence from an anchor is reported as tampering, not as drift',
+  );
 
   // Retention is the case that must *not* raise the alarm. An entry keeps the
   // index it was written with, so what survives a sweep reads as a suffix of
@@ -351,7 +422,10 @@ Future<void> run() async {
   final suffix = sink.entries.skip(2).toList();
   final retained = verifyAgainstAnchor(suffix, anchor, writer: 'node-a');
   print('    retained suffix          : ${retained.status.name}');
-  assert(retained.isMatch && !retained.indicatesTampering);
+  check(
+    retained.isMatch && !retained.indicatesTampering,
+    'what a retention sweep leaves behind is a suffix, not an alarm',
+  );
 
   // `publishAndClose`, not `close`: the final anchor is what pins the head the
   // chain ends on, and only the awaitable sibling can deliver it. `close()` is

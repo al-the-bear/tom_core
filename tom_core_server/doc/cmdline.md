@@ -311,11 +311,12 @@ a two-layer `merge`. Run it exactly as its header documents:
 dart run example/cmdline/cmdline_example.dart
 ```
 
-Every step checks its own result and the run fails when one does not hold, so a
-green run is a verification rather than a transcript. The checks are a plain
-`if`/`throw` and not `assert`, because `dart run` leaves assertions disabled: an
-`assert` would compile out under the very command above, and the example would
-print a plausible transcript and exit 0 with every expectation violated. The
+Every step checks its own result through the shared `example/_support/check.dart`
+and the run fails when one does not hold, so a green run is a verification
+rather than a transcript — see
+[A green run is a verification](../README.md#a-green-example-run-is-a-verification)
+for why that helper throws instead of asserting.
+
 Two members are left out, and the example's header gives a reason for each:
 `fillFromArgs` needs a reflected configuration type, and `load` does nothing
 `read` does not (see the limitation above), so demonstrating it would recommend

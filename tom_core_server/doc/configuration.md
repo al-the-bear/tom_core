@@ -611,11 +611,11 @@ rather than being skipped. Run it exactly as its header documents:
 dart run example/configuration/configuration_example.dart
 ```
 
-Every step checks its own result and the run fails when one does not hold, so a
-green run is a verification rather than a transcript. The checks are a plain
-`if`/`throw` and not `assert`, because `dart run` leaves assertions disabled: an
-`assert` would compile out under the very command above, and the example would
-print a plausible transcript and exit 0 with every expectation violated. One
+Every step checks its own result through the shared `example/_support/check.dart`
+and the run fails when one does not hold, so a green run is a verification
+rather than a transcript — see
+[A green run is a verification](../README.md#a-green-example-run-is-a-verification)
+for why that helper throws instead of asserting. One
 thing is deliberately left out and the header says why — constructing a
 `TomBaseServerConfiguration` subclass needs a generated `setValues`, so it is
 described in [The Server Configuration Base](#the-server-configuration-base)
@@ -641,7 +641,7 @@ command above, requiring exit 0 and requiring every numbered step to have
 reported (the count read off the example, so a step added later is covered
 without editing the test). Two further tests cover what the exit code cannot
 see: one reads the example's source and requires it to state its
-expectations through the throwing helper rather than `assert`, the other
+expectations through the shared throwing helper rather than `assert`, the other
 requires its `PATH` step to keep demonstrating that `TomConfig` does not
 reach the environment on its own. So each claim this document makes is
 falsifiable from the suite, as is each limitation it admits to.

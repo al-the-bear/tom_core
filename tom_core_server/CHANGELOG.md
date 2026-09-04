@@ -1,5 +1,48 @@
 ## 1.3.0
 
+### Fixed
+
+- **Thirteen examples verified nothing: 227 expectations written as `assert`,
+  all compiled out by the `dart run` each file's own header documented.**
+  `dart run` leaves assertions *disabled* — that is what its `--enable-asserts`
+  flag is for — so each of those files executed every line, printed a plausible
+  transcript, exited 0, and evaluated not one of its stated expectations. That
+  is worse than having no checks, because it is indistinguishable from success
+  to everyone including the author, and it is cheap to confirm: a copy of any
+  example carrying a deliberately false assertion exits 0 under the documented
+  command and 255 under `--enable-asserts`.
+  All 227 are now `check(bool, String)` calls that throw however the file is
+  invoked, and each states a *named* expectation rather than echoing its
+  condition back as text — the message a reader gets when an example breaks is
+  now what was supposed to be true, which is the part a stack trace cannot
+  supply. Turning them on found no failures: every expectation had in fact
+  held.
+- **`example/_support/check.dart` replaces twenty-three private copies of the
+  helper.** Each example previously declared its own, and carried its own copy
+  of the paragraph explaining why it is not an `assert`. That reasoning had
+  already drifted into three wordings and the throw messages into ten, which is
+  the predictable failure of duplicated *reasoning*: a reader who improves one
+  copy cannot know the others exist. There is now one definition and one
+  explanation.
+
+### Testing
+
+- **`test/examples_test.dart` holds for the set of examples what no module
+  suite can hold about its own.** It requires that no file under `example/`
+  contains `assert(`, that none re-declares a local `check`, and that the
+  shared helper *throws* rather than narrating — the last being the defect the
+  first two cannot see, since a `check` that merely printed would satisfy both.
+  It also requires every example program to be accounted for: spawned by its
+  module suite, spawned there, or excluded with a stated reason, checked by set
+  equality against the directory. An example added later therefore fails the
+  suite rather than sitting unrun, which is how the inert asserts survived —
+  nothing spawned those files, so nothing could notice their checks had stopped
+  running.
+  This supersedes the per-file sweep in `test/api_reference_coverage_test.dart`,
+  which is removed along with its thirteen-entry quarantine. That list is now
+  empty of purpose, and an exemption set with nothing left to suppress turns a
+  passing example back into an unchecked one.
+
 ### Documentation
 
 - **75 `Kind` cells across 13 documents named a role instead of a declaration.**

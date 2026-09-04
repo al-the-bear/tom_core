@@ -11,13 +11,17 @@
 /// pipeline reaches every server exception with one `on TomServerException`.
 /// The login flow that raises and catches it is in `doc/authentication.md`.
 ///
-/// Run with `dart run example/little_things/little_things_example.dart`.
-/// The same behaviour is covered by `test/little_things_test.dart`.
+/// Run with `dart run example/little_things/little_things_example.dart`. Every
+/// step checks its own result and the run fails when one does not hold, so a
+/// green run is a verification and not just a transcript. The same behaviour is
+/// covered by `test/little_things_test.dart`.
 library;
 
 import 'dart:async';
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 void run() {
   // 1. Every request gets a fresh correlation id. The server's authentication
@@ -27,9 +31,15 @@ void run() {
   final id2 = TomRequestId();
   print('1. request id      => $id1');
   print('   distinct?       => ${id1.uuid != id2.uuid}');
-  assert(id1.uuid.isNotEmpty);
-  assert(id1.uuid != id2.uuid);
-  assert(id1.toString() == 'TomRequestId: ${id1.uuid}');
+  check(id1.uuid.isNotEmpty, 'a new request id arrives already identified');
+  check(
+    id1.uuid != id2.uuid,
+    'two requests never share a correlation id, so a log line names one of them',
+  );
+  check(
+    id1.toString() == 'TomRequestId: ${id1.uuid}',
+    'the rendering carries the bare uuid, so a log line stays greppable by it',
+  );
 
   // 2. A server exception carries the kernel TomException surface (key,
   //    user message) plus the originating isolate name.
@@ -40,9 +50,18 @@ void run() {
   print('2. key             => ${basic.key}');
   print('   isolateName     => ${basic.isolateName}');
   print('   clientThrow     => ${basic.clientThrow}');
-  assert(basic.key == 'payment.charge.failed');
-  assert(basic.isolateName.isNotEmpty);
-  assert(basic.clientThrow == true);
+  check(
+    basic.key == 'payment.charge.failed',
+    'a server exception keeps the kernel key it was raised with',
+  );
+  check(
+    basic.isolateName.isNotEmpty,
+    'a server exception names the isolate it came from, without being told',
+  );
+  check(
+    basic.clientThrow == true,
+    'a server exception is reported to the client unless it says otherwise',
+  );
 
   // 3. Mark internal failures clientThrow: false so the pipeline masks them.
   final internal = TomServerException(
@@ -51,14 +70,23 @@ void run() {
     clientThrow: false,
   );
   print('3. internal clientThrow => ${internal.clientThrow}');
-  assert(internal.clientThrow == false);
+  check(
+    internal.clientThrow == false,
+    'an internal failure is marked for masking before it reaches a client',
+  );
 
   // 4. Constructed outside a request zone, requestUuid is unset — and the
   //    rendering drops the request segment rather than trailing a bare null.
   print('4. requestUuid (no zone) => ${basic.requestUuid}');
   print('   rendered         => $basic');
-  assert(basic.requestUuid == null);
-  assert(basic.toString().endsWith('client-throw: true'));
+  check(
+    basic.requestUuid == null,
+    'an exception raised outside a request belongs to no request',
+  );
+  check(
+    basic.toString().endsWith('client-throw: true'),
+    'the rendering stops rather than trailing a request segment with no request',
+  );
 
   // 5. Constructed inside a zone carrying a TomRequestId, the exception
   //    correlates itself with the active request automatically, and says so
@@ -73,8 +101,16 @@ void run() {
     );
     print('5. requestUuid (in zone) => ${correlated.requestUuid}');
     print('   rendered         => $correlated');
-    assert(correlated.requestUuid == requestId.uuid);
-    assert(correlated.toString().endsWith(' request: ${requestId.uuid}'));
+    check(
+      correlated.requestUuid == requestId.uuid,
+      'an exception raised while serving a request correlates itself with it, '
+      'with nothing passed in',
+    );
+    check(
+      correlated.toString().endsWith(' request: ${requestId.uuid}'),
+      'the labelled segment separates the two uuids that the composite token '
+      'runs together',
+    );
   }, zoneValues: {TomRequestId: requestId});
 
   // 6. TomLoginException adds no members, so one clause written for the base
@@ -92,9 +128,18 @@ void run() {
     print('6. caught as       => ${e.runtimeType}');
     print('   key             => ${e.key}');
     print('   clientThrow     => ${e.clientThrow}');
-    assert(e is TomLoginException);
-    assert(e.key == 'error.invalid-user-or-password');
-    assert(e.clientThrow == true);
+    check(
+      e is TomLoginException,
+      'one clause on the base type reaches the login subclass as well',
+    );
+    check(
+      e.key == 'error.invalid-user-or-password',
+      'the subclass survives the base-typed clause with its own key intact',
+    );
+    check(
+      e.clientThrow == true,
+      'a rejected login is told to the user rather than masked as internal',
+    );
   }
 
   print('\nLittle-things example completed.');

@@ -35,18 +35,7 @@ library;
 // consumer depend on the driver package directly.
 import 'package:tom_core_server/tom_core_server.dart';
 
-/// Throws unless [ok] holds, naming the expectation that failed.
-///
-/// Deliberately not `assert`: `dart run` leaves assertions **disabled** — that
-/// is what its `--enable-asserts` flag is for — so an `assert` here compiles
-/// out under the very command this file's header gives. An example whose
-/// checks vanish under its own documented invocation is worse than one with no
-/// checks at all, because it still prints a plausible transcript and still
-/// exits 0 while every expectation in it is violated. A plain `if`/`throw`
-/// holds however the file is run.
-void check(bool ok, String expectation) {
-  if (!ok) throw StateError('datasources example failed: $expectation');
-}
+import '../_support/check.dart';
 
 void run() {
   // 1. SQL-typed values box a nullable Dart value; `of(String?)` parses one

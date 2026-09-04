@@ -14,7 +14,6 @@ import 'package:tom_core_server/tom_core_server.dart';
 // every one of its expectations can be tested for the one property that makes
 // those expectations real: that it throws. Prefixed because the example's own
 // fixtures share names with this file's.
-import '../example/export/export_example.dart' as example;
 import 'fixtures/posix_permissions.dart';
 
 /// Export tests: the tabular envelope, three renderers, three stores, two
@@ -2710,28 +2709,18 @@ void main() {
         isNot(contains('assert(')),
         reason: 'an assert in the example does not run under `dart run`',
       );
-      expect(source, contains('void check(bool ok, String expectation)'));
+      expect(
+        source,
+        contains("import '../_support/check.dart'"),
+        reason: 'the example states its expectations through the shared helper',
+      );
     });
 
-    test('through a helper that fails the run rather than narrating it', () {
-      // The two tests above are both satisfied by a `check` that prints. That
-      // is not a hypothetical: it is the *same* defect as the asserts, in a
-      // shape the ban on `assert(` cannot see — every call site intact, every
-      // expectation stated, and the run green regardless of whether any of
-      // them hold. So this asserts the helper's behaviour rather than its
-      // spelling, which is also why the example is imported at all.
-      expect(
-        () => example.check(false, 'a violated expectation'),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains('a violated expectation'),
-          ),
-        ),
-      );
-      expect(() => example.check(true, 'a held expectation'), returnsNormally);
-    });
+    // That the helper *throws* rather than narrating — the defect the two
+    // tests above cannot see, since a `check` that merely printed would
+    // satisfy both — is pinned once in `test/examples_test.dart`. All the
+    // examples share one `example/_support/check.dart`, so pinning it per
+    // example would be twenty-three tests of one function.
   });
 }
 

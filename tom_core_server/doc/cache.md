@@ -286,11 +286,12 @@ than an outcome, and pinning it would mean asserting a shape.
 isolate and with no setup of any kind — store and read, expiry, the entry that
 never expires, LRU eviction, the type cache, the mismatch, an entry carrying its
 own lifetime, stopping the timers, and replacing the manager. Every step checks
-its own result and the run fails when one does not hold, so a green run is a
-verification rather than a transcript. The checks are a plain `if`/`throw` and
-not `assert`, because `dart run` leaves assertions disabled: an `assert` would
-compile out under the very command the file documents, and the example would
-print a plausible transcript and exit 0 with every expectation violated.
+its own result through the shared `example/_support/check.dart` and the run
+fails when one does not hold, so a green run is a verification rather than a
+transcript — see
+[A green run is a verification](../README.md#a-green-example-run-is-a-verification)
+for why that helper throws instead of asserting, and what holds the property
+for every example at once.
 
 `test/cache_test.dart` covers it end to end in one process — the static helpers
 and the raw entry accessors, expiry and bounds, the MRU chain across evictions,

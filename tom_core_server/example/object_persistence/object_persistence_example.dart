@@ -29,11 +29,14 @@
 /// module's full reference.
 ///
 /// Run with
-/// `dart run --enable-asserts example/object_persistence/object_persistence_example.dart`.
+/// `dart run example/object_persistence/object_persistence_example.dart`. Every
+/// step checks its own result and the run fails when one does not hold, so a
+/// green run is a verification and not just a transcript.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
 
+import '../_support/check.dart';
 import '../example_reflection.reflection.dart';
 import 'object_persistence_entities.dart';
 
@@ -71,8 +74,11 @@ void run() {
   );
   final columns = entity.columnInfo;
   print('1. table=${entity.table.table} columns=${columns.length}');
-  assert(entity.table.table == 'example_claim');
-  assert(columns.length == 7);
+  check(
+    entity.table.table == 'example_claim',
+    'the annotations name the table every statement will address',
+  );
+  check(columns.length == 7, 'every persistent field of the entity is mapped');
 
   // 2. A column knows its declared Dart name, its stored column name and — when
   //    it has one — the resource key its grade is looked up under. The two
@@ -82,7 +88,11 @@ void run() {
     '2. graded columns: '
     '${graded.map((c) => '${c.declaredName}->${c.column!.authKey}').join(', ')}',
   );
-  assert(graded.length == 2);
+  check(
+    graded.length == 2,
+    'two columns carry a resource key and they are the whole authorization '
+    'surface of the entity',
+  );
 
   // ---------------------------------------------------------------------
   // Query sentences
@@ -97,8 +107,15 @@ void run() {
           )
           as TomSelect;
   print('3. ${select.generateQuery(dialect)}');
-  assert(select.generateQuery(dialect).contains('example_claim.amount >= '));
-  assert(select.generateQuery(dialect).contains('ORDER BY'));
+  check(
+    select.generateQuery(dialect).contains('example_claim.amount >= '),
+    'the predicate is rendered against the mapped column and the value is left '
+    'a bind placeholder',
+  );
+  check(
+    select.generateQuery(dialect).contains('ORDER BY'),
+    'the ordering written in the sentence reaches the statement',
+  );
 
   // 4. The verb picks the statement kind: find/count/delete/group are four
   //    different compiled types, not one type with a mode flag.
@@ -108,8 +125,14 @@ void run() {
     '4. find->${select.runtimeType} count->${counted.runtimeType} '
     'delete->${deleted.runtimeType}',
   );
-  assert(counted is TomCount);
-  assert(deleted is TomDelete);
+  check(
+    counted is TomCount,
+    'the count verb compiles to its own statement kind',
+  );
+  check(
+    deleted is TomDelete,
+    'the delete verb compiles to its own statement kind',
+  );
 
   // 5. A literal has to fit the column it is compared against. `approved` is a
   //    boolean, so a number is refused at compile time — where the sentence is
@@ -119,7 +142,11 @@ void run() {
     print('5. ERROR: no exception thrown');
   } on TomServerException catch (e) {
     print('5. `approved = 1` refused: ${e.key}');
-    assert(e.key.endsWith('int_literal_invalid_type_expected'));
+    check(
+      e.key.endsWith('int_literal_invalid_type_expected'),
+      'a number compared against a boolean column is refused while the '
+      'sentence is still in front of you',
+    );
   }
 
   // 6. So does the sentence's shape. `AND` with nothing on its left is not a
@@ -129,7 +156,11 @@ void run() {
     print('6. ERROR: no exception thrown');
   } on TomServerException catch (e) {
     print('6. leading AND refused: ${e.key}');
-    assert(e.key.endsWith('and_without_current_operation'));
+    check(
+      e.key.endsWith('and_without_current_operation'),
+      'the compiler names the missing left-hand predicate as the mistake it '
+      'was',
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -146,9 +177,18 @@ void run() {
           )
           as TomGroupedSelect;
   print('7. ${grouped.generateQuery(dialect)}');
-  assert(grouped.generateQuery(dialect).contains('GROUP BY'));
-  assert(grouped.generateQuery(dialect).contains('HAVING'));
-  assert(grouped.aggregates.length == 2);
+  check(
+    grouped.generateQuery(dialect).contains('GROUP BY'),
+    'the grouping key reaches the rendered statement',
+  );
+  check(
+    grouped.generateQuery(dialect).contains('HAVING'),
+    'the filter on the groups is rendered as a group filter, not a row one',
+  );
+  check(
+    grouped.aggregates.length == 2,
+    'both aggregate projections survive into the compiled query',
+  );
 
   // 8. `WHERE` filters rows and `HAVING` filters groups, so HAVING addresses the
   //    projection: a group key or an aggregate alias. A HAVING on a bare column
@@ -170,7 +210,11 @@ void run() {
     print('8. ERROR: no exception thrown');
   } on TomQuerySyntaxException catch (e) {
     print('8. HAVING on an ungrouped column refused when rendered: ${e.key}');
-    assert(e.key == 'grouped_query.select.having_on_ungrouped_field');
+    check(
+      e.key == 'grouped_query.select.having_on_ungrouped_field',
+      'a group filter on a column that is neither a group key nor an aggregate '
+      'is refused the same way on every dialect',
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -184,10 +228,17 @@ void run() {
     sort: const [TomSortField.desc('submitted'), TomSortField.asc('employee')],
   );
   print('9. $page needsStableSort=${page.needsStableSort}');
-  assert(page.offset == 50 && page.limit == 25);
+  check(
+    page.offset == 50 && page.limit == 25,
+    'a page number and a page size resolve to the window they name',
+  );
   // The window is cut from an ordering, so it needs one that settles the order;
   // the repository appends the primary key when the caller's sort does not.
-  assert(page.needsStableSort);
+  check(
+    page.needsStableSort,
+    'a sort that does not settle the order asks for the primary key to be '
+    'appended',
+  );
 
   // 10. A window SQL cannot express is rejected where it is built. MariaDB's
   //     grammar is `LIMIT n [OFFSET m]` — there is no bare OFFSET — so a skip
@@ -197,7 +248,11 @@ void run() {
     print('10. ERROR: no exception thrown');
   } on TomQuerySyntaxException catch (e) {
     print('10. offset without limit refused: ${e.key}');
-    assert(e.key == 'paging.window.offset_without_limit');
+    check(
+      e.key == 'paging.window.offset_without_limit',
+      'a skip with no cap is rejected where the window is built rather than '
+      'silently dropped by the dialect',
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -213,8 +268,15 @@ void run() {
     resolver: _grade,
   );
   print('11. masked on read: ${masked.map((c) => c.declaredName).join(', ')}');
-  assert(masked.length == 1);
-  assert(masked.single.declaredName == 'fraudScore');
+  check(
+    masked.length == 1,
+    'only one of the two graded columns is withheld on a read',
+  );
+  check(
+    masked.single.declaredName == 'fraudScore',
+    'the withheld column is the one graded none, while a read grade still '
+    'shows content',
+  );
 
   // 12. A write partitions the same columns. The asymmetry between the two
   //     non-writable grades is the point, and it follows from masking above: a
@@ -239,8 +301,15 @@ void run() {
     '    preserved=${decision.preserved.map((c) => c.declaredName).join(', ')}',
   );
   // The changed masked column did not reject; it was preserved.
-  assert(decision.preserved.any((c) => c.declaredName == 'fraudScore'));
-  assert(decision.writable.any((c) => c.declaredName == 'employee'));
+  check(
+    decision.preserved.any((c) => c.declaredName == 'fraudScore'),
+    'a masked column that came back changed is overlaid from the stored row '
+    'instead of failing the save',
+  );
+  check(
+    decision.writable.any((c) => c.declaredName == 'employee'),
+    'an ungraded column the caller changed stays writable',
+  );
 
   // 13. Changing a *visible* column is different in kind: the caller can see it,
   //     so altering it is a real attempt to write something it may not write.
@@ -260,7 +329,11 @@ void run() {
     print('13. ERROR: no exception thrown');
   } on TomColumnAuthorizationException catch (e) {
     print('13. editing a read-graded column refused: ${e.key}');
-    assert(e.key == 'column_authorization.write.field_forbidden');
+    check(
+      e.key == 'column_authorization.write.field_forbidden',
+      'editing a column the caller can see but may not write is named rather '
+      'than swallowed',
+    );
   }
 
   // 14. And the read mask is applied to a live instance, in place: a caller
@@ -276,9 +349,18 @@ void run() {
     '14. after masking: amount=${claim.amount} '
     'account=${claim.reimbursementAccount} fraudScore=${claim.fraudScore}',
   );
-  assert(claim.fraudScore == null);
-  assert(claim.reimbursementAccount == 'NL91ABNA0417164300');
-  assert(claim.amount == 249.90);
+  check(
+    claim.fraudScore == null,
+    'the withheld value is gone from the instance the caller still holds',
+  );
+  check(
+    claim.reimbursementAccount == 'NL91ABNA0417164300',
+    'a read grade shows its content through the mask',
+  );
+  check(
+    claim.amount == 249.90,
+    'an ungraded column is left untouched by masking',
+  );
 
   // ---------------------------------------------------------------------
   // The builder underneath
@@ -304,9 +386,11 @@ void run() {
     ),
   ]);
   print('15. ${predicate.generate(dialect)}');
-  assert(
+  check(
     predicate.generate(dialect) ==
         "( example_claim.amount >= 50.0 ) AND ( example_claim.employee LIKE 'r.%' )",
+    'a predicate assembled at runtime renders the same grouped conjunction a '
+    'written sentence would have compiled to',
   );
 
   // 16. The DSL validates its own arity: BETWEEN takes exactly two bounds.
@@ -317,7 +401,10 @@ void run() {
     print('16. ERROR: no exception thrown');
   } on TomQuerySyntaxException catch (e) {
     print('16. between with one bound refused: ${e.key}');
-    assert(e.key == 'between_expression.must_have_two_values');
+    check(
+      e.key == 'between_expression.must_have_two_values',
+      'a between expression with one bound is refused',
+    );
   }
 
   print('\nObject-persistence example completed.');

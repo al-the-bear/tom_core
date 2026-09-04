@@ -144,10 +144,33 @@ final env = TomEnvFile.read('.env');                       // typed map
 
 ## Example projects
 
-Every module ships a runnable sample under [`example/`](example/), each mirrored
-by a `test/<module>_test.dart` suite. The connection-independent examples run
-without a database; the datasource/persistence drivers require a live MySQL and
-annotated entities and are documented in [`doc/`](doc/).
+Every module ships a runnable sample under [`example/`](example/). All of them
+run without a database — including the datasource, persistence and migration
+samples, which demonstrate SQL rendering, repository wiring and migration
+planning against in-memory stand-ins. The sole exception is
+[`example/scheduling/cluster/`](example/scheduling/cluster/), whose three
+programs are nodes of one demonstration and expect a live MariaDB and each
+other.
+
+<a id="a-green-example-run-is-a-verification"></a>
+
+**A green run is a verification, not a transcript.** Each example states its
+expectations through the shared
+[`example/_support/check.dart`](example/_support/check.dart), which **throws**
+when one does not hold. Deliberately not `assert`: `dart run` leaves assertions
+*disabled* — that is what its `--enable-asserts` flag is for — so an `assert`
+would compile out under the very command each example's header documents,
+leaving a sample that prints a plausible transcript and exits 0 with every
+expectation in it violated. That is not hypothetical, and it is cheap to
+confirm: a copy of any example carrying a deliberately false assertion exits 0
+under the documented command, and 255 under `--enable-asserts`.
+
+`test/examples_test.dart` holds the property for the set rather than per
+example, which is what makes it cover samples added later: it requires that no
+file under `example/` contains `assert(`, that none re-declares a local `check`,
+that the shared helper throws rather than narrating, and that every example
+program is either spawned by its module suite, spawned there, or excluded with
+a stated reason.
 
 | Sample | Demonstrates |
 | ------ | ------------ |

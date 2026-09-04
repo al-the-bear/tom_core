@@ -33,10 +33,14 @@
 /// the login that follows once a factor exists.
 ///
 /// Run with `dart run example/authentication/two_factor_enrolment_example.dart`.
+/// Every result the eight steps print is checked and the run fails when one
+/// does not hold, so a green run is a verification and not just a transcript.
 /// The same behaviour is covered by `test/two_factor_test.dart`.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 /// Builds the wire message the server consumes.
 ///
@@ -412,37 +416,110 @@ Future<void> run() async {
     '${(await _store.enrolmentsFor(_contextOfAlice())).length}',
   );
 
-  // Assertions
-  assert(offer.error.isEmpty);
-  assert(offer.requires2FAEnrolment && !offer.requires2FA);
-  assert(
-    offer.availableTwoFactorMethods.single.type == _AuthenticatorApp.type,
-    'sms is permitted and registered, but cannot be enrolled from a login',
+  // What every step above had to have held to, stated through `check` rather
+  // than `assert` -- `dart run` leaves assertions disabled, so an asserting
+  // example verifies nothing under its own documented command. See
+  // `../_support/check.dart`.
+  check(
+    offer.error.isEmpty,
+    'a required policy meeting a user with nothing enrolled is not a failure',
   );
-  assert(!offer.twoFactorEnrolmentSkippable);
-  assert(method.displayNameKey == 'two_factor.app.name');
-  assert(!beforeEnrolling.authenticated);
-  assert(begun.error.isEmpty);
-  assert(offersBegun == 1);
-  assert(clientData?['setupCode'] == _AuthenticatorApp.secret);
-  assert(!publicClaims!.containsKey(Tom2FAEnrolmentClaims.offerData));
-  assert(begunToken.secretData!.containsKey(Tom2FAEnrolmentClaims.offerData));
-  assert(mistyped.error == 'login.error.2fa.enrolment-invalid-code');
-  assert(mistyped.authorizationToken.isNotEmpty);
-  assert(done.error.isEmpty);
-  assert(!done.requires2FA && !done.requires2FAEnrolment);
-  assert(session.authenticated);
-  assert(challengesIssued == 0, 'enrolling is not followed by a challenge');
-  assert(stored.single.type == _AuthenticatorApp.type);
-  assert(stored.single.isPrimary);
-  assert(!second.requires2FAEnrolment && second.requires2FA);
-  assert(second.twoFactorType == _AuthenticatorApp.type);
-  assert(refused.error == 'login.error.2fa.enrolment-required');
-  assert(refused.authorizationToken.isEmpty);
-  assert(invitation.twoFactorEnrolmentSkippable);
-  assert(declined.error.isEmpty);
-  assert(afterDeclining.authenticated);
-  assert((await _store.enrolmentsFor(_contextOfAlice())).isEmpty);
+  check(
+    offer.requires2FAEnrolment && !offer.requires2FA,
+    'pass 1 answers with an offer to enrol, and never also with a challenge',
+  );
+  check(
+    offer.availableTwoFactorMethods.single.type == _AuthenticatorApp.type,
+    'the offer lists only mechanisms a user can complete here, so sms -- '
+    'permitted and registered, but not enrollable from a login -- is left out',
+  );
+  check(
+    !offer.twoFactorEnrolmentSkippable,
+    'an offer made under a required policy is not declinable',
+  );
+  check(
+    method.displayNameKey == 'two_factor.app.name',
+    'a mechanism advertises resource keys for the chooser to translate',
+  );
+  check(
+    !beforeEnrolling.authenticated,
+    'the offer token names the identity but authenticates nobody yet',
+  );
+  check(
+    begun.error.isEmpty,
+    'the credential slot carrying a mechanism key starts that enrolment',
+  );
+  check(
+    offersBegun == 1,
+    'the chosen mechanism is asked for setup material exactly once',
+  );
+  check(
+    clientData?['setupCode'] == _AuthenticatorApp.secret,
+    'the material the user installs is public, so the client can render it',
+  );
+  check(
+    !publicClaims!.containsKey(Tom2FAEnrolmentClaims.offerData),
+    'the copy the server confirms against is not readable by the client',
+  );
+  check(
+    begunToken.secretData!.containsKey(Tom2FAEnrolmentClaims.offerData),
+    'that copy rides encrypted instead, so the secret cannot be substituted',
+  );
+  check(
+    mistyped.error == 'login.error.2fa.enrolment-invalid-code',
+    'a wrong confirmation is reported by resource key, not by prose',
+  );
+  check(
+    mistyped.authorizationToken.isNotEmpty,
+    'a wrong confirmation is retryable, on the token that counted the attempt',
+  );
+  check(done.error.isEmpty, 'the right confirmation completes the enrolment');
+  check(
+    !done.requires2FA && !done.requires2FAEnrolment,
+    'completing the round trip leaves nothing further owed',
+  );
+  check(
+    session.authenticated,
+    'confirming possession issues the session, without a fourth call',
+  );
+  check(
+    challengesIssued == 0,
+    'enrolling is not followed by a challenge, which would ask twice',
+  );
+  check(
+    stored.single.type == _AuthenticatorApp.type,
+    'the confirmed factor is recorded against the user',
+  );
+  check(
+    stored.single.isPrimary,
+    'the first factor on file becomes primary without anyone nominating it',
+  );
+  check(
+    !second.requires2FAEnrolment && second.requires2FA,
+    'with a factor on file the next login is an ordinary two-pass one',
+  );
+  check(
+    second.twoFactorType == _AuthenticatorApp.type,
+    'and it challenges the factor that was just enrolled',
+  );
+  check(
+    refused.error == 'login.error.2fa.enrolment-required',
+    'declining a required enrolment is refused, by key',
+  );
+  check(
+    refused.authorizationToken.isEmpty,
+    'a refusal hands back no token, so there is no way to continue',
+  );
+  check(
+    invitation.twoFactorEnrolmentSkippable,
+    'an optional policy makes the same offer declinable',
+  );
+  check(declined.error.isEmpty, 'declining an invitation is a normal outcome');
+  check(afterDeclining.authenticated, 'and the user is logged in all the same');
+  check(
+    (await _store.enrolmentsFor(_contextOfAlice())).isEmpty,
+    'nothing is recorded when an offer is declined, so it returns next login',
+  );
 }
 
 void main() => run();

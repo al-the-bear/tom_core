@@ -14,9 +14,13 @@
 /// `test/resource_data_scope_test.dart`.
 ///
 /// Run with `dart run example/authorization/resource_data_scope_example.dart`.
+/// Every step checks its own result and the run fails when one does not hold,
+/// so a green run is a verification and not just a transcript.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 /// A trivial host for the [TomQueryBuilder] DSL (the repository is one too).
 class _Builder with TomQueryBuilder {}
@@ -113,8 +117,15 @@ Future<void> run() async {
     alice,
   );
   print('3. alice read  : ${_render(aliceRead, dialect)}');
-  assert(aliceRead!.parameters.values.contains('proj-a'));
-  assert(aliceRead!.parameters.values.contains('proj-b'));
+  check(
+    aliceRead!.parameters.values.contains('proj-a'),
+    'a listing shows the project its owner owns',
+  );
+  check(
+    aliceRead.parameters.values.contains('proj-b'),
+    'a listing also shows a project shared read-only, so "shared with me" is '
+    'visible rather than merely not writable',
+  );
 
   // 4. On a write, only `full` admits it. The viewer grant on `proj-b` shows a
   //    row in every listing and rejects every attempt to change it — which is
@@ -127,16 +138,33 @@ Future<void> run() async {
     forWrite: true,
   );
   print('4. alice write : ${_render(aliceWrite, dialect)}');
-  assert(aliceWrite!.parameters.values.contains('proj-a'));
-  assert(!aliceWrite!.parameters.values.contains('proj-b'));
+  check(
+    aliceWrite!.parameters.values.contains('proj-a'),
+    'an owner may change the rows of the project they own',
+  );
+  check(
+    !aliceWrite.parameters.values.contains('proj-b'),
+    'a viewer grant stops at the write path, which is the whole difference '
+    'between "shared with me" and "mine"',
+  );
 
   // 5. The two principals resolve to disjoint sets, and a `disabled` grade
   //    grants nothing at all — Bob never sees `proj-d`.
   final bobRead = await TomDataScope.buildAsync(builder, scope, column, bob);
   print('5. bob read    : ${_render(bobRead, dialect)}');
-  assert(bobRead!.parameters.values.contains('proj-c'));
-  assert(!bobRead!.parameters.values.contains('proj-d'));
-  assert(!bobRead!.parameters.values.contains('proj-a'));
+  check(
+    bobRead!.parameters.values.contains('proj-c'),
+    'each principal is scoped by their own grants',
+  );
+  check(
+    !bobRead.parameters.values.contains('proj-d'),
+    'a role graded disabled admits nothing, so holding a grant row is not by '
+    'itself access',
+  );
+  check(
+    !bobRead.parameters.values.contains('proj-a'),
+    "one principal's resources stay out of another's queries",
+  );
 
   // 6. Deny by default: an unauthenticated request (no principal in the zone)
   //    resolves to no keys, and the scope renders a FALSE filter rather than an
@@ -163,7 +191,11 @@ Future<void> run() async {
   );
   final bobShared = await TomDataScope.buildAsync(builder, scope, column, bob);
   print('7. bob + share : ${_render(bobShared, dialect)}');
-  assert(bobShared!.parameters.values.contains('proj-a'));
+  check(
+    bobShared!.parameters.values.contains('proj-a'),
+    "a live delegation widens the delegate's reads without anyone touching a "
+    'grant row',
+  );
 
   // 8. …but the share is a *viewer* share, so it does not widen Bob's write
   //    set. Revoking it (or letting it expire) removes the row from his reads
@@ -176,7 +208,11 @@ Future<void> run() async {
     forWrite: true,
   );
   print('8. bob + share (write): ${_render(bobSharedWrite, dialect)}');
-  assert(!bobSharedWrite!.parameters.values.contains('proj-a'));
+  check(
+    !bobSharedWrite!.parameters.values.contains('proj-a'),
+    'a share carries its own role, so sharing something to read never hands '
+    'over the right to change it',
+  );
 
   // 9. Entities opt *in* by simply having the column: the analyzer synthesises
   //    the `resource` scope for any reflected entity exposing `resource_key`,
@@ -184,7 +220,11 @@ Future<void> run() async {
   //    stay global opts out with `@TomDbScope.unscoped()`.
   final auto = TomAnnotationAnalyzer.autoScopeFor([column]);
   print('9. auto scope  : field=${auto?.field} kind=${auto?.scope}');
-  assert(auto != null && auto.scope == TomDbScope.resourceScope);
+  check(
+    auto != null && auto.scope == TomDbScope.resourceScope,
+    'an entity carrying a resource_key column is scoped without anyone having '
+    'to remember an annotation',
+  );
 
   // 10. A request typically resolves the scope several times (one read per
   //     repository call, plus the write check). Wrapping the request body in

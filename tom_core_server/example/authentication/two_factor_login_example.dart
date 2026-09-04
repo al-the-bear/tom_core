@@ -28,10 +28,14 @@
 /// correct here: [_SmsAdaptor] is registered by hand.
 ///
 /// Run with `dart run example/authentication/two_factor_login_example.dart`.
-/// The same behaviour is covered by `test/two_factor_test.dart`.
+/// Every step checks its own result and the run fails when one does not hold,
+/// so a green run is a verification and not just a transcript. The same
+/// behaviour is covered by `test/two_factor_test.dart`.
 library;
 
 import 'package:tom_core_server/tom_core_server.dart';
+
+import '../_support/check.dart';
 
 /// The mechanism key [_SmsAdaptor] is registered under.
 const String _mechanism = 'sms';
@@ -293,29 +297,93 @@ Future<void> run() async {
   print('policy off, authenticated: ${direct.authenticated}');
   print('policy off, codes issued:  ${_adaptor.issued}');
 
-  // Assertions
-  assert(pass1.error.isEmpty);
-  assert(pass1.requires2FA);
-  assert(pass1.twoFactorType == _mechanism);
-  assert(challenge.hint == '***-**-4711');
-  assert(challenge.attempt == 0 && challenge.attemptsAllowed == 2);
-  assert(!publicClaims!.containsKey(Tom2FAClaims.verificationData));
-  assert(interimPrincipal.username == 'alice');
-  assert(interimPrincipal.aci.roles.contains('admin'));
-  assert(!interimPrincipal.authenticated);
-  assert(wrong.error == 'login.error.2fa.invalid-code');
-  assert(wrong.authorizationToken.isNotEmpty);
-  assert(Tom2FAChallenge.fromClaims(afterOneMiss.payload)!.attempt == 1);
-  assert(pass2.error.isEmpty);
-  assert(!pass2.requires2FA);
-  assert(principal.authenticated);
-  assert(principal.aci.roles.contains('admin'));
-  assert(Tom2FAChallenge.fromClaims(session.payload) == null);
-  assert(exhausted.error == 'login.error.2fa.attempts-exhausted');
-  assert(exhausted.authorizationToken.isEmpty);
-  assert(!onePass.requires2FA);
-  assert(direct.authenticated);
-  assert(_adaptor.issued == 0, 'a disabled policy never reaches the mechanism');
+  // Checks
+  check(
+    pass1.error.isEmpty,
+    'a login that still owes a factor is unfinished, not refused',
+  );
+  check(
+    pass1.requires2FA,
+    'the policy demands a second factor of an administrator',
+  );
+  check(
+    pass1.twoFactorType == _mechanism,
+    'the answer names the mechanism the client has to satisfy',
+  );
+  check(
+    challenge.hint == '***-**-4711',
+    'the hint shows enough to recognise the phone and not enough to '
+    'identify it',
+  );
+  check(
+    challenge.attempt == 0 && challenge.attemptsAllowed == 2,
+    'a freshly minted challenge has both of its tries left',
+  );
+  check(
+    !publicClaims!.containsKey(Tom2FAClaims.verificationData),
+    'the verification payload stays in the encrypted section, so a client '
+    'cannot rewrite the thing it is about to be tested on',
+  );
+  check(
+    interimPrincipal.username == 'alice',
+    'the interim token carries the real identity, so the second pass need '
+    'not ask for the password again',
+  );
+  check(
+    interimPrincipal.aci.roles.contains('admin'),
+    'it carries the real roles as well, which is what pass 2 concludes on',
+  );
+  check(
+    !interimPrincipal.authenticated,
+    'an interim token is not a session, whatever else it carries',
+  );
+  check(
+    wrong.error == 'login.error.2fa.invalid-code',
+    'a wrong code answers with the key that means "try again"',
+  );
+  check(
+    wrong.authorizationToken.isNotEmpty,
+    'a retry is handed a fresh token to come back with',
+  );
+  check(
+    Tom2FAChallenge.fromClaims(afterOneMiss.payload)!.attempt == 1,
+    'the miss is counted in the token the next submission must present',
+  );
+  check(pass2.error.isEmpty, 'the right code completes the login');
+  check(
+    !pass2.requires2FA,
+    'nothing further is owed once the factor has been satisfied',
+  );
+  check(
+    principal.authenticated,
+    'what comes back is an ordinary session, like any one-pass login',
+  );
+  check(
+    principal.aci.roles.contains('admin'),
+    'the roles established on pass 1 survive into that session',
+  );
+  check(
+    Tom2FAChallenge.fromClaims(session.payload) == null,
+    'the session keeps no trace of the challenge for a later request to '
+    'replay',
+  );
+  check(
+    exhausted.error == 'login.error.2fa.attempts-exhausted',
+    'spending the last try changes the key from "try again" to "start over"',
+  );
+  check(
+    exhausted.authorizationToken.isEmpty,
+    'no token comes back, so a six-digit code cannot be brute-forced',
+  );
+  check(
+    !onePass.requires2FA,
+    'a policy that asks nothing of administrators demands no factor',
+  );
+  check(
+    direct.authenticated,
+    'that login is finished on the first pass, session and all',
+  );
+  check(_adaptor.issued == 0, 'a disabled policy never reaches the mechanism');
 }
 
 void main() => run();
