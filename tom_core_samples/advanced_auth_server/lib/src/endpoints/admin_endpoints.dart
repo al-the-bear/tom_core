@@ -132,6 +132,13 @@ abstract class AdminStore {
 /// Reads/writes through the process-wide singleton repositories. Requires a live
 /// `auth_db` connection and the reflection runtime, so it is exercised
 /// end-to-end rather than in the unit tests (which use [InMemoryAdminStore]).
+///
+/// Every removal `await`s in a block body instead of tail-returning the
+/// repository call. [TomRepository.deleteById] completes with an affected-row
+/// count, and `Future<void>` does not erase it: an arrow body would forward that
+/// `int` to [AdminService] and on to [AdvancedAdminApiService], up a chain whose
+/// every static type says there is nothing there. `await` is where the value
+/// stops.
 class RepositoryAdminStore implements AdminStore {
   /// Creates the repository-backed store (stateless; reads the singletons).
   const RepositoryAdminStore();
@@ -146,7 +153,9 @@ class RepositoryAdminStore implements AdminStore {
   Future<UserRecord> saveUser(UserRecord record) => userRepository.save(record);
 
   @override
-  Future<void> removeUser(int id) => userRepository.deleteById(id);
+  Future<void> removeUser(int id) async {
+    await userRepository.deleteById(id);
+  }
 
   @override
   Future<List<RoleRecord>> allRoles() => roleRepository.findAll();
@@ -190,7 +199,9 @@ class RepositoryAdminStore implements AdminStore {
       groupRepository.save(record);
 
   @override
-  Future<void> removeGroup(int id) => groupRepository.deleteById(id);
+  Future<void> removeGroup(int id) async {
+    await groupRepository.deleteById(id);
+  }
 
   @override
   Future<void> replaceGroupMembers(

@@ -619,6 +619,15 @@ abstract class AppWriteStore {
 /// Writes through the process-wide singleton repositories. Requires a live
 /// `app_db` connection and the reflection runtime, so it is exercised end-to-end
 /// (the unit tests use [InMemoryAppWriteStore]).
+///
+/// The deletes `await` in a block body rather than tail-returning, which reads
+/// as needless ceremony and is not: [TomRepository.deleteById] completes with an
+/// affected-row count, and `Future<void>` does not erase it. Tail-returning one
+/// makes this store hand its callers an `int` that no static type between here
+/// and the endpoint admits to — the whole chain up to
+/// [AdvancedAppApiService.deleteWorkspace] says `Future<void>` — so the leak is
+/// invisible at every point where someone might notice it. `await` is where the
+/// value stops.
 class RepositoryAppWriteStore implements AppWriteStore {
   /// Creates the repository-backed store (stateless; reads the singletons).
   const RepositoryAppWriteStore();
@@ -628,7 +637,9 @@ class RepositoryAppWriteStore implements AppWriteStore {
       workspaceRepository.save(record);
 
   @override
-  Future<void> deleteWorkspace(int id) => workspaceRepository.deleteById(id);
+  Future<void> deleteWorkspace(int id) async {
+    await workspaceRepository.deleteById(id);
+  }
 
   @override
   Future<ItemRecord?> findItem(int id) => itemRepository.findById(id);
@@ -637,7 +648,9 @@ class RepositoryAppWriteStore implements AppWriteStore {
   Future<ItemRecord> saveItem(ItemRecord record) => itemRepository.save(record);
 
   @override
-  Future<void> deleteItem(int id) => itemRepository.deleteById(id);
+  Future<void> deleteItem(int id) async {
+    await itemRepository.deleteById(id);
+  }
 
   @override
   Future<ProjectRecord> saveProject(ProjectRecord record) =>

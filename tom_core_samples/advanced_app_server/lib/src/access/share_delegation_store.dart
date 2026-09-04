@@ -73,9 +73,15 @@ class RepositoryShareDelegationStore implements ShareDelegationStore {
   Future<TomPrincipalDelegation?> findDelegation(int id) =>
       principalDelegationRepository.findById(id);
 
+  // `await`ed in a block body rather than tail-returned: `deleteById` completes
+  // with an affected-row count and `Future<void>` does not erase it, so an
+  // arrow here would forward an `int` up a chain whose every static type says
+  // there is nothing there. See [RepositoryAppWriteStore] for the same rule at
+  // the sibling store.
   @override
-  Future<void> deleteDelegation(int id) =>
-      principalDelegationRepository.deleteById(id);
+  Future<void> deleteDelegation(int id) async {
+    await principalDelegationRepository.deleteById(id);
+  }
 }
 
 /// A seeded, database-free store that is both the [ShareDelegationStore] write
