@@ -775,7 +775,8 @@ class TomScheduler implements TomClosable {
         return busy.add(run.jobName);
       },
     );
-    for (final run in claimed) {
+    for (final claim in claimed) {
+      final run = claim.run;
       final job = _jobs[run.jobName];
       if (job == null) continue;
       // The claim is a *local* reservation; the lease is the cluster arbiter.
@@ -784,7 +785,7 @@ class TomScheduler implements TomClosable {
       // this one's lease to time out.
       final lease = await _acquireLease(job, run);
       if (lease == null && lock != null) {
-        await store.release(run);
+        await store.release(claim);
         continue;
       }
       final attempt = Completer<void>();
@@ -795,7 +796,7 @@ class TomScheduler implements TomClosable {
       // hold the `_ticking` guard for the run's whole duration and collapse
       // every pass that fell inside it. Callers that do want to wait use
       // [drain], which waits without blocking the pass.
-      unawaited(_runOne(job, run, lease).whenComplete(attempt.complete));
+      unawaited(_runOne(job, claim, lease).whenComplete(attempt.complete));
     }
   }
 
@@ -850,16 +851,22 @@ class TomScheduler implements TomClosable {
     return lease;
   }
 
-  /// Executes one attempt of [run] and records the outcome.
+  /// Executes one attempt of the run held by [claim] and records the outcome.
+  ///
+  /// The *claim* is threaded through rather than the run, because every write
+  /// below is fenced on it: this node may have been partitioned long enough for
+  /// the lease to lapse, and the outcome it is about to record then belongs to
+  /// a peer's attempt rather than to its own. See the rule on [TomJobStore].
   ///
   /// [lease] is the coordination lease held for this run, or `null` when the
   /// scheduler is running single-node.
   Future<void> _runOne(
     TomJobDefinition job,
-    TomJobRun run,
+    TomJobClaim claim,
     TomLease? lease,
   ) async {
-    final heartbeat = _startHeartbeat(job, run, lease);
+    final run = claim.run;
+    final heartbeat = _startHeartbeat(job, claim, lease);
     try {
       final TomCommand command;
       try {
@@ -867,7 +874,7 @@ class TomScheduler implements TomClosable {
       } catch (error, stack) {
         // A body factory that throws is a permanent defect, not a transient
         // failure — retrying it just fails identically. Fail the run outright.
-        if (_stillOurs(run)) await _failFinally(job, run, error, stack);
+        if (_stillOurs(run)) await _failFinally(job, claim, error, stack);
         return;
       }
       // Recorded *before* the dispatch and never after: the whole value of the
@@ -877,9 +884,9 @@ class TomScheduler implements TomClosable {
       // confuse. The cost is the opposite error — a run marked started whose
       // dispatch never happened — and that one is safe, because it only ever
       // makes recovery more cautious.
-      await store.markStarted(run, clock());
+      await store.markStarted(claim, clock());
       await dispatcher.dispatch(command).timeout(job.timeout);
-      if (_stillOurs(run)) await store.complete(run, clock());
+      if (_stillOurs(run)) await store.complete(claim, clock());
     } on TimeoutException catch (error, stack) {
       onAlert(
         TomJobAlert(
@@ -889,9 +896,9 @@ class TomScheduler implements TomClosable {
           error: error,
         ),
       );
-      if (_stillOurs(run)) await _failAttempt(job, run, error, stack);
+      if (_stillOurs(run)) await _failAttempt(job, claim, error, stack);
     } catch (error, stack) {
-      if (_stillOurs(run)) await _failAttempt(job, run, error, stack);
+      if (_stillOurs(run)) await _failAttempt(job, claim, error, stack);
     } finally {
       heartbeat?.cancel();
       _inFlight.remove(run.id);
@@ -915,16 +922,21 @@ class TomScheduler implements TomClosable {
   /// Renewal is what decouples the lease TTL from job duration: without it the
   /// TTL would have to exceed the slowest possible run, and a dead node would
   /// then block its work for exactly that long.
-  Timer? _startHeartbeat(TomJobDefinition job, TomJobRun run, TomLease? lease) {
+  Timer? _startHeartbeat(
+    TomJobDefinition job,
+    TomJobClaim claim,
+    TomLease? lease,
+  ) {
     if (lock == null || lease == null) return null;
     return Timer.periodic(
       leaseRenewInterval,
-      (_) => unawaited(_renewLease(job, run)),
+      (_) => unawaited(_renewLease(job, claim)),
     );
   }
 
   /// One heartbeat: push the lease expiry forward and refresh the store claim.
-  Future<void> _renewLease(TomJobDefinition job, TomJobRun run) async {
+  Future<void> _renewLease(TomJobDefinition job, TomJobClaim claim) async {
+    final run = claim.run;
     final coordinator = lock;
     final current = _leases[run.id];
     if (coordinator == null || current == null) return;
@@ -946,7 +958,9 @@ class TomScheduler implements TomClosable {
     _leases[run.id] = renewed;
     // The store lease moves with the lock lease, so `recoverAbandoned` and the
     // coordinator agree about who is alive rather than expiring independently.
-    await store.renewClaim(run, clock());
+    // The claim itself is untouched by this: a heartbeat proves an attempt is
+    // alive, it does not begin a new one.
+    await store.renewClaim(claim, clock());
   }
 
   /// Gives up the lease held for [run], if any.
@@ -969,18 +983,19 @@ class TomScheduler implements TomClosable {
   /// makes "you have two attempts left" irrelevant.
   Future<void> _failAttempt(
     TomJobDefinition job,
-    TomJobRun run,
+    TomJobClaim claim,
     Object error,
     StackTrace stack,
   ) async {
+    final run = claim.run;
     final now = clock();
     if (error is TomPermanentFailure ||
         !job.retryPolicy.allowsRetryAfter(run.attempt)) {
-      await _failFinally(job, run, error, stack);
+      await _failFinally(job, claim, error, stack);
       return;
     }
     final retryAt = now.add(job.retryPolicy.backoffFor(run.attempt, random));
-    await store.fail(run, error.toString(), now, retryAt: retryAt);
+    await store.fail(claim, error.toString(), now, retryAt: retryAt);
     onAlert(
       TomJobAlert(
         jobName: job.name,
@@ -996,16 +1011,16 @@ class TomScheduler implements TomClosable {
   /// Marks [run] terminally failed and alerts.
   Future<void> _failFinally(
     TomJobDefinition job,
-    TomJobRun run,
+    TomJobClaim claim,
     Object error,
     StackTrace stack,
   ) async {
-    await store.fail(run, error.toString(), clock());
+    await store.fail(claim, error.toString(), clock());
     onAlert(
       TomJobAlert(
         jobName: job.name,
         kind: TomJobAlertKind.runFailed,
-        run: run,
+        run: claim.run,
         error: error,
         stackTrace: stack,
       ),

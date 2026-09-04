@@ -290,8 +290,8 @@ Future<void> _takeoverVictim(_Options options, TomDataSource datasource) async {
   // leave runs abandoned by a node that is about to be killed, and the survivor
   // would then recover several things and have to guess which one mattered.
   final claimed = await store.claimDue(window, options.node);
-  final ours = claimed.where((r) => r.jobName == takeoverJob).toList();
-  for (final other in claimed.where((r) => r.jobName != takeoverJob)) {
+  final ours = claimed.where((c) => c.run.jobName == takeoverJob).toList();
+  for (final other in claimed.where((c) => c.run.jobName != takeoverJob)) {
     await store.release(other);
   }
   if (ours.length != 1) {
@@ -301,11 +301,13 @@ Future<void> _takeoverVictim(_Options options, TomDataSource datasource) async {
     );
     exit(1);
   }
-  final run = ours.single;
-  await store.markStarted(run, DateTime.now().toUtc());
+  // The ticket, not the run: every transition is fenced on it, so it is what
+  // has to be carried. See `TomJobClaim`.
+  final claim = ours.single;
+  await store.markStarted(claim, DateTime.now().toUtc());
   emit(options.node, options.scenario, 'claimed', {
-    'runId': run.id,
-    'claimedAt': run.claimedAt!.toIso8601String(),
+    'runId': claim.id,
+    'claimedAt': claim.run.claimedAt!.toIso8601String(),
   });
 
   // Hangs. The runner reads the line above, kills this process, and the run is

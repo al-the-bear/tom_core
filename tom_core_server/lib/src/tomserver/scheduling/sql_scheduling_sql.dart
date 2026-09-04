@@ -41,6 +41,13 @@ const String defaultSchedulerNodeTable = 'tom_scheduler_node';
 ///    interrupted mid-execution. Recovery may always re-queue the first and may
 ///    only re-queue the second when the job opted in. Quartz spends two trigger
 ///    states (`ACQUIRED`, `EXECUTING`) on the same distinction.
+///  * `claim_token` is the queue's fencing counter, and the exact counterpart of
+///    `token` on the lease table below: it rises on every claim of a run and
+///    never repeats, so two claims of the same run are orderable. `claimed_at`
+///    cannot serve — it is the heartbeat and moves during an attempt — and the
+///    owner cannot either, since a node may re-claim a run it previously lost.
+///    Without it the queue and the lock could disagree about who holds a run,
+///    which is the one disagreement neither can resolve.
 ///  * instants are `DATETIME(6)` and always written in UTC — see
 ///    `sqlInstant` in `datasources/sql_instant.dart`.
 ///  * `job_name` is `VARCHAR(160)` rather than 191 so the composite unique key
@@ -59,6 +66,7 @@ TomFrameworkTable jobRunTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('attempt', 'INT', defaultValue: '1'),
     TomFrameworkColumn('claimed_by', 'VARCHAR(191)', nullable: true),
     TomFrameworkColumn('claimed_at', 'DATETIME(6)', nullable: true),
+    TomFrameworkColumn('claim_token', 'BIGINT', defaultValue: '0'),
     TomFrameworkColumn('started_at', 'DATETIME(6)', nullable: true),
     TomFrameworkColumn('last_error', 'TEXT', nullable: true),
     TomFrameworkColumn('completed_at', 'DATETIME(6)', nullable: true),

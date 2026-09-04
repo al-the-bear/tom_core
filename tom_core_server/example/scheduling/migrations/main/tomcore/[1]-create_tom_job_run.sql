@@ -16,6 +16,14 @@
 --    run's own id remains the primary key, because that is what every claim,
 --    completion and failure statement addresses.
 --
+--  * `claim_token` is the fencing counter: it rises on every claim of a run and
+--    never repeats, so two claims of the same run are orderable and a node whose
+--    lease lapsed while it was partitioned cannot record an outcome over the
+--    peer that took its work. It is the queue's counterpart of `tom_lease.token`
+--    — the same problem, solved the same way, because the queue and the lock
+--    must agree about who holds a run. `claimed_at` cannot serve in its place:
+--    that is the heartbeat, and it moves while an attempt runs.
+--
 -- `started_at` is nullable and the null carries meaning: a `running` row without
 -- it was reserved and then lost before anything executed, so re-queueing it
 -- cannot repeat a side effect; a `running` row with it was interrupted
@@ -33,6 +41,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   attempt       INT          NOT NULL DEFAULT 1,
   claimed_by    VARCHAR(191) NULL,
   claimed_at    DATETIME(6)  NULL,
+  claim_token   BIGINT       NOT NULL DEFAULT 0,
   started_at    DATETIME(6)  NULL,
   last_error    TEXT         NULL,
   completed_at  DATETIME(6)  NULL,

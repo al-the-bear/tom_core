@@ -67,6 +67,44 @@
 
 ### Changed
 
+- **Claiming a run is a compare-and-set, and every transition out of it is
+  fenced on the claim (tcincb2_ahtl).** `tom_job_run` gains `claim_token BIGINT
+  NOT NULL DEFAULT 0`, the queue's counterpart of `token` on the lease table:
+  it rises on every claim of a run and never repeats, so two claims of the same
+  run are orderable. Neither of the columns already there could do the job —
+  `claimed_at` is the heartbeat and moves during an attempt, and `claimed_by`
+  cannot separate a node's two claims of the same run. Without it the queue and
+  the coordination lock could disagree about who holds a run, which is the one
+  disagreement neither can resolve. See the kernel changelog for the contract
+  this implements and the failure it closes.
+
+  `_claim` now issues the ticket from a compare-and-set — `UPDATE … SET
+  claim_token = :next WHERE id = :id AND state = 'pending' AND claim_token =
+  :current` — so the token a `TomJobClaim` carries is provably the token in the
+  row, rather than a value read a moment earlier and hoped to still hold.
+
+  The five transitions (`release`, `markStarted`, `renewClaim`, `complete`,
+  `fail`) take a `TomJobClaim` and share one guard, `_heldByClaim` + `_fence`,
+  instead of five hand-written copies of the same `WHERE`: `id`, `state =
+  'running'`, `claimed_by` and `claim_token` must all match the ticket. Written
+  five times it was a matter of when, not whether, one would lose a conjunct —
+  and a lost conjunct only ever *widens* what a statement matches, so it fails
+  nothing until two nodes race. `release`, `complete` and `fail` deliberately
+  leave `claim_token` where it is; it is a counter, not a lock, and resetting it
+  would let a superseded ticket match again.
+
+  `_resolveAmbiguousClaim` — the recheck after a write whose outcome is unknown
+  — now requires owner, token **and** `claimed_at` to match before it concludes
+  the claim landed. The token alone is not enough: two overlapping passes of the
+  *same* node scan the same `pending` row and so compute the same next token,
+  and only the instant separates them, since two passes of one node do not share
+  a tick.
+
+  `test/scheduling_cluster_test.dart` asserts the conditions are in the SQL and
+  bound to the ticket — the thing a fake can check and a green contract run
+  would not notice. The behaviour itself is asserted against a real server by
+  the shared kernel contract through `scheduling_db_test.dart`.
+
 - **A time-of-day column is now addressable in a query sentence
   (tcincb1_ahzb).** `TomZonedTime` appeared in the migration type map and
   nowhere in the query compiler, so a `TIME` column a migration could create

@@ -306,18 +306,23 @@ void main() {
         state: TomJobRunState.running,
         claimedBy: 'node-a',
         claimedAt: now,
+        claimToken: 1,
       );
+      // A ticket built by hand: the recording data source never answers a claim,
+      // so `claimDue` cannot supply one, and this test only cares about which
+      // columns the statements name.
+      final claim = TomJobClaim(run, 'node-a', 1);
       await audit(datasource, [jobRunTable(defaultJobRunTable)], () async {
         await _issuing(() => store.enqueue(run));
         await _issuing(() => store.findWindow('job', now));
         await _issuing(() => store.lastWindow('job'));
         await _issuing(() => store.claimDue(now, 'node-a'));
-        await _issuing(() => store.markStarted(run, now));
-        await _issuing(() => store.renewClaim(run, now));
-        await _issuing(() => store.release(run));
-        await _issuing(() => store.complete(run, now));
-        await _issuing(() => store.fail(run, 'boom', now));
-        await _issuing(() => store.fail(run, 'boom', now, retryAt: now));
+        await _issuing(() => store.markStarted(claim, now));
+        await _issuing(() => store.renewClaim(claim, now));
+        await _issuing(() => store.release(claim));
+        await _issuing(() => store.complete(claim, now));
+        await _issuing(() => store.fail(claim, 'boom', now));
+        await _issuing(() => store.fail(claim, 'boom', now, retryAt: now));
         await _issuing(
           () => store.recoverAbandoned(now, const Duration(minutes: 5)),
         );

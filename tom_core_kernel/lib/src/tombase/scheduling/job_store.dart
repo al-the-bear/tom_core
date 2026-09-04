@@ -111,9 +111,28 @@ class TomJobRun {
   /// Identity of the runner holding the lease, `null` when unclaimed.
   String? claimedBy;
 
-  /// When the lease was taken, `null` when unclaimed. Compared against the
-  /// lease timeout by [TomJobStore.recoverAbandoned].
+  /// When the lease was last heard from, `null` when unclaimed. Compared
+  /// against the lease timeout by [TomJobStore.recoverAbandoned].
+  ///
+  /// This is the *heartbeat*, not the claim's identity:
+  /// [TomJobStore.renewClaim] pushes it forward for as long as the attempt
+  /// runs. Which claim is current is [claimToken]'s job.
   DateTime? claimedAt;
+
+  /// Which claim of this run is current: strictly increasing across claims,
+  /// never decreasing, and never reset.
+  ///
+  /// The fencing token of [TomJobClaim], and the counterpart of `TomLease.token`
+  /// on the coordination lock — the same problem, solved the same way, because
+  /// the two must agree about who holds a run. It starts at 0 on an unclaimed
+  /// run and is incremented by [TomJobStore.claimDue] on every claim, including
+  /// a re-claim by the node that held it before.
+  ///
+  /// It is a separate field from [claimedAt] because the two answer different
+  /// questions and only one of them may move during an attempt. A heartbeat
+  /// that doubled as the identity would invalidate the claim it was proving
+  /// alive.
+  int claimToken;
 
   /// When the body actually began executing, `null` if it never did.
   ///
@@ -153,6 +172,7 @@ class TomJobRun {
     this.attempt = 1,
     this.claimedBy,
     this.claimedAt,
+    this.claimToken = 0,
     this.startedAt,
     this.lastError,
     this.completedAt,
@@ -177,6 +197,7 @@ class TomJobRun {
     'attempt': attempt,
     'claimedBy': claimedBy,
     'claimedAt': claimedAt?.toIso8601String(),
+    'claimToken': claimToken,
     'startedAt': startedAt?.toIso8601String(),
     'lastError': lastError,
     'completedAt': completedAt?.toIso8601String(),
@@ -201,6 +222,10 @@ class TomJobRun {
     attempt: map['attempt'] as int? ?? 1,
     claimedBy: map['claimedBy'] as String?,
     claimedAt: _parseOrNull(map['claimedAt']),
+    // Absent in a queue file written before claims were fenced. Zero is the
+    // safe reading: the next claim raises it, and nothing holds a ticket for a
+    // run this process has not claimed yet.
+    claimToken: map['claimToken'] as int? ?? 0,
     startedAt: _parseOrNull(map['startedAt']),
     lastError: map['lastError'] as String?,
     completedAt: _parseOrNull(map['completedAt']),
@@ -214,6 +239,75 @@ class TomJobRun {
   String toString() =>
       '$jobName#${scheduledFor.toIso8601String()} '
       '(${state.name}, attempt $attempt)';
+}
+
+// =============================================================================
+// CLAIM TICKET
+// =============================================================================
+
+/// A ticket proving that one particular claim of [run] was won.
+///
+/// [TomJobStore.claimDue] issues one per run it hands over, and every
+/// transition out of a claim takes the ticket rather than the run. That is the
+/// same arrangement `TomLeaseLock` uses — `acquire` returns a `TomLease` and
+/// `renew`/`release` take it back — and it is here for the same reason: a
+/// caller cannot record an outcome for work it did not claim, because it has
+/// nothing to call the method with.
+///
+/// ## What the ticket has to identify
+///
+/// Not the run, and not the node: **this claim of this run**. [owner] alone is
+/// not enough, because a node can re-claim a run it had previously lost — and
+/// then its first attempt's outcome would be accepted as its second's.
+///
+/// So the fence is [token], a counter that rises on every claim of the run and
+/// never repeats. It is exactly `TomLease.token`, for exactly the same reason:
+/// two acquisitions of the same thing have to be orderable, or "the current
+/// holder" is not a decidable question. That the queue lacked one while the
+/// lock had one is why the two could disagree.
+///
+/// ## Why not the claim instant
+///
+/// [TomJobRun.claimedAt] looks like a cheaper answer — it is already stored,
+/// and it already distinguishes two claims. But it is the *heartbeat*:
+/// [TomJobStore.renewClaim] moves it forward while the attempt runs. A ticket
+/// fenced on it would be invalidated by the first heartbeat of the very attempt
+/// it certifies, so the claimant would silently lose the right to report its
+/// own outcome. The identity must be the thing that does *not* move, which is
+/// the whole reason the lock separates `token` from `expiresAt`.
+class TomJobClaim {
+  /// The claimed run, as the claimant sees it.
+  ///
+  /// Mutable, and mutated by the transitions below so a caller's copy keeps up
+  /// with what it just wrote — the ticket is the identity, this is the payload.
+  final TomJobRun run;
+
+  /// The runner this claim was leased to.
+  ///
+  /// Not load-bearing on its own — [token] already separates two claims — but
+  /// checked alongside it, so a ticket threaded to the wrong store or the wrong
+  /// node is refused rather than coincidentally accepted.
+  final String owner;
+
+  /// The value of [TomJobRun.claimToken] this claim was granted.
+  final int token;
+
+  /// Creates a ticket for [run], claimed by [owner] at [token].
+  ///
+  /// Public because implementations construct it and tests need to forge one —
+  /// a fence that could only be built by the store would be untestable against
+  /// the case it exists for.
+  const TomJobClaim(this.run, this.owner, this.token);
+
+  /// The claimed run's id.
+  String get id => run.id;
+
+  /// Whether [stored] is still held under *this* claim.
+  bool holds(TomJobRun stored) =>
+      stored.claimedBy == owner && stored.claimToken == token;
+
+  @override
+  String toString() => 'TomJobClaim(${run.id} by $owner, token $token)';
 }
 
 // =============================================================================
@@ -232,22 +326,35 @@ class TomJobRun {
 /// loop — they perform no `await` between selecting and stamping.
 ///
 /// **A transition out of a claim only ever *records* a run; it never creates
-/// one.** [release], [markStarted], [renewClaim], [complete] and [fail] are all
-/// no-ops unless the store still holds the run *and* still holds it as
-/// `running`. Each of the five is reached by a caller holding a `TomJobRun` it
-/// obtained some time earlier, so each can be handed a run the store has since
-/// finished, re-queued, handed to another node via [recoverAbandoned], or
-/// dropped entirely via [purgeFinished] — and in every one of those cases the
-/// outcome of the attempt this caller is reporting is no longer the run's
-/// outcome. Writing it back would either overrule the node that now owns the
-/// run or, worse, resurrect a purged row: [purgeFinished] is the only thing
-/// bounding the store, and a re-inserted run carries a freshly stamped
-/// [TomJobRun.completedAt] that restarts its retention clock, so it survives
-/// every subsequent cutoff.
+/// one, and never overrules another claimant.** [release], [markStarted],
+/// [renewClaim], [complete] and [fail] are all no-ops unless the store still
+/// holds the run, still holds it as `running`, *and* still holds it under the
+/// [TomJobClaim] being presented. Each of the five is reached by a caller
+/// holding a ticket it obtained some time earlier, so each can be handed a
+/// claim the store has since finished, re-queued, handed to another node via
+/// [recoverAbandoned], or dropped entirely via [purgeFinished] — and in every
+/// one of those cases the outcome of the attempt this caller is reporting is no
+/// longer the run's outcome.
+///
+/// The two halves of the guard answer two different questions, and only both
+/// together are sufficient:
+///
+///  * **Does the store still hold this run, as `running`?** Without it, writing
+///    back would resurrect a purged row — [purgeFinished] is the only thing
+///    bounding the store, and a re-inserted run carries a freshly stamped
+///    [TomJobRun.completedAt] that restarts its retention clock, so it survives
+///    every subsequent cutoff.
+///  * **Is it still held under *this* claim?** State alone cannot see the case
+///    the lease timeout exists for. A node partitioned for longer than the
+///    timeout returns to a run that recovery re-queued and a peer re-claimed:
+///    the row exists and is `running`, so a state-only guard passes, and the
+///    returning node's outcome silently overwrites an attempt the peer is still
+///    executing. The peer then heartbeats a run already marked succeeded, and
+///    its own completion no-ops.
 ///
 /// The rule costs nothing when nothing went wrong — a run this node still owns
-/// is `running` by definition — and it is what makes the five safe to call
-/// without first re-reading the store.
+/// is `running` under its own claim by definition — and it is what makes the
+/// five safe to call without first re-reading the store.
 abstract class TomJobStore {
   /// Whether an abandoned [run] may be offered again.
   ///
@@ -338,17 +445,19 @@ abstract class TomJobStore {
   /// Atomically claims up to [limit] runs that are due at [now], marking each
   /// `running` and leasing it to [owner].
   ///
-  /// When [accept] is supplied, only runs it approves are claimed; the
-  /// scheduler uses it to enforce per-job overlap policy without a second
+  /// Returns one [TomJobClaim] per run won — the ticket every transition below
+  /// requires. When [accept] is supplied, only runs it approves are claimed;
+  /// the scheduler uses it to enforce per-job overlap policy without a second
   /// round-trip.
-  Future<List<TomJobRun>> claimDue(
+  Future<List<TomJobClaim>> claimDue(
     DateTime now,
     String owner, {
     int limit = 16,
     bool Function(TomJobRun run)? accept,
   });
 
-  /// Returns a claimed [run] to `pending` without charging it an attempt.
+  /// Returns the run held by [claim] to `pending` without charging it an
+  /// attempt.
   ///
   /// The voluntary counterpart of [recoverAbandoned]: a runner that claimed a
   /// run and then found it could not proceed — most usually because a cluster
@@ -359,56 +468,63 @@ abstract class TomJobStore {
   /// charging an attempt would let a busy cluster exhaust a job's retry budget
   /// through contention alone.
   ///
-  /// A no-op unless the store still holds [run] as `running` — a completion
-  /// that raced the release must win.
-  Future<void> release(TomJobRun run);
+  /// A no-op unless the store still holds the run as `running` under [claim] —
+  /// a completion that raced the release must win, and a run recovery has since
+  /// handed to a peer must not be pushed back into the queue underneath it.
+  Future<void> release(TomJobClaim claim);
 
-  /// Records that [run]'s body actually began executing at [now].
+  /// Records that [claim]'s body actually began executing at [now].
   ///
   /// Called once per attempt, immediately before the body is handed to the
   /// dispatcher, and it is the only thing that distinguishes an interrupted
   /// *execution* from an abandoned *reservation*. Without it every `running` row
   /// looks the same after a node dies, and recovery has to guess.
   ///
-  /// A no-op on a run the store no longer holds as `running`: the outcome of a
-  /// run this node has lost belongs to whoever took it over. Stamping
-  /// `startedAt` onto it would tell recovery that a *different* node's attempt
-  /// had begun.
-  Future<void> markStarted(TomJobRun run, DateTime now);
+  /// A no-op unless the store still holds the run as `running` under [claim]:
+  /// the outcome of a run this node has lost belongs to whoever took it over.
+  /// Stamping `startedAt` onto it would tell recovery that a *different* node's
+  /// attempt had begun.
+  Future<void> markStarted(TomJobClaim claim, DateTime now);
 
-  /// Refreshes the lease timestamp on a claimed [run] to [now].
+  /// Refreshes the lease timestamp on [claim] to [now].
   ///
   /// A long-running attempt must be able to say it is still alive, or
   /// [recoverAbandoned] would hand its work to a second runner while the first
   /// is still going. This is the store half of that heartbeat; the lock half is
   /// `TomLeaseLock.renew`.
   ///
-  /// A no-op unless the store still holds [run] as `running` — a heartbeat for
-  /// a lease this node no longer owns would keep recovery off a run it has
-  /// already reassigned.
-  Future<void> renewClaim(TomJobRun run, DateTime now);
-
-  /// Marks [run] succeeded at [now] and releases its lease.
+  /// A no-op unless the store still holds the run as `running` under [claim] —
+  /// a heartbeat for a lease this node no longer owns would keep recovery off a
+  /// run it has already reassigned.
   ///
-  /// A no-op unless the store still holds [run] as `running` — see the rule on
-  /// [TomJobStore]. Calling it twice therefore records the *first* completion
-  /// only; the second does not move [TomJobRun.completedAt] forward, so a
-  /// duplicate outcome cannot extend the run's retention.
-  Future<void> complete(TomJobRun run, DateTime now);
+  /// The [TomJobClaim] itself does not move: it names the claim that was won,
+  /// and a renewal extends that claim rather than starting a new one. What
+  /// advances is the stored lease stamp, [TomJobRun.claimedAt]; the token the
+  /// ticket carries is untouched, so the claimant keeps the right to record its
+  /// own outcome for as long as the attempt lasts.
+  Future<void> renewClaim(TomJobClaim claim, DateTime now);
 
-  /// Records a failed attempt of [run].
+  /// Marks [claim]'s run succeeded at [now] and releases its lease.
+  ///
+  /// A no-op unless the store still holds the run as `running` under [claim] —
+  /// see the rule on [TomJobStore]. Calling it twice therefore records the
+  /// *first* completion only; the second does not move [TomJobRun.completedAt]
+  /// forward, so a duplicate outcome cannot extend the run's retention.
+  Future<void> complete(TomJobClaim claim, DateTime now);
+
+  /// Records a failed attempt of [claim]'s run.
   ///
   /// When [retryAt] is non-null the run returns to `pending` with its attempt
   /// count incremented and `runAt` set to [retryAt]; when it is `null` the run
   /// becomes terminally [TomJobRunState.failed].
   ///
-  /// A no-op unless the store still holds [run] as `running`, exactly as
-  /// [complete] is. The retrying branch has a second reason to check: it
-  /// increments the attempt count, and charging a retry to a run that now
-  /// belongs to another node would eat a retry budget this caller is no longer
-  /// spending.
+  /// A no-op unless the store still holds the run as `running` under [claim],
+  /// exactly as [complete] is. The retrying branch has a second reason to
+  /// check: it increments the attempt count, and charging a retry to a run that
+  /// now belongs to another node would eat a retry budget this caller is no
+  /// longer spending.
   Future<void> fail(
-    TomJobRun run,
+    TomJobClaim claim,
     String error,
     DateTime now, {
     DateTime? retryAt,
@@ -514,13 +630,13 @@ class TomMemoryJobStore implements TomJobStore {
   }
 
   @override
-  Future<List<TomJobRun>> claimDue(
+  Future<List<TomJobClaim>> claimDue(
     DateTime now,
     String owner, {
     int limit = 16,
     bool Function(TomJobRun run)? accept,
   }) async {
-    final claimed = <TomJobRun>[];
+    final claimed = <TomJobClaim>[];
     // No `await` inside the loop: selecting and stamping happen in one
     // uninterrupted turn of the event loop, which is what makes the claim
     // atomic against a concurrent caller in this isolate.
@@ -531,19 +647,34 @@ class TomMemoryJobStore implements TomJobStore {
       run.state = TomJobRunState.running;
       run.claimedBy = owner;
       run.claimedAt = now;
-      claimed.add(run);
+      run.claimToken++;
+      // The ticket copies the owner and the token rather than reading them back
+      // off the run later. This store hands out the *same object* it holds, so
+      // a subsequent recovery and re-claim mutate the very run the first
+      // claimant is still carrying — a fence read from that object would always
+      // agree with whoever wrote it last, which is precisely the wrong node.
+      claimed.add(TomJobClaim(run, owner, run.claimToken));
     }
     if (claimed.isNotEmpty) onMutated();
     return claimed;
   }
 
+  /// The stored run [claim] still holds, or `null` when it no longer does.
+  ///
+  /// The whole of the rule documented on [TomJobStore], in one place: the run
+  /// must exist, be `running`, and be `running` *under this claim*. Written
+  /// once because five transitions ask the same question, and five copies of a
+  /// three-part predicate is five chances for one of them to drift.
+  TomJobRun? _held(TomJobClaim claim) {
+    final stored = _runs[claim.run.id];
+    if (stored == null || stored.state != TomJobRunState.running) return null;
+    return claim.holds(stored) ? stored : null;
+  }
+
   @override
-  Future<void> release(TomJobRun run) async {
-    // The `running` guard on this and the four transitions below is the rule
-    // documented on [TomJobStore]: an outcome records a run, it never creates
-    // or overrules one.
-    final stored = _runs[run.id];
-    if (stored == null || stored.state != TomJobRunState.running) return;
+  Future<void> release(TomJobClaim claim) async {
+    final stored = _held(claim);
+    if (stored == null) return;
     stored.state = TomJobRunState.pending;
     stored.claimedBy = null;
     stored.claimedAt = null;
@@ -551,26 +682,26 @@ class TomMemoryJobStore implements TomJobStore {
   }
 
   @override
-  Future<void> markStarted(TomJobRun run, DateTime now) async {
-    final stored = _runs[run.id];
-    if (stored == null || stored.state != TomJobRunState.running) return;
+  Future<void> markStarted(TomJobClaim claim, DateTime now) async {
+    final stored = _held(claim);
+    if (stored == null) return;
     stored.startedAt = now;
-    run.startedAt = now;
+    claim.run.startedAt = now;
     onMutated();
   }
 
   @override
-  Future<void> renewClaim(TomJobRun run, DateTime now) async {
-    final stored = _runs[run.id];
-    if (stored == null || stored.state != TomJobRunState.running) return;
+  Future<void> renewClaim(TomJobClaim claim, DateTime now) async {
+    final stored = _held(claim);
+    if (stored == null) return;
     stored.claimedAt = now;
     onMutated();
   }
 
   @override
-  Future<void> complete(TomJobRun run, DateTime now) async {
-    final stored = _runs[run.id];
-    if (stored == null || stored.state != TomJobRunState.running) return;
+  Future<void> complete(TomJobClaim claim, DateTime now) async {
+    final stored = _held(claim);
+    if (stored == null) return;
     stored.state = TomJobRunState.succeeded;
     stored.completedAt = now;
     stored.claimedBy = null;
@@ -580,13 +711,13 @@ class TomMemoryJobStore implements TomJobStore {
 
   @override
   Future<void> fail(
-    TomJobRun run,
+    TomJobClaim claim,
     String error,
     DateTime now, {
     DateTime? retryAt,
   }) async {
-    final stored = _runs[run.id];
-    if (stored == null || stored.state != TomJobRunState.running) return;
+    final stored = _held(claim);
+    if (stored == null) return;
     stored.lastError = error;
     stored.claimedBy = null;
     stored.claimedAt = null;

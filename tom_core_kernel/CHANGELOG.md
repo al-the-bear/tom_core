@@ -188,6 +188,46 @@ anyone who was writing them.
 
 ### Changed
 
+- **A transition out of a claim is fenced on the claim, not merely on the state
+  (tcincb2_ahtl).** `release`, `markStarted`, `renewClaim`, `complete` and `fail`
+  were no-ops unless the store still held the run as `running` — a guard about
+  *existence and state*, which cannot see the one case the lease timeout exists
+  for. A node claims run R, is partitioned, and its lease lapses;
+  `recoverAbandoned` re-queues R and a peer claims it. R is `running` again,
+  owned by the peer. The original node returns and calls `complete(R)`: the row
+  exists, its state is `running`, the guard passes, and the peer's in-flight
+  attempt is silently overwritten. The peer then heartbeats a run the store
+  already calls `succeeded`, and its own `complete` no-ops.
+
+  `claimDue` therefore returns `List<TomJobClaim>` rather than `List<TomJobRun>`,
+  and all five transitions take the **ticket**. This is the arrangement
+  `TomLeaseLock` has always used — `acquire` returns a `TomLease`, `renew` and
+  `release` take it back — and it is here for the same reason: recording an
+  outcome for work you never claimed should not be something the API lets you
+  say. Arity is unchanged, so most call sites read identically.
+
+  The fence is the new **`TomJobRun.claimToken`**: a per-run counter that rises
+  on every claim and never repeats, so two claims of one run are orderable. It is
+  exactly `TomLease.token`, and that the queue lacked one while the lock had one
+  is precisely why the two could disagree about who held a run. The owner alone
+  will not serve, because a node can re-claim a run it previously lost and its
+  first attempt's outcome would then be accepted as its second's. `claimedAt`
+  will not serve either, and that is the sharp edge: it is the *heartbeat*, and
+  `renewClaim` moves it — a ticket fenced on it would be invalidated by the first
+  heartbeat of the very attempt it certifies, quietly costing the claimant the
+  right to report its own outcome. The identity has to be the thing that does not
+  move, which is why the lock separates `token` from `expiresAt`.
+
+  `TomMemoryJobStore` copies the owner and token into the ticket at claim time
+  rather than reading them back off the run: it hands out the *same object* it
+  holds, so a later recovery and re-claim mutate the very run the first claimant
+  is still carrying, and a fence read from that object would always agree with
+  whoever wrote it last. The five transitions now share one `_held(claim)`
+  predicate instead of five copies of the guard. `TomJobRun.toJson` writes
+  `claimToken`; `fromJson` reads a missing one as `0`, so a queue file written
+  before the fence still loads. `TomSqlJobStore` carries the same change as a
+  `claim_token BIGINT` column — see the server's changelog.
+
 - **`Tom2FAPendingEnrolment.isExhausted` is false at the choosing stop
   (tcincb1).** It read `attemptsRemaining <= 0`, with no `hasOffer` guard, while
   the server's `Tom2FAEnrolmentState.isExhausted` — the state this type is the

@@ -35,7 +35,7 @@ a convenience — a database queue takes a database lock, over the same
 The database decides, never the application. Every transition is a conditional
 statement whose affected-row count is the answer:
 
-- a claim is `UPDATE ... WHERE id = :id AND state = 'pending'`;
+- a claim is `UPDATE ... WHERE id = :id AND state = 'pending' AND claim_token = :current`, raising `claim_token` as it goes;
 - a first acquisition is `INSERT IGNORE`;
 - a takeover is `UPDATE ... WHERE resource = :r AND token = :t AND version = :v`.
 
@@ -52,11 +52,15 @@ library comment in `sql_job_store.dart` records the reasoning in full.
 The same conditional shape carries the kernel's rule that a transition out of a
 claim records a run but never creates or overrules one: `release`,
 `markStarted`, `renewClaim`, `complete` and `fail` each add `AND state =
-'running'` and return without touching the caller's `TomJobRun` when the
-statement affects no row. A node that was slow rather than dead therefore cannot
-report an outcome for a run recovery has already handed to a peer, and cannot
-restart the retention clock on one `purgeFinished` has dropped. See
-`TomJobStore` for the rule; `test/contracts/scheduling_contract.dart` in
+'running' AND claimed_by = :owner AND claim_token = :token` — the shared
+`_heldByClaim` fragment — and return without touching the caller's `TomJobRun`
+when the statement affects no row. The state half stops a slow node reporting an
+outcome for a run `purgeFinished` has dropped; the `claim_token` half stops it
+overwriting a peer's *in-flight* attempt, which the state alone cannot see,
+because a run recovery re-queued and a peer re-claimed is `running` again. That
+token is the queue's counterpart of `tom_lease.token`, and it is why the queue
+and the lock can now agree about who holds a run. See `TomJobStore` and
+`TomJobClaim` for the rule; `test/contracts/scheduling_contract.dart` in
 `tom_core_kernel` asserts it against this store too.
 
 ## When the claim's answer is lost

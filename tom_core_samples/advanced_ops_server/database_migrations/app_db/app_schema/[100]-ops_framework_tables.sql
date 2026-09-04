@@ -49,7 +49,10 @@
 -- nodes planning the same nightly purge cannot both succeed. This sample runs
 -- one node — but the table it runs on is the clustered one, because a schema
 -- that only works single-node is a schema you discover you have on the day you
--- add the second.
+-- add the second. `claim_token` is the other clustered column: it rises on every
+-- claim of a run and never repeats, so a node whose lease expired cannot report
+-- an outcome over the peer that re-claimed its work. Single-node it never
+-- advances past 1, and it is here for the same reason the unique key is.
 CREATE TABLE IF NOT EXISTS tom_job_run (
   seq           BIGINT       NOT NULL AUTO_INCREMENT,
   id            VARCHAR(191) NOT NULL,
@@ -60,6 +63,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   attempt       INT          NOT NULL DEFAULT 1,
   claimed_by    VARCHAR(191) NULL,
   claimed_at    DATETIME(6)  NULL,
+  claim_token   BIGINT       NOT NULL DEFAULT 0,
   started_at    DATETIME(6)  NULL,
   completed_at  DATETIME(6)  NULL,
   last_error    TEXT         NULL,

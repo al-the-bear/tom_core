@@ -23,13 +23,23 @@
 /// conditional statement:
 ///
 /// ```sql
-/// UPDATE tom_job_run SET state='running', claimed_by=:owner, claimed_at=:now
-///  WHERE id=:id AND state='pending'
+/// UPDATE tom_job_run SET state='running', claimed_by=:owner, claimed_at=:now,
+///        claim_token=:next
+///  WHERE id=:id AND state='pending' AND claim_token=:current
 /// ```
 ///
 /// Exactly one of two racing nodes sees one affected row; the loser sees zero
 /// and simply does not get that run. No read-then-write, no application-side
 /// lock, no assumption that the scan the node did a moment ago is still true.
+///
+/// The `claim_token` half of that is the fence. It rises on every claim and
+/// never repeats, so the ticket [claimDue] hands back names *this* claim of the
+/// run rather than merely the run — which is what lets a transition refuse a
+/// write from a node whose lease lapsed while it was partitioned. Comparing it
+/// in the `WHERE` as well as setting it means the token issued with the ticket
+/// is always the token the row now carries: without that condition, a run a peer
+/// claimed, finished and re-queued for retry between the scan and this statement
+/// could be claimed here with a token that peer had already been given.
 ///
 /// ### Why the claim is one statement *per run* rather than one for the batch
 ///
@@ -195,6 +205,7 @@ class TomSqlJobStore implements TomJobStore {
     'attempt': ':attempt',
     'claimed_by': ':claimedBy',
     'claimed_at': ':claimedAt',
+    'claim_token': ':claimToken',
     'started_at': ':startedAt',
     'last_error': ':lastError',
     'completed_at': ':completedAt',
@@ -251,7 +262,7 @@ class TomSqlJobStore implements TomJobStore {
   }
 
   @override
-  Future<List<TomJobRun>> claimDue(
+  Future<List<TomJobClaim>> claimDue(
     DateTime now,
     String owner, {
     int limit = 16,
@@ -264,7 +275,7 @@ class TomSqlJobStore implements TomJobStore {
       {'pending': TomJobRunState.pending.name, 'now': sqlInstant(now)},
     );
 
-    final claimed = <TomJobRun>[];
+    final claimed = <TomJobClaim>[];
     for (final run in candidates) {
       if (claimed.length >= limit) break;
       if (accept != null && !accept(run)) continue;
@@ -274,23 +285,37 @@ class TomSqlJobStore implements TomJobStore {
     return claimed;
   }
 
-  /// Runs the conditional claim of [run] for [owner], returning the claimed run
-  /// or `null` when it was not won.
+  /// Runs the conditional claim of [run] for [owner], returning the ticket for
+  /// the claim or `null` when it was not won.
   ///
   /// The `UPDATE` is the arbitration; everything else here is about the one case
   /// in which its result does not arrive.
-  Future<TomJobRun?> _claim(TomJobRun run, String owner, DateTime now) async {
+  ///
+  /// It is a compare-and-set on `claim_token` as well as on the state, and both
+  /// conditions are load-bearing. `state = :pending` says the run is available;
+  /// `claim_token = :current` says it is available *in the shape this node
+  /// scanned*. Without the second, a run that a peer claimed, finished and
+  /// re-queued for retry between the scan and the update would be claimed here
+  /// with a token the peer had already been issued — and two nodes holding
+  /// tickets with the same token is the very thing the fence exists to prevent.
+  /// With it, the token this call writes is the token the ticket carries, always.
+  Future<TomJobClaim?> _claim(TomJobRun run, String owner, DateTime now) async {
+    final current = run.claimToken;
+    final next = current + 1;
     final BigInt affected;
     try {
       affected = await datasource.executeCommand(
         'UPDATE $table SET state = :running, claimed_by = :owner, '
-        'claimed_at = :now WHERE id = :id AND state = :pending',
+        'claimed_at = :now, claim_token = :next '
+        'WHERE id = :id AND state = :pending AND claim_token = :current',
         {
           'running': TomJobRunState.running.name,
           'owner': owner,
           'now': sqlInstant(now),
+          'next': next,
           'id': run.id,
           'pending': TomJobRunState.pending.name,
+          'current': current,
         },
       );
     } catch (error, stack) {
@@ -307,7 +332,7 @@ class TomSqlJobStore implements TomJobStore {
       // `running` (complete/fail/markStarted/renewClaim) or `pending`
       // (release), and both are states the lease already recovers from.
       if (classifySqlFailure(error) == TomSqlFailureMode.definite) rethrow;
-      return _resolveAmbiguousClaim(run, owner, now, error, stack);
+      return _resolveAmbiguousClaim(run, owner, now, next, error, stack);
     }
     // Zero affected rows means a peer got there first. It is not an error and
     // it is the whole point: the database, not this process, decided.
@@ -315,7 +340,8 @@ class TomSqlJobStore implements TomJobStore {
     run.state = TomJobRunState.running;
     run.claimedBy = owner;
     run.claimedAt = _asUtc(now);
-    return run;
+    run.claimToken = next;
+    return TomJobClaim(run, owner, next);
   }
 
   /// Decides a claim whose outcome was lost, by re-reading the row.
@@ -324,15 +350,22 @@ class TomSqlJobStore implements TomJobStore {
   /// acknowledgement never arrived, ask the database what it actually holds
   /// rather than assuming either answer.
   ///
-  /// The row identifies *this* write, not merely a claim by this owner: a node
-  /// whose earlier claim of the same run is still in flight would otherwise read
-  /// its own older lease as proof and dispatch the run twice. `claimed_at` is
-  /// the instant this call bound, so matching it means the row carries this
-  /// statement.
-  Future<TomJobRun?> _resolveAmbiguousClaim(
+  /// The row must identify *this* write, not merely a claim by this owner: a
+  /// node whose earlier claim of the same run is still in flight would otherwise
+  /// read its own older lease as proof and dispatch the run twice.
+  ///
+  /// So all three of owner, [expectedToken] and `claimed_at` must match, and the
+  /// last is not redundant. Two overlapping passes of the *same* node scan the
+  /// same `pending` row, so both compute the same next token; if the first
+  /// commits and the second's acknowledgement is lost, the token in the row is
+  /// the token the second was expecting. `claimed_at` is the instant this call
+  /// bound, and two passes of one node do not share a tick — which is what
+  /// separates them.
+  Future<TomJobClaim?> _resolveAmbiguousClaim(
     TomJobRun run,
     String owner,
     DateTime now,
+    int expectedToken,
     Object error,
     StackTrace stack,
   ) async {
@@ -351,6 +384,7 @@ class TomSqlJobStore implements TomJobStore {
         stored != null &&
         stored.state == TomJobRunState.running &&
         stored.claimedBy == owner &&
+        stored.claimToken == expectedToken &&
         stored.claimedAt == _asUtc(now);
     if (landed) {
       tomLog.warn(
@@ -358,7 +392,7 @@ class TomSqlJobStore implements TomJobStore {
         'transport but had committed; taking ownership from the stored row. '
         'Cause: $error',
       );
-      return stored;
+      return TomJobClaim(stored, owner, expectedToken);
     }
     tomLog.warn(
       'TomSqlJobStore: the claim of run ${run.id} by "$owner" failed in '
@@ -367,84 +401,93 @@ class TomSqlJobStore implements TomJobStore {
     return null;
   }
 
+  /// The `WHERE` clause every transition out of a claim is guarded by.
+  ///
+  /// The whole of the rule on [TomJobStore], as one fragment: the row must still
+  /// exist, still be `running`, and still be `running` *under the claim being
+  /// presented*. Written once because five statements need it and five copies of
+  /// a four-way predicate is five chances for one of them to lose a conjunct —
+  /// silently, since a missing condition only widens what the statement matches.
+  ///
+  /// `claimed_by` is checked as well as `claim_token`, which is strictly
+  /// redundant: the token alone already identifies the claim. It is here because
+  /// it costs nothing and it makes the statement legible to whoever reads the
+  /// slow query log at three in the morning.
+  static const String _heldByClaim =
+      'WHERE id = :id AND state = :running '
+      'AND claimed_by = :owner AND claim_token = :token';
+
+  /// The binds [_heldByClaim] needs, for [claim].
+  static Map<String, dynamic> _fence(TomJobClaim claim) => {
+    'id': claim.id,
+    'running': TomJobRunState.running.name,
+    'owner': claim.owner,
+    'token': claim.token,
+  };
+
   @override
-  Future<void> release(TomJobRun run) async {
+  Future<void> release(TomJobClaim claim) async {
     await ensureSchema();
-    // Guarded on `running`: a completion that raced the release must win, and
-    // resetting a finished row would resurrect it.
+    // A completion that raced the release must win, and resetting a finished row
+    // would resurrect it. `claim_token` is deliberately left where it is: the
+    // next claim raises it again, and a token that went backwards would stop
+    // being a fence.
     final affected = await datasource.executeCommand(
       'UPDATE $table SET state = :pending, claimed_by = NULL, '
-      'claimed_at = NULL WHERE id = :id AND state = :running',
-      {
-        'pending': TomJobRunState.pending.name,
-        'running': TomJobRunState.running.name,
-        'id': run.id,
-      },
+      'claimed_at = NULL $_heldByClaim',
+      {..._fence(claim), 'pending': TomJobRunState.pending.name},
     );
     if (affected != BigInt.one) return;
+    final run = claim.run;
     run.state = TomJobRunState.pending;
     run.claimedBy = null;
     run.claimedAt = null;
   }
 
   @override
-  Future<void> markStarted(TomJobRun run, DateTime now) async {
+  Future<void> markStarted(TomJobClaim claim, DateTime now) async {
     await ensureSchema();
-    // Guarded on `running` for the same reason [renewClaim] is: a run the lease
-    // recovered out from under this node is no longer ours to stamp, and
-    // writing `started_at` onto it would tell recovery that a *different*
-    // node's attempt had begun.
-    //
     // Not guarded on `started_at IS NULL`: a retry re-runs the same row, and
     // the field means "this attempt began", not "the first attempt began".
     final affected = await datasource.executeCommand(
-      'UPDATE $table SET started_at = :now '
-      'WHERE id = :id AND state = :running',
-      {
-        'now': sqlInstant(now),
-        'id': run.id,
-        'running': TomJobRunState.running.name,
-      },
+      'UPDATE $table SET started_at = :now $_heldByClaim',
+      {..._fence(claim), 'now': sqlInstant(now)},
     );
     if (affected != BigInt.one) return;
-    run.startedAt = _asUtc(now);
+    claim.run.startedAt = _asUtc(now);
   }
 
   @override
-  Future<void> renewClaim(TomJobRun run, DateTime now) async {
+  Future<void> renewClaim(TomJobClaim claim, DateTime now) async {
     await ensureSchema();
+    // Only `claimed_at` moves. The token is the claim's identity and a heartbeat
+    // does not begin a new claim, so touching it here would make this attempt's
+    // first heartbeat invalidate its own ticket.
     final affected = await datasource.executeCommand(
-      'UPDATE $table SET claimed_at = :now '
-      'WHERE id = :id AND state = :running',
-      {
-        'now': sqlInstant(now),
-        'id': run.id,
-        'running': TomJobRunState.running.name,
-      },
+      'UPDATE $table SET claimed_at = :now $_heldByClaim',
+      {..._fence(claim), 'now': sqlInstant(now)},
     );
     if (affected != BigInt.one) return;
-    run.claimedAt = _asUtc(now);
+    claim.run.claimedAt = _asUtc(now);
   }
 
   @override
-  Future<void> complete(TomJobRun run, DateTime now) async {
+  Future<void> complete(TomJobClaim claim, DateTime now) async {
     await ensureSchema();
-    // Guarded on `running` like every other transition out of a claim — the
-    // rule on `TomJobStore`. Ungated, this would stamp a fresh `completed_at`
-    // onto a row that recovery had already handed to another node, restarting
-    // the retention clock on a run whose outcome is no longer ours to report.
+    // Ungated, this would stamp a fresh `completed_at` onto a row that recovery
+    // had already handed to another node, restarting the retention clock on a
+    // run whose outcome is no longer ours to report.
     final affected = await datasource.executeCommand(
       'UPDATE $table SET state = :succeeded, completed_at = :now, '
-      'claimed_by = NULL, claimed_at = NULL '
-      'WHERE id = :id AND state = :running',
+      'claimed_by = NULL, claimed_at = NULL $_heldByClaim',
       {
+        ..._fence(claim),
         'succeeded': TomJobRunState.succeeded.name,
-        'running': TomJobRunState.running.name,
         'now': sqlInstant(now),
-        'id': run.id,
       },
     );
     if (affected != BigInt.one) return;
+    final run = claim.run;
     run.state = TomJobRunState.succeeded;
     run.completedAt = _asUtc(now);
     run.claimedBy = null;
@@ -453,26 +496,26 @@ class TomSqlJobStore implements TomJobStore {
 
   @override
   Future<void> fail(
-    TomJobRun run,
+    TomJobClaim claim,
     String error,
     DateTime now, {
     DateTime? retryAt,
   }) async {
     await ensureSchema();
-    // Guarded on `running` in both branches, for the reason given on [complete].
-    // The retrying branch has a second reason: it increments `attempt`, so an
-    // ungated statement would charge a retry to whoever holds the run now.
+    // Fenced in both branches, for the reason given on [complete]. The retrying
+    // branch has a second reason: it increments `attempt`, so an ungated
+    // statement would charge a retry to whoever holds the run now.
+    final run = claim.run;
     if (retryAt == null) {
       final affected = await datasource.executeCommand(
         'UPDATE $table SET state = :failed, last_error = :error, '
         'completed_at = :now, claimed_by = NULL, claimed_at = NULL '
-        'WHERE id = :id AND state = :running',
+        '$_heldByClaim',
         {
+          ..._fence(claim),
           'failed': TomJobRunState.failed.name,
-          'running': TomJobRunState.running.name,
           'error': error,
           'now': sqlInstant(now),
-          'id': run.id,
         },
       );
       if (affected != BigInt.one) return;
@@ -485,13 +528,12 @@ class TomSqlJobStore implements TomJobStore {
       final affected = await datasource.executeCommand(
         'UPDATE $table SET state = :pending, last_error = :error, '
         'attempt = attempt + 1, run_at = :retryAt, claimed_by = NULL, '
-        'claimed_at = NULL WHERE id = :id AND state = :running',
+        'claimed_at = NULL $_heldByClaim',
         {
+          ..._fence(claim),
           'pending': TomJobRunState.pending.name,
-          'running': TomJobRunState.running.name,
           'error': error,
           'retryAt': sqlInstant(retryAt),
-          'id': run.id,
         },
       );
       if (affected != BigInt.one) return;
@@ -708,6 +750,7 @@ class TomSqlJobStore implements TomJobStore {
     attempt: row.attempt,
     claimedBy: row.claimedBy,
     claimedAt: parseOptionalSqlInstant(row.claimedAt),
+    claimToken: row.claimToken,
     startedAt: parseOptionalSqlInstant(row.startedAt),
     lastError: row.lastError,
     completedAt: parseOptionalSqlInstant(row.completedAt),
@@ -730,6 +773,7 @@ class TomSqlJobStore implements TomJobStore {
     'attempt': run.attempt,
     'claimedBy': run.claimedBy,
     'claimedAt': run.claimedAt == null ? null : sqlInstant(run.claimedAt!),
+    'claimToken': run.claimToken,
     'startedAt': run.startedAt == null ? null : sqlInstant(run.startedAt!),
     'lastError': run.lastError,
     'completedAt': run.completedAt == null
@@ -803,6 +847,10 @@ class TomJobRunRow {
   /// When the claim was last stamped, as stored UTC text.
   @TomDbColumn(columnName: "claimed_at")
   String? claimedAt;
+
+  /// Which claim of this run is current — the queue's fencing token.
+  @TomDbColumn(columnName: "claim_token")
+  int claimToken = 0;
 
   /// When the body began executing, as stored UTC text; `null` if it never did.
   ///

@@ -175,10 +175,27 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       await store.enqueue(makeRun('a'));
       final claimed = await store.claimDue(at, 'owner-1');
       expect(claimed.single.id, 'a');
-      expect(claimed.single.state, TomJobRunState.running);
-      expect(claimed.single.claimedBy, 'owner-1');
-      expect(claimed.single.claimedAt, at);
+      expect(claimed.single.owner, 'owner-1');
+      expect(claimed.single.run.state, TomJobRunState.running);
+      expect(claimed.single.run.claimedBy, 'owner-1');
+      expect(claimed.single.run.claimedAt, at);
     });
+
+    test(
+      'claimDue raises the claim token, so two claims are orderable',
+      () async {
+        await store.enqueue(makeRun('a'));
+        final first = (await store.claimDue(at, 'owner-1')).single;
+        final later = at.add(const Duration(minutes: 20));
+        await store.recoverAbandoned(later, const Duration(minutes: 15));
+        final second = (await store.claimDue(later, 'owner-1')).single;
+
+        // Same run, same owner: the token is the only thing that separates them,
+        // which is exactly the case `claimedBy` alone cannot see.
+        expect(second.token, greaterThan(first.token));
+        expect((await reload('a')).claimToken, second.token);
+      },
+    );
 
     test('claimDue leaves a future run alone', () async {
       await store.enqueue(
@@ -273,7 +290,7 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
     // -------------------------------------------------------------------------
 
     /// Enqueues, claims and finishes `r1`, then purges it away.
-    Future<TomJobRun> seedPurged({required bool succeeded}) async {
+    Future<TomJobClaim> seedPurged({required bool succeeded}) async {
       await store.enqueue(makeRun('r1'));
       final claimed = (await store.claimDue(at, 'node-a')).single;
       if (succeeded) {
@@ -318,13 +335,25 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect(await store.all(), isEmpty);
     });
 
+    /// A ticket for [run] that no store ever issued.
+    ///
+    /// Forging one is the only way to reach the guards from outside a claim,
+    /// and the token is deliberately 1 — the value a first genuine claim would
+    /// have been given, so these tests fail if the guard degenerates into
+    /// "any plausible ticket will do".
+    TomJobClaim forge(
+      TomJobRun run, {
+      String owner = 'node-a',
+      int token = 1,
+    }) => TomJobClaim(run, owner, token);
+
     test('complete ignores a run the store never held', () async {
-      await store.complete(makeRun('ghost'), at);
+      await store.complete(forge(makeRun('ghost')), at);
       expect(await store.all(), isEmpty);
     });
 
     test('fail ignores a run the store never held', () async {
-      await store.fail(makeRun('ghost'), 'nope', at);
+      await store.fail(forge(makeRun('ghost')), 'nope', at);
       expect(await store.all(), isEmpty);
     });
 
@@ -332,7 +361,7 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       final run = makeRun('r1');
       await store.enqueue(run);
 
-      await store.complete(run, at);
+      await store.complete(forge(run), at);
 
       final stored = await reload('r1');
       expect(stored.state, TomJobRunState.pending);
@@ -343,7 +372,7 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       final run = makeRun('r1');
       await store.enqueue(run);
 
-      await store.fail(run, 'nope', at);
+      await store.fail(forge(run), 'nope', at);
 
       final stored = await reload('r1');
       expect(stored.state, TomJobRunState.pending);
@@ -421,7 +450,7 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
     // release / renewClaim
     // -------------------------------------------------------------------------
 
-    Future<TomJobRun> seedClaimed() async {
+    Future<TomJobClaim> seedClaimed() async {
       await store.enqueue(makeRun('r1'));
       return (await store.claimDue(at, 'node-a')).single;
     }
@@ -429,10 +458,10 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
     test(
       'release returns a claimed run to pending without charging an attempt',
       () async {
-        final run = await seedClaimed();
-        expect(run.state, TomJobRunState.running);
+        final claim = await seedClaimed();
+        expect(claim.run.state, TomJobRunState.running);
 
-        await store.release(run);
+        await store.release(claim);
 
         final stored = await reload('r1');
         expect(stored.state, TomJobRunState.pending);
@@ -444,19 +473,19 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
     );
 
     test('a released run is immediately claimable again', () async {
-      final run = await seedClaimed();
-      await store.release(run);
+      final claim = await seedClaimed();
+      await store.release(claim);
 
       final claimed = await store.claimDue(at, 'node-b');
-      expect(claimed.single.id, run.id);
-      expect(claimed.single.claimedBy, 'node-b');
+      expect(claimed.single.id, claim.id);
+      expect(claimed.single.run.claimedBy, 'node-b');
     });
 
     test('release does not resurrect a finished run', () async {
-      final run = await seedClaimed();
-      await store.complete(run, at);
+      final claim = await seedClaimed();
+      await store.complete(claim, at);
 
-      await store.release(run);
+      await store.release(claim);
 
       expect(
         (await reload('r1')).state,
@@ -468,11 +497,11 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
     test(
       'renewClaim refreshes the lease so recovery leaves the run alone',
       () async {
-        final run = await seedClaimed();
+        final claim = await seedClaimed();
         const leaseTimeout = Duration(minutes: 10);
 
         final later = at.add(const Duration(minutes: 9));
-        await store.renewClaim(run, later);
+        await store.renewClaim(claim, later);
 
         // Without the renewal this run would be 15 minutes stale and recovered.
         final recovered = await store.recoverAbandoned(
@@ -490,9 +519,20 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       final run = makeRun('r1');
       await store.enqueue(run);
 
-      await store.renewClaim(run, at);
+      await store.renewClaim(forge(run), at);
 
       expect((await reload('r1')).claimedAt, isNull);
+    });
+
+    test('a renewed claim may still record its own outcome', () async {
+      final claim = await seedClaimed();
+
+      // The heartbeat moves `claimedAt`, so a fence built on that instant would
+      // invalidate the very attempt it certifies. The token does not move.
+      await store.renewClaim(claim, at.add(const Duration(minutes: 5)));
+      await store.complete(claim, at.add(const Duration(minutes: 6)));
+
+      expect((await reload('r1')).state, TomJobRunState.succeeded);
     });
 
     // -------------------------------------------------------------------------
@@ -500,8 +540,8 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
     // -------------------------------------------------------------------------
 
     test('a claimed run has not started until it is marked', () async {
-      final run = await seedClaimed();
-      expect(run.startedAt, isNull);
+      final claim = await seedClaimed();
+      expect(claim.run.startedAt, isNull);
       expect(
         (await reload('r1')).startedAt,
         isNull,
@@ -510,12 +550,16 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
     });
 
     test('markStarted stamps the run and survives a reload', () async {
-      final run = await seedClaimed();
+      final claim = await seedClaimed();
       final started = at.add(const Duration(seconds: 3));
 
-      await store.markStarted(run, started);
+      await store.markStarted(claim, started);
 
-      expect(run.startedAt, started, reason: 'the caller sees its own write');
+      expect(
+        claim.run.startedAt,
+        started,
+        reason: 'the caller sees its own write',
+      );
       expect((await reload('r1')).startedAt, started);
     });
 
@@ -523,7 +567,7 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       final run = makeRun('r1');
       await store.enqueue(run);
 
-      await store.markStarted(run, at);
+      await store.markStarted(forge(run), at);
 
       expect((await reload('r1')).startedAt, isNull);
     });
@@ -598,6 +642,115 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
         );
 
         expect(recovered.single.state, TomJobRunState.pending);
+      },
+    );
+
+    // -------------------------------------------------------------------------
+    // A transition records *this claim's* outcome, not merely *a* run's.
+    //
+    // "Still running" is not the same question as "still ours". A node that was
+    // partitioned long enough for its lease to expire comes back holding a
+    // claim the store has since handed to a peer: the row exists, its state is
+    // `running`, and every state guard passes — while the outcome being written
+    // belongs to an attempt nobody is waiting for any more. Each of the five
+    // transitions is therefore fenced on the claim as well as on the state.
+    // -------------------------------------------------------------------------
+
+    /// Claims `r1` for `node-a`, lets the lease lapse, and re-claims it for
+    /// `node-b` — leaving `node-a`'s claim superseded but the row `running`.
+    ///
+    /// Returns the stale claim; the fresh one is the store's current truth.
+    Future<TomJobClaim> seedSuperseded() async {
+      await store.enqueue(makeRun('r1'));
+      final stale = (await store.claimDue(at, 'node-a')).single;
+      final later = at.add(const Duration(minutes: 20));
+      await store.recoverAbandoned(later, const Duration(minutes: 15));
+      final fresh = (await store.claimDue(later, 'node-b')).single;
+      expect(fresh.run.claimedBy, 'node-b');
+      return stale;
+    }
+
+    final superseded = at.add(const Duration(minutes: 25));
+
+    test(
+      'complete from a superseded claim leaves the peer\'s run alone',
+      () async {
+        final stale = await seedSuperseded();
+
+        await store.complete(stale, superseded);
+
+        final stored = await reload('r1');
+        expect(
+          stored.state,
+          TomJobRunState.running,
+          reason: 'node-b is still executing it',
+        );
+        expect(stored.claimedBy, 'node-b');
+        expect(stored.completedAt, isNull);
+      },
+    );
+
+    test('fail from a superseded claim leaves the peer\'s run alone', () async {
+      final stale = await seedSuperseded();
+
+      await store.fail(stale, 'nope', superseded);
+
+      final stored = await reload('r1');
+      expect(stored.state, TomJobRunState.running);
+      expect(stored.claimedBy, 'node-b');
+      expect(stored.lastError, isNull);
+    });
+
+    test(
+      'a retrying fail from a superseded claim charges no attempt',
+      () async {
+        final stale = await seedSuperseded();
+
+        await store.fail(stale, 'nope', superseded, retryAt: superseded);
+
+        final stored = await reload('r1');
+        expect(stored.state, TomJobRunState.running);
+        // The retry budget belongs to whoever holds the run now.
+        expect(stored.attempt, 1);
+      },
+    );
+
+    test('markStarted from a superseded claim does not stamp the peer\'s '
+        'attempt', () async {
+      final stale = await seedSuperseded();
+
+      await store.markStarted(stale, superseded);
+
+      // Left set, this would tell recovery that node-b's attempt had begun —
+      // and a job that declines recovery would then be written off rather than
+      // re-queued, on the strength of an execution that never happened.
+      expect((await reload('r1')).startedAt, isNull);
+    });
+
+    test('renewClaim from a superseded claim does not extend the peer\'s '
+        'lease', () async {
+      final stale = await seedSuperseded();
+
+      await store.renewClaim(stale, superseded);
+
+      // node-b's lease, not node-a's heartbeat: a stale renewal would keep
+      // recovery off a run whose real holder had itself gone quiet.
+      expect(
+        (await reload('r1')).claimedAt,
+        at.add(const Duration(minutes: 20)),
+      );
+    });
+
+    test(
+      'release from a superseded claim does not re-queue the peer\'s run',
+      () async {
+        final stale = await seedSuperseded();
+
+        await store.release(stale);
+
+        final stored = await reload('r1');
+        expect(stored.state, TomJobRunState.running);
+        expect(stored.claimedBy, 'node-b');
       },
     );
   });

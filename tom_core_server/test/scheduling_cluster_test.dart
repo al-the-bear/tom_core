@@ -114,6 +114,7 @@ TomJobRunRow _row({
   TomJobRunState state = TomJobRunState.pending,
   String? claimedBy,
   DateTime? claimedAt,
+  int claimToken = 0,
   DateTime? startedAt,
 }) => TomJobRunRow()
   ..id = id
@@ -124,6 +125,7 @@ TomJobRunRow _row({
   ..attempt = 1
   ..claimedBy = claimedBy
   ..claimedAt = claimedAt == null ? null : sqlInstant(claimedAt)
+  ..claimToken = claimToken
   ..startedAt = startedAt == null ? null : sqlInstant(startedAt);
 
 /// A lease row in whatever state a test needs it in.
@@ -263,14 +265,19 @@ void main() {
           state: TomJobRunState.running,
           claimedBy: 'node-a',
           claimedAt: at,
+          // The scanned candidate was at 0, so this call's compare-and-set would
+          // have written 1. The row carrying 1 is what says it committed.
+          claimToken: 1,
         ),
       ]);
 
       final claimed = await store.claimDue(at, 'node-a');
 
       expect(claimed, hasLength(1));
-      expect(claimed.single.claimedBy, 'node-a');
-      expect(claimed.single.state, TomJobRunState.running);
+      expect(claimed.single.owner, 'node-a');
+      expect(claimed.single.token, 1);
+      expect(claimed.single.run.claimedBy, 'node-a');
+      expect(claimed.single.run.state, TomJobRunState.running);
     });
 
     test(
@@ -293,6 +300,7 @@ void main() {
           state: TomJobRunState.running,
           claimedBy: 'node-b',
           claimedAt: at,
+          claimToken: 1,
         ),
       ]);
 
@@ -300,9 +308,10 @@ void main() {
     });
 
     test('an earlier claim of our own is not mistaken for this one', () async {
-      // Same owner, different instant — an overlapping pass of this same node.
-      // Owner alone would read as proof and dispatch the run a second time; the
-      // claim stamp is what identifies *this* write.
+      // Same owner, and — because both passes scanned the row at the same token
+      // — the same next token too. Neither identifies this write on its own; the
+      // claim stamp does, because two passes of one node do not share a tick.
+      // Reading the older one as proof would dispatch the run a second time.
       scriptClaimFailing(_transportFailure());
       datasource.queryAnswers.add([
         _row(
@@ -310,6 +319,7 @@ void main() {
           state: TomJobRunState.running,
           claimedBy: 'node-a',
           claimedAt: at.subtract(const Duration(minutes: 5)),
+          claimToken: 1,
         ),
       ]);
 
@@ -334,6 +344,87 @@ void main() {
       // Still blind, so the honest answer is the failure that started it. The
       // lease timeout remains the backstop if the claim did land.
       await expectLater(store.claimDue(at, 'node-a'), throwsA(same(original)));
+    });
+  });
+
+  // =========================================================================
+  // The claim fence — what the statements actually say
+  //
+  // The behaviour these statements produce is asserted against a real server by
+  // the shared kernel contract in `scheduling_db_test.dart`. What is checked
+  // here is the thing a fake cannot enforce and a green contract run would not
+  // notice: that the conditions are *in the SQL* and bound to the ticket. A
+  // dropped conjunct only ever widens what a statement matches, so it fails
+  // nothing until two nodes race.
+  // =========================================================================
+
+  group('the claim fence', () {
+    late _ScriptedDataSource datasource;
+    late TomSqlJobStore store;
+
+    setUp(() {
+      datasource = _ScriptedDataSource();
+      store = TomSqlJobStore(datasource, createSchema: false);
+    });
+
+    test('a claim is a compare-and-set on the token it scanned', () async {
+      datasource.queryAnswers.add([_row(scheduledFor: at, claimToken: 3)]);
+
+      final claim = (await store.claimDue(at, 'node-a')).single;
+
+      expect(datasource.commands.single, contains('claim_token = :next'));
+      expect(
+        datasource.commands.single,
+        contains('AND claim_token = :current'),
+      );
+      expect(datasource.commandParameters.single, containsPair('current', 3));
+      expect(datasource.commandParameters.single, containsPair('next', 4));
+      // The ticket carries what the statement wrote, so the fence it presents to
+      // every later transition is the value now in the row.
+      expect(claim.token, 4);
+      expect(claim.run.claimToken, 4);
+    });
+
+    test('every transition out of a claim is bound to the ticket', () async {
+      datasource.queryAnswers.add([_row(scheduledFor: at, claimToken: 3)]);
+      final claim = (await store.claimDue(at, 'node-a')).single;
+      datasource.commands.clear();
+      datasource.commandParameters.clear();
+
+      await store.markStarted(claim, at);
+      await store.renewClaim(claim, at);
+      await store.release(claim);
+      await store.complete(claim, at);
+      await store.fail(claim, 'boom', at);
+      await store.fail(claim, 'boom', at, retryAt: at);
+
+      expect(datasource.commands, hasLength(6));
+      for (var i = 0; i < datasource.commands.length; i++) {
+        final sql = datasource.commands[i];
+        expect(sql, contains('state = :running'), reason: sql);
+        expect(sql, contains('claimed_by = :owner'), reason: sql);
+        expect(sql, contains('claim_token = :token'), reason: sql);
+        expect(
+          datasource.commandParameters[i],
+          containsPair('owner', 'node-a'),
+        );
+        expect(datasource.commandParameters[i], containsPair('token', 4));
+      }
+    });
+
+    test('a released claim leaves the token where it is', () async {
+      // Resetting it would restart the counter for the next holder, and a token
+      // that repeats is not a fence. The next claim raises it instead.
+      datasource.queryAnswers.add([_row(scheduledFor: at, claimToken: 3)]);
+      final claim = (await store.claimDue(at, 'node-a')).single;
+      datasource.commands.clear();
+
+      await store.release(claim);
+
+      final sql = datasource.commands.single;
+      final assignments = sql.substring(0, sql.indexOf('WHERE'));
+      expect(assignments, isNot(contains('claim_token')));
+      expect(sql, contains('AND claim_token = :token'));
     });
   });
 

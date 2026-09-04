@@ -443,6 +443,7 @@ the command is the unit that crosses the isolate boundary.
 | `attempt` | Which attempt is next or in flight, 1-based |
 | `state` | `pending`, `running`, `succeeded`, `failed` |
 | `claimedBy` / `claimedAt` | The node holding it, and when — the store's own lease |
+| `claimToken` | Which claim of this run is current: a counter that rises on every claim and never repeats |
 | `startedAt` | When execution actually began, or `null` if it never did |
 
 `startedAt` is not a duplicate of `claimedAt`. A run can be claimed and never
@@ -482,6 +483,7 @@ run, pretty-printed (the file itself is written unindented):
     "attempt": 1,
     "claimedBy": null,
     "claimedAt": null,
+    "claimToken": 0,
     "startedAt": null,
     "lastError": null,
     "completedAt": null,
@@ -493,9 +495,9 @@ run, pretty-printed (the file itself is written unindented):
 Every field is written, `null` included, rather than omitted when empty — so the
 shape on disk is the same for every run and a file can be eyeballed without
 cross-referencing which fields a given build chose to skip. Decoding tolerates
-more than that: a missing `attempt` reads as `1`, and an unrecognised `state`
-reads as `pending`, so a queue written by a newer build cannot stop an older one
-from starting.
+more than that: a missing `attempt` reads as `1`, a missing `claimToken` as `0`,
+and an unrecognised `state` reads as `pending`, so a queue written by a newer
+build cannot stop an older one from starting.
 
 The `id` is `<jobName>:<microsecondsSinceEpoch>:<counter>`, assigned by the
 scheduler as it enqueues the window. Treat it as opaque — it is the store's own
@@ -699,11 +701,53 @@ re-claimed, finished by someone else, or purged away entirely.
 
 So every transition out of a claim — `release`, `markStarted`, `renewClaim`,
 `complete` and `fail` — **records a run; it never creates or overrules one**.
-Each is a no-op unless the store still holds the run *and* still holds it as
-`running`. A late `renewClaim` would otherwise keep recovery off a run already
-reassigned; a late `fail` with a `retryAt` would charge an attempt to the node
-that holds it now; a late `complete` would overwrite a peer's outcome with a
-stale one.
+Each is a no-op unless the store still holds the run, still holds it as
+`running`, *and* still holds it under the claim being presented. A late
+`renewClaim` would otherwise keep recovery off a run already reassigned; a late
+`fail` with a `retryAt` would charge an attempt to the node that holds it now; a
+late `complete` would overwrite a peer's outcome with a stale one.
+
+#### Why the state is not enough on its own
+
+The third condition is the one the first two cannot express. Consider exactly
+the case the lease timeout exists for: a node claims run R, is partitioned, and
+its lease lapses. `recoverAbandoned` re-queues R, a peer claims it, and R is
+`running` again — owned by someone else. The original node comes back and calls
+`complete(R)`. The row exists; its state is `running`; both state guards pass.
+The peer's in-flight attempt is silently overwritten, and the peer then
+heartbeats a run the store already calls `succeeded`.
+
+So the transitions do not take a run. `claimDue` hands back a **`TomJobClaim`**
+— a ticket for one particular claim — and every transition takes that instead:
+
+```dart
+for (final claim in await store.claimDue(now, nodeId)) {
+  await store.markStarted(claim, clock());
+  // …
+  await store.complete(claim, clock());
+}
+```
+
+This is the arrangement `TomLeaseLock` has always used — `acquire` returns a
+`TomLease`, `renew` and `release` take it back — and it is here for the same
+reason: recording an outcome for work you never claimed should not be something
+the API lets you *say*.
+
+What the ticket identifies is neither the run nor the node, but **this claim of
+this run**. The owner alone will not do, because a node can re-claim a run it had
+previously lost, and its first attempt's outcome would then be accepted as its
+second's. The fence is therefore `claimToken`: a counter that rises on every
+claim of the run and never repeats, so two claims are orderable — precisely
+`TomLease.token`, for precisely the same reason. That the queue lacked one while
+the lock had one is why the two could disagree about who held a run.
+
+`claimedAt` looks like a cheaper answer, since it is already stored and already
+distinguishes two claims. It cannot serve: it is the **heartbeat**, and
+`renewClaim` moves it forward while the attempt runs. A ticket fenced on it would
+be invalidated by the first heartbeat of the very attempt it certifies, and the
+claimant would quietly lose the right to report its own outcome. The identity has
+to be the thing that does not move — which is exactly why the lock separates
+`token` from `expiresAt`.
 
 The worst case is the one that leaves no trace. `purgeFinished` is the only
 thing bounding the store, and it deletes on `completedAt`. A `complete` arriving

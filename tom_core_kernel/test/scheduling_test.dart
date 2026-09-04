@@ -3885,8 +3885,8 @@ void main() {
         runAt: now,
       );
       await store.enqueue(run);
-      await store.claimDue(now, 'node-a');
-      await store.release(run);
+      final claim = (await store.claimDue(now, 'node-a')).single;
+      await store.release(claim);
 
       final reloaded = await TomFileJobStore(path).all();
       expect(reloaded.single.state, TomJobRunState.pending);

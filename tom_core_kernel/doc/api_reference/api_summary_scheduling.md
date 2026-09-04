@@ -604,6 +604,7 @@ TomJobRun({
   int attempt = 1,
   String? claimedBy,
   DateTime? claimedAt,
+  int claimToken = 0,
   DateTime? startedAt,
   String? lastError,
   DateTime? completedAt,
@@ -624,7 +625,8 @@ factory TomJobRun.fromJson(Map<String, Object?> map)
 | `state` | `TomJobRunState` | `pending` / `running` / `succeeded` / `failed`. |
 | `attempt` | `int` | 1-based attempt counter. |
 | `claimedBy` | `String?` | The owner id that claimed the run. |
-| `claimedAt` | `DateTime?` | When it was claimed — the basis for the abandonment check. |
+| `claimedAt` | `DateTime?` | When the claim was last heard from — the heartbeat, and the basis for the abandonment check. `renewClaim` moves it. |
+| `claimToken` | `int` | Which claim of this run is current: strictly increasing across claims, never reset, and untouched by `renewClaim`. The fencing token of `TomJobClaim`, and the counterpart of `TomLease.token`. |
 | `startedAt` | `DateTime?` | When execution actually began; `null` means nothing has run yet. |
 | `lastError` | `String?` | The most recent failure text. |
 | `completedAt` | `DateTime?` | When the run reached a terminal state. |
@@ -639,21 +641,63 @@ factory TomJobRun.fromJson(Map<String, Object?> map)
 | `toJson` | `Map<String, Object?> toJson()` | The persisted form. |
 | `toString` | `String toString()` | *(override)* Id, job, window, state, attempt. |
 
+### TomJobClaim
+
+A ticket proving that one particular claim of a run was won. `claimDue` issues
+one per run it hands over, and every transition out of a claim takes the ticket
+rather than the run — the same arrangement `TomLeaseLock` uses, so a caller
+cannot record an outcome for work it did not claim.
+
+What it identifies is neither the run nor the node but *this claim of this run*.
+The owner alone is insufficient, because a node can re-claim a run it previously
+lost; the fence is therefore `token`, which rises on every claim and never
+repeats. `TomJobRun.claimedAt` cannot serve in its place: it is the heartbeat and
+`renewClaim` moves it, so a ticket fenced on it would be invalidated by the first
+heartbeat of the attempt it certifies.
+
+- **Extends:** none.
+
+#### Constructors
+
+```dart
+const TomJobClaim(TomJobRun run, String owner, int token)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `run` | `TomJobRun` | The run this ticket was issued for. |
+| `owner` | `String` | The node the claim was won by. |
+| `token` | `int` | The value of `TomJobRun.claimToken` this claim wrote. |
+| `id` | `String` | The run's id (getter). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `holds` | `bool holds(TomJobRun stored)` | Whether `stored` is still held under this claim — the fence every transition checks. |
+| `toString` | `String toString()` | *(override)* Run id, owner and token. |
+
 ### TomJobStore
 
 The persistence contract. Its methods are the vocabulary of the tick loop.
 
-**A transition out of a claim records a run; it never creates one.** `release`,
-`markStarted`, `renewClaim`, `complete` and `fail` are all no-ops unless the
-store still holds the run *and* still holds it as `running`. Each is reached by
-a caller holding a `TomJobRun` it obtained earlier, so each can be handed a run
-the store has since finished, re-queued, reassigned by `recoverAbandoned` or
-dropped by `purgeFinished` — and in all of those cases the outcome being
-reported is no longer the run's. Writing it back would overrule the node that
-owns the run now, or resurrect a purged row with a freshly stamped
+**A transition out of a claim records a run; it never creates one, and never
+overrules another claimant.** `release`, `markStarted`, `renewClaim`, `complete`
+and `fail` are all no-ops unless the store still holds the run, still holds it as
+`running`, *and* still holds it under the `TomJobClaim` being presented.
+
+The first two conditions guard against a run the store has since finished,
+re-queued or dropped by `purgeFinished`: writing back would overrule the node
+that owns the run now, or resurrect a purged row with a freshly stamped
 `completedAt` that restarts its retention clock and so survives every later
-cutoff. The check costs nothing when nothing went wrong, and it is what makes
-the five safe to call without first re-reading the store.
+cutoff. The third guards the case state alone cannot see — a node partitioned
+past its lease timeout returns to a run that `recoverAbandoned` re-queued and a
+peer re-claimed, so the row is `running` and every state check passes while the
+outcome belongs to an attempt nobody is waiting for. The check costs nothing when
+nothing went wrong, and it is what makes the five safe to call without first
+re-reading the store.
 
 - **Extends:** none (abstract class).
 
@@ -672,12 +716,12 @@ the five safe to call without first re-reading the store.
 | `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run. Idempotence is the caller's job, via `findWindow`. Throws `schedule.job.payload` — **before** changing the queue — when `payload` is not JSON-encodable. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor)` | The existing run for a window, if it was already planned. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | The most recent window planned for a job — where catch-up resumes from. |
-| `claimDue` | `Future<List<TomJobRun>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`. |
-| `release` | `Future<void> release(TomJobRun run)` | Hands a claimed run back to `pending` **without** charging an attempt — the voluntary counterpart of `recoverAbandoned`, so lease contention cannot drain a retry budget. |
-| `markStarted` | `Future<void> markStarted(TomJobRun run, DateTime now)` | Records that execution began. |
-| `renewClaim` | `Future<void> renewClaim(TomJobRun run, DateTime now)` | Heartbeats a claim so it is not judged abandoned. |
-| `complete` | `Future<void> complete(TomJobRun run, DateTime now)` | Marks the run succeeded. Calling it twice records the first completion only, so a duplicate outcome cannot extend the run's retention. |
-| `fail` | `Future<void> fail(TomJobRun run, String error, DateTime now, {DateTime? retryAt})` | Records a failure; a `retryAt` schedules another attempt, its absence makes the failure terminal. Guarded like `complete`, and doubly so on the retrying branch: it charges an attempt. |
+| `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`, returning one ticket per run won. |
+| `release` | `Future<void> release(TomJobClaim claim)` | Hands a claimed run back to `pending` **without** charging an attempt — the voluntary counterpart of `recoverAbandoned`, so lease contention cannot drain a retry budget. |
+| `markStarted` | `Future<void> markStarted(TomJobClaim claim, DateTime now)` | Records that execution began. |
+| `renewClaim` | `Future<void> renewClaim(TomJobClaim claim, DateTime now)` | Heartbeats a claim so it is not judged abandoned. The ticket is unchanged: a renewal extends the claim rather than starting a new one. |
+| `complete` | `Future<void> complete(TomJobClaim claim, DateTime now)` | Marks the run succeeded. Calling it twice records the first completion only, so a duplicate outcome cannot extend the run's retention. |
+| `fail` | `Future<void> fail(TomJobClaim claim, String error, DateTime now, {DateTime? retryAt})` | Records a failure; a `retryAt` schedules another attempt, its absence makes the failure terminal. Guarded like `complete`, and doubly so on the retrying branch: it charges an attempt. |
 | `recoverAbandoned` | `Future<List<TomJobRun>> recoverAbandoned(DateTime now, Duration leaseTimeout, {bool Function(String jobName)? requestsRecovery})` | Reclaims runs left `running` by a holder that vanished, without charging an attempt. Returns every run it changed, so the caller can alert on each. |
 | `all` | `Future<List<TomJobRun>> all()` | Every held run, in insertion order — diagnostics and tests. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Deletes terminal runs completed before `before`; returns the count. |

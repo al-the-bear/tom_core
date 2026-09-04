@@ -136,7 +136,7 @@ void main() async {
           hasLength(1),
           reason:
               'exactly one node may hold the run, got '
-              '${winners.map((r) => r.claimedBy)}',
+              '${winners.map((c) => c.owner)}',
         );
         expect((await store.all()).single.state, TomJobRunState.running);
       });
@@ -187,9 +187,9 @@ void main() async {
           expect(recovered.single.id, 'orphan');
 
           final retaken = await survivor.claimDue(later, 'node-b');
-          expect(retaken.single.claimedBy, 'node-b');
+          expect(retaken.single.owner, 'node-b');
           // Recovery is not failure: the run must not have burned an attempt.
-          expect(retaken.single.attempt, 1);
+          expect(retaken.single.run.attempt, 1);
         },
       );
 
@@ -234,7 +234,7 @@ void main() async {
           await store.enqueue(_run('started', at));
           final claimed = (await store.claimDue(at, 'node-a')).single;
           expect(
-            claimed.startedAt,
+            claimed.run.startedAt,
             isNull,
             reason: 'a claim is not a start; the dispatcher marks the start',
           );
@@ -306,9 +306,9 @@ void main() async {
 
         expect(recovered.single.state, TomJobRunState.pending);
         final retaken = await survivor.claimDue(later, 'node-b');
-        expect(retaken.single.claimedBy, 'node-b');
+        expect(retaken.single.owner, 'node-b');
         // Recovery is not failure, so the retry budget is untouched.
-        expect(retaken.single.attempt, 1);
+        expect(retaken.single.run.attempt, 1);
       });
     });
 
@@ -394,10 +394,7 @@ void main() async {
           );
 
           expect(recovered.map((r) => r.id), ['orphan']);
-          expect(
-            (await store.claimDue(soon, 'node-a')).single.claimedBy,
-            'node-a',
-          );
+          expect((await store.claimDue(soon, 'node-a')).single.owner, 'node-a');
           // The departed node is forgotten once its work is reattributed, so the
           // next pass does not re-scan a node that has nothing left.
           expect(

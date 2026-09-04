@@ -113,10 +113,20 @@ The two ways to reconcile that with a single batch statement are both worse:
 
 So `claimDue` scans candidates (`SELECT` due, pending, ordered by `seq`), runs
 `accept` in Dart, and issues a conditional `UPDATE … WHERE id = :id AND state =
-'pending'` **per accepted candidate**. `affectedRows == 1` means this node won;
-`0` means a peer took it first, and the candidate is simply skipped. The claim is
-still arbitrated entirely by the database — it is one atomic statement *per run*
-rather than one for the batch.
+'pending' AND claim_token = :current` **per accepted candidate**, setting
+`claim_token = :current + 1`. `affectedRows == 1` means this node won; `0` means
+a peer took it first, and the candidate is simply skipped. The claim is still
+arbitrated entirely by the database — it is one atomic statement *per run* rather
+than one for the batch.
+
+The `claim_token` half of the condition is the queue's fencing token, and it is
+compared as well as set. Setting it is what gives the returned `TomJobClaim` a
+value that identifies *this* claim; comparing it is what guarantees the value the
+ticket carries is the value now in the row. Without the comparison, a run that a
+peer claimed, finished and re-queued for retry between the scan and this
+statement could be claimed here with a token that peer had already been issued —
+and two live tickets bearing the same token is exactly the collision the fence
+exists to prevent.
 
 The scan reads `limit * candidateFactor` rows (8× by default) so that a pass
 whose predicate rejects most candidates still fills its batch.
@@ -153,10 +163,14 @@ asymmetric: a false *ambiguous* costs one extra `SELECT`; a false *definite*
 costs an abandoned run.
 
 On the ambiguous path `_resolveAmbiguousClaim` re-reads the row and takes
-ownership only when it says `state = 'running'`, `claimed_by` is us **and**
-`claimed_at` is this claim's instant. The last condition is not decoration: a
-node whose own *earlier* claim of the same run is still in flight would otherwise
-read its own stale lease as proof and dispatch the run twice. If the re-read
+ownership only when it says `state = 'running'`, `claimed_by` is us, `claim_token`
+is the value this call's compare-and-set would have written **and** `claimed_at`
+is this claim's instant. The last two are not decoration: a node whose own
+*earlier* claim of the same run is still in flight would otherwise read its own
+stale lease as proof and dispatch the run twice. Note that the token alone does
+not separate them — two overlapping passes of one node scan the same `pending`
+row and so compute the same next token. What separates them is the instant, since
+two passes of one node do not share a tick. If the re-read
 itself fails, the original failure is rethrown with its stack — still blind, so
 the honest answer is the failure that started it, and the lease timeout remains
 the backstop.
@@ -172,21 +186,35 @@ database a question it cannot otherwise answer.
 
 ## Reporting an Outcome for a Run You May Have Lost
 
-Every transition out of a claim carries `AND state = 'running'`:
+Every transition out of a claim carries the same four-way guard:
 
 ```sql
 UPDATE tom_job_run SET state='succeeded', completed_at=:now, claimed_by=NULL,
        claimed_at=NULL
  WHERE id=:id AND state='running'
+   AND claimed_by=:owner AND claim_token=:token
 ```
 
 This is the kernel's rule — a transition out of a claim *records* a run, it
 never creates or overrules one — expressed in the idiom this store already uses
 for everything else. A node that was slow rather than dead comes back still
-holding the run object and still meaning to report an outcome, by which time the
+holding a `TomJobClaim` and still meaning to report an outcome, by which time the
 run may have been recovered, re-claimed, finished by a peer or purged. Zero
 affected rows says exactly that, and the store returns without touching the
 caller's `TomJobRun`.
+
+The `claim_token` conjunct is what makes the guard cover the case the state alone
+cannot see: a node partitioned past its lease timeout comes back to a run that
+recovery re-queued and a peer re-claimed, so the row *is* `running` and a
+state-only guard would pass — overwriting a peer's in-flight attempt. The token
+rose when the peer claimed, so the returning node's ticket no longer matches. It
+is the queue's counterpart of `tom_lease.token`, which is the point: the queue
+and the lock must agree about who holds a run, and they cannot if only one of
+them can order two claims.
+
+The single fragment is written once in the store (`_heldByClaim`) rather than
+spelled out five times, because a lost conjunct only ever *widens* what a
+statement matches — it fails nothing until two nodes race.
 
 The retrying branch of `fail` has a second reason to be gated: it runs
 `attempt = attempt + 1`, so ungated it would spend a retry from the budget of
@@ -346,7 +374,8 @@ One row per scheduled run of a job, shared by every node.
 | `job_name`, `scheduled_for` | `VARCHAR(160)`, `DATETIME(6)` | The window |
 | `run_at` | `DATETIME(6)` | When this run should next be attempted |
 | `state`, `attempt` | `VARCHAR(16)`, `INT` | `pending` / `running` / `succeeded` / `failed`, and which attempt |
-| `claimed_by`, `claimed_at` | `VARCHAR(191)`, `DATETIME(6)` | The store's own lease on the run |
+| `claimed_by`, `claimed_at` | `VARCHAR(191)`, `DATETIME(6)` | The store's own lease on the run; `claimed_at` is the heartbeat and moves during an attempt |
+| `claim_token` | `BIGINT` | The fencing counter: which claim of the run is current. Rises on every claim, never repeats, never reset |
 | `started_at` | `DATETIME(6)` | When execution actually began, or `NULL` if it never did |
 | `last_error`, `completed_at`, `payload` | `TEXT`, `DATETIME(6)`, `LONGTEXT` | Outcome and carried data |
 
@@ -355,6 +384,13 @@ questions, and recovery needs both (see
 [Recovering an Interrupted Run](#recovering-an-interrupted-run)). One column
 carrying both would collapse "claimed but never ran" into "was executing", and
 the safe default would have to become the unsafe one.
+
+`claim_token` is separate from `claimed_at` for the same kind of reason, and it
+is the direct counterpart of `tom_lease.token` below. `claimed_at` says *when the
+claim was last heard from* and moves on every renewal; `claim_token` says *which
+claim this is* and must not move, or a heartbeat would invalidate the attempt it
+was proving alive. It is not indexed: it is only ever read as an equality
+conjunct on a row already located by its primary key.
 
 Two indexes exist because two scans do: `ix_…_due (state, run_at)` for the claim
 and `ix_…_lease (state, claimed_at)` for recovery.

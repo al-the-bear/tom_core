@@ -42,10 +42,16 @@ pair is meant to be pointed at the same `TomDataSource`. Exclusion is arbitrated
 entirely by the database: every transition is a conditional statement whose
 affected-row count *is* the answer. `claimDue` scans candidates, applies the
 scheduler's `accept` closure in Dart (a Dart predicate cannot run inside SQL),
-and issues one conditional `UPDATE … WHERE id = :id AND state = 'pending'` per
-accepted candidate. The claim is the one statement whose lost acknowledgement is
-genuinely ambiguous, so a failed claim is classified with `classifySqlFailure`
-and, when the server never answered, settled by re-reading the row.
+and issues one conditional `UPDATE … WHERE id = :id AND state = 'pending' AND
+claim_token = :current` per accepted candidate, raising `claim_token` as it goes.
+That counter is the queue's fencing token: it makes the returned `TomJobClaim`
+name one particular claim of the run, so a node whose lease lapsed while it was
+partitioned cannot record an outcome over the peer that took its work. Every
+transition out of a claim carries `AND claimed_by = :owner AND claim_token =
+:token` for that reason. The claim is the one statement whose lost
+acknowledgement is genuinely ambiguous, so a failed claim is classified with
+`classifySqlFailure` and, when the server never answered, settled by re-reading
+the row.
 
 `TomSqlSchedulerNodes` implements no kernel contract; it is an optional
 accelerator this module owns outright. It maintains one row per node, rewritten
@@ -142,12 +148,12 @@ tick.
 | `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with `REPLACE`, so re-planning a window overwrites it; the unique key on `(job_name, scheduled_for)` keeps one-run-per-window a database invariant. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor)` | *(override)* The run recorded for that job and window, or `null`. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | *(override)* The greatest `scheduled_for` recorded for the job, as a UTC instant, or `null` when it has no runs. |
-| `claimDue` | `Future<List<TomJobRun>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | *(override)* Scans pending runs due at `now` ordered by `seq`, applies `accept` in Dart, and issues one conditional `UPDATE` per survivor; a candidate a peer claimed first is skipped. Returns the runs actually won, at most `limit`. |
-| `release` | `Future<void> release(TomJobRun run)` | *(override)* Returns a claimed run to `pending` and clears its lease, guarded on `running` so a completion that raced the release wins. |
-| `markStarted` | `Future<void> markStarted(TomJobRun run, DateTime now)` | *(override)* Stamps `started_at` at the moment the dispatcher takes the run, guarded on `running`; this is what lets recovery tell an interrupted execution from an abandoned reservation. |
-| `renewClaim` | `Future<void> renewClaim(TomJobRun run, DateTime now)` | *(override)* Re-stamps `claimed_at`, guarded on `running`, so a run the lease recovered elsewhere is not renewed. |
-| `complete` | `Future<void> complete(TomJobRun run, DateTime now)` | *(override)* Moves the run to `succeeded`, records `completed_at` and clears the lease, guarded on `running` so a late outcome cannot overwrite a peer's or restart a purged run's retention clock. |
-| `fail` | `Future<void> fail(TomJobRun run, String error, DateTime now, {DateTime? retryAt})` | *(override)* Without `retryAt`, writes the run off as `failed`; with it, returns the run to `pending` at that instant and increments `attempt` in the statement rather than from a possibly stale copy. Both branches are guarded on `running` — the retrying one doubly so, since it spends a retry. |
+| `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | *(override)* Scans pending runs due at `now` ordered by `seq`, applies `accept` in Dart, and issues one conditional compare-and-set per survivor; a candidate a peer claimed first is skipped. Returns a ticket per run actually won, at most `limit`. |
+| `release` | `Future<void> release(TomJobClaim claim)` | *(override)* Returns a claimed run to `pending` and clears its lease, fenced on the claim so a completion that raced the release wins. `claim_token` is left where it is — the next claim raises it, and a token that repeats is not a fence. |
+| `markStarted` | `Future<void> markStarted(TomJobClaim claim, DateTime now)` | *(override)* Stamps `started_at` at the moment the dispatcher takes the run, fenced on the claim; this is what lets recovery tell an interrupted execution from an abandoned reservation. |
+| `renewClaim` | `Future<void> renewClaim(TomJobClaim claim, DateTime now)` | *(override)* Re-stamps `claimed_at`, fenced on the claim, so a run the lease recovered elsewhere is not renewed. Only the heartbeat moves; the token is the claim's identity and touching it would let an attempt's first heartbeat invalidate its own ticket. |
+| `complete` | `Future<void> complete(TomJobClaim claim, DateTime now)` | *(override)* Moves the run to `succeeded`, records `completed_at` and clears the lease, fenced on the claim so a late outcome cannot overwrite a peer's or restart a purged run's retention clock. |
+| `fail` | `Future<void> fail(TomJobClaim claim, String error, DateTime now, {DateTime? retryAt})` | *(override)* Without `retryAt`, writes the run off as `failed`; with it, returns the run to `pending` at that instant and increments `attempt` in the statement rather than from a possibly stale copy. Both branches are fenced on the claim — the retrying one doubly needs it, since it spends a retry. |
 | `recoverAbandoned` | `Future<List<TomJobRun>> recoverAbandoned(DateTime now, Duration leaseTimeout, {bool Function(String jobName)? requestsRecovery})` | *(override)* Checks this node in, then re-queues runs whose lease lapsed (and, with a roll call wired, those held by a failed peer). A run that never started is always re-queued; a started one only when the job opted in, otherwise it is written off with `TomJobStore.recoveryDeclinedError`. |
 | `all` | `Future<List<TomJobRun>> all()` | *(override)* Every row in the queue, in insertion order. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | *(override)* Deletes terminal runs completed before the cutoff and returns how many were removed. |
@@ -179,6 +185,7 @@ TomJobRunRow()
 | `attempt` | `int` | How many times the run has been attempted, counting from one. |
 | `claimedBy` | `String?` | The node currently holding the run, or `null` when it is unclaimed. |
 | `claimedAt` | `String?` | When the claim was last stamped, as stored UTC text. |
+| `claimToken` | `int` | Which claim of this run is current — the queue's fencing token. |
 | `startedAt` | `String?` | When the body began executing, as stored UTC text; `null` if it never did — the one column separating an interrupted execution from an abandoned reservation. |
 | `lastError` | `String?` | The message of the most recent failure. |
 | `completedAt` | `String?` | When the run reached a terminal state, as stored UTC text. |
