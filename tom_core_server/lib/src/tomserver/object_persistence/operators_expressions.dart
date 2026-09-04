@@ -160,6 +160,21 @@ class DateCol extends DbCol<TomDbDate> {
       t.dateF(operant1, this, tableType);
 }
 
+/// A reference to a time-of-day column.
+///
+/// The sibling of [DateCol] for the other half a timestamp splits into. A
+/// `TIME` column names a position within a day and no day at all, so it is
+/// neither a date nor a timestamp: comparing it against either would compare a
+/// clock reading with a calendar one.
+class TimeCol extends DbCol<TomDbTime> {
+  /// Creates a time-of-day column reference.
+  TimeCol(super.tableType, super.operant1, super.columnInformation);
+
+  @override
+  SqlString generate(TomStandardSqlDialect t) =>
+      t.timeF(operant1, this, tableType);
+}
+
 /// A single-quoted string literal.
 class StringLiteral extends TomUnaryOperator<String, TomDbString> {
   /// Creates a string literal.
@@ -206,6 +221,19 @@ class DateLiteral extends TomUnaryOperator<DateTime, TomDbDate> {
   DateLiteral(super.operant1);
   @override
   SqlString generate(TomStandardSqlDialect t) => t.dateOp(operant1);
+}
+
+/// A time-of-day literal.
+///
+/// Holds a [DateTime] rather than a [TomZonedTime], as [DateLiteral] holds one
+/// rather than a [TomZonedDate]: a [TomZonedTime] *is* a [DateTime], so the
+/// wider operand accepts both a kernel time value and a plain one built for the
+/// epoch day, and only the clock components are read out when it renders.
+class TimeLiteral extends TomUnaryOperator<DateTime, TomDbTime> {
+  /// Creates a time-of-day literal.
+  TimeLiteral(super.operant1);
+  @override
+  SqlString generate(TomStandardSqlDialect t) => t.timeOp(operant1);
 }
 
 /// Logical negation: `NOT <operand>`.

@@ -247,6 +247,8 @@ surface documented here.
 | `sqlFailureCauses` | function | A failure and every `rootException` beneath it, outermost first. |
 | `isLostConnectionFailure` | function | Whether the statement was left with no live link, so one retry is worth it. |
 | `sqlInstant` | function | Renders an instant as the UTC `DATETIME(6)` literal the columns bind. |
+| `sqlDate` | function | Renders the calendar half of an instant as the `YYYY-MM-DD` a `DATE` column takes. |
+| `sqlTimeOfDay` | function | Renders the clock half of an instant as the `HH:MM:SS` a `TIME` column takes. |
 | `parseSqlInstant` | function | Reads a stored `DATETIME(6)` back as a UTC `DateTime`. |
 | `parseOptionalSqlInstant` | function | The same, treating an empty column as absent. |
 | `unknownFrameworkColumns` | function | Audits a statement for column references no framework table declares. |
@@ -446,7 +448,7 @@ surface documented here.
 | `TomCountResult` | class | Count query result. |
 | `TomQueryBuilder` | mixin | Fluent query building. |
 | `TomQuerySentenceCompiler` | class | Compiles query sentences to SQL. |
-| `TomOperator` expression tree | class | `TomUnaryOperator`, `TomBinaryOperator`, `Parameter`, `DbCol`/`IntCol`/`StringCol`/`DoubleCol`/`BoolCol`/`DateTimeCol`/`DateCol`, the `*Literal` set, and `And`/`Or`/`Not`/`Eq`/`Neq`/`Lt`/`Gt`/`Lte`/`Gte`/`Like`/`NotLike`/`In`/`Group`/`Between`/`Regexp`/`IsNull`/`IsNotNull`. |
+| `TomOperator` expression tree | class | `TomUnaryOperator`, `TomBinaryOperator`, `Parameter`, `DbCol`/`IntCol`/`StringCol`/`DoubleCol`/`BoolCol`/`DateTimeCol`/`DateCol`/`TimeCol`, the `*Literal` set, and `And`/`Or`/`Not`/`Eq`/`Neq`/`Lt`/`Gt`/`Lte`/`Gte`/`Like`/`NotLike`/`In`/`Group`/`Between`/`Regexp`/`IsNull`/`IsNotNull`. |
 | `TomQuerySyntaxException` | class | Query syntax error. |
 | `TomDataScope` | class | Row-level data scoping (static). |
 | `TomDataScopeRegistry` / `TomDataScopePredicate` / `TomDataScopeBypass` | class | Data-scope machinery. |
@@ -606,12 +608,16 @@ surface documented here.
 | `schedulerNodeFailedAfter` | Scheduling |
 | `schedulerNodeTable` | Scheduling |
 | `schedulerNodeTableDdl` | Scheduling |
+| `sqlDate` | Datasources |
 | `sqlFailureCauses` | Datasources |
 | `sqlInstant` | Datasources |
 | `SqlPlaceholderScan` | Datasources |
 | `SqlString` | Datasources |
+| `sqlTimeOfDay` | Datasources |
 | `StringCol` | Object Persistence |
 | `StringLiteral` | Object Persistence |
+| `TimeCol` | Object Persistence |
+| `TimeLiteral` | Object Persistence |
 | `Tom2FAAdaptor` | Authentication |
 | `Tom2FAChallengeSpec` | Authentication |
 | `Tom2FAContext` | Authentication |

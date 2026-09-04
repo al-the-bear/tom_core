@@ -139,9 +139,9 @@ TomOperator<R>  (types_operator)
     ├── TomUnaryOperator<T, R>
     │       ├── DbCol<R>
     │       │       ├── IntCol / StringCol / DoubleCol
-    │       │       └── BoolCol / DateTimeCol / DateCol
+    │       │       └── BoolCol / DateTimeCol / DateCol / TimeCol
     │       ├── StringLiteral / IntegerLiteral / DoubleLiteral
-    │       ├── BoolLiteral / DateTimeLiteral / DateLiteral
+    │       ├── BoolLiteral / DateTimeLiteral / DateLiteral / TimeLiteral
     │       ├── Not / IsNull<T> / IsNotNull<T>
     │       ├── And / Or
     │       └── Group<T>
@@ -733,6 +733,7 @@ return the matching SQL-typed operator.
 | `boolOp` | `TomOperator<TomDbBool> boolOp(bool value)` | A boolean literal. |
 | `dateTimeOp` | `TomOperator<TomDbDateTime> dateTimeOp(DateTime value)` | A timestamp literal. |
 | `dateOp` | `TomOperator<TomDbDate> dateOp(DateTime value)` | A date literal. |
+| `timeOp` | `TomOperator<TomDbTime> timeOp(DateTime value)` | A time-of-day literal — only the clock components of `value` are used. |
 | `p` | `TomOperator<T> p<T>(String parameterName)` | A named positional parameter placeholder (`:parameterName`). |
 | `textF` | `TomOperator<TomDbString> textF(String fieldName, TomColumnInformation columnInformation)` | A reference to a `String` column. |
 | `intF` | `TomOperator<TomDbInt> intF(String fieldName, TomColumnInformation columnInformation)` | A reference to an `int` column. |
@@ -740,6 +741,7 @@ return the matching SQL-typed operator.
 | `boolF` | `TomOperator<TomDbBool> boolF(String fieldName, TomColumnInformation columnInformation)` | A reference to a `bool` column. |
 | `dateTimeF` | `TomOperator<TomDbDateTime> dateTimeF(String fieldName, TomColumnInformation columnInformation)` | A reference to a timestamp column. |
 | `dateF` | `TomOperator<TomDbDate> dateF(String fieldName, TomColumnInformation columnInformation)` | A reference to a date column. |
+| `timeF` | `TomOperator<TomDbTime> timeF(String fieldName, TomColumnInformation columnInformation)` | A reference to a time-of-day column. |
 
 ##### Methods — aggregates
 
@@ -758,10 +760,19 @@ aggregate is projected under.
 | `minDouble` / `maxDouble` | `Min<TomDbDouble, double> minDouble(TomOperator<TomDbDouble> value, String alias)` | `MIN`/`MAX` over a `double` expression. |
 | `minText` / `maxText` | `Min<TomDbString, String> minText(TomOperator<TomDbString> value, String alias)` | `MIN`/`MAX` over a `String` expression. |
 | `minDateTime` / `maxDateTime` | `Min<TomDbDateTime, DateTime> minDateTime(TomOperator<TomDbDateTime> value, String alias)` | `MIN`/`MAX` over a timestamp expression. |
+| `minDate` / `maxDate` | `Min<TomDbDate, DateTime> minDate(TomOperator<TomDbDate> value, String alias)` | `MIN`/`MAX` over a date expression. |
+| `minTime` / `maxTime` | `Min<TomDbTime, DateTime> minTime(TomOperator<TomDbTime> value, String alias)` | `MIN`/`MAX` over a time-of-day expression. |
 
 `min`/`max` are split by type rather than left generic because they preserve the
 operand's type on both sides (SQL and Dart); `sum`/`avg` always widen to `double`
 and so need no such split.
+
+The date and time variants project a plain `DateTime` rather than a
+`TomZonedDate` / `TomZonedTime`: it is the widest type that accepts both the
+driver's own reading of the column and the kernel half-instant, which extends
+it. Writing the two type arguments out at a call site instead of using these
+factories is what `grouped_query.dart` warns against — the pair must agree, and
+only the factory guarantees it.
 
 #### TomQuerySentenceCompiler
 
@@ -1011,6 +1022,7 @@ DbCol(Type tableType, String operant1, TomColumnInformation columnInformation)
 | `BoolCol` | `DbCol<TomDbBool>` | A `bool` column reference. |
 | `DateTimeCol` | `DbCol<TomDbDateTime>` | A timestamp column reference. |
 | `DateCol` | `DbCol<TomDbDate>` | A date column reference. |
+| `TimeCol` | `DbCol<TomDbTime>` | A time-of-day column reference — the sibling of `DateCol` for the other half a timestamp splits into. A `TIME` column names a position within a day and no day at all, so it is neither a date nor a timestamp. |
 
 Each takes the constructor `(Type tableType, String operant1, TomColumnInformation columnInformation)`.
 
@@ -1026,6 +1038,7 @@ Each literal wraps a Dart value and renders it through the dialect.
 | `BoolLiteral` | `TomUnaryOperator<bool, TomDbBool>` | `BoolLiteral(bool operant1)` | A boolean literal. |
 | `DateTimeLiteral` | `TomUnaryOperator<DateTime, TomDbDateTime>` | `DateTimeLiteral(DateTime operant1)` | A timestamp literal. |
 | `DateLiteral` | `TomUnaryOperator<DateTime, TomDbDate>` | `DateLiteral(DateTime operant1)` | A date literal. |
+| `TimeLiteral` | `TomUnaryOperator<DateTime, TomDbTime>` | `TimeLiteral(DateTime operant1)` | A time-of-day literal. Holds a `DateTime` rather than a `TomZonedTime`, as `DateLiteral` does: a `TomZonedTime` *is* a `DateTime`, so the wider operand accepts both a kernel time value and a plain one built for the epoch day, and only the clock components are read out when it renders. |
 
 #### Logical & comparison operators
 

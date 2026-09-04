@@ -11,9 +11,11 @@
 ///
 /// Connection-free: only the entity's annotations are read, so
 /// [FixtureExportRecord] needs no table. It is the fixture used here rather
-/// than `FixtureTaskRecord` because it declares all five column families — and
-/// in particular a `DateTime`, which the task fixture does not have. That
-/// absence is why the bug survived the existing suites.
+/// than `FixtureTaskRecord` because it declares every column family — and in
+/// particular a `DateTime`, which the task fixture does not have. That absence
+/// is why the bug survived the existing suites, and it is why the fixture
+/// gained a `TomZonedTime` field: a family no fixture declares is a family no
+/// suite can reach, however completely the compiler handles it.
 library;
 
 import 'package:test/test.dart';
@@ -87,6 +89,17 @@ void main() {
       expect(
         select('find by tag_day = :day').generateQuery(dialect),
         contains('fixture_export.tag_day = :day'),
+      );
+    });
+
+    test('a TomZonedTime column compiles', () {
+      // The third occurrence of the same shape, and the one that had never
+      // been half-written: `TomZonedTime` appeared in the migration type map
+      // and nowhere in the compiler, so a column a migration could create was
+      // addressable by no sentence at all.
+      expect(
+        select('find by remind_at = :at').generateQuery(dialect),
+        contains('fixture_export.remind_at = :at'),
       );
     });
 
@@ -203,6 +216,127 @@ void main() {
               as TomGroupedSelect;
       expect(query.aggregates.single, isA<Max<TomDbDouble, double>>());
       expect(query.aggregates.single.valueType, double);
+    });
+  });
+
+  // The same six dispatches, for the family that had none of them. `double`
+  // was missing from three; a time of day was missing from all six plus the
+  // node, the literal, the builder factory and the dialect rendering — so
+  // these are what make the type exist rather than what make it reachable.
+  group('time-of-day columns across the predicate forms', () {
+    test('every comparison operator accepts a time-of-day column', () {
+      for (final (symbol, sentence) in const [
+        ('=', 'find by remind_at = :at'),
+        ('<>', 'find by remind_at <> :at'),
+        ('<', 'find by remind_at < :at'),
+        ('<=', 'find by remind_at <= :at'),
+        ('>', 'find by remind_at > :at'),
+        ('>=', 'find by remind_at >= :at'),
+      ]) {
+        expect(
+          select(sentence).generateQuery(dialect),
+          contains('fixture_export.remind_at $symbol :at'),
+          reason: 'the $symbol comparison should type a time-of-day column',
+        );
+      }
+    });
+
+    test('a time-of-day column binds its parameter as a time', () {
+      // Typed as `TomDbTime` rather than `TomDbDateTime`: the two render a
+      // bound value differently — a whole instant against a column that holds
+      // a clock reading — so the parameter's type is what decides whether the
+      // right value reaches the column, not the identical `:at` in the SQL.
+      final query = select('find by remind_at >= :at');
+      expect(query.getParameters(dialect), ['at']);
+      expect(query.query, isA<Gte<TomDbTime>>());
+    });
+
+    test('a time-of-day column takes IS NULL and IS NOT NULL', () {
+      expect(
+        select('find by remind_at is null').generateQuery(dialect),
+        contains('fixture_export.remind_at IS NULL'),
+      );
+      expect(
+        select('find by remind_at is not null').generateQuery(dialect),
+        contains('fixture_export.remind_at IS NOT NULL'),
+      );
+    });
+
+    test('a time-of-day column takes IS IN', () {
+      expect(
+        select('find by remind_at is in ( :a , :b )').generateQuery(dialect),
+        contains('fixture_export.remind_at IN (:a,:b)'),
+      );
+    });
+
+    test('a time-of-day column orders and combines with another predicate', () {
+      final query = select(
+        'find by remind_at >= :at and done = :done order by remind_at desc',
+      ).generateQuery(dialect);
+      expect(query, contains('fixture_export.remind_at >= :at'));
+      expect(query, contains('ORDER BY fixture_export.remind_at DESC'));
+    });
+
+    test('a time of day can be written inline as a literal', () {
+      // `HH:MM:SS` is the one literal shape whose leading character is shared
+      // with nothing — `:` opens a bind parameter, and a parameter is
+      // recognised by its *first* character, which a time never is. Rendered
+      // as the clock reading alone: the epoch day the token is parsed onto is
+      // scaffolding for Dart's lack of a time-only value and must not reach
+      // the SQL.
+      expect(
+        select('find by remind_at >= 09:30:00').generateQuery(dialect),
+        contains("fixture_export.remind_at >= '09:30:00'"),
+      );
+    });
+
+    test('a time literal is refused against a column of another type', () {
+      // The literal kinds are ordered most-specific-first and every pattern is
+      // anchored, so a token belongs to exactly one kind; what remains is that
+      // the kind has to match the column. Refusing here is what keeps the
+      // ordering honest — an unreachable kind would show up as the *wrong*
+      // rejection rather than as a missing one.
+      expect(
+        () => compiler.compileQuerySentence('find by title = 09:30:00'),
+        throwsA(isA<TomQuerySyntaxException>()),
+      );
+    });
+
+    test('a datetime literal is still read as a datetime', () {
+      // The guard on the new entry's placement: a time pattern that also
+      // matched the tail of a timestamp, or one ordered before the datetime,
+      // would claim this token and then reject it for being the wrong type.
+      expect(
+        select(
+          'find by created_at >= 2026-01-02T09:30:00Z',
+        ).generateQuery(dialect),
+        contains("fixture_export.created_at >= '2026-01-02 09:30:00.000000'"),
+      );
+    });
+  });
+
+  group('aggregates over a time-of-day column', () {
+    test('min over a time-of-day column yields a time-typed aggregate', () {
+      final query =
+          compiler.compileQuerySentence(
+                'group min ( remind_at ) as earliest over done by id > 0',
+              )
+              as TomGroupedSelect;
+      expect(query.aggregates.single, isA<Min<TomDbTime, DateTime>>());
+      expect(
+        query.generateQuery(dialect),
+        contains('MIN(fixture_export.remind_at) AS earliest'),
+      );
+    });
+
+    test('max over a time-of-day column yields a time-typed aggregate', () {
+      final query =
+          compiler.compileQuerySentence(
+                'group max ( remind_at ) as latest over done by id > 0',
+              )
+              as TomGroupedSelect;
+      expect(query.aggregates.single, isA<Max<TomDbTime, DateTime>>());
+      expect(query.aggregates.single.valueType, DateTime);
     });
   });
 }

@@ -45,6 +45,7 @@ declared.
 | `TomOperator<R>` | abstract class | A node in a SQL expression tree, typed by its SQL return type `R` |
 | `SqlString` | typedef | A `String` that documents "this is a SQL fragment" |
 | `sqlInstant` / `parseSqlInstant` / `parseOptionalSqlInstant` | function | The one encoding of an instant in a `DATETIME(6)` column — always UTC, six fractional digits |
+| `sqlDate` / `sqlTimeOfDay` | function | The two halves an instant splits into: the `YYYY-MM-DD` a `DATE` column takes and the `HH:MM:SS` a `TIME` column takes, components as labelled |
 | `TomStandardSqlDialect` | class | Renders operator nodes to standard-SQL fragments |
 | `TomAggregateFunction` | enum | The aggregate vocabulary a dialect must render (`count`/`sum`/`avg`/`min`/`max`) |
 | `TomSqlTypeFamily` | enum | The coarse type classes a stored column can belong to — what a dialect reduces a SQL type name *to* |
@@ -129,6 +130,38 @@ The corollary for DDL: **a column holding an instant is `DATETIME(6)`.** A plain
 `DATETIME` rounds the microseconds this convention always writes, which moves
 the stored moment by up to half a second — tolerable for a "when was this
 touched" field, not for a boundary something is compared against.
+
+### The two halves an instant splits into
+
+A `DATE` column names a day and no time; a `TIME` column names a position within
+a day and no day. `sqlDate` and `sqlTimeOfDay` render them, and take the
+components **as labelled** — the opposite of `sqlInstant`, and the right answer
+for the same reason it is the wrong one for an instant. An instant is a moment,
+so it is normalised to the frame every node shares. A date is a day *in the
+calendar it was written in*: converting `2026-03-01` to UTC moves it to February
+28th for half the world's zones, and the row then falls in the wrong month.
+
+```dart
+sqlDate(DateTime(2026, 3, 1, 23, 30));       // 2026-03-01
+sqlTimeOfDay(DateTime(1970, 1, 1, 9, 5, 3)); // 09:05:03
+```
+
+Sub-second digits are dropped from a time: a `TIME` with no declared precision
+keeps whole seconds, so text carrying more than the column can hold compares
+unequal to the value stored from it.
+
+Both functions live here rather than in the dialect because **two routes reach
+the same column** and must spell a value identically — `dateOp` / `timeOp`
+inline a literal into generated SQL, while the MariaDB bind boundary renders a
+bound value. Each quotes these renderers instead of restating the format, so the
+two cannot drift apart.
+
+Which half a value means is decided by its **type**. `TomZonedDate` and
+`TomZonedTime` both extend `DateTime`, so every dispatch that recognises them
+must test them *before* the general `DateTime` arm; otherwise a whole instant is
+bound into a column that holds half of one — a `DATE` silently gaining a time
+the caller never named, and a `TIME` receiving a datetime-shaped string MariaDB
+rejects outright.
 
 ## The Operator Tree
 
@@ -916,6 +949,10 @@ test here requires this file in particular to keep using it.
 - **`sqlInstant` / `parseSqlInstant` / `parseOptionalSqlInstant`** — the one
   encoding of an instant in a `DATETIME(6)` column, applied to hand-written and
   reflected SQL alike. See [Instants Are UTC](#instants-are-utc).
+- **`sqlDate` / `sqlTimeOfDay`** — the `DATE` and `TIME` renderings, components
+  as labelled rather than normalised to UTC. Shared by the dialect's literals
+  and the bind boundary so the two routes to a column agree. See
+  [The two halves an instant splits into](#the-two-halves-an-instant-splits-into).
 - **`TomOperator<R>`** — the typed SQL expression node (`generate`, `getFields`,
   `getParameters`).
 - **`TomStandardSqlDialect`** — SQL-fragment generation; `SqlString`. Also the

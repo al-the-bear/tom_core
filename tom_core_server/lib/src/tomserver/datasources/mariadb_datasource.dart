@@ -236,8 +236,9 @@ typedef _PendingReference = ({
 
 /// Marshals one bind [value] into a driver primitive: a [TomDbType] box is
 /// unwrapped to the Dart value it holds; a Dart `bool` becomes its MariaDB
-/// integer encoding; a [DateTime] becomes its UTC `DATETIME(6)` text; every
-/// other value is bound as-is.
+/// integer encoding; a [TomZonedDate] becomes its `DATE` text and a
+/// [TomZonedTime] its `TIME` text; any other [DateTime] becomes its UTC
+/// `DATETIME(6)` text; every other value is bound as-is.
 ///
 /// MariaDB has no native boolean type — `BOOLEAN` is an alias for
 /// `TINYINT(1)` stored as `1`/`0`. The driver serializes a bound Dart `bool`
@@ -265,6 +266,15 @@ typedef _PendingReference = ({
 Object? _toBindValue(Object? value) {
   final unwrapped = value is TomDbType ? value.get() : value;
   if (unwrapped is bool) return unwrapped ? 1 : 0;
+  // The two kernel half-instants are tested first because both *are* a
+  // `DateTime`, so the general arm below would claim them and bind a whole
+  // instant into a column that holds half of one — a `DATE` gaining a time the
+  // caller never named and, for a `TIME`, a datetime-shaped string the server
+  // refuses outright. Which half a value means is decided by its type, exactly
+  // as the dialect decides it for an inlined literal, and by the same three
+  // renderers so the two routes cannot disagree.
+  if (unwrapped is TomZonedDate) return sqlDate(unwrapped);
+  if (unwrapped is TomZonedTime) return sqlTimeOfDay(unwrapped);
   if (unwrapped is DateTime) return sqlInstant(unwrapped);
   return unwrapped;
 }
@@ -1022,6 +1032,8 @@ class MariaDbDatasource implements TomDataSource {
       return TomDbDateTime.of(row.typedColByName<String>(field));
     } else if (colType == TomDbDate) {
       return TomDbDate.of(row.typedColByName<String>(field));
+    } else if (colType == TomDbTime) {
+      return TomDbTime.of(row.typedColByName<String>(field));
     }
     throw MariadbDatasourceException(
       "error.result_processing.unknown_type_dbtype_conversion",

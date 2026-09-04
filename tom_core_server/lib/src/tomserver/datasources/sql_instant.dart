@@ -46,6 +46,19 @@
 /// answer to "when". Nodes are allowed to disagree about the zone; they are not
 /// allowed to disagree about the moment.
 ///
+/// ## The two halves an instant splits into
+///
+/// A `DATE` and a `TIME` column each hold part of what a `DATETIME` holds, and
+/// neither is an instant: a date names a day in the calendar it was written in
+/// and a time names a position within a day, so both are rendered **as
+/// labelled** ([sqlDate], [sqlTimeOfDay]) where an instant is normalised to
+/// UTC. They live here, beside [sqlInstant], because the three renderings are
+/// one decision and reading them apart is how a caller ends up applying the
+/// instant rule to a calendar value — which moves the day for half the world's
+/// zones. Every route to a temporal column goes through one of the three: the
+/// dialect quotes them for an inlined literal, the bind boundary passes them
+/// unquoted.
+///
 /// The corollary for DDL: a column holding an instant is `DATETIME(6)`. A plain
 /// `DATETIME` rounds the microseconds this library always writes, which moves
 /// the stored moment by up to half a second — tolerable for a "when was this
@@ -63,6 +76,29 @@ String sqlInstant(DateTime value) {
   return '${pad(utc.year, 4)}-${pad(utc.month, 2)}-${pad(utc.day, 2)} '
       '${pad(utc.hour, 2)}:${pad(utc.minute, 2)}:${pad(utc.second, 2)}.'
       '${pad(utc.millisecond, 3)}${pad(utc.microsecond, 3)}';
+}
+
+/// Renders the calendar half of [value] as the `DATE` text a date column takes.
+///
+/// Fixed-width `YYYY-MM-DD`, components taken **as labelled** — the opposite
+/// choice from [sqlInstant], and the right one for the same reason. An instant
+/// is a moment, so it is normalised to the frame every node shares; a date
+/// names a day *in the calendar it was written in*, and converting it to UTC
+/// moves it to the previous or next day for half the world's zones.
+String sqlDate(DateTime value) {
+  String pad(int v, int width) => v.toString().padLeft(width, '0');
+  return '${pad(value.year, 4)}-${pad(value.month, 2)}-${pad(value.day, 2)}';
+}
+
+/// Renders the clock half of [value] as the `TIME` text a time column takes.
+///
+/// Fixed-width `HH:MM:SS`, components taken as labelled — see [sqlDate], of
+/// which this is the other half. Sub-second digits are dropped: a `TIME` with
+/// no declared precision keeps whole seconds, and text the column cannot hold
+/// compares unequal to the value stored from it.
+String sqlTimeOfDay(DateTime value) {
+  String pad(int v) => v.toString().padLeft(2, '0');
+  return '${pad(value.hour)}:${pad(value.minute)}:${pad(value.second)}';
 }
 
 /// Reads a stored `DATETIME(6)` back as a UTC [DateTime].

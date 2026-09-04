@@ -1416,9 +1416,13 @@ class FixtureUnmappedFileRecord {
 ///   exist in a second place, and an export is a second place;
 /// - [attachment] is a `@TomFileReference`, holding an internal storage key
 ///   rather than content;
-/// - [tag] is a `TomZonedDate`, whose *storage* family is `date` but whose Dart
-///   value is not a `DateTime` — the case that proves the derivation falls back
-///   to text when the declared Dart type cannot inhabit the candidate type.
+/// - [tagDay] is a `TomZonedDate`, whose *storage* family is `date` but whose
+///   Dart value is not a `DateTime` — the case that proves the derivation falls
+///   back to text when the declared Dart type cannot inhabit the candidate
+///   type;
+/// - [remindAt] is a `TomZonedTime`, the same case for the other half a
+///   timestamp splits into, and the column type the query-sentence compiler
+///   needs an instance of to be exercised at all.
 ///
 /// It maps to no table in `test_database.dart` and needs none: only the
 /// annotations are read.
@@ -1454,6 +1458,11 @@ class FixtureExportRecord {
   /// A date whose Dart value is not a `DateTime` — derives text.
   @TomDbColumn(columnName: 'tag_day')
   TomZonedDate? tagDay;
+
+  /// A time of day — the other half a timestamp splits into, and the column
+  /// type a query sentence could not name at all until it existed here.
+  @TomDbColumn(columnName: 'remind_at')
+  TomZonedTime? remindAt;
 
   /// The redacted column: never exported.
   @TomDbColumn(columnName: 'secret')
@@ -1507,6 +1516,14 @@ class FixtureExportRecordV2 {
   /// A date whose Dart value is not a `DateTime`.
   @TomDbColumn(columnName: 'tag_day')
   TomZonedDate? tagDay;
+
+  /// A time of day.
+  ///
+  /// Present in both versions and in the same position: the drift assertion
+  /// this pair exists for compares the two column lists and requires them to
+  /// differ by [owner] alone, so a column added to one has to be added to both.
+  @TomDbColumn(columnName: 'remind_at')
+  TomZonedTime? remindAt;
 
   /// The redacted column.
   @TomDbColumn(columnName: 'secret')

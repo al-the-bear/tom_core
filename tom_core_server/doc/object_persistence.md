@@ -347,11 +347,17 @@ can take is a predicate written the long way round.
 
 A predicate addresses a column through three separate type dispatches — the
 column node, the bind parameter, and the comparison that joins them — and all
-three cover the same six families: `String`, `int`, `double`, `bool`,
-`DateTime` and `TomZonedDate`, each with its `Tom…` and nullable `TomN…`
-spellings, plus the `TomDb…` names when an entity gives `columnType:`
+three cover the same seven families: `String`, `int`, `double`, `bool`,
+`DateTime`, `TomZonedDate` and `TomZonedTime`, each with its `Tom…` and nullable
+`TomN…` spellings, plus the `TomDb…` names when an entity gives `columnType:`
 explicitly. A column outside them raises
 `query_sentence_compiler.create_column.failed`.
+
+The last three are distinct families rather than one, because a `DATETIME`, a
+`DATE` and a `TIME` hold different things: a moment, a day with no time, and a
+position within a day with no day. Comparing a clock reading against a calendar
+one is a question with no answer, so the compiler keeps them apart even though
+`TomZonedDate` and `TomZonedTime` are both Dart `DateTime`s by inheritance.
 
 ### What a comparison compares
 
@@ -369,7 +375,7 @@ Brackets group *predicates*, never operands. `find by amount > ( 1.5 )` is a
 syntax error (`…build_expression.separator_in_operand_position`) — there is no
 form in which a comparison is written against a parenthesised expression.
 
-This is uniform: it holds for all six operators over all six column families.
+This is uniform: it holds for all six operators over all seven column families.
 **A boolean column is not special.** The tempting exception — letting `=` and
 `<>` swallow a boolean right-hand side as a whole predicate — would change what
 ordinary queries mean: `done = TRUE and priority > 3` would be refused, and
@@ -385,7 +391,7 @@ binds to the single predicate or bracketed group that follows it, so
 ### Writing a value inline
 
 A value in a predicate is normally *bound* (`find by amount > :floor`), but it
-can also be written out. Six literal forms are recognised, by shape:
+can also be written out. Seven literal forms are recognised, by shape:
 
 | Form | Example | SQL type |
 | ---- | ------- | -------- |
@@ -394,17 +400,24 @@ can also be written out. Six literal forms are recognised, by shape:
 | Integer | `find by priority > 3`, `find by delta > -5` | `int` |
 | Decimal | `find by amount > 1.5`, `find by amount > -0.25` | `double` |
 | Date | `find by tag_day = 2026-07-05` | `TomZonedDate` |
+| Time of day | `find by remind_at >= 09:30:00` | `TomZonedTime` |
 | Timestamp | `find by created_at >= 2026-07-05T10:00:00Z` | `DateTime` |
 
 A literal stands for exactly one type, so comparing one against a column of
 another raises `…build_expression.<kind>_literal_invalid_type_expected`, and
 negating one raises `…_literal_negation_attempt`.
 
-Two shapes worth knowing. A **decimal is written with a point**, never a comma:
-a comma separates an `IS IN` list, so a value spelled `1,5` is read as two
-values rather than one. And a **timestamp is converted to UTC** as it compiles,
+Three shapes worth knowing. A **decimal is written with a point**, never a
+comma: a comma separates an `IS IN` list, so a value spelled `1,5` is read as
+two values rather than one. A **timestamp is converted to UTC** as it compiles,
 whether written with `Z` or with an offset — `2026-07-05T12:00:00+02:00` and
-`2026-07-05T10:00:00Z` produce the same literal.
+`2026-07-05T10:00:00Z` produce the same literal. And a **time of day needs all
+three fields, each two digits** — `09:30:00`, not `9:30` — because a bound
+parameter is recognised by its leading `:`, and requiring a leading digit is
+what keeps the two apart with no lookahead. A date and a time are *not*
+normalised to UTC: they name a day and a clock position in the calendar they
+were written in, and shifting them by an offset would move them to a different
+day, or past midnight, for half the world's zones.
 
 #### Inside a text literal
 

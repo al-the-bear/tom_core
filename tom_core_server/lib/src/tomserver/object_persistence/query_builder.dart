@@ -163,6 +163,11 @@ mixin TomQueryBuilder {
     return DateLiteral(value);
   }
 
+  /// A time-of-day literal — only the clock components of [value] are used.
+  TomOperator<TomDbTime> timeOp(DateTime value) {
+    return TimeLiteral(value);
+  }
+
   /// A named positional parameter placeholder (`:parameterName`).
   TomOperator<T> p<T>(String parameterName) {
     return Parameter<T>(parameterName);
@@ -218,6 +223,14 @@ mixin TomQueryBuilder {
     TomColumnInformation columnInformation,
   ) {
     return DateCol(columnInformation.tableType, fieldName, columnInformation);
+  }
+
+  /// A reference to a time-of-day column.
+  TomOperator<TomDbTime> timeF(
+    String fieldName,
+    TomColumnInformation columnInformation,
+  ) {
+    return TimeCol(columnInformation.tableType, fieldName, columnInformation);
   }
 
   // --- Aggregates -----------------------------------------------------------
@@ -297,4 +310,32 @@ mixin TomQueryBuilder {
     TomOperator<TomDbDateTime> value,
     String alias,
   ) => Max<TomDbDateTime, DateTime>(value, alias);
+
+  /// `MIN(<value>) AS <alias>` over a date expression.
+  ///
+  /// The projected value is read as a plain [DateTime]: it is the widest type
+  /// that accepts both the driver's own reading of the column and a
+  /// [TomZonedDate], which extends it. The same holds for [minTime].
+  Min<TomDbDate, DateTime> minDate(
+    TomOperator<TomDbDate> value,
+    String alias,
+  ) => Min<TomDbDate, DateTime>(value, alias);
+
+  /// `MAX(<value>) AS <alias>` over a date expression.
+  Max<TomDbDate, DateTime> maxDate(
+    TomOperator<TomDbDate> value,
+    String alias,
+  ) => Max<TomDbDate, DateTime>(value, alias);
+
+  /// `MIN(<value>) AS <alias>` over a time-of-day expression.
+  Min<TomDbTime, DateTime> minTime(
+    TomOperator<TomDbTime> value,
+    String alias,
+  ) => Min<TomDbTime, DateTime>(value, alias);
+
+  /// `MAX(<value>) AS <alias>` over a time-of-day expression.
+  Max<TomDbTime, DateTime> maxTime(
+    TomOperator<TomDbTime> value,
+    String alias,
+  ) => Max<TomDbTime, DateTime>(value, alias);
 }

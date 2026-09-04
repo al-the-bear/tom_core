@@ -2,6 +2,35 @@
 
 ### Changed
 
+- **A time-of-day column is now addressable in a query sentence
+  (tcincb1_ahzb).** `TomZonedTime` appeared in the migration type map and
+  nowhere in the query compiler, so a `TIME` column a migration could create
+  could be named by no sentence at all — not compared, not bound, not tested
+  for null, not aggregated. It is now a column family like the other six:
+  `TimeCol` and `TimeLiteral` join `DateCol`/`DateLiteral` in the expression
+  tree, `TomQueryBuilder` gains `timeOp` / `timeF` / `minTime` / `maxTime` (and
+  `minDate` / `maxDate`, which were missing beside them), `TomStandardSqlDialect`
+  gains `timeOp` / `timeF`, and all six of the compiler's type dispatches carry
+  an arm for it.
+
+  The literal form is `HH:MM:SS` — `find by remind_at >= 09:30:00`. All three
+  fields are required and the hour is two digits, because a bound parameter is
+  recognised by its leading `:` and a leading digit is what tells the two apart
+  with no lookahead.
+
+  Two symmetric holes were closed on the way, both of which would have made
+  "end to end" false. `MariadbDatasource` could not read a `TIME` column back
+  at all, and its bind boundary rendered *every* `DateTime` as a UTC
+  `DATETIME(6)` — including both kernel half-instants, since `TomZonedDate` and
+  `TomZonedTime` extend `DateTime`. A bound time therefore reached a `TIME`
+  column as a datetime-shaped string the server refuses outright, and a bound
+  date reached a `DATE` column as a whole instant. Both are now decided by type
+  before the general arm, through the same two new renderers — `sqlDate` and
+  `sqlTimeOfDay` in `sql_instant.dart` — that the dialect's literals also quote,
+  so the inlined and the bound route to a column cannot spell a value
+  differently. `dateOp`, which had its own copy of the padding, now delegates
+  to `sqlDate`.
+
 - **A zero-padded number no longer converts, so it no longer fills an `int`
   field.** `TomArgs.intPattern` is now `0|[1-9][0-9]*` and `doublePattern`'s
   integer part matches it, so `port=08080` reaches `setValues` as a `String`

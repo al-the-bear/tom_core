@@ -29,10 +29,10 @@ typedef _UnaryPredicateFactory =
 /// One kind of scalar value a query sentence can spell **inline**, as opposed
 /// to binding it — `find by priority > 3`, `find by due = 2026-07-05`.
 ///
-/// The four kinds are recognised by shape alone, and their shapes nest: every
-/// datetime literal contains a date, every date contains digits, and a bare
-/// digit test matches any token that merely *contains* one. So two rules keep
-/// them all reachable, and both are load-bearing —
+/// The five kinds are recognised by shape alone, and their shapes nest: every
+/// datetime literal contains a date *and* a time, every date contains digits,
+/// and a bare digit test matches any token that merely *contains* one. So two
+/// rules keep them all reachable, and both are load-bearing —
 ///
 /// * every [pattern] is **anchored**, so a token matches a kind only by being
 ///   that kind entirely rather than by containing one somewhere; and
@@ -74,6 +74,12 @@ class _ScalarLiteral {
 /// before any literal rule saw it — and a comma that could be either a decimal
 /// point or a list separator is ambiguous in exactly the place `IS IN` needs it
 /// not to be.
+///
+/// A time of day is spelled `HH:MM:SS` and is the one kind whose leading
+/// character decides nothing on its own — `:` opens a bind parameter. The two
+/// do not collide because a parameter is recognised by its *first* character
+/// and a time never starts with one, which is why the pattern requires a
+/// two-digit hour rather than accepting `9:30:00`.
 final _scalarLiterals = <_ScalarLiteral>[
   _ScalarLiteral(
     kind: 'datetime',
@@ -90,6 +96,18 @@ final _scalarLiterals = <_ScalarLiteral>[
     sqlType: TomDbDate,
     pattern: RegExp(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"),
     build: (builder, token) => builder.dateOp(DateTime.parse(token)),
+  ),
+  _ScalarLiteral(
+    kind: 'time',
+    noun: 'a time of day',
+    sqlType: TomDbTime,
+    pattern: RegExp(r"^[0-9]{2}:[0-9]{2}:[0-9]{2}$"),
+    // Parsed onto the epoch day, the anchor `TomZonedTime` uses for the date
+    // components a time of day does not have. Only the clock components are
+    // rendered ([TomStandardSqlDialect.timeOp]), so the anchor never reaches
+    // the SQL — it exists because Dart has no time-of-day-only value.
+    build: (builder, token) =>
+        builder.timeOp(DateTime.parse('1970-01-01 $token')),
   ),
   _ScalarLiteral(
     kind: 'double',
@@ -501,9 +519,9 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
                 ? minDateTime(operand, alias)
                 : maxDateTime(operand, alias);
           case DateCol():
-            return isMin
-                ? Min<TomDbDate, DateTime>(operand, alias)
-                : Max<TomDbDate, DateTime>(operand, alias);
+            return isMin ? minDate(operand, alias) : maxDate(operand, alias);
+          case TimeCol():
+            return isMin ? minTime(operand, alias) : maxTime(operand, alias);
         }
         throw TomQuerySyntaxException(
           "query_sentence_compiler.parse_aggregates.unsupported_min_max_column",
@@ -744,6 +762,8 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         return compareAs<TomDbDateTime>();
       case TomDbDate:
         return compareAs<TomDbDate>();
+      case TomDbTime:
+        return compareAs<TomDbTime>();
       case TomDbBool:
         return compareAs<TomDbBool>();
     }
@@ -900,6 +920,8 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         return inOptionsAs<TomDbDateTime>();
       case TomDbDate:
         return inOptionsAs<TomDbDate>();
+      case TomDbTime:
+        return inOptionsAs<TomDbTime>();
     }
     // The only failure message in the `_create*` family still written out by
     // hand — its eight relatives interpolate the operator from the `symbol:` /
@@ -946,6 +968,8 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         return build<TomDbDateTime>(current as TomOperator<TomDbDateTime>);
       case TomDbDate:
         return build<TomDbDate>(current as TomOperator<TomDbDate>);
+      case TomDbTime:
+        return build<TomDbTime>(current as TomOperator<TomDbTime>);
     }
     throw TomQuerySyntaxException(
       key,
@@ -1428,7 +1452,7 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         index = i;
         break;
       } else if (_scalarLiteralFor(qp[i]) case final literal?) {
-        // One branch for all four numeric and temporal literal kinds: they
+        // One branch for all five numeric and temporal literal kinds: they
         // differ only in the shape they match and the node they build, and
         // spelling each out separately is what let the shapes drift into
         // overlapping (see [_ScalarLiteral]).
@@ -1646,6 +1670,8 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         return Parameter<TomDbDateTime>(field) as Parameter<QT>;
       case TomZonedDate:
         return Parameter<TomDbDate>(field) as Parameter<QT>;
+      case TomZonedTime:
+        return Parameter<TomDbTime>(field) as Parameter<QT>;
     }
     throw TomQuerySyntaxException(
       "query_sentence_compiler.create_parameter.failed",
@@ -1685,6 +1711,9 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         case TomZonedDate:
         case TomDbDate:
           return DateCol(column.tableType, field, column);
+        case TomZonedTime:
+        case TomDbTime:
+          return TimeCol(column.tableType, field, column);
       }
     }
     switch (column.declaredType) {
@@ -1715,6 +1744,8 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         return DateTimeCol(column.tableType, field, column);
       case TomZonedDate:
         return DateCol(column.tableType, field, column);
+      case TomZonedTime:
+        return TimeCol(column.tableType, field, column);
     }
     throw TomQuerySyntaxException(
       "query_sentence_compiler.create_column.failed",

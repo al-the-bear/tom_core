@@ -78,6 +78,7 @@ void main() {
         'done',
         'createdAt',
         'tagDay',
+        'remindAt',
       ]);
     });
 
@@ -117,6 +118,15 @@ void main() {
         (column) => column.name == 'tagDay',
       );
       expect(tagDay.type, TomColumnType.text);
+      // `remindAt` is the same case for the other half a timestamp splits
+      // into, and it shows that the rule is *exact* type equality rather than
+      // assignability: a TomZonedTime is a DateTime by inheritance, so a
+      // subtype test would have let it through as a timestamp and promised
+      // renderers a cell value none of them would ever receive.
+      final remindAt = section.columns.firstWhere(
+        (column) => column.name == 'remindAt',
+      );
+      expect(remindAt.type, TomColumnType.text);
     });
 
     test('labels default to the field name and are overridden by titles', () {
@@ -269,7 +279,7 @@ void main() {
     test('exclude removes a column', () {
       final section = TomTabularSection.ofEntities<FixtureExportRecord>(
         const Stream.empty(),
-        exclude: {'tagDay', 'createdAt'},
+        exclude: {'tagDay', 'createdAt', 'remindAt'},
       );
       expect(_names(section), ['id', 'title', 'amount', 'done']);
     });
@@ -309,7 +319,15 @@ void main() {
       expect(
         () => TomTabularSection.ofEntities<FixtureExportRecord>(
           const Stream.empty(),
-          exclude: {'id', 'title', 'amount', 'done', 'createdAt', 'tagDay'},
+          exclude: {
+            'id',
+            'title',
+            'amount',
+            'done',
+            'createdAt',
+            'tagDay',
+            'remindAt',
+          },
         ),
         throwsA(
           isA<TomExportException>().having(
@@ -402,7 +420,7 @@ void main() {
     test('renders CSV', () async {
       final csv = await _renderCsv(build());
       final lines = csv.trimRight().split('\r\n');
-      expect(lines.first, 'id,Name,amount,done,createdAt,tagDay');
+      expect(lines.first, 'id,Name,amount,done,createdAt,tagDay,remindAt');
       expect(lines[1], startsWith('1,Widget,9.5,true,'));
       // 12.0 renders as `12`: a whole double loses its `.0` in the shared text
       // rule, which is `tomFormatCellAsText`'s decision, not this one's.

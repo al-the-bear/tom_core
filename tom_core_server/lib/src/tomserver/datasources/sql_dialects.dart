@@ -337,12 +337,30 @@ class TomStandardSqlDialect {
   /// Unlike [dateTimeOp], the components are taken **as labelled**: no UTC
   /// conversion is applied, so a value naming the 5th renders as the 5th in
   /// every zone. That is the difference between the two renderers, and the
-  /// reason this one does not reach for [sqlInstant].
+  /// reason this one reaches for [sqlDate] rather than [sqlInstant].
   SqlString dateOp(DateTime value) {
-    final year = value.year.toString().padLeft(4, '0');
-    final month = value.month.toString().padLeft(2, '0');
-    final day = value.day.toString().padLeft(2, '0');
-    return "'$year-$month-$day'";
+    return "'${sqlDate(value)}'";
+  }
+
+  /// Renders a time-of-day literal as single-quoted, fixed-width `HH:MM:SS`.
+  ///
+  /// The date half of [value] is discarded, which is the whole point: a `TIME`
+  /// column stores a position within a day, and MariaDB reads a
+  /// datetime-shaped string for one as a truncation error rather than as the
+  /// time it contains.
+  ///
+  /// Like [dateOp] and unlike [dateTimeOp], the components are taken **as
+  /// labelled**: no UTC conversion is applied, so a value naming 14:30 renders
+  /// as 14:30 in every zone. A [TomZonedTime] therefore renders the reading its
+  /// own anchoring carries, exactly as a [TomZonedDate] does through [dateOp] —
+  /// the two halves of a split timestamp are treated the same way, which is the
+  /// only way a query over both can be reasoned about.
+  ///
+  /// Sub-second precision is dropped — see [sqlTimeOfDay], which this quotes
+  /// rather than restates so that an inlined literal and a bound value cannot
+  /// spell the same time differently.
+  SqlString timeOp(DateTime value) {
+    return "'${sqlTimeOfDay(value)}'";
   }
 
   /// Renders [values] as a comma-separated list of literals (each via
@@ -362,8 +380,12 @@ class TomStandardSqlDialect {
 
   /// Renders [o] as the appropriate SQL literal, dispatching on its runtime
   /// type (`null` → `NULL`, `String` → quoted, numbers/bool → bare,
-  /// [TomZonedDate] → date, [DateTime] → timestamp, [Iterable] → list, anything
-  /// else → its quoted `toString()`).
+  /// [TomZonedDate] → date, [TomZonedTime] → time, [DateTime] → timestamp,
+  /// [Iterable] → list, anything else → its quoted `toString()`).
+  ///
+  /// Both kernel temporal types are tested before the plain [DateTime] they
+  /// extend; either arm placed after it would be unreachable, and the value
+  /// would be written as a full instant into a column that holds half of one.
   SqlString objectOp(Object? o) {
     if (o == null) {
       return nullOp();
@@ -377,6 +399,8 @@ class TomStandardSqlDialect {
       return boolOp(o);
     } else if (o is TomZonedDate) {
       return dateOp(o);
+    } else if (o is TomZonedTime) {
+      return timeOp(o);
     } else if (o is DateTime) {
       return dateTimeOp(o);
     } else if (o is Iterable) {
@@ -450,6 +474,11 @@ class TomStandardSqlDialect {
 
   /// Renders a qualified reference to a date [column] as `table.column`.
   SqlString dateF(String fieldName, DbCol column, Type dbType) {
+    return "${column.columnInformation.table.table}.${column.columnInformation.getQueryFieldName()}";
+  }
+
+  /// Renders a qualified reference to a time-of-day [column] as `table.column`.
+  SqlString timeF(String fieldName, DbCol column, Type dbType) {
     return "${column.columnInformation.table.table}.${column.columnInformation.getQueryFieldName()}";
   }
 }
