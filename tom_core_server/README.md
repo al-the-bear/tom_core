@@ -352,20 +352,28 @@ apps get the full kernel API through one dependency. See the
   [`doc/api_reference/api_summary_index.md`](doc/api_reference/api_summary_index.md)
   for the type index and one `api_summary_{module}.md` per module.
   (`doc/api/` is reserved for generated `dart doc` HTML and is gitignored.)
+- [`doc/reflection_generation.md`](doc/reflection_generation.md) — how the
+  committed `*.reflection.dart` files are produced, why regenerating rewrites
+  thousands of lines nobody edited, and how to tell a stale one from a current
+  one.
 - [`tom_core_kernel`](../tom_core_kernel/README.md) — the platform-neutral
   building blocks this layer is composed from.
 
 ## Status
 
 - **Version:** 1.3.0
-- **Tests:** 3605 test cases across 94 module suites (run with `testkit :test`
+- **Tests:** 3626 test cases across 95 module suites (run with `testkit :test`
   or `dart test`). 408 of them live in the 20 suites tagged `db` and skip
   unless a live MySQL is reachable — bring one up with `tool/run_db_tests.sh`.
 - **Conformance guards:** some of those suites check the package rather than the
   code — `test/formatting_test.dart` fails when any Dart file is not
   `dart format` clean (the fix is always `dart format .`, never a code change),
   `test/api_reference_coverage_test.dart` fails when `doc/api_reference/` and
-  `lib/` disagree, and `test/examples_test.dart` fails when an example stops
-  being verified. They need no separate invocation: a normal test run is the
-  gate, which is the point — `dart analyze` cannot see any of these.
+  `lib/` disagree, `test/reflection_currency_test.dart` fails when a class or
+  column was added to a reflection root without regenerating, and
+  `test/examples_test.dart` fails when an example stops being verified. They need
+  no separate invocation: a normal test run is the gate, which is the point —
+  `dart analyze` cannot see any of these. The one check too slow to run that way
+  is `tool/check_reflection_current.sh`, which regenerates and compares
+  exactly (two to four minutes).
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

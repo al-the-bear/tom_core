@@ -1,5 +1,36 @@
 ## 1.3.0
 
+### Added
+
+- **The committed reflection metadata can now be told current from stale
+  (tcincb1_ahze).** `*.reflection.dart` is generated and committed, and nothing
+  in Dart couples it to the sources it describes: adding a reflected class or an
+  entity column and not regenerating leaves a tree that compiles and analyzes
+  clean, and fails only later at a mirror lookup — with "Reflection has not been
+  initialized" or a null member, from a place that names neither the class nor
+  the file. Two checks now answer the question at two costs.
+  `tool/check_reflection_current.sh` regenerates and compares exactly (two to
+  three minutes, and it reverts its own output so a red run cannot be mistaken
+  for the fix). `test/reflection_currency_test.dart` runs in milliseconds: it
+  extracts every `@tomReflector` class, `exampleReflectedTypes` entry and
+  `@TomDbColumn` field from the roots' hand-written sources and asserts each name
+  appears in the generated file — which cannot prove currency, but does catch the
+  mistake people make, since both are things a person adds by hand.
+
+  This was filed as non-determinism — "a no-op run rewrites ~6,400 lines". It is
+  not: a second consecutive run leaves `git status` clean, verified both
+  warm-cache and with `--rebuild-cache`, with byte-identical outputs. The churn
+  is **index renumbering**. The generator numbers every captured member in one
+  dense global sequence and writes those numbers into 8,420 `const <int>[…]`
+  literals per file, so adding one public member anywhere in `lib/` shifts every
+  later index and rewrites tens of thousands of lines. Commit `e43ade30` added
+  exactly one public static member and moved 10,885 lines. Insertions and
+  deletions within ~1 % of each other is that signature. The report's most likely
+  origin is regenerating on top of an already-stale file, where the first run
+  legitimately changes everything and looks like churn.
+  [`doc/reflection_generation.md`](doc/reflection_generation.md) records all of
+  this, so the next enormous-but-correct diff is not re-diagnosed from scratch.
+
 ### Changed
 
 - **A time-of-day column is now addressable in a query sentence

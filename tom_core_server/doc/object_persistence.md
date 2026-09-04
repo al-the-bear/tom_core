@@ -530,6 +530,8 @@ holding a grant on them, which no row can satisfy. A constant set survives a
 annotation, and a safety invariant must not depend on a deployment having re-run
 code generation before it upgrades. A test asserts the constant names exactly
 the tables those entities declare, so a table rename cannot silently disarm it.
+(For detecting a stale generated file rather than surviving one, see
+[`reflection_generation.md`](reflection_generation.md).)
 
 Because the exclusion is a fact about the entity rather than about one of its
 columns, `autoScopeFor` decides it for the whole column list up front: a list
