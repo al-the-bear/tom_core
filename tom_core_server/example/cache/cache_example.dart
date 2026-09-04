@@ -3,11 +3,11 @@
 /// Demonstrates the named in-memory cache running in the main isolate: storing
 /// and reading a value, per-entry expiry, the entry with no deletion time that
 /// never expires, LRU eviction in a bounded cache, removal by type, the
-/// [TomCacheException] raised on a type mismatch, a [TomCacheEntry] stored
-/// verbatim to carry its own lifetime, stopping a cache's periodic timers, and
-/// replacing the current [TomCacheManager].
+/// [TomCacheException] raised on a type mismatch, the refusal of a `null`
+/// value, a [TomCacheEntry] stored verbatim to carry its own lifetime, stopping
+/// a cache's periodic timers, and replacing the current [TomCacheManager].
 ///
-/// Its nine steps run in that order, one per item.
+/// Its ten steps run in that order, one per item.
 ///
 /// Run with `dart run example/cache/cache_example.dart`. Every step checks its
 /// own result and the run fails when one does not hold, so a green run is a
@@ -100,7 +100,30 @@ Future<void> run() async {
   }
   check(threw, 'reading a value as the wrong type throws TomCacheException');
 
-  // 7. Passing a TomCacheEntry as the value stores it verbatim, so the entry
+  // 7. A null is not a storable value. `toNameCache` takes a non-nullable
+  //    `Object`, so writing `toNameCache('greetings', 'nothing', null)` does
+  //    not compile — the rule is the parameter type, and an ordinary call site
+  //    meets it before the program runs. The reason is step 2's rule: `null` is
+  //    what a read answers for a miss and for an expiry, so an entry holding
+  //    one is a value no read can surface, occupying a slot in a bounded cache
+  //    to hold something nothing will ever get back. The dynamic call below is
+  //    how a script or a reflective caller reaches the same helper, and shows
+  //    it is refused there too.
+  final dynamic store = TomCache.toNameCache;
+  var refused = false;
+  try {
+    await store('greetings', 'nothing', null);
+  } on TypeError {
+    refused = true;
+  }
+  print('7. null store refused        : $refused');
+  check(refused, 'a null value is refused at the store');
+  check(
+    await TomCache.fromNameCache<String>('greetings', 'nothing') == null,
+    'so the key stays absent and the read is a plain miss',
+  );
+
+  // 8. Passing a TomCacheEntry as the value stores it verbatim, so the entry
   //    keeps its own deletionTime instead of taking the cache's default. The
   //    past instant below is what proves it: 'greetings' has a 300s default
   //    that would have kept this readable, and the read is a miss anyway.
@@ -113,10 +136,10 @@ Future<void> run() async {
     ),
   );
   final flash = await TomCache.fromNameCache<String>('greetings', 'flash');
-  print('7. entry with own lifetime   : ${flash ?? 'null (its own time won)'}');
+  print('8. entry with own lifetime   : ${flash ?? 'null (its own time won)'}');
   check(flash == null, 'a TomCacheEntry keeps its own deletionTime');
 
-  // 8. A cache installs its periodic timers on construction, and a live timer
+  // 9. A cache installs its periodic timers on construction, and a live timer
   //    keeps the isolate alive. A program that outlives its caches must stop
   //    them or exit explicitly — main() below does the latter.
   final ticking = TomCache('ticking', clearIntervalSeconds: 60);
@@ -128,24 +151,24 @@ Future<void> run() async {
   ticking.stopTimers();
   // A stopped cache clears the field as well as cancelling the timer, so the
   // field is a straight answer to "is this cache still ticking?".
-  print('8. timers stopped            : ${ticking.clearanceTimer == null}');
+  print('9. timers stopped            : ${ticking.clearanceTimer == null}');
   check(
     ticking.clearanceTimer == null,
     'stopTimers cancels the clearance timer and clears the field',
   );
 
-  // 9. Replacing the current manager discards the registry along with it, which
-  //    is what makes it useful between tests. It discards only the *registry*
-  //    though: the caches themselves are unreachable now but their timers are
-  //    still installed, so stopping them (step 8) has to come first to have
-  //    happened at all. Last step here, since it empties the registry.
+  // 10. Replacing the current manager discards the registry along with it,
+  //    which is what makes it useful between tests. It discards only the
+  //    *registry* though: the caches themselves are unreachable now but their
+  //    timers are still installed, so stopping them (step 9) has to come first
+  //    to have happened at all. Last step here, since it empties the registry.
   check(
     TomCacheManager.getCache('greetings') != null,
     'the cache registered in step 1 is still registered',
   );
   TomCacheManager.setCurrent(TomCacheManager(true));
   print(
-    '9. after setCurrent          : ${TomCacheManager.getCache('greetings')}',
+    '10. after setCurrent         : ${TomCacheManager.getCache('greetings')}',
   );
   check(
     TomCacheManager.getCache('greetings') == null,

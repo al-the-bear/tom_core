@@ -194,6 +194,39 @@ class ProbeCacheStoreCommand extends TomCommand {
   }
 }
 
+/// Runs inside a WORKER isolate and tries to forward a store of `null`.
+///
+/// The refusal has to happen on *this* side, before the crossing. A null that
+/// reaches the creator is stored there like any other value, and the worker is
+/// told the write succeeded — so the mistake would surface, if at all, at some
+/// later read on the other isolate, with nothing left to say where it came
+/// from.
+///
+/// The call is made through a `dynamic` tear-off because the signature refuses
+/// `null` at compile time, which is the protection an ordinary call site gets.
+/// A caller arriving through reflection or a script has no such protection, and
+/// this is the shape it arrives in.
+class ProbeCacheStoreNullCommand extends TomCommand {
+  final String cacheName;
+
+  ProbeCacheStoreNullCommand(this.cacheName);
+
+  @override
+  Future<Object?> execute() async {
+    if (TomWorker.isMainIsolate) return 'not-a-worker';
+    final dynamic store = TomCache.toNameCache;
+    try {
+      return 'stored:${await store(cacheName, 'k', null)}';
+    } on TypeError {
+      return 'refused';
+    } on TomCacheException catch (e) {
+      return 'failed:${e.key} client=${e.clientThrow}';
+    } catch (e) {
+      return 'other:${e.runtimeType}';
+    }
+  }
+}
+
 /// Runs inside a WORKER isolate and stores a value with an explicit expiry.
 ///
 /// The expiry is the whole point of this probe. A `deletionTime` dropped in
@@ -379,6 +412,80 @@ void main() {
       expect(await TomCache.fromTypeCache<int>('k'), 7);
       await TomCache.removeFromTypeCache<int>('k');
       expect(await TomCache.fromTypeCache<int>('k'), isNull);
+    });
+  });
+
+  group('A cached null cannot exist', () {
+    // `null` is the answer a read gives for a miss and for an expiry, so a
+    // *stored* null is a value no read can surface. Admitted, it had two
+    // outcomes and neither was the one the caller asked for: the non-nullable
+    // read failed its cast and reported "Cached value of type Null is not of
+    // type String" — a value the cache had been explicitly asked to hold,
+    // reported as a storage fault — while the nullable read returned `null`,
+    // which the caller cannot tell from absence. Across an isolate it was a
+    // third answer again: a forwarded read translates a creator-side `null`
+    // back into a miss, so the same entry read as "not there".
+    //
+    // The cache refuses it, for the reason the constructor already refuses a
+    // non-positive `maximumEntries`: a store that reports success while every
+    // read misses is a black hole, and the store is the earliest place that can
+    // say so. Refusing also keeps the slot — an admitted null counts against a
+    // bounded cache's `maximumEntries` and can evict a live entry to hold
+    // something nothing will ever read.
+    //
+    // The refusal is the parameter type, so an ordinary call site is stopped by
+    // the analyzer before the program runs. These tests reach the helpers
+    // through `dynamic` because that is the one shape the analyzer cannot stop
+    // — a call arriving through reflection or a script — and because a
+    // signature widened back to `Object?` has to fail something.
+
+    test('the store refuses a null value', () {
+      TomCacheManager.addCache(_cache('c'));
+      final dynamic store = TomCache.toNameCache;
+      expect(() => store('c', 'k', null), throwsA(isA<TypeError>()));
+    });
+
+    test('the type-named store refuses one too', () {
+      TomCacheManager.addCache(
+        TomCache.forType(int, deleteEntriesAfterSeconds: 300),
+      );
+      final dynamic store = TomCache.toTypeCache<int>;
+      expect(() => store('k', null), throwsA(isA<TypeError>()));
+    });
+
+    test('and an entry cannot be built around one', () {
+      // The second entrance. `toNameCache` takes a prepared `TomCacheEntry` as
+      // a value and stores it as it stands, and `putEntry` is public — so a
+      // rule enforced only on the helper's own parameter would have a hole
+      // exactly one constructor wide.
+      final dynamic entry = TomCacheEntry.new;
+      expect(() => entry(null), throwsA(isA<TypeError>()));
+    });
+
+    test('the refusal leaves the cache as it was', () async {
+      // Refusing after `putEntry` would be no better than admitting: the entry
+      // would be in the map, counted against the bound, and — in a cache at its
+      // bound — would already have evicted the least-recently-used live value
+      // on its way in. So the bound is 1 and the cache is full.
+      TomCacheManager.addCache(_cache('bounded', maximumEntries: 1));
+      await TomCache.toNameCache('bounded', 'live', 'kept');
+
+      final dynamic store = TomCache.toNameCache;
+      expect(() => store('bounded', 'k', null), throwsA(isA<TypeError>()));
+
+      expect(await TomCache.fromNameCache<String>('bounded', 'live'), 'kept');
+    });
+
+    test('so a read of the key that was refused is a miss, not a mismatch', () {
+      // The outcome the caller sees, and the point of the whole group: asking
+      // for a `String` under a key whose store was refused answers `null` —
+      // the cache is empty of it — rather than raising a type mismatch that
+      // blames the storage for a value the caller supplied.
+      TomCacheManager.addCache(_cache('c'));
+      final dynamic store = TomCache.toNameCache;
+      expect(() => store('c', 'k', null), throwsA(isA<TypeError>()));
+
+      expect(TomCache.fromNameCache<String>('c', 'k'), completion(isNull));
     });
   });
 
@@ -881,6 +988,22 @@ void main() {
         );
       },
     );
+
+    test('a forwarded store of null is refused before it crosses', () async {
+      // Refusing on the creator side would be too late to be useful: the worker
+      // would be told nothing, since a forwarded store reports the creator's
+      // success, and the value would already have travelled. Refusing in the
+      // worker means the caller learns it at the statement that made the
+      // mistake, and the creator's cache never sees the key at all.
+      TomCacheManager.addCache(_cache('shared'));
+
+      final answer = await worker
+          .executeCommand(ProbeCacheStoreNullCommand('shared'))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'refused');
+      expect(await TomCache.fromNameCache<String>('shared', 'k'), isNull);
+    });
 
     test('a forwarded miss answers null even when T admits Object', () async {
       // A miss arrives as the noResult sentinel rather than as null, so a read
@@ -1620,7 +1743,7 @@ void main() {
       );
       // A crash before the last step would also exit 0 if it were swallowed,
       // so pin that every numbered step actually reported.
-      for (var step = 1; step <= 9; step++) {
+      for (var step = 1; step <= 10; step++) {
         expect(result.stdout, contains('$step. '));
       }
     });

@@ -42,8 +42,17 @@ class TomCacheEntry {
   /// not expire on its own (it may still be evicted by an LRU bound or a clear).
   DateTime? deletionTime;
 
-  /// The cached value.
-  Object? value;
+  /// The cached value. Never `null`.
+  ///
+  /// `null` is what a read answers for a miss and for an expiry, so an entry
+  /// holding `null` would be a value no read could surface: the caller would be
+  /// told the cache is empty of a key the cache is in fact holding, while the
+  /// entry went on occupying a slot and counting against a bounded cache's
+  /// [TomCache.maximumEntries]. Making the field non-nullable is what closes
+  /// that off at both entrances — the [TomCache.toNameCache] helpers and a
+  /// hand-built entry passed to [TomCache.putEntry] — and is what lets
+  /// [TomCache.fromNameCache] read `null` as "absent" with no second meaning.
+  Object value;
 
   TomCacheEntry? _next;
   TomCacheEntry? _before;
@@ -466,7 +475,10 @@ class TomCache {
   /// Reads the value keyed by [key] from the cache named [cacheName].
   ///
   /// Returns `null` on a miss or when the entry has expired (the expired entry
-  /// is also removed). Throws [TomCacheException] if the cached value is not a
+  /// is also removed), and on nothing else: a cached value is never `null`,
+  /// because [toNameCache] refuses one. So `null` here means the cache does not
+  /// hold [key], and a caller may treat it as the signal to compute the value
+  /// and store it. Throws [TomCacheException] if the cached value is not a
   /// [T], or — in an isolate that owns no caches and cannot forward — if the
   /// named cache does not exist. In a worker isolate that does not hold the
   /// cache, the read is forwarded to the main isolate.
@@ -539,6 +551,10 @@ class TomCache {
       // is what makes a forwarded miss read as a miss; without it a `T` that
       // admits any object (`Object`, or the `dynamic` of an uninstantiated
       // call) accepts the sentinel as the cached value.
+      //
+      // The translation is exact because a creator-side `null` has only the one
+      // meaning: a cached value is never `null` (see toNameCache), so nothing
+      // else can arrive as the sentinel and be reported as absent.
       if (identical(cachedResult, TomExecutor.noResult)) return null;
       if (cachedResult is T) return cachedResult;
       // The value crossed intact and it is the *conversion* that failed, so
@@ -560,7 +576,7 @@ class TomCache {
   }
 
   /// Stores [value] under [key] in the cache named after [T]. See [toNameCache].
-  static Future<int> toTypeCache<T>(String key, Object? value) {
+  static Future<int> toTypeCache<T>(String key, Object value) {
     return toNameCache(T.toString(), key, value);
   }
 
@@ -577,10 +593,20 @@ class TomCache {
   /// A forwarded store that fails on the main isolate throws here too. A write
   /// that reports success while the value went nowhere is the worst of the
   /// available outcomes, since the mistake only surfaces at some later read.
+  ///
+  /// [value] is non-nullable, so a `null` is refused — by the analyzer at an
+  /// ordinary call site, and at the call itself for one arriving dynamically.
+  /// It is refused for the same reason the constructor refuses a non-positive
+  /// [maximumEntries]: a stored `null` is a per-entry black hole. `null` is
+  /// what [fromNameCache] answers for a miss and for an expiry, so an entry
+  /// holding one is a value no read can surface, while it goes on occupying a
+  /// slot and counting against a bounded cache's bound. A caller with a
+  /// nullable value must decide what absence means to it — skip the store, or
+  /// store a sentinel of its own that a read can hand back.
   static Future<int> toNameCache(
     String cacheName,
     String key,
-    Object? value, [
+    Object value, [
     DateTime? deletionTime,
   ]) async {
     var cache = TomCacheManager.getCache(cacheName);
@@ -646,7 +672,12 @@ class TomCache {
 class TomCacheStoreMessage extends TomCommand {
   String cacheName;
   String key;
-  Object? value;
+
+  /// The value to store. Non-nullable, like [TomCache.toNameCache]'s own
+  /// parameter — a `null` is refused in the worker, at the statement that made
+  /// the mistake, rather than crossing to be refused where the caller cannot
+  /// see it.
+  Object value;
 
   /// The expiry the *caller* asked for, carried across the isolate boundary.
   ///

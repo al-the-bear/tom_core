@@ -65,9 +65,21 @@ await TomCache.removeFromTypeCache<User>('u-42');
 ```
 
 `fromNameCache` returns `null` on a miss or an expired entry (an expired entry
-is removed in passing). It throws `TomCacheException` if the stored value is
-not a `T`. Both answers hold whichever isolate the read runs in — see
-[Isolate Model](#isolate-model).
+is removed in passing), and on nothing else. It throws `TomCacheException` if
+the stored value is not a `T`. Both answers hold whichever isolate the read runs
+in — see [Isolate Model](#isolate-model).
+
+**A `null` is not a storable value.** The store helpers take a non-nullable
+`Object`, and `TomCacheEntry.value` is non-nullable too, so both entrances to
+the cache refuse one — the analyzer stops an ordinary call site, and a dynamic
+or reflective caller gets a `TypeError` at the call. The reason is the paragraph
+above: `null` is already the answer for a miss and for an expiry, so an entry
+holding one would be a value no read could ever surface, while it went on
+occupying a slot and counting against a bounded cache's `maximumEntries`. It is
+the per-entry form of the black hole the constructor refuses under
+[Expiry and Bounds](#expiry-and-bounds) — a store that reports success while
+every read misses. A caller holding a nullable value decides what absence means
+to it: skip the store, or store a sentinel of its own that a read can hand back.
 
 The three mutators return `Future<int>` and **always answer `0`**. It is a
 uniform result shape, not a count: it does not distinguish an insert from a
@@ -190,7 +202,9 @@ to say about either — a value that crossed intact and then failed to convert t
 `executeInCreator` never resolves to `null`. `fromNameCache` settles both at the
 call site, so a forwarded read answers exactly as a local one does: the type
 mismatch throws, and the miss is `null` rather than a sentinel object handed
-back as though it were the cached value.
+back as though it were the cached value. The sentinel translation is exact
+because a creator-side `null` has only the one meaning: a cached value is never
+`null`, so nothing but a miss can arrive that way.
 
 ## Failures Are Internal
 
@@ -229,7 +243,8 @@ local one.
 - **`TomCache`** — the cache and its static accessor helpers. Instance methods
   `getEntry` / `putEntry` / `removeEntry` implement the MRU bookkeeping;
   `createTimers` / `stopTimers` manage the background timers.
-- **`TomCacheEntry`** — value object: the cached `value` and its `deletionTime`.
+- **`TomCacheEntry`** — value object: the cached `value`, which is non-nullable,
+  and its `deletionTime`.
 - **`TomCacheManager`** — the per-isolate registry and the `useInThisIsolate`
   switch.
 - **`TomCacheException`** — raised on a missing cache or a type mismatch;
@@ -282,10 +297,11 @@ than an outcome, and pinning it would mean asserting a shape.
 
 ## Verification
 
-`example/cache/cache_example.dart` walks the module in nine steps, in the main
+`example/cache/cache_example.dart` walks the module in ten steps, in the main
 isolate and with no setup of any kind — store and read, expiry, the entry that
-never expires, LRU eviction, the type cache, the mismatch, an entry carrying its
-own lifetime, stopping the timers, and replacing the manager. Every step checks
+never expires, LRU eviction, the type cache, the mismatch, the refusal of a
+`null`, an entry carrying its own lifetime, stopping the timers, and replacing
+the manager. Every step checks
 its own result through the shared `example/_support/check.dart` and the run
 fails when one does not hold, so a green run is a verification rather than a
 transcript — see

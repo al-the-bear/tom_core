@@ -1,6 +1,34 @@
 ## 1.3.0
 
+### Changed
+
+- **A `null` is no longer a storable cache value.** `TomCache.toNameCache`,
+  `TomCache.toTypeCache` and `TomCacheStoreMessage.value` now take a
+  non-nullable `Object`, and `TomCacheEntry.value` is non-nullable — so both
+  entrances to the cache refuse one, the analyzer at an ordinary call site and
+  a `TypeError` at a dynamic or reflective call. No caller in the workspace
+  stored a `null`, so nothing needed changing; a caller holding a nullable
+  value now decides what absence means to it, by skipping the store or by
+  storing a sentinel of its own that a read can hand back.
+
 ### Fixed
+
+- **A cached `null` read back as three different answers, none of them the one
+  the caller asked for.** It was storable, and stored like any other value.
+  `fromNameCache<String>` then failed its cast and reported
+  `Cached value of type Null is not of type String` — a value the cache had
+  been explicitly asked to hold, blamed on the storage; `fromNameCache<String?>`
+  returned `null`, which the caller cannot tell from a miss or an expiry, since
+  those are exactly what `null` already means; and a *forwarded* read answered
+  "miss", because a creator-side `null` crosses as the `TomExecutor.noResult`
+  sentinel and is translated back. The entry meanwhile occupied a slot and
+  counted against a bounded cache's `maximumEntries`, so it could evict a live
+  value to hold one nothing would ever read.
+  It is refused at the store instead, for the reason the constructor already
+  refuses a non-positive `maximumEntries`: a write that reports success while
+  every read misses is a black hole, and the store is the earliest place that
+  can say so. `null` from a read now has exactly one meaning — the cache does
+  not hold the key — on both the local and the forwarded path.
 
 - **Thirteen examples verified nothing: 227 expectations written as `assert`,
   all compiled out by the `dart run` each file's own header documented.**
