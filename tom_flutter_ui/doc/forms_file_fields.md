@@ -28,10 +28,10 @@ separate path, which is why this module is more than a widget.
 | Symbol | Where | Purpose |
 | ------ | ----- | ------- |
 | `FileRef` | `forms/files/file_ref.dart` | The field's value: name, size, media type, and one of *bytes* / *streamed source* / *storage key*. |
-| `FilePicker` | `forms/files/file_ref.dart` | `Future<FileRef?> Function(BuildContext)` — a field's explicit picker. |
+| `TomFilePicker` | `forms/files/file_ref.dart` | `Future<FileRef?> Function(BuildContext)` — a field's explicit picker. |
 | `TomPickedFile` | `forms/files/tom_file_picker_registry.dart` | A structural description of what a platform picker returned. |
 | `TomFilePickerRegistry` | same | Holds the application's one picker adaptor. |
-| `TomFilePickers` | same | Ready-made `FilePicker` callbacks and the `TomPickedFile` → `FileRef` conversion. |
+| `TomFilePickers` | same | Ready-made `TomFilePicker` callbacks and the `TomPickedFile` → `FileRef` conversion. |
 | `TomFileTransferController` | `forms/files/tom_file_transfer_controller.dart` | The upload/download state machine: phase, progress, cancel, retry. |
 | `TomFileTransferIndicator` | `forms/files/tom_file_transfer_indicator.dart` | The progress / cancel / retry / error row. |
 | `TomFormFileField` | `forms/fields/tom_form_file_field.dart` | The abstract field. |
@@ -257,7 +257,7 @@ What the field then does:
 1. Opens the registered picker with this field's constraints.
 2. Rejects a file the constraints exclude — a snackbar on Material, a dialog on
    Cupertino — before it ever becomes the value. The same constraints are also
-   auto-prepended as `Validator<FileRef?>`s, so a programmatic `setValue` is
+   auto-prepended as `TomValidator<FileRef?>`s, so a programmatic `setValue` is
    caught by the normal validation pipeline. Both routes report the same key —
    `error.fileExtension` or `error.fileTooLarge` — so wording the refusal once
    words it everywhere, and the picker's immediate message cannot drift from

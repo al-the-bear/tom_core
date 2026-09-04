@@ -398,7 +398,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Validators applied to this field. Sync validators return immediately;
   /// async validators return Future<ValidationResult>.
-  final List<Validator<T>> validators;
+  final List<TomValidator<T>> validators;
 
   /// Current validation state — may be pending, success, or error.
   ValidationResult _validationState = const ValidationSuccess();
@@ -3361,10 +3361,10 @@ success/error → (commit/reset/discard/bind) → pristine
 Fields declare validators as a list. Sync validators return immediately; async validators return `Future<ValidationResult>`:
 
 ```dart
-typedef Validator<T> = FutureOr<ValidationResult> Function(T value);
+typedef TomValidator<T> = FutureOr<ValidationResult> Function(T value);
 
 abstract class TomField<T> extends TomObject<T> {
-  final List<Validator<T>> validators;
+  final List<TomValidator<T>> validators;
   final bool autoValidate;
   ValidationResult _validationState = const ValidationPristine();
 
@@ -3399,26 +3399,26 @@ The field communicates validation state changes through a `ValueNotifier<Validat
 
 ```dart
 class Validators {
-  static Validator<String> required() => (v) =>
+  static TomValidator<String> required() => (v) =>
       v.isEmpty ? const ValidationError('error.required') : const ValidationSuccess();
 
-  static Validator<String> pattern(RegExp regex) => (v) =>
+  static TomValidator<String> pattern(RegExp regex) => (v) =>
       !regex.hasMatch(v) ? const ValidationError('error.format') : const ValidationSuccess();
 
-  static Validator<String> email() =>
+  static TomValidator<String> email() =>
       pattern(RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$'));
 
-  static Validator<String> minLength(int min) => (v) =>
+  static TomValidator<String> minLength(int min) => (v) =>
       v.length < min ? ValidationError('error.minLength', params: {'min': min}) : const ValidationSuccess();
 
-  static Validator<num> min(num minValue) => (v) =>
+  static TomValidator<num> min(num minValue) => (v) =>
       v < minValue ? ValidationError('error.min', params: {'min': minValue}) : const ValidationSuccess();
 
-  static Validator<num> max(num maxValue) => (v) =>
+  static TomValidator<num> max(num maxValue) => (v) =>
       v > maxValue ? ValidationError('error.max', params: {'max': maxValue}) : const ValidationSuccess();
 
   /// Compose multiple validators into one. Runs sequentially, stops on first error.
-  static Validator<T> compose<T>(List<Validator<T>> validators) => (value) async {
+  static TomValidator<T> compose<T>(List<TomValidator<T>> validators) => (value) async {
     for (final validator in validators) {
       final result = await validator(value);
       if (result is! ValidationSuccess) return result;
@@ -3597,7 +3597,7 @@ Validators are categorized as **fast** (local, synchronous or near-synchronous) 
 ```dart
 /// Wraps a validator to mark it as "slow" (e.g., remote API call).
 class SlowValidator<T> {
-  final Validator<T> validate;
+  final TomValidator<T> validate;
   const SlowValidator(this.validate);
 }
 ```
@@ -4440,7 +4440,7 @@ The right-side panels are reusable across demos:
 |-------------|-------------|
 | `ValidationResult` | Sealed class: `ValidationPristine` (initial, no errors shown), `ValidationSuccess`, `ValidationError(errorKey, params?)`, `ValidationPending` |
 | `FormValidationError` | Cross-field error: `errorKey`, `params?`, `fields` list, `fieldErrorKeys?` map (see §20) |
-| `Validator<T>` | Typedef: `FutureOr<ValidationResult> Function(T value)` — covers both sync and async validators |
+| `TomValidator<T>` | Typedef: `FutureOr<ValidationResult> Function(T value)` — covers both sync and async validators |
 | `Validators` | Static utility with built-in validators: `required()`, `email()`, `minLength(n)`, `maxLength(n)`, `pattern(regex)`, `min(n)`, `max(n)`, `compose(list)` |
 
 Each validator returns a `ValidationResult`. `Validators.compose([...])` runs validators sequentially, stopping on first non-success result.
@@ -4471,7 +4471,7 @@ Extend the existing `TomField<T>` per §4:
 | Addition | Description |
 |----------|-------------|
 | `implements TomAuthorizable` | Auth integration |
-| `validators` list | `List<Validator<T>>` with sync/async support |
+| `validators` list | `List<TomValidator<T>>` with sync/async support |
 | `validationState` / `_validationState` | Current validation state tracking |
 | `validationDebounce` / `_debounceTimer` | Configurable debounce for validation on change |
 | `isDirty` | Tracks whether value differs from initial |
@@ -4522,7 +4522,7 @@ tom_flutter_ui/lib/src/forms/
 ├── validation/
 │   ├── form_validation_error.dart
 │   ├── validation_result.dart
-│   └── validators.dart               # Built-in validators + Validator<T> typedef
+│   └── validators.dart               # Built-in validators + TomValidator<T> typedef
 ├── selection/
 │   ├── tom_selectable_source.dart    # Interface + SelectableItem
 │   └── static_selectable_source.dart
@@ -4679,7 +4679,7 @@ Each concrete field (e.g., `TomFormStringInput`) must integrate ALL of the follo
 
 | # | Requirement |
 |---|-------------|
-| F1 | Accept `validators` list in constructor (`List<Validator<T>>`) |
+| F1 | Accept `validators` list in constructor (`List<TomValidator<T>>`) |
 | F2 | Track `_validationState` (starts as `ValidationPristine`). Do not show errors while pristine — only after user interaction or explicit `validate()` call. Support `autoValidate` field setting for auto-save scenarios where validation happens immediately on bind. |
 | F3 | Implement async `validate()` — run validators in sequence, stop on first failure |
 | F4 | Support both sync and async validators |

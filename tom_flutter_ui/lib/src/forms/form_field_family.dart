@@ -1128,7 +1128,7 @@ class FormFieldFamily {
   TomFormFileField fileUpload(
     String tomId,
     FileRef? initialValue, {
-    required FilePicker picker,
+    required TomFilePicker picker,
     String? labelTextOverride,
     String? descriptionTextOverride,
     List<String>? allowedExtensions,
@@ -1196,7 +1196,7 @@ class FormFieldFamily {
   TomFormFileField fileThumbnail(
     String tomId,
     FileRef? initialValue, {
-    FilePicker? picker,
+    TomFilePicker? picker,
     TomFilePickKind pickKind = TomFilePickKind.image,
     TomFileTransferClient? transferClient,
     String? storageSlot,

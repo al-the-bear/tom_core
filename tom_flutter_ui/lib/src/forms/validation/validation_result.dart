@@ -113,7 +113,7 @@ class ValidationPending extends ValidationResult {
 /// Returns a [ValidationResult] synchronously or asynchronously.
 /// Sync validators return the result directly; async validators
 /// return a `Future<ValidationResult>`.
-typedef Validator<T> = FutureOr<ValidationResult> Function(T value);
+typedef TomValidator<T> = FutureOr<ValidationResult> Function(T value);
 
 /// Wraps a validator to mark it as "slow" (e.g., remote API call).
 ///
@@ -135,6 +135,6 @@ typedef Validator<T> = FutureOr<ValidationResult> Function(T value);
 /// )
 /// ```
 class SlowValidator<T> {
-  final Validator<T> validate;
+  final TomValidator<T> validate;
   const SlowValidator(this.validate);
 }

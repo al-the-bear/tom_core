@@ -1356,7 +1356,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   final TomUIStateController? uiStateController;
 
   // Validation
-  final List<Validator<T>> validators;
+  final List<TomValidator<T>> validators;
   ValidationResult _validationState = const ValidationPristine();
 
   bool get isDirty => value != _initialValue;

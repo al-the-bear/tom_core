@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/export_surface.dart';
+
 /// `lib/tom_flutter_ui.dart` promises that "everything is exported from this
 /// one library". Nothing used to hold it to that.
 ///
@@ -11,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// load-bearing for consumers and inert for the tests. Deleting one broke
 /// every documented import while the suite stayed green.
 ///
-/// Two guards, because neither subsumes the other:
+/// Three guards, because none subsumes another:
 ///
 /// - **Completeness** — every module under `lib/src` is exported, and every
 ///   export resolves. This catches what no import can: a newly added module
@@ -22,9 +24,14 @@ import 'package:flutter_test/flutter_test.dart';
 ///   incidentally: the guard is a side effect of an import somebody could
 ///   rewrite back, and a *new* test file starts from whatever its author
 ///   copied. Checking the property directly is what makes it stay true.
+/// - **Namespacing** — every public type the barrel carries is `Tom`- or
+///   `Acl`-prefixed. The first two guards are about what the barrel exports;
+///   this one is about what those exports are *called*, which is a separate
+///   promise to the same consumer.
 ///
-/// Together they mean a symbol dropped from a module barrel now fails the
-/// suite rather than reaching a consumer first.
+/// The first two mean a symbol dropped from a module barrel now fails the
+/// suite rather than reaching a consumer first; the third means a symbol added
+/// to one cannot quietly take an ordinary name in the consumer's namespace.
 void main() {
   group('package barrel completeness', () {
     /// An `export 'target';` line, capturing the target path.
@@ -168,6 +175,160 @@ void main() {
               'is stale; drop the entry',
         );
         expect(entry.value, isNotEmpty);
+      }
+    });
+  });
+
+  group("the barrel's public surface is namespaced", () {
+    /// The public types the barrel exports without a `Tom` or `Acl` prefix.
+    ///
+    /// A consumer writes one import and receives every public name this
+    /// package exports directly into their own namespace. The prefix is what
+    /// keeps that from being an imposition: `Tom` for the package at large,
+    /// `Acl` inside `advanced_container_layout`, which is a deliberate second
+    /// namespace for a subsystem with its own vocabulary.
+    ///
+    /// That the hazard is real and not hypothetical is easy to check: the
+    /// `file_picker` package exports a class called `FilePicker`, and five
+    /// packages in this workspace import it. `Validators`, `ValidationResult`,
+    /// `FileRef` and `RowAlignment` are names a consumer is equally likely to
+    /// have of their own.
+    ///
+    /// The names below are listed one by one rather than allowed by pattern
+    /// because each is a rename somebody has to perform, not a category the
+    /// rule was wrong to cover. The set is a ratchet: it may shrink and never
+    /// grow, because a name cannot enter it without an author editing this
+    /// list and reading this paragraph. Its size is pinned below, so removing
+    /// an entry is a deliberate edit in two places rather than a silent one.
+    const knownUnprefixed = <String>{
+      // forms/validation — the result hierarchy and its helpers.
+      'ValidationResult',
+      'ValidationSuccess',
+      'ValidationError',
+      'ValidationPristine',
+      'ValidationPending',
+      'SlowValidator',
+      'Validators',
+      'FormValidationError',
+      // forms/events — the eleven event types of one sealed family.
+      'FieldAuthChangedEvent',
+      'FieldBoundEvent',
+      'FieldCommittedEvent',
+      'FieldValidatedEvent',
+      'FieldValueChangedEvent',
+      'FormBoundEvent',
+      'FormDiscardedEvent',
+      'FormSavedEvent',
+      'FormValidatedEvent',
+      'ListItemAddedEvent',
+      'ListItemRemovedEvent',
+      'ListItemReorderedEvent',
+      // forms/style — the placement enums and the two style-valued extras.
+      'ActionIconPlacement',
+      'DescriptionPlacement',
+      'ErrorPlacement',
+      'LabelPlacement',
+      'RequiredIndicator',
+      'StringInputVariant',
+      // forms — field payloads, sources and the family selector.
+      'FileRef',
+      'NumRange',
+      'TimeRange',
+      'CurrencyFormatProfile',
+      'SelectableItem',
+      'StaticSelectableSource',
+      'FormFieldFamily',
+      'FormFieldFamilyKind',
+      'UnsavedChangesChoice',
+      // resource_auth — the theme adapters.
+      'AllColorsAdapter',
+      'AllIconsAdapter',
+      'CupertinoOnlyColorAdapter',
+      'CupertinoOnlyIconAdapter',
+      'MaterialOnlyColorAdapter',
+      'MaterialOnlyIconAdapter',
+      // advanced_container_layout — an ACL type that took neither prefix.
+      'RowAlignment',
+      // forms — a test fixture that ships in lib and should not.
+      'TestFormClassic',
+    };
+
+    /// Every public type a consumer receives from the package barrel.
+    Set<String> barrelSurface() {
+      final surface = exportSurfaces()['lib/tom_flutter_ui.dart'];
+      expect(
+        surface,
+        isNotNull,
+        reason: 'the package barrel should be among the walked sources',
+      );
+      return surface!.where((n) => !n.startsWith('_')).toSet();
+    }
+
+    test('every public type the barrel exports is Tom- or Acl-prefixed', () {
+      final surface = barrelSurface();
+      // Guards the guard: a walk that resolved nothing would compare an empty
+      // set and pass. The floor sits far below the package's real export
+      // count and still orders of magnitude above a broken walk, so it holds
+      // without needing to be recounted.
+      expect(
+        surface.length,
+        greaterThan(500),
+        reason: 'the export-surface walk should reach the whole package',
+      );
+
+      final homes = typeHomes();
+      final offenders =
+          surface
+              .where((n) => !n.startsWith('Tom') && !n.startsWith('Acl'))
+              .where((n) => !knownUnprefixed.contains(n))
+              .map((n) => '  $n — ${homes[n] ?? 'declared outside lib/'}')
+              .toList()
+            ..sort();
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'these public types reach a consumer through '
+            'package:tom_flutter_ui/tom_flutter_ui.dart under a name that '
+            'claims no namespace, so they collide with whatever the consumer '
+            'called their own:\n\n${offenders.join('\n')}\n\n'
+            'Prefix them Tom (or Acl, inside advanced_container_layout). '
+            'Do not add to `knownUnprefixed` — that set is a ratchet being '
+            'emptied, not a place to put new names',
+      );
+    });
+
+    test('every entry in the known-unprefixed set is still real', () {
+      // An entry whose type was renamed or unexported reads as licence for a
+      // name nobody is using, and makes the set meaningless as a measure of
+      // what is left to do.
+      //
+      // The size is pinned so the ratchet cannot be loosened by accident:
+      // adding a name fails here, and removing one is a two-line edit that
+      // says out loud which direction it went.
+      expect(
+        knownUnprefixed,
+        hasLength(43),
+        reason:
+            'the known-unprefixed set changed size. Fewer is the goal — lower '
+            'this number. More is not: prefix the type instead',
+      );
+
+      final surface = barrelSurface();
+      for (final name in knownUnprefixed) {
+        expect(
+          surface,
+          contains(name),
+          reason:
+              '$name is listed as a known-unprefixed export but the barrel no '
+              'longer exports it; drop the entry',
+        );
+        expect(
+          name.startsWith('Tom') || name.startsWith('Acl'),
+          isFalse,
+          reason: '$name is prefixed now; drop the entry',
+        );
       }
     });
   });

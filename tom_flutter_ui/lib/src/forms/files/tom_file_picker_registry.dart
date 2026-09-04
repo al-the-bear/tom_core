@@ -162,7 +162,7 @@ enum TomFilePickKind {
 /// An adaptor over a platform picker, returning what the user chose.
 ///
 /// Returns an empty list when the user cancels; the registry turns that into
-/// the `null` a [FilePicker] contract expects.
+/// the `null` a [TomFilePicker] contract expects.
 typedef TomPlatformFilePicker =
     Future<List<TomPickedFile>> Function(TomFilePickRequest request);
 
@@ -220,7 +220,7 @@ class TomFilePickerRegistry {
 // Conversions
 // ===========================================================================
 
-/// Ready-made [FilePicker] callbacks and the [TomPickedFile] → [FileRef]
+/// Ready-made [TomFilePicker] callbacks and the [TomPickedFile] → [FileRef]
 /// conversion they share.
 class TomFilePickers {
   TomFilePickers._();
@@ -229,7 +229,7 @@ class TomFilePickers {
   ///
   /// A field's `picker` parameter is optional precisely so this can be the
   /// default, which is what "works out of the box" means here.
-  static FilePicker registered({
+  static TomFilePicker registered({
     List<String>? allowedExtensions,
     int? maxSizeBytes,
     TomFilePickKind kind = TomFilePickKind.any,
@@ -243,7 +243,7 @@ class TomFilePickers {
       );
 
   /// A picker that always returns [ref] — for demos, tests and previews.
-  static FilePicker fixed(FileRef? ref) =>
+  static TomFilePicker fixed(FileRef? ref) =>
       (BuildContext context) async => ref;
 
   /// Converts a picked file into the value a field holds.

@@ -147,4 +147,4 @@ class FileRef {
 /// Picker callback contract. Returns the chosen file (or `null` if the
 /// user cancels). Implementations can wrap `file_picker`, `image_picker`,
 /// or any platform-specific picker.
-typedef FilePicker = Future<FileRef?> Function(BuildContext context);
+typedef TomFilePicker = Future<FileRef?> Function(BuildContext context);

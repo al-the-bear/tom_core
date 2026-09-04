@@ -693,7 +693,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   Future<void> _validateFast() async {
     for (final validator in validators) {
       if (validator is SlowValidator) continue;
-      final result = await (validator as Validator<T>)(get());
+      final result = await (validator as TomValidator<T>)(get());
       if (result is ValidationError) {
         _slowValidationPending = false;
         _slowDebounceTimer?.cancel();
@@ -719,7 +719,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     // First re-check fast validators (value may have changed)
     for (final validator in validators) {
       if (validator is SlowValidator) continue;
-      final result = await (validator as Validator<T>)(get());
+      final result = await (validator as TomValidator<T>)(get());
       if (result is ValidationError) {
         _slowValidationPending = false;
         _validationNotifier.value = result;
@@ -876,7 +876,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Validators applied to this field: the code-declared validators followed
   /// by any resource-declared validators (C-11).
   ///
-  /// Accepts both [Validator<T>] (fast) and [SlowValidator<T>] (slow).
+  /// Accepts both [TomValidator<T>] (fast) and [SlowValidator<T>] (slow).
   /// Fast validators run without showing a pending spinner.
   /// Slow validators (e.g., remote API calls) show a spinner and trigger
   /// after a longer debounce.
@@ -961,7 +961,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     // Run fast validators first — no pending state
     for (final validator in validators) {
       if (validator is SlowValidator) continue;
-      final result = await (validator as Validator<T>)(get());
+      final result = await (validator as TomValidator<T>)(get());
       if (_disposed) return result;
       if (result is ValidationError) {
         _slowValidationPending = false;

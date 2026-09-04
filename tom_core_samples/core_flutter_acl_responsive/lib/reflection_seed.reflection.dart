@@ -315604,7 +315604,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       const r.FakeType(r'.TomSelectableSource<T>'),
       const r.FakeType(r'.TomSelectableSource<T>'),
       const m.TypeValue<List<String>>().type,
-      prefix210.FilePicker,
+      prefix210.TomFilePicker,
       const m.TypeValue<void Function(prefix210.FileRef, prefix4.Uint8List)>()
           .type,
       const m.TypeValue<String Function(int)>().type,
@@ -316224,7 +316224,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       const m.TypeValue<String Function(dynamic)>().type,
       const r.FakeType(r'.TomSelectableSource<T>'),
       const m.TypeValue<String Function(dynamic)>().type,
-      prefix210.FilePicker,
+      prefix210.TomFilePicker,
       const m.TypeValue<prefix165.TomList<prefix165.TomObject<dynamic>>>().type,
       const r.FakeType(r'dart.core.Set<S>'),
       typedef1317,

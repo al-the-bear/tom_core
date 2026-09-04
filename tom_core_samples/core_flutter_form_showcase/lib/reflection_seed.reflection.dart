@@ -310656,7 +310656,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       const r.FakeType(r'.TomSelectableSource<T>'),
       const r.FakeType(r'.TomSelectableSource<T>'),
       const m.TypeValue<List<String>>().type,
-      prefix211.FilePicker,
+      prefix211.TomFilePicker,
       const m.TypeValue<void Function(prefix211.FileRef, prefix4.Uint8List)>()
           .type,
       const m.TypeValue<String Function(int)>().type,

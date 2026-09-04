@@ -233,7 +233,7 @@ void main() {
       );
     });
 
-    // compose returns a plain Validator, so however slow its members are the
+    // compose returns a plain TomValidator, so however slow its members are the
     // composite is dispatched on the fast path — no pending spinner, short
     // debounce. SlowValidator is what moves it, and it accepts a composite.
     test('a composite of async rules is still a fast validator', () async {

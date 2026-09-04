@@ -67,12 +67,16 @@
 /// computes each file's transitive *export* surface and treats "this file
 /// exports the type" as the barrel's licence to name it. That distinction is
 /// exact rather than heuristic, which is what lets the rule leave the folder
-/// boundary behind: see [_exportSurfaces].
+/// boundary behind. The walk itself lives in `support/export_surface.dart`,
+/// shared with `package_barrel_test.dart`; why *this* rule is drawn from it is
+/// argued at the check.
 library;
 
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/export_surface.dart';
 
 /// The package barrel — the sole library `dart doc` emits a page for.
 const _packageBarrel = 'lib/tom_flutter_ui.dart';
@@ -115,19 +119,6 @@ const _rolloutMarkers = <String, String>{
       'of the published documentation can look; name the example file, '
       'or describe the arrangement',
 };
-
-/// Every Dart source file under `lib/`, as repo-relative paths.
-///
-/// Walked rather than listed: a file added tomorrow is covered without anyone
-/// remembering this test exists.
-List<String> _allLibrarySources() =>
-    Directory('lib')
-        .listSync(recursive: true)
-        .whereType<File>()
-        .map((f) => f.path)
-        .where((p) => p.endsWith('.dart'))
-        .toList()
-      ..sort();
 
 /// A member dartdoc paired with the declaration it is attached to.
 typedef _DocumentedMember = ({String path, int line, String doc, String decl});
@@ -174,17 +165,6 @@ List<_DocumentedMember> _documentedMembers(String path) {
   }
   return out;
 }
-
-/// Type names declared in [source] — `class`, `enum`, `mixin`, `extension`
-/// and `typedef`.
-///
-/// Used to recognise an opening line that merely *names* the file's subject
-/// instead of describing it.
-Set<String> _declaredTypes(String source) => RegExp(
-  r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+)*'
-  r'(?:class|enum|mixin|extension|typedef)\s+(\w+)',
-  multiLine: true,
-).allMatches(source).map((m) => m.group(1)!).toSet();
 
 /// The `export 'src/…';` targets of the package barrel, as repo-relative paths.
 ///
@@ -287,113 +267,6 @@ Set<String> _sameDirectoryLinks(String path) => RegExp(
   r"^(?:import|export)\s+'([^'/:]+\.dart)'",
   multiLine: true,
 ).allMatches(File(path).readAsStringSync()).map((m) => m.group(1)!).toSet();
-
-/// Every `import` / `export` in a source file, as `(keyword, target)`.
-final _directive = RegExp(r"^\s*(import|export)\s+'([^']+)'", multiLine: true);
-
-/// The file a directive in [from] names, as a repo-relative path under `lib/`,
-/// or `null` when it leaves this package (`dart:…`, another `package:`).
-///
-/// Both spellings resolve, because both occur: relative targets inside a
-/// module, and `package:tom_flutter_ui/…` where a file reaches across the tree.
-/// Reducing them to one form is what lets the export graph be a plain map.
-String? _directiveTarget(String from, String target) {
-  const own = 'package:tom_flutter_ui/';
-  if (target.startsWith('package:')) {
-    return target.startsWith(own)
-        ? 'lib/${target.substring(own.length)}'
-        : null;
-  }
-  if (target.contains(':')) return null; // dart:…
-  final segments = from.split('/')..removeLast();
-  for (final segment in target.split('/')) {
-    if (segment == '.') continue;
-    if (segment == '..') {
-      if (segments.isNotEmpty) segments.removeLast();
-      continue;
-    }
-    segments.add(segment);
-  }
-  return segments.join('/');
-}
-
-/// For every file under `lib/`, the type names it *offers* to a reader: the
-/// types it declares, plus everything its `export` directives surface,
-/// transitively.
-///
-/// This is the distinction that lets the cross-directory check widen past the
-/// folder boundary the sibling rule stops at. A library dartdoc resolves in
-/// library scope, where `export` brings in nothing — so a barrel naming
-/// `[TomAction]` is unresolvable. It is also entirely correct: the barrel is
-/// the reason that name is reachable at all, and the alternative is importing a
-/// type purely so prose can link it, several of them cycles. Asking "does this
-/// file export the type" separates the two populations *exactly*, where the
-/// heuristics considered instead — counting `export` directives, or asking
-/// whether the type appears anywhere outside the dartdoc — merely correlate
-/// with the answer, and a two-export barrel defeats the first of them.
-///
-/// Computed to a fixpoint rather than by recursion, so an export cycle
-/// terminates instead of needing a visited set carried through the walk.
-Map<String, Set<String>> _exportSurfaces() {
-  final sources = _allLibrarySources();
-  final exports = <String, List<String>>{};
-  final surfaces = <String, Set<String>>{};
-  for (final path in sources) {
-    final source = File(path).readAsStringSync();
-    surfaces[path] = _declaredTypes(source);
-    exports[path] = [
-      for (final m in _directive.allMatches(source))
-        if (m.group(1) == 'export') ?_directiveTarget(path, m.group(2)!),
-    ];
-  }
-  var changed = true;
-  while (changed) {
-    changed = false;
-    for (final path in sources) {
-      for (final target in exports[path]!) {
-        final offered = surfaces[target];
-        if (offered == null) continue; // Left the package.
-        if (surfaces[path]!.containsAll(offered)) continue;
-        surfaces[path]!.addAll(offered);
-        changed = true;
-      }
-    }
-  }
-  return surfaces;
-}
-
-/// The type names a library dartdoc in [path] can actually link: what the file
-/// declares, plus the export surface of everything it imports.
-///
-/// `import` is the only directive that puts a name in library scope, which is
-/// why [_exportSurfaces] is consulted *through* the imports rather than folded
-/// into one set.
-Set<String> _reachableTypes(String path, Map<String, Set<String>> surfaces) {
-  final source = File(path).readAsStringSync();
-  final reachable = <String>{..._declaredTypes(source)};
-  for (final m in _directive.allMatches(source)) {
-    if (m.group(1) != 'import') continue;
-    final target = _directiveTarget(path, m.group(2)!);
-    if (target == null) continue;
-    reachable.addAll(surfaces[target] ?? const <String>{});
-  }
-  return reachable;
-}
-
-/// Where each type under `lib/` is declared, as `name -> repo-relative path`.
-///
-/// First declaration wins. A duplicated type name would make the entry
-/// arbitrary, but only for the path an offence message prints — membership,
-/// which is what the check branches on, is unaffected.
-Map<String, String> _typeHomes() {
-  final homes = <String, String>{};
-  for (final path in _allLibrarySources()) {
-    for (final name in _declaredTypes(File(path).readAsStringSync())) {
-      homes.putIfAbsent(name, () => path);
-    }
-  }
-  return homes;
-}
 
 /// The names [path] declares, split by what a *library* dartdoc is allowed to
 /// reach: `topLevel` is in scope there, `members` never is.
@@ -647,7 +520,7 @@ void main() {
       // between a capitalised word and a digit, and a Dart identifier cannot
       // contain a space, scanning everything costs no false positives on code.
       final offences = <String>[];
-      for (final path in _allLibrarySources()) {
+      for (final path in allLibrarySources()) {
         final lines = File(path).readAsLinesSync();
         for (var i = 0; i < lines.length; i++) {
           for (final entry in _rolloutMarkers.entries) {
@@ -677,7 +550,7 @@ void main() {
       // Derived from each file's own declarations rather than a list of
       // names, so it keeps working as types are added and renamed.
       final offences = <String>[];
-      for (final path in _allLibrarySources()) {
+      for (final path in allLibrarySources()) {
         final doc = _libraryDartdoc(path);
         if (doc.isEmpty) continue;
 
@@ -693,7 +566,7 @@ void main() {
             .toList();
         if (words.isEmpty) continue;
 
-        final declared = _declaredTypes(File(path).readAsStringSync());
+        final declared = declaredTypes(File(path).readAsStringSync());
         if (words.every(declared.contains)) {
           offences.add(
             '$path\n'
@@ -770,7 +643,7 @@ void main() {
       // name and misleads nobody about the call shape. That is a consistent
       // house vocabulary, and consistency wins over a global rule.
       final offences = <String>[];
-      for (final path in _allLibrarySources()) {
+      for (final path in allLibrarySources()) {
         for (final member in _documentedMembers(path)) {
           final isGetter = RegExp(r'\bget\s+\w+').hasMatch(member.decl);
           final isSetter = RegExp(r'\bset\s+\w+\s*\(').hasMatch(member.decl);
@@ -869,7 +742,7 @@ void main() {
       // file's earlier dartdoc was caught. Both checks pick the question that
       // one file can answer alone.
       final offences = <String>[];
-      for (final path in _allLibrarySources()) {
+      for (final path in allLibrarySources()) {
         final doc = _libraryDartdocLines(path);
         if (doc.isEmpty) continue;
         final declared = _declaredNames(path);
@@ -927,7 +800,7 @@ void main() {
       // single folder, so it stays correct if the graph walk ever needs to be
       // narrowed, and because its message names the neighbouring file directly.
       final offences = <String>[];
-      for (final path in _allLibrarySources()) {
+      for (final path in allLibrarySources()) {
         final doc = _libraryDartdocLines(path);
         if (doc.isEmpty) continue;
         final siblings = _siblingTypes(path);
@@ -973,10 +846,17 @@ void main() {
       // misled; they simply do not get the navigation the brackets promise.
       //
       // The rule the sibling check above declined to widen into is decidable
-      // after all, because "the file exports the type" is an exact statement
-      // about the import graph rather than a proxy for one — see
-      // [_exportSurfaces] for why the two heuristics considered instead were
-      // rejected.
+      // after all. A library dartdoc resolves in *library* scope, where
+      // `export` brings in nothing — so a barrel naming `[TomAction]` is
+      // unresolvable, and also entirely correct: the barrel is the reason that
+      // name is reachable at all, and the alternative is importing a type
+      // purely so prose can link it, several of them cycles. Asking "does this
+      // file export the type" separates the two populations *exactly*. The two
+      // heuristics considered instead merely correlate with the answer:
+      // counting `export` directives is defeated by a two-export barrel, and
+      // asking whether the type appears outside the dartdoc does not
+      // discriminate at all, since a barrel also names its exports only in
+      // prose.
       //
       // Measured on this package before the rule was adopted: 106 library
       // dartdoc references to a type declared under `lib/` that library scope
@@ -986,15 +866,15 @@ void main() {
       // carve-out is still doing that work is asserted below, so a change that
       // quietly stopped it matching would fail here rather than start
       // reporting a hundred correct references.
-      final surfaces = _exportSurfaces();
-      final homes = _typeHomes();
+      final surfaces = exportSurfaces();
+      final homes = typeHomes();
       final offences = <String>[];
       var carvedOut = 0;
 
-      for (final path in _allLibrarySources()) {
+      for (final path in allLibrarySources()) {
         final doc = _libraryDartdocLines(path);
         if (doc.isEmpty) continue;
-        final reachable = _reachableTypes(path, surfaces);
+        final reachable = reachableTypes(path, surfaces);
         final exported = surfaces[path] ?? const <String>{};
 
         for (final entry in doc) {
@@ -1059,7 +939,7 @@ void main() {
         multiLine: true,
       );
       final offences = <String>[];
-      for (final path in _allLibrarySources()) {
+      for (final path in allLibrarySources()) {
         final source = File(path).readAsStringSync();
         for (final m in directive.allMatches(source)) {
           final package = m.group(2)!;

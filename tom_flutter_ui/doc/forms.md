@@ -112,7 +112,7 @@ withheld.
 
 ## Validation
 
-`Validators` is a static factory of `Validator<T>` functions — each is a
+`Validators` is a static factory of `TomValidator<T>` functions — each is a
 `FutureOr<ValidationResult> Function(T value)`, so rules can be sync or async.
 `compose` chains rules and **stops on the first failure**:
 

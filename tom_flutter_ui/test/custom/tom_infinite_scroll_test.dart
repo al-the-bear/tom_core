@@ -640,7 +640,7 @@ void main() {
     // page'), refresh ('refresh restarts from page 0'), and the one below,
     // where a refresh lands while a page is still in flight and leaves two
     // calls outstanding at once. The first two are sequential and were
-    // already covered; this one is the reason `PageFetcher` needs a
+    // already covered; this one is the reason `TomPageFetcher` needs a
     // generation fence rather than just the `_pending` gate, because
     // `refresh` clears `_pending` in order to start immediately.
     testWidgets('a refresh during an in-flight fetch discards its result', (

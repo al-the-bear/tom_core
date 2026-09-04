@@ -213,14 +213,14 @@ void main() {
       });
 
       test('is assignable to a typed list field validator', () async {
-        // Function contravariance: a Validator<Iterable<Object?>> stands in
-        // wherever a Validator<List<String>> is expected, which is what lets
+        // Function contravariance: a TomValidator<Iterable<Object?>> stands in
+        // wherever a TomValidator<List<String>> is expected, which is what lets
         // a list field declare it directly.
-        final Validator<List<String>> typed = Validators.minItems(2);
+        final TomValidator<List<String>> typed = Validators.minItems(2);
         expect(await typed(['only-one']), isA<ValidationError>());
         expect(await typed(['a', 'b']), isA<ValidationSuccess>());
 
-        final Validator<List<int>> typedInts = Validators.minItems(2);
+        final TomValidator<List<int>> typedInts = Validators.minItems(2);
         expect(await typedInts([1]), isA<ValidationError>());
       });
     });

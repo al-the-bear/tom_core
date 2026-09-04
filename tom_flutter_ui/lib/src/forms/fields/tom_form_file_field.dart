@@ -1,6 +1,6 @@
 /// File fields — choosing a file, and moving it to and from a file store.
 ///
-/// The value type [FileRef] and the [FilePicker] contract live in
+/// The value type [FileRef] and the [TomFilePicker] contract live in
 /// `../files/file_ref.dart` and are re-exported here, so importing this file
 /// still gives you everything a file field deals in.
 ///
@@ -55,10 +55,10 @@ export '../files/file_ref.dart';
 // Built-in file validators
 // ===========================================================================
 
-/// Returns a [Validator] that checks the file's extension against [allowed].
+/// Returns a [TomValidator] that checks the file's extension against [allowed].
 /// Pristine `null` values pass. Files without an extension fail when an
 /// allow-list is configured.
-Validator<FileRef?> _fileExtensionValidator(List<String> allowed) =>
+TomValidator<FileRef?> _fileExtensionValidator(List<String> allowed) =>
     (FileRef? value) {
       if (value == null) return const ValidationSuccess();
       return allowed.contains(value.extension)
@@ -66,9 +66,9 @@ Validator<FileRef?> _fileExtensionValidator(List<String> allowed) =>
           : const ValidationError('error.fileExtension');
     };
 
-/// Returns a [Validator] that checks the file's size against [maxBytes].
+/// Returns a [TomValidator] that checks the file's size against [maxBytes].
 /// Pristine `null` values pass.
-Validator<FileRef?> _fileSizeValidator(int maxBytes) => (FileRef? value) {
+TomValidator<FileRef?> _fileSizeValidator(int maxBytes) => (FileRef? value) {
   if (value == null) return const ValidationSuccess();
   return value.sizeBytes <= maxBytes
       ? const ValidationSuccess()
@@ -85,7 +85,7 @@ abstract class TomFormFileField extends TomField<FileRef?> {
 
   /// Optional list of allowed file extensions (without dot, lowercase).
   /// Surfaced to the picker callback and used to auto-prepend a built-in
-  /// `Validator<FileRef?>` so that programmatic `setValue` paths flow
+  /// `TomValidator<FileRef?>` so that programmatic `setValue` paths flow
   /// through the same validation pipeline as picker-driven selections.
   final List<String>? allowedExtensions;
 
@@ -98,7 +98,7 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   /// Leave it `null` in the ordinary case: the field then uses whatever
   /// `TomFilePickerRegistry.register` installed, so an application wires its
   /// picker package once instead of at every field.
-  final FilePicker? picker;
+  final TomFilePicker? picker;
 
   /// What kind of file this field is after, passed to the registered picker so
   /// it can open the right dialog.
@@ -216,7 +216,7 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   ///
   /// Used by the picker shim to show an immediate message and reject the file
   /// before it ever reaches `setValue`. The same constraints are also
-  /// auto-prepended as `Validator<FileRef?>`s, so any programmatic
+  /// auto-prepended as `TomValidator<FileRef?>`s, so any programmatic
   /// `setValue(invalidFile)` will be caught by the framework pipeline.
   String? checkFile(FileRef ref) {
     if (allowedExtensions != null &&

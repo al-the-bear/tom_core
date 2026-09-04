@@ -5,13 +5,13 @@
 ///
 /// The error slot is deliberately not a `TomErrorBoundary`, and the two are
 /// not alternatives. A boundary catches a throw raised while a widget
-/// *builds*; this slot reports a [PageFetcher] future that rejected, which
+/// *builds*; this slot reports a [TomPageFetcher] future that rejected, which
 /// never reaches a boundary because the failure is already caught and held
 /// in state. They compose rather than overlap: wrapping each row in its own
 /// boundary contains a build-time throw to that row, while the fetch-error
 /// slot goes on handling failed pages.
 ///
-/// The widget is parameterised over a single [PageFetcher] callback
+/// The widget is parameterised over a single [TomPageFetcher] callback
 /// of shape `Future<List<T>> Function(int page, int pageSize)`. The
 /// inner [ListView.builder] calls the fetcher whenever the user
 /// approaches the end of the loaded list and appends the result. When
@@ -51,10 +51,10 @@ import 'tom_skeleton_loader.dart';
 ///
 /// Must be idempotent: retries and refreshes re-request pages that have
 /// already been fetched. See [TomInfiniteScroll.fetcher] for when.
-typedef PageFetcher<T> = Future<List<T>> Function(int page, int pageSize);
+typedef TomPageFetcher<T> = Future<List<T>> Function(int page, int pageSize);
 
 /// Builds a single list tile from an item.
-typedef InfiniteScrollItemBuilder<T> =
+typedef TomInfiniteScrollItemBuilder<T> =
     Widget Function(BuildContext context, T item, int index);
 
 /// List wrapper with pagination, observable page fetcher, and
@@ -70,14 +70,14 @@ class TomInfiniteScroll<T> extends StatefulWidget {
   ///
   /// It can also be re-entered: a `refresh()` during an in-flight fetch
   /// starts the new request immediately, leaving two calls outstanding.
-  /// The older one's result is discarded, not cancelled — [PageFetcher]
+  /// The older one's result is discarded, not cancelled — [TomPageFetcher]
   /// has no cancellation channel — so anything the callback does besides
   /// returning items has to be safe to do twice, and safe to do for
   /// nothing.
-  final PageFetcher<T> fetcher;
+  final TomPageFetcher<T> fetcher;
 
   /// Builds a tile for one item.
-  final InfiniteScrollItemBuilder<T> itemBuilder;
+  final TomInfiniteScrollItemBuilder<T> itemBuilder;
 
   /// Items per page. Defaults to 20.
   final int pageSize;
@@ -199,7 +199,7 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
   ///
   /// Safe to call while a fetch is in flight: the outstanding request is
   /// abandoned rather than awaited, so its page cannot land in the
-  /// restarted list. The call itself is not cancelled — [PageFetcher] has
+  /// restarted list. The call itself is not cancelled — [TomPageFetcher] has
   /// no cancellation channel — it simply stops mattering.
   Future<void> refresh() async {
     setState(() {

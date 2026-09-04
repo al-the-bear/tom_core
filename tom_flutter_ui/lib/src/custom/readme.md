@@ -45,8 +45,8 @@ the models and signatures they take:
 | `TomAuthTreeNode` | One node of a `TomAuthTreeView` — its own `tomId`, title, children |
 | `TomRadioGroupItem` | One option of a `TomRadioGroup` — value and label |
 | `TomInfiniteScrollState` | `TomInfiniteScroll`'s state, public so a `GlobalKey` can call `refresh()` |
-| `PageFetcher` | Signature of `TomInfiniteScroll.fetcher`; **must be idempotent** |
-| `InfiniteScrollItemBuilder` | Signature building one row of a `TomInfiniteScroll` |
+| `TomPageFetcher` | Signature of `TomInfiniteScroll.fetcher`; **must be idempotent** |
+| `TomInfiniteScrollItemBuilder` | Signature building one row of a `TomInfiniteScroll` |
 | `TomErrorBoundaryFallbackBuilder` | Signature of `TomErrorBoundary.fallbackBuilder` — the error details plus a `retry` closure |
 
 ## Quick start

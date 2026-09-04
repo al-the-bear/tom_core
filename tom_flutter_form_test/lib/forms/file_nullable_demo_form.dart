@@ -22,7 +22,7 @@ class FileNullableDemoForm extends TomForm<FileNullableDemoState> {
   FileNullableDemoForm({required this.picker})
     : super(formId: 'fileNullableDemo');
 
-  final FilePicker picker;
+  final TomFilePicker picker;
 
   late final upload = TomFormFileUpload(
     'upload',

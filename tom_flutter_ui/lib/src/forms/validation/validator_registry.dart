@@ -1,12 +1,12 @@
 import 'validation_result.dart';
 import 'validators.dart';
 
-/// Produces a [Validator] from the argument list parsed out of a resource
+/// Produces a [TomValidator] from the argument list parsed out of a resource
 /// declaration (C-11).
 ///
-/// The returned validator is typed `Validator<Object?>` so that, by Dart's
+/// The returned validator is typed `TomValidator<Object?>` so that, by Dart's
 /// function contravariance, it is assignable wherever a field expects a
-/// `Validator<T>` — the field casts each stored validator to `Validator<T>`
+/// `TomValidator<T>` — the field casts each stored validator to `TomValidator<T>`
 /// before invoking it (`tom_form.dart`), and a `Function(Object?)` is a valid
 /// `Function(T)`. Factories therefore accept the field value as `Object?` and
 /// narrow internally.
@@ -14,10 +14,10 @@ import 'validators.dart';
 /// [args] are the colon-separated arguments from a validator spec (see
 /// [TomValidatorRegistry.parseSpec]): `minLength:5` yields `['5']`. A factory
 /// that receives malformed or missing arguments must throw [ArgumentError].
-typedef TomValidatorFactory = Validator<Object?> Function(List<String> args);
+typedef TomValidatorFactory = TomValidator<Object?> Function(List<String> args);
 
 /// Resolves **named validators** declared in a field's resource bundle into
-/// concrete [Validator] instances (C-11).
+/// concrete [TomValidator] instances (C-11).
 ///
 /// A field's resource bundle may declare its validators by name under the
 /// `<basePath>.validators` key, e.g. `required,minLength:8,strongPassword`.
@@ -64,7 +64,7 @@ class TomValidatorRegistry {
 
   /// Resolves the validator [name] with optional [args], or `null` when the
   /// name is unknown. Prefer [resolveOrThrow] when a missing name is an error.
-  Validator<Object?>? resolve(String name, [List<String> args = const []]) {
+  TomValidator<Object?>? resolve(String name, [List<String> args = const []]) {
     final factory = _factories[name];
     if (factory == null) return null;
     return factory(args);
@@ -72,7 +72,7 @@ class TomValidatorRegistry {
 
   /// Resolves the validator [name] with optional [args], throwing
   /// [ArgumentError] (listing the known names) when [name] is unregistered.
-  Validator<Object?> resolveOrThrow(
+  TomValidator<Object?> resolveOrThrow(
     String name, [
     List<String> args = const [],
   ]) {
@@ -88,7 +88,7 @@ class TomValidatorRegistry {
 
   /// Resolves a single validator spec of the form `name[:arg[:arg…]]`
   /// (e.g. `minLength:8`) into a validator instance.
-  Validator<Object?> resolveSpec(String spec) {
+  TomValidator<Object?> resolveSpec(String spec) {
     final (name, args) = parseSpec(spec);
     return resolveOrThrow(name, args);
   }
@@ -96,7 +96,7 @@ class TomValidatorRegistry {
   /// Resolves a comma-separated [declaration] (the raw `<basePath>.validators`
   /// resource value, e.g. `required,minLength:8,strongPassword`) into the list
   /// of validators to run, in declaration order. Blank entries are ignored.
-  List<Validator<Object?>> resolveDeclaration(String declaration) => [
+  List<TomValidator<Object?>> resolveDeclaration(String declaration) => [
     for (final spec in declaration.split(','))
       if (spec.trim().isNotEmpty) resolveSpec(spec.trim()),
   ];
@@ -145,20 +145,20 @@ class TomValidatorRegistry {
     );
   }
 
-  /// Adapts a `Validator<String>` to `Validator<Object?>` by narrowing the
+  /// Adapts a `TomValidator<String>` to `TomValidator<Object?>` by narrowing the
   /// incoming value. Fields declaring string validators always hold string
   /// values, so the cast is safe at the call site.
-  static Validator<Object?> _wrapString(Validator<String> inner) =>
+  static TomValidator<Object?> _wrapString(TomValidator<String> inner) =>
       (Object? value) => inner(value as String);
 
-  /// Adapts a `Validator<num>` to `Validator<Object?>` by narrowing the value.
-  static Validator<Object?> _wrapNum(Validator<num> inner) =>
+  /// Adapts a `TomValidator<num>` to `TomValidator<Object?>` by narrowing the value.
+  static TomValidator<Object?> _wrapNum(TomValidator<num> inner) =>
       (Object? value) => inner(value as num);
 
-  /// Adapts a collection validator to `Validator<Object?>`. Fields declaring
+  /// Adapts a collection validator to `TomValidator<Object?>`. Fields declaring
   /// selection-count rules hold list values, so the cast is safe at the call
   /// site.
-  static Validator<Object?> _wrapIterable(Validator<Iterable<Object?>> inner) =>
+  static TomValidator<Object?> _wrapIterable(TomValidator<Iterable<Object?>> inner) =>
       (Object? value) => inner(value as Iterable<Object?>);
 
   static int _intArg(List<String> args, String validatorName) {

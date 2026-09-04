@@ -326744,7 +326744,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       const m.TypeValue<prefix164.TomList<prefix199.OrderItemHD>>().type,
       const m.TypeValue<prefix164.TomList<prefix199.ShippingAddressHD>>().type,
       const m.TypeValue<prefix164.TomList<prefix199.OrderHD>>().type,
-      prefix235.FilePicker,
+      prefix235.TomFilePicker,
       const m.TypeValue<prefix216.TomCupertinoFormSearchInput<prefix197.City>>()
           .type,
       prefix197.City,
@@ -326776,7 +326776,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       const r.FakeType(r'.TomSelectableSource<T>'),
       const m.TypeValue<String Function(dynamic)>().type,
       const m.TypeValue<List<String>>().type,
-      prefix235.FilePicker,
+      prefix235.TomFilePicker,
       const m.TypeValue<void Function(prefix235.FileRef, prefix4.Uint8List)>()
           .type,
       const r.FakeType(r'.TomSelectableSource<T>'),

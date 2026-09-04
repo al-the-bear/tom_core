@@ -43,12 +43,12 @@ lookup and the plain data models — is what the example demonstrates.
 | `TomLoadingOverlay` | class | Translucent scrim + spinner (+ message) layered over a subtree while loading. |
 | `TomSkeletonLoader` | class | Shimmer placeholder for async surfaces (static when `enabled: false`). |
 | `TomErrorBoundary` | class | Catches build errors in `child` and renders a fallback instead of propagating. |
-| `TomInfiniteScroll` | class | Paginated list with a `PageFetcher`, reusing the empty / skeleton / error widgets above. |
+| `TomInfiniteScroll` | class | Paginated list with a `TomPageFetcher`, reusing the empty / skeleton / error widgets above. |
 
 All eight are exported from the package barrel via
 `lib/src/custom/tom_custom_widgets.dart`, together with the models and callback
 signatures they take — `TomAuthTreeNode`, `TomRadioGroupItem`,
-`TomInfiniteScrollState`, `PageFetcher`, `InfiniteScrollItemBuilder` and
+`TomInfiniteScrollState`, `TomPageFetcher`, `TomInfiniteScrollItemBuilder` and
 `TomErrorBoundaryFallbackBuilder`. The module readme
 ([`lib/src/custom/readme.md`](../lib/src/custom/readme.md)) tables all fourteen;
 this document covers the eight widgets.
@@ -155,7 +155,7 @@ The remaining five are presentation idioms with no auth gate:
   own errors regardless of mount order. Renders `fallbackBuilder` (or a
   Material error card) and offers a `retry`.
 - **`TomInfiniteScroll`** — a paginated `ListView` driven by a
-  `PageFetcher<T>` (`Future<List<T>> Function(int page, int pageSize)`). It
+  `TomPageFetcher<T>` (`Future<List<T>> Function(int page, int pageSize)`). It
   auto-fetches near the bottom, stops when a short page signals exhaustion, and
   delegates its empty / loading / error slots to `TomEmptyState`,
   `TomSkeletonLoader`, and a built-in error panel. Each of those three is
