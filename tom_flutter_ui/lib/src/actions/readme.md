@@ -18,7 +18,7 @@ the module's central separation. Nothing on `TomActionController` runs an action
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomAction` / `TomSimpleAction` / `TomDualAction` | The action base & primitives |
+| `TomAction` / `TomSimpleAction` / `TomCompositeAction` | The action base & primitives |
 | `TomActionController` | Owns and names a group of actions; supplies the `controllerId` canonical-path prefix |
 | `TomActionContext` | The per-invocation context an action operates on |
 | `TomActionTransaction` / `TomUndoHistory` / `TomUndoRedoContext` | Atomicity & undo/redo |

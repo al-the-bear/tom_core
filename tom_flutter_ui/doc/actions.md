@@ -37,7 +37,6 @@ keeps widgets dumb and reusable, and keeps logic testable without a widget tree.
 | `TomUndoHistory` | class | Application-level undo/redo stack of transactions. |
 | `TomActionTrigger<TContext, TUndo>` | class | Adapts an action to a `VoidCallback` for a widget, recording undo state. |
 | `TomCompositeAction` | class | Runs a list of guarded steps as one action. |
-| `TomDualAction` | class | Sibling of the composite: two independent actions, each with its own context and guard. |
 | `TomUndoAction` / `TomRedoAction` | classes | Coordinator actions that drive a `TomUndoHistory`. |
 
 ## `TomAction` — the unit of behaviour
@@ -130,8 +129,8 @@ undoHistory.push(tx);
 
 `run` is the one place that pairs *executing* an action with *recording* it: an
 action contributes an undo entry only when it returned a state **and** declares
-itself `isUndoable`. `TomActionTrigger`, `TomCompositeAction` and
-`TomDualAction` all dispatch through it, so the rule cannot drift between them.
+itself `isUndoable`. `TomActionTrigger` and `TomCompositeAction` both dispatch
+through it, so the rule cannot drift between them.
 `record` remains available for the rare case where you hold an undo state that
 did not come from a call you just made.
 
@@ -193,19 +192,20 @@ runnable step behind a blocked one does not make the composite executable.
 Sub-step undo states are recorded into the surrounding transaction, so a
 composite is still one atomic undo entry.
 
-`TomDualAction` covers the everyday *save-and-close* / *validate-and-submit*
-pattern. It is a **sibling** of `TomCompositeAction`, not a specialisation:
-both extend `TomAction` directly, neither derives from the other, and the only
-code they share is `TomActionTransaction.run`. Both of its halves run forward —
-`first` then `second`, with no reversal between them — and they are
-independent, so its `canExecute` is true when either half is runnable.
+The everyday two-sided shapes — *save-and-close*, *validate-and-submit* — are
+just two-step composites. There is no separate two-action class, and the
+composite covers the case in full:
 
-What it offers over a two-step composite is naming: `first` / `second` and
-their builders are separate constructor arguments rather than positions in a
-list. It is *not* required in order to give the two sides different context
-types — a `List<TomCompositeStep>` holds a `TomCompositeStep<CtxA>` and a
-`TomCompositeStep<CtxB>` side by side, because the step's type parameter is
-covariant and each step pairs its own action with its own builder.
+- **Different context types per side.** A `List<TomCompositeStep>` holds a
+  `TomCompositeStep<CtxA>` and a `TomCompositeStep<CtxB>` side by side, because
+  the step's type parameter is covariant and each step pairs its own action
+  with its own builder.
+- **Independent sides.** Where neither step should block the other, pass
+  `stopOnBlockedStep: false`; the composite then runs whichever steps are
+  runnable and its `canExecute` is true when any of them is.
+
+Both steps run forward, in list order, with no reversal between them —
+reversal is `TomActionTransaction`'s job.
 
 ## Authorization
 

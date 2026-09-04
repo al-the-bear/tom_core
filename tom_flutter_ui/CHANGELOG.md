@@ -1,5 +1,28 @@
 ## Unreleased
 
+### Removed
+
+- **`TomDualAction`**, a two-sided convenience wrapper that was fully
+  expressible as a two-step `TomCompositeAction` and had no call site anywhere
+  in the workspace — not in an application, not in an example. Its own test
+  group asserted the equivalence: a dual matched the composite it was built to
+  save the caller from writing, over all four guard combinations.
+
+  Two classes for one shape also cost more than they saved. Each carried its
+  own `canExecute` rule, so the "does the button do anything?" contract had to
+  be stated and pinned twice; and their defaults disagreed on the one thing a
+  caller migrating between them would never be warned about — a composite stops
+  at a blocked step, whereas the dual always skipped past one.
+
+  Both of its shapes are `TomCompositeAction`. The two sides need not share a
+  context type, because `TomCompositeStep`'s type parameter is covariant and one
+  `List<TomCompositeStep>` therefore holds steps with unrelated contexts; and
+  where neither side should block the other, `stopOnBlockedStep: false` says so
+  explicitly instead of leaving it implicit in the choice of class.
+  `TomCompositeAction`'s dartdoc now carries the two-sided framing, and the test
+  that pinned mixed context types moved to the composite group, where it always
+  belonged.
+
 ### Documentation
 
 - **43 source comments cited a section number of a document the reader does

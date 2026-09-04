@@ -75,7 +75,8 @@ class UnrecordedIncrementAction
 /// A second context type, unrelated to [CounterContext].
 ///
 /// Exists so a composite can be built whose steps take *different* context
-/// types — the case `TomDualAction` was once documented as being needed for.
+/// types. That a single step list is well typed across unrelated contexts is
+/// what makes one composite class enough for every multi-step shape.
 class LabelContext extends TomActionContext {
   final List<String> log;
   LabelContext(this.log);
@@ -709,17 +710,12 @@ void main() {
         }
       }
     });
-  });
 
-  // TomDualAction is the two-action convenience specialization. These pin
-  // the OR-of-guards `canExecute`, the ordered execute-and-record, and each
-  // guard-skip branch. `first` uses step 1, `second` uses step 10, so the
-  // counter value uniquely identifies which ran.
-  group('TomDualAction', () {
-    // Pins the claim in TomDualAction's dartdoc that it is *not* needed to give
-    // two sides different context types. TomCompositeStep's type parameter is
-    // covariant, so a heterogeneous list is well typed, and each step still
-    // pairs its own action with its own builder.
+    // One composite covers every multi-step shape, including the two-sided
+    // one, because a step list is well typed across unrelated context types:
+    // TomCompositeStep's type parameter is covariant, so a heterogeneous list
+    // is legal and each step still pairs its own action with its own builder.
+    // Were this not true, two-sided work would need a class of its own.
     test('a composite holds steps whose contexts are different types', () {
       final controller = TomActionController(controllerId: 'mixed');
       final counter = Counter();
@@ -741,163 +737,6 @@ void main() {
 
       expect(counter.value, 1, reason: 'the CounterContext step ran');
       expect(log, ['done'], reason: 'the LabelContext step ran');
-    });
-
-    TomDualAction<CounterContext, CounterContext> dual(
-      Counter counter, {
-      bool Function()? firstGuard,
-      bool Function()? secondGuard,
-      TomAction<CounterContext, TomActionUndo>? first,
-      TomAction<CounterContext, TomActionUndo>? second,
-    }) {
-      final controller = TomActionController(controllerId: 'dual');
-      return TomDualAction<CounterContext, CounterContext>(
-        actionId: 'firstThenSecond',
-        controller: controller,
-        first:
-            first ??
-            IncrementAction(controller: controller, step: 1, id: 'first'),
-        firstContextBuilder: () => CounterContext(counter),
-        firstGuard: firstGuard,
-        second:
-            second ??
-            IncrementAction(controller: controller, step: 10, id: 'second'),
-        secondContextBuilder: () => CounterContext(counter),
-        secondGuard: secondGuard,
-      );
-    }
-
-    test('runs both actions in order and records both undos', () {
-      final counter = Counter();
-      final tx = TomActionTransaction(label: 'dual');
-      dual(counter).execute(CounterContext(counter), tx);
-      expect(counter.value, 11); // 1 + 10
-      expect(tx.entryCount, 2);
-    });
-
-    test('skips the first action when firstGuard is false', () {
-      final counter = Counter();
-      final tx = TomActionTransaction(label: 'dual');
-      dual(
-        counter,
-        firstGuard: () => false,
-      ).execute(CounterContext(counter), tx);
-      expect(counter.value, 10); // only second
-      expect(tx.entryCount, 1);
-    });
-
-    test('skips the second action when secondGuard is false', () {
-      final counter = Counter();
-      final tx = TomActionTransaction(label: 'dual');
-      dual(
-        counter,
-        secondGuard: () => false,
-      ).execute(CounterContext(counter), tx);
-      expect(counter.value, 1); // only first
-      expect(tx.entryCount, 1);
-    });
-
-    test(
-      'canExecute is false when both guards pass but both actions refuse',
-      () {
-        final counter = Counter(); // 0, so both resets refuse
-        final controller = TomActionController(controllerId: 'refusing');
-        final action = dual(
-          counter,
-          first: ResetAction(controller: controller),
-          second: ResetAction(controller: controller),
-        );
-        expect(action.canExecute(CounterContext(counter)), isFalse);
-        action.execute(
-          CounterContext(counter),
-          TomActionTransaction(label: 'x'),
-        );
-        expect(counter.value, 0, reason: 'neither action ran');
-      },
-    );
-
-    test('runs neither and canExecute is false when both guards fail', () {
-      final counter = Counter();
-      final action = dual(
-        counter,
-        firstGuard: () => false,
-        secondGuard: () => false,
-      );
-      expect(action.canExecute(CounterContext(counter)), isFalse);
-      action.execute(CounterContext(counter), TomActionTransaction(label: 'x'));
-      expect(counter.value, 0);
-    });
-
-    test('matches a two-step composite that skips blocked steps', () {
-      // The class is a sibling of TomCompositeAction, not a specialisation,
-      // and what it adds is naming rather than reach: for every guard
-      // combination the equivalent composite moves the counter the same way
-      // and records the same number of undo entries.
-      for (final firstOpen in [true, false]) {
-        for (final secondOpen in [true, false]) {
-          final why = 'firstOpen=$firstOpen secondOpen=$secondOpen';
-
-          final dualCounter = Counter();
-          final dualTx = TomActionTransaction(label: 'dual');
-          dual(
-            dualCounter,
-            firstGuard: () => firstOpen,
-            secondGuard: () => secondOpen,
-          ).execute(CounterContext(dualCounter), dualTx);
-
-          final compCounter = Counter();
-          final compTx = TomActionTransaction(label: 'composite');
-          final controller = TomActionController(controllerId: 'equiv');
-          TomCompositeAction(
-            actionId: 'firstThenSecond',
-            controller: controller,
-            stopOnBlockedStep: false,
-            steps: [
-              TomCompositeStep<CounterContext>(
-                action: IncrementAction(
-                  controller: controller,
-                  step: 1,
-                  id: 'first',
-                ),
-                contextBuilder: () => CounterContext(compCounter),
-                guard: () => firstOpen,
-              ),
-              TomCompositeStep<CounterContext>(
-                action: IncrementAction(
-                  controller: controller,
-                  step: 10,
-                  id: 'second',
-                ),
-                contextBuilder: () => CounterContext(compCounter),
-                guard: () => secondOpen,
-              ),
-            ],
-          ).execute(CounterContext(compCounter), compTx);
-
-          expect(compCounter.value, dualCounter.value, reason: why);
-          expect(compTx.entryCount, dualTx.entryCount, reason: why);
-        }
-      }
-    });
-
-    test('canExecute is true when only one guard passes (OR semantics)', () {
-      final counter = Counter();
-      expect(
-        dual(
-          counter,
-          firstGuard: () => true,
-          secondGuard: () => false,
-        ).canExecute(CounterContext(counter)),
-        isTrue,
-      );
-      expect(
-        dual(
-          counter,
-          firstGuard: () => false,
-          secondGuard: () => true,
-        ).canExecute(CounterContext(counter)),
-        isTrue,
-      );
     });
   });
 

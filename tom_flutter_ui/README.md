@@ -169,7 +169,7 @@ atomic transactions, undo/redo history, composites, and widget triggers.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomAction`, `TomSimpleAction`, `TomDualAction` | The action base & primitives |
+| `TomAction`, `TomSimpleAction`, `TomCompositeAction` | The action base & primitives |
 | `TomActionController`, `TomActionContext` | Action registry (canonical-path prefix) & per-invocation context |
 | `TomActionTransaction`, `TomUndoHistory`, `TomUndoRedoContext` | Atomicity & undo/redo |
 | `TomCompositeAction`, `TomCompositeStep` | Composed multi-step actions |

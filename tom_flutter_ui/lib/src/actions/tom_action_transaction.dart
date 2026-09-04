@@ -47,9 +47,9 @@ class TomActionTransaction {
   /// This is the one place that pairs *executing* an action with *recording*
   /// it: an action contributes an undo entry only when it returned a state
   /// **and** declares itself [TomAction.isUndoable]. Every caller that runs a
-  /// sub-action into a transaction — `TomActionTrigger`, `TomCompositeAction`,
-  /// `TomDualAction` — goes through here, so the rule cannot drift between
-  /// them.
+  /// sub-action into a transaction — `TomActionTrigger` and
+  /// `TomCompositeAction` — goes through here, so the rule cannot drift
+  /// between them.
   ///
   /// Throws if the transaction is already committed or rolled back, via
   /// [record].

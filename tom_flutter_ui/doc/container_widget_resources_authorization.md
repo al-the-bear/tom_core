@@ -2469,7 +2469,7 @@ List views participate in the same authorization model:
 - `TomStatelessWidget`, `TomStatefulWidget`, `TomState` — scope-preserving base classes
 - Resource resolution: `TomUIIcons`, `TomUIColors`, `TomStyleResolvers` (1100+ lines with 17 style parsers), backed by kernel `TomTextResourceProvider` / `TomConfigResourceProvider`
 - `TomCtr` construction helpers for resource resolution at widget construction time
-- Action system: `TomAction`, `TomSimpleAction`, `TomActionContext`, `TomActionController`, `TomActionTrigger`, `TomActionTransaction`, `TomCompositeAction`, `TomDualAction`, `TomUndoHistory`
+- Action system: `TomAction`, `TomSimpleAction`, `TomActionContext`, `TomActionController`, `TomActionTrigger`, `TomActionTransaction`, `TomCompositeAction`, `TomUndoHistory`
 - Forms: `TomForm`, `TomField<T>`, `TomTextFormFieldBase<T>`, `TomFormStringField` / `TomFormStringInput`, `TomFormPasswordStringInputClassic`, `TomFormEmailStringInputClassic`, `TomFormIntInput` / `TomFormIntInputClassic`, `TomFormDoubleInput` / `TomFormDoubleInputClassic`, `TomFormBoolCheckbox` / `TomFormBoolSwitch`, `TomFormStringDropdown` / `TomFormEnumDropdown`, `TomFormDateTextInput`, `TomListForm`
 - `TomWidgetMixin` for extension-pattern widgets (18 widgets)
 

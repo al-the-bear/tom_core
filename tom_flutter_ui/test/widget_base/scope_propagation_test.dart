@@ -256,8 +256,10 @@ void main() {
 
     test('running in the adopted scope adds no segment', () {
       final path = _AdoptingProvider().scope.runInScope(
-        () => TomScope.withScope('checkout', () => TomScope.current)
-            .getScopePath(),
+        () => TomScope.withScope(
+          'checkout',
+          () => TomScope.current,
+        ).getScopePath(),
       );
       expect(path, 'checkout');
     });

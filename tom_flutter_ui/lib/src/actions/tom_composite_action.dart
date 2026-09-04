@@ -33,6 +33,14 @@ import 'tom_action_transaction.dart';
 /// pristine, and pristine is not success, so an `isValid` guard would block
 /// the save step on a perfectly valid form. Guard on "is there anything to
 /// do" and let the step's own action reject bad data.
+///
+/// Two steps is the everyday case — *save-and-close*, *validate-and-submit* —
+/// and it needs nothing beyond this class. Steps may take **different context
+/// types**: [TomCompositeStep]'s type parameter is covariant, so one list
+/// holds a `TomCompositeStep<CtxA>` beside a `TomCompositeStep<CtxB>`, each
+/// pairing its own action with its own builder. Where the two steps are
+/// genuinely *independent* — neither should block the other — pass
+/// `stopOnBlockedStep: false`.
 class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
   /// The steps to execute in order.
   final List<TomCompositeStep> steps;
@@ -125,95 +133,4 @@ class TomCompositeStep<TContext extends TomActionContext> {
     required this.contextBuilder,
     this.guard,
   });
-}
-
-/// Runs two actions in sequence, each with its own context and guard — the
-/// everyday *save-and-close* / *validate-and-submit* shape.
-///
-/// Both halves run **forward**: [first] then [second]. Neither reverses the
-/// other; reversal is [TomActionTransaction]'s job, and both halves record
-/// into the same one.
-///
-/// A **sibling** of [TomCompositeAction], not a specialisation of it. The two
-/// classes both extend [TomAction] directly, neither derives from the other,
-/// and the only code they share is [TomActionTransaction.run]. What this one
-/// adds over a two-step composite is naming — [first] / [second] and their
-/// builders are separate constructor arguments instead of positions in a list
-/// — and independence: the halves never block one another, which a composite
-/// expresses only as `stopOnBlockedStep: false`.
-///
-/// It is **not** needed to give the two sides different context types. A
-/// `List<TomCompositeStep>` holds a `TomCompositeStep<CtxA>` and a
-/// `TomCompositeStep<CtxB>` side by side — the type parameter is covariant,
-/// and each step pairs its own action with its own builder — so a composite
-/// covers that case too.
-class TomDualAction<
-  TCtx1 extends TomActionContext,
-  TCtx2 extends TomActionContext
->
-    extends TomAction<TomActionContext, TomActionUndo> {
-  final TomAction<TCtx1, TomActionUndo> first;
-
-  /// Builds the context for [first]. Called by [canExecute] as well as by
-  /// [execute], so it must build a context without mutating anything.
-  final TCtx1 Function() firstContextBuilder;
-  final bool Function()? firstGuard;
-
-  final TomAction<TCtx2, TomActionUndo> second;
-
-  /// Builds the context for [second]. Called by [canExecute] as well as by
-  /// [execute], so it must build a context without mutating anything.
-  final TCtx2 Function() secondContextBuilder;
-  final bool Function()? secondGuard;
-
-  TomDualAction({
-    required super.actionId,
-    required super.controller,
-    required this.first,
-    required this.firstContextBuilder,
-    this.firstGuard,
-    required this.second,
-    required this.secondContextBuilder,
-    this.secondGuard,
-    super.scope,
-    super.tomGroup,
-  });
-
-  /// Whether [execute] would run either half.
-  ///
-  /// A half runs when its guard passes *and* its own action accepts the
-  /// context it would be given. The two halves are independent — neither can
-  /// block the other — so one being runnable is enough.
-  ///
-  /// [context] is ignored; each half builds its own, so the context builders
-  /// are called here as well as in [execute].
-  @override
-  bool canExecute(TomActionContext context) =>
-      _firstContextIfRunnable() != null || _secondContextIfRunnable() != null;
-
-  /// The context [first] would run with, or `null` if its guard blocks it or
-  /// the action itself refuses. Shared with [execute] so the two agree.
-  TCtx1? _firstContextIfRunnable() {
-    if (firstGuard != null && !firstGuard!()) return null;
-    final ctx = firstContextBuilder();
-    return first.canExecute(ctx) ? ctx : null;
-  }
-
-  /// The context [second] would run with, or `null` if it is blocked.
-  TCtx2? _secondContextIfRunnable() {
-    if (secondGuard != null && !secondGuard!()) return null;
-    final ctx = secondContextBuilder();
-    return second.canExecute(ctx) ? ctx : null;
-  }
-
-  @override
-  TomActionUndo? execute(TomActionContext context, TomActionTransaction tx) {
-    final ctx1 = _firstContextIfRunnable();
-    if (ctx1 != null) tx.run(first, ctx1);
-
-    final ctx2 = _secondContextIfRunnable();
-    if (ctx2 != null) tx.run(second, ctx2);
-
-    return null;
-  }
 }
