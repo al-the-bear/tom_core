@@ -10,6 +10,8 @@
 // auto-resent interrupted prompt during the reconnect protocol.
 library;
 
+import 'agent_yaml.dart';
+
 /// Approval gate for write tool calls.
 enum ToolApprovalMode {
   always('always'),
@@ -85,31 +87,39 @@ final class AgentProfile {
 
   factory AgentProfile.fromYaml(Map<String, dynamic> yaml) => AgentProfile(
     id: yaml['id'] as String,
-    name: yaml['name'] as String? ?? '',
-    description: yaml['description'] as String? ?? '',
-    systemPrompt: yaml['systemPrompt'] as String? ?? '',
-    configurationId: yaml['configurationId'] as String?,
-    toolsEnabled: yaml['toolsEnabled'] as bool?,
-    enabledTools: (yaml['enabledTools'] as List?)?.whereType<String>().toList(),
-    maxRounds: yaml['maxRounds'] as int?,
-    historyMode: yaml['historyMode'] as String?,
-    maxTokens: yaml['maxTokens'] as int?,
-    retryMaxTotalWaitMinutes: yaml['retryMaxTotalWaitMinutes'] as int?,
-    isDefault: yaml['isDefault'] as bool?,
-    thinkingEnabled: yaml['thinkingEnabled'] as bool?,
-    thinkingBudgetTokens: yaml['thinkingBudgetTokens'] as int?,
-    promptCachingEnabled: yaml['promptCachingEnabled'] as bool?,
-    toolApprovalMode: yaml['toolApprovalMode'] == null
-        ? null
-        : ToolApprovalMode.fromValue(yaml['toolApprovalMode'] as String?),
-    useBuiltInTools: yaml['useBuiltInTools'] as bool?,
-    allowInteractiveQuestions: yaml['allowInteractiveQuestions'] as bool?,
-    interactiveQuestionsTemplateId:
-        yaml['interactiveQuestionsTemplateId'] as String?,
-    autoInjectMemory: yaml['autoInjectMemory'] as bool?,
-    userPromptWrapper: yaml['userPromptWrapper'] as String?,
+    name: yamlValue<String>(yaml, 'name') ?? '',
+    description: yamlValue<String>(yaml, 'description') ?? '',
+    systemPrompt: yamlValue<String>(yaml, 'systemPrompt') ?? '',
+    configurationId: yamlValue<String>(yaml, 'configurationId'),
+    toolsEnabled: yamlValue<bool>(yaml, 'toolsEnabled'),
+    enabledTools: yamlStringList(yaml, 'enabledTools'),
+    maxRounds: yamlValue<int>(yaml, 'maxRounds'),
+    historyMode: yamlValue<String>(yaml, 'historyMode'),
+    maxTokens: yamlValue<int>(yaml, 'maxTokens'),
+    retryMaxTotalWaitMinutes: yamlValue<int>(yaml, 'retryMaxTotalWaitMinutes'),
+    isDefault: yamlValue<bool>(yaml, 'isDefault'),
+    thinkingEnabled: yamlValue<bool>(yaml, 'thinkingEnabled'),
+    thinkingBudgetTokens: yamlValue<int>(yaml, 'thinkingBudgetTokens'),
+    promptCachingEnabled: yamlValue<bool>(yaml, 'promptCachingEnabled'),
+    toolApprovalMode: yamlEnum(
+      yaml,
+      'toolApprovalMode',
+      ToolApprovalMode.fromValue,
+    ),
+    useBuiltInTools: yamlValue<bool>(yaml, 'useBuiltInTools'),
+    allowInteractiveQuestions: yamlValue<bool>(
+      yaml,
+      'allowInteractiveQuestions',
+    ),
+    interactiveQuestionsTemplateId: yamlValue<String>(
+      yaml,
+      'interactiveQuestionsTemplateId',
+    ),
+    autoInjectMemory: yamlValue<bool>(yaml, 'autoInjectMemory'),
+    userPromptWrapper: yamlValue<String>(yaml, 'userPromptWrapper'),
     interruptRetryPrefix:
-        yaml['interruptRetryPrefix'] as String? ?? defaultInterruptRetryPrefix,
+        yamlValue<String>(yaml, 'interruptRetryPrefix') ??
+        defaultInterruptRetryPrefix,
   );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{

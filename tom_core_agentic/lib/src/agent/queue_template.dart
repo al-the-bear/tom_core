@@ -7,6 +7,8 @@
 // saves/loads these as `*.template.queue.yaml`.
 library;
 
+import 'agent_yaml.dart';
+
 /// A named, ordered set of prompt bodies identified by [id].
 final class QueueTemplate {
   const QueueTemplate({
@@ -25,16 +27,11 @@ final class QueueTemplate {
   /// authored with the canonical placeholder forms and resolved at send time.
   final List<String> prompts;
 
-  factory QueueTemplate.fromYaml(Map<String, dynamic> yaml) {
-    final raw = yaml['prompts'];
-    return QueueTemplate(
-      id: yaml['id'] as String,
-      name: yaml['name'] as String? ?? '',
-      prompts: raw is List
-          ? <String>[for (final p in raw) '$p']
-          : const <String>[],
-    );
-  }
+  factory QueueTemplate.fromYaml(Map<String, dynamic> yaml) => QueueTemplate(
+    id: yaml['id'] as String,
+    name: yamlValue<String>(yaml, 'name') ?? '',
+    prompts: yamlStringList(yaml, 'prompts') ?? const <String>[],
+  );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
     'id': id,

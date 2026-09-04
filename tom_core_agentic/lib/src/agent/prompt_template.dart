@@ -8,6 +8,8 @@
 // late-bound built-ins (`date`/`time`) reflect the moment of send.
 library;
 
+import 'agent_yaml.dart';
+
 /// A reusable prompt body identified by [id].
 final class PromptTemplate {
   const PromptTemplate({
@@ -32,9 +34,9 @@ final class PromptTemplate {
 
   factory PromptTemplate.fromYaml(Map<String, dynamic> yaml) => PromptTemplate(
     id: yaml['id'] as String,
-    name: yaml['name'] as String? ?? '',
-    body: yaml['body'] as String? ?? '',
-    isUserMessage: yaml['isUserMessage'] as bool? ?? false,
+    name: yamlValue<String>(yaml, 'name') ?? '',
+    body: yamlValue<String>(yaml, 'body') ?? '',
+    isUserMessage: yamlValue<bool>(yaml, 'isUserMessage') ?? false,
   );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{

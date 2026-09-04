@@ -7,6 +7,7 @@
 library;
 
 import 'agent_profile.dart';
+import 'agent_yaml.dart';
 import 'bridge_connection.dart';
 
 /// Global agent settings: bridge target + the `Options` defaults.
@@ -55,17 +56,19 @@ final class AgentSettings {
   final ToolApprovalMode? toolApprovalMode;
 
   factory AgentSettings.fromYaml(Map<String, dynamic> yaml) => AgentSettings(
-    bridgeHost: yaml['bridgeHost'] as String? ?? defaultBridgeHost,
-    portScanStart: yaml['portScanStart'] as int? ?? bridgeScanMinPort,
-    portScanEnd: yaml['portScanEnd'] as int? ?? bridgeScanMaxPort,
-    defaultProfileId: yaml['defaultProfileId'] as String?,
-    maxTokens: yaml['maxTokens'] as int?,
-    maxRounds: yaml['maxRounds'] as int?,
-    thinkingEnabled: yaml['thinkingEnabled'] as bool?,
-    promptCachingEnabled: yaml['promptCachingEnabled'] as bool?,
-    toolApprovalMode: yaml['toolApprovalMode'] == null
-        ? null
-        : ToolApprovalMode.fromValue(yaml['toolApprovalMode'] as String?),
+    bridgeHost: yamlValue<String>(yaml, 'bridgeHost') ?? defaultBridgeHost,
+    portScanStart: yamlValue<int>(yaml, 'portScanStart') ?? bridgeScanMinPort,
+    portScanEnd: yamlValue<int>(yaml, 'portScanEnd') ?? bridgeScanMaxPort,
+    defaultProfileId: yamlValue<String>(yaml, 'defaultProfileId'),
+    maxTokens: yamlValue<int>(yaml, 'maxTokens'),
+    maxRounds: yamlValue<int>(yaml, 'maxRounds'),
+    thinkingEnabled: yamlValue<bool>(yaml, 'thinkingEnabled'),
+    promptCachingEnabled: yamlValue<bool>(yaml, 'promptCachingEnabled'),
+    toolApprovalMode: yamlEnum(
+      yaml,
+      'toolApprovalMode',
+      ToolApprovalMode.fromValue,
+    ),
   );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{

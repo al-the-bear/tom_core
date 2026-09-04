@@ -7,6 +7,8 @@
 // body is stored verbatim here; the editor renders / fills it elsewhere.
 library;
 
+import 'agent_yaml.dart';
+
 /// A reusable reminder body identified by [id].
 final class ReminderTemplate {
   const ReminderTemplate({
@@ -32,9 +34,9 @@ final class ReminderTemplate {
   factory ReminderTemplate.fromYaml(Map<String, dynamic> yaml) =>
       ReminderTemplate(
         id: yaml['id'] as String,
-        name: yaml['name'] as String? ?? '',
-        prompt: yaml['prompt'] as String? ?? '',
-        isDefault: yaml['isDefault'] as bool? ?? false,
+        name: yamlValue<String>(yaml, 'name') ?? '',
+        prompt: yamlValue<String>(yaml, 'prompt') ?? '',
+        isDefault: yamlValue<bool>(yaml, 'isDefault') ?? false,
       );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{

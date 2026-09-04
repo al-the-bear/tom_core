@@ -49,6 +49,52 @@ Object? deepPlainYaml(Object? node) {
   return node;
 }
 
+/// Reads [key] from [yaml] when it holds a [T], and `null` when it does not —
+/// whether the key is absent or present with the wrong type.
+///
+/// This is the leaf counterpart to [decodeAgentYamlEntries], and it exists for
+/// the same reason: a persisted file is untrusted input. A cast
+/// (`yaml['name'] as String?`) answers only the absent case; a hand-edit that
+/// leaves `name: 7` behind throws instead, which costs the reader the whole
+/// entry. Type-testing collapses the two into one answer — the field is
+/// unusable, so it reads as unset — and a field that already carries a default
+/// is worth exactly that default, not the entry around it.
+///
+/// Deliberately *not* for identity fields. An entry whose id cannot be read
+/// cannot be addressed, updated or deleted, so there is nothing to salvage;
+/// those stay unguarded casts so [decodeAgentYamlEntries] drops the entry.
+T? yamlValue<T>(Map<String, dynamic> yaml, String key) {
+  final value = yaml[key];
+  return value is T ? value : null;
+}
+
+/// Reads [key] as a list of strings, keeping the elements that are strings, or
+/// `null` when [key] does not hold a list.
+///
+/// Damage costs the *element* here, matching how [decodeAgentYamlEntries]
+/// treats a list of mappings.
+List<String>? yamlStringList(Map<String, dynamic> yaml, String key) {
+  final node = yaml[key];
+  if (node is! List) return null;
+  return node.whereType<String>().toList();
+}
+
+/// Reads [key] as a string and maps it through [fromValue], or `null` when
+/// [key] holds no string.
+///
+/// Keeps "absent" distinct from "present but unrecognised": an absent key is
+/// `null`, while a string the enum does not know falls back inside [fromValue].
+/// Callers that want the fallback for both cases can call [fromValue] on
+/// [yamlValue] directly.
+T? yamlEnum<T>(
+  Map<String, dynamic> yaml,
+  String key,
+  T Function(String?) fromValue,
+) {
+  final value = yamlValue<String>(yaml, key);
+  return value == null ? null : fromValue(value);
+}
+
 /// Builds models from the YAML list [node], skipping the elements it cannot
 /// build, or returns `null` when [node] is not a list at all.
 ///
@@ -77,13 +123,15 @@ List<T>? decodeAgentYamlEntries<T>(
     try {
       models.add(fromYaml(element.cast<String, dynamic>()));
     } on TypeError {
-      // The backstop for shape damage below the identity: a field the model
-      // reads through a cast, holding the wrong type. Catching an `Error` is
-      // justified by how narrow this is — it wraps a single call whose only
-      // input is untrusted file content, so a failed cast inside it is a fault
-      // in the file, not a bug in this package. It is also what keeps the
-      // guarantee true for fields added later, which enumerating today's casts
-      // one by one would not.
+      // The last resort for shape damage below the identity: a field the model
+      // reads through a cast, holding the wrong type. Fields that carry a
+      // default read through [yamlValue] and never reach here — what does is a
+      // field the entry cannot be built without, and losing the entry is the
+      // only answer left. Catching an `Error` is justified by how narrow this
+      // is: it wraps a single call whose only input is untrusted file content,
+      // so a failed cast inside it is a fault in the file, not a bug in this
+      // package. It is also what keeps the guarantee true for fields added
+      // later, which enumerating today's casts one by one would not.
       continue;
     }
   }

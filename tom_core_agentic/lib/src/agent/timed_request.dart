@@ -49,8 +49,8 @@ final class ScheduledTime {
   final String? date;
 
   factory ScheduledTime.fromYaml(Map<String, dynamic> yaml) => ScheduledTime(
-    time: yaml['time'] as String? ?? '00:00',
-    date: yaml['date'] as String?,
+    time: yamlValue<String>(yaml, 'time') ?? '00:00',
+    date: yamlValue<String>(yaml, 'date'),
   );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
@@ -111,22 +111,24 @@ final class TimedRequest {
   /// at compile time; coercing the key is about the ones it cannot.
   factory TimedRequest.fromYaml(Map<String, dynamic> yaml) => TimedRequest(
     id: yaml['id'] as String,
-    enabled: yaml['enabled'] as bool? ?? true,
-    template: yaml['template'] as String? ?? '(None)',
-    answerWrapper: yaml['answerWrapper'] as bool?,
-    originalText: yaml['originalText'] as String? ?? '',
-    scheduleMode: ScheduleMode.fromValue(yaml['scheduleMode'] as String?),
-    intervalMinutes: yaml['intervalMinutes'] as int?,
+    enabled: yamlValue<bool>(yaml, 'enabled') ?? true,
+    template: yamlValue<String>(yaml, 'template') ?? '(None)',
+    answerWrapper: yamlValue<bool>(yaml, 'answerWrapper'),
+    originalText: yamlValue<String>(yaml, 'originalText') ?? '',
+    scheduleMode: ScheduleMode.fromValue(
+      yamlValue<String>(yaml, 'scheduleMode'),
+    ),
+    intervalMinutes: yamlValue<int>(yaml, 'intervalMinutes'),
     scheduledTimes: decodeAgentYamlEntries(
       yaml['scheduledTimes'],
       ScheduledTime.fromYaml,
     ),
-    reminderEnabled: yaml['reminderEnabled'] as bool?,
-    reminderTemplateId: yaml['reminderTemplateId'] as String?,
-    reminderTimeoutMinutes: yaml['reminderTimeoutMinutes'] as int?,
-    reminderRepeat: yaml['reminderRepeat'] as bool?,
-    lastSentAt: yaml['lastSentAt'] as String?,
-    status: TimedRequestStatus.fromValue(yaml['status'] as String?),
+    reminderEnabled: yamlValue<bool>(yaml, 'reminderEnabled'),
+    reminderTemplateId: yamlValue<String>(yaml, 'reminderTemplateId'),
+    reminderTimeoutMinutes: yamlValue<int>(yaml, 'reminderTimeoutMinutes'),
+    reminderRepeat: yamlValue<bool>(yaml, 'reminderRepeat'),
+    lastSentAt: yamlValue<String>(yaml, 'lastSentAt'),
+    status: TimedRequestStatus.fromValue(yamlValue<String>(yaml, 'status')),
   );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{

@@ -10,6 +10,8 @@
 // can render them read-only; custom variables are authored and persisted.
 library;
 
+import 'agent_yaml.dart';
+
 /// A single placeholder binding identified by its [name].
 final class ChatVariable {
   const ChatVariable({
@@ -35,9 +37,9 @@ final class ChatVariable {
 
   factory ChatVariable.fromYaml(Map<String, dynamic> yaml) => ChatVariable(
     name: yaml['name'] as String,
-    value: yaml['value'] as String? ?? '',
-    description: yaml['description'] as String? ?? '',
-    builtIn: yaml['builtIn'] as bool? ?? false,
+    value: yamlValue<String>(yaml, 'value') ?? '',
+    description: yamlValue<String>(yaml, 'description') ?? '',
+    builtIn: yamlValue<bool>(yaml, 'builtIn') ?? false,
   );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{

@@ -7,6 +7,8 @@
 // the SDK result. Persisted as YAML in the spec workspace.
 library;
 
+import 'agent_yaml.dart';
+
 /// Who authored a chat message.
 enum ChatRole {
   user('user'),
@@ -48,11 +50,11 @@ final class ChatMessage {
 
   factory ChatMessage.fromYaml(Map<String, dynamic> yaml) => ChatMessage(
     id: yaml['id'] as String,
-    role: ChatRole.fromValue(yaml['role'] as String?),
-    text: yaml['text'] as String? ?? '',
-    createdAt: yaml['createdAt'] as String? ?? '',
-    toolName: yaml['toolName'] as String?,
-    toolCallId: yaml['toolCallId'] as String?,
+    role: ChatRole.fromValue(yamlValue<String>(yaml, 'role')),
+    text: yamlValue<String>(yaml, 'text') ?? '',
+    createdAt: yamlValue<String>(yaml, 'createdAt') ?? '',
+    toolName: yamlValue<String>(yaml, 'toolName'),
+    toolCallId: yamlValue<String>(yaml, 'toolCallId'),
   );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{
@@ -101,13 +103,13 @@ final class TrailPair {
     answer: yaml['answer'] is Map
         ? ChatMessage.fromYaml((yaml['answer'] as Map).cast<String, dynamic>())
         : null,
-    createdAt: yaml['createdAt'] as String? ?? '',
-    summaryMarkdown: yaml['summaryMarkdown'] as String?,
-    providerId: yaml['providerId'] as String?,
-    modelId: yaml['modelId'] as String?,
-    tokensIn: yaml['tokensIn'] as int?,
-    tokensOut: yaml['tokensOut'] as int?,
-    costUsd: (yaml['costUsd'] as num?)?.toDouble(),
+    createdAt: yamlValue<String>(yaml, 'createdAt') ?? '',
+    summaryMarkdown: yamlValue<String>(yaml, 'summaryMarkdown'),
+    providerId: yamlValue<String>(yaml, 'providerId'),
+    modelId: yamlValue<String>(yaml, 'modelId'),
+    tokensIn: yamlValue<int>(yaml, 'tokensIn'),
+    tokensOut: yamlValue<int>(yaml, 'tokensOut'),
+    costUsd: yamlValue<num>(yaml, 'costUsd')?.toDouble(),
   );
 
   Map<String, dynamic> toYaml() => <String, dynamic>{

@@ -31,6 +31,36 @@
 
 ### Fixed
 
+- **A mis-typed optional field cost the whole agent entry.** The nine models in
+  `agent/` read their optional fields through 123 nullable casts of the shape
+  `yaml['name'] as String? ?? ''`. That shape answers an *absent* field — it
+  defaults — and not a field that is *present* holding the wrong type:
+  `name: 7` is not a `String?`, so the cast threw. `decodeAgentYamlEntries`
+  caught the `TypeError`, so nothing escaped, but the entry was dropped in
+  full — a profile whose `description` was a number lost its prompt, its model,
+  its tool list and its id, when defaulting `description` to `''` would have
+  cost the user nothing they notice.
+  Three leaf readers in `agent/agent_yaml.dart` replace the idiom at every one
+  of those sites: `yamlValue<T>` (type-tests rather than casts, so absent and
+  unusable give the same answer), `yamlStringList` (keeps the elements that are
+  strings) and `yamlEnum` (absent stays `null`; an unrecognised string falls
+  back inside the enum's own `fromValue`). Damage below the identity now costs
+  the *field*, at its documented default.
+  The identity fields are deliberately untouched and still cast: an entry whose
+  `id` — or a `ChatVariable`'s `name`, or a `TrailPair`'s `request` — cannot be
+  read cannot be addressed, updated or deleted, so there is nothing to salvage,
+  and `decodeAgentYamlEntries`'s `on TypeError` remains the last resort that
+  drops it. `test/sidecar_shape_damage_test.dart` asserts both halves.
+  Two models gain the guarantee they never had, because neither is read through
+  a list store and so nothing was catching for them: `AgentSettings`, where an
+  all-or-nothing read reset every option the user set because one was
+  unreadable, and `ReminderTemplate`, whose `fromYaml` propagated the `TypeError`
+  to its caller.
+  `QueueTemplate.prompts` changes shape with them: it stringified whatever the
+  list held (`- 7` became `'7'`) and now keeps the strings and drops the rest,
+  matching `AgentProfile.enabledTools` and the nested-list rule everywhere else
+  in the package.
+
 - **`isSimpleIdentifier` was documented as the simple form's grammar. The
   simple form has no grammar.** Three texts called it "the shape the simple
   `${name}` fast path accepts". Nothing in this package applies it: the scanner
