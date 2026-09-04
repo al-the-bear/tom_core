@@ -498,7 +498,7 @@ All accept `gap: double` (default 0).
 
 ---
 
-## 11. Row Cross-Alignment (per-component vertical baseline)
+## 11. Row Cross-Alignment (per-component vertical placement)
 
 When `alignYToKey` is **not** set, a component's vertical position within the row is controlled by its `rowCrossAlignment`. This is the standard Flutter Row cross-axis alignment applied per component, and it is settable at three scopes:
 
@@ -1916,7 +1916,7 @@ The Tom Forms Framework renders each field as a vertical anatomy column (label �
 
 Rules of thumb:
 
-1. **Pick a sensible row alignment.** The current default for every new `AclBuilder` / `TomAclBuilder` is `AclRowCrossAlignment.top` (§11). That keeps every field anchored to the row's top edge, so a tall field with an error does **not** pull its neighbours down. Setting `setAclDefaultRowAlignment(AclRowCrossAlignment.center)` is specifically the case that "breaks" — neighbours drift when the row grows. Leave the default unless you really want a centred baseline.
+1. **Pick a sensible row alignment.** The current default for every new `AclBuilder` / `TomAclBuilder` is `AclRowCrossAlignment.top` (§11). That keeps every field anchored to the row's top edge, so a tall field with an error does **not** pull its neighbours down. Setting `setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)` is specifically the case that "breaks" — neighbours drift when the row grows. Leave the default unless you really want every field centred on the row's vertical middle.
 2. **Expand one column or all of them — don't mix.** `setAclExpandXDefault(true)` makes every appended field grow to share the available width. Two-per-row layouts (`email + phone`) want this so both fields have the same width; otherwise use explicit `setPSize` / `setPWidthInChars` and keep widths consistent per semantic column.
 3. **Lock widths across rows with `sameWidthAs`.** When you need a "dropdown column" and a "text column" to line up across rows, drop an anchor component on the first row and reference it from subsequent rows — e.g. `.append(firstField).setAclId('nameCol')` then later `.append(other).sameWidthAs('nameCol')`.
 4. **Use `appendForm` / `append` uniformly.** Both delegate to the same `AclBuilder.append`. Pick one for legibility; mixing them in the same layout hides intent.

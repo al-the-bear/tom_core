@@ -2289,7 +2289,7 @@ class _AclContainerState extends State<AclContainer> {
     // crossAxisAlignment — which in turn comes from
     // row.defaultRowCrossAlignment (top / center / bottom). Adjust the
     // virtual rect Y by that default offset so the delta reflects a
-    // shift from the component's rendered baseline position, not from
+    // shift from the component's rendered position, not from
     // an artificial top=0 or a hardcoded centering assumption.
     final hasRowExpandY = row.components.any((c) => !c.isGap && c.expandY);
     // Per-component rowCrossAlignment lookup: only meaningful when the

@@ -25,6 +25,34 @@
 
 ### Documentation
 
+- **ACL row cross-alignment is described by the edges it actually uses, not as
+  a "baseline".** An ACL row aligns its components to the row's top, middle or
+  bottom **edge**: `AclRowCrossAlignment.{top, center, bottom}` resolves to
+  `CrossAxisAlignment.{start, center, end}` and never to
+  `CrossAxisAlignment.baseline`, which would need a `TextBaseline` the engine
+  never supplies. Four places said "baseline" anyway — including the §11
+  heading of `doc/acl_design_specification.md`, which is where a reader goes to
+  learn what the enum means. Calling edge alignment a baseline invites the
+  reader to expect text to line up across fields of different font sizes, which
+  it does not.
+
+  The heading is now "Row Cross-Alignment (per-component vertical placement)",
+  wording taken from the enum's own dartdoc so the specification and the source
+  say the same thing. The section **number** is untouched: nineteen `§NN`
+  citations in `lib/` resolve by number, and `acl_shipped_text_test.dart` pins
+  them by number as well.
+
+  The same repair corrected a snippet that would not compile: the layout
+  rules-of-thumb told the reader to call `setAclDefaultRowAlignment(...)`, a
+  method that exists nowhere in the framework. The builder's method is
+  `setAclDefaultRowVerticalAlignment`, which is what all twenty-five call sites
+  in the two test harnesses use.
+
+  Genuine baselines are left alone — `TomBaseline`, `textBaseline` and
+  `_kBaselineDescentAdjust` are Flutter's text baseline, and the forms
+  framework's `commitBaselines` is a saved-state reference point. Three
+  meanings of one word, and only the alignment one was wrong.
+
 - **Work-item ids are now caught by their shape rather than by a list of
   prefixes, and the ids they were letting through are gone.** A comment naming
   `RCA5`, `CSEXF1` or `tcca17` points at a row in a quest document that ships

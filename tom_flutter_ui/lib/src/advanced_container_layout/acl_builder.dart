@@ -936,7 +936,8 @@ class AclBuilder {
   ///
   /// The factory default is [AclRowCrossAlignment.top] — chosen so that
   /// fields whose height grows (e.g. when an error message appears
-  /// below the input) do not drag their neighbours off the baseline.
+  /// below the input) do not drag their neighbours down off the row's
+  /// top edge.
   AclBuilder setAclDefaultRowVerticalAlignment(AclRowCrossAlignment alignment) {
     _defaultRowVerticalAlignment = alignment;
     // Retroactively apply to rows and components that haven't set their
