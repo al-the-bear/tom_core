@@ -197,6 +197,7 @@ reports and never gates.
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
+| [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
@@ -274,6 +275,33 @@ no longer exist, files on disk the table omits, and opening claims that
 disagree with the directory. `--fix` writes the measurements back; the two
 faults it leaves alone are adding and retiring rows, because each needs a
 sentence saying what the file carries.
+
+```bash
+python3 tool/check_doc_dependencies.py                  # every package document
+python3 tool/check_doc_dependencies.py tom_core_samples # one prefix
+```
+
+A package document's Dependencies section tells a reader what the package is
+wired to, and it is written once and never revisited. Measured against the
+pubspecs, eleven of these sections existed and seven were incomplete, with 28
+declared entries missing between them and four further package documents
+carrying no section at all. The omissions all fell the same way: every one was a
+*build-time* entry (`build`, `build_runner`, `tom_reflection_generator`, `lints`,
+`test`, `flutter_test`, `flutter_lints`) and the runtime half was in every case
+complete. That is the worst half to drop, because it is exactly what a reader
+needs in order to reproduce a generated file — a section listing what a package
+links and omitting what built it reads as finished and answers the wrong
+question.
+
+The check requires each declared name to appear as a whole inline code span, so
+`build.yaml` is not evidence for `build` and `tom_reflection` is not evidence for
+`tom_reflection_generator`. It is one-directional on purpose: a name in the
+section that the pubspec does not declare is not a fault, because these sections
+earn much of their value from naming what is *absent* — no Flutter, no
+`tom_core_server`, `tom_reflection` arriving transitively through the kernel.
+A document is audited when its opening inventory resolves to a directory with a
+`pubspec.yaml`, the same rule `check_doc_inventories.py` uses, so module
+documents are skipped rather than faulted.
 
 ```bash
 python3 tool/check_doc_error_keys.py                 # every "Error keys" section

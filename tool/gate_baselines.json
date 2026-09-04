@@ -28,6 +28,11 @@
       "measured": "2026-09-03",
       "note": "Lands at zero because the 14 faults it was written for were repaired in the same pass, across 11 tom_core_kernel documents. Zero here does not mean the tree is clean: only tom_core_kernel is in PACKAGES, and doc/api_reference/ is excluded within it. tom_core_server reports 19 when run with its name as an argument, tom_flutter_ui and tom_core_flutter have not been surveyed -- see tcextension7_aico-doc-dart-blocks-other-packages."
     },
+    "check_doc_dependencies": {
+      "faults": 0,
+      "measured": "2026-09-04",
+      "note": "Lands at zero because the 28 faults it was written for were repaired in the same pass. Eleven of the 15 package completion documents carried a Dependencies section and seven of those were incomplete; the four remaining package documents (advanced_app_server, advanced_auth_server, advanced_ops_server, core_server_sample) had no section at all and were written, so a missing section is a NOSECTION fault rather than a skip -- a gate you can pass by deleting the section is not a gate. Every one of the 28 omissions was a build-time entry (build, build_runner, tom_reflection_generator, lints, test, flutter_test, flutter_lints) while the runtime half was complete in every case. Module documents are skipped: a document is audited only when its opening inventory resolves to a directory carrying a pubspec.yaml."
+    },
     "check_doc_error_keys": {
       "faults": 1,
       "measured": "2026-09-03",
@@ -83,7 +88,7 @@
     "check_section_refs": {
       "faults": 101,
       "measured": "2026-09-04",
-      "note": "101 bare section references in shipped lib/, test/ and example/ code -- '\u00a77.2', 'tests \u00a727', 'Phase 2a \u00a716' -- indexing quest plans that ship with neither the package nor its tests, so a reader of the shipped artefact cannot resolve them. The five tom_core packages are now at zero; what remains is 43 in tom_flutter_ui, 32 in tom_flutter_form_test, 16 in tom_flutter_ui_test and 5 in tom_core_codespecs -- see tcextension11_aidb."
+      "note": "101 bare section references in shipped lib/, test/ and example/ code -- '§7.2', 'tests §27', 'Phase 2a §16' -- indexing quest plans that ship with neither the package nor its tests, so a reader of the shipped artefact cannot resolve them. The five tom_core packages are now at zero; what remains is 43 in tom_flutter_ui, 32 in tom_flutter_form_test, 16 in tom_flutter_ui_test and 5 in tom_core_codespecs -- see tcextension11_aidb."
     },
     "check_source_citations": {
       "faults": 0,
