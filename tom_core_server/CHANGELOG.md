@@ -7363,6 +7363,101 @@
   place watches a short-lived token's principal go from hit to expiry with no
   interval of its own in between.
 
+- **A read that rejects an expired entry also removes it, so the second read of
+  the same dead token is a miss (tcinc391).** `getPrincipal` reported the expiry
+  and left the dead row in the map, so every request bearing that token repeated
+  the lookup, the throw and the stack until the hourly sweep happened to come
+  round. The rejecting frame holds the map and the key and has just established
+  the entry is dead, so it is the cheapest place there is to remove it.
+
+  What a caller sees changes only on the second read, and only for the better: a
+  caller that wants to know a session died still learns it, from the first
+  exception, while a caller retrying with the dead token is told there is
+  nothing there — which is by then the truth. Anything that reads twice and
+  expected `expired_principal` both times gets `expired_principal` and then
+  `null`.
+
+  It also decides the map's high-water mark, which is the half that does not
+  show up in one request's behaviour: one entry per live session with the
+  removal, one per successful login per sweep interval without it. Read and
+  sweep now cover the map between them — the read sheds the dead tokens somebody
+  presents, the sweep sheds the ones nobody comes back for.
+
+- **`TomAuthorizationCache` has a sweep lifecycle and a shutdown contract, and
+  its constructor is private (tcinc389).** New public surface: `instance`,
+  `startEviction({interval})`, `stopEviction()`, `isEvicting`,
+  `evictionInterval`, and `dispose()` by way of `TomDisposable`. Gone: the
+  public unnamed constructor.
+
+  The constructor started a one-hour periodic timer, kept no reference to it,
+  and the class offered no way to stop it. Two things followed. The timer held
+  the isolate open for the life of the process, so the module's own example had
+  to end in `exit(0)` and said so in a comment — a workaround for a lifecycle
+  the type did not offer, and one a server wanting an orderly shutdown has no
+  equivalent of. And the constructor was public while the only instance the
+  static API touches is the singleton, so any caller writing
+  `TomAuthorizationCache()` got a second uncancellable timer sweeping a map
+  nothing could ever populate.
+
+  `tomShutdownCleanup.addDisposable(TomAuthorizationCache.instance)` now stops
+  the sweep and drops the cached principals together — the same
+  explicit-registration seam the rest of the module already uses, since
+  `TomResourceDataScope` has `install`/`uninstall`/`isInstalled`, rather than a
+  new one. `dispose()` is synchronous, as `TomDisposable` requires: the cleanup
+  discards a returned future rather than awaiting it, and cancelling a timer
+  needs nothing more.
+
+  The sweep starts with the first principal `storePrincipal` caches rather than
+  with the first touch of the singleton. It exists to bound the map, so it runs
+  from the moment there is something in it to bound, and a process that only
+  ever reads the cache never starts a timer at all. `startEviction` replaces a
+  running sweep instead of orphaning it, which is what makes "a sweep is running
+  at this interval" true whenever it returns; the automatic start is a separate
+  path so it cannot silently reset an interval a server or a test chose
+  deliberately.
+
+  The timer is created in `Zone.root` whichever path starts it. The caller that
+  happens to store the first principal is normally a single request — the
+  endpoint pipeline runs each one in its own zone to carry the principal — and
+  process-lifetime work parented there answers to that request's error handling
+  and teardown long after the request is gone, with the first arrival deciding
+  the zone. Root rather than a zone the server installs at boot, because the
+  sweep wants nothing a zone can give it: it walks a plain map, needs no
+  principal and no transaction, and a failure in it belongs to the process.
+
+- **`storePrincipal` refuses a token whose `validUntil` claim is unreadable
+  instead of caching under an invented expiry (db8e5f22).** A call that used to
+  succeed now throws `TomAuthorizationCacheException`, and nothing is cached;
+  the caller keeps resolving the principal per request.
+
+  The expiry came from a bare `DateTime.parse(payload["validUntil"])`. The
+  subscript is a dynamic map read, so a token omitting the claim passed `null`
+  into a `String` parameter and failed with a `TypeError`, and a non-ISO value
+  failed with a `FormatException`. Either way the failure surfaced from inside a
+  cache write naming neither the claim nor the token that caused it — and the
+  token comes from a client, so this is a boundary rather than internal data.
+
+  Two keys, because the conditions call for different reading:
+  `tomclient.authorization_cache.missing_valid_until` when the claim is absent
+  or not a string, and `tomclient.authorization_cache.invalid_valid_until` when
+  it is a string that is not an ISO 8601 instant. Each carries the claim name,
+  the value seen and a token excerpt in `parameters`, so the diagnosis does not
+  depend on the stack.
+
+  There is deliberately no fallback lifetime. The entry's lifetime *is* the
+  token's — that is the whole reason the claim is read — so a default invented
+  here would keep a principal cached after the token authorizing it had expired,
+  and every later request bearing that token would be served from the cache
+  instead of being re-authorized. A fallback trades a loud failure for a quiet
+  authorization hole. The `TomAuthorizationCacheEntry` constructor's one-day
+  default was the other door into that same hole, and is required now for the
+  same reason (tcinc392).
+
+  Off the main isolate the refusal only means anything because
+  `TomAuthorizationCacheExecutor` returns the store's future rather than
+  discarding it, as the retrieve branch always did: a worker storing a malformed
+  token used to read success for a store the creator had refused.
+
 - **`TomAuditPolicy.disabled` is removed (tcinc352).** The constant was public
   and documented, and nothing built a policy from it: the reflector's
   `policyFor` resolves `@TomAudited(enabled: false)` through
