@@ -1259,8 +1259,8 @@ void main() {
       expect(build().scheduleExpression, isNull);
     });
 
-    // The one CE-RP target that stays an open id string: §5.23's locus rule
-    // bars a server-owned definition from citing a client-owned route, so the
+    // The one CE-RP target that stays an open id string: the locus rule bars
+    // a server-owned definition from citing a client-owned route, so the
     // compile-time edge is unavailable and check 18 replaces it.
     test('the drill-through target stays an open route id string', () {
       final column = build(drillThroughRouteId: 'orderDetail').columns.single;

@@ -1,6 +1,6 @@
 /// Unit tests for `reorderedSelectionIndex` — the pure post-reorder
 /// selection-shift arithmetic behind `customer_hd_panes.dart`'s
-/// `_trackSelection` (review finding tests §62).
+/// `_trackSelection`.
 ///
 /// `_trackSelection` keeps a user's pinned master-pane row tracking whichever
 /// index a dragged row landed on after a drag-reorder. Its only non-trivial

@@ -10,7 +10,7 @@ import '../panels/info_panel.dart';
 import '../state/phase2a_state.dart';
 
 // ---------------------------------------------------------------------------
-// Demo H-B — Expandable Rows (Order Items)  [Phase 2a §16]
+// Demo H-B — Expandable Rows (Order Items)
 // ---------------------------------------------------------------------------
 
 /// Exercises `tom_flutter_ui`'s `TomListForm` rendered as one `ExpansionTile`
@@ -21,7 +21,7 @@ import '../state/phase2a_state.dart';
 /// total); expanded state reveals the editable sub-form, including the
 /// type-ahead Product picker that auto-fills the unit price.
 ///
-/// Behaviours wired in for spec §16:
+/// Behaviours wired in:
 ///
 /// * Single-row exclusive expansion: opening one row collapses the
 ///   currently-open row.
@@ -469,8 +469,8 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
   /// (including, in [TomExpansionPolicy.singleOpen], the
   /// previously-open row when a sibling is being opened). When the row
   /// is about to *close* we run validation and refuse the close if
-  /// errors exist — that's the "validate-before-switch" gate from
-  /// spec §16. Opens are always allowed.
+  /// errors exist — the "validate-before-switch" gate. Opens are
+  /// always allowed.
   Future<bool> _onBeforeRowExpansionChange(
     int index,
     OrderItemForm form,

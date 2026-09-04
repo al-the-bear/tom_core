@@ -1,8 +1,6 @@
-/// Unit coverage for the locale layer (`lib/locale_settings.dart`) — review
-/// tests finding §28.
+/// Unit coverage for the locale layer (`lib/locale_settings.dart`).
 ///
-/// Before this suite the locale layer had **zero** coverage. The non-trivial
-/// edges that "silently regress" are pinned here:
+/// The non-trivial edges — the ones that regress silently — are pinned here:
 ///
 ///  - `AppLocales.find()` — the three-tier fallback
 ///    (exact language+country → language-only → first supported), with a case

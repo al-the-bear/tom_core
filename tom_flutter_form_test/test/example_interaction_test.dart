@@ -1,23 +1,22 @@
-/// Interaction tests for the H-series *example* screens (review finding
-/// tests §63).
+/// Interaction tests for the H-series *example* screens
+/// (`lib/examples/example_h_*.dart`).
 ///
-/// The example screens (`lib/examples/example_h_*.dart`) were covered only
-/// by `example_smoke_test.dart` (mount + static-text assertions) and the
-/// mount-only `example_screenshot_test.dart`. Neither drives any
-/// interaction, so a broken Save/Discard wire, a mis-bound master-detail
-/// selection, or a list mutation that never reaches the bound observable
-/// would pass every existing example test.
+/// The package's other example suites do not drive interaction:
+/// `example_smoke_test.dart` mounts and asserts static text, and
+/// `example_screenshot_test.dart` is mount-only. A broken Save/Discard
+/// wire, a mis-bound master-detail selection, or a list mutation that never
+/// reaches the bound observable passes both of them.
 ///
-/// These `testWidgets` cases exercise the genuinely-interactive paths §63
-/// names, against the real example widgets (not the demo variants):
+/// These `testWidgets` cases exercise the genuinely-interactive paths
+/// against the real example widgets (not the demo variants):
 ///   * master-detail selection rebinds the detail pane (H-A);
 ///   * editing a detail field marks the form dirty and Discard reverts it;
 ///   * Save with an invalid field surfaces the detail error view;
 ///   * Add appends a row the bound observable list reflects;
 ///   * Move-down reorders the bound observable list.
 ///
-/// The screenshot suite stays mount-only by design (review §63: "Mount-
-/// without-exception is the right coverage for screenshots").
+/// The screenshot suite stays mount-only by design: mount-without-exception
+/// is the right coverage for a screenshot.
 library;
 
 import 'dart:convert';

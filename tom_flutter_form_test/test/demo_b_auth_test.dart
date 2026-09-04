@@ -1,6 +1,6 @@
 /// Tight-loop reproduction of the Demo B UI-state-controller toggle.
 /// Opens Demo B, flips the switch, and verifies that auth state on the
-/// email field follows the `phone`-is-empty rule documented in §24b.
+/// email field follows the `phone`-is-empty rule Demo B documents.
 library;
 
 import 'dart:convert';

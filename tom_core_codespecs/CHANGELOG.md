@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Docs only, no API change: five test comments cited a bare section number of
+  `codespecs_mapping.md`, which does not ship with this package, so the
+  justification a reader needed was one indirection away and unreachable. Each
+  now states the reasoning directly — why `domainEnum` needs no gap class, why
+  CE-UP reuses `tom_core_server`'s preferences plane, and why the CE-RP
+  drill-through target stays an open route-id string.
+
 ## 0.11.1
 
 - Docs only, no API change: the library dartdoc and README now name the CE-AC

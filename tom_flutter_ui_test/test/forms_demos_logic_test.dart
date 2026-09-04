@@ -1,5 +1,4 @@
-/// Demo-local interactive-logic coverage for the forms_demos showcase — review
-/// tests finding §68.
+/// Demo-local interactive-logic coverage for the forms_demos showcase.
 ///
 /// The five forms demos carry substantial demo-local logic, and everything that
 /// reached them before this suite only ever **mounted** them. All five are in
@@ -89,7 +88,7 @@ void main() {
   }
 
   // ── (a) FormsOverviewDemo — validate/save/reset flow + gate ──────────────
-  group('FormsOverviewDemo (§68a)', () {
+  group('FormsOverviewDemo (a)', () {
     testWidgets('an invalid Save is gated — nothing is committed', (
       tester,
     ) async {
@@ -128,7 +127,7 @@ void main() {
 
   // ── (b) SelectionVariantsDemo — _toggleFilter source swap ────────────────
   testWidgets('SelectionVariantsDemo: toggling the filter swaps source items '
-      '(§68b)', (tester) async {
+      '(b)', (tester) async {
     await pumpDemo(tester, const SelectionVariantsDemo());
     final state = tester.state<SelectionVariantsDemoState>(
       find.byType(SelectionVariantsDemo),
@@ -160,7 +159,7 @@ void main() {
 
   // ── (c) BooleanVariantsDemo — sync() lock-step guard ─────────────────────
   testWidgets('BooleanVariantsDemo: sync() keeps the three shared concretes in '
-      'lock-step (§68c)', (tester) async {
+      'lock-step (c)', (tester) async {
     await pumpDemo(tester, const BooleanVariantsDemo());
 
     final checkbox = find.descendant(
@@ -215,7 +214,7 @@ void main() {
 
   // ── (d) ComplexBreakpointsDemo — _bpLabel / _collapseRow thresholds ──────
   testWidgets('ComplexBreakpointsDemo: _bpLabel maps width to a style label '
-      '(§68d)', (tester) async {
+      '(d)', (tester) async {
     // < 480 → compact (≈368px content after 16px padding either side).
     await pumpDemo(
       tester,
@@ -242,7 +241,7 @@ void main() {
   });
 
   testWidgets('ComplexBreakpointsDemo: _collapseRow stacks below 600px and '
-      'rows above (§68d)', (tester) async {
+      'rows above (d)', (tester) async {
     Finder collapsePanel() => find.ancestor(
       of: find.text('Collapses under 600px'),
       matching: find.byType(Card),
@@ -294,7 +293,7 @@ void main() {
 
   // ── (e) ComplexAuthDemo — UIStateController cross-field closures ─────────
   testWidgets('ComplexAuthDemo: email UIStateController disables on bad format '
-      '(§68e)', (tester) async {
+      '(e)', (tester) async {
     await pumpDemo(tester, const ComplexAuthDemo());
 
     // Empty → the closure returns `current` (full).
@@ -316,7 +315,7 @@ void main() {
   });
 
   testWidgets('ComplexAuthDemo: phone UIStateController goes read-only when '
-      'verified (§68e)', (tester) async {
+      'verified (e)', (tester) async {
     await pumpDemo(tester, const ComplexAuthDemo());
 
     expect(authOf(tester, 'phoneLive'), TomAuthState.full);
@@ -338,7 +337,7 @@ void main() {
 
   // ── (f) ComplexAuthDemo — _GroupStateAdapter.resolveAuth routing ─────────
   testWidgets('ComplexAuthDemo: group dropdown routes auth through '
-      '_GroupStateAdapter (§68f)', (tester) async {
+      '_GroupStateAdapter (f)', (tester) async {
     await pumpDemo(tester, const ComplexAuthDemo());
 
     // Baseline (no adapter installed): every group field resolves to full.

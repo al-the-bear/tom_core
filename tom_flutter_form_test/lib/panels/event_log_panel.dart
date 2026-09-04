@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-/// Categorical filter for [EventLogPanel]. Matches the four groups called
-/// out in §24b: "Filter buttons by event type (value change, validation,
-/// auth, lifecycle)".
+/// Categorical filter for [EventLogPanel] — the four groups its filter
+/// buttons offer: value change, validation, auth, and lifecycle.
 enum EventCategory { value, validation, auth, lifecycle }
 
 /// Maps a [TomFormEvent] to the [EventCategory] that drives the filter chips.
@@ -30,7 +29,7 @@ EventCategory eventCategoryOf(TomFormEvent event) {
 ///
 /// Shows timestamp, event-type icon, source field, and description. Offers
 /// per-category filter chips, a clear button, and an auto-scroll-to-latest
-/// toggle (all exercised by Demos A and B per §24b).
+/// toggle (all exercised by Demos A and B).
 ///
 /// The panel is **stateful** — it owns the filter/auto-scroll toggles — but
 /// the event buffer lives on the caller's [TomFormInspector] so multiple

@@ -3,9 +3,8 @@
 # Reflection generator configuration for the files that need a generated
 # *.reflection.dart companion:
 #
-#   - security_test      exercises the 2FA mechanism scan against a real
-#                        reflected program, so that an @TomClient2FAAdaptor
-#                        class is discovered the way an application's would be;
+#   - security_test      verifies that @TomClient2FAAdaptor is
+#                        reflection-discoverable;
 #   - preferences_test   round-trips a reflected preference value and resolves
 #                        the platform-annotated @TomComponent implementations
 #                        of TomDevicePreferences through the bean locator.

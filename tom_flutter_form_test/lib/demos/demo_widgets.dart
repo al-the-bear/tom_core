@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 /// A single bullet line for the demos' intro cards.
 ///
-/// This was previously copy-pasted as a byte-identical private `_Bullet`
-/// class in twelve demo files; it is hoisted here as the single shared
-/// definition (code_quality §69).
+/// One shared definition for all twelve demo files. A bullet line is
+/// identical in every one of them, so a file-private copy apiece would be
+/// twelve places for the styling to drift.
 class DemoBullet extends StatelessWidget {
   const DemoBullet(this.text, {super.key});
 

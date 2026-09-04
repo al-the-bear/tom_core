@@ -94,7 +94,7 @@ class AppendLabelAction extends TomSimpleAction<LabelContext> {
 }
 
 /// Increment action attached to an authorization group, used to exercise the
-/// `effectiveAuthState` group-mode branch (§58b).
+/// `effectiveAuthState` group-mode branch.
 class _GroupedIncrement extends TomAction<CounterContext, IncrementUndo> {
   _GroupedIncrement({
     required super.controller,
@@ -711,10 +711,10 @@ void main() {
     });
   });
 
-  // tests §58a: TomDualAction (the two-action convenience specialization) had
-  // zero coverage. Pin the OR-of-guards `canExecute`, the ordered
-  // execute-and-record, and each guard-skip branch. `first` uses step 1,
-  // `second` uses step 10, so the counter value uniquely identifies which ran.
+  // TomDualAction is the two-action convenience specialization. These pin
+  // the OR-of-guards `canExecute`, the ordered execute-and-record, and each
+  // guard-skip branch. `first` uses step 1, `second` uses step 10, so the
+  // counter value uniquely identifies which ran.
   group('TomDualAction', () {
     // Pins the claim in TomDualAction's dartdoc that it is *not* needed to give
     // two sides different context types. TomCompositeStep's type parameter is
@@ -901,9 +901,9 @@ void main() {
     });
   });
 
-  // tests §58b: TomAction's authorization surface (authState / effectiveAuthState
-  // group branch / authorizer) was untested. Drive it through a map-backed
-  // adapter keyed on the action's canonicalPath.
+  // TomAction's authorization surface — authState, the effectiveAuthState
+  // group branch, and the authorizer — driven through a map-backed adapter
+  // keyed on the action's canonicalPath.
   group('TomAction authorization surface', () {
     tearDown(TomAuthorization.reset);
 

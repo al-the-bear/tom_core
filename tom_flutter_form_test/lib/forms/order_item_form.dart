@@ -14,9 +14,8 @@ import 'form_validators.dart';
 /// picker (over `phase2aProductCatalog`) alongside auto-validating
 /// `TomFormStringInput` fields.
 ///
-/// `formId` matches the parent's listId ('items') so resources resolve
-/// uniformly for every row (spec §13: "Resources and authorization apply
-/// uniformly to all list items").
+/// `formId` matches the parent's listId ('items') so resources and
+/// authorization resolve uniformly for every row of the list.
 ///
 /// Selecting a known catalog entry auto-fills `unitPrice` via the observer
 /// attached in `createFormElements`. `quantity` and `unitPrice` use

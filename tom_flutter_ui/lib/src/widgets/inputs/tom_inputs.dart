@@ -1422,7 +1422,7 @@ class TomCupertinoTimerPicker extends TomInputBase {
 /// Form container managing validation state. Auth can hide entire form sections.
 ///
 /// Named `TomFormClassic` to distinguish from the new forms-layer
-/// [TomForm] (§5) which provides typed data binding and validation.
+/// [TomForm], which provides typed data binding and validation.
 class TomFormClassic extends TomInputBase {
   final Widget child;
   final AutovalidateMode? autovalidateMode;

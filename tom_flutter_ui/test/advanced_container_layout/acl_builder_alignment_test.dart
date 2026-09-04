@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// §74 / tests §59(a): the builder-wide default row-alignment setters must apply
-// retroactively to the already-created first row, not just to rows started by a
-// later newRow(). The vertical setter already does this; the horizontal one
-// did not (it mutated the default but never walked _rows).
+// The builder-wide default row-alignment setters apply retroactively to the
+// already-created first row, not just to rows started by a later newRow().
+// Both the vertical and the horizontal setter therefore walk _rows; a setter
+// that merely stored the new default would leave the first row behind.
 
 void main() {
-  group('AclBuilder — default-alignment retroactivity (§74)', () {
+  group('AclBuilder — default-alignment retroactivity', () {
     test(
       'setAclDefaultRowHorizontalAlignment applies to the first row too',
       () {

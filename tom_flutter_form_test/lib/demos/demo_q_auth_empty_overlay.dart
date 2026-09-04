@@ -43,9 +43,9 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
   late final Order _order;
 
   /// Side form that carries an async `SlowValidator` on `username`.
-  /// Driving `TomLoadingOverlay` off the real `form.save()` future is
-  /// how Phase 6 says an overlay should be paired with async
-  /// validation (spec §23.3).
+  /// Driving `TomLoadingOverlay` off the real `form.save()` future is how
+  /// an overlay is meant to be paired with async validation: the overlay's
+  /// lifetime is the save's, not a timer's.
   late final ValidationForm _validationForm;
 
   @override

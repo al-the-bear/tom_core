@@ -39,7 +39,7 @@ void main() {
     );
   });
 
-  group('TomStyleResolvers malformed-type tolerance (§77)', () {
+  group('TomStyleResolvers malformed-type tolerance', () {
     test('parseBorderRadius({all: String}) degrades instead of throwing', () {
       late BorderRadius? radius;
       expect(

@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// gaps §15 + tests §25: several Tom wrappers declared a parameter, then their
-// `buildContent` constructed the underlying Flutter widget WITHOUT passing it,
-// so the parameter was silently inert. These render each wrapper and read the
-// forwarded property off the underlying widget, pinning that the parameter now
-// reaches its destination (and red-pins regressions of the dropped-param class).
+// A Tom wrapper that declares a parameter whose `buildContent` then builds the
+// underlying Flutter widget WITHOUT passing it leaves that parameter silently
+// inert — the omission compiles, and only a render shows it. These render each
+// wrapper and read the forwarded property off the underlying widget, pinning
+// that the parameter reaches its destination.
 
 Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
-  testWidgets('TomMenuItemButton forwards onHover / onFocusChange (§15a)', (
+  testWidgets('TomMenuItemButton forwards onHover / onFocusChange', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -34,7 +34,7 @@ void main() {
     expect(btn.onFocusChange, isNotNull);
   });
 
-  testWidgets('TomSubmenuButton forwards onHover / onFocusChange (§15a)', (
+  testWidgets('TomSubmenuButton forwards onHover / onFocusChange', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -57,7 +57,7 @@ void main() {
     expect(btn.onFocusChange, isNotNull);
   });
 
-  testWidgets('TomSliverResizingHeader forwards extent prototypes (§15b)', (
+  testWidgets('TomSliverResizingHeader forwards extent prototypes', (
     tester,
   ) async {
     const minProto = SizedBox(key: ValueKey('min'), height: 20);
@@ -85,9 +85,7 @@ void main() {
     expect(header.maxExtentPrototype, same(maxProto));
   });
 
-  testWidgets('TomNavigationBar forwards labelTextStyle (§15c)', (
-    tester,
-  ) async {
+  testWidgets('TomNavigationBar forwards labelTextStyle', (tester) async {
     final labelStyle = WidgetStateProperty.all(const TextStyle(fontSize: 11));
 
     await tester.pumpWidget(
@@ -106,7 +104,7 @@ void main() {
     expect(bar.labelTextStyle, same(labelStyle));
   });
 
-  testWidgets('TomRefreshIndicator forwards a typed triggerMode (§15d)', (
+  testWidgets('TomRefreshIndicator forwards a typed triggerMode', (
     tester,
   ) async {
     await tester.pumpWidget(

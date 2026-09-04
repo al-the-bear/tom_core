@@ -10,9 +10,10 @@ import 'order_item_form.dart';
 
 /// Order header plus a `TomListForm<OrderItem, OrderItemForm>` for line items.
 ///
-/// Exercises `tom_flutter_ui`'s §13 List Forms pattern: a parent form owns an
-/// item-list form whose sub-forms share resources via the listId ('items'),
-/// and bind / save / discard fan out to every sub-form.
+/// Exercises the List Forms pattern of `tom_flutter_ui`, described in its
+/// `doc/tom_ui_list_forms.md`: a parent form owns an item-list form whose
+/// sub-forms share resources via the listId ('items'), and bind / save /
+/// discard fan out to every sub-form.
 @tomReflector
 class OrderForm extends TomForm<Order> {
   OrderForm() : super(formId: 'order');

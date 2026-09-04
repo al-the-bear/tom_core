@@ -1,5 +1,5 @@
 /// Drag-resize behaviour coverage for `ResizableBox`
-/// (`lib/acl_demos/resizable_box.dart`) — review tests finding §66.
+/// (`lib/acl_demos/resizable_box.dart`).
 ///
 /// `ResizableBox` is the only widget in `acl_demos/` with real behavioural
 /// logic; its resize arithmetic was exercised by nothing. These `WidgetTester`
@@ -14,8 +14,7 @@
 ///
 /// Assertions read the widget's own live size chip (`'<w> × <h>'` /
 /// `'<w> × auto'`) — the direct render of the `_width`/`_height` state under
-/// test — so they stay decoupled from the now-private `_ResizableBoxState`
-/// type (privatised by member_visibility §30 / plan step #13).
+/// test — so they stay decoupled from the private `_ResizableBoxState` type.
 library;
 
 import 'package:flutter/material.dart';

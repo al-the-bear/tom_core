@@ -1,7 +1,7 @@
 /// Navigation + RTL-toggle coverage for the shared demo scaffold
-/// (`lib/common/demo_scaffold.dart`) — review tests finding §67.
+/// (`lib/common/demo_scaffold.dart`).
 ///
-/// The two interactive behaviours had zero coverage:
+/// Nothing else covers its two interactive behaviours:
 ///
 ///  - `DemoTile.onTap` pushes a `MaterialPageRoute` that wraps the demo screen
 ///    in a `DemoScaffold` titled with the tile's title.

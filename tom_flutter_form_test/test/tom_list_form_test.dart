@@ -1,4 +1,5 @@
-/// Unit tests for `TomListForm` (Phase 2a / §13).
+/// Unit tests for `TomListForm`, the pattern `tom_flutter_ui` describes in
+/// its `doc/tom_ui_list_forms.md`.
 ///
 /// Lives in `tom_flutter_form_test` because constructing `TomForm`
 /// subclasses requires reflectable to be initialised — easiest done

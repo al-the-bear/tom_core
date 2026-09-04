@@ -1,5 +1,5 @@
 /// Unit tests for the pure logic in the demo *state fixtures* that no other
-/// suite reaches (review finding tests §65):
+/// suite reaches:
 ///
 ///   * `phase2aLookupProductPrice` — the duplicate-name **return-first**
 ///     invariant. The catalog carries three names twice ('Patch review token',

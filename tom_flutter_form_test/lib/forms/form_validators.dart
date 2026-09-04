@@ -3,11 +3,11 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // ---------------------------------------------------------------------------
 // Numeric field validators shared across the demo forms.
 //
-// These were previously duplicated as file-private helpers in
-// `customer_hd_form.dart` and `order_item_form.dart` (`_decimalValidator` was
-// byte-identical in both; `_integerValidator` / `_positiveIntegerValidator`
-// differed only by the positivity guard). They are hoisted here so the single
-// definition is the source of truth (code_quality §29a).
+// Shared by `customer_hd_form.dart` and `order_item_form.dart`, and kept
+// here rather than file-private in each: the decimal validator is the same
+// rule in both, and the integer and positive-integer validators differ only
+// by the positivity guard. A private copy apiece is two places for one rule
+// to drift.
 // ---------------------------------------------------------------------------
 
 /// Accepts any parseable `int`; rejects non-integer text.

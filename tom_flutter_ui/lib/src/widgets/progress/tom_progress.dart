@@ -225,7 +225,7 @@ class TomRefreshIndicator extends TomProgressBase {
       semanticsLabel: _resolvedLabel,
       semanticsValue: _resolvedSemanticsValue,
       strokeWidth: _resolvedStrokeWidth,
-      // Forward the (previously inert, mistyped) trigger mode (gap §15d).
+      // Forward the typed trigger mode.
       triggerMode: triggerMode,
       child: child,
     );

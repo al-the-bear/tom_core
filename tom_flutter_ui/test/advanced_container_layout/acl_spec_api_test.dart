@@ -1,9 +1,9 @@
 /// Pins §17 of `doc/acl_design_specification.md` — the complete `AclBuilder`
 /// public API — against the builder it claims to describe.
 ///
-/// §17 is a hand-written list of ~96 signatures. Nothing made it wrong in a
-/// way a build would notice, so it drifted three different ways at once, and
-/// all three were found by a script rather than by review:
+/// That section is a hand-written list of ~96 signatures. Nothing makes it
+/// wrong in a way a build would notice, so it can drift three different ways
+/// at once — each of which only a script finds, never review:
 ///
 /// * **Methods that no longer exist.** `alignTopInRow`, `alignMiddleInRow`,
 ///   `alignBottomInRow` and `setRowAlignment` were documented in full, with
@@ -149,9 +149,10 @@ List<_Signature> _declarations(String text, RegExp header) {
 /// Declarations returning `AclBuilder` or `Acl` inside the specification's
 /// ```dart fences.
 ///
-/// The first fence to mention a method wins: §17 lists each once, and the
-/// worked examples elsewhere in the document call methods rather than declare
-/// them, so they do not collide.
+/// The first fence to mention a method wins: §17 of
+/// `doc/acl_design_specification.md` lists each once, and the worked examples
+/// elsewhere in the document call methods rather than declare them, so they
+/// do not collide.
 Map<String, _Signature> _specSignatures() {
   final spec = File(_specPath).readAsStringSync();
   final header = RegExp(r'^\s*(?:AclBuilder|Acl)\s+(\w+)\(', multiLine: true);
@@ -183,8 +184,9 @@ Map<String, _Signature> _sourceSignatures() {
 }
 
 /// The subset of the builder's methods that return a builder — the fluent API
-/// §17 undertakes to list in full. Methods returning anything else (`bool`
-/// predicates, `int` counts) are legitimately outside the section's scope.
+/// that §17 of `doc/acl_design_specification.md` undertakes to list in full.
+/// Methods returning anything else (`bool` predicates, `int` counts) are
+/// legitimately outside the section's scope.
 Set<String> _fluentMethodNames() {
   final source = File(_builderPath).readAsStringSync();
   return RegExp(r'^  (?:AclBuilder|Acl)\s+(\w+)\(', multiLine: true)
@@ -205,7 +207,7 @@ void main() {
     fluent = _fluentMethodNames();
   });
 
-  group('§17 describes the builder that exists', () {
+  group('§17 of acl_design_specification.md describes the real builder', () {
     // Every check below is an `isEmpty` assertion, so all of them pass
     // vacuously against a parser that has silently stopped matching — which
     // is exactly what a refactor of either file could cause.
@@ -277,7 +279,7 @@ void main() {
         undocumented,
         isEmpty,
         reason:
-            '§17 of $_specPath undertakes to list the complete public '
+            'section 17 of $_specPath undertakes to list the complete public '
             'API, but these methods have no entry, so a reader cannot '
             'learn they exist:\n${undocumented.map((n) => '  $n').join('\n')}',
       );

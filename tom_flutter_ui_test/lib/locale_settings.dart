@@ -71,7 +71,7 @@ class LocaleSettingsService extends ChangeNotifier {
   /// Public-for-testing only: no `lib/` consumer reads this — the idempotency
   /// guard in [initialize] consults the private `_initialized` field directly.
   /// It exists so `locale_settings_test.dart` can pin the lifecycle flag after
-  /// `initialize()`; the annotation lints any non-test use (mv §12).
+  /// `initialize()`; the annotation lints any non-test use.
   @visibleForTesting
   bool get initialized => _initialized;
 

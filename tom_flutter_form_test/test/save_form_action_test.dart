@@ -8,7 +8,7 @@
 /// `results.every(...)` roll-up across *multiple* forms is untested. The
 /// transient "Validating…" status is likewise never observed.
 ///
-/// In addition these tests pin the bug-§36 contract: a `save()` that *throws*
+/// In addition these tests pin the throwing-save contract: a `save()` that *throws*
 /// (rather than completing `false`) must be reported on `status` exactly like
 /// a `false` result — not left stuck on the transient "Validating…" message
 /// with the rejection escaping as an uncaught async error.
@@ -156,7 +156,7 @@ void main() {
     });
   });
 
-  group('SaveFormAction — thrown save (bug §36)', () {
+  group('SaveFormAction — thrown save', () {
     test(
       'a save that throws is reported on status like a false result',
       () async {

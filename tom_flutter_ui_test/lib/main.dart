@@ -141,8 +141,7 @@ class MainTabsPage extends StatelessWidget {
     // Why: `length`, the tab bar and the views are all derived from this one
     // descriptor list so they can't drift out of sync — a hardcoded
     // `length: 4` against separately-authored 4-entry `tabs`/`children` lists
-    // silently breaks if a demo tab is added to one list but not the others
-    // (code_quality §30b).
+    // silently breaks if a demo tab is added to one list but not the others.
     return DefaultTabController(
       length: _mainTabs.length,
       child: Scaffold(
@@ -169,7 +168,7 @@ class MainTabsPage extends StatelessWidget {
 /// The single source of truth for the top-level tab structure: each entry
 /// pairs a tab's icon + label with the view shown under it, so the
 /// `DefaultTabController` length, the `TabBar.tabs` and the `TabBarView.children`
-/// are all derived from one list and cannot fall out of sync (code_quality §30b).
+/// are all derived from one list and cannot fall out of sync.
 const List<({IconData icon, String label, Widget view})> _mainTabs = [
   (icon: Icons.grid_view, label: 'ACL Demos', view: AclDemosTab()),
   (icon: Icons.widgets, label: 'Widget Demos', view: WidgetDemosTab()),

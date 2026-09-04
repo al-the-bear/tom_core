@@ -6,7 +6,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // ValidationForm — drives Demo A (lifecycle & validation)
 // ---------------------------------------------------------------------------
 
-/// Form that exercises every validation flavour described in §20.
+/// Form that exercises every validation flavour the forms layer offers.
 ///
 /// Fields are declared at the class level and pass `form: this` so their
 /// basePath resolves under `<outer>.validationForm.*` — e.g.

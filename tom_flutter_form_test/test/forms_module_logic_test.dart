@@ -1,5 +1,5 @@
 /// Unit tests for module-owned forms logic that the demo/widget suites never
-/// exercise (review finding tests §27):
+/// exercise:
 ///
 ///   * `phase2aLookupProductPrice` — the exact-name catalog lookup that backs
 ///     the product-price auto-fill.

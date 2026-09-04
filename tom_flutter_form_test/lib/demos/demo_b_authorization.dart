@@ -16,7 +16,7 @@ import 'demo_widgets.dart';
 // ---------------------------------------------------------------------------
 
 /// Two-column layout: customer form on the left; authorization controls and
-/// event log on the right. Exercises every feature from §24b Demo B:
+/// event log on the right. Exercises:
 ///
 ///   * Four auth states: `full`, `read`, `disabled`, `none` — toggled from
 ///     the right-hand panel.
@@ -484,7 +484,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
 // ---------------------------------------------------------------------------
 // Local auth adapter — rules can be added / removed at runtime via the
 // control panel. Parent-path matching means `demoB.customer` narrows every
-// field beneath it, exercising the "form-level auth ceiling" from §24b.
+// field beneath it — the "form-level auth ceiling".
 // ---------------------------------------------------------------------------
 
 class _DemoBAdapter extends TomAuthorizationAdapter {

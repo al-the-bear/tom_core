@@ -2,9 +2,9 @@
   "about": "Fault counts the gates in tool/ are held to. Read by tool/check_gates.py, which fails when a gate's count moves in either direction: up means a new fault, down means a baseline that should be lowered so the repair sticks. 'measured' is the date the count last changed. Regenerate with `python3 tool/check_gates.py --update`; write 'note' by hand.",
   "gates": {
     "check_comments_read_as_is": {
-      "faults": 40,
+      "faults": 38,
       "measured": "2026-09-04",
-      "note": "40 work-item ids and history-narration phrases outside the five tom_core packages, which are at zero: 32 in tom_flutter_ui, 5 in tom_flutter_form_test, 2 in tom_flutter_ui_test and 1 in tom_core_codespecs -- see tcextension11_aidb. This gate covers what check_section_refs.py does not: quest todo ids, build-plan ids, 'Todo <n>' pointers and past-indicative narration about the code's own history."
+      "note": "38 work-item ids and history-narration phrases outside the five tom_core packages, which are at zero: 31 in tom_flutter_ui, 5 in tom_flutter_form_test, 1 in tom_flutter_ui_test and 1 in tom_core_codespecs -- see tcextension11_aidb. This gate covers what check_section_refs.py does not: quest todo ids, build-plan ids, 'Todo <n>' pointers and past-indicative narration about the code's own history."
     },
     "check_consumer_claims": {
       "faults": 0,
@@ -91,9 +91,9 @@
       "measured": "2026-09-03"
     },
     "check_section_refs": {
-      "faults": 101,
+      "faults": 0,
       "measured": "2026-09-04",
-      "note": "101 bare section references in shipped lib/, test/ and example/ code -- '§7.2', 'tests §27', 'Phase 2a §16' -- indexing quest plans that ship with neither the package nor its tests, so a reader of the shipped artefact cannot resolve them. The five tom_core packages are now at zero; what remains is 43 in tom_flutter_ui, 32 in tom_flutter_form_test, 16 in tom_flutter_ui_test and 5 in tom_core_codespecs -- see tcextension11_aidb."
+      "note": "Zero, and held there. Every shipped lib/, test/ and example/ comment either says what it means in its own words or names the document its section number belongs to -- in practice always doc/acl_design_specification.md or doc/tom_ui_list_forms.md, both of which ship with the package. A bare '§7.2' or 'Phase 2a §16' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure."
     },
     "check_source_citations": {
       "faults": 0,

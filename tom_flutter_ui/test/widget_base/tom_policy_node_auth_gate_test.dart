@@ -2,9 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tests §61(a): TomPolicyNodeBase is the authorization-enforcement layer every
-// Tom widget passes through, yet the four-state `_buildWithAuth` switch had zero
-// testWidgets coverage. These pin the dispatch:
+// TomPolicyNodeBase is the authorization-enforcement layer every Tom widget
+// passes through, so its four-state `_buildWithAuth` switch decides what a
+// reader is allowed to see. These pin the dispatch:
 //   none     → SizedBox.shrink  (hidden from layout)
 //   disabled → buildDisabled    (theme's disabledStyle; default 0.38)
 //   read     → buildReadonly    (theme's readonlyStyle; default 0.6)
@@ -27,7 +27,7 @@ Widget _host(Widget child) =>
     Directionality(textDirection: TextDirection.ltr, child: child);
 
 void main() {
-  group('TomPolicyNodeBase 4-state auth gate (§61a)', () {
+  group('TomPolicyNodeBase 4-state auth gate', () {
     testWidgets('full → renders bare content, no auth wrapper', (tester) async {
       await tester.pumpWidget(_host(_GatedNode()));
 

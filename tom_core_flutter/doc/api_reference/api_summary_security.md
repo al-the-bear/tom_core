@@ -2,8 +2,8 @@
 
 The client half of the framework's second-factor design — the flow widget, the
 controller seam, the pluggable mechanism contract and its registry, the shipped
-TOTP mechanism, the resource keys, the QR view, and the annotation that
-registers a client mechanism with no start-up wiring.
+TOTP mechanism, the resource keys, the QR view, and the reflection annotation
+that tags client 2FA adaptors.
 
 ## Table of Contents
 
@@ -20,7 +20,6 @@ registers a client mechanism with no start-up wiring.
   - [Tom2FATexts](#tom2fatexts)
   - [TomQrCodeView](#tomqrcodeview)
   - [TomClient2FAAdaptor](#tomclient2faadaptor)
-  - [Tom2FAClientException](#tom2faclientexception)
 - [Global Functions and Constants](#global-functions-and-constants)
 - [Internal Symbols (not exported)](#internal-symbols-not-exported)
 
@@ -32,13 +31,13 @@ Sources, all six exported from the package barrel
 | File | Declares |
 | ---- | -------- |
 | `lib/src/tomclient/security/two_factor_flow.dart` | `Tom2FAFlowController`, `Tom2FAFlowPanel` |
-| `lib/src/tomclient/security/two_factor_client.dart` | `Tom2FAClientException`, `Tom2FAEnrolmentPanelContext`, `Tom2FAChallengePanelContext`, `Tom2FAClientMechanism`, `Tom2FAClientRegistry` |
+| `lib/src/tomclient/security/two_factor_client.dart` | `Tom2FAEnrolmentPanelContext`, `Tom2FAChallengePanelContext`, `Tom2FAClientMechanism`, `Tom2FAClientRegistry` |
 | `lib/src/tomclient/security/two_factor_totp_client.dart` | `TomTotp2FAClientMechanism` |
 | `lib/src/tomclient/security/two_factor_texts.dart` | `Tom2FATexts` |
 | `lib/src/tomclient/security/qr_code_view.dart` | `TomQrCodeView` |
 | `lib/src/tomclient/security/authentication.dart` | `TomClient2FAAdaptor` |
 
-Eleven public types. The flow widget renders whichever stop of a second-factor
+Ten public types. The flow widget renders whichever stop of a second-factor
 login the application's controller reports; per-mechanism rendering is resolved
 through a process-wide registry keyed by mechanism string. See
 [`security.md`](../security.md) for the design and the integration narrative.
@@ -62,10 +61,6 @@ Tom2FAChallengePanelContext       (value)
 Tom2FAClientRegistry              (static-only)
 Tom2FATexts                       (static-only)
 TomClient2FAAdaptor               (const annotation)
-
-TomException
-    └── TomClientException
-            └── Tom2FAClientException
 ```
 
 ## Classes
@@ -247,27 +242,20 @@ levels below whoever configured it.
 
 Not constructible — the class has a private constructor and only static members.
 
-**Reads scan; writes do not.** `find`, `has` and `types` run the annotation scan
-on first use; `register` does not. That is what makes an explicit registration
-beat a discovered one without an ordering rule — `Tom2FAFlowPanel.registerBuiltInMechanisms`
-asks `has` first, so a discovered mechanism is already installed by the time the
-built-in would be.
-
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `register` | `static void register(Tom2FAClientMechanism mechanism)` | Registers under the mechanism's `type`, **replacing** any previous entry. Replacing rather than rejecting, so an application substituting its own panel does not have to unregister first. Does not scan. |
-| `registerAnnotated` | `static void registerAnnotated(Iterable<ClassMirror> candidates)` | Registers every `@TomClient2FAAdaptor`-annotated class in a supplied candidate set. Called by the automatic scan with the whole reflected program; separate from it so a caller — or a test needing a malformed candidate — can supply its own. Throws `Tom2FAClientException` on the first unusable candidate and rolls the registry back. |
-| `find` | `static Tom2FAClientMechanism? find(String type)` | The mechanism registered under `type`, or `null`. Nullable rather than throwing: "the server offered a mechanism this build cannot render" is a real deployment state. Scans first. |
-| `has` | `static bool has(String type)` | Whether a mechanism is registered under `type`. Scans first. |
-| `reset` | `static void reset()` | Drops every registration, including built-ins, and re-arms the scan. `@visibleForTesting`; production code has no reason to call it. |
+| `register` | `static void register(Tom2FAClientMechanism mechanism)` | Registers under the mechanism's `type`, **replacing** any previous entry. Replacing rather than rejecting, so an application substituting its own panel does not have to unregister first. |
+| `find` | `static Tom2FAClientMechanism? find(String type)` | The mechanism registered under `type`, or `null`. Nullable rather than throwing: "the server offered a mechanism this build cannot render" is a real deployment state. |
+| `has` | `static bool has(String type)` | Whether a mechanism is registered under `type`. |
+| `reset` | `static void reset()` | Drops every registration, including built-ins. `@visibleForTesting`; production code has no reason to call it. |
 
 #### Static Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `types` | `Iterable<String>` | Every registered mechanism key. Scans first. |
+| `types` | `Iterable<String>` | Every registered mechanism key. |
 
 ### TomTotp2FAClientMechanism
 
@@ -421,25 +409,21 @@ of a denser grid that scans worse on small displays.
 
 ### TomClient2FAAdaptor
 
-Registers a `Tom2FAClientMechanism` under the mechanism it renders, with no
-start-up wiring. The client mirror of the server's `@Tom2FAAdaptor`, down to the
-spelling, so one package can ship both halves and touch no framework file.
+Annotation marking a class as a client-side two-factor adaptor. It is
+`@tomReflector`-registered, so a runtime can enumerate the annotated classes and
+dispatch by `type`.
 
 ```dart
 @tomReflector
-@TomClient2FAAdaptor('sms')
-class SmsClientMechanism extends Tom2FAClientMechanism {
-  const SmsClientMechanism() : super('sms');
-  // ... buildEnrolmentPanel / buildChallengePanel
-}
+@TomClient2FAAdaptor('totp')
+class TotpAdaptor { /* ... */ }
 ```
 
-`Tom2FAClientRegistry` scans `tomReflector.annotatedClasses` on first read and
-instantiates each annotated candidate. The class must therefore also be
-`@tomReflector`-registered and public, be constructible by an unnamed
-argument-free constructor, and carry a `type` equal to the annotation's — each
-failure is a `Tom2FAClientException`, not a silence. A program with no generated
-reflection logs once and carries on with what was registered by hand.
+**Not the flow's dispatch route.** `Tom2FAFlowPanel` resolves a mechanism
+through `Tom2FAClientRegistry`, keyed by the same string, and never consults
+reflection; nothing in this package reads the annotation. It exists for a
+runtime that would rather enumerate annotated classes than have each one
+register itself.
 
 Because the class participates in reflection, its signature is a contract:
 changing it requires regenerating reflection for consumers.
@@ -454,38 +438,7 @@ const TomClient2FAAdaptor(String type)
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `type` | `String` | The 2FA mechanism this adaptor renders (e.g. `'totp'`, `'sms'`), matching the server adaptor's key and the mechanism's own `type`. |
-
-### Tom2FAClientException
-
-The wiring failures the annotation scan raises. A thin semantic subtype of
-`TomClientException` so a caller can tell a 2FA wiring failure from any other
-client-side error with one `is` check; the `key` is a stable dotted code, so
-callers branch on the code rather than on message text.
-
-There is deliberately no failure for "no mechanism is registered for this key" —
-that is a deployment state, not a wiring error, and `find` answers it with
-`null`.
-
-| Key | Raised when |
-| --- | ----------- |
-| `two_factor_client.adaptor_instantiation_failed` | The annotated class has no usable unnamed argument-free constructor, or it threw |
-| `two_factor_client.adaptor_does_not_implement_mechanism` | The annotated class is not a `Tom2FAClientMechanism` |
-| `two_factor_client.adaptor_type_mismatch` | The mechanism's own `type` contradicts the annotation's |
-| `two_factor_client.duplicate_adaptor` | Two annotated classes claim one mechanism key; the message names both |
-
-#### Constructors
-
-```dart
-Tom2FAClientException(
-  String key,
-  String defaultUserMessage, {
-  Map<String, Object?>? parameters,
-  StackTrace? stack,
-  Object? rootException,
-  bool autoLog = false,
-})
-```
+| `type` | `String` | The 2FA mechanism this adaptor implements (e.g. `'totp'`, `'sms'`). |
 
 ## Global Functions and Constants
 

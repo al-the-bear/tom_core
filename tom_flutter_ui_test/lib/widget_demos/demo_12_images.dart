@@ -900,7 +900,7 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
 /// Creates a simple placeholder image bytes for FadeInImage.
 ///
 /// Public-for-testing only: the bytes are a fixed 1×1 transparent PNG, so the
-/// pure generator is unit-testable (review tests §69) without exposing it as
+/// pure generator is unit-testable without exposing it as
 /// part of the demo's real API.
 @visibleForTesting
 Uint8List createPlaceholderBytes() {

@@ -151,13 +151,12 @@ and the server are two readings of one contract. See
 | `Tom2FAFlowPanel` | Renders whichever stop of a second-factor login the controller reports — chooser, enrolment or challenge |
 | `Tom2FAFlowController` | The seam an application implements over its own auth client: five moves, two pieces of read-only state |
 | `Tom2FAClientMechanism` | One mechanism's client-side rendering, paired with its server adaptor by mechanism key alone |
-| `Tom2FAClientRegistry` | The process-wide mechanism catalog the flow dispatches through; scans the reflected program for annotated mechanisms on first read |
+| `Tom2FAClientRegistry` | The process-wide mechanism catalog the flow dispatches through |
 | `Tom2FAEnrolmentPanelContext` / `Tom2FAChallengePanelContext` | What a mechanism's two panels are given to render themselves |
 | `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'` |
 | `Tom2FATexts` | Every resource key the second-factor UI resolves, and the helpers that resolve them |
 | `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, themed like any other widget |
-| `TomClient2FAAdaptor` | Annotation that registers a mechanism under its key with no start-up wiring — the client mirror of the server's `@Tom2FAAdaptor` |
-| `Tom2FAClientException` | The wiring failures the annotation scan raises, keyed `two_factor_client.*` |
+| `TomClient2FAAdaptor` | Annotation marking a class as a client-side two-factor (2FA) adaptor for a given type |
 
 ### Little things (`little_things`)
 
@@ -196,7 +195,7 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | [`example/configuration/`](example/configuration/configuration_example.dart) | Declaring a client settings holder, loading overrides, observing, and persisting only what changed |
 | [`example/preferences/`](example/preferences/preferences_example.dart) | Registering a device store once, typed reads/writes, persistence across a restart, reading and writing the account store over a real socket, and the device-over-server precedence |
 | [`example/runtime/`](example/runtime/runtime_example.dart) | Obtaining the platform-appropriate `TomPlatformUtils`, querying its predicates beside the Flutter target that decides them, and taking an HTTP client from it |
-| [`example/security/`](example/security/security_example.dart) | Walking a `Tom2FAFlowController` through all three stops of a second-factor login — chooser, enrolment and challenge — plus the registry rule that decides what the chooser may list, resource resolution and its missing-key behaviour, and the two ways a mechanism reaches the registry |
+| [`example/security/`](example/security/security_example.dart) | Walking a `Tom2FAFlowController` through all three stops of a second-factor login — chooser, enrolment and challenge — plus the registry rule that decides what the chooser may list, resource resolution and its missing-key behaviour, and the `TomClient2FAAdaptor` marker annotation |
 | [`example/little_things/`](example/little_things/little_things_example.dart) | The two client exception types and the type-based discrimination pattern |
 
 > **Cross-package sample.** The
@@ -309,7 +308,7 @@ TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
 | `TomDevicePreferences` | The typed, platform-independent API for this device's preferences |
 | `TomDevicePreferenceStore` | Persists the device's preferences (file / `localStorage`) |
 | `clientPlatformUtils` | Selects the concrete `TomPlatformUtils` for Flutter |
-| `TomClient2FAAdaptor` | Registers a client two-factor mechanism by annotation |
+| `TomClient2FAAdaptor` | Marks a client two-factor adaptor class |
 | `TomClientException` | Base client-side exception type |
 
 ## Ecosystem

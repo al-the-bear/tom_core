@@ -1,6 +1,6 @@
 /// T11 — Validation matrix.
 ///
-/// Demo A's `ValidationForm` exercises every validator flavour from §20:
+/// Demo A's `ValidationForm` exercises every validator flavour:
 ///   * required (every field)
 ///   * email (email)
 ///   * minLength (username: 3, password: 8)

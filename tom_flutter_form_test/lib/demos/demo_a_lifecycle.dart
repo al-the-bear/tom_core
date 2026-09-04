@@ -16,13 +16,13 @@ import 'demo_widgets.dart';
 // ---------------------------------------------------------------------------
 
 /// Two-column layout: form on the left, field-state table + event log on the
-/// right. Exercises every feature from §24b Demo A:
+/// right. Exercises:
 ///
 ///   * `bind()` / `save()` / `discard()` lifecycle on [ValidationForm]
 ///   * `setValue(T)` (programmatic AND user-driven via the text fields)
 ///   * Sync validators (`required`, `email`, `minLength`, `pattern`)
 ///   * Async validation (`SlowValidator` on `username`)
-///   * Cross-field validation (`password == confirmPassword`, §20)
+///   * Cross-field validation (`password == confirmPassword`)
 ///   * Debounced fast/slow validation (built into `TomField.setValue`)
 ///   * `ValidationPristine` — errors hidden on initial bind
 ///   * `commit()` returns the form to pristine after a successful save

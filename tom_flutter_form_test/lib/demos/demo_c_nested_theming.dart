@@ -18,7 +18,7 @@ import 'demo_widgets.dart';
 /// customerTier / notes plus billing + shipping AddressForms) on the left;
 /// theming controls and form-inspection panel on the right.
 ///
-/// Covers every §24b Demo C feature:
+/// Covers:
 ///
 ///   * Nested forms — `customer.billing.*`, `customer.shipping.*`. Form tree
 ///     mirrors the [CustomerProfile] state tree exactly.

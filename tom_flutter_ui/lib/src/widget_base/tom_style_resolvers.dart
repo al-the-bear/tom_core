@@ -1361,7 +1361,7 @@ class TomStyleResolvers {
   }
 
   // ===========================================================================
-  // Tolerant type guards (bug §77)
+  // Tolerant type guards
   // ===========================================================================
   //
   // The resolvers advertise a tolerant contract (doc/widget_base.md): a

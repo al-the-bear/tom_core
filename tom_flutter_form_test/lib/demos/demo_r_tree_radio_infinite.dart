@@ -17,7 +17,7 @@
 ///     `TomSkeletonLoader`), the bottom-of-list "loading more"
 ///     indicator, the empty / error slots, and the page exhaustion
 ///     branch. Each *row* is wrapped in its own `TomErrorBoundary`
-///     ("boundary around the tile builder", spec §23) — so a
+///     (a boundary around the tile builder) — so a
 ///     synthetic build-time throw inside one row (driven by the
 ///     `throwOnTile` toggle in the right control pane) is caught at
 ///     row scope: only the failing row collapses to a compact inline

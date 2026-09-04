@@ -1,7 +1,6 @@
-/// Demo-local pure-logic coverage for the widget_demos showcase — review
-/// tests finding §69.
+/// Demo-local pure-logic coverage for the widget_demos showcase.
 ///
-/// Two genuinely-pure demo-local helpers had no behavioural assertions. The
+/// Two genuinely-pure demo-local helpers are pinned behaviourally here. The
 /// widget demos are otherwise mount-only — `demo_overflow_test.dart`,
 /// `demo_coverage_test.dart` and `screenshots.dart` build them and assert
 /// nothing about their behaviour; the one exception is `widget_04_toggles`,
@@ -26,7 +25,7 @@ import 'package:tom_flutter_ui_test/widget_demos/demo_12_images.dart';
 import 'package:tom_flutter_ui_test/widget_demos/demo_28_authorization.dart';
 
 void main() {
-  group('DemoAuthorizationAdapter.resolveAuth (§69)', () {
+  group('DemoAuthorizationAdapter.resolveAuth', () {
     late DemoAuthorizationAdapter adapter;
 
     setUp(() => adapter = DemoAuthorizationAdapter());
@@ -93,7 +92,7 @@ void main() {
     });
   });
 
-  group('createPlaceholderBytes (§69)', () {
+  group('createPlaceholderBytes', () {
     test('returns a well-formed 1x1 transparent PNG', () {
       final bytes = createPlaceholderBytes();
       expect(bytes, isA<Uint8List>());

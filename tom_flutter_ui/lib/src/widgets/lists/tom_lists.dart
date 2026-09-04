@@ -786,7 +786,7 @@ class TomReorderableList extends TomListBase {
     // `childrenDelegate` is a `SliverChildDelegate` — both stock subtypes are
     // valid. A builder delegate yields items lazily; a list delegate exposes a
     // fixed `children` list. Pattern-match instead of force-casting so the
-    // common `SliverChildListDelegate([...])` form works as well (bug §34).
+    // common `SliverChildListDelegate([...])` form works as well.
     final delegate = childrenDelegate;
     final Widget Function(BuildContext, int) resolvedItemBuilder;
     final int resolvedItemCount;

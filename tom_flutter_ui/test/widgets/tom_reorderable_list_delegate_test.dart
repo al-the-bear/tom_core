@@ -3,20 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// bug §34 + tests §25: TomReorderableList.buildContent force-cast its
-// `childrenDelegate` to SliverChildBuilderDelegate, so a caller passing the
-// equally-valid SliverChildListDelegate (the common `SliverChildListDelegate([...])`
-// form) hit a runtime CastError. These pin that BOTH stock delegate shapes
-// render through a real pump.
+// TomReorderableList.buildContent pattern-matches its `childrenDelegate`
+// rather than force-casting it to SliverChildBuilderDelegate: a caller
+// passing the equally-valid SliverChildListDelegate (the common
+// `SliverChildListDelegate([...])` form) would otherwise hit a runtime
+// CastError, which nothing about the types warns of. These pin that BOTH
+// stock delegate shapes render through a real pump.
 
 Widget _host(Widget child) => MaterialApp(
   home: Scaffold(body: SizedBox(height: 400, width: 300, child: child)),
 );
 
 void main() {
-  testWidgets('renders from a SliverChildListDelegate (bug §34)', (
-    tester,
-  ) async {
+  testWidgets('renders from a SliverChildListDelegate', (tester) async {
     await tester.pumpWidget(
       _host(
         TomReorderableList(

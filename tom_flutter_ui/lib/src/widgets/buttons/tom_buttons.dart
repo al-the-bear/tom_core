@@ -932,7 +932,7 @@ class TomMenuItemButton extends TomButtonBase {
     return MenuItemButton(
       onPressed: onPressed,
       // Tom exposes these as no-arg callbacks; adapt to the underlying
-      // bool-valued hover/focus callbacks so they actually fire (gap §15a).
+      // bool-valued hover/focus callbacks so they actually fire.
       onHover: onHover == null ? null : (_) => onHover!(),
       onFocusChange: onFocusChange == null ? null : (_) => onFocusChange!(),
       focusNode: focusNode,
@@ -1018,7 +1018,7 @@ class TomSubmenuButton extends TomButtonBase {
       onOpen: onOpen,
       onClose: onClose,
       // Adapt Tom's no-arg callbacks to the bool-valued hover/focus
-      // callbacks so they actually fire (gap §15a).
+      // callbacks so they actually fire.
       onHover: onHover == null ? null : (_) => onHover!(),
       onFocusChange: onFocusChange == null ? null : (_) => onFocusChange!(),
       focusNode: focusNode,

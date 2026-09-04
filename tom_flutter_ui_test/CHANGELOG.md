@@ -1,5 +1,12 @@
 ## Unreleased — cleanup pass
 
+- Docs only: 16 source comments cited a bare section number — `code_quality
+  §30b`, `review tests finding §67`, `(§68a)` through `(§68f)` — of a
+  workspace-only review document a reader of this package does not have. Each
+  now states what it meant; the `(§68x)` test names became `(a)`…`(f)`,
+  which are the lettered bullets the suite's own library dartdoc already
+  lists. Suite unchanged at `+116`.
+
 - **A suite that did not compile reported "92 passing" and nothing turned red.**
   When `lib/forms_demos/phase2_demos.dart` stopped compiling, the three suites
   importing it — `widget_test.dart`, `forms_demos_logic_test.dart` and

@@ -1,5 +1,13 @@
 ## Unreleased — cleanup pass
 
+- Docs only: 32 source comments cited a bare section number — `§24b Demo A`,
+  `spec §16`, `review finding tests §64` — of a workspace-only planning
+  document that ships with neither this package nor its tests. Each now states
+  what it meant in its own words. The two that genuinely referred to a
+  shipped document name it: `OrderForm` and `tom_list_form_test.dart` cite
+  `tom_flutter_ui`'s `doc/tom_ui_list_forms.md` for the List Forms pattern.
+  Suite unchanged at `+491`.
+
 - Fix: the suite is green — `+491 -0`, from `+433 -22`. The 21 scope-id
   failures are gone because the `examples/` forms no longer spell their ids
   with a `.`: `example.customer` is now `exampleCustomer`, and likewise for

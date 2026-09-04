@@ -10,7 +10,7 @@ import '../panels/info_panel.dart';
 import '../state/phase2a_state.dart';
 
 // ---------------------------------------------------------------------------
-// Demo H-C — Editable Order-Items Table  [Phase 2a §16]
+// Demo H-C — Editable Order-Items Table
 // ---------------------------------------------------------------------------
 
 /// Exercises `tom_flutter_ui` field widgets embedded in Material `DataTable`
@@ -24,7 +24,7 @@ import '../state/phase2a_state.dart';
 /// * Variant A — "in-cell errors": the standard renderer, error text and
 ///   error border appear directly under / around each invalid cell. Also
 ///   exposes the `TomAclBuilder` row-per-item pattern via a segmented
-///   switch (§16, "DataTable / TomAclBuilder side-by-side").
+///   switch, showing DataTable and TomAclBuilder side by side.
 /// * Variant B — "error strip below row": the cells are wrapped in a
 ///   `TomFormStyleScope` that promotes the error message into a tooltip
 ///   and disables the error border, so the cell never grows or shifts;

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tests §59(d): the example suite had NO tester.pumpWidget at all, so the whole
-// _AclContainerState layout engine was unexercised. This is a starter set that
-// drives the engine through a real render: multi-row layout, titled rendering,
-// and the expandX grow path (_computeFittedWidths slack distribution).
+// Drives the _AclContainerState layout engine through a real render, which is
+// the only thing that exercises it — a suite without tester.pumpWidget leaves
+// the whole engine untouched. Covered here: multi-row layout, titled
+// rendering, and the expandX grow path (_computeFittedWidths slack
+// distribution).
 
 Widget _host(Widget child, {double width = 400, double height = 200}) {
   return MaterialApp(
@@ -18,7 +19,7 @@ Widget _host(Widget child, {double width = 400, double height = 200}) {
 }
 
 void main() {
-  group('Acl layout engine — pumpWidget (§59d starter)', () {
+  group('Acl layout engine — pumpWidget', () {
     testWidgets('renders every appended component across rows', (tester) async {
       final acl = AclBuilder(title: 'Address')
           .append(const Text('Street'))

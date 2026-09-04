@@ -5,9 +5,8 @@
 /// second-factor login: choosing a mechanism, setting it up, being refused,
 /// and answering a challenge on the next sign-in. Along the way it shows the
 /// registry rule that decides what the chooser may list, `Tom2FATexts`
-/// resolution including its deliberately conspicuous failure, and the two ways
-/// a mechanism reaches the registry — the `TomClient2FAAdaptor` annotation and
-/// an explicit registration.
+/// resolution including its deliberately conspicuous failure, and the
+/// `TomClient2FAAdaptor` marker annotation.
 ///
 /// The *panels* are not rendered here. `Tom2FAFlowPanel`,
 /// `TomTotp2FAClientMechanism` and `TomQrCodeView` are widgets, and a widget
@@ -28,36 +27,13 @@
 /// example declares no `test()` of its own.
 library;
 
-import 'package:flutter/widgets.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
-// A client mechanism tagged with the 2FA key it renders. In an application that
-// runs the reflection generator, this annotation is the whole wiring: the
-// registry scans the reflected program on first read and installs the class
-// under `sms`. This example does not generate reflection, so Example 10
-// registers it by hand — which is the same registry, reached the other way.
-//
-// The panels are stubs. What an SMS mechanism actually renders (a code field,
-// and the masked number the challenge hinted at) is `TomTotp2FAClientMechanism`'s
-// job to model, and a widget needs a pump loop an example cannot open.
-@TomClient2FAAdaptor('sms')
-class SmsClientMechanism extends Tom2FAClientMechanism {
-  /// Creates the mechanism. Unnamed and argument-free, because that is the
-  /// constructor the annotation scan calls.
-  const SmsClientMechanism() : super('sms');
-
-  @override
-  Widget buildEnrolmentPanel(
-    BuildContext context,
-    Tom2FAEnrolmentPanelContext data,
-  ) => const SizedBox.shrink();
-
-  @override
-  Widget buildChallengePanel(
-    BuildContext context,
-    Tom2FAChallengePanelContext data,
-  ) => const SizedBox.shrink();
-}
+// A client 2FA adaptor tagged with its mechanism. A runtime can discover this
+// class by reflection and route TOTP authentication to it. Note that this is
+// *not* how the flow finds a panel to render — that is the registry below.
+@TomClient2FAAdaptor('totp')
+class TotpAdaptor {}
 
 /// The application's one typed backend failure, with a message already written
 /// for the user. Its existence is why [DemoFlowController.describeError] is
@@ -367,38 +343,22 @@ Future<void> run() async {
   assert(controller.pendingChallenge == null);
   assert(controller.settled);
 
-  // Example 10: the mechanism that was not renderable at Example 1 becomes
-  // renderable, and the chooser's answer changes with it. `SmsClientMechanism`
-  // above is annotated `@TomClient2FAAdaptor('sms')`; in an application that
-  // runs the reflection generator that annotation is the whole wiring, and this
-  // line would not exist. This example generates no reflection — nothing to
-  // scan — so it reaches the same registry directly, which is also what an
-  // application does for a mechanism its constructor needs arguments for.
-  Tom2FAClientRegistry.register(const SmsClientMechanism());
-  final nowRenderable = [
-    'totp',
-    'sms',
-  ].where(Tom2FAClientRegistry.has).toList();
-  print('renderable after registering sms: $nowRenderable');
-
-  assert(Tom2FAClientRegistry.has('sms'));
-  assert(nowRenderable.length == 2);
-
-  // The annotation itself is an ordinary const value object: it carries the key
-  // it was given and canonicalizes like any other constant. That key has to
-  // match the mechanism's own `type` — the scan refuses a class where the two
-  // disagree, which is what keeps writing it twice safe.
+  // Example 10: the marker annotation is a const value object carrying its
+  // type, canonicalized like any other, and applicable to a real class. A
+  // runtime enumerates it by reflection to dispatch — see
+  // `test/security_test.dart` for that half, which needs the generated mirrors.
+  const totpMarker = TomClient2FAAdaptor('totp');
   const smsMarker = TomClient2FAAdaptor('sms');
-  const smsAgain = TomClient2FAAdaptor('sms');
+  const totpAgain = TomClient2FAAdaptor('totp');
   print(
-    'annotation type: ${smsMarker.type}; '
-    'mechanism type: ${const SmsClientMechanism().type}; '
-    'canonicalized: ${identical(smsMarker, smsAgain)}',
+    'adaptor types: ${totpMarker.type}, ${smsMarker.type}; '
+    'canonicalized: ${identical(totpMarker, totpAgain)}; '
+    'annotated: ${TotpAdaptor().runtimeType}',
   );
 
+  assert(totpMarker.type == 'totp');
   assert(smsMarker.type == 'sms');
-  assert(smsMarker.type == const SmsClientMechanism().type);
-  assert(identical(smsMarker, smsAgain));
+  assert(identical(totpMarker, totpAgain));
 }
 
 Future<void> main() => run();

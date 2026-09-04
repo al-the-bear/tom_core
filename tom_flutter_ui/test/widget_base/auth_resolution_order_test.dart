@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tests §78: the four authorization layers have to compose in the order
+// The four authorization layers have to compose in the order
 // resource → group → authorizer → uiStateController.
 //
 // `uiStateController` is documented as being able to *only narrow, never
@@ -11,7 +11,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // replaces outright under `controlsAll`, so a group applied after the
 // controller silently undoes the narrowing the controller just performed.
 //
-// `TomField.resolveEffectiveAuth` (forms, §19) already resolves group at
+// `TomField.resolveEffectiveAuth` in the forms layer already resolves group at
 // position 2. These pin the same order for the two widget-side resolvers,
 // `TomPolicyNodeBase.resolveEffectiveAuth` and `TomWidgetMixin.getAuth`.
 
@@ -52,7 +52,7 @@ TomUIStateController _narrowTo(TomAuthState state) =>
 void main() {
   tearDown(TomAuthorization.reset);
 
-  group('auth resolution order: group precedes the controller (§78)', () {
+  group('auth resolution order: group precedes the controller', () {
     test('controlsAll group does not undo the controller (policy node)', () {
       TomAuthorization.adapter = _MapAuthAdapter({
         'w': TomAuthState.full,

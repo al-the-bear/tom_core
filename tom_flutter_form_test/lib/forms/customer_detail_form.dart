@@ -14,7 +14,7 @@ import '../state/phase2a_state.dart';
 /// stable `formId`: the SAME `customerDetail` form instance is re-bound to a
 /// different [Customer] every time the master selection changes. Only the
 /// data binding moves — the form identity, resources, and authorization
-/// stay constant (per spec §15: "Form Identity in Master-Detail").
+/// stay constant — the form-identity-in-master-detail pattern.
 @tomReflector
 class CustomerDetailForm extends TomForm<Customer> {
   CustomerDetailForm() : super(formId: 'customerDetail');

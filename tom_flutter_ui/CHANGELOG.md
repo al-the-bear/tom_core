@@ -2,6 +2,26 @@
 
 ### Documentation
 
+- **43 source comments cited a section number of a document the reader does
+  not have.** `(gap §15a)`, `bug §77`, `tests §59(d)`, `[Phase 2a §16]` — the
+  numbers index workspace-only planning documents, which ship with neither the
+  package nor its tests. From the rendered API docs, or from a `flutter test`
+  failure message, they resolve to nothing at all: the reader cannot even
+  determine *which* numbered document was meant, since the workspace has
+  several.
+
+  Each one now says in its own words what the number stood in for. Where the
+  reference is genuinely to a document that ships — §17 and §26b of
+  `doc/acl_design_specification.md` — the comment names that document beside
+  the number, so the citation is followable from the source alone. `§`
+  followed by a bare number is now a gate failure
+  (`tom_ai/core/tool/check_section_refs.py`, baseline lowered 101 → 0).
+
+  Several of the rewritten comments carried the number inside a sentence about
+  the code's own past ("was previously dropped", "had zero coverage"), so they
+  were rewritten to state the present contract instead; that also took
+  `check_comments_read_as_is` from 40 to 38.
+
 - **44 `Kind` cells across seven documents answered a question the column does
   not ask.** The `Kind` column exists so a reader can tell what they may *do*
   with a symbol before reading further — `abstract interface class` says

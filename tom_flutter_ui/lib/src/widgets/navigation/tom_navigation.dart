@@ -230,8 +230,7 @@ class TomNavigationBar extends TomNavigationBase {
       animationDuration: animationDuration,
       labelBehavior: labelBehavior,
       height: _resolvedHeight,
-      // Forward the per-state label styling that was previously dropped
-      // (gap §15c).
+      // Forward the per-state label styling.
       labelTextStyle: labelTextStyle,
       overlayColor: overlayColor,
     );

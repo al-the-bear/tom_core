@@ -1,7 +1,7 @@
-/// Unit tests for the pure mapping logic in the two debug *panels*, which had
-/// zero direct coverage — they are only transitively mounted inside the demo
-/// screens, whose tests assert form behaviour, not panel behaviour (review
-/// finding tests §64):
+/// Unit tests for the pure mapping logic in the two debug *panels*. Nothing
+/// else covers them directly: they are only transitively mounted inside the
+/// demo screens, whose tests assert form behaviour, not panel behaviour.
+/// Covered here:
 ///
 ///   * `eventCategoryOf` (lifted from `EventLogPanel._categoryOf`) — the
 ///     event-type → `EventCategory` mapping that drives the filter chips. A

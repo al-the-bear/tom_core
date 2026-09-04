@@ -1,15 +1,15 @@
 /// Pins that this unit's section references stand on their own — that a reader
 /// who has only this package can resolve everything its comments point at.
 ///
-/// The unit used to cite the specification bare — `(see §24)`, `See bug §74`.
-/// A bare section number is unfollowable from the rendered API docs, where the
-/// reader has neither the specification open nor any way to guess which of the
-/// workspace's several numbered documents was meant. `§74` was the proof: its
-/// only referent was a numbering internal to a workspace-only planning
-/// document, describing a bug since fixed. Caught here: a reference that names
-/// no document, one that names a section the document does not have, and one
-/// that has drifted out of dartdoc into a plain comment where the
-/// qualification rule was never applied.
+/// A section of `doc/acl_design_specification.md` cited bare — `(see §24)`,
+/// naming no document — is unfollowable from the rendered API docs, where the
+/// reader has neither the specification open nor any way to guess which of
+/// the workspace's several numbered documents was meant. Every section number
+/// in this unit therefore names that document, and that document has to
+/// define the section. Caught here: a reference that names no document, one
+/// that names a section the document does not have, and one that has drifted
+/// out of dartdoc into a plain comment where the qualification rule does not
+/// get applied.
 ///
 /// The unit's other shipped-text failure — naming parts of *other* projects'
 /// specifications — turned out not to be unit-specific, and is guarded for the
@@ -102,9 +102,9 @@ List<_Reference> _referencesIn(String path) {
 }
 
 /// The set of section identifiers the specification actually defines, read
-/// from its `## N.` headings. Includes the lettered ones (`5b`, `26b`), which
-/// matter because §26 and §26b are different mechanisms that were once
-/// conflated here.
+/// from its `## N.` headings. Includes the lettered ones, because in
+/// `doc/acl_design_specification.md` §26 and §26b are different mechanisms
+/// that a citation can easily confuse.
 Set<String> _specSections() {
   final headings = RegExp(r'^##\s+(\d+[a-z]?)[.\s]', multiLine: true);
   final source = File(_specPath).readAsStringSync();
@@ -174,11 +174,12 @@ void main() {
     });
 
     test('every reference sits in a doc comment', () {
-      // Plain `//` comments used to carry section numbers in section banners
-      // (`// ── IDs (§24) ──`). Those were removed rather than qualified: a
-      // navigation banner reads just as well without a number, and every one
-      // of them was a second place for the numbering to drift. Should the
-      // habit return, it returns unqualified — so catch it here.
+      // A section banner carries no section number — no
+      // `// ── IDs (§24 of doc/acl_design_specification.md) ──`. A navigation
+      // banner reads just as well without one, and each such number is a
+      // second place for the numbering to drift. Because the banner form is
+      // a plain `//` comment, the qualification rule would not reach it —
+      // so catch it here instead.
       final stray = references.where((r) => r.block == null).toList();
       expect(
         stray,
@@ -218,11 +219,11 @@ void main() {
   });
 
   group('the specification\'s own cross-references resolve', () {
-    // Sections are deleted from this document as the design they recorded
-    // stops being current — §19 and §22 went that way, and the numbering
-    // gaps they left are deliberate (renumbering would invalidate every
-    // `§NN` the source cites by number). What deletion *can* break is a
-    // reference elsewhere in the document to the section that just left.
+    // Sections are deleted from doc/acl_design_specification.md as the design
+    // they recorded stops being current, and the numbering gaps that leaves
+    // are deliberate: renumbering would invalidate every `§NN` the source
+    // cites by number. What deletion *can* break is a reference elsewhere in
+    // the document to the section that just left.
     late List<({int line, String section, String text})> internal;
 
     setUpAll(() => internal = _internalSpecReferences());
@@ -253,20 +254,19 @@ void main() {
     });
   });
 
-  group('the references that were wrong before are right now', () {
-    test('no reference to the retired §74 survives', () {
-      // §74 was never a section of this specification at all — it belonged to
-      // a workspace-only document's own bug numbering, and named a defect
-      // (`setAclDefaultRowHorizontalAlignment` not applying retroactively)
-      // that is fixed. A reader of the API docs could not have followed it
-      // even in principle.
+  group('the numbers that are easiest to get wrong', () {
+    test('no §74 of acl_design_specification.md is cited', () {
+      // doc/acl_design_specification.md has no §74. The number belongs to a
+      // workspace-only document's own bug numbering, so a reader of the API
+      // docs could not follow a citation of it even in principle.
       expect(references.map((r) => r.section), isNot(contains('74')));
     });
 
-    test('the auth-elision rules cite §26b, not §26', () {
-      // The two are adjacent in the spec and easy to confuse, but §26 is
-      // group visibility — a different mechanism with different gap
-      // semantics. The elision comment cited §26 for a rule only §26b states.
+    test('elision cites §26b of acl_design_specification.md, not §26', () {
+      // The two are adjacent in doc/acl_design_specification.md and easy to
+      // confuse: §26 is group visibility, a different mechanism with
+      // different gap semantics, and doc/acl_design_specification.md states
+      // the elision rule in §26b alone.
       final elision = references.firstWhere(
         (r) => r.block != null && r.block!.contains('Elision rules'),
         orElse: () => throw StateError('elision dartdoc no longer found'),

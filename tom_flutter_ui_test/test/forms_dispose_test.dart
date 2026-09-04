@@ -1,4 +1,4 @@
-/// Disposal tests for the forms_demos State classes (review bug §78).
+/// Disposal tests for the forms_demos State classes.
 ///
 /// The five demo `State` classes (`_FormsOverviewDemoState` in
 /// `forms_demos.dart`; `SelectionVariantsDemoState`, `_BooleanVariantsDemoState`,
