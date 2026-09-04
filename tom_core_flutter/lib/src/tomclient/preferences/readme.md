@@ -93,6 +93,26 @@ keeps it swappable with the server-side `TomUserPreferences`.
 Switching accounts costs nothing beyond the new bean: `TomStoredDevicePreferences`
 holds no cache, so the next read already answers from the new document.
 
+## One order, both faces
+
+`all()` answers **ordered by key, ascending**, on the device store and on the
+account client alike. The rule is stated once — on the kernel's
+`TomUserPreferencesApiService.listPreferences`, which both stores implement —
+because a sequence that depended on which of the two an application happened to
+be holding would not be one surface with two backings. Anything that renders the
+list, or diffs the device store against the account store to decide what to sync,
+reads it.
+
+The key is the ordering field: it is the one that is unique within a store and
+never changes while the preference exists, so rewriting a value does not move it
+in the list. Ascending by code unit, which over the ASCII-only alphabet
+`TomUserPreferenceKeys` admits is plain alphabetical with uppercase first.
+
+`TomStoredDevicePreferences` sorts on the way out, so the guarantee holds for a
+hand-edited document and for a backend with no insertion order to preserve;
+`TomUserPreferencesClient` sorts nothing, because the order is the server's to
+produce off an index that already covers it.
+
 ## Precedence
 
 Where a key exists in both stores, **the device value wins for as long as it

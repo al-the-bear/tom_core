@@ -1585,6 +1585,27 @@ anyone who was writing them.
 
 ### Documentation
 
+- **`TomUserPreferencesApiService.listPreferences` now states the order it
+  answers in (tcincb1_ahzg).** It said only "every preference of the caller".
+  Two implementations answer it — `tom_core_server`'s store, which has always
+  sorted by key, and `tom_core_flutter`'s device store, which did not — and the
+  silence here is why they diverged: an unstated sequence is one each side
+  invents, and a server that sorts beside a client that forwards an unsorted
+  list are not two backings of one API.
+
+  The declaration now carries the rule and its reasons. **The key is the
+  ordering field** because it is the one that is unique within a caller's
+  preferences and never changes while the preference exists — rewriting a value
+  must not move it in the list, which rules out `updatedAt`, and there is no
+  insertion order that survives a store being rebuilt. **Ascending by code
+  unit**, which is exact rather than approximate only because
+  `TomUserPreferenceKeys` admits ASCII alone: over that alphabet code-unit
+  order, byte order and alphabetical order are one order, so a Dart `compareTo`
+  and a byte-collated SQL `ORDER BY` cannot disagree. A store whose backing
+  column carries a case-insensitive collation deviates from this, and the
+  dartdoc says so — that is a defect in the store, not a second permitted
+  reading of the sentence.
+
 - **`TomContextProviders`' locale accessors read as a locale derivation and are
   not one, and their `"XX"` was undocumented as a sentinel (tcinc629).** The
   nine providers are single-field readers: each answers *what the principal

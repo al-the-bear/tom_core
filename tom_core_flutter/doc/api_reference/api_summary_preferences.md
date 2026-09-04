@@ -91,7 +91,7 @@ const TomDevicePreferences()
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference on this device, in storage order. |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference on this device, **ordered by key**, ascending — the same order the account store answers in. |
 | `read(String key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` when never written. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` on a stored-type mismatch. |
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
@@ -352,7 +352,7 @@ whichever store it addresses.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference stored for the calling principal. |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference stored for the calling principal, **ordered by key**, ascending. Forwarded as received — the client does not re-sort. |
 | `read(String key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` when the server has never been given one. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` on a stored-type mismatch. |
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |

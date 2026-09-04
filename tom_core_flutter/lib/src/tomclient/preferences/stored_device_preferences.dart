@@ -40,9 +40,25 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
   /// Creates the typed API over [store].
   const TomStoredDevicePreferences(this.store);
 
+  /// Every preference on this device, ordered by key — see
+  /// [TomDevicePreferences.all].
+  ///
+  /// Sorted **on the way out** rather than kept sorted in storage. The order is
+  /// a property of the answer, and deriving it here makes it true of every
+  /// backend and every document: a store wrapping a keychain enumerates in
+  /// whatever order the keychain likes, a JSON file may have been written by an
+  /// older build or edited by hand, and neither can be made to comply by a
+  /// sorted [set]. Sorting on write would only place the guarantee where it can
+  /// be bypassed.
+  ///
+  /// It also keeps [set] minimal: a write touches the one entry it was given
+  /// rather than reordering the document around it.
   @override
-  Future<List<TomUserPreferenceDto>> all() async =>
-      List.unmodifiable(await store.read());
+  Future<List<TomUserPreferenceDto>> all() async {
+    final values = [...await store.read()]
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return List.unmodifiable(values);
+  }
 
   @override
   Future<TomUserPreferenceDto?> read(String key) async {

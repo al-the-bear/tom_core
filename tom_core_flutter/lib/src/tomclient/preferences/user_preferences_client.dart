@@ -147,7 +147,16 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   // The store face — the surface TomDevicePreferences also carries
   // ---------------------------------------------------------------------------
 
-  /// Every preference stored for the calling principal.
+  /// Every preference stored for the calling principal, **ordered by key,
+  /// ascending** — the order [listPreferences] states, and the same one
+  /// `TomDevicePreferences.all` answers in.
+  ///
+  /// Forwarded as received: this client does **not** re-sort. The order is the
+  /// server's to produce, off an index that already covers it, and a client that
+  /// sorted defensively would be spending a sort on every call to hide the one
+  /// symptom by which a server breaking the contract could be noticed. Where the
+  /// two faces disagree the store is wrong, and it should be possible to see
+  /// that.
   Future<List<TomUserPreferenceDto>> all() => listPreferences();
 
   /// The preference stored under [key] as stored, or `null` when the server has

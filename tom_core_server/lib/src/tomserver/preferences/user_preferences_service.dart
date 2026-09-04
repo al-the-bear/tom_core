@@ -105,6 +105,11 @@ class TomUserPreferences {
 
   /// Every preference of the calling principal, ordered by key.
   ///
+  /// That order is the contract's, not this store's preference:
+  /// [TomUserPreferencesApiService.listPreferences] states it for every
+  /// implementation, so `tom_core_flutter`'s device store answers in the same
+  /// sequence and an application holding either one reads the same list.
+  ///
   /// The `order by` is not decoration. Without it the answer is whatever order
   /// the storage engine finds convenient, and that changes as the table is
   /// rewritten, as rows are deleted and reinserted, or as the planner picks a

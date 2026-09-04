@@ -2661,20 +2661,22 @@ void main() {
           // The login path: the principal is being authenticated right now, so
           // nothing is installed on the zone. Reading the zone here would be
           // fail-closed and blank every protected field in every minted token.
-          final (publicInfo, _) =
-              TomBearerAuthentication.convertPrincipalToTokenPayload(
-                subject(
-                  resourceKeys: [
-                    'tom.user.firstname',
-                    'tom.user.lastname',
-                    'tom.user.email',
-                    'tom.user.attributes',
-                  ],
-                ),
-                null,
-                'US',
-                'en',
-              );
+          final (
+            publicInfo,
+            _,
+          ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+            subject(
+              resourceKeys: [
+                'tom.user.firstname',
+                'tom.user.lastname',
+                'tom.user.email',
+                'tom.user.attributes',
+              ],
+            ),
+            null,
+            'US',
+            'en',
+          );
 
           expect(publicInfo['firstname'], equals('Alice'));
           expect(publicInfo['lastname'], equals('Anders'));
@@ -2687,13 +2689,15 @@ void main() {
       );
 
       test('fields the subject holds no key for fall back', () {
-        final (publicInfo, _) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
-              subject(resourceKeys: ['tom.user.email']),
-              null,
-              'US',
-              'en',
-            );
+        final (
+          publicInfo,
+          _,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+          subject(resourceKeys: ['tom.user.email']),
+          null,
+          'US',
+          'en',
+        );
 
         expect(publicInfo['email'], equals('alice@example.com'));
         expect(publicInfo['firstname'], isNull);
@@ -2708,13 +2712,15 @@ void main() {
       });
 
       test('the three unfiltered fields travel in the clear regardless', () {
-        final (publicInfo, _) =
-            TomBearerAuthentication.convertPrincipalToTokenPayload(
-              subject(),
-              null,
-              'US',
-              'en',
-            );
+        final (
+          publicInfo,
+          _,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+          subject(),
+          null,
+          'US',
+          'en',
+        );
 
         expect(publicInfo['username'], equals('alice'));
         expect(publicInfo['userId'], equals(7));
@@ -2730,13 +2736,12 @@ void main() {
         );
 
         final publicInfo = runZoned(
-          () =>
-              TomBearerAuthentication.convertPrincipalToTokenPayload(
-                subject(),
-                null,
-                'US',
-                'en',
-              ).$1,
+          () => TomBearerAuthentication.convertPrincipalToTokenPayload(
+            subject(),
+            null,
+            'US',
+            'en',
+          ).$1,
           zoneValues: {TomPrincipal: onZone},
         );
 
@@ -2748,13 +2753,12 @@ void main() {
         // The mirror case: an unprivileged principal on the zone must not
         // redact fields the subject's own keys unlock.
         final publicInfo = runZoned(
-          () =>
-              TomBearerAuthentication.convertPrincipalToTokenPayload(
-                subject(resourceKeys: ['tom.user.email']),
-                null,
-                'US',
-                'en',
-              ).$1,
+          () => TomBearerAuthentication.convertPrincipalToTokenPayload(
+            subject(resourceKeys: ['tom.user.email']),
+            null,
+            'US',
+            'en',
+          ).$1,
           zoneValues: {TomPrincipal: subject()},
         );
 
@@ -3729,7 +3733,8 @@ void main() {
         expect(
           pending.attemptsRemaining,
           isZero,
-          reason: 'no budget claim at this stop — the raw count is not the '
+          reason:
+              'no budget claim at this stop — the raw count is not the '
               'question the filter asks',
         );
         expect(pending.isExhausted, isFalse);

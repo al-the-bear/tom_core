@@ -162,6 +162,56 @@ void runSharedStoreTests(
       expect(await preferences.all(), hasLength(1));
     });
 
+    test('all() answers in key order, not in the order written', () async {
+      // Written in an order that is neither the answer nor its reverse, so a
+      // store that simply echoed insertion — which is what this used to do —
+      // cannot pass by coincidence.
+      final preferences = build();
+      await preferences.set('device.launches', 7);
+      await preferences.set('device.theme', 'dark');
+      await preferences.set('device.account', 'alex@example.com');
+      await preferences.set('device.biometric', true);
+
+      expect((await preferences.all()).map((stored) => stored.key), [
+        'device.account',
+        'device.biometric',
+        'device.launches',
+        'device.theme',
+      ]);
+    });
+
+    test('rewriting a value does not move it in the list', () async {
+      // Why the key is the ordering field and not `updatedAt`: a preference a
+      // user just changed must stay where the reader last saw it.
+      final preferences = build();
+      await preferences.set('device.account', 'alex@example.com');
+      await preferences.set('device.theme', 'dark');
+      await preferences.set('device.zoom', 1.25);
+
+      await preferences.set('device.account', 'sam@example.com');
+
+      expect((await preferences.all()).map((stored) => stored.key), [
+        'device.account',
+        'device.theme',
+        'device.zoom',
+      ]);
+    });
+
+    test('key order is by code unit, so Theme precedes theme', () async {
+      // The clause that decides what "ascending" means. It matters because
+      // `TomUserPreferenceKeys` admits both cases, and because it is exactly
+      // where a store backed by a case-insensitive SQL collation would answer
+      // something else — see TomUserPreferencesApiService.listPreferences.
+      final preferences = build();
+      await preferences.set('device.theme', 'dark');
+      await preferences.set('device.Theme', 'light');
+
+      expect((await preferences.all()).map((stored) => stored.key), [
+        'device.Theme',
+        'device.theme',
+      ]);
+    });
+
     test('refuses a read of the wrong type instead of coercing', () async {
       final preferences = build();
       await preferences.set('device.launches', 7);
@@ -601,6 +651,53 @@ void main() {
     );
   });
 
+  group('both faces of the store state one order', () {
+    // The two `all()`s are the same surface with two backings, so a reader who
+    // learns the order from whichever artefact they opened must learn the same
+    // order. Behaviour is pinned above; this pins that it is *said*, in each
+    // place a reader could start from.
+    const artefacts = <String>[
+      'lib/src/tomclient/preferences/device_preferences.dart',
+      'lib/src/tomclient/preferences/user_preferences_client.dart',
+      'lib/src/tomclient/preferences/readme.md',
+      'doc/preferences.md',
+      'doc/api_reference/api_summary_preferences.md',
+    ];
+
+    String plainTextOf(String file) =>
+        File(file).readAsStringSync().replaceAll(RegExp(r'[*`\[\]]'), '');
+
+    test('every artefact names the order all() answers in', () {
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains('ordered by key'),
+          reason:
+              '$artefact does not say what order all() answers in, so a reader '
+              'starting there would take the sequence they happened to observe '
+              'for the contract',
+        );
+      }
+    });
+
+    test('no artefact still describes the answer as storage order', () {
+      // The tempting wrong phrase, guarded because it is not obviously wrong: a
+      // JSON array does have an order, so "storage order" reads like a
+      // guarantee while naming nothing more than whichever entry `set` appended
+      // first — which no other backend owes and no caller can rely on.
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          isNot(contains('storage order')),
+          reason:
+              '$artefact still offers storage order as the contract, which the '
+              'device store no longer answers in and the account store never '
+              'could',
+        );
+      }
+    });
+  });
+
   group('TomDevicePreferenceJson', () {
     test('round-trips a document', () {
       final written = DateTime.utc(2026, 3, 14, 9, 26, 53);
@@ -1016,6 +1113,46 @@ void main() {
         expect(stored.first.value, '"dark"');
         expect(stored.last.valueType, 'int');
       });
+
+      test('all() forwards the order the server answered in', () async {
+        // The account store's half of the shared contract. The server orders by
+        // key off an index that already covers it, so the sequence the socket
+        // carries is the sequence the caller is owed — and this client's job is
+        // not to alter it.
+        transport.answer(
+          body:
+              '[${_dtoBody('app.launches', 7)},'
+              '${_dtoBody('tom.language', 'de')},'
+              '${_dtoBody('tom.theme', 'dark')}]',
+        );
+
+        expect((await build().all()).map((stored) => stored.key), [
+          'app.launches',
+          'tom.language',
+          'tom.theme',
+        ]);
+      });
+
+      test(
+        'all() does not re-sort a server that answered out of order',
+        () async {
+          // Deliberate, and pinned because it is the kind of "harmless"
+          // defensive sort a later reader adds without noticing what it costs:
+          // it would hide the only symptom by which a store breaking the
+          // ordering contract could be caught, and it would pay for a sort on
+          // every call to do it.
+          transport.answer(
+            body:
+                '[${_dtoBody('tom.theme', 'dark')},'
+                '${_dtoBody('app.launches', 7)}]',
+          );
+
+          expect((await build().all()).map((stored) => stored.key), [
+            'tom.theme',
+            'app.launches',
+          ]);
+        },
+      );
     });
 
     group('failures', () {

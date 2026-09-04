@@ -206,6 +206,15 @@
 
 ### Documentation
 
+- **`TomStoredUserPreferences.all()` records that its key order is the
+  contract's, not its own (tcincb1_ahzg).** The `order by` was already there and
+  already reasoned about, but as this store's choice — which read as something a
+  second implementation was free to make differently, and
+  `tom_core_flutter`'s device store did. The order is now stated once on
+  `TomUserPreferencesApiService.listPreferences` in the kernel, and this dartdoc
+  points at it: both faces of the preference store answer in the same sequence,
+  so an application holding either one reads the same list.
+
 - **75 `Kind` cells across 13 documents named a role instead of a declaration.**
   The column's whole purpose is to say what a reader may *do* with the symbol —
   `abstract class` invites an `extends`, `abstract interface class` forbids it,

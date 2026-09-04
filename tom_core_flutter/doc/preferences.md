@@ -62,7 +62,7 @@ The method set deliberately mirrors `TomUserPreferences` (`tom_core_server`):
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference on this device |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference on this device, ordered by key |
 | `read(key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` |
 | `get<T>(key)` | `Future<T?>` | Decoded as a `T`; `null` when never written |
 | `getOr<T>(key, fallback)` | `Future<T>` | `get`, with a default for the unwritten case |
@@ -84,6 +84,29 @@ for what an application must do to keep it true.
 `clear()` is its own method rather than a loop over `all()` because a backend
 can do it atomically and a loop cannot: a loop that fails half way leaves a
 device in a state no user asked for.
+
+**`all()` is ordered by key, ascending — and so is the account store's.** The
+rule is stated once, on the kernel's `TomUserPreferencesApiService.listPreferences`,
+because both stores answer it: a sequence that depended on which face an
+application happened to hold would not be one surface with two backings, which
+is the whole premise of the symmetry above. Anything that renders the list, or
+diffs the device store against the account store to decide what to sync, reads
+that sequence.
+
+The key is the ordering field because it is the one that is unique within a
+store and never changes while the preference exists — rewriting a value must not
+move it in the list, which rules out `updatedAt`, and there is no insertion order
+a rebuilt store could preserve. Ascending by code unit, which over the ASCII-only
+alphabet `TomUserPreferenceKeys` admits is plain alphabetical with uppercase
+first, so `tom.Theme` precedes `tom.theme`.
+
+The device store sorts on the way *out* rather than keeping its document sorted:
+a JSON file may have been written by an older build or edited by hand, and a
+store wrapping a keychain enumerates however the keychain likes — neither can be
+made to comply by a sorted `set()`. The client does the opposite and sorts
+nothing, because the order is the server's to produce off an index that already
+covers it; a client that re-sorted defensively would hide the one symptom by
+which a store breaking the contract could be noticed.
 
 `getOr` answers its fallback only for a preference that has **never been
 written**. A type *mismatch* still throws `TomUserPreferenceCodecException`: an

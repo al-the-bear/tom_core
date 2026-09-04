@@ -101,6 +101,34 @@
 
 ### Fixed
 
+- **The two faces of the preference store listed the same preferences in two
+  different orders (tcincb1_ahzg).** `TomUserPreferencesClient.all()` answers in
+  the server's order — key ascending, stated on the endpoint since tcinc613 —
+  while `TomStoredDevicePreferences.all()` returned
+  `List.unmodifiable(await store.read())`, which is whatever sequence the backend
+  happened to hold. The module's own documentation says in three places that a
+  preference can *move* between the two stores without a call site changing; an
+  application that renders either list, or diffs one against the other to decide
+  what to sync, could not do so without knowing which face it held.
+
+  The device store now sorts by key on the way out. **On the way out, not on the
+  way in**: `TomDevicePreferenceStore.read()` explicitly permits a store to
+  answer from a cache, a keychain or a platform settings panel, none of which
+  has an insertion order to preserve — so a sorted `set()` would place the
+  guarantee exactly where a hand-edited document, an older build or a
+  third-party backend can bypass it, and it would make a one-key write reorder
+  the document around it. `TomUserPreferencesClient` deliberately does **not**
+  re-sort: the order is the server's to produce off an index that already covers
+  it, and a defensive sort would pay for itself on every call in order to hide
+  the one symptom by which a store breaking the contract could be noticed.
+
+  The old dartdoc called the sequence "storage order", which named `set()`
+  appending rather than anything a caller could rely on. The rule now lives in
+  one place — `TomUserPreferencesApiService.listPreferences` in the kernel, the
+  declaration both faces implement — and a doc-hygiene group holds the five
+  artifacts (both dartdocs, the module readme, the doc page, the API summary) to
+  stating it and to no longer promising the old one.
+
 - **The removal record paraphrased away both halves of a cross-reference the
   two bookmark readmes made to each other (tcinc1115).** One sentence in
   `tom_core_flutter_removed_modules_changes.md` summarised the deleted

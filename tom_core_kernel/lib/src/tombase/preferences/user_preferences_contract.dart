@@ -229,7 +229,31 @@ final TomApi tomUserPreferencesApi = TomApi(
 /// `@TomApiEndpointImplementation`) live in `tom_core_server` and cannot be
 /// named here — the same split the rest of the framework's contracts follow.
 abstract class TomUserPreferencesApiService {
-  /// [tomUserPreferencesListEndpointId] — every preference of the caller.
+  /// [tomUserPreferencesListEndpointId] — every preference of the caller,
+  /// **ordered by key, ascending**.
+  ///
+  /// The order is part of the contract rather than an implementation's
+  /// accident, and it is stated *here* rather than on either implementation
+  /// because both of them answer it: a server that sorts and a client that
+  /// forwards an unsorted list are not two flavours of one API, they are two
+  /// APIs. Anything that renders the list, or diffs one caller's list against
+  /// another's to decide what to sync, reads the sequence — so leaving it
+  /// unstated makes those callers depend on whatever each side happens to do.
+  ///
+  /// **The key is the ordering column** because it is the one field that is
+  /// unique within a caller's preferences and never changes while the
+  /// preference exists: rewriting a value must not move it in the list, which
+  /// rules out `updatedAt`, and there is no insertion order that survives a
+  /// store being rebuilt.
+  ///
+  /// Ascending **by code unit** — plain ASCII order, so `Theme` precedes
+  /// `theme`. That is exact rather than approximate only because
+  /// [TomUserPreferenceKeys] admits ASCII alone: over that alphabet code-unit
+  /// order, byte order and alphabetical order are the same order, so a Dart
+  /// `compareTo` and a byte-collated SQL `ORDER BY` cannot disagree. A store
+  /// whose backing column carries a case-insensitive collation *does* deviate
+  /// from this, and that is a defect in the store rather than a second
+  /// permitted reading of this sentence.
   Future<List<TomUserPreferenceDto>> listPreferences();
 
   /// [tomUserPreferencesReadEndpointId] — the caller's preference under

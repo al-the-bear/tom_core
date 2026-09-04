@@ -182,7 +182,21 @@ abstract class TomDevicePreferences {
     return installed is TomDevicePreferences ? installed : null;
   }
 
-  /// Every preference stored on this device, in storage order.
+  /// Every preference stored on this device, **ordered by key, ascending**.
+  ///
+  /// The same order the account store answers in — see
+  /// [TomUserPreferencesApiService.listPreferences], where the rule and its
+  /// reasons are stated once for both. That is the point of it: this method and
+  /// `TomUserPreferencesClient.all()` are the two faces of one store surface, so
+  /// an application that renders either list, or diffs one against the other to
+  /// decide what to sync, must not have to know which face it is holding.
+  ///
+  /// The order a *backend* happens to hold its entries in is not the answer.
+  /// [TomDevicePreferenceStore.read] lets an implementation answer from a cache,
+  /// a keychain or a platform settings panel — none of which has an insertion
+  /// order to preserve, and one of which may be rebuilt between two calls. The
+  /// sequence is derived here, from the keys, so that it is the same one on
+  /// every backend and for every document, however that document was produced.
   Future<List<TomUserPreferenceDto>> all();
 
   /// The preference stored under [key] as stored, or `null` when it has never
