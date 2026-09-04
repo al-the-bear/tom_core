@@ -358,7 +358,14 @@ apps get the full kernel API through one dependency. See the
 ## Status
 
 - **Version:** 1.3.0
-- **Tests:** 3580 test cases across 92 module suites (run with `testkit :test`
-  or `dart test`). 421 are tagged `db` and skip unless a live MySQL is
-  reachable — bring one up with `tool/run_db_tests.sh`.
+- **Tests:** 3605 test cases across 94 module suites (run with `testkit :test`
+  or `dart test`). 408 of them live in the 20 suites tagged `db` and skip
+  unless a live MySQL is reachable — bring one up with `tool/run_db_tests.sh`.
+- **Conformance guards:** some of those suites check the package rather than the
+  code — `test/formatting_test.dart` fails when any Dart file is not
+  `dart format` clean (the fix is always `dart format .`, never a code change),
+  `test/api_reference_coverage_test.dart` fails when `doc/api_reference/` and
+  `lib/` disagree, and `test/examples_test.dart` fails when an example stops
+  being verified. They need no separate invocation: a normal test run is the
+  gate, which is the point — `dart analyze` cannot see any of these.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

@@ -80,6 +80,20 @@
 
 ### Testing
 
+- **The formatting guard checked three directories by name, so a Dart file
+  anywhere else was unguarded and nothing said so.** `test/formatting_test.dart`
+  listed `lib/`, `example/` and `test/`. That list was complete, but complete by
+  coincidence: a script added under `tool/`, or a `build.dart` at the package
+  root, would have drifted silently — which is the failure the suite exists to
+  end, one level up. A guard against "nobody remembers to check this" should not
+  itself rely on somebody remembering to widen it. The scope is now *every* Dart
+  file in the package, derived by walking it, with two stated exclusions:
+  dot-directories the package does not author (`.dart_tool`, `.git`), and
+  generated `.reflection.dart` output. The three directories survive only as
+  landmarks the walk must reach, which is what keeps a walk that finds nothing
+  from passing. Verified by putting a misformatted file under `tool/`: the suite
+  fails and names it, where before it saw nothing at all.
+
 - **`test/examples_test.dart` holds for the set of examples what no module
   suite can hold about its own.** It requires that no file under `example/`
   contains `assert(`, that none re-declares a local `check`, and that the

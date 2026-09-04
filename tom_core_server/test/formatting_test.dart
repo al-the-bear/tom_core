@@ -19,6 +19,14 @@
 /// checked here rather than remembered. The fix when this fails is always the
 /// same and never a code change: run `dart format .`.
 ///
+/// The scope is **every Dart file in the package**, derived by walking it, and
+/// not a list of directories to keep up to date. The distinction is the whole
+/// point of the suite applied to itself: a checker told where to look stops
+/// covering the package the moment a file appears somewhere else, and reports
+/// nothing while it does — which is exactly how the drift it guards against
+/// accumulated. Only two things are left out, each for a stated reason: the
+/// dot-directories the package does not author, and generated output.
+///
 /// **If this fails on a machine where nothing was edited**, the SDK's formatter
 /// has changed its output. Reformat the package and commit that as its own
 /// whitespace-only change — the same shape as the 127-file commit. Do not relax
@@ -30,10 +38,13 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-/// The directories whose Dart files this package authors.
+/// The directories a walk of this package must reach, whatever else it finds.
 ///
-/// `.dart_tool` is excluded by the formatter itself, so it is not listed.
-const List<String> _sourceDirectories = ['lib', 'example', 'test'];
+/// These are not the *scope* — the scope is every Dart file in the package (see
+/// [_packageDartFiles]). They are landmarks: three directories that are
+/// structural to the package and cannot legitimately become empty, so a walk
+/// that misses one has gone wrong rather than found a smaller package.
+const List<String> _landmarkDirectories = ['lib', 'example', 'test'];
 
 /// Machine-written files, which this package does not author and cannot fix.
 ///
@@ -43,24 +54,53 @@ const List<String> _sourceDirectories = ['lib', 'example', 'test'];
 /// `api_reference_coverage_test.dart`.
 bool _isGenerated(String path) => path.endsWith('.reflection.dart');
 
-/// Every hand-written Dart file in the package, as paths relative to its root.
-List<String> _authoredDartFiles() {
-  final files = <String>[
-    for (final directory in _sourceDirectories)
-      ...Directory(directory)
-          .listSync(recursive: true)
-          .whereType<File>()
-          .map((entity) => entity.path)
-          .where((path) => path.endsWith('.dart'))
-          .where((path) => !_isGenerated(path)),
-  ];
+/// Every Dart file in the package, generated ones included, as paths relative
+/// to the package root.
+///
+/// Derived by walking the package rather than from a list of directories. The
+/// list it replaced — `lib`, `example`, `test` — was complete, but complete by
+/// coincidence: a script added under `tool/`, or a `build.dart` at the root,
+/// would have been unguarded with nothing saying so. That is this suite's own
+/// failure mode one level up — an invariant that holds until a file appears
+/// somewhere the checker was never told to look — and a guard against drift
+/// should not itself depend on someone remembering to widen it.
+///
+/// Dot-directories are skipped rather than filtered afterwards: `.dart_tool`
+/// holds package copies this package does not author (and which the formatter
+/// excludes anyway) and `.git` holds no Dart at all, so descending into either
+/// would cost far more than the walk. Links are not followed, for the same
+/// reason plus the loop they can form.
+List<String> _packageDartFiles() {
+  final files = <String>[];
+
+  void walk(Directory directory) {
+    for (final entity in directory.listSync(followLinks: false)) {
+      final name = entity.path.split(Platform.pathSeparator).last;
+      if (name.startsWith('.')) continue;
+      if (entity is Directory) {
+        walk(entity);
+      } else if (entity is File && entity.path.endsWith('.dart')) {
+        files.add(entity.path);
+      }
+    }
+  }
+
+  walk(Directory('.'));
   files.sort();
-  return files;
+  // The walk starts at `.`, so every path carries a `./` the landmark check and
+  // the failure message are both clearer without.
+  final prefix = '.${Platform.pathSeparator}';
+  return [
+    for (final path in files)
+      path.startsWith(prefix) ? path.substring(prefix.length) : path,
+  ];
 }
 
 void main() {
   group('the package is formatted', () {
-    final authored = _authoredDartFiles();
+    final all = _packageDartFiles();
+    final authored = all.where((path) => !_isGenerated(path)).toList();
+    final generated = all.where(_isGenerated).toList();
 
     test('every file it authors survives `dart format` unchanged', () async {
       // Run the formatter that ships with the SDK running this test, rather
@@ -89,10 +129,10 @@ void main() {
       // directory tests run from would be noticed. So the sweep has to prove it
       // ran.
       //
-      // Stated as a floor and a set of representatives rather than an exact
-      // count, because the count is supposed to move — every new file adds one —
-      // and a test that must be edited whenever the thing it measures grows
-      // correctly is a test that will be edited without being read.
+      // Stated as a floor and a set of landmarks rather than an exact count,
+      // because the count is supposed to move — every new file adds one — and a
+      // test that must be edited whenever the thing it measures grows correctly
+      // is a test that will be edited without being read.
       expect(
         authored,
         hasLength(greaterThan(150)),
@@ -100,7 +140,7 @@ void main() {
             'the walk found far fewer files than the package contains, so '
             'the format check above swept almost nothing',
       );
-      for (final directory in _sourceDirectories) {
+      for (final directory in _landmarkDirectories) {
         expect(
           authored.where((path) => path.startsWith('$directory/')),
           isNotEmpty,
@@ -116,14 +156,10 @@ void main() {
       // matching anything: an exclusion that excludes nothing is a rule the
       // next reader will not know is dead, and one that quietly starts covering
       // hand-written files would hide them from the check.
-      final generated = [
-        for (final directory in _sourceDirectories)
-          ...Directory(directory)
-              .listSync(recursive: true)
-              .whereType<File>()
-              .map((entity) => entity.path)
-              .where(_isGenerated),
-      ];
+      //
+      // Both sets come from the one walk above, so this compares the partition
+      // the check actually used rather than a second walk that could disagree
+      // with it.
       expect(
         generated,
         isNotEmpty,
