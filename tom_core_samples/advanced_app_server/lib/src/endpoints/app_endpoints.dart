@@ -1481,11 +1481,27 @@ const String appEndpointAccessDeniedKey =
 /// - a framework [TomDataScopeAuthorizationException] (a non-owner's write to a
 ///   `@TomDbScope` row) → **403**, carrying its own
 ///   `data_scope.write.out_of_scope` key.
+/// - a [MalformedIdException] from `persistence/app_mapping.dart` (an id that
+///   is neither empty nor an integer) → **400**, carrying [malformedIdKey].
 Response? appForbiddenOrNotFound(
   Request request,
   Object error,
   StackTrace stack,
 ) {
+  // An id the mapping cannot turn into a database key is the caller's mistake,
+  // so it is a 400 rather than the default 500. The mapping throws instead of
+  // folding the bad id into `null`, which used to INSERT a duplicate row or
+  // strip a relation while answering as if the write had succeeded — this
+  // translation is what keeps that fix from merely swapping a silent bad write
+  // for a misreported server fault. Matched on the [MalformedIdException]
+  // *subtype*: a malformed resource-bundle asset also raises a
+  // `FormatException` and that one really is a 500.
+  if (error is MalformedIdException) {
+    return Response.badRequest(
+      body: jsonEncode({'error': malformedIdKey}),
+      headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
+    );
+  }
   // A framework data-scope *write* rejection — a non-owner updating or
   // deleting a `@TomDbScope` row (the sample's workspace write path) — surfaces
   // as a 403 carrying the framework's own stable key

@@ -115,12 +115,20 @@ real stack — five suites, all driven by the one script
 | `auth_client_integration_test.dart` (**TC-22-11…13**) | a real login, including the two-pass 2FA exchange and a mid-run enrolment |
 | `file_transfer_integration_test.dart` (**TC-FT-01…05**) | bytes moving through both blob stores, the closed/anonymous refusals, and a read-only column grade |
 | `app_api_client_integration_test.dart` (**TC-24-14**) | that the typed app client's base URI, routes and DTO decoding still agree with `advanced_app_server` |
-| `admin_api_client_integration_test.dart` (**TC-25-14**) | the same for the typed admin client against the auth server's `/admin/*` |
+| `admin_api_client_integration_test.dart` (**TC-25-14**, **TC-25-15**) | the same for the typed admin client against the auth server's `/admin/*`, plus that a malformed id really is a **400** and not a 500 |
 
 The last two are deliberately narrow. The three above them reach the clients only
 *through* a scenario, so when one breaks it cannot say whether the wire contract
 or the authorization logic stopped holding; these two answer that in one line of
-output. A suite no script runs decays silently, which is why they run here rather
+output.
+
+TC-25-15 is the exception to that narrowness, and it is here rather than in a
+unit suite for a reason the others do not share. The status it asserts comes
+from a **per-endpoint** error handler declared on the `@TomApiImplementation`,
+so it holds only if that declaration survives reflection generation and the
+pipeline actually consults it — neither of which a socket-free test can show.
+Its unit counterpart proves the handler *function* returns a 400; only the live
+run proves the server calls it. A suite no script runs decays silently, which is why they run here rather
 than being left to a manual invocation.
 
 The runner is one scripted command for the Phase-7 "scenario passes end-to-end"

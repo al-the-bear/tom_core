@@ -113,6 +113,27 @@ genuine faults still get the standard JSON error (`forbiddenOnAccessDenied`,
 `admin_endpoints.dart`; `authServerErrorHandler`, `auth_server_start.dart`;
 `appForbiddenOrNotFound`, `app_endpoints.dart`).
 
+A throw raised *inside* a handler goes somewhere else entirely, and the two are
+not interchangeable. The pipeline catches it in the per-endpoint `try/catch` and
+hands it to the endpoint's **own** error handler — which defaults to
+`TomDefaultErrorHandler`, an opaque 500 — so the server-level handler never sees
+it. Both servers therefore declare a per-endpoint handler on their
+`@TomApiImplementation` (`AdminEndpointErrorHandler`, `AppEndpointErrorHandler`)
+for the in-method rejections, alongside the server-level one for the
+pre-invocation check.
+
+The clearest case is a **malformed id**. Both persistence mappings reject a
+display-id that is neither empty nor an integer with a `MalformedIdException`
+(declared in `advanced_todo_contracts`, beside the `malformedIdKey` it is
+reported under). That is the caller's mistake, so the per-endpoint handler maps
+it to **400** with body `{"error": "request.id.malformed"}` rather than letting
+it become a 500 — for instance a group create whose `memberUserIds` names
+something that is not a persisted user key. It is matched as that *subtype*, not
+as a bare `FormatException`: a malformed resource-bundle asset raises one of
+those too, and that one really is a 500. Because this only holds if the handler
+survives reflection generation, the live suite asserts it over a real socket
+(`TC-25-15` in `admin_api_client_integration_test.dart`).
+
 ## Bearer validation on every request
 
 Neither server sets `authenticationMiddleware` on its configuration, so

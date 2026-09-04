@@ -65,5 +65,54 @@ void main() {
         transport.close();
       }
     });
+
+    // A malformed id is raised *inside* an endpoint method by the server's
+    // persistence mapping, which the framework pipeline would otherwise turn
+    // into an opaque 500 — the auth server's per-endpoint
+    // `AdminEndpointErrorHandler` is what makes it the 400 it is. Reading the
+    // pipeline is not enough to know that: the mapping only holds because the
+    // handler is declared on the `@TomApiImplementation` *and* survives
+    // reflection generation, so this asserts it over a real socket.
+    test('TC-25-15: a malformed member id is a 400, not a 500', () async {
+      final transport = IoJsonTransport();
+      final authBase = Uri.parse(_authBaseUri);
+      final auth = AuthClient(authBase, transport: transport);
+      final client = AdminApiClient(authBase, AuthorizedHttp(transport, auth));
+
+      try {
+        await auth.login(
+          LoginRequest(username: 'admin', password: 'admin-pass'),
+        );
+
+        final before = await client.listGroups();
+
+        await expectLater(
+          () => client.createGroup(
+            GroupDto(
+              name: 'Rejected by a bad member id',
+              memberUserIds: const ['not-an-id'],
+            ),
+          ),
+          throwsA(
+            isA<AdminApiException>()
+                .having((e) => e.statusCode, 'statusCode', 400)
+                .having((e) => e.key, 'key', malformedIdKey),
+          ),
+        );
+
+        // The membership is checked before the group row is written, and there
+        // is no transaction to undo it — so a rejected create must leave no
+        // orphan group behind on the live database either.
+        expect(await client.listGroups(), hasLength(before.length));
+      } on SocketException catch (e) {
+        markTestSkipped(
+          'auth server not reachable on $_authBaseUri — start '
+          'advanced_auth_server to run this integration test ($e)',
+        );
+        return;
+      } finally {
+        transport.close();
+      }
+    });
   });
 }

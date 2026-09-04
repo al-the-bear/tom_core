@@ -39,6 +39,18 @@ principal from the bearer token via the default
 method runs; `bin/auth_server_start.dart` installs the server-level
 `forbiddenOnAccessDenied` handler that turns that rejection into **HTTP 403**.
 
+A rejection raised *inside* a handler needs the other handler, because the
+pipeline catches it in the per-endpoint `try/catch` and the server-level one
+never sees it. `AdminEndpointErrorHandler`, declared on the
+`@TomApiImplementation`, maps a `MalformedIdException` from
+`persistence/auth_mapping.dart` to **HTTP 400** with body
+`{"error": "request.id.malformed"}` — a group create or update whose
+`memberUserIds` names something that is not a persisted user key is the caller's
+mistake, not a server fault. `AdminService` checks the membership before it
+writes anything, because these endpoints declare no transaction and a rejection
+further down would leave an orphan group, or a persisted rename, behind a
+request the client was told had failed.
+
 ## Running it
 
 The boot resolves relative asset/migration paths against the CWD, so run it from

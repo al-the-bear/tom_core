@@ -1,15 +1,19 @@
 /// Database-free unit tests for the `app_db` persistence boundary: the domain
-/// ↔ record mapping is pure and total, so it verifies without a server or
-/// MariaDB.
+/// ↔ record mapping is pure, so it verifies without a server or MariaDB.
 ///
 /// The live schema boot, the seed rows and the endpoint round-trips against
 /// Docker MariaDB are covered by the cross-tier integration run
 /// (`advanced_client_core/tool/run_cross_tier_integration.sh`). These tests
 /// cover the whole conversion surface that needs no database: id↔key handling
-/// (unpersisted→null PK), foreign keys, enum-token leniency, and the tags codec.
+/// (unpersisted→null PK), foreign keys, enum-token leniency, and the tags codec
+/// — plus the one input the entity → record direction rejects rather than
+/// degrading, a display-id that is not a usable database key.
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
+// Only for `MalformedIdException`: the id fault is named in the shared wire
+// contract, not in the server.
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 // `TomString` (kernel) is used to seed item tags; the domain barrel does not
 // re-export it.
@@ -261,6 +265,85 @@ void main() {
     test('a null done flag degrades to false', () {
       final subtask = subtaskFromRecord(SubtaskRecord()..id = 1);
       expect(subtask.done.get(), isFalse);
+    });
+  });
+
+  // The one direction these conversions are not total. Every case below used to
+  // pass silently, because a malformed id became `null` — and `null` going
+  // *into* the database is not "unknown", it is an instruction: INSERT for a
+  // primary key, unowned/unassigned/orphaned for a foreign key. The last case is
+  // the anti-vacuity guard: the group cannot pass by rejecting everything.
+  group('malformed ids are rejected, not folded into null', () {
+    test('a non-numeric primary key is rejected, naming field and value', () {
+      expect(
+        () => workspaceToRecord(Workspace()..id.set('seven')),
+        throwsA(
+          isA<MalformedIdException>()
+              .having((e) => e.source, 'source', 'seven')
+              .having((e) => e.message, 'message', contains('Workspace.id')),
+        ),
+      );
+    });
+
+    test('a non-numeric foreign key is rejected rather than stripping the '
+        'relation', () {
+      expect(
+        () => workspaceToRecord(Workspace()..ownerId.set('nobody')),
+        throwsA(
+          isA<MalformedIdException>().having(
+            (e) => e.message,
+            'message',
+            contains('Workspace.ownerId'),
+          ),
+        ),
+      );
+      expect(
+        () => itemToRecord(TodoItem()..assigneeId.set('nobody')),
+        throwsA(
+          isA<MalformedIdException>().having(
+            (e) => e.message,
+            'message',
+            contains('TodoItem.assigneeId'),
+          ),
+        ),
+      );
+      expect(
+        () => commentToRecord(TodoComment()..itemId.set('later')),
+        throwsA(
+          isA<MalformedIdException>().having(
+            (e) => e.message,
+            'message',
+            contains('TodoComment.itemId'),
+          ),
+        ),
+      );
+    });
+
+    test('every *ToRecord conversion rejects a malformed id', () {
+      expect(
+        () => projectToRecord(Project()..id.set('x')),
+        throwsA(isA<MalformedIdException>()),
+      );
+      expect(
+        () => listToRecord(TodoList()..id.set('x')),
+        throwsA(isA<MalformedIdException>()),
+      );
+      expect(
+        () => itemToRecord(TodoItem()..id.set('x')),
+        throwsA(isA<MalformedIdException>()),
+      );
+      expect(
+        () => subtaskToRecord(Subtask()..id.set('x')),
+        throwsA(isA<MalformedIdException>()),
+      );
+    });
+
+    test('an empty id still means INSERT, and a well-formed one still '
+        'parses — the rejections above are not the whole story', () {
+      expect(workspaceToRecord(Workspace()).id, isNull);
+      expect(workspaceToRecord(Workspace()).ownerId, isNull);
+      expect(workspaceToRecord(Workspace()..id.set('7')).id, 7);
+      expect(itemToRecord(TodoItem()..assigneeId.set('9')).assigneeId, 9);
     });
   });
 }

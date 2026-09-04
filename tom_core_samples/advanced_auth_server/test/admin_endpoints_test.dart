@@ -209,6 +209,72 @@ void main() {
         expect(groups.single.memberUserIds, ['1', '2']);
       },
     );
+
+    // The membership check runs *before* the group row is written, and this is
+    // the test that pins why: these endpoints declare no transaction, so a
+    // membership rejected after `saveGroup` would leave an empty group behind a
+    // request the client was told had failed.
+    test('createGroup rejects a malformed member id without leaving an orphan '
+        'group behind', () async {
+      final store = InMemoryAdminStore(users: [UserRecord()..id = 1]);
+      final admin = AdminService(store);
+
+      await expectLater(
+        () => admin.createGroup(
+          GroupDto(name: 'Engineering', memberUserIds: ['1', 'not-an-id']),
+        ),
+        throwsA(isA<MalformedIdException>()),
+      );
+
+      expect(await admin.listGroups(), isEmpty);
+    });
+
+    test(
+      'updateGroup rejects a malformed member id without persisting the rename',
+      () async {
+        final store = InMemoryAdminStore(
+          users: [UserRecord()..id = 1],
+          groups: [
+            GroupRecord()
+              ..id = 9
+              ..name = 'Engineering',
+          ],
+        );
+        final admin = AdminService(store);
+
+        await expectLater(
+          () => admin.updateGroup(
+            '9',
+            GroupDto(id: '9', name: 'Renamed', memberUserIds: ['not-an-id']),
+          ),
+          throwsA(isA<MalformedIdException>()),
+        );
+
+        final groups = await admin.listGroups();
+        expect(groups.single.name, 'Engineering');
+      },
+    );
+
+    test(
+      'editing a group that does not exist is still reported as missing, not '
+      'as a bad member id',
+      () async {
+        final admin = AdminService(InMemoryAdminStore());
+        await expectLater(
+          () => admin.updateGroup(
+            '404',
+            GroupDto(name: 'Ghost', memberUserIds: ['not-an-id']),
+          ),
+          throwsA(
+            isA<TomEndpointHandlerException>().having(
+              (e) => e.key,
+              'key',
+              'admin.group.not_found',
+            ),
+          ),
+        );
+      },
+    );
   });
 
   group('AdminService assignments', () {

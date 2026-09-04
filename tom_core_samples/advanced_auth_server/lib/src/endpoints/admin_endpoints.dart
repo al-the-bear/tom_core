@@ -26,11 +26,18 @@
 ///   gate inline; it carries the production wiring and is exercised end-to-end by
 ///   `bin/auth_server_start.dart`.
 ///
-/// A non-admin caller is rejected by the pipeline's access check *before* the
-/// method runs (it throws the access-denied [TomEndpointHandlerException]). The
-/// default server error handler masks every fault behind an opaque 500, so
-/// [forbiddenOnAccessDenied] maps that one exception to HTTP 403;
-/// `bin/auth_server_start.dart` installs it as the server-level error handler.
+/// Two client mistakes would otherwise be reported as server faults, and they
+/// need mapping at *different* layers because they are raised at different
+/// layers. A non-admin caller is rejected by the pipeline's access check
+/// *before* the method runs (it throws the access-denied
+/// [TomEndpointHandlerException]) — that escapes the pipeline's per-endpoint
+/// try/catch, so [forbiddenOnAccessDenied] maps it to `403` and
+/// `bin/auth_server_start.dart` installs that as the **server-level** error
+/// handler. A malformed id, by contrast, is raised *inside* a method by
+/// `persistence/auth_mapping.dart` and never reaches the server level: the
+/// pipeline hands it to the **per-endpoint** handler, which is why
+/// [AdminEndpointErrorHandler] is declared on the `@TomApiImplementation` and
+/// maps it to `400`. Both defaults are an opaque 500.
 library;
 
 import 'dart:convert';
@@ -541,8 +548,14 @@ class AdminService {
     ];
   }
 
-  /// Creates a group from [group] and materialises its membership.
+  /// Creates a group from [group] and materialises its membership. Throws when
+  /// a member id is not a key naming a persisted user.
   Future<GroupDto> createGroup(GroupDto group) async {
+    // Checked before the group row is written, because nothing rolls it back:
+    // these endpoints declare no transaction, so a membership rejected after
+    // `saveGroup` would leave an empty orphan group behind a request the client
+    // was told had failed.
+    checkGroupMembership(group);
     final saved = await store.saveGroup(groupDtoToRecord(group));
     final groupId = saved.id!;
     await store.replaceGroupMembers(
@@ -553,7 +566,7 @@ class AdminService {
   }
 
   /// Updates the group with [id] (name + membership). Throws when no such group
-  /// exists.
+  /// exists, or when a member id is not a key naming a persisted user.
   Future<GroupDto> updateGroup(String id, GroupDto group) async {
     final key = int.tryParse(id);
     final record = key == null ? null : await store.findGroup(key);
@@ -563,6 +576,12 @@ class AdminService {
         'No group with id $id',
       );
     }
+    // Checked before the rename is saved, for the reason [createGroup] gives:
+    // there is no transaction, so a membership rejected further down would
+    // leave the rename persisted behind a failed request. Ordered after the
+    // lookup so an edit to a group that does not exist is still reported as
+    // missing rather than as a bad member id.
+    checkGroupMembership(group);
     record.name = group.name;
     final saved = await store.saveGroup(record);
     final groupId = saved.id!;
@@ -658,6 +677,69 @@ Response? forbiddenOnAccessDenied(
   return null;
 }
 
+/// Maps a [MalformedIdException] raised *inside* an admin method to
+/// `400 Bad Request` carrying [malformedIdKey], and returns `null` for anything
+/// else.
+///
+/// The mapping layer (`persistence/auth_mapping.dart`) rejects a display-id
+/// that is not a usable database key rather than folding it into `null`, which
+/// used to file a duplicate account or drop a group member silently. That throw
+/// escapes the service method, and every escaping throw is a 500 by default —
+/// so without this translation the fix would only trade a silent bad write for
+/// a fault the client is told is the server's.
+///
+/// It matches the [MalformedIdException] *subtype*, not `FormatException`:
+/// loading a malformed resource-bundle asset also raises a `FormatException`
+/// and that genuinely is a server fault, so the bare supertype would report it
+/// as the caller's mistake.
+Response? badRequestOnMalformedId(
+  Request request,
+  Object error,
+  StackTrace stack,
+) {
+  if (error is! MalformedIdException) return null;
+  return Response.badRequest(
+    body: jsonEncode({'error': malformedIdKey}),
+    headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
+  );
+}
+
+/// The per-endpoint [TomErrorHandler] for the `admin` API: a malformed id
+/// becomes `400`, everything else keeps the framework default.
+///
+/// Declared on [AdvancedAdminApiService]'s `@TomApiImplementation` because the
+/// two admin faults surface at *different* layers. The contract-declared access
+/// check runs *before* the method and throws outside the endpoint pipeline's
+/// per-endpoint try/catch, so it escapes to the server-level
+/// [forbiddenOnAccessDenied]. A throw from *within* a method — here the
+/// mapping's id rejection — never reaches the server level: the pipeline hands
+/// it to the endpoint's own handler, which otherwise defaults to
+/// [TomDefaultErrorHandler] and answers 500.
+class AdminEndpointErrorHandler extends TomErrorHandler {
+  /// Const so it can be supplied as the `@TomApiImplementation` annotation's
+  /// `errorHandler`.
+  const AdminEndpointErrorHandler();
+
+  @override
+  Response handleErrorDefault(
+    Object error,
+    Object stacktrace,
+    Request r,
+    Object? result,
+  ) =>
+      badRequestOnMalformedId(
+        r,
+        error,
+        stacktrace is StackTrace ? stacktrace : StackTrace.current,
+      ) ??
+      const TomDefaultErrorHandler().handleErrorDefault(
+        error,
+        stacktrace,
+        r,
+        result,
+      );
+}
+
 /// The `@tomComponent` implementing the registry's `admin` API.
 ///
 /// Bound to the sixteen `adminApi` endpoints (`tomRemoteApis['admin']`); the
@@ -672,7 +754,7 @@ Response? forbiddenOnAccessDenied(
 /// contract is the single source of the gate.
 @tomReflector
 @tomComponent
-@TomApiImplementation(apiId: 'admin')
+@TomApiImplementation(apiId: 'admin', errorHandler: AdminEndpointErrorHandler())
 class AdvancedAdminApiService implements AdminApiService {
   /// Production admin logic over the repository-backed store.
   final AdminService _admin = AdminService(const RepositoryAdminStore());

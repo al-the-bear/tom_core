@@ -6,8 +6,13 @@
 /// `TomList` of tags; the records use integer surrogate keys, integer
 /// foreign-key columns, and a single serialized `tags` column. Each
 /// `*ToRecord` flattens a domain entity into its row; each `*FromRecord`
-/// rebuilds the observable entity. Every conversion here is **pure and total**,
-/// so the whole boundary unit-tests without a database:
+/// rebuilds the observable entity. Every conversion here is **pure** — no I/O,
+/// no database — so the whole boundary unit-tests without one, and **total** in
+/// the record → entity direction: anything `app_db` can hold rebuilds, with an
+/// unreadable stored value degrading to a default. In the entity → record
+/// direction there is exactly one input they reject, a display-id that is
+/// neither empty nor an integer; see [_idOrNull] for why that one is worth a
+/// throw.
 ///
 /// - **Unpersisted → null PK.** A domain entity whose id is still empty maps to
 ///   a `null` surrogate key, so the repository issues an INSERT, not an UPDATE.
@@ -23,6 +28,9 @@ library;
 
 import 'dart:convert';
 
+// Only for `MalformedIdException`: the id fault is named in the shared wire
+// contract because both servers throw it and the client asserts on its key.
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 // The domain barrel does not re-export the kernel value holders; `TomString` is
 // needed to append decoded tags onto the observable item list.
@@ -34,9 +42,32 @@ import 'app_persistence_model.dart';
 // Shared id <-> key helpers.
 // ---------------------------------------------------------------------------
 
-/// Parses a domain display-id into a database key, or `null` when the value is
-/// empty (the entity has not been persisted yet → INSERT, not UPDATE).
-int? _idOrNull(String value) => value.isEmpty ? null : int.tryParse(value);
+/// Parses a domain display-id into a database key: `null` for the empty id of a
+/// not-yet-persisted entity, the parsed integer otherwise — and a
+/// [MalformedIdException] naming [field] and [value] for anything else.
+///
+/// It throws rather than folding a malformed id into `null` because on this
+/// side of the boundary `null` is not a neutral "unknown": it is an
+/// instruction. For a primary key it means INSERT, so a corrupt id would file a
+/// duplicate row while the client kept the id it thought it was updating; for a
+/// foreign key ([Workspace.ownerId], [TodoItem.assigneeId], every parent id) it
+/// means unowned, unassigned, or orphaned, so a corrupt id would silently strip
+/// the relation. Both are writes that look successful and are found much later,
+/// if at all — and unlike the read-only `core_server_sample`, this mapping sits
+/// behind live mutating endpoints, so the corrupt id arrives from a client
+/// rather than from a fixture.
+///
+/// The domain ids are free-form strings, so this is untrusted input and the
+/// leniency [itemFromRecord] and [_decodeTags] apply in the other direction
+/// does not carry over: degrading an unreadable *stored* enum keeps one bad row
+/// from breaking a whole list, whereas degrading an unreadable *incoming* id is
+/// what creates the bad row.
+int? _idOrNull(String value, String field) {
+  if (value.isEmpty) return null;
+  final parsed = int.tryParse(value);
+  if (parsed == null) throw MalformedIdException(field, value);
+  return parsed;
+}
 
 /// Renders a database key back as the domain display-id (empty for `null`).
 String _idString(int? value) => value?.toString() ?? '';
@@ -72,9 +103,9 @@ List<String> _decodeTags(String? encoded) {
 
 /// Flattens a [Workspace] into its [WorkspaceRecord].
 WorkspaceRecord workspaceToRecord(Workspace workspace) => WorkspaceRecord()
-  ..id = _idOrNull(workspace.id.get())
+  ..id = _idOrNull(workspace.id.get(), 'Workspace.id')
   ..name = workspace.name.get()
-  ..ownerId = _idOrNull(workspace.ownerId.get())
+  ..ownerId = _idOrNull(workspace.ownerId.get(), 'Workspace.ownerId')
   ..createdAt = workspace.createdAt.get();
 
 /// Rebuilds a [Workspace] from its [WorkspaceRecord].
@@ -90,8 +121,8 @@ Workspace workspaceFromRecord(WorkspaceRecord record) => Workspace()
 
 /// Flattens a [Project] into its [ProjectRecord].
 ProjectRecord projectToRecord(Project project) => ProjectRecord()
-  ..id = _idOrNull(project.id.get())
-  ..workspaceId = _idOrNull(project.workspaceId.get())
+  ..id = _idOrNull(project.id.get(), 'Project.id')
+  ..workspaceId = _idOrNull(project.workspaceId.get(), 'Project.workspaceId')
   ..name = project.name.get()
   ..description = project.description.get()
   ..colour = project.colour.get()
@@ -112,8 +143,8 @@ Project projectFromRecord(ProjectRecord record) => Project()
 
 /// Flattens a [TodoList] into its [ListRecord].
 ListRecord listToRecord(TodoList list) => ListRecord()
-  ..id = _idOrNull(list.id.get())
-  ..projectId = _idOrNull(list.projectId.get())
+  ..id = _idOrNull(list.id.get(), 'TodoList.id')
+  ..projectId = _idOrNull(list.projectId.get(), 'TodoList.projectId')
   ..name = list.name.get()
   ..position = list.position.get();
 
@@ -138,15 +169,15 @@ TodoList listFromRecord(ListRecord record) => TodoList()
 /// minted server-side by `saveFile` and moves solely through the file endpoint.
 /// `internalNote` has no domain counterpart at all — it is not exposed.
 ItemRecord itemToRecord(TodoItem item) => ItemRecord()
-  ..id = _idOrNull(item.id.get())
-  ..listId = _idOrNull(item.listId.get())
+  ..id = _idOrNull(item.id.get(), 'TodoItem.id')
+  ..listId = _idOrNull(item.listId.get(), 'TodoItem.listId')
   ..title = item.title.get()
   ..description = item.description.get()
   ..status = item.status.get()
   ..priority = item.priority.get()
   ..label = item.label.get()
-  ..assigneeId = _idOrNull(item.assigneeId.get())
-  ..reporterId = _idOrNull(item.reporterId.get())
+  ..assigneeId = _idOrNull(item.assigneeId.get(), 'TodoItem.assigneeId')
+  ..reporterId = _idOrNull(item.reporterId.get(), 'TodoItem.reporterId')
   ..dueDate = item.dueDate.get()
   ..estimateHours = item.estimateHours.get()
   ..tags = _encodeTags(item.tags.get())
@@ -187,9 +218,9 @@ TodoItem itemFromRecord(ItemRecord record) {
 
 /// Flattens a [TodoComment] into its [CommentRecord].
 CommentRecord commentToRecord(TodoComment comment) => CommentRecord()
-  ..id = _idOrNull(comment.id.get())
-  ..itemId = _idOrNull(comment.itemId.get())
-  ..authorId = _idOrNull(comment.authorId.get())
+  ..id = _idOrNull(comment.id.get(), 'TodoComment.id')
+  ..itemId = _idOrNull(comment.itemId.get(), 'TodoComment.itemId')
+  ..authorId = _idOrNull(comment.authorId.get(), 'TodoComment.authorId')
   ..body = comment.body.get()
   ..createdAt = comment.createdAt.get();
 
@@ -207,8 +238,8 @@ TodoComment commentFromRecord(CommentRecord record) => TodoComment()
 
 /// Flattens a [Subtask] into its [SubtaskRecord].
 SubtaskRecord subtaskToRecord(Subtask subtask) => SubtaskRecord()
-  ..id = _idOrNull(subtask.id.get())
-  ..itemId = _idOrNull(subtask.itemId.get())
+  ..id = _idOrNull(subtask.id.get(), 'Subtask.id')
+  ..itemId = _idOrNull(subtask.itemId.get(), 'Subtask.itemId')
   ..title = subtask.title.get()
   ..done = subtask.done.get()
   ..position = subtask.position.get();

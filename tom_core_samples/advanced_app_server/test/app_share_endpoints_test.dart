@@ -18,6 +18,8 @@
 /// needs no reflection and no live role-vocabulary registry.
 library;
 
+import 'dart:convert';
+
 import 'package:advanced_app_server/advanced_app_server.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
@@ -323,6 +325,32 @@ void main() {
         );
         expect(response?.statusCode, 404, reason: key);
       }
+    });
+
+    test('a malformed id maps to 400, carrying the shared wire key', () async {
+      final response = appForbiddenOrNotFound(
+        request,
+        MalformedIdException('TodoItem.listId', 'not-an-id'),
+        StackTrace.current,
+      );
+      expect(response?.statusCode, 400);
+      expect(jsonDecode(await response!.readAsString()), {
+        'error': malformedIdKey,
+      });
+    });
+
+    test('a plain FormatException is still a server fault, not a 400', () {
+      // The mapping's rejection is a `MalformedIdException`; a bare
+      // `FormatException` here means something like a malformed resource-bundle
+      // asset, which is the server's problem and must keep its 500.
+      expect(
+        appForbiddenOrNotFound(
+          request,
+          const FormatException('unexpected character'),
+          StackTrace.current,
+        ),
+        isNull,
+      );
     });
 
     test('an unmapped error falls through to the framework default (null)', () {

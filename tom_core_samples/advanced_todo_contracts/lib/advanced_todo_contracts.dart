@@ -12,7 +12,11 @@
 /// - the wire registry (`src/api_registry.dart`) — each endpoint's URI, HTTP
 ///   method, request/response types (`authApi`/`adminApi`/`appApi`) and its
 ///   per-endpoint four-state access policy declared directly on the endpoint
-///   (`TomApiEndpoint.access`, G-API-3), plus `registerAdvancedTodoApis()`.
+///   (`TomApiEndpoint.access`, G-API-3), plus `registerAdvancedTodoApis()`;
+/// - one wire *fault* (`src/malformed_id_exception.dart`) —
+///   `MalformedIdException` and the `malformedIdKey` a server reports it under.
+///   It sits here rather than in either server because all three tiers name it:
+///   the servers throw it and map it to `400`, the client asserts on the key.
 ///
 /// Importing this barrel gives both tiers the same, single definition of the
 /// wire surface. The package depends only on `tom_core_kernel` + the domain
@@ -22,3 +26,4 @@ library;
 export 'src/api_registry.dart';
 export 'src/api_services.dart';
 export 'src/dtos.dart';
+export 'src/malformed_id_exception.dart';

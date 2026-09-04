@@ -51,7 +51,13 @@ throw stable `TomEndpointHandlerException` keys rather than HTTP responses, and
 `bin/app_server_start.dart` installs the server-level `appServerErrorHandler`
 that maps those keys (and the pipeline's pre-invocation access-denied) onto the
 HTTP contract: denials → **403**, an unreachable resource → **404**
-(closed/safe, never leaking existence), everything else → the framework default.
+(closed/safe, never leaking existence), a `MalformedIdException` from
+`persistence/app_mapping.dart` → **400** with body
+`{"error": "request.id.malformed"}`, everything else → the framework default.
+`AppEndpointErrorHandler`, declared on the `@TomApiImplementation`, applies the
+same mapping to rejections raised *inside* a handler — the pipeline catches
+those in its per-endpoint `try/catch`, where the server-level handler cannot
+reach them.
 
 ## Running it
 
