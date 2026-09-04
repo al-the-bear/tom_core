@@ -140,7 +140,7 @@ never a concrete class. That single seam is what lets the widget tests run
   `advanced_client_core`: an `AuthClient` (login + token storage) and an API
   client (`AppApiClient` / `AdminApiClient`) **sharing one `IoJsonTransport`** via
   `AuthorizedHttp`, so the bearer the login stores is the one every subsequent
-  call presents (`main.dart` `_buildBackend`). They normalise the client core's
+  call presents (`main.dart` `_installBackend`). They normalise the client core's
   transport exceptions (`AuthClientException` / `AppApiException` /
   `TomAuthExpiredException`) into the single typed `AppBackendException` /
   `AdminBackendException` the screens catch, carrying the server's stable error

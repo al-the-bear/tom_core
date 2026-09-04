@@ -137,7 +137,6 @@ but carries `tomId: 'estimate'`, so it self-addresses as the graded key
 | --- | --- | --- | --- |
 | `LoginForm` | `LoginCredentials` | — · `login` | `login.<field>` |
 | `AdminLoginForm` | `AdminLoginCredentials` | — · `adminLogin` | `adminLogin.<field>` |
-| `SecondFactorForm` | `SecondFactorCode` | — · `twoFactor` | `twoFactor.<field>` |
 | `AdminSecondFactorForm` | `AdminSecondFactorCode` | — · `adminTwoFactor` | `adminTwoFactor.<field>` |
 | `TodoItemForm` | `TodoItem` | `todo` · `item` | `todo.item.<field>` |
 | `UserForm` / `RoleForm` / `GroupForm` | `UserDraft` / `RoleDraft` / `GroupDraft` | — · `user`/`role`/`group` | `user.<field>`, … |
@@ -145,14 +144,26 @@ but carries `tomId: 'estimate'`, so it self-addresses as the graded key
 The app and admin login screens both bind a reflected `TomForm` and render
 `field.widget`; their distinct `formId`s (`login` vs `adminLogin`) give them the
 distinct public-bundle keys the auth server serves (part
-[08](README_advanced_08_resources_texts.md)). The two second-factor forms follow
-the same rule one phase later: a login that returns `requires2FA` swaps the
-credentials form for the code form *on the same screen*, and the `twoFactor` /
-`adminTwoFactor` `formId`s address their own scopes in that same public bundle —
-which is why those texts ship with the **login** bundle rather than the
-authenticated one (the interim token buys no session to fetch it with). The code
-field is sized from the challenge's own `clientData['digits']`, never a hardcoded
-6. All bound forms are `@tomReflector` and captured in each client's
+[08](README_advanced_08_resources_texts.md)). A login that returns `requires2FA`
+then swaps the credentials phase for a second-factor phase *on the same screen*,
+and those texts ship with the **login** bundle rather than the authenticated one
+(the interim token buys no session to fetch it with).
+
+**The two clients diverge at exactly that phase, and only one of them has a
+form.** The admin console hand-rolls `AdminSecondFactorForm`, which is why it
+appears in the table above: it is a bound `TomForm` with `formId: 'adminTwoFactor'`,
+and it sizes its code field from the challenge's own `clientData['digits']`
+rather than a hardcoded 6. The end-user app has no second-factor form at all —
+its login screen renders the framework's `Tom2FAFlowPanel` over a
+`SessionTwoFactorController`, because the chooser, the QR code, the code
+field's width and the attempt counter are invariant across applications and so
+live in `tom_core_flutter`. There, `twoFactor` is not a `formId` addressing a
+form's fields but merely the scope the screen reads its app-bar title from
+(`texts.getText('$scope.title')`); notably, the screen never reads
+`clientData['digits']`, which is the property the split exists for — a mechanism
+with a different code shape needs no change in the app.
+
+All bound forms are `@tomReflector` and captured in each client's
 `reflection_seed.dart`; regenerate only on a reflected-signature change (part
 [03](README_advanced_03_domain_reflection.md)).
 
