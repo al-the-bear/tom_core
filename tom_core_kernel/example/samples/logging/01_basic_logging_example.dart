@@ -5,6 +5,33 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../sample_asserts.dart';
 
+/// Collects the records the logger emitted, so a sample can assert what
+/// reached the output rather than that the call returned.
+///
+/// A logging sample that only records "I called `info`" proves the method
+/// exists. What the reader needs to know is that the call produced a record, at
+/// the level asked for, carrying the message given — and that a level below the
+/// threshold produces none.
+class CapturingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+  final List<String> levels = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (!logLevel.matches(loggerLevel)) return;
+    messages.add(convertToString(message));
+    levels.add(level.trim());
+  }
+}
+
 /// Example class implementing TomLoggable for custom log representation.
 class User implements TomLoggable {
   final String id;
@@ -25,35 +52,44 @@ class User implements TomLoggable {
 // =============================================================================
 
 class BasicLogMethodsExample {
-  static bool infoLogged = false;
-  static bool debugLogged = false;
-  static bool errorLogged = false;
+  static List<String> recordedLevels = const [];
+  static List<String> recordedMessages = const [];
 
   static void example1BasicLogMethods() {
-    // Store original log level to restore later
+    // Store original log level and output to restore later
     final originalLogLevel = tomLog.logLevel;
+    final originalLogOutput = tomLog.logOutput;
+
+    final captured = CapturingLogOutput();
+    tomLog.logOutput = captured;
 
     // Set to development mode to see all log levels
     tomLog.setLogLevel(TomLogLevel.development);
 
     // Info - General runtime information
     tomLog.info('Application started successfully');
-    infoLogged = true;
 
     // Debug - Detailed debugging information
     tomLog.debug('Processing request with id: 12345');
-    debugLogged = true;
 
     // Error - Error conditions (recoverable)
     tomLog.error('Failed to connect to secondary database, using primary');
-    errorLogged = true;
 
-    // Restore original log level
+    // Restore original log level and output
     tomLog.setLogLevel(originalLogLevel);
+    tomLog.logOutput = originalLogOutput;
 
-    assert(infoLogged, 'Info should be logged');
-    assert(debugLogged, 'Debug should be logged');
-    assert(errorLogged, 'Error should be logged');
+    recordedLevels = captured.levels;
+    recordedMessages = captured.messages;
+
+    assert(
+      recordedLevels.join(',') == 'INFO,DEBUG,ERROR',
+      'The three calls should reach the output at their own levels, in order',
+    );
+    assert(
+      recordedMessages.first == 'Application started successfully',
+      'The record should carry the message the call was given',
+    );
   }
 }
 
@@ -209,44 +245,75 @@ class LimitedUtilityExample {
 // =============================================================================
 
 class AllLogLevelsExample {
-  static bool allLevelsExecuted = false;
+  /// The level label of every record the nine calls produced, in order.
+  static List<String> levelsAtDevelopment = const [];
+
+  /// The same nine calls with the logger at `TomLogLevel.production`.
+  static List<String> levelsAtProduction = const [];
 
   static void example6AllLogLevels() {
     final originalLogLevel = tomLog.logLevel;
+    final originalLogOutput = tomLog.logOutput;
+
+    // One call per level, in order of increasing severity.
+    void logAtEveryLevel() {
+      // Trace - Very detailed tracing (most verbose)
+      tomLog.trace('Entering method processData');
+
+      // Debug - Detailed debugging information
+      tomLog.debug('Processing request');
+
+      // Traffic - Network/data flow logging
+      tomLog.traffic('HTTP GET /api/users -> 200 OK');
+
+      // Info - General runtime information
+      tomLog.info('Application event');
+
+      // Warn - Potentially problematic situations
+      tomLog.warn('Cache miss');
+
+      // Status - Important status updates
+      tomLog.status('Configuration loaded');
+
+      // Error - Error conditions (recoverable)
+      tomLog.error('Connection failed');
+
+      // Severe - Serious errors
+      tomLog.severe('Memory threshold exceeded');
+
+      // Fatal - Critical errors
+      tomLog.fatal('Unable to initialize');
+    }
+
+    final atDevelopment = CapturingLogOutput();
+    tomLog.logOutput = atDevelopment;
     tomLog.setLogLevel(TomLogLevel.development);
+    logAtEveryLevel();
 
-    // Trace - Very detailed tracing (most verbose)
-    tomLog.trace('Entering method processData');
-
-    // Debug - Detailed debugging information
-    tomLog.debug('Processing request');
-
-    // Traffic - Network/data flow logging
-    tomLog.traffic('HTTP GET /api/users -> 200 OK');
-
-    // Info - General runtime information
-    tomLog.info('Application event');
-
-    // Warn - Potentially problematic situations
-    tomLog.warn('Cache miss');
-
-    // Status - Important status updates
-    tomLog.status('Configuration loaded');
-
-    // Error - Error conditions (recoverable)
-    tomLog.error('Connection failed');
-
-    // Severe - Serious errors
-    tomLog.severe('Memory threshold exceeded');
-
-    // Fatal - Critical errors
-    tomLog.fatal('Unable to initialize');
-
-    allLevelsExecuted = true;
+    final atProduction = CapturingLogOutput();
+    tomLog.logOutput = atProduction;
+    tomLog.setLogLevel(TomLogLevel.production);
+    logAtEveryLevel();
 
     tomLog.setLogLevel(originalLogLevel);
+    tomLog.logOutput = originalLogOutput;
 
-    assert(allLevelsExecuted, 'All log levels should execute');
+    levelsAtDevelopment = atDevelopment.levels;
+    levelsAtProduction = atProduction.levels;
+
+    assert(
+      levelsAtDevelopment.join(',') ==
+          'TRACE,DEBUG,TRAFFIC,INFO,WARN,STATUS,ERROR,SEVERE,FATAL',
+      'Development should let every level through, in call order',
+    );
+
+    // What a log level *does* is drop records, so the second run is the half of
+    // the demonstration that can fail: production is development without the
+    // three diagnostic levels, and the same nine calls have to yield six.
+    assert(
+      levelsAtProduction.join(',') == 'INFO,WARN,STATUS,ERROR,SEVERE,FATAL',
+      'Production should drop trace, debug and traffic',
+    );
   }
 }
 
@@ -258,10 +325,11 @@ void run() {
   print('=== 01: Basic Logging Example ===\n');
 
   BasicLogMethodsExample.example1BasicLogMethods();
-  print('1. The three log lines above came from these calls:');
-  print('   tomLog.info called : ${BasicLogMethodsExample.infoLogged}');
-  print('   tomLog.debug called: ${BasicLogMethodsExample.debugLogged}');
-  print('   tomLog.error called: ${BasicLogMethodsExample.errorLogged}');
+  print('1. The records the three calls produced, captured off the output:');
+  print('   levels           : ${BasicLogMethodsExample.recordedLevels}');
+  print(
+    '   first message    : ${BasicLogMethodsExample.recordedMessages.first}',
+  );
   print('');
 
   LogObjectTypesExample.example2LogObjectTypes();
@@ -304,9 +372,9 @@ void run() {
   print('');
 
   AllLogLevelsExample.example6AllLogLevels();
-  print('6. The nine lines above are one call per level, most verbose first:');
-  print('   trace, debug, traffic, info, warn, status, error, severe, fatal');
-  print('   all nine executed: ${AllLogLevelsExample.allLevelsExecuted}');
+  print('6. One call per level, run twice — the level decides what survives:');
+  print('   at development: ${AllLogLevelsExample.levelsAtDevelopment}');
+  print('   at production : ${AllLogLevelsExample.levelsAtProduction}');
   print('');
 }
 

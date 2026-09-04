@@ -18,21 +18,23 @@ import '../../sample_asserts.dart';
 // =============================================================================
 
 class SecureRandomExample {
-  static bool secureRandomCreated = false;
+  static String algorithmName = '';
   static int randomValue1 = 0;
   static int randomValue2 = 0;
   static bool valuesAreDifferent = false;
 
   static void example1SecureRandom() {
     final secureRandom = RsaKeyHelper.getSecureRandom();
-    secureRandomCreated = true;
+    algorithmName = secureRandom.algorithmName;
 
     randomValue1 = secureRandom.nextUint32();
     randomValue2 = secureRandom.nextUint32();
     valuesAreDifferent = randomValue1 != randomValue2;
 
-    assert(secureRandomCreated, 'Secure random should be created');
-    assert(randomValue1 >= 0, 'Random value should be non-negative');
+    // Which generator came back is the whole point of the call: a `Random`
+    // seeded from the clock would also hand out differing uint32s.
+    assert(algorithmName == 'Fortuna', 'Should be seeded Fortuna, not a PRNG');
+    assert(randomValue1 < 0x100000000, 'nextUint32 should stay in 32 bits');
     assert(valuesAreDifferent, 'Random values should generally differ');
   }
 }
@@ -251,6 +253,7 @@ void run() {
 
   SecureRandomExample.example1SecureRandom();
   print('1. A seeded secure random number generator:');
+  print('   algorithm     : ${SecureRandomExample.algorithmName}');
   print('   first  uint32 : ${SecureRandomExample.randomValue1}');
   print('   second uint32 : ${SecureRandomExample.randomValue2}');
   print('   values differ : ${SecureRandomExample.valuesAreDifferent}');

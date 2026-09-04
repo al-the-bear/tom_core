@@ -23,7 +23,6 @@ import '../../sample_bootstrap.dart';
 class SettingsRequestExample {
   static String? messageToken;
   static bool hasToken = false;
-  static bool requestCreated = false;
 
   static void example1SettingsRequest() {
     final message = TomGetSettingsMessage()
@@ -33,11 +32,12 @@ class SettingsRequestExample {
     hasToken =
         message.authorizationToken != null &&
         message.authorizationToken!.isNotEmpty;
-    requestCreated = true;
 
-    assert(messageToken != null, 'Token should be set');
+    assert(
+      messageToken == 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xyz',
+      'The message should carry back the token it was given',
+    );
     assert(hasToken, 'Should have token');
-    assert(requestCreated, 'Request should be created');
   }
 }
 
@@ -112,7 +112,6 @@ class FullResultExample {
   static int entitlementsCount = 0;
   static int fieldCount = 0;
   static List<String> unsetFields = const [];
-  static bool resultCreated = false;
 
   static void example4FullResult() {
     final result = TomGetSettingsResult(
@@ -150,14 +149,12 @@ class FullResultExample {
     rolesCount = result.roles.length;
     groupsCount = result.groups.length;
     entitlementsCount = result.entitlements.length;
-    resultCreated = true;
 
     assert(textsCount == 3, 'Should have 3 texts');
     assert(configCount == 3, 'Should have 3 config entries');
     assert(rolesCount == 3, 'Should have 3 roles');
     assert(groupsCount == 2, 'Should have 2 groups');
     assert(entitlementsCount == 3, 'Should have 3 entitlements');
-    assert(resultCreated, 'Result should be created');
 
     // The completeness check. Serializing names every field, so nothing here
     // has to repeat the field list — the class stays the single source of it.

@@ -429,12 +429,20 @@ class ValidateEncodedExample {
     // A write request carries the value as text, so nothing has yet proved the
     // declared type and the text agree. Storing a disagreeing pair costs
     // nothing now and breaks every future read of the key — on every device.
-    TomUserPreferenceCodec.validateEncoded(
-      TomUserPreferenceCodec.intType,
-      '14',
-      key: 'ui.fontSize',
-    );
-    matchingPairAccepted = true;
+    //
+    // The accepting case needs the same try/catch as the rejecting ones below:
+    // a straight call followed by `accepted = true` records that the lines
+    // above did not throw, which is what running at all already said.
+    try {
+      TomUserPreferenceCodec.validateEncoded(
+        TomUserPreferenceCodec.intType,
+        '14',
+        key: 'ui.fontSize',
+      );
+      matchingPairAccepted = true;
+    } on TomUserPreferenceCodecException {
+      matchingPairAccepted = false;
+    }
 
     try {
       TomUserPreferenceCodec.validateEncoded(

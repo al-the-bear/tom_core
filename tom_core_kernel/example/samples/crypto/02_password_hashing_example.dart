@@ -195,7 +195,7 @@ class DifferentHashesExample {
 // =============================================================================
 
 class RegistrationLoginExample {
-  static bool registrationComplete = false;
+  static bool passwordIsRecoverableFromStore = true;
   static bool loginWithCorrectPassword = false;
   static bool loginWithWrongPassword = false;
   static String? storedHash;
@@ -207,7 +207,12 @@ class RegistrationLoginExample {
     final (hash, spec) = TomPasswordHasher.hashPassword(userPassword);
     storedHash = hash;
     storedSpec = spec;
-    registrationComplete = true;
+
+    // What registration has to get right is that the store never holds the
+    // password: neither field may contain it, in either direction.
+    passwordIsRecoverableFromStore =
+        storedHash!.contains(userPassword) ||
+        storedSpec!.contains(userPassword);
 
     // Login attempt 1: correct password
     const loginAttempt1 = 'UserSecret456!';
@@ -225,7 +230,10 @@ class RegistrationLoginExample {
       storedSpec!,
     );
 
-    assert(registrationComplete, 'Registration should complete');
+    assert(
+      !passwordIsRecoverableFromStore,
+      'Registration should store no copy of the password',
+    );
     assert(loginWithCorrectPassword, 'Correct password should succeed');
     assert(!loginWithWrongPassword, 'Wrong password should fail');
   }
@@ -331,8 +339,8 @@ void run() {
   RegistrationLoginExample.example6RegistrationLogin();
   print('6. Registering a user, then two login attempts:');
   print(
-    '   registration complete : '
-    '${RegistrationLoginExample.registrationComplete}',
+    '   password in store     : '
+    '${RegistrationLoginExample.passwordIsRecoverableFromStore}',
   );
   print(
     '   stored hash length    : '

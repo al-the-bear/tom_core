@@ -16,7 +16,6 @@ class BasicUserExample {
   static String? userEmail;
   static String? userTimezone;
   static String? userDepartment;
-  static bool userCreated = false;
 
   static void example1BasicUser() {
     final user = TomUser(
@@ -37,14 +36,12 @@ class BasicUserExample {
     userEmail = user.email;
     userTimezone = user.timezone;
     userDepartment = user.attributes['department'] as String?;
-    userCreated = true;
 
     assert(userId == 12345, 'User ID should match');
     assert(userUsername == 'jdoe', 'Username should match');
     assert(userEmail == 'john.doe@example.com', 'Email should match');
     assert(userTimezone == 'America/Los_Angeles', 'Timezone should match');
     assert(userDepartment == 'Engineering', 'Department should match');
-    assert(userCreated, 'User should be created');
   }
 }
 
@@ -85,7 +82,6 @@ class AccessControlInfoExample {
   static int groupsCount = 0;
   static int entitlementsCount = 0;
   static bool hasAdminRole = false;
-  static bool aciCreated = false;
 
   static void example3AccessControlInfo() {
     final aci = TomAccessControlInformation(
@@ -106,13 +102,11 @@ class AccessControlInfoExample {
     groupsCount = aci.groups.length;
     entitlementsCount = aci.entitlements.length;
     hasAdminRole = aci.roles.contains('admin');
-    aciCreated = true;
 
     assert(rolesCount == 3, 'Should have 3 roles');
     assert(groupsCount == 2, 'Should have 2 groups');
     assert(entitlementsCount == 3, 'Should have 3 entitlements');
     assert(hasAdminRole, 'Should have admin role');
-    assert(aciCreated, 'ACI should be created');
   }
 }
 
@@ -126,7 +120,6 @@ class ClientLimitsInfoExample {
   static int modulesCount = 0;
   static bool hasReporting = false;
   static int? apiQuota;
-  static bool cliCreated = false;
 
   static void example4ClientLimitsInfo() {
     final cli = TomClientLimitsInformation(
@@ -143,12 +136,10 @@ class ClientLimitsInfoExample {
     modulesCount = cli.enabledModules.length;
     hasReporting = cli.enabledModules.contains('reporting');
     apiQuota = cli.quotas['api_calls_per_day'] as int?;
-    cliCreated = true;
 
     assert(modulesCount == 3, 'Should have 3 modules');
     assert(hasReporting, 'Should have reporting module');
     assert(apiQuota == 10000, 'API quota should be 10000');
-    assert(cliCreated, 'CLI should be created');
   }
 }
 
@@ -161,7 +152,6 @@ class TomPrincipalExample {
   static String? principalUsername;
   static int? principalId;
   static String? organization;
-  static bool principalCreated = false;
 
   static void example5TomPrincipal() {
     final user = TomUser(id: 12345, username: 'jdoe');
@@ -190,13 +180,11 @@ class TomPrincipalExample {
     principalUsername = principal.username;
     principalId = principal.id;
     organization = principal.organization;
-    principalCreated = true;
 
     assert(authenticated == true, 'Should be authenticated');
     assert(principalUsername == 'jdoe', 'Username should match');
     assert(principalId == 12345, 'ID should match');
     assert(organization == 'acme-corp', 'Organization should match');
-    assert(principalCreated, 'Principal should be created');
   }
 }
 
@@ -208,7 +196,6 @@ class PrincipalContextExample {
   static String? sessionStart;
   static String? ipAddress;
   static int contextSize = 0;
-  static bool contextAdded = false;
 
   static void example6PrincipalContext() {
     final principal = TomPrincipal(
@@ -224,7 +211,6 @@ class PrincipalContextExample {
     sessionStart = principal.currentContext['sessionStart'] as String?;
     ipAddress = principal.currentContext['ipAddress'] as String?;
     contextSize = principal.currentContext.length;
-    contextAdded = true;
 
     assert(
       sessionStart == '2026-01-01T10:00:00Z',
@@ -232,7 +218,6 @@ class PrincipalContextExample {
     );
     assert(ipAddress == '192.168.1.100', 'IP address should match');
     assert(contextSize >= 2, 'Context should have at least 2 entries');
-    assert(contextAdded, 'Context should be added');
   }
 }
 

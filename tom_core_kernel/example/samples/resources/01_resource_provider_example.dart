@@ -14,7 +14,6 @@ class TextResourceFromMapExample {
   static String? appTitle;
   static String? welcomeMessage;
   static String? nestedError;
-  static bool resourcesLoaded = false;
 
   static void example1TextResourceFromMap() {
     final textResources = TomTextResourceProvider.from({
@@ -28,7 +27,6 @@ class TextResourceFromMapExample {
     appTitle = textResources.getText('app.title');
     welcomeMessage = textResources.getText('messages.welcome');
     nestedError = textResources.getText('messages.errors.notFound');
-    resourcesLoaded = true;
 
     print('1. Reading nested text out of a map:');
     print('   getText("app.title"): $appTitle');
@@ -42,7 +40,6 @@ class TextResourceFromMapExample {
       'Welcome message should match',
     );
     assert(nestedError == 'Resource not found', 'Nested error should match');
-    assert(resourcesLoaded, 'Resources should be loaded');
   }
 }
 
@@ -53,10 +50,11 @@ class TextResourceFromMapExample {
 class LoaderFunctionExample {
   static String? usernameLabel;
   static String? requiredValidation;
-  static bool loaderUsed = false;
+  static int loaderCalls = 0;
 
   static void example2LoaderFunction() {
     Map<String, dynamic> simulateJsonLoad() {
+      loaderCalls++;
       return {
         'labels': {'username': 'Username', 'password': 'Password'},
         'validation': {'required': 'This field is required'},
@@ -67,7 +65,6 @@ class LoaderFunctionExample {
 
     usernameLabel = loadedResources.getText('labels.username');
     requiredValidation = loadedResources.getText('validation.required');
-    loaderUsed = true;
 
     print('2. Building a provider from a loader function:');
     print('   getText("labels.username"): $usernameLabel');
@@ -79,7 +76,11 @@ class LoaderFunctionExample {
       requiredValidation == 'This field is required',
       'Validation message should match',
     );
-    assert(loaderUsed, 'Loader should be used');
+    // The loader runs once, in the constructor, and never again: `getText` is
+    // synchronous and reads the map that call produced. A provider that
+    // re-invoked the loader per lookup would re-parse the bundle on every
+    // label, which is exactly what this constructor exists to avoid.
+    assert(loaderCalls == 1, 'The loader should run exactly once, eagerly');
   }
 }
 
@@ -152,7 +153,6 @@ class ConfigResourceExample {
   static String? apiBaseUrl;
   static String? apiTimeout;
   static String? darkModeEnabled;
-  static bool configLoaded = false;
 
   static void example5ConfigResource() {
     final configProvider = TomConfigResourceProvider.from({
@@ -163,7 +163,6 @@ class ConfigResourceExample {
     apiBaseUrl = configProvider.getObject('api.baseUrl') as String?;
     apiTimeout = configProvider.getObject('api.timeout').toString();
     darkModeEnabled = configProvider.getObject('features.darkMode').toString();
-    configLoaded = true;
 
     print('5. TomConfigResourceProvider for configuration values:');
     print('   getObject("api.baseUrl"): $apiBaseUrl');
@@ -177,7 +176,6 @@ class ConfigResourceExample {
     );
     assert(apiTimeout == '30000', 'API timeout should be string');
     assert(darkModeEnabled == 'true', 'Dark mode should be string');
-    assert(configLoaded, 'Config should be loaded');
   }
 }
 

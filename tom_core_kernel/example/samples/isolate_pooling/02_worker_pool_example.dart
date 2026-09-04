@@ -81,7 +81,7 @@ class IdentifiedTaskCommand extends TomCommand {
 
 class WorkerPoolCreationExample {
   static int poolSize = 0;
-  static bool poolCreated = false;
+  static int workersInPool = 0;
   static bool emptyPoolRejected = false;
 
   static Future<TomWorkerPool> example1CreatePool() async {
@@ -94,10 +94,16 @@ class WorkerPoolCreationExample {
 
     poolSize = 4;
     final pool = await TomWorkerPool.withSize(poolSize, context);
-    poolCreated = true;
+    workersInPool = pool.workerCount;
 
-    assert(poolCreated, 'Pool should be created');
-    assert(poolSize == 4, 'Pool size should be 4');
+    // The size that matters is the one the pool actually started, not the one
+    // it was asked for: a pool that came back short would still hand out
+    // workers, just fewer of them, and only under load would that show.
+    assert(
+      workersInPool == poolSize,
+      'The pool should hold every worker asked for',
+    );
+    assert(workersInPool == 4, 'Pool size should be 4');
 
     // A pool needs at least one worker. An empty one could never acquire a
     // worker, so every execute() would wait forever — withSize refuses at
@@ -290,7 +296,7 @@ Future<void> run() async {
   final pool = await WorkerPoolCreationExample.example1CreatePool();
   print('1. Creating a pool, and why an empty one is refused:');
   print('   pool size            : ${WorkerPoolCreationExample.poolSize}');
-  print('   pool created         : ${WorkerPoolCreationExample.poolCreated}');
+  print('   workers started      : ${WorkerPoolCreationExample.workersInPool}');
   print(
     '   withSize(0) rejected : '
     '${WorkerPoolCreationExample.emptyPoolRejected}',

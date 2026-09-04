@@ -175,7 +175,6 @@ class DocumentSigningExample {
   static Map<String, dynamic>? document;
   static Map<String, dynamic>? signedDocument;
   static bool documentValid = false;
-  static bool workflowComplete = false;
 
   static void example6DocumentSigning() {
     final privateKey = TomJwtConfiguration.rsaPrivKey;
@@ -207,11 +206,16 @@ class DocumentSigningExample {
     final receivedSigBytes = Uint8List.fromList(base64Decode(receivedSig));
 
     documentValid = rsaVerify(publicKey, receivedDocBytes, receivedSigBytes);
-    workflowComplete = true;
 
     assert(documentValid, 'Document signature should be valid');
-    assert(workflowComplete, 'Workflow should complete');
     assert(signedDocument!.containsKey('signature'), 'Should have signature');
+    // The recipient's copy has to be byte-identical, because the signature was
+    // taken over those bytes: an envelope that reorders the document verifies
+    // as tampering.
+    assert(
+      jsonEncode(receivedDoc) == docString,
+      'The transmitted document should survive the envelope unchanged',
+    );
   }
 }
 
