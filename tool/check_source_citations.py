@@ -22,6 +22,9 @@ Two faults, the same mistake at two distances:
     The same thing with a file name -- ``// see tom_form.dart:214``. Rots on
     any edit to *that* file, with the added charm that the edit is somewhere
     else entirely, so nothing about making it brings this comment into view.
+    The target may be a file of any kind: ``audit.md:496`` is the same defect
+    as ``tom_form.dart:214``, and for a while it was the invisible half of it
+    (see "The target is any kind of file" below).
 
 **Why a checker for something that happens once.** The population here is one
 occurrence, now zero, and that is a deliberate choice rather than an oversight
@@ -45,8 +48,8 @@ something with a name -- a class, a member, a library doc comment, a headed
 list. The fix is never "delete the reference"; it is "say what you mean", and
 the named form survives every edit that breaks the numbered one.
 
-**Figures are checked too, and are the worst host of all.** The rule was
-originally Dart-only, and ``advanced_09_grade_data_path.svg`` collected five
+**Figures are checked too, and are the worst host of all.** The rule originally
+scanned Dart files only, and ``advanced_09_grade_data_path.svg`` collected five
 ``CROSS`` citations in the blind spot -- three distinct ones, each written twice
 because a figure carries its claims in both an XML comment and the ``<text>``
 elements a reader actually sees. All three had rotted: one pointed a whole
@@ -126,6 +129,44 @@ complete without the number), and one cited ``(line 151)`` for a declaration in
 a file that had since been deleted. Naming the declaration is the fix in every
 case, and it is the one that survives the next edit.
 
+**The target is any kind of file, and for a while only Dart targets were seen.**
+Two independent dimensions live in this rule: which files are *scanned*, and
+which files a citation is allowed to *name*. The scanned side was widened twice,
+first to figures and then to navigating markdown, and both widenings are argued
+above. The target side stayed ``.dart:<n>`` throughout, so a guide pinning
+``audit.md:496`` was read, matched against, and passed over. Nothing about that
+is a lesser fault: the fragility argument at the top of this file does not
+mention Dart anywhere, and a markdown target is if anything worse, because no
+compiler, no analyzer and no test ever resolves it.
+
+It had already cost the sample. ``advanced_ops_server`` carried nine such pins,
+every one of them naming a line in a ``.md`` page; every one had gone stale,
+some by 150+ lines, within nineteen days of being written; and this gate
+reported the package green for the whole of that time, until they were found and
+removed by hand in ``32e54157``. Nine misses is what a blind spot looks like
+from the inside -- the rule was running, the files were scanned, the citations
+sat on lines the scan read, and the pattern simply declined to see them.
+
+**The extension vocabulary is read off the tree rather than listed.** Each run
+collects the suffixes of the files that actually exist in the repository and
+builds the alternation from them. A hand-kept list would be the wrong shape for
+the reason this whole file exists: it is permanently one commit behind, and on
+the day it falls behind it goes quiet rather than loud. Derivation also closes
+the only way to defeat the rule deliberately, which is to cite a kind of file
+nobody thought to enumerate.
+
+The extension does have to be constrained to *something*, and "anything after
+the dot" is not it. Sized against the tree before the pattern was changed, an
+unconstrained ``name.\\w+:<n>`` reads ``server.port: 8080`` in a YAML example as
+a citation of a file called ``server.port``, and ``127.0.0.1:3307`` as one of a
+file called ``127.0.0.1``. Suppressing those needs a list of the things that are
+*not* files -- ports, hosts, config key paths -- which is an open set, and
+exactly the judgement declined for a bare ``:12`` below. The things that *are*
+files are a closed set, and the tree can be asked for it. Sized again with the
+derived vocabulary, the widening adds **zero** faults to the current tree: the
+same admission test the figures and then the guides each had to pass before
+being let in.
+
 **A bare ``:12`` is not matched, for the reason ``line 2`` is not.** The guides
 also carried about 77 bare backticked continuations (``` `:809` ``` after a full
 citation), and 23 backticked ``` `:N` ``` tokens that are TCP ports -- ``:8080``,
@@ -134,14 +175,28 @@ the kind excluded above. The rewrite removed the continuations at the source
 (they only ever trail a named citation this rule *does* catch), so the gate does
 not need to see them.
 
-Falsified in five directions against the shipped function, not a
-reimplementation. It fires on a planted ``CROSS`` in guide prose, on a planted
-``SELF``, and on one hidden in a fenced ``dart`` block -- and stays silent on a
-pinned permalink that happens to end in ``.dart:807``, and on the same planted
-fault written *outside* ``tom_core_samples``, which is the scope boundary the
-paragraph above argues for. That last case is the one worth keeping: it is the
-difference between this rule and the repo-wide version that would have made the
-suite unable to document itself.
+**Falsified against the shipped functions, not a reimplementation**, and in
+both directions. It fires on a planted ``CROSS`` in guide prose, on a planted
+``SELF``, on one hidden in a fenced ``dart`` block, on every non-Dart target
+(``.md``, ``.sql``, ``.yaml``, ``.py``, ``.svg``) in both kinds of host, and on
+the path-prefixed, spaced-colon and upper-case spellings of each. It stays
+silent on a pinned permalink that happens to end in ``.dart:807``, on a
+``file://`` stack frame, on the two stable forms this repository actually uses
+(a markdown anchor link and ``§"Section Name"``), on ``server.port: 8080`` and
+``127.0.0.1:3307``, on ``a line 2 pixels wide``, on a file named without a line,
+and on a ``'audit.md:496'`` that is Dart *code* rather than a comment. The scope
+boundary is asserted where it lives, on [navigates] rather than on the matcher:
+the same planted fault in ``_copilot_guidelines/`` or in this repository's own
+``README.md`` never reaches the scan. That last case is the one worth keeping --
+it is the difference between this rule and the repo-wide version that would have
+made the suite unable to document itself.
+
+The strongest case is not planted at all. The nine pins that ``advanced_ops_server``
+carried until ``32e54157`` are replayed from ``git show 32e54157^`` and run
+through the shipped ``citations()``: the widened rule finds all nine, where the
+rule that shipped alongside them found none. Their repaired forms are then run
+through the same function and are silent -- so the falsification covers the
+before and the after of a real regression rather than an invented one.
 
 **What is deliberately not matched.** A citation needs syntactic evidence that
 it *is* one: a plural range (``lines 13-17``), a parenthesis (``(line 12)``),
@@ -207,7 +262,50 @@ COMMENT = re.compile(r"^\s*///?(?!/)(.*)$")
 # of what the program said, not a citation anyone wrote or can repair.
 URL = re.compile(r"\b(?:https?|file)://\S+")
 
-CROSS = re.compile(r"\b[\w/.]*\w\.dart\s*:\s*\d+")
+def citable_suffixes() -> set[str]:
+    """The file extensions a citation in this repository could name.
+
+    Derived from the tree on every run rather than listed, for the reason the
+    quest-id guards ran into from the other side: a hand-kept list of what
+    counts is permanently one commit behind, and the day it falls behind it goes
+    quiet rather than loud. Reading the extensions off the files means the
+    vocabulary is current by construction and cannot be defeated by citing a
+    kind of file nobody thought to enumerate.
+
+    Always the whole repository, never the scanned subtree: a comment in
+    ``tom_flutter_ui`` can perfectly well point at a ``.sql`` file in
+    ``tom_core_samples``, so narrowing the vocabulary to the scan root would
+    make ``check_source_citations.py <subtree>`` quietly weaker than a full run.
+    """
+    return {
+        path.suffix.lower().lstrip(".")
+        for path in REPO_ROOT.rglob("*")
+        if path.is_file() and path.suffix and not (SKIP_DIRS & set(path.parts))
+    }
+
+
+def cross_pattern(suffixes: set[str]) -> re.Pattern[str]:
+    """``name.<ext>:<n>`` for an *ext* that names a real kind of file here.
+
+    The extension has to be constrained, and this is the constraint that needs
+    no judgement. Matching any ``\\w+`` after the dot reads ``server.port: 8080``
+    in a YAML example as a citation of a file called ``server.port`` -- it
+    occurs twice in this repository -- and ``127.0.0.1:3307`` as one of a file
+    called ``127.0.0.1``. Suppressing those needs a list of things that are not
+    files (ports, hosts, config key paths), which is an open set and exactly the
+    judgement the docstring declines for a bare ``:12``. The extensions that
+    *are* files are a closed set, and one the tree can be asked for.
+
+    Longest alternative first, so ``foo.markdown:12`` is not read as a citation
+    of ``foo.m`` -- Python's alternation takes the leftmost that matches, not
+    the longest.
+    """
+    alternatives = "|".join(
+        sorted((re.escape(suffix) for suffix in suffixes), key=len, reverse=True)
+    )
+    return re.compile(rf"\b[\w/.-]*\w\.(?:{alternatives})\s*:\s*\d+", re.I)
+
+
 SELF = re.compile(
     r"""
       \blines\s+\d+\s*[-–—]\s*\d+          # `lines 13-17` -- a range
@@ -252,12 +350,12 @@ def citable_lines(path: Path, text: str) -> list[tuple[int, str]]:
     ]
 
 
-def citations(path: Path, text: str) -> list[tuple[int, str, str]]:
+def citations(path: Path, text: str, cross: re.Pattern[str]) -> list[tuple[int, str, str]]:
     """``(line, fault, the citing prose)`` for each line citing a line."""
     found: list[tuple[int, str, str]] = []
     for number, raw in citable_lines(path, text):
         prose = URL.sub(" ", raw)
-        if CROSS.search(prose):
+        if cross.search(prose):
             found.append((number, "CROSS", prose.strip()))
         elif SELF.search(prose):
             found.append((number, "SELF", prose.strip()))
@@ -270,6 +368,8 @@ def main(argv: list[str]) -> int:
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
+    suffixes = citable_suffixes()
+    cross = cross_pattern(suffixes)
     scanned = {".dart": 0, ".svg": 0, ".md": 0}
     faults: list[tuple[Path, int, str, str]] = []
     for path in source_files(root):
@@ -278,7 +378,7 @@ def main(argv: list[str]) -> int:
         except (OSError, UnicodeDecodeError):
             continue
         scanned[path.suffix] += 1
-        for number, fault, prose in citations(path, text):
+        for number, fault, prose in citations(path, text, cross):
             faults.append((path, number, fault, prose))
 
     if not sum(scanned.values()):
@@ -299,6 +399,10 @@ def main(argv: list[str]) -> int:
     print(f"dart files scanned       : {scanned['.dart']}")
     print(f"figures scanned          : {scanned['.svg']}")
     print(f"guide files scanned      : {scanned['.md']}")
+    # The vocabulary is reported for the same reason the file counts are: it is
+    # read off the tree, so the way this rule fails silently is by deriving a
+    # vocabulary that no longer contains the extension being cited.
+    print(f"citable extensions       : {len(suffixes)}")
     print(f"citations naming a line  : {len(faults)}")
     return report_faults(len(faults))
 

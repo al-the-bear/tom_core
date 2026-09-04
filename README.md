@@ -733,8 +733,27 @@ And this README is where the suite explains its rules, which it cannot do
 without quoting the shapes it forbids; excluding it is what lets the gate keep
 its documentation instead of acquiring a per-site suppression list.
 
-The rule now fires **zero** times across 1506 Dart files, 9 figures and 177
-documents, and that is the argument for it rather than against. A gate
+**A citation may name any kind of file, and for a long time only Dart targets
+were seen.** Two dimensions live in this rule and only one of them was widened:
+which files are *scanned*, and which files a citation is allowed to *name*. The
+target side stayed `.dart:<n>`, so `audit.md:496` in a guide was read and passed
+over — though nothing in the argument above mentions Dart, and a markdown target
+is worse if anything, since no compiler or test ever resolves it. It had already
+cost the sample: `advanced_ops_server` carried nine pins into `.md` pages, all
+nine had gone stale — some by 150+ lines, within nineteen days of being written
+— and this gate reported the package green throughout, until they were found and
+repaired by hand. The set of extensions is now read off the tree on every run
+rather than listed, because a hand-kept list is permanently one commit behind
+and goes quiet rather than loud on the day it falls behind. It does have to be
+constrained to *something*: an unconstrained extension reads `server.port: 8080`
+in a YAML example as a citation of a file called `server.port`, and
+`127.0.0.1:3307` as one of a file called `127.0.0.1`. Suppressing those needs a
+list of the things that are *not* files, which is an open set; the things that
+*are* files are a closed one the tree can be asked for.
+
+The rule now fires **zero** times across 1510 Dart files, 9 figures and 177
+documents, over the 46 file extensions this repository contains, and that is the
+argument for it rather than against. A gate
 earns its place by whether the fault would be caught if it came back, not by how
 much it currently finds; this fault is invisible by construction, and a
 convention met once a year is one no reviewer can be asked to hold. Because the
@@ -755,11 +774,8 @@ the sentence described. An anchor for the login JWT pair landed inside
 two-factor submission; one for the closed-safe grade default landed on a
 different method; several landed on blank lines and closing braces. Only two
 pointed past end of file, which is the sole variant a reader can detect
-unaided. The scan stops at that subtree on purpose: elsewhere — including this
-README two paragraphs above — the same shapes appear in prose that *quotes* the
-fault rather than commits it, and gating those would either need a suppression
-list this suite does not have or force the gate's own documentation to stop
-naming its own pattern.
+unaided. Making those calls is what let the boundary move from that subtree to
+every document that navigates.
 
 A citation must show it is one — a plural range, a parenthesis, or a pointing
 word — so `a line 2 pixels wide` is left alone, and URLs are skipped whole,
