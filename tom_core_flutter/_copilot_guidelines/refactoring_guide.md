@@ -196,16 +196,16 @@ private additions allowed):
 1. Read all files in the module; identify the public API surface.
 2. Review real-world usage in `tom_uam_client`.
 3. Refactor and document per
-   [`dart/coding_guidelines.md`](/_copilot_guidelines/dart/coding_guidelines.md).
+   [`dart/coding_guidelines.md`](../../../../_copilot_guidelines/dart/coding_guidelines.md).
 4. Quality check: no public API change; `flutter analyze` clean (see step 14 —
    `dart analyze` exits 0 on the `info`-severity lints this workspace enables).
 5. Create module documentation in `doc/{module}.md` per
-   [`documentation_guidelines.md`](/_copilot_guidelines/documentation_guidelines.md).
+   [`documentation_guidelines.md`](../../../../_copilot_guidelines/documentation_guidelines.md).
 6. Create **executable** examples per
-   [`dart/examples.md`](/_copilot_guidelines/dart/examples.md) — widget
+   [`dart/examples.md`](../../../../_copilot_guidelines/dart/examples.md) — widget
    integration, observable state, platform considerations.
 7. Create tests per
-   [`dart/unit_tests.md`](/_copilot_guidelines/dart/unit_tests.md) using
+   [`dart/unit_tests.md`](../../../../_copilot_guidelines/dart/unit_tests.md) using
    `flutter_test` / `WidgetTester`; mock platform channels where needed.
 8. Create / regenerate `api.dart` (or `doc/api/api_summary_{module}.md`) and
    verify it matches the code.
@@ -237,8 +237,8 @@ private additions allowed):
 
 | Guideline | Location |
 | --------- | -------- |
-| Coding Guidelines | [`dart/coding_guidelines.md`](/_copilot_guidelines/dart/coding_guidelines.md) |
-| Clean Code | [`dart/clean_code_principles.md`](/_copilot_guidelines/dart/clean_code_principles.md) |
-| Documentation | [`documentation_guidelines.md`](/_copilot_guidelines/documentation_guidelines.md) |
-| Unit Tests | [`dart/unit_tests.md`](/_copilot_guidelines/dart/unit_tests.md) |
-| Examples | [`dart/examples.md`](/_copilot_guidelines/dart/examples.md) |
+| Coding Guidelines | [`dart/coding_guidelines.md`](../../../../_copilot_guidelines/dart/coding_guidelines.md) |
+| Clean Code | [`dart/clean_code_principles.md`](../../../../_copilot_guidelines/dart/clean_code_principles.md) |
+| Documentation | [`documentation_guidelines.md`](../../../../_copilot_guidelines/documentation_guidelines.md) |
+| Unit Tests | [`dart/unit_tests.md`](../../../../_copilot_guidelines/dart/unit_tests.md) |
+| Examples | [`dart/examples.md`](../../../../_copilot_guidelines/dart/examples.md) |

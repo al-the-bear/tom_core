@@ -369,7 +369,8 @@ Per-module guides live in [`doc/`](doc):
 [`widgets.md`](doc/widgets.md), [`custom.md`](doc/custom.md),
 [`kernel_types.md`](doc/kernel_types.md), and
 [`debug_and_inspection_system.md`](doc/debug_and_inspection_system.md).
-Development guidelines live in [`_copilot_guidelines/`](_copilot_guidelines/index.md).
+Development guidelines live in `_copilot_guidelines/`, which is workspace
+tooling rather than part of this package's documentation.
 
 ## Status
 

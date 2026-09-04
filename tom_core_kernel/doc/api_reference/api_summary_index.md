@@ -26,7 +26,6 @@ declarations are omitted.
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Well-known preference keys, wire DTOs, the value codec, and the `/preferences` API declaration. |
 | Reflection | [api_summary_reflection.md](api_summary_reflection.md) | The kernel reflector, reflection info, and JSON (de)serialization via mirrors. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Text and config resource providers over a JSON tree. |
-| Result | [api_summary_result.md](api_summary_result.md) | The canonical success-or-error envelope, structured error codes, and field-level details. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | Schedules, job definitions, the persistent run store, the lease lock, and the scheduler. |
 | Scope IDs | [api_summary_scope_ids.md](api_summary_scope_ids.md) | Hierarchical scope identity, scope-path building, and zone-scoped builders. |
 | Security | [api_summary_security.md](api_summary_security.md) | Principals/ACIs, access controls, authorization state machine, resource roles, bearer auth. |

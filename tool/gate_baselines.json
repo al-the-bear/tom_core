@@ -52,6 +52,11 @@
       "faults": 0,
       "measured": "2026-09-03"
     },
+    "check_doc_links": {
+      "faults": 0,
+      "measured": "2026-09-04",
+      "note": "Lands at zero because the 90 faults it was written for were repaired in the same pass: 84 ABSOLUTE links to /_copilot_guidelines/ in the 14 _copilot_guidelines/ files of this repo, 4 DEAD ../tom_core_*/ links written one level too shallow in the kernel's and server's index.md, 1 DEAD api_summary_result.md for a Result module the kernel does not have, and 1 GUIDELINE link out of tom_flutter_ui/README.md. The ABSOLUTE shape was workspace-wide -- 371 links in 70 files across tom_ai, tom_assistant, tom_sqm, tom_uam and the global _copilot_guidelines/ -- all repaired in the same pass, and its source, the index.md template in _copilot_guidelines/dart/new_project_setup.md, was corrected so the count stops growing by one table per new project. Anchors are out of scope (check_doc_tocs owns headings) and so are external URLs."
+    },
     "check_doc_samples": {
       "faults": 8,
       "measured": "2026-09-03",

@@ -217,6 +217,7 @@ reports and never gates.
 | [`tool/check_demo_counts.py`](tool/check_demo_counts.py) | Pins the demo screen/tile counts printed in `tom_flutter_ui_test/README.md` to the source |
 | [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
 | [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
+| [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, and links from a package's documentation into `_copilot_guidelines/` |
 | [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
 | [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped documents citing a path under `_ai/`, which no reader of the package can open |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
@@ -883,6 +884,38 @@ current one without finding the live path and comparing dates — a reader who
 trusts it is misled, and a reader who does not gains nothing. The kernel's
 captured test run being 934 KB was the smaller problem; its being eleven weeks
 out of date was the real one.
+
+```bash
+python3 tool/check_doc_links.py                  # the whole repository
+python3 tool/check_doc_links.py tom_core_kernel  # one subtree
+```
+
+Follows every markdown link in the tree. A link is the one part of a document
+that promises to take you somewhere, and it was the part nothing verified: the
+sweep that prompted this gate found 89 broken links under this repo and 371 of
+a single shape across the workspace — every project's
+`_copilot_guidelines/index.md` opened with a table of links to the shared
+guidelines, and not one of them worked anywhere.
+
+Three faults. `ABSOLUTE` is a target beginning with `/`, which reads like "from
+the workspace root" and means the *filesystem* root, so it opens neither in VS
+Code nor on GitHub; that is the shape that reached 371, copied from a template
+that carried the defect, growing by one table per new project. `DEAD` is a
+relative target not on disk — the kernel's API index offered a "Result" row
+pointing at a summary nobody wrote, for a module the kernel does not have, in a
+table whose own header says seventeen and which listed eighteen. `GUIDELINE` is
+a link from outside `_copilot_guidelines/` into it: not broken, but a layering
+fault, because `doc/` and `README.md` are what a consumer reads and
+`_copilot_guidelines/` ships with neither the package nor its pub.dev page.
+
+Anchors are deliberately not checked — whether a heading exists is
+`check_doc_tocs`'s question, and answering it twice in two dialects of
+heading-slug is how two gates come to disagree. Fenced blocks are skipped and
+inline code spans blanked, which is correctness rather than tidiness in both
+directions: a naive scan reads `operator [](Object? key)` in every
+`api_summary_*.md` as a link, and *rewrites* the template inside a ` ```markdown `
+fence into something true only of the file containing it. Both happened while
+this gate was being written.
 
 ```bash
 python3 tool/check_doc_ai_citations.py                 # the whole repository
