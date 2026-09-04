@@ -796,7 +796,7 @@ void main() {
     });
   });
 
-  group('MariaDbDatasource.toPositionalStatement (RCA5)', () {
+  group('MariaDbDatasource.toPositionalStatement', () {
     // The MySQL binary protocol binds positional `?` placeholders. The
     // datasource translates the generated `:name` SQL to that form. A naive
     // per-name `replaceAll(":$p", "?")` corrupts a placeholder that is a prefix

@@ -1,5 +1,5 @@
-/// tccc6: the auto-applied default preferred width must never produce a
-/// *visible* overflow.
+/// The auto-applied default preferred width must never produce a *visible*
+/// overflow.
 ///
 /// `AclBuilder` gives every component appended without a size hint a preferred
 /// width of [AclBuilder.defaultPreferredWidth] (150). Before this suite that
@@ -79,7 +79,7 @@ List<String> _captureOverflows() {
 }
 
 void main() {
-  group('ACL default preferred width — never a visible overflow (tccc6)', () {
+  group('ACL default preferred width — never a visible overflow', () {
     testWidgets('an unsized child wider than the default fits when the row has '
         'the space', (tester) async {
       final overflows = _captureOverflows();

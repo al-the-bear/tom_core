@@ -1,12 +1,11 @@
-/// DB-backed tests for reading `DECIMAL` columns on the entity-mapping paths
-/// (CSEXE1).
+/// DB-backed tests for reading `DECIMAL` columns on the entity-mapping paths.
 ///
 /// `mysql_client` converts a driver column to a Dart `double` only from a fixed
 /// whitelist of protocol types — TINY, SHORT, LONG, LONGLONG, INT24, FLOAT,
 /// DOUBLE. `NEWDECIMAL` (246), which is what MariaDB reports for every
 /// `DECIMAL` column, is in neither that list nor the corresponding `int` one,
 /// so `ResultSetRow.typedColByName<double>` *throws* rather than widening. The
-/// grouped-row mapper worked around this for aggregates (CSEXD1); the four
+/// grouped-row mapper worked around this for aggregates; the four
 /// entity-mapping variants and the `TomDbType` boxing path did not, which made
 /// every entity with a money column unreadable.
 ///
@@ -175,7 +174,7 @@ void main() async {
       expect(rows.single.quantity.get(), 5);
     });
 
-    // The `int` side of the decision (CSEXE1 step 4). The driver's `int`
+    // The `int` side of the decision. The driver's `int`
     // whitelist omits NEWDECIMAL exactly as its `double` one does, so an
     // int-declared field over a DECIMAL column had to be given a defined
     // behaviour rather than inheriting the driver's refusal. The rule is:

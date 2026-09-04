@@ -3,7 +3,7 @@
 *Part of the [Tom Flutter UI documentation set](README.md).*
 
 Date: 2026-03-18 (updated 2026-04-07; reconciled against shipped API 2026-07-15;
-inline rename + proposed-appendix pass 2026-07-16, RCI3 — done)
+inline rename + proposed-appendix pass 2026-07-16 — done)
 Status: **Design specification — partially implemented.** The core infrastructure
 (node/policy/family base chain, authorization, scoping, actions, the `TomForm` /
 `TomField` system, `TomScreenElementsProvider`, resource resolution) ships in
@@ -66,9 +66,9 @@ The forward-looking constructs that still have **no shipped equivalent** are
 catalogued in [Appendix A — Proposed / not-yet-built constructs](#appendix-a--proposed--not-yet-built-constructs).
 Do not treat any name in that appendix as an available API.
 
-> **Reconciliation note (2026-07-16, RCI3 → RCK10):** RCI3 relocated the
-> forward-looking constructs into Appendix A non-destructively. RCK10 then applied
-> the design owner's abandoned-vs-intended call: constructs whose need the shipped
+> **Reconciliation note (2026-07-16).** The forward-looking constructs were
+> relocated into Appendix A non-destructively, then the design owner's
+> abandoned-vs-intended call was applied: constructs whose need the shipped
 > framework fully covers a different way — the theming config objects
 > (`TomThemeConfig` family), the `TomFieldImplementation` field layer, the action
 > UI-flow requests (`requestUi()`, `TomConfirmation`, `TomHelpButton`, …), the
@@ -2551,9 +2551,9 @@ This gives a clear path to stable semantics with flexible implementation and lay
 
 ## Appendix A — Proposed / not-yet-built constructs
 
-> **Status (2026-07-16, RCI3 → RCK10).** RCI3 relocated every forward-looking
-> construct here non-destructively. RCK10 then applied the design owner's
-> abandoned-vs-intended call and split the catalogue in two:
+> **Status (2026-07-16).** Every forward-looking construct was relocated here
+> non-destructively, then the design owner's abandoned-vs-intended call split
+> the catalogue in two:
 >
 > - **A.1 — Intended (retained).** Each addresses a capability the shipped
 >   framework does **not yet** provide. The body sections keep an inline

@@ -12,7 +12,7 @@
 /// per-file loaders guarded each read with `existsSync()`, so on any host where
 /// the path did not resolve they silently loaded *nothing* — text fell back to
 /// the flutter_test Ahem font, producing up to ~47% cross-host pixel drift
-/// (measured bomber→bigbeast, RCL14). Reading committed bytes makes rendering
+/// (measured bomber→bigbeast). Reading committed bytes makes rendering
 /// deterministic; a missing file now throws instead of silently degrading.
 library;
 

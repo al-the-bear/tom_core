@@ -1,4 +1,4 @@
-/// DB-backed tests for the persistent provider-token store (TCCB7).
+/// DB-backed tests for the persistent provider-token store.
 ///
 /// The store's *contract* — what `read` / `store` / `delete` mean, when a grant
 /// is refreshed, how the cascade from `unlink` behaves — is covered against

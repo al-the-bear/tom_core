@@ -25,8 +25,7 @@
 // those separate rasterisation from regression directly.
 //
 // `flutter test` auto-discovers this file (one per package test root) and runs
-// `testExecutable` before the suite, installing the comparator. See quest todo
-// RCJ17.
+// `testExecutable` before the suite, installing the comparator.
 //
 // It also performs the resource bootstrap the widgets need — see
 // `_installEmptyResourceBundles` below.

@@ -53,7 +53,7 @@ void main() {
     expect(find.text('row-2'), findsOneWidget);
   });
 
-  // RCK21: Flutter 3.44 replaced onReorder with onReorderItem, whose newIndex
+  // Flutter 3.44 replaced onReorder with onReorderItem, whose newIndex
   // is ALREADY adjusted for the removed item — so the standard
   // `removeAt(old)`/`insert(new)` body is correct WITHOUT the classic
   // `if (newIndex > oldIndex) newIndex -= 1` fixup. This pins that the

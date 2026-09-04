@@ -554,9 +554,9 @@ rule is one rule: hand-synchronised copies in two dialects — `tom_core_flutter
 runs on `flutter_test`, and `tom_core_samples` is not a package at all — would
 drift, and Dart cannot share `test/` code across packages without publishing it.
 
-That drift is not a prediction. Two copies exist, and they no longer implement
-the same rule: the kernel's matches a list of known quest prefixes, while
-`advanced_ops_server`'s matches ids by *shape*, because the prefix list had let
+That drift is not a prediction. Two copies existed and did not implement the same
+rule: the kernel's matched a list of known quest prefixes, while
+`advanced_ops_server`'s matched ids by *shape*, because the prefix list had let
 `csexd4` and `csexd6` open that package's authorization suite while reporting it
 clean. The fix was made in the copy and never travelled back — so the kernel's
 guard still had the blind spot, and so did this gate, by which time the same
@@ -565,15 +565,33 @@ Sixteen copies would not be sixteen guards, only sixteen places for the next fix
 to fail to leave. Coverage lives here, where there is one implementation to fix;
 the two in-suite guards stay as the fastest signal for the packages they guard.
 
-The gate keeps the prefix list rather than adopting the shape rule, which is the
-opposite conclusion to the one `advanced_ops_server` reaches — and both are
-right at their own scale. Shape-matching works there because a back-office
-sample's vocabulary is small enough to enumerate the exceptions. Repo-wide the
-same shape matches 397 further tokens across 4,582 lines and nearly every one is
-real (`demo01` and twenty-seven siblings, `material3`, `black54`, `operant1`),
-so the exemption list would grow without bound and start exempting things by
-accident. At that scale the enumerable set is the *ids*, so the list is widened
-when a family leaks in, as it was for `cs`.
+All three now match the shape, and the reason is the shape of the two lists
+rather than a preference. A list of quest prefixes is **open**: it grows every
+time anyone mints one, so a guard built on it fails open and in silence — the
+`cs` leak is exactly that failure, and so is the plan-id half, which knew `RCB`,
+`RCC` and `RCK` and not `RCA`, `RCD`, `RCF`, `RCI`, `RCJ` or `RCL`, six families
+that were between them shipping 29 pointers past a green gate. A list of English
+and published technical words is **closed**: minting `zzq7` does not make `zzq` a
+word, so the guard fails loudly, on the new id, in the commit that adds it.
+
+What had kept the shape rule from travelling repo-wide was a measurement taken
+wrong. The claim was that it matches "397 further tokens" of mostly-real
+vocabulary, so the exemption list would grow without bound — but that counted
+*whole lines, code included*, and a numeric suffix is how Dart names things.
+The number that decides whether a list is writable is the count of distinct
+**stems**, and it depends entirely on where prose is held to end: 177 over whole
+lines, 120 if every string literal counts, **59** over the prose the rule is
+actually about — comment bodies and `test`/`group` descriptions. Fifty-nine is
+readable, and every one of them is a word (`sha256`, `utf8`, `material3`,
+`black54`). That gap is also the boundary's justification: a fixture string like
+`user1` is data the test feeds to the code, not prose a reader reads.
+
+Ids are matched in both cases. Lowercase (`tcincb154_ahzj`) and ALL-CAPS
+(`RCK13`, `CSEXF1`) are separate patterns with separate vocabularies, kept apart
+so neither list has to carry the other's words. Capitals are matched only as a
+whole run, never camelCase, which is what keeps that list to twenty entries: a
+Dart identifier with a numeric suffix is written `addressLine1`, `promptSha256`,
+`mBlue100`, and a work-item id never is.
 
 Generated Dart is skipped. `*.reflection.dart` carries whatever its sources
 carried and is repaired by regenerating, never by editing; both in-suite guards

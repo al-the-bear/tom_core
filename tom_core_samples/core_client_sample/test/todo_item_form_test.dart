@@ -1,4 +1,4 @@
-// Unit tests for the single field identity (RCA1 / G-UI-6): a TodoItemForm
+// Unit tests for the single field identity: a TodoItemForm
 // field addresses itself ONE way. Its `basePath` — the scope its label key is
 // composed from (`<basePath>.label`) — is byte-identical to the wire/authz key
 // used to look the field's grade up in the session matrix. There is no second

@@ -36,9 +36,9 @@ TomTextFormFieldBase<String> _upperCasingField(String initialValue) {
 }
 
 void main() {
-  // tcca15: `set()` and `reset()` wrote the controller without the
-  // re-entrancy guard the revert path uses, so a programmatic write re-entered
-  // `_onTextChanged` and was processed as if the user had typed it.
+  // `set()` and `reset()` write the controller through the same re-entrancy
+  // guard the revert path uses. Without it a programmatic write re-enters
+  // `_onTextChanged` and is processed as if the user had typed it.
   group('TomTextFormFieldBase — programmatic writes are not keystrokes', () {
     test('set() does not run the input validators', () {
       final seen = <String>[];

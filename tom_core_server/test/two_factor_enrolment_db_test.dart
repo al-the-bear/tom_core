@@ -1,4 +1,4 @@
-/// DB-backed tests for the persistent 2FA enrolment store (TCCA2).
+/// DB-backed tests for the persistent 2FA enrolment store.
 ///
 /// The store's *contract* — what `enrolmentsFor` / `store` / `remove` mean, how
 /// re-storing an enrolment id replaces rather than duplicates, how the TOTP

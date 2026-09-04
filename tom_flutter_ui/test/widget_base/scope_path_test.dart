@@ -184,7 +184,7 @@ void main() {
   group('no file re-derives the composition rule', () {
     // Source-reading on purpose: the claim is that the rule is written down
     // once, and a tenth hand-written copy would satisfy every behavioural test
-    // above while reintroducing exactly the drift this todo removed.
+    // above while reintroducing exactly the drift the single copy prevents.
 
     test('only the listed files read the raw scope path', () {
       final offenders = <String, int>{};

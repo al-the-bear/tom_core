@@ -7,9 +7,9 @@
       "note": "Lands at zero because all four faults it found were legitimate omissions, and each was declared with a marker in its barrel in the same pass: reflection_seed.dart in advanced_client_core, reflection_entry.dart in todo_domain, and the two generated colour/icon tables behind tom_colors.dart and tom_icons.dart in tom_flutter_ui. Zero is the expected steady state -- the gate exists for recurrence, not backlog, and the one defect of this class (session_two_factor_controller.dart, absent from advanced_app_client's app.dart) was already repaired by tcinc947. 39 barrels across 23 packages are in scope. A directory with no barrel is deliberately not covered: the six Flutter sample applications correctly re-export nothing from screens/ and groups/, and demanding it would produce some ninety faults, all wrong."
     },
     "check_comments_read_as_is": {
-      "faults": 38,
-      "measured": "2026-09-04",
-      "note": "38 work-item ids and history-narration phrases outside the five tom_core packages, which are at zero: 31 in tom_flutter_ui, 5 in tom_flutter_form_test, 1 in tom_flutter_ui_test and 1 in tom_core_codespecs -- see tcextension11_aidb. This gate covers what check_section_refs.py does not: quest todo ids, build-plan ids, 'Todo <n>' pointers and past-indicative narration about the code's own history."
+      "faults": 21,
+      "measured": "2026-09-05",
+      "note": "21 history-narration phrases, all outside the five tom_core packages: 16 in tom_flutter_ui, 4 in tom_flutter_form_test, 1 in tom_flutter_ui_test -- see tcextension11_aidb. Zero work-item ids remain anywhere in scope. This gate covers what check_section_refs.py does not: quest todo ids, build-plan ids, 'Todo <n>' pointers and past-indicative narration about the code's own history. It matches ids by *shape* against a closed vocabulary of English and published technical words, in both lowercase and ALL-CAPS; it does not enumerate quest prefixes, because a prefix list fails open -- minting a new one defeats it silently, which is how 104 ALL-CAPS pointers in 18 families shipped past a green gate."
     },
     "check_consumer_claims": {
       "faults": 0,

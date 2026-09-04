@@ -108,7 +108,8 @@ void main() {
       tester,
     ) async {
       // The guard for the other direction: if the gate dimmed everything,
-      // tcce2-01 would pass for the wrong reason.
+      // "a disabled TomDataCell is dimmed and untouchable" would pass for the
+      // wrong reason.
       await tester.pumpWidget(
         _host(
           _table(

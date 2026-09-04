@@ -1,5 +1,5 @@
 /// DB-backed tests for mapping a result row onto **nullable observable
-/// members** of a `TomClass` (CSEXF1).
+/// members** of a `TomClass`.
 ///
 /// `TomObject<T>.getType()` returns `T` exactly as declared, so a `TomNString`
 /// answers `String?` and a `TomNDouble` answers `double?`. Both `TomClass`
@@ -15,7 +15,7 @@
 /// A holder with a single `TomNString` over a plain `VARCHAR` was enough to
 /// trigger it — no `DECIMAL`, no aggregate, no driver quirk involved. The
 /// fixtures here use deliberately plain column types for exactly that reason:
-/// anything exotic would blur this defect with CSEXE1's separate `NEWDECIMAL`
+/// anything exotic would blur this defect with the driver's separate `NEWDECIMAL`
 /// gap.
 ///
 /// Three things are pinned, and all three matter:

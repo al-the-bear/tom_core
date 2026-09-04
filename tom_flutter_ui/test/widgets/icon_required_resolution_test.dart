@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tcinc791: an icon is required for some widgets and optional for others, and
-// until now both cases resolved through `TomCtr.icon`, which answers `null` to
-// absence and to a misspelt name alike.
+// An icon is required for some widgets and optional for others. Resolving
+// both cases through `TomCtr.icon` cannot tell them apart: it answers `null`
+// to absence and to a misspelt name alike.
 //
 // For `TomIconButton` the icon *is* the widget. When neither the parameter nor
 // the resource supplied one it rendered `Icons.error_outline` — a control that

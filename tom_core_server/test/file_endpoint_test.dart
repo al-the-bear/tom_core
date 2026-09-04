@@ -20,7 +20,7 @@ import 'fixtures/reflection_fixture.dart'
         registerFixtureAccessApi;
 import 'fixtures/reflection_fixture.reflection.dart';
 
-/// CSFSB1 / CSEXC4 — the framework's HTTP file endpoint, end to end.
+/// The framework's HTTP file endpoint, end to end.
 ///
 /// The point of the suite is that the two halves of file storage meet: a *real*
 /// [TomHttpFileTransferClient] from the kernel talks to a *real* HTTP server
@@ -294,7 +294,7 @@ void main() {
     });
 
     test('an entity written before exposure existed publishes nothing', () {
-      // FixtureDocumentRecord (CSFS1) has two @TomFileReference columns and
+      // FixtureDocumentRecord has two @TomFileReference columns and
       // marks neither exposed. Default-closed means adding the endpoint did not
       // silently put its files on the network.
       expect(

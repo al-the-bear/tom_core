@@ -1,4 +1,4 @@
-/// DB-backed tests for the server-stored user preference store (TCCA10).
+/// DB-backed tests for the server-stored user preference store.
 ///
 /// The codec's *contract* — which type name a value is written under, that a
 /// mismatched read is refused rather than coerced — is covered without a

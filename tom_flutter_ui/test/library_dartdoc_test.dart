@@ -399,8 +399,8 @@ void main() {
   });
 
   group('the ACL module barrel orients its reader', () {
-    // tcinc712's subject. The unit exports around thirty types; a reader
-    // needs to be told which two to read first.
+    // The unit exports around thirty types; a reader needs to be told which
+    // two to read first.
     late String doc;
 
     setUpAll(() => doc = _libraryDartdoc(_aclBarrel));

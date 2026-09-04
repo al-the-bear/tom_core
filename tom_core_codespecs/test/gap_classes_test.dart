@@ -987,7 +987,7 @@ void main() {
       );
     });
 
-    // tcinc937: the constructor dartdoc names six rejected defects and offers
+    // The constructor dartdoc names six rejected defects and offers
     // that list as what a generator may rely on being caught. Only three of
     // them had a test, and `_rejectDuplicates` is applied to five namespaces
     // of which only column name was exercised — so a namespace could have been

@@ -1,4 +1,4 @@
-/// TCCA17 — `TomListForm`, the controller behind every list-shaped form.
+/// `TomListForm`, the controller behind every list-shaped form.
 ///
 /// This is the largest surface in the package that had no coverage at all, and
 /// the one whose behaviour is least inferable from reading: a list form keeps

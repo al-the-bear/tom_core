@@ -25,6 +25,38 @@
 
 ### Documentation
 
+- **Work-item ids are now caught by their shape rather than by a list of
+  prefixes, and the ids they were letting through are gone.** A comment naming
+  `RCA5`, `CSEXF1` or `tcca17` points at a row in a quest document that ships
+  with neither this package nor its tests, so to a reader it is noise that looks
+  like it ought to mean something. The guards that were supposed to prevent that
+  matched a list of known quest prefixes — an **open** set, which grows every
+  time anyone mints one, so an unrecognised id was not merely permitted but
+  invisible.
+
+  All three guards — this package's sibling in `tom_core_kernel`, the one in
+  `advanced_ops_server`, and the repo-wide
+  `tom_ai/core/tool/check_comments_read_as_is.py` — now match the *shape* of an
+  id against a **closed** vocabulary of ordinary and published technical words.
+  Minting a new prefix cannot defeat that, because it does not make the new
+  stem a word.
+
+  Case had been a second way past them: every shape was lowercase, so an id
+  written the way prose usually writes one — shouted — walked straight through.
+  104 ALL-CAPS pointers in 18 families were shipping across the tree while every
+  guard reported clean, 24 of them in this package's suite headers and three in
+  `doc/container_widget_resources_authorization.md`. Each now states the fact
+  the id stood in for, or is simply dropped where the sentence survives without
+  it. Gate baseline lowered 38 → 21, with the 21 survivors all belonging to the
+  separate history-narration rule.
+
+- **`shipped_text_test.dart` now says why it is not the same guard.** It bans
+  three specific outside vocabularies — `CE-LO`, `XDS`, `csexb2` — and two of
+  them have no id shape at all (`CE-LO` is hyphenated with no digit run, `XDS`
+  carries no digits), so folding it into the shape guards would silently lose
+  those cases. The header records the division of labour so a future reader does
+  not consolidate them.
+
 - **43 source comments cited a section number of a document the reader does
   not have.** `(gap §15a)`, `bug §77`, `tests §59(d)`, `[Phase 2a §16]` — the
   numbers index workspace-only planning documents, which ship with neither the

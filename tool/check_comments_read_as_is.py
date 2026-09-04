@@ -130,39 +130,78 @@ GENERATED_SUFFIX = ".reflection.dart"
 #: text like any other, and only this one has the convention as its subject.
 EXEMPT_PATHS = {Path("README.md")}
 
-#: A quest todo id: a quest prefix, a number, and optionally the date code the
-#: id generator appends (``tcincb154_ahzj``).
+#: The shape of a work-item id: letters, then digits, optionally followed by
+#: the date code the id generator appends (``tcincb154_ahzj``).
+ID_SHAPE = re.compile(r"\b([a-z]{2,12})\d+(_[a-zäñößü]{4})?\b")
+
+#: Stems that take a numeric suffix in ordinary prose. Everything matching
+#: [ID_SHAPE] whose stem is *not* here is reported.
 #:
-#: **The ``cs`` family is here because ids leak in from the quest that is
-#: working next door, not from this one.** The prefixes a gate's author thinks
-#: of are the ones they are using that week; the ones that actually reach the
-#: tree come from whoever else edited it. ``csex``/``csm``/``csra``/``csfs`` --
-#: CodeSpecs and tom_specs work items -- had reached shipped ``lib/`` dartdoc in
-#: three packages and the tests of two sample packages while this gate reported
-#: every one of them clean.
+#: **The list is inverted from what it used to be, and that is the whole
+#: point.** It used to enumerate quest prefixes -- ``tcinc``, ``tcca``,
+#: ``cs[a-z]*`` and a dozen more. That is an *open* set: it grows whenever
+#: anyone mints a prefix, and until someone thinks to add the new one the gate
+#: reports the tree clean. It failed exactly that way twice over. ``qrc1`` sat
+#: in three ``tom_core_server`` dartdoc comments and ``tfca4`` in two more,
+#: shipping, while this gate passed -- two prefixes nobody had added.
 #:
-#: **Why this stays a list of prefixes and not a shape.** The sibling guard in
-#: ``advanced_ops_server`` matches ``\b[a-z]{2,10}\d+\b`` and exempts a closed
-#: set of technical tokens, on the argument that a list of prefixes is
-#: permanently one prefix behind. That is true, and it is still the wrong trade
-#: here: the shape matches 397 further tokens on 4,582 lines of this
-#: repository, and they are almost all real -- ``demo01`` and its 27 siblings
-#: are showcase ids, ``material3`` and ``black54`` are Flutter names,
-#: ``operant1`` is a datasource term. The shape works in that package because a
-#: small sample has no such vocabulary; it does not survive contact with a
-#: framework. A gate that fails correct work is a gate that gets switched off,
-#: so the open set is enumerated here and widened when a family leaks in.
-TODO_ID = re.compile(
-    r"\b(tcinc|tcincb|tcopen|tcca|tccc|tcser|tcdocc|tcscan|tcfinal|tcextension"
-    r"|cs[a-z]*)"
-    r"\d+(_[a-zäñößü]{4})?\b"
+#: What is enumerated here instead is English words and published technical
+#: vocabulary. That set is *closed*: no new quest prefix can join it, because
+#: minting ``zzq7`` does not make ``zzq`` a word. So the failure direction
+#: inverts with it. The prefix list failed open and silently; this fails closed
+#: and loudly -- a worked example that introduces ``widget1`` produces one
+#: visible fault and costs one line here, which is the cheap half of the trade.
+#:
+#: **The shape rule was rejected here once, on a figure that was measured
+#: wrong.** The note that stood in its place said the shape "matches 397
+#: further tokens on 4,582 lines". It does -- counted over whole lines, code
+#: included, which is not where a pointer to a work item can sit. Counted over
+#: prose, which is what [prose_of] extracts and what this gate is about, the
+#: shape leaves 116 tokens over the 58 stems below, and every one of them is a
+#: word. The sibling guard in ``advanced_ops_server`` had reached the right
+#: answer years earlier; what kept it from travelling back was an inflated
+#: count, not a real obstacle.
+KNOWN_STEMS = frozenset(
+    """
+    abc api arm avc base black col command container data db dec demo element
+    fade field flex form gsm image iso layer level list map march material mp
+    name names oauth operant opt pass person phase pkcs prefix python row scope
+    scores sha shade sigusr spacer sqlite step street strongpass subtitle time
+    total tz ucs utf value white wrap
+    """.split()
 )
 
-#: A build-plan id from the refactor plans: ``RCK13``, ``RCC5``, ``RCB8``,
-#: ``RC-24``, ``D-A3``, ``D-RC5-b``. Deliberately does **not** match ``G-``
-#: (framework guideline ids), ``TC-`` (testkit ids) or a bare ``C-5``
-#: (framework concept codes), all of which index published vocabulary.
-PLAN_ID = re.compile(r"\b(RC[BCK]?\d+|RC-\d+|D-(?:RC)?[A-Z]?\d+)\b")
+#: The same shape in capitals: ``RCK13``, ``TCCA17``, ``CSEXF1``, ``OT2``.
+#:
+#: **Needed because case is a bypass.** [ID_SHAPE] is lowercase, so an id
+#: written the way prose usually writes one -- shouted -- walked past it. This
+#: half replaced an enumeration of plan prefixes (``RC[BCK]?\d+``) that had the
+#: open-set defect in its purest form: it knew ``RCB``, ``RCC`` and ``RCK``,
+#: and did not know ``RCA``, ``RCD``, ``RCF``, ``RCI``, ``RCJ`` or ``RCL``,
+#: which between them were shipping 29 pointers.
+#:
+#: Capitals are matched *only* as a whole run, never camelCase. That is what
+#: makes the exemption list short: a Dart identifier with a numeric suffix is
+#: written ``addressLine1``, ``promptSha256``, ``mBlue100``, and a quest id is
+#: never written that way. Restricting to ALL-CAPS turned 62 candidate stems
+#: into 18 families of pointer plus the 20 published names below.
+CAPS_SHAPE = re.compile(r"\b([A-Z]{2,12})\d+\b")
+
+#: ALL-CAPS names that a reader can look up: hash and cipher families, media
+#: and encoding standards, SQL types, signal names, and the two mermaid node
+#: prefixes the design diagrams use (``RT1``, ``FB1``).
+KNOWN_CAPS = frozenset(
+    """
+    AES AWS FB FF HS INT ISO MGF MP PKCS RFC RGBA RS RT SHA SIGUSR SKU USR
+    UTF X
+    """.split()
+)
+
+#: The hyphenated plan ids, which neither shape reaches: ``RC-24``, ``D-A3``,
+#: ``D-RC5-b``. Deliberately does **not** match ``G-`` (framework guideline
+#: ids), ``TC-`` (testkit ids) or a bare ``C-5`` (framework concept codes),
+#: all of which index published vocabulary.
+PLAN_ID = re.compile(r"\b(RC-\d+|D-(?:RC)?[A-Z]?\d+)\b")
 
 #: A pointer at a numbered row of a plan. ``Todo`` is capitalised because it is
 #: a proper noun here -- the row -- whereas a lowercase ``todo`` in prose is
@@ -180,16 +219,64 @@ NARRATION = re.compile(
     re.IGNORECASE,
 )
 
+#: The three rules that read a whole line. They match shapes no code
+#: identifier has -- ``RCK13``, ``Todo 9``, "used to return" -- so narrowing
+#: them to prose would buy nothing.
 PATTERNS = {
-    "quest todo id": TODO_ID,
     "build-plan id": PLAN_ID,
     "work-item pointer": WORK_ITEM_POINTER,
     "history narration": NARRATION,
 }
 
+#: The parts of a line a reader reads as prose, which is the only place a
+#: pointer at a work item can sit. In Dart that is comments and the
+#: descriptions of tests and groups; in markdown and shell it is the line.
+#:
+#: **Not every string literal.** Widening this to all quoted text takes the
+#: vocabulary that has to be exempted from 116 tokens to 296, because fixture
+#: data is full of ``user1`` and ``task2``. A fixture string is data the test
+#: feeds to the code, not prose the reader is asked to understand, so a
+#: work-item id could not be pointing at anything from in there.
+DART_COMMENT = re.compile(r"//+(.*)$")
+DART_TEST_NAME = re.compile(
+    r"""\b(?:test|group|testWidgets)\s*\(\s*(['"])(.*?)\1"""
+)
+
+
+def prose_of(path: Path, line: str) -> list[str]:
+    """The stretches of ``line`` that are prose rather than code."""
+    if path.suffix != ".dart":
+        return [line]
+    found = []
+    if comment := DART_COMMENT.search(line):
+        found.append(comment.group(1))
+    if name := DART_TEST_NAME.search(line):
+        found.append(name.group(2))
+    return found
+
+
+#: The two shapes an id is written in, each with the vocabulary that shape's
+#: legitimate tokens come from. Splitting them keeps each list short enough to
+#: read: lowercase prose words are not ALL-CAPS standards names, and mixing the
+#: two would exempt ``SHA`` from the lowercase side for free.
+SHAPES = ((ID_SHAPE, KNOWN_STEMS), (CAPS_SHAPE, KNOWN_CAPS))
+
+
+def work_item_ids(path: Path, line: str) -> list[str]:
+    """Every token in ``line``'s prose shaped like a work-item id."""
+    return [
+        match.group(0)
+        for chunk in prose_of(path, line)
+        for shape, known in SHAPES
+        for match in shape.finditer(chunk)
+        if match.group(1) not in known
+    ]
+
 #: A testkit id in the leading ``ID: description`` position of a test or group
-#: name. The id is the baseline's join key, so it stays.
-TESTKIT_ID_POSITION = re.compile(r"""['"]\s*[a-z]+\d+(-\d+)?:\s""")
+#: name. The id is the baseline's join key, so it stays. The trailing number
+#: may be interpolated -- ``'tccm1-$id: ...'`` names one row of a generated
+#: family, and those are join keys like any other.
+TESTKIT_ID_POSITION = re.compile(r"""['"]\s*[a-z]+\d+(-(?:\d+|\$\w+))?:\s""")
 
 
 def scanned_files(root: Path):
@@ -216,10 +303,13 @@ def faults_in(path: Path) -> list[tuple[int, str, str]]:
     for index, line in enumerate(lines):
         if TESTKIT_ID_POSITION.search(line):
             continue
+        if work_item_ids(path, line):
+            faults.append((index + 1, "quest todo id", line.strip()))
+            continue  # one report per line is enough to find it
         for kind, pattern in PATTERNS.items():
             if pattern.search(line):
                 faults.append((index + 1, kind, line.strip()))
-                break  # one report per line is enough to find it
+                break
     return faults
 
 

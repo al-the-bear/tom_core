@@ -1,4 +1,4 @@
-/// Tests for the CE-DB ↔ CE-MG convergence check (CSEX6): the schema model, the
+/// Tests for the CE-DB ↔ CE-MG convergence check: the schema model, the
 /// DDL replay, the entity-model reduction, and the diff that reports where the
 /// two disagree.
 ///

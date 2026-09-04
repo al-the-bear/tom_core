@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tccd1: what a Tom wrapper does when the text resource it asks for is not
-// there.
+// What a Tom wrapper does when the text resource it asks for is not there.
 //
 // `TomCtr.textOrFail` is the module's text resolver — roughly seventy call
 // sites across twelve files use it — and its name is misleading in a specific

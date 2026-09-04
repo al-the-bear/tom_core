@@ -1198,7 +1198,7 @@ class FixtureSecretRecord {
 class FixtureSecretRepository
     extends TomSqlDatasourceRepository<FixtureSecretRecord, int> {}
 
-/// A reflected entity with two **file-reference** columns (CSFS1).
+/// A reflected entity with two **file-reference** columns.
 ///
 /// A `@TomFileReference` column holds a storage *key*; the bytes live in a blob
 /// store. Two columns rather than one, because the interesting behaviour is in
@@ -1245,8 +1245,7 @@ class FixtureDocumentRecord {
 class FixtureDocumentRepository
     extends TomSqlDatasourceRepository<FixtureDocumentRecord, int> {}
 
-/// A reflected entity with a file-reference column on a **row-scoped** table
-/// (CSEXD2).
+/// A reflected entity with a file-reference column on a **row-scoped** table.
 ///
 /// [FixtureDocumentRecord] declares no `@TomDbScope`, so every file test written
 /// against it exercises C-4 (may this principal see this *column*) with C-3 (may
@@ -1328,7 +1327,7 @@ class FixtureResourceRepository
     extends TomSqlDatasourceRepository<FixtureResourceRecord, int> {}
 
 /// A reflected entity whose file columns cover the three exposure cases the
-/// HTTP file endpoint has to tell apart (CSFSB1).
+/// HTTP file endpoint has to tell apart.
 ///
 /// Separate from [FixtureDocumentRecord] rather than folded into it, for two
 /// reasons. It has no table in `test_database.dart` and needs none — the
@@ -1377,7 +1376,7 @@ class FixtureFileSlotRecord {
   String? internalNotes;
 }
 
-/// A reflected entity whose two file columns collide on a name (CSEXD3).
+/// A reflected entity whose two file columns collide on a name.
 ///
 /// This is the shape `TomFileSlots._assertUnambiguous` exists to reject, built
 /// so that the *consequence* of not rejecting it is visible and not merely
@@ -1423,7 +1422,7 @@ class FixtureAmbiguousSlotRecord {
 }
 
 /// A reflected entity that holds an exposed file column but declares no
-/// `@TomDbTable` (CSEXD3).
+/// `@TomDbTable`.
 ///
 /// A slot is addressed as `<table>/<id>/<column>` and the table name comes from
 /// the mapping, so an unmapped entity has no name to be addressed by. The
@@ -1445,7 +1444,7 @@ class FixtureUnmappedFileRecord {
 }
 
 /// A reflected entity covering every case the reflected export projection has
-/// to decide (CSEXC5).
+/// to decide.
 ///
 /// One entity rather than several, because the interesting property is that a
 /// *single* declaration answers all of them at once:
@@ -1516,7 +1515,7 @@ class FixtureExportRecord {
 }
 
 /// [FixtureExportRecord] **after a column was added** — the second half of the
-/// drift assertion (CSEXC5).
+/// drift assertion.
 ///
 /// The point of deriving export columns from reflection is that adding a column
 /// to an entity adds it to the export with no other edit. That claim needs two
@@ -1669,7 +1668,7 @@ class FixtureUnauditedRecord {
   String? note;
 }
 
-/// A reflected entity whose columns are `DECIMAL` (CSEXE1).
+/// A reflected entity whose columns are `DECIMAL`.
 ///
 /// `DECIMAL` is the correct SQL type for money — it is exact where `DOUBLE` is
 /// approximate — so this is the shape an ordinary business entity has, not an
@@ -1716,7 +1715,7 @@ class FixtureAmountRecord {
 class FixtureAmountRepository
     extends TomSqlDatasourceRepository<FixtureAmountRecord, int> {}
 
-/// A **table-less reflected result holder** with a `double` field (CSEXE1).
+/// A **table-less reflected result holder** with a `double` field.
 ///
 /// Carries no `@TomDbTable` and no `@TomDbColumn`, so the row mapper populates
 /// it by matching *declared field names* against result-column names — the
@@ -1734,7 +1733,7 @@ class FixtureAmountSummary {
   int? entries;
 }
 
-/// A [TomClass]-shaped result holder with a `double` member (CSEXE1).
+/// A [TomClass]-shaped result holder with a `double` member.
 ///
 /// The first two entity-mapping variants map a [TomClass] by its *observable
 /// members* rather than by reflected fields, and they are reached only by a
@@ -1745,7 +1744,7 @@ class FixtureAmountSummary {
 /// The members are the **non-nullable** observables deliberately, and stay that
 /// way. `TomObject<T>` reports its element type as declared, so a `TomNDouble`
 /// answers `double?` while a `TomDouble` answers `double`; the row mapper
-/// normalises the former onto the latter before dispatching (CSEXF1). This
+/// normalises the former onto the latter before dispatching. This
 /// fixture is therefore the one that covers the *un-normalised* half of that
 /// dispatch — the path where the declared type already matches and the
 /// normaliser passes it through untouched. Its nullable counterparts,
@@ -1763,8 +1762,7 @@ class FixtureAmountObservable extends TomClass {
   final quantity = TomInt(0);
 }
 
-/// A **table-less** [TomClass] whose members are all *nullable* observables
-/// (CSEXF1).
+/// A **table-less** [TomClass] whose members are all *nullable* observables.
 ///
 /// `TomObject<T>.getType()` answers `T` as declared, so a [TomNString] reports
 /// `String?`. The row mapper switched on that answer with `case String:`, which
@@ -1799,8 +1797,7 @@ class FixtureNullableObservable extends TomClass {
   final occurredAt = TomNDateTime(null);
 }
 
-/// The `@TomDbTable`-annotated counterpart of [FixtureNullableObservable]
-/// (CSEXF1).
+/// The `@TomDbTable`-annotated counterpart of [FixtureNullableObservable].
 ///
 /// The two [TomClass] mapping variants are near-duplicates that differ only in
 /// how they find the column for a member: the table-less one matches member
@@ -1848,10 +1845,10 @@ class FixtureNullableRecord extends TomClass {
 
 /// The repository over [FixtureNullableRecord] — the *observable-membered*
 /// entity — which exists to show that this shape does not survive the **write**
-/// path (`qrc1`).
+/// path.
 ///
 /// [FixtureNullableRecord] maps fine on the way *in*: the row mapper normalises
-/// a `String?` onto `String` before dispatching, which is what CSEXF1 fixed. The
+/// a `String?` onto `String` before dispatching. The
 /// way *out* is a different mechanism entirely. [TomSqlDatasourceRepository.save]
 /// binds each column from `TomColumnInformation.getVariableValue`, which is
 /// `invokeGetter(declaredName)` — the *field*, not the observable's value. On a
@@ -1867,7 +1864,7 @@ class FixtureNullableRepository
     extends TomSqlDatasourceRepository<FixtureNullableRecord, int> {}
 
 /// The **plain-field** counterpart of [FixtureNullableRecord], carrying one
-/// optional column of each of the five persistable value types (`qrc1`).
+/// optional column of each of the five persistable value types.
 ///
 /// This is the shape a CE-DB entity actually has — the shipped
 /// [TomUserPreference] declares its own optional column as a bare
@@ -1925,7 +1922,7 @@ class FixtureOptionalColumnRepository
     extends TomSqlDatasourceRepository<FixtureOptionalColumnRecord, int> {}
 
 /// A **third** projection of `fixture_nullable` that keys it differently — the
-/// entity model contradicting itself (CSEX6).
+/// entity model contradicting itself.
 ///
 /// [FixtureNullableRecord] and [FixtureOptionalColumnRecord] are two honest
 /// projections of one table: they disagree about member *shape* but agree that
@@ -1962,7 +1959,7 @@ class FixtureRekeyedNullableRecord {
 }
 
 /// A reflected **preference value** — the object shape a user preference is
-/// stored as when it is not a scalar (TCCA10).
+/// stored as when it is not a scalar.
 ///
 /// The point of [TomUserPreferences] taking `@tomReflector` values is that a
 /// preference can be a structured choice rather than a stringly-typed blob, and

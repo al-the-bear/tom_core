@@ -1,5 +1,5 @@
 /// Connection-free tests for the relational scheduler's schema and its instant
-/// encoding (CSEXB3, CSEXC2).
+/// encoding.
 ///
 /// Everything here can be asserted without a database, so it runs in the default
 /// `testkit :test` pass. The behavioural claims — that the stores actually

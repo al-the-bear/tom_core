@@ -1,4 +1,4 @@
-/// Tests for the file-reference column's declarative half (CSFS1).
+/// Tests for the file-reference column's declarative half.
 ///
 /// A `@TomFileReference` column holds a storage *key*; the bytes live in a blob
 /// store. Two things can be checked without a database: the key scheme

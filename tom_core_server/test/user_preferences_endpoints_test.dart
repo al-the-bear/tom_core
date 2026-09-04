@@ -1,4 +1,4 @@
-/// The preferences endpoints as seen from the outside (TCCB5) — which status a
+/// The preferences endpoints as seen from the outside — which status a
 /// client gets, and what happens with nothing wired behind them.
 ///
 /// The store's behaviour is covered by `user_preferences_db_test.dart`, which

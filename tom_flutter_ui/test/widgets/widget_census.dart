@@ -14,8 +14,9 @@ import 'dart:io';
 /// Everything here is derived except the two exception sets below, which
 /// cannot be: "is not a widget" and "reaches the surface through a mixin" are
 /// facts about Flutter's type hierarchy, not about text this package owns. So
-/// they are written out — and then asserted against the scan by `tccf1-03` and
-/// `tccf1-04`, which fail if a name is added to the kit and not to them.
+/// they are written out — and then asserted against the scan by
+/// `widget_family_claims_test.dart`, which fails if a name is added to the kit
+/// and not to them.
 
 /// A public top-level `class` declaration and its `extends`/`with` clause.
 ///
@@ -73,7 +74,8 @@ Set<String> familyBases() {
 /// which is why the conformance registry has no entry for them: `TomDataCell`
 /// holds a `Widget` but is not one, so there is nothing for `TomWidgetMixin`
 /// (declared `on Widget`) to mix into. Four of the nine still need gating, and
-/// get it from `TomAuthGate` around the slot they own — see `tcce1`.
+/// get it from `TomAuthGate` around the slot they own — see
+/// `wrapper_auth_gate_test.dart`.
 const nonWidgetTypes = {
   'TomAclBuilder',
   'TomDataCell',

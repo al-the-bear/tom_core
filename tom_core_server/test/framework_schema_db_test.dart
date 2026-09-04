@@ -1,4 +1,4 @@
-/// The live half of the framework-schema guard (CSEXC3).
+/// The live half of the framework-schema guard.
 ///
 /// `framework_schema_test.dart` proves that a framework table's single
 /// declaration agrees with the shipped migration, with the reflected row types,

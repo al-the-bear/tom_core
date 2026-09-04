@@ -1,4 +1,4 @@
-/// TCCA17 — the numeric typed fields: int, double, range and duration.
+/// The numeric typed fields: int, double, range and duration.
 ///
 /// These are the widgets most forms are actually built from, and none of them
 /// had a test. The assertions below are organised around the four things a
@@ -16,7 +16,7 @@
 ///  * **validation triggering** — `minValue` / `maxValue` desugar into
 ///    prepended `Validators.min` / `Validators.max`; the field is not simply
 ///    annotated with bounds, it grows rules.
-///  * **`set()` / `reset()`** — the baseline semantics TCCA15 pinned, checked
+///  * **`set()` / `reset()`** — the baseline semantics `tom_field_test.dart` pins, checked
 ///    here per concrete type.
 library;
 

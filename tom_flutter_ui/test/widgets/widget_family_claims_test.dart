@@ -6,7 +6,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'widget_census.dart';
 
-// tccf1: what the kit's documents may claim about widget families.
+// What the kit's documents may claim about widget families.
 //
 // Four documents said, without qualification, that *every* widget in the kit
 // extends a family base and therefore reports its family. It was never true:
@@ -37,8 +37,8 @@ final _catalogueRow = RegExp(
 /// wrapping problems" and "20 branch bases" are *subset* counts, true of a
 /// part rather than of the whole, and every kit-wide total worth guarding —
 /// 299, 290, 273 — happens to be three digits. The small kit-wide numbers are
-/// not left unguarded either; they are pinned by name above (`tccf1-02` fixes
-/// 20, `tccf1-03` fixes 17, `tccf1-04` fixes 9).
+/// not left unguarded either; the family-base, mixin and non-widget cases
+/// above fix 20, 17 and 9 by name.
 final _censusClaim = RegExp(
   r'(\d{3})(\+?)\s+(?:(?:[A-Za-z-]+|\d+)\s+){0,3}'
   r'(?:wrappers|widgets|widget classes|Tom types|types)',
@@ -301,7 +301,8 @@ void main() {
   // Deleting two wrappers left six documents quoting 292, 275 and 301 — an
   // example header, a CHANGELOG entry, two design documents and two test
   // preambles — and nothing failed, because the only census guard in the
-  // package (`tccf1-12`) reads exactly one file. A count is the cheapest thing
+  // package — the readme's Cupertino census — reads exactly one file. A count
+  // is the cheapest thing
   // in a document to get wrong: it is a fact about code, written in prose,
   // that no compiler and no reader can check. So it is checked here, for every
   // document at once, against the scan.
@@ -341,7 +342,8 @@ void main() {
     });
 
     test('tccf1-15: the wrapped-per-family table totals the widget count', () {
-      // The one census claim `tccf1-14` cannot read: a markdown table cell is
+      // The one census claim the three-digit scan above cannot read: a
+      // markdown table cell is
       // a bare number with no noun beside it. It is also the claim most likely
       // to be edited carelessly, because correcting it means finding *which*
       // family row lost a widget — so the row sum is asserted too, and a

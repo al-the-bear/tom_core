@@ -92,7 +92,7 @@ A successful login mints **two** JWTs, mirroring what
   *encrypted* access-control data (the roles/groups definition).
 
 The login deliberately does **not** bake the principal's effective per-resource
-role map into the token (RCD3, option b). The bearer token is opaque to the
+role map into the token. The bearer token is opaque to the
 client and is never read for enforcement, so a `resourceRoles` claim would have
 no reader and could only go stale over the token's 2-hour life. Instead the
 per-resource role map is resolved **live** wherever it is needed: the app

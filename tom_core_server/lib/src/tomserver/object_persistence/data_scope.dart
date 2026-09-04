@@ -421,7 +421,7 @@ class TomDataScope {
 
   /// Builds `<col> IN (:prefix0, :prefix1, …)` binding **one parameter per
   /// value** in [values] — the single per-element IN renderer every IN-list
-  /// caller shares (RCA5) — returning the predicate with its bind-parameter
+  /// caller shares — returning the predicate with its bind-parameter
   /// map.
   ///
   /// An empty [values] renders a `FALSE` predicate: `IN ()` is invalid SQL, so

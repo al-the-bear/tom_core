@@ -1,4 +1,4 @@
-/// TCCA17 — the date/time typed fields and the format engine behind them.
+/// The date/time typed fields and the format engine behind them.
 ///
 /// [TomDateTimeFormat] is the single riskiest untested unit in the field
 /// library: it compiles a pattern into a regex once and caches it in a static
@@ -20,7 +20,7 @@
 ///  * **format resolution** — resource key → constructor parameter → preset
 ///    default, and the parallel `hintText` chain. Three sources feeding one
 ///    getter is precedence logic, and precedence logic is what silently inverts.
-///  * **`set()` / `reset()`** — the baseline semantics TCCA15 pinned, checked
+///  * **`set()` / `reset()`** — the baseline semantics `tom_field_test.dart` pins, checked
 ///    per concrete type.
 library;
 

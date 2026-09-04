@@ -1,4 +1,4 @@
-/// DB-backed tests for the relational audit sink (CSEXB4).
+/// DB-backed tests for the relational audit sink.
 ///
 /// The schema, the DDL/migration drift check and the write-once *reporting*
 /// are asserted connection-free in `audit_sql_test.dart`. Everything here is a

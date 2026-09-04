@@ -83,7 +83,8 @@ void main() {
     // exactly what went stale ("six" survived two additions and a removal).
     // The convention that makes this checkable is already the guide's own:
     // **bold** is a claim about *now* and must be true; a plain number is
-    // date-anchored history ("six at OT2") and stays as written.
+    // date-anchored history ("six", true when it was written) and stays as
+    // written.
     final expected = _numberWords[liveModules().length];
     expect(
       expected,

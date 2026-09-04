@@ -23,7 +23,8 @@ typedef TomWidgetFactory = TomWidgetSurface Function(String id, TomScope? s);
 /// list of destinations. So the map is written out.
 ///
 /// Written-out maps go stale, which is exactly why the test sits beside it.
-/// `tccm1-01` re-scans `lib/src/widgets/**.dart` for class declarations and
+/// `widget_conformance_test.dart` re-scans `lib/src/widgets/**.dart` for
+/// class declarations and
 /// asserts this key set is *precisely* that set. Add a wrapper and forget this
 /// file and the suite names it; delete a wrapper and leave the entry behind
 /// and the suite names that too. The map is hand-maintained but not

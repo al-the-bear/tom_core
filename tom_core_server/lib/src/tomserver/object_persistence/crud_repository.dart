@@ -976,7 +976,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   /// Namespace for the per-element placeholders the id-list methods
   /// ([existsById], [findAllById], [deleteAllById]) generate, kept distinct
   /// from the row-scope prefix (`__tomscope_`) so an id list ANDed with a scope
-  /// cannot collide on parameter names (RCA5).
+  /// cannot collide on parameter names.
   static const String _idListPrefix = '__idlist_';
 
   /// Builds the `<pk> IN (:__idlist_0, …)` predicate for [ids] with one bound
@@ -988,7 +988,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   /// placeholders are generated per element here and the statement is prepared
   /// per call (its `?` count varies with the id set size). An empty [ids]
   /// yields a `FALSE` predicate — matching no rows — rather than the invalid
-  /// `IN ()` (RCA5).
+  /// `IN ()`.
   Future<(TomOperator<TomDbBool>, Map<String, Object?>)> _idListPredicate(
     Iterable<K> ids, {
     bool forWrite = false,
@@ -1078,7 +1078,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     // Every requested id exists iff the COUNT of matching rows equals the
     // number of distinct ids. The prior code compared the *row count* of a
     // COUNT query — always 1 — to `ids.length`, so it only ever held for a
-    // single id (RCA5). Under a row scope the count reflects only in-scope
+    // single id. Under a row scope the count reflects only in-scope
     // rows, so the check doubles as the writability guard `_assertIdsWritable`
     // reuses. Prepared per call: the placeholder count tracks the id set size.
     final result = await _runPrepared<TomCountResult>(
@@ -1139,7 +1139,7 @@ SELECT * FROM ${dbTable.table}
 
   @override
   Future<List<T>> findAllById(Iterable<K> ids, [TomPageRequest? page]) async {
-    // One bound `?` per id (RCA5): the MySQL driver does not expand a bound
+    // One bound `?` per id: the MySQL driver does not expand a bound
     // Iterable into `IN (?,?,…)`, so `_idListPredicate` renders the placeholders
     // per element and ANDs the principal's row scope on top. No value is
     // concatenated into the SQL (C-7); prepared per call as the `?` count

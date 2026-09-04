@@ -9,7 +9,7 @@ import 'fixtures/reflection_fixture.dart'
     show FixtureExportRecord, FixtureExportRecordV2;
 import 'fixtures/reflection_fixture.reflection.dart';
 
-/// CSEXC5 — export columns derived from the reflected entity.
+/// Export columns derived from the reflected entity.
 ///
 /// The suite exists to hold three claims that the explicit route cannot make:
 ///

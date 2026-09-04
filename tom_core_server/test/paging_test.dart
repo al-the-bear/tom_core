@@ -1,4 +1,4 @@
-/// Connection-free tests for the paging and sorting vocabulary (tfca4).
+/// Connection-free tests for the paging and sorting vocabulary.
 ///
 /// Two surfaces, both assertable without a database:
 ///

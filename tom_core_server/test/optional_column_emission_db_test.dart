@@ -1,10 +1,10 @@
 /// DB-backed verification of what an **optional column** must be declared as on
-/// a persistent entity (`qrc1`).
+/// a persistent entity.
 ///
 /// `tom_core_kernel` ships two ways to spell "this value may be absent" on a
 /// member: a plain nullable Dart field (`String?`) and a nullable observable
 /// (`TomNString`). Both *read* — the row mapper normalises a `String?` onto
-/// `String` before dispatching, which is what CSEXF1 fixed. That symmetry on the
+/// `String` before dispatching. That symmetry on the
 /// read side is exactly why the choice looks free and is not.
 ///
 /// The **write** side is a different mechanism.

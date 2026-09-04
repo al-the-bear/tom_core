@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tccc1: the text inputs accept a whole `InputDecoration` *and* the plain
-// `label` / `hint` strings the Tom resource layer resolves. The two used to be
-// combined the wrong way round: the resource lookup ran unconditionally in the
-// constructor and the result was written over the decoration at the end, so
-//   * `decoration: InputDecoration(labelText: 'Name')` was silently discarded,
+// The text inputs accept a whole `InputDecoration` *and* the plain `label` /
+// `hint` strings the Tom resource layer resolves. Combining the two the wrong
+// way round — running the resource lookup unconditionally in the constructor
+// and writing its result over the decoration at the end — breaks both:
+//   * `decoration: InputDecoration(labelText: 'Name')` is silently discarded,
 //     and
-//   * a caller who passed a decoration but no `label` and no `tomId` got
+//   * a caller who passes a decoration but no `label` and no `tomId` gets
 //     `Bad state: Tom widget requires either an explicit label or a tomId` for
 //     a string the decoration already carried.
 //
 // The precedence rule these tests pin is a chain, not a merge:
 //     label ?? decoration.labelText ?? <resource>
-// with the resource lookup last and therefore lazy — the same shape tccb2
-// established for `TomDropdownButtonFormField`.
+// with the resource lookup last and therefore lazy — the same shape
+// `widget_form_supersedes_required_text_test.dart` pins for
+// `TomDropdownButtonFormField`.
 //
 // Each widget gets both directions: a decoration alone must suffice, and a
 // construction with no source at all must still fail loudly rather than
@@ -24,7 +25,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // `TomInputDatePickerFormField` belongs to the second family only. It has no
 // `decoration` parameter; its four strings are optional in Flutter (defaulted
 // from `MaterialLocalizations`) yet were all required from resources, which is
-// the tccb2 rule — an optional Flutter slot needs no resource.
+// the rule `widget_form_supersedes_required_text_test.dart` pins — an
+// optional Flutter slot needs no resource.
 //
 // Note the throw is raised by the *constructor*, not by build — hence
 // `expect(() => TomX(), throwsStateError)` rather than a pump assertion.

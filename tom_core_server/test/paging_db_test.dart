@@ -1,4 +1,4 @@
-/// DB-backed tests for repository paging and sorting (tfca4).
+/// DB-backed tests for repository paging and sorting.
 ///
 /// `paging_test.dart` asserts the request objects and the SQL each sentence
 /// renders. This file asserts the thing the rendering is *for*: that a caller

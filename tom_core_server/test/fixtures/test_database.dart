@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS fixture_secret (
   }
 
   /// The DDL for `FixtureDocumentRecord`, the entity whose two columns hold
-  /// blob-storage keys rather than bytes (CSFS1).
+  /// blob-storage keys rather than bytes.
   static const String _fixtureDocumentDdl = '''
 CREATE TABLE IF NOT EXISTS fixture_document (
   id                BIGINT       NOT NULL AUTO_INCREMENT,
@@ -182,7 +182,7 @@ CREATE TABLE IF NOT EXISTS fixture_document (
   }
 
   /// The DDL for `FixtureScopedDocumentRecord`, the row-scoped counterpart of
-  /// `fixture_document` (CSEXD2). `owner_id` is the `@TomDbScope` field, so it
+  /// `fixture_document`. `owner_id` is the `@TomDbScope` field, so it
   /// is the column the repository ANDs into every read's `WHERE`.
   static const String _fixtureScopedDocumentDdl = '''
 CREATE TABLE IF NOT EXISTS fixture_scoped_document (
@@ -238,7 +238,7 @@ CREATE TABLE IF NOT EXISTS fixture_resource_document (
   }
 
   /// The DDL for `FixtureAmountRecord`, the entity whose numeric columns are
-  /// `DECIMAL` rather than `INT`/`DOUBLE` (CSEXE1).
+  /// `DECIMAL` rather than `INT`/`DOUBLE`.
   ///
   /// `DECIMAL(10,2)` is what a money column actually is, and the driver reports
   /// it as protocol type `NEWDECIMAL` (246) — the type its `double` and `int`
@@ -265,13 +265,13 @@ CREATE TABLE IF NOT EXISTS fixture_amount (
     await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_amount');
   }
 
-  /// The DDL for the nullable-observable fixtures (CSEXF1).
+  /// The DDL for the nullable-observable fixtures.
   ///
   /// Every column is deliberately a **plain, long-supported SQL type** — no
   /// `DECIMAL`, no aggregate, no driver quirk. The defect this table exists to
   /// expose is in the mapper's own type matching, so the columns must be ones
   /// the driver converts without complaint; anything exotic here would make a
-  /// red step ambiguous between this defect and CSEXE1's `NEWDECIMAL` gap.
+  /// red step ambiguous between this defect and the driver's `NEWDECIMAL` gap.
   ///
   /// `active` is `TINYINT(1)` rather than `INT` because the driver's `bool`
   /// conversion requires protocol type `Tiny` *and* a column length of 1: an
@@ -354,7 +354,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await dsi.datasource.executeCommand(blobChunkTableDdl(chunkTable));
   }
 
-  /// Drops the relational scheduler's tables (CSEXB3, CSEXC2).
+  /// Drops the relational scheduler's tables.
   ///
   /// Dropped rather than truncated for the same reason as the blob tables: the
   /// stores create them on first use, so a run that changed the DDL would
@@ -372,8 +372,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $nodeTable');
   }
 
-  /// Drops the relational audit trail's table and its optional guard triggers
-  /// (CSEXB4).
+  /// Drops the relational audit trail's table and its optional guard triggers.
   ///
   /// The triggers are dropped explicitly even though MariaDB drops a table's
   /// triggers with it: a test that installs a guard and then fails part-way
@@ -392,7 +391,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
   }
 
-  /// Drops the relational OAuth state store's table (TCCB6).
+  /// Drops the relational OAuth state store's table.
   ///
   /// Dropped rather than truncated for the same reason as the scheduling
   /// tables: the store creates it on first use, so a run that changed the DDL
@@ -474,8 +473,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await dsi.datasource.executeCommand('TRUNCATE TABLE tom_user_preference');
   }
 
-  /// Creates the `tom_external_identity` link table from the entity's own DDL
-  /// (TCCB7).
+  /// Creates the `tom_external_identity` link table from the entity's own DDL.
   static Future<void> ensureExternalIdentityTable(
     TomDataSourceInfo dsi,
   ) async => _ensureEntityTable(dsi, TomExternalIdentityLink.createTableSql);
@@ -485,8 +483,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await dsi.datasource.executeCommand('TRUNCATE TABLE tom_external_identity');
   }
 
-  /// Creates the `tom_external_identity_token` table from the entity's own DDL
-  /// (TCCB7).
+  /// Creates the `tom_external_identity_token` table from the entity's own DDL.
   static Future<void> ensureExternalIdentityTokenTable(
     TomDataSourceInfo dsi,
   ) async => _ensureEntityTable(dsi, TomExternalIdentityToken.createTableSql);

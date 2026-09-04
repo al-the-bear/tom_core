@@ -1,5 +1,4 @@
-/// Connection-free tests for the relational audit trail's schema and guards
-/// (CSEXB4).
+/// Connection-free tests for the relational audit trail's schema and guards.
 ///
 /// Everything here can be asserted without a database, so it runs in the
 /// default `testkit :test` pass. The behavioural claims — that the sink

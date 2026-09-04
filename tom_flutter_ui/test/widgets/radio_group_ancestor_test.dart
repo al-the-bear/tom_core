@@ -4,10 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tcinc806: the three radio wrappers used to carry `groupValue` and
-// `onChanged` of their own, which is how Flutter modelled a radio before
-// v3.32 and how it stopped modelling one after. Selection now comes from a
-// `RadioGroup<T>` ancestor, and the wrappers forward only their `value`.
+// Flutter modelled a radio with `groupValue` and `onChanged` on the widget
+// itself before v3.32, and stopped modelling one that way after. Selection
+// comes from a `RadioGroup<T>` ancestor, so the three radio wrappers forward
+// only their `value`.
 //
 // That move takes away the lever Tom's authorization used to reach for. A
 // withheld `TomAuthState` never touched `onChanged` — `TomPolicyNodeBase`

@@ -5,7 +5,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'widget_census.dart';
 import 'widget_conformance_registry.dart';
 
-// tccm1: every exported widget honours the base surface, or the suite says so.
+// Every exported widget honours the base surface, or the suite says so.
 //
 // Two hundred and twenty-five of the kit's 290 widgets were named in no test
 // and no example. That is not a coverage statistic to be improved by writing
@@ -25,13 +25,14 @@ import 'widget_conformance_registry.dart';
 // `basePath` was declared twice, independently: as a field on `TomNodeBase`
 // and as a getter on `TomWidgetMixin`. A wrapper that declared a `tomId` and
 // resolved nothing type-checked, read as gated at the call site, and showed to
-// everyone — eight wrappers shipped exactly that, and `tcce1` had to name each
-// of them by hand to find it.
+// everyone — eight wrappers shipped exactly that, and
+// `wrapper_auth_gate_test.dart` had to name each of them by hand to find it.
 //
 // The interface turns the *next* such wrapper into a compile error: a factory
 // below must return a `TomWidgetSurface`, so a wrapper that skips the surface
-// cannot be added to the registry at all. `tccm1-01` closes the other half —
-// a wrapper that is added to the kit and not to the registry fails here.
+// cannot be added to the registry at all. The registry-completeness case
+// below closes the other half — a wrapper that is added to the kit and not to
+// the registry fails here.
 
 class _MapAuthAdapter implements TomAuthorizationAdapter {
   _MapAuthAdapter(this.rules);
@@ -118,7 +119,7 @@ void main() {
       // `Widget` without being one, so `TomWidgetMixin` — declared `on Widget`
       // — cannot be mixed in and there is no surface to check. Four of the
       // nine still need gating and get it from `TomAuthGate` around the slot
-      // they own, which `tcce1` asserts.
+      // they own, which `wrapper_auth_gate_test.dart` asserts.
       expect(nonWidgetTypes, hasLength(9));
       for (final name in nonWidgetTypes) {
         expect(classes, contains(name));
@@ -224,7 +225,8 @@ void main() {
     // so one instance per widget answers for all four. What the enforcement
     // then *looks* like (hidden under `none`, non-interactive under
     // `disabled`) is implemented centrally by the family bases and pinned by
-    // `tcce1` and the auth-layers suite; here the question is narrower and
+    // `wrapper_auth_gate_test.dart` and the auth-layers suite; here the
+    // question is narrower and
     // applies to all 290: does the widget reach the resolver at all, through
     // its own path?
     for (final state in TomAuthState.values) {

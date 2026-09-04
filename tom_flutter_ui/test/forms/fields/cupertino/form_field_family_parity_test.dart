@@ -1,4 +1,4 @@
-/// TCCA17 — Material / Cupertino parity.
+/// Material / Cupertino parity.
 ///
 /// `FormFieldFamily` promises that a single field declaration resolves to
 /// either presentation. That promise is only worth anything if the two sides

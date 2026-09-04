@@ -1,4 +1,4 @@
-/// The guard that keeps `doc/api_reference/` a mirror of `lib/` (CSEXC6).
+/// The guard that keeps `doc/api_reference/` a mirror of `lib/`.
 ///
 /// `doc/api_reference/` claims, by existing, that it documents the package.
 /// Nothing enforced that claim, and it drifted: five modules — audit,

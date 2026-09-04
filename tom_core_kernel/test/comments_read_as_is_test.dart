@@ -29,21 +29,30 @@ import 'package:test/test.dart';
 /// `tool/check_comments_read_as_is.py` and `tool/check_section_refs.py` apply
 /// the same two habits to every package in the repository and are the
 /// authority; this test is the fast half of the same convention. Keeping the
-/// coverage in one repo-wide gate rather than in a copy of this file per package
-/// is a decision the two existing copies earned — see the reasoning in
-/// `tom_core_samples/advanced_ops_server/test/comments_read_as_is_test.dart`,
-/// where a fix to the id rule was made and never travelled back here.
+/// coverage in one repo-wide gate rather than in a copy of this file per
+/// package is a decision the existing copies earned: a fix to the id rule was
+/// once made in the `advanced_ops_server` copy and never travelled back here.
+///
+/// What made that possible was that each copy carried its own *vocabulary* —
+/// a list of quest prefixes, which every copy had to be told about separately.
+/// None does now. The rule is a shape plus a list of English words, so the
+/// only thing a copy can hold that its siblings do not is which words that
+/// package's own examples use.
 void main() {
   // ===========================================================================
   // Comments read as-is
   // ===========================================================================
   group('shipped artefacts read as-is', () {
     test('no comment points at a quest work item', () {
-      expect(_scan(_workItemPatterns), isEmpty, reason: _workItemReason);
+      expect(_scan(_pointsAtAWorkItem), isEmpty, reason: _workItemReason);
     });
 
     test('no comment narrates what the code used to do', () {
-      expect(_scan(_narrationPatterns), isEmpty, reason: _narrationReason);
+      expect(
+        _scan((_, line) => _narrationPatterns.any((p) => p.hasMatch(line))),
+        isEmpty,
+        reason: _narrationReason,
+      );
     });
   });
 }
@@ -52,15 +61,97 @@ void main() {
 // What counts as a violation
 // -----------------------------------------------------------------------------
 
-/// Quest todo ids (`tcinc262`, `tcopen44`, `tccc3`) and section pointers into
-/// the quest's bug/test lists (`bug §50`, `tests §34a`, a bare `§45`).
+/// The shape of a quest todo id: letters, then digits, optionally followed by
+/// the date code the id generator appends (`tcincb154_ahzj`).
+final _idShape = RegExp(r'\b([a-z]{2,12})\d+(_[a-zäñößü]{4})?\b');
+
+/// Stems that take a numeric suffix in ordinary prose *in this package*.
+/// Anything matching [_idShape] whose stem is not here is a work-item pointer.
+///
+/// **This list is English, not quest vocabulary, and that is what makes it
+/// safe.** The rule used to enumerate quest prefixes — `tcinc`, `tcca`, `tccc`
+/// and five more. That is an *open* set: it grows whenever anyone mints a
+/// prefix, and until someone adds the new one the guard reports the package
+/// clean. It failed exactly that way; `qrc1` and `tfca4` were shipping in
+/// `tom_core_server` dartdoc while every copy of this guard passed.
+///
+/// Enumerating words instead closes the set — minting `zzq7` does not make
+/// `zzq` a word — so the failure direction inverts with it: the prefix list
+/// failed open and silently, this fails closed and loudly. A new worked
+/// example naming `widget1` costs one entry here, which is the cheap half.
+///
+/// **Why the per-package copies may differ here and nowhere else.** These are
+/// the words *this* package's examples happen to use. There is no quest
+/// vocabulary left in any copy, so the copies cannot drift apart on the rule —
+/// only on which English words they need, which is a fact about each package.
+const _knownStems = <String>{
+  'abc', 'api', 'avc', 'base', 'command', 'data', 'db', 'element', 'field',
+  'image', 'iso', 'level', 'list', 'map', 'march', 'mp', 'names', 'person',
+  'pkcs', 'scores', 'sha', 'sigusr', 'step', 'tz', 'utf', 'value', 'wrap',
+};
+
+/// The same shape in capitals — `TCCA17`, `CSEXF1`, `RCK13`, `OT2`.
+///
+/// Case is a bypass: [_idShape] is lowercase, so an id written the way prose
+/// usually writes one — shouted — walks straight past it.
+///
+/// Capitals are matched only as a *whole run*, never camelCase, and that is
+/// what keeps [_knownCaps] short. A Dart identifier with a numeric suffix is
+/// written `addressLine1`, `promptSha256`, `mBlue100`; a work-item id never is.
+final _capsShape = RegExp(r'\b([A-Z]{2,12})\d+\b');
+
+/// ALL-CAPS names a reader can look up — hash and cipher families, media and
+/// encoding standards, signal names.
+const _knownCaps = <String>{
+  'ISO', 'MP', 'PKCS', 'RFC', 'SHA', 'SIGUSR', 'SKU', 'USR', 'UTF',
+};
+
+/// The two shapes an id is written in, each with its own vocabulary. Kept
+/// apart so neither list has to carry the other's words: exempting `SHA` on
+/// the lowercase side would exempt `sha` for free, and vice versa.
+final _shapes = <(RegExp, Set<String>)>[
+  (_idShape, _knownStems),
+  (_capsShape, _knownCaps),
+];
+
+/// The parts of a line a reader reads as prose, which is the only place a
+/// pointer at a work item can sit. In Dart that is comments and the
+/// descriptions of tests and groups; in markdown and shell it is the line.
+///
+/// Not every string literal: widening it that far drowns the rule in fixture
+/// data (`user1`, `task2`), which is data the test feeds to the code rather
+/// than prose a reader is asked to understand.
+final _dartComment = RegExp(r'//+(.*)$');
+final _dartTestName = RegExp(
+  '\\b(?:test|group|testWidgets)\\s*\\(\\s*([\'"])(.*?)\\1',
+);
+
+List<String> _proseOf(File file, String line) {
+  if (!file.path.endsWith('.dart')) return [line];
+  final found = <String>[];
+  final comment = _dartComment.firstMatch(line);
+  if (comment != null) found.add(comment.group(1)!);
+  final name = _dartTestName.firstMatch(line);
+  if (name != null) found.add(name.group(2)!);
+  return found;
+}
+
+/// A quest todo id, or a section pointer into a quest's bug/test lists
+/// (`bug §50`, `tests §34a`, a bare `§45`).
 ///
 /// The bare-`§` case is the interesting one, because three *legitimate* uses of
 /// the character have to survive it — see [_allowedSectionRefs].
-final _workItemPatterns = <RegExp>[
-  RegExp(r'\b(tcinc|tcincb|tcopen|tcca|tccc|tcser|tcdocc|tcscan)\d+\b'),
-  RegExp(r'§'),
-];
+bool _pointsAtAWorkItem(File file, String line) {
+  for (final chunk in _proseOf(file, line)) {
+    for (final (shape, known) in _shapes) {
+      for (final match in shape.allMatches(chunk)) {
+        if (!known.contains(match.group(1))) return true;
+      }
+    }
+  }
+  return line.contains('§') &&
+      !_allowedSectionRefs.any((p) => p.hasMatch(line));
+}
 
 /// Phrasings that describe a previous state of the code rather than the rule.
 ///
@@ -141,11 +232,16 @@ bool _isExempt(String path) =>
     path.endsWith('CHANGELOG.md') ||
     path.endsWith('analyzer_analysis.json');
 
-/// Test names carry a testkit id (`tccc3-05: reports at ERROR level`) which
-/// becomes the ID column of `testlog/baseline_*.csv`. That is an identifier in
-/// a live tracking system, not a pointer into a finished work item, and
-/// renaming one discards that test's whole result history.
-final _testkitId = RegExp(r'\btccc\d+(-\d+)?\b');
+/// A testkit id in the leading `ID: description` position of a test or group
+/// name (`tccc3-05: reports at ERROR level`). That position becomes the ID
+/// column of `testlog/baseline_*.csv` — an identifier in a live tracking
+/// system, not a pointer into a finished work item — and renaming one discards
+/// that test's whole result history.
+///
+/// Only the leading position. The same id in prose is a pointer like any
+/// other; exempting it anywhere on the line, as this guard once did, let a
+/// work-item pointer ride along on any line that also opened a test.
+final _testkitIdPosition = RegExp('[\'"]\\s*[a-z]+\\d+(-(\\d+|\\\$\\w+))?:\\s');
 
 // -----------------------------------------------------------------------------
 // The scan
@@ -154,8 +250,8 @@ final _testkitId = RegExp(r'\btccc\d+(-\d+)?\b');
 /// Extensions carrying prose a reader is expected to believe.
 const _scannedExtensions = ['.dart', '.md', '.sh'];
 
-/// Returns `'<path>:<line>: <text>'` for every line matching [patterns].
-List<String> _scan(List<RegExp> patterns) {
+/// Returns `'<path>:<line>: <text>'` for every line [isFault] accepts.
+List<String> _scan(bool Function(File file, String line) isFault) {
   final offenders = <String>[];
 
   for (final entity in _filesToScan()) {
@@ -166,9 +262,8 @@ List<String> _scan(List<RegExp> patterns) {
     final lines = entity.readAsLinesSync();
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
-      if (!patterns.any((p) => p.hasMatch(line))) continue;
-      if (_allowedSectionRefs.any((p) => p.hasMatch(line))) continue;
-      if (_testkitId.hasMatch(line)) continue;
+      if (_testkitIdPosition.hasMatch(line)) continue;
+      if (!isFault(entity, line)) continue;
       offenders.add('$path:${i + 1}: ${line.trim()}');
     }
   }

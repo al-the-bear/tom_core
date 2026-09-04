@@ -29,16 +29,21 @@
 /// do not have.
 ///
 /// **Why there are two of these and not sixteen.** The obvious next step is to
-/// copy this file into every sample package. It is the wrong step, and the two
-/// existing copies are why: they no longer implement the same rule. This one
-/// matches ids by [_identifier]'s *shape* because the kernel's list of known
-/// quest prefixes let `csexd4` and `csexd6` — ids from the `webwork` quest —
-/// open this package's authorization suite while the guard reported it clean.
-/// That fix was made here and travelled nowhere: the kernel's copy still had the
-/// blind spot, and so did the repo-wide gate, by which time the same family had
-/// reached shipped `lib/` dartdoc in three other packages. Sixteen copies would
-/// not be sixteen guards, only sixteen places for the next fix to fail to leave.
-/// Coverage belongs to the gate, which has one implementation to fix.
+/// copy this file into every sample package. It is the wrong step: a copy is one
+/// more place for the next fix to fail to leave. That is not a hypothetical —
+/// matching ids by [_identifier]'s *shape*, rather than by a list of known quest
+/// prefixes, was worked out here first, and travelled nowhere for as long as the
+/// copies disagreed. Coverage belongs to the gate, which has one implementation
+/// to fix.
+///
+/// What made the disagreement survivable-looking was that each copy carried its
+/// own *vocabulary* — a list of quest prefixes, which every copy had to be told
+/// about separately, so a copy could be perfectly correct and still blind. None
+/// does now: every copy matches the shape and exempts English and published
+/// technical words, a closed set that a newly minted prefix cannot join. The
+/// only thing a copy may still hold that its siblings do not is which words
+/// *this package's own* prose uses, which is a fact about the package rather
+/// than about the rule.
 library;
 
 import 'dart:io';
@@ -62,60 +67,65 @@ void main() {
 // -----------------------------------------------------------------------------
 
 /// The shape a quest id has: a run of lowercase letters followed by digits,
-/// standing as a whole word — `tcinc991`, `csexd4`, `woneprpc12`.
+/// optionally carrying the date code the id generator appends — `tcinc991`,
+/// `csexd4`, `tcincb154_ahzj`.
 ///
 /// Matching the *shape* and exempting the legitimate tokens is the wrong way
 /// round only until you count the two sets. Quest prefixes are minted ad hoc and
-/// there are dozens of them across the workspace's quests, so a gate that lists
+/// there are dozens of them across the workspace's quests, so a guard that lists
 /// the ones it knows is permanently one prefix behind — and it fails silently,
-/// because an unknown prefix looks exactly like no citation at all. The tokens
-/// on the other side are names from published standards, a closed vocabulary
-/// that changes when a standards body acts rather than when somebody opens a
-/// todo. So the open set is matched and the closed one is enumerated, in
-/// [_knownTechnicalTokens].
+/// because an unknown prefix looks exactly like no citation at all. `csexd4` and
+/// `csexd6`, ids from the `webwork` quest, opened this package's authorization
+/// suite while a prefix-listing guard reported it clean.
+///
+/// The tokens on the other side are English words and names from published
+/// standards. That set is *closed*: minting `zzq7` does not make `zzq` a word.
+/// So the open set is matched and the closed one is enumerated, in
+/// [_knownStems], and the failure direction inverts with it — the prefix list
+/// failed open and silently, this fails closed and loudly.
 ///
 /// The word boundaries are load-bearing: they keep the rule off camelCase, where
 /// a digit run is followed by more letters (`sha256Digest` does not match, the
 /// standalone `sha256` does).
-///
-/// **The argument above is true of this package and false of the repository**,
-/// which is why `tool/check_comments_read_as_is.py` enumerates prefixes instead.
-/// It holds here because a back-office sample's vocabulary is small enough for
-/// [_knownTechnicalTokens] to close. Repo-wide the same shape matches 397
-/// further tokens across 4,582 lines and nearly every one is real — `demo01` and
-/// twenty-seven siblings, `material3`, `black54`, `operant1`, `pass2` — so the
-/// exemption list would have to grow without bound and would soon be exempting
-/// things by accident. At that scale the sets swap places: the identifiers worth
-/// catching are the enumerable ones, and the gate widens its prefix list when a
-/// family leaks in, as it did for `cs`.
-final _identifier = RegExp(r'\b[a-z]{2,10}\d+\b');
+final _identifier = RegExp(r'\b([a-z]{2,12})\d+(_[a-zäñößü]{4})?\b');
 
-/// Tokens of [_identifier]'s shape that name something a reader can look up.
+/// Stems that take a numeric suffix in ordinary prose *in this package*.
+/// Anything matching [_identifier] whose stem is not here is a work-item
+/// pointer.
 ///
-/// Add to this list only for a name defined by a published standard — an
-/// encoding, a hash, a protocol version. An id minted for a work item never
-/// qualifies, which is the whole distinction the list exists to draw.
-const _knownTechnicalTokens = <String>{
-  'base32',
-  'base64',
-  'crc32',
-  'http2',
-  'http3',
-  'iso8601',
-  'md5',
-  'oauth2',
-  'pbkdf2',
-  'pkcs1',
-  'pkcs8',
-  'sha1',
-  'sha224',
-  'sha256',
-  'sha384',
-  'sha512',
-  'utf8',
-  'utf16',
-  'x509',
-};
+/// These are the words this package's own prose happens to use — a fact about
+/// the package, not about the rule, which is why the sibling guard in
+/// `tom_core_kernel` carries twenty-seven and no divergence follows from it.
+///
+/// **Empty, and correctly so.** A back-office server's comments name no hash,
+/// encoding or protocol version; `sha256` and `utf8` appear in this package only
+/// as *code*, which the prose boundary already excludes. Pre-loading them
+/// against a future need would be exempting tokens nothing uses — the failure
+/// this list exists to avoid, arrived at from the other side. A comment that
+/// one day says `base64` costs one entry here, which is the cheap half of the
+/// bargain.
+const _knownStems = <String>{};
+
+/// The same shape in capitals — `TCCA17`, `CSEXF1`, `RCK13`, `OT2`.
+///
+/// Case is a bypass: [_identifier] is lowercase, so an id written the way prose
+/// usually writes one — shouted — walks straight past it.
+///
+/// Capitals are matched only as a *whole run*, never camelCase, and that is
+/// what keeps [_knownCaps] short. A Dart identifier with a numeric suffix is
+/// written `addressLine1`, `promptSha256`, `mBlue100`; a work-item id never is.
+final _capsIdentifier = RegExp(r'\b([A-Z]{2,12})\d+\b');
+
+/// ALL-CAPS names a reader can look up. Empty for the same reason
+/// [_knownStems] is: this package's prose names no standard that carries a
+/// numeric suffix.
+const _knownCaps = <String>{};
+
+/// The two shapes an id is written in, each with its own vocabulary.
+final _shapes = <(RegExp, Set<String>)>[
+  (_identifier, _knownStems),
+  (_capsIdentifier, _knownCaps),
+];
 
 /// Phrasings that describe a previous state of the code rather than the rule.
 ///
@@ -191,6 +201,39 @@ bool _isExempt(String path) =>
 /// Extensions carrying prose a reader is expected to believe.
 const _scannedExtensions = ['.dart', '.md', '.sh'];
 
+/// The parts of a line a reader reads as prose, which is the only place a
+/// pointer at a work item can sit. In Dart that is comments and the descriptions
+/// of tests and groups; in markdown and shell it is the line.
+///
+/// Not every string literal: widening it that far drowns the rule in fixture
+/// data (`user1`, `task2`), which is data the test feeds to the code rather than
+/// prose a reader is asked to understand.
+final _dartComment = RegExp(r'//+(.*)$');
+final _dartTestName = RegExp(
+  '\\b(?:test|group|testWidgets)\\s*\\(\\s*([\'"])(.*?)\\1',
+);
+
+List<String> _proseOf(File file, String line) {
+  if (!file.path.endsWith('.dart')) return [line];
+  final found = <String>[];
+  final comment = _dartComment.firstMatch(line);
+  if (comment != null) found.add(comment.group(1)!);
+  final name = _dartTestName.firstMatch(line);
+  if (name != null) found.add(name.group(2)!);
+  return found;
+}
+
+/// A testkit id in the leading `ID: description` position of a test or group
+/// name (`aos3-05: purges expired rows`). That position becomes the ID column of
+/// `testlog/baseline_*.csv` — an identifier in a live tracking system, not a
+/// pointer into a finished work item — and renaming one discards that test's
+/// whole result history.
+///
+/// Only the leading position: the same id in prose is a pointer like any other,
+/// and exempting it anywhere on the line would let a work-item pointer ride
+/// along on any line that also opened a test.
+final _testkitIdPosition = RegExp('[\'"]\\s*[a-z]+\\d+(-(\\d+|\\\$\\w+))?:\\s');
+
 /// True when [line] points at something only a quest document could resolve.
 ///
 /// The two halves are judged separately on purpose. The section exemption is
@@ -198,18 +241,24 @@ const _scannedExtensions = ['.dart', '.md', '.sh'];
 /// — so folding the id check into it would let one valid citation excuse
 /// everything else on its line, which is the failure the exemption is supposed
 /// to prevent rather than cause.
-bool _citesAWorkItem(String line) =>
-    _identifier
-        .allMatches(line)
-        .any((m) => !_knownTechnicalTokens.contains(m[0])) ||
-    (line.contains('§') && !_allowedSectionRefs.any((p) => p.hasMatch(line)));
+bool _citesAWorkItem(File file, String line) {
+  for (final chunk in _proseOf(file, line)) {
+    for (final (shape, known) in _shapes) {
+      for (final match in shape.allMatches(chunk)) {
+        if (!known.contains(match.group(1))) return true;
+      }
+    }
+  }
+  return line.contains('§') &&
+      !_allowedSectionRefs.any((p) => p.hasMatch(line));
+}
 
 /// True when [line] describes a previous state of the code.
-bool _narratesHistory(String line) =>
+bool _narratesHistory(File _, String line) =>
     _narrationPatterns.any((p) => p.hasMatch(line));
 
 /// Returns `'<path>:<line>: <text>'` for every line [offends] rejects.
-List<String> _scan(bool Function(String line) offends) {
+List<String> _scan(bool Function(File file, String line) offends) {
   final offenders = <String>[];
 
   for (final entity in _filesToScan()) {
@@ -219,8 +268,10 @@ List<String> _scan(bool Function(String line) offends) {
     final path = entity.path.replaceFirst(RegExp(r'^\./'), '');
     final lines = entity.readAsLinesSync();
     for (var i = 0; i < lines.length; i++) {
-      if (!offends(lines[i])) continue;
-      offenders.add('$path:${i + 1}: ${lines[i].trim()}');
+      final line = lines[i];
+      if (_testkitIdPosition.hasMatch(line)) continue;
+      if (!offends(entity, line)) continue;
+      offenders.add('$path:${i + 1}: ${line.trim()}');
     }
   }
 

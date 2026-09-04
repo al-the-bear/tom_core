@@ -1,4 +1,4 @@
-/// DB-backed tests for the relational pending-authorization store (TCCB6).
+/// DB-backed tests for the relational pending-authorization store.
 ///
 /// What only a real server can substantiate, and what the whole store exists
 /// for: **the two halves of an authorization-code flow are two separate HTTP

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tcce1: the eight wrappers that cannot resolve their own authorization.
+// The eight wrappers that cannot resolve their own authorization.
 //
 // Most of the kit gates itself: 273 of the 290 widget classes extend a family
 // base, and 13 more extend a Flutter widget whose `State` is public and wrap

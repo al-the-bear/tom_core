@@ -164,11 +164,11 @@ void main() {
     });
   });
 
-  // RCA5: the single per-element IN renderer every id-list repository method
+  // The single per-element IN renderer every id-list repository method
   // (existsById / findAllById / deleteAllById) shares. N values render N bound
   // placeholders — never one `?` slot fed a whole Iterable, which the MySQL
   // driver does not expand.
-  group('TomDataScope.inList (RCA5 IN-list renderer)', () {
+  group('TomDataScope.inList (IN-list renderer)', () {
     test('N values render N bound placeholders in one IN list', () {
       final col = _column('tasks', 'id', int);
       final p = TomDataScope.inList(b, col, [10, 20, 30]);
@@ -279,14 +279,14 @@ void main() {
     });
   });
 
-  // C-3 write/delete enforcement (RCA4). The repository rejects a write that
+  // C-3 write/delete enforcement. The repository rejects a write that
   // targets an out-of-scope row: an insert whose scope-field value the principal
   // is not allowed, and an update/delete of a row the principal could not read.
   // The reject *decision* is pure — `allowedValues` (per principal) composed
   // with `permits` (membership) — and is verified connection-free here, exactly
   // as the read-side predicate is; the live-DB round-trip (a second user's write
   // to another's row is rejected) is folded into the advanced-sample integration
-  // once the sample adopts `@TomDbScope` (RCA13).
+  // once the sample adopts `@TomDbScope`.
   group('write-scope membership (C-3 write done-bar)', () {
     const scope = TomDbScope(field: 'owner_id', scope: 'owner');
 

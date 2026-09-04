@@ -55,7 +55,7 @@ const _overviewHeading = 'Overview';
 /// The right-hand side is deliberately the **configuring API** rather than the
 /// types alone: a section that mentions `AclSeparator` but never `gapRow` has
 /// told the reader what a separator *is* and not how to get one, which is the
-/// gap this todo was about.
+/// gap this guard closes.
 const _featureSections = <String, List<String>>{
   'Container titles': [
     'setAclTitle',

@@ -214,7 +214,7 @@ void main() async {
     });
 
     // -------------------------------------------------------------------------
-    // CSEXC2 — what a cluster needs beyond a working claim
+    // What a cluster needs beyond a working claim
     // -------------------------------------------------------------------------
 
     group('recovery distinguishes claimed from started', () {

@@ -1747,7 +1747,7 @@ void main() {
   });
 
   // ===========================================================================
-  // PROVIDER TOKEN RETENTION (TCCB7)
+  // PROVIDER TOKEN RETENTION
   // ===========================================================================
   //
   // Delegated authorization, not authentication: what the framework may *do* as

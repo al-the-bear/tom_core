@@ -489,7 +489,7 @@ class MariaDbDatasource implements TomDataSource {
   /// Delegates to the shared, quote-aware [SqlPlaceholderScan.toPositional] so
   /// the datasource and [TomSqlDatasourceRepository]'s name extraction stay in
   /// lock-step. A whole-identifier scan in occurrence order — not a per-name
-  /// `replaceAll(":$p", "?")` — is essential (RCA5): `replaceAll` corrupts a
+  /// `replaceAll(":$p", "?")` — is essential: `replaceAll` corrupts a
   /// placeholder that is a *prefix* of another (`:id` vs `:idx` → `?x`) and
   /// collapses a repeated name to a single slot, desynchronising every
   /// following bind value. The scan is also string-literal aware, so a

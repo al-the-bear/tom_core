@@ -1,5 +1,4 @@
-/// Connection-free tests for the cluster hardening of the relational scheduler
-/// (CSEXC2).
+/// Connection-free tests for the cluster hardening of the relational scheduler.
 ///
 /// Six questions, none of which a live database can be made to ask reliably:
 ///

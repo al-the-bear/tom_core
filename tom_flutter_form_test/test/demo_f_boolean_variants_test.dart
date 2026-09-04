@@ -137,12 +137,11 @@ void main() {
 
   testWidgets('the demo binds the real TomFormBool* fields, not Material '
       'stand-ins', (tester) async {
-    // The regression guard for tcinc1096. Demo F used to render bare
-    // CheckboxListTile / SwitchListTile captioned with the framework widget
-    // names, so a viewer was told they were looking at TomFormBoolCheckbox
-    // while looking at Material. Assert on what is actually in the tree:
-    // six real fields (each field wraps its rendering in a
-    // TomFieldWidgetAdapter) and none of the old stand-ins.
+    // Rendering bare CheckboxListTile / SwitchListTile captioned with the
+    // framework widget names would tell a viewer they are looking at
+    // TomFormBoolCheckbox while they look at Material. Assert on what is
+    // actually in the tree: six real fields (each field wraps its rendering
+    // in a TomFieldWidgetAdapter) and none of those stand-ins.
     await openDemoF(tester);
     expect(
       find.byType(TomFieldWidgetAdapter),

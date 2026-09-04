@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// tccb2: many Tom wrappers offer a widget slot (`title` / `label`) *and* a
+// Many Tom wrappers offer a widget slot (`title` / `label`) *and* a
 // string slot (`titleText` / `labelText`) that resolves from resources. The
 // resolution used to run unconditionally in the constructor, so supplying only
 // the widget form still demanded a resource that `buildContent` would never

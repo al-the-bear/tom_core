@@ -1,4 +1,4 @@
-/// TCCA17 — the source-backed selection fields and the nullable inputs.
+/// The source-backed selection fields and the nullable inputs.
 ///
 /// What binds this file together is that every widget in it derives what the
 /// user sees from a [TomSelectableSource] that resolves *asynchronously*. The

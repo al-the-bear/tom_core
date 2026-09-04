@@ -1,4 +1,4 @@
-/// Connection-free tests for the file/blob storage module (CSFS1).
+/// Connection-free tests for the file/blob storage module.
 ///
 /// Everything here runs without a database, a bucket or a network: the memory
 /// and directory backends are real, the S3 backend is driven through an

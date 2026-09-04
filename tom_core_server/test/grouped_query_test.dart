@@ -1,5 +1,5 @@
 /// Tests for the aggregation/grouping surface of the typed query layer
-/// (CSEX5): the [TomAggregate] nodes, the [TomGroupedSelect] sentence, the
+///: the [TomAggregate] nodes, the [TomGroupedSelect] sentence, the
 /// [TomGroupedRow] result shape, the dialect fragments they render through, and
 /// the `group …` query sentence the compiler accepts.
 ///

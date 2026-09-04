@@ -1,4 +1,5 @@
-/// DB-backed tests for the two halves of CSFS1 that need a real database.
+/// DB-backed tests for the two halves of file storage that need a real
+/// database.
 ///
 /// `file_storage_test.dart` and `file_reference_test.dart` cover everything
 /// that can be decided without one — the key grammar, the directory and S3
@@ -1176,9 +1177,8 @@ void main() async {
     });
   }, skip: skipReason);
 
-  /// Blob access under a **row scope** (C-3) — the other half of the CSFS1
-  /// requirement that file access honour the same gates as the owning entity
-  /// (CSEXD2).
+  /// Blob access under a **row scope** (C-3) — the other half of the
+  /// requirement that file access honour the same gates as the owning entity.
   ///
   /// The C-4 group above answers *may this principal see this column*; a breach
   /// there leaks one field. These answer *may this principal see this row at

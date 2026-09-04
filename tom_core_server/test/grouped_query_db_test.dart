@@ -1,4 +1,4 @@
-/// DB-backed tests for the aggregation/grouping query surface (CSEX5).
+/// DB-backed tests for the aggregation/grouping query surface.
 ///
 /// The connection-free surface — the [TomAggregate] nodes, the dialect
 /// fragments, the compiled [TomGroupedSelect] text and the `group …` sentence

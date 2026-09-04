@@ -1,4 +1,4 @@
-/// TCCA17 — the Cupertino concretes that `FormFieldFamily` cannot reach.
+/// The Cupertino concretes that `FormFieldFamily` cannot reach.
 ///
 /// Eleven of the twenty-two public Cupertino field classes have no entry in
 /// the family factory: they are either iOS-idiomatic surfaces with no Material

@@ -454,7 +454,7 @@ void main() {
     });
   });
 
-  // Full-surface scaling (RCF4): the remaining comparison builders the DSL
+  // Full-surface scaling: the remaining comparison builders the DSL
   // exposes. eq/gte were already covered above; these are the rest of the
   // binary comparison family, each rendering its own SQL operator.
   group('remaining comparison operators', () {
@@ -475,7 +475,7 @@ void main() {
     });
   });
 
-  // Full-surface scaling (RCF4): the null-test, negated-match and
+  // Full-surface scaling: the null-test, negated-match and
   // regex-match predicate builders (isNull / like were already covered).
   group('remaining string / null predicates', () {
     test('isNotNull renders <col> IS NOT NULL', () {
@@ -503,7 +503,7 @@ void main() {
     });
   });
 
-  // Full-surface scaling (RCF4): the literal builders beyond int/string.
+  // Full-surface scaling: the literal builders beyond int/string.
   // The standard dialect renders numbers/bools bare and both date renderers
   // single-quoted and zero-padded to a fixed width.
   group('remaining literal builders', () {
@@ -536,7 +536,7 @@ void main() {
     });
   });
 
-  // Full-surface scaling (RCF4): the typed column-reference builders beyond
+  // Full-surface scaling: the typed column-reference builders beyond
   // int/string. Every DbCol renders as the qualified `table.column` regardless
   // of its SQL type, and collects itself as a field.
   group('remaining typed column references', () {
@@ -566,7 +566,7 @@ void main() {
     });
   });
 
-  // Full-surface scaling (RCF4): the dialect's own `objectOp` value-dispatch
+  // Full-surface scaling: the dialect's own `objectOp` value-dispatch
   // and the list/null literal helpers. `objectOp` is the public entry point
   // that turns an arbitrary Dart value into the matching SQL literal by runtime
   // type — the one place the whole literal table is exercised together.

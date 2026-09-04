@@ -2,7 +2,7 @@
 
 Date: 10 January 2026
 
-> **Status: all findings resolved (OT2 refactoring pass, 2026-07-15).** This
+> **Status: all findings resolved (refactoring pass, 2026-07-15).** This
 > document is kept as a historical record. Every issue below has been fixed:
 > the broken `Awesome` test/example are gone; `pubspec.yaml` has
 > `publish_to: none` and an accurate description; the unused `_onChange` is

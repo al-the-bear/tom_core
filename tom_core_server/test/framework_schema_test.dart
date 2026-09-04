@@ -1,4 +1,4 @@
-/// The convergence guard on the tables the **framework itself** owns (CSEXC3).
+/// The convergence guard on the tables the **framework itself** owns.
 ///
 /// The application's entities have had a guard since CE-MG: the entity model
 /// declares a shape, the migration chain builds one, and `TomSchemaConvergence`

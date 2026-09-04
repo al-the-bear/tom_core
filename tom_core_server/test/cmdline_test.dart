@@ -330,10 +330,10 @@ void main() {
       expect(config.verbose, isTrue);
     });
 
-    // RCJ2: a *bare* flag is recorded by fillFromArgs as the boolean `true`
+    // A *bare* flag is recorded by fillFromArgs as the boolean `true`
     // (matching how `key=true` converts), so it fills a reflected bool field
     // directly.
-    test('a bare bool flag fills the bool field (RCJ2)', () {
+    test('a bare bool flag fills the bool field', () {
       final config = TomArgs.fillFromArgs(['verbose'], FixtureServerConfig());
       expect(config.verbose, isTrue);
     });
