@@ -4,7 +4,8 @@
 ///
 /// The ACL engine arranges *any* widget; using a plain box keeps each cell's
 /// focus on the responsive behaviour being demonstrated rather than on the
-/// contents of the cells. Shared in shape with `core_flutter_acl_sample`.
+/// contents of the cells. Shared in shape with `core_flutter_ui_showcase` /
+/// `core_flutter_acl_sample`.
 library;
 
 import 'package:flutter/material.dart';

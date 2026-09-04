@@ -206,6 +206,7 @@ reports and never gates.
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
 | [`tool/check_comments_read_as_is.py`](tool/check_comments_read_as_is.py) | Finds work-item ids and history narration in shipped text |
+| [`tool/check_shared_chrome.py`](tool/check_shared_chrome.py) | Finds files copied between packages that do not name their siblings, or whose pointers disagree |
 | [`tool/check_test_inventories.py`](tool/check_test_inventories.py) | Audits a document that claims to inventory a package's test files against the files the runner discovers |
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and navigating documentation that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
@@ -580,6 +581,56 @@ because no generated name happened to collide with a quest prefix, and it nearly
 stopped being invisible — the reflection seed emits `prefix167`-style names, and
 one file alone carries 46,929 of them, so the first collision would have buried
 the report rather than sharpened it.
+
+```bash
+python3 tool/check_shared_chrome.py                  # the whole repository
+python3 tool/check_shared_chrome.py tom_core_samples # one subtree
+```
+
+Some files exist several times over on purpose. Four showcase samples each carry
+their own `lib/common/showcase_section.dart`, because a sample a reader can run
+has to be self-contained — factor the chrome into a package and the interesting
+file becomes the one *outside* the sample. The cost is that a fix applied to one
+copy reaches none of the others, and nothing in the file says the others are
+there. The convention that answers this is a sentence in the file's header
+comment naming its siblings: ``Shared in shape with `core_flutter_acl_sample` /
+`core_flutter_acl_responsive`.``
+
+It works only while it is true, and it is the kind of claim that stops being true
+in silence. `demo_box.dart` in `core_flutter_ui_showcase` named both its
+siblings and neither named it back, so a developer editing either of those two
+was told about one other copy out of two — an asymmetry that outlived the commit
+declaring the pointers "complete and symmetric" by a single day.
+
+Two independent questions are asked, because one rule cannot answer both.
+*Is a copy declared?* — settled by content, since a file with no pointer is
+invisible to any check that starts from the pointers. Two files sharing a
+basename in different packages whose code is identical once comments and
+whitespace are stripped are copies, and must be declared together. Comments are
+stripped because copies drift in their prose long before they drift in their
+behaviour, and behaviour is what a fix lands in. There is no similarity
+threshold: a threshold drops a pair out of the gate exactly as it starts to
+diverge, which is this gate's own failure mode arriving quietly.
+*Do the declarations agree?* — settled by the pointers alone. "Shared in shape
+with" is an equivalence relation, so each file's declared siblings must be its
+whole connected component. Checking symmetry alone would pass A↔B and B↔C with A
+never hearing about C.
+
+Neither question subsumes the other, and the repository shows both.
+`showcase_cell.dart` is declared across four packages but identical in only
+three — the form showcase's copy has drifted, so content discovery sees three
+and the declaration carries the fourth. `dto_reflection.dart` was identical in
+`todo_domain` and `advanced_todo_contracts` and declared in neither, so the
+declaration had nothing to say and content discovery found it; the same was true
+of `login_credentials.dart` across the two client samples.
+
+The pointer must sit in the file's header comment — the first run of `///`
+lines, which dartdoc renders as the file's description and an editor shows on
+open. That is the one place a reader is certain to have passed before making the
+edit that needs to reach the siblings, so a pointer further down is reported as
+misplaced rather than accepted. Whether the copies *should* be copies is left
+alone: extracting shared chrome is a decision about what a sample is for, and
+this gate only insists that whatever is duplicated is duplicated in the open.
 
 ```bash
 python3 tool/check_test_inventories.py

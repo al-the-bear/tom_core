@@ -8,6 +8,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// client core and the contract round-trip tests — these one-liners centralise
 /// the `ClassMirror` wiring so no consumer repeats it. They require the DTO
 /// reflection seed to have been installed (`initializeReflection()`).
+///
+/// Shared in shape with `todo_domain`.
 
 /// Deserializes [json] into a reflection-first DTO of type [T].
 ///

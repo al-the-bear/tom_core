@@ -7,6 +7,8 @@
 /// in the shared domain. Like the domain entities it is `@tomReflector` and a
 /// [TomClass], so the login form binds it through the same reflection round-trip
 /// as every other form.
+///
+/// Shared in shape with `advanced_app_client`.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

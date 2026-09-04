@@ -5,7 +5,8 @@
 /// focus on the layout being demonstrated rather than on the contents of the
 /// cells. Mirrors the `DemoBox` used by `tom_flutter_ui_test/lib/acl_demos/`.
 ///
-/// Shared in shape with `core_flutter_acl_responsive`.
+/// Shared in shape with `core_flutter_ui_showcase` /
+/// `core_flutter_acl_responsive`.
 library;
 
 import 'package:flutter/material.dart';

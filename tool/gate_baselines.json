@@ -100,6 +100,11 @@
       "measured": "2026-09-04",
       "note": "Zero, and held there. Every shipped lib/, test/ and example/ comment either says what it means in its own words or names the document its section number belongs to -- in practice always doc/acl_design_specification.md or doc/tom_ui_list_forms.md, both of which ship with the package. A bare '§7.2' or 'Phase 2a §16' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure."
     },
+    "check_shared_chrome": {
+      "faults": 0,
+      "measured": "2026-09-04",
+      "note": "Zero from the day it landed, which took six repairs. Eight groups of file are copied between packages on purpose -- the four showcase samples' chrome, the DTO reflection helpers, the client-local login credentials -- and every copy now names its whole group in its header comment. Two demo_box.dart copies named each other and not the third, so a developer editing either was told about one other copy out of two; two further groups were identical in code and declared nowhere at all. Both halves of the rule earn their place: the declaration carries showcase_cell.dart's fourth copy, which has drifted in code, and content discovery found the two groups no declaration mentioned. The next copy to arrive undeclared, or the next pointer to fall out of step with its siblings, is a failure."
+    },
     "check_source_citations": {
       "faults": 0,
       "measured": "2026-09-04",
