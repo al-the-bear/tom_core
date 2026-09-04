@@ -598,6 +598,12 @@ both `@tomService` and `@TomApiImplementation`, duplicate tags, a missing
 `@TomApiImplementation` for a registry endpoint, or an unsupported HTTP method)
 abort the build with `TomEndpointPipelineException`.
 
+"Scans the reflected classes" is a precondition, not a description: the scan
+resolves annotations through class mirrors, so your package's generated
+`initializeReflection()` has to have run first. Miss it and the build does not
+mount a route table with some routes absent — it throws
+`Reflection has not been initialized` before mounting any of them.
+
 ### The Routing Table
 
 `TomEndpointRouting.routingInfo` is the diagnostic answer to "what is mounted

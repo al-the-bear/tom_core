@@ -2,6 +2,40 @@
 
 ### Fixed
 
+- **Every module readme's quick start is now either run by the suite or
+  documented as a snippet that cannot be
+  (tcincb2_ahwp-module-readme-quick-starts).** Fifteen modules open with a
+  "Quick start" containing a complete `main()`, and one of them — the cache —
+  was guarded by a test that extracted and ran it. The other fourteen were the
+  first code a reader of the module saw and nothing had ever executed them.
+
+  Two were broken. The **endpoints** quick start threw
+  `Reflection has not been initialized` at its last line: the scan reads both
+  classes' annotations through their class mirrors, and the snippet never called
+  `initializeReflection()`. Its own comments numbered the remaining steps `2.`
+  and `3.` with no `1.`, which is where the missing line used to be. The
+  **datasources** quick start connected to MariaDB and returned without closing,
+  so it leaked the socket and — a live socket holding the isolate open — did not
+  terminate.
+
+  `test/readme_quick_start_test.dart` replaces the cache-only guard with a
+  package-wide one. It carries the triage as a table: ten snippets are programs,
+  extracted, run under a watchdog, required to exit 0 *and* to print what their
+  own `// comment` annotations promise; five cannot be run, and each must carry
+  a blockquote under its code saying which of the four reasons applies —
+  `authorization` and `server` name identifiers the reader supplies,
+  `endpoints` and `preferences` import the reader's generated
+  `main.reflection.dart`, `datasources` and `preferences` open a real socket,
+  and `server` is a listener that is correct never to return. The table is
+  checked against the modules on disk, so a new module cannot arrive with an
+  unclassified snippet, and a snippet cannot be deleted while its row stays.
+
+  The endpoints readme also claimed its `TodoApi` / `TodoApiServer` pair was
+  "verbatim identical" to the fixture `endpoints_pipeline_test.dart` mounts and
+  serves — the claim that lets an unrunnable snippet still be a checked one.
+  Nothing had been checking it; the same test now reads both files and requires
+  the two copies to match.
+
 - **The cache example's worked walkthrough now ships with the package
   (tcincb2_ahwp).** `example/cache/cache_example.dart` said its steps
   corresponded one for one with the snippets in the cache module's *completion

@@ -58,9 +58,23 @@ Future<void> main() async {
     ..databaseName = 'todo';
 
   await db.connect();
-  print(db.connected); // true once the connection is established
+  try {
+    print(db.connected); // true once the connection is established
+  } finally {
+    // An open connection holds a socket, and a live socket holds the isolate
+    // open. A server closes its datasources at shutdown (or through
+    // `TomDataSourceInfo.closeAll`); a script has to close its own, or it
+    // prints its result and then never returns.
+    await db.close();
+  }
 }
 ```
+
+> **Needs a live database.** `connect()` opens a real socket to the MariaDB
+> named above, so this is a program to run against your own server rather than
+> one to paste and expect to work — without a listener on `localhost:3306` it
+> fails at the `connect()` line. Everything after that line, including the
+> close, is what a script that *does* reach a database must do.
 
 ---
 

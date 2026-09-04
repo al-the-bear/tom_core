@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -1828,89 +1827,5 @@ void main() {
         reason: 'the example states its expectations through the shared helper',
       );
     });
-  });
-
-  group("The readme's quick start runs green", () {
-    // The example is pinned by the group above because it drifts unless
-    // something runs it. The readme's quick start is a complete `main()` too,
-    // and nothing ran it — so it drifted in the one way this module makes easy:
-    // it created a cache, printed its result, and then hung forever on the
-    // deletion timer the constructor installs. It was the first thing a reader
-    // of the module saw, and the only artefact of the five that got the
-    // isolate-lifetime rule wrong. Extracting and running it closes that gap.
-    final readmePath = p.join('lib', 'src', 'tomserver', 'cache', 'readme.md');
-
-    /// Returns the `dart` fenced block under the readme's "Quick start"
-    /// heading — the program this module tells a reader to start from.
-    String quickStartSource() {
-      final lines = File(readmePath).readAsLinesSync();
-      final heading = lines.indexWhere((l) => l.trim() == '## Quick start');
-      expect(
-        heading,
-        greaterThanOrEqualTo(0),
-        reason: 'no Quick start heading',
-      );
-      final open = lines.indexWhere((l) => l.trim() == '```dart', heading);
-      expect(open, greaterThan(heading), reason: 'no dart block after it');
-      final close = lines.indexWhere((l) => l.trim() == '```', open + 1);
-      expect(close, greaterThan(open), reason: 'unterminated dart block');
-      return lines.sublist(open + 1, close).join('\n');
-    }
-
-    test(
-      'terminates on its own, exactly as written',
-      () async {
-        // Written to `.dart_tool/` for two reasons: it is gitignored, so the
-        // scratch file cannot be committed by accident, and it is inside the
-        // package, so the snippet's `package:tom_core_server` import resolves
-        // against the real package_config.json rather than a synthesised one.
-        final script = File(
-          p.join('.dart_tool', 'cache_readme_quick_start.dart'),
-        );
-        script.writeAsStringSync(quickStartSource());
-        addTearDown(() {
-          if (script.existsSync()) script.deleteSync();
-        });
-
-        final process = await Process.start(Platform.resolvedExecutable, [
-          'run',
-          script.path,
-        ]);
-        final out = StringBuffer();
-        final err = StringBuffer();
-        final drained = Future.wait([
-          process.stdout.transform(utf8.decoder).forEach(out.write),
-          process.stderr.transform(utf8.decoder).forEach(err.write),
-        ]);
-
-        // The watchdog is the whole point of the test. A regression here is a
-        // program that never exits, and without a deadline that is a suite that
-        // never finishes — a hang reported as a hang says far less than a hang
-        // reported as this failure. It has to fire before the framework's own
-        // 30s default, hence the explicit Timeout on the test below.
-        int exitCode;
-        try {
-          exitCode = await process.exitCode.timeout(
-            const Duration(seconds: 20),
-          );
-        } on TimeoutException {
-          process.kill(ProcessSignal.sigkill);
-          await process.exitCode;
-          fail(
-            'the readme quick start did not terminate within 20s. A cache '
-            'installs periodic timers on construction and a live timer keeps '
-            'the isolate alive, so the snippet must stop its timers (or exit '
-            'explicitly) for the program it shows a reader to return.',
-          );
-        }
-        await drained;
-
-        expect(exitCode, 0, reason: 'quick start failed: $out$err');
-        // Exit 0 alone would also be satisfied by a snippet that printed nothing,
-        // so pin the output the readme's own `// hello` comment promises.
-        expect(out.toString(), contains('hello'));
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
   });
 }

@@ -34,6 +34,10 @@ the route mounts against nothing.
 ```dart
 import 'package:tom_core_server/tom_core_server.dart';
 
+// Your own package's generated registration — the one whose build covers the
+// two classes below.
+import 'main.reflection.dart';
+
 @tomReflector
 @tomService
 abstract class TodoApi {
@@ -50,6 +54,11 @@ class TodoApiServer implements TodoApi {
 }
 
 void main() {
+  // 1. Reflection first. Step 3 reads both classes' annotations through their
+  //    class mirrors, so without this `initializeRouter` throws
+  //    `Reflection has not been initialized` before it mounts anything.
+  initializeReflection();
+
   // 2. Register the implementation as a bean. The router would fall back to
   //    default-constructing the @tomComponent, but an implementation with a
   //    real constructor cannot rely on that.
@@ -62,15 +71,25 @@ void main() {
 }
 ```
 
+> **Needs your package's generated reflection.** The `main.reflection.dart`
+> import is a file `dart run build_runner build` writes in *your* package, so
+> this is a program to build rather than one to paste into an empty file and
+> run. Its first line is the one that is easy to leave out and impossible to
+> work around: `initializeRouter` reads the annotations through class mirrors,
+> so an uninitialized program does not mount a route table with something
+> missing from it — it throws before mounting anything.
+
 `@tomReflector` is what makes the two classes visible to the scan: the declaring
 library must be reachable from the reflection root so the generated
 `initializeReflection()` captures them. Without it the annotations are present
 in the source and absent from the route table.
 
-This snippet is kept verbatim identical to the `TodoApi` / `TodoApiServer` pair
-in `test/fixtures/reflection_fixture.dart`, which `test/endpoints_pipeline_test.dart`
-compiles, mounts and serves — so "it works" here is a checked claim, not a
-promise.
+The `TodoApi` / `TodoApiServer` pair above is kept verbatim identical to the one
+in `test/fixtures/reflection_fixture.dart`, which
+`test/endpoints_pipeline_test.dart` compiles, mounts and serves — and
+`test/readme_quick_start_test.dart` reads both files and requires the two copies
+to still match, so "it works" here is a checked claim rather than a promise
+about a snippet that could quietly drift away from the thing being tested.
 
 ---
 

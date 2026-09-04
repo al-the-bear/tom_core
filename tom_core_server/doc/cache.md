@@ -541,10 +541,12 @@ and the suite runs the example, under exactly the command that header documents,
 requiring exit 0. The suite also holds the [Walkthrough](#walkthrough) to the
 example, counting the numbered steps in one and the subsections in the other and
 failing when they disagree, so the pairing the walkthrough claims cannot quietly
-stop being true. A second group extracts the `dart` block under the module
-readme's "Quick start" heading and runs that too, under a 20-second watchdog:
-the regression it guards is a program that never returns, and a hang reported as
-a hang says less than a hang reported as a named failure.
+stop being true. The module readme's "Quick start" is run too, by
+`test/readme_quick_start_test.dart`, which does the same for every module in the
+package: it extracts the `dart` block under that heading and runs it under a
+watchdog. The regression it guards here is a program that never returns — this
+module is the one that makes that easy — and a hang reported as a hang says less
+than a hang reported as a named failure.
 
 So each of this module's prose artefacts is falsifiable from the suite: the
 example, the walkthrough above, the readme's quick start, and all but one of the

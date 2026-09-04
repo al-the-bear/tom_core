@@ -80,6 +80,13 @@ Future<void> main() async {
 }
 ```
 
+> **A fragment, not a program.** `issuedAuthorizationTokenString` stands for the
+> token a request arrives bearing, and there is nowhere for a standalone script
+> to get one — so this does not compile as written. It is shown whole anyway
+> because the three things it does (resolve a token, register the cache for
+> shutdown, install the row scope) belong to one bootstrap and mislead when
+> shown apart.
+
 See [`doc/authorization.md`](../../../../doc/authorization.md) for the grade
 thresholds, the delegation modes and the request-scoped `runCached`, and
 `example/authorization/resource_data_scope_example.dart` for a runnable,

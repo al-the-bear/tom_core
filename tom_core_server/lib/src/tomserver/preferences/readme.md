@@ -88,6 +88,15 @@ Future<void> main() async {
 }
 ```
 
+> **Needs your package's generated reflection, a live database and a
+> principal.** `main.reflection.dart` is written by `dart run build_runner
+> build` in *your* package, the datasource in step 2 opens a real socket, and
+> `principal` stands for the `TomPrincipal` a server would have authenticated —
+> so this is a sequence to build into an application rather than a program to
+> paste and run. The three preconditions are exactly what makes it worth showing
+> whole: each one fails at bootstrap with a message that does not obviously
+> point at the missing step.
+
 The table the second step connects to is created by the framework migration
 `[1]-create_tom_user_preference.sql`, which is untagged so it applies in every
 environment. `test/user_preferences_db_test.dart` runs this same sequence

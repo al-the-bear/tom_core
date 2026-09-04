@@ -37,6 +37,14 @@ void main() {
 }
 ```
 
+> **A long-running service, and a fragment.** `configuration` stands for your
+> own `TomBaseServerConfiguration` subclass, so this does not compile as
+> written; and once it does, it is meant *not* to return — the bound listener
+> holds the isolate open for as long as the deployment serves. That is the one
+> module here where a program that never terminates is the correct one, which
+> is why the other quick starts stop their timers and close their sockets and
+> this one does not.
+
 `start()` does one thing before it binds anything: when the configuration
 carries a service credential, the deployment logs *itself* in
 ([`TomServerSelfLogin`](../authentication/readme.md)) and installs the
