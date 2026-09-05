@@ -85,8 +85,25 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 
 import 'app_server_start.reflection.dart';
 
-/// HTTP port the app server binds (overridable via the `port` config key / env /
-/// `--port=`). 8080 keeps it clear of the auth server's 8081.
+/// HTTP port the app server binds when nothing else supplies one.
+///
+/// Every override is the same configuration key, `port`, reached by whichever
+/// of the merge's sources is convenient: a config asset, the OS environment,
+/// the `.env`, or a `port=9080` command-line argument. The dashed
+/// `--port=9080` is **not** among them — a key is the argument text before the
+/// first `=`, dashes included, so it fills a key named `--port`, which names no
+/// field and is dropped in silence (`TomBaseServerConfiguration.port`,
+/// `tom_core_server/doc/cmdline.md`, and pinned in both directions by
+/// `configuration_test.dart`).
+///
+/// Worth getting right here in particular: this server and the auth server must
+/// stay on *different* ports, so moving one is the case where the override is
+/// actually reached for — and the dashed form fails as a port conflict on the
+/// other server rather than as a rejected argument.
+///
+/// 8080 keeps it clear of the auth server's 8081. This constant applies only
+/// where that merge left the field at `0`, which is what makes it a default
+/// rather than a fixed choice.
 const int _defaultPort = 8080;
 
 /// The app-server configuration.

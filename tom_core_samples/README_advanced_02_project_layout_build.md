@@ -176,11 +176,22 @@ so both servers — and a host-local MariaDB — coexist. The auth server's
 `.env.example` shows the shape (db image/host/port/name/credentials, plus an
 `env=dev|int|prod` selector that picks the matching
 `assets/config-resources_<env>.yaml` overlay). Each file declares only what
-something reads: the HTTP port is a constant in the boot file, overridden with
-`--port=`, and both servers sign with the framework's **bundled sample
-keypair**, so there is no shared signing secret to keep in step — replacing it
-means installing real keys, not setting a variable (part
+something reads: the HTTP port is a `_defaultPort` constant in the boot file,
+applied only where the configuration merge left the field at `0`, and both
+servers sign with the framework's **bundled sample keypair**, so there is no
+shared signing secret to keep in step — replacing it means installing real keys,
+not setting a variable (part
 [06](README_advanced_06_authentication.md)).
+
+To move a port, override the `port` configuration key from any of the merge's
+sources — a config asset, the OS environment, the `.env`, or a command-line
+`port=9081`, **undashed**. The conventional `--port=9081` does nothing: a key is
+the argument text before the first `=`, dashes included, so the dashed form
+fills a key named `--port`, which matches no field and is dropped without a
+diagnostic. That matters more here than in a single-server sample, because these
+two servers must stay on *different* ports (8081 and 8080) — so the override is
+actually reached for, and the dashed form fails as a port conflict on the other
+server rather than as a rejected argument.
 
 The end-to-end run is four moves (full commands in the hub's
 [Run the whole thing](README_advanced_sample.md#run-the-whole-thing)):
