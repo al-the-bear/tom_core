@@ -65,7 +65,7 @@
     "check_doc_samples": {
       "faults": 8,
       "measured": "2026-09-03",
-      "note": "8 miscalled constructors in two tom_flutter_ui documents -- five TomForm* samples passing a named argument to a constructor whose first parameter is positional, and three TomColumn samples passing positionally to a named-only constructor."
+      "note": "8 miscalled constructors in two tom_flutter_ui documents -- five TomForm* samples passing a named argument to a constructor whose first parameter is positional, and three TomColumn samples passing positionally to a named-only constructor. The count is unchanged across two widenings that each landed clean, which is the fact worth recording: the corpus grew from 192 documents and 1802 fences to 257 and 3432 when the quest's 79 completion documents came into scope, and the SIGNATURE fault began checking quoted declarations that were previously skipped. Neither found a live defect -- the one the gate was extended for, TomListForm documented and called positionally in tom_flutter_ui_forms_changes.md, had been repaired in the meantime -- and both were confirmed to fire by putting the defect back. A 'documents unplaced' line is now printed at every run: 13 tom_core_samples READMEs and the completion index, none of which names a single package, and all of which were silently skipped before."
     },
     "check_doc_source_paths": {
       "faults": 0,

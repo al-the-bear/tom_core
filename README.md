@@ -201,7 +201,7 @@ reports and never gates.
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
-| [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, or `const` one that is not |
+| [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, quote its signature with the wrong parameter kind, or `const` one that is not |
 | [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, and every framework name in it must resolve |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
@@ -395,8 +395,17 @@ missing title would fail at the call site rather than becoming an error card
 inside some enclosing `TomErrorBoundary`, and `custom/readme.md` went on showing
 a const one until this check was written.
 
+A fourth reads a line as a *claim* rather than a call: a document quoting a
+constructor with the wrong parameter kind, `SelectableItem(T value, String
+label)` where the real declaration is named-only. Of the two this is the worse
+defect, because a reader cannot detect it from the page — a miscalled sample
+fails when it is pasted, a misquoted signature is simply believed. Only the kind
+is compared: a quoted list is routinely elided or cut down to the parameters
+under discussion, and none of that is wrong, but `{` against a positional
+declaration is wrong however much of the list is shown.
+
 This check reads text and never invokes a compiler, which is what lets it run
-over all 1770 fences in the repository rather than the packages a heavier gate
+over all 3432 fences in both git roots rather than the packages a heavier gate
 has been triaged for. It is a narrow slice of "does the sample compile", but it
 is the slice that catches the copy-paste failure: a reader pastes the shortest
 snippet in the document, and the shortest snippet is the one nobody re-checked
@@ -409,6 +418,18 @@ Names resolve within the document's own package only. Without an import graph
 there is no telling a real cross-package reference from a collision, and
 collisions dominate — the `User` a document sketches inside its own fence is not
 some other package's `User`.
+
+**The quest's completion documents are in scope too**, though they live outside
+this repository and inside no package. They describe the same constructors the
+package documents do, in the same fences, for the same reader; while a
+document's package was read from its *path* they were not merely unchecked but
+unreachable. A document no path places is placed by its **name** — the corpus is
+named for what it documents, so `tom_core_server_export_new.md` resolves against
+`tom_core_server`, by longest package prefix so that
+`tom_flutter_ui_test_app_changes.md` stays with `tom_flutter_ui_test`. That
+makes a naming convention load-bearing, so the run prints how many documents it
+could not place and names them, every time including a clean run: a rename that
+drops a document out of coverage appears in that list rather than as silence.
 
 ```bash
 python3 tool/check_doc_dart_blocks.py                  # the gated packages

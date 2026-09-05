@@ -8,7 +8,7 @@ Run from anywhere::
 
 Exits non-zero when any sample is wrong, so it can gate a build.
 
-Four faults are reported. The first two are the two halves of one mistake:
+Five faults are reported. The first two are the two halves of one mistake:
 
 ``POSITIONAL``
     A constructor declared to take named parameters only, called with a
@@ -46,7 +46,31 @@ The third counts rather than classifies:
     comparison -- without the exemption every sample passing a callback would
     drop out of the check.
 
-The fourth is about a keyword rather than a bracket:
+The fourth is about the signature rather than the call:
+
+``SIGNATURE``
+    A document *quoting* a constructor with the wrong parameter kind --
+    ``SelectableItem(T value, String label)`` where the real declaration is
+    named-only. The three rules above all read a line as a call; this one reads
+    it as a claim, and a wrong claim is the worse of the two defects, because a
+    reader cannot detect it from the page. A miscalled sample fails when it is
+    pasted; a misquoted signature is simply believed.
+
+    **Only the kind is compared.** A quoted list is routinely elided, reordered
+    or cut down to the parameters under discussion, and none of that is a
+    defect -- but ``{`` against a positional declaration is wrong however much
+    of the list is shown. ``documented_style`` decides which lines are quotes,
+    and has to test the contents rather than the bracket: ``Foo({'a': 1})``
+    passes a map literal and ``Foo(a, b)`` is an ordinary positional call, so
+    each form is confirmed by whether its first entry reads as a *declaration*.
+
+    Dart's object patterns wear the same brackets and mean the opposite --
+    ``case LlmStreamChunk(:final text)`` destructures a value rather than
+    building one, and its contents are getter names. They are recognised and
+    skipped, at no cost to coverage: neither ``:final x`` nor ``bar: var x`` is
+    legal argument syntax, so nothing that could have been checked is lost.
+
+The fifth is about a keyword rather than a bracket:
 
 ``CONST``
     A const instance of a class that has no ``const`` constructor. This is the
@@ -98,7 +122,24 @@ import graph there is no way to tell a genuine cross-package reference from a
 name collision, and the collisions are the common case -- the `User` a document
 sketches inside its own fence is not some other package's `User`. Argument
 shapes that cannot be resolved without a parser are skipped too, as are classes
-with more than one constructor signature of the same name across files.
+with more than one constructor signature of the same name across files, and
+calls whose argument list the document elided (``OpsRuntime.production(...)``).
+
+**The corpus is both git roots, not just this one.** The quest's completion
+documents live outside the repository and inside no package, so for as long as
+a document's package was read from its *path* they were not merely unchecked
+but unreachable -- 79 documents describing the same constructors, in the same
+``dart`` fences, for the same copy-pasting reader. They are now read too, and
+a document that no path places is placed by its **name**: the corpus is named
+for what it documents, so ``tom_core_server_export_new.md`` resolves against
+``tom_core_server``. The match runs to the longest package prefix, which is
+what keeps ``tom_flutter_ui_test_app_changes.md`` with ``tom_flutter_ui_test``
+rather than handing it to ``tom_flutter_ui``.
+
+That makes a naming convention load-bearing, so it is not allowed to fail
+quietly: ``main`` prints how many documents it could not place and names them,
+at every run including a clean one. A rename that drops a document out of
+coverage shows up as a document in that list rather than as silence.
 
 **Text inside a ``//`` comment is not checked, and that is a documentation
 convention rather than a limitation to be lifted.** ``strip_noise`` blanks
@@ -126,8 +167,16 @@ from pathlib import Path
 from gate_report import report_faults
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+WORKSPACE_ROOT = REPO_ROOT.parent.parent
+#: The quest's completion corpus. It documents the same constructors the
+#: package documents do, for the same copy-pasting reader, but it lives in a
+#: different git root and in no package -- so nothing about its *path* says
+#: which package a name in it belongs to. See ``documented_package``.
+COMPLETION_ROOT = WORKSPACE_ROOT / "_ai" / "quests" / "tom_core" / "completion"
 
-SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
+# ``ztmp`` is the workspace's scratch folder. The Dart-block gate builds a
+# throwaway package under ``tool/ztmp/``, whose classes are nobody's API.
+SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__", "ztmp"}
 SKIP_SUFFIXES = (".reflection.dart", "_generated.dart", "_bridges.dart", ".g.dart")
 
 CLASS = re.compile(
@@ -142,7 +191,14 @@ CONSTRUCTOR = re.compile(
     r"(?:^|\n)[ \t]*(?P<mods>(?:const\s+|factory\s+)*)(?P<name>\w+)"
     r"(?:\.(?P<named>\w+))?\s*\("
 )
-CALL = re.compile(r"\b([A-Z]\w*)(?:<[\w<>,\s?]*>)?(?:\.(\w+))?\s*\(")
+# A type argument list, tracked one level deep rather than as a run of
+# characters that happens to include `<` and `>`. The flat form
+# `<[\w<>,\s?]*>` matched across an intervening identifier, so the return type
+# and name of `TomColumnWriteDecision<C> decideWrites<C>({...})` read as one
+# generic class name applied to the method's parameter list -- and the method's
+# signature was then checked against the *class's* constructor.
+GENERIC = r"(?:<(?:[\w,\s?]|<[\w,\s?]*>)*>)?"
+CALL = re.compile(r"\b([A-Z]\w*)" + GENERIC + r"(?:\.(\w+))?\s*\(")
 # A sample explicitly asking for a const instance, in its two written forms:
 # the direct `const Foo(...)`, and the declaration `const x = Foo(...)` /
 # `const Foo x = Foo(...)`. Both are equally const and equally illegal against a
@@ -155,11 +211,11 @@ CALL = re.compile(r"\b([A-Z]\w*)(?:<[\w<>,\s?]*>)?(?:\.(\w+))?\s*\(")
 # (`const [Foo(), Bar()]`) the inner calls are const without saying so, and
 # reporting those would need the context tracked.
 CONST_CALL = re.compile(
-    r"\bconst\s+(?P<cls>[A-Z]\w*)(?:<[\w<>,\s?]*>)?(?:\.(?P<named>\w+))?\s*\("
+    r"\bconst\s+(?P<cls>[A-Z]\w*)" + GENERIC + r"(?:\.(?P<named>\w+))?\s*\("
 )
 CONST_ASSIGN = re.compile(
     r"\bconst[ \t]+(?:[\w<>,?]+[ \t]+)*?\w+[ \t]*=[ \t]*"
-    r"(?P<cls>[A-Z]\w*)(?:<[\w<>,\s?]*>)?(?:\.(?P<named>\w+))?[ \t]*\("
+    r"(?P<cls>[A-Z]\w*)" + GENERIC + r"(?:\.(?P<named>\w+))?[ \t]*\("
 )
 FENCE_OPEN = re.compile(r"^\s*```dart\s*$")
 FENCE_CLOSE = re.compile(r"^\s*```\s*$")
@@ -309,13 +365,62 @@ def call_arity(text: str, paren: int) -> int | None:
 
 
 def package_of(path: Path) -> Path | None:
-    """The nearest ancestor of ``path`` holding a ``pubspec.yaml``."""
+    """The nearest ancestor of ``path`` holding a ``pubspec.yaml``.
+
+    ``None`` for a path outside the repository, which is not the same statement
+    as "no package above it": the walk would carry on past ``REPO_ROOT`` into
+    the workspace and could land on an unrelated package. A document out there
+    is associated by ``documented_package`` instead.
+    """
+    if REPO_ROOT not in path.parents:
+        return None
     for parent in path.parents:
         if (parent / "pubspec.yaml").is_file():
             return parent
         if parent == REPO_ROOT:
             break
     return None
+
+
+def packages(root: Path) -> dict[str, Path]:
+    """Every package under ``root``, keyed by its path with ``/`` flattened.
+
+    ``tom_core_samples/advanced_app_server`` is keyed
+    ``tom_core_samples_advanced_app_server``, because that is the form a
+    document's *name* takes -- see ``documented_package``.
+    """
+    found: dict[str, Path] = {}
+    for pubspec in sorted(root.rglob("pubspec.yaml")):
+        if SKIP_DIRS & set(pubspec.parts):
+            continue
+        package = pubspec.parent
+        if package == root:
+            continue
+        found["_".join(package.relative_to(root).parts)] = package
+    return found
+
+
+def documented_package(path: Path, names: dict[str, Path]) -> Path | None:
+    """The package a document names in its filename, by longest prefix.
+
+    The completion documents are named for what they document --
+    ``tom_core_server_export_new.md``, ``tom_flutter_ui_forms_changes.md`` --
+    so the name carries the association their path does not. The prefix must
+    end at a ``_`` boundary and the *longest* match wins, which is what keeps
+    ``tom_flutter_ui_test_app_changes.md`` with ``tom_flutter_ui_test`` rather
+    than handing it to ``tom_flutter_ui``.
+
+    A convention no one had stated is now load-bearing, so it is not allowed to
+    fail silently: a document this cannot place is counted and listed by
+    ``main`` rather than skipped the way an unplaceable document used to be.
+    """
+    stem = path.stem
+    best: str | None = None
+    for name in names:
+        if stem == name or stem.startswith(name + "_"):
+            if best is None or len(name) > len(best):
+                best = name
+    return names[best] if best is not None else None
 
 
 Index = dict[Path, dict[tuple[str, str], set[str]]]
@@ -417,6 +522,59 @@ DECLARATION = re.compile(
 )
 
 
+#: An object pattern, which wears a constructor's brackets and means the
+#: opposite thing -- it destructures a value rather than building one, and its
+#: contents are getter names, not arguments. ``case LlmStreamChunk(:final text)``
+#: is the shorthand form; ``Foo(bar: var x)`` binds a variable from a named
+#: getter. Neither is legal argument syntax, so recognising them costs no
+#: coverage.
+PATTERN_ARGUMENT = re.compile(r"^:|^\w+\s*:\s*(?:final\b|var\b)")
+#: The other half of the same thing: ``case Foo(var a)`` destructures
+#: positionally, and its first entry reads exactly like a parameter
+#: declaration. Only the keyword before the name distinguishes them.
+CASE_BEFORE = re.compile(r"\bcase\s+$")
+#: A document eliding the argument list rather than writing one out.
+#: ``OpsRuntime.production(...)`` is not a call whose shape can be judged, and
+#: `...` is not valid Dart in argument position, so no real call is lost.
+ELISION = {"...", "…"}
+
+
+def documented_style(text: str, paren: int) -> str | None:
+    """The parameter kind of the *signature* a sample quotes, or ``None``.
+
+    ``None`` means the text at ``paren`` is a call, or something this cannot
+    read as either. A document quoting a signature makes a claim about the
+    constructor -- ``TomListForm(String name, ...)`` says the first parameter is
+    positional -- and a wrong claim rots exactly like a wrong call, so the two
+    kinds are compared. Only the *kind* is: a quoted list is routinely elided
+    (``...``), reordered or shortened to the parameters under discussion, and
+    none of that is a defect, whereas ``{`` against a positional signature is
+    wrong however much of the list is shown.
+
+    Both written forms are recognised, and each needs its own test because the
+    bracket alone does not settle it:
+
+    ``Foo(T a, {...})``
+        A positional signature -- but so is ``Foo(a, b)`` a positional *call*,
+        and the two differ only in whether the first argument reads as a
+        declaration.
+    ``Foo({required T a})``
+        A named-only signature -- but ``Foo({'a': 1})`` is a call passing a map
+        literal, and ``Foo({a, b})`` one passing a set. So the brace is opened
+        and its first entry tested the same way.
+    """
+    style = parameter_style(text, paren)
+    if style == POSITIONAL:
+        argument = first_argument(text, paren)
+        return POSITIONAL if argument and DECLARATION.match(argument) else None
+    if style == NAMED_ONLY:
+        # `parameter_style` has already established the first non-space
+        # character after `(` is the brace, so this finds that brace.
+        argument = first_argument(text, text.index("{", paren))
+        return NAMED_ONLY if argument and DECLARATION.match(argument) else None
+    return None
+
+
 def fenced_dart(text: str):
     """``(first line number, block source)`` for every ```dart fence."""
     lines = text.split("\n")
@@ -432,12 +590,14 @@ def fenced_dart(text: str):
         index += 1
 
 
-def audit(path: Path, index: Index, consts: ConstIndex,
+def audit(path: Path, package: Path, index: Index, consts: ConstIndex,
           arities: ArityIndex) -> list[tuple[int, str, str]]:
-    """``(line, fault, detail)`` for every miscalled constructor in ``path``."""
-    package = package_of(path)
-    if package is None:
-        return []  # a document outside any package -- nothing to resolve against
+    """``(line, fault, detail)`` for every miscalled constructor in ``path``.
+
+    ``package`` is the one the document's names resolve against, decided by the
+    caller -- by the document's location when it sits inside a package, by its
+    filename when it does not.
+    """
     constructors = index.get(package, {})
     constness = consts.get(package, {})
     required = arities.get(package, {})
@@ -469,9 +629,19 @@ def audit(path: Path, index: Index, consts: ConstIndex,
             label = key[0] + ("." + key[1] if key[1] else "")
             line = first_line + clean[: match.start()].count("\n")
             argument = first_argument(clean, paren)
-            # A document quoting the signature rather than calling it. Checked
-            # once here because both rules below need the same exemption.
-            quoted = argument is not None and DECLARATION.match(argument)
+            if argument is not None and PATTERN_ARGUMENT.match(argument):
+                continue  # an object pattern in a `switch`, not a call
+            if CASE_BEFORE.search(clean[max(0, match.start() - 16):match.start()]):
+                continue  # the positional form of the same pattern
+            segments = top_level_segments(clean, paren, generics=False)
+            if segments and any(part in ELISION for part in segments):
+                continue  # the document elided the arguments
+            # A document quoting the signature rather than calling it. Read
+            # once here because every rule below turns on it: the two call
+            # rules are exempt from a quoted line, and the signature rule
+            # applies to nothing else.
+            documented = documented_style(clean, paren)
+            quoted = documented is not None
 
             counts = required.get(key)
             if counts is not None and len(counts) == 1 and not quoted:
@@ -495,12 +665,22 @@ def audit(path: Path, index: Index, consts: ConstIndex,
             style = next(iter(styles))
             if style == EMPTY:
                 continue
+            if documented is not None:
+                # A quoted signature is checked rather than skipped. Its kind
+                # is a claim about the real constructor, and a wrong claim is
+                # the defect a reader cannot detect from the page: a call can
+                # be pasted and found broken, a signature is simply believed.
+                if documented != style:
+                    faults.append((
+                        line, "SIGNATURE",
+                        f"{label} is documented {documented}, "
+                        f"the constructor is {style}",
+                    ))
+                continue
             if parameter_style(clean, paren) != POSITIONAL:
-                continue  # `Foo({` / `Foo([` -- a signature, not a call
+                continue  # `Foo({` / `Foo([` -- not a positional call
             if not argument:
                 continue  # empty call, or a call the fence cut in half
-            if quoted:
-                continue  # this is the signature being documented, not a call
             is_named = re.match(r"^\w+\s*:", argument) is not None
             if style == NAMED_ONLY and not is_named:
                 faults.append(
@@ -513,6 +693,33 @@ def audit(path: Path, index: Index, consts: ConstIndex,
     return faults
 
 
+def display(path: Path) -> str:
+    """``path`` written relative to whichever root contains it.
+
+    The corpus now spans two git roots, so a single ``relative_to`` would raise
+    on half of it.
+    """
+    for root in (REPO_ROOT, WORKSPACE_ROOT):
+        try:
+            return str(path.relative_to(root))
+        except ValueError:
+            continue
+    return str(path)
+
+
+def documents_under(root: Path):
+    """Every markdown document this gate covers for a run rooted at ``root``.
+
+    The repository subtree, plus the completion corpus -- which is outside it,
+    and which is included whole for a whole-repository run and filtered to the
+    subtree otherwise. The filtering is by *association*, not by path, since a
+    completion document's path says nothing about which package it is for.
+    """
+    yield from sorted(root.rglob("*.md"))
+    if COMPLETION_ROOT.is_dir():
+        yield from sorted(COMPLETION_ROOT.rglob("*.md"))
+
+
 def main(argv: list[str]) -> int:
     root = REPO_ROOT / argv[0] if argv else REPO_ROOT
     if not root.exists():
@@ -520,11 +727,13 @@ def main(argv: list[str]) -> int:
         return 2
 
     index, consts, arities = constructor_index(REPO_ROOT)
+    names = packages(REPO_ROOT)
 
     documents = 0
     samples = 0
+    unplaced: list[Path] = []
     faults: list[tuple[Path, int, str, str]] = []
-    for path in sorted(root.rglob("*.md")):
+    for path in documents_under(root):
         if SKIP_DIRS & set(path.parts):
             continue
         try:
@@ -533,19 +742,32 @@ def main(argv: list[str]) -> int:
             continue
         if not blocks:
             continue
+        package = package_of(path) or documented_package(path, names)
+        if package is None:
+            unplaced.append(path)
+            continue  # counted below, under its own heading, never silently
+        if package != root and root not in package.parents:
+            continue  # a document for a package outside the requested subtree
         documents += 1
         samples += len(blocks)
-        for line, fault, detail in audit(path, index, consts, arities):
+        for line, fault, detail in audit(path, package, index, consts, arities):
             faults.append((path, line, fault, detail))
 
     for path, line, fault, detail in faults:
-        print(f"{path.relative_to(REPO_ROOT)}:{line}: {fault} -- {detail}")
+        print(f"{display(path)}:{line}: {fault} -- {detail}")
 
     print()
     indexed = sum(len(package) for package in index.values())
     print(f"constructors indexed     : {indexed} in {len(index)} packages")
     print(f"documents with samples   : {documents}")
     print(f"dart samples checked     : {samples}")
+    # Printed even at zero. Association by filename is a convention, and a
+    # convention that quietly stops matching -- after a rename, or a package
+    # added without its documents following the pattern -- would take a
+    # document's coverage with it and report nothing.
+    print(f"documents unplaced       : {len(unplaced)}")
+    for path in unplaced:
+        print(f"    {display(path)}")
     print(f"miscalled constructors   : {len(faults)}")
     return report_faults(len(faults))
 
