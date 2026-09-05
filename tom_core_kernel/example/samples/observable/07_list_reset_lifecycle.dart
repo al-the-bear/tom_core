@@ -17,7 +17,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 /// Records the lifecycle callbacks and the list sizes observed at each hook.
 ///
@@ -155,6 +155,6 @@ void run() {
 
 /// Standalone entry point.
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

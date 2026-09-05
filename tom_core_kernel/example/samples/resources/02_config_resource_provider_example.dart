@@ -18,7 +18,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // ============================================================================
 // Example Class
@@ -383,6 +383,6 @@ void run() {
 
 /// Standalone entry point.
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

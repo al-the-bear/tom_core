@@ -19,6 +19,13 @@
 /// exit 0 while checking nothing at all. The flag is what turns this runner
 /// from a demonstration into a test of the kernel's public surface.
 ///
+/// The process this runner owns is established once, before any module is
+/// dispatched, by the `bootstrapSamples()` call at the top of `main()` — the
+/// reflection registry and, through `sample_preamble.dart`, the assert guard
+/// and the `TomPlatformUtils` implementation whose isolate identity prefixes
+/// every framework log line. No module configures any of it, and none has to:
+/// the identity in the log header is uniform from the first line to the last.
+///
 /// The samples are also written to be timezone-independent: they build
 /// instants with `DateTime.utc(...)` rather than wall-clock `DateTime(...)`,
 /// so the assertions hold on any host. Verified against UTC, Europe/Berlin,
@@ -51,7 +58,8 @@ import 'samples/shutdown_cleanup/00_run_all_examples.dart' as shutdown_cleanup;
 import 'samples/timezoned/00_run_all_examples.dart' as timezoned;
 
 Future<void> main() async {
-  // Initialize reflection - required before any reflection operations
+  // Establish the process before dispatching any module: the assert guard, the
+  // platform identity that labels the log lines, and the reflection registry.
   bootstrapSamples();
 
   print('╔══════════════════════════════════════════════════════════════════╗');

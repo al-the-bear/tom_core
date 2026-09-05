@@ -26,7 +26,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // =============================================================================
 // Example Support Classes
@@ -141,6 +141,14 @@ class CapturingPlatformUtils extends SamplePlatformUtils {
 /// Runs the platform-detection demonstrations.
 void run() {
   print('=== 01: Platform Detection Example ===\n');
+
+  // This example's subject is process-global state, so it has to overwrite the
+  // one thing the whole run shares. Everything it installs below is a local
+  // stand-in — including one that deliberately lies about the host — so it puts
+  // back what it found before returning. A sample that left its own
+  // implementation installed would be supplying platform identity to whatever
+  // ran next, which is the coupling `sample_preamble.dart` exists to remove.
+  final incomingPlatform = TomPlatformUtils.current;
 
   // ---------------------------------------------------------------------------
   // Example 1: the fallback serves console output and refuses detection
@@ -358,12 +366,12 @@ void run() {
   print('   the fallback refuses to invent one     : $fallbackRefusedClient');
   print('');
 
-  // Leave a working implementation installed for whatever runs next.
-  TomPlatformUtils.setCurrentPlatform(sample);
+  // Put back the implementation the process arrived with.
+  TomPlatformUtils.setCurrentPlatform(incomingPlatform);
 }
 
 /// Standalone entry point.
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

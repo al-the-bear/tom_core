@@ -7,22 +7,23 @@
 /// ```
 ///
 /// The `--enable-asserts` is not decoration, and [bootstrapSamples] refuses to
-/// run without it — see [requireAsserts], which it calls first and which every
-/// other sample calls directly.
+/// run without it. That refusal, and the process platform identity that labels
+/// the framework's log lines, both come from [prepareSampleProcess], which this
+/// calls first and which every other sample calls directly.
 ///
 /// Samples that build reflected types — anything using `@tomReflector`,
 /// `TomClass`, or the preference/scheduling codecs that reflect over their
 /// values — must register the generated reflection data before they run, or
 /// the first construction fails with *"Reflection has not been initialized"*.
 /// Those samples call [bootstrapSamples] as the first statement of `main()`;
-/// the ones that reflect over nothing call [requireAsserts] instead, from
-/// `sample_asserts.dart`, and must not call both.
+/// the ones that reflect over nothing call [prepareSampleProcess] instead, from
+/// `sample_preamble.dart`, and must not call both.
 ///
 /// This file is the only place that names `run_all_samples.reflection.dart`.
 /// That file is generated (`dart run build_runner build`), it is one large
 /// registry for the whole `samples/` tree, and importing it costs roughly three
 /// seconds of compile time per entry point — which is why samples that do not
-/// need it do not pay for it, and why the flag check lives in its own
+/// need it do not pay for it, and why the preamble lives in its own
 /// registry-free library rather than here.
 ///
 /// ## Timezones need no bootstrap
@@ -45,11 +46,11 @@
 library;
 
 import 'run_all_samples.reflection.dart';
-import 'sample_asserts.dart';
+import 'sample_preamble.dart';
 
-export 'sample_asserts.dart' show requireAsserts;
+export 'sample_preamble.dart' show prepareSampleProcess;
 
-/// Prepares a sample to run: requires `--enable-asserts`, then registers the
+/// Prepares a sample to run: [prepareSampleProcess], then registers the
 /// generated reflection data.
 ///
 /// Call this first in the `main()` of any sample that constructs a reflected
@@ -59,8 +60,8 @@ export 'sample_asserts.dart' show requireAsserts;
 ///
 /// If asserts are disabled it prints the correct command and exits `2` instead
 /// of running — a flagless run would otherwise print success while checking
-/// nothing (see [requireAsserts]).
+/// nothing (see [prepareSampleProcess]).
 void bootstrapSamples() {
-  requireAsserts();
+  prepareSampleProcess();
   initializeReflection();
 }

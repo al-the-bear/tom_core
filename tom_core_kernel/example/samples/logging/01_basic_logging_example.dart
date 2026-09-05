@@ -3,7 +3,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 /// Collects the records the logger emitted, so a sample can assert what
 /// reached the output rather than that the call returned.
@@ -379,6 +379,6 @@ void run() {
 }
 
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

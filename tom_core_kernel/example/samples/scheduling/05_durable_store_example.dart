@@ -32,7 +32,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'scheduling_support.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // =============================================================================
 // A scratch directory, and a body worth watching
@@ -487,6 +487,6 @@ Future<void> run() async {
 }
 
 Future<void> main() {
-  requireAsserts();
+  prepareSampleProcess();
   return run();
 }

@@ -11,7 +11,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // ============================================================================
 // Example Class
@@ -234,6 +234,6 @@ class TomObjectBasicsExample {
 void run() => TomObjectBasicsExample.run();
 
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

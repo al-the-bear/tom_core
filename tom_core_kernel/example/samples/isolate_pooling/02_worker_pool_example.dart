@@ -7,7 +7,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // =============================================================================
 // Command Definitions
@@ -365,6 +365,6 @@ Future<void> run() async {
 
 /// Standalone entry point.
 Future<void> main() async {
-  requireAsserts();
+  prepareSampleProcess();
   await run();
 }

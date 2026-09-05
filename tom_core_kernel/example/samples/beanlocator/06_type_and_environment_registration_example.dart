@@ -15,7 +15,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // ============================================================================
 // Example service interface + environment-specific implementations
@@ -165,6 +165,6 @@ void run() {
 }
 
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

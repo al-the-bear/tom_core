@@ -38,6 +38,14 @@ dependencies:
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.28.0
+  # `TomStandalonePlatformUtils`, which the samples' preamble installs so every
+  # framework log line carries an isolate identity instead of a bare "-". Named
+  # here rather than reached through the `tom_core_server` dev-dependency below:
+  # the samples need one class, not a server framework. A *dev* dependency on
+  # purpose — this package is platform-neutral, and the point of
+  # `TomPlatformUtils` is that the library never reaches for `dart:io` itself.
+  # Only the samples, which are console programs, may.
+  tom_basics_console: ">=1.0.0"
   build_runner: ^2.10.4
   build: ^4.0.3
   tom_build:

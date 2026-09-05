@@ -18,7 +18,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 /// A test adapter that resolves authorization from a fixed lookup table.
 ///
@@ -302,6 +302,6 @@ void run() {
 
 /// Standalone entry point.
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

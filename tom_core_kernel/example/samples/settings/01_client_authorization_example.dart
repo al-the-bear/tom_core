@@ -13,7 +13,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // Both settings DTOs are `@tomReflector` classes, and EXAMPLE 13 round-trips
 // one through the reflection helpers — so this sample needs the generated
 // registry, not just the assert guard. `bootstrapSamples` calls
-// `requireAsserts` itself; the two must not both be called.
+// `prepareSampleProcess` itself; the two must not both be called.
 import '../../sample_bootstrap.dart';
 
 // =============================================================================

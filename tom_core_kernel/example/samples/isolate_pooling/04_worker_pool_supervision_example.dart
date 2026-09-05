@@ -17,7 +17,7 @@ import 'dart:isolate';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 /// A normal compute command used to confirm the pool works before and after a
 /// worker death.
@@ -105,6 +105,6 @@ Future<void> run() async {
 
 /// Standalone entry point.
 Future<void> main() async {
-  requireAsserts();
+  prepareSampleProcess();
   await run();
 }

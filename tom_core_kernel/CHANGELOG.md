@@ -1467,6 +1467,52 @@ anyone who was writing them.
 
 ### Examples
 
+- **The samples' process identity came from a sample rather than from whatever
+  started it, so the log header changed format halfway through a run
+  (tcincb4).** The framework builds its log header as
+  `${TomPlatformUtils.current.getIsolateName()}-$isolateName`, and until an
+  application installs a platform implementation the fallback answers with the
+  empty string — so a framework log line reads `<timestamp> - INFO …` instead
+  of `<timestamp> main-main INFO …`. `run_all_samples.dart` never installed one.
+  The gap had been masked by an accident: `samples/beanlocator/01_…`, the first
+  sample of the first module, installed `TomStandalonePlatformUtils` as a side
+  effect of a runtime demonstration, and the twelve modules after it silently
+  inherited it. Tidying that sample's imports removed the accident and exposed
+  the coupling, leaving one run with two log formats — modules 1–13 unlabelled,
+  `runtime/` onwards labelled, because those samples configure it themselves.
+
+  The fix is not a line in the master runner. Establishing the platform there
+  would relabel a full run and leave every *individual* sample run unlabelled,
+  which is the same two-format fault on a different axis — confirmed by running
+  `logging/01` on its own and watching it print a bare `-`. It went instead
+  into the one registry-free library that every way of starting a sample funnels
+  through, so a single rule covers the master run, a group runner and a single
+  file: whatever prepares a sample to run establishes the process platform. That
+  widened the library's job past its name, so `example/sample_asserts.dart` is
+  now `example/sample_preamble.dart` and `requireAsserts()` is
+  `prepareSampleProcess()`, across all 83 call sites, the sweep script's static
+  check, and the README. `TomStandalonePlatformUtils` arrives through a direct
+  `tom_basics_console` dev-dependency rather than through the `tom_core_server`
+  one it used to be reached by: the samples need one class, not a server
+  framework, and it was already in the resolved graph transitively. Switching
+  `runtime/02` and `runtime/03` to that import removed `tom_core_server` from
+  the hand-written samples entirely — with it went a registry that had been
+  putting `TomOAuthServer`, `TomFileServer` and their neighbours into a
+  *kernel* sample's list of reflected types.
+
+  `runtime/01` also stopped leaking. It demonstrates platform detection by
+  installing local stand-ins, one of which deliberately reports Android on a
+  desktop, and it used to end by installing its own implementation with the
+  comment *"Leave a working implementation installed for whatever runs next"* —
+  the same defect stated outright. It now restores whatever the process arrived
+  with.
+
+  Every framework log line in a full run now carries the same `main-main`
+  prefix, with one exception that is a different mechanism and is tracked
+  separately: lines emitted from *inside* spawned worker isolates, where
+  `TomPlatformUtils` is per-isolate static state that the main isolate's
+  preamble cannot reach.
+
 - **Half the sample tree could not be traced back to a file from the output it
   produced (tcincb2).** A group's `00_run_all_examples.dart` runs its samples
   back to back into one continuous stream, so the only thing separating one

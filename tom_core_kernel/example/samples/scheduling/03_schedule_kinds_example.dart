@@ -22,7 +22,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'scheduling_support.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // =============================================================================
 // A body that records the window it was given
@@ -782,6 +782,6 @@ Future<void> run() async {
 }
 
 Future<void> main() {
-  requireAsserts();
+  prepareSampleProcess();
   return run();
 }

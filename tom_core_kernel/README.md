@@ -180,9 +180,19 @@ dart run --enable-asserts example/run_all_samples.dart
 and Dart compiles asserts away unless the flag is passed — without it the
 examples would still print their output and still exit 0, while verifying
 nothing they claim. Rather than leave that trap open, every sample's `main()`
-opens with `requireAsserts()`
-([`example/sample_asserts.dart`](example/sample_asserts.dart)), which prints the
-correct command and exits `2` instead of running hollow.
+opens with `prepareSampleProcess()`
+([`example/sample_preamble.dart`](example/sample_preamble.dart)), which prints
+the correct command and exits `2` instead of running hollow.
+
+That function is also where the process gets its platform identity. The
+framework builds its log header from
+`TomPlatformUtils.current.getIsolateName()`, and until something installs an
+implementation the fallback answers with the empty string — so every framework
+log line reads `<timestamp> - INFO …` rather than `<timestamp> main-main INFO
+…`. Installing `TomStandalonePlatformUtils` in the shared preamble rather than
+in the master runner is what makes the prefix uniform across all three ways of
+starting a sample: the full run, a group runner, and a single file. No sample
+configures it, and none has to.
 
 Every sample also runs on its own, which is usually what you want while reading
 one:
@@ -193,12 +203,12 @@ dart run --enable-asserts example/samples/observable/03_tom_class.dart
 
 Samples that build reflected types call `bootstrapSamples()`
 ([`example/sample_bootstrap.dart`](example/sample_bootstrap.dart)) as the first
-statement of their `main()` instead of `requireAsserts()` — it does the flag
-check and then installs the generated reflection registry, which is the one
+statement of their `main()` instead of `prepareSampleProcess()` — it does the
+preamble and then installs the generated reflection registry, which is the one
 place that happens. The rest reflect over nothing and skip it, because importing
 the registry costs roughly three seconds of compile time per entry point. That
-cost is also why the flag check lives in its own registry-free library: it lets
-the non-reflecting samples be guarded without paying for a registry they never
+cost is also why the preamble lives in its own registry-free library: it lets
+the non-reflecting samples be prepared without paying for a registry they never
 touch.
 
 The master runner cannot police the standalone path — it drives samples through
@@ -214,9 +224,9 @@ package *hands out* — anywhere in it, not just in a sample header:
   `find` rather than by reading the documentation;
 - every one of them **passes `--enable-asserts`**, so a reader who copies the
   command gets a run that verifies something;
-- every sample's `main()` **calls `requireAsserts()`**, so a reader who types the
-  command from memory and omits the flag is refused rather than shown a hollow
-  green;
+- every sample's `main()` **calls `prepareSampleProcess()`**, so a reader who
+  types the command from memory and omits the flag is refused rather than shown
+  a hollow green;
 - every sample **contains at least one `assert`** — one that asserts nothing
   exits 0 whatever the API does, and has no verification for a missing flag to
   strip, so it slips past the check above as well;

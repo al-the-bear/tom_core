@@ -22,7 +22,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 /// A domain object that is *itself* a scope by mixing in [TomScopeMixin].
 ///
@@ -228,6 +228,6 @@ void run() {
 
 /// Standalone entry point.
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

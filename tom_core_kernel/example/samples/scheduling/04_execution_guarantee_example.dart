@@ -34,7 +34,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'scheduling_support.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // =============================================================================
 // EXAMPLE 1: The Duplicate You Are Promised
@@ -568,6 +568,6 @@ Future<void> run() async {
 }
 
 Future<void> main() {
-  requireAsserts();
+  prepareSampleProcess();
   return run();
 }

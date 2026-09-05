@@ -476,7 +476,7 @@ void run() => AnnotationBasedBeansExample.run();
 
 /// Standalone entry point.
 ///
-/// `bootstrapSamples()` rather than `requireAsserts()`: this sample's beans are
+/// `bootstrapSamples()` rather than `prepareSampleProcess()`: this sample's beans are
 /// built by reflection, so it needs the generated registry installed as well as
 /// the assert flag checked.
 void main() {

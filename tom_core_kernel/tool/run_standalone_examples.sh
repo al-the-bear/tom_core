@@ -51,7 +51,7 @@
 # It also checks the reader's side of (a), on two counts of its own: every
 # sample must contain at least one `assert` — a sample with none exits 0
 # whatever the API does, and so proves nothing about what it demonstrates — and
-# every sample's `main()` must open with `requireAsserts()` (or
+# every sample's `main()` must open with `prepareSampleProcess()` (or
 # `bootstrapSamples()`, which calls it), so a flagless run refuses instead of
 # reporting a success it did not verify.
 #
@@ -156,8 +156,8 @@ fi
 # The other half of the same problem. Documenting the flag correctly still
 # leaves the reader who types the command from memory, or copies it from another
 # project, and gets a hollow green. So every sample's `main()` opens with
-# `requireAsserts()` — or with `bootstrapSamples()`, which calls it — and this
-# checks that it does.
+# `prepareSampleProcess()` — or with `bootstrapSamples()`, which calls it —
+# and this checks that it does.
 #
 # Checked statically rather than by running each sample twice: the flagless run
 # is another 115 VM starts for a property that is visible in the source. The
@@ -169,12 +169,12 @@ fi
 unguarded=()
 while IFS= read -r file; do
   grep -q 'assert(' "$file" || continue
-  grep -qE '(requireAsserts|bootstrapSamples)\(\)' "$file" && continue
+  grep -qE '(prepareSampleProcess|bootstrapSamples)\(\)' "$file" && continue
   unguarded+=("$file")
 done < <(find example/samples -name '[0-9][0-9]_*.dart' | sort; echo example/run_all_samples.dart)
 
 if [ ${#unguarded[@]} -gt 0 ]; then
-  echo "Samples whose main() never calls requireAsserts() (${#unguarded[@]}):"
+  echo "Samples whose main() never calls prepareSampleProcess() (${#unguarded[@]}):"
   printf '    %s\n' "${unguarded[@]}"
   echo
 fi
@@ -415,7 +415,7 @@ if [ ${#flagless[@]} -gt 0 ]; then
   printf '    %s\n' "${flagless[@]}"
 fi
 if [ ${#unguarded[@]} -gt 0 ]; then
-  echo "No requireAsserts() in main() (${#unguarded[@]}):"
+  echo "No prepareSampleProcess() in main() (${#unguarded[@]}):"
   printf '    %s\n' "${unguarded[@]}"
 fi
 if [ ${#unverified[@]} -gt 0 ]; then

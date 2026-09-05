@@ -1,9 +1,9 @@
 /// Demonstrates environment and platform configuration using TomRuntime.
 library;
 
-import 'package:tom_core_server/tom_core_server.dart';
+import 'package:tom_basics_console/tom_basics_console.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 // =============================================================================
 // Environment Initializers
@@ -251,6 +251,6 @@ void run() {
 }
 
 void main() {
-  requireAsserts();
+  prepareSampleProcess();
   run();
 }

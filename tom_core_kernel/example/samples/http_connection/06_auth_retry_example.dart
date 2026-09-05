@@ -12,7 +12,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../sample_asserts.dart';
+import '../../sample_preamble.dart';
 
 /// A minimal stand-in for an HTTP response: just the status the coordinator
 /// keys its decisions on, plus an optional server error key.
@@ -270,6 +270,6 @@ Future<void> run() async {
 
 /// Standalone entry point.
 Future<void> main() async {
-  requireAsserts();
+  prepareSampleProcess();
   await run();
 }
