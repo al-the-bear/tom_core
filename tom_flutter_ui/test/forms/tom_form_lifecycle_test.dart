@@ -50,6 +50,11 @@ TomFormInspector _watch(OrderItemForm form) {
   return inspector;
 }
 
+/// An [OrderForm] bound to a populated order — the fixture for the nested-form
+/// group below. The address is what makes it interesting: nothing in this
+/// helper mentions it, and it is still bound.
+OrderForm _boundOrder() => OrderForm()..bind(orderWith(const ['Bolt']));
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -311,6 +316,204 @@ void main() {
 
       expect(viewer.quantity.get(), '9');
       expect(viewer.product.get(), 'Bolt');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Nested forms
+  // -------------------------------------------------------------------------
+
+  group('nested forms', () {
+    // `OrderForm.address` is an `AddressForm` held as a plain member. Unlike
+    // `OrderForm.items`, nothing registers it and `onBound` does not bind it:
+    // every operation below reaches it through `nestedForms`, which is
+    // reflection over the form's members.
+    //
+    // That is the failure mode worth testing. A hand-registered child is
+    // either in the list or it is not, and a mistake shows up as a crash; a
+    // reflected one can simply go undiscovered, and then all six fan-outs
+    // become silent no-ops that no assertion about the *parent* would catch.
+    // So each test below asserts on the nested form's own state.
+
+    test('are discovered by reflection over the form\'s members', () {
+      final form = OrderForm();
+
+      expect(form.nestedForms, contains(same(form.address)));
+    });
+
+    test('do not include child containers, which fan out separately', () {
+      // `TomListForm` extends `TomObservable`, not `TomObject`, so it is
+      // invisible to the member registry — the two collections are disjoint
+      // by construction, and a change that merged them would double-apply
+      // every operation to the list.
+      final form = OrderForm();
+
+      expect(form.nestedForms, hasLength(1));
+      expect(form.childContainers, hasLength(1));
+    });
+
+    group('bind', () {
+      test('pushes the nested object\'s values into the nested fields', () {
+        // This half is *not* the fan-out: `bind` calls `setValues` once on the
+        // root, and TomClass recurses through the whole subtree on its own.
+        // The fan-out's job is the bookkeeping the next three tests assert.
+        // Keeping the two apart matters — a reader who assumes the recursion
+        // moves the values would look in the wrong place when one goes wrong.
+        final form = _boundOrder();
+
+        expect(form.address.street.get(), 'Main Street 1');
+        expect(form.address.city.get(), 'Springfield');
+      });
+
+      test('records the nested object as the nested form\'s binding', () {
+        // The parent pairs the two by member name; without that, the nested
+        // form would hold values it could never write back.
+        final order = orderWith(const ['Bolt']);
+        final form = OrderForm()..bind(order);
+
+        expect(form.address.currentBinding, same(order.address));
+      });
+
+      test('snapshots at the nested level too, not just the root', () {
+        final form = _boundOrder();
+
+        expect(form.address.initialSnapshot, isNotNull);
+        expect(form.address.initialSnapshot!['street'], 'Main Street 1');
+      });
+
+      test('leaves the nested form clean and pristine', () {
+        final form = _boundOrder();
+
+        expect(form.address.isDirty, isFalse);
+        expect(form.address.street.validationState, const ValidationPristine());
+      });
+    });
+
+    group('folds', () {
+      test('isDirty reports an edit made only in the nested form', () {
+        final form = _boundOrder();
+
+        form.address.city.setValue('Shelbyville');
+
+        expect(form.address.isDirty, isTrue);
+        expect(form.isDirty, isTrue);
+      });
+
+      test('isValid reports a failure that exists only in the nested form',
+          () async {
+        final form = _boundOrder();
+        await form.validate();
+        expect(form.isValid, isTrue);
+
+        form.address.street.setValue('');
+        await form.validate();
+
+        expect(form.isValid, isFalse);
+      });
+    });
+
+    group('validate', () {
+      test('merges the nested form\'s errors into the parent\'s', () async {
+        final form = _boundOrder();
+
+        form.address.street.setValue('');
+        final errors = await form.validate();
+
+        expect(
+          errors.map((e) => e.fields.single.tomId),
+          contains(form.address.street.tomId),
+        );
+      });
+    });
+
+    group('save', () {
+      test('writes the nested edits back into the nested object', () async {
+        // As with bind, the write-back itself rides on the root's
+        // `setValues(getValues())` rather than on the recursion; what the
+        // recursion adds is the baseline move asserted two tests below.
+        final order = orderWith(const ['Bolt']);
+        final form = OrderForm()..bind(order);
+
+        form.address.city.setValue('Shelbyville');
+        expect(await form.save(), isTrue);
+
+        expect(order.address.city.get(), 'Shelbyville');
+      });
+
+      test('refuses the whole save when only the nested form is invalid',
+          () async {
+        // The parent's own fields are fine here; the veto comes from below.
+        final order = orderWith(const ['Bolt']);
+        final form = OrderForm()..bind(order);
+
+        form.address.street.setValue('');
+        expect(await form.save(), isFalse);
+
+        expect(order.address.street.get(), 'Main Street 1');
+      });
+
+      test('moves the nested baseline, so a later discard keeps it', () async {
+        final form = _boundOrder();
+
+        form.address.city.setValue('Shelbyville');
+        await form.save();
+        form.discard();
+
+        expect(form.address.city.get(), 'Shelbyville');
+      });
+    });
+
+    group('discard', () {
+      test('returns the nested fields to their bound values', () {
+        final form = _boundOrder();
+
+        form.address.street.setValue('Elsewhere');
+        form.address.city.setValue('Shelbyville');
+        form.discard();
+
+        expect(form.address.street.get(), 'Main Street 1');
+        expect(form.address.city.get(), 'Springfield');
+        expect(form.isDirty, isFalse);
+      });
+    });
+
+    group('unbind', () {
+      test('drops the nested binding and the nested snapshot', () {
+        final form = _boundOrder();
+
+        form.unbind();
+
+        expect(form.address.currentBinding, isNull);
+        expect(form.address.initialSnapshot, isNull);
+      });
+
+      test('drops in-flight nested edits', () {
+        final form = _boundOrder();
+
+        form.address.city.setValue('Shelbyville');
+        form.unbind();
+
+        expect(form.address.city.get(), 'Springfield');
+        expect(form.isDirty, isFalse);
+      });
+    });
+
+    group('dispose', () {
+      test('tears down the nested form\'s fields too', () {
+        // The leak this prevents is quiet: an undisposed nested field keeps a
+        // live notifier, and a later write to the still-shared business object
+        // drives a widget that is no longer on screen. Nothing fails loudly,
+        // so only a direct assertion catches it.
+        final form = _boundOrder();
+        final nested = form.address.street;
+
+        form.dispose();
+
+        expect(
+          () => nested.validationListenable.addListener(() {}),
+          throwsFlutterError,
+        );
+      });
     });
   });
 

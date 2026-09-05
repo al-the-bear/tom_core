@@ -10,9 +10,18 @@
 /// reads it (see `build.yaml`) and emits `list_form_fixtures.reflection.dart`,
 /// which every list test initialises from.
 ///
-/// The domain is deliberately tiny — an order of line items — because the seed
-/// size is the cost of the suite: reflecting a form also reflects its field
-/// types, so each extra field kind widens the generated graph.
+/// The domain is deliberately tiny — an order of line items, shipping to an
+/// address — because the seed size is the cost of the suite: reflecting a form
+/// also reflects its field types, so each extra **field kind** widens the
+/// generated graph.
+///
+/// Extra *classes* are cheap by comparison, which is worth knowing before
+/// declining a test for fear of the cost. Adding [Address] and [AddressForm]
+/// over the existing `TomString` / `TomFormStringInput` kinds grew the
+/// generated file by well under a percent, because the bulk of it is the field
+/// types' own transitive graph and those were already reflected. Reuse a kind
+/// the seed already has and the marginal cost is close to nothing; introduce a
+/// new one and it is not.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -34,10 +43,28 @@ class OrderItem extends TomClass {
   late final quantity = TomString('1');
 }
 
-/// The aggregate an [OrderForm] binds: a header field plus the item list.
+/// Where an order ships. Exists to give [Order] a nested [TomClass] member, so
+/// [OrderForm] can hold a nested *form* over it — the only shape that populates
+/// `TomForm.nestedForms`.
+///
+/// Both fields are [TomString] on purpose. `nestedForms` is discovered by type,
+/// not by field kind, so nesting is provable without introducing a field kind
+/// the seed does not already reflect — which is what keeps the generated graph
+/// from growing to pay for it.
+@tomReflector
+class Address extends TomClass {
+  /// Required, so an [AddressForm] can be made invalid on its own.
+  late final street = TomString('');
+
+  late final city = TomString('');
+}
+
+/// The aggregate an [OrderForm] binds: a header field, a nested address, and
+/// the item list.
 @tomReflector
 class Order extends TomClass {
   late final reference = TomString('');
+  late final address = Address();
   late final items = TomList<OrderItem>();
 }
 
@@ -123,14 +150,41 @@ class BareItemListForm extends TomListForm<OrderItem, OrderItemForm> {
     : super(listId: 'items', formFactory: (_) => OrderItemForm());
 }
 
+/// The nested sub-form. Nothing registers it and nothing binds it by hand:
+/// [OrderForm] holds it as a member, and `TomForm.nestedForms` finds it by
+/// reflecting over those members. Its `formId` matches the `address` member on
+/// [Order], which is how `_applyBindLifecycle` pairs the two.
+@tomReflector
+class AddressForm extends TomForm<Address> {
+  AddressForm() : super(formId: 'address');
+
+  late final street = TomFormStringInput(
+    'street',
+    '',
+    form: this,
+    validators: [Validators.required()],
+  );
+
+  late final city = TomFormStringInput('city', '', form: this);
+
+  @override
+  void createFormElements() {}
+}
+
 /// The enclosing form. The list registers itself as a child container from its
 /// constructor, so `validate` / `save` / `discard` / `isDirty` fan into it
 /// without the parent enumerating anything.
+///
+/// [address] is the other half of the same story, reached the other way: it is
+/// never registered, and the parent never enumerates it either — reflection
+/// discovers it. That difference is the point of having both here.
 @tomReflector
 class OrderForm extends TomForm<Order> {
   OrderForm() : super(formId: 'order');
 
   late final reference = TomFormStringInput('reference', '', form: this);
+
+  late final AddressForm address = AddressForm();
 
   late final OrderItemListForm items = OrderItemListForm(parentForm: this);
 
@@ -148,9 +202,14 @@ class OrderForm extends TomForm<Order> {
 // ---------------------------------------------------------------------------
 
 /// Builds an [Order] whose items carry the given product names.
+///
+/// The address is populated too, so a test of the nested-form fan-out starts
+/// from a bound value it can watch move rather than from a blank one.
 Order orderWith(List<String> products) {
   final order = Order();
   order.reference | 'ORD-1';
+  order.address.street | 'Main Street 1';
+  order.address.city | 'Springfield';
   for (final p in products) {
     final item = OrderItem();
     item.product | p;
