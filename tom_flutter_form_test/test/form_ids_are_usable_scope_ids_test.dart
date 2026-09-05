@@ -23,7 +23,8 @@
 /// The ids are read out of the source rather than from constructed forms
 /// because constructing every form in the package means binding every state
 /// class it needs; the literal in the constructor is the thing under test and
-/// it is right there.
+/// it is right there. The scan itself lives in `support/form_id_sites.dart`,
+/// shared with `example_key_maps_follow_form_ids_test.dart`.
 ///
 /// **Interpolated ids.** One id is built at construction time
 /// (`'phase5cFamily-${family.kind.name}'`). Its runtime value is not knowable
@@ -35,57 +36,13 @@
 /// at construction rather than here.
 library;
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-/// `formId: 'x'` / `listId: 'x'`, single- or double-quoted, as written in a
-/// constructor's initialiser list or argument list.
-final RegExp _idLiteral = RegExp(
-  r'''\b(formId|listId)\s*:\s*(?:'([^'\n]*)'|"([^"\n]*)")''',
-);
-
-/// `${expr}` or `$identifier` inside an id literal.
-final RegExp _interpolation = RegExp(r'\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*');
-
-/// Stands in for an interpolated value: a legal single segment, so what the
-/// assertion judges is the constant text the author typed around it.
-const _interpolationPlaceholder = 'x';
-
-/// Where an id was written, so a failure names the line to edit. [id] is the
-/// literal as written; [testable] is it with interpolations substituted.
-typedef _IdSite = ({
-  String file,
-  int line,
-  String kind,
-  String id,
-  String testable,
-});
-
-List<_IdSite> _idSites() {
-  final sites = <_IdSite>[];
-  for (final entity in Directory('lib').listSync(recursive: true)) {
-    if (entity is! File || !entity.path.endsWith('.dart')) continue;
-    final lines = entity.readAsLinesSync();
-    for (var i = 0; i < lines.length; i++) {
-      for (final match in _idLiteral.allMatches(lines[i])) {
-        final id = match.group(2) ?? match.group(3)!;
-        sites.add((
-          file: entity.path,
-          line: i + 1,
-          kind: match.group(1)!,
-          id: id,
-          testable: id.replaceAll(_interpolation, _interpolationPlaceholder),
-        ));
-      }
-    }
-  }
-  return sites;
-}
+import 'support/form_id_sites.dart';
 
 void main() {
-  final sites = _idSites();
+  final sites = idSites();
 
   test('the package declares form and list ids at all', () {
     expect(
