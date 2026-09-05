@@ -7,6 +7,11 @@
 #
 # Run from the project root:
 #   ./reflection_generation.sh
+#
+# Verify instead of regenerate — fails, naming the file, if the committed
+# output no longer matches its source (drift that a clean analyze and a
+# green suite do not reveal):
+#   ./reflection_generation.sh --check
 set -e
 cd "$(dirname "$0")"
 # Resolve the Dart SDK: an explicit $DART wins, otherwise `dart` from PATH.
@@ -21,4 +26,4 @@ if [ -z "$DART" ]; then
   echo "    DART=/path/to/dart $0" >&2
   exit 1
 fi
-"$DART" run tom_reflection_generator
+"$DART" run tom_reflection_generator "$@"

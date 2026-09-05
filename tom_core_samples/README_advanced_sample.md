@@ -252,6 +252,32 @@ It is a runner rather than one of the `tom_ai/core/tool/` gates only because of
 cost: the whole python gate set takes about fifteen seconds, while `dart doc`
 takes twelve to thirty per package. Run it after editing a doc comment here.
 
+### Checking that the generated reflection is current
+
+After changing anything a reflector sees — a field, a method, or a parameter
+**type** — verify that the package's committed `*.reflection.dart` still matches:
+
+```sh
+cd tom_core_samples/todo_domain
+./reflection_generation.sh --check
+```
+
+It exits non-zero and names any generated file that has drifted, without
+modifying it. The remedy is to drop `--check` and commit the result.
+
+This matters more than it looks. Widening `TodoFieldMatrixDto.parseState` from
+`String?` to `Object?` changed a type index in `todo_domain`'s seed and another
+in `advanced_todo_contracts`; neither was regenerated, and both were committed
+stale. **Nothing caught it**: `dart analyze` was clean and both suites fully
+green, with identical test counts before and after regeneration, because the
+stale part is metadata the tests never read. The mismatch surfaced only because
+somebody ran the generator for an unrelated reason.
+
+So a reflected signature change is a source edit with a second half, and this is
+what confirms the second half was done. Reproduced deliberately while building
+the check: adding one unreferenced field to a reflected DTO left `dart analyze`
+clean and the suite at 18/18, and `--check` still failed.
+
 ---
 
 ## Documentation index
