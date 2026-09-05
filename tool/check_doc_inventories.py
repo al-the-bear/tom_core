@@ -10,11 +10,12 @@ Run from anywhere::
 
 Exits non-zero when any measurement disagrees with the tree.
 
-``--self-test`` asks the opposite question: it raises one figure of each kind
-by one, in memory, and requires this checker to object. A gate held to a
-baseline of zero faults passes just as well when it has stopped reading
-anything, so the baseline alone cannot tell working coverage from absent
-coverage. See :func:`self_test`.
+``--self-test`` asks the opposite question: it damages a document in memory --
+raising one figure of each kind by one, and writing a length into a sentence
+that had none -- and requires this checker to object. A gate held to a baseline
+of zero faults passes just as well when it has stopped reading anything, so the
+baseline alone cannot tell working coverage from absent coverage. See
+:func:`self_test`.
 
 Two shapes are audited. Most documents open by naming the module's directory
 and how much is in it, and then tabulate the directory a file at a time::
@@ -55,7 +56,7 @@ and opens by sizing the package as a whole::
     `tom_core_samples/advanced_todo_domain/` — 23 files, of which 17 are Dart:
     14 under `lib/` (619 lines, all hand-written) and 3 under `test/`, ...
 
-Ten faults are reported:
+Eleven faults are reported:
 
 ``LINES``
     A file whose claimed length is not its length -- in an inventory table's
@@ -101,6 +102,15 @@ Ten faults are reported:
     disagrees with the module it links to, or whose link names a document that
     does not exist. The census is stated twice -- once in its own document,
     once in the index -- and it is the second copy that goes stale.
+``PROSE``
+    A length written into a sentence that no audit above read -- ``a 74-line
+    controller``, ``Eight steps, one file, 239 lines``. It is not reported as a
+    wrong number, because usually it is not one *yet*; it is reported as a
+    measurement in the one position nothing can maintain. Unlike every other
+    fault this one is defined by the others rather than by a shape of its own:
+    each audit records the spans it read a length out of, and this reports the
+    leftovers. Widening any audit therefore narrows this one automatically,
+    with no second list of covered positions to keep in step.
 
 ``PKGINV`` exists because the opening inventory of a *package* document was
 the one measurement in these documents that nothing checked. It drifted
@@ -291,22 +301,17 @@ document's census states, in the census's own noun.** Widening the gate to read
 them means first normalising those nineteen paragraphs onto one grammar, which
 is a change to the documents rather than to this tool.
 
-**The rule for every figure no gate reads.** A completion document states its
-census once, at the top, where ``HEADER`` or ``PKGINV`` holds it to the tree.
-Every *later* mention of the same measurement is a copy, and a copy is what
-drifts -- the index above is the extreme case, but the same thing happens
-inside a single document, in a sentence a thousand lines below the census
-saying ``1 892 lines of widget test``. Two rules keep those honest, and they
-are both about writing rather than about tooling:
-
-1. **Prefer not to restate a census figure.** If the body needs to refer to the
-   module's size, refer to the census; a second copy of a number is a second
-   thing to keep true.
-2. **Where a figure must be restated, close the arithmetic on the page.**
-   ``1 892 lines of widget test (1 820 in the thirteen suites above, 72 in the
-   shared harness)`` states where every line came from, so a reader can catch a
-   drift without leaving the document and a later editor can see which part
-   moved. ``advanced_authadmin_client`` is written this way and is the model.
+**A length is stated where a gate holds it, and nowhere else.** A completion
+document states its census once, at the top, where ``HEADER`` or ``PKGINV``
+holds it to the tree, and tabulates its per-file lengths where ``LINES`` holds
+them. Every *later* mention of a length is a copy, and a copy is what drifts --
+the index above is the extreme case, but the same thing happened inside single
+documents, in sentences a thousand lines below the census. ``PROSE`` is the
+rule made mechanical: a length figure sitting anywhere no audit read it faults,
+so the choice is to put it in the inventory or to write the sentence without
+it. Both are improvements on a number nothing maintains, and the second is
+usually the better one -- ``one small controller`` says what the sentence was
+actually claiming, where ``a 74-line controller`` only appeared to.
 
 ``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT``, ``BARREL``, ``PKGINV``,
 ``LIBSIZE`` and ``INDEX``
@@ -316,13 +321,16 @@ its capitalisation, since an index entry routinely opens its sentence with one
 and ``13 files, all exported`` would be a worse sentence than it was. What
 ``--fix`` never does is re-wrap: a repaired figure with more digits than the
 stale one can push its line past the margin, so read the diff.
-It never touches ``UNKNOWN``, ``ABSENT`` or ``LAYOUT``, nor a
+It never touches ``UNKNOWN``, ``ABSENT``, ``LAYOUT`` or ``PROSE``, nor a
 missing map row, nor a ``says nothing about`` fault: adding or retiring a row --
 or naming a part of the package the census is silent about -- means writing the
 sentence that says what the file or folder carries, and only a reader of it can
 do that. A ``LAYOUT`` row is the sharpest case of it: a tree row is a file's
 place in a structure, and where its replacement belongs in that structure is
-exactly the judgement a rewrite cannot make.
+exactly the judgement a rewrite cannot make. ``PROSE`` is unrepairable for the
+opposite reason -- the number is usually *right*, and what is wrong is that it
+is in a sentence, so the repair is to rewrite the sentence and only its author
+knows what it was for.
 
 Note what ``--fix`` means for a ``BARREL`` fault: it makes the *document*
 agree with the code, which is right when the label is stale and wrong when the
@@ -575,6 +583,20 @@ class Report:
         self.path = path
         self.faults: list[str] = []
         self.edits: list[tuple[int, int, str]] = []
+        #: Spans of `text` an audit actually read a length out of. `PROSE`
+        #: reports the line figures left over, so this is what separates a
+        #: measurement the gate holds to the tree from one nothing checks.
+        #: Recorded whether or not the figure faulted, and whether or not it
+        #: was deliberately skipped: a hedged `~4 000 lines` was read and
+        #: waived, which is a decision, not a gap.
+        self.read: list[tuple[int, int]] = []
+
+    def mark(self, span: tuple[int, int]) -> None:
+        """Record that an audit consumed the length figure at `span`."""
+        self.read.append(span)
+
+    def was_read(self, start: int, end: int) -> bool:
+        return any(s <= start and end <= e for s, e in self.read)
 
     @property
     def clean(self) -> bool:
@@ -610,8 +632,17 @@ def audit(path: Path) -> Report | None:
     body tabulates nothing -- four of them do -- was audited by nothing at all,
     and a document audited by nothing is reported as passing.
     """
-    text = path.read_text(encoding="utf-8", errors="replace")
+    return audit_text(path.read_text(encoding="utf-8", errors="replace"), path)
 
+
+def audit_text(text: str, path: Path) -> Report | None:
+    """Run every audit over `text` as though it were the content of `path`.
+
+    Split from :func:`audit` so the self-test can put a document through the
+    whole chain after changing it in memory. ``PROSE`` is the one fault that
+    cannot be exercised an audit at a time: it reports what the *others* did
+    not read, so proving it still works means running all of them.
+    """
     report = Report(path)
     measured = audit_barrel_exports(text, report)
     measured |= audit_layout_lines(text, report)
@@ -627,7 +658,14 @@ def audit(path: Path) -> Report | None:
             measured |= audit_file_inventory(text, module, report)
             measured |= audit_subfolder_map(text, module, report)
 
-    return report if measured else None
+    # Last, and unconditionally: it reports the figures the audits above did
+    # not mark, so it can only run once they have all had their say. It is
+    # outside `measured` because it applies to a document that measures
+    # nothing -- a document with no inventory is exactly where a stray length
+    # in a sentence has nothing to be checked against.
+    audit_prose_lengths(text, report)
+
+    return report if measured or report.faults else None
 
 
 def layout_rows(text: str, package: Path):
@@ -787,6 +825,8 @@ def audit_layout_lines(text: str, report: Report) -> bool:
             report.faults.append(f"LAYOUT   `{shown}` is not in {package.name}/")
             continue
         claim = LAYOUT_LINES.search(text, start, end)
+        if claim is not None:
+            report.mark(claim.span())
         # A rounded figure is a deliberate approximation, not a measurement.
         if claim is None or claim.group(1) or claim.group(3):
             continue
@@ -925,6 +965,8 @@ def audit_module_header(text: str, module: Path, report: Report) -> bool:
     # The line total always counts the sources: no header in this set totals
     # its readme in with them, and several name the readme's length separately.
     lines = MODULE_LINES.search(text, files.end(), end)
+    if lines is not None:
+        report.mark(lines.span())
     if lines is not None and not lines.group(1):
         total = lines.group(2)
         measured = sum(line_count(p) for p in dart)
@@ -935,6 +977,8 @@ def audit_module_header(text: str, module: Path, report: Report) -> bool:
             report.edits.append(rewrite_groups(lines, {2: like(total, measured)}))
 
     readme = README_CLAIM.search(text, start, end)
+    if readme is not None:
+        report.mark(readme.span())
     on_disk_readme = next((p for p in on_disk if p.name == "readme.md"), None)
     if readme is not None and on_disk_readme is not None:
         measured = line_count(on_disk_readme)
@@ -1028,6 +1072,7 @@ def audit_package_inventory(text: str, report: Report) -> bool:
         hand = handwritten(under(folder))
         body, tail = segment.start(2), segment.end(2)
         for match in PKG_LINES.finditer(text, body, tail):
+            report.mark(match.span())
             total = sum(line_count(package / p) for p in hand)
             claims.append((match, total, f"hand-written lines under {folder}/"))
         for match in PKG_HAND.finditer(text, body, tail):
@@ -1099,6 +1144,7 @@ def audit_library_size(text: str, report: Report) -> bool:
         and not f.endswith(".reflection.dart")
     ]
     measured = sum(line_count(package / f) for f in sources)
+    report.mark(total.span())
     written = total.group(1)
     if as_number(written) != measured:
         report.faults.append(
@@ -1118,6 +1164,7 @@ def audit_library_size(text: str, report: Report) -> bool:
 
     by_name = {f.rsplit("/", 1)[-1]: f for f in sources}
     for claim in LIB_FILE.finditer(text, total.end(), end):
+        report.mark(claim.span())
         name = claim.group(1)
         source = by_name.get(name)
         if source is None:
@@ -1222,6 +1269,101 @@ def audit_file_inventory(text: str, module: Path, report: Report) -> bool:
     return True
 
 
+#: A length written into running text: `250 lines`, `1 892 lines`, `a 740-line
+#: backend`, `one 255-line screen`, `~335k lines`. All of these are one pattern
+#: because they are one claim -- hyphenating it before a noun, or rounding it to
+#: thousands, is a writer's choice, and a rule that caught only the longest
+#: spelling would be evaded by the shorter ones.
+#:
+#: What it cannot catch is a length with the noun elided -- `the seven in
+#: `file_storage/` (2 602 lines) plus `file_reference.dart` (93)`, where `(93)`
+#: is a line count only because the reader carries the noun forward. Nothing
+#: distinguishes that from any other parenthesised number, so the rule does not
+#: try; the sentence it came from was rewritten by hand instead.
+PROSE_LENGTH = re.compile(
+    r"(?<![\w.])(" + NUMBER + r")\s*[kK]?\s*[-‑]?\s*lines?\b"
+)
+
+#: A count of lines used as a *distance* rather than a size -- `120 lines
+#: further down`, `three lines above`. It measures the document the reader is
+#: holding, not an artifact on disk, so there is nothing to re-measure it
+#: against and reporting it would be a false positive. A gate held at zero
+#: earns its zero only if every fault it raises is real, so the exemption is
+#: keyed to the words that make the number a direction.
+PROSE_EXEMPT = re.compile(
+    NUMBER + r"\s*[-‑]?\s*lines?\s+"
+    r"(?:further\s+)?(?:down|up|below|above|later|earlier|on|back)\b",
+    re.I,
+)
+
+
+def prose_spans(text: str):
+    """Yield `(start, end)` for each length figure in running text.
+
+    Fenced blocks and table rows are excluded because they are the two shapes
+    the other audits already read: a layout row's length is `LINES`/`LAYOUT`'s
+    business and an inventory cell's is `LINES`'. What is left is prose, which
+    is the position this audit exists for.
+
+    The scan runs over the whole document with the excluded lines blanked out,
+    rather than line by line, because these documents are hard-wrapped and a
+    figure breaks across the wrap: ``Nine files and 3 359\\nlines`` is one
+    claim written on two lines, and a per-line reader sees no measurement at
+    all. Blanking preserves every offset, so the spans stay the document's own.
+    """
+    keep: list[str] = []
+    fenced = False
+    for line in text.splitlines(keepends=True):
+        stripped = line.lstrip()
+        if stripped.startswith("```"):
+            fenced = not fenced
+            keep.append(" " * len(line))
+        elif fenced or stripped.startswith("|"):
+            keep.append(" " * len(line))
+        else:
+            keep.append(line)
+    prose = "".join(keep)
+
+    for match in PROSE_LENGTH.finditer(prose):
+        # Anchored at the figure and reading forward: the words that turn a
+        # count into a direction follow it. Newlines count as spaces here, so
+        # a wrapped `120 lines\nfurther down` is exempted like the flat one.
+        if PROSE_EXEMPT.match(prose, match.start()):
+            continue
+        yield match.start(), match.end()
+
+
+def audit_prose_lengths(text: str, report: Report) -> None:
+    """Report every length figure in prose that no other audit read.
+
+    This is the counterpart to every audit above, and it is defined by them
+    rather than by a pattern of its own: a figure faults precisely when nothing
+    marked it. That is what makes the rule maintainable -- widening any audit
+    to cover a new position narrows this one automatically, with no second
+    place to update and no chance of the two disagreeing about what is covered.
+
+    The rule it enforces is that a file's length is stated where a gate holds
+    it to the file -- an inventory table's `Lines` column, a layout row, or the
+    census the document opens with -- and nowhere else. A length written into a
+    sentence is a copy with no check behind it, and copies drift: a document
+    here said `239 lines` of a file that had been 250 for four commits, and the
+    gate ran green over it every time, because a measurement in a sentence sat
+    in the one position nothing parsed.
+
+    It is not reported as a wrong number, because usually it is not one yet.
+    It is reported as a measurement in a position that cannot be maintained.
+    """
+    for start, end in prose_spans(text):
+        if report.was_read(start, end):
+            continue
+        quoted = text[start:end].strip()
+        line = text.count("\n", 0, start) + 1
+        report.faults.append(
+            f"PROSE    line {line}: `{quoted}` is a length no gate can check;"
+            f" state it in the inventory or drop the number"
+        )
+
+
 def census_module(text: str) -> Path | None:
     """The module a document's census measures, or None if it measures a package.
 
@@ -1309,7 +1451,9 @@ INDEX_LINES = re.compile(
 )
 
 
-def index_claims(text: str, start: int, end: int) -> dict[str, re.Match[str]]:
+def index_claims(
+    text: str, start: int, end: int, report: Report | None = None
+) -> dict[str, re.Match[str]]:
     """The figures an index entry states, by name.
 
     Both are optional and most entries state one or neither: an entry is prose
@@ -1328,8 +1472,14 @@ def index_claims(text: str, start: int, end: int) -> dict[str, re.Match[str]]:
     if files is not None:
         claims["files"] = files
     lines = INDEX_LINES.search(text, start, end)
-    if lines is not None and not (lines.group(1) or lines.group(3)):
-        claims["lines"] = lines
+    if lines is not None:
+        # Marked even when hedged and dropped below: an entry that says
+        # `roughly 4 000 lines` was read and waived on purpose, so `PROSE`
+        # must not then report it as a figure nothing checks.
+        if report is not None:
+            report.mark(lines.span())
+        if not (lines.group(1) or lines.group(3)):
+            claims["lines"] = lines
     return claims
 
 
@@ -1374,7 +1524,7 @@ def audit_index_sections(text: str, report: Report) -> bool:
         if module is None:
             continue
         end = section.end(2)
-        claims = index_claims(text, section.start(2), end)
+        claims = index_claims(text, section.start(2), end, report)
 
         claim = claims.get("files")
         if claim is not None:
@@ -1454,6 +1604,81 @@ def perturb(
     return text[:at] + like(match.group(group), as_number(match.group(group)) + 1) + text[to:]
 
 
+def self_test_prose(documents: list[Path]) -> list[str]:
+    """Prove ``PROSE`` still reports a length written into a sentence.
+
+    The perturbation above raises a number and asks whether an audit notices.
+    That shape cannot exercise this fault, because a ``PROSE`` fault is not a
+    wrong number -- every figure in the corpus could be correct and the fault
+    would still be the right one to raise. So this perturbs the other way: it
+    *adds* a sentence carrying a length to a document that audits clean, and
+    requires exactly one new fault naming it.
+
+    Exactly one, not at least one, is the load-bearing part, and it is why the
+    document is chosen rather than taken. ``PROSE`` reports the figures no
+    other audit marked, so if the instrumentation in those audits stopped
+    recording spans, the document's own census and index figures would start
+    faulting and the count would jump. That only proves anything in a document
+    that *has* such figures: run against one whose every length sits in a
+    table, disabling every ``mark()`` call changes nothing and the case passes
+    while reading nothing. So the document picked is the clean one carrying the
+    most marked prose figures -- the one where the instrumentation is doing the
+    most work, and therefore the one where its absence shows.
+
+    The second case is the exemption, checked in the negative. ``120 lines
+    further down`` measures the document a reader is holding rather than a file
+    on disk, so there is nothing to re-measure it against and reporting it
+    would be a false positive. A gate held at a baseline of zero earns that
+    zero only if every fault it raises is real, which makes the exemption worth
+    as much as the rule -- and worth a test that fails if someone widens the
+    pattern past it.
+    """
+    best: tuple[int, Path, str] | None = None
+    for path in documents:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        report = audit_text(text, path)
+        if report is None or not report.clean:
+            continue
+        marked = sum(1 for s, e in prose_spans(text) if report.was_read(s, e))
+        if best is None or marked > best[0]:
+            best = (marked, path, text)
+
+    if best is None:
+        return ["prose length: no document audits clean, so nothing exercises it"]
+
+    marked, path, text = best
+    failures: list[str] = []
+    if marked == 0:
+        failures.append(
+            "prose length: no clean document carries a marked prose figure, so "
+            "nothing would notice if the audits stopped recording what they read"
+        )
+
+    reported = audit_text(text + "\n\nA sentence claiming 4242 lines.\n", path)
+    assert reported is not None
+    if len(reported.faults) != 1 or "4242" not in reported.faults[0]:
+        failures.append(
+            f"prose length: adding `4242 lines` to {path.name} produced "
+            f"{len(reported.faults)} faults, not one naming it -- either the "
+            f"rule stopped reading prose or an audit stopped marking what it read"
+        )
+    else:
+        print(f"  ok  prose length — caught in {path.name} ({marked} marked)")
+
+    exempt = audit_text(text + "\n\nSee 120 lines further down.\n", path)
+    assert exempt is not None
+    if not exempt.clean:
+        failures.append(
+            f"prose distance: adding `120 lines further down` to {path.name} "
+            f"raised {exempt.faults[0]}, but a count of lines used as a "
+            f"direction measures no file and must be exempt"
+        )
+    else:
+        print(f"  ok  prose distance exemption — held in {path.name}")
+
+    return failures
+
+
 def self_test() -> int:
     """Prove each audit still fails a document whose figures are wrong.
 
@@ -1503,9 +1728,12 @@ def self_test() -> int:
                 f"{audit_name} for it"
             )
 
+    failures += self_test_prose(documents)
+    families = len(SELF_TEST_CASES) + 1
+
     for failure in failures:
         print(f"  FAIL {failure}", file=sys.stderr)
-    print(f"\n{len(SELF_TEST_CASES) - len(failures)} of {len(SELF_TEST_CASES)} claim families still detected")
+    print(f"\n{families - len(failures)} of {families} claim families still detected")
     return 1 if failures else 0
 
 
