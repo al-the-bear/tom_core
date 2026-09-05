@@ -178,6 +178,37 @@
 
 ### Added
 
+- **Every module readme now names its doc page, its example and its tests, and a
+  test holds it to that (tcincb4_ahwq).** A module readme is where a reader
+  arrives from the source, and its closing pointer is their only route from
+  there to the prose that explains the module and the programs that demonstrate
+  it. Sixteen of the twenty modules carry a readme; eleven of those sixteen
+  closed at the quick start and the package backlink, and three of the five that
+  did point somewhere pointed incompletely — `authorization`, the shape the
+  others were written from, named one of its two examples and no test at all.
+  All fifteen are now uniform, and `scheduling/readme.md` also gained the
+  `---` / "Part of `tom_core_server`" footer it was missing.
+
+  `test/module_readme_pointers_test.dart` is what stops the split reopening. Per
+  readme it requires the doc page to be *linked*, something under
+  `example/<module>/` to be named, at least one `test/` path to be named, and
+  every backticked `doc/`, `example/` or `test/` path to resolve on disk —
+  against this package or the sibling `tom_core_kernel`, which `scheduling`
+  legitimately points into for the kernel's parameterised contract suite. The
+  path half is the part nothing else covered: the workspace's `check_doc_links`
+  gate reads the markdown link and `check_doc_source_paths` reads `**Source:**`
+  pointers, and neither sees the backticked example and test paths that make up
+  most of a pointer.
+
+  Three readmes claimed their own module suite runs the quick-start snippet.
+  Only `cmdline_test.dart` does; the rest run the example, and
+  `readme_quick_start_test.dart` runs the snippet. Corrected in `cache`,
+  `configuration` and `transactions`.
+
+  The four modules with no readme at all — `audit`, `export`, `file_storage`,
+  `resources` — are named in the same test's `_withoutReadme` map rather than
+  skipped, so that set can shrink but cannot silently grow.
+
 - **The committed reflection metadata can now be told current from stale
   (tcincb1_ahze).** `*.reflection.dart` is generated and committed, and nothing
   in Dart couples it to the sources it describes: adding a reflected class or an

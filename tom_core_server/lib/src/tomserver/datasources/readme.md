@@ -76,6 +76,19 @@ Future<void> main() async {
 > fails at the `connect()` line. Everything after that line, including the
 > close, is what a script that *does* reach a database must do.
 
+See [`doc/datasources.md`](../../../../doc/datasources.md) for the driver
+registry, the connection lifecycle and the transaction seam, and
+`example/datasources/datasources_example.dart` for a walkthrough of nine
+surfaces in order — SQL value boxing and parsing, literal rendering, bound
+parameters, the instant encoding, the clause builders and the classification of
+a failed write. Those are pure functions over their arguments, so unlike the
+snippet above the example runs green as it stands; the drivers and the registry
+are the part that needs a server, and the example says so rather than
+pretending otherwise. `test/datasources_test.dart` covers the module and also
+runs the example, requiring it to print every numbered step and no others;
+`test/datasources_db_test.dart` adds what only a live MariaDB can answer, and
+self-skips when none is reachable.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

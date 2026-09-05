@@ -56,6 +56,17 @@ await Future.wait([
 ]);
 ```
 
+See [`doc/transactions.md`](../../../../doc/transactions.md) for the
+participant contract, what a veto costs without a prepare phase, and how a
+request acquires its scope, and
+`example/transactions/transactions_example.dart` for a walkthrough
+that checks its own results against an in-memory participant, so it needs no
+database. `test/transactions_test.dart` covers the module, runs the example, and
+holds this readme, `doc/transactions.md` and the API summary to what
+`TomTransactionParticipant` actually declares — so a prepare phase added to the
+contract fails the suite rather than leaving four texts describing yesterday's
+answer. `test/readme_quick_start_test.dart` runs the snippet above.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

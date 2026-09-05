@@ -154,9 +154,14 @@ why this is not a mailer call, the open-channel decision, the one distinction a
 transport must get right, the SMTP conversation, the SMS gateway shape and its
 segment arithmetic, what "queued" guarantees, and the application template rule.
 The connection-free surface runs in
-`example/messaging/messaging_example.dart`, which
-`test/messaging_test.dart` executes and requires to exit 0; that same suite
-drives the SMTP and SMS protocols through their injectable seams.
+`example/messaging/messaging_example.dart` and, for the template layer, in
+`example/messaging/messaging_templated_example.dart` — `test/messaging_test.dart`
+executes both and requires them to exit 0, and that same suite drives the SMTP
+and SMS protocols through their injectable seams.
+`test/email_service_test.dart` and `test/sms_service_test.dart` cover the two
+application services, `test/sms_transport_test.dart` the gateway mapping and its
+segment arithmetic, and `test/readme_quick_start_test.dart` runs the snippet
+above.
 
 ---
 

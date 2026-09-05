@@ -46,8 +46,9 @@ const _spawnedByModuleTest = <String, String>{
 /// the defect this file exists to prevent, one level up. A reason is what
 /// separates "we decided not to" from "we forgot".
 const _notSpawnedHere = <String, String>{
-  // The scheduling cluster demo: three nodes that expect a live MariaDB and
-  // each other, started as a group rather than individually.
+  // The scheduling cluster demo: one node program run twice plus its two
+  // operator scripts, all expecting a live MariaDB and started as a group by
+  // `run_cluster_demo.sh` rather than individually.
   'example/scheduling/cluster/cluster_node.dart':
       'a cluster member: waits for peers and a shared database',
   'example/scheduling/cluster/cluster_provision.dart':

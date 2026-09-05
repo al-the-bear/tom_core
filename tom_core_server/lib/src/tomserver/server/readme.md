@@ -55,6 +55,16 @@ binds the socket** — visible as an unhandled asynchronous error at boot, since
 `start()` is fire-and-forget. A deployment that configures no credential skips
 the login and is unaffected.
 
+See [`doc/server.md`](../../../../doc/server.md) for the boot sequence, the
+middleware chain and the shutdown path, and
+`example/server/server_example.dart` for a walkthrough of the surface a
+deployment configures — it stops short of binding a socket, so unlike the
+fragment above it is a program that runs and terminates.
+`test/server_test.dart` covers the module and
+`test/server_self_login_test.dart` the credentialled boot described above,
+replacing the one JSON POST rather than running an auth server;
+`test/examples_test.dart` runs the example.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

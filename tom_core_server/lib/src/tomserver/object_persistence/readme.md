@@ -69,6 +69,17 @@ void main() {
 }
 ```
 
+See [`doc/object_persistence.md`](../../../../doc/object_persistence.md) for the
+mapping annotations, the repository contract, the query builder and paging, and
+`example/object_persistence/object_persistence_example.dart` for a sixteen-step
+walkthrough that checks its own results, with its entities beside it in
+`example/object_persistence/object_persistence_entities.dart`.
+`test/object_persistence_test.dart` covers the module and
+`test/object_persistence_db_test.dart` adds what only a live MariaDB can answer;
+`test/examples_test.dart` runs the example and
+`test/readme_quick_start_test.dart` runs the snippet above, so neither can drift
+away from the code.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

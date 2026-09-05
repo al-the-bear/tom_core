@@ -51,6 +51,16 @@ void main() {
 }
 ```
 
+See [`doc/little_things.md`](../../../../doc/little_things.md) for the isolate
+attribution, the zone-based request correlation and the shape of the error
+envelope, and `example/little_things/little_things_example.dart` for a
+connection-free walkthrough that checks its own results — including what follows
+from `TomLoginException` adding no members, which is that one
+`on TomServerException` clause reaches every server error.
+`test/little_things_test.dart` covers the module; `test/examples_test.dart`
+runs the example and `test/readme_quick_start_test.dart` runs the snippet above,
+so neither can drift away from the code.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

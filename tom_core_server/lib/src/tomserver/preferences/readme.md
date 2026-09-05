@@ -98,10 +98,22 @@ Future<void> main() async {
 > point at the missing step.
 
 The table the second step connects to is created by the framework migration
-`[1]-create_tom_user_preference.sql`, which is untagged so it applies in every
-environment. `test/user_preferences_db_test.dart` runs this same sequence
-against a live MariaDB — its `asSession` helper is the `runZoned` above, and
-its `setUpAll` is steps 1 and 2.
+`example/preferences/migrations/main/tomcore/[1]-create_tom_user_preference.sql`,
+which is untagged so it applies in every environment.
+
+See [`doc/preferences.md`](../../../../doc/preferences.md) for the key registry,
+the principal scoping and the endpoint surface. The module ships that migration
+rather than an example program, for the reason the note above gives: every step
+of the sequence needs reflection generated in the consuming package, a live
+database and an authenticated principal, so a `dart run` of it could only fail
+at its first line. The sequence is demonstrated instead by
+`test/user_preferences_db_test.dart`, which runs exactly it against a live
+MariaDB — its `asSession` helper is the `runZoned` above and its `setUpAll` is
+steps 1 and 2. `test/user_preferences_service_test.dart`,
+`test/user_preference_key_test.dart` and `test/user_preference_dto_test.dart`
+cover the module without a database,
+`test/user_preferences_endpoints_test.dart` the HTTP surface, and
+`test/user_preferences_roundtrip_db_test.dart` the store-and-read-back path.
 
 ---
 

@@ -231,6 +231,18 @@ Future<void> main() async {
 }
 ```
 
+See [`doc/authentication.md`](../../../../doc/authentication.md) for the two
+authentication passes, the 2FA handshake and the external-identity path. Four
+examples split the module along the seam described above:
+`example/authentication/authentication_example.dart` is the local login,
+`two_factor_enrolment_example.dart` and `two_factor_login_example.dart` the
+second factor either side of enrolment, and `oauth_login_example.dart` the
+external path — all four connection-free and checking their own results.
+`test/authentication_test.dart`, `test/two_factor_test.dart` and
+`test/oauth_test.dart` cover the module; `test/examples_test.dart` runs the four
+examples and `test/readme_quick_start_test.dart` runs the snippet above, so none
+of them can drift away from the code.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

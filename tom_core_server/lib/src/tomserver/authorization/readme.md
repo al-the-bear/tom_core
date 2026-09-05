@@ -89,8 +89,19 @@ Future<void> main() async {
 
 See [`doc/authorization.md`](../../../../doc/authorization.md) for the grade
 thresholds, the delegation modes and the request-scoped `runCached`, and
-`example/authorization/resource_data_scope_example.dart` for a runnable,
-connection-free walkthrough.
+`example/authorization/authorization_example.dart` and
+`example/authorization/resource_data_scope_example.dart` for runnable,
+connection-free walkthroughs of the grant model and of the row scope the
+fragment above installs. `test/authorization_test.dart` covers the module, with
+`test/graded_authorization_test.dart` on the thresholds,
+`test/column_authorization_test.dart` on field grades,
+`test/principal_delegation_test.dart` and
+`test/principal_resource_grant_test.dart` on delegation, and
+`test/data_scope_test.dart` / `test/resource_data_scope_test.dart` on the row
+scope — `test/resource_data_scope_db_test.dart` adds what only a live MariaDB
+can answer. `test/examples_test.dart` runs both examples and
+`test/readme_quick_start_test.dart` holds the fragment above to admitting that
+it is one.
 
 ---
 

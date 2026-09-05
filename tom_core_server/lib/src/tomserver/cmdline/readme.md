@@ -37,6 +37,12 @@ void main() {
 }
 ```
 
+See [`doc/cmdline.md`](../../../../doc/cmdline.md) for the argument grammar, the
+type coercion it applies and how a `.env` file merges with it, and
+`example/cmdline/cmdline_example.dart` for an eight-step walkthrough that checks
+its own results. `test/cmdline_test.dart` covers the module and also runs both
+the example and the snippet above, so neither can drift unnoticed.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

@@ -35,6 +35,15 @@ void main() {
 }
 ```
 
+See [`doc/configuration.md`](../../../../doc/configuration.md) for the source
+precedence, the typed key wrappers and the loader hook, and
+`example/configuration/configuration_example.dart` for a twelve-step walkthrough
+that checks its own results — beginning with the loader hook, because a provider
+installed after the first read is a provider that read did not see.
+`test/configuration_test.dart` covers the module and also runs the example;
+`test/readme_quick_start_test.dart` runs the snippet above, so neither can drift
+unnoticed.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

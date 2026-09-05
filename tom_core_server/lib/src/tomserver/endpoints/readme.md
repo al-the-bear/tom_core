@@ -91,6 +91,19 @@ in `test/fixtures/reflection_fixture.dart`, which
 to still match, so "it works" here is a checked claim rather than a promise
 about a snippet that could quietly drift away from the thing being tested.
 
+See [`doc/endpoints.md`](../../../../doc/endpoints.md) for the annotation set,
+the request pipeline and the serialization contract, and
+`example/endpoints/endpoints_example.dart` for a walkthrough of the route table
+and the pipeline stages — its entities live beside it in
+`example/endpoints/endpoints_entities.dart`, which
+`example/example_reflection.dart` imports so that the generator root reaches
+them and the scan can see their annotations.
+`test/endpoints_test.dart` covers the route table,
+`test/endpoints_pipeline_test.dart` serves it over a real socket,
+`test/endpoints_transport_test.dart` the transport and
+`test/endpoints_serialization_roundtrip_test.dart` the wire shapes;
+`test/examples_test.dart` runs the example.
+
 ---
 
 Part of [`tom_core_server`](../../../../README.md) — see the package README for

@@ -152,3 +152,25 @@ yields a *local* `DateTime`; since `DateTime.==` compares `isUtc` as well as the
 instant, a UTC value would not compare equal to the value read back. A caller
 that writes a local `DateTime` gets a UTC one back — the same instant,
 differently labelled.
+
+See [`doc/scheduling.md`](../../../../doc/scheduling.md) for the two ports, the
+claim protocol and the roll call, and
+`example/scheduling/scheduling_example.dart` for a walkthrough that checks its
+own results without a database. The arbitration this module exists for happens
+*between* processes and so cannot be shown inside one, which is why the cluster
+has an example of its own: `example/scheduling/cluster/` runs two real nodes
+against a live MariaDB through
+`example/scheduling/cluster/run_cluster_demo.sh` (Docker required). It asserts
+one execution per window across the pair, a stale fencing token no longer
+authorising a write, a killed node's run returning to the queue when its lease
+expires and not before, and a node that stops checking in being named failed.
+`test/scheduling_db_test.dart` runs the kernel's parameterised contract suite
+against both stores, `test/scheduling_cluster_test.dart` covers the roll call and
+`test/scheduling_schema_test.dart` holds the DDL and the shipped migrations
+together; `test/examples_test.dart` runs the single-process example and states
+why it spawns none of the cluster's own programs.
+
+---
+
+Part of [`tom_core_server`](../../../../README.md) — see the package README for
+installation, the full module map, and ecosystem context.
