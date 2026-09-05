@@ -31,6 +31,8 @@
 ///
 /// Intended use: any time a demo is rebuilt or a layout primitive changes,
 /// rerun this file and diff the PNGs to see the visual impact.
+// intentionally-not-discovered: a manual PNG-generation tool, not a
+// regression gate — see the reason in the library comment above.
 library;
 
 import 'dart:io';

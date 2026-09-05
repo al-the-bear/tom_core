@@ -41,6 +41,9 @@
 /// identity, so this suite asserts against re-read state (`all()`,
 /// `findWindow()`) wherever the distinction could bite. That is a narrowing of
 /// the *tests*, not of the contract.
+// intentionally-not-discovered: a shared contract suite, not a suite of
+// its own. Each importing *_test.dart calls it once per implementation, so
+// a *_test.dart name here would run it a further time against nothing.
 library;
 
 import 'package:test/test.dart';
