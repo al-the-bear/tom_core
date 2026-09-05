@@ -527,9 +527,10 @@ parameter is ignored** rather than rejected, because a real request carries
 parameters this class has no field for — a multipart boundary always does. A
 charset the header does not state stays `null` rather than defaulting to
 `UTF-8`, which makes the factory the exact inverse of `toHeaderValue`:
-`TomMimeType.parse(x.toHeaderValue()) == x` for every value. Throws
-`TomMimeTypeException` when the media type is not `primary/sub` with both parts
-present.
+`TomMimeType.parse(x.toHeaderValue()) == x` for every value. The media type
+keeps the case the header used — matching folds case, the fields do not, so
+echoing them back reproduces what arrived. Throws `TomMimeTypeException` when the
+media type is not `primary/sub` with both parts present.
 
 ##### Static Properties
 
@@ -561,22 +562,22 @@ present.
 | `subType` | `String` | The subtype (e.g. `"json"`, `"html"`, `"png"`). |
 | `charset` | `String?` | Optional charset for text-based types (e.g. `"UTF-8"`). |
 | `codecs` | `List<String>` | Optional codecs for media types (e.g. for video). |
-| `isText` | `bool` | Whether this MIME type represents text-based content (all `text/*`, `application/json` / `xml` / `javascript`, and `+json` / `+xml` suffixes). |
-| `hashCode` | `int` | *(override)* Hash over primary type, subtype, charset and codec *contents* — exactly the fields `operator ==` compares, so equal values share a hash bucket. |
+| `isText` | `bool` | Whether this MIME type represents text-based content (all `text/*`, `application/json` / `xml` / `javascript`, and `+json` / `+xml` suffixes). Case-insensitive. |
+| `hashCode` | `int` | *(override)* Hash over primary type, subtype, charset and codec *contents* — exactly the fields `operator ==` compares, under the same case rule (media type and charset folded to lower case, codecs verbatim), so equal values share a hash bucket. |
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `toHeaderValue` | `String toHeaderValue()` | The value to use for the `Content-Type` header (including charset and codecs when set). |
-| `isEqualType` | `bool isEqualType(TomMimeType other)` | Whether this MIME type has the same primary and sub type as `other` (ignores charset/codecs). |
+| `isEqualType` | `bool isEqualType(TomMimeType other)` | Whether this MIME type has the same primary and sub type as `other` (ignores charset/codecs; case-insensitive, per RFC 2045 §5.1). |
 | `toString` | `String toString()` | *(override)* Human-readable rendering including charset and codecs. |
 
 ##### Operators
 
 | Operator | Signature | Description |
 | -------- | --------- | ----------- |
-| `operator ==` | `bool operator ==(Object other)` | *(override)* Whole-value equality: equal when primary type, subtype, charset **and** codecs all match. Parameters are part of identity because they change how the bytes are read. Use `isEqualType` to match a declared constant against a real `content-type`, which carries parameters the declaration never named. |
+| `operator ==` | `bool operator ==(Object other)` | *(override)* Whole-value equality: equal when primary type, subtype, charset **and** codecs all match. Parameters are part of identity because they change how the bytes are read. Media type and charset match case-insensitively (RFC 2045 §5.1); codecs do not, since an RFC 6381 codec string encodes profile and level as hex. Use `isEqualType` to match a declared constant against a real `content-type`, which carries parameters the declaration never named. |
 
 #### StaticFileMimetypeMapping
 

@@ -466,6 +466,17 @@ void main() {
         expect(parsed.charset, isNull);
       });
 
+      test('echoes the media type as the sender spelled it', () {
+        // Equality sees through case; the *fields* do not rewrite it. A caller
+        // that reads a header and echoes it back reproduces what it received,
+        // which is the same rule this module already applies to a charset.
+        final parsed = TomMimeType.parse('TEXT/HTML;charset=UTF-8');
+
+        expect(parsed.primaryType, equals('TEXT'));
+        expect(parsed.subType, equals('HTML'));
+        expect(parsed.toHeaderValue(), equals('TEXT/HTML;charset=UTF-8'));
+      });
+
       test(
         'still rejects a media type with multiple slashes and parameters',
         () {
@@ -518,6 +529,16 @@ void main() {
 
       test('should return false for multipart types', () {
         expect(TomMimeType.multipartFormData.isText, isFalse);
+      });
+
+      test('recognises a text type whatever case it is spelled in', () {
+        // The same case-insensitivity the comparisons apply: deciding whether a
+        // body is text is exactly the question that arises after reading a
+        // header somebody else wrote.
+        expect(TomMimeType.parse('TEXT/HTML').isText, isTrue);
+        expect(TomMimeType.parse('Application/JSON').isText, isTrue);
+        expect(TomMimeType.parse('APPLICATION/VND.API+XML').isText, isTrue);
+        expect(TomMimeType.parse('APPLICATION/PDF').isText, isFalse);
       });
     });
 
@@ -688,6 +709,48 @@ void main() {
           expect({left, right}, hasLength(1));
         },
       );
+
+      test('matches a media type spelled in a different case', () {
+        // RFC 2045 §5.1 makes the type and subtype case-insensitive, so a
+        // server writing `TEXT/HTML` names the constant's media type. Hashing
+        // has to agree or the value is equal but unfindable in a set or map.
+        final shouted = TomMimeType.parse('TEXT/HTML;charset=UTF-8');
+
+        expect(shouted == TomMimeType.html, isTrue);
+        expect(shouted.hashCode, equals(TomMimeType.html.hashCode));
+        expect({TomMimeType.html, shouted}, hasLength(1));
+        expect({TomMimeType.html: 'v'}[shouted], equals('v'));
+      });
+
+      test('matches a charset spelled in a different case', () {
+        // `charset=utf-8` and `charset=UTF-8` name one encoding. The charset is
+        // part of identity, so equality has to see through its spelling the
+        // same way it does through the media type's.
+        final lower = TomMimeType.parse('application/json;charset=utf-8');
+
+        expect(lower == TomMimeType.json, isTrue);
+        expect(lower.hashCode, equals(TomMimeType.json.hashCode));
+      });
+
+      test('keeps codecs case-sensitive, because their case is data', () {
+        // RFC 6381 codec strings are not case-insensitive: `avc1.42E01E`
+        // encodes profile and level as hex, so folding the case would merge
+        // two values that describe different streams.
+        const upper = TomMimeType(
+          'video',
+          'mp4',
+          charset: null,
+          codecs: ['avc1.42E01E'],
+        );
+        const lower = TomMimeType(
+          'video',
+          'mp4',
+          charset: null,
+          codecs: ['avc1.42e01e'],
+        );
+
+        expect(upper == lower, isFalse);
+      });
     });
 
     group('isEqualType', () {
@@ -700,6 +763,23 @@ void main() {
 
       test('should return false for different types', () {
         expect(TomMimeType.json.isEqualType(TomMimeType.xml), isFalse);
+      });
+
+      test('ignores the case of the media type', () {
+        // This is the comparison the server reaches for when matching an
+        // incoming `content-type` against a declared constant
+        // (`tomConsumesForm`), so a case-sensitive version leaves the caller no
+        // escape hatch at all.
+        expect(
+          const TomMimeType('TEXT', 'HTML').isEqualType(TomMimeType.html),
+          isTrue,
+        );
+        expect(
+          TomMimeType.parse(
+            'Multipart/Form-Data; boundary=x',
+          ).isEqualType(TomMimeType.multipartFormData),
+          isTrue,
+        );
       });
     });
   });

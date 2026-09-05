@@ -65,6 +65,16 @@ class TomMimeTypeException extends TomException {
 /// is the one to use against an incoming `content-type`: a real request carries
 /// parameters the declaration never named.
 ///
+/// Both comparisons are **case-insensitive** in the media type and the charset,
+/// because RFC 2045 §5.1 is: `TEXT/HTML` and `text/html` name one type, as do
+/// `charset=utf-8` and `charset=UTF-8`. Codecs are compared verbatim — an RFC
+/// 6381 codec string encodes profile and level as hex, so its case is data.
+///
+/// The fields themselves keep the spelling they were given; only the
+/// comparisons fold case. A value read from a header therefore renders back the
+/// header it came from, which is the same rule this class already applies to a
+/// charset.
+///
 /// ## Example
 ///
 /// ```dart
@@ -197,6 +207,10 @@ class TomMimeType {
   /// factory the exact inverse of [toHeaderValue]:
   /// `TomMimeType.parse(x.toHeaderValue()) == x` for every value.
   ///
+  /// The media type keeps the case the header used, so echoing the fields back
+  /// reproduces what arrived. Matching is unaffected: [operator ==] and
+  /// [isEqualType] fold case, so `TEXT/HTML` still equals [html].
+  ///
   /// Throws [TomMimeTypeException] if the media type is not `primary/sub` with
   /// both parts present.
   ///
@@ -273,9 +287,13 @@ class TomMimeType {
   /// - All `text/*` types
   /// - `application/json`, `application/xml`, `application/javascript`
   /// - Types with `+json` or `+xml` suffix
+  ///
+  /// Case-insensitive, like the comparisons: the question arises after reading
+  /// a header somebody else wrote, and `TEXT/HTML` is still text.
   bool get isText {
-    if (primaryType == 'text') return true;
-    if (primaryType == 'application') {
+    final pt = primaryType.toLowerCase();
+    if (pt == 'text') return true;
+    if (pt == 'application') {
       final st = subType.toLowerCase();
       // Common text-like app types and structured syntax suffixes.
       return st == 'json' ||
@@ -316,12 +334,16 @@ class TomMimeType {
   /// only the media type matters — matching a declared constant against the
   /// `content-type` of a real request, which always carries parameters the
   /// declaration does not name.
+  ///
+  /// The media type and the charset compare case-insensitively (RFC 2045 §5.1);
+  /// codecs do not, because an RFC 6381 codec string encodes profile and level
+  /// as hex and folding it would merge different streams.
   @override
   bool operator ==(final Object other) {
     if (identical(this, other)) return true;
     if (other is! TomMimeType) return false;
     if (!isEqualType(other)) return false;
-    if (charset != other.charset) return false;
+    if (charset?.toLowerCase() != other.charset?.toLowerCase()) return false;
     if (codecs.length != other.codecs.length) return false;
     for (var i = 0; i < codecs.length; i++) {
       if (codecs[i] != other.codecs[i]) return false;
@@ -336,19 +358,30 @@ class TomMimeType {
   /// constant against an incoming `content-type`: a real request carries a
   /// boundary or a charset the declaration never named, so whole-value equality
   /// would never match.
+  ///
+  /// Case-insensitive, per RFC 2045 §5.1. This is the comparison a server runs
+  /// against a header it did not write, so it is the one that has to see through
+  /// a `TEXT/HTML` a peer chose to shout.
   bool isEqualType(TomMimeType other) {
-    return primaryType == other.primaryType && subType == other.subType;
+    return primaryType.toLowerCase() == other.primaryType.toLowerCase() &&
+        subType.toLowerCase() == other.subType.toLowerCase();
   }
 
   /// Hashes exactly the fields [operator ==] compares, as the contract requires.
   ///
-  /// [codecs] goes through [Object.hashAll] rather than into [Object.hash]
-  /// directly: a `List` hashes by identity, so two values with equal codec
-  /// content would land in different buckets while comparing equal — a
-  /// `Set` would hold both and a `Map` lookup would miss.
+  /// The media type and charset are folded to lower case first, so two values
+  /// that differ only in spelling — which compare equal — also land in one
+  /// bucket. [codecs] goes through [Object.hashAll] rather than into
+  /// [Object.hash] directly: a `List` hashes by identity, so two values with
+  /// equal codec content would land in different buckets while comparing equal —
+  /// a `Set` would hold both and a `Map` lookup would miss.
   @override
-  int get hashCode =>
-      Object.hash(primaryType, subType, charset, Object.hashAll(codecs));
+  int get hashCode => Object.hash(
+    primaryType.toLowerCase(),
+    subType.toLowerCase(),
+    charset?.toLowerCase(),
+    Object.hashAll(codecs),
+  );
 }
 
 // =============================================================================

@@ -80,6 +80,14 @@ class ConnectionConfigExample {
     final jsonMatch = jsonMime.isEqualType(parsedJson);
     print('   - JSON constants match parsed: $jsonMatch');
 
+    // A peer may shout its media type: RFC 2045 makes the type and subtype
+    // case-insensitive, so both comparisons see through the spelling while the
+    // fields still echo the header the way it arrived.
+    final shouted = TomMimeType.parse('TEXT/HTML;charset=utf-8');
+    final shoutedMatch = shouted == htmlMime;
+    print('   - TEXT/HTML equals text/html: $shoutedMatch');
+    print('   - ...rendered back as: ${shouted.toHeaderValue()}');
+
     // Text detection
     final jsonIsText = jsonMime.isText;
     final pdfIsText = pdfMime.isText;
@@ -90,6 +98,12 @@ class ConnectionConfigExample {
 
     // Assertions
     assert(jsonMatch == true, 'JSON types should match');
+    assert(shoutedMatch == true, 'Media types compare case-insensitively');
+    assert(
+      shouted.toHeaderValue() == 'TEXT/HTML;charset=utf-8',
+      'The fields keep the spelling the header used',
+    );
+    assert(shouted.isText == true, 'TEXT/HTML is still text');
     assert(htmlIsText == true, 'HTML should be text');
     assert(pdfIsText == false, 'PDF should not be text');
   }

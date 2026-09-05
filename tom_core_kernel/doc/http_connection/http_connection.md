@@ -349,8 +349,32 @@ declared == arrived;              // false — the charsets differ
 declared.isEqualType(arrived);    // true  — the same media type
 ```
 
-`hashCode` covers exactly the fields `==` compares, so equal values collapse in
-a `Set` and answer a `Map` lookup.
+Both comparisons fold **case** in the media type and the charset, because
+RFC 2045 §5.1 makes them case-insensitive. A peer that writes `TEXT/HTML` or
+`charset=utf-8` names the same thing as the constant, and neither comparison may
+answer otherwise — `isEqualType` least of all, since it is the one a server runs
+against a header it did not write:
+
+```dart
+TomMimeType.parse('TEXT/HTML;charset=utf-8') == TomMimeType.html;  // true
+```
+
+Codecs are the exception: they compare verbatim, because an RFC 6381 codec
+string encodes profile and level as hex, so `avc1.42E01E` and `avc1.42e01e` are
+not interchangeable.
+
+The **fields** keep the spelling they were given — only the comparisons fold
+case — so a value read from a header renders that header back:
+
+```dart
+TomMimeType.parse('TEXT/HTML').subType;        // 'HTML'
+TomMimeType.parse('TEXT/HTML').toHeaderValue(); // 'TEXT/HTML'
+```
+
+`isText` follows the same rule: `TEXT/HTML` is text.
+
+`hashCode` covers exactly the fields `==` compares, under exactly the same
+case rule, so equal values collapse in a `Set` and answer a `Map` lookup.
 
 #### Typing a Static File
 
