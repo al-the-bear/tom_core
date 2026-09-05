@@ -113,7 +113,7 @@
     "check_section_refs": {
       "faults": 0,
       "measured": "2026-09-04",
-      "note": "Zero, and held there. Every shipped lib/, test/ and example/ comment either says what it means in its own words or names the document its section number belongs to -- in practice always doc/acl_design_specification.md or doc/tom_ui_list_forms.md, both of which ship with the package. A bare '§7.2' or 'Phase 2a §16' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure."
+      "note": "Zero, and held there. Every shipped lib/, test/ and example/ comment either says what it means in its own words or names the document its section number belongs to -- in practice always doc/acl_design_specification.md or doc/tom_ui_list_forms.md, both of which ship with the package. A bare '§7.2' or 'Phase 2a §16' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure. Zero means something only because the gate also refuses the *marked* form -- 'bug §77', 'tests §61(e)' -- outright, before it asks whether a document is in view. Proximity cannot judge that shape: a comment may open with a pointer into a backlog and go on to cite a real document two lines below, and the citation would otherwise vouch for the pointer. Naming a work item is naming something the reader cannot open, so it is a fault whatever else is on the page."
     },
     "check_shared_chrome": {
       "faults": 0,

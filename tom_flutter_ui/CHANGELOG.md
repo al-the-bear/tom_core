@@ -238,6 +238,26 @@
 
 ### Fixed
 
+- **A comment in `widget_base_malformed_type_test.dart` opened by pointing at a
+  quest backlog, and the repo-wide gate could not see it.** The line read
+  `bug §77 / tests §61(e):` — two numbers indexing lists that ship with neither
+  the package nor its tests, so no reader of either can resolve them.
+
+  It survived `tool/check_section_refs.py` for an instructive reason. That gate
+  accepts a section number when a document is named *in view* of it — the same
+  line, or an adjacent line in the same comment block — because a citation split
+  across a line wrap is still one sentence. Two lines below, this comment cites
+  `doc/widget_base.md`, which is a real document and a correct citation, made by
+  a different sentence. Proximity vouched for the pointer.
+
+  The comment now states the rule it was gesturing at: the resolvers' tolerance
+  has to cover an entry that is present but of the wrong runtime type, not only
+  one that is absent. The gate learned the distinction proximity cannot draw — a
+  number whose nearest preceding word is `bug`, `tests`, `gap`, `phase`, `step`,
+  `item`, `plan` or `todo` names a backlog rather than a document, and is a fault
+  whatever else is on the page. Genuine citations are untouched, wrapped ones
+  included, because a citation names something the reader can open.
+
 - **The barrel rule's exemption list was granted per file, not per import.**
   A test may reach into `lib/src` only where the barrel cannot express what it
   needs, and `package_barrel_test.dart` records each such file with its reason.

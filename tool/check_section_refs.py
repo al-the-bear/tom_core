@@ -86,6 +86,24 @@ one of them was correct prose. A gate that fails correct work is a gate that
 gets switched off, so the question it asks is now the one that matters to the
 reader: *can I see, from here, which document this indexes?* A bare ``bug §75``
 still cannot be resolved from anywhere and is still a fault.
+
+**Why a work-item marker overrides everything in view.** Widening the question
+to "is a document named nearby" made one shape invisible, and it is the shape
+this gate exists for. A comment that opens ``bug §77 / tests §61(e):`` and then
+cites ``doc/widget_base.md`` two lines down has a document in view of the
+number -- so the number resolved, against a document it does not index. That is
+the *plausible and wrong* landing the widened scope was introduced to catch,
+arriving through the mechanism that widened it.
+
+No proximity rule can decide this case, because proximity is exactly what is
+misleading: the document is genuinely there and genuinely cited, just by a
+different sentence. What settles it is the word immediately left of the sign.
+``bug``, ``tests``, ``gap`` and their siblings name a *work item* -- a list in a
+quest plan -- and a work item is never a document a reader can open. So a
+number introduced by one of them is a fault whatever else is on the page, and
+the check runs before the three resolutions rather than after them. It cannot
+fire on a citation, since a citation names a document rather than a backlog:
+``codespecs_mapping.md §5.16`` and ``RFC 7636 §1`` are untouched by it.
 """
 
 from __future__ import annotations
@@ -147,6 +165,20 @@ NAMED_SOURCE = re.compile(
 #: ``.md`` in prose about the format does not resolve anything.
 DOCUMENT_NAME = re.compile(
     r"([\w./-]+\.md|RFC\s*\d+|CodeSpecs|OIDC Core)",
+    re.IGNORECASE,
+)
+
+#: A word that names a *work item* rather than a document, sitting immediately
+#: left of the sign. Anchored at the end, so only the nearest token counts:
+#: ``Phase 2a §16`` is not matched, because ``2a`` stands between the word and
+#: the sign and the reference is then bare rather than marked.
+#:
+#: These are the lists a quest plan keeps -- bugs, tests, gaps, phases, steps --
+#: and none of them is something a reader of the package can open. A number
+#: introduced by one is therefore unresolvable by construction, which is why
+#: [unresolved] consults this before asking whether a document is in view.
+WORK_ITEM_MARKER = re.compile(
+    r"\b(bugs?|tests?|gaps?|phases?|steps?|items?|plans?|todos?)\s*$",
     re.IGNORECASE,
 )
 
@@ -237,7 +269,13 @@ def unresolved(path: Path) -> list[tuple[int, str]]:
             # The heading declares a section; it does not reference one.
             continue
         for match in REFERENCE.finditer(line):
-            if NAMED_SOURCE.search(line[: match.start()]):
+            left = line[: match.start()]
+            if WORK_ITEM_MARKER.search(left):
+                # Named its list, which is not a document. Nothing in view can
+                # make that resolvable, so the three resolutions do not apply.
+                faults.append((index + 1, line.strip()))
+                break
+            if NAMED_SOURCE.search(left):
                 continue
             if match.group(1) in sections:
                 continue

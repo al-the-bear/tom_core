@@ -3,14 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// bug §77 / tests §61(e): the JSON style/resource resolvers advertise a tolerant
-// contract (doc/widget_base.md: "skip unrecognised values … rather than an
-// error"), but several sites read a present map/list entry through an unchecked
-// `as` cast that throws an uncaught CastError when the value is present but of
-// the wrong runtime type. These tests feed present-but-wrong-type entries and
-// assert the resolver degrades gracefully (skips the bad value) instead of
-// throwing — i.e. a single mistyped config entry must not take down the whole
-// widget build.
+// The JSON style and resource resolvers advertise a tolerant contract
+// (`doc/widget_base.md`: "skip unrecognised values … rather than an error"),
+// and tolerance has to cover the entry that is present but of the *wrong
+// runtime type*, not only the entry that is absent. Reading such an entry
+// through an unchecked `as` cast throws a CastError out of the widget build,
+// which would let one mistyped config entry take down the whole build. These
+// tests feed present-but-wrong-type entries and assert that the resolver
+// degrades gracefully — skips the bad value — instead of throwing.
 //
 // Each case pairs the mistyped entry with a usable one, because "skips the bad
 // value" is only observable next to a value that survived. A map whose *every*
@@ -23,10 +23,10 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // says a bad element costs its own slot and nothing else, so `['x', 2]` is
 // still a vertical inset of 2. **Nothing-contributed** says a shape out of
 // which no slot could be read is not a value at all, so `['x']` and
-// `{'all': 'x'}` are `null` rather than `EdgeInsets.zero`. `parseEdgeInsets`
-// used to answer zero in the second case, which a caller writing `?? fallback`
-// could not tell from a deliberate "no padding"; it now holds both rules at
-// every list length and for the map form.
+// `{'all': 'x'}` are `null` rather than `EdgeInsets.zero`. Answering zero
+// there would be indistinguishable, to a caller writing `?? fallback`, from a
+// deliberate "no padding", so `parseEdgeInsets` holds both rules at every list
+// length and for the map form.
 
 void main() {
   setUpAll(() {
