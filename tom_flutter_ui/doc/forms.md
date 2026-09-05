@@ -110,6 +110,23 @@ every resolution — skipping the group layer in particular is a severe bug,
 because a group is the only thing that can restore a state an earlier layer
 withheld.
 
+Layers 1 and 2 resolve in the same frame. A field records the `TomScope` it was
+built in as `constructionScope` — the form's scope, or the ambient one when it
+has no form — and derives both `basePath` (`<frame>.<formId>.<tomId>`) and the
+group path (`<frame>.<groupId>`) from it. They are a `<prefix>.<id>` pair, so a
+prefix that differed between them would look up a ceiling belonging to some
+other member. Capturing the frame rather than reading `TomScope.current` per
+lookup is what makes the answer the same wherever it is read from: a field is a
+long-lived object consulted from screens, from its group's inspection and from
+tests alike.
+
+The frame is one segment shallower than the field's own path on purpose. A form
+is both a field container and a `TomActionController`, so a single group
+routinely holds a field and an action of the same form; the `formId` is the
+field's namespace within the frame, exactly as the controller id is the
+action's in `TomAction.canonicalPath`, and both members therefore land on one
+ceiling.
+
 ## Validation
 
 `Validators` is a static factory of `TomValidator<T>` functions — each is a

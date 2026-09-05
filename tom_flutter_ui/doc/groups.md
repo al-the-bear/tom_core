@@ -295,6 +295,21 @@ ceiling this member was supposed to be under.
 argument and fall back to `TomScope.current`, so a caller standing in the frame
 it is asking about passes nothing.
 
+Every kind of member names its frame the same way, and none of them relies on
+that fallback: a widget uses `effectiveScope`, a `TomAction` its
+`constructionScope` (its own `scope` or the controller's), and a `TomField` its
+`constructionScope` (its form's, or the ambient scope when it has no form).
+Each is captured when the member is built, because a member is a long-lived
+object and only the zone it was built in describes where it actually lives —
+reading the ambient zone per lookup would make the ceiling depend on where the
+*reader* stands.
+
+For an action and a form field the frame is the controller's or the form's, one
+segment shallower than the member's own path: the controller id and the form id
+are the member's **namespace** within the frame, not its location. That is what
+lets one group hold a form's field and that same form's action and mean one
+ceiling for both.
+
 ## Dependencies
 
 - `package:flutter/widgets.dart` — `Widget`, `BuildContext`, the visual

@@ -614,18 +614,41 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     this.onActionIconPressed,
   }) : _codeValidators = validators,
        super(_initialValue) {
-    // When the field knows its form, derive scope from the form's
-    // basePath — so a field can be instantiated at its declaration site
-    // (e.g. `late final x = TomFormStringInput('x', '', form: this)`)
-    // and still end up with a basePath that includes the form's formId,
-    // regardless of whatever TomScope.current happens to carry when the
-    // late initializer fires (typically during reflection-driven member
-    // enumeration, where only the outer scope is pushed).
-    scope = form != null ? form!.basePath : TomScope.current.getScopePath();
+    // A field takes its frame from its form, not from the zone the late
+    // initializer happens to fire in: `late final x = TomFormStringInput(...,
+    // form: this)` runs during reflection-driven member enumeration, where
+    // only the outer scope is pushed.
+    constructionScope = form?.constructionScope ?? TomScope.current;
+    scope = form == null
+        ? constructionScope.getScopePath()
+        : TomScopePath.qualify(form!.formId, constructionScope);
     basePath = TomScopePath.join(scope, tomId);
     tomGroup?.register(this);
   }
 
+  /// The frame this field resolves in: its form's
+  /// [TomForm.constructionScope], or the ambient scope when it has no form.
+  ///
+  /// Named once and read everywhere, because [basePath] and the group path
+  /// are a `<prefix>.<id>` pair and a prefix that differs between them looks
+  /// up a ceiling belonging to some other member. Capturing it at
+  /// construction — rather than reading [TomScope.current] per lookup, as the
+  /// group composition used to — is what makes the answer independent of
+  /// where it is read from: a field is a long-lived object consulted from
+  /// screens, from its group's inspection and from tests alike, and only the
+  /// zone it was built in describes where it actually lives.
+  ///
+  /// It is the **form's** frame, not the form's [TomForm.basePath]. A form is
+  /// both a field container and a [TomActionController], so one group
+  /// routinely holds a field and an action of the same form; resolving the
+  /// field's group one segment deeper would give that single group two
+  /// different ceilings depending on which member asked. The form id stays in
+  /// [basePath] as the field's namespace, exactly as the controller id does
+  /// in [TomAction.canonicalPath].
+  late final TomScope constructionScope;
+
+  /// The path prefix [basePath] is built on: `<frame>.<formId>` for a field
+  /// that has a form, the frame alone for one that does not.
   late String scope;
   late final String basePath;
 
@@ -809,16 +832,17 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     var state = TomAuthorization.resolveAuth(basePath);
 
     // 2. Group auth (CRITICAL — must not be skipped)
+    // The group is resolved in the frame [basePath] was built from. Read
+    // against the ambient scope instead, the ceiling lands on whichever
+    // same-named group the *reader* happens to stand in — or, at the root, on
+    // no group rule at all.
     if (tomGroup != null) {
-      state = tomGroup!.applyMode(state);
+      state = tomGroup!.applyMode(state, constructionScope);
     }
 
     // 3. Form auth (narrows)
     if (form != null) {
-      final formPath = form!.scopePath.isNotEmpty
-          ? '${form!.scopePath}.${form!.formId}'
-          : form!.formId;
-      state = state.narrow(TomAuthorization.resolveAuth(formPath));
+      state = state.narrow(TomAuthorization.resolveAuth(form!.basePath));
     }
 
     // 4. Per-widget authorizer

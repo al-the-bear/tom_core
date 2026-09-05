@@ -385,13 +385,16 @@ All form fields extend `TomField<T>`, which extends `TomObject<T>`:
 ///                The `<suffix>` half of every resource key of the form
 ///                `"$basePath.<suffix>"`.
 ///   - `basePath` — scope-prefixed full path, e.g. `"demoC.customer.email"`.
-///                  Built from either `form.basePath` (when `form:` is
-///                  passed) or `TomScope.current.getScopePath()` otherwise.
+///                  Built inside `constructionScope`, adding the form id as a
+///                  namespace segment when `form:` is passed.
 abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   @override
   String tomId;
   TomForm? form;
   T _initialValue;
+
+  /// The frame this field resolves in — its own path and its group's alike.
+  late final TomScope constructionScope;
   late final String scope;
   late final String basePath;
 
@@ -423,15 +426,16 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     this.uiStateController,
   })  : _initialValue = initialValue,
         super(initialValue) {
-    // Prefer the owning form's basePath — lets a field be instantiated at
-    // its declaration site (`late final x = TomFormStringInput('x', '',
+    // Inherit the form's frame — lets a field be instantiated at its
+    // declaration site (`late final x = TomFormStringInput('x', '',
     // form: this)`) and still anchor on the right scope regardless of
     // whatever TomScope.current carries at lazy-init time. Falls back to
     // the ambient zone scope when `form` is omitted.
-    scope = form != null
-        ? form!.basePath
-        : TomScope.current.getScopePath();
-    basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
+    constructionScope = form?.constructionScope ?? TomScope.current;
+    scope = form == null
+        ? constructionScope.getScopePath()
+        : TomScopePath.qualify(form!.formId, constructionScope);
+    basePath = TomScopePath.join(scope, tomId);
   }
 
   // --- Value tracking ---
@@ -2820,28 +2824,43 @@ Full path: `shoppingApp.checkout.addressForm.billingAddress.email.label`
 
 ### basePath Resolution
 
-Forms and fields resolve their basePath at construction time. Forms always
-read the ambient `TomScope.current`; fields prefer the owning form's
-basePath when `form:` is passed:
+Forms and fields resolve their basePath at construction time, and each one
+first names the **frame** it stands in — the `TomScope` every path it produces
+comes out of. A form reads the ambient `TomScope.current`; a field inherits its
+form's frame, or reads the ambient scope when it has no form:
 
 ```dart
 // TomForm
+scope = TomScope.current;
 basePath = TomScopePath.qualify(formId, scope);
 
-// TomField — when form: is passed, anchor on form.basePath so the field
-// can be declared at its class-level `late final x = TomFormStringInput(
-//   'x', '', form: this, ...)` without relying on TomScope.current to
-// carry the form's formId at lazy-init time.
-scope = form != null
-    ? form!.basePath
-    : TomScope.current.getScopePath();
+// TomField — the form's frame, not the form's basePath. The field is often
+// declared at its class-level `late final x = TomFormStringInput('x', '',
+// form: this, ...)`, which fires during reflection-driven member enumeration
+// where only the outer scope is pushed, so TomScope.current is the wrong
+// answer there.
+constructionScope = form?.constructionScope ?? TomScope.current;
+scope = form == null
+    ? constructionScope.getScopePath()
+    : TomScopePath.qualify(form!.formId, constructionScope);
 basePath = TomScopePath.join(scope, tomId);
 ```
 
-Both go through `TomScopePath`, the same helper `TomNodeBase` uses — the form
-half via `qualify` (it holds a `TomScope`) and the field half via `join` (its
-parent is already a path string, either the form's `basePath` or the ambient
-scope path). No `BuildContext` needed.
+Both go through `TomScopePath`, the same helper `TomNodeBase` uses — `qualify`
+to put an id into a frame, `join` to append a segment to a path that is already
+qualified. No `BuildContext` needed.
+
+Naming the frame rather than only the path is what lets a field's **group**
+resolve in the same place its own path does: `resolveEffectiveAuth` passes
+`constructionScope` to `applyMode`, so `<frame>.<groupId>` and
+`<frame>.<formId>.<tomId>` share a prefix no matter which zone the state is
+read from. The frame is deliberately the form's, one segment shallower than the
+field's own path: a form is both a field container and a `TomActionController`,
+so a single group routinely holds a field and an action of the same form, and
+resolving the field's group a segment deeper would give that one group two
+different ceilings depending on which member asked. The `formId` stays in
+`basePath` as the field's namespace, exactly as the controller id does in
+`TomAction.canonicalPath`.
 
 ### Path Structure Flexibility
 
@@ -3038,8 +3057,11 @@ TomAuthState resolveEffectiveAuth() {
       ? TomAuthorization.resolveAuth(basePath!)
       : TomAuthState.full;
 
+  // The group resolves in the frame basePath was built from. Read against the
+  // ambient scope instead, the ceiling lands on whichever same-named group the
+  // *reader* happens to stand in — or, at the root, on no group rule at all.
   if (tomGroup != null) {
-    state = tomGroup!.applyMode(state);
+    state = tomGroup!.applyMode(state, constructionScope);
   }
 
   // 2. Form authorization (form acts as implicit group — always narrows)
