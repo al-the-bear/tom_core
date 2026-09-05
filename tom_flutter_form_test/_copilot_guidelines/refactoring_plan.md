@@ -43,8 +43,22 @@ Iterate in order. Each step states its **done** condition.
    README still orients a new reader.*
 2. **Entry + bootstrap clarity.** Review `main.dart` and `main.reflection.dart`;
    document the startup path and reflection initialization with `// Why:`
-   comments where non-obvious. Only regenerate reflection on signature changes.
-   *Done when the startup path is clear from the files.*
+   comments where non-obvious.
+
+   Regenerate reflection when a reflected signature changes — **or when
+   `./reflection_generation.sh --check` says the committed mirror no longer
+   matches its source.** The second case is not hypothetical: a generator fix
+   changes what the same sources produce, and the mirror in git is the one
+   `initializeReflection()` registers. `--check` is the exact gate (four to
+   eleven minutes, it regenerates and compares); `test/reflection_currency_test.dart`
+   is the fast one that runs in the suite and catches the mistake people
+   actually make — a class or state field added and the slow script forgotten.
+
+   Read the generator's closing line when you do regenerate. A run that ends
+   `N SEVERE diagnostic(s) … the generated mirror is incomplete` wrote a file
+   that describes less than the source does, and that is invisible to both
+   `flutter analyze` and the suite. *Done when the startup path is clear from
+   the files and `--check` passes.*
 3. **Per-area clean-up — `common/`, `actions/`, `state/`.** Apply clean-code
    principles; remove dead code and unused declarations; name demos by intent.
    *Done when `flutter analyze` is clean for these areas.*
@@ -56,24 +70,24 @@ Iterate in order. Each step states its **done** condition.
    demo screens and the examples to the upstream feature each validates, plus
    how to launch them. *Done when it still covers every demo screen — a new
    demo means a new catalogue row.*
-6. **Whole-app QA.** Run `flutter analyze` and `flutter test` — no concurrency
-   flag, since each suite file gets its own `flutter_tester` process. The suite is
-   **not** all-green, so "clean" here means *unchanged against the recorded
-   baseline* (2026-09-01):
+6. **Whole-app QA.** Run `flutter analyze` and `testkit :test` — no concurrency
+   flag, since each suite file gets its own `flutter_tester` process. Measured
+   2026-09-05:
 
-   | Gate | Baseline |
-   | ---- | -------- |
-   | `flutter analyze` | 20 issues, every one an `info`-level `unnecessary_import` under `lib/demos/`; zero errors, zero warnings |
-   | `flutter test -j 1` | `+433 -22` |
+   | Gate | Result |
+   | ---- | ------ |
+   | `flutter analyze` | 25 issues, every one an `info`-level `unnecessary_import`; zero errors, zero warnings |
+   | `testkit :test` | 501 passed, 0 failed |
 
-   The 22 failures are pre-existing and have **two** distinct causes, not one:
-   21 are the kernel refusing the `examples/` subsystem's dotted scope ids
-   (`scope_ids.init_scope.separator_in_id`, spread over
-   `example_smoke_test.dart` 8, `example_screenshot_test.dart` 8,
-   `example_interaction_test.dart` 5); the 22nd is unrelated —
-   `list_form_widget_repro_test.dart:249`, where "Discard all" fails to restore
-   a removed items row. *Done when a pass leaves both numbers untouched; any
-   other number is yours to explain.*
+   **The suite is green.** It was not always: an earlier pass recorded 22
+   failures with two distinct causes — 21 from the kernel refusing the
+   `examples/` subsystem's dotted scope ids
+   (`scope_ids.init_scope.separator_in_id`) and one in
+   `list_form_widget_repro_test.dart`, where "Discard all" failed to restore a
+   removed items row. Both are fixed. A green suite is therefore the standard
+   here, not a number to match: a single failure is a regression. *Done when a
+   pass leaves the suite green and every analyze issue `info`-level; any error
+   or warning is yours to explain.*
 7. **Final review.** Confirm README/CHANGELOG/LICENSE are accurate; update
    `CHANGELOG.md` with a one-line summary of the cleanup pass.
 
