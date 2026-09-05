@@ -5,7 +5,8 @@
 /// `CreateUserRequest` carries). On **edit** the username is a stable key
 /// (rendered read-only) and there is no password (the seam exposes no
 /// password-change), so the form shows username (read-only) + profile + status.
-/// [editableFields] returns the ordered subset the screen lays out, so a single
+/// [UserForm.editableFields] returns the ordered subset the screen lays out, so
+/// a single
 /// bound form drives both flows.
 library;
 

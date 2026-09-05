@@ -5,7 +5,8 @@
 /// ticking a checklist step, sharing a project — runs through a [TomAction] here
 /// rather than an inline screen callback. Two things fall out of that:
 ///
-/// - **Action-level authorization.** Each action carries a [canonicalPath]
+/// - **Action-level authorization.** Each action carries a
+///   [TomAction.canonicalPath]
 ///   (`<controllerId>.<actionId>`, e.g. `todo.item.save`), and its
 ///   [TomAction.authorizer] resolves that path through the global
 ///   [TomAuthorization]. The screen hands the button that same authorizer, so

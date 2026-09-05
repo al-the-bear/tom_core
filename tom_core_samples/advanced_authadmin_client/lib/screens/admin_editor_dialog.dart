@@ -3,7 +3,7 @@
 ///
 /// It owns the busy/error chrome so each entity screen only supplies the field
 /// widgets (and any extra controls, e.g. a group's membership checklist) and a
-/// [submit] callback. [submit] returns:
+/// [AdminEditorDialog.submit] callback. It returns:
 ///
 ///  * `null` — saved; the dialog closes with `true`.
 ///  * `''` (empty) — stay open, show no banner (validation already rendered

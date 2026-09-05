@@ -57,8 +57,8 @@ class AuthTokenService {
   final String _issuer;
   final TomAuthenticationServer _server = TomAuthenticationServer();
 
-  /// Builds the token service over the credential-checking [authentication]
-  /// service. [issuer] defaults to the server-wide JWT organization
+  /// Builds the token service over the credential-checking
+  /// [AdvancedAuthenticationService]. [issuer] defaults to the server-wide JWT organization
   /// (`TomAuthenticationServer.globalSettingJwtOrganization`).
   ///
   /// The framework selects both the credential service and the issuer through

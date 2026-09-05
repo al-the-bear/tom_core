@@ -6,7 +6,8 @@
 /// through a [TomAction] here rather than an inline screen callback. Two things
 /// fall out of that:
 ///
-/// - **Action-level authorization.** Each action carries a [canonicalPath]
+/// - **Action-level authorization.** Each action carries a
+///   [TomAction.canonicalPath]
 ///   (`admin.<entity>.<verb>`, e.g. `admin.users.create`), and its
 ///   [TomAction.authorizer] resolves that path through the installed
 ///   authorization system. The console installs no adapter, so these paths

@@ -231,6 +231,27 @@ app chain, and runs both the live and the connection-free suites.
 tom_core_samples/advanced_ops_server/tool/run_ops_integration.sh
 ```
 
+### Checking the generated API pages
+
+A third runner needs neither a database nor a server: it runs `dart doc` over
+every `advanced_*` package and fails on any warning.
+
+```sh
+tom_core_samples/tool/check_advanced_dartdoc.sh
+```
+
+It asks a question no other check in this repository asks. `dart doc` resolves a
+`[name]` against its **canonical library** — the barrel — rather than the file
+that declares it, so it accepts references the `comment_references` lint rejects
+and rejects some the lint accepts (a `[Type.member]` reference cannot reach an
+extension member, which is why `[ProjectRole.name]` fails where
+`[ProjectRole.viewer]` resolves). Neither guard implies the other, and this is
+the one that decides whether the published pages contain dead names.
+
+It is a runner rather than one of the `tom_ai/core/tool/` gates only because of
+cost: the whole python gate set takes about fifteen seconds, while `dart doc`
+takes twelve to thirty per package. Run it after editing a doc comment here.
+
 ---
 
 ## Documentation index
@@ -258,6 +279,7 @@ tom_core_samples/
   advanced_app_client/           end-user Flutter app (board + sharing + field grades)
   advanced_authadmin_client/     administrator Flutter console (users/roles/groups/grants)
   advanced_ops_server/           scheduled back-office work           (no port, app_db 3308)
+  tool/                          suite-wide runners (dart doc over every package)
 ```
 
 ## License

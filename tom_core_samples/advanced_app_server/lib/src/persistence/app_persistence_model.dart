@@ -284,7 +284,7 @@ class ItemRecord {
   /// framework file endpoint serves it as the slot `app_items/<id>/attachment`.
   ///
   /// `cascadeDelete: true` (the default, spelled out here for the contrast with
-  /// [UserRecord.avatarRef], which is `false`): the blob belongs to this row and
+  /// `UserRecord.avatarRef`, which is `false`): the blob belongs to this row and
   /// nothing else points at it, so deleting the item must not leave the bytes
   /// behind. Compare an avatar, which the application may reuse across rows and
   /// therefore manages itself.

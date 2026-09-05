@@ -13,7 +13,8 @@
 /// permissive default (`full`); this wrapper preserves exactly that for them.
 ///
 /// The discriminator is the key shape the sample already uses: resource keys are
-/// `<type>:<id>` (they contain a `:` — see [ResourceRoleKeys]), while action /
+/// `<type>:<id>` (they contain a `:` — see `ResourceRoleKeys` in
+/// `advanced_todo_contracts`, which this file does not import), while action /
 /// field / group paths are dotted (`todo.item.save`). So a key with a `:` is
 /// delegated to the wrapped [TomResourceRoleAdapter] (closed by design: no role →
 /// `none`); any other key stays permissive (`full`), matching the framework's

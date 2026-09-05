@@ -7,7 +7,7 @@
 /// next read sees the project), and the live stack `POST`s `/share`.
 ///
 /// **Grantee is entered as a user id, not picked from a list.** The
-/// [AppBackend] seam has no "list users" operation (and [share] speaks
+/// [AppBackend] seam has no "list users" operation (and [AppBackend.share] speaks
 /// `granteeUserId`, matching the live wire), so the dialog takes the id
 /// directly. Offline the five seeded ids are `u-alice`, `u-bob`, `u-carol`,
 /// `u-dave` and `u-erin`; on the live stack the grantee is the numeric

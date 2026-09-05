@@ -3,7 +3,7 @@
 ///
 /// It mirrors the app client's `LoginCredentials`: credentials never leave the
 /// client as a persisted entity (the screen folds them into a wire
-/// [LoginRequest]), so they live here rather than in the shared domain. Like
+/// `LoginRequest`), so they live here rather than in the shared domain. Like
 /// every bound type it is `@tomReflector` and a [TomClass], so the admin login
 /// form binds it through the same reflection round-trip as the user/role/group
 /// editors.

@@ -6,11 +6,13 @@
 /// runs against this backend (the offline teaching default, and what the widget
 /// tests drive) or the live stack. Keeping the ownership/share model here in one
 /// place is what lets the four ACL states render distinctly without a server or
-/// database: [resourceRoles] exposes each accessible resource's [ProjectRole],
+/// database: [InMemoryAppBackend.resourceRoles] exposes each accessible
+/// resource's [ProjectRole],
 /// which the app installs as a framework [TomResourceRoleAdapter] and the item
 /// screen narrows by the shared [projectRoleFieldGrades] matrix.
 ///
-/// The principal is implicit in the session: [login] records the current user,
+/// The principal is implicit in the session: [InMemoryAppBackend.login] records
+/// the current user,
 /// and every later call filters by what that user owns or is shared into and
 /// resolves their effective [ProjectRole] on the resource — exactly the seam the
 /// live server enforces from the bearer token.

@@ -11,10 +11,14 @@
 /// The seam carries all sixteen [AdminApiService] operations — the
 /// Users/Roles/Groups CRUD, the grant matrix, assignments and the admin
 /// resource bundle — and adds six members that API does not own. Four are the
-/// **session** ([login], [submitSecondFactor], [pendingChallenge], [logout]),
-/// one is the **pre-sign-in bundle** ([loginResources]) the login screen needs
-/// before any token exists, and one is the **byte transport** ([files]) the
-/// avatar slot needs. All but [pendingChallenge] and [files] are
+/// **session** ([AdminBackend.login], [AdminBackend.submitSecondFactor],
+/// [AdminBackend.pendingChallenge], [AdminBackend.logout]),
+/// one is the **pre-sign-in bundle** ([AdminBackend.loginResources]) the login
+/// screen needs
+/// before any token exists, and one is the **byte transport**
+/// ([AdminBackend.files]) the
+/// avatar slot needs. All but [AdminBackend.pendingChallenge] and
+/// [AdminBackend.files] are
 /// `AuthApiService` members that the live wiring routes through `AuthClient`,
 /// so what this seam genuinely invents is one piece of challenge state and one
 /// second seam for bytes.

@@ -4,7 +4,7 @@
 /// Every other entity the app edits comes from the shared `advanced_todo_domain`
 /// package — one model across the tier. Credentials are the exception: they
 /// never leave the client as a persisted entity (the screen folds them into a
-/// wire [LoginRequest]), so they live here rather than in the shared domain.
+/// wire `LoginRequest`), so they live here rather than in the shared domain.
 /// Like the domain entities it is `@tomReflector` and a [TomClass], so the login
 /// form binds it through the same reflection round-trip as every other form.
 ///

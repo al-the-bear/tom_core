@@ -53,8 +53,8 @@ class AuthorizedHttp {
   /// a claim.
   final TomAuthRefresher refresher;
 
-  /// Builds the decorator over the [transport] that carries the calls and the
-  /// [authClient] used to refresh a stale token. The two may share one
+  /// Builds the decorator over the [JsonTransport] that carries the calls and
+  /// the [authClient] used to refresh a stale token. The two may share one
   /// transport instance (the live wiring) or hold separate ones (tests).
   AuthorizedHttp(this._transport, AuthClient authClient)
     : refresher = AuthClientRefresher(authClient);

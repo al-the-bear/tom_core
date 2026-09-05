@@ -466,7 +466,8 @@ class AppReadService {
   /// When two grants cover the same resource the strongest role wins
   /// ([ProjectRole] is declared most-to-least privileged, so the lowest index is
   /// strongest). This is the read side of the resolver's containment rule: the
-  /// [resolveRole] walk climbs *up* from a target; this expansion walks *down*
+  /// [ResourceRoleResolver.resolveRole] walk climbs *up* from a target; this
+  /// expansion walks *down*
   /// from each grant, and the two agree on which role a principal holds where.
   Future<Map<String, String>> resourceRoles(int userId) async {
     final effective = await accessResolver.delegationResolver
@@ -1387,7 +1388,7 @@ class AppShareService {
     ResourceRoleResolver.production(),
   );
 
-  /// Grants [request.granteeUserId] the [request.projectRole] on the resource
+  /// Grants `request.granteeUserId` the `request.projectRole` on the resource
   /// `(request.resourceType, request.resourceId)` as a `share`-mode delegation.
   /// Only the resource's `owner` may share; the principal who creates the share
   /// is the delegation's delegator.
@@ -1541,7 +1542,9 @@ Response? appForbiddenOrNotFound(
 /// Two distinct places raise the denial keys, and they surface at *different*
 /// layers. A *pre-invocation* access check (the pipeline's contract-declared
 /// `TomAuthenticatedAccess`) throws outside the per-endpoint try/catch, so it
-/// escapes to the server-level [appServerErrorHandler]. But an *in-method*
+/// escapes to the server-level `appServerErrorHandler` (backticks, not a link:
+/// it is declared in `bin/app_server_start.dart`, and dartdoc documents `lib/`
+/// only). But an *in-method*
 /// denial — `deleteItem` rejecting a viewer, `updateItem` rejecting a
 /// forbidden field write — is caught by the endpoint pipeline's per-endpoint
 /// handler (`TomEndpoint.errorHandler`), which otherwise defaults to

@@ -11,7 +11,8 @@
 /// The seam speaks the shared **wire contracts** ([LoginRequest]/[LoginResult]/
 /// [ShareRequest]) and the reflected **domain entities** ([Workspace]/[Project]/
 /// [TodoList]/[TodoItem]/[TodoComment]) — exactly the currency the live client
-/// core exchanges — plus one authorization convenience, [resourceRoles], which
+/// core exchanges — plus one authorization convenience,
+/// [AppBackend.resourceRoles], which
 /// exposes the principal's `resourceKey → roleName` grants so the app can install
 /// the framework's [TomResourceRoleAdapter] and resolve field states through the
 /// registry.

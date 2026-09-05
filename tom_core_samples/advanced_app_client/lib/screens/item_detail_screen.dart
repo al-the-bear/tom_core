@@ -23,16 +23,19 @@
 /// ## The two child sections
 ///
 /// Below the graded fields the screen shows the item's two child collections,
-/// loaded together on open ([_loadChildren]) and each authorized differently
-/// from the fields above them:
+/// loaded together on open ([_ItemDetailScreenState._loadChildren]) and each
+/// authorized differently from the fields above them:
 ///
-///  * The **checklist** ([_buildSubtaskSection]) — the item's subtasks in
+///  * The **checklist** ([_ItemDetailScreenState._buildSubtaskSection]) — the
+///    item's subtasks in
 ///    `position` order. Adding a step and ticking one are `editor`-and-above
 ///    operations, one step stronger than commenting, because a subtask is *part
 ///    of* the item rather than a remark about it; the screen resolves that from
-///    the same resource state the fields use ([_subtaskState]) so a viewer sees
+///    the same resource state the fields use
+///    ([_ItemDetailScreenState._subtaskState]) so a viewer sees
 ///    the steps with disabled checkboxes and no composer.
-///  * The **thread** ([_buildCommentSection]) — the comment history, read-gated
+///  * The **thread** ([_ItemDetailScreenState._buildCommentSection]) — the
+///    comment history, read-gated
 ///    by the *item's* readability alone. Anyone who can open the screen can read
 ///    it, including a viewer who may not add to it; the composer below it stays
 ///    on its own `todo.item.comment` action.

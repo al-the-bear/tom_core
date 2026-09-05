@@ -86,7 +86,7 @@ class AppResourceBundles {
   /// item set. Derived from the fields labelled under `todo.item.*` in
   /// [texts] rather than a hand-maintained list, so a field added to or removed
   /// from the resource tree changes the graded set with it. Both the field-grade
-  /// resolver (which reports a [TomAuthState] per key) and the write path (which
+  /// resolver (which reports a `TomAuthState` per key) and the write path (which
   /// enforces grades per column) address exactly these keys.
   ///
   /// The bundle — not raw entity reflection — is the source because it carries

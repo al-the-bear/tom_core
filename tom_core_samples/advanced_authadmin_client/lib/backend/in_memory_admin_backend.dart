@@ -7,7 +7,8 @@
 /// place is what lets the admin screens and the grant-matrix editor render and
 /// round-trip without a server or database.
 ///
-/// The principal is implicit in the session: [login] records the current user,
+/// The principal is implicit in the session: [InMemoryAdminBackend.login]
+/// records the current user,
 /// and every administrative call requires that user to hold the `admin` role —
 /// exactly the contract-declared `TomRoleAccess(['admin'])` gate
 /// (`TomApiEndpoint.access`) the live server's pipeline enforces on each

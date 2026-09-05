@@ -15,9 +15,11 @@
 /// the first call.
 ///
 /// **Live resourceRoles.** The app resolves field grades by installing the principal's `resourceRoles` as a framework
-/// [TomResourceRoleAdapter] (see [resourceRoles]). This Flutter-free client
+/// [TomResourceRoleAdapter] (see [LiveAppBackend.resourceRoles]). This
+/// Flutter-free client
 /// treats the authorization token as an opaque bearer (`decryptTokens: false`),
-/// so it cannot read the token's `resourceRoles` claim; instead [resourceRoles]
+/// so it cannot read the token's `resourceRoles` claim; instead
+/// [LiveAppBackend.resourceRoles]
 /// fetches the grant map from the app server's authenticated
 /// `GET /resource-roles` endpoint, which resolves the principal's ownership
 /// grants and share delegations and expands them down the containment chain. The

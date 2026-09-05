@@ -18,14 +18,21 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../persistence/auth_persistence_model.dart';
 
-/// A hashed password ready for the `auth_db` columns: [hash] is the kernel's
-/// `salt$hash` value for [UserRecord.passwordHash]; [hashType] is the algorithm
+/// A hashed password ready for the `auth_db` columns: `hash` is the kernel's
+/// `salt$hash` value for [UserRecord.passwordHash]; `hashType` is the algorithm
 /// spec for [UserRecord.hashType] (the verifier needs it to re-derive).
+///
+/// The two field names are written in backticks rather than as `[hash]` /
+/// `[hashType]` links because a record type's fields are not addressable
+/// dartdoc elements — there is no page to link to. Left as a bracketed
+/// reference, `[hash]` did not merely fail to link: dartdoc resolved it to
+/// `vector_math`'s deprecated `hash` library, a transitive dependency this
+/// package never mentions, and rendered a live link to it.
 typedef PasswordHash = ({String hash, String hashType});
 
 /// Hashes [plaintext] with the kernel's default Argon2 configuration, returning
 /// the `salt$hash` value and its algorithm spec. A fresh salt is generated per
-/// call, so the same [plaintext] yields a different [PasswordHash.hash] each time.
+/// call, so the same [plaintext] yields a different `hash` field each time.
 PasswordHash hashPassword(String plaintext) {
   final (hash, spec) = TomPasswordHasher.hashPassword(plaintext);
   return (hash: hash, hashType: spec);

@@ -5,8 +5,11 @@
 /// empty / rows, offer "New …", and let a row be edited or deleted — differing
 /// only in the entity type and how each row reads. So that shape lives here once
 /// and each entity screen supplies the small typed bits via callbacks: how to
-/// [load] the rows, how to read a row's [idOf]/[titleOf]/[subtitleOf], and what
-/// [onCreate]/[onEdit]/[onDelete] do. The create/edit callbacks open the shared
+/// [AdminCrudScreen.load] the rows, how to read a row's
+/// [AdminCrudScreen.idOf]/[AdminCrudScreen.titleOf]/[AdminCrudScreen.subtitleOf],
+/// and what
+/// [AdminCrudScreen.onCreate]/[AdminCrudScreen.onEdit]/[AdminCrudScreen.onDelete]
+/// do. The create/edit callbacks open the shared
 /// editor dialog (returning `true` when a save happened) and this scaffold
 /// reloads on success, so list freshness is handled in one place.
 ///
@@ -56,7 +59,12 @@ class AdminCrudScreen<T> extends StatefulWidget {
   /// Loads the rows for this entity from the backend.
   final Future<List<T>> Function(AdminBackend backend) load;
 
-  /// The stable id of [item] — keys its row and delete button.
+  /// The stable id of the passed `item` — keys its row and delete button.
+  ///
+  /// The parameter is named in backticks rather than linked here and in
+  /// [AdminCrudScreen.onEdit]/[AdminCrudScreen.onDelete] below: a parameter of a
+  /// *function type* is not an addressable dartdoc element, so there is no page
+  /// to link to.
   final String Function(T item) idOf;
 
   /// The row's primary line.
@@ -68,10 +76,12 @@ class AdminCrudScreen<T> extends StatefulWidget {
   /// Opens the create editor; returns `true` when a new row was saved.
   final Future<bool> Function(BuildContext context) onCreate;
 
-  /// Opens the edit editor for [item]; returns `true` when the edit was saved.
+  /// Opens the edit editor for the passed `item`; returns `true` when the edit
+  /// was saved.
   final Future<bool> Function(BuildContext context, T item) onEdit;
 
-  /// Deletes [item] through its delete action, returning `null` on success or a
+  /// Deletes the passed `item` through its delete action, returning `null` on
+  /// success or a
   /// failure message to surface (the action owns the session guard).
   final Future<String?> Function(T item) onDelete;
 

@@ -2,7 +2,8 @@
 /// the login-time `admin`-role probe.
 ///
 /// A [ChangeNotifier] so the console shell ([AdminConsoleApp]) rebuilds between
-/// "signed out" and "signed in" as a pure function of [isLoggedIn] — navigation
+/// "signed out" and "signed in" as a pure function of [AdminSession.isLoggedIn]
+/// — navigation
 /// is state-driven, not imperative. The session owns the single injected
 /// [AdminBackend]; swap [InMemoryAdminBackend] for [LiveAdminBackend] in one
 /// place (and the widget tests inject their own).
@@ -11,7 +12,8 @@
 /// `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) rather than gating login:
 /// a non-admin
 /// authenticates fine but is refused the moment they touch admin data. So
-/// [login] first authenticates, then **probes** an admin call; only when the
+/// [AdminSession.login] first authenticates, then **probes** an admin call; only
+/// when the
 /// probe succeeds is the principal stored and the shell allowed to open. A
 /// signed-in non-admin is undone and the refusal ([AdminBackendException] keyed
 /// `admin.access.forbidden`) is surfaced on the login screen.

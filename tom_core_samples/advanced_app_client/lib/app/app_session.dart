@@ -3,7 +3,7 @@
 ///
 /// A [ChangeNotifier] so the app shell ([AdvancedTodoApp]) rebuilds the home on
 /// every login/logout — navigation between "signed out" and "signed in" is a
-/// pure function of [isLoggedIn], not imperative routing. The session owns the
+/// pure function of [AppSession.isLoggedIn], not imperative routing. The session owns the
 /// single injected [AppBackend]; swap [InMemoryAppBackend] for [LiveAppBackend]
 /// in one place (and the widget tests inject their own).
 ///
@@ -13,10 +13,10 @@
 /// logout it resets the adapter. This is what lets the item screen grade fields
 /// through the registry rather than stamping a DB-resolved matrix directly.
 ///
-/// Every screen reaches the backend through [guard] (or the convenience
+/// Every screen reaches the backend through [AppSession.guard] (or the convenience
 /// wrappers built on it), so a dead session surfaces uniformly: when the live
 /// stack answers a post-refresh `401` it raises an [AppBackendException] keyed
-/// `auth.session_expired`, which [guard] turns into an automatic logout — the
+/// `auth.session_expired`, which [AppSession.guard] turns into an automatic logout — the
 /// shell then routes straight back to the login screen.
 library;
 
@@ -67,7 +67,7 @@ class AppSession extends ChangeNotifier {
   /// outstanding.
   ///
   /// The login screen switches to its code phase on this, and the shell keeps
-  /// showing the login screen because [isLoggedIn] is still false — the interim
+  /// showing the login screen because [AppSession.isLoggedIn] is still false — the interim
   /// token authorizes nothing, so routing to the board would show an app whose
   /// every call `401`s.
   bool get awaitingSecondFactor => _awaitingSecondFactor;
@@ -77,7 +77,7 @@ class AppSession extends ChangeNotifier {
   ///
   /// Mutually exclusive with [awaitingSecondFactor]: a principal either holds a
   /// factor and is challenged on it, or holds none and is offered one. Like the
-  /// challenge, it keeps [isLoggedIn] false, so the shell stays on the login
+  /// challenge, it keeps [AppSession.isLoggedIn] false, so the shell stays on the login
   /// screen while the flow runs.
   bool get awaitingEnrolment => _awaitingEnrolment;
 
@@ -107,7 +107,7 @@ class AppSession extends ChangeNotifier {
   /// can tell them apart. Empty when no login is part-way through.
   ///
   /// Held separately from [user] on purpose: assigning [user] before the factor
-  /// is settled would flip [isLoggedIn] and route the shell onto a board whose
+  /// is settled would flip [AppSession.isLoggedIn] and route the shell onto a board whose
   /// every call would `401`.
   String get pendingAccount => _pendingAccount;
 
@@ -178,7 +178,7 @@ class AppSession extends ChangeNotifier {
   /// Throws [AppBackendException] on a rejected login; the session stays logged
   /// out. On success the shell rebuilds onto the board — *unless* the account
   /// owes a second factor, in which case the login is only half done:
-  /// [awaitingSecondFactor] goes true, [isLoggedIn] stays false, and the caller
+  /// [awaitingSecondFactor] goes true, [AppSession.isLoggedIn] stays false, and the caller
   /// must finish with [submitSecondFactor].
   Future<void> login(LoginRequest request) async {
     // A fresh attempt supersedes whatever ended the last one.
@@ -187,7 +187,7 @@ class AppSession extends ChangeNotifier {
     if (result.requires2FA) {
       // Deliberately store *nothing* from the interim result but the flag: its
       // token authorizes no call, and assigning `_user` here would flip
-      // [isLoggedIn] and route the shell onto a board that cannot load.
+      // [AppSession.isLoggedIn] and route the shell onto a board that cannot load.
       _awaitingSecondFactor = true;
       _pendingAccount = result.user.username;
       notifyListeners();
