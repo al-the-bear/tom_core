@@ -56,8 +56,8 @@ Iterate in order. Each step states its **done** condition.
    demo screens and the examples to the upstream feature each validates, plus
    how to launch them. *Done when it still covers every demo screen — a new
    demo means a new catalogue row.*
-6. **Whole-app QA.** Run `flutter analyze` and `flutter test -j 1` — never run
-   Flutter test invocations in parallel, they corrupt results. The suite is
+6. **Whole-app QA.** Run `flutter analyze` and `flutter test` — no concurrency
+   flag, since each suite file gets its own `flutter_tester` process. The suite is
    **not** all-green, so "clean" here means *unchanged against the recorded
    baseline* (2026-09-01):
 

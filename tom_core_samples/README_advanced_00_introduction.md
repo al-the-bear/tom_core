@@ -152,8 +152,8 @@ back into the relevant parts.
 - **Running the code.** Part [02](README_advanced_02_project_layout_build.md)
   has the full build/run steps and the seeded accounts; the
   [index](README_advanced_sample.md#run-the-whole-thing) has the one-command
-  end-to-end check. Note one rule that recurs in part 12: **Flutter tests run
-  serially**, never in parallel.
+  end-to-end check. Flutter suites take a plain `flutter test` — part 12
+  explains why no concurrency flag is needed.
 
 ## Primary sources
 

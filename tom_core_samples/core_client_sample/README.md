@@ -449,14 +449,12 @@ trade-off the verified `tom_flutter_form_test` accepts.
 ## 13. Tests
 
 ```bash
-flutter test --concurrency=1
+flutter test
 ```
 
-Flutter tests in this workspace are run **serially** (`--concurrency=1`) by
-convention, not because the suite needs it: `flutter test` runs each test file
-in its own `flutter_tester` process at any concurrency, so nothing is shared
-between the files to race over. The suite behaves the same with the flag
-omitted. Thirty-five tests cover the seams:
+No concurrency flag: `flutter test` runs each test file in its own
+`flutter_tester` process, so nothing is shared between the files to race over.
+Thirty-five tests cover the seams:
 
 | File | Covers |
 | ---- | ------ |

@@ -170,9 +170,10 @@ Iterate in order. Each step states its **done** condition.
     clean.*
 14. **Whole-package QA.** ✅ **Done (OT2, 2026-07-15).** `dart analyze` clean +
     `flutter test --concurrency=1` 59/59 green; re-verified 2026-09-02 at
-    `+332 / 0`. Run `flutter analyze` (zero warnings) and
-    `flutter test --concurrency=1` (all green; never run Flutter test
-    invocations in parallel). *Done when analyzer and tests are clean.*
+    `+332 / 0`. Run `flutter analyze` (zero warnings) and `flutter test` (all
+    green). No concurrency flag — each suite file gets its own
+    `flutter_tester` process, so there is nothing to serialize.
+    *Done when analyzer and tests are clean.*
 
     > **Use `flutter analyze`, not `dart analyze`.** The workspace
     > `analysis_options.yaml` enables lints (`unawaited_futures`,

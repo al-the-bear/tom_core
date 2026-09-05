@@ -40,17 +40,41 @@ stack is exercised is `advanced_client_core`'s live suites, each of which
 **skips itself** when the servers are unreachable so a plain unit run stays
 green.
 
-## Flutter tests serial only
+## Flutter tests need no concurrency flag
 
-The two client packages are Flutter packages; their suites **must run
-serially** (`flutter test -j 1`). Parallel test isolates corrupt the shared
-process-global state these tests deliberately install and clear — the
-`TomTextResourceProvider` singleton (the resource bundle), the
-`TomAuthorization` adapter (the field-grade matrix), and the
-`TomBearerAuthentication` token store. Each widget test installs its bundle/
-adapter in `setUp` and clears it in `tearDown` (`TomAuthorization.reset`); two
-tests racing on those singletons would read each other's state and flake. The
-green gate runs every Flutter suite single-threaded for this reason.
+Run the client suites with a bare `flutter test`. It runs several suites at
+once by default — `max(1, numberOfProcessors ~/ 2)` — and these suites are safe
+that way.
+
+The process-global state the tests install cannot leak between suites, because
+**`flutter test` gives every suite file its own `flutter_tester` process**: the
+`TomTextResourceProvider` bundle, the `TomAuthorization` adapter and the
+`TomBearerAuthentication` token store are per-process, so no two files can see
+each other's. Within a file the tests do share one process, which is why each
+widget test still installs its bundle/adapter in `setUp` and clears it in
+`tearDown` (`TomAuthorization.reset`) — but package:test never runs two tests
+from one file at the same time, so that discipline is about test *order* and is
+unaffected by how many suites run in parallel.
+
+Nor is there anything outside the process to contend for. Every widget suite
+runs against the injected in-memory backend: no socket, no file, no database.
+The only suites that reach the real stack are `advanced_client_core`'s live
+ones, and `run_cross_tier_integration.sh` invokes `dart test` one file per call,
+so those are serial by construction rather than by flag.
+
+Two mechanisms are therefore deliberately **absent**, both settled by
+measurement rather than by argument:
+
+- **No `-j 1` in any recipe.** There is nothing for it to protect, and it costs
+  roughly half the throughput.
+- **No `dart_test.yaml` in the Flutter packages.** Not because the file would be
+  ignored — `flutter test` *does* honour its `concurrency:` key, and an explicit
+  `--concurrency=N` still overrides it — but because there is no suite here whose
+  concurrency needs pinning. The mechanism is real and stays available for a
+  suite that ever acquires a shared external resource.
+  `tom_core_server/dart_test.yaml` is the case that has one: its DB-backed
+  suites share a single MariaDB schema, and it pins `concurrency: 1` for that
+  reason.
 
 ## The sentinel-`[srv]` render proof
 
@@ -199,7 +223,7 @@ real PASS from each of the three suites exits 0.
 A change is done only when all three hold together:
 
 1. **`dart analyze` is clean** in every package (zero errors, zero warnings).
-2. **Every suite is green**, run serially (the Flutter packages with `-j 1`).
+2. **Every suite is green** under a plain `dart test` / `flutter test`.
 3. **Both runners exit 0** with "All tests passed!" against freshly booted
    infrastructure — the cross-tier runner over the whole stack, and
    `advanced_ops_server/tool/run_ops_integration.sh` over the databases alone.

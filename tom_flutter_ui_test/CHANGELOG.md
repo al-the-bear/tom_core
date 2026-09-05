@@ -1,5 +1,22 @@
 ## Unreleased — cleanup pass
 
+- **The gate is a bare `flutter test` again; `--concurrency=1` is gone from the
+  README.** The flag was carried on the stated ground that parallel test
+  isolates would corrupt the process-global state the widget tests install —
+  the `TomTextResourceProvider` bundle and the `TomAuthorization` adapter. That
+  reason does not hold: `flutter test` gives **every suite file its own
+  `flutter_tester` process** (measured — twelve suites at default concurrency
+  produced twelve distinct pids, with no reuse), so the singletons are per-file
+  and two suites running at once cannot see each other's. Within a file the
+  tests do share a process, which is why each still installs in `setUp` and
+  clears in `tearDown`; but package:test never runs two tests from one file at
+  once, so that discipline concerns test *order* and is unaffected by `-j`.
+  Nothing outside the process is contended either — the suite opens no socket,
+  writes no file and touches no database. Verified by running the suite
+  repeatedly without the flag: green every time, in roughly half the wall
+  clock. The reasoning now lives at the convention's source,
+  `tom_core_samples/README_advanced_12_testing_integration.md`.
+
 - Docs only: 16 source comments cited a bare section number — `code_quality
   §30b`, `review tests finding §67`, `(§68a)` through `(§68f)` — of a
   workspace-only review document a reader of this package does not have. Each

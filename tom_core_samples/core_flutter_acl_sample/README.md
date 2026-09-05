@@ -15,14 +15,13 @@ reflected entities, so you instantiate `AclBuilder` directly.
 cd tom_core_samples/core_flutter_acl_sample
 flutter pub get
 flutter run        # the app: a home index → one screen per ACL capability
-flutter test --concurrency=1   # smoke + cell-contract + authorization states
+flutter test       # smoke + cell-contract + authorization states
 ```
 
-> **Run tests serially.** `flutter test` runs several suites at once unless you
-> pass `--concurrency=1`. This is the workspace convention, not a requirement of
-> these suites: each test file gets its own `flutter_tester` process at any
-> concurrency, so the process-global state each file installs is never shared
-> with another file.
+> **No concurrency flag.** `flutter test` runs several suites at once, and these
+> suites are safe that way: each test file gets its own `flutter_tester`
+> process, so the process-global state each file installs is never shared with
+> another file.
 
 ---
 
@@ -425,7 +424,7 @@ screen. *Source: `widget_demos/demo_28_authorization` +
 | `test/showcase_cell_test.dart` | A `ShowcaseCell` shows both the code text and the rendered child; no cell has an empty snippet; no snippet names an API its group's live code never calls |
 | `test/authorization_states_test.dart` | The four state cells render; `none` collapses the gated button while `full`/`read`/`disabled` keep it |
 
-All green serial: `flutter test --concurrency=1`.
+All green: `flutter test`.
 
 ---
 

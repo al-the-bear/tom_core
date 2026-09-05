@@ -66,7 +66,7 @@ window to see the before/after (though the running app reacts live if you do).
 ```bash
 flutter pub get
 flutter run            # any device; desktop/web make resizing easiest
-flutter test --concurrency=1   # 42 widget tests, all green; serial by convention (§14)
+flutter test       # widget tests, all green (§14)
 ```
 
 The home screen is a list of the six mechanisms. Tap one to open its
@@ -492,15 +492,14 @@ regenerating.
 Forty-five widget tests under `test/`, all green:
 
 ```bash
-flutter test --concurrency=1
+flutter test
 ```
 
-The flag is the **workspace convention, not a requirement of this suite**: the
-suite passes identically with it omitted, verified both ways at the current 45
-tests. `flutter test` gives every test file its own `flutter_tester` process at
-any concurrency, so the process-global state these files install — the app text
-resource provider, the `FlutterError.onError` overflow filter, the viewport
-size — is per-file already and there is nothing across files to race over.
+**No concurrency flag.** `flutter test` gives every test file its own
+`flutter_tester` process, so the process-global state these files install — the
+app text resource provider, the `FlutterError.onError` overflow filter, the
+viewport size — is per-file already and there is nothing across files to race
+over.
 
 | File | Covers |
 | ---- | ------ |

@@ -296,11 +296,13 @@ backend the whole widget suite binds, so nothing in it touches a socket.
 
 ## Tests
 
-Run the suite serially (the fakes build reflected entities):
-
 ```sh
-flutter test --concurrency=1
+flutter test
 ```
+
+No concurrency flag is needed: `flutter test` gives each suite file its own
+`flutter_tester` process, so the reflection registry the fakes build is
+per-file.
 
 Twelve socket-free suites, all over the seeded `InMemoryAppBackend`:
 

@@ -90,10 +90,10 @@ Iterate in order. Each step states its **done** condition.
 4. **Demo catalogue doc.** Keep `doc/demo_catalogue.md` mapping each demo to the
    widget/feature it validates and how to launch it. *Done when the catalogue
    covers every demo.*
-5. **Whole-app QA.** Run `flutter analyze` (zero issues) and
-   `flutter test --concurrency=1` (all green; never run Flutter test invocations
-   in parallel — they corrupt results). *Done when the analyzer and the suites
-   are clean.*
+5. **Whole-app QA.** Run `flutter analyze` (zero issues) and `flutter test`
+   (all green). No concurrency flag — each suite file gets its own
+   `flutter_tester` process, so there is nothing to serialize. *Done when the
+   analyzer and the suites are clean.*
 6. **Final review.** Confirm README/CHANGELOG/LICENSE are accurate and add a
    `## Unreleased` CHANGELOG entry summarising the pass.
 

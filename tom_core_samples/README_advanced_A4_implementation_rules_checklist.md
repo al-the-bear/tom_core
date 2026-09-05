@@ -117,11 +117,11 @@ is already "doing it the tom_core way":
 
 ## Testing
 
-- [ ] **Run Flutter suites serially** (`flutter test -j 1`). Parallel isolates corrupt the three process-global singletons (`TomTextResourceProvider` / `TomAuthorization` / `TomBearerAuthentication`). → [12](README_advanced_12_testing_integration.md); memory: tests-serial.
+- [ ] **Run Flutter suites with a bare `flutter test`** — no `-j` flag, and no `dart_test.yaml`. Each suite file gets its own `flutter_tester` process, so the three process-global singletons (`TomTextResourceProvider` / `TomAuthorization` / `TomBearerAuthentication`) cannot leak between suites, and no widget suite opens a socket, writes a file or touches a database. → [12](README_advanced_12_testing_integration.md).
 - [ ] **Test each layer against the seam directly below it**, never a live socket — inject an in-memory backend (`AppBackend` / `AdminBackend`) mirroring the server's ownership + four-state model. → [12](README_advanced_12_testing_integration.md); sample `in_memory_app_backend.dart`.
 - [ ] **Assert texts with the `[srv]` sentinel and grades with the four-role matrix** (TC-30-01…04). Same widget, four principals, four renderings purely from the installed matrix. → [12](README_advanced_12_testing_integration.md); sample `item_detail_screen_test.dart`.
 - [ ] **Exercise the real stack once, end-to-end**, with a scripted runner that boots both DBs + servers and skips-as-failure when unreachable. → [12](README_advanced_12_testing_integration.md); sample `run_cross_tier_integration.sh`, `cross_tier_integration_test.dart` (TC-37-01).
-- [ ] **The green gate is all three together:** `dart analyze` clean + every suite green (serial) + the cross-tier runner exits `0`.
+- [ ] **The green gate is all three together:** `dart analyze` clean + every suite green + the cross-tier runner exits `0`.
 
 ## Using the checklist
 

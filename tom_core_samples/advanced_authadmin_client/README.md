@@ -238,11 +238,12 @@ read and the assign route through `AdminSession.guard`.
 
 ## Tests
 
-Run the suite serially:
-
 ```sh
-flutter test --concurrency=1
+flutter test
 ```
+
+No concurrency flag is needed: `flutter test` gives each suite file its own
+`flutter_tester` process, so nothing is shared across files.
 
 - `test/admin_login_form_test.dart` — the reflected `AdminLoginForm` in
   isolation: it runs unscoped so `formId` *is* its base path, each field

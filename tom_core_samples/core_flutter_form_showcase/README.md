@@ -669,12 +669,13 @@ nothing.)
 
 ## 17. Tests
 
-Run serially — never in parallel (parallel Flutter test invocations corrupt
-results):
-
 ```bash
-flutter test --concurrency=1
+flutter test
 ```
+
+No concurrency flag: `flutter test` gives each test file its own
+`flutter_tester` process, so the process-global state a file installs is never
+shared with another file.
 
 All five suites call `initializeReflection()` in `setUpAll`:
 
@@ -705,8 +706,8 @@ All five suites call `initializeReflection()` in `setUpAll`:
   keys no interaction can paint (§8). Without it the silent key-as-message
   fallback is invisible to the rest of the suite.
 
-Current status: `dart analyze` → *No issues found!*; `flutter test` → **23/23
-green** (serial).
+Current status: `dart analyze` → *No issues found!*; `flutter test` → **24/24
+green**.
 
 ---
 

@@ -1,5 +1,20 @@
 ## Unreleased — cleanup pass
 
+- **The suite takes a bare `flutter test`; the `-j 1` in the refactoring plan is
+  gone.** Serial runs were required on the ground that parallel test isolates
+  would corrupt process-global state — the resource bundle, the authorization
+  adapter, the reflection registry the forms build. They cannot: `flutter test`
+  gives **every suite file its own `flutter_tester` process** (measured —
+  twelve suites at default concurrency, twelve distinct pids, no reuse), so
+  each file's registrations are its own. Tests *within* a file share a process
+  and still reset in `setUp`/`tearDown`, but package:test runs them one at a
+  time regardless of `-j`. No suite here opens a socket, writes a file or
+  reaches a database, so there is nothing outside the process to contend for
+  either. Confirmed by running the full `+491` without the flag, repeatedly,
+  green each time and about twice as fast. The convention's source,
+  `tom_core_samples/README_advanced_12_testing_integration.md`, carries the
+  measurement.
+
 - Docs only: 32 source comments cited a bare section number — `§24b Demo A`,
   `spec §16`, `review finding tests §64` — of a workspace-only planning
   document that ships with neither this package nor its tests. Each now states

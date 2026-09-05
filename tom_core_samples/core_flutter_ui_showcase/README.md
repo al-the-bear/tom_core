@@ -13,7 +13,7 @@ plain Flutter widgets; you instantiate them directly.
 cd tom_core_samples/core_flutter_ui_showcase
 flutter pub get
 flutter run        # the app: a home index → one screen per component group
-flutter test --concurrency=1   # smoke + cell-contract tests; serial
+flutter test       # smoke + cell-contract tests
 ```
 
 ## How it is organised
