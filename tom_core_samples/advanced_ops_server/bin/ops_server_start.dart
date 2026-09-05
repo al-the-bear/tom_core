@@ -115,11 +115,19 @@ const TomEnvironment environmentDev = TomEnvironment(
 );
 
 /// Registers the environment hierarchy and resolves the current environment.
-void initializeRuntime() {
+///
+/// The lookup is [selectedRuntimeEnvironmentName], which reads the command
+/// line, the `.env` file and the OS environment in that order — so the
+/// `env=dev` line at the bottom of `.env.example` selects `dev` for the
+/// *runtime* as well as for the configuration. Reading only
+/// `Platform.environment` would leave the two disagreeing: this server would
+/// load the `dev` configuration overlay while running as a production
+/// deployment.
+void initializeRuntime(List<String> args) {
   TomRuntime.addEnvironment(environmentProd);
   TomRuntime.addEnvironment(environmentDev);
   TomRuntime.setRootEnvironment(environmentProd);
-  TomRuntime.setCurrentEnvironment(Platform.environment['env'], 'prod');
+  TomRuntime.setCurrentEnvironment(selectedRuntimeEnvironmentName(args), 'prod');
   TomRuntime.getCurrentEnvironment().initialize();
   TomRuntime.initializePlatform();
 }
@@ -266,7 +274,7 @@ Future<void> main(List<String> args) async {
 
   initializeReflection();
   registerProjectRoleVocabulary();
-  initializeRuntime();
+  initializeRuntime(args);
   initializeServerResources();
 
   // Removed before the configuration parses what is left: the flag decides how

@@ -34,6 +34,7 @@ environment-variable substitution.
 | `TomBaseServerConfiguration` | abstract class | Base for a server's settings; merges all sources on construction |
 | `TomYaml` | class | Loads YAML files with `${VAR:default}` substitution |
 | `tomAppId` | getter | Process-wide application id, read from the active configuration's `appId` |
+| `selectedRuntimeEnvironmentName` | function | Which runtime environment this deployment selected, read before any configuration exists: command line, then `.env`, then the OS environment |
 
 ## The Resource Provider
 
@@ -271,18 +272,18 @@ whatever the environment or the command line supplied.
 
 ## Deployment Settings
 
-Three blocks of the configuration base exist for the deployment rather than for
-the code: they say who the server logs in as, how it sends mail, and how it
-sends SMS. They are grouped here because their reader is an operator filling in
-an environment rather than a developer calling an API — and an operator cannot
-look up a setting they were never told exists.
+Four blocks of the configuration base exist for the deployment rather than for
+the code: they say what the server signs tokens with, who it logs in as, how it
+sends mail, and how it sends SMS. They are grouped here because their reader is
+an operator filling in an environment rather than a developer calling an API —
+and an operator cannot look up a setting they were never told exists.
 
-**Each block has one switch.** Leave it unset and the block is *disabled*, not
-misconfigured — the server starts, and the messaging module registers a no-op
-transport. That is the wanted behaviour for a test run, a local build and a CI
-job, all of which should compose messages and deliver none. The opposite case, a
-block that is set but unusable, throws when the settings are built, because
-someone meant to send.
+**Three of the four have one switch.** Leave it unset and the block is
+*disabled*, not misconfigured — the server starts, and the messaging module
+registers a no-op transport. That is the wanted behaviour for a test run, a local
+build and a CI job, all of which should compose messages and deliver none. The
+opposite case, a block that is set but unusable, throws when the settings are
+built, because someone meant to send.
 
 | Block | Switch | Unset means |
 | ----- | ------ | ----------- |
@@ -290,13 +291,47 @@ someone meant to send.
 | Outbound mail | `smtpHost` | This deployment sends no mail |
 | Outbound SMS | `smsEndpoint` | This deployment sends no SMS |
 
-**Four settings are secret-bearing** — `serviceAccountCredential`,
-`smtpPassword`, `smsApiKey` and `smsApiSecret` — under the same rule as
-`privateKey` and the JWT signing keys. Their *declaration* belongs in the class,
-so the shape and the source key are known; their **value is never authored**. It
-is supplied out of band at deploy time through the precedence chain below — the
-OS environment, `.env`, or the command line — and must never be written into a
-spec or a checked-in configuration tree.
+**The JWT block is the exception, and it is the dangerous one.** There is nothing
+to disable: a server that issues or accepts tokens signs and verifies whatever
+its configuration left it holding. Unset, that is the sample key pair bundled in
+`tom_crypto` — published in its sources, and therefore no secret at all. So the
+block does not fail open the way the other three do. `installJwtSigning` refuses
+to start a server on the bundled keys outside a development or test environment,
+and warns loudly inside one. See
+[authentication.md](authentication.md#the-signing-keys).
+
+**Six settings are secret-bearing** — `jwtRsaPrivKey`, `jwtSharedSecretKey`,
+`serviceAccountCredential`, `smtpPassword`, `smsApiKey` and `smsApiSecret` —
+under the same rule as `privateKey`. Their *declaration* belongs in the class, so
+the shape and the source key are known; their **value is never authored**. It is
+supplied out of band at deploy time through the precedence chain below — the OS
+environment, `.env`, or the command line — and must never be written into a spec
+or a checked-in configuration tree.
+
+### JWT Signing Keys
+
+What the server signs an issued token with, and what it verifies an incoming one
+against. Two servers trust each other's tokens exactly when they resolve the
+same values here; nothing else establishes that trust, so the auth server that
+issues and the application server that accepts are configured as a pair.
+
+All three default to `null`, meaning *not configured* — the framework ships no
+key of its own, because a key everyone can read is not a key. A field left unset
+falls back to the sample material in `tom_crypto`, which `installJwtSigning`
+permits only in a development or test environment and refuses elsewhere with
+`TomSigningKeyException`.
+
+| Setting | Type | What it decides |
+| ------- | ---- | --------------- |
+| `jwtRsaPubKey` | `String?` | PEM of the RSA public key that encrypts the access-control payload carried inside a token. Deployment-specific but not secret. |
+| `jwtRsaPrivKey` | `String?` | PEM of its private counterpart, which decrypts that payload. **Secret-bearing** — supplied out of band, never authored. |
+| `jwtSharedSecretKey` | `String?` | Passphrase of the HMAC key the token is signed and verified with, and the one value the issuing and accepting servers must agree on. **Secret-bearing** — whoever holds it can mint a token this deployment accepts. |
+
+A `.env` file is read a line at a time, so a PEM supplied through one goes on a
+single line with its newlines written as spaces; the parser strips spaces and
+newlines alike before decoding, so the value is the same key either way.
+
+See `authentication/jwt_signing.dart`.
 
 ### Server Self-Login
 
@@ -377,6 +412,49 @@ command-line arguments   ─┘
 All non-resource sources flow through the command-line conversion rules (see
 `doc/cmdline.md`), so `port=8080` becomes the int `8080`, `noSsl=true` the bool
 `true`, and so on.
+
+### A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field
+
+The two environment sources — the OS environment and the `.env` file — are each
+passed through `TomArgs.resolveEnvironmentNames`, which adds, for every key
+written in `SCREAMING_SNAKE_CASE`, a second entry under the field name it
+spells. So `JWT_SHARED_SECRET_KEY` reaches `jwtSharedSecretKey`,
+`AUTH_SERVER_LOGIN_URI` reaches `authServerLoginUri`, and a deployment can use
+the spelling every container platform, CI secret store and `.env` file already
+uses instead of a variable literally named `jwtSharedSecretKey`.
+
+| Written | Reaches |
+| ------- | ------- |
+| `PORT` | `port` |
+| `SMS_API_KEY` | `smsApiKey` |
+| `OAUTH2_TOKEN_URI` | `oauth2TokenUri` — a digit does not open a segment |
+| `SMTP_HOST` | `smtpHost` |
+
+Four rules bound it:
+
+- **The original key is kept.** The alias is added alongside, so a `${VAR}`
+  placeholder in a datasource or resource YAML — which expands verbatim — is
+  unaffected.
+- **An exact key wins over its screaming twin.** A variable literally named
+  `jwtSharedSecretKey` names the target with no convention in between, so it is
+  never overruled.
+- **The mapping is applied per source, before merging.** An alias therefore
+  carries its own source's precedence; derived after merging it would let a
+  low-precedence alias outrank a high-precedence exact key.
+- **A name outside the convention contributes nothing.** `SCREAMING__DOUBLE`,
+  `_LEADING`, `Mixed_Case` and `mixedCase` are all left alone. Approximating one
+  would be a guess, and a guess that happened to match a declared field would
+  bind a value nobody aimed at it.
+
+The convention is total in one direction only: a field spelled with a
+capitalised acronym (`listenToAnyIP`) is not reachable by it, because the
+convention's inverse produces `listenToAnyIp`. That is an inconsistency in the
+field's own spelling rather than a gap in the mapping — the fields are otherwise
+written with an acronym as a word (`jwtRsaPubKey`, `smsApiKey`).
+
+A key an alias creates that matches no field is dropped exactly as any other
+unknown key is: `setValues` traces it and moves on. So the aliasing cannot fail
+a boot, only reach one more field than it did before.
 
 The chain ends where the diagram ends. `getDefaultValues` starts from a **copy**
 of the provider's resources and hands the merged result to `setValues`, so an
@@ -567,11 +645,19 @@ absent, so a malformed overlay silently stops being applied.
   and worthless as authentication anywhere else, since its private key is
   public. Nothing refuses to start when a deployment leaves it in place, so
   overriding both in production is the deployment's responsibility.
-- **`jwtSharedSecretKey` defaults to a literal passphrase.** The field carries
-  `"config-secret-passphrase"` out of the box and is marked as not currently in
-  use. Nothing consumes it today, so the default is inert rather than
-  dangerous — but it is a secret-shaped value with a published default, and it
-  must be set before anything starts signing with it.
+- **The JWT key material defaults to nothing, deliberately.**
+  `jwtSharedSecretKey`, `jwtRsaPrivKey` and `jwtRsaPubKey` are all `null` out of
+  the box, and `installJwtSigning` reads that nullness as "not configured": it
+  then falls back to the framework's bundled sample keys, which are written into
+  the `tom_crypto` sources and therefore secret from nobody. That fallback warns
+  at boot, marks the resulting `TomJwtConfiguration` as a dummy certificate — so
+  the framework warns again on every sign and verify — and is **refused
+  outright** with a `TomSigningKeyException` unless the runtime environment is a
+  development or test one. A server that never declared an environment counts as
+  not-development. This is the one place where the "unconfigured" state is not
+  merely reported but blocks the boot, and the reason is that the alternative is
+  a server signing with a published passphrase and saying nothing. Contrast the
+  TLS pair above, which fails open.
 
 ## Core Components
 

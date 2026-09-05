@@ -114,54 +114,71 @@ Both are built by `TomBearerAuthentication.convertPrincipalToTokenPayload` +
 `LoginResult` carries the `UserDto`, both tokens, and that expiry.
 
 Cross-server trust rests on **one shared key, configured identically at both
-boots**. Each server's `initializeJwtSigning()` installs the *framework's bundled
-sample keypair* (`TomJwtConfiguration.hmacKey` / `rsaPrivKey` / `rsaPubKey`) as the
-default sign configuration — the auth server signs with it, and the app server,
-loading the *identical* keys, verifies a token the auth server issued **without a
-network call back**. This is the standard "resource server trusts the auth
-server's key" pattern: reusing one keypair rather than minting per-server keys is
-exactly what makes a minted token verify on the other side. Both boots also set
-the same issuer (`'tom'`), which the app server must match to accept a token.
+boots**. Each server calls the framework's
+`installJwtSigning(configuration)`, which builds the default sign configuration
+out of three fields on the merged server configuration:
 
-### Sample keys and the development-key warning (G-AUTH-2)
+| Field | Environment name | Role |
+| --- | --- | --- |
+| `jwtSharedSecretKey` | `JWT_SHARED_SECRET_KEY` | the HMAC passphrase the token is **signed** with — the one value the two servers must agree on |
+| `jwtRsaPrivKey` | `JWT_RSA_PRIV_KEY` | private half of the pair that **decrypts** the access-control payload |
+| `jwtRsaPubKey` | `JWT_RSA_PUB_KEY` | public half, which **encrypts** it |
 
-The bundled keypair (`TomJwtConfiguration.hmacKey` / `rsaPrivKey` / `rsaPubKey`)
-is a **development convenience, not a certificate**: it is the same
-non-fresh key shipped with the framework and shared by every sample, so it is
-public knowledge and useless for real trust. To make that impossible to miss,
-each server leaves its `TomJwtConfiguration` marked as a *dummy* configuration
-(`isDummy == true`, the constructor default), and the framework prints a
-development-key warning **every time it signs or verifies a token** — the sample
-does **not** suppress it. On boot you also see the one-line reminder emitted by
-`warnIfDevelopmentSigningKey()`:
+The auth server signs with them; the app server, configured with the identical
+values, verifies a token the auth server issued **without a network call back**.
+This is the standard "resource server trusts the auth server's key" pattern:
+sharing one key rather than minting per-server keys is exactly what makes a
+minted token verify on the other side. Both boots also set the same issuer
+(`'tom'`), which the app server must match to accept a token.
+
+### Sample keys, the boot refusal, and the development-key warning (G-AUTH-2)
+
+**Neither sample sets any of the three fields.** A field left unset falls back to
+the *framework's bundled sample key* (`TomJwtConfiguration.hmacKey` /
+`rsaPrivKey` / `rsaPubKey`), and that is the only reason the two servers trust
+each other out of the box — not a configured secret, but a shared default. Those
+keys are a **development convenience, not a certificate**: they are written into
+the `tom_crypto` sources, shipped with the framework and shared by every sample,
+so they are public knowledge and useless for real trust.
+
+The framework says so three times over, in increasing severity:
+
+1. **It refuses to boot on them outside development.** `installJwtSigning`
+   resolves the runtime environment and, unless it is a development or test one,
+   throws `TomSigningKeyException` naming the fields that were not configured.
+   A server that never declared an environment counts as *not* development — the
+   safe reading of silence is the strict one. This is why both sample servers are
+   started with `env=dev` (the `.env.example` files end with that line, and
+   `tool/run_cross_tier_integration.sh` passes it on the command line).
+2. **It warns once at boot** when the fallback is permitted, naming the
+   unconfigured fields.
+3. **It warns on every sign and verify.** The bundled keys leave the
+   `TomJwtConfiguration` marked as a *dummy* configuration (`isDummy == true`),
+   and the framework repeats the development-key warning each time it is used.
+   The sample does **not** suppress it, and there is no flag to: hiding this
+   deployment hazard behind a convenience toggle is exactly the failure mode the
+   warning exists to prevent. Configure all three fields and `isDummy` is
+   `false`, so the warning stops on its own.
+
+**Watching it work.** In `advanced_auth_server/.env` and
+`advanced_app_server/.env` (copy each from `.env.example`), uncomment
 
 ```
-WARN  JWT signing uses the bundled development certificate (non-fresh,
-      non-production). Install a real certificate before any real deployment;
-      see README_advanced_06_authentication.md.
+JWT_SHARED_SECRET_KEY=a-secret-i-chose
 ```
 
-**Why it is always on.** The warning is the signal that no production
-certificate has been installed. There is no flag to silence it — hiding this
-deployment hazard behind a convenience toggle is exactly the failure mode the
-warning exists to prevent.
+in **both** and log in again: the servers still trust each other, but now on a
+secret you picked, and the boot warning is gone for that field. Change the value
+in **one** server only and the app server rejects the auth server's tokens —
+which is the shared secret being observably load-bearing rather than
+asserted. Under `env=prod` with the line still commented out, the boot refuses to
+start at all.
 
-**Installing a production certificate.** Mint your own HMAC/RSA keys, build a
-`TomJwtConfiguration` from them, and pass `isDummy: false` (the last positional
-argument) so the framework treats them as a real cert and stops warning:
-
-```dart
-TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
-  jwt.SecretKey(myHmacSecret),   // your signing secret
-  base.algorithm,
-  myRsaPrivateKeyPem,            // your RSA private key
-  myRsaPublicKeyPem,             // your RSA public key
-  false,                         // isDummy: false → real certificate, no warning
-);
-```
-
-Both servers must install the **same** keys and issuer (`'tom'`) for the app
-server to keep verifying tokens the auth server minted.
+The same three values can equally come from the process environment (what a
+container sets), from the command line (`jwtSharedSecretKey=…`, undashed), or
+from a `config-resources_*.yaml` overlay — they are ordinary configuration keys
+and the usual precedence applies: config resources, then OS environment, then
+`.env`, then the command line.
 
 ## Two-factor login: the second pass
 
@@ -493,7 +510,7 @@ Two request shapes coexist, divided by whether a bearer is present:
 ## Primary sources
 
 - [`advanced_auth_server/README.md`](advanced_auth_server/README.md), [`advanced_client_core/README.md`](advanced_client_core/README.md)
-- `advanced_auth_server/lib/src/auth/authentication_service.dart`, `.../auth/password_hashing.dart`, `.../endpoints/auth_endpoints.dart`; both servers' `bin/*_start.dart` `initializeJwtSigning()`
+- `advanced_auth_server/lib/src/auth/authentication_service.dart`, `.../auth/password_hashing.dart`, `.../endpoints/auth_endpoints.dart`; both servers' `bin/*_start.dart` `installJwtSigning(configuration)`, which is `tom_core_server`'s `src/tomserver/authentication/jwt_signing.dart`
 - `advanced_client_core/lib/src/auth/auth_client.dart`, `.../http/authorized_http.dart`
 - **Two-factor:** `tom_core_server/lib/src/tomserver/authentication/two_factor.dart` (`Tom2FARegistry`, `TomTotp2FAService`) and `.../authentication_server.dart` (`authenticatePass1` / `authenticatePass2`); `tom_core_kernel/lib/src/tombase/security/two_factor.dart` (`Tom2FAChallenge`, `Tom2FAClaims`, `TomTotp`); migrations `[004]-auth_two_factor_columns.sql` / `[005]-auth_two_factor_seed@dev,test.sql`; tests `advanced_auth_server/test/two_factor_login_test.dart`, `advanced_client_core/test/auth_client_two_factor_test.dart`
 

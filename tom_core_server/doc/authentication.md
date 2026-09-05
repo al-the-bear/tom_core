@@ -98,6 +98,8 @@ principal into an authentication token and an authorization token.
 | `TomExternalIdentityTokenRepository` | class | The repository over that table |
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints, exposed via `@TomApiImplementation` |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake |
+| `installJwtSigning` | function | Installs the configured JWT key material at boot, and refuses the bundled sample keys outside development |
+| `TomSigningKeyException` | class | Raised by that refusal; names the unset fields and the environment variables that would fill them |
 
 One type every service in the list throws lives in `little_things`, with the
 rest of the package's exception hierarchy:
@@ -224,6 +226,41 @@ class ServerAuthenticationServer extends TomAuthenticationServer { /* ... */ }
 Until a real service is registered, the default
 `TomDummyAuthenticationService` authenticates any non-`"GUEST"` user and logs an
 error on every call — acceptable only while scaffolding.
+
+### The signing keys
+
+A token is only worth what its signing key is worth, so a server that mints or
+verifies one calls `installJwtSigning(configuration)` **once at boot** — after
+the runtime environment is selected, before anything touches a token. It reads
+three fields off the `TomBaseServerConfiguration` and installs the result as
+`TomJwtConfiguration.defaultSignConfiguration`:
+
+| Field | Environment spelling | Role |
+| ----- | -------------------- | ---- |
+| `jwtSharedSecretKey` | `JWT_SHARED_SECRET_KEY` | The HMAC passphrase the token is signed and verified with |
+| `jwtRsaPrivKey` | `JWT_RSA_PRIV_KEY` | Encrypts the access-control payload carried inside the token |
+| `jwtRsaPubKey` | `JWT_RSA_PUB_KEY` | Decrypts it again |
+
+All three default to `null` — the framework ships no key of its own, because a
+default key is a key everyone has. A field left unset falls back to the sample
+key bundled in `tom_crypto`, which is published in its sources and therefore
+secret from nobody. That fallback is a scaffolding convenience and is treated as
+one:
+
+- **Outside a development or test environment it is refused.** Any unset field
+  makes the boot throw `TomSigningKeyException`, naming the fields and the
+  environment variables that would fill them. A server that would have signed
+  with a published key does not start.
+- **Inside one it warns**, once at boot and again on every sign and verify —
+  `installJwtSigning` passes `isDummy: true` when anything was left unset, which
+  is what keeps the per-operation warning coming.
+
+Two servers trust each other's tokens exactly when they resolve the *same*
+values for these fields; nothing else establishes the trust. The fields are
+ordinary configuration, so they can come from a YAML resource, the process
+environment, a `.env` file, or the command line, in that order of increasing
+precedence — see [configuration.md](configuration.md#source-precedence) for the
+merge and for how the `SCREAMING_SNAKE_CASE` spellings above reach the fields.
 
 ## Two-Factor Authentication
 

@@ -216,6 +216,29 @@ deep copy of `TomServerConfigResourceProvider.getServerConfig().resources`, then
 calls `convertToObjectMap`, `TomEnvFile.read`, and `parseArgsToMap` in that
 order.)
 
+### A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field
+
+The two environment layers are each passed through
+`TomArgs.resolveEnvironmentNames` on the way in, which adds — for every key
+written in `SCREAMING_SNAKE_CASE` — a second entry under the field name
+`TomArgs.fieldNameOf` gives it. So `JWT_SHARED_SECRET_KEY` fills
+`jwtSharedSecretKey` and `SMS_API_KEY` fills `smsApiKey`, which is what lets a
+deployment use the spelling its container platform and secret store already use
+rather than a variable literally named `jwtSharedSecretKey`.
+
+The original key is **kept** alongside the alias, so a `${VAR}` placeholder is
+unaffected; a key already spelled as the field wins over its screaming twin; and
+the mapping is applied **per source before merging**, so an alias carries its own
+source's precedence rather than jumping the queue. A name outside the convention
+contributes no alias — approximating one would be a guess, and a guess that
+happened to match a declared field would bind a value nobody aimed at it. The
+full rule, its inverse, and the one class of field it cannot reach are in
+[configuration.md](configuration.md#a-screaming_snake_case-variable-names-a-lowercamelcase-field).
+
+**Command-line arguments are not aliased.** An argument names its target
+directly and is written by the person who knows the field; the convention exists
+for the *environment*, where the spelling is imposed by the platform.
+
 The resource tree is the base rather than a fourth peer, and that is the layer
 worth knowing about: it is the only one that supplies a value when none of the
 other three does. A setting that appears in the running server without being

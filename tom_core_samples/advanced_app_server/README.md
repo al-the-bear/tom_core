@@ -174,14 +174,27 @@ A non-owner sharing is rejected with **403**; revoking the share
 
 ## JWT signing
 
-The app server applies the **identical** `initializeJwtSigning()` as the auth
-server — the framework's bundled sample keypair — so a token the auth server
-mints (HS256 + RSA-encrypted authorization payload) verifies here. It also sets
-the same `globalSettingJwtOrganization = 'tom'` issuer. This is the standard
+The app server calls the **same** `installJwtSigning(configuration)` as the auth
+server, which reads the three `jwt*` configuration fields —
+`jwtSharedSecretKey`, `jwtRsaPrivKey`, `jwtRsaPubKey`, reachable as the
+environment variables `JWT_SHARED_SECRET_KEY`, `JWT_RSA_PRIV_KEY`,
+`JWT_RSA_PUB_KEY`. Hold the identical values in both servers and a token the auth
+server mints (HS256 + RSA-encrypted authorization payload) verifies here. It also
+sets the same `globalSettingJwtOrganization = 'tom'` issuer. This is the standard
 "resource server trusts the authorization server" split.
 
-The bundled keypair is a development ("dummy") certificate on both servers, so
-the framework emits its development-key warning on every sign and verify and
-`warnIfDevelopmentSigningKey()` repeats it at boot — intentionally not
-suppressed (G-AUTH-2). **Replace the keys with real ones — built into a
-`TomJwtConfiguration` with `isDummy: false` — before any real deployment.**
+Neither sample sets any of them, so both fall back to the framework's bundled
+sample keys — which is the *only* reason the two servers currently agree.
+Uncomment `JWT_SHARED_SECRET_KEY` in **both** servers' `.env` (see
+`.env.example`) and the agreement becomes a deliberate one; set it in one only
+and this server rejects the auth server's tokens with `invalid token`.
+
+The fallback is not quiet. `installJwtSigning` **refuses to boot** on it outside
+a development or test environment (`TomSigningKeyException`, naming the
+unconfigured fields), which is why the sample is started with `env=dev`; where it
+is permitted it warns once at boot, and because the resulting
+`TomJwtConfiguration` stays marked as a development ("dummy") certificate the
+framework repeats the warning on **every** sign and verify — intentionally not
+suppressed (G-AUTH-2). Configure all three fields and the certificate is no
+longer a dummy one and the warnings stop. **Do that before any real
+deployment.**

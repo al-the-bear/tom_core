@@ -197,11 +197,25 @@ completes the login unchanged. An account that confirms is challenged on its
 ## JWT signing
 
 The server signs the token pair (HS256) and RSA-encrypts the authorization
-payload using the framework's bundled sample keypair, installed by
-`initializeJwtSigning()`. That keypair is deliberately left marked as a
-**development ("dummy") certificate**, so the framework emits its development-key
-warning on every sign and verify and `warnIfDevelopmentSigningKey()` repeats it
-at boot — intentionally not suppressed (G-AUTH-2). The app server
-(`advanced_app_server`) applies the identical configuration so a token
-minted here verifies there. **Replace the keys with real ones — built into a
-`TomJwtConfiguration` with `isDummy: false` — before any real deployment.**
+payload with the key material `installJwtSigning(configuration)` reads off the
+merged configuration — `jwtSharedSecretKey`, `jwtRsaPrivKey`, `jwtRsaPubKey`,
+reachable as the environment variables `JWT_SHARED_SECRET_KEY`,
+`JWT_RSA_PRIV_KEY`, `JWT_RSA_PUB_KEY`. The app server (`advanced_app_server`)
+must hold the identical values for a token minted here to verify there; that is
+the standard "resource server trusts the authorization server" split.
+
+This sample sets none of them, so all three fall back to the framework's bundled
+sample keys — which is the *only* reason the two servers currently agree.
+Uncomment `JWT_SHARED_SECRET_KEY` in **both** servers' `.env` (see
+`.env.example`) and the agreement becomes a deliberate one; set it in one only
+and the app server rejects this server's tokens.
+
+The fallback is not quiet. `installJwtSigning` **refuses to boot** on it outside
+a development or test environment (`TomSigningKeyException`, naming the
+unconfigured fields), which is why the sample is started with `env=dev`; where it
+is permitted it warns once at boot, and because the resulting
+`TomJwtConfiguration` stays marked as a development ("dummy") certificate the
+framework repeats the warning on **every** sign and verify — intentionally not
+suppressed (G-AUTH-2). Configure all three fields and the certificate is no
+longer a dummy one and the warnings stop. **Do that before any real
+deployment.**

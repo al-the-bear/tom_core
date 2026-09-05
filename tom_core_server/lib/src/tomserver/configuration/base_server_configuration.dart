@@ -148,9 +148,12 @@ String get tomAppId => _activeConfiguration?.appId ?? "";
 /// `.env` file, then command-line arguments (which win).
 ///
 /// The JWT fields ([jwtRsaPubKey] / [jwtRsaPrivKey] / [jwtSharedSecretKey]) are
-/// carried, not used: nothing in this library reads them. An application that
-/// signs tokens assembles its own signing configuration from them, and supplies
-/// the rest — algorithm, issuer, audience, expiry — in code, because there are
+/// the server's signing key material, read by [installJwtSigning] — which a
+/// boot calls once, after the runtime environment is selected and before
+/// anything mints or verifies a token. A field left null falls back to the
+/// framework's bundled sample key, which is permitted in a development or test
+/// environment and refused anywhere else. The rest of a signing configuration —
+/// algorithm, issuer, audience, expiry — is supplied in code, because there are
 /// no configuration keys for those.
 @tomReflector
 abstract class TomBaseServerConfiguration {
@@ -306,12 +309,33 @@ utj3flRQDLaDAl91lySpAjUp9aM8
 -----END PRIVATE KEY-----
     ''';
 
+  /// PEM of the RSA public key that encrypts the payload section of an issued
+  /// token; read by [installJwtSigning].
+  ///
+  /// Null means "not configured", and every one of the three JWT fields means
+  /// that by being null rather than by holding a sentinel: a default that
+  /// looked like a key could not be told apart from a key, which is how a
+  /// server came to sign with a published passphrase and report nothing.
+  ///
+  /// Environment name: `JWT_RSA_PUB_KEY` (see [getDefaultValues]).
   String? jwtRsaPubKey;
 
+  /// PEM of the RSA private key that decrypts the payload section; the
+  /// counterpart of [jwtRsaPubKey] and secret-bearing.
+  ///
+  /// Environment name: `JWT_RSA_PRIV_KEY`.
   String? jwtRsaPrivKey;
 
-  // currently not in use...
-  String? jwtSharedSecretKey = "config-secret-passphrase";
+  /// Passphrase of the HMAC key that *signs* an issued token, and the one
+  /// setting two servers must agree on to trust each other's tokens.
+  ///
+  /// The auth server that issues and the application server that verifies share
+  /// this value and nothing else; set it in one only and the second rejects the
+  /// first's tokens. Secret-bearing: whoever holds it can mint a token this
+  /// deployment accepts.
+  ///
+  /// Environment name: `JWT_SHARED_SECRET_KEY`.
+  String? jwtSharedSecretKey;
 
   // ---------------------------------------------------------------------------
   // Server self-login (server-as-principal)
@@ -596,12 +620,39 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// `.env` file and the CLI args into the process-wide provider.
   /// [deepCopyJsonTree] is the kernel's primitive for exactly this; a shallow
   /// `Map.from` would leave every nested subtree shared and defeat the copy.
+  ///
+  /// ## Environment names
+  ///
+  /// Both environment sources pass through [TomArgs.resolveEnvironmentNames],
+  /// so a variable written `SCREAMING_SNAKE_CASE` also arrives under the
+  /// `lowerCamelCase` field name it spells: `JWT_SHARED_SECRET_KEY` sets
+  /// [jwtSharedSecretKey], `LOG_LEVEL` sets [logLevel], `PORT` sets [port].
+  /// The verbatim key is kept as well, and a variable already spelled as the
+  /// field wins over its screaming twin.
+  ///
+  /// Resolution happens **per source**, not on the merged result, so a resolved
+  /// name inherits the precedence of the source it came from — a `PORT` in the
+  /// OS environment still loses to a `port=` argument.
+  ///
+  /// The command line is deliberately left out of it. An argument names its key
+  /// directly, and the undashed field spelling is the documented form there
+  /// (`port=9081`, see `doc/cmdline.md`); a second accepted spelling would
+  /// widen that surface without reconciling anything, because the command line
+  /// has no external naming convention to meet.
   static Map<String, Object?> getDefaultValues(List<String> args) {
     Map<String, Object?> values = deepCopyJsonTree(
       TomServerConfigResourceProvider.getServerConfig().resources,
     );
-    mergeMapsOneSided(values, TomArgs.convertToObjectMap(Platform.environment));
-    mergeMapsOneSided(values, TomEnvFile.read());
+    mergeMapsOneSided(
+      values,
+      TomArgs.resolveEnvironmentNames(
+        TomArgs.convertToObjectMap(Platform.environment),
+      ),
+    );
+    mergeMapsOneSided(
+      values,
+      TomArgs.resolveEnvironmentNames(TomEnvFile.read()),
+    );
     mergeMapsOneSided(values, TomArgs.parseArgsToMap(args));
     return values;
   }

@@ -174,13 +174,20 @@ log "Resolving Dart dependencies"
 #    so the recorded PID is the server itself — killing it in cleanup actually
 #    stops the server instead of orphaning a dart child that keeps its port
 #    bound (and fails the next run's port preflight).
+#
+#    `env=dev` is passed explicitly rather than left to a `.env` file, because
+#    neither package ships one — a reader copies `.env.example` when they want
+#    one, and this runner must work whether or not they did. It is not
+#    cosmetic: under `prod` both servers refuse to boot, because neither
+#    configures `jwtSharedSecretKey` and `installJwtSigning` will not sign with
+#    the framework's bundled sample key outside a development environment.
 log "Starting auth server"
-(cd "$AUTH_DIR" && exec dart run bin/auth_server_start.dart >"$LOG_DIR/auth.log" 2>&1) &
+(cd "$AUTH_DIR" && exec dart run bin/auth_server_start.dart env=dev >"$LOG_DIR/auth.log" 2>&1) &
 SERVER_PIDS+=($!)
 wait_auth_up
 
 log "Starting app server"
-(cd "$APP_DIR" && exec dart run bin/app_server_start.dart >"$LOG_DIR/app.log" 2>&1) &
+(cd "$APP_DIR" && exec dart run bin/app_server_start.dart env=dev >"$LOG_DIR/app.log" 2>&1) &
 SERVER_PIDS+=($!)
 wait_app_health
 

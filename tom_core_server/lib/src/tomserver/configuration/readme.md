@@ -18,6 +18,7 @@ resolve individual keys — obligatory (throws when absent) or with a default.
 | `TomStringConfig` · `TomIntConfig` · `TomDoubleConfig` · `TomBoolConfig` | Typed specialisations of `TomConfig<T>`. |
 | `TomConfigurationException` | Raised when a value fails the cast to `T`. Chains the `TypeError` as `rootException` — read it for a generic mismatch, where the message alone names a value that looks valid. |
 | `TomYaml` | Parses YAML configuration resources, expanding `${VAR:default}` from `Platform.environment` or from an `environment:` map you pass (`TomEnvFile.resolveEnvironment()` to include a `.env`). Both entry points require the file to exist and throw `PathNotFoundException` when it does not — unlike `TomEnvFile.read`, which returns `{}`. |
+| `selectedRuntimeEnvironmentName` | Which runtime environment the deployment selected (`env`), read from the command line, then the `.env`, then the OS environment. The selection has to happen *before* the configuration exists — it is what picks the overlay — so it reads those sources itself rather than coming out of the merge. |
 
 ## Quick start
 
@@ -40,8 +41,9 @@ precedence, the typed key wrappers and the loader hook, and
 `example/configuration/configuration_example.dart` for a twelve-step walkthrough
 that checks its own results — beginning with the loader hook, because a provider
 installed after the first read is a provider that read did not see.
-`test/configuration_test.dart` covers the module and also runs the example;
-`test/readme_quick_start_test.dart` runs the snippet above, so neither can drift
+`test/configuration_test.dart` covers the module and also runs the example,
+`test/runtime_environment_test.dart` covers the environment selector, and
+`test/readme_quick_start_test.dart` runs the snippet above, so none can drift
 unnoticed.
 
 ---

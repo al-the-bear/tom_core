@@ -55,6 +55,25 @@ class _MergedAppIdConfig extends TomBaseServerConfiguration {
       appId = (values['appId'] as String?) ?? '';
 }
 
+/// Runs [body] in a temporary directory holding a `.env` file of [contents].
+///
+/// `TomEnvFile.read()` resolves `.env` against the current directory, so the
+/// only way to give the merge an environment file is to move into one — which
+/// is process-global state, hence the `finally` that puts the directory back
+/// whether [body] returned or threw.
+Future<void> _withEnvFile(String contents, void Function() body) async {
+  final previous = Directory.current;
+  final dir = await Directory.systemTemp.createTemp('tom_cfg_envname');
+  try {
+    await File('${dir.path}/.env').writeAsString(contents);
+    Directory.current = dir;
+    body();
+  } finally {
+    Directory.current = previous;
+    if (await dir.exists()) await dir.delete(recursive: true);
+  }
+}
+
 /// Installs a fresh provider built from [resources] as the active source.
 void _install(Map<String, dynamic> resources) {
   TomServerConfigResourceProvider.setServerConfigProvider(
@@ -516,6 +535,135 @@ void main() {
       // An empty host routes TomServer.start to InternetAddress.anyIPv4; the
       // previous "t"/"0" defaults were invalid addresses.
       expect(_CapturingConfig([]).host, '');
+    });
+  });
+
+  // An environment variable is conventionally written `SCREAMING_SNAKE_CASE`
+  // and a Dart field is written `lowerCamelCase`, and for as long as the merge
+  // passed environment keys through verbatim those two spellings never met: a
+  // variable reached a field only if it was itself spelled like the field, so
+  // `JWT_SHARED_SECRET_KEY` set nothing and reported nothing. The convention
+  // below is what closes that, and it is asserted on the merge rather than on
+  // the string transform alone, because the transform being right is only half
+  // of it -- the other half is that it lands in the merged map without
+  // disturbing the precedence the four sources already have.
+  group('an environment variable resolves onto the field it spells', () {
+    test('a SCREAMING_SNAKE variable reaches the lowerCamel field', () async {
+      await _withEnvFile('JWT_SHARED_SECRET_KEY=from-env-file\n', () {
+        _install({});
+        final config = _CapturingConfig([]);
+        expect(config.captured['jwtSharedSecretKey'], 'from-env-file');
+      });
+    });
+
+    test('the variable itself is still merged under its own name', () async {
+      // The alias is added, not substituted. Anything already reading the
+      // verbatim key -- a `${VAR}` datasource placeholder, a hand-written
+      // lookup -- keeps working, so adding the convention takes nothing away.
+      await _withEnvFile('JWT_SHARED_SECRET_KEY=from-env-file\n', () {
+        _install({});
+        final config = _CapturingConfig([]);
+        expect(config.captured['JWT_SHARED_SECRET_KEY'], 'from-env-file');
+      });
+    });
+
+    test('the OS environment is resolved too, not only the .env file', () {
+      // PATH is present on every supported platform, so this is the one
+      // assertion about the OS environment that needs no variable planted in
+      // it. There is no `path` field to receive it -- the reflected setValues
+      // drops the alias like any other unknown key -- but the resolution
+      // itself is what is under test, and the merged map is where it shows.
+      _install({});
+      final config = _CapturingConfig([]);
+      expect(config.captured['path'], config.captured['PATH']);
+    });
+
+    test('a field-spelled variable wins over its conventional spelling', () {
+      // Both spellings in one source is a contradiction the merge has to
+      // settle, and the field spelling names the target literally, with no
+      // convention standing between the two. So it wins -- and a reader who
+      // used the exact name is never overruled by a variable they did not
+      // realise was also aimed at that field.
+      final resolved = TomArgs.resolveEnvironmentNames(<String, Object?>{
+        'JWT_SHARED_SECRET_KEY': 'conventional',
+        'jwtSharedSecretKey': 'exact',
+      });
+      expect(resolved['jwtSharedSecretKey'], 'exact');
+    });
+
+    test(
+      'resolution does not disturb the precedence of the four sources',
+      () async {
+        // The convention is applied per source, before the sources are merged
+        // over one another. Applied to the merged map instead, an OS variable
+        // would outrank a command-line argument -- reversing the documented
+        // order for exactly the keys the convention touches, which is the kind
+        // of exception nobody would think to look for.
+        await _withEnvFile('JWT_SHARED_SECRET_KEY=from-env-file\n', () {
+          _install({'jwtSharedSecretKey': 'from-resource'});
+          final config = _CapturingConfig(['jwtSharedSecretKey=from-args']);
+          expect(config.captured['jwtSharedSecretKey'], 'from-args');
+        });
+      },
+    );
+
+    test('a .env variable still beats the configuration resources', () async {
+      await _withEnvFile('JWT_SHARED_SECRET_KEY=from-env-file\n', () {
+        _install({'jwtSharedSecretKey': 'from-resource'});
+        expect(
+          _CapturingConfig([]).captured['jwtSharedSecretKey'],
+          'from-env-file',
+        );
+      });
+    });
+
+    test('a name that is not SCREAMING_SNAKE is left alone', () {
+      // The convention reads one shape and one only. A mixed-case or
+      // lower-case variable is not a spelling of a field name under any rule,
+      // so inventing an alias for it would be guessing -- and a guess that
+      // happened to hit a field would bind a value nobody aimed there.
+      final resolved = TomArgs.resolveEnvironmentNames(<String, Object?>{
+        'Mixed_Case': 1,
+        'lower_snake': 2,
+        'PATH2_': 3,
+        '_LEADING': 4,
+      });
+      expect(
+        resolved.keys,
+        unorderedEquals(<String>[
+          'Mixed_Case',
+          'lower_snake',
+          'PATH2_',
+          '_LEADING',
+        ]),
+      );
+    });
+
+    test('a single-segment variable resolves to the lower-case field', () {
+      // `PORT` is the case that makes TomServer's "for running in containers,
+      // we respect the PORT environment variable" true: every container
+      // platform sets it, and until the convention existed the comment
+      // described an intention rather than the code beneath it.
+      final resolved = TomArgs.resolveEnvironmentNames(<String, Object?>{
+        'PORT': 8080,
+      });
+      expect(resolved['port'], 8080);
+    });
+
+    test('digits stay with the segment they were written in', () {
+      // A segment boundary is an underscore, never a digit: splitting on
+      // digits would turn `SMS_API_KEY`-shaped names with versions in them
+      // into fields nobody declared.
+      final resolved = TomArgs.resolveEnvironmentNames(<String, Object?>{
+        'SMTP_FROM_ADDRESS': 'a@b',
+        'LOG_LEVEL_EXCEPTIONS': 'trace',
+        'SMS_API_KEY': 'k',
+        'OAUTH2_TOKEN_URI': 'u',
+      });
+      expect(resolved['smtpFromAddress'], 'a@b');
+      expect(resolved['logLevelExceptions'], 'trace');
+      expect(resolved['smsApiKey'], 'k');
+      expect(resolved['oauth2TokenUri'], 'u');
     });
   });
 
@@ -1056,12 +1204,17 @@ void main() {
       expect(config.privateKey, contains('BEGIN PRIVATE KEY'));
     });
 
-    test('jwtSharedSecretKey defaults to a literal passphrase', () {
+    test('the JWT key material defaults to nothing at all', () {
+      // Unlike the TLS pair above, the JWT fields carry no default. They are
+      // read by `installJwtSigning`, which distinguishes "not configured" from
+      // "configured" by exactly this nullness — a default that looked like a
+      // key would be indistinguishable from one, which is how a server came to
+      // sign with a published passphrase while reporting nothing.
       _install({});
-      expect(
-        _CapturingConfig([]).jwtSharedSecretKey,
-        'config-secret-passphrase',
-      );
+      final config = _CapturingConfig([]);
+      expect(config.jwtSharedSecretKey, isNull);
+      expect(config.jwtRsaPrivKey, isNull);
+      expect(config.jwtRsaPubKey, isNull);
     });
   });
 

@@ -5,8 +5,8 @@
 /// board against the bundled Docker MariaDB. It follows the same sequence as the
 /// auth server (`core_server_sample` / `tom_uam_server` lineage):
 ///
-///   platform → registry → reflection → runtime → config → datasource →
-///   JWT signing → bean context → migrations → `TomServer.start()`
+///   platform → registry → reflection → runtime → config → JWT signing →
+///   datasource → bean context → migrations → `TomServer.start()`
 ///
 /// Every endpoint but `GET /status` is contract-declared
 /// `TomAuthenticatedAccess` (`TomApiEndpoint.access`, extracted by the
@@ -14,12 +14,15 @@
 /// entry, and it avoids `/health` because that path is not a contract
 /// endpoint at all but the plain-text liveness probe `TomHealthService`
 /// auto-mounts in every server. Because the rest are authenticated, the boot
-/// trusts the **same JWT signing key as the auth server**:
-/// [initializeJwtSigning] applies the identical framework sample keypair,
-/// which is what lets a token minted by `advanced_auth_server` verify here —
-/// the standard "resource server trusts the authorization server" split. That
-/// keypair is a development ("dummy") certificate on both servers, so
-/// [warnIfDevelopmentSigningKey] warns at boot until a real one is installed.
+/// trusts the **same JWT signing key as the auth server**: `installJwtSigning`
+/// builds the signing configuration from the three `jwt*` configuration fields,
+/// which both servers leave unset, so both fall back to the identical framework
+/// sample keypair — which is what lets a token minted by `advanced_auth_server`
+/// verify here, the standard "resource server trusts the authorization server"
+/// split. Configure `jwtSharedSecretKey` in both and that shared trust becomes
+/// a deliberate one; configure it in one only and this server rejects the auth
+/// server's tokens. The fallback warns at boot and is refused outright outside a
+/// development or test environment.
 /// The authentication middleware itself is left null so `TomServer.start()`
 /// installs the framework default (`tomDefaultAuthenticationMiddleware`),
 /// which verifies the bearer token and places the resulting `TomPrincipal` in
@@ -171,11 +174,21 @@ const TomEnvironment environmentDev = TomEnvironment(
 
 /// Registers the environment hierarchy and resolves the current environment from
 /// the `env` variable (defaults to `prod`).
-void initializeRuntime() {
+///
+/// The lookup is [selectedRuntimeEnvironmentName], which reads the command
+/// line, the `.env` file and the OS environment in that order — so the
+/// `env=dev` line at the bottom of `.env.example` selects `dev` for the
+/// *runtime* as well as for the configuration. Reading only
+/// `Platform.environment` would leave the two disagreeing: this server would
+/// load `config-resources_dev.yaml` while running as a production deployment.
+void initializeRuntime(List<String> args) {
   TomRuntime.addEnvironment(environmentProd);
   TomRuntime.addEnvironment(environmentDev);
   TomRuntime.setRootEnvironment(environmentProd);
-  TomRuntime.setCurrentEnvironment(Platform.environment['env'], 'prod');
+  TomRuntime.setCurrentEnvironment(
+    selectedRuntimeEnvironmentName(args),
+    'prod',
+  );
   TomRuntime.getCurrentEnvironment().initialize();
   TomRuntime.initializePlatform();
 }
@@ -272,46 +285,6 @@ void initializeServerResources() {
   );
 }
 
-/// Configures JWT signing/encryption with the framework's bundled sample keypair.
-///
-/// This is the **identical** configuration the auth server applies in its own
-/// `initializeJwtSigning()`. Reusing the framework's standard sample keys — rather
-/// than minting per-server keys — is what lets this app server verify a token the
-/// auth server issued.
-///
-/// The configuration is left marked as a development ("dummy") certificate — the
-/// bundled keypair is a non-fresh, non-production convenience shared across every
-/// sample. Because it is a dummy cert, the framework emits a development-key
-/// warning whenever it signs or verifies a token; that warning is intentionally
-/// **not** suppressed (guideline G-AUTH-2). To run against a real certificate,
-/// build a [TomJwtConfiguration] from your own keys and pass `isDummy: false`
-/// (the last positional argument) so the warning stops.
-void initializeJwtSigning() {
-  final base = TomJwtConfiguration.defaultSignConfiguration;
-  TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
-    TomJwtConfiguration.hmacKey,
-    base.algorithm,
-    TomJwtConfiguration.rsaPrivKey,
-    TomJwtConfiguration.rsaPubKey,
-  );
-}
-
-/// Emits a boot-time warning when the active signing configuration is still the
-/// bundled development ("dummy") certificate.
-///
-/// Kept separate from [initializeJwtSigning] so the check reads explicitly at the
-/// call site: a production deployment installs a real cert (`isDummy: false`) and
-/// this stays silent.
-void warnIfDevelopmentSigningKey() {
-  if (TomJwtConfiguration.defaultSignConfiguration.isDummy) {
-    tomLog.warn(
-      'JWT signing uses the bundled development certificate (non-fresh, '
-      'non-production). Install a real certificate before any real deployment; '
-      'see README_advanced_06_authentication.md.',
-    );
-  }
-}
-
 /// Boots the HTTP server (fire-and-forget; the bound socket + open DB connection
 /// keep the isolate alive).
 void startServer(AppServerConfiguration configuration) {
@@ -331,10 +304,24 @@ Future<void> main(List<String> args) async {
   // framework's TomResourceRoleAdapter resolves resource keys through (C-5).
   // Every advanced_* runtime registers the identical mapping at boot.
   registerProjectRoleVocabulary();
-  initializeRuntime();
+  initializeRuntime(args);
   initializeServerResources();
 
   final configuration = AppServerConfiguration(args);
+
+  // Verifies with `jwtSharedSecretKey` and decrypts the access-control payload
+  // with the configured RSA pair. This server is the *verifier* of the pair, so
+  // the three values must match `advanced_auth_server`'s exactly; both leave
+  // them unset here, so both fall back to the framework's bundled sample keys
+  // with a warning — which the framework permits only because `env=dev`
+  // selected a development environment.
+  //
+  // It runs here, immediately after the configuration and before any datasource
+  // is opened, because outside a development environment it *refuses* the
+  // bundled keys. A refusal is only useful if it arrives before the boot has
+  // connected to a database and run its migrations — the server cannot serve
+  // either way, so it should say so while it has done nothing yet.
+  installJwtSigning(configuration);
 
   await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
 
@@ -358,9 +345,6 @@ Future<void> main(List<String> args) async {
   // the item's fields. Same ordering constraint as the data scopes above — it
   // eagerly builds the production resolvers.
   registerAppColumnGrades();
-
-  initializeJwtSigning();
-  warnIfDevelopmentSigningKey();
 
   initializeBeanContext();
 

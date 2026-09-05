@@ -151,6 +151,8 @@ surface documented here.
 | `TomExternalIdentityTokenRepository` | class | SQL repository for `TomExternalIdentityToken`. |
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints. |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake (extends `TomServerException`). |
+| `installJwtSigning` | top-level function | Installs the configured JWT key material at boot; refuses the bundled sample keys outside development. |
+| `TomSigningKeyException` | class | The refusal: names the unset key fields and their environment variables (extends `TomServerException`). |
 
 ### Authorization (`lib/src/tomserver/authorization/`)
 
@@ -211,6 +213,7 @@ surface documented here.
 | `TomYaml` | class | YAML resource helpers (static). |
 | `TomConfigurationException` | class | A property failed the cast to `T` (extends `TomServerException`). |
 | `tomAppId` | top-level getter | The current application id, read from the active configuration's `appId`. |
+| `selectedRuntimeEnvironmentName` | top-level function | Which runtime environment the deployment selected, read before the configuration exists: command line, then `.env`, then the OS environment. |
 
 ### Datasources (`lib/src/tomserver/datasources/`)
 
@@ -565,6 +568,7 @@ surface documented here.
 | `Gte` | Object Persistence |
 | `In` | Object Persistence |
 | `InMemoryPrincipalDelegationStore` | Authorization |
+| `installJwtSigning` | Authentication |
 | `InMemoryPrincipalResourceGrantStore` | Authorization |
 | `IntCol` | Object Persistence |
 | `IntegerLiteral` | Object Persistence |
@@ -608,6 +612,7 @@ surface documented here.
 | `schedulerNodeFailedAfter` | Scheduling |
 | `schedulerNodeTable` | Scheduling |
 | `schedulerNodeTableDdl` | Scheduling |
+| `selectedRuntimeEnvironmentName` | Configuration |
 | `sqlDate` | Datasources |
 | `sqlFailureCauses` | Datasources |
 | `sqlInstant` | Datasources |
@@ -910,6 +915,7 @@ surface documented here.
 | `TomServiceCredential` | Authentication |
 | `TomServiceLoginResponse` | Authentication |
 | `TomServiceLoginTransport` | Authentication |
+| `TomSigningKeyException` | Authentication |
 | `TomSmsAuthScheme` | Messaging |
 | `TomSmsBodyFormat` | Messaging |
 | `TomSmsCode2FAService` | Authentication |

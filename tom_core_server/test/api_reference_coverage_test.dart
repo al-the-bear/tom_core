@@ -1149,13 +1149,20 @@ List<String> _secretBearingFields(String path, String className) {
   return secrets;
 }
 
-/// Whether [field] belongs to one of the three deployment-facing blocks the
-/// configuration guide documents: server self-login, outbound mail, outbound
-/// SMS.
+/// Whether [field] belongs to one of the four deployment-facing blocks the
+/// configuration guide documents: JWT signing keys, server self-login, outbound
+/// mail, outbound SMS.
 ///
 /// Matched by name rather than by a listed set, so a tenth `smtp*` setting is
 /// covered by the guard the day it is declared.
+///
+/// The `jwt*` block earns its place by the same test as the other three: its
+/// value is chosen by whoever deploys the server, not by whoever wrote it. It is
+/// also the block where an unset setting is least visible — the server still
+/// signs, on keys published in the `tom_crypto` sources — which is exactly why
+/// the guide has to name each one.
 bool _isDeploymentSetting(String field) =>
+    field.startsWith('jwt') ||
     field == 'authServerLoginUri' ||
     field.startsWith('serviceAccount') ||
     field.startsWith('smtp') ||

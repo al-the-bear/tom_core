@@ -33,6 +33,12 @@ dependencies:
   # key types, which stay pointycastle's; declared explicitly rather than
   # inherited through tom_crypto's own dependency.
   pointycastle: ^3.9.1
+  # SecretKey for the configured HMAC signing key
+  # (authentication/jwt_signing.dart). TomJwtConfiguration's `key` field is
+  # typed as this package's JWTKey and tom_crypto does not re-export it, so
+  # building one from a configured passphrase needs the dependency directly —
+  # same reason as pointycastle above.
+  dart_jsonwebtoken: ^3.1.1
   # PDF generation for the export renderers (export/pdf_renderer.dart).
   # Apache-2.0; see doc/export.md for why this one and not a hand-written
   # encoder. The caret range spans 3.12.x (SDK >=2.19) and 3.13.x (SDK >=3.12)

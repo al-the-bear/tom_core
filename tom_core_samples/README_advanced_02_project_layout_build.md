@@ -175,13 +175,24 @@ you copy to `.env`. The two databases bind **distinct host ports (3307 / 3308)**
 so both servers — and a host-local MariaDB — coexist. The auth server's
 `.env.example` shows the shape (db image/host/port/name/credentials, plus an
 `env=dev|int|prod` selector that picks the matching
-`assets/config-resources_<env>.yaml` overlay). Each file declares only what
-something reads: the HTTP port is a `_defaultPort` constant in the boot file,
-applied only where the configuration merge left the field at `0`, and both
-servers sign with the framework's **bundled sample keypair**, so there is no
-shared signing secret to keep in step — replacing it means installing real keys,
-not setting a variable (part
-[06](README_advanced_06_authentication.md)).
+`assets/config-resources_<env>.yaml` overlay **and** the runtime environment,
+both resolved from the same value). Each file declares only what something
+reads: the HTTP port is a `_defaultPort` constant in the boot file, applied only
+where the configuration merge left the field at `0`, and the JWT key material is
+three commented-out variables — `JWT_SHARED_SECRET_KEY`, `JWT_RSA_PRIV_KEY`,
+`JWT_RSA_PUB_KEY`, the environment spellings of the `jwtSharedSecretKey`,
+`jwtRsaPrivKey` and `jwtRsaPubKey` configuration fields. Left commented, both
+servers fall back to the framework's **bundled sample keys**, which is what makes
+them trust each other out of the box; set `JWT_SHARED_SECRET_KEY` to the same
+value in both and the trust rests on a secret you chose, set it in one only and
+the app server rejects the auth server's tokens. The fallback is refused outright
+outside a development or test environment — which is why `env=dev` is not
+optional here (part [06](README_advanced_06_authentication.md)).
+
+**A `SCREAMING_SNAKE_CASE` variable reaches the `lowerCamelCase` configuration
+field of the same name**, so `JWT_SHARED_SECRET_KEY` and `jwtSharedSecretKey` are
+two spellings of one key. That is a general rule of the merge, not something
+these servers wire up.
 
 To move a port, override the `port` configuration key from any of the merge's
 sources — a config asset, the OS environment, the `.env`, or a command-line

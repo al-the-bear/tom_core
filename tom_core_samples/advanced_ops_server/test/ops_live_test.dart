@@ -76,7 +76,10 @@ Future<void> _bootstrap() async {
   TomPlatformUtils.setCurrentPlatform(standalonePlatformUtils);
   initializeReflection();
   registerProjectRoleVocabulary();
-  initializeRuntime();
+  // `env=dev` rather than an empty argument list: the boot resolves the runtime
+  // environment from the command line first, and a test that runs from a
+  // directory without a `.env` would otherwise fall back to `prod`.
+  initializeRuntime(['env=dev']);
   initializeServerResources();
   try {
     await TomDataSourceInfo.initializeDatasourceInfo(

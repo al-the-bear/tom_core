@@ -297,8 +297,8 @@ Both `bin/*_server_start.dart` follow the same sequence, and the order is not
 incidental — each step depends on the prior ones being in place:
 
 ```
-platform → registry → reflection → runtime → config → datasource → blob stores →
-JWT signing → bean context → migrations → [seed] → file slots → TomServer.start()
+platform → registry → reflection → runtime → config → JWT signing → datasource →
+blob stores → bean context → migrations → [seed] → file slots → TomServer.start()
 ```
 
 Reading `main` in `auth_server_start.dart` (the app server's `main` is identical
@@ -310,11 +310,11 @@ bar the demo-password seed):
 | registry | `registerAdvancedTodoApis()` | the endpoint router needs the API definitions to resolve URIs |
 | issuer | `globalSettingJwtOrganization = 'tom'` | the issuer the token is signed with; **the app server must set the same value** |
 | reflection | `initializeReflection()` | populates the reflected shapes the config, records and components use |
-| runtime | `initializeRuntime()` | resolves the active environment (`prod`/`dev`) |
+| runtime | `initializeRuntime(args)` | resolves the active environment (`prod`/`dev`) from `selectedRuntimeEnvironmentName` — command line, then `.env`, then the OS environment, the same three sources the configuration merge reads |
 | config | `AuthServerConfiguration(args)` | merges YAML/env/args; sets port, error handler |
+| JWT signing | `installJwtSigning(configuration)` | builds the signing configuration from the three `jwt*` configuration fields — **identical on both servers**, which is what lets the app server verify a token the auth server minted. It sits **immediately after the config and before any datasource**, because outside a development environment it *refuses* the bundled keys: a refusal is only useful if it arrives before the boot has opened database connections and run their migrations |
 | datasource | `initializeDatasourceInfo(...)` | opens the DB connections the repositories and migrations use |
 | blob stores | `initializeBlobStores(...)` | **must follow the datasource init** — a `type: database` store resolves its named data source eagerly, so a store pointing at an unregistered name fails at start-up rather than at the first upload |
-| JWT signing | `initializeJwtSigning()` | installs the shared keypair — **identical on both servers**, which is what lets the app server verify a token the auth server minted |
 | bean context | `initializeBeanContext()` | instantiates the `@tomComponent` services |
 | migrations | `migrateDatabases(...)` | brings the schema + seed data up before serving |
 | seed | `seedDemoPasswords()` *(auth only)* | fills demo passwords onto the password-less seed rows so the README `curl`s can log in |
@@ -323,12 +323,15 @@ bar the demo-password seed):
 | serve | `TomServer.start()` | binds the socket; installs the default auth middleware |
 
 The cross-server trust hinges on two of these matching exactly: the **issuer**
-(`globalSettingJwtOrganization = 'tom'`) and the **JWT signing configuration**
-(the same HMAC + RSA sample keypair). `initializeJwtSigning()` is byte-for-byte
-identical in both boots (`auth_server_start.dart`,
-`app_server_start.dart`) — reusing the framework's bundled sample keys rather than
-minting per-server keys is precisely what makes a token issued at 8081 verify at
-8080. Replace those keys before any real deployment.
+(`globalSettingJwtOrganization = 'tom'`) and the **JWT signing configuration**.
+Both boots call the framework's `installJwtSigning(configuration)`, which reads
+`jwtSharedSecretKey`, `jwtRsaPrivKey` and `jwtRsaPubKey` off the merged
+configuration. Neither sample sets them, so both fall back to the framework's
+bundled sample keys — and *that* is what makes a token issued at 8081 verify at
+8080. Set `JWT_SHARED_SECRET_KEY` in both servers' `.env` and the same trust
+rests on a secret you chose; set it in one only and the app server rejects the
+auth server's tokens. The fallback is refused outright outside a development or
+test environment (see part 06), which is why both boots are given `env=dev`.
 
 ## The secured request lifecycle (summary)
 

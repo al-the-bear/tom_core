@@ -5,8 +5,8 @@
 /// admin surfaces against the bundled Docker MariaDB. It follows the
 /// `core_server_sample` / `tom_uam_server` boot sequence:
 ///
-///   platform → registry → reflection → runtime → config → datasource →
-///   JWT signing → bean context → migrations → demo-password seed →
+///   platform → registry → reflection → runtime → config → JWT signing →
+///   datasource → bean context → migrations → demo-password seed →
 ///   `TomServer.start()`
 ///
 /// Unlike `core_server_sample` (whose endpoints are all public), this server
@@ -185,11 +185,21 @@ const TomEnvironment environmentDev = TomEnvironment(
 
 /// Registers the environment hierarchy and resolves the current environment
 /// from the `env` variable (defaults to `prod`).
-void initializeRuntime() {
+///
+/// The lookup is [selectedRuntimeEnvironmentName], which reads the command
+/// line, the `.env` file and the OS environment in that order — so the
+/// `env=dev` line at the bottom of `.env.example` selects `dev` for the
+/// *runtime* as well as for the configuration. Reading only
+/// `Platform.environment` would leave the two disagreeing: this server would
+/// load `config-resources_dev.yaml` while running as a production deployment.
+void initializeRuntime(List<String> args) {
   TomRuntime.addEnvironment(environmentProd);
   TomRuntime.addEnvironment(environmentDev);
   TomRuntime.setRootEnvironment(environmentProd);
-  TomRuntime.setCurrentEnvironment(Platform.environment['env'], 'prod');
+  TomRuntime.setCurrentEnvironment(
+    selectedRuntimeEnvironmentName(args),
+    'prod',
+  );
   TomRuntime.getCurrentEnvironment().initialize();
   TomRuntime.initializePlatform();
 }
@@ -284,47 +294,6 @@ void initializeServerResources() {
   TomServerConfigResourceProvider.setServerConfigProvider(
     TomServerConfigResourceProvider.from(configLoaderFunction()),
   );
-}
-
-/// Configures JWT signing/encryption with the framework's bundled sample keypair.
-///
-/// The token pair the auth server mints is signed (HS256) and carries an
-/// RSA-encrypted access-control payload. Reusing the framework's standard sample
-/// keys — rather than minting per-server keys — is what lets the app server
-/// (`advanced_app_server`) verify a token issued here by applying the identical
-/// configuration.
-///
-/// The configuration is left marked as a development ("dummy") certificate — the
-/// bundled keypair is a non-fresh, non-production convenience shared across every
-/// sample. Because it is a dummy cert, the framework emits a development-key
-/// warning whenever it signs or verifies a token; that warning is intentionally
-/// **not** suppressed (guideline G-AUTH-2). To run against a real certificate,
-/// build a [TomJwtConfiguration] from your own keys and pass `isDummy: false`
-/// (the last positional argument) so the warning stops.
-void initializeJwtSigning() {
-  final base = TomJwtConfiguration.defaultSignConfiguration;
-  TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
-    TomJwtConfiguration.hmacKey,
-    base.algorithm,
-    TomJwtConfiguration.rsaPrivKey,
-    TomJwtConfiguration.rsaPubKey,
-  );
-}
-
-/// Emits a boot-time warning when the active signing configuration is still the
-/// bundled development ("dummy") certificate.
-///
-/// Kept separate from [initializeJwtSigning] so the check reads explicitly at the
-/// call site: a production deployment installs a real cert (`isDummy: false`) and
-/// this stays silent.
-void warnIfDevelopmentSigningKey() {
-  if (TomJwtConfiguration.defaultSignConfiguration.isDummy) {
-    tomLog.warn(
-      'JWT signing uses the bundled development certificate (non-fresh, '
-      'non-production). Install a real certificate before any real deployment; '
-      'see README_advanced_06_authentication.md.',
-    );
-  }
 }
 
 /// Fills a demo password onto every seed user that still has none, so the
@@ -426,10 +395,25 @@ Future<void> main(List<String> args) async {
   // framework's TomResourceRoleAdapter resolves resource keys through.
   // Every advanced_* runtime registers the identical mapping at boot.
   registerProjectRoleVocabulary();
-  initializeRuntime();
+  initializeRuntime(args);
   initializeServerResources();
 
   final configuration = AuthServerConfiguration(args);
+
+  // Signs (HS256) with `jwtSharedSecretKey` and encrypts the access-control
+  // payload with the configured RSA pair — the same three values
+  // `advanced_app_server` configures, which is what lets it verify a token
+  // minted here. Configure them differently in the two servers and the app
+  // server rejects this one's tokens; leave them unset, as this sample does,
+  // and the framework's bundled sample keys are used with a warning — which it
+  // permits only because `env=dev` selected a development environment.
+  //
+  // It runs here, immediately after the configuration and before any datasource
+  // is opened, because outside a development environment it *refuses* the
+  // bundled keys. A refusal is only useful if it arrives before the boot has
+  // connected to two databases and run their migrations — the server cannot
+  // serve either way, so it should say so while it has done nothing yet.
+  installJwtSigning(configuration);
 
   await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
 
@@ -437,9 +421,6 @@ Future<void> main(List<String> args) async {
   // named data source eagerly, so a store pointing at an unregistered name is a
   // start-up failure rather than a failed upload hours later.
   await TomBlobStoreInfo.initializeBlobStores(blobStoreLoaderFunction());
-
-  initializeJwtSigning();
-  warnIfDevelopmentSigningKey();
 
   initializeBeanContext();
   installTwoFactorPolicy();

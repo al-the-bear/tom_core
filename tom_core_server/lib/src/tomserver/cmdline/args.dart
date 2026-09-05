@@ -132,6 +132,95 @@ class TomArgs {
     return result;
   }
 
+  /// Matches a name written in `SCREAMING_SNAKE_CASE`: an upper-case or digit
+  /// run, then any number of further runs each introduced by one `_`.
+  ///
+  /// Anchored at both ends, so the whole name must be of that shape. A name
+  /// that is only partly upper-case (`Mixed_Case`), one that starts or ends on
+  /// the separator (`_LEADING`, `TRAILING_`), and one written in any other
+  /// convention are all outside it — see [resolveEnvironmentNames] for why a
+  /// near miss is left alone rather than approximated.
+  ///
+  /// The first character is `[A-Z]` rather than `[A-Z0-9]` because a name
+  /// beginning with a digit has no field to name: a Dart identifier cannot.
+  static final RegExp environmentNamePattern = RegExp(
+    r"^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$",
+  );
+
+  /// Returns the `lowerCamelCase` field name a `SCREAMING_SNAKE_CASE`
+  /// environment variable [name] spells, or null when [name] is not written in
+  /// that convention.
+  ///
+  /// The separator is the underscore and nothing else. A digit does not open a
+  /// segment, so `OAUTH2_TOKEN_URI` is three segments and becomes
+  /// `oauth2TokenUri` — splitting on the digit instead would produce
+  /// `oAuth2TokenUri`, a field nobody declared.
+  ///
+  /// Each segment after the first contributes one capital and then lower case,
+  /// which is the same rule the configuration fields are written under
+  /// (`jwtRsaPubKey`, `smsApiKey`, `authServerLoginUri` — an acronym is a word,
+  /// not a run of capitals). A field spelled with a capitalised acronym is
+  /// therefore not reachable by this convention, and is a naming inconsistency
+  /// in that field rather than a gap here.
+  static String? fieldNameOf(String name) {
+    if (!environmentNamePattern.hasMatch(name)) return null;
+
+    final segments = name.toLowerCase().split('_');
+    final buffer = StringBuffer(segments.first);
+    for (final segment in segments.skip(1)) {
+      buffer
+        ..write(segment[0].toUpperCase())
+        ..write(segment.substring(1));
+    }
+    return buffer.toString();
+  }
+
+  /// Returns [source] with, for every `SCREAMING_SNAKE_CASE` key, an added
+  /// entry under the field name it spells (see [fieldNameOf]).
+  ///
+  /// This is what lets a deployment write `JWT_SHARED_SECRET_KEY` — the
+  /// spelling every `.env` file, container platform and CI secret store uses —
+  /// and reach the `jwtSharedSecretKey` field, which before this was settable
+  /// only by a variable literally named `jwtSharedSecretKey`. The mapping is
+  /// mechanical and total in one direction, so a reader can predict the
+  /// variable for any field without consulting a table of special cases.
+  ///
+  /// Two rules keep it from taking anything away:
+  ///
+  /// - **The original key is kept.** The alias is added alongside, so a
+  ///   `${VAR}` datasource placeholder or any other verbatim reader is
+  ///   unaffected.
+  /// - **A key already spelled as the field wins.** It names the target
+  ///   literally, with no convention in between, so a deployment that used the
+  ///   exact name is never overruled by a variable it did not know also aimed
+  ///   there.
+  ///
+  /// A name outside the convention contributes no alias at all. Approximating
+  /// one would be guessing, and a guess that happened to match a declared field
+  /// would bind a value nobody aimed at it — which is the failure this method
+  /// exists to remove, not a cost worth paying to widen its reach.
+  ///
+  /// Apply this **per source**, before the sources are merged over one another:
+  /// applied to an already-merged map, an alias derived from a low-precedence
+  /// source would outrank a high-precedence exact key, reversing the documented
+  /// order for exactly the keys the convention touches. See
+  /// [TomBaseServerConfiguration.getDefaultValues].
+  static Map<String, dynamic> resolveEnvironmentNames(
+    Map<String, Object?> source,
+  ) {
+    final resolved = <String, dynamic>{};
+    for (final entry in source.entries) {
+      final fieldName = fieldNameOf(entry.key);
+      if (fieldName != null && fieldName != entry.key) {
+        resolved[fieldName] = entry.value;
+      }
+    }
+    // The source last, so a key already spelled as the field overwrites the
+    // alias derived from its screaming twin rather than the other way round.
+    resolved.addAll(source);
+    return resolved;
+  }
+
   /// Splits each `key=value` entry of [args] on its **first** `=` and converts
   /// the value, returning the resulting map. An entry with no `=` is a flag and
   /// maps to the boolean `true`.

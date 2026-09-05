@@ -202,6 +202,8 @@ a test suite keep the in-memory store and need no database at all.
 | `TomServiceCredential` | The deployment's own credential and where to present it, read from the configuration; `null` when none was configured, which is what makes the whole feature opt-in. |
 | `TomServiceLoginTransport` | The one JSON POST the self-login makes — the seam a test replaces instead of running an auth server. |
 | `TomServerSelfLoginException` | Raised when a *configured* self-login cannot complete; it aborts `TomServer.start()` rather than degrading to uncapped. |
+| `installJwtSigning` | Builds the process-wide JWT signing configuration from the server configuration's `jwtSharedSecretKey` / `jwtRsaPrivKey` / `jwtRsaPubKey`, and installs it. An unset field falls back to the framework's bundled sample key — permitted in a development or test environment, refused anywhere else. |
+| `TomSigningKeyException` | Raised by `installJwtSigning` when a server outside development would have signed with the bundled sample keys; names the fields that were not configured. `clientThrow: false` — it is a deployment fault, not a request's. |
 
 ## Quick start
 
@@ -238,10 +240,11 @@ examples split the module along the seam described above:
 `two_factor_enrolment_example.dart` and `two_factor_login_example.dart` the
 second factor either side of enrolment, and `oauth_login_example.dart` the
 external path — all four connection-free and checking their own results.
-`test/authentication_test.dart`, `test/two_factor_test.dart` and
-`test/oauth_test.dart` cover the module; `test/examples_test.dart` runs the four
-examples and `test/readme_quick_start_test.dart` runs the snippet above, so none
-of them can drift away from the code.
+`test/authentication_test.dart`, `test/two_factor_test.dart`,
+`test/oauth_test.dart` and `test/jwt_signing_test.dart` cover the module;
+`test/examples_test.dart` runs the four examples and
+`test/readme_quick_start_test.dart` runs the snippet above, so none of them can
+drift away from the code.
 
 ---
 

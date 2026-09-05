@@ -100,7 +100,8 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/oauth_identity.dart`,
 `lib/src/tomserver/authentication/oauth_tokens.dart`,
 `lib/src/tomserver/authentication/oauth_authentication_service.dart`,
-`lib/src/tomserver/authentication/oauth_endpoints.dart`.
+`lib/src/tomserver/authentication/oauth_endpoints.dart`,
+`lib/src/tomserver/authentication/jwt_signing.dart`.
 
 The module orchestrates the server-side login flow. `TomAuthenticationServer`
 receives a `TomAuthenticationMessage`, builds a `TomAuthenticationData` from it,
@@ -2109,8 +2110,12 @@ Keys raised: `oauth.callback.provider_error`, `oauth.callback.unknown_state`
 | `defaultOAuthStateTable` | `String` | `'tom_oauth_state'` — the pending-authorization table's default name |
 | `oauthStateTable(String table)` | `TomFrameworkTable` | The table's single column declaration; everything else — the DDL, the `SELECT` column lists, the `INSERT` — is derived from it |
 | `oauthStateTableDdl(String table)` | `String` | That declaration rendered as `CREATE TABLE IF NOT EXISTS`, for a start-up sequence that provisions without the store |
+| `installJwtSigning(TomBaseServerConfiguration configuration)` | `TomJwtConfiguration` | Builds the signing configuration from `jwtSharedSecretKey`, `jwtRsaPrivKey` and `jwtRsaPubKey`, installs it as `TomJwtConfiguration.defaultSignConfiguration`, and returns it. A boot calls it once, after the runtime environment is selected and before anything mints or verifies a token. An unset (or blank) field falls back to the framework's **bundled sample key**: permitted with a warning under a development or test environment, and refused with `TomSigningKeyException` anywhere else — including a boot that never declared an environment. Configure all three and the result is not a dummy configuration, so the per-sign development-key warning stops as well. Two servers reach the same signing key by configuring the same values; that, not a shared default, is what makes one server's token verify at the other. |
 
-These three live in `oauth_state_sql.dart` rather than beside the store so
+`installJwtSigning` lives in `authentication/jwt_signing.dart`, with
+`TomSigningKeyException` beside it.
+
+The first three live in `oauth_state_sql.dart` rather than beside the store so
 `db_migration/framework_convergence.dart` can name the table without importing
 the store — the same split the scheduling module uses.
 

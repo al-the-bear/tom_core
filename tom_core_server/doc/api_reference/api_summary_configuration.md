@@ -24,7 +24,8 @@ and YAML loading with environment-variable substitution.
 
 Source: `lib/src/tomserver/configuration/base_server_configuration.dart`,
 `lib/src/tomserver/configuration/tom_config.dart`,
-`lib/src/tomserver/configuration/yaml_resources.dart`.
+`lib/src/tomserver/configuration/yaml_resources.dart`,
+`lib/src/tomserver/configuration/runtime_environment.dart`.
 
 `TomServerConfigResourceProvider` holds the resolved configuration tree and
 answers dotted-path property lookups; a single provider is shared process-wide
@@ -138,9 +139,9 @@ runs after it so a merged key spelled `args` cannot displace the invocation.
 | `port` | `int` | HTTP bind port; `0` is the "unconfigured" sentinel (default `0`). |
 | `certificateChain` | `String` | TLS certificate chain; defaults to a throwaway self-signed `localhost` pair that MUST be overridden in production. |
 | `privateKey` | `String` | TLS private key; defaults to a throwaway self-signed `localhost` key that MUST be overridden in production. |
-| `jwtRsaPubKey` | `String?` | JWT RSA public key. Carried, not used — nothing in this library reads it; an application that signs tokens assembles its own signing configuration from it and supplies algorithm, issuer, audience and expiry in code, since no keys exist for those. |
-| `jwtRsaPrivKey` | `String?` | JWT RSA private key, under the same rule; secret-bearing. |
-| `jwtSharedSecretKey` | `String?` | JWT shared-secret passphrase (default `"config-secret-passphrase"`). Read by nothing at all — the one server in this workspace that signs symmetrically takes its secret from `privateKey` instead. |
+| `jwtRsaPubKey` | `String?` | PEM of the JWT RSA public key, which encrypts the token payload. Read by `installJwtSigning`; `null` means "not configured" and falls back to the framework's bundled sample key — permitted in a development or test environment, refused anywhere else. Environment name `JWT_RSA_PUB_KEY` (default `null`). |
+| `jwtRsaPrivKey` | `String?` | PEM of the JWT RSA private key, under the same rule; secret-bearing. Environment name `JWT_RSA_PRIV_KEY` (default `null`). |
+| `jwtSharedSecretKey` | `String?` | Passphrase of the HMAC key that signs the token, and the one value two servers must agree on to trust each other's tokens; secret-bearing. Same rule and same fallback. Environment name `JWT_SHARED_SECRET_KEY` (default `null`). |
 | `authServerLoginUri` | `String?` | Absolute URI of the auth server's login endpoint, e.g. `https://auth.example.com/auth/login`; `null` or blank disables server self-login (default `null`). |
 | `serviceAccountName` | `String?` | Login name of this deployment's service account; `null` or blank disables server self-login (default `null`). |
 | `serviceAccountCredential` | `String?` | The service account's secret — **secret-bearing**: declared here so the shape and source key are known, but never authored; supplied out-of-band at deploy time (default `null`). |
@@ -378,3 +379,4 @@ one.
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
 | `tomAppId` | `String get tomAppId` | The process-wide application id: the `appId` of the configuration this isolate built, or `""` before it has built one. Read-only — an application states its name in `TomBaseServerConfiguration.appId` and nothing else publishes it. Resolves the field on each read, so a name set in a subclass constructor (which runs *after* the base constructor) is reported correctly. Read by `tomLoggingMiddleware`, which prefixes the access line with it. |
+| `selectedRuntimeEnvironmentName` | `String? selectedRuntimeEnvironmentName(List<String> args, {String variable = 'env'})` | The runtime environment name the deployment selected, from the command line (`env=dev`, undashed), then the `.env` file, then the OS environment — the same three sources the configuration merge reads, in the same order. `null` when nobody named one, which is what `TomRuntime.setCurrentEnvironment` takes as "apply the fallback". The selection cannot come out of the merge, because it is what picks the `config-resources_<env>.yaml` overlay the merge reads; reading only `Platform.environment` would let a boot load the `dev` overlay while running as a production deployment. Declared in `configuration/runtime_environment.dart`. |
