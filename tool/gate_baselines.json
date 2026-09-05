@@ -33,6 +33,11 @@
       "measured": "2026-09-04",
       "note": "One artifact deliberately left tracked: tom_core_kernel/doc/analyzer_analysis.json (13.3 MB), held open by tcfinal8_aidb, whose pending decision asks whether the artefact is still wanted at all. Unlike the six files this gate was written for -- three doc/last_testrun.json captures and three doc/baseline_*.csv, all removed in the same pass -- it is regenerated deliberately and referenced by tooling, so removing it here would pre-empt the user's decision. Lower this to 0 when that decision lands as removal."
     },
+    "check_doc_attributions": {
+      "faults": 0,
+      "measured": "2026-09-05",
+      "note": "Clean. 441 attribution claims, 105 type names judged. The one fault found on the first run (tom_flutter_ui_test's layout table calling lib/locale_settings.dart an AppBar language selector) was repaired in the same pass, so a rise here is a new misattribution, not a backlog."
+    },
     "check_doc_dart_blocks": {
       "faults": 0,
       "measured": "2026-09-03",
@@ -103,7 +108,7 @@
     "check_section_refs": {
       "faults": 0,
       "measured": "2026-09-04",
-      "note": "Zero, and held there. Every shipped lib/, test/ and example/ comment either says what it means in its own words or names the document its section number belongs to -- in practice always doc/acl_design_specification.md or doc/tom_ui_list_forms.md, both of which ship with the package. A bare '§7.2' or 'Phase 2a §16' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure."
+      "note": "Zero, and held there. Every shipped lib/, test/ and example/ comment either says what it means in its own words or names the document its section number belongs to -- in practice always doc/acl_design_specification.md or doc/tom_ui_list_forms.md, both of which ship with the package. A bare '\u00a77.2' or 'Phase 2a \u00a716' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure."
     },
     "check_shared_chrome": {
       "faults": 0,

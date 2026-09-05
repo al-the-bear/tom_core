@@ -122,7 +122,7 @@ the striped banner in `test/screenshots/<demo>.png`.
 | --- | --- |
 | `lib/main.dart` | Entry point, bootstrap ordering, and the four-tab registry. |
 | `lib/demo_resources.dart` | Registers the text/icon/color resource adapters consumed by the demos. |
-| `lib/locale_settings.dart` | Persisted-locale service + `AppBar` language selector. |
+| `lib/locale_settings.dart` | `LocaleSettingsService` (persisted locale) and the `LanguageSelectorButton` that `lib/main.dart` mounts in the app bar. |
 | `lib/acl_demos/` | ACL-engine demos and their scaffolding helpers. |
 | `lib/widget_demos/` | Per-category widget demos (`demo_01…demo_28`). |
 | `lib/forms_demos/` | Form-framework demos. |

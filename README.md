@@ -201,6 +201,7 @@ reports and never gates.
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
+| [`tool/check_doc_attributions.py`](tool/check_doc_attributions.py) | Finds prose that names a source file and then names a type that file has not got |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, quote its signature with the wrong parameter kind, or `const` one that is not |
 | [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, and every framework name in it must resolve |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
@@ -375,6 +376,43 @@ claiming library declares. A `Tom`-prefixed name declared nowhere in the
 repository is reported separately as deleted, which is why the index is always
 built repo-wide even when one subtree is checked: `[TomForm]` is not missing
 just because `tom_flutter_ui` does not declare it.
+
+```bash
+python3 tool/check_doc_attributions.py                 # the whole repository
+python3 tool/check_doc_attributions.py tom_flutter_ui  # one subtree
+```
+
+The previous two checks ask whether a name *resolves*. This one asks whether it
+resolves **where the prose says it does** — a different question, and the one
+two READMEs got wrong. `advanced_authadmin_client` called
+`lib/screens/grants_screen.dart` a `DataTable`; the screen builds a
+`TomDataTable`. Its neighbour said `lib/screens/board_screen.dart` re-runs when
+the `DropdownButtonFormField` changes; that screen has a `TomDropdownButton`.
+Both wrong names are real Flutter classes, in scope in every package here, so
+resolution finds nothing to object to. Misattribution is a two-place relation,
+and nothing about a name on its own says which file it was claimed for.
+
+The unit of judgement is therefore neither the document nor the name but the
+**claim**: one cited `.dart` path, and the span of prose still speaking about
+it — the citation's own sentence, plus the next one only when it opens
+anaphorically (`It`, `This`, `The file`). That last rule is what a
+character-count window cannot express, and it is load-bearing: without it the
+same corpus yields six false positives, every one a sentence that had moved on
+to a new subject. Names under a negation are skipped, because "carries no
+`TomForm` of its own" is prose whose whole point is that the file does not
+contain it; a claim is judged against everything it cites rather than the first
+path only; and containment follows `export` and `part` transitively, since a
+barrel declares nothing itself. Changelogs and `_copilot_guidelines/` are out
+of scope — one describes a past tree and the other an intended one, and neither
+can be repaired.
+
+Measured before being switched on: 441 claims, 105 type names judged, one true
+fault — `tom_flutter_ui_test` calling `lib/locale_settings.dart` an "`AppBar`
+language selector" where the file declares `LanguageSelectorButton`. The naive
+rule this replaces — is the name absent from the package's own `lib/`? — scored
+two true faults in 24 candidates across the sample READMEs, where four of the
+rest were not types at all and eighteen were deliberate contrast mentions that
+have to stay. A rule that never cries wolf is one people leave switched on.
 
 ```bash
 python3 tool/check_doc_samples.py                  # the whole repository
