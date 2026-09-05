@@ -2,6 +2,49 @@
 
 ### Fixed
 
+- **`TRUE` and `FALSE` were the only case-sensitive tokens in a query sentence,
+  so `find by done = true` did not compile
+  (tcincb3_ahzb-tom_core_server-object_persistence-boolean-literals-are-the-only-case-sensitive-tokens-in-a-query-sentence).**
+  The two boolean branches matched with a raw `==`, where `and`, `or`, `not`,
+  `is`, `null`, `in`, `like`, `regexp`, `by`, `order`, `asc`, `desc`, the six
+  comparison operators and every column name go through `toUpperCase()`. The
+  inconsistency was easy to hit precisely because it was invisible: nothing in
+  an otherwise entirely case-free sentence suggests one of its words has to be
+  shouted, and `doc/object_persistence.md` wrote the literal uppercase in its
+  one example without saying the case was load-bearing.
+
+  It also did not fail as a *syntax* error. A lowercase `true` declined every
+  literal rule and was handed on as an identifier, so the compiler answered from
+  the annotation analyzer with `annotation_analyzer.determine_column
+  .no_column_match, No column match field [true]` — outside the
+  `TomQuerySyntaxException` family this compiler documents as covering every
+  rejection, and naming a column the author never wrote. That is the same
+  failure shape already removed for unterminated string literals and for a
+  bracket in operand position; the boolean literal was the last token producing
+  it.
+
+  Both branches now match case-insensitively, which makes the language uniform:
+  every keyword, both boolean literals and every column name are case-free, and
+  only the inside of a `'…'` string literal is taken as written. The two
+  branches stay separate rather than folding into one, because their rejection
+  keys differ by value (`…_expected_true` / `…_expected_false`) so a caller
+  reading the key can tell which literal the sentence used without re-parsing
+  it; and the boolean stays out of the `_scalarLiterals` table because it is the
+  one literal whose type *is* the type of a predicate, so it is the only one
+  that may legally stand in negation position — the table refuses that for the
+  five kinds that cannot.
+
+  This reserves `true` and `false` in operand position: a field whose sentence
+  name is one of them is now read as the literal. Reaching the clash takes
+  deliberate effort, since Dart will not let a field be *declared* `true` or
+  `false` and a sentence names a field by its declaration unless an explicit
+  `@TomDbColumn(name: ...)` overrides it — so the only way in is to write that
+  name on purpose, and the way out is to write a different one. The alternative —
+  resolve the column first and fall back to the literal — would make which node
+  you get depend on the entity's field list, which is far worse to debug than a
+  name clash. Documented where the reservation bites, under *Writing a value
+  inline*.
+
 - **Every guide's Overview table is now checked against the module's exports,
   and eight guides that were exempt from that check have been reconciled
   (tcincb3_ahwn-tom_core_server-reconcile-remaining-overview-tables).** The

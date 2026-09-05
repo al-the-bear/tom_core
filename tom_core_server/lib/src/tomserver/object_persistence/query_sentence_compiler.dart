@@ -1463,7 +1463,25 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         // i++;
         index = i;
         break;
-      } else if (qp[i] == "TRUE") {
+      } else if (qp[i].toUpperCase() == "TRUE") {
+        // Matched through `toUpperCase()` like every other keyword in a
+        // sentence — `and`, `or`, `not`, `is`, `null`, `in`, `like`, `regexp`,
+        // `order`, `by`, `asc`, `desc` and the six comparison operators all are.
+        // The two boolean branches were the only raw equalities, so `TRUE` had
+        // to be shouted while nothing in an otherwise case-free sentence said
+        // so; and a lowercase `true` did not fail as a syntax error but fell
+        // through to the column resolver, which answered
+        // `no_column_match, No column match field [true]` — outside the
+        // exception family this compiler documents, naming a column the author
+        // never wrote.
+        //
+        // This reserves `true` and `false` in operand position: a column
+        // actually named one of them no longer resolves. SQL reserves the words
+        // too, the sentence language has no quoting for identifiers, and
+        // `@TomDbColumn(name: ...)` already renames such a field. The
+        // alternative — resolve the column first and fall back to the literal —
+        // would make which node you get depend on the entity's field list,
+        // which is far worse to debug than a name clash.
         if (QT != TomDbBool) {
           throw TomQuerySyntaxException(
             "query_sentence_compiler.build_expression.bool_literal_invalid_type_expected_true",
@@ -1474,7 +1492,11 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         // i++;
         index = i;
         break;
-      } else if (qp[i] == "FALSE") {
+      } else if (qp[i].toUpperCase() == "FALSE") {
+        // Case-insensitive for the reason given on the `TRUE` branch above. The
+        // two are kept apart rather than folded together because their
+        // rejection keys differ by value, which is what lets a caller reading
+        // the key tell which literal the sentence used without re-parsing it.
         if (QT != TomDbBool) {
           throw TomQuerySyntaxException(
             "query_sentence_compiler.build_expression.bool_literal_invalid_type_expected_false",

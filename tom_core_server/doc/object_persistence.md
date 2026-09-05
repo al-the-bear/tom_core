@@ -359,6 +359,12 @@ sentence of the wrong kind: the verb decides what the compiler produces, so
 `crud_repository.count_by_query_sentence.sentence_verb_mismatch` rather than
 failing on the cast.
 
+**The sentence is case-free.** Every keyword, both boolean literals and every
+column name are matched without regard to case, so `FIND DISTINCT TOP 5 BY
+DONE = true ORDER BY id DESC` compiles exactly as its lowercase form does. The
+one exception is the inside of a `'…'` string literal, which is a value and is
+taken as written.
+
 ### `IS IN` lists
 
 `IS IN` / `IS NOT IN` take a bracketed, comma-separated list whose elements are
@@ -449,7 +455,7 @@ can also be written out. Seven literal forms are recognised, by shape:
 | Form | Example | SQL type |
 | ---- | ------- | -------- |
 | Text | `find by title = 'draft'` | `String` |
-| Boolean | `find by done = TRUE` | `bool` |
+| Boolean | `find by done = true` | `bool` |
 | Integer | `find by priority > 3`, `find by delta > -5` | `int` |
 | Decimal | `find by amount > 1.5`, `find by amount > -0.25` | `double` |
 | Date | `find by tag_day = 2026-07-05` | `TomZonedDate` |
@@ -459,6 +465,14 @@ can also be written out. Seven literal forms are recognised, by shape:
 A literal stands for exactly one type, so comparing one against a column of
 another raises `…build_expression.<kind>_literal_invalid_type_expected`, and
 negating one raises `…_literal_negation_attempt`.
+
+`true` and `false` are therefore **reserved in operand position**: a field whose
+sentence name is one of them is read as the literal and never resolves as a
+column. Reaching that clash takes deliberate effort — a sentence names a field
+by its `@TomDbColumn(name: ...)` when it has one and by its Dart declaration
+otherwise, and Dart will not let a field be *declared* `true` or `false` — so the
+only way in is to write that name explicitly, and the way out is to write a
+different one.
 
 Three shapes worth knowing. A **decimal is written with a point**, never a
 comma: a comma separates an `IS IN` list, so a value spelled `1,5` is read as

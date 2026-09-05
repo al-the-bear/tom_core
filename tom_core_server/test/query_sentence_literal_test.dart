@@ -199,4 +199,67 @@ void main() {
       );
     });
   });
+
+  group('the boolean literal is spelled in any case', () {
+    // A sentence is otherwise entirely case-free — `and`, `or`, `not`, `is`,
+    // `null`, `in`, `like`, `regexp`, `order`, `by`, `asc`, `desc` and all six
+    // comparison operators are matched through `toUpperCase()`. The two boolean
+    // branches were the only raw equalities, so `TRUE` had to be shouted while
+    // nothing in the sentence suggested it.
+    //
+    // The cost was not a syntax error, which is why it stayed invisible: a
+    // lowercase `true` declined every literal rule and was handed on as an
+    // *identifier*, so the compiler answered from the annotation analyzer with
+    // `no_column_match, No column match field [true]` — outside the
+    // `TomQuerySyntaxException` family this compiler documents, and naming a
+    // column the author never wrote.
+    for (final spelling in ['TRUE', 'true', 'True', 'tRuE']) {
+      test('`$spelling` compiles to the same node as `TRUE`', () {
+        expect(
+          sql('find by done = $spelling'),
+          contains('fixture_export.done = true'),
+        );
+      });
+    }
+
+    for (final spelling in ['FALSE', 'false', 'False', 'fAlSe']) {
+      test('`$spelling` compiles to the same node as `FALSE`', () {
+        // Both literals, because the two were separate branches: fixing one and
+        // forgetting the other is the failure the split invited, and a suite
+        // that pinned only `true` would not have seen it.
+        expect(
+          sql('find by done = $spelling'),
+          contains('fixture_export.done = false'),
+        );
+      });
+    }
+
+    test('the type rule still refuses a lowercase literal, by its own key', () {
+      // The branch has to be reached *as a boolean* for the type check to fire.
+      // While the match was case-sensitive this sentence produced the column
+      // resolver's `no_column_match` instead, so the assertion is on the key
+      // rather than merely on throwing.
+      expect(
+        () => compiler.compileQuerySentence('find by title = true'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.build_expression.'
+                'bool_literal_invalid_type_expected_true',
+          ),
+        ),
+      );
+    });
+
+    test('a lowercase literal negates like the shouted one', () {
+      // `not` is the one context where a boolean literal is not in operand
+      // position, and it is reached by a different path — the branch `break`s
+      // and the negation is applied after the loop.
+      expect(
+        sql('find by not done = true'),
+        equals(sql('find by not done = TRUE')),
+      );
+    });
+  });
 }
