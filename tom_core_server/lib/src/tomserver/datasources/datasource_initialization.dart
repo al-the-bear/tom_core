@@ -1,13 +1,19 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import '../little_things/server_exception.dart';
 import '../transactions/transaction_manager.dart';
 import 'sql_dialects.dart';
 import 'queries.dart';
 
 /// Thrown when a data source cannot be discovered, instantiated, or
 /// initialised (duplicate or missing driver, bad configuration, etc.).
-class TomDatasourceInitException extends TomException {
+///
+/// `clientThrow` is not a parameter: every condition this type reports is
+/// infrastructure, and its messages name driver classes, datasource types and
+/// raw driver errors. Masking is therefore an invariant of the type rather than
+/// a default a raise site could forget to keep.
+class TomDatasourceInitException extends TomServerException {
   /// Creates the exception with a message [key] and [defaultUserMessage]; the
-  /// remaining parameters mirror [TomException].
+  /// remaining parameters mirror [TomServerException].
   TomDatasourceInitException(
     super.key,
     super.defaultUserMessage, {
@@ -15,9 +21,7 @@ class TomDatasourceInitException extends TomException {
     super.stack,
     super.rootException,
     super.autoLog,
-    super.uuid,
-    super.serverCallError,
-  });
+  }) : super(clientThrow: false);
 }
 
 /// Annotation marking a [TomDataSource] implementation as the driver for a
@@ -120,7 +124,7 @@ abstract class TomDataSource implements TomTransactionParticipant {
                 as TomDatasourceDriver;
         if (_datasourceTypes[driver.type] != null) {
           throw TomDatasourceInitException(
-            "tom_datasource.duplicate_driver",
+            "tom_datasource.initialize_datasource_types.duplicate_driver",
             "Found more than one datasource driver for ${driver.type} first is ${_datasourceTypes[driver.type]}, additional found $candidate",
             autoLog: true,
           );
@@ -130,7 +134,7 @@ abstract class TomDataSource implements TomTransactionParticipant {
             datasource = candidate.newInstance("", []);
           } catch (error) {
             throw TomDatasourceInitException(
-              "tom_datasource.driver_instantiation_failed",
+              "tom_datasource.initialize_datasource_types.driver_instantiation_failed",
               "Datasource driver scan: Failed to instantiate datasource",
               autoLog: true,
             );
@@ -139,7 +143,7 @@ abstract class TomDataSource implements TomTransactionParticipant {
             _datasourceTypes[driver.type] = candidate;
           } else {
             throw TomDatasourceInitException(
-              "tom_datasource.invalid_driver_not_implementing_datasource",
+              "tom_datasource.initialize_datasource_types.invalid_driver_not_implementing_datasource",
               "Datasouce driver scan: Datasource class is not implementing TomDataSource",
               autoLog: true,
             );
@@ -164,7 +168,7 @@ abstract class TomDataSource implements TomTransactionParticipant {
         datasource = datasourceClass.newInstance("", []);
       } catch (error) {
         throw TomDatasourceInitException(
-          "tom_datasource_create.driver_instantiation_failed",
+          "tom_datasource.create_datasource_of.driver_instantiation_failed",
           "Failed to instantiated datasource driver $datasourceClass for datasource type $type: $error",
           autoLog: true,
         );
@@ -173,14 +177,14 @@ abstract class TomDataSource implements TomTransactionParticipant {
         return datasource;
       } else {
         throw TomDatasourceInitException(
-          "tom_datasource_create.invalid_driver_not_implementing_datasource",
+          "tom_datasource.create_datasource_of.invalid_driver_not_implementing_datasource",
           "Datasouce driver scan: Datasource class is not implementing TomDataSource",
           autoLog: true,
         );
       }
     } else {
       throw TomDatasourceInitException(
-        "tom_datasource_create.no_driver_found",
+        "tom_datasource.create_datasource_of.no_driver_found",
         "There was no datasource driver for datasource type $type",
         autoLog: true,
       );

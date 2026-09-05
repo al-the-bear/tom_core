@@ -2,6 +2,55 @@
 
 ### Fixed
 
+- **Two exception classes bypassed `TomServerException`, and the claim that none
+  do is now enforced rather than restated
+  (tcincb4_ahzb_tom_core_server_little_things-two-exception-classes-bypass-tomserverexception).**
+  `TomServerException`'s dartdoc says every server exception subtypes it, "so a
+  single `on TomServerException catch (e)` clause reaches all of them".
+  `TomDatasourceInitException` and `TomAuthorizationCacheException` extended the
+  kernel's `TomException` directly and falsified it. Both now extend
+  `TomServerException`.
+
+  What the two were missing is what that base class adds: the `isolateName` of
+  the worker that raised the error, the `clientThrow` flag `tomErrorEnvelope`
+  writes for a server exception and nothing else, and the zone-read request
+  UUID. Both are exactly the kind of failure someone reads a log to attribute,
+  and both arrived naming neither the isolate nor the request. They also escaped
+  every `on TomServerException catch` — including the endpoints pipeline's
+  classification, which decides what a client sees, so each reached the caller
+  as an unclassified error.
+
+  The two `clientThrow` decisions go opposite ways, deliberately. A
+  datasource-init failure is infrastructure: its messages name driver classes,
+  datasource types and raw driver errors, so `clientThrow` is not a constructor
+  parameter at all but hard-fixed `false` — an invariant of the type rather than
+  a default a raise site could forget. An authorization-cache failure is the
+  opposite: all three of its conditions are about the token the caller
+  presented, and two of them tell the caller what to do next (re-authorize; send
+  a well-formed `validUntil`), so it defaults to `true`. Having decided that
+  message may be read by the caller, the `expired_principal` raise site — which
+  interpolated the whole token into its user message while its two siblings in
+  the same method truncate to 100 characters — was made one worth sending.
+
+  Nine error keys were malformed and are renamed. `TomException` fixes the shape
+  as `<area>.<operation>.<condition>`; six datasource-init keys carried only two
+  segments, which collided `driver_instantiation_failed` and
+  `invalid_driver_not_implementing_datasource` across the reflection scan and a
+  later `createDatasourceOf` — the two failures that most need telling apart.
+  The three cache keys began `tomclient.`, claiming an origin in the client
+  package for a class that is server-side and unreachable from a client, which
+  is precisely the cross-package collision the first segment exists to prevent;
+  they are now `authorization.cache.*`.
+
+  The claim itself is now a test. `test/server_exception_family_test.dart` reads
+  every class declaration under `lib/src/tomserver/`, walks each `extends`
+  chain, and fails on any class reaching `TomException` without passing through
+  `TomServerException` — naming the offender's file. A source scan rather than a
+  runtime check, because a runtime check can only examine the types someone
+  remembered to list, which is the property that failed here; the scan covers a
+  new exception class the moment it is written. It is the package-wide form of
+  the per-file guard in `crud_repository_exceptions_test.dart`.
+
 - **`TRUE` and `FALSE` were the only case-sensitive tokens in a query sentence,
   so `find by done = true` did not compile
   (tcincb3_ahzb-tom_core_server-object_persistence-boolean-literals-are-the-only-case-sensitive-tokens-in-a-query-sentence).**

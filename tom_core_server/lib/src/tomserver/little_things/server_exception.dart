@@ -23,6 +23,13 @@ import 'request_id.dart';
 /// Every server exception type (for example `TomEndpointHandlerException`,
 /// `TomCacheException`, `MariadbMigrationException`) subtypes this class, so a
 /// single `on TomServerException catch (e)` clause reaches all of them.
+///
+/// That sentence is a rule, not an observation: `server_exception_family_test`
+/// scans every class declaration under `lib/src/tomserver/` and fails on one
+/// that reaches [TomException] without passing through this class. A type
+/// outside the family escapes the endpoints pipeline's classification, cannot
+/// report [clientThrow] through `tomErrorEnvelope`, and arrives naming neither
+/// its isolate nor its request.
 class TomServerException extends TomException {
   /// The debug name of the isolate that constructed this exception.
   ///

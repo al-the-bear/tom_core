@@ -70,7 +70,7 @@ source is installed the scope denies every row.
 ## Class Hierarchy
 
 ```
-TomException  (kernel)
+TomServerException  (little_things)
     └── TomAuthorizationCacheException
 
 TomExecutor  (kernel)
@@ -105,15 +105,15 @@ Raised by `TomAuthorizationCache` when a principal cannot be returned or cached.
 Three conditions carry three keys, because they call for three different
 responses.
 
-- **Extends:** `TomException`
+- **Extends:** `TomServerException`
 
 #### Error keys
 
 | Key | Meaning |
 | --- | ------- |
-| `tomclient.authorization_cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
-| `tomclient.authorization_cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
-| `tomclient.authorization_cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
+| `authorization.cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
+| `authorization.cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
+| `authorization.cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
 
 The two `validUntil` keys report a malformed token rather than anything about
 the principal. Each carries three exception parameters -- the name of the claim,
@@ -130,10 +130,14 @@ TomAuthorizationCacheException(
   StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
-  String? uuid,
-  bool? serverCallError,
+  bool clientThrow = true,
 })
 ```
+
+`clientThrow` defaults to `true`, which is the opposite of most of the package
+and is the point: all three conditions above are about the token the caller
+presented, and two of them tell the caller what to do next. An answer the
+caller cannot read leaves it retrying a token that will never be accepted.
 
 ### TomAuthorizationCacheEntry
 

@@ -60,6 +60,11 @@ from `TomLoginException` adding no members, which is that one
 `test/little_things_test.dart` covers the module; `test/examples_test.dart`
 runs the example and `test/readme_quick_start_test.dart` runs the snippet above,
 so neither can drift away from the code.
+`test/server_exception_family_test.dart` holds the package to that "every": it
+scans the class declarations under `lib/src/tomserver/` and fails on one that
+reaches the kernel's `TomException` without passing through
+`TomServerException`, so a new exception is covered the moment it is declared
+rather than when someone remembers to list it.
 
 ---
 

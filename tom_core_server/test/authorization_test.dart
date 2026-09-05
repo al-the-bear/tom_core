@@ -214,7 +214,7 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'tomclient.authorization_cache.expired_principal',
+            'authorization.cache.expired_principal',
           ),
         ),
       );
@@ -431,7 +431,7 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'tomclient.authorization_cache.missing_valid_until',
+            'authorization.cache.missing_valid_until',
           ),
         ),
       );
@@ -448,7 +448,7 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'tomclient.authorization_cache.missing_valid_until',
+            'authorization.cache.missing_valid_until',
           ),
         ),
       );
@@ -466,7 +466,7 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'tomclient.authorization_cache.invalid_valid_until',
+            'authorization.cache.invalid_valid_until',
           ),
         ),
       );
@@ -611,7 +611,7 @@ void main() {
           .executeCommand(ProbeCacheCommand(token))
           .timeout(const Duration(seconds: 10));
 
-      expect(answer, 'expired:tomclient.authorization_cache.expired_principal');
+      expect(answer, 'expired:authorization.cache.expired_principal');
     });
 
     test('a miss becomes a hit once the creator stores the token', () async {
@@ -687,10 +687,7 @@ void main() {
             .executeCommand(ProbeCacheCommand(token))
             .timeout(const Duration(seconds: 10));
 
-        expect(
-          answer,
-          'expired:tomclient.authorization_cache.expired_principal',
-        );
+        expect(answer, 'expired:authorization.cache.expired_principal');
       },
     );
 
@@ -707,10 +704,7 @@ void main() {
           .executeCommand(StoreThroughWorkerCommand(token, _principal('ivan')))
           .timeout(const Duration(seconds: 10));
 
-      expect(
-        answer,
-        'rejected:tomclient.authorization_cache.missing_valid_until',
-      );
+      expect(answer, 'rejected:authorization.cache.missing_valid_until');
       expect(await TomAuthorizationCache.getPrincipal(token), isNull);
     });
 
@@ -788,7 +782,7 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'tomclient.authorization_cache.missing_valid_until',
+            'authorization.cache.missing_valid_until',
           ),
         ),
       );

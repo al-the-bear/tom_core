@@ -161,7 +161,7 @@ surface documented here.
 | `TomAuthorizationCacheExecutor` | class | Isolate executor backing the cache. |
 | `TomAuthorizationCacheStoreMessage` | class | Store command message. |
 | `TomAuthorizationCacheRetrieveMessage` | class | Retrieve command message. |
-| `TomAuthorizationCacheException` | class | Cache error (extends `TomException`). |
+| `TomAuthorizationCacheException` | class | Cache error (extends `TomServerException`). |
 | `TomAuthStateCodec` | class | Encodes/decodes auth state (static). |
 | `TomResourceGrant` | class | A grant of a role on a resource. |
 | `TomGradedAccessControlInformation` | class | Graded (field-level) access info. |
@@ -236,7 +236,7 @@ surface documented here.
 | `TomFrameworkTable` | class | The single declaration of a table the framework itself owns. |
 | `TomFrameworkColumn` | class | One column of a framework-owned table. |
 | `TomFrameworkKey` | class | One index or unique constraint of a framework-owned table. |
-| `TomDatasourceInitException` | class | Init error (extends `TomException`). |
+| `TomDatasourceInitException` | class | Init error (extends `TomServerException`). |
 | `MariadbDatasourceException` | class | MariaDB error (extends `TomServerException`). |
 | `MariadbPreparedStatementException` | class | Prepared-statement error. |
 | `TomAggregateFunction` | enum | The aggregate functions the typed query layer can express. |

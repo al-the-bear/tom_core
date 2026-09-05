@@ -154,12 +154,10 @@ TomFrameworkTable
 TomFrameworkColumn
 TomFrameworkKey
 
-TomException  (kernel)
-    └── TomDatasourceInitException
-
 TomServerException  (little_things)
     ├── MariadbDatasourceException
-    └── MariadbPreparedStatementException
+    ├── MariadbPreparedStatementException
+    └── TomDatasourceInitException
 ```
 
 ## Classes
@@ -1200,7 +1198,7 @@ not declare.
 Thrown when a data source cannot be discovered, instantiated, or initialised
 (duplicate or missing driver, bad configuration, etc.).
 
-- **Extends:** `TomException`
+- **Extends:** `TomServerException`
 
 ##### Constructors
 
@@ -1212,10 +1210,34 @@ TomDatasourceInitException(
   StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
-  String? uuid,
-  bool? serverCallError,
 })
 ```
+
+`clientThrow` is **not** a parameter: every condition this type reports is
+infrastructure, and its messages name driver classes, datasource types and raw
+driver errors. Masking is an invariant of the type rather than a default a
+raise site could forget to keep.
+
+##### Error keys
+
+All ten read `<area>.<operation>.<condition>`. The operation segment is
+load-bearing rather than decorative: `driver_instantiation_failed` and
+`invalid_driver_not_implementing_datasource` each arise both during the
+reflection scan and during a later `createDatasourceOf`, and only the operation
+tells the two apart.
+
+| Key | Raised by |
+| --- | --------- |
+| `tom_datasource.initialize_datasource_types.duplicate_driver` | Two drivers annotated for one datasource type |
+| `tom_datasource.initialize_datasource_types.driver_instantiation_failed` | A driver found by the scan could not be constructed |
+| `tom_datasource.initialize_datasource_types.invalid_driver_not_implementing_datasource` | A scanned driver does not implement `TomDataSource` |
+| `tom_datasource.create_datasource_of.driver_instantiation_failed` | The registered driver for the requested type could not be constructed |
+| `tom_datasource.create_datasource_of.invalid_driver_not_implementing_datasource` | The registered driver does not implement `TomDataSource` |
+| `tom_datasource.create_datasource_of.no_driver_found` | No driver is registered for the requested type |
+| `tom_datasource_info.get_datasource.datasource_is_null` | The named registry entry has not been initialised |
+| `tom_datasource_info.initialize.delegate_not_found` | A `delegateTo` setting names an unregistered data source |
+| `tom_datasource_info.initialize.no_datasource_obtained_for_type` | `createDatasourceOf` returned nothing for the configured type |
+| `tom_datasource_info.initialize.no_type_specified` | The configuration entry carries no `type` |
 
 #### MariadbDatasourceException
 

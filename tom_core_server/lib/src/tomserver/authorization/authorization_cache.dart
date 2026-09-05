@@ -2,21 +2,31 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/server_exception.dart';
+
 /// Raised by [TomAuthorizationCache] when a principal cannot be returned or
 /// cached. Three conditions carry three keys, because they call for three
 /// different responses:
 ///
 /// | Key | Meaning |
 /// | --- | ------- |
-/// | `tomclient.authorization_cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
-/// | `tomclient.authorization_cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
-/// | `tomclient.authorization_cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
+/// | `authorization.cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
+/// | `authorization.cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
+/// | `authorization.cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
 ///
 /// The distinct type lets a caller catch these specifically: an expired
 /// principal is a signal to re-authorize, as opposed to a cache miss (which
 /// simply returns `null`), and the two `validUntil` keys report a malformed
 /// token rather than anything about the principal.
-class TomAuthorizationCacheException extends TomException {
+///
+/// `clientThrow` defaults to `true`, which is the opposite of most of the
+/// package and is the point: all three conditions are about the token the
+/// caller presented, and two of them tell the caller what to do next
+/// (re-authorize; send a well-formed `validUntil`). An answer the caller
+/// cannot read leaves it retrying a token that will never be accepted. A raise
+/// site whose message came to describe the server's own state would pass
+/// `clientThrow: false` — none does.
+class TomAuthorizationCacheException extends TomServerException {
   TomAuthorizationCacheException(
     super.key,
     super.defaultUserMessage, {
@@ -24,8 +34,7 @@ class TomAuthorizationCacheException extends TomException {
     super.stack,
     super.rootException,
     super.autoLog,
-    super.uuid,
-    super.serverCallError,
+    super.clientThrow = true,
   });
 }
 
@@ -250,8 +259,11 @@ class TomAuthorizationCache implements TomDisposable {
           // successful login per sweep interval without it.
           _current._cache.remove(authenticationToken.tokenString);
           throw TomAuthorizationCacheException(
-            "tomclient.authorization_cache.expired_principal",
-            "AuthorizedPrincipal expired for user $authenticationToken",
+            "authorization.cache.expired_principal",
+            "AuthorizedPrincipal expired for the presented token",
+            parameters: {
+              'token': limited(authenticationToken.tokenString, 100),
+            },
           );
         }
       }
@@ -298,7 +310,7 @@ class TomAuthorizationCache implements TomDisposable {
 
     if (claim is! String) {
       throw TomAuthorizationCacheException(
-        "tomclient.authorization_cache.missing_valid_until",
+        "authorization.cache.missing_valid_until",
         "Authentication token carries no readable validUntil claim, so the "
             "principal cannot be cached",
         parameters: {
@@ -314,7 +326,7 @@ class TomAuthorizationCache implements TomDisposable {
     final DateTime? parsed = DateTime.tryParse(claim);
     if (parsed == null) {
       throw TomAuthorizationCacheException(
-        "tomclient.authorization_cache.invalid_valid_until",
+        "authorization.cache.invalid_valid_until",
         "Authentication token carries a validUntil claim that is not an ISO "
             "8601 instant, so the principal cannot be cached",
         parameters: {

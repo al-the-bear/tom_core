@@ -83,6 +83,24 @@ try {
 }
 ```
 
+That "every" is enforced rather than merely asserted.
+`test/server_exception_family_test.dart` reads every class declaration under
+`lib/src/tomserver/`, walks each `extends` chain, and fails on any class that
+reaches the kernel's `TomException` without passing through
+`TomServerException`. It is a source scan rather than a runtime check on
+purpose: a runtime check can only examine the types someone remembered to list,
+which is precisely the property that fails. A new exception class is therefore
+covered the moment it is written, and a class that leaves the family names its
+own file in the failure.
+
+Leaving the family is worth catching because three things are built on the
+claim: the endpoints pipeline classifies a failure by catching
+`TomServerException`, so a type outside it reaches the client unclassified;
+`tomErrorEnvelope` writes `clientThrow` only for a member, so a non-member
+cannot say whether its message may be shown; and the isolate and request
+attribution below is added by the base constructor, so a non-member arrives
+naming neither the worker that raised it nor the request that caused it.
+
 ## Isolate Attribution
 
 Server work is spread across an isolate pool, so the bare error message alone
