@@ -883,35 +883,56 @@ void main() {
         // table is the only shape that makes the next one fail here.
         //
         // Each expectation is the IANA registration for that extension, with
-        // two documented exceptions marked below where no registration
+        // one documented exception marked below where no registration
         // assigns the extension at all.
         const expected = <String, String>{
+          // -- documents and data ------------------------------------------
+          '.txt': 'text/plain',
+          '.html': 'text/html',
+          '.htm': 'text/html',
+          '.css': 'text/css',
+          '.csv': 'text/csv',
+          '.ics': 'text/calendar',
           '.js': 'text/javascript',
           '.json': 'application/json',
+          '.xml': 'application/xml',
+          '.pdf': 'application/pdf',
           '.wasm': 'application/wasm',
-          '.css': 'text/css',
+          '.zip': 'application/zip',
+          '.rar': 'application/vnd.rar',
+          // -- images -------------------------------------------------------
           '.png': 'image/png',
           '.jpg': 'image/jpeg',
           '.jpeg': 'image/jpeg',
           '.svg': 'image/svg+xml',
-          '.ttf': 'font/ttf',
-          '.woff': 'font/woff',
-          '.mp3': 'audio/mpeg',
-          '.pdf': 'application/pdf',
           '.apng': 'image/apng',
           '.avif': 'image/avif',
+          '.gif': 'image/gif',
+          '.webp': 'image/webp',
+          // The registration is `image/vnd.microsoft.icon`; `image/x-icon` is
+          // the widespread but never-registered spelling.
+          '.ico': 'image/vnd.microsoft.icon',
+          // -- fonts (RFC 8081) ---------------------------------------------
+          '.ttf': 'font/ttf',
+          '.otf': 'font/otf',
+          '.woff': 'font/woff',
+          '.woff2': 'font/woff2',
+          // -- audio and video ----------------------------------------------
+          '.mp3': 'audio/mpeg',
+          '.mp4': 'video/mp4',
+          '.mpeg': 'video/mpeg',
+          '.webm': 'video/webm',
+          // RFC 5334 splits the Ogg container by content: audio, video and the
+          // generic multiplex each get their own extension.
+          '.ogg': 'audio/ogg',
+          '.ogv': 'video/ogg',
+          '.ogx': 'application/ogg',
+          // The QuickTime registration names both extensions, so both map.
+          '.qt': 'video/quicktime',
+          '.mov': 'video/quicktime',
           // Unregistered: IANA assigns no media type to AVI at all, so the
           // de-facto type every server and browser uses is the only option.
           '.avi': 'video/x-msvideo',
-          '.gif': 'image/gif',
-          '.webp': 'image/webp',
-          '.rar': 'application/vnd.rar',
-          '.mp4': 'video/mp4',
-          '.mpeg': 'video/mpeg',
-          '.ogg': 'audio/ogg',
-          '.ogv': 'video/ogg',
-          '.qt': 'video/quicktime',
-          '.zip': 'application/zip',
         };
 
         for (final entry in expected.entries) {
@@ -921,6 +942,81 @@ void main() {
             '${mapped!.primaryType}/${mapped.subType}',
             equals(entry.value),
             reason: 'wrong media type for ${entry.key}',
+          );
+        }
+      });
+
+      test('serves the text types the module itself declares', () {
+        // The gap this closes was not a missing *type* but a missing table
+        // row: the class already defined a constant for each of these, so an
+        // `.html` file served from a Tom app downloaded as a binary blob
+        // while `TomMimeType.html` sat unused two hundred lines above the
+        // table. Asserted against the constants rather than against literal
+        // strings so the two cannot drift apart again.
+        const declared = <String, TomMimeType>{
+          '.txt': TomMimeType.plainText,
+          '.html': TomMimeType.html,
+          '.htm': TomMimeType.html,
+          '.css': TomMimeType.css,
+          '.csv': TomMimeType.csv,
+          '.ics': TomMimeType.ics,
+          '.xml': TomMimeType.xml,
+          '.js': TomMimeType.javascript,
+          '.json': TomMimeType.json,
+          '.pdf': TomMimeType.pdf,
+          '.zip': TomMimeType.zip,
+        };
+
+        for (final entry in declared.entries) {
+          expect(
+            StaticFileMimetypeMapping.getMimeType(entry.key),
+            equals(entry.value),
+            reason: '${entry.key} should map to the declared constant',
+          );
+        }
+      });
+
+      test('declares no charset on binary entries', () {
+        // `TomMimeType` defaults `charset` to UTF-8, so a binary entry that
+        // forgets to say `charset: null` sends `font/woff2;charset=UTF-8` —
+        // a parameter the registration does not define, on bytes that have no
+        // encoding. Every binary row in the table opts out explicitly, and
+        // this is what keeps the next one from inheriting the default.
+        const binary = <String>[
+          '.ico',
+          '.otf',
+          '.woff',
+          '.woff2',
+          '.ttf',
+          '.png',
+          '.jpg',
+          '.gif',
+          '.webp',
+          '.apng',
+          '.avif',
+          '.mp3',
+          '.mp4',
+          '.mpeg',
+          '.mov',
+          '.qt',
+          '.webm',
+          '.avi',
+          '.ogg',
+          '.ogv',
+          '.ogx',
+          '.wasm',
+          '.pdf',
+          '.rar',
+          '.zip',
+        ];
+
+        for (final extension in binary) {
+          final mapped = StaticFileMimetypeMapping.getMimeType(extension);
+          expect(mapped, isNotNull, reason: 'no mapping for $extension');
+          expect(
+            mapped!.charset,
+            isNull,
+            reason: '$extension is binary and must not declare a charset',
           );
         }
       });

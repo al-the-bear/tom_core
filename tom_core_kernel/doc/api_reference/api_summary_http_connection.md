@@ -586,32 +586,38 @@ with correct `Content-Type` headers.
 
 Every entry is the media type the IANA registry assigns to that extension; `.avi`
 is the sole exception, because IANA registers no type for AVI at all. The table
-is deliberately short — it covers what a Tom application serves, and
-`getMimeType` returns `null` for anything else so the caller decides. For a total
-function, use `TomFileSource.guessMediaType`, which falls back to
-`application/octet-stream`.
+is curated rather than a registry mirror — it covers what a Tom application
+serves over HTTP, and `getMimeType` returns `null` for anything else so the
+caller decides. For a total function, use `TomFileSource.guessMediaType`, which
+falls back to `application/octet-stream`.
 
 ##### Recognized Extensions
 
 | Extension | Media type | Extension | Media type |
 | --------- | ---------- | --------- | ---------- |
-| `.js` | `text/javascript` | `.avif` | `image/avif` |
-| `.json` | `application/json` | `.avi` | `video/x-msvideo` (unregistered) |
-| `.wasm` | `application/wasm` | `.gif` | `image/gif` |
-| `.css` | `text/css` | `.webp` | `image/webp` |
-| `.png` | `image/png` | `.rar` | `application/vnd.rar` |
-| `.jpg`, `.jpeg` | `image/jpeg` | `.mp4` | `video/mp4` |
-| `.svg` | `image/svg+xml` | `.mpeg` | `video/mpeg` |
-| `.ttf` | `font/ttf` | `.ogg` | `audio/ogg` |
-| `.woff` | `font/woff` | `.ogv` | `video/ogg` |
-| `.mp3` | `audio/mpeg` | `.qt` | `video/quicktime` |
-| `.pdf` | `application/pdf` | `.zip` | `application/zip` |
-| `.apng` | `image/apng` | | |
+| `.txt` | `text/plain` | `.apng` | `image/apng` |
+| `.html`, `.htm` | `text/html` | `.avif` | `image/avif` |
+| `.css` | `text/css` | `.gif` | `image/gif` |
+| `.csv` | `text/csv` | `.webp` | `image/webp` |
+| `.ics` | `text/calendar` | `.ico` | `image/vnd.microsoft.icon` |
+| `.js` | `text/javascript` | `.ttf` | `font/ttf` |
+| `.json` | `application/json` | `.otf` | `font/otf` |
+| `.xml` | `application/xml` | `.woff` | `font/woff` |
+| `.pdf` | `application/pdf` | `.woff2` | `font/woff2` |
+| `.zip` | `application/zip` | `.mp3` | `audio/mpeg` |
+| `.rar` | `application/vnd.rar` | `.ogg` | `audio/ogg` |
+| `.wasm` | `application/wasm` | `.mp4` | `video/mp4` |
+| `.png` | `image/png` | `.mpeg` | `video/mpeg` |
+| `.jpg`, `.jpeg` | `image/jpeg` | `.webm` | `video/webm` |
+| `.svg` | `image/svg+xml` | `.ogv` | `video/ogg` |
+| `.ogx` | `application/ogg` | `.qt`, `.mov` | `video/quicktime` |
+| | | `.avi` | `video/x-msvideo` (unregistered) |
 
-`.ogg` is audio and `.ogv` is video per RFC 5334, which split the Ogg container
-by content because implementations predating the split read a `.ogg` file as
-Vorbis audio. The `font/*` types are RFC 8081; the older `application/x-font-*`
-spellings were never registered.
+Per RFC 5334 the Ogg container splits by content: `.ogg` is audio, `.ogv` is
+video and `.ogx` is the generic multiplex — implementations predating the split
+read a `.ogg` file as Vorbis audio. The `font/*` types are RFC 8081; the older
+`application/x-font-*` spellings were never registered, and neither was the
+widely-seen `image/x-icon`.
 
 ##### Static Methods
 

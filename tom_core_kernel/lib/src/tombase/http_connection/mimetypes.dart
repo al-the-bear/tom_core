@@ -396,11 +396,18 @@ class TomMimeType {
 /// The one exception is `.avi`, which IANA does not register at all — see the
 /// note on that entry.
 ///
-/// The table is deliberately short: it covers the extensions a Tom application
-/// actually serves, and [getMimeType] returns `null` for anything else so the
-/// caller can decide. Callers wanting a total function should use
-/// `TomFileSource.guessMediaType`, which falls back to
-/// `application/octet-stream`.
+/// The table is a curated list rather than a complete registry mirror: it
+/// covers what a Tom application actually serves over HTTP — web assets,
+/// fonts, documents, images and the common media containers — and
+/// [getMimeType] returns `null` for anything else so the caller can decide.
+/// Callers wanting a total function should use `TomFileSource.guessMediaType`,
+/// which falls back to `application/octet-stream`.
+///
+/// A curated table is the deliberate choice over delegating to a
+/// registry-mirroring package: the mapping is small, its entries are stated
+/// with the registration that justifies them, and it yields [TomMimeType]
+/// values — including the charset decision each entry makes — rather than
+/// strings a caller would have to re-parse.
 ///
 /// ## Example
 ///
@@ -410,37 +417,58 @@ class TomMimeType {
 /// ```
 class StaticFileMimetypeMapping {
   static const _mimeTypeMapping = <String, TomMimeType>{
+    // -- documents and data ---------------------------------------------
+    // Each of these has a constant on [TomMimeType]; the table names the
+    // constant rather than repeating the media type, so the two cannot drift.
+    '.txt': TomMimeType.plainText,
+    '.html': TomMimeType.html,
+    '.htm': TomMimeType.html,
+    '.css': TomMimeType.css,
+    '.csv': TomMimeType.csv,
+    '.ics': TomMimeType.ics,
     '.js': TomMimeType.javascript,
     '.json': TomMimeType.json,
+    '.xml': TomMimeType.xml,
+    '.pdf': TomMimeType.pdf,
+    '.zip': TomMimeType.zip,
     '.wasm': TomMimeType('application', 'wasm', charset: null),
-    '.css': TomMimeType.css,
+    '.rar': TomMimeType('application', 'vnd.rar', charset: null),
+    // -- images ----------------------------------------------------------
     '.png': TomMimeType('image', 'png', charset: null),
     '.jpg': TomMimeType('image', 'jpeg', charset: null),
     '.jpeg': TomMimeType('image', 'jpeg', charset: null),
     '.svg': TomMimeType('image', 'svg+xml'),
+    '.apng': TomMimeType('image', 'apng', charset: null),
+    '.avif': TomMimeType('image', 'avif', charset: null),
+    '.gif': TomMimeType('image', 'gif', charset: null),
+    '.webp': TomMimeType('image', 'webp', charset: null),
+    // The registration is `image/vnd.microsoft.icon`; `image/x-icon` is the
+    // widespread spelling that was never registered.
+    '.ico': TomMimeType('image', 'vnd.microsoft.icon', charset: null),
+    // -- fonts -----------------------------------------------------------
     // RFC 8081 registered the `font` tree; the older `application/x-font-*`
     // spellings were never registered.
     '.ttf': TomMimeType('font', 'ttf', charset: null),
+    '.otf': TomMimeType('font', 'otf', charset: null),
     '.woff': TomMimeType('font', 'woff', charset: null),
+    '.woff2': TomMimeType('font', 'woff2', charset: null),
+    // -- audio and video --------------------------------------------------
     '.mp3': TomMimeType('audio', 'mpeg', charset: null),
-    '.pdf': TomMimeType.pdf,
-    '.apng': TomMimeType('image', 'apng', charset: null),
-    '.avif': TomMimeType('image', 'avif', charset: null),
+    '.mp4': TomMimeType('video', 'mp4', charset: null),
+    '.mpeg': TomMimeType('video', 'mpeg', charset: null),
+    '.webm': TomMimeType('video', 'webm', charset: null),
+    // RFC 5334 splits the Ogg container by content: `.ogg` is audio, because
+    // implementations predating the split read it as Vorbis; video moved to
+    // `.ogv`, and `.ogx` is the generic multiplex.
+    '.ogg': TomMimeType('audio', 'ogg', charset: null),
+    '.ogv': TomMimeType('video', 'ogg', charset: null),
+    '.ogx': TomMimeType('application', 'ogg', charset: null),
+    // The QuickTime registration names both extensions, so both map.
+    '.qt': TomMimeType('video', 'quicktime', charset: null),
+    '.mov': TomMimeType('video', 'quicktime', charset: null),
     // The only unregistered type in this table: IANA assigns no media type to
     // AVI, so this is the de-facto type servers and browsers agree on.
     '.avi': TomMimeType('video', 'x-msvideo', charset: null),
-    '.gif': TomMimeType('image', 'gif', charset: null),
-    '.webp': TomMimeType('image', 'webp', charset: null),
-    '.rar': TomMimeType('application', 'vnd.rar', charset: null),
-    '.mp4': TomMimeType('video', 'mp4', charset: null),
-    '.mpeg': TomMimeType('video', 'mpeg', charset: null),
-    // RFC 5334 splits the Ogg container by content: `.ogg` is audio, because
-    // implementations predating the split read it as Vorbis, and video moved
-    // to `.ogv`.
-    '.ogg': TomMimeType('audio', 'ogg', charset: null),
-    '.ogv': TomMimeType('video', 'ogg', charset: null),
-    '.qt': TomMimeType('video', 'quicktime', charset: null),
-    '.zip': TomMimeType.zip,
   };
 
   /// Gets the MIME type for a file extension.

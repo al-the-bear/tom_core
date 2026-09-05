@@ -147,17 +147,27 @@ class ConnectionConfigExample {
     final jsonExt = StaticFileMimetypeMapping.getMimeType('.json');
     final pngExt = StaticFileMimetypeMapping.getMimeType('.png');
     final mp4Ext = StaticFileMimetypeMapping.getMimeType('.mp4');
+    // The two a browser is strict about: an .html served as octet-stream
+    // downloads instead of rendering, and a .woff2 with the wrong type is
+    // refused outright.
+    final htmlExt = StaticFileMimetypeMapping.getMimeType('.html');
+    final woff2Ext = StaticFileMimetypeMapping.getMimeType('.woff2');
     final unknownExt = StaticFileMimetypeMapping.getMimeType('.xyz');
 
     print('   - .json maps to: ${jsonExt?.primaryType}/${jsonExt?.subType}');
     print('   - .png maps to: ${pngExt?.primaryType}/${pngExt?.subType}');
     print('   - .mp4 maps to: ${mp4Ext?.primaryType}/${mp4Ext?.subType}');
+    print('   - .html maps to: ${htmlExt?.primaryType}/${htmlExt?.subType}');
+    print('   - .woff2 maps to: ${woff2Ext?.primaryType}/${woff2Ext?.subType}');
     print('   - .xyz maps to: ${unknownExt ?? 'null (unknown)'}');
 
     // Assertions
     assert(jsonExt != null, 'JSON extension should be mapped');
     assert(jsonExt?.subType == 'json', 'JSON subtype should match');
     assert(pngExt?.primaryType == 'image', 'PNG should be image type');
+    assert(htmlExt == TomMimeType.html, 'HTML should map to the constant');
+    assert(woff2Ext?.subType == 'woff2', 'WOFF2 should map to font/woff2');
+    assert(woff2Ext?.charset == null, 'A font declares no charset');
     assert(unknownExt == null, 'Unknown extension should return null');
   }
 

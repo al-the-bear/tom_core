@@ -382,7 +382,7 @@ case rule, so equal values collapse in a `Set` and answer a `Map` lookup.
 registry assigns it, for setting `Content-Type` when serving a file from disk:
 
 ```dart
-StaticFileMimetypeMapping.getMimeType('.woff');   // font/woff
+StaticFileMimetypeMapping.getMimeType('.woff2');  // font/woff2
 StaticFileMimetypeMapping.getMimeType('.MP4');    // video/mp4 — case-insensitive
 StaticFileMimetypeMapping.getMimeType('.xyz');    // null
 ```
@@ -392,10 +392,19 @@ It is a partial function on purpose: an extension it does not know returns
 on. `TomFileSource.guessMediaType` is the total version, falling back to
 `application/octet-stream` — a download rather than a render.
 
-Two entries are worth knowing about because the obvious guess is wrong. `.ogg`
-is `audio/ogg` and Ogg *video* is `.ogv`, per RFC 5334, which split the
-container by content because implementations predating the split read a `.ogg`
-file as Vorbis audio. And `.avi` is the one extension in the table with no IANA
+The table is curated, not a registry mirror. It covers what an application
+serves over HTTP: the web assets (`.html`, `.css`, `.js`, `.json`, `.wasm`,
+`.ico`), the four RFC 8081 font types (`.ttf`, `.otf`, `.woff`, `.woff2`), the
+text and document types (`.txt`, `.csv`, `.xml`, `.ics`, `.pdf`), the images,
+the media containers, and `.zip` / `.rar`. Everything else is somebody else's
+decision.
+
+Three entries are worth knowing about because the obvious guess is wrong.
+`.ogg` is `audio/ogg`, Ogg *video* is `.ogv` and the generic multiplex is
+`.ogx`, per RFC 5334, which split the container by content because
+implementations predating the split read a `.ogg` file as Vorbis audio. `.ico`
+is `image/vnd.microsoft.icon` — the widely-seen `image/x-icon` was never
+registered. And `.avi` is the one extension in the table with no IANA
 registration at all, so it maps to `video/x-msvideo`, the type servers and
 browsers agree on in the registry's absence.
 

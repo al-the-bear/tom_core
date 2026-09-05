@@ -167,7 +167,7 @@ KNOWN_STEMS = frozenset(
     fade field flex form gsm image iso layer level list map march material mp
     name names oauth operant opt pass person phase pkcs prefix python row scope
     scores sha shade sigusr spacer sqlite step street strongpass subtitle time
-    total tz ucs utf value white wrap
+    total tz ucs utf value white woff wrap
     """.split()
 )
 

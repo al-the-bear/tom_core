@@ -87,7 +87,8 @@ final _idShape = RegExp(r'\b([a-z]{2,12})\d+(_[a-zäñößü]{4})?\b');
 const _knownStems = <String>{
   'abc', 'api', 'avc', 'base', 'command', 'data', 'db', 'element', 'field',
   'image', 'iso', 'level', 'list', 'map', 'march', 'mp', 'names', 'person',
-  'pkcs', 'scores', 'sha', 'sigusr', 'step', 'tz', 'utf', 'value', 'wrap',
+  'pkcs', 'scores', 'sha', 'sigusr', 'step', 'tz', 'utf', 'value', 'woff',
+  'wrap',
 };
 
 /// The same shape in capitals — `TCCA17`, `CSEXF1`, `RCK13`, `OT2`.
