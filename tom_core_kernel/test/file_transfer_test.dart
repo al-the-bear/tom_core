@@ -202,6 +202,13 @@ final String _authJwt = _makeJwt({'sub': 'auth'});
 /// instead, through the header provider.
 final String _authzJwt = _makeJwt({'sub': 'authz'});
 
+/// Whether [line] is an `import`/`export` directive, whose quoted URI is a
+/// string literal that the error-key scraper must not mistake for a key.
+bool _isDirective(String line) {
+  final trimmed = line.trimLeft();
+  return trimmed.startsWith('import ') || trimmed.startsWith('export ');
+}
+
 // =============================================================================
 // TESTS
 // =============================================================================
@@ -239,13 +246,24 @@ void main() {
 
     /// Every key handed to a `TomFileTransferException` constructor.
     ///
-    /// The keys are the only single-quoted `file_transfer.*` literals in these
-    /// libraries; documentation mentions them in backticks instead.
+    /// Outside of `import`/`export` directives, the keys are the only
+    /// single-quoted `file_transfer.*` literals in these libraries;
+    /// documentation mentions them in backticks instead.
+    ///
+    /// Directives are dropped rather than matched around because
+    /// `http_file_transfer.dart` imports `file_transfer.dart` relatively, so its
+    /// URI is itself a single-quoted `file_transfer.`-prefixed literal. A
+    /// directive can never carry an error key, so excluding the line is exact
+    /// rather than a special case for one spelling.
     Set<String> thrownKeys() => {
       for (final path in sourcePaths)
-        ...RegExp(
-          r"'(file_transfer\.\w+)'",
-        ).allMatches(readSource(path)).map((m) => m.group(1)!),
+        ...RegExp(r"'(file_transfer\.\w+)'")
+            .allMatches(
+              readSource(
+                path,
+              ).split('\n').where((line) => !_isDirective(line)).join('\n'),
+            )
+            .map((m) => m.group(1)!),
     };
 
     /// Every key named in the bullet list on [TomFileTransferException].

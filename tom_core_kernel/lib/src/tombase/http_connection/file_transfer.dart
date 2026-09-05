@@ -50,7 +50,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import '../little_things/exception_base.dart';
+import 'mimetypes.dart';
 
 // =============================================================================
 // EXCEPTIONS

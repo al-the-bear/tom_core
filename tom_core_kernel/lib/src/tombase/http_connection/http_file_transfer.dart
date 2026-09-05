@@ -46,7 +46,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import '../security/bearer_authentication.dart';
+import 'file_transfer.dart';
+import 'headers.dart';
+import 'httpmethods.dart';
+import 'mimetypes.dart';
+import 'server_connection.dart';
 
 /// A [TomFileTransferClient] over HTTP.
 ///

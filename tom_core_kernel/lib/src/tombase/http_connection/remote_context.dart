@@ -28,7 +28,10 @@ library;
 import 'dart:async';
 
 import 'package:meta/meta.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_basics/tom_basics.dart';
+
+import '../little_things/exception_base.dart';
+import '../little_things/little_things.dart';
 
 // =============================================================================
 // EXCEPTIONS

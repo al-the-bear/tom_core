@@ -34,7 +34,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_basics/tom_basics.dart';
+
+import '../little_things/exception_base.dart';
+import '../reflection/reflection.dart';
+import '../security/bearer_authentication.dart';
+import 'endpoints_apis.dart';
+import 'remote_context.dart';
 
 // =============================================================================
 // EXCEPTIONS

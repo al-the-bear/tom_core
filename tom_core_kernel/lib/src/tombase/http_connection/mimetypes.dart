@@ -23,7 +23,7 @@
 /// ```
 library;
 
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import '../little_things/exception_base.dart';
 
 // =============================================================================
 // EXCEPTIONS

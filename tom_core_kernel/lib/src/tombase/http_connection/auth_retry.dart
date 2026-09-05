@@ -21,7 +21,8 @@
 /// same mechanism from `tom_core_kernel`.
 library;
 
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import '../beanlocator/bean_locator.dart';
+import '../little_things/exception_base.dart';
 
 // =============================================================================
 // REFRESHER

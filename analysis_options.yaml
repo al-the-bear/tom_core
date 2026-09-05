@@ -13,6 +13,11 @@ linter:
   rules:
     unawaited_futures: true
     discarded_futures: true
+    # A package refers to its own lib/ relatively and reserves the package: form
+    # for other packages. The absolute form encodes the package name into the
+    # URI, so it silently survives a move; and a file under lib/src/ that names
+    # its own barrel imports a library that exports it back.
+    prefer_relative_imports: true
     # Disable file_names - we use numbered prefixes for ordering (e.g., 01_example.dart)
     file_names: false
     # Disable dangling_library_doc_comments - generated bridge files may have doc comments at top
