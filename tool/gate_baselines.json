@@ -38,6 +38,11 @@
       "measured": "2026-09-05",
       "note": "Clean. 441 attribution claims, 105 type names judged. The one fault found on the first run (tom_flutter_ui_test's layout table calling lib/locale_settings.dart an AppBar language selector) was repaired in the same pass, so a rise here is a new misattribution, not a backlog."
     },
+    "check_doc_class_inventories": {
+      "faults": 0,
+      "measured": "2026-09-05",
+      "note": "Zero is the steady state, not an untested gate: the 81 stale (TBD) markers, the 42 names that named nothing, and the 3 shipped classes the appendix never mentioned were all repaired in the pass that introduced the checker, so it is baselined on a document it has already moved. One marked region, over tom_flutter_ui/lib/src/forms/fields, holding 97 classes of the TomField hierarchy. `--self-test` perturbs that region by one name in each direction and requires MISSING and PHANTOM to fire, so a zero here still means the checker is reading."
+    },
     "check_doc_dart_blocks": {
       "faults": 0,
       "measured": "2026-09-03",
@@ -77,9 +82,9 @@
       "measured": "2026-09-03"
     },
     "check_doc_tocs": {
-      "faults": 42,
-      "measured": "2026-09-03",
-      "note": "39 sections no table of contents lists, 2 entries linking to no heading, and 1 contents list in an order its document does not follow, across 9 documents."
+      "faults": 33,
+      "measured": "2026-09-05",
+      "note": "30 sections no table of contents lists, 2 entries linking to no heading, and 1 contents list in an order its document does not follow, across 9 documents. Down from 42 because tom_ui_widgets_forms.md's Appendix B lost the nine ## subsections of its widget cross-reference when that second inventory was collapsed onto Appendix C; the twelve C.n headings that replaced them are themselves unlisted and are part of the 30."
     },
     "check_field_grade_matrix": {
       "faults": 0,
@@ -108,7 +113,7 @@
     "check_section_refs": {
       "faults": 0,
       "measured": "2026-09-04",
-      "note": "Zero, and held there. Every shipped lib/, test/ and example/ comment either says what it means in its own words or names the document its section number belongs to -- in practice always doc/acl_design_specification.md or doc/tom_ui_list_forms.md, both of which ship with the package. A bare '\u00a77.2' or 'Phase 2a \u00a716' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure."
+      "note": "Zero, and held there. Every shipped lib/, test/ and example/ comment either says what it means in its own words or names the document its section number belongs to -- in practice always doc/acl_design_specification.md or doc/tom_ui_list_forms.md, both of which ship with the package. A bare '§7.2' or 'Phase 2a §16' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure."
     },
     "check_shared_chrome": {
       "faults": 0,

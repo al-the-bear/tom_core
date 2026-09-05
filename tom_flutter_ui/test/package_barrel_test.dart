@@ -226,10 +226,9 @@ void main() {
       final holdouts = <String>[];
       for (final path in exempt.keys) {
         for (final m in srcImport.allMatches(File(path).readAsStringSync())) {
-          final target = m.group(1)!.replaceFirst(
-            'package:tom_flutter_ui/',
-            'lib/',
-          );
+          final target = m
+              .group(1)!
+              .replaceFirst('package:tom_flutter_ui/', 'lib/');
           if (reachable.contains(target)) holdouts.add('  $path -> $target');
         }
       }

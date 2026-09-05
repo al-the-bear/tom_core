@@ -212,6 +212,7 @@ reports and never gates.
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and navigating documentation that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/check_unimplemented_claims.py`](tool/check_unimplemented_claims.py) | Finds documentation that calls a shipped `Tom*` type unimplemented |
+| [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
@@ -936,6 +937,74 @@ prose mentions as row claims was the source of its false positives. Only type
 declarations count, never a same-named function. `CHANGELOG.md` is out of scope
 — an entry records what was true when it was written, and editing it would
 falsify a record rather than repair a claim.
+
+```bash
+python3 tool/check_doc_class_inventories.py                # every document
+python3 tool/check_doc_class_inventories.py tom_flutter_ui # one subtree
+python3 tool/check_doc_class_inventories.py --self-test    # check the checker
+```
+
+An *inventory* is a region of a document that undertakes to list a family of
+classes completely. It is not the same thing as a document that mentions
+classes: a reader consults an inventory to answer "what is there?", and takes
+its silence as an answer. That is what makes it decay differently from ordinary
+prose. Prose that has fallen behind is merely incomplete, and reads as such; an
+inventory that has fallen behind is **confidently wrong in two directions at
+once**, and reads as authoritative in both.
+
+Both directions were live in `tom_ui_widgets_forms.md`, in one 300-line
+appendix: 81 rows carried a `**(TBD)** = class needs to be created` marker
+against classes that had shipped — `TomFormStringInput`, `TomFormBoolSwitch`,
+`TomFormDatePicker` among them — while 42 of the names in the same appendix
+named nothing at all, because the catalogue was built under different names
+(`TomCupertinoFormDatePicker`, not `TomFormCupertinoDatePicker`) or was never
+built. The three concretes that shipped later — `TomFormFileDropzone`,
+`TomFormFileThumbnail`, `TomFormDateTextInput` — appeared nowhere.
+
+The second and third findings are why clearing the markers would have been the
+wrong repair. It converts "wrongly says this does not exist" into "wrongly says
+this does", which is strictly worse: a reader can check the first claim by
+opening the file and finding the class, and cannot check the second by any means
+short of the exercise this gate performs.
+
+Nothing in a table's shape says whether it is an inventory or an illustration,
+and guessing wrong is expensive in both directions — a missed inventory is a
+gate that checks nothing, and a table read as an inventory by mistake demands
+that a five-row example list ninety classes. So the region declares itself:
+
+```markdown
+<!-- class-inventory: tom_flutter_ui/lib/src/forms/fields extends TomField -->
+... tables ...
+<!-- /class-inventory -->
+```
+
+The declaration is also the only durable place to record *what the region is
+for*. A section heading says "Form Class Hierarchy Inventory"; the marker says
+which directory that sentence is about, which is the fact that makes the
+sentence checkable.
+
+`MISSING` reports a class the directory declares and the region never names —
+the `TomFormFileDropzone` case. Only classes whose `extends` chain reaches the
+base named in the marker are demanded, so the private widget and `State` classes
+that make up most of a Flutter field file are not inventory entries and are not
+asked for. `PHANTOM` reports a `Tom*` name the region lists that no `lib/` in
+the repository declares — the `TomFormEmailStringInput` case, a planned name the
+build reached by another route. The phantom index spans every package rather
+than the marked directory, because an inventory legitimately mentions its
+neighbours (`TomList`, `TomSelectableSource`, `TomAuthState`) and a gate that
+called those phantoms would be unusable. There is deliberately no third fault
+for a name that exists elsewhere in the repository but not under the marked
+directory: `TomListForm` belongs to the list module and is named in the forms
+inventory for contrast, and demanding that every mentioned class live in the
+inventoried folder would forbid the sentence that tells a reader where the
+boundary runs.
+
+A gate baselined at zero passes just as well when it has stopped reading
+anything, so this one refuses to run rather than report success: it exits 2 when
+the declaration index is empty, when no marked region is found at all, and when
+a marked region resolves to a directory that declares nothing of the named
+family. `--self-test` asks the opposite question directly — it perturbs a real
+inventory by one name in each direction and requires the checker to object.
 
 ```bash
 python3 tool/check_field_grade_matrix.py                  # the whole repository

@@ -269,25 +269,24 @@ class Order extends TomClass {
 
 Without `@tomReflector`, the form cannot discover its fields and the observer system will not function.
 
-### Additional Observable Bindings
+### Additional Constructor Bindings
 
-Concrete implementations often need more than just the field value. Parameters like min/max, step, divisions, or option sources can be **observable** so they react to state changes:
+Concrete implementations often need more than the field value. Bounds, steps,
+divisions and formatting are plain constructor parameters, fixed for the life of
+the field:
 
 ```dart
-// Slider with dynamic bounds — min/max update reactively
-income = TomFormIntSlider('income', 50000,
-  min: appState.salary.minBracket,   // TomInt — observable
-  max: appState.salary.maxBracket,   // TomInt — observable
-  divisions: 100,
-);
+income = TomFormIntSlider('income', 50000, min: 0, max: 250000, divisions: 100);
+```
 
-// Dropdown with reactive options
-country = TomFormStringDropdown('country', null,
-  source: ObservableSelectableSource<String>(
-    appState.availableCountries,  // TomList<TomString> — reactive
-    mapper: (c) => (label: c.value, value: c.value),
-  ),
-);
+The one binding that *is* reactive is the option list, and it is reactive
+through the source rather than through the field: a `TomSelectableSource<T>`
+whose `itemsStream` is non-null re-emits, and the field rebuilds. See
+[§7](#7-concrete-implementation-classes) for the contract and
+[Appendix C.10](#c10--selectable-sources) for the four shipped sources.
+
+```dart
+country = TomFormStringDropdown('country', '', source: countrySource);
 ```
 
 ### Fields ARE Widgets
@@ -351,10 +350,10 @@ class TomFormStringDropdown extends TomFormStringField {
   Widget get widget => TomDropdownWidget<String>(field: this, source: source);
 }
 
-/// Concrete implementation with additional observable bindings
+/// Concrete implementation with additional constructor bindings
 class TomFormIntSlider extends TomFormIntField {
-  final TomObject<int> min;
-  final TomObject<int> max;
+  final int min;
+  final int max;
   final int? divisions;
 
   TomFormIntSlider(super.tomId, super.initialValue, {
@@ -726,164 +725,129 @@ class DependentFieldsForm extends TomForm<TomClass> {
 
 ## 6. Abstract Field Types Catalog
 
-Abstract field types define what kind of data the user provides. Each corresponds to a `TomField<T>` subclass with appropriate defaults. **These are not instantiated directly** — concrete implementations (see §7) extend them.
+An abstract field type says what kind of data the user provides.
+`TomFormStringField` is a field whose value is a `String`; `TomFormDateField` is
+one whose value is a `DateTime`. **They are not instantiated directly** — a
+concrete implementation extends one of them and supplies the widget (§7).
 
-### Naming Convention
+### The field is the observable
 
-Form field classes follow a two-layer naming convention that distinguishes **logical field types** (what data is edited) from **concrete implementations** (how the field is rendered):
+`TomField<T> extends TomObject<T>`. A field does not *hold* an observable
+wrapper; it *is* one, over the plain Dart value. That single line settles what
+the specification originally treated as an open question — an early draft of
+this section asked for a `TomObject` wrapper per value type
+(`TomDuration`, `TomIntRange`, `TomFileRef`, and nullable variants), and none of
+them was built, because the generic base already covers every `T`:
+
+```dart
+abstract class TomField<T> extends TomObject<T> implements TomAuthorizable { … }
+
+class TomFormDurationField extends TomField<Duration> { … }
+```
+
+So a `Duration` field observes a `Duration`, not a `TomDuration`. Read the value
+with `.value` or `~`, and write it with `setValue` (§4), exactly as for any other
+`TomObject`.
+
+The four value types the framework had to define itself are plain classes, not
+observables: `NumRange<int>` and `NumRange<double>` (a `low`/`high` pair),
+`TimeRange`, and `FileRef`. They are immutable values with `==` and `hashCode`,
+so a field change is a whole-value replacement and comparison is by content.
+
+### Naming convention
+
+Two layers, distinguishing what is edited from how it is rendered:
 
 | Layer | Pattern | Example | Purpose |
 |-------|---------|---------|---------|
-| **Abstract field type** | `TomForm{Type}Field` | `TomFormStringField`, `TomFormIntField` | Declares field intent in FormSpec; extends `TomField<T>` |
-| **Concrete implementation** | `TomForm{Format}{Type}{Widget}` | `TomFormEmailStringInput`, `TomFormIntSlider` | Instantiated as a `late final` form member (or in `createFormElements()` for cross-referencing fields); extends abstract type |
-| **Widget wrapper** | `Tom{FlutterWidget}` | `TomTextField`, `TomSlider` | Wraps a Flutter widget; lives in `tom_flutter_ui` widgets layer |
-| **Text-input base** | `TomTextFormFieldBase<T>` | — | Generic base for text-input form fields with `TextEditingController` |
+| **Abstract field type** | `TomForm{Type}Field` | `TomFormStringField`, `TomFormIntField` | Declares field intent; extends `TomField<T>` |
+| **Concrete implementation** | `TomForm{Type}{WidgetKind}` | `TomFormIntSlider`, `TomFormBoolSwitch` | Instantiated as a `late final` form member (or in `createFormElements()` for cross-referencing fields); extends the abstract type |
+| **Cupertino implementation** | `TomCupertinoForm{Type}{WidgetKind}` | `TomCupertinoFormDatePicker` | The same, rendered with Cupertino widgets |
+| **Widget wrapper** | `Tom{FlutterWidget}` | `TomTextField`, `TomSlider` | Wraps a Flutter widget; lives in the widgets layer, outside forms |
+| **Text-input base** | `TomTextFormFieldBase<T>` | — | Shared base for text-input fields, owning the `TextEditingController` |
 
-**Implementation naming rule:** `TomForm` + optional *Format* prefix + *Type* + *WidgetKind*
+The `Field` suffix on abstract types prevents collisions with widget wrappers:
+`TomTextField` wraps Flutter's `TextField`, while `TomFormStringField` is the
+form field for string input.
 
-- **Format** — optional specialization of the data type (e.g., `Email`, `Password`, `Multiline`, `Currency`, `Percent`, `Url`, `Phone`)
-- **Type** — the Dart value type (`String`, `Int`, `Double`, `Bool`, `Date`, `Enum`, etc.)
-- **WidgetKind** — the visual interaction style (`Input`, `Slider`, `Stepper`, `Checkbox`, `Switch`, `Dropdown`, `Picker`, etc.)
+**No separate implementation class.** The concrete field *is* the field —
+declare `late final email = TomFormStringInput('email', '', form: this)` on the
+concrete form, or, under the two-layer FormSpec / FormImpl split, declare
+`late TomFormStringField email` in the spec and assign the concrete in
+`createFormElements()`.
 
-| Logical Field Type | Implementation Examples |
-|-------------------|----------------------|
-| `TomFormStringField` | `TomFormStringInput`, `TomFormEmailStringInput`, `TomFormPasswordStringInput`, `TomFormMultilineStringInput`, `TomFormUrlStringInput`, `TomFormPhoneStringInput` |
-| `TomFormIntField` | `TomFormIntInput`, `TomFormIntSlider`, `TomFormIntStepper` |
-| `TomFormDoubleField` | `TomFormDoubleInput`, `TomFormDoubleSlider`, `TomFormCurrencyDoubleInput`, `TomFormPercentDoubleInput` |
-| `TomFormBoolField` | `TomFormBoolCheckbox`, `TomFormBoolSwitch`, `TomFormBoolToggle` |
+### The twenty-three abstract types
 
-The `FormField` suffix on abstract types prevents naming collisions with widget wrappers. For example, `TomTextField` is the widget wrapper around Flutter's `TextField`, while `TomFormStringField` is the form field for string input.
+Each row is one abstract type and the value it binds. **The concrete classes
+that extend them are catalogued once, in
+[Appendix C](#appendix-c--form-class-hierarchy-inventory)**, which is held to
+`lib/src/forms/fields/` by `tool/check_doc_class_inventories.py`; this table
+carries only what the appendix does not, which is the value type.
 
-**No separate `TomFieldImplementation<T>`** — the concrete implementation class IS the field. Declare it as `late final name = TomFormEmailStringInput('name', '', form: this)` on the concrete form, or — when you use the two-layer FormSpec / FormImpl split — declare `late TomFormStringField name` in the spec and assign `name = TomFormEmailStringInput('name', '', form: this)` in `createFormElements()`. The concrete class extends the abstract type directly.
+| Abstract Type | Binds | Notes |
+|---------------|-------|-------|
+| `TomFormStringField` | `String` | One string type; email, password, multiline and URL are constructor options on the concrete, not separate types |
+| `TomFormIntField` | `int` | |
+| `TomFormDoubleField` | `double` | Currency and percent are formatting on the concrete, not separate types |
+| `TomFormBoolField` | `bool` | |
+| `TomFormNullableBoolField` | `bool?` | Tri-state: true / false / unset |
+| `TomFormDateField` | `DateTime` | Date part only; the time part is not significant |
+| `TomFormTimeField` | `TimeOfDay` | |
+| `TomFormDateTimeField` | `DateTime` | |
+| `TomFormDateRangeField` | `DateTimeRange` | Flutter's own range type |
+| `TomFormTimeRangeField` | `TimeRange` | No concrete implementation ships — see §9 |
+| `TomFormDateTimeRangeField` | `DateTimeRange` | No concrete implementation ships — see §9 |
+| `TomFormDurationField` | `Duration` | |
+| `TomFormIntRangeField` | `NumRange<int>` | `low` / `high` pair |
+| `TomFormDoubleRangeField` | `NumRange<double>` | |
+| `TomFormEnumField<T>` | `T` (an enum constant) | Labels resolve from the text bundle |
+| `TomFormObjectField<T>` | `T` | Selection over arbitrary objects |
+| `TomFormSearchField<T>` | `T` | Type-ahead over a source |
+| `TomFormLookupField<T>` | `T` | Selection through a dialog or sheet |
+| `TomFormStringListField` | `List<String>` | |
+| `TomFormIntListField` | `List<int>` | |
+| `TomFormEnumListField<T>` | `List<T>` | |
+| `TomFormObjectListField<T>` | `List<T>` | |
+| `TomFormFileField` | `FileRef?` | Nullable in the type: "no file chosen" is a state of the field, not a separate type |
 
-### Text Fields
+### Nullable fields
 
-| Abstract Type | Observable Type | Observed Value | Description | Default Validation | Implementations |
-|-------------|----------------|---------------|-------------|-------------------|-----------------|
-| `TomFormStringField` | `TomString` | `String` | All string-based input | Optional: required, minLength, maxLength, pattern | `TomFormStringInput`, `TomFormEmailStringInput`, `TomFormPasswordStringInput`, `TomFormMultilineStringInput`, `TomFormUrlStringInput`, `TomFormPhoneStringInput`, `TomFormStringOutlinedInput` |
+There is no nullable variant of every abstract type. Nine concrete classes bind
+`T?` directly — `TomFormNStringInput`, `TomFormNIntInput`, `TomFormNDoubleInput`,
+`TomFormNDateInput`, `TomFormNEnumDropdown` and four Cupertino counterparts —
+extending `TomField<T?>` rather than an abstract type in the list above. They
+accept `null` as a value, start there, and render a clear action.
 
-There is **one** abstract string field type. Format-specific behavior (email validation, password obscuring, multiline layout, URL/phone keyboard types) is provided by the concrete implementation class. This keeps the logical type simple while allowing many visual representations.
+The asymmetry is deliberate. A nullable variant of each of the twenty-three
+would double the catalogue to carry one bit of information, and most of the
+duplicates would never be instantiated: a multi-select whose value is
+`List<String>?` rather than `[]` distinguishes nothing a form author cares
+about. The nine that exist are the ones where "unset" is a state a user
+actually reaches.
 
-Each field binds to its `TomObject<T>` wrapper — **not** the raw Dart type. For example, `TomFormStringField` binds to `TomString`, and code accesses the inner `String` via `.value` or the `~` operator.
+### Multi-value binding
 
-### Numeric Fields
+A list field binds `List<T>` as a whole value: selecting an option produces a
+new list rather than mutating the old one, so a change is a single field event
+and comparison is by content. Concrete implementations
+(`TomFormStringFilterChips`, `TomFormStringMultiCheckbox` and the rest) prevent
+duplicates at the widget level.
 
-| Abstract Type | Observable Type | Observed Value | Description | Default Validation | Implementations |
-|-------------|----------------|---------------|-------------|-------------------|-----------------|
-| `TomFormIntField` | `TomInt` | `int` | Integer value | Optional: min, max | `TomFormIntInput`, `TomFormIntSlider`, `TomFormIntStepper` |
-| `TomFormDoubleField` | `TomDouble` | `double` | Decimal value | Optional: min, max, precision | `TomFormDoubleInput`, `TomFormDoubleSlider`, `TomFormCurrencyDoubleInput`, `TomFormPercentDoubleInput`, `TomFormPercentDoubleSlider` |
+### Range fields
 
-Currency and percent are **not** separate field types — they are `TomFormDoubleField` with specialized implementations that provide formatting (currency symbol, percentage suffix) and additional validators.
+A range field binds one immutable value, not two coupled ones:
 
-### Numeric Range Fields
+| Range Field | Binds | Members |
+|-------------|-------|---------|
+| `TomFormIntRangeField` | `NumRange<int>` | `int low`, `int high` |
+| `TomFormDoubleRangeField` | `NumRange<double>` | `double low`, `double high` |
+| `TomFormDateRangeField` | `DateTimeRange` | `DateTime start`, `DateTime end` |
+| `TomFormTimeRangeField` | `TimeRange` | `TimeOfDay start`, `TimeOfDay end` |
+| `TomFormDateTimeRangeField` | `DateTimeRange` | `DateTime start`, `DateTime end` |
 
-| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
-|-------------|----------------|---------------|-------------|-------------------|
-| `TomFormIntRangeField` | `TomIntRange` | `TomIntRange` (TomClass) | Integer min/max pair (TomClass with start/end) | start ≤ end; optional: absolute min, max |
-| `TomFormDoubleRangeField` | `TomDoubleRange` | `TomDoubleRange` (TomClass) | Decimal min/max pair (TomClass with start/end) | start ≤ end; optional: absolute min, max |
-
-### Boolean Fields
-
-| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
-|-------------|----------------|---------------|-------------|-------------------|
-| `TomFormBoolField` | `TomBool` | `bool` | Boolean toggle | None |
-
-### Date and Time Fields
-
-| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
-|-------------|----------------|---------------|-------------|-------------------|
-| `TomFormDateField` | `TomOZonedDate` | `ZonedDate` | Timezone-aware date | Optional: min, max date |
-| `TomFormTimeField` | `TomOZonedTime` | `ZonedTime` | Timezone-aware time | Optional: min, max time |
-| `TomFormDateTimeField` | `TomOZonedDateTime` | `ZonedDateTime` | Combined date and time | Optional: min, max |
-| `TomFormDateRangeField` | `TomDateRange` | `TomDateRange` (TomClass) | From-date to to-date | From ≤ To |
-| `TomFormTimeRangeField` | `TomTimeRange` | `TomTimeRange` (TomClass) | From-time to to-time | From ≤ To |
-| `TomFormDateTimeRangeField` | `TomDateTimeRange` | `TomDateTimeRange` (TomClass) | From-datetime to to-datetime | From ≤ To |
-| `TomFormDurationField` | `TomDuration` | `Duration` | Time duration | Optional: min, max |
-
-### Selection Fields (Single Value)
-
-Selection is handled by **concrete implementations** that extend the abstract field types. For example, `TomFormStringDropdown` extends `TomFormStringField`, `TomFormIntSegmented` extends `TomFormIntField`. Each concrete selection class takes a `TomSelectableSource<T>` for its options. See §7 for the full concrete implementation catalog.
-
-### Multi-Value Fields
-
-For selecting multiple values, each data type has a list variant that binds to `TomList<TomObject<T>>`:
-
-| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
-|-------------|----------------|---------------|-------------|-------------------|
-| `TomFormStringListField` | `TomList<TomString>` | `List<String>` | Multi-select strings | Optional: min/max selections |
-| `TomFormIntListField` | `TomList<TomInt>` | `List<int>` | Multi-select integers | Optional: min/max selections |
-| `TomFormDoubleListField` | `TomList<TomDouble>` | `List<double>` | Multi-select decimals | Optional: min/max selections |
-| `TomFormEnumListField<T>` | `TomList<TomObject<T>>` | `List<T>` | Multi-select enum values | Optional: min/max selections |
-| `TomFormObjectListField<T>` | `TomList<TomObject<T>>` | `List<T>` | Multi-select custom objects | Optional: min/max selections |
-
-Multi-value fields bind to `TomList<TomObject<T>>` for ordered, observable collections. Concrete selection implementations (e.g., `TomFormStringFilterChips`, `TomFormIntMultiCheckbox`) handle duplicate prevention at the widget level.
-
-### File and Media Fields
-
-| Abstract Type | Observable Type | Observed Value | Description | Default Validation |
-|-------------|----------------|---------------|-------------|-------------------|
-| `TomFormFileField` | `TomFileRef` | `FileRef?` | File upload/selection | Optional: max size, allowed types |
-
-### Nullable Variants
-
-Every abstract field type has a nullable variant (e.g., `TomFormNStringField` for `String?`, `TomFormNIntField` for `int?`). Nullable fields use the nullable `TomObject<T>` wrapper (e.g., `TomNString`, `TomNInt`):
-- Allow `null` as a valid value
-- Start with `null` as initial value by default
-- Have `isNull` / `isNotNull` convenience getters
-- Render a clear/reset action in their widget
-
-### State Binding Requirements — TomObject\<T\>
-
-Every value type used in form fields must have a corresponding `TomObject<T>` wrapper in `tom_core_kernel` so that forms can bind to observable state. The following table shows the required wrappers:
-
-| Value Type | Observable Wrapper | Nullable Wrapper | Status |
-|-----------|-------------------|-----------------|--------|
-| `String` | `TomString` | `TomNString` | Exists |
-| `int` | `TomInt` | `TomNInt` | Exists |
-| `double` | `TomDouble` | `TomNDouble` | Exists |
-| `bool` | `TomBool` | `TomNBool` | Exists |
-| `DateTime` | `TomDateTime` | `TomNDateTime` | Exists |
-| `TomZonedDate` | `TomOZonedDate` | `TomNOZonedDate` | Exists |
-| `TomZonedTime` | `TomOZonedTime` | `TomNOZonedTime` | Exists |
-| `TomZonedDateTime` | `TomOZonedDateTime` | `TomNOZonedDateTime` | Exists |
-| `Duration` | `TomDuration` | `TomNDuration` | **TBD** |
-| `TomIntRange` | `TomIntRange` (TomClass) | — | **TBD** |
-| `TomDoubleRange` | `TomDoubleRange` (TomClass) | — | **TBD** |
-| `TomDateRange` | `TomDateRange` (TomClass) | — | Exists |
-| `TomTimeRange` | `TomTimeRange` (TomClass) | — | Exists |
-| `TomDateTimeRange` | `TomDateTimeRange` (TomClass) | — | Exists |
-| `Enum<T>` / `T` | `TomObject<T>` | `TomObject<T?>` | Generic |
-| `List<T>` | `TomList<T>` | — | For multi-select |
-| `FileRef` | `TomFileRef` | `TomNFileRef` | **TBD** |
-
-### Range Field Binding — TomClass with Start/End
-
-All range types follow the same `TomClass` pattern: a single observable object with nullable start and end members. This applies to numeric ranges (`TomIntRange`, `TomDoubleRange`) as well as the existing date/time ranges.
-
-```dart
-// TomIntRange follows the same pattern as TomDateRange
-@tomReflector
-class TomIntRange extends TomClass {
-  TomNInt start = TomNInt(null);
-  TomNInt end = TomNInt(null);
-}
-
-@tomReflector
-class TomDoubleRange extends TomClass {
-  TomNDouble start = TomNDouble(null);
-  TomNDouble end = TomNDouble(null);
-}
-```
-
-All range fields bind to a **single** TomClass observable (not dual-binding):
-
-| Range Field | Observable | Members |
-|------------|-----------|--------|
-| `TomFormIntRangeField` | `TomIntRange` | `TomNInt start`, `TomNInt end` |
-| `TomFormDoubleRangeField` | `TomDoubleRange` | `TomNDouble start`, `TomNDouble end` |
-| `TomFormDateRangeField` | `TomDateRange` | `TomNOZonedDate startDate`, `TomNOZonedDate endDate` |
-| `TomFormTimeRangeField` | `TomTimeRange` | `TomNOZonedTime startTime`, `TomNOZonedTime endTime` |
-| `TomFormDateTimeRangeField` | `TomDateTimeRange` | `TomNOZonedDateTime start`, `TomNOZonedDateTime end` |
+Single-value binding is what makes `start ≤ end` checkable: the invariant holds
+over one value the validator can see whole, rather than over two observables
+that are briefly inconsistent while the user drags one end of a slider.
 
 ---
 
@@ -893,203 +857,102 @@ All range fields bind to a **single** TomClass observable (not dual-binding):
 
 Each abstract field type has one or more concrete implementations that the form author instantiates on the concrete form — usually as `late final` members with `form: this`, or inside `createFormElements()` when a field's constructor needs to reference another already-created field. Concrete classes extend the abstract type and may add additional observable bindings.
 
-**Naming convention:** `TomForm{Format}{Type}{WidgetStyle}` — e.g., `TomFormStringInput`, `TomFormIntSlider`, `TomFormEmailStringInput`.
+**Naming convention:** `TomForm{Type}{WidgetStyle}` for the Material family —
+`TomFormStringInput`, `TomFormIntSlider`, `TomFormBoolSwitch` — and
+`TomCupertinoForm{Type}{WidgetStyle}` for the Cupertino one:
+`TomCupertinoFormDatePicker`, `TomCupertinoFormStringSegmented`. The platform
+leads because it qualifies the whole field rather than only its rendering; a
+reader scanning a form declaration sees which family a line belongs to at the
+front of the name.
 
-### Text Implementations
+**The catalogue itself is [Appendix C](#appendix-c--form-class-hierarchy-inventory),
+and it is the only copy.** This section describes the scheme — how a concrete
+class relates to its abstract type, what a selection field takes for its
+options, and what happens when those options change — and names classes only
+as examples of the scheme. It deliberately does not tabulate them.
 
-All text implementations extend `TomFormStringField`:
+That division is not tidiness. This section and Appendix C were once two
+hand-written lists of the same 68 classes, and the appendix carried a
+`**(TBD)**` marker on 81 rows describing classes that had shipped months
+earlier. A second inventory beside a first drifts the moment either moves, and
+nothing brings a writer back to the copy they were not editing. One list, held
+to `lib/src/forms/fields/` by `tool/check_doc_class_inventories.py`, is the
+arrangement that cannot decay quietly.
 
-| Concrete Implementation | Description | Additional Bindings |
-|----------------------|-------------|-------------------|
-| `TomFormStringInput` | Standard Material `TextField` | `keyboard`, `maxLength` |
-| `TomFormStringOutlinedInput` | `TextField` with `OutlineInputBorder` | `keyboard`, `maxLength` |
-| `TomFormMultilineStringInput` | Multi-line `TextField` | `minLines`, `maxLines` |
-| `TomFormPasswordStringInput` | Obscured `TextField` with visibility toggle | — |
-| `TomFormEmailStringInput` | `TextField` with email keyboard + RFC 5322 validation | — |
-| `TomFormUrlStringInput` | `TextField` with URL keyboard + URL validation | — |
-| `TomFormPhoneStringInput` | `TextField` with phone keyboard | — |
+### Selection Implementations — the shared machinery
 
-### Numeric Implementations
+Most concrete classes add nothing but a widget: `TomFormBoolSwitch` and
+`TomFormBoolCheckbox` both extend `TomFormBoolField`, bind the same `bool`, and
+differ only in what they build. Selection is the exception — its concretes share
+real machinery, and that machinery is the part of the scheme worth describing
+here.
 
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormIntField` | `TomFormIntInput` | `TextField` with integer-only input filter | — |
-| | `TomFormIntSlider` | Slider with integer divisions | `min`, `max` (observable `TomObject<int>`), `divisions` |
-| | `TomFormIntStepper` | +/- stepper buttons | `min`, `max` (observable), `step` |
-| `TomFormDoubleField` | `TomFormDoubleInput` | `TextField` with decimal input | — |
-| | `TomFormDoubleSlider` | Continuous or stepped slider | `min`, `max` (observable `TomObject<double>`), `divisions` |
-| | `TomFormCurrencyDoubleInput` | `TextField` with currency mask | `currencySymbol`, `decimalDigits` |
-| | `TomFormPercentDoubleInput` | `TextField` with % suffix | — |
-| | `TomFormPercentDoubleSlider` | 0–100 range slider | — |
+A selection field does not hold its own options. It takes a
+`TomSelectableSource<T>`, and the source answers the one question the field
+needs answered:
 
-### Numeric Range Implementations
+```dart
+abstract class TomSelectableSource<T> {
+  Future<List<SelectableItem<T>>> getItems();
 
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormIntRangeField` | `TomFormIntRangeSlider` | `RangeSlider` with integer divisions | `absoluteMin`, `absoluteMax` (observable), `divisions` |
-| | `TomFormIntRangeInput` | Two `TextField`s (min/max) | — |
-| `TomFormDoubleRangeField` | `TomFormDoubleRangeSlider` | `RangeSlider` continuous or stepped | `absoluteMin`, `absoluteMax` (observable), `divisions` |
-| | `TomFormDoubleRangeInput` | Two decimal `TextField`s | — |
+  /// Non-null when the options can change after construction; the field
+  /// subscribes and rebuilds. A fixed source returns null and is read once.
+  Stream<List<SelectableItem<T>>>? get itemsStream => null;
+}
+```
 
-### Boolean Implementations
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormBoolField` | `TomFormBoolCheckbox` | Material `Checkbox` with label | — |
-| | `TomFormBoolSwitch` | Material `Switch` with label | — |
-| | `TomFormBoolToggle` | Segmented toggle (Yes/No) | `trueLabel`, `falseLabel` |
-
-### Date and Time Implementations
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormDateField` | `TomFormDatePicker` | Hybrid: text field + date picker dialog | `firstDate`, `lastDate` (observable) |
-| | `TomFormDateCalendar` | Inline calendar (no dialog) | `firstDate`, `lastDate` |
-| | `TomFormDateInput` | Text-only with date parsing | — |
-| | `TomFormCupertinoDatePicker` | Cupertino wheel (date mode) | `firstDate`, `lastDate` |
-| `TomFormTimeField` | `TomFormTimePicker` | Hybrid: text field + time picker dialog | — |
-| | `TomFormCupertinoTimePicker` | Cupertino wheel (time mode) | — |
-| `TomFormDateTimeField` | `TomFormDateTimePicker` | Hybrid: date + time dialogs | `firstDate`, `lastDate` |
-| | `TomFormCupertinoDateTimePicker` | Cupertino wheel (dateAndTime) | — |
-| `TomFormDateRangeField` | `TomFormDateRangePicker` | `showDateRangePicker` dialog | `firstDate`, `lastDate` |
-| | `TomFormDateRangeInput` | Two date text fields | — |
-| `TomFormTimeRangeField` | `TomFormTimeRangePicker` | Two time picker dialogs | — |
-| `TomFormDateTimeRangeField` | `TomFormDateTimeRangePicker` | Two datetime picker pairs | — |
-| `TomFormDurationField` | `TomFormDurationInput` | Hours:Minutes:Seconds spinners | — |
-| | `TomFormDurationSlider` | Slider mapped to duration | `min`, `max` (observable) |
-| | `TomFormCupertinoTimer` | Cupertino timer wheel | — |
-
-### Selection Implementations — Single Value
-
-Concrete selection classes extend the per-type abstract field and take a `TomSelectableSource<T>` for their options. Internally, they share generic rendering logic through `SelectableItem<T>`:
+`SelectableItem<T>` pairs the value the field binds with the label the widget
+shows, so the two never have to be kept in step by the caller:
 
 ```dart
 class SelectableItem<T> {
   final T value;
   final String label;
-  final String? description;
-  final bool enabled;
-
-  const SelectableItem({
-    required this.value,
-    required this.label,
-    this.description,
-    this.enabled = true,
-  });
+  const SelectableItem({required this.value, required this.label});
 }
 ```
 
-`SelectableItem<T>` is a concrete data class (not a record type) that carries the selectable value, a display label, an optional description for richer item rendering, and an `enabled` flag for disabling individual options in dropdowns, radio groups, etc.
-
-#### String Selection
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormStringField` | `TomFormStringDropdown` | Material `DropdownButton` | `source` (`TomSelectableSource<String>`) |
-| | `TomFormStringSegmented` | `SegmentedButton` (≤5 options) | `source` |
-| | `TomFormStringRadioGroup` | Vertical radio button list | `source` |
-| | `TomFormStringChoiceChips` | Horizontal single-select chips | `source` |
-
-#### Int Selection
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormIntField` | `TomFormIntDropdown` | Material `DropdownButton` | `source` (`TomSelectableSource<int>`) |
-| | `TomFormIntSegmented` | `SegmentedButton` (≤5 options) | `source` |
-| | `TomFormIntRadioGroup` | Vertical radio button list | `source` |
-
-#### Double Selection
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormDoubleField` | `TomFormDoubleDropdown` | Material `DropdownButton` | `source` (`TomSelectableSource<double>`) |
-| | `TomFormDoubleSegmented` | `SegmentedButton` (≤5 options) | `source` |
-
-#### Enum\<T\> Selection
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormEnumField<T>` | `TomFormEnumDropdown<T>` | Material `DropdownButton` | `source` (`TomSelectableSource<T>`) |
-| | `TomFormEnumSegmented<T>` | `SegmentedButton` (≤5) | `source` |
-| | `TomFormEnumRadioGroup<T>` | Vertical radio button list | `source` |
-| | `TomFormEnumChoiceChips<T>` | Horizontal chips | `source` |
-| | `TomFormEnumCupertinoPicker<T>` | Cupertino scroll wheel | `source` |
-
-#### Custom Object\<T\> Selection
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormObjectField<T>` | `TomFormObjectDropdown<T>` | Material `DropdownButton` | `source` (`TomSelectableSource<T>`) |
-| | `TomFormObjectChoiceChips<T>` | Horizontal chips | `source` |
-| | `TomFormObjectRadioGroup<T>` | Vertical radio list | `source` |
-
-#### Search & Lookup
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormSearchField<T>` | `TomFormSearchInput<T>` | Type-ahead autocomplete | `source` (`AsyncSelectableSource<T>`) |
-| | `TomFormSearchAnchor<T>` | Full-screen search overlay | `source` |
-| `TomFormLookupField<T>` | `TomFormLookupDialog<T>` | Dialog/bottom sheet lookup | `source` |
-
-### Selection Implementations — Multi-Value
-
-Multi-value concrete classes extend the per-type list field and bind to `TomList<T>`:
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormStringListField` | `TomFormStringFilterChips` | Multi-select filter chips | `source` (`TomSelectableSource<String>`) |
-| | `TomFormStringMultiCheckbox` | Vertical checkbox list | `source` |
-| | `TomFormStringMultiSegmented` | `SegmentedButton` multi (≤5) | `source` |
-| `TomFormIntListField` | `TomFormIntFilterChips` | Multi-select filter chips | `source` (`TomSelectableSource<int>`) |
-| | `TomFormIntMultiCheckbox` | Vertical checkbox list | `source` |
-| `TomFormEnumListField<T>` | `TomFormEnumFilterChips<T>` | Multi-select filter chips | `source` (`TomSelectableSource<T>`) |
-| | `TomFormEnumMultiCheckbox<T>` | Vertical checkbox list | `source` |
-| | `TomFormEnumMultiSegmented<T>` | `SegmentedButton` multi (≤5) | `source` |
-| `TomFormObjectListField<T>` | `TomFormObjectFilterChips<T>` | Multi-select filter chips | `source` (`TomSelectableSource<T>`) |
-| | `TomFormObjectMultiCheckbox<T>` | Vertical checkbox list | `source` |
-
-### File Implementations
-
-| Abstract Type | Concrete Implementation | Description | Additional Bindings |
-|-------------|----------------------|-------------|-------------------|
-| `TomFormFileField` | `TomFormFileUpload` | Compact "Choose file…" button | `allowedExtensions`, `maxSizeBytes` |
-| | `TomFormFileDropzone` | Large drop-target surface | `allowedExtensions`, `maxSizeBytes`, `height` |
-| | `TomFormFileThumbnail` | Square preview of the file itself | `allowedExtensions`, `maxSizeBytes`, `thumbnailSize` |
-
-### TomSelectableSource\<T\> Adapters
-
-`TomSelectableSource<T>` is an abstract class that extends `TomObservable` and provides `List<SelectableItem<T>>` to selection implementations. Adapters decouple "where options come from" from rendering:
-
-| Adapter | Source | Reactivity |
-|---------|--------|-----------|
-| `StaticSelectableSource<T>` | `List<SelectableItem<T>>` at construction | None — fixed list |
-| `TomEnumSelectableSource<E extends Enum>` | `Enum.values` + labels resolved from the text bundle | Reactive — re-emits relabelled items on a locale change |
-| `ObservableSelectableSource<T>` | `TomList<E extends TomObject>` + mapper | Reactive — updates when list changes |
-| `AsyncSelectableSource<T>` | `Future<List<SelectableItem<T>>> Function(String)` | Query-driven — re-fetches on input |
+Separating the source from the field is what lets one dropdown class serve a
+hard-coded list, an enum whose labels come from the text bundle, and a set that
+changes while the form is open. The four shipped sources are listed in
+[Appendix C.10](#c10--selectable-sources); two of them cover most forms:
 
 ```dart
-// Enum source — labels come from the text bundle, not from Dart
-// (keys: `<scope>.priority.<value>`, e.g. `global.priority.high`)
+final countrySource = StaticSelectableSource<String>(const [
+  SelectableItem(value: 'de', label: 'Germany'),
+  SelectableItem(value: 'fr', label: 'France'),
+]);
+
+// Labels come from the text bundle, not from Dart:
+// keys are `<scope>.priority.<value>`, e.g. `global.priority.high`.
 final prioritySource = TomEnumSelectableSource<Priority>(Priority.values);
+```
 
-// Observable source — updates when products change
-final productSource = ObservableSelectableSource<Product>(
-  appState.availableProducts,  // TomList<TomProductItem>
-  mapper: (item) => (label: item.name.value, value: item.toProduct()),
-);
+`TomEnumSelectableSource<E>` binds the enum constant itself. When the entity
+stores the constant's `name` in a `TomString` instead — which is what a
+persisted enum usually looks like — use `TomEnumNameSelectableSource<E>`, which
+is valued by `Enum.name` and otherwise behaves identically, labels included.
 
-// Async source — type-ahead search
-final citySource = AsyncSelectableSource<City>(
-  fetcher: (query) async {
-    final results = await api.searchCities(query, limit: 20);
-    return results.map((c) => (label: '${c.name}, ${c.country}', value: c)).toList();
-  },
+Every selection concrete takes its source the same way, as a required named
+`source:` after the two positional arguments every field starts with:
+
+```dart
+late final country = TomFormStringDropdown('country', '', source: countrySource);
+late final priority = TomFormEnumDropdown<Priority>(
+  'priority',
+  Priority.normal,
+  source: prioritySource,
 );
 ```
 
+The uniformity is deliberate: swapping a dropdown for segmented buttons or a
+radio group is a change of class name and nothing else.
+
 ### Selection Source Change Convention
 
-When a `TomSelectableSource<T>` updates its items (e.g., `ObservableSelectableSource` reacts to a `TomList` change), selection fields must handle the case where the currently selected value is no longer in the new items list:
+When a source with a non-null `itemsStream` emits a new list — the locale
+changing under `TomEnumSelectableSource`, say — selection fields must handle the
+case where the currently selected value is no longer among the options:
 
 1. **Dropdown / single-select fields:** If the current value is not in the new items, **reset to the first available option**. If the items list is empty, set the field value to its default (null for nullable fields, or keep the stale value and show a validation error for non-nullable fields).
 2. **Multi-select fields:** Remove any selected values that are no longer in the new items list. Keep selected values that are still available.
@@ -1111,7 +974,7 @@ Every Flutter widget parameter falls into one of these categories:
 |----------|-------------|-----------|----------|
 | **Value binding** | Primary field value — always bidirectional | Concrete field class | `Slider.value`, `Checkbox.value`, `DropdownButton.value` |
 | **Write-back callback** | Flutter callback that writes user input back to the observable | Concrete field class | `onChanged`, `onSelected`, `onSelectionChanged`, `onDateChanged` |
-| **Observable config** | Configuration parameters that can change reactively | Constructor params (`TomObject<T>`) | `min`, `max`, `firstDate`, `lastDate`, `absoluteMin`, `absoluteMax` |
+| **Bounds and formatting** | Fixed configuration read when the widget builds | Constructor params (plain values) | `min`, `max`, `firstDate`, `lastDate`, `decimals` |
 | **Data source** | Options/items provided to selection widgets | `TomSelectableSource<T>` | `items`, `dropdownMenuEntries`, `segments`, `suggestionsBuilder` |
 | **Internal controller** | Controllers created and owned by the concrete class | Concrete field class | `TextEditingController`, `SearchController`, `FocusNode` |
 | **Auth-driven state** | Enabled/disabled/read-only based on authorization | `TomPolicyNodeBase` (auth system) | `enabled`, `readOnly`, null `onChanged` |
@@ -1126,8 +989,8 @@ The core binding pattern for all concrete implementations:
 
 ```dart
 class TomFormIntSlider extends TomFormIntField {
-  final TomObject<int> min;
-  final TomObject<int> max;
+  final int min;
+  final int max;
   final int? divisions;
   final ValueChanged<int>? onChangeStart;
   final ValueChanged<int>? onChangeEnd;
@@ -1197,7 +1060,7 @@ class _TomFormIntSliderWidget extends StatelessWidget {
 
 #### TextField (text input types)
 
-Used by: `TomFormStringInput`, `TomFormMultilineStringInput`, `TomFormPasswordStringInput`, `TomFormEmailStringInput`, `TomFormUrlStringInput`, `TomFormPhoneStringInput`, `TomFormIntInput`, `TomFormDoubleInput`, `TomFormCurrencyDoubleInput`, `TomFormPercentDoubleInput`
+Used by: `TomFormStringInput`, `TomFormIntInput`, `TomFormDoubleInput`, `TomFormCurrencyDoubleInput`, `TomFormPercentDoubleInput`, `TomFormDateTextInput`, `TomFormTimeTextInput`, `TomFormDateTimeTextInput`, `TomFormDurationInput` and the nullable inputs
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
@@ -1209,11 +1072,11 @@ Used by: `TomFormStringInput`, `TomFormMultilineStringInput`, `TomFormPasswordSt
 | `decoration.errorText` | Resource text | `ValueNotifier<String?>` from validation | Reactive via `ValueListenableBuilder` |
 | `enabled` | Auth-driven | `TomAuthState != none/disabled` | null = hidden, false = disabled |
 | `readOnly` | Auth-driven | `TomAuthState == read` | Shows value but no editing |
-| `obscureText` | Static config | From field type (`TomFormPasswordStringInput` → true) | |
+| `obscureText` | Static config | The `obscureText` constructor parameter — `true` makes a password field | |
 | `keyboardType` | Static config | From field type: email → `TextInputType.emailAddress`, phone → `.phone`, int → `.number`, etc. | |
 | `inputFormatters` | Static config | From field type: `TomFormIntInput` → `FilteringTextInputFormatter.digitsOnly`, currency → `CurrencyInputFormatter` | |
-| `maxLength` | Observable config | `TomObject<int>?` — can change dynamically | Optional |
-| `maxLines` / `minLines` | Static config | From field type: `TomFormMultilineStringInput` sets these | |
+| `maxLength` | Static config | The `maxLength` constructor parameter | Optional |
+| `maxLines` / `minLines` | Static config | The `maxLines` constructor parameter — greater than 1 makes a text area | |
 | `focusNode` | Internal controller | Created and owned by field | |
 | `onSubmitted` | User callback | Scope-wrapped pass-through | Optional |
 | `onEditingComplete` | User callback | Scope-wrapped pass-through | Optional |
@@ -1222,7 +1085,7 @@ Used by: `TomFormStringInput`, `TomFormMultilineStringInput`, `TomFormPasswordSt
 
 #### Slider
 
-Used by: `TomFormIntSlider`, `TomFormDoubleSlider`, `TomFormPercentDoubleSlider`, `TomFormDurationSlider`
+Used by: `TomFormIntSlider`, `TomFormDoubleSlider`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
@@ -1253,18 +1116,18 @@ Used by: `TomFormIntRangeSlider`, `TomFormDoubleRangeSlider`
 
 #### Checkbox
 
-Used by: `TomFormBoolCheckbox`
+Used by: `TomFormBoolCheckbox`, `TomFormNullableBoolCheckbox`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
 | `value` | Value binding | `TomBool.value` | |
 | `onChanged` | Write-back | `(v) => field.setValue(v!)` | null when not editable |
-| `tristate` | Static config | `false` for `TomFormBoolField`, `true` for `TomFormNBoolField` | Nullable variant |
+| `tristate` | Static config | `false` for `TomFormBoolField`, `true` for `TomFormNullableBoolField` | Tri-state |
 | All color/shape params | Theme | Tom theme resolution | |
 
 #### Switch
 
-Used by: `TomFormBoolSwitch`
+Used by: `TomFormBoolSwitch`, `TomFormBoolToggle`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
@@ -1430,7 +1293,7 @@ Used by: `TomFormDateRangePicker`
 
 #### CupertinoDatePicker
 
-Used by: `TomFormCupertinoDatePicker`, `TomFormCupertinoDateTimePicker`
+Used by: `TomCupertinoFormDatePicker`, `TomCupertinoFormDateTimePicker`, `TomCupertinoFormDateRangePicker`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
@@ -1444,7 +1307,7 @@ Used by: `TomFormCupertinoDatePicker`, `TomFormCupertinoDateTimePicker`
 
 #### CupertinoTimerPicker
 
-Used by: `TomFormCupertinoTimer`
+Used by: `TomCupertinoFormTimePicker`, `TomCupertinoFormDurationPicker`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
@@ -1455,26 +1318,26 @@ Used by: `TomFormCupertinoTimer`
 
 #### SearchAnchor / Autocomplete
 
-Used by: `TomFormSearchInput<T>`, `TomFormSearchAnchor<T>`
+Used by: `TomFormSearchInput<T>`, `TomCupertinoFormSearchInput<T>`, `TomCupertinoFormStringSearchInput`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
 | `searchController` | Internal controller | Managed by concrete class | |
-| `suggestionsBuilder` | Data source | Delegates to `AsyncSelectableSource<T>.fetch(query)` → builds suggestion widgets | Async |
+| `suggestionsBuilder` | Data source | Filters `TomSelectableSource<T>.getItems()` through the field's `searchPredicate` → builds suggestion widgets | Async |
 | Selection result | Write-back | Selected `T` → write to `TomObject<T>.value` | |
 | `viewHintText` | Resource text | From scoped resources | |
-| `isFullScreen` | Static config | `bool` | `TomSearchAnchor` = true |
+| `isFullScreen` | Static config | `bool` | Full-screen on the Cupertino variants |
 | `builder` | Internal | Builds the search trigger widget | |
 
 #### CupertinoPicker
 
-Used by: `TomFormEnumCupertinoPicker<T>`
+Used by: `TomCupertinoFormEnumPicker<T>`, `TomCupertinoFormStringPicker`, `TomCupertinoFormObjectPicker<T>`, `TomCupertinoFormIntPicker`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
 | `scrollController` | Internal controller | Initial item from `TomObject<T>.value` index in source | |
-| `onSelectedItemChanged` | Write-back | Index → `field.setValue(source.items[index].value)` | |
-| `children` | Data source | Built from `TomSelectableSource<T>.items` → `List<Widget>` | |
+| `onSelectedItemChanged` | Write-back | Index → `field.setValue(items[index].value)` | |
+| `children` | Data source | Built from `TomSelectableSource<T>.getItems()` → `List<Widget>` | |
 | `itemExtent` | Static config | `double` | |
 
 ### 8.4. Data Source Adaptation Summary
@@ -1483,51 +1346,46 @@ How `TomSelectableSource<T>` adapts to each Flutter widget's items parameter:
 
 | Flutter Widget | Items Parameter | Adapted From |
 |---------------|----------------|-------------|
-| `DropdownButton<T>` | `List<DropdownMenuItem<T>>` | `source.items.map((s) => DropdownMenuItem(value: s.value, child: Text(s.label)))` |
-| `DropdownMenu<T>` | `List<DropdownMenuEntry<T>>` | `source.items.map((s) => DropdownMenuEntry(value: s.value, label: s.label))` |
-| `SegmentedButton<T>` | `List<ButtonSegment<T>>` | `source.items.map((s) => ButtonSegment(value: s.value, label: Text(s.label)))` |
-| `RadioListTile<T>` (group) | One widget per item | `for (final s in source.items) RadioListTile(value: s.value, title: Text(s.label), ...)` |
-| `ChoiceChip` (group) | One chip per item | `for (final s in source.items) ChoiceChip(label: Text(s.label), selected: ..., ...)` |
-| `FilterChip` (group) | One chip per item | `for (final s in source.items) FilterChip(label: Text(s.label), selected: ..., ...)` |
-| `CheckboxListTile` (group) | One tile per item | `for (final s in source.items) CheckboxListTile(title: Text(s.label), value: ..., ...)` |
-| `CupertinoPicker` | `List<Widget>` children | `source.items.map((s) => Center(child: Text(s.label)))` |
-| `SearchAnchor` | `suggestionsBuilder` | `source.fetch(query).then((items) => items.map((s) => ListTile(title: Text(s.label), ...)))` |
+| `DropdownButton<T>` | `List<DropdownMenuItem<T>>` | `items.map((s) => DropdownMenuItem(value: s.value, child: Text(s.label)))` |
+| `DropdownMenu<T>` | `List<DropdownMenuEntry<T>>` | `items.map((s) => DropdownMenuEntry(value: s.value, label: s.label))` |
+| `SegmentedButton<T>` | `List<ButtonSegment<T>>` | `items.map((s) => ButtonSegment(value: s.value, label: Text(s.label)))` |
+| `RadioListTile<T>` (group) | One widget per item | `for (final s in items) RadioListTile(value: s.value, title: Text(s.label), ...)` |
+| `ChoiceChip` (group) | One chip per item | `for (final s in items) ChoiceChip(label: Text(s.label), selected: ..., ...)` |
+| `FilterChip` (group) | One chip per item | `for (final s in items) FilterChip(label: Text(s.label), selected: ..., ...)` |
+| `CheckboxListTile` (group) | One tile per item | `for (final s in items) CheckboxListTile(title: Text(s.label), value: ..., ...)` |
+| `CupertinoPicker` | `List<Widget>` children | `items.map((s) => Center(child: Text(s.label)))` |
+| `SearchAnchor` | `suggestionsBuilder` | `items.where(matches).map((s) => ListTile(title: Text(s.label), ...)))` |
 
 ### 8.5. Observable Rebuild Strategy
 
-When observable config parameters change, the widget must rebuild. All rebuilds use `TomMultiObservableBuilder`, which observes one or more `TomObservable` instances and triggers a rebuild when any of them change.
+When an observed value changes, the widget must rebuild. All rebuilds use `TomMultiObservableBuilder`, which observes one or more `TomObservable` instances and triggers a rebuild when any of them change.
 
 `TomMultiObservableBuilder` manages **clean registration and deregistration** of observable listeners. When the widget is created, it registers listeners on all provided observables. When the widget is disposed or when the observable list changes, it deregisters all previous listeners before registering new ones. This avoids listener leaks and ensures that widgets only rebuild when their current observables change.
 
-**Pattern A — Field observables** (preferred for custom widgets):
+**The field itself is the observable** — `TomField<T> extends TomObject<T>` — so
+a widget that must follow its own value observes the field:
+
 ```dart
 TomMultiObservableBuilder(
-  observables: [field, field.min, field.max],  // all observables
+  observables: [field],
   builder: (context) => Slider(
     value: field.value.toDouble(),
-    min: field.min.value.toDouble(),
-    max: field.max.value.toDouble(),
+    min: field.min.toDouble(),   // plain int, fixed at construction
+    max: field.max.toDouble(),
     onChanged: (v) => field.setValue(v.round()),
   ),
 );
 ```
 
-**Pattern B — Field + source observables** (for reactive option lists):
-```dart
-// ObservableSelectableSource rebuilds its consuming widget when
-// the underlying TomList changes. The source extends TomObservable,
-// so TomMultiObservableBuilder can observe it directly:
-TomMultiObservableBuilder(
-  observables: [field, source],
-  builder: (context) => DropdownButton<T>(
-    value: field.value,
-    items: source.items.map((s) => DropdownMenuItem(...)).toList(),
-    onChanged: (v) => field.setValue(v),
-  ),
-);
-```
+Bounds, divisions and formatting are plain constructor parameters and never
+change, so they contribute nothing to the observable list. The one thing that
+does change under a field is its **option list**, and a selection field
+subscribes to `TomSelectableSource.itemsStream` rather than adding the source to
+the builder — the source is not a `TomObservable`, and the stream is what says
+whether it can change at all.
 
-Both patterns are the same mechanism — `TomMultiObservableBuilder` with different observable lists. There is no need for `ValueListenableBuilder` or other listener patterns; the Tom observer system handles all reactive updates uniformly.
+There is no need for `ValueListenableBuilder` or other listener patterns; the
+Tom observer system handles all reactive updates uniformly.
 
 ### 8.6. Auth State Integration
 
@@ -1546,12 +1404,18 @@ Concrete fields expose an `isEditable` getter derived from the resolved auth sta
 
 ## 9. Current Implementation Status
 
-The existing code in `tom_flutter_ui/lib/src/forms/tom_form.dart` provides:
+The specification is built. `lib/src/forms/fields/` declares 97 classes in the
+`TomField` hierarchy — 23 abstract field types and 74 concrete
+implementations, of which 28 are Cupertino. Appendix C lists them one by one
+and is held to the directory by a gate; this section says only what a
+one-by-one list cannot, which is where the shipped framework and this
+specification still differ.
 
 | Class | Status | Notes |
 |-------|--------|-------|
 | `TomForm` | **Implemented** | Base form with reflection discovery, scope, bind, validate, save |
-| `TomField<T>` | **Implemented** | Base field with scope and `getField()` |
+| `TomField<T>` | **Implemented** | Base field with `basePath` scope, authorization, events, dirty tracking and the `widget` getter |
+| `TomListForm` | **Implemented** | Collections of sub-forms; see §13 |
 | `TomTextFormFieldBase<T>` | **Implemented** | The whole Classic tier. Concrete and used directly: `TextEditingController`, converters, keystroke-level input validators, `InputDecoration` rendering. No subclasses ship |
 
 The Classic tier is one class. It once carried five one-line subclasses — a
@@ -1559,26 +1423,25 @@ string field, a password field, an email field, an int field and a double
 field — each of which fixed a constructor argument or added a validator that
 its caller could equally have passed. They are gone; a caller who wants the
 Classic rendering constructs `TomTextFormFieldBase` and supplies what it
-needs. The spec-conforming tier below is where field *types* live.
+needs. The spec-conforming tier is where field *types* live.
 
-### Extensions Needed
+### Where the build diverged from this specification
 
-The following gaps must be addressed to reach the full specification:
+Three decisions were taken during the build that the sections above still
+describe in their original form. They are recorded here rather than silently
+rewritten into §6 and §7, because each was a choice and a reader of a
+specification is owed the choice as well as its outcome.
 
-| Area | Gap | Priority |
-|------|-----|----------|
-| **Input abstraction** | Fields have a `getField()` method but no `.widget` getter with replaceable concrete implementation class | High |
-| **Logical/visual separation** | `getField()` is hardcoded to `TextField`; concrete implementation classes need to extend abstract field types | High |
-| **Multiline** | No multi-line text field | High |
-| **Boolean** | No checkbox/switch/toggle field | High |
-| **Date/Time** | No date, time, datetime, duration fields | High |
-| **Selection** | No dropdown, radio, segmented, chip-select fields | High |
-| **Search/Lookup** | No search-ahead or lookup dialog fields | Medium |
-| **Currency/Percent** | No specialized numeric formatting | Medium |
-| **Nullable variants** | Fields don't support null values | Medium |
-| **List forms** | No `TomListForm` for collections of sub-forms | High |
-| **Auth integration** | Fields don't check `TomAuthorization.resolveAuth()` | High |
-| **Resource integration** | `t()` method exists but uses old `TomTextResourceProvider` pattern | Medium |
+| Decision | Specified | Built |
+|----------|-----------|-------|
+| **Cupertino naming** | `TomForm{Type}{Widget}` throughout, with Cupertino as a widget style — `TomFormCupertinoDatePicker` | A `TomCupertinoForm…` prefix family — `TomCupertinoFormDatePicker`. The platform is a property of the whole field, not of its widget style, so it reads at the front where a reader scanning a form declaration sees it |
+| **Value types** | Six new observables — `TomDuration`, `TomIntRange`, `TomDoubleRange`, `TomFileRef` and two nullable variants | None of them. `TomField<T>` binds the plain value directly, so the fields bind `Duration`, `NumRange<int>`, `NumRange<double>`, `TimeRange` and `FileRef?` with no observable wrapper. The observability a form needs is the field's, and a second one inside it bought nothing |
+| **Format variants** | A class per text format — `TomFormEmailStringInput`, `TomFormUrlStringInput`, `TomFormPhoneStringInput`, `TomFormPasswordStringInput`, `TomFormMultilineStringInput`, `TomFormStringOutlinedInput` | Constructor parameters on `TomFormStringInput` — `keyboardType`, `maxLines`, `obscureText` — plus a validator where the format needs one. Six classes differing only in a fixed argument are the shape §25 deleted from the Classic tier |
+
+Two abstract types have no concrete implementation:
+`TomFormTimeRangeField` and `TomFormDateTimeRangeField`. Both are usable — a
+caller can extend either — and neither is rendered by anything this package
+ships. Appendix C names them so the omission is visible rather than absent.
 
 ---
 
@@ -1630,10 +1493,22 @@ The anatomy diagram above (label, hint, error, description, action icons) is con
 - **Text-based fields** (`TextField`, `TextFormField`) — Material's `InputDecoration` provides label, hint, error, helper text, prefix/suffix icons natively. The anatomy maps directly.
 - **Non-text fields** (Slider, Checkbox, Switch, DatePicker, SegmentedButton, etc.) — These widgets have **no built-in decoration**. A consistent frame must be added externally.
 
-To achieve uniform visual structure across all field types, concrete implementations use a **`TomFieldDecorationMixin`** that wraps the inner widget with the standard anatomy elements:
+To achieve uniform visual structure across all field types, concrete
+implementations mix in a decoration mixin that wraps the inner widget with the
+standard anatomy. Three ship, differing only in what they must do about the
+inner widget's *own* decoration:
+
+| Mixin | Used by | Because |
+|-------|---------|---------|
+| `TomGenericFieldDecorationMixin<T>` | Checkboxes, switches, sliders, segmented buttons, chips, radio groups, pickers | The inner control carries no decoration, so the anatomy is simply wrapped around it |
+| `TomStringInputDecorationMixin<T>` | Text inputs | The inner `TextField` has an `InputDecoration` whose error border must be reshaped rather than duplicated |
+| `TomDropdownDecorationMixin<T>` | Dropdowns | The same, for the dropdown's own decoration slot |
+
+All three expose the same `decorateField`, and resolve label, error and
+description the same way, so a form author sees one anatomy:
 
 ```dart
-mixin TomFieldDecorationMixin on TomField {
+mixin TomGenericFieldDecorationMixin<T> on TomField<T> {
   /// Wraps the inner widget with the standard field anatomy (label, error, description, actions).
   Widget decorateField(BuildContext context, Widget innerWidget) {
     return Column(
@@ -1658,7 +1533,8 @@ mixin TomFieldDecorationMixin on TomField {
 }
 ```
 
-**All new field implementations** (including text-input fields like `TomFormStringInput`) **use `TomFieldDecorationMixin`** for consistent visual anatomy across every field type. Text-input fields use a plain `TextField` (without `InputDecoration` label, error, or helper text) as their inner widget, and the mixin wraps it with label row, error row, and description — identical to non-text fields.
+**Every spec field carries one of the three**, so label row, error row and
+description are built by the same code whatever the inner widget is.
 
 **Classic fields** (`*Classic` suffixed legacy implementations) continue to use `InputDecoration` for their native Material appearance. This is the only distinction: new spec fields use the mixin; classic fields use `InputDecoration`.
 
@@ -2236,7 +2112,15 @@ TomFormStyleScope(
 
 ### Material vs. Cupertino
 
-`TomFormStyle` is designed for **Material widgets** — the decoration mixins hand `style.fieldBorder`, `style.inputStyle`, etc. straight to Material's `TextField` / `DropdownButtonFormField`. A separate `TomFormCupertinoStyle` could mirror the shape for Cupertino widgets; deferred until the Cupertino field implementations exist.
+`TomFormStyle` is shaped for **Material widgets** — the decoration mixins hand
+`style.fieldBorder`, `style.inputStyle` and the rest straight to Material's
+`TextField` and `DropdownButtonFormField`. The twenty-eight Cupertino fields
+read the same `TomFormStyle`, taking the slots that translate (spacing, label
+and error typography, the required indicator) and rendering the rest in
+Cupertino's own idiom. There is no separate Cupertino style object: a second
+style tree would have to be kept in step with the first by hand, and every slot
+that genuinely differs between the platforms is one the Cupertino widget owns
+anyway.
 
 ### User Preferences Integration
 
@@ -4417,7 +4301,7 @@ the `T` ⇄ text converters, the keystroke-level input validators and the
 
 **Widget-layer `TomForm`** — The existing `TomForm` widget class in `tom_inputs.dart` (the Flutter widget that builds a form UI from a `TomForm` data model) must be renamed to `TomFormClassic`. This avoids name collision with the data-model `TomForm<T extends TomClass>` class. After renaming, both Classic and new fields must be usable together in the same form — a `TomFormClassic` widget should be able to render both `*Classic` fields and new spec-conforming fields.
 
-**Classic fields and new spec features:** Classic fields should implement new spec features (validation, authorization, events, dirty tracking) **as far as possible** given their existing architecture. They use `InputDecoration` for their visual anatomy (not `TomFieldDecorationMixin`), but should participate in the form lifecycle, fire events, and respect authorization.
+**Classic fields and new spec features:** Classic fields should implement new spec features (validation, authorization, events, dirty tracking) **as far as possible** given their existing architecture. They use `InputDecoration` for their visual anatomy (not `TomGenericFieldDecorationMixin`), but should participate in the form lifecycle, fire events, and respect authorization.
 
 ### Phase 0a — Data Model and Logic
 
@@ -4571,7 +4455,7 @@ tom_flutter_ui/lib/src/forms/
 
 | Deliverable | Description |
 |-------------|-------------|
-| `TomFormErrorBanner` | Material-style banner that shows **form-level (cross-field) errors only**. Field-level errors are displayed by each field's anatomy (via `TomFieldDecorationMixin`). Subscribes to form's `FieldValidatedEvent` and `FormSavedEvent` to show/hide automatically. Shows when `form.validate()` returns non-empty errors; hides when all errors are resolved. Reads border radius, text style from `TomFormStyle`. Auto-dismisses when form becomes valid; not user-dismissible (errors must be fixed). |
+| `TomFormErrorBanner` | Material-style banner that shows **form-level (cross-field) errors only**. Field-level errors are displayed by each field's anatomy (via `TomGenericFieldDecorationMixin`). Subscribes to form's `FieldValidatedEvent` and `FormSavedEvent` to show/hide automatically. Shows when `form.validate()` returns non-empty errors; hides when all errors are resolved. Reads border radius, text style from `TomFormStyle`. Auto-dismisses when form becomes valid; not user-dismissible (errors must be fixed). |
 | `TomErrorView` | Placement-flexible form-wide error view (Phase 2a). Shows wherever it's mounted — above, below, or beside the form it watches — with optional header, empty state, and per-error focus affordance. See Phase 2a deliverables for the full description. |
 
 The pending validation spinner is rendered by the **field widget itself** via the per-widget decoration mixins (trailing spinner in the field row). The banner does not show pending state.
@@ -4613,8 +4497,8 @@ tom_flutter_ui/lib/src/forms/
 **Steps:**
 
 1. Implement `TomFormStringField` (abstract) extending the Phase 0 `TomField<T>` with string-specific behavior
-2. Implement `TomFormStringInput` (concrete) — text input using plain `TextField` as inner widget + `TomFieldDecorationMixin` for label/error/description (no `InputDecoration` label/error)
-3. Implement `TomFormStringDropdown` (concrete) — dropdown selection with `TomSelectableSource<String>` + `TomFieldDecorationMixin`
+2. Implement `TomFormStringInput` (concrete) — text input using plain `TextField` as inner widget + `TomGenericFieldDecorationMixin` for label/error/description (no `InputDecoration` label/error)
+3. Implement `TomFormStringDropdown` (concrete) — dropdown selection with `TomSelectableSource<String>` + `TomGenericFieldDecorationMixin`
 4. Rename all **existing** concrete field implementations to the `*Classic` suffix following the naming table in the migration policy above. Rename the widget-layer `TomForm` in `tom_inputs.dart` to `TomFormClassic`. Keep `TomTextFormFieldBase` as-is (it is abstract, not a field implementation). Ensure Classic and new fields can coexist in the same form.
 5. Wire up `.widget` getter, `@tomReflector` integration, and auth resolution in the concrete implementations
 6. **Create the demo application** (§24b) that exercises all framework features using only these two widgets
@@ -4651,7 +4535,7 @@ Each concrete field (e.g., `TomFormStringInput`) must integrate ALL of the follo
 
 | # | Requirement |
 |---|-------------|
-| C1 | All new fields (including text inputs): use `TomFieldDecorationMixin` for standard anatomy. Text inputs use a plain `TextField` as inner widget (no `InputDecoration` label/hint/error). |
+| C1 | All new fields (including text inputs): use `TomGenericFieldDecorationMixin` for standard anatomy. Text inputs use a plain `TextField` as inner widget (no `InputDecoration` label/hint/error). |
 | C2 | Classic fields only: use `InputDecoration` for native Material label/hint/error |
 | C3 | Read `TomFormStyle` from `TomFormStyleScope.of(context)` for defaults |
 | C4 | Honor placement settings: `labelPlacement`, `errorPlacement`, `requiredIndicator`, `descriptionPlacement`, `actionIconPlacement` |
@@ -4782,7 +4666,7 @@ Each concrete field (e.g., `TomFormStringInput`) must integrate ALL of the follo
 
 1. Implement `TomFormStringListField` binding to `TomList<TomString>`
 2. Implement `TomFormBoolField` binding to `TomBool`
-3. Implement all 8 concrete implementations with `TomFieldDecorationMixin`
+3. Implement all 8 concrete implementations with `TomGenericFieldDecorationMixin`
 4. Extend the demo app with all new widgets
 5. Verify all selection patterns work with `TomSelectableSource<T>`
 
@@ -4797,7 +4681,7 @@ Each concrete field (e.g., `TomFormStringInput`) must integrate ALL of the follo
 **Demo F — Boolean Variants**
 
 - The 3 concrete boolean implementations (Checkbox / Switch / Toggle) side-by-side, sharing one `TomBool` each and another set sharing a single bound state so the Checkbox / Switch / Toggle for the same field all flip together.
-- A "settings" layout mixing booleans with string inputs and a dropdown — shows that `TomFieldDecorationMixin` gives every bool the same label / error / description anatomy as string fields.
+- A "settings" layout mixing booleans with string inputs and a dropdown — shows that `TomGenericFieldDecorationMixin` gives every bool the same label / error / description anatomy as string fields.
 
 **Demo G — Complex Breakpoint Scenarios** *(new in Phase 2)*
 
@@ -5120,28 +5004,11 @@ yet; this is the outstanding half of the phase:
 
 ### Abstract Field Types
 
-| Class | Observable Type | Value Type | Example Implementation |
-|-------|----------------|-----------|----------------------|
-| `TomFormStringField` | `TomString` | `String` | `TomFormStringInput`, `TomFormEmailStringInput`, `TomFormPasswordStringInput` |
-| `TomFormIntField` | `TomInt` | `int` | `TomFormIntInput`, `TomFormIntSlider` |
-| `TomFormDoubleField` | `TomDouble` | `double` | `TomFormDoubleInput`, `TomFormCurrencyDoubleInput` |
-| `TomFormBoolField` | `TomBool` | `bool` | `TomFormBoolCheckbox`, `TomFormBoolSwitch` |
-| `TomFormDateField` | `TomOZonedDate` | `ZonedDate` | `TomFormDatePicker`, `TomFormDateCalendar` |
-| `TomFormTimeField` | `TomOZonedTime` | `ZonedTime` | `TomFormTimePicker` |
-| `TomFormDateTimeField` | `TomOZonedDateTime` | `ZonedDateTime` | `TomFormDateTimePicker` |
-| `TomFormDateRangeField` | `TomDateRange` | `TomDateRange` | `TomFormDateRangePicker` |
-| `TomFormTimeRangeField` | `TomTimeRange` | `TomTimeRange` | `TomFormTimeRangePicker` |
-| `TomFormDateTimeRangeField` | `TomDateTimeRange` | `TomDateTimeRange` | `TomFormDateTimeRangePicker` |
-| `TomFormDurationField` | `TomDuration` | `Duration` | `TomFormDurationInput` |
-| `TomFormEnumField<T>` | `TomObject<T>` | `T` | `TomFormEnumDropdown<T>`, `TomFormEnumSegmented<T>` |
-| `TomFormObjectField<T>` | `TomObject<T>` | `T` | `TomFormObjectDropdown<T>` |
-| `TomFormSearchField<T>` | `TomObject<T>` | `T` | `TomFormSearchInput<T>` |
-| `TomFormLookupField<T>` | `TomObject<T>` | `T` | `TomFormLookupDialog<T>` |
-| `TomFormStringListField` | `TomList<TomString>` | `List<String>` | `TomFormStringFilterChips` |
-| `TomFormIntListField` | `TomList<TomInt>` | `List<int>` | `TomFormIntFilterChips` |
-| `TomFormEnumListField<T>` | `TomList<TomObject<T>>` | `List<T>` | `TomFormEnumFilterChips<T>` |
-| `TomFormObjectListField<T>` | `TomList<TomObject<T>>` | `List<T>` | `TomFormObjectFilterChips<T>` |
-| `TomFormFileField` | `FileRef?` | `TomFormFileUpload` |
+The twenty-three abstract types and the values they bind are in
+[§6](#6-abstract-field-types-catalog); their seventy-four concrete
+implementations are in
+[Appendix C](#appendix-c--form-class-hierarchy-inventory), which is the only
+list of them and is checked against `lib/src/forms/fields/`.
 
 ### Key Methods
 
@@ -5259,506 +5126,244 @@ These are the types that `TomForm.bind()` reads from and writes to:
 
 # Appendix B — Form Widget Cross-Reference
 
-This appendix maps every logical field type from §6 to all Tom-wrapped Flutter widgets (from [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md)) that can serve as implementation widgets. The **default** column marks the recommended default; alternatives can be selected via `useImplementation()`.
+Which Flutter widget each field builds is documented in
+[§8](#8-flutter-widget-binding-strategy), parameter by parameter, beside the
+binding rules that explain it. Which classes exist is documented in Appendix C.
+This appendix once held a third table restating both, and the restatement is
+what went stale: it named `TomCupertinoTextInput`, `TomFormDateInput` and
+`TomFormIntRangeInput`, none of which was ever built.
 
-> **Reference:** The full Flutter widget catalog (326 entries, 20 families) is in [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md). This appendix focuses only on the subset usable as form field implementations.
-
-## B.1. Text Field Types → Widgets
-
-All text-based form fields use the single abstract type `TomFormStringField`. Implementations differentiate by format (email, password, multiline, etc.):
-
-| Logical Field | Implementation | Alt. Material | Alt. Cupertino | Underlying Flutter Widget(s) |
-|--------------|---------------|---------------|----------------|------------------------------|
-| `TomFormStringField` | `TomFormStringInput` | `TomFormStringOutlinedInput` | `TomCupertinoTextInput` | `TextField`, `CupertinoTextField` |
-| | `TomFormMultilineStringInput` | — | `TomCupertinoTextInput` (multiline) | `TextField` (maxLines > 1), `EditableText` |
-| | `TomFormPasswordStringInput` | — | `TomCupertinoTextInput` (obscured) | `TextField` (obscureText: true) |
-| | `TomFormEmailStringInput` | — | `TomCupertinoTextInput` | `TextField` (keyboardType: emailAddress) |
-| | `TomFormUrlStringInput` | — | `TomCupertinoTextInput` | `TextField` (keyboardType: url) |
-| | `TomFormPhoneStringInput` | — | `TomCupertinoTextInput` | `TextField` (keyboardType: phone) |
-
-**Keyboard type selection** is automatic based on the logical field type — no developer action needed.
-
-## B.2. Numeric Field Types → Widgets
-
-All numeric fields use `TomFormIntField` or `TomFormDoubleField`. Currency and percent are format variants of `TomFormDoubleField`:
-
-| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
-|--------------|---------------|-------------|------------------------------|
-| `TomFormIntField` | `TomFormIntInput` | `TomFormIntSlider`, `TomFormIntStepper` | `TextField` (number filter), `Slider` (divisions), custom +/- |
-| `TomFormDoubleField` | `TomFormDoubleInput` | `TomFormDoubleSlider` | `TextField` (decimal filter), `Slider`, `CupertinoSlider` |
-| | `TomFormCurrencyDoubleInput` | — | `TextField` (formatted mask) |
-| | `TomFormPercentDoubleInput` | `TomFormPercentDoubleSlider` | `TextField` (% suffix), `Slider` (0–100) |
-
-**`TomFormIntSlider` / `TomFormDoubleSlider`** can be used as alternatives for *any* numeric field where the range is known. Set via `useImplementation()`.
-
-**`TomFormIntStepper`** (+/- buttons) is useful for small integer ranges (quantity, count 1–10).
-
-## B.3. Numeric Range Field Types → Widgets
-
-| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
-|--------------|---------------|-------------|------------------------------|
-| `TomFormIntRangeField` | `TomFormIntRangeSlider` | `TomFormIntRangeInput` | `RangeSlider` (int divisions), two `TextField`s |
-| `TomFormDoubleRangeField` | `TomFormDoubleRangeSlider` | `TomFormDoubleRangeInput` | `RangeSlider`, two `TextField`s |
-
-**Binding note:** Range fields bind to **two** separate state objects (start/end) — see §6 "Range Field Binding" section.
-
-## B.4. Boolean Field Type → Widgets
-
-| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
-|--------------|---------------|-------------|------------------------------|
-| `TomFormBoolField` | `TomFormBoolCheckbox` | `TomFormBoolSwitch`, `TomFormBoolToggle` | `Checkbox`, `CheckboxListTile`, `Switch`, `SwitchListTile`, `CupertinoSwitch`, `SegmentedButton` (Yes/No), `ToggleButtons` |
-
-**Widget choice guidance:**
-- **Checkbox** — agreement, feature toggle, multi-option lists
-- **Switch** — on/off settings, enable/disable, immediate effect
-- **SegmentedButton (Yes/No)** — explicit binary choice visible at a glance
-
-Cupertino variants (`CupertinoSwitch`, `CupertinoCheckbox`) are selected automatically based on platform.
-
-## B.5. Date and Time Field Types → Widgets
-
-| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
-|--------------|---------------|-------------|------------------------------|
-| `TomFormDateField` | `TomFormDatePicker` | `TomFormDateCalendar`, `TomFormCupertinoDatePicker`, `TomFormDateInput` | `showDatePicker()`, `CalendarDatePicker`, `CupertinoDatePicker` (mode: date), `InputDatePickerFormField` |
-| `TomFormTimeField` | `TomFormTimePicker` | `TomFormCupertinoTimePicker` | `showTimePicker()`, `CupertinoDatePicker` (mode: time) |
-| `TomFormDateTimeField` | `TomFormDateTimePicker` | `TomFormCupertinoDateTimePicker` | `showDatePicker()` + `showTimePicker()`, `CupertinoDatePicker` (mode: dateAndTime) |
-| `TomFormDateRangeField` | `TomFormDateRangePicker` | `TomFormDateRangeInput` | `showDateRangePicker()`, two `CalendarDatePicker`s |
-| `TomFormTimeRangeField` | `TomFormTimeRangePicker` | — | Two `showTimePicker()` calls |
-| `TomFormDateTimeRangeField` | `TomFormDateTimeRangePicker` | — | Two datetime picker pairs |
-| `TomFormDurationField` | `TomFormDurationInput` | `TomFormDurationSlider`, `TomFormCupertinoTimer` | Custom HH:MM:SS spinners, `Slider`, `CupertinoTimerPicker` |
-
-**Timezone handling:** All date/time widgets produce Tom's `TomZonedDate`/`TomZonedTime`/`TomZonedDateTime` types. The timezone is taken from the form's context — Flutter's native pickers return raw `DateTime`/`TimeOfDay` which the implementation widget wraps with the timezone.
-
-**`TomCalendarDateWidget`** renders an inline calendar (no dialog) — useful for always-visible date selection in larger forms.
-
-**`TomDateInputWidget`** renders a text field with date parsing (format from locale) — useful for keyboard-heavy workflows.
-
-## B.6. Selection Field Types (Single) → Widgets
-
-Selection implementations are per-type — the abstract field defines the value type, and the concrete implementation chooses the widget style:
-
-| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
-|--------------|---------------|-------------|------------------------------|
-| `TomFormStringField` | `TomFormStringDropdown` | `TomFormStringSegmented`, `TomFormStringRadioGroup`, `TomFormStringChoiceChips` | `DropdownButton`, `DropdownMenu`, `SegmentedButton`, `Radio`/`RadioListTile`, `ChoiceChip` |
-| `TomFormIntField` | `TomFormIntDropdown` | `TomFormIntSegmented`, `TomFormIntRadioGroup` | `DropdownButton`, `SegmentedButton`, `Radio`/`RadioListTile` |
-| `TomFormDoubleField` | `TomFormDoubleDropdown` | `TomFormDoubleSegmented` | `DropdownButton`, `SegmentedButton` |
-| `TomFormEnumField<T>` | `TomFormEnumDropdown<T>` | `TomFormEnumSegmented<T>`, `TomFormEnumRadioGroup<T>`, `TomFormEnumChoiceChips<T>`, `TomFormEnumCupertinoPicker<T>` | `DropdownButton`, `DropdownMenu`, `SegmentedButton`, `Radio`/`RadioListTile`, `ChoiceChip`, `CupertinoPicker`, `CupertinoSlidingSegmentedControl` |
-| `TomFormObjectField<T>` | `TomFormObjectDropdown<T>` | `TomFormObjectChoiceChips<T>`, `TomFormObjectRadioGroup<T>` | `DropdownButton`, `ChoiceChip`, `Radio`/`RadioListTile` |
-| `TomFormSearchField<T>` | `TomFormSearchInput<T>` | `TomFormSearchAnchor<T>` | `Autocomplete`, `SearchAnchor`, `SearchBar`, `RawAutocomplete`, `DropdownMenu` (enableFilter) |
-| `TomFormLookupField<T>` | `TomFormLookupDialog<T>` | — | Text field + button → custom dialog/bottom sheet |
-
-**Widget choice guidance by option count:**
-
-| Options | Recommended Widget | Why |
-|---------|-------------------|-----|
-| 2–5 | `TomFormEnumSegmented` | All options visible, one tap |
-| 3–7 (need labels) | `TomFormEnumRadioGroup` | All visible with descriptions |
-| 5–20 | `TomFormEnumDropdown` | Dropdown, scrollable list |
-| 20–100 | `TomFormEnumDropdown` (filterable via `DropdownMenu`) | Type-ahead narrows list |
-| 100+ or remote | `TomFormSearchInput` / `TomFormSearchAnchor` | Async search, paginated |
-
-**Cupertino:** `CupertinoPicker` and `CupertinoSlidingSegmentedControl` are the Cupertino equivalents and are selected automatically on iOS.
-
-## B.7. Selection Field Types (Multiple) → Widgets
-
-| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
-|--------------|---------------|-------------|------------------------------|
-| `TomFormStringListField` | `TomFormStringFilterChips` | `TomFormStringMultiCheckbox`, `TomFormStringMultiSegmented` | `FilterChip`, `CheckboxListTile`, `SegmentedButton` (multiSelectionEnabled) |
-| `TomFormIntListField` | `TomFormIntFilterChips` | `TomFormIntMultiCheckbox` | `FilterChip`, `CheckboxListTile` |
-| `TomFormEnumListField<T>` | `TomFormEnumFilterChips<T>` | `TomFormEnumMultiCheckbox<T>`, `TomFormEnumMultiSegmented<T>` | `FilterChip`, `CheckboxListTile`, `SegmentedButton` (multiSelectionEnabled) |
-| `TomFormObjectListField<T>` | `TomFormObjectFilterChips<T>` | `TomFormObjectMultiCheckbox<T>` | `FilterChip`, `CheckboxListTile` |
-
-**Widget choice guidance:**
-
-| Options | Recommended Widget | Why |
-|---------|-------------------|-----|
-| 2–5 | `TomFormEnumMultiSegmented` | All visible, toggle on/off |
-| 3–10 | `TomFormStringFilterChips` / `TomFormEnumFilterChips` | Compact horizontal chip layout |
-| 5+ (need descriptions) | `TomFormEnumMultiCheckbox` | Vertical list with labels/subtitles |
-
-## B.8. File Field Type → Widgets
-
-| Logical Field | Implementation | Alternatives | Underlying Flutter Widget(s) |
-|--------------|---------------|-------------|------------------------------|
-| `TomFormFileField` | `TomFormFileUpload` | — | Third-party: `file_picker`, `image_picker` |
-
-## B.9. Complete Widget Inventory
-
-All Tom-wrapped Flutter widgets from [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md) that can serve as form field implementations, with the data types they can edit:
-
-### Material Input Widgets
-
-| Tom Widget | Flutter Widget | Edits | Used By |
-|-----------|---------------|-------|---------|
-| `TomTextField` | `TextField` | `String` | Text, Email, URL, Phone, Password, Int, Double, Currency, Percent |
-| `TomTextFormField` | `TextFormField` | `String` | Same as TextField (Flutter Form integration) |
-| `TomEditableText` | `EditableText` | `String` | Low-level text (Multiline) |
-| `TomAutocomplete` | `Autocomplete` | `T` | SearchField, LookupField |
-| `TomSearchBar` | `SearchBar` | `String` | SearchField |
-| `TomSearchAnchor` | `SearchAnchor` | `T` | SearchField (full-screen) |
-| `TomDropdownButton` | `DropdownButton` | `T` | EnumField, Dropdown |
-| `TomDropdownButtonFormField` | `DropdownButtonFormField` | `T` | EnumField, Dropdown (Flutter Form) |
-| `TomDropdownMenu` | `DropdownMenu` | `T` | EnumField, Dropdown, SearchField (filterable) |
-| `TomSegmentedButton` | `SegmentedButton` | `T` / `Set<T>` | EnumField, BoolField (Yes/No), MultiSelect |
-| `TomCheckbox` | `Checkbox` | `bool` | BoolField |
-| `TomCheckboxListTile` | `CheckboxListTile` | `bool` | BoolField, MultiSelect (per item) |
-| `TomSwitch` | `Switch` | `bool` | BoolField |
-| `TomSwitchListTile` | `SwitchListTile` | `bool` | BoolField |
-| `TomRadio` | `Radio` | `T` | EnumField |
-| `TomRadioListTile` | `RadioListTile` | `T` | EnumField |
-| `TomToggleButtons` | `ToggleButtons` | `T` / `bool` | BoolField, EnumField (≤5) |
-| `TomSlider` | `Slider` | `double` | DoubleField, IntField, PercentField, DurationField |
-| `TomRangeSlider` | `RangeSlider` | `(double, double)` | DoubleRangeField, IntRangeField |
-| `TomFilterChip` | `FilterChip` | `bool` (per chip) | MultiSelect |
-| `TomChoiceChip` | `ChoiceChip` | `bool` (selected) | EnumField, Dropdown (chip style) |
-| `TomInputChip` | `InputChip` | `String` | Tag input, MultiSelect (deletable) |
-| `TomCalendarDatePicker` | `CalendarDatePicker` | `DateTime` → `TomZonedDate` | DateField (inline) |
-| `TomInputDatePickerFormField` | `InputDatePickerFormField` | `DateTime` → `TomZonedDate` | DateField (text entry) |
-| `TomYearPicker` | `YearPicker` | `int` (year) | DateField (year-only selection) |
-
-### Material Dialog Pickers (invoked from form fields)
-
-| Picker Function | Flutter Function | Edits | Used By |
-|----------------|-----------------|-------|---------|
-| `showDatePicker()` | `showDatePicker()` | `DateTime` → `TomZonedDate` | DateField, DateTimeField |
-| `showTimePicker()` | `showTimePicker()` | `TimeOfDay` → `TomZonedTime` | TimeField, DateTimeField |
-| `showDateRangePicker()` | `showDateRangePicker()` | `DateTimeRange` → `TomDateRange` | DateRangeField |
-
-### Cupertino Input Widgets
-
-| Tom Widget | Flutter Widget | Edits | Used By |
-|-----------|---------------|-------|---------|
-| `TomCupertinoTextField` | `CupertinoTextField` | `String` | Text, Email, URL, Phone, Password |
-| `TomCupertinoSearchTextField` | `CupertinoSearchTextField` | `String` | SearchField |
-| `TomCupertinoTextFormFieldRow` | `CupertinoTextFormFieldRow` | `String` | Text (Cupertino form row) |
-| `TomCupertinoSwitch` | `CupertinoSwitch` | `bool` | BoolField |
-| `TomCupertinoCheckbox` | `CupertinoCheckbox` | `bool` | BoolField |
-| `TomCupertinoRadio` | `CupertinoRadio` | `T` | EnumField |
-| `TomCupertinoSlider` | `CupertinoSlider` | `double` | DoubleField, IntField |
-| `TomCupertinoDatePicker` | `CupertinoDatePicker` | `DateTime` → Tom types | DateField, TimeField, DateTimeField |
-| `TomCupertinoTimerPicker` | `CupertinoTimerPicker` | `Duration` | DurationField |
-| `TomCupertinoPicker` | `CupertinoPicker` | `T` (via index) | EnumField, Dropdown |
-| `TomCupertinoSlidingSegmentedControl` | `CupertinoSlidingSegmentedControl` | `T` | EnumField (≤5) |
-| `TomCupertinoSegmentedControl` | `CupertinoSegmentedControl` | `T` | EnumField (≤5) |
-
-### Widgets Requiring Third-Party Packages
-
-| Concept | Value Type | Used By | Typical Package |
-|---------|-----------|---------|-----------------|
-| Color picker | `Color` | (future ColorField) | `flex_color_picker` |
-| File picker | `File` / `Uint8List` | FileField | `file_picker`, `image_picker` |
-| Rich text editor | `String` (HTML) | (future) | `flutter_quill`, `super_editor` |
-| Rating bar | `double` | DoubleField (star rating) | `flutter_rating_bar` |
+The full Flutter widget catalogue — the wrappers themselves, outside forms — is
+in [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md).
 
 ---
 
 # Appendix C — Form Class Hierarchy Inventory
 
-Master inventory of all abstract field types and their concrete implementations. Each concrete class extends the abstract type and IS the instantiated object in `createFormElements()`.
+Every class in the `TomField` hierarchy, listed once. The package declares
+**97**: 23 abstract field types and 74 concrete implementations, of which 46 are
+Material and 28 Cupertino.
 
-**Status legend:**
+**This appendix is checked against the code.**
+`tool/check_doc_class_inventories.py` reads
+`tom_flutter_ui/lib/src/forms/fields/`, resolves every `extends` chain, and
+fails the build in both directions — on a class that ships without a row here,
+and on a name here that no `lib/` in the repository declares. The markers that
+delimit the checked region are HTML comments and do not render.
 
-- No marker = class exists in code
-- **(TBD)** = class needs to be created
+The check exists because this appendix was, for a time, confidently wrong in
+both directions at once: 81 rows carried a "class needs to be created" marker
+against classes that had shipped, and 42 of the names in the same tables named
+nothing at all. An inventory a reader consults to answer "what is there?" takes
+its silence as an answer, so it decays differently from prose — prose that has
+fallen behind merely reads as incomplete.
 
-**Nullable variants** follow a consistent pattern: every abstract field type `TomFormXxxField` has a nullable counterpart `TomFormNXxxField`. Concrete implementations follow the same pattern. These are not listed separately.
+**How to read the tables.** The first column is the abstract type; the next two
+are its concrete implementations. A `—` means no implementation ships for that
+platform, which is a fact about the package rather than a placeholder. Nullable
+inputs bind `T?` directly and are listed together in [C.11](#c11--nullable-inputs);
+the value each abstract type binds is in [§6](#6-abstract-field-types-catalog),
+not repeated here.
 
-**Architecture principles:**
+<!-- class-inventory: tom_flutter_ui/lib/src/forms/fields extends TomField -->
 
-1. **Abstract field types** — Not instantiated directly. Declare field intent in FormSpec classes (`late TomFormStringField name`)
-2. **Concrete implementations** — Extend abstract types. Instantiated in `createFormElements()` (`name = TomFormStringInput(...)`)
-3. **Additional observable bindings** — Concrete classes may require extra parameters (e.g., `min`/`max` for sliders, `source` for selection), which can be observable for reactive behavior
-4. **SelectableItem\<T\>** — Data class with `T value`, `String label`, optional `description` and `enabled`. All selection implementations render `SelectableItem<T>` items via `TomSelectableSource<T>` adapters
-5. **FormSpec / Form separation** — Optional but important: spec declares abstract types, form instantiates concrete implementations
+## C.1. Text
 
-**Columns:**
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormStringField` | `TomFormStringInput` | `TomCupertinoFormStringInput` |
 
-| Column | Meaning |
-|--------|---------|
-| Abstract Type | `TomField<T>` subclass — not instantiated |
-| Concrete Implementation | Class extending the abstract type — instantiated in forms |
-| Data Type | Underlying Dart/Tom value type |
-| Observable | `TomObject<T>` subclass for state binding |
-| Additional Bindings | Extra parameters beyond field value (may be observable) |
-| Notes | Default/alternative, key characteristics |
-
-## C.1. Text & Display
-
-All text-based fields use the single abstract type `TomFormStringField`:
-
-| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
-|-------------|----------------------|-----------|-----------|-------------------|-------|
-| `TomFormStringField` | `TomFormStringInput` **(TBD)** | `String` | `TomString` | `keyboard`, `maxLength` | Standard Material TextField |
-| | `TomFormStringOutlinedInput` **(TBD)** | `String` | `TomString` | `keyboard`, `maxLength` | Outlined border variant |
-| | `TomFormMultilineStringInput` **(TBD)** | `String` | `TomString` | `minLines`, `maxLines` | Multi-line text area |
-| | `TomFormPasswordStringInput` **(TBD)** | `String` | `TomString` | — | Obscured with visibility toggle |
-| | `TomFormEmailStringInput` **(TBD)** | `String` | `TomString` | — | Email keyboard; RFC 5322 |
-| | `TomFormUrlStringInput` **(TBD)** | `String` | `TomString` | — | URL keyboard |
-| | `TomFormPhoneStringInput` **(TBD)** | `String` | `TomString` | — | Phone keyboard |
+One string type and one plain input per platform. Email, URL, phone, password
+and multiline are **constructor parameters** — `keyboardType`, `obscureText`,
+`maxLines` — plus a validator where the format needs one, not separate classes.
+The selection concretes over `TomFormStringField` are in [C.7](#c7--single-select).
 
 ## C.2. Numeric
 
-Currency and percent are format variants of `TomFormDoubleField`:
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormIntField` | `TomFormIntInput`, `TomFormIntSlider`, `TomFormIntStepper` | `TomCupertinoFormIntInput`, `TomCupertinoFormIntPicker` |
+| `TomFormDoubleField` | `TomFormDoubleInput`, `TomFormDoubleSlider`, `TomFormCurrencyDoubleInput`, `TomFormPercentDoubleInput` | `TomCupertinoFormDoubleInput`, `TomCupertinoFormCurrencyDoubleInput` |
 
-| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
-|-------------|----------------------|-----------|-----------|-------------------|-------|
-| `TomFormIntField` | `TomFormIntInput` **(TBD)** | `int` | `TomInt` | — | Integer-only filter |
-| | `TomFormIntSlider` **(TBD)** | `int` | `TomInt` | `min`, `max` (observable `TomObject<int>`), `divisions` | Slider with integer divisions |
-| | `TomFormIntStepper` **(TBD)** | `int` | `TomInt` | `min`, `max` (observable), `step` | +/− stepper buttons |
-| `TomFormDoubleField` | `TomFormDoubleInput` **(TBD)** | `double` | `TomDouble` | — | Decimal input |
-| | `TomFormDoubleSlider` **(TBD)** | `double` | `TomDouble` | `min`, `max` (observable `TomObject<double>`), `divisions` | Continuous/stepped slider |
-| | `TomFormCurrencyDoubleInput` **(TBD)** | `double` | `TomDouble` | `currencySymbol`, `decimalDigits` | 2-decimal currency mask |
-| | `TomFormPercentDoubleInput` **(TBD)** | `double` | `TomDouble` | — | % suffix |
-| | `TomFormPercentDoubleSlider` **(TBD)** | `double` | `TomDouble` | — | 0–100 range slider |
+Currency and percent are formatting, not types: both extend
+`TomFormDoubleField` and bind a plain `double`.
 
 ## C.3. Numeric Range
 
-| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
-|-------------|----------------------|-----------|-----------|-------------------|-------|
-| `TomFormIntRangeField` | `TomFormIntRangeSlider` **(TBD)** | `TomIntRange` | `TomIntRange` **(TBD)** | `absoluteMin`, `absoluteMax` (observable), `divisions` | RangeSlider |
-| | `TomFormIntRangeInput` **(TBD)** | `TomIntRange` | `TomIntRange` **(TBD)** | — | Two text fields (min/max) |
-| `TomFormDoubleRangeField` | `TomFormDoubleRangeSlider` **(TBD)** | `TomDoubleRange` | `TomDoubleRange` **(TBD)** | `absoluteMin`, `absoluteMax` (observable), `divisions` | RangeSlider |
-| | `TomFormDoubleRangeInput` **(TBD)** | `TomDoubleRange` | `TomDoubleRange` **(TBD)** | — | Two decimal text fields |
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormIntRangeField` | `TomFormIntRangeSlider` | — |
+| `TomFormDoubleRangeField` | `TomFormDoubleRangeSlider` | — |
 
-`TomIntRange` and `TomDoubleRange` extend `TomClass` with `TomNInt`/`TomNDouble` start and end members. Single-binding (one TomClass).
+Cupertino has no range-slider equivalent, so the Material sliders are used on
+both platforms.
 
 ## C.4. Boolean
 
-| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
-|-------------|----------------------|-----------|-----------|-------------------|-------|
-| `TomFormBoolField` | `TomFormBoolCheckbox` **(TBD)** | `bool` | `TomBool` | — | Checkbox |
-| | `TomFormBoolSwitch` **(TBD)** | `bool` | `TomBool` | — | Toggle switch |
-| | `TomFormBoolToggle` **(TBD)** | `bool` | `TomBool` | `trueLabel`, `falseLabel` | Segmented Yes/No |
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormBoolField` | `TomFormBoolCheckbox`, `TomFormBoolSwitch`, `TomFormBoolToggle` | `TomCupertinoFormBoolSwitch`, `TomCupertinoFormBoolToggle` |
+| `TomFormNullableBoolField` | `TomFormNullableBoolCheckbox` | `TomCupertinoFormNullableBoolToggle` |
+
+`TomFormNullableBoolField` binds `bool?` and is the tri-state field: true,
+false, unset. A Cupertino checkbox is not a Cupertino idiom, so the nullable
+Cupertino implementation is a three-position toggle.
 
 ## C.5. Date & Time
 
-| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
-|-------------|----------------------|-----------|-----------|-------------------|-------|
-| `TomFormDateField` | `TomFormDatePicker` **(TBD)** | `TomZonedDate` | `TomOZonedDate` | `firstDate`, `lastDate` (observable) | Hybrid text + picker |
-| | `TomFormDateCalendar` **(TBD)** | `TomZonedDate` | `TomOZonedDate` | `firstDate`, `lastDate` | Inline calendar |
-| | `TomFormDateInput` **(TBD)** | `TomZonedDate` | `TomOZonedDate` | — | Text-only with parsing |
-| | `TomFormCupertinoDatePicker` **(TBD)** | `TomZonedDate` | `TomOZonedDate` | `firstDate`, `lastDate` | Cupertino wheel |
-| `TomFormTimeField` | `TomFormTimePicker` **(TBD)** | `TomZonedTime` | `TomOZonedTime` | — | Hybrid text + picker |
-| | `TomFormCupertinoTimePicker` **(TBD)** | `TomZonedTime` | `TomOZonedTime` | — | Cupertino wheel |
-| `TomFormDateTimeField` | `TomFormDateTimePicker` **(TBD)** | `TomZonedDateTime` | `TomOZonedDateTime` | `firstDate`, `lastDate` | Hybrid |
-| | `TomFormCupertinoDateTimePicker` **(TBD)** | `TomZonedDateTime` | `TomOZonedDateTime` | — | Cupertino wheel |
-| `TomFormDurationField` | `TomFormDurationInput` **(TBD)** | `Duration` | `TomDuration` **(TBD)** | — | HH:MM:SS spinners |
-| | `TomFormDurationSlider` **(TBD)** | `Duration` | `TomDuration` **(TBD)** | `min`, `max` (observable) | Duration mapped to slider |
-| | `TomFormCupertinoTimer` **(TBD)** | `Duration` | `TomDuration` **(TBD)** | — | Cupertino timer wheel |
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormDateField` | `TomFormDatePicker`, `TomFormDateCalendar`, `TomFormDateTextInput` | `TomCupertinoFormDatePicker` |
+| `TomFormTimeField` | `TomFormTimePicker`, `TomFormTimeTextInput` | `TomCupertinoFormTimePicker` |
+| `TomFormDateTimeField` | `TomFormDateTimePicker`, `TomFormDateTimeTextInput` | `TomCupertinoFormDateTimePicker` |
+| `TomFormDurationField` | `TomFormDurationInput` | `TomCupertinoFormDurationPicker` |
+
+Each Material date and time type ships a picker *and* a text input. The text
+inputs exist for keyboard-first entry of a known value — typing `14:30` beats
+scrolling to it — and parse through `TomDateTimeFormat`, so a locale change
+moves both the display and what the field accepts.
 
 ## C.6. Date & Time Range
 
-| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
-|-------------|----------------------|-----------|-----------|-------------------|-------|
-| `TomFormDateRangeField` | `TomFormDateRangePicker` **(TBD)** | `TomDateRange` | `TomDateRange` | `firstDate`, `lastDate` | showDateRangePicker |
-| | `TomFormDateRangeInput` **(TBD)** | `TomDateRange` | `TomDateRange` | — | Two date text fields |
-| `TomFormTimeRangeField` | `TomFormTimeRangePicker` **(TBD)** | `TomTimeRange` | `TomTimeRange` | — | Two time pickers |
-| `TomFormDateTimeRangeField` | `TomFormDateTimeRangePicker` **(TBD)** | `TomDateTimeRange` | `TomDateTimeRange` | — | Two datetime pickers |
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormDateRangeField` | `TomFormDateRangePicker` | `TomCupertinoFormDateRangePicker` |
+| `TomFormTimeRangeField` | — | — |
+| `TomFormDateTimeRangeField` | — | — |
 
-## C.7. Single-Select (per type)
+Two abstract types with no implementation on either platform. They are declared
+because the validation and binding they define is complete and a form author can
+subclass them; they are not implemented because no shipped form needed one. See
+[§9](#9-current-implementation-status).
 
-Concrete selection classes extend the per-type abstract field and take a `TomSelectableSource<T>`. Rendering is shared via `SelectableItem<T>` data class (with `value`, `label`, optional `description`, `enabled`).
+## C.7. Single-Select
 
-### C.7.1. String Selection
+Every class here takes a required `source:` — see
+[C.10](#c10--selectable-sources).
 
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormStringField` | `TomFormStringDropdown` **(TBD)** | `source` (`TomSelectableSource<String>`) | Dropdown |
-| | `TomFormStringSegmented` **(TBD)** | `source` | Segmented (≤5) |
-| | `TomFormStringRadioGroup` **(TBD)** | `source` | Radio list |
-| | `TomFormStringChoiceChips` **(TBD)** | `source` | Single-select chips |
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormStringField` | `TomFormStringDropdown`, `TomFormStringSegmented`, `TomFormStringRadioGroup`, `TomFormStringChoiceChips` | `TomCupertinoFormStringPicker`, `TomCupertinoFormStringSegmented`, `TomCupertinoFormStringSearchInput` |
+| `TomFormEnumField<T>` | `TomFormEnumDropdown`, `TomFormEnumSegmented`, `TomFormEnumRadioGroup` | `TomCupertinoFormEnumPicker`, `TomCupertinoFormEnumSegmented` |
+| `TomFormObjectField<T>` | `TomFormObjectDropdown` | `TomCupertinoFormObjectPicker` |
+| `TomFormSearchField<T>` | `TomFormSearchInput` | `TomCupertinoFormSearchInput` |
+| `TomFormLookupField<T>` | `TomFormLookupDialog` | `TomCupertinoFormLookupSheet` |
 
-### C.7.2. Int Selection
+`TomCupertinoFormStringSearchInput` is filed under `TomFormStringField` rather
+than `TomFormSearchField<T>`: it searches a list of strings and binds a
+`String`, so the string family is the one whose validators and formatting
+apply. The misfiling is deliberate and pinned by
+`test/forms/fields/field_family_membership_test.dart`, which would otherwise
+report it as an error of the same kind it exists to catch.
 
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormIntField` | `TomFormIntDropdown` **(TBD)** | `source` (`TomSelectableSource<int>`) | Dropdown |
-| | `TomFormIntSegmented` **(TBD)** | `source` | Segmented (≤5) |
-| | `TomFormIntRadioGroup` **(TBD)** | `source` | Radio list |
+### C.7.1. Usage
 
-### C.7.3. Double Selection
-
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormDoubleField` | `TomFormDoubleDropdown` **(TBD)** | `source` (`TomSelectableSource<double>`) | Dropdown |
-| | `TomFormDoubleSegmented` **(TBD)** | `source` | Segmented (≤5) |
-
-### C.7.4. Enum\<T\> Selection
-
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormEnumField<T>` | `TomFormEnumDropdown<T>` **(TBD)** | `source` (`TomSelectableSource<T>`) | Dropdown |
-| | `TomFormEnumSegmented<T>` **(TBD)** | `source` | Segmented (≤5) |
-| | `TomFormEnumRadioGroup<T>` **(TBD)** | `source` | Radio list |
-| | `TomFormEnumChoiceChips<T>` **(TBD)** | `source` | Single-select chips |
-| | `TomFormEnumCupertinoPicker<T>` **(TBD)** | `source` | Cupertino wheel |
-
-### C.7.5. Custom Object\<T\> Selection
-
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormObjectField<T>` | `TomFormObjectDropdown<T>` **(TBD)** | `source` (`TomSelectableSource<T>`) | Dropdown |
-| | `TomFormObjectChoiceChips<T>` **(TBD)** | `source` | Single-select chips |
-| | `TomFormObjectRadioGroup<T>` **(TBD)** | `source` | Radio list |
-
-### C.7.6. Search & Lookup
-
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormSearchField<T>` | `TomFormSearchInput<T>` **(TBD)** | `source` (`AsyncSelectableSource<T>`) | Type-ahead autocomplete |
-| | `TomFormSearchAnchor<T>` **(TBD)** | `source` | Full-screen search |
-| `TomFormLookupField<T>` | `TomFormLookupDialog<T>` **(TBD)** | `source` | Dialog/bottom sheet |
-
-### C.7.7. Usage Example
+Selection classes take their two positional arguments — the field id and the
+initial value — like every other field, then the source:
 
 ```dart
-abstract class OrderFormSpec extends TomForm<Order> {
-  OrderFormSpec({required super.formId});
-  late TomFormStringField country;
-  late TomFormIntField priority;
-  late TomFormEnumField<Status> status;
-  late TomFormDoubleField price;
-  late TomFormSearchField<City> city;
-}
+final countrySource = StaticSelectableSource<String>(const [
+  SelectableItem(value: 'de', label: 'Germany'),
+  SelectableItem(value: 'fr', label: 'France'),
+]);
 
-class OrderForm extends OrderFormSpec {
-  OrderForm() : super(formId: 'order');
-
-  @override
-  void createFormElements() {
-    country = TomFormStringDropdown('country', null, source: countrySource);
-    priority = TomFormIntSegmented('priority', 1, source: prioritySource);
-    status = TomFormEnumRadioGroup<Status>('status', Status.pending, source: statusSource);
-    price = TomFormDoubleSlider('price', 0.0,
-      min: appState.pricing.minPrice,  // observable — reactive
-      max: appState.pricing.maxPrice,  // observable — reactive
-    );
-    city = TomFormSearchInput<City>('city', null, source: citySource);
-  }
+class AddressForm extends TomForm {
+  late final country = TomFormStringDropdown(
+    'country',
+    '',
+    source: countrySource,
+    form: this,
+  );
 }
 ```
 
-## C.8. Multi-Select (per type)
+The initial value is `''` and not `null` because `TomFormStringField` binds a
+non-nullable `String`. A field that must start empty is a nullable input — see
+[C.11](#c11--nullable-inputs).
 
-Multi-value concrete classes extend the per-type list field and bind to `TomList<T>`:
+## C.8. Multi-Select
 
-### C.8.1. String Multi-Select
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormStringListField` | `TomFormStringFilterChips`, `TomFormStringMultiCheckbox` | `TomCupertinoFormStringListCheckedPicker` |
+| `TomFormIntListField` | `TomFormIntFilterChips` | — |
+| `TomFormEnumListField<T>` | `TomFormEnumFilterChips` | — |
+| `TomFormObjectListField<T>` | `TomFormObjectFilterChips` | — |
 
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormStringListField` | `TomFormStringFilterChips` **(TBD)** | `source` (`TomSelectableSource<String>`) | Chips |
-| | `TomFormStringMultiCheckbox` **(TBD)** | `source` | Checkbox list |
-| | `TomFormStringMultiSegmented` **(TBD)** | `source` | Segmented (≤5) |
-
-### C.8.2. Int Multi-Select
-
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormIntListField` | `TomFormIntFilterChips` **(TBD)** | `source` (`TomSelectableSource<int>`) | Chips |
-| | `TomFormIntMultiCheckbox` **(TBD)** | `source` | Checkbox list |
-
-### C.8.3. Enum\<T\> Multi-Select
-
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormEnumListField<T>` | `TomFormEnumFilterChips<T>` **(TBD)** | `source` (`TomSelectableSource<T>`) | Chips |
-| | `TomFormEnumMultiCheckbox<T>` **(TBD)** | `source` | Checkbox list |
-| | `TomFormEnumMultiSegmented<T>` **(TBD)** | `source` | Segmented (≤5) |
-
-### C.8.4. Custom Object\<T\> Multi-Select
-
-| Abstract Type | Concrete Implementation | Additional Bindings | Notes |
-|-------------|----------------------|-------------------|-------|
-| `TomFormObjectListField<T>` | `TomFormObjectFilterChips<T>` **(TBD)** | `source` (`TomSelectableSource<T>`) | Chips |
-| | `TomFormObjectMultiCheckbox<T>` **(TBD)** | `source` | Checkbox list |
+A multi-select binds `List<T>` as a whole value: a selection produces a new
+list, so a change is one field event and comparison is by content.
 
 ## C.9. File
 
-| Abstract Type | Concrete Implementation | Data Type | Observable | Additional Bindings | Notes |
-|-------------|----------------------|-----------|-----------|-------------------|-------|
-| `TomFormFileField` | `TomFormFileUpload` **(TBD)** | `FileRef` | `TomNFileRef` **(TBD)** | `allowedExtensions`, `maxSizeBytes` | Drop zone + browse |
+| Abstract Type | Material | Cupertino |
+|---------------|----------|-----------|
+| `TomFormFileField` | `TomFormFileUpload`, `TomFormFileDropzone`, `TomFormFileThumbnail` | `TomCupertinoFormFileUpload`, `TomCupertinoFormFileThumbnail` |
 
-## C.10. TomSelectableSource\<T\> Adapters
+The three Material implementations are the same field at three sizes: a compact
+button, a drop-target surface, and a square preview of the file itself. All
+three share `TomFileFieldStateMixin`, and the two previews share
+`TomFileThumbnailStateMixin`, so picking, validating and clearing behave
+identically whichever one a form uses. There is no Cupertino dropzone: drag and
+drop is not an iOS interaction.
 
-`TomSelectableSource<T>` extends `TomObservable` and provides `List<SelectableItem<T>>` to selection implementations:
+## C.10. Selectable Sources
 
-```dart
-class SelectableItem<T> {
-  final T value;
-  final String label;
-  final String? description;
-  final bool enabled;
-  const SelectableItem({required this.value, required this.label, this.description, this.enabled = true});
-}
-```
+`TomSelectableSource<T>` answers one question — what are the options — and every
+selection field in C.7 and C.8 takes one:
 
-| Adapter | Source | Reactivity |
-|---------|--------|-----------|
-| `StaticSelectableSource<T>` **(TBD)** | `List<SelectableItem<T>>` at construction | None — fixed list |
-| `EnumSelectableSource<T>` **(TBD)** | `Enum.values` + label resolver (i18n) | None — labels may change with locale |
-| `ObservableSelectableSource<T>` **(TBD)** | `TomList<E extends TomObject>` + mapper | Reactive — updates when list changes |
-| `AsyncSelectableSource<T>` **(TBD)** | `Future<List<SelectableItem<T>>> Function(String)` | Query-driven — re-fetches on input |
+| Source | Options come from | Reactive |
+|--------|-------------------|----------|
+| `StaticSelectableSource<T>` | A `List<SelectableItem<T>>` given at construction | No |
+| `TomEnumSelectableSource<E extends Enum>` | `E.values`, labelled from the text bundle | Yes — re-emits on a locale change |
+| `TomEnumNameSelectableSource<E extends Enum>` | The same, but valued by `Enum.name` | Yes |
+| `TomSelectableSource<T>` | The abstract base — implement `getItems()` and, if the options change, `itemsStream` | Depends |
 
-## C.11. New Observable Types Required
+`TomEnumNameSelectableSource` exists for the common persistence shape: an entity
+that stores the enum constant's `name` in a `TomString` rather than the constant
+itself. Without it, every such form would need a mapper at each field; with it,
+the field binds the stored `String` and the source does the labelling.
 
-| Type | Extends | Members / Wraps | Nullable Variant | Notes |
-|------|---------|----------------|------------------|-------|
-| `TomDuration` **(TBD)** | `TomObject<Duration>` | Wraps `Duration` | `TomNDuration` **(TBD)** | Same pattern as `TomDateTime` |
-| `TomIntRange` **(TBD)** | `TomClass` | `TomNInt start`, `TomNInt end` | — | Same pattern as `TomDateRange` |
-| `TomDoubleRange` **(TBD)** | `TomClass` | `TomNDouble start`, `TomNDouble end` | — | Same pattern as `TomDateRange` |
-| `TomFileRef` **(TBD)** | `TomObject<FileRef>` | Wraps `FileRef` | `TomNFileRef` **(TBD)** | Dedicated observable |
+A source is not a field and does not appear in the class counts below.
 
-**Multi-select binding** uses `TomList<T>` (already exists) — no new `TomSet<T>` needed.
+## C.11. Nullable Inputs
+
+Nine concrete classes bind `T?` directly, extending `TomField<T?>` rather than
+one of the twenty-three abstract types:
+
+| Material | Cupertino | Binds |
+|----------|-----------|-------|
+| `TomFormNStringInput` | `TomCupertinoFormNStringInput` | `String?` |
+| `TomFormNIntInput` | `TomCupertinoFormNIntInput` | `int?` |
+| `TomFormNDoubleInput` | `TomCupertinoFormNDoubleInput` | `double?` |
+| `TomFormNDateInput` | `TomCupertinoFormNDateInput` | `DateTime?` |
+| `TomFormNEnumDropdown` | — | `T?` |
+
+They are base and concrete at once, which is why they are grouped rather than
+placed in the tables above. `TomFormNEnumDropdown<T>` is filed here and not
+under `TomFormEnumField<T>` for the reason it is nullable: it binds `T?`, so it
+is not a member of the enum family, and
+`test/forms/fields/field_family_membership_test.dart` pins that too.
+
+<!-- /class-inventory -->
 
 ## C.12. Summary
 
-### Class Counts
+| | Count |
+|---|------:|
+| Abstract field types | 23 |
+| Concrete implementations | 74 |
+|  — Material | 46 |
+|  — Cupertino | 28 |
+| **Total in the `TomField` hierarchy** | **97** |
 
-| Category | Abstract Types | Concrete Implementations | Notes |
-|----------|---------------|------------------------|-------|
-| Text | 1 | 7 | All extend `TomFormStringField` |
-| Numeric | 2 | 8 | `TomFormIntField`, `TomFormDoubleField`; currency/percent are Double variants |
-| Numeric Range | 2 | 4 | Sliders add observable `absoluteMin`/`absoluteMax` |
-| Boolean | 1 | 3 | |
-| Date & Time | 4 | 11 | Includes Duration; pickers add `firstDate`/`lastDate` |
-| Date & Time Range | 3 | 4 | |
-| Selection (single) | 4 (Enum, Object, Search, Lookup) | 20 | String/Int/Double reuse their base abstract types |
-| Selection (multi) | 4 (StringList, IntList, EnumList, ObjectList) | 10 | Bind to `TomList<T>` |
-| File | 1 | 1 | |
-| **Total** | **22** (+ nullable variants) | **68** | |
+Seven further public declarations live under `lib/src/forms/fields/` without
+being fields: `TomDateTimeFormat`, `TomFieldWidgetAdapter`,
+`TomFileFieldStateMixin`, `TomFileThumbnailStateMixin`, and the three plain
+value types `NumRange`, `TimeRange` and `CurrencyFormatProfile`.
 
-### TomSelectableSource Adapters
-
-| Adapter | Count |
-|---------|-------|
-| `StaticSelectableSource<T>` | 1 |
-| `EnumSelectableSource<T>` | 1 |
-| `ObservableSelectableSource<T>` | 1 |
-| `AsyncSelectableSource<T>` | 1 |
-| **Total adapters** | **4** |
-
-### Observable Types To Create
-
-| New Type | Count |
-|----------|-------|
-| `TomDuration` + `TomNDuration` | 2 |
-| `TomIntRange`, `TomDoubleRange` | 2 |
-| `TomFileRef` + `TomNFileRef` | 2 |
-| **Total new observables** | **6** |
-
-### Existing vs TBD
-
-| Status | Count |
-|--------|-------|
-| Abstract field types in code | 5 |
-| Abstract field types TBD | 17 |
-| Concrete implementations in code | 0 |
-| Concrete implementations TBD | 68 |
-| Observable types in code | 19 |
-| Observable types TBD | 6 |
-| TomSelectableSource adapters TBD | 4 |
-
----
+Two abstract types have no concrete implementation on either platform —
+`TomFormTimeRangeField` and `TomFormDateTimeRangeField` — so 21 of the 23 are
+reachable from a form without subclassing.
 
 ## Related Documents
 

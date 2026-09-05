@@ -1,6 +1,77 @@
 ## Unreleased
 
+### Changed
+
+- **`doc/tom_ui_widgets_forms.md` now carries one inventory of the form field
+  classes instead of five, and that one is checked against the source tree.**
+
+  The document listed the field hierarchy in five places — §6 (the abstract
+  types), §7 (a concrete table per type), §8 (a `Used by:` line per widget),
+  Appendix B (a widget cross-reference, including a "Complete Widget
+  Inventory"), Appendix C (the class hierarchy inventory), and again in §26's
+  API-summary table. Five hand-maintained lists of one fact drift the moment
+  any of them moves, and all five had.
+
+  What they had drifted into is worth stating, because it decided the repair.
+  Appendix C marked **81 rows** `**(TBD)** = class needs to be created` against
+  classes that had shipped — `TomFormStringInput`, `TomFormIntSlider`,
+  `TomFormBoolSwitch`, `TomFormDatePicker`, `TomFormFileUpload` among them. But
+  clearing those markers would have made the document worse, not better: of the
+  78 distinct names the appendix carried, **42 named nothing at all**, either
+  because the class was built under a different name (`TomCupertinoFormDatePicker`,
+  not `TomFormCupertinoDatePicker`) or because it was never built. Clearing a
+  marker converts "wrongly says this does not exist" into "wrongly says this
+  does", and a reader can falsify the first claim by opening the file while the
+  second is unfalsifiable short of an exhaustive search. Three classes that had
+  shipped — `TomFormFileDropzone`, `TomFormFileThumbnail`, `TomFormDateTextInput`
+  — appeared in none of the five lists.
+
+  So Appendix C was rebuilt from the tree and the other four reduced to
+  pointers at it: §6 is now scheme (the naming convention, the twenty-three
+  abstract types and what each binds, how nullable, multi-value and range
+  fields differ), §7 keeps the selection machinery and drops its tables, §8's
+  `Used by:` lines name real classes, Appendix B is eleven lines of pointer,
+  and §26 is eight. The measured counts are **23 abstract types, 74 concretes
+  (46 Material, 28 Cupertino), 97 classes** in the `TomField` hierarchy.
+
+  Several claims in the surrounding prose fell with the tables. There is no
+  `TomFormCupertinoStyle`: the 28 Cupertino fields read the same `TomFormStyle`
+  as the Material ones. There is no `AsyncSelectableSource`, no
+  `ObservableSelectableSource`, no `EnumSelectableSource` — the sources are
+  `TomSelectableSource<T>` and its three implementations, and the only reactive
+  binding a field offers is `itemsStream`. The decoration mixin is
+  `TomGenericFieldDecorationMixin`, one of three, and every spec field carries
+  exactly one of them. Sliders and range fields take plain `int`/`double`
+  bounds, not observables.
+
+  The six wrapper value types the document specified — `TomDuration`,
+  `TomIntRange`, `TomDoubleRange`, `TomFileRef`, `TomNDuration`, `TomNFileRef`
+  — were never built and are not going to be. `TomField<T> extends
+  TomObject<T>`: the field *is* the observable over the plain Dart value, so a
+  second observable wrapper around `Duration` would be one layer for no reader.
+
 ### Added
+
+- **`tool/check_doc_class_inventories.py`**, which holds a marked inventory to
+  the directory it inventories, in **both** directions. A region declares
+  itself in the markdown source —
+
+  ```markdown
+  <!-- class-inventory: tom_flutter_ui/lib/src/forms/fields extends TomField -->
+  ```
+
+  — and the gate then reports `MISSING` for a class the directory declares that
+  the region never names, and `PHANTOM` for a `Tom*` name the region lists that
+  no `lib/` in the repository declares. Both directions had been live in the
+  forms appendix simultaneously, which is why one direction would not have been
+  enough: an inventory decays when code moves away from it just as readily as
+  when it claims something that was never written.
+
+  The gate refuses to be vacuously green — it exits 2 when its declaration
+  index is empty, when no marked region is found, or when a region resolves to
+  a directory declaring nothing of the named family — and `--self-test`
+  perturbs a real region by one name in each direction and requires the checker
+  to object.
 
 - **`repo_doc_gates_test.dart` now asks whether the gates still detect
   anything**, not only whether they are quiet. Every assertion the file made

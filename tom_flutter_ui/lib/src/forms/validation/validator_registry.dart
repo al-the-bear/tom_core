@@ -158,7 +158,9 @@ class TomValidatorRegistry {
   /// Adapts a collection validator to `TomValidator<Object?>`. Fields declaring
   /// selection-count rules hold list values, so the cast is safe at the call
   /// site.
-  static TomValidator<Object?> _wrapIterable(TomValidator<Iterable<Object?>> inner) =>
+  static TomValidator<Object?> _wrapIterable(
+    TomValidator<Iterable<Object?>> inner,
+  ) =>
       (Object? value) => inner(value as Iterable<Object?>);
 
   static int _intArg(List<String> args, String validatorName) {

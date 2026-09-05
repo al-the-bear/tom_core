@@ -85,14 +85,13 @@ const _pythonLaunchers = <List<String>>[
 /// dispatches on. A gate that only names the flag in a comment is picked up
 /// too and then runs its ordinary check instead — reported as a failure, which
 /// is the safe way round.
-List<String> _selfTestingGates() =>
-    _discoverGates()
-        .where(
-          (n) => File(
-            '${_repoRoot.path}/tool/$n.py',
-          ).readAsStringSync().contains('--self-test'),
-        )
-        .toList();
+List<String> _selfTestingGates() => _discoverGates()
+    .where(
+      (n) => File(
+        '${_repoRoot.path}/tool/$n.py',
+      ).readAsStringSync().contains('--self-test'),
+    )
+    .toList();
 
 /// Runs a Python script under `tool/` and returns its result.
 ///
