@@ -1,5 +1,34 @@
 ## Unreleased
 
+### Added
+
+- **`repo_doc_gates_test.dart` now asks whether the gates still detect
+  anything**, not only whether they are quiet. Every assertion the file made
+  until now passed in two states that look identical from the outside: the
+  documents are right, or the checker stopped reading them. A gate held to a
+  baseline of zero faults reports zero faults either way.
+
+  That is not a hypothetical reading of the design. Eleven wrong figures once
+  stood across six of the sample completion documents while
+  `check_doc_inventories` sat at exactly its baseline both before and after they
+  were corrected — it saw none of them, because at the time it read neither the
+  census sentences nor the per-file lengths those figures lived in. The gate was
+  green throughout.
+
+  So a second group runs `--self-test` on every checker that implements one.
+  `check_doc_inventories --self-test` takes each family of numeric claim it
+  audits, finds a document that carries one and currently measures it
+  correctly, raises a single figure by one **in memory**, and requires the audit
+  to object. Five families are covered: a package census's file count, its Dart
+  count, its per-directory split and its hand-written line total, and a
+  per-file length label inside a layout fence. A family with no document to
+  perturb fails too — coverage with nothing to run on is not coverage.
+
+  The self-testing gates are discovered by reading `tool/` for the flag, the
+  same way the gate list itself is discovered, so a checker that grows a
+  self-test tomorrow is exercised tomorrow rather than whenever someone
+  remembers to register it.
+
 ### Removed
 
 - **`TomDualAction`**, a two-sided convenience wrapper that was fully

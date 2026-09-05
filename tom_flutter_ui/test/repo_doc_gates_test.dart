@@ -77,36 +77,41 @@ const _pythonLaunchers = <List<String>>[
   ['py', '-3'],
 ];
 
-/// Runs `tool/check_gates.py --json` and returns its parsed report.
+/// The gates that carry a `--self-test`, found by reading them.
+///
+/// Discovered rather than listed for the same reason the gate list is: a
+/// checker that grows a self-test tomorrow should be exercised tomorrow. The
+/// probe is the literal flag string in the source, which is what a checker
+/// dispatches on. A gate that only names the flag in a comment is picked up
+/// too and then runs its ordinary check instead — reported as a failure, which
+/// is the safe way round.
+List<String> _selfTestingGates() =>
+    _discoverGates()
+        .where(
+          (n) => File(
+            '${_repoRoot.path}/tool/$n.py',
+          ).readAsStringSync().contains('--self-test'),
+        )
+        .toList();
+
+/// Runs a Python script under `tool/` and returns its result.
 ///
 /// Throws rather than skips when Python is absent. A skip would mean the gates
 /// stop being enforced on precisely the machine where nobody notices, which is
 /// the failure this file exists to end; and a repository whose documentation
 /// verification *is* a folder of Python scripts already requires Python to work
 /// on.
-Map<String, dynamic> _runGates() {
+ProcessResult _runPython(List<String> arguments) {
   final failures = <String>[];
   for (final launcher in _pythonLaunchers) {
-    final ProcessResult result;
     try {
-      result = Process.runSync(launcher.first, [
+      return Process.runSync(launcher.first, [
         ...launcher.skip(1),
-        'tool/check_gates.py',
-        '--json',
+        ...arguments,
       ], workingDirectory: _repoRoot.path);
     } on ProcessException catch (e) {
       failures.add('${launcher.join(' ')}: ${e.message}');
-      continue;
     }
-    // Exit 1 is "a gate failed", which is a result, not an error. Anything
-    // else means the runner itself did not get to speak.
-    if (result.exitCode > 1) {
-      throw StateError(
-        'tool/check_gates.py exited ${result.exitCode}\n'
-        '${result.stdout}\n${result.stderr}',
-      );
-    }
-    return jsonDecode(result.stdout as String) as Map<String, dynamic>;
   }
   throw StateError(
     'no Python 3 launcher worked, so the documentation gates could not run. '
@@ -114,6 +119,20 @@ Map<String, dynamic> _runGates() {
     'documentation verification and every one of them is a Python script.\n'
     '${failures.join('\n')}',
   );
+}
+
+/// Runs `tool/check_gates.py --json` and returns its parsed report.
+Map<String, dynamic> _runGates() {
+  final result = _runPython(['tool/check_gates.py', '--json']);
+  // Exit 1 is "a gate failed", which is a result, not an error. Anything
+  // else means the runner itself did not get to speak.
+  if (result.exitCode > 1) {
+    throw StateError(
+      'tool/check_gates.py exited ${result.exitCode}\n'
+      '${result.stdout}\n${result.stderr}',
+    );
+  }
+  return jsonDecode(result.stdout as String) as Map<String, dynamic>;
 }
 
 void main() {
@@ -174,5 +193,43 @@ void main() {
         reason: (report['problems'] as List).join('\n'),
       );
     });
+  });
+
+  // Every test above passes when a checker reports no faults — including a
+  // checker that has quietly stopped reading anything. That is not a
+  // hypothetical: eleven wrong figures once stood across six completion
+  // documents while `check_doc_inventories` held at its baseline both before
+  // and after they were corrected, because it read neither the census
+  // sentences nor the per-file lengths those figures lived in. A gate's
+  // `--self-test` asks the question the baseline cannot: perturb a figure the
+  // gate calls correct, and require it to object.
+  group('the gates still detect what they claim to read', () {
+    final selfTesting = _selfTestingGates();
+
+    test('there are self-tests to run', timeout: slow, () {
+      expect(
+        selfTesting,
+        isNotEmpty,
+        reason:
+            'no checker in tool/ implements --self-test. At least one did; '
+            'losing the last one means nothing now distinguishes a gate that '
+            'passes because the documents are right from one that passes '
+            'because it stopped looking.',
+      );
+    });
+
+    for (final gate in selfTesting) {
+      test(gate, timeout: slow, () {
+        final result = _runPython(['tool/$gate.py', '--self-test']);
+        expect(
+          result.exitCode,
+          0,
+          reason:
+              '$gate --self-test failed: a claim it is supposed to measure '
+              'survived being perturbed, so that claim is no longer gated.\n'
+              '${result.stdout}\n${result.stderr}',
+        );
+      });
+    }
   });
 }

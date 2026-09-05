@@ -6,8 +6,15 @@ Run from anywhere::
     python3 tool/check_doc_inventories.py                 # audit every document
     python3 tool/check_doc_inventories.py tom_core_kernel # one project's documents
     python3 tool/check_doc_inventories.py --fix           # re-measure and rewrite
+    python3 tool/check_doc_inventories.py --self-test     # check the checker
 
 Exits non-zero when any measurement disagrees with the tree.
+
+``--self-test`` asks the opposite question: it raises one figure of each kind
+by one, in memory, and requires this checker to object. A gate held to a
+baseline of zero faults passes just as well when it has stopped reading
+anything, so the baseline alone cannot tell working coverage from absent
+coverage. See :func:`self_test`.
 
 Two shapes are audited. Most documents open by naming the module's directory
 and how much is in it, and then tabulate the directory a file at a time::
@@ -1403,6 +1410,105 @@ def audit_index_sections(text: str, report: Report) -> bool:
     return True
 
 
+#: The numeric claims the self-test proves this checker can still catch.
+#:
+#: Each case names a pattern that finds one figure, the group holding its
+#: number, the audit that is supposed to notice when that number is wrong, and
+#: -- where the figure is only meaningful inside a larger construct -- the
+#: pattern whose match bounds the search. A per-file length is a measurement
+#: only inside a layout fence, and a line total only inside the parenthesis of
+#: a census segment; perturbing the first such-looking number anywhere in the
+#: document would otherwise hit running prose and prove nothing.
+SELF_TEST_CASES: list[tuple[str, re.Pattern[str], int, str, re.Pattern[str] | None]] = [
+    ("census file count", PKG_FILES, 1, "audit_package_inventory", None),
+    ("census Dart count", PKG_DART, 1, "audit_package_inventory", None),
+    ("census directory split", PKG_UNDER, 1, "audit_package_inventory", None),
+    ("census line total", PKG_LINES, 1, "audit_package_inventory", PKG_SEGMENT),
+    ("per-file line label", LAYOUT_LINES, 2, "audit_layout_lines", LAYOUT_FENCE),
+]
+
+
+def perturb(
+    text: str, pattern: re.Pattern[str], group: int, within: re.Pattern[str] | None
+) -> str | None:
+    """Return `text` with one figure raised by one, or None if none was found.
+
+    Raised rather than lowered because a count is never negative and a figure
+    of zero is common: subtracting one could produce a number no writer would
+    have written, and a checker that only rejects the impossible is not the
+    same as one that reads the value.
+    """
+    region = text if within is None else None
+    start = 0
+    if within is not None:
+        bounds = within.search(text)
+        if bounds is None:
+            return None
+        start, region = bounds.start(), bounds.group(0)
+
+    match = pattern.search(region)
+    if match is None:
+        return None
+    at = start + match.start(group)
+    to = start + match.end(group)
+    return text[:at] + like(match.group(group), as_number(match.group(group)) + 1) + text[to:]
+
+
+def self_test() -> int:
+    """Prove each audit still fails a document whose figures are wrong.
+
+    The gate suite asserts that every checker sits at its recorded baseline,
+    which a checker that has quietly stopped reading anything also satisfies --
+    it reports zero faults, matches a zero baseline, and passes. That is not a
+    hypothetical failure mode. Eleven wrong figures once stood across six of
+    the sample documents while this gate held at its baseline both before and
+    after they were corrected, because at the time it read neither the census
+    sentences nor the per-file lengths those figures lived in.
+
+    So this asks the opposite question from the gate: not "does the corpus
+    pass" but "would it still fail if it were wrong". For each family of claim
+    it finds a document that carries one and currently audits clean, raises a
+    single figure by one in memory -- nothing on disk is touched -- and
+    requires the audit to report a fault. A case that finds no document to
+    perturb fails too: coverage that has nothing to run on is not coverage.
+    """
+    documents = sorted(DOCS_ROOT.glob("*.md"))
+    failures: list[str] = []
+
+    for name, pattern, group, audit_name, within in SELF_TEST_CASES:
+        run = globals()[audit_name]
+        for path in documents:
+            text = path.read_text(encoding="utf-8", errors="replace")
+            # The document must carry this claim and be right about it, or a
+            # fault after perturbing proves nothing -- it was already there.
+            clean = Report(path)
+            if not run(text, clean) or not clean.clean:
+                continue
+            wrong = perturb(text, pattern, group, within)
+            if wrong is None:
+                continue
+            caught = Report(path)
+            run(wrong, caught)
+            if caught.clean:
+                failures.append(
+                    f"{name}: {audit_name} passed {path.name} after one figure "
+                    f"was raised by one, so it is no longer reading that claim"
+                )
+            else:
+                print(f"  ok  {name} — caught in {path.name}")
+            break
+        else:
+            failures.append(
+                f"{name}: no document carries this claim, so nothing exercises "
+                f"{audit_name} for it"
+            )
+
+    for failure in failures:
+        print(f"  FAIL {failure}", file=sys.stderr)
+    print(f"\n{len(SELF_TEST_CASES) - len(failures)} of {len(SELF_TEST_CASES)} claim families still detected")
+    return 1 if failures else 0
+
+
 def main(argv: list[str]) -> int:
     arguments = argv[1:]
     fix = "--fix" in arguments
@@ -1411,6 +1517,9 @@ def main(argv: list[str]) -> int:
     if not DOCS_ROOT.is_dir():
         print(f"completion documents not found at {DOCS_ROOT}", file=sys.stderr)
         return 2
+
+    if "--self-test" in arguments:
+        return self_test()
 
     prefix = arguments[0] if arguments else ""
     documents = sorted(p for p in DOCS_ROOT.glob("*.md") if p.name.startswith(prefix))
