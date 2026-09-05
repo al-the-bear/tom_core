@@ -130,52 +130,124 @@ const _quickStarts = <_QuickStart>[
   return (source: lines.sublist(open + 1, close).join('\n'), noteLine: after);
 }
 
-/// Runs [source] as a program and returns what it did.
+/// What compiling `package:tom_core_server` is allowed to cost.
 ///
-/// Written under `.dart_tool/` for two reasons: it is gitignored, so a scratch
-/// file cannot be committed by accident, and it is inside the package, so the
-/// snippet's `package:tom_core_server` import resolves against the real
-/// `package_config.json` rather than a synthesised one.
-Future<({int exitCode, String output})> _run(
-  String module,
-  String source,
-) async {
-  final script = File(p.join('.dart_tool', 'quick_start_$module.dart'));
-  script.writeAsStringSync(source);
-  addTearDown(() {
-    if (script.existsSync()) script.deleteSync();
-  });
+/// Deliberately generous, because it is not measuring anything. It exists so a
+/// pathological compile fails as a compile instead of hanging the suite, and
+/// the number can be loose precisely because nothing is being inferred from it.
+/// Measured on this package: ~2.5s on an unloaded machine, 14.5s with the
+/// machine oversubscribed twelve-fold.
+const _compileDeadline = Duration(seconds: 60);
 
-  final process = await Process.start(Platform.resolvedExecutable, [
-    'run',
-    script.path,
-  ]);
+/// What the snippet itself is allowed to cost, once it is already compiled.
+///
+/// This is the deadline that means something, and it is tight because the work
+/// it bounds is small and barely load-sensitive: ~0.35s unloaded, 0.63s with
+/// the machine oversubscribed twelve-fold. Fifteen seconds is more than twenty
+/// times the worst measurement, so a breach is a snippet that does not return,
+/// not a machine having a bad minute.
+const _runDeadline = Duration(seconds: 15);
+
+/// Starts `dart [arguments]`, collects both its streams, and waits for it.
+///
+/// Returns `null` if it had not exited within [deadline]. The child is killed
+/// on that path, so a snippet that never returns cannot outlive the test that
+/// started it.
+Future<({int exitCode, String output})?> _awaitProcess(
+  List<String> arguments,
+  Duration deadline,
+) async {
+  final process = await Process.start(Platform.resolvedExecutable, arguments);
   final out = StringBuffer();
   final drained = Future.wait([
     process.stdout.transform(utf8.decoder).forEach(out.write),
     process.stderr.transform(utf8.decoder).forEach(out.write),
   ]);
-
-  // The watchdog is half the point of this file. The regression it catches is a
-  // program that never returns, and without a deadline that is a suite that
-  // never finishes — a hang reported as a hang says far less than a hang
-  // reported as this failure. It fires well before the framework's own 30s
-  // default, hence the explicit Timeout on each test.
-  int exitCode;
   try {
-    exitCode = await process.exitCode.timeout(const Duration(seconds: 25));
+    final exitCode = await process.exitCode.timeout(deadline);
+    await drained;
+    return (exitCode: exitCode, output: out.toString());
   } on TimeoutException {
     process.kill(ProcessSignal.sigkill);
     await process.exitCode;
+    return null;
+  }
+}
+
+/// Compiles [source] to a kernel snapshot, runs the snapshot, and returns what
+/// running it did.
+///
+/// Written under `.dart_tool/` for two reasons: it is gitignored, so a scratch
+/// file cannot be committed by accident, and it is inside the package, so the
+/// snippet's `package:tom_core_server` import resolves against the real
+/// `package_config.json` rather than a synthesised one.
+///
+/// **Why two phases and not `dart run snippet.dart`.** The regression this file
+/// catches is a snippet that never returns, and a deadline is the only way to
+/// catch it. But `dart run` on a source file compiles the whole
+/// `package:tom_core_server` graph *and then* executes it under one deadline,
+/// and those two costs are wildly asymmetric: ~2.5s to compile against ~0.35s
+/// to run, so seven-eighths of a single deadline is spent on the part nobody is
+/// asking about. Only that part is load-sensitive, too. Measured with the
+/// machine saturated, compilation stretched to 14.5s while execution stayed at
+/// 0.63s, and `dart run` on the source took 26.7s — past the 25s this file used
+/// to allow, failing with a message that said the snippet did not terminate
+/// about a program that terminates in half a second.
+///
+/// That is not a threshold that wants raising. Raising it buys a slower true
+/// failure and leaves the two causes indistinguishable, which is the actual
+/// damage: a reader who has seen this test cry wolf discounts it the day it is
+/// right. Giving compilation its own budget and its own message leaves the
+/// termination deadline measuring termination — and lets it be *tighter* than
+/// the one it replaces rather than looser.
+Future<({int exitCode, String output})> _run(
+  String module,
+  String source,
+) async {
+  final script = File(p.join('.dart_tool', 'quick_start_$module.dart'));
+  final snapshot = File(p.join('.dart_tool', 'quick_start_$module.dill'));
+  script.writeAsStringSync(source);
+  addTearDown(() {
+    if (script.existsSync()) script.deleteSync();
+    if (snapshot.existsSync()) snapshot.deleteSync();
+  });
+
+  final compiled = await _awaitProcess([
+    'compile',
+    'kernel',
+    script.path,
+    '-o',
+    snapshot.path,
+  ], _compileDeadline);
+  if (compiled == null) {
     fail(
-      "the $module readme's quick start did not terminate within 25s. A "
-      'periodic timer, an open socket or a bound listener all keep an isolate '
-      'alive, so a snippet that creates one has to release it — or say in the '
-      'readme that it is not a program meant to be run.',
+      "compiling the $module readme's quick start did not finish within "
+      '${_compileDeadline.inSeconds}s. That is the cost of the '
+      '`package:tom_core_server` graph on a busy machine and says nothing '
+      'about whether the snippet terminates — which has not been tested yet.',
     );
   }
-  await drained;
-  return (exitCode: exitCode, output: out.toString());
+  if (compiled.exitCode != 0) {
+    fail(
+      "the $module readme's quick start does not compile:\n${compiled.output}",
+    );
+  }
+
+  // Only this phase is timed against the snippet's own behaviour, and only its
+  // output is returned — so what the caller matches against `prints` is the
+  // program's output alone, with none of the compiler's chatter in it.
+  final ran = await _awaitProcess(['run', snapshot.path], _runDeadline);
+  if (ran == null) {
+    fail(
+      "the $module readme's quick start did not terminate within "
+      '${_runDeadline.inSeconds}s of being started. It was already compiled by '
+      'then, so this is the snippet: a periodic timer, an open socket or a '
+      'bound listener all keep an isolate alive, so a snippet that creates one '
+      'has to release it — or say in the readme that it is not a program meant '
+      'to be run.',
+    );
+  }
+  return ran;
 }
 
 void main() {
@@ -236,6 +308,10 @@ void main() {
             expect(result.output, contains(fragment));
           }
         },
+        // Has to outlast both of _run's own deadlines together (60s + 15s), so
+        // that whichever of them is breached gets to report what happened. If
+        // the framework's timeout fired first the test would say only "timed
+        // out", which is the undiagnosable failure this file exists to avoid.
         timeout: const Timeout(Duration(minutes: 2)),
       );
     }

@@ -2,6 +2,35 @@
 
 ### Fixed
 
+- **The readme quick-start guard timed compilation and called the result a
+  hang; it now times the two separately
+  (tcincb5_ahwq_tom_core_server_cache_readme-quick-start-test-is-flaky).**
+  `readme_quick_start_test.dart` ran each snippet with `dart run snippet.dart`
+  under a single 25s deadline. That deadline covered compiling the whole
+  `package:tom_core_server` graph *and* executing the snippet, and the two are
+  wildly asymmetric: measured here, ~2.5s to compile against ~0.35s to run. So
+  seven-eighths of the budget was spent on the part the test does not ask
+  about — and only that part is load-sensitive. With the machine saturated,
+  compilation stretched to 14.5s while execution stayed at 0.63s, and
+  `dart run` on the source took 26.7s, past the deadline, failing with a
+  message that said the snippet "did not terminate" about a program that
+  terminates in half a second.
+
+  The damage was not the wasted run. It was that a false failure and the real
+  regression — a snippet that genuinely never returns — produced the identical
+  message, so the test taught its reader to discount exactly the signal it
+  exists to raise. Raising the number would have bought a slower false failure
+  and left the two causes indistinguishable.
+
+  The snippet is now compiled to a kernel snapshot first, with its own 60s
+  budget and its own message, and only the snapshot is run — under 15s, which
+  is *tighter* than the deadline it replaces and still more than twenty times
+  the worst execution measured. A breach of the run deadline can now only mean
+  the snippet did not return, and the failure text says so. Verified both ways:
+  the whole file passes with the machine oversubscribed eighteen-fold, and a
+  snippet given a leaked `Timer.periodic` still fails, in 18s, naming the
+  timer.
+
 - **Two exception classes bypassed `TomServerException`, and the claim that none
   do is now enforced rather than restated
   (tcincb4_ahzb_tom_core_server_little_things-two-exception-classes-bypass-tomserverexception).**
