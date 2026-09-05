@@ -1,6 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../widget_base/tom_construction_helpers.dart';
+import '../widget_base/tom_scope_path.dart';
 import 'tom_action_context.dart';
 import 'tom_action_controller.dart';
 import 'tom_action_transaction.dart';
@@ -69,18 +70,35 @@ abstract class TomAction<
   /// The controller that owns this action.
   final TomActionController controller;
 
-  /// Optional scope for resource resolution.
+  /// Optional explicit scope for resource and authorization lookups.
+  ///
+  /// When provided, this scope is used instead of the controller's — see
+  /// [constructionScope].
   final TomScope? scope;
 
   @override
   final TomAuthorizationGroup? tomGroup;
+
+  /// The frame this action resolves in: its own [scope] when it was given one,
+  /// otherwise the controller's [TomActionController.constructionScope].
+  ///
+  /// Named once and read everywhere, because every path this action produces
+  /// has to come out of the same frame. [canonicalPath] and the group path are
+  /// a `<prefix>.<id>` pair; a prefix that differs between them looks up a rule
+  /// belonging to some other member. Capturing it at construction — rather than
+  /// reading [TomScope.current] per lookup, as the group composition used to —
+  /// is what makes the answer independent of where it is read from: an action
+  /// is a long-lived object consulted from screens, triggers and group
+  /// inspection alike, and only the zone it was built in describes where it
+  /// actually lives.
+  final TomScope constructionScope;
 
   TomAction({
     required this.actionId,
     required this.controller,
     this.scope,
     this.tomGroup,
-  }) {
+  }) : constructionScope = scope ?? controller.constructionScope {
     tomGroup?.register(this);
     controller.registerAction(this);
   }
@@ -90,8 +108,17 @@ abstract class TomAction<
 
   /// The canonical authorization path for this action.
   ///
-  /// Format: `<controllerId>.<actionId>`
-  String get canonicalPath => '${controller.controllerId}.$actionId';
+  /// Format: `<scopePath>.<controllerId>.<actionId>`, dropping the scope
+  /// segment at the root — the same rule every other path in the package goes
+  /// through ([TomScopePath]).
+  ///
+  /// The controller id stays in the path even when the action carries a scope
+  /// of its own: it is the action's namespace, not its location, and dropping
+  /// it would let two controllers in one scope collide on an action id.
+  late final String canonicalPath = TomScopePath.join(
+    TomScopePath.qualify(controller.controllerId, constructionScope),
+    actionId,
+  );
 
   /// Whether this action can execute given the current [context].
   ///
@@ -117,8 +144,12 @@ abstract class TomAction<
   @override
   TomAuthState get effectiveAuthState {
     var state = authState;
+    // The group is resolved in the frame [canonicalPath] was built from. Read
+    // against the ambient scope instead, the ceiling lands on whichever
+    // same-named group the *reader* happens to stand in — or, at the root, on
+    // no group rule at all.
     if (tomGroup != null) {
-      state = tomGroup!.applyMode(state);
+      state = tomGroup!.applyMode(state, constructionScope);
     }
     return state;
   }

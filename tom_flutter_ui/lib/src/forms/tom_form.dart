@@ -109,8 +109,17 @@ abstract class TomForm<T extends TomClass> extends TomClass
   @override
   String get controllerId => formId;
 
+  /// The frame this form's actions resolve in — the form's own [scope], captured
+  /// when the form prepared itself. A form *is* a scope frame, so an action it
+  /// owns stands where the form does; see [TomAction.constructionScope].
   @override
-  String get canonicalPrefix => formId;
+  TomScope get constructionScope => scope;
+
+  /// `<scopePath>.<formId>` — the same [basePath] the form's fields and its own
+  /// [authState] resolve against, so a policy rule that reaches the form reaches
+  /// its actions.
+  @override
+  String get canonicalPrefix => basePath;
 
   @override
   TomAuthState get authState => TomAuthorization.resolveAuth(basePath);

@@ -68,8 +68,13 @@ Every action belongs to a `TomActionController`. The controller has a unique
 **canonical path**:
 
 ```
-canonicalPath = '<controllerId>.<actionId>'
+canonicalPrefix = '<scopePath>.<controllerId>'
+canonicalPath   = '<scopePath>.<controllerId>.<actionId>'
 ```
+
+The scope segment is dropped at the root, so an action built outside any
+`TomScope` addresses itself as the bare `orderMgmt.create` — same rule, and the
+same `TomScopePath`, as every widget path in the package.
 
 That path is the key for authorization (`TomAuthorization.resolveAuth`) and for
 resource lookups (`label`, `tooltip`, `iconName` via `TomCtr`). A typical
@@ -87,6 +92,30 @@ class OrderController extends TomActionController {
 Actions register themselves with the controller in their constructor, so
 `controller.actions` and `controller.findAction(id)` see them without extra
 wiring.
+
+### The frame a path is built in
+
+Both the controller and each action capture a `constructionScope` — the
+explicit `scope` they were given, or the ambient `TomScope.current` at the
+moment they were built — and every path they produce comes out of that one
+frame:
+
+| Element | Frame |
+| ------- | ----- |
+| `TomActionController` | its own `scope`, else `TomScope.current` at construction |
+| `TomAction` | its own `scope`, else its **controller's** frame |
+| `TomForm` (which *implements* `TomActionController`) | the form's own `scope`; its `canonicalPrefix` is the form's `basePath` |
+
+Falling back to the controller rather than to the ambient scope is what makes
+the usual declaration above work: `late final` action fields are constructed on
+first *read*, long after the controller was built and typically outside
+whatever scope was installed then. Inheriting the controller's frame keeps the
+whole controller in one place.
+
+Capturing the frame once — instead of reading `TomScope.current` per lookup —
+is also what makes an action's authorization answer independent of where it is
+read from. An action is consulted from screens, triggers and group inspection
+alike; only the zone it was built in describes where it actually lives.
 
 ## `TomActionContext` — typed inputs
 
@@ -212,7 +241,11 @@ reversal is `TomActionTransaction`'s job.
 `TomAction` implements `TomAuthorizable`, so it participates in the same
 four-state authorization model as widgets (`tomId` is the `actionId`,
 `canonicalPath` is the auth key, optional `tomGroup` applies collective modes via
-`effectiveAuthState`). `action.authorizer` produces a `TomAuthorizer` with the
+`effectiveAuthState`). The group is resolved in the action's
+`constructionScope` — the frame `canonicalPath` was built in. The two are a
+`<prefix>.<id>` pair, and a prefix that differed between them would apply a
+ceiling belonging to some other member, or none at all.
+`action.authorizer` produces a `TomAuthorizer` with the
 default *widget-full + action-none ⇒ disabled* pattern, ready to hand to a
 button so its enabled/disabled state follows the action's authorization without
 any extra glue.

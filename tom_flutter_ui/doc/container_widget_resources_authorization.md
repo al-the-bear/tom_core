@@ -162,7 +162,7 @@ Each segment in the path uses a plain ID set by the developer:
 | Controller | `'orderMgmt'` | `orderMgmt` |
 | Group | `'shippingPanel'` | `shippingPanel` |
 
-Action and controller paths use plain IDs (implemented in `TomAction.canonicalPath` and `TomActionController.canonicalPrefix`). All path types use plain IDs — path resolution in `TomScopePath` joins `scopePath.tomId` without prefixes.
+Action and controller paths use plain IDs (implemented in `TomAction.canonicalPath` and `TomActionController.canonicalPrefix`). All path types use plain IDs — path resolution in `TomScopePath` joins `scopePath.tomId` without prefixes. An action goes through the same join twice: `<scopePath>.<controllerId>` for the controller, then `.<actionId>` for the action, both resolved in the frame the action captured at construction.
 
 ```
 # Authorization examples

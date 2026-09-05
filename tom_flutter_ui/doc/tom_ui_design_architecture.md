@@ -141,7 +141,7 @@ Every widget, container, form, and action can have a unique ID. IDs serve three 
 Developers set plain IDs. In the current implementation:
 
 - **Widget and scope paths** use plain IDs joined by dots — `TomScopePath` builds `<scopePath>.<tomId>` without prefixes.
-- **Action and controller paths** use plain IDs — `TomAction.canonicalPath` produces `<controllerId>.<actionId>`.
+- **Action and controller paths** go through the same rule, with the controller id as an extra segment — `TomAction.canonicalPath` produces `<scopePath>.<controllerId>.<actionId>`.
 
 | Scope | Set as | Resolved as |
 |-------|--------|-------------|
@@ -161,7 +161,7 @@ IDs compose into a canonical path that describes the element’s position in the
 
 ```
 <scope1>.<scope2>.<form>.<widget>
-<controllerId>.<actionId>
+<scope1>.<scope2>.<controllerId>.<actionId>
 ```
 
 Segments are omitted when not present (no scope, no form, etc.).

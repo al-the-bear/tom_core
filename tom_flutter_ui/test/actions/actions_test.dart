@@ -28,6 +28,7 @@ class IncrementAction extends TomAction<CounterContext, IncrementUndo> {
     required super.controller,
     this.step = 1,
     String id = 'increment',
+    super.scope,
   }) : super(actionId: id);
 
   @override
@@ -101,6 +102,7 @@ class _GroupedIncrement extends TomAction<CounterContext, IncrementUndo> {
     required super.controller,
     required String id,
     required TomAuthorizationGroup group,
+    super.scope,
   }) : super(actionId: id, tomGroup: group);
 
   @override
@@ -817,6 +819,138 @@ void main() {
         action.authorizer.effectiveAuth(TomAuthState.none),
         TomAuthState.none,
       );
+    });
+  });
+
+  // An action's member path and its group path are a `<prefix>.<id>` pair, so
+  // they have to be resolved in one frame — the same invariant widgets hold to.
+  // These pin it for actions: the frame is captured once, at construction, and
+  // reaches the controller prefix, the action path and the group ceiling alike.
+  group('an action resolves its path and its group in one frame', () {
+    tearDown(TomAuthorization.reset);
+
+    /// A scope handed over as a value, never installed on a zone — the shape
+    /// `InScopeBuilder` and the screen-element providers produce.
+    TomScope detachedCheckout() => TomScopeBase(scopeId: 'checkout');
+
+    /// Three rules, and the third is the point. `billing: full` is what an
+    /// out-of-frame group lookup lands on, so a frame that fails to reach the
+    /// group produces a *wider* answer rather than the same one by luck.
+    void installRules() {
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'checkout.sec.edit': TomAuthState.full,
+        'checkout.billing': TomAuthState.read, // the ceiling that must apply
+        'billing': TomAuthState.full, // the unscoped decoy
+      });
+    }
+
+    test('outside any scope the path is controller id and action id', () {
+      final controller = TomActionController(controllerId: 'sec');
+      final action = IncrementAction(controller: controller, id: 'edit');
+      expect(controller.canonicalPrefix, 'sec');
+      expect(action.canonicalPath, 'sec.edit');
+    });
+
+    test('an ambient scope prefixes the controller and the action', () {
+      TomScope.withScope('checkout', () {
+        final controller = TomActionController(controllerId: 'sec');
+        final action = IncrementAction(controller: controller, id: 'edit');
+        expect(controller.canonicalPrefix, 'checkout.sec');
+        expect(action.canonicalPath, 'checkout.sec.edit');
+      });
+    });
+
+    test('an explicit scope prefixes the path with no zone installed', () {
+      final controller = TomActionController(controllerId: 'sec');
+      final action = IncrementAction(
+        controller: controller,
+        id: 'edit',
+        scope: detachedCheckout(),
+      );
+      expect(action.canonicalPath, 'checkout.sec.edit');
+    });
+
+    test('an action with no scope of its own stands where its controller does', () {
+      final controller = TomActionController(
+        controllerId: 'sec',
+        scope: detachedCheckout(),
+      );
+      final action = IncrementAction(controller: controller, id: 'edit');
+      expect(controller.canonicalPrefix, 'checkout.sec');
+      expect(action.canonicalPath, 'checkout.sec.edit');
+    });
+
+    test('an ambient scope applies the group ceiling', () {
+      installRules();
+      final group = TomAuthorizationGroup('billing');
+      TomScope.withScope('checkout', () {
+        final controller = TomActionController(controllerId: 'sec');
+        final action = _GroupedIncrement(
+          controller: controller,
+          id: 'edit',
+          group: group,
+        );
+        expect(action.canonicalPath, 'checkout.sec.edit');
+        expect(action.authState, TomAuthState.full);
+        expect(action.effectiveAuthState, TomAuthState.read);
+      });
+    });
+
+    test('an explicit scope applies it too — it is not silently skipped', () {
+      installRules();
+      final controller = TomActionController(controllerId: 'sec');
+      final action = _GroupedIncrement(
+        controller: controller,
+        id: 'edit',
+        group: TomAuthorizationGroup('billing'),
+        scope: detachedCheckout(),
+      );
+      expect(action.canonicalPath, 'checkout.sec.edit');
+      expect(action.effectiveAuthState, TomAuthState.read);
+    });
+
+    test('the effective state does not depend on where it is read from', () {
+      // The defect this closes: the path was frozen without a scope while the
+      // group was resolved against whatever zone the *reader* stood in. Both
+      // halves now come from the frame captured at construction, so an action
+      // built inside a scope answers the same question the same way wherever
+      // the answer is asked for.
+      installRules();
+      final group = TomAuthorizationGroup('billing');
+      final action = TomScope.withScope('checkout', () {
+        final controller = TomActionController(controllerId: 'sec');
+        return _GroupedIncrement(
+          controller: controller,
+          id: 'edit',
+          group: group,
+        );
+      });
+
+      expect(action.effectiveAuthState, TomAuthState.read, reason: 'outside');
+      TomScope.withScope('checkout', () {
+        expect(action.effectiveAuthState, TomAuthState.read, reason: 'inside');
+      });
+      TomScope.withScope('elsewhere', () {
+        expect(
+          action.effectiveAuthState,
+          TomAuthState.read,
+          reason: 'a foreign zone does not move the action',
+        );
+      });
+    });
+
+    test('resources resolve against the same scoped path', () {
+      // `label` / `tooltip` / `iconName` read `<canonicalPath>.<suffix>`, so a
+      // scoped action addresses its captions in the scope too — the field is
+      // documented for resource resolution and now genuinely reaches it.
+      final controller = TomActionController(controllerId: 'sec');
+      final action = IncrementAction(
+        controller: controller,
+        id: 'edit',
+        scope: detachedCheckout(),
+      );
+      expect(action.label, 'edit', reason: 'no resource bundle, so the id');
+      expect(action.toString(), 'TomAction(checkout.sec.edit)');
     });
   });
 

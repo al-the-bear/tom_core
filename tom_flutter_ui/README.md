@@ -293,8 +293,8 @@ layout responsive; `AclBorderStyle` + `AclTitlePosition` draw titled groups.
 ### Actions
 
 A `TomActionController` owns and names a group of `TomAction`s, supplying the
-`<controllerId>.<actionId>` canonical path used for authorization and resource
-lookup — it is a registry and never runs an action. `TomActionTrigger` is what
+`<scopePath>.<controllerId>.<actionId>` canonical path used for authorization
+and resource lookup — it is a registry and never runs an action. `TomActionTrigger` is what
 dispatches one: bind it to a widget callback and it checks `canExecute`, opens a
 `TomActionTransaction` so the mutation is atomic, and pushes the committed
 transaction onto the application's `TomUndoHistory`.

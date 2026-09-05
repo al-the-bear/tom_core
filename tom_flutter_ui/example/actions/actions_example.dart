@@ -3,7 +3,8 @@
 /// Demonstrates the Tom Action system end to end without a widget tree: a
 /// controller owning typed, undoable actions; direct execution inside a
 /// transaction; the `TomActionTrigger` → `TomUndoHistory` wiring; undo/redo;
-/// `canExecute` gating; and a guarded `TomCompositeAction`.
+/// `canExecute` gating; a guarded `TomCompositeAction`; and the scope frame an
+/// action's canonical path is built in.
 ///
 /// Because it imports `package:tom_flutter_ui/tom_flutter_ui.dart` (which pulls
 /// in `flutter/material` → `dart:ui`), run it under the Flutter toolchain, e.g.
@@ -74,8 +75,13 @@ class ResetAction extends TomSimpleAction<CounterContext> {
 }
 
 /// Controller owning the counter actions.
+///
+/// The actions are `late final`, so each is constructed on first read — long
+/// after the controller was built, and typically outside whatever scope was
+/// installed then. They still land in the controller's frame, because an action
+/// with no scope of its own stands where its controller does.
 class CounterController extends TomActionController {
-  CounterController() : super(controllerId: 'counter');
+  CounterController({super.scope}) : super(controllerId: 'counter');
 
   late final increment = IncrementAction(controller: this);
   late final reset = ResetAction(controller: this);
@@ -154,6 +160,19 @@ void run() {
   composite.execute(ctx(), TomActionTransaction(label: 'composite'));
   print('composite guarded-out=$afterGuardedOut guarded-in=${counter.value}');
 
+  // Example 7: a controller built inside a TomScope namespaces its actions.
+  // The scope is captured once, when the controller and its actions are
+  // constructed, so the path is the same wherever it is later read from — and
+  // an action's authorization group is resolved in that same frame.
+  final scoped = TomScope.withScope('checkout', () => CounterController());
+  final scopedPath = scoped.increment.canonicalPath;
+  print('scoped increment path: $scopedPath');
+
+  // Example 8: the same, with the scope handed over as a value instead of
+  // installed on a zone — the shape a builder callback produces.
+  final detached = CounterController(scope: TomScopeBase(scopeId: 'checkout'));
+  print('detached prefix: ${detached.canonicalPrefix}');
+
   // -------------------------------------------------------------------------
   // Assertions
   // -------------------------------------------------------------------------
@@ -176,6 +195,14 @@ void run() {
   // Guarded-out step left the counter unchanged; guarded-in incremented it.
   assert(afterGuardedOut == 0);
   assert(counter.value == 1);
+
+  // A scope reaches the controller prefix and every action path under it —
+  // read here, outside the scope, and still 'checkout.counter.increment'.
+  assert(scopedPath == 'checkout.counter.increment');
+  assert(scoped.canonicalPrefix == 'checkout.counter');
+  assert(detached.canonicalPrefix == 'checkout.counter');
+  // The unscoped controller above is unchanged: no scope, no prefix.
+  assert(controller.canonicalPrefix == 'counter');
 }
 
 void main() => run();

@@ -55,6 +55,14 @@ TomFormInspector _watch(OrderItemForm form) {
 /// helper mentions it, and it is still bound.
 OrderForm _boundOrder() => OrderForm()..bind(orderWith(const ['Bolt']));
 
+/// An action that does nothing but exist, so the path it reports can be read.
+class _NoopFormAction extends TomSimpleAction<TomActionContext> {
+  _NoopFormAction({required super.controller}) : super(actionId: 'wipe');
+
+  @override
+  void executeSimple(TomActionContext context, TomActionTransaction tx) {}
+}
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -535,6 +543,45 @@ void main() {
       await form.validate();
 
       expect(form.fieldsWithErrors.single, same(form.product));
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // The form as a TomActionController
+  // -------------------------------------------------------------------------
+
+  // A form *implements* `TomActionController`, so an action declared on one
+  // takes its frame from the form. The form already has a frame — `scope`, and
+  // the `basePath` its fields and its own `authState` resolve against — so the
+  // controller surface has to hand that same one over, or a policy rule that
+  // reaches the form would miss the actions its buttons are bound to.
+  group('a form frames the actions it owns', () {
+    test('its controller prefix is its basePath, not the bare formId', () {
+      final form = OrderItemForm();
+
+      expect(form.controllerId, 'items');
+      expect(form.canonicalPrefix, form.basePath);
+      expect(form.constructionScope, same(form.scope));
+    });
+
+    test('an action it owns resolves under that prefix', () {
+      final form = OrderItemForm();
+      final action = _NoopFormAction(controller: form);
+
+      expect(action.canonicalPath, 'items.wipe');
+      expect(form.findAction('wipe'), same(action));
+    });
+
+    test('a scope the form was built in reaches its actions', () {
+      final form = TomScope.withScope('checkout', OrderItemForm.new);
+      final action = _NoopFormAction(controller: form);
+
+      // The form's tree and the action's are one: basePath 'checkout.items',
+      // and the action exactly one segment below it — not 'items.wipe' beside
+      // it, and not 'checkout.items.items.wipe' below itself.
+      expect(form.basePath, 'checkout.items');
+      expect(form.canonicalPrefix, 'checkout.items');
+      expect(action.canonicalPath, 'checkout.items.wipe');
     });
   });
 

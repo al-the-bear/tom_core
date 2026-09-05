@@ -19,7 +19,7 @@ the module's central separation. Nothing on `TomActionController` runs an action
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomAction` / `TomSimpleAction` / `TomCompositeAction` | The action base & primitives |
-| `TomActionController` | Owns and names a group of actions; supplies the `controllerId` canonical-path prefix |
+| `TomActionController` | Owns and names a group of actions; supplies the `<scopePath>.<controllerId>` canonical-path prefix, and the scope frame its actions inherit |
 | `TomActionContext` | The per-invocation context an action operates on |
 | `TomActionTransaction` / `TomUndoHistory` / `TomUndoRedoContext` | Atomicity & undo/redo |
 | `TomUndoAction` / `TomRedoAction` | Ready-made actions over a `TomUndoHistory`, so undo/redo dispatches through the same trigger protocol as everything else. Read `TomUndoHistory.redo` before binding the second one to a button — it restores the stack position and re-applies nothing |
