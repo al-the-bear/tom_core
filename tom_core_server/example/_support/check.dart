@@ -17,9 +17,11 @@ library;
 /// invocation is worse than one with no checks at all: it still prints a
 /// plausible transcript and still exits 0 while every expectation in it is
 /// violated, so it reads as a verification to everyone including the author.
-/// That is not a hypothetical, and it is cheap to confirm: an example carrying
-/// a deliberately false assertion, run under the documented `dart run`, exits
-/// 0 — and the same file under `--enable-asserts` exits 255.
+/// That is not a hypothetical and it is not left as prose: `test/fixtures/`
+/// holds two programs identical but for that one line, and
+/// `test/examples_test.dart` runs both under the documented command. The one
+/// stating its expectation this way exits non-zero and stops; the one stating
+/// it as an `assert` exits **0** and runs to the end.
 ///
 /// A plain `if`/`throw` holds however the file is run.
 ///

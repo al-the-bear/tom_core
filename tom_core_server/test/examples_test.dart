@@ -84,6 +84,60 @@ List<String> _exampleSources() {
     ..sort();
 }
 
+/// The handlers in [source] that would catch a failing [check], quoted as they
+/// are written.
+///
+/// `check` reports by throwing a `StateError`, so a check made inside a `try`
+/// whose handler catches one is the original defect in a new spelling: the
+/// expectation is stated, the call site is intact, the ban on `assert` is
+/// satisfied, and the run is green whether or not the expectation holds.
+///
+/// A bare `catch` takes everything, and `on Object` / `on Error` / `on
+/// StateError` name it. `on Exception` and every named exception type do not —
+/// a `StateError` is an `Error` — and neither does `finally`, which reraises.
+/// That distinction is the reason this looks at the handler rather than
+/// forbidding a `check` inside a `try` outright: five examples make one, all
+/// five legitimately, four under `finally` and one under a typed handler.
+///
+/// Blocks are delimited by the **indentation** of the `try`, which `dart
+/// format` guarantees and which — unlike counting braces — cannot be fooled by
+/// a brace inside a string or a comment.
+List<String> _swallowingHandlers(String source) {
+  final lines = source.split('\n');
+  final swallowing = <String>[];
+  for (var i = 0; i < lines.length; i++) {
+    final opened = RegExp(r'^(\s*)try \{\s*$').firstMatch(lines[i]);
+    if (opened == null) continue;
+    final closes = RegExp('^${opened.group(1)!}\\}');
+
+    var end = i + 1;
+    while (end < lines.length && !closes.hasMatch(lines[end])) {
+      end++;
+    }
+    if (end == lines.length) continue;
+    if (!lines.getRange(i + 1, end).join('\n').contains('check(')) continue;
+
+    // A `try` may carry several handlers, each opening at the `try`'s own
+    // indentation, so reading only the first would miss `} on Foo catch (e) {
+    // … } catch (_) {`, where the dangerous one is second.
+    for (var j = end; j < lines.length;) {
+      final handler = lines[j].trim();
+      if (handler == '}') break;
+      if (RegExp(r'^\}\s*catch\s*\(').hasMatch(handler) ||
+          RegExp(r'^\}\s*on\s+(Object|Error|StateError)\b').hasMatch(handler)) {
+        swallowing.add(handler);
+      }
+      // An empty handler body is written `{}` and closes on its own line, so
+      // the statement ends here and there is no terminating `}` to look for.
+      // Without this the scan runs on to the *next* `try` at the same
+      // indentation and reports its handler against this one.
+      if (handler.endsWith('{}')) break;
+      for (j++; j < lines.length && !closes.hasMatch(lines[j]); j++) {}
+    }
+  }
+  return swallowing;
+}
+
 /// The subset of [_exampleSources] that declares a `main`, i.e. is runnable.
 List<String> _examplePrograms() => _exampleSources()
     .where(
@@ -117,6 +171,74 @@ void main() {
 
     test('returns quietly when it does', () {
       expect(() => check(true, 'a held expectation'), returnsNormally);
+    });
+  });
+
+  group('A violated expectation fails the run', () {
+    // The two tests above call `check` in this isolate, which proves it throws
+    // and nothing more. What an example needs is a step further out: that a
+    // throw raised at a check site, in a `Future<void> main()`, spawned the way
+    // the header documents, reaches the *exit code*. Every intervening layer
+    // could swallow it — an unawaited future, a handler that catches too
+    // broadly — and none of that is visible from inside the isolate.
+    //
+    // Every real example passes, so none of them can answer this: a green
+    // example looks identical whether its checks are load-bearing or inert,
+    // which is exactly how the asserts survived. Only a program that fails on
+    // purpose settles it, so `test/fixtures/` holds the pair.
+    Future<ProcessResult> run(String fixture, {bool enableAsserts = false}) =>
+        Process.run(Platform.resolvedExecutable, [
+          'run',
+          if (enableAsserts) '--enable-asserts',
+          'test/fixtures/$fixture',
+        ]);
+
+    test('a failing check exits non-zero and stops the run', () async {
+      final result = await run('example_check_violation.dart');
+
+      expect(result.exitCode, isNot(0));
+      expect(
+        result.stderr,
+        contains('the fixture violates this expectation deliberately'),
+        reason:
+            'the expectation that failed is the whole message a reader gets',
+      );
+      // Non-zero alone would also be satisfied by a run that printed every
+      // later step and then failed on the way out, which is not what an
+      // expectation means: the step after the violation must not happen.
+      expect(result.stdout, contains('1. before the violated expectation'));
+      expect(result.stdout, isNot(contains('2. after the violated')));
+    });
+
+    test('the same expectation as an assert exits 0 under `dart run`', () async {
+      // The control, and the evidence for the reason `check` exists. Without
+      // it the helper's explanation is prose, and a helper whose justification
+      // nothing verifies is one a later reader may reasonably undo.
+      final result = await run('example_assert_violation.dart');
+
+      expect(
+        result.exitCode,
+        0,
+        reason: '`dart run` leaves assertions disabled',
+      );
+      expect(
+        result.stdout,
+        contains('2. after the violated expectation'),
+        reason: 'the run continues past an assertion that does not hold',
+      );
+    });
+
+    test('and does fail once assertions are switched on', () async {
+      // Which pins the difference to the flag rather than to anything else
+      // about the fixture — otherwise "exits 0" would be equally well explained
+      // by a fixture whose assertion is accidentally true.
+      final result = await run(
+        'example_assert_violation.dart',
+        enableAsserts: true,
+      );
+
+      expect(result.exitCode, isNot(0));
+      expect(result.stderr, contains('Failed assertion'));
     });
   });
 
@@ -161,6 +283,60 @@ void main() {
         isEmpty,
         reason: 'examples share example/_support/check.dart',
       );
+    });
+
+    test('none of them makes a check a handler would catch', () {
+      // `check` throws, so a check inside a `try` that catches broadly states
+      // its expectation and discards the answer — the same silence as an
+      // `assert`, in a spelling the ban above cannot see. Three examples
+      // already write the safe shape without being told to: they capture the
+      // throw into a local and check it *after* the block.
+      final offenders = <String>[
+        for (final source in _exampleSources())
+          for (final handler in _swallowingHandlers(
+            File(source).readAsStringSync(),
+          ))
+            '$source: $handler',
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'a check made here cannot fail the run',
+      );
+    });
+
+    test('and the handler scan tells the two shapes apart', () {
+      // Both scans it feeds are satisfied by a scanner that finds nothing, and
+      // this one has to draw a line rather than reject a keyword: four of the
+      // five checks made inside a `try` today are legitimate. So it is shown
+      // one of each.
+      const source = '''
+void main() {
+  try {
+    check(true, 'reraised by finally');
+  } finally {
+    cleanUp();
+  }
+  try {
+    check(true, 'a StateError is not an Exception');
+  } on TomServerException catch (e) {
+    print(e);
+  }
+  try {
+    check(true, 'swallowed');
+  } catch (_) {}
+  try {
+    check(true, 'swallowed by the second handler');
+  } on TomServerException catch (e) {
+    print(e);
+  } catch (_) {}
+  try {
+    somethingElse();
+  } catch (_) {}
+}
+''';
+
+      expect(_swallowingHandlers(source), ['} catch (_) {}', '} catch (_) {}']);
     });
 
     test('and the sweep is reading what it claims to', () {

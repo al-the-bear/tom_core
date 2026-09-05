@@ -161,16 +161,19 @@ when one does not hold. Deliberately not `assert`: `dart run` leaves assertions
 *disabled* — that is what its `--enable-asserts` flag is for — so an `assert`
 would compile out under the very command each example's header documents,
 leaving a sample that prints a plausible transcript and exits 0 with every
-expectation in it violated. That is not hypothetical, and it is cheap to
-confirm: a copy of any example carrying a deliberately false assertion exits 0
-under the documented command, and 255 under `--enable-asserts`.
+expectation in it violated. That is not a hypothetical and it is not left as
+prose: `test/fixtures/` holds two programs identical but for that one line, and
+`test/examples_test.dart` runs both — the `check` exits non-zero and stops
+before its next step, the `assert` exits **0** and runs to the end, and only
+`--enable-asserts` makes it fail.
 
 `test/examples_test.dart` holds the property for the set rather than per
 example, which is what makes it cover samples added later: it requires that no
 file under `example/` contains `assert(`, that none re-declares a local `check`,
-that the shared helper throws rather than narrating, and that every example
-program is either spawned by its module suite, spawned there, or excluded with
-a stated reason.
+that none makes a check inside a handler that would catch it — the same silence
+in a different spelling — that the shared helper throws rather than narrating,
+and that every example program is either spawned by its module suite, spawned
+there, or excluded with a stated reason.
 
 | Sample | Demonstrates |
 | ------ | ------------ |

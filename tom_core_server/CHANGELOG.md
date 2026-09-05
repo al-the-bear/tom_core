@@ -292,9 +292,12 @@
   flag is for — so each of those files executed every line, printed a plausible
   transcript, exited 0, and evaluated not one of its stated expectations. That
   is worse than having no checks, because it is indistinguishable from success
-  to everyone including the author, and it is cheap to confirm: a copy of any
-  example carrying a deliberately false assertion exits 0 under the documented
-  command and 255 under `--enable-asserts`.
+  to everyone including the author. That is not left as prose: `test/fixtures/`
+  holds two example-shaped programs identical but for the one line that states
+  their (deliberately violated) expectation, and the suite runs both under the
+  documented command. The one written as a `check` exits non-zero and stops
+  before its next step; the one written as an `assert` exits **0** and runs to
+  the end, and only `--enable-asserts` makes it fail.
   All 227 are now `check(bool, String)` calls that throw however the file is
   invoked, and each states a *named* expectation rather than echoing its
   condition back as text — the message a reader gets when an example breaks is
@@ -327,9 +330,19 @@
 
 - **`test/examples_test.dart` holds for the set of examples what no module
   suite can hold about its own.** It requires that no file under `example/`
-  contains `assert(`, that none re-declares a local `check`, and that the
-  shared helper *throws* rather than narrating — the last being the defect the
-  first two cannot see, since a `check` that merely printed would satisfy both.
+  contains `assert(`, that none re-declares a local `check`, that none makes a
+  check inside a handler that would catch it, and that the shared helper
+  *throws* rather than narrating — the last two being defects the first two
+  cannot see, since a `check` that merely printed, or one whose `StateError` is
+  taken by a bare `catch`, would satisfy both. The handler scan draws a line
+  rather than banning a keyword: four of the five checks made inside a `try`
+  today are legitimate (`finally` reraises, and a `StateError` is not an
+  `Exception`), so a fixture shows the scan one of each shape and pins which it
+  reports. Beyond the file properties, the suite settles end to end what none of
+  them can: that a throw raised at a check site, in a `Future<void> main()`
+  spawned the way every header documents, actually reaches the *exit code* —
+  every real example passes, so only a program that fails on purpose can answer
+  it.
   It also requires every example program to be accounted for: spawned by its
   module suite, spawned there, or excluded with a stated reason, checked by set
   equality against the directory. An example added later therefore fails the
