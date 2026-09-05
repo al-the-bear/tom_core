@@ -10,6 +10,7 @@ method, and converts the result (or any error) into a `Response`.
 
 - [Overview](#overview)
 - [Declaring an Endpoint](#declaring-an-endpoint)
+  - [Which Methods May Be Declared](#which-methods-may-be-declared)
   - [Declared Response Headers](#declared-response-headers)
 - [Resolving the Implementation Instance](#resolving-the-implementation-instance)
 - [The Request Pipeline](#the-request-pipeline)
@@ -103,6 +104,56 @@ endpoint declared centrally in the remote-API registry is bound with
 annotated `@TomApiImplementation(apiId: ...)`; the route details come from the
 registry and the annotation only carries implementation-side overrides
 (`errorHandler`, `logRequests`, CORS).
+
+### Which Methods May Be Declared
+
+`methods:` takes `TomHttpMethod` constants, and **nine of the ten are
+declarable**:
+
+| Constant | Mounted as |
+| -------- | ---------- |
+| `get` `post` `put` `patch` `delete` | the ordinary verbs |
+| `head` `connect` `trace` | the same way, with no special handling |
+| `all` | one registration answering every verb |
+
+**`TomHttpMethod.options` is the exception, and cannot be declared.** Preflight
+is not an endpoint's to serve: the pipeline registers `OPTIONS` on every route
+itself — ordinary routes and WebSocket handshakes alike — and answers it in
+`handleMethodCall` *before* access control, because a browser sends a preflight
+unauthenticated and reads a `401` as "this request is not allowed". A declared
+`OPTIONS` would be a second registration on a path that already has one, and
+`shelf_router` dispatches to the first match, so it could never be reached.
+Rather than mount something unreachable, the pipeline refuses at build time:
+
+```text
+endpoint_pipeline.initialize_router.invalid_http_method
+Endpoint method OPTIONS/true invalid for <method>-<class>
+```
+
+That is a `TomEndpointPipelineException` from `initializeRouter()`, so it aborts
+**startup** rather than one request — the whole route table is absent, not one
+route. To vary what a preflight answers, use the three CORS fields on the
+endpoint (`corsAllowedOrigins`, `corsAllowedMethods`, `corsAllowedHeaders`); to
+change it globally, the `globalSettingCors…Default` statics. Declaring an
+`OPTIONS` handler is not the way in.
+
+Two consequences that are easy to meet by accident:
+
+- **The constant is matched by identity, not by name.** `TomHttpMethod` has a
+  public constructor and defines no value equality, so a `TomHttpMethod('GET')`
+  built at runtime is a *different object* from `TomHttpMethod.get` and is
+  refused with the same `invalid_http_method` error — reporting `GET` as
+  invalid, which is not a sentence whose cause is easy to guess. Always name the
+  constant.
+- **A registry-declared endpoint obeys the same rule.** `TomApiEndpoint.method` /
+  `.methods` become `TomEndpoint.methods` in `convertToTomEndpoint`, so the
+  contract is not a way around the switch; an `OPTIONS` entry in the registry
+  fails the same build.
+
+`TomHttpMethod.all` needs no exemption. It mounts one registration matching
+every verb, `OPTIONS` included, and the automatic preflight registration that
+follows it is simply unreachable — both name the same handler, which answers a
+preflight before it does anything else.
 
 ### Declared Response Headers
 
@@ -631,8 +682,9 @@ reflected classes, mounts every endpoint method, and returns the shelf
 `Router`. The mounted handlers and a `TomEndpointRouteKey`→`TomEndpointRoutingInfo`
 map are kept statically for diagnostics. Conflicting annotations (a class with
 both `@tomService` and `@TomApiImplementation`, duplicate tags, a missing
-`@TomApiImplementation` for a registry endpoint, or an unsupported HTTP method)
-abort the build with `TomEndpointPipelineException`.
+`@TomApiImplementation` for a registry endpoint, or an
+[undeclarable HTTP method](#which-methods-may-be-declared)) abort the build with
+`TomEndpointPipelineException`.
 
 "Scans the reflected classes" is a precondition, not a description: the scan
 resolves annotations through class mirrors, so your package's generated

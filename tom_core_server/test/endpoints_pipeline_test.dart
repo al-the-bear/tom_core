@@ -696,6 +696,108 @@ void main() {
     });
   });
 
+  // Which `TomHttpMethod` constants may appear in `methods:` is decided by one
+  // switch, and `doc/endpoints.md` now states the answer to a reader. A switch
+  // grows a case far more readily than a document grows a sentence, so the set
+  // is pinned here rather than left to prose: adding `options` to the switch, or
+  // dropping `connect` from it, fails a test instead of quietly making the
+  // document wrong.
+  //
+  // `createRoutesForEndpoint` is called directly rather than through
+  // `initializeRouter`. The obvious alternative — a fixture service declaring
+  // `methods: [TomHttpMethod.options]` — would be scanned by every other group's
+  // `initializeRouter()` in this file and fail all of them, which is a
+  // file-wide cost for one negative case.
+  group('the HTTP methods an endpoint may declare', () {
+    late TomEndpointHandler handler;
+    late ClassMirror serviceMirror;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomEndpointRouting.routingInfo.clear();
+      TomEndpointRouting().initializeRouter();
+      // Any mounted endpoint will do. The switch reads `tep.methods`; the
+      // handler and the mirror are only what serves the route and what names the
+      // failure, so borrowing a real pair keeps the test to its one variable.
+      handler = _routeInfo('/fixture/health').handler;
+      serviceMirror = tomReflector.reflectType(FixtureApiServer) as ClassMirror;
+    });
+
+    tearDown(() {
+      // `createRoutesForEndpoint` writes both statics, and `/probe` is not a
+      // route any other group should be able to find.
+      TomEndpointRouting.routingInfo.clear();
+      TomEndpointRouting.handlers.clear();
+      TomBean.resetBeanContext();
+    });
+
+    /// Mounts `/probe` for [method] on a throwaway router.
+    ///
+    /// A fresh `Router` per call, so mounting the same path repeatedly is not
+    /// itself the thing under test.
+    void mount(TomHttpMethod method) =>
+        TomEndpointRouting().createRoutesForEndpoint(
+          TomEndpoint(uri: '/probe', methods: [method]),
+          Router(),
+          handler,
+          handler.metadata,
+          serviceMirror,
+        );
+
+    /// What an undeclarable method fails the build with.
+    final invalidMethod = throwsA(
+      isA<TomEndpointPipelineException>().having(
+        (e) => e.key,
+        'key',
+        'endpoint_pipeline.initialize_router.invalid_http_method',
+      ),
+    );
+
+    test('the nine declarable constants all mount', () {
+      for (final method in const [
+        TomHttpMethod.get,
+        TomHttpMethod.post,
+        TomHttpMethod.put,
+        TomHttpMethod.patch,
+        TomHttpMethod.delete,
+        TomHttpMethod.head,
+        TomHttpMethod.connect,
+        TomHttpMethod.trace,
+        TomHttpMethod.all,
+      ]) {
+        expect(
+          () => mount(method),
+          returnsNormally,
+          reason: '${method.name} is declarable',
+        );
+      }
+    });
+
+    test('OPTIONS is the one constant that cannot be declared', () {
+      // Not an oversight. The pipeline mounts OPTIONS on every route itself so
+      // that preflight is answered uniformly; a declared one would be a second
+      // registration on the same path, and shelf dispatches to the first match,
+      // so it could never be reached.
+      expect(() => mount(TomHttpMethod.options), invalidMethod);
+    });
+
+    test('a method built at runtime is not one of the nine', () {
+      // `TomHttpMethod` has a public constructor and no value equality, so a
+      // constant pattern matches by identity. `TomHttpMethod.get` is canonical;
+      // an equally-named instance built at runtime is a different object and
+      // falls through to the throw.
+      //
+      // Worth pinning because of how the failure reads: "Endpoint method
+      // GET/true invalid" is not a sentence whose cause anyone would go looking
+      // for, and the fix is to use the constant rather than to change the verb.
+      final rebuiltGet = TomHttpMethod(TomHttpMethod.get.name);
+      expect(() => mount(rebuiltGet), invalidMethod);
+    });
+  });
+
   // An endpoint may declare headers the server adds to every response. There
   // are two ways to declare them — inline on `@TomEndpoint`, or on the registry
   // contract — and a contract states the two *directions* separately:
