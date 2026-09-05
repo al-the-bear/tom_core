@@ -184,7 +184,10 @@ class ProbeCacheStoreCommand extends TomCommand {
   Future<Object?> execute() async {
     if (TomWorker.isMainIsolate) return 'not-a-worker';
     try {
-      return 'stored:${await TomCache.toNameCache(cacheName, 'k', 'from-worker')}';
+      await TomCache.toNameCache(cacheName, 'k', 'from-worker');
+      // A constant, because the store reports nothing but completion. What is
+      // under test is which of the three branches below the crossing took.
+      return 'stored';
     } on TomCacheException catch (e) {
       return 'failed:${e.key} client=${e.clientThrow}';
     } catch (e) {
@@ -215,7 +218,8 @@ class ProbeCacheStoreNullCommand extends TomCommand {
     if (TomWorker.isMainIsolate) return 'not-a-worker';
     final dynamic store = TomCache.toNameCache;
     try {
-      return 'stored:${await store(cacheName, 'k', null)}';
+      await store(cacheName, 'k', null);
+      return 'stored';
     } on TypeError {
       return 'refused';
     } on TomCacheException catch (e) {
@@ -243,13 +247,8 @@ class ProbeCacheStoreWithExpiryCommand extends TomCommand {
   Future<Object?> execute() async {
     if (TomWorker.isMainIsolate) return 'not-a-worker';
     try {
-      final result = await TomCache.toNameCache(
-        cacheName,
-        'k',
-        'from-worker',
-        deletionTime,
-      );
-      return 'stored:$result';
+      await TomCache.toNameCache(cacheName, 'k', 'from-worker', deletionTime);
+      return 'stored';
     } on TomCacheException catch (e) {
       return 'failed:${e.key} client=${e.clientThrow}';
     } catch (e) {
@@ -268,7 +267,8 @@ class ProbeCacheRemoveCommand extends TomCommand {
   Future<Object?> execute() async {
     if (TomWorker.isMainIsolate) return 'not-a-worker';
     try {
-      return 'removed:${await TomCache.removeFromNameCache(cacheName, 'k')}';
+      await TomCache.removeFromNameCache(cacheName, 'k');
+      return 'removed';
     } on TomCacheException catch (e) {
       return 'failed:${e.key} client=${e.clientThrow}';
     } catch (e) {
@@ -411,6 +411,24 @@ void main() {
       expect(await TomCache.fromTypeCache<int>('k'), 7);
       await TomCache.removeFromTypeCache<int>('k');
       expect(await TomCache.fromTypeCache<int>('k'), isNull);
+    });
+
+    test('the mutators report completion and nothing else', () async {
+      // The calls below differ in outcome — inserted, replaced, removed a
+      // present key, removed an absent one — and the API distinguishes none of
+      // them, by design: a store or a removal either happens or throws, so
+      // completion is the whole answer and there is nothing to branch on.
+      //
+      // Removing an absent key earns its line: it is the one case a reader
+      // might expect to be an error, and it is not.
+      TomCacheManager.addCache(_cache('c'));
+      TomCacheManager.addCache(_cache('String'));
+      await expectLater(TomCache.toNameCache('c', 'k', 'v'), completes);
+      await expectLater(TomCache.toNameCache('c', 'k', 'w'), completes);
+      await expectLater(TomCache.removeFromNameCache('c', 'k'), completes);
+      await expectLater(TomCache.removeFromNameCache('c', 'k'), completes);
+      await expectLater(TomCache.toTypeCache<String>('k', 'v'), completes);
+      await expectLater(TomCache.removeFromTypeCache<String>('k'), completes);
     });
   });
 
@@ -884,7 +902,7 @@ void main() {
             .executeCommand(ProbeCacheStoreCommand('shared'))
             .timeout(const Duration(seconds: 10));
 
-        expect(answer, 'stored:0');
+        expect(answer, 'stored');
         expect(
           await TomCache.fromNameCache<String>('shared', 'k'),
           'from-worker',
@@ -909,7 +927,7 @@ void main() {
           .executeCommand(ProbeCacheStoreWithExpiryCommand('shared', asked))
           .timeout(const Duration(seconds: 10));
 
-      expect(answer, 'stored:0');
+      expect(answer, 'stored');
       expect(cache.getEntry('k')!.deletionTime, asked);
     });
 
@@ -927,7 +945,7 @@ void main() {
             .executeCommand(ProbeCacheStoreWithExpiryCommand('shared', past))
             .timeout(const Duration(seconds: 10));
 
-        expect(answer, 'stored:0');
+        expect(answer, 'stored');
         expect(await TomCache.fromNameCache<String>('shared', 'k'), isNull);
       },
     );
@@ -961,7 +979,7 @@ void main() {
             .executeCommand(ProbeCacheRemoveCommand('shared'))
             .timeout(const Duration(seconds: 10));
 
-        expect(answer, 'removed:0');
+        expect(answer, 'removed');
         expect(await TomCache.fromNameCache<String>('shared', 'k'), isNull);
       },
     );
@@ -1693,20 +1711,6 @@ void main() {
       expect(await TomCache.fromNameCache<int>('unbounded', 'k4999'), 4999);
       // And it is not merely unswept-yet — it carries no expiry to sweep.
       expect(cache.getEntry('k0')!.deletionTime, isNull);
-    });
-
-    test('the mutators answer 0 whatever they did', () async {
-      // Each pair below differs in outcome and agrees in result, which is the
-      // whole of the claim: the `int` is a uniform shape, not a count. Making
-      // it meaningful — or narrowing it to `void`/`bool` — fails here.
-      TomCacheManager.addCache(_cache('c'));
-      TomCacheManager.addCache(_cache('String'));
-      expect(await TomCache.toNameCache('c', 'k', 'v'), 0); // inserted
-      expect(await TomCache.toNameCache('c', 'k', 'w'), 0); // replaced
-      expect(await TomCache.removeFromNameCache('c', 'k'), 0); // removed one
-      expect(await TomCache.removeFromNameCache('c', 'k'), 0); // removed none
-      expect(await TomCache.toTypeCache<String>('k', 'v'), 0);
-      expect(await TomCache.removeFromTypeCache<String>('k'), 0);
     });
 
     test('setCurrent leaves the discarded caches sweeping', () {

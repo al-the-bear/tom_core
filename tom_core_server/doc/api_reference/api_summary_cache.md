@@ -195,10 +195,10 @@ factory TomCache.forType(
 | ------ | --------- | ----------- |
 | `fromTypeCache` | `static Future<T?> fromTypeCache<T>(String key)` | Reads the value of type `T` keyed by `key` from the cache named after `T`. |
 | `fromNameCache` | `static Future<T?> fromNameCache<T>(String cacheName, String key)` | Reads the value keyed by `key` from cache `cacheName`; returns `null` on a miss or expiry, and an expired entry is removed in passing; throws `TomCacheException` on type mismatch or missing cache, and forwards from a worker isolate — with the same answers on the forwarded path as on the local one. |
-| `toTypeCache` | `static Future<int> toTypeCache<T>(String key, Object? value)` | Stores `value` under `key` in the cache named after `T`. |
-| `toNameCache` | `static Future<int> toNameCache(String cacheName, String key, Object? value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`; a `value` that is already a `TomCacheEntry` is stored verbatim and keeps its own `deletionTime` instead, linked into the LRU chain like any other entry. Always returns `0`. |
-| `removeFromTypeCache` | `static Future<int> removeFromTypeCache<T>(String key)` | Removes the entry keyed by `key` from the cache named after `T`. |
-| `removeFromNameCache` | `static Future<int> removeFromNameCache(String cacheName, String key)` | Removes the entry keyed by `key` from cache `cacheName`; forwards from a worker isolate; always returns `0`. |
+| `toTypeCache` | `static Future<void> toTypeCache<T>(String key, Object value)` | Stores `value` under `key` in the cache named after `T`. |
+| `toNameCache` | `static Future<void> toNameCache(String cacheName, String key, Object value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`; a `value` that is already a `TomCacheEntry` is stored verbatim and keeps its own `deletionTime` instead, linked into the LRU chain like any other entry. `value` is non-nullable: a `null` is refused, being what a miss already answers. |
+| `removeFromTypeCache` | `static Future<void> removeFromTypeCache<T>(String key)` | Removes the entry keyed by `key` from the cache named after `T`. |
+| `removeFromNameCache` | `static Future<void> removeFromNameCache(String cacheName, String key)` | Removes the entry keyed by `key` from cache `cacheName`; forwards from a worker isolate. Removing an absent key is not an error. |
 
 #### Properties
 

@@ -304,10 +304,12 @@ the per-entry form of the black hole the constructor refuses under
 every read misses. A caller holding a nullable value decides what absence means
 to it: skip the store, or store a sentinel of its own that a read can hand back.
 
-The three mutators return `Future<int>` and **always answer `0`**. It is a
-uniform result shape, not a count: it does not distinguish an insert from a
-replacement, or a removal from a no-op. Do not branch on it; see
-[Not Yet Implemented](#not-yet-implemented).
+The four mutators — `toNameCache`, `toTypeCache`, `removeFromNameCache` and
+`removeFromTypeCache` — return `Future<void>`. The future carries completion and
+failure, and nothing else: a store or a removal either happens or throws, so an
+insert is not distinguished from a replacement, nor a removal from a no-op. A
+caller that needs to know which it was reads first, which is a second operation
+and — from a worker isolate — a second round trip.
 
 A value that *is already* a `TomCacheEntry` is stored verbatim, so it keeps its
 own `deletionTime` and the cache's `deleteEntriesAfterSeconds` does not apply to
@@ -486,12 +488,6 @@ local one.
   compiled templates, resolved configuration — and a leak when the key is a user
   id or a request parameter. Nothing in the API distinguishes the two, so the
   choice is the caller's to make deliberately.
-- **The mutators always answer `0`.** `toNameCache`, `toTypeCache`,
-  `removeFromNameCache` and `removeFromTypeCache` return `Future<int>` and the
-  `int` is a uniform result shape, not a count: it cannot tell an insert from a
-  replacement, or a removal from a no-op. A caller that needs to know reads
-  first, which is a second operation and — from a worker isolate — a second
-  round trip.
 - **Cross-isolate forwarding is one round trip per operation.** Each helper
   issues its own `executeInCreator` call with a single-operation command. There
   is no batch form and no worker-side read-through copy, so a handler resolving
@@ -505,11 +501,11 @@ local one.
   registration, and it is the leaky one. Call `stopTimers()` on a cache you are
   finished with.
 
-All but the fourth are pinned by tests in `test/cache_test.dart` — the second,
-third and the timer half of the last in the group "The limits the documentation
-records", the first in "getEntry (direct)" — so closing one of them turns a test
-red rather than leaving this section quietly wrong. The fourth is a cost rather
-than an outcome, and pinning it would mean asserting a shape.
+All but the third are pinned by tests in `test/cache_test.dart` — the second and
+the timer half of the last in the group "The limits the documentation records",
+the first in "getEntry (direct)" — so closing one of them turns a test red
+rather than leaving this section quietly wrong. The third is a cost rather than
+an outcome, and pinning it would mean asserting a shape.
 
 ## Verification
 

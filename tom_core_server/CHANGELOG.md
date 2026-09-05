@@ -209,6 +209,37 @@
 
 ### Changed
 
+- **The four `TomCache` mutators return `Future<void>` (tcincb4_ahwl).**
+  `toNameCache`, `toTypeCache`, `removeFromNameCache` and `removeFromTypeCache`
+  were each declared `Future<int>` and each ended with `return 0` on every path.
+  Two of them spent a dartdoc sentence saying so, as did two rows of
+  `doc/api_reference/api_summary_cache.md` and two passages of `doc/cache.md`;
+  the other two inherited the meaningless type without documenting it, which is
+  worse, since a reader had to go and find out that the value said nothing.
+
+  A store or a removal either happens or throws, so completion and failure are
+  the whole answer and the futures now carry only those. An insert is still not
+  distinguished from a replacement, nor a removal of a present key from a
+  removal of an absent one — that is the contract rather than a gap, so
+  `doc/cache.md` states it where the mutators are described instead of listing
+  it under "Not Yet Implemented", and the test that pins it moved out of "The
+  limits the documentation records" into the store/read/remove group beside the
+  other contract tests.
+
+  The executor-chain caveat recorded for the same change in `authorization`
+  (tcinc393) does not arise here. The cross-isolate commands
+  `TomCacheStoreMessage` and `TomCacheRemoveMessage` are `TomCommand`s that
+  `await` the mutator and `return true` of their own, so the `0` never reached
+  the transport and what the command settles to is independent of the mutator's
+  return type; `TomExecutor.noResult` appears in the module on the read path
+  only. The existing round-trip tests against a real spawned `TomWorker` already
+  exercise the crossing, so no new pin was added.
+
+  The API summary rows also lost a second, unrelated drift in passing:
+  `toNameCache` and `toTypeCache` were written there as taking `Object? value`,
+  where the code has taken a non-nullable `Object` since a `null` stopped being
+  a storable value.
+
 - **Claiming a run is a compare-and-set, and every transition out of it is
   fenced on the claim (tcincb2_ahtl).** `tom_job_run` gains `claim_token BIGINT
   NOT NULL DEFAULT 0`, the queue's counterpart of `token` on the lease table:

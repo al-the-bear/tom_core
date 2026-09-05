@@ -576,7 +576,7 @@ class TomCache {
   }
 
   /// Stores [value] under [key] in the cache named after [T]. See [toNameCache].
-  static Future<int> toTypeCache<T>(String key, Object value) {
+  static Future<void> toTypeCache<T>(String key, Object value) {
     return toNameCache(T.toString(), key, value);
   }
 
@@ -588,7 +588,11 @@ class TomCache {
   /// `deletionTime` is kept), linking it into the LRU chain like any other
   /// entry. In a worker isolate that does not hold the cache the store is
   /// forwarded to the main isolate;
-  /// otherwise a missing cache throws [TomCacheException]. Always returns `0`.
+  /// otherwise a missing cache throws [TomCacheException].
+  ///
+  /// The future carries only completion and failure: there is no count or
+  /// status to report, since a store either happens or throws. An insert and a
+  /// replacement are not distinguished, and neither is reported.
   ///
   /// A forwarded store that fails on the main isolate throws here too. A write
   /// that reports success while the value went nowhere is the worst of the
@@ -603,7 +607,7 @@ class TomCache {
   /// slot and counting against a bounded cache's bound. A caller with a
   /// nullable value must decide what absence means to it — skip the store, or
   /// store a sentinel of its own that a read can hand back.
-  static Future<int> toNameCache(
+  static Future<void> toNameCache(
     String cacheName,
     String key,
     Object value, [
@@ -634,12 +638,11 @@ class TomCache {
         "No cache with name $cacheName found.",
       );
     }
-    return 0;
   }
 
   /// Removes the entry keyed by [key] from the cache named after [T]. See
   /// [removeFromNameCache].
-  static Future<int> removeFromTypeCache<T>(String key) {
+  static Future<void> removeFromTypeCache<T>(String key) {
     return removeFromNameCache(T.toString(), key);
   }
 
@@ -648,8 +651,12 @@ class TomCache {
   /// In a worker isolate that does not hold the cache the removal is forwarded
   /// to the main isolate; otherwise a missing cache throws [TomCacheException].
   /// A forwarded removal that fails on the main isolate throws here too.
-  /// Always returns `0`.
-  static Future<int> removeFromNameCache(String cacheName, String key) async {
+  ///
+  /// The future carries only completion and failure: there is no count or
+  /// status to report, since a removal either happens or throws. Removing a key
+  /// the cache does not hold is not an error and is indistinguishable from
+  /// removing one it does.
+  static Future<void> removeFromNameCache(String cacheName, String key) async {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       cache.removeEntry(key);
@@ -661,7 +668,6 @@ class TomCache {
         "No cache with name $cacheName found.",
       );
     }
-    return 0;
   }
 }
 
