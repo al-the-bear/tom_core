@@ -4,6 +4,3 @@ build/
 pubspec.lock
 .flutter-plugins
 .flutter-plugins-dependencies
-
-# Reflection generator analyzer-summary cache
-.tom/

@@ -3,6 +3,3 @@
 build/
 pubspec.lock
 .env
-
-# Reflection generator analyzer-summary cache
-.tom/

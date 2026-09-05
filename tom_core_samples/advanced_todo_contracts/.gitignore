@@ -1,6 +1,3 @@
 # Dart / pub
 .dart_tool/
 pubspec.lock
-
-# Reflection generator analyzer-summary cache
-.tom/
