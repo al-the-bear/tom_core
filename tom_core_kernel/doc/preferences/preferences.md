@@ -786,6 +786,8 @@ its registry.
 This module depends on:
 
 - **HTTP Connection Module**: `TomApi`, `TomApiEndpoint`, the API registry
+- `dart:convert`: `jsonEncode` / `jsonDecode` in `user_preference_codec.dart`, which is how a preference value crosses the store boundary as text
+- `package:tom_reflection`: `tomReflector`, `Reflection` and `ClassMirror`, imported directly by `user_preference_codec.dart` — the kernel's Reflection Module defines its own types *on* that package rather than re-exporting it, so a caller of the mirrors needs both
 - **Reflection Module**: `@tomReflector` and the JSON conversion path
 - **Security Module**: `TomAuthenticatedAccess` for the endpoint access policy
 - **Little Things Module**: `TomException`, the base of the codec's exception

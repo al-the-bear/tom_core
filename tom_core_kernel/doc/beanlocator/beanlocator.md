@@ -719,5 +719,6 @@ void main() {
 This module depends on:
 
 - [**Runtime System**](../../../../basics/tom_basics/doc/runtime/runtime.md) (`tom_basics`): `TomEnvironment` and `TomPlatform` for environment and platform-specific bean selection
+- `package:tom_reflection`: `tomReflector` and `ClassMirror`, imported directly by `bean_locator.dart` — the kernel's Reflection Module below defines its own types *on* that package rather than re-exporting it, so a caller of the mirrors needs both
 - [**Reflection Module**](../reflection/reflection.md): For bean discovery and instantiation via reflection
 - [**Little Things Module**](../little_things/little_things.md): `TomException`, the base of `TomBeanLocatorException`

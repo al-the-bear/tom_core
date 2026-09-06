@@ -28,8 +28,6 @@
 /// ```
 library;
 
-import 'dart:core';
-
 import 'package:tom_basics/tom_basics.dart';
 import 'package:tom_reflection/tom_reflection.dart';
 

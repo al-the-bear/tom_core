@@ -22,6 +22,8 @@ The `little_things` module provides a collection of small but essential utilitie
 | `exception_base.dart` | Base exception class with UUID tracking and logging |
 | `little_things.dart` | Zone utilities and stack trace processing |
 | `formatting.dart` | Data formatting helpers — UTC-offset rendering, bounded to the ±14:00 range real zones use |
+| `atomic_file.dart` | Write-to-staging-file-then-rename, so a reader never sees a half-written file |
+| `file_mutex.dart` | A lock-file mutex across isolates and processes, used where `dart:io`'s own advisory locks cannot help |
 
 ## Quick Start
 
@@ -469,6 +471,8 @@ This module depends on:
 | Dependency | Imported by | For |
 | ---------- | ----------- | --- |
 | `dart:async` | `little_things.dart` | `Zone`, behind both zone accessors |
+| `dart:io` | `atomic_file.dart`, `file_mutex.dart` | `File` — the staging file `atomic_file.dart` renames over its target, and the lock file `file_mutex.dart` creates and removes. These two helpers are the module's non-neutral corner: they do not load on web, while everything else here does. They are not the package's only one — `logging`, `scheduling` and `shutdown_cleanup` import `dart:io` as well |
+| `dart:math` | `atomic_file.dart` | `Random.secure()` for the staging file's name suffix, which is paired with the pid so two writers racing on one path cannot choose the same scratch name |
 | `package:stack_trace` | `little_things.dart` | `Chain.forTrace(...).foldFrames(...)` — flattening an async trace and folding out framework noise |
 | `package:tom_basics` | `little_things.dart`, `exception_base.dart` | `TomBaseException` (the superclass of `TomException`), `TomLoggable` (which it implements), and `tomLog` for `autoLog` and `tomPrintStackTrace` |
 | **HTTP Connection Module** | `exception_base.dart` | `TomServerCallError`, the type of `TomException`'s optional `serverCallError` field |
