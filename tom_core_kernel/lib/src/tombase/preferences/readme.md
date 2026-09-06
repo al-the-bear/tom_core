@@ -18,6 +18,8 @@ agree on, in the one package they both already depend on.
 | `TomUserPreferenceDto` | One preference on the wire: key, value type, JSON value, `updatedAt` |
 | `TomUserPreferenceWriteRequest` / `TomUserPreferenceKeyRequest` | The typed request DTOs |
 | `TomUserPreferenceCodec` | Encodes/decodes scalars and reflected objects; refuses a type-mismatched read |
+| `TomUserPreferenceCodecException` | What that refusal raises — e.g. `preferences.encode.not_json` for a value with no JSON form, where a substitute would be a different value read back as if it were the one stored |
+| `TomUserPreferencesApiService` | The typed service interface behind the API. It carries no server annotations, because `@tomComponent` and `@TomApiEndpointImplementation` live in `tom_core_server` and cannot be named here — the same split every framework contract follows |
 | `tomUserPreferencesApi` | The `TomApi`: `GET`/`PUT`/`DELETE` under `/preferences`, all `TomAuthenticatedAccess` |
 
 ## Quick start

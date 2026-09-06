@@ -14,6 +14,7 @@ development. The provider feeds the labels/hints used by the forms and UI layers
 | ---- | -------------- |
 | `TomTextResourceProvider` | Resolves text resources; `from(map)` / `load(loader)` construct it, `getText` / `getTextOrNull` look up. |
 | `TomConfigResourceProvider` | Same resolution model applied to configuration values. |
+| `TomResourceException` | Raised when a provider is read before one is installed (`resources.text_provider.not_installed`) — a bootstrap bug reported at the first read rather than by rendering the whole UI in raw keys. |
 
 The app-wide provider is installed once via
 `TomTextResourceProvider.setAppResourceProvider(...)`.

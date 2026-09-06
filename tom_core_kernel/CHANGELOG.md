@@ -9,6 +9,39 @@ anyone who was writing them.
 
 ### Changed
 
+- **Six module readmes presented incomplete Key-types tables as inventories;
+  all sixteen now cover their module's full exported surface (tcincb26).**
+  `security` was missing 23 of 47 names, `observable` 14 of 33,
+  `http_connection` 10 of 35, `preferences` 2 of 8, and `resources` and
+  `scope_ids` one apiece. A reader takes that table for the module's reference
+  surface, so an omission is not a thin document but a wrong one.
+
+  All six were **completed** rather than relabelled. The alternative — saying
+  the table is a selection — was the honest branch only if the rows were
+  unreadable in bulk, and they were not: the absences fall into families that
+  compress. `security` gained eleven rows plus a *Second factor* and an
+  *External identity* section; `observable`'s five nullable cells, six
+  timezone-aware cells and three ranges became four rows.
+
+  `observable` also had the subtler form of the same defect. Its table read
+  `TomNString / TomNInt / TomND…`, which names two of five and leaves a reader
+  unable to tell whether the cell they want exists — an ellipsis satisfies a
+  reader and no check. The families are spelled out.
+
+- **`test/module_readme_surface_test.dart`**, which holds every module readme to
+  the surface its module exports. The class has now been swept by hand three
+  times, and `dart analyze` reports none of it. The surface is read from the
+  **package barrel** rather than the module directory — a file that exists but
+  is not exported is not public, and demanding a readme document it would be
+  wrong. A name counts only as a whole word inside an inline code span, because
+  a substring search passes vacuously and an ellipsis is what hid part of this
+  drift.
+
+  `scheduling` is the one module the barrel exports with no readme at all — 35
+  types across 6 files. It is listed in `_withoutReadme` with its reason, and
+  the test fails if it gains a readme without being removed from that list, so
+  the exemption cannot outlive the gap. Tracked as tcfinal1.
+
 - **`printStackTrace`'s runtime type guard is gone; the field it defended
   against is now `StackTrace?` (tcincb25).** `TomException.printStackTrace`
   narrowed with `raw is StackTrace ? raw : StackTrace.empty` for one reason: the

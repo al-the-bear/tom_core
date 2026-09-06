@@ -21,6 +21,35 @@ an element is hidden, locked, read-only, or fully editable.
 | `TomGroup` / `TomRole` / `TomEntitlement` | Authorization subjects a user can hold. |
 | `TomBearerAuthentication` | Bearer-token authentication. |
 | `TomAuthenticationMessage` / `TomAuthenticationResult` | Authentication request/response payloads. |
+| `TomAuthorizationGroup` / `AuthGroupMode` | Collective authorization: widgets register with a group, and the mode decides how the group's state applies to its members. |
+| `TomAuthorizerStrategy` | How a `TomAuthorizer`'s verdict combines with resource authorization rather than replacing it. |
+| `TomUIStateController` | The last layer of the resolution: given the combined authorization state, it returns the final UI state. Build-time, and narrowing only. |
+| `TomAuthorizable` | Implemented by anything that carries authorization and can be asked for its state. |
+| `TomAccessControlHandler` | The function signature a `TomCustomAccess` rule supplies. |
+| `TomAccessControlInformation` / `TomAccessControlDefinition` | The ACI a principal carries, and the entitlement/role definitions it is resolved against — both populated from your authorization store at login. |
+| `TomResourceKeyProtection` | The global switches for resource-key protection. Several are declared but read by nothing yet; each says so on its own declaration, so do not rely on one until it does. |
+| `TomGuestAccess` | The rule for endpoints reachable by anyone, authenticated or not. |
+| `TomServerPrincipal` | The process's own identity, installed from a service token. `isConfigured` answers which regime is in force — unconfigured is the designed default, not a failure. |
+| `TomClientLimitsInformation` | Per-client limits, travelling in the **public** half of the JWT. |
+
+### Second factor
+
+| Type | Responsibility |
+| ---- | -------------- |
+| `Tom2FAChallenge` | A second-factor challenge awaiting an answer. |
+| `Tom2FAClaims` / `Tom2FAEnrolmentClaims` | The claim names a pending challenge and a pending enrolment travel under in a token. |
+| `Tom2FAMethodDescriptor` | One available mechanism — produced by the server's registry, consumed by a client choosing between them. |
+| `Tom2FAPendingEnrolment` | An enrolment mid-confirmation: the mechanism and the client data needed to set it up (for TOTP, the `otpauth://` URI and the base32 secret). |
+| `TomTotp` | The TOTP primitive itself, shared so the tiers that must agree about a code cannot disagree. |
+
+### External identity (OAuth)
+
+| Type | Responsibility |
+| ---- | -------------- |
+| `TomOAuthApiService` | The typed service interface behind `tomOAuthApi`, carrying no server annotations for the same reason every framework contract does not. |
+| `TomOAuthProviderDto` | One configured external provider, as offered to a client. |
+| `TomOAuthAuthorizationRequest` / `TomOAuthAuthorizationDto` | Starting an external authorization, and what comes back. |
+| `TomOAuthCallbackRequest` | The provider's callback, handed back to the server to complete. |
 
 ## Quick start
 
