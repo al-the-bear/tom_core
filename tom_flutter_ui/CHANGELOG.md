@@ -454,6 +454,14 @@
   because `TomClass._setListMember` type-checks the entire payload before
   clearing anything, precisely so a reset that starts, finishes.
 
+  The regression test asserts the whole observed sequence — `[3]` after a row
+  is removed and the list discarded — rather than merely that `0` is absent
+  from it. Withholding the transient notifications and then never sending the
+  real one leaves the detail pane just as blank, and an assertion that only
+  forbids the wrong length is satisfied by an observer that heard nothing at
+  all. It exercises a removal before the discard for the same reason: a
+  discard on an untouched list restores rows that never left.
+
 - **`tom_observable_state_management.md` Part 5 pointed at a directory deleted
   two refactors ago.** The part header gave its source as
   `lib/src/tomclient/observing/ and lib/src/tomclient/forms/` under

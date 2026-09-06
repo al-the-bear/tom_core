@@ -411,8 +411,8 @@ void main() {
       expect(notifications, greaterThan(0));
     });
 
-    test('a structural reset never reports a length the list is only '
-        'transiently at', () {
+    test('a structural reset notifies exactly once, at the restored '
+        'length', () {
       // `TomList.resetWith` is documented as atomic, and observers of the
       // list form are entitled to the same guarantee: the sub-forms are torn
       // down and rebuilt between `onBeforeClear` and `onAfterReset`, and the
@@ -425,8 +425,15 @@ void main() {
       // it drops the selection, and the detail pane goes blank and stays
       // blank: the rebuilt rows arrive, but nothing restores the selection.
       // That is what "Discard all" on a root form looked like from the UI.
+      //
+      // The assertion is the exact sequence, not merely the absence of a
+      // zero, because both halves can fail and only one of them is about a
+      // wrong value. Withholding the transient notifications and then never
+      // sending the real one leaves the detail pane just as blank — and an
+      // `isNot(contains(0))` on the resulting empty list passes.
       final order = orderWith(['Bolt', 'Nut', 'Washer']);
       final list = OrderItemListForm()..bind(order.items);
+      list.removeAt(0);
 
       final observedLengths = <int>[];
       list >> (_) => observedLengths.add(list.length);
@@ -435,12 +442,12 @@ void main() {
 
       expect(
         observedLengths,
-        isNot(contains(0)),
+        [3],
         reason:
-            'the list held three rows before the reset and three after, '
-            'so no observer may be told it held none. Notifications raised '
-            'while the sub-forms are being rebuilt have to be withheld until '
-            'the structure is whole again.',
+            'the reset restores all three rows, so an observer is owed one '
+            'notification reporting three. More than one means the '
+            'half-built states escaped; none means the rebuild was silent '
+            'and nothing downstream will re-read the list.',
       );
     });
   });
