@@ -1,4 +1,3 @@
-// ignore_for_file: unused_local_variable
 /// Timezoned Serialization Example
 ///
 /// This example demonstrates serialization and parsing of TomTimezoned types:
@@ -205,34 +204,61 @@ class SerializationExample {
   static void example7TypeDetection() {
     print('\n7. Detecting type from string:');
 
-    final testStrings = [
-      '@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo',
-      '@D@2024-12-25T05:00:00.000Z_-05:00_America/New_York',
+    /// The type a serialized string denotes, decided by asking the four
+    /// predicates rather than by re-reading the prefix they exist to hide.
+    String detect(String s) {
+      final answers = {
+        'TomZonedDateTime': TomZonedDateTime.isTomZonedDateTimeString(s),
+        'TomZonedDate': TomZonedDate.isTomZonedDateString(s),
+        'TomZonedTime': TomZonedTime.isTomZonedTimeString(s),
+        'TomTimezoned (no prefix)': TomTimezoned.isTomTimezonedString(s),
+      };
+      final matched = answers.entries.where((e) => e.value).toList();
+      // At most one may answer: that mutual exclusivity is the property that
+      // makes the predicates usable as a discriminator at all, so it is
+      // asserted here rather than assumed by taking the first match.
+      assert(matched.length <= 1, 'At most one predicate may claim "$s"');
+      return matched.isEmpty ? 'unknown' : matched.single.key;
+    }
+
+    const cases = <String, String>{
+      '@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo': 'TomZonedDateTime',
+      '@D@2024-12-25T05:00:00.000Z_-05:00_America/New_York': 'TomZonedDate',
       // 08:30Z / +01:00: the epoch-date London offset (BST experiment), the
       // same valid serialization parsed in example 6.
-      '@T@1970-01-01T08:30:00.000Z_+01:00_Europe/London',
-      '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo', // No prefix
-    ];
+      '@T@1970-01-01T08:30:00.000Z_+01:00_Europe/London': 'TomZonedTime',
+      '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo': 'TomTimezoned (no prefix)',
+      'not-a-timezoned-string': 'unknown',
+      '': 'unknown',
+    };
 
-    for (final str in testStrings) {
-      final isDateTime = TomZonedDateTime.isTomZonedDateTimeString(str);
-      final isDate = TomZonedDate.isTomZonedDateString(str);
-      final isTime = TomZonedTime.isTomZonedTimeString(str);
-      final isGeneric = TomTimezoned.isTomTimezonedString(str);
+    for (final entry in cases.entries) {
+      final input = entry.key;
+      final detected = detect(input);
+      final shown = input.isEmpty
+          ? '(empty string)'
+          : '${input.substring(0, input.length.clamp(0, 30))}...';
+      print('   - $shown -> $detected');
 
-      String detected = 'unknown';
-      if (str.startsWith('@X@')) {
-        detected = 'TomZonedDateTime';
-      } else if (str.startsWith('@D@')) {
-        detected = 'TomZonedDate';
-      } else if (str.startsWith('@T@')) {
-        detected = 'TomZonedTime';
-      } else if (isGeneric) {
-        detected = 'TomTimezoned (no prefix)';
-      }
-
-      print('   - ${str.substring(0, 30)}... -> $detected');
+      // Assertions
+      assert(
+        detected == entry.value,
+        'Expected ${entry.value} for "$input", got $detected',
+      );
     }
+
+    // The generic predicate is not a superset of the three prefixed ones: it
+    // answers for a string carrying *no* prefix. Reading its name as "is this
+    // timezoned at all" is the mistake it invites, so the case is pinned.
+    const prefixed = '@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo';
+    print('   TomTimezoned.isTomTimezonedString on a prefixed string: '
+        '${TomTimezoned.isTomTimezonedString(prefixed)}');
+    assert(
+      TomZonedDateTime.isTomZonedDateTimeString(prefixed) &&
+          !TomTimezoned.isTomTimezonedString(prefixed),
+      'The generic predicate excludes the prefixed forms rather than covering '
+      'them',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -292,17 +318,26 @@ class SerializationExample {
       'not-a-valid-string',
       '2024-06-15', // Missing timezone info
       '2024-06-15T10:30:00Z', // Missing underscore format
+      '', // Nothing at all
     ];
 
     for (final str in invalidStrings) {
+      FormatException? raised;
       try {
         TomZonedDateTime.parseFromString(str);
-        print('   - "$str" -> Unexpectedly parsed');
       } on FormatException catch (e) {
-        print(
-          '   - "$str" -> FormatException: ${e.message.substring(0, 30)}...',
-        );
+        raised = e;
       }
+
+      final shown = str.isEmpty ? '(empty string)' : '"$str"';
+      print('   - $shown -> ${raised == null ? 'parsed' : 'FormatException'}');
+
+      // Assertions. Without this the loop reports an unexpected success and
+      // then passes anyway, which is the one outcome it exists to catch.
+      assert(
+        raised != null,
+        'Parsing $shown should be refused, not accepted',
+      );
     }
   }
 
