@@ -534,7 +534,15 @@ class TomContextProviders {
 ///   final org = TomExecutionContext.getValueFromCurrentZone<String>('organization');
 /// });
 /// ```
-var tomExecutionContext = TomExecutionContext({
+///
+/// `final`, and deliberately so. Nothing in the workspace replaces it, the
+/// dartdoc above describes only reading it, and every downstream re-export
+/// already exposes it read-only — `tom_build_cli`'s `D4rtGlobals` publishes a
+/// getter, and the d4rt bridge registers the same. A reassignable global would
+/// let one importer swap the ambient context out from under every other, which
+/// is a coupling nobody asked for and nothing uses. Build a `TomExecutionContext`
+/// of your own and call `runInContext` on it when you need different providers.
+final tomExecutionContext = TomExecutionContext({
   "organization": TomContextEntry<String>(TomContextProviders.getOrganization),
   "application": TomContextEntry<String>(TomContextProviders.getApplication),
   "process": TomContextEntry<String>(TomContextProviders.getProcess),

@@ -7,6 +7,32 @@ API narrowings. Read the **Changed** section before upgrading — several public
 members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
+### Changed
+
+- **`tomExecutionContext` is `final`, and a test keeps it that way
+  (tcincb22).** The pre-configured ambient context was declared `var` and
+  exported, so any importer anywhere in the workspace could assign to it and
+  every other importer would immediately see the replacement. Nothing said it
+  was meant to be swapped: its dartdoc documents only reading it, and a sweep
+  of the workspace found **no assignment at all** — every use reads
+  `.contextMap` or calls `runInContext`, and the two downstream re-exports
+  already publish it read-only (`tom_build_cli`'s `D4rtGlobals` as a getter,
+  the d4rt bridge as `TomExecutionContext get tomExecutionContext`).
+
+  It was the last reassignable top-level in the package, and the class has now
+  been swept by hand twice — once across `json`, once here. So the third sweep
+  is `test/no_mutable_globals_test.dart`, which scans `lib/` for a top-level
+  binding that is neither `final` nor `const`. `dart analyze` does not report
+  one: a mutable global is legal Dart and none of the enabled lints covers it.
+  The test plants a `var` beside a `final`, a `const`, a `typedef`, a getter
+  and a function, and requires the scanner to catch exactly the first — a scan
+  that matched nothing would satisfy an is-empty assertion while proving
+  nothing.
+
+  The rule is about *reassignment*, not mutation: a `final` holding a growable
+  collection is still mutable content, and several here are. What the test
+  refuses is the slot being swapped.
+
 ### Documentation
 
 - **`substituteEnvVars` now says why its one limit stands, not just that it
