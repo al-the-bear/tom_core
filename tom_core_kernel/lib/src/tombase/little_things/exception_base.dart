@@ -219,19 +219,18 @@ class TomException extends TomBaseException implements TomLoggable {
   /// identifying message alone. See below for why nothing is substituted.
   @override
   void printStackTrace([int depth = -1]) {
-    // The inherited `stack` field is typed `Object?` and is publicly mutable,
-    // so a value this method cannot format still reaches it even though the
-    // constructor no longer accepts one. Narrow rather than cast: a cast would
-    // raise the very `TypeError` the narrowed constructor exists to prevent,
-    // and would raise it here, on the reporting path.
+    // `StackTrace.empty`, not `null`. The field is publicly mutable and can be
+    // cleared, and `null` would fall through to `StackTrace.current` inside the
+    // formatter and report the call path of the *report* — frames that name
+    // none of the code that failed. A wrong trace is worse than no trace,
+    // because it looks right.
     //
-    // An unusable value becomes `StackTrace.empty`, not `null`. `null` would
-    // fall through to `StackTrace.current` inside the formatter and report the
-    // call path of the *report* — frames that name none of the code that
-    // failed. A wrong trace is worse than no trace, because it looks right.
-    final raw = stack;
+    // The substitution used to also narrow: `stack` was inherited as `Object?`,
+    // so a value no formatter could use reached it. `TomBaseException.stack` is
+    // `StackTrace?` as of tom_basics 1.1.0, so the only unusable value left is
+    // the absent one, and a null check is the whole of it.
     tomPrintStackTrace(
-      raw is StackTrace ? raw : StackTrace.empty,
+      stack ?? StackTrace.empty,
       depth: depth,
       message: "$uuid-$requestUuid exception stacktrace",
     );

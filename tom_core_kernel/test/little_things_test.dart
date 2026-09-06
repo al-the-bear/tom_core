@@ -1311,19 +1311,6 @@ void main() {
         expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
       });
 
-      test('should report no frames when the stack field holds a '
-          'non-StackTrace value', () {
-        // `stack` is inherited, public and mutable, so a value the formatter
-        // cannot use still reaches this method even though the constructor no
-        // longer accepts one. Surviving it matters more here than anywhere
-        // else: this method runs *because* something already went wrong.
-        final exception = TomException('test.error.key', 'message');
-        exception.stack = 'not a stack trace';
-
-        expect(exception.printStackTrace, returnsNormally);
-        expect(captured.messages.last.trim(), endsWith('exception stacktrace'));
-      });
-
       test('should report no frames when the stack field was cleared', () {
         final exception = TomException('test.error.key', 'message');
         exception.stack = null;
@@ -1336,7 +1323,7 @@ void main() {
         'should not substitute the reporting site for an unusable stack',
         () {
           final exception = TomException('test.error.key', 'message');
-          exception.stack = 42;
+          exception.stack = null;
           exception.printStackTrace();
 
           // Capturing `StackTrace.current` as a fallback would print the call

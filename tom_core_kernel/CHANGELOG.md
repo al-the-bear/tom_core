@@ -9,6 +9,30 @@ anyone who was writing them.
 
 ### Changed
 
+- **`printStackTrace`'s runtime type guard is gone; the field it defended
+  against is now `StackTrace?` (tcincb25).** `TomException.printStackTrace`
+  narrowed with `raw is StackTrace ? raw : StackTrace.empty` for one reason: the
+  inherited `TomBaseException.stack` was `Object?` and publicly mutable, so a
+  value no formatter could use still reached it even though every constructor
+  in the framework already refused one. `tom_basics 2.0.0` declares the field
+  `StackTrace?` (and drops the unchecked `s as StackTrace?` in its own
+  `_getStackTrace`), so the guard has nothing left to catch and the kernel now
+  requires `tom_basics >=2.0.0`.
+
+  **The substitution stayed, and that distinction is the point.** Only the type
+  narrowing was dead. `stack` is still nullable and still publicly mutable, and
+  passing `null` straight through would fall through to `StackTrace.current`
+  inside the formatter and report the call path of the *report* — a
+  plausible-looking trace naming none of the failing code. So the line is now
+  `stack ?? StackTrace.empty`, and a mutation dropping the `??` fails the test
+  that covers exactly that.
+
+  Two of the three tests that covered the guard went with their subject: one
+  assigned a `String`, one an `int`, and neither compiles now. The third — that
+  an unusable stack must not be replaced by the reporting site — is still
+  reachable through `null` and was re-pointed there rather than deleted, since
+  the property it protects outlived the type that motivated it.
+
 - **An auto-captured exception trace now leads with the code that created the
   exception, not with the constructors it passed through (tcincb24).** The
   capture in `TomException`'s initializer is taken at the last moment the
