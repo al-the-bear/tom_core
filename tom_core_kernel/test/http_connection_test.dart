@@ -2146,7 +2146,8 @@ void main() {
         // builds a non-streaming request, whose length is its body's length
         // and whose setter throws for every value. A field for it could hold
         // nothing that did not crash the send, so there is no field.
-        final request = sent(TomServerCallLoad(stringBody: 'hello!')) as Request;
+        final request =
+            sent(TomServerCallLoad(stringBody: 'hello!')) as Request;
 
         expect(request.contentLength, equals(6));
         expect(() => request.contentLength = 6, throwsUnsupportedError);

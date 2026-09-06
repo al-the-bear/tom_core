@@ -85,9 +85,33 @@ final _idShape = RegExp(r'\b([a-z]{2,12})\d+(_[a-zäñößü]{4})?\b');
 /// vocabulary left in any copy, so the copies cannot drift apart on the rule —
 /// only on which English words they need, which is a fact about each package.
 const _knownStems = <String>{
-  'abc', 'api', 'avc', 'base', 'command', 'data', 'db', 'element', 'field',
-  'image', 'iso', 'level', 'list', 'map', 'march', 'mp', 'names', 'person',
-  'pkcs', 'scores', 'sha', 'sigusr', 'step', 'tz', 'utf', 'value', 'woff',
+  'abc',
+  'api',
+  'avc',
+  'base',
+  'command',
+  'data',
+  'db',
+  'element',
+  'field',
+  'image',
+  'iso',
+  'level',
+  'list',
+  'map',
+  'march',
+  'mp',
+  'names',
+  'person',
+  'pkcs',
+  'scores',
+  'sha',
+  'sigusr',
+  'step',
+  'tz',
+  'utf',
+  'value',
+  'woff',
   'wrap',
 };
 
@@ -104,7 +128,15 @@ final _capsShape = RegExp(r'\b([A-Z]{2,12})\d+\b');
 /// ALL-CAPS names a reader can look up — hash and cipher families, media and
 /// encoding standards, signal names.
 const _knownCaps = <String>{
-  'ISO', 'MP', 'PKCS', 'RFC', 'SHA', 'SIGUSR', 'SKU', 'USR', 'UTF',
+  'ISO',
+  'MP',
+  'PKCS',
+  'RFC',
+  'SHA',
+  'SIGUSR',
+  'SKU',
+  'USR',
+  'UTF',
 };
 
 /// The two shapes an id is written in, each with its own vocabulary. Kept
