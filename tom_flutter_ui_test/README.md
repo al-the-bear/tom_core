@@ -85,6 +85,7 @@ overflow gate build on. Everything else is a gate, and this is all of it:
 | `package_compiles_test.dart` | `dart analyze` reports no errors under `lib/` or `test/` — the one check that still runs when the package does not compile, because it shells out instead of importing. |
 | `demo_overflow_test.dart` | Every demo mounts in a 1280×2400 viewport without overflowing — one test per slug in `demos`. |
 | `demo_coverage_test.dart` | The harness can construct every screen the app actually offers, compared by runtime type across all four tabs. |
+| `demo_icon_names_test.dart` | Every `*.icon` name in `demo_resources.dart` resolves through `TomUIIcons` — an unknown name renders nothing and reports nothing, so only a gate catches it. |
 | `demo_04_radio_group_test.dart` | The five radio groups in `demo_04_toggles.dart` start on their seed and move independently — wiring a missing `RadioGroup` ancestor would break silently. |
 | `demo_scaffold_test.dart` | `DemoTile.onTap` pushes a `DemoScaffold` route, and the RTL switch re-wraps the body in `Directionality` + `AclDirectionScope`. |
 | `forms_demos_logic_test.dart` | The validate → save → commit gate, the shared-source item swap, the boolean lock-step guard, and the 600 px breakpoint branching. |

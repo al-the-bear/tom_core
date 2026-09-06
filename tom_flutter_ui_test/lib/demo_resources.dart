@@ -876,7 +876,7 @@ class _DemoResources {
         'Slider controls with RTL/LTR adaptive layout',
 
     // Card: Basic Sliders
-    'demo05.basicSlider.icon.icon': 'tune',
+    'demo05.basicSlider.icon.icon': 'mTune',
     'demo05.basicSlider.title.label': 'TomSlider',
     'demo05.basicSlider.description.label':
         'Standard Material slider with continuous and discrete modes.',
@@ -889,7 +889,7 @@ class _DemoResources {
     'demo05.basicSlider.disabledLabel.label': 'Disabled slider:',
 
     // Card: Range Sliders
-    'demo05.rangeSlider.icon.icon': 'compare_arrows',
+    'demo05.rangeSlider.icon.icon': 'mCompareArrows',
     'demo05.rangeSlider.title.label': 'TomRangeSlider',
     'demo05.rangeSlider.description.label':
         'Dual-thumb range selection for price, age, and time.',
@@ -900,7 +900,7 @@ class _DemoResources {
     'demo05.rangeSlider.disabledLabel.label': 'Disabled range slider:',
 
     // Card: Cupertino Sliders
-    'demo05.cupertinoSlider.icon.icon': 'phone_iphone',
+    'demo05.cupertinoSlider.icon.icon': 'mPhoneIphone',
     'demo05.cupertinoSlider.title.label': 'TomCupertinoSlider',
     'demo05.cupertinoSlider.description.label':
         'iOS-style slider with min/max icons and custom colors.',
@@ -910,7 +910,7 @@ class _DemoResources {
     'demo05.cupertinoSlider.displayLabel.label': 'With value display:',
 
     // Card: Audio Player
-    'demo05.audioPlayer.icon.icon': 'music_note',
+    'demo05.audioPlayer.icon.icon': 'mMusicNote',
     'demo05.audioPlayer.title.label': 'Audio Player',
     'demo05.audioPlayer.description.label':
         'Music player with progress and volume sliders.',
@@ -919,14 +919,14 @@ class _DemoResources {
     'demo05.audioPlayer.volumeName.label': 'Volume:',
 
     // Card: Color Picker
-    'demo05.colorPicker.icon.icon': 'palette',
+    'demo05.colorPicker.icon.icon': 'mPalette',
     'demo05.colorPicker.title.label': 'RGB Color Picker',
     'demo05.colorPicker.description.label':
         'Color selection with individual R, G, B channel sliders.',
     'demo05.colorPicker.previewLabel.label': 'Preview:',
 
     // Card: Image Adjustments
-    'demo05.imageAdjust.icon.icon': 'photo_filter',
+    'demo05.imageAdjust.icon.icon': 'mPhotoFilter',
     'demo05.imageAdjust.title.label': 'Image Adjustments',
     'demo05.imageAdjust.description.label':
         'Brightness, contrast, saturation, and exposure controls.',
@@ -937,7 +937,7 @@ class _DemoResources {
     'demo05.imageAdjust.reset.label': 'Reset All',
 
     // Card: ACL Slider Layout
-    'demo05.aclSlider.icon.icon': 'swap_horiz',
+    'demo05.aclSlider.icon.icon': 'mSwapHoriz',
     'demo05.aclSlider.title.label': 'ACL Slider Layout',
     'demo05.aclSlider.description.label':
         'Slider controls with RTL/LTR adaptive layout using AclBuilder.',
@@ -969,7 +969,7 @@ class _DemoResources {
         'Card controls with RTL/LTR adaptive layout',
 
     // Card: Card Variants
-    'demo06.cardVariants.icon.icon': 'style',
+    'demo06.cardVariants.icon.icon': 'mStyle',
     'demo06.cardVariants.title.label': 'TomCard',
     'demo06.cardVariants.description.label':
         'Standard Material card with elevated, outlined, and filled variants.',
@@ -986,7 +986,7 @@ class _DemoResources {
     'demo06.cardVariants.elevationLabel.label': 'Elevation comparison:',
 
     // Card: Product Card
-    'demo06.productCard.icon.icon': 'shopping_bag',
+    'demo06.productCard.icon.icon': 'mShoppingBag',
     'demo06.productCard.title.label': 'Product Card',
     'demo06.productCard.description.label':
         'Composed card layouts with images, text, and actions.',
@@ -1004,7 +1004,7 @@ class _DemoResources {
         'Orders over \$50 ship free. Estimated delivery 3-5 days.',
 
     // Card: Expansion Tiles
-    'demo06.expansionTile.icon.icon': 'expand_more',
+    'demo06.expansionTile.icon.icon': 'mExpandMore',
     'demo06.expansionTile.title.label': 'TomExpansionTile',
     'demo06.expansionTile.description.label':
         'Expandable sections with leading icons and nested tiles.',
@@ -1022,20 +1022,20 @@ class _DemoResources {
         'Manage data sharing, cookie preferences, and account visibility.',
 
     // Card: Cupertino Expansion Tiles
-    'demo06.cupertinoExpansion.icon.icon': 'phone_iphone',
+    'demo06.cupertinoExpansion.icon.icon': 'mPhoneIphone',
     'demo06.cupertinoExpansion.title.label': 'TomCupertinoExpansionTile',
     'demo06.cupertinoExpansion.description.label':
         'iOS-style expansion tile with fade transitions.',
 
     // Card: Expansion Panel Lists
-    'demo06.expansionPanel.icon.icon': 'view_agenda',
+    'demo06.expansionPanel.icon.icon': 'mViewAgenda',
     'demo06.expansionPanel.title.label': 'TomExpansionPanelList',
     'demo06.expansionPanel.description.label':
         'Grouped expandable panels with accordion behavior.',
     'demo06.expansionPanel.faqTitle.label': 'Frequently Asked Questions:',
 
     // Card: Material
-    'demo06.material.icon.icon': 'layers',
+    'demo06.material.icon.icon': 'mLayers',
     'demo06.material.title.label': 'TomMaterial',
     'demo06.material.description.label':
         'Material surface with elevation, shape, and type variants.',
@@ -1044,7 +1044,7 @@ class _DemoResources {
     'demo06.material.shapesLabel.label': 'Material shapes:',
 
     // Card: Ink
-    'demo06.ink.icon.icon': 'water_drop',
+    'demo06.ink.icon.icon': 'mWaterDrop',
     'demo06.ink.title.label': 'TomInk',
     'demo06.ink.description.label':
         'Ink splash effects and decorated surfaces.',
@@ -1056,7 +1056,7 @@ class _DemoResources {
     'demo06.ink.gradientText.label': 'Gradient Ink Surface',
 
     // Card: ACL Layout
-    'demo06.aclCard.icon.icon': 'swap_horiz',
+    'demo06.aclCard.icon.icon': 'mSwapHoriz',
     'demo06.aclCard.title.label': 'ACL Card Layout',
     'demo06.aclCard.description.label':
         'Card controls with RTL/LTR adaptive layout using AclBuilder.',
@@ -1091,7 +1091,7 @@ class _DemoResources {
         'Adaptive layout controls with AclBuilder',
 
     // 7.1 - Column
-    'demo07.column.icon.icon': 'view_agenda',
+    'demo07.column.icon.icon': 'mViewAgenda',
     'demo07.column.title.label': 'TomColumn',
     'demo07.column.description.label':
         'Vertical flex layout with alignment options.',
@@ -1100,7 +1100,7 @@ class _DemoResources {
     'demo07.column.spaceBetweenLabel.label': 'MainAxisAlignment.spaceBetween',
 
     // 7.1 - Row
-    'demo07.row.icon.icon': 'view_week',
+    'demo07.row.icon.icon': 'mViewWeek',
     'demo07.row.title.label': 'TomRow',
     'demo07.row.description.label':
         'Horizontal flex layout with alignment options.',
@@ -1109,7 +1109,7 @@ class _DemoResources {
     'demo07.row.endLabel.label': 'MainAxisAlignment.end',
 
     // 7.1 - Expanded / Flexible
-    'demo07.expandedFlexible.icon.icon': 'expand',
+    'demo07.expandedFlexible.icon.icon': 'mExpand',
     'demo07.expandedFlexible.title.label': 'TomExpanded & TomFlexible',
     'demo07.expandedFlexible.description.label':
         'Flex children with expansion and fit controls.',
@@ -1118,7 +1118,7 @@ class _DemoResources {
     'demo07.expandedFlexible.flexibleLabel.label': 'FlexFit.loose vs .tight',
 
     // 7.1 - Spacer
-    'demo07.spacer.icon.icon': 'space_bar',
+    'demo07.spacer.icon.icon': 'mSpaceBar',
     'demo07.spacer.title.label': 'TomSpacer',
     'demo07.spacer.description.label':
         'Flexible spacer that fills available space.',
@@ -1126,21 +1126,21 @@ class _DemoResources {
     'demo07.spacer.ratioLabel.label': 'Spacer ratios (1:2)',
 
     // 7.1 - Wrap
-    'demo07.wrap.icon.icon': 'wrap_text',
+    'demo07.wrap.icon.icon': 'mWrapText',
     'demo07.wrap.title.label': 'TomWrap',
     'demo07.wrap.description.label':
         'Wrapping flow layout with spacing controls.',
     'demo07.wrap.demoLabel.label': 'Auto-wrapping tags',
 
     // 7.2 - Stack
-    'demo07.stack.icon.icon': 'layers',
+    'demo07.stack.icon.icon': 'mLayers',
     'demo07.stack.title.label': 'TomStack',
     'demo07.stack.description.label': 'Layered children with z-order stacking.',
     'demo07.stack.layeredLabel.label': 'Layered stack with badge',
     'demo07.stack.centeredText.label': 'Centered Content',
 
     // 7.2 - Positioned
-    'demo07.positioned.icon.icon': 'control_camera',
+    'demo07.positioned.icon.icon': 'mControlCamera',
     'demo07.positioned.title.label': 'TomPositioned',
     'demo07.positioned.description.label':
         'Absolute positioning within a Stack.',
@@ -1149,14 +1149,14 @@ class _DemoResources {
         'PositionedDirectional (RTL-aware)',
 
     // 7.2 - IndexedStack
-    'demo07.indexedStack.icon.icon': 'filter_none',
+    'demo07.indexedStack.icon.icon': 'mFilterNone',
     'demo07.indexedStack.title.label': 'TomIndexedStack',
     'demo07.indexedStack.description.label':
         'Shows one child at a time, others stay offstage.',
     'demo07.indexedStack.selectorLabel.label': 'Select visible child:',
 
     // 7.3 - SizedBox
-    'demo07.sizedBox.icon.icon': 'crop_free',
+    'demo07.sizedBox.icon.icon': 'mCropFree',
     'demo07.sizedBox.title.label': 'TomSizedBox',
     'demo07.sizedBox.description.label':
         'Fixed-size box with explicit dimensions.',
@@ -1165,7 +1165,7 @@ class _DemoResources {
     'demo07.sizedBox.expandText.label': 'Full width (double.infinity)',
 
     // 7.3 - ConstrainedBox
-    'demo07.constrainedBox.icon.icon': 'settings_overscan',
+    'demo07.constrainedBox.icon.icon': 'mSettingsOverscan',
     'demo07.constrainedBox.title.label': 'TomConstrainedBox',
     'demo07.constrainedBox.description.label':
         'Applies min/max width and height constraints.',
@@ -1174,27 +1174,27 @@ class _DemoResources {
     'demo07.constrainedBox.contentText.label': 'Constrained to min/max bounds',
 
     // 7.3 - FractionallySizedBox
-    'demo07.fractionallySized.icon.icon': 'photo_size_select_large',
+    'demo07.fractionallySized.icon.icon': 'mPhotoSizeSelectLarge',
     'demo07.fractionallySized.title.label': 'TomFractionallySizedBox',
     'demo07.fractionallySized.description.label':
         'Sizes child as fraction of parent.',
     'demo07.fractionallySized.demoLabel.label': 'Percentage-based widths',
 
     // 7.3 - AspectRatio
-    'demo07.aspectRatio.icon.icon': 'aspect_ratio',
+    'demo07.aspectRatio.icon.icon': 'mAspectRatio',
     'demo07.aspectRatio.title.label': 'TomAspectRatio',
     'demo07.aspectRatio.description.label':
         'Maintains a fixed width-to-height ratio.',
     'demo07.aspectRatio.demoLabel.label': 'Aspect ratios: 16:9 and 1:1',
 
     // 7.3 - FittedBox
-    'demo07.fittedBox.icon.icon': 'fit_screen',
+    'demo07.fittedBox.icon.icon': 'mFitScreen',
     'demo07.fittedBox.title.label': 'TomFittedBox',
     'demo07.fittedBox.description.label': 'Scales child to fit within bounds.',
     'demo07.fittedBox.demoLabel.label': 'BoxFit.contain vs .scaleDown',
 
     // 7.3 - Intrinsic
-    'demo07.intrinsic.icon.icon': 'height',
+    'demo07.intrinsic.icon.icon': 'mHeight',
     'demo07.intrinsic.title.label': 'TomIntrinsicHeight & Width',
     'demo07.intrinsic.description.label':
         'Sizes based on intrinsic child dimensions.',
@@ -1206,7 +1206,7 @@ class _DemoResources {
     'demo07.intrinsic.wideText.label': 'This is wider content',
 
     // 7.3 - Misc constraints
-    'demo07.miscConstraint.icon.icon': 'tune',
+    'demo07.miscConstraint.icon.icon': 'mTune',
     'demo07.miscConstraint.title.label': 'LimitedBox & OverflowBox',
     'demo07.miscConstraint.description.label':
         'Additional sizing and overflow controls.',
@@ -1217,7 +1217,7 @@ class _DemoResources {
     'demo07.miscConstraint.overflowText.label': 'I overflow my parent bounds!',
 
     // 7.4 - Center & Align
-    'demo07.centerAlign.icon.icon': 'center_focus_strong',
+    'demo07.centerAlign.icon.icon': 'mCenterFocusStrong',
     'demo07.centerAlign.title.label': 'TomCenter & TomAlign',
     'demo07.centerAlign.description.label':
         'Alignment wrappers for child positioning.',
@@ -1226,7 +1226,7 @@ class _DemoResources {
     'demo07.centerAlign.alignLabel.label': 'TomAlign (various positions)',
 
     // 7.4 - Padding
-    'demo07.padding.icon.icon': 'padding',
+    'demo07.padding.icon.icon': 'mPadding',
     'demo07.padding.title.label': 'TomPadding',
     'demo07.padding.description.label':
         'Spacing wrapper using EdgeInsets patterns.',
@@ -1235,14 +1235,14 @@ class _DemoResources {
     'demo07.padding.onlyLabel.label': 'EdgeInsets.only(left: 40, top: 20)',
 
     // 7.4 - Baseline
-    'demo07.baseline.icon.icon': 'format_line_spacing',
+    'demo07.baseline.icon.icon': 'mFormatLineSpacing',
     'demo07.baseline.title.label': 'TomBaseline',
     'demo07.baseline.description.label':
         'Text baseline alignment for mixed sizes.',
     'demo07.baseline.demoLabel.label': 'Baseline-aligned text sizes',
 
     // 7.4 - Divider
-    'demo07.divider.icon.icon': 'horizontal_rule',
+    'demo07.divider.icon.icon': 'mHorizontalRule',
     'demo07.divider.title.label': 'TomDivider & TomVerticalDivider',
     'demo07.divider.description.label':
         'Horizontal and vertical separator lines.',
@@ -1256,7 +1256,7 @@ class _DemoResources {
     'demo07.divider.col3.label': 'Column C',
 
     // 7.5 - ACL Layout
-    'demo07.aclLayout.icon.icon': 'dashboard_customize',
+    'demo07.aclLayout.icon.icon': 'mDashboardCustomize',
     'demo07.aclLayout.title.label': 'ACL Layout Explorer',
     'demo07.aclLayout.description.label':
         'Interactive alignment controls with AclBuilder layout.',
@@ -1287,42 +1287,42 @@ class _DemoResources {
         'Adaptive scroll controls with AclBuilder',
 
     // 8.1 - SingleChildScrollView (vertical)
-    'demo08.singleChildScroll.icon.icon': 'swap_vert',
+    'demo08.singleChildScroll.icon.icon': 'mSwapVert',
     'demo08.singleChildScroll.title.label': 'TomSingleChildScrollView',
     'demo08.singleChildScroll.description.label':
         'Basic vertical scrolling container for long content.',
     'demo08.singleChildScroll.verticalLabel.label': 'Vertical scroll',
 
     // 8.1 - Horizontal scroll
-    'demo08.horizontalScroll.icon.icon': 'swap_horiz',
+    'demo08.horizontalScroll.icon.icon': 'mSwapHoriz',
     'demo08.horizontalScroll.title.label': 'Horizontal Scroll',
     'demo08.horizontalScroll.description.label':
         'Horizontal scrolling with SingleChildScrollView.',
     'demo08.horizontalScroll.label.label': 'Horizontal scroll',
 
     // 8.1 - Scrollbar
-    'demo08.scrollbar.icon.icon': 'view_sidebar',
+    'demo08.scrollbar.icon.icon': 'mViewSidebar',
     'demo08.scrollbar.title.label': 'TomScrollbar',
     'demo08.scrollbar.description.label':
         'Material scrollbar with visible thumb and interactivity.',
     'demo08.scrollbar.label.label': 'Always-visible interactive scrollbar',
 
     // 8.1 - CupertinoScrollbar
-    'demo08.cupertinoScrollbar.icon.icon': 'phone_iphone',
+    'demo08.cupertinoScrollbar.icon.icon': 'mPhoneIphone',
     'demo08.cupertinoScrollbar.title.label': 'TomCupertinoScrollbar',
     'demo08.cupertinoScrollbar.description.label':
         'iOS-style scrollbar with thin thumb.',
     'demo08.cupertinoScrollbar.label.label': 'Cupertino-style scrollbar',
 
     // 8.2 - NestedScrollView
-    'demo08.nestedScroll.icon.icon': 'vertical_split',
+    'demo08.nestedScroll.icon.icon': 'mVerticalSplit',
     'demo08.nestedScroll.title.label': 'TomNestedScrollView',
     'demo08.nestedScroll.description.label':
         'Coordinated header collapse with tabbed body scrolling.',
     'demo08.nestedScroll.label.label': 'Collapsible header with pinned tabs',
 
     // 8.3 - DraggableScrollableSheet
-    'demo08.draggableSheet.icon.icon': 'drag_handle',
+    'demo08.draggableSheet.icon.icon': 'mDragHandle',
     'demo08.draggableSheet.title.label': 'TomDraggableScrollableSheet',
     'demo08.draggableSheet.description.label':
         'Bottom sheet that can be dragged to resize with snap points.',
@@ -1333,7 +1333,7 @@ class _DemoResources {
     'demo08.draggableSheet.sheetTitle.label': 'Draggable Sheet',
 
     // 8.3 - InteractiveViewer
-    'demo08.interactiveViewer.icon.icon': 'zoom_out_map',
+    'demo08.interactiveViewer.icon.icon': 'mZoomOutMap',
     'demo08.interactiveViewer.title.label': 'TomInteractiveViewer',
     'demo08.interactiveViewer.description.label':
         'Pan and zoom viewport with pinch gestures.',
@@ -1344,14 +1344,14 @@ class _DemoResources {
     'demo08.interactiveViewer.resetButton.label': 'Reset View',
 
     // 8.4 - CarouselView
-    'demo08.carousel.icon.icon': 'view_carousel',
+    'demo08.carousel.icon.icon': 'mViewCarousel',
     'demo08.carousel.title.label': 'TomCarouselView',
     'demo08.carousel.description.label':
         'Horizontal carousel with swipe navigation.',
     'demo08.carousel.label.label': 'Swipe carousel with tap handler',
 
     // 8.4 - Visibility
-    'demo08.visibility.icon.icon': 'visibility',
+    'demo08.visibility.icon.icon': 'mVisibility',
     'demo08.visibility.title.label': 'TomVisibility',
     'demo08.visibility.description.label':
         'Logical visibility control with size maintenance options.',
@@ -1361,7 +1361,7 @@ class _DemoResources {
     'demo08.visibility.afterText.label': 'Content after',
 
     // 8.4 - Offstage
-    'demo08.offstage.icon.icon': 'visibility_off',
+    'demo08.offstage.icon.icon': 'mVisibilityOff',
     'demo08.offstage.title.label': 'TomOffstage',
     'demo08.offstage.description.label':
         'Removes widget from rendering entirely, no space occupied.',
@@ -1372,7 +1372,7 @@ class _DemoResources {
     'demo08.offstage.afterText.label': 'Content after',
 
     // 8.4 - SafeArea
-    'demo08.safeArea.icon.icon': 'fit_screen',
+    'demo08.safeArea.icon.icon': 'mFitScreen',
     'demo08.safeArea.title.label': 'TomSafeArea',
     'demo08.safeArea.description.label':
         'Insets child to avoid system UI (notch, status bar, etc.).',
@@ -1382,7 +1382,7 @@ class _DemoResources {
         'On real devices, SafeArea avoids notch and system bars',
 
     // 8.5 - ACL Scroll
-    'demo08.aclScroll.icon.icon': 'dashboard_customize',
+    'demo08.aclScroll.icon.icon': 'mDashboardCustomize',
     'demo08.aclScroll.title.label': 'ACL Scroll Explorer',
     'demo08.aclScroll.description.label':
         'Interactive scroll sheet controls with AclBuilder layout.',
@@ -1413,7 +1413,7 @@ class _DemoResources {
     // ==========================================================================
     // Demo 09: TomAlertDialog Card
     // ==========================================================================
-    'demo09.alertDialog.icon.icon': 'mDialog',
+    'demo09.alertDialog.icon.icon': 'mWebAsset',
     'demo09.alertDialog.title.label': 'TomAlertDialog',
     'demo09.alertDialog.description.label':
         'Material alert dialogs with title, content, and action buttons.',
@@ -1485,7 +1485,7 @@ class _DemoResources {
     // ==========================================================================
     // Demo 09: TomTooltip Card
     // ==========================================================================
-    'demo09.tooltip.icon.icon': 'mTooltip',
+    'demo09.tooltip.icon.icon': 'mInfoOutline',
     'demo09.tooltip.title.label': 'TomTooltip',
     'demo09.tooltip.description.label':
         'Hover or long-press tooltips with plain or rich text.',
@@ -1528,7 +1528,7 @@ class _DemoResources {
     // ==========================================================================
     // Demo 09: ACL Dialog Controls Card
     // ==========================================================================
-    'demo09.aclDialog.icon.icon': 'dashboard_customize',
+    'demo09.aclDialog.icon.icon': 'mDashboardCustomize',
     'demo09.aclDialog.title.label': 'ACL Dialog Explorer',
     'demo09.aclDialog.description.label':
         'Interactive dialog controls with AclBuilder layout.',
@@ -1854,7 +1854,7 @@ class _DemoResources {
     // ==========================================================================
     // Demo 13: TomNavigationBar Card (Material 3)
     // ==========================================================================
-    'demo13.navigationBar.icon.icon': 'mBottomNavigation',
+    'demo13.navigationBar.icon.icon': 'mViewDay',
     'demo13.navigationBar.title.label': 'TomNavigationBar',
     'demo13.navigationBar.description.label':
         'Material 3 bottom navigation for primary destinations.',
@@ -1872,7 +1872,7 @@ class _DemoResources {
     // ==========================================================================
     // Demo 13: TomCupertinoTabBar Card
     // ==========================================================================
-    'demo13.cupertinoTabBar.icon.icon': 'cTabBarItem',
+    'demo13.cupertinoTabBar.icon.icon': 'cRectangleGrid2x2',
     'demo13.cupertinoTabBar.title.label': 'TomCupertinoTabBar',
     'demo13.cupertinoTabBar.description.label':
         'iOS-style tab bar for bottom navigation.',
@@ -1930,7 +1930,7 @@ class _DemoResources {
     // ==========================================================================
     // Demo 13: TomCupertinoNavigationBar Card
     // ==========================================================================
-    'demo13.cupertinoNavBar.icon.icon': 'cNavArrowBack',
+    'demo13.cupertinoNavBar.icon.icon': 'cChevronBack',
     'demo13.cupertinoNavBar.title.label': 'TomCupertinoNavigationBar',
     'demo13.cupertinoNavBar.description.label':
         'iOS-style navigation bar with leading/trailing actions.',
@@ -2012,7 +2012,7 @@ class _DemoResources {
     // ==========================================================================
     // Demo 14: TomCupertinoActivityIndicator Card
     // ==========================================================================
-    'demo14.cupertinoActivity.icon.icon': 'cActivityIndicator',
+    'demo14.cupertinoActivity.icon.icon': 'cArrowClockwise',
     'demo14.cupertinoActivity.title.label': 'TomCupertinoActivityIndicator',
     'demo14.cupertinoActivity.description.label':
         'iOS-style spinning activity indicator.',
@@ -2026,7 +2026,7 @@ class _DemoResources {
     // ==========================================================================
     // Demo 14: TomCupertinoLinearActivityIndicator Card
     // ==========================================================================
-    'demo14.cupertinoLinear.icon.icon': 'cTrackpadSlideHorizontal',
+    'demo14.cupertinoLinear.icon.icon': 'cSliderHorizontalBelowRectangle',
     'demo14.cupertinoLinear.title.label': 'TomCupertinoLinearActivityIndicator',
     'demo14.cupertinoLinear.description.label':
         'iOS-style linear progress bar indicator.',
