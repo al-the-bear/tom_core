@@ -2,6 +2,33 @@
 
 ### Changed
 
+- **`tool/generate_icons.dart` emits no timestamp, and both resource-table
+  generators format what they write, so re-running either produces no diff.**
+
+  A checked-in generated table is only checkable one way: regenerate it and
+  look for a diff. `generate_icons.dart` stamped
+  `// Generated on: ${DateTime.now()...}` into
+  `lib/src/resource_auth/tom_icons_generated.dart`, so every run diffed whether
+  or not an icon had moved — which cost the 10147-entry table the one property
+  that made it verifiable. The header now records only what the contents
+  determine: the source files it parsed, and the three counts, all computed
+  from the maps' `.length`.
+
+  Both generators also run `dart format` over their output. The emitter writes
+  one entry per line and lets the formatter decide the wrapping; without this
+  step the raw output differed from the committed file on about a hundred
+  lines, so reproducibility depended on the caller remembering a second
+  command rather than on the generator.
+
+  Regenerating against Flutter 3.44.6 changed nothing but that header — 8825
+  Material and 1322 Cupertino icons, the same 10147 keys the March table held,
+  so no name that `AllIconsAdapter` / `MaterialOnlyIconAdapter` /
+  `CupertinoOnlyIconAdapter` or the widget tests resolve has gone.
+
+  `test/resource_auth/resource_auth_test.dart` holds **both** tables to both
+  properties — counts justified by the entries, no timestamp — through one
+  `generatedTableHeaderTests` helper, replacing the colour-only pair.
+
 - **`doc/tom_ui_widgets_forms.md` now carries one inventory of the form field
   classes instead of five, and that one is checked against the source tree.**
 

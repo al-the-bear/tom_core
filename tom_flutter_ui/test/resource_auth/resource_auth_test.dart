@@ -267,45 +267,23 @@ void main() {
     });
   });
 
-  // The colour table is emitted by `tool/generate_colors.dart` and must stay
-  // reproducible: regenerating an unchanged palette has to produce no diff, so
-  // the header may state nothing the entries do not determine. Both checks
-  // below failed on the hand-authored table this generator replaced — it
-  // claimed "60+" Cupertino colours against 46, and carried a wall-clock
-  // stamp for a file no tool had ever written.
-  group('tom_colors_generated.dart header', () {
-    final source = File(
-      'lib/src/resource_auth/tom_colors_generated.dart',
-    ).readAsStringSync();
+  generatedTableHeaderTests(
+    fileName: 'tom_colors_generated.dart',
+    valueType: 'Color',
+    maps: {
+      'Material colors': 'materialColors',
+      'Cupertino colors': 'cupertinoColors',
+    },
+  );
 
-    int declaredCount(String label) {
-      final match = RegExp(
-        '^// $label: (\\d+)\$',
-        multiLine: true,
-      ).firstMatch(source);
-      expect(match, isNotNull, reason: 'no "$label:" line in the header');
-      return int.parse(match!.group(1)!);
-    }
-
-    int entryCount(String mapName) {
-      final start = source.indexOf('static const Map<String, Color> $mapName');
-      expect(start, greaterThan(-1), reason: 'no $mapName map');
-      final body = source.substring(start, source.indexOf('\n  };', start));
-      return RegExp("^    '\\w+':", multiLine: true).allMatches(body).length;
-    }
-
-    test('states the counts the two maps actually hold', () {
-      final material = entryCount('materialColors');
-      final cupertino = entryCount('cupertinoColors');
-      expect(declaredCount('Material colors'), material);
-      expect(declaredCount('Cupertino colors'), cupertino);
-      expect(declaredCount('Total'), material + cupertino);
-    });
-
-    test('records no generation timestamp', () {
-      expect(source, isNot(contains('Generated on:')));
-    });
-  });
+  generatedTableHeaderTests(
+    fileName: 'tom_icons_generated.dart',
+    valueType: 'IconData',
+    maps: {
+      'Material icons': 'materialIcons',
+      'Cupertino icons': 'cupertinoIcons',
+    },
+  );
 
   group('TomUIIcons / icon adapters', () {
     test('returns null and false when no adapter installed', () {
@@ -655,6 +633,62 @@ void main() {
       expect(TomAuthState.read.isInteractive, isFalse);
       expect(TomAuthState.full.isInteractive, isTrue);
       expect(TomAuthState.read.showsContent, isTrue);
+    });
+  });
+}
+
+/// Asserts the header of a generated resource table against its own contents.
+///
+/// Both tables are emitted by a script in `tool/` and must stay reproducible:
+/// regenerating an unchanged SDK has to produce no diff, because that is the
+/// only way to check a checked-in table is current — you regenerate and look
+/// for one. So the header may state nothing the entries do not determine.
+///
+/// Both checks earn their place. The colour table's predecessor was
+/// hand-authored and claimed "60+" Cupertino colours against 46; the icon
+/// table's generator stamped a wall clock into every run, which made a
+/// no-op regeneration a 10k-line diff and the table uncheckable.
+///
+/// [maps] pairs each header count label with the map that has to justify it;
+/// the count named `Total` is checked against their sum.
+void generatedTableHeaderTests({
+  required String fileName,
+  required String valueType,
+  required Map<String, String> maps,
+}) {
+  group('$fileName header', () {
+    final source = File('lib/src/resource_auth/$fileName').readAsStringSync();
+
+    int declaredCount(String label) {
+      final match = RegExp(
+        '^// $label: (\\d+)\$',
+        multiLine: true,
+      ).firstMatch(source);
+      expect(match, isNotNull, reason: 'no "$label:" line in the header');
+      return int.parse(match!.group(1)!);
+    }
+
+    int entryCount(String mapName) {
+      final start = source.indexOf(
+        'static const Map<String, $valueType> $mapName',
+      );
+      expect(start, greaterThan(-1), reason: 'no $mapName map');
+      final body = source.substring(start, source.indexOf('\n  };', start));
+      return RegExp("^    '\\w+':", multiLine: true).allMatches(body).length;
+    }
+
+    test('states the counts the two maps actually hold', () {
+      var total = 0;
+      maps.forEach((label, mapName) {
+        final count = entryCount(mapName);
+        expect(declaredCount(label), count, reason: '$label count is stale');
+        total += count;
+      });
+      expect(declaredCount('Total'), total);
+    });
+
+    test('records no generation timestamp', () {
+      expect(source, isNot(contains('Generated on:')));
     });
   });
 }

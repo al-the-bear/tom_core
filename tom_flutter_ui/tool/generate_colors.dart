@@ -7,7 +7,7 @@
 // reflect over `Colors` / `CupertinoColors`. It reads the SDK's own
 // declarations instead.
 //
-// Unlike the icons generator it emits no timestamp. The output has to
+// Like the icons generator it emits no timestamp. The output has to
 // reproduce byte-for-byte on a second run, and a wall clock in the header
 // makes every regeneration a diff even when no color moved.
 import 'dart:io';
@@ -51,9 +51,27 @@ void main() {
 
   final outputFile = File('lib/src/resource_auth/tom_colors_generated.dart');
   outputFile.writeAsStringSync(output);
+  _format(flutterSdk, outputFile);
 
   print('Generated ${outputFile.path}');
   print('Total colors: ${materialColors.length + cupertinoColors.length}');
+}
+
+/// Formats the emitted file, because the checked-in table is formatted and the
+/// point of the generator is that re-running it produces no diff.
+///
+/// The emitter writes one entry per line and lets the formatter decide where to
+/// wrap; a few swatch lines exceed 80 columns, so without this the raw output
+/// differs from the committed file. Doing it here rather than asking the caller
+/// to remember `dart format` keeps the reproducibility a property of the
+/// generator rather than of the procedure.
+void _format(String flutterSdk, File file) {
+  final result = Process.runSync('$flutterSdk/bin/dart', ['format', file.path]);
+  if (result.exitCode != 0) {
+    print('Error: dart format failed on ${file.path}');
+    print(result.stderr);
+    exit(1);
+  }
 }
 
 String? _findFlutterSdk() {

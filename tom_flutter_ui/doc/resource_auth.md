@@ -117,18 +117,25 @@ SDK's own `material/colors.dart` and `cupertino/colors.dart` and emits
 Flutter because it runs under plain `dart`, which has no `dart:ui`; the icon
 table is produced the same way by `tool/generate_icons.dart`.
 
-Rerun it after a Flutter upgrade to pick up palette changes:
+Rerun both after a Flutter upgrade to pick up SDK changes:
 
 ```bash
 dart run tool/generate_colors.dart
+dart run tool/generate_icons.dart
 ```
 
-The output is **reproducible** — no timestamp, and the header's counts are
-emitted from the maps — so regenerating an unchanged palette produces no diff,
-and a count that moved means the SDK's palette moved. Shades are emitted as
-literal values rather than `Colors.red[500]`, which is not a constant
-expression; every other entry is an SDK reference, so the dynamic Cupertino
-colours still resolve light/dark at lookup time.
+Both outputs are **reproducible**: neither emits a timestamp, each header's
+counts are computed from the maps below it, and each generator runs
+`dart format` over what it wrote — so regenerating an unchanged SDK produces no
+diff at all. That is what makes the checked-in tables checkable: you regenerate
+and look for a diff, and a count that moved means the SDK moved. Two tests in
+`test/resource_auth/resource_auth_test.dart` hold each header to both
+properties.
+
+In the colour table, shades are emitted as literal values rather than
+`Colors.red[500]`, which is not a constant expression; every other entry is an
+SDK reference, so the dynamic Cupertino colours still resolve light/dark at
+lookup time.
 
 ## Icon resolution
 
