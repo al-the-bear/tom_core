@@ -355,6 +355,15 @@ an essential type.
 | [codespecs_prompt.md](../../ai_build/tom_specs_model/doc/codespecs_prompt.md) | When a Phase-4 run may begin at all — the mechanical gate and the per-area judgment |
 | [tom_specs_project_flow.md](../../ai_build/tom_specs_model/doc/tom_specs_project_flow.md) | The phase model Phase 4 sits in, and the quality gate it must pass |
 
+
+**This package** — its own guides:
+
+| Guide | Covers |
+|-------|--------|
+| [doc/index.md](doc/index.md) | The catalogue of this package's documentation |
+| [doc/gap_classes.md](doc/gap_classes.md) | The seven modules, the dependency-free invariant, and where each kind of error surfaces |
+| [doc/api/api_summary_tom_core_codespecs.md](doc/api/api_summary_tom_core_codespecs.md) | Every class and enum, its constructor, properties and methods |
+
 **Siblings** — packages you will reach for next:
 
 | Package | What it is |

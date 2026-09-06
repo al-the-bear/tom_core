@@ -117,8 +117,21 @@ reflectable.dart
 **/generated_plugin_registrant.h
 **/generated_plugins.cmake
 
-# API documentation (generated)
-**/doc/api/
+# API documentation.
+#
+# The *generated* reference (dartdoc's `doc/api/`, and `doc/api/reference/`) is
+# output and stays out of version control. The hand-written
+# `api_summary_<module>.md` / `api_reference_<module>.md` files are **not**
+# output — `tom_specs_documentation_standard.md` §3.1 and
+# `_copilot_guidelines/dart/api_summary_creation.md` both place them here — so
+# they are re-included below.
+#
+# The pattern excludes the directory's *contents* (`**/doc/api/**`) rather than
+# the directory itself: git cannot re-include a file whose parent directory is
+# excluded, so `**/doc/api/` would make the negations below dead.
+**/doc/api/**
+!**/doc/api/api_summary_*.md
+!**/doc/api/api_reference_*.md
 
 # Symbols
 app.*.symbols
