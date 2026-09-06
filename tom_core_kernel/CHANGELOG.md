@@ -9,6 +9,24 @@ anyone who was writing them.
 
 ### Added
 
+- **`TomWorkerPool.isClosed`, so a caller can ask the pool the question it can
+  already ask a worker (tcincb17).** `TomWorker` publishes `isClosed`;
+  `TomWorkerPool` kept the identical `_closed` field, used it to refuse
+  `execute` in two places, and published nothing. A caller holding a pool could
+  only learn that dispatch would be refused by calling `execute` and catching
+  `isolate.pool_closed.execute_after_close` — by performing the operation they
+  were trying to decide whether to perform.
+
+  `workerCount` was not a substitute and is not one now. It reads zero after
+  `close`, but it also reads zero for a supervised pool whose workers have all
+  died and whose replacements have not yet spawned, so it cannot separate "shut
+  down" from "momentarily empty". The two getters answer different questions
+  and the dartdoc on each now says which.
+
+  Purely additive. Two cases in `TomWorkerPool > close` cover it — the reading
+  before and after `close` plus its idempotence, and the pairing with
+  `workerCount` — and both fail if the getter stops tracking `_closed`.
+
 - **`TomScheduler.drain()` — the missing way to wait for what a pass started
   (tcinc584).** A `tick()` claims the runs that are due and *starts* them:
   `_dispatchDue` deliberately leaves each `_runOne` unawaited, so that one slow

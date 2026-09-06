@@ -266,6 +266,7 @@ supervision is available but **off by default**.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `isClosed` | `bool` (getter) | Whether `close` has been called, mirroring `TomWorker.isClosed`. A closed pool refuses `execute` with `isolate.pool_closed.execute_after_close`, so this is how a caller decides whether to dispatch without dispatching to find out. `workerCount` does not answer it: that reads zero after `close` but also reads zero for a supervised pool whose workers have all died and whose replacements have not yet spawned. |
 | `isSupervised` | `bool` (getter) | Whether liveness supervision is enabled (i.e. a `healthCheckInterval` was supplied). |
 | `workerCount` | `int` (getter) | Number of live workers currently registered. Drops when one dies and returns to the pool size once the replacement is ready. |
 

@@ -2343,6 +2343,44 @@ void main() {
         expect(await inFlight, equals('first'));
       });
 
+      test('isClosed answers before and after close, and stays true', () async {
+        // The pool's counterpart to `TomWorker > close > should set isClosed
+        // to true`. Before this getter existed the only way to learn a pool
+        // would refuse work was to call execute() and catch — to perform the
+        // operation you were deciding whether to perform.
+        final context = TestWorkerContext(namePrefix: 'PoolIsClosed');
+        final pool = await TomWorkerPool.withSize(2, context);
+
+        expect(pool.isClosed, isFalse);
+
+        pool.close();
+        expect(pool.isClosed, isTrue);
+
+        // Idempotent like close() itself: a pool is commonly closed from both
+        // a tearDown and the code under test.
+        pool.close();
+        expect(pool.isClosed, isTrue);
+      });
+
+      test('isClosed says what workerCount cannot', () async {
+        // workerCount is not a substitute. Both readings agree here — two
+        // workers and open, then zero and closed — but only isClosed carries
+        // the lifecycle fact: a supervised pool whose workers have all died
+        // and whose replacements have not yet spawned also reads zero, so
+        // workerCount alone cannot separate "shut down" from "momentarily
+        // empty". This pins the pair a caller reads, not that race.
+        final context = TestWorkerContext(namePrefix: 'PoolCountVsClosed');
+        final pool = await TomWorkerPool.withSize(2, context);
+
+        expect(pool.workerCount, equals(2));
+        expect(pool.isClosed, isFalse);
+
+        pool.close();
+
+        expect(pool.workerCount, isZero);
+        expect(pool.isClosed, isTrue);
+      });
+
       test('close empties the pool and is idempotent', () async {
         final context = TestWorkerContext(namePrefix: 'ClosedTwice');
         final pool = await TomWorkerPool.withSize(2, context);

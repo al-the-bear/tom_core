@@ -1602,6 +1602,19 @@ class TomWorkerPool {
   /// Number of live workers currently registered in the pool.
   int get workerCount => _workers.length;
 
+  /// Whether this pool has been closed, mirroring [TomWorker.isClosed].
+  ///
+  /// A closed pool refuses [execute] with
+  /// `isolate.pool_closed.execute_after_close`. Without this getter the only
+  /// way to learn that was to call [execute] and catch the exception — to
+  /// perform the very operation you were deciding whether to perform.
+  ///
+  /// [workerCount] does not answer the question. It reads zero after [close],
+  /// but it also reads zero for a supervised pool whose workers have all died
+  /// and whose replacements have not yet spawned, so it cannot separate "shut
+  /// down" from "momentarily empty".
+  bool get isClosed => _closed;
+
   /// Creates a worker pool with the specified number of workers.
   ///
   /// Each worker is spawned using [TomWorker.spawn] with the provided
