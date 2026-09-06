@@ -56,6 +56,19 @@ Future<StackTrace> _captureAsyncChainStack() async {
 TomException _constructExceptionAtKnownSite() =>
     TomException('test.error.key', 'constructed without an explicit stack');
 
+// The same, one level down the hierarchy: `TomFormattingException` extends
+// `TomException`, so an auto-captured trace carries both constructors.
+TomFormattingException _constructSubclassAtKnownSite() =>
+    TomFormattingException('test.error.sub', 'constructed by a subclass');
+
+// An ordinary application type that raises from its own constructor. Its frame
+// occupies the same position a subclass constructor would, and must survive.
+class _ThrowingAppType {
+  _ThrowingAppType() {
+    throw TomException('test.error.app', 'raised inside a constructor');
+  }
+}
+
 // Named call sites for the implicit-capture tests: each calls a formatting
 // function *without* a stack, so the trace is captured inside the formatter and
 // this library's own frames are the newest ones on it. The wrapper names differ
@@ -1230,22 +1243,58 @@ void main() {
         );
       });
 
-      test('should reach the construction site directly below the '
-          'constructor frame', () {
+      test('leads with the construction site, not the constructor', () {
         final exception = _constructExceptionAtKnownSite();
-        exception.printStackTrace(2);
+        exception.printStackTrace(1);
 
-        // The trace is captured inside the constructor, so `new TomException`
-        // is genuinely the newest frame and the construction site is the one
-        // below it. Pinning both positions keeps that ordering deliberate: it
-        // is why a useful `depth` here starts at 2 rather than 1.
+        // A depth of *one* is the assertion. The trace is captured inside the
+        // constructor, so `new TomException` is genuinely the newest frame —
+        // and it is on every trace in the system, which makes it noise rather
+        // than information. It is dropped at construction, so one frame is
+        // enough to reach the code that failed.
         final logged = captured.messages.last;
-        expect(logged, contains('new TomException'));
         expect(logged, contains('_constructExceptionAtKnownSite'));
-        expect(
-          logged.indexOf('new TomException'),
-          lessThan(logged.indexOf('_constructExceptionAtKnownSite')),
-        );
+        expect(logged, isNot(contains('new TomException')));
+      });
+
+      test('drops a subclass constructor chain too, not just the base', () {
+        // A subclass adds one constant frame per level, so bounding the run by
+        // the base alone would leave `new TomFormattingException` leading.
+        final exception = _constructSubclassAtKnownSite();
+        exception.printStackTrace(1);
+
+        final logged = captured.messages.last;
+        expect(logged, contains('_constructSubclassAtKnownSite'));
+        expect(logged, isNot(contains('new TomException')));
+        expect(logged, isNot(contains('new TomFormattingException')));
+      });
+
+      test('keeps an application constructor that raises', () {
+        // The case that makes a blanket "drop leading `new …` frames" rule
+        // wrong. `_ThrowingAppType`'s constructor is the code that failed, and
+        // it sits in exactly the position a subclass constructor would — so the
+        // run has to be bounded by the exception's own leaf type, which for a
+        // directly constructed `TomException` is the first frame.
+        TomException? caught;
+        try {
+          _ThrowingAppType();
+        } on TomException catch (e) {
+          caught = e;
+        }
+        caught!.printStackTrace(1);
+
+        final logged = captured.messages.last;
+        expect(logged, contains('new _ThrowingAppType'));
+        expect(logged, isNot(contains('new TomException')));
+      });
+
+      test('leaves a caller-supplied trace alone', () {
+        // Nothing above a trace the caller handed in belongs to this class, so
+        // the trim must not run for it.
+        final handed = StackTrace.current;
+        final exception = TomException('t.e.k', 'explicit', stack: handed);
+
+        expect(exception.stack, same(handed));
       });
 
       test('should tolerate an exception built on an empty stack', () {

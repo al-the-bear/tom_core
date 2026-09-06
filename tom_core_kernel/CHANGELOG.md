@@ -9,6 +9,38 @@ anyone who was writing them.
 
 ### Changed
 
+- **An auto-captured exception trace now leads with the code that created the
+  exception, not with the constructors it passed through (tcincb24).** The
+  capture in `TomException`'s initializer is taken at the last moment the
+  creating code is still on the stack — and therefore also while every
+  constructor in the exception's own chain is. `new TomException` led every
+  trace in the system, a subclass added one more frame per level, and the
+  practical cost was that a useful `depth` started at 2 rather than 1 across
+  ~30 subclasses.
+
+  The run is bounded by **the exception's own leaf constructor**, `new
+  $runtimeType`, which is what makes the rule safe rather than merely short.
+  Dropping a leading run of `new …` frames unconditionally would swallow an
+  application constructor that happens to raise: the trace of `MyThing()`
+  throwing in its own body opens with `new TomException`, `new MyThing`, and
+  only the first is noise. Stopping at the leaf keeps `new MyThing`, because
+  for a directly constructed `TomException` the leaf *is* the first frame.
+  Measured, not assumed — all three shapes were read off real traces before the
+  rule was written.
+
+  Both representations are rewritten together. `TomBaseException` derives its
+  `stackTrace` string from `stack`, so trimming one and not the other would
+  have the raw trace and the string an `autoLog` writes disagree about which
+  frame comes first. A caller-supplied `stack` is left alone: nothing above it
+  belongs to this class. A trace whose leaf frame is absent is left alone too,
+  rather than guessing how much to drop while an exception is being built.
+
+  One existing test asserted the old ordering and said so in its comment; it
+  now asserts the new one at `depth: 1`. Three cases were added beside it — the
+  subclass chain, the application constructor that must survive, and the
+  caller-supplied trace — and each was verified to fail the corresponding
+  wrong implementation.
+
 - **`tomExecutionContext` is `final`, and a test keeps it that way
   (tcincb22).** The pre-configured ambient context was declared `var` and
   exported, so any importer anywhere in the workspace could assign to it and

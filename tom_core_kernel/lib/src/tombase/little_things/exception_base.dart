@@ -29,6 +29,7 @@
 /// ```
 library;
 
+import 'package:stack_trace/stack_trace.dart';
 import 'package:tom_basics/tom_basics.dart';
 
 import '../http_connection/server_connection.dart';
@@ -125,6 +126,9 @@ class TomException extends TomBaseException implements TomLoggable {
          stack: stack ?? StackTrace.current,
          uuid: uuid,
        ) {
+    // Only for the implicit capture. A `stack` the caller handed in is their
+    // trace of their failure, and nothing above belongs to this class.
+    if (stack == null) _dropOwnConstructorFrames();
     if (autoLog) {
       tomLog.error("EXCEPTION: $this");
       // `this.` is load-bearing: the constructor's `uuid` and `requestUuid`
@@ -137,6 +141,63 @@ class TomException extends TomBaseException implements TomLoggable {
         "EXCEPTION_STACKTRACE: ${this.uuid}-${this.requestUuid} $stackTrace",
       );
     }
+  }
+
+  /// Removes this exception's own constructor frames from the captured trace.
+  ///
+  /// The capture in the initializer above is taken at the last moment the
+  /// creating code is still on the stack — and therefore also while every
+  /// constructor in this exception's own chain is. Those frames lead the trace
+  /// and say nothing: `new TomException` is on every trace in the system, and a
+  /// subclass adds one more per level. The cost is that a useful `depth` starts
+  /// at 2 rather than 1, on a hierarchy of ~30 subclasses.
+  ///
+  /// The run is bounded by **this exception's own leaf constructor**, which is
+  /// what makes the rule safe. Dropping a leading run of `new …` frames
+  /// unconditionally would swallow an application constructor that happens to
+  /// throw — the trace of `MyThing()` raising in its own body opens with
+  /// `new TomException`, `new MyThing`, and only the first of those is noise.
+  /// Stopping at `new $runtimeType` keeps `new MyThing`, because for a directly
+  /// constructed `TomException` the leaf *is* the first frame.
+  ///
+  /// Both representations are rewritten together. `TomBaseException` derives
+  /// its `stackTrace` string from `stack` in its constructor, so leaving one
+  /// trimmed and the other not would have the raw trace and the string an
+  /// `autoLog` writes disagree about which frame comes first.
+  ///
+  /// Leaves the trace untouched when the leaf frame is not found, rather than
+  /// guessing how much to drop: this runs while an exception is being built, so
+  /// a wrong answer here corrupts the report of some other failure.
+  void _dropOwnConstructorFrames() {
+    final raw = stack;
+    if (raw is! StackTrace) return;
+
+    // Fold core frames first, exactly as `TomBaseException` does before
+    // rendering, so the trimmed trace and the string it derives stay identical
+    // to what the base would have produced for it.
+    final frames = Chain.forTrace(raw)
+        .foldFrames((frame) => frame.isCore, terse: true)
+        .traces
+        .expand((trace) => trace.frames)
+        .toList();
+
+    final leaf = 'new $runtimeType';
+    var last = -1;
+    for (var i = 0; i < frames.length; i++) {
+      final member = frames[i].member;
+      // The chain is contiguous and leads the trace; the first frame that is
+      // not a constructor ends it, whether or not the leaf was reached.
+      if (member == null || !member.startsWith('new ')) break;
+      if (member == leaf) {
+        last = i;
+        break;
+      }
+    }
+    if (last < 0) return;
+
+    final trimmed = Trace(frames.skip(last + 1));
+    stack = trimmed;
+    stackTrace = trimmed.toString();
   }
 
   @override
