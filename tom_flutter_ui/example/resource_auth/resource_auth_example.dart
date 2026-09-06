@@ -72,8 +72,8 @@ void run() {
   // and --dart-define nothing but text. All three mean the same thing.
   TomConfigProvider.initialize(
     TomConfigProvider.create(
-      environment: TomEnvironment.production,
-      platform: TomPlatform.web,
+      environment: TomConfigEnvironment.production,
+      platform: TomConfigPlatform.web,
       flags: {
         'newCheckout': true,
         'compactRows': 1,
@@ -123,7 +123,7 @@ void run() {
   assert(cupertinoOnly.resolveIcon('mSave') == null);
   assert(cupertinoOnly.resolveIcon('cShare') == CupertinoIcons.share);
 
-  assert(cfg.environment == TomEnvironment.production);
+  assert(cfg.environment == TomConfigEnvironment.production);
   assert(cfg.feature<int>('maxItems') == 50);
   assert(cfg.feature<String>('maxItems') == null); // wrong type -> null
 

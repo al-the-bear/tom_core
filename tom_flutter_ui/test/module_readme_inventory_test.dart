@@ -190,9 +190,17 @@ void main() {
   // inventory tables, because naming a type costs nothing and all of them
   // do it.
   group('surface documents name only types that exist', () {
-    final declared = _typesDeclaredIn(
-      Directory('lib/src'),
-    ).union(_typesDeclaredIn(_packageLib('tom_core_kernel')));
+    // `tom_basics` is in the set because the kernel barrel re-exports it in
+    // full, so its types reach a reader through
+    // `package:tom_core_kernel/tom_core_kernel.dart` exactly as the kernel's
+    // own do. Leaving it out made every `tom_basics` type a phantom — which
+    // is how this document's account of why the config enums are named
+    // `TomConfigEnvironment` / `TomConfigPlatform` (they must not collide
+    // with `tom_basics`' `TomEnvironment` / `TomPlatform`) came back as two
+    // faults for naming the very types it is warning about.
+    final declared = _typesDeclaredIn(Directory('lib/src'))
+        .union(_typesDeclaredIn(_packageLib('tom_core_kernel')))
+        .union(_typesDeclaredIn(_packageLib('tom_basics')));
     final documents = _surfaceDocuments();
 
     test('tccg1-01: the scan finds documents and declarations to compare', () {
@@ -220,6 +228,13 @@ void main() {
         declared,
         contains('TomAuthState'),
         reason: 'kernel types missing — package-config resolution broke',
+      );
+      expect(
+        declared,
+        contains('TomEnvironment'),
+        reason:
+            'tom_basics types missing — the kernel barrel re-exports that '
+            'package in full, so a document may name them',
       );
     });
 

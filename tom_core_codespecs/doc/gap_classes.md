@@ -453,7 +453,7 @@ region, total
 bar, line, pie, donut, scatter, gauge, heatmap
 ```
 
-`TomReportResult.rows` is a **`Stream`**, not a `List`, and deliberately: a
+`TomReportResultSection.rows` is a **`Stream`**, not a `List`, and deliberately: a
 report exists for results too large to hold inline, so rendering the same result
 twice needs a section that can produce a fresh stream.
 

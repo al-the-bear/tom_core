@@ -27,14 +27,19 @@
 /// rather than UI work and imports `package:tom_core_kernel/tom_core_kernel.dart`
 /// for it. Following the companions transitively would end at the whole kernel.
 ///
-/// **Why a list and not a blanket re-export.** The kernel barrel re-exports
+/// **Why a list and not a blanket re-export.** Because the two packages answer
+/// different questions, and a consumer who needs the kernel's should say so.
+/// A blanket re-export would put the whole kernel behind a UI import, which is
+/// the transitive end-point the previous paragraph declines to walk to.
+///
+/// The choice is only ever scope. Importing both barrels into one library is
+/// legal, and `test/kernel_types_coexist_test.dart` holds it that way — which
+/// takes a deliberate naming rule to stay true: the kernel barrel re-exports
 /// `tom_basics` in full, and `tom_basics` declares a `TomEnvironment` and a
-/// `TomPlatform` — the same two names this package declares in
-/// `resource_auth/tom_config_provider.dart`. A blanket re-export would not
-/// merely widen the surface, it would collide: both spellings of each name
-/// would reach a consumer through one import and every use of either would be
-/// an `ambiguous_import` error. The explicit list is what makes the bridge
-/// compile at all.
+/// `TomPlatform`, so this package's config enums are `TomConfigEnvironment`
+/// and `TomConfigPlatform`, named for the `TomConfigProvider` they configure.
+/// A name declared on both sides is an `ambiguous_import` for every consumer
+/// that imports both, so the narrower concept takes the qualified name.
 ///
 /// The export names the kernel's **public barrel**, not the `lib/src/` paths
 /// that declare the types. The barrel exports those files unfiltered, so the

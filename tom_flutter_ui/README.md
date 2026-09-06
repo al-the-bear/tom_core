@@ -141,15 +141,17 @@ and download with progress, cancel and retry over the kernel's
 | `TomUIColors`, `TomUIIcons` | Resource-resolved colour / icon namespaces |
 | `TomUIColorAdapter`, `TomUIIconAdapter` | The pluggable resource adapter contracts |
 | `AllColorsAdapter`, `AllIconsAdapter`, and the `MaterialOnly…` / `CupertinoOnly…` pairs | Full and single-family adapters for each namespace |
-| `TomConfigProvider`, `TomEnvironment`, `TomPlatform` | Config / environment inputs |
+| `TomConfigProvider`, `TomConfigEnvironment`, `TomConfigPlatform` | Config / environment inputs |
 
 ### Kernel types (`kernel_types.dart`)
 
-The package does not re-export `tom_core_kernel` wholesale — `tom_basics`
-declares a `TomEnvironment` and a `TomPlatform` colliding with the enums above,
-so a blanket re-export would reach you as an `ambiguous_import`. One explicit
-list is the bridge instead, and every kernel type named in a public
-`tom_flutter_ui` signature is on it.
+The package does not re-export `tom_core_kernel` wholesale: the two packages
+answer different questions, and an application doing kernel work should import
+the kernel and say so. One explicit list is the bridge instead, and every
+kernel type named in a public `tom_flutter_ui` signature is on it. Importing
+both barrels into one library is legal — the config enums above are named
+`TomConfig…` precisely so they do not collide with the `TomEnvironment` and
+`TomPlatform` that `tom_basics` (and so the kernel barrel) already declares.
 
 | Group | Types |
 | ----- | ----- |

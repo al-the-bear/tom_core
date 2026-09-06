@@ -11,7 +11,7 @@
 /// - [TomUIColors] — colour names to `Color`.
 /// - [TomUIIcons] — icon names to `IconData`.
 /// - [TomConfigProvider] — the configuration the two resolve against,
-///   including the current [TomEnvironment] and [TomPlatform].
+///   including the current [TomConfigEnvironment] and [TomConfigPlatform].
 ///
 /// Applications extend the two catalogues by registering a
 /// [TomUIColorAdapter] or [TomUIIconAdapter] rather than by editing them.

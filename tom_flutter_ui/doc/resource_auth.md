@@ -40,7 +40,7 @@ data** resolved here.
 | `AllIconsAdapter` | class | Resolves the full Material + Cupertino icon set; supports custom registration. |
 | `MaterialOnlyIconAdapter` / `CupertinoOnlyIconAdapter` | classes | Single-family icon resolvers for smaller bundles. |
 | `TomConfigProvider` | class | Environment, platform, and feature-flag configuration. |
-| `TomEnvironment` / `TomPlatform` | enums | `development`/`staging`/`production`; `mobile`/`web`/`desktop`. |
+| `TomConfigEnvironment` / `TomConfigPlatform` | enums | `development`/`staging`/`production`; `mobile`/`web`/`desktop`. |
 
 ## Colour resolution
 
@@ -178,8 +178,8 @@ fail-fast, since config is a hard startup dependency):
 
 ```dart
 TomConfigProvider.initialize(TomConfigProvider.create(
-  environment: TomEnvironment.production,
-  platform: TomPlatform.web,
+  environment: TomConfigEnvironment.production,
+  platform: TomConfigPlatform.web,
   flags: {'newCheckout': true, 'maxItems': 50},
 ));
 
@@ -196,8 +196,8 @@ surrounding whitespace are folded away:
 
 ```dart
 final cfg = TomConfigProvider.create(
-  environment: TomEnvironment.production,
-  platform: TomPlatform.web,
+  environment: TomConfigEnvironment.production,
+  platform: TomConfigPlatform.web,
   flags: {'a': true, 'b': 1, 'c': 1.0, 'd': 'TRUE', 'e': ' true ', 'f': '1',
           'g': false, 'h': 0, 'i': 'yes', 'j': 2},
 );

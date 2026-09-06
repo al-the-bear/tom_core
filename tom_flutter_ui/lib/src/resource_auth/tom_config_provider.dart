@@ -26,10 +26,10 @@ class TomConfigProvider {
   static void reset() => _current = null;
 
   /// The current environment.
-  final TomEnvironment environment;
+  final TomConfigEnvironment environment;
 
   /// The current platform.
-  final TomPlatform platform;
+  final TomConfigPlatform platform;
 
   final Map<String, Object> _flags;
 
@@ -82,7 +82,7 @@ class TomConfigProvider {
 }
 
 /// Application deployment environment.
-enum TomEnvironment { development, staging, production }
+enum TomConfigEnvironment { development, staging, production }
 
 /// Application target platform (logical, not physical).
-enum TomPlatform { mobile, web, desktop }
+enum TomConfigPlatform { mobile, web, desktop }

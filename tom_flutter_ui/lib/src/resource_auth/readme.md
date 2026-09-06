@@ -22,7 +22,7 @@ deliberate mirrors of each other, so every row names both.
 | `MaterialOnlyColorAdapter` / `MaterialOnlyIconAdapter` | Material only — for bundle size, or to make a stray `c…` name resolve to `null` and be caught instead of quietly working |
 | `CupertinoOnlyColorAdapter` / `CupertinoOnlyIconAdapter` | Cupertino only; the same two reasons mirrored |
 | `TomConfigProvider` | Config / feature-flag provider |
-| `TomEnvironment` / `TomPlatform` | Environment & platform enums feeding config + responsive layout |
+| `TomConfigEnvironment` / `TomConfigPlatform` | Environment & platform enums feeding config + responsive layout |
 
 ## Entry points, by lifecycle stage
 
@@ -88,8 +88,8 @@ void wireResources() {
   final save = TomUIIcons.resolveIcon('mSave');   // Icons.save
 
   TomConfigProvider.initialize(TomConfigProvider.create(
-    environment: TomEnvironment.production,
-    platform: TomPlatform.web,
+    environment: TomConfigEnvironment.production,
+    platform: TomConfigPlatform.web,
     flags: {'newCheckout': true, 'maxItems': 50},
   ));
   print(TomConfigProvider.current.isEnabled('newCheckout')); // true

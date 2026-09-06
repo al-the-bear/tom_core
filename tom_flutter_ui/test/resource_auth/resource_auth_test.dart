@@ -526,14 +526,14 @@ void main() {
     test('exposes environment, platform and flags', () {
       TomConfigProvider.initialize(
         TomConfigProvider.create(
-          environment: TomEnvironment.staging,
-          platform: TomPlatform.desktop,
+          environment: TomConfigEnvironment.staging,
+          platform: TomConfigPlatform.desktop,
           flags: {'beta': true, 'limit': 10, 'name': 'x'},
         ),
       );
       final cfg = TomConfigProvider.current;
-      expect(cfg.environment, TomEnvironment.staging);
-      expect(cfg.platform, TomPlatform.desktop);
+      expect(cfg.environment, TomConfigEnvironment.staging);
+      expect(cfg.platform, TomConfigPlatform.desktop);
       expect(cfg.isEnabled('beta'), isTrue);
       expect(cfg.feature<int>('limit'), 10);
       expect(cfg.feature<String>('name'), 'x');
@@ -542,8 +542,8 @@ void main() {
     test('feature returns null on type mismatch or missing', () {
       TomConfigProvider.initialize(
         TomConfigProvider.create(
-          environment: TomEnvironment.development,
-          platform: TomPlatform.mobile,
+          environment: TomConfigEnvironment.development,
+          platform: TomConfigPlatform.mobile,
           flags: {'limit': 10},
         ),
       );
@@ -700,7 +700,7 @@ void generatedTableHeaderTests({
 /// that could fail for reasons the case is not about.
 TomConfigProvider _withFlags(Map<String, Object> flags) =>
     TomConfigProvider.create(
-      environment: TomEnvironment.development,
-      platform: TomPlatform.mobile,
+      environment: TomConfigEnvironment.development,
+      platform: TomConfigPlatform.mobile,
       flags: flags,
     );

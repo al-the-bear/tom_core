@@ -2,6 +2,41 @@
 
 ### Changed
 
+- **The config enums are `TomConfigEnvironment` / `TomConfigPlatform`, so this
+  package and `tom_core_kernel` can be imported into one library.** They were
+  `TomEnvironment` and `TomPlatform` — the names two *classes* in `tom_basics`
+  already had, and the kernel barrel re-exports `tom_basics` in full. Both
+  spellings of each name therefore reached any library importing both barrels,
+  and every use of either was an `ambiguous_import` error.
+
+  That hit a consumer following this package's own advice.
+  `doc/kernel_types.md` tells you to import the kernel directly for anything
+  off the 26-name bridge — wiring `TomHttpFileTransferClient`, say — so doing
+  the documented thing and also naming a `TomEnvironment` did not compile
+  without a `hide` or a prefix.
+
+  It is a naming defect rather than a design tension, and it is fixed on this
+  side of it. `tom_basics` keeps the plain names: it is published, and its pair
+  describe the *runtime the process executes in* (they select beans by
+  environment and platform). This package's pair are *configuration inputs a
+  widget resolves against* — the two fields of `TomConfigProvider` — and are
+  now named for it. Different concepts that happened to share two words; the
+  narrower one moved.
+
+  `test/kernel_types_coexist_test.dart` keeps it fixed. It imports both public
+  barrels unprefixed, with no `hide` and no `as`, and names types from each, so
+  a future common name stops the library compiling and the suite fails to load.
+  The collision was originally found with a throwaway probe file, and could
+  only be found that way — neither package's suite imports the other's barrel.
+  That probe is now checked in.
+
+  One consequence worth recording: with the collision gone, a blanket
+  re-export of the kernel from this package would compile. The `show` list in
+  `lib/src/kernel_types.dart` stays, on the scoping argument that was always
+  its other reason — the two packages answer different questions, and an
+  application doing kernel work should import the kernel and say so. The
+  dartdoc and `doc/kernel_types.md` no longer claim the collision forces it.
+
 - **`tool/generate_icons.dart` emits no timestamp, and both resource-table
   generators format what they write, so re-running either produces no diff.**
 

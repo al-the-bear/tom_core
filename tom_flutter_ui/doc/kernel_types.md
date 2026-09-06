@@ -75,15 +75,27 @@ when the kernel's public surface never moved.
 ## Why a list and not a blanket re-export
 
 Nothing here is published, so a wider surface would cost nothing in
-compatibility terms — but a *blanket* re-export does not compile.
+compatibility terms. The reason is scope: the two packages answer different
+questions, and an application doing kernel work should import the kernel and
+say so. A blanket re-export would put the whole kernel behind a UI import,
+which is the transitive end-point the previous section declines to walk to.
 
-The kernel barrel re-exports `tom_basics` in full, and `tom_basics` declares a
-`TomEnvironment` and a `TomPlatform`. `tom_flutter_ui` declares its own enums
-of exactly those two names in `resource_auth/tom_config_provider.dart`. A
-blanket re-export would put both spellings of each name into one import, and
-every use of either — including the `TomConfigProvider.create` call in this
-package's own quick-start sample — would be an `ambiguous_import` error. The
-explicit list is what makes the bridge compile at all.
+For a while the reason was blunter — a blanket re-export did not *compile*.
+The kernel barrel re-exports `tom_basics` in full, which declares a
+`TomEnvironment` and a `TomPlatform`, and `tom_flutter_ui` declared enums of
+exactly those two names. Both spellings reached one import and every use of
+either was an `ambiguous_import` error — including for a consumer following
+this document's own advice to import the kernel directly for anything off the
+list.
+
+That is fixed at the source rather than worked around: the enums are now
+`TomConfigEnvironment` and `TomConfigPlatform`, named for the
+`TomConfigProvider` whose two fields they are. `tom_basics` keeps the plain
+names — it is published, and its pair describe the runtime the process
+executes in, which is the broader claim on the words. Importing both barrels
+into one library is legal today, and
+[`test/kernel_types_coexist_test.dart`](../test/kernel_types_coexist_test.dart)
+fails to compile if that ever stops being true.
 
 ## How the two directions are guarded
 
