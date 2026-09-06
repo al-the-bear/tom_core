@@ -20,7 +20,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 Widget _app(Widget child) => MaterialApp(
-  home: Scaffold(body: Center(child: SizedBox(width: 400, child: child))),
+  home: Scaffold(
+    body: Center(child: SizedBox(width: 400, child: child)),
+  ),
 );
 
 /// The source resolves through a `Future`, so the first frame renders an
@@ -30,11 +32,10 @@ Future<void> _pumpLoaded(WidgetTester tester, Widget child) async {
   await tester.pump();
 }
 
-StaticSelectableSource<String> _industries() =>
-    StaticSelectableSource<String>([
-      const SelectableItem(value: 'tech', label: 'Technology'),
-      const SelectableItem(value: 'finance', label: 'Finance'),
-    ]);
+StaticSelectableSource<String> _industries() => StaticSelectableSource<String>([
+  const SelectableItem(value: 'tech', label: 'Technology'),
+  const SelectableItem(value: 'finance', label: 'Finance'),
+]);
 
 void main() {
   group('TomGenericFieldDecorationMixin — label anatomy', () {

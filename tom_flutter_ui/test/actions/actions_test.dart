@@ -870,15 +870,18 @@ void main() {
       expect(action.canonicalPath, 'checkout.sec.edit');
     });
 
-    test('an action with no scope of its own stands where its controller does', () {
-      final controller = TomActionController(
-        controllerId: 'sec',
-        scope: detachedCheckout(),
-      );
-      final action = IncrementAction(controller: controller, id: 'edit');
-      expect(controller.canonicalPrefix, 'checkout.sec');
-      expect(action.canonicalPath, 'checkout.sec.edit');
-    });
+    test(
+      'an action with no scope of its own stands where its controller does',
+      () {
+        final controller = TomActionController(
+          controllerId: 'sec',
+          scope: detachedCheckout(),
+        );
+        final action = IncrementAction(controller: controller, id: 'edit');
+        expect(controller.canonicalPrefix, 'checkout.sec');
+        expect(action.canonicalPath, 'checkout.sec.edit');
+      },
+    );
 
     test('an ambient scope applies the group ceiling', () {
       installRules();

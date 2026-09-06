@@ -43,12 +43,15 @@ void main() {
   tearDown(TomAuthorization.reset);
 
   group('TomAuthLayers.resolve seeds from the resource layer', () {
-    test('a null basePath seeds full rather than looking up the empty path', () {
-      // An element that addresses no resource is not an element addressing
-      // `''` — the adapter must not be consulted at all.
-      TomAuthorization.adapter = _MapAuthAdapter({'': TomAuthState.none});
-      expect(_resolve(basePath: null), TomAuthState.full);
-    });
+    test(
+      'a null basePath seeds full rather than looking up the empty path',
+      () {
+        // An element that addresses no resource is not an element addressing
+        // `''` — the adapter must not be consulted at all.
+        TomAuthorization.adapter = _MapAuthAdapter({'': TomAuthState.none});
+        expect(_resolve(basePath: null), TomAuthState.full);
+      },
+    );
 
     test('a basePath resolves through the adapter', () {
       TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.read});

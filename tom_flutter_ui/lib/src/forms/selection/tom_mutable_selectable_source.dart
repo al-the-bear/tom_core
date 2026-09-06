@@ -44,7 +44,9 @@ class TomMutableSelectableSource<T> extends TomSelectableSource<T> {
   /// hear is a bug at the call site, not a no-op worth swallowing.
   void setItems(List<SelectableItem<T>> next) {
     if (isDisposed) {
-      throw StateError('setItems called on a disposed TomMutableSelectableSource');
+      throw StateError(
+        'setItems called on a disposed TomMutableSelectableSource',
+      );
     }
     _items = List.of(next);
     _controller.add(List.unmodifiable(_items));

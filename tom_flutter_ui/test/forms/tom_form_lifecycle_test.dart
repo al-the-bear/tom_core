@@ -407,17 +407,19 @@ void main() {
         expect(form.isDirty, isTrue);
       });
 
-      test('isValid reports a failure that exists only in the nested form',
-          () async {
-        final form = _boundOrder();
-        await form.validate();
-        expect(form.isValid, isTrue);
+      test(
+        'isValid reports a failure that exists only in the nested form',
+        () async {
+          final form = _boundOrder();
+          await form.validate();
+          expect(form.isValid, isTrue);
 
-        form.address.street.setValue('');
-        await form.validate();
+          form.address.street.setValue('');
+          await form.validate();
 
-        expect(form.isValid, isFalse);
-      });
+          expect(form.isValid, isFalse);
+        },
+      );
     });
 
     group('validate', () {
@@ -448,17 +450,19 @@ void main() {
         expect(order.address.city.get(), 'Shelbyville');
       });
 
-      test('refuses the whole save when only the nested form is invalid',
-          () async {
-        // The parent's own fields are fine here; the veto comes from below.
-        final order = orderWith(const ['Bolt']);
-        final form = OrderForm()..bind(order);
+      test(
+        'refuses the whole save when only the nested form is invalid',
+        () async {
+          // The parent's own fields are fine here; the veto comes from below.
+          final order = orderWith(const ['Bolt']);
+          final form = OrderForm()..bind(order);
 
-        form.address.street.setValue('');
-        expect(await form.save(), isFalse);
+          form.address.street.setValue('');
+          expect(await form.save(), isFalse);
 
-        expect(order.address.street.get(), 'Main Street 1');
-      });
+          expect(order.address.street.get(), 'Main Street 1');
+        },
+      );
 
       test('moves the nested baseline, so a later discard keeps it', () async {
         final form = _boundOrder();
