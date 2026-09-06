@@ -588,6 +588,18 @@
         "hint": "Where in the SDLC the work sits",
         "description": "Linked to the phase-gate checklist."
       },
+      "isPublic": {
+        "label": "Public brief",
+        "description": "Visible to everyone in the org, not just the project members."
+      },
+      "needsReview": {
+        "label": "Needs review",
+        "description": "Blocks the phase gate until a reviewer signs off."
+      },
+      "notifySubscribers": {
+        "label": "Notify subscribers",
+        "description": "Sends the weekly digest to everyone watching the project."
+      },
       "budget": {
         "label": "Budget (USD)",
         "hint": "Total approved spend",
@@ -711,6 +723,18 @@
         "label": "Phase",
         "hint": "Where in the SDLC the work sits",
         "description": "Linked to the phase-gate checklist."
+      },
+      "isPublic": {
+        "label": "Public brief",
+        "description": "Visible to everyone in the org, not just the project members."
+      },
+      "needsReview": {
+        "label": "Needs review",
+        "description": "Blocks the phase gate until a reviewer signs off."
+      },
+      "notifySubscribers": {
+        "label": "Notify subscribers",
+        "description": "Sends the weekly digest to everyone watching the project."
       },
       "budget": {
         "label": "Budget (USD)",

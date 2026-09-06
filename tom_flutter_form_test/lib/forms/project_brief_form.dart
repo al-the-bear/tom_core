@@ -13,6 +13,13 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 ///    handful, multiline on summary/description/riskNotes.
 ///  * `TomFormStringDropdown` for category / priority / status / phase so
 ///    breakpoint-driven dropdown ↔ segmented swaps have real dropdowns.
+///  * One of each shipped boolean rendering — `TomFormBoolSwitch`,
+///    `TomFormBoolCheckbox`, `TomFormBoolToggle`. Three different
+///    renderings rather than three switches because Demo G's subject is
+///    the style/theme swap across four width bands, and the three resolve
+///    their style through three different `TomFormStyle` slots
+///    (`switchStyle`, `checkboxStyle`, `segmentedStyle`) — so one row
+///    proves the swap reaches all three anatomies.
 ///  * `TomTextFormFieldBase<String>` used directly, twice, to keep the
 ///    Classic ↔ new-spec coexistence exercised in the same tree.
 ///  * Nested `PersonSubform` for `lead` and `reviewer` so the form is a
@@ -73,6 +80,26 @@ class ProjectBriefForm extends TomForm<TomClass> {
     form: this,
     source: _phaseSource,
     validators: [Validators.required()],
+  );
+
+  // --- Flags --------------------------------------------------------------
+  //
+  // These bind to `ProjectBrief`'s three `TomBool` members by name, like
+  // every other field here: a `TomField<bool>` takes the serialized `bool`
+  // straight off `getValues()`, so no demo-side plumbing is involved.
+
+  late final isPublic = TomFormBoolSwitch('isPublic', false, form: this);
+  late final needsReview = TomFormBoolCheckbox(
+    'needsReview',
+    false,
+    form: this,
+  );
+  late final notifySubscribers = TomFormBoolToggle(
+    'notifySubscribers',
+    false,
+    form: this,
+    onLabelOverride: 'Notify',
+    offLabelOverride: 'Silent',
   );
 
   // --- Scope --------------------------------------------------------------
@@ -221,4 +248,18 @@ final _phaseSource = StaticSelectableSource<String>([
   const SelectableItem(value: 'build', label: 'Build'),
   const SelectableItem(value: 'review', label: 'Review'),
   const SelectableItem(value: 'ship', label: 'Ship'),
+]);
+
+/// Item set behind the brief's `tags` multi-select.
+///
+/// Public because the field it feeds is built by the demo rather than by
+/// [ProjectBriefForm] — see `_ComplexFormBodyState._tags` for why. The item
+/// set is still part of the brief's domain, so it stays here with the other
+/// sources.
+final projectBriefTagSource = StaticSelectableSource<String>([
+  const SelectableItem(value: 'dashboard', label: 'dashboard'),
+  const SelectableItem(value: 'metrics', label: 'metrics'),
+  const SelectableItem(value: 'sla', label: 'sla'),
+  const SelectableItem(value: 'incident', label: 'incident'),
+  const SelectableItem(value: 'frontend', label: 'frontend'),
 ]);

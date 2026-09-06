@@ -194,8 +194,8 @@ class DemoListScreen extends StatelessWidget {
           description:
               'Five single- and multi-select flavours '
               '(FilterChips / MultiCheckbox / Segmented / RadioGroup / '
-              'ChoiceChips) against one shared source. Scaffolded today; '
-              'widgets land in Phase 2.',
+              'ChoiceChips) against one shared source, with the two '
+              'binding shapes side-by-side.',
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const DemoESelectionVariants()),
@@ -216,9 +216,10 @@ class DemoListScreen extends StatelessWidget {
           icon: Icons.aspect_ratio,
           title: 'Demo G: Complex Breakpoint Scenarios',
           description:
-              'ProjectBriefForm across four style + theme '
-              'presets at 400 / 800 / 1200 / 1600 px, with every ACL '
-              'breakpoint API active + priority widget-type swap.',
+              'ProjectBriefForm — strings, dropdowns, booleans and a '
+              'tag multi-select — across four style + theme presets at '
+              '400 / 800 / 1200 / 1600 px, with every ACL breakpoint API '
+              'active + priority widget-type swap.',
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const DemoGBreakpointScenarios()),

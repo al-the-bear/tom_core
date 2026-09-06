@@ -194,6 +194,12 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
               'observable, so type-swap is free of lost state.',
             ),
             const DemoBullet(
+              'The "Flags & tags" row carries one of each '
+              'boolean rendering (switch / checkbox / toggle) plus a '
+              'filter-chip multi-select, so the preset swap is visible '
+              'on four field anatomies beyond the text inputs.',
+            ),
+            const DemoBullet(
               'Drag the splitter to cross every breakpoint '
               'without resizing the window.',
             ),
@@ -492,6 +498,56 @@ class _ComplexFormBody extends StatefulWidget {
 }
 
 class _ComplexFormBodyState extends State<_ComplexFormBody> {
+  /// The brief's tag multi-select — a real [TomFormStringFilterChips], but
+  /// owned by this body rather than by [ProjectBriefForm].
+  ///
+  /// Why not a form member: a multi-select field is `TomField<List<String>>`
+  /// while `ProjectBrief.tags` is a `TomList<TomString>`, which `getValues()`
+  /// serializes to a `List<dynamic>`. `bind()` would hand that straight to
+  /// `set()` and fail the runtime type check, taking the whole form's bind
+  /// down with it. `Phase5DemoState` sidesteps the same gap the same way.
+  /// Held here, the field never meets `setValues`, so it is seeded from and
+  /// written back to `state.tags` explicitly by [_seedTags] / [_writeTagsBack].
+  late final TomFormStringFilterChips _tags;
+
+  /// Retained so the write-back observer can be removed on dispose —
+  /// observers are held weakly, so this is also what keeps it alive.
+  late final TomFunctionObserver<TomObservable> _tagsObserver;
+
+  @override
+  void initState() {
+    super.initState();
+    _tags = TomFormStringFilterChips(
+      'tags',
+      _seedTags(),
+      source: projectBriefTagSource,
+      labelTextOverride: 'Tags',
+      descriptionTextOverride:
+          'Free-form labels used by the portfolio filters.',
+    );
+    _tagsObserver = _tags >> (_) => _writeTagsBack();
+  }
+
+  @override
+  void dispose() {
+    _tags.removeObserver(_tagsObserver);
+    _tags.dispose();
+    super.dispose();
+  }
+
+  /// The brief's current tags as the plain `List<String>` the field holds.
+  List<String> _seedTags() => [
+    for (final tag in widget.state.tags) tag.get(),
+  ];
+
+  /// Mirrors an edit back onto `state.tags`, which is what the rest of the
+  /// demo (and Demo H's field-state panel) reads.
+  void _writeTagsBack() {
+    widget.state.tags.resetWith([
+      for (final value in _tags.get()) TomString(value),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -617,8 +673,8 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
             _sectionCard(description.build(context)),
             _sectionTitle(context, 'Risk notes'),
             _sectionCard(riskNotes.build(context)),
-            const SizedBox(height: 12),
-            _sectionCard(_inlineExtras(context)),
+            _sectionTitle(context, 'Flags & tags'),
+            _sectionCard(_flagsAndTags(context)),
           ],
         );
       },
@@ -717,71 +773,29 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
     );
   }
 
-  Widget _inlineExtras(BuildContext context) {
-    // Phase 2 bool + tag observables live on the state directly (since
-    // Phase 2 TomField implementations for these don't exist yet). The
-    // bindings write through [state.*] so the real form's setValues still
-    // captures them on save.
-    final state = widget.state;
-    return TomMultiObservableBuilder(
-      observables: [
-        state.isPublic,
-        state.needsReview,
-        state.notifySubscribers,
-        state.tags,
-      ],
-      builder: (context) {
-        final theme = Theme.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Flags (Phase 2 bool stand-ins)',
-              style: theme.textTheme.titleSmall,
-            ),
-            Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              children: [
-                _boolSwitch(context, state.isPublic, 'Public'),
-                _boolSwitch(context, state.needsReview, 'Needs review'),
-                _boolSwitch(
-                  context,
-                  state.notifySubscribers,
-                  'Notify subscribers',
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tags (Phase 2 multi-select stand-in)',
-              style: theme.textTheme.titleSmall,
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final t in state.tags.toList())
-                  InputChip(
-                    label: Text(t.get()),
-                    onDeleted: () =>
-                        state.tags.removeWhere((o) => o.get() == t.get()),
-                  ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _boolSwitch(BuildContext context, TomBool flag, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Switch(value: flag.get(), onChanged: (v) => flag | v),
-        Text(label),
-      ],
-    );
+  /// Flags + tags row: the three boolean fields (form members, bound to
+  /// the brief's `TomBool`s) followed by the tag multi-select.
+  ///
+  /// Laid out through [TomAclBuilder] like every other section, so the
+  /// flags cross the same breakpoints as the rest of the pane instead of
+  /// sitting outside the machinery this demo exists to exercise. The row
+  /// splits at 900 (booleans above, tags below) and again at 500 (one
+  /// element per row).
+  Widget _flagsAndTags(BuildContext context) {
+    return TomAclBuilder(id: 'flags', elementProvider: widget.form)
+        .setAclExpandXDefault(true)
+        .setAclDefaultAppendGap(12, const [
+          (400, 4),
+          (800, 8),
+          (1200, 12),
+          (1600, 20),
+        ])
+        .append((p) => p.isPublic.widget)
+        .append((p) => p.needsReview.widget)
+        .append((p) => p.notifySubscribers.widget)
+        .addRowBreakpoint(atWidth: 900)
+        .append((_) => _tags.widget)
+        .addRowBreakpoint(atWidth: 500)
+        .build(context);
   }
 }
