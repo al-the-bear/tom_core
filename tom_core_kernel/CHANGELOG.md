@@ -1053,6 +1053,28 @@ anyone who was writing them.
   which is what every call site already looks like since `checkAccessibility`
   takes one. The suite's `should integrate with TomResourceKeyProtection` case
   asserted the old behaviour and was replaced.
+- **Breaking: reading a `TomServerCall` before `send()` raises one key, not
+  seven (tcincb11).** `TomServerCall` has eight members that read something off
+  the response, and each raised its own key for the single condition "nothing
+  has been sent" — `read()` under
+  `server.send.illegal_state_read_must_be_after_send`, and the six `getResponse*`
+  accessors each naming themselves,
+  `…illegal_state_read_headers_only_after_sending` and five more. The shared
+  guard existed but took the key from its caller, so the count grew with the API:
+  code handling "this call has not been sent" had to match seven keys, and a
+  ninth reader would have brought an eighth. That contradicts the convention
+  `TomException` states for keys — `<area>.<operation>.<condition>`, whose last
+  segment names the *condition* — and an accessor is not a condition. The guard
+  now owns the key: all eight readers raise
+  `server.send.illegal_state_read_must_be_after_send`, and `_requireSent(what)` /
+  `_requireSentResponse(what)` take only a prose description, so a new reader has
+  no key to choose and the convention holds without anyone deciding again. The
+  detail is not lost, it is demoted: the message names the value that was wanted
+  and the `read` parameter carries it, which is where a detail belongs and where
+  it does not fragment the contract. `read()` keeps its own non-awaiting guard so
+  its timeout still covers the headers as well as the body. The six retired keys
+  were referenced nowhere outside their own declarations. Two suite cases,
+  exhaustive over a map of every reader, pin the key and the surviving detail.
 
 ### Tests
 

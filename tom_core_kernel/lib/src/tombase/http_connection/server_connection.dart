@@ -659,18 +659,40 @@ class TomServerCall {
     return this;
   }
 
-  /// Awaits the in-flight response, throwing [TomServerConnectionException] with
-  /// the caller-supplied [key]/[message] when no request has been sent yet.
+  /// Refuses a read of [what] before [send], under the one key
+  /// `server.send.illegal_state_read_must_be_after_send`.
   ///
-  /// Centralises the "you must send before you can read this" guard shared by
-  /// every response accessor so each one states only its own error wording.
-  Future<StreamedResponse> _requireSentResponse(
-    String key,
-    String message,
-  ) async {
+  /// The key lives here rather than at each reader, for the same reason it does
+  /// in [_ensureNotYetRead]: a key's last segment names the *condition* (see
+  /// [TomException]), and "nothing has been sent" is one condition however many
+  /// members can meet it. Supplied by the caller it became seven keys for that
+  /// one condition — six accessors each naming itself, plus [read] — so code
+  /// handling "this call has not been sent" had to match seven, and an eighth
+  /// reader would have brought an eighth.
+  ///
+  /// [what] names in prose the value the caller was after ("the response
+  /// headers"). It is the detail those seven keys were carrying, and it reaches
+  /// the message and the `read` parameter instead, where a detail belongs and
+  /// costs the contract nothing. **A new reader passes only [what]** — there is
+  /// no key to choose, so the convention holds without anyone deciding again.
+  void _requireSent(String what) {
     if (response == null) {
-      throw TomServerConnectionException(key, message);
+      throw TomServerConnectionException(
+        "server.send.illegal_state_read_must_be_after_send",
+        "You can only read $what after send() has been called.",
+        parameters: {"read": what},
+      );
     }
+  }
+
+  /// Awaits the in-flight response, refusing a read of [what] before [send]
+  /// exactly as [_requireSent] does.
+  ///
+  /// Split from [_requireSent] because [read] needs the guard *without* the
+  /// await: it defers awaiting the response into [_awaitTransfer] so that its
+  /// timeout covers the headers as well as the body.
+  Future<StreamedResponse> _requireSentResponse(String what) async {
+    _requireSent(what);
     return await response!;
   }
 
@@ -697,16 +719,13 @@ class TomServerCall {
   /// through here, so all of them refuse a second read under the one key
   /// `server.send.illegal_state_only_read_once`.
   ///
-  /// Throws [TomServerConnectionException] if called before send or more than once.
+  /// Throws [TomServerConnectionException] under
+  /// `server.send.illegal_state_read_must_be_after_send` if called before send,
+  /// or `server.send.illegal_state_only_read_once` if called again.
   /// Throws [TomRequestAbortedException] if the request was aborted.
   Future<Uint8List> read() async {
     _ensureNotYetRead();
-    if (response == null) {
-      throw TomServerConnectionException(
-        "server.send.illegal_state_read_must_be_after_send",
-        "You need to send before you read.",
-      );
-    }
+    _requireSent("the response body");
     _read = true;
     final transfer = _awaitTransfer();
     final deadline = specs.timeout;
@@ -767,67 +786,55 @@ class TomServerCall {
 
   /// Gets the response headers after sending.
   ///
-  /// Throws [TomServerConnectionException] if called before send.
+  /// Throws [TomServerConnectionException] under
+  /// `server.send.illegal_state_read_must_be_after_send` if called before send.
   Future<Map<String, String>> getResponseHeaders() async {
-    final sent = await _requireSentResponse(
-      "server.send.illegal_state_read_headers_only_after_sending",
-      "You can only read out response headers after you send/read ",
-    );
+    final sent = await _requireSentResponse("the response headers");
     return sent.headers;
   }
 
   /// Gets the HTTP status code after sending.
   ///
-  /// Throws [TomServerConnectionException] if called before send.
+  /// Throws [TomServerConnectionException] under
+  /// `server.send.illegal_state_read_must_be_after_send` if called before send.
   Future<int> getResponseStatusCode() async {
-    final sent = await _requireSentResponse(
-      "server.send.illegal_state_read_status_code_only_after_sending",
-      "You can only read out response status code after you send/read ",
-    );
+    final sent = await _requireSentResponse("the response status code");
     return sent.statusCode;
   }
 
   /// Gets the response content length after sending.
   ///
-  /// Throws [TomServerConnectionException] if called before send.
+  /// Throws [TomServerConnectionException] under
+  /// `server.send.illegal_state_read_must_be_after_send` if called before send.
   Future<int?> getResponseContentLength() async {
-    final sent = await _requireSentResponse(
-      "server.send.illegal_state_read_content_length_only_after_sending",
-      "You can only read out response content length after you send/read ",
-    );
+    final sent = await _requireSentResponse("the response content length");
     return sent.contentLength;
   }
 
   /// Checks if the response is a redirect after sending.
   ///
-  /// Throws [TomServerConnectionException] if called before send.
+  /// Throws [TomServerConnectionException] under
+  /// `server.send.illegal_state_read_must_be_after_send` if called before send.
   Future<bool> getResponseIsRedirect() async {
-    final sent = await _requireSentResponse(
-      "server.send.illegal_state_check_for_redirect_only_after_sending",
-      "You can only read out response redirect info after you send/read ",
-    );
+    final sent = await _requireSentResponse("the response redirect flag");
     return sent.isRedirect;
   }
 
   /// Gets the reason phrase after sending (e.g., "OK", "Not Found").
   ///
-  /// Throws [TomServerConnectionException] if called before send.
+  /// Throws [TomServerConnectionException] under
+  /// `server.send.illegal_state_read_must_be_after_send` if called before send.
   Future<String?> getResponseReasonPhrase() async {
-    final sent = await _requireSentResponse(
-      "server.send.illegal_state_read_reason_phrase_only_after_sending",
-      "You can only read out reason phrase after you send/read ",
-    );
+    final sent = await _requireSentResponse("the response reason phrase");
     return sent.reasonPhrase;
   }
 
   /// Gets the original request from the response after sending.
   ///
-  /// Throws [TomServerConnectionException] if called before send.
+  /// Throws [TomServerConnectionException] under
+  /// `server.send.illegal_state_read_must_be_after_send` if called before send.
   Future<BaseRequest?> getResponseRequest() async {
-    final sent = await _requireSentResponse(
-      "server.send.illegal_state_read_response_request_only_after_sending",
-      "You can only read out response request re after you send/read ",
-    );
+    final sent = await _requireSentResponse("the originating request");
     return sent.request;
   }
 

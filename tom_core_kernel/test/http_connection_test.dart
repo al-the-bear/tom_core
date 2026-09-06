@@ -3151,6 +3151,60 @@ void main() {
           throwsA(isA<TomServerConnectionException>()),
         );
       });
+
+      test('every reader reports "not sent" under the one key', () async {
+        // One condition, one key -- the same contract [_ensureNotYetRead]
+        // holds for "already consumed". A caller handling "this call has not
+        // been sent" matches a key, and it used to have to match seven of
+        // them, one per reader, with an eighth arriving whenever an eighth
+        // reader did. The last segment of a key names the *condition*
+        // (TomException's own convention), and the accessor is not one.
+        final keys = <String, String>{};
+        for (final entry in _readersBeforeSend.entries) {
+          final call = TomServerCall(
+            _MockClient((_) async => _streamed('x')),
+            specs(),
+          );
+          try {
+            await entry.value(call);
+            fail('${entry.key} answered before send()');
+          } on TomServerConnectionException catch (e) {
+            keys[entry.key] = e.key;
+          }
+        }
+
+        expect(
+          keys.values.toSet(),
+          equals({'server.send.illegal_state_read_must_be_after_send'}),
+          reason: 'readers disagreed about the key for one condition: $keys',
+        );
+      });
+
+      test('the "not sent" error still names what was being read', () async {
+        // Collapsing seven keys into one must not cost the diagnosis. What
+        // the caller was after moves from the key -- where it made the
+        // condition unmatchable -- into the message and the parameters, which
+        // is where a detail belongs.
+        final names = <String>{};
+        for (final entry in _readersBeforeSend.entries) {
+          final call = TomServerCall(
+            _MockClient((_) async => _streamed('x')),
+            specs(),
+          );
+          try {
+            await entry.value(call);
+            fail('${entry.key} answered before send()');
+          } on TomServerConnectionException catch (e) {
+            final read = e.parameters?['read'];
+            expect(read, isA<String>(), reason: '${entry.key} named nothing');
+            expect(e.defaultUserMessage, contains(read as String));
+            names.add(read);
+          }
+        }
+
+        // Distinct per reader, so the parameter carries what the keys did.
+        expect(names, hasLength(_readersBeforeSend.length - 1));
+      });
     });
 
     group('reset', () {
@@ -4073,6 +4127,37 @@ StreamedResponse _streamed(
     request: request,
   );
 }
+
+/// Every [TomServerCall] member that reads something off the response, keyed by
+/// name.
+///
+/// The "you must send first" guard is what they have in common, and the tests
+/// that pin it are exhaustive over this map: adding a reader without adding it
+/// here is the one way the convention could quietly stop holding.
+const Map<String, Future<Object?> Function(TomServerCall call)>
+_readersBeforeSend = {
+  'read': _readBytes,
+  'readAsString': _readString,
+  'getResponseHeaders': _getHeaders,
+  'getResponseStatusCode': _getStatusCode,
+  'getResponseContentLength': _getContentLength,
+  'getResponseIsRedirect': _getIsRedirect,
+  'getResponseReasonPhrase': _getReasonPhrase,
+  'getResponseRequest': _getRequest,
+};
+
+Future<Object?> _readBytes(TomServerCall call) => call.read();
+Future<Object?> _readString(TomServerCall call) => call.readAsString(utf8);
+Future<Object?> _getHeaders(TomServerCall call) => call.getResponseHeaders();
+Future<Object?> _getStatusCode(TomServerCall call) =>
+    call.getResponseStatusCode();
+Future<Object?> _getContentLength(TomServerCall call) =>
+    call.getResponseContentLength();
+Future<Object?> _getIsRedirect(TomServerCall call) =>
+    call.getResponseIsRedirect();
+Future<Object?> _getReasonPhrase(TomServerCall call) =>
+    call.getResponseReasonPhrase();
+Future<Object?> _getRequest(TomServerCall call) => call.getResponseRequest();
 
 /// A [TomAuthRefresher] scripted for the auth-retry tests: it counts calls and
 /// either succeeds (a usable token), declines (no session), or throws.

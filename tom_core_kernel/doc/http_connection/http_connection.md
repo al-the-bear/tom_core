@@ -465,6 +465,26 @@ are not alternatives you can take in turn — either one consumes the body, and
 whichever comes second is refused under the same key,
 `server.send.illegal_state_only_read_once`.
 
+Reading before the call has been sent is refused the same way. There are eight
+members that read something off the response — `read`, `readAsString` and the six
+`getResponse*` accessors — and all eight raise the one key
+`server.send.illegal_state_read_must_be_after_send`, because an error key's last
+segment names the *condition* and "nothing has been sent" is one condition. Which
+value was being asked for is a detail, so it travels as a detail: the message
+names it and the `read` parameter carries it.
+
+```dart
+try {
+  await call.getResponseStatusCode();
+} on TomServerConnectionException catch (e) {
+  // One key covers every reader, so this branch cannot be defeated by
+  // calling a different accessor.
+  if (e.key == 'server.send.illegal_state_read_must_be_after_send') {
+    print('not sent yet; wanted ${e.parameters?['read']}');
+  }
+}
+```
+
 ### Authentication Retry
 
 When a bearer token goes stale the server answers `401`, and the client should
