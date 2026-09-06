@@ -2,16 +2,15 @@ import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../theme/tom_theme.dart';
+import 'tom_auth_layers.dart';
 import 'tom_node_base.dart';
 
 /// Authorization enforcement layer for Tom UI elements.
 ///
 /// Every Tom widget passes through this base class. It resolves the effective
-/// authorization state by combining:
-/// 1. Resource-based authorization (via [TomAuthorization] singleton)
-/// 2. Group authorization (if a member of a [TomAuthorizationGroup])
-/// 3. Per-widget [authorizer] (if set)
-/// 4. Build-time [uiStateController] (if set, can only narrow)
+/// authorization state through [TomAuthLayers.resolve], which composes
+/// resource authorization, the group ceiling, the per-widget [authorizer] and
+/// the build-time [uiStateController] in an order that is load-bearing.
 ///
 /// Enforcement:
 /// - [TomAuthState.none] → [SizedBox.shrink] (hidden from layout)
@@ -35,45 +34,22 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
 
   /// Resolves the effective [TomAuthState] for this widget.
   ///
-  /// Combines resource auth, group auth, authorizer, and UI state controller,
-  /// in that order — the same four layers, in the same sequence, as
-  /// `TomWidgetMixin.getAuth`. `TomField.resolveEffectiveAuth` runs a fifth:
-  /// it narrows by the enclosing form between the group and the authorizer.
+  /// The layers and their order live in [TomAuthLayers.resolve], shared with
+  /// `TomWidgetMixin.getAuth` and `TomField.resolveEffectiveAuth`; this widget
+  /// supplies no [TomAuthLayers.resolve] `narrowBy`, which only `forms/` has.
   ///
-  /// Resource and group together establish what is *granted*; the controller
-  /// then narrows it, and the authorizer either narrows or decides outright
-  /// depending on its [TomAuthorizerStrategy]. The controller has to run last
-  /// for its "can only narrow" promise to hold — [TomAuthorizationGroup.applyMode]
-  /// widens under `controlsNarrowest` and replaces outright under
-  /// `controlsAll`, so a group applied afterwards would undo the narrowing.
-  TomAuthState resolveEffectiveAuth() {
-    // 1. Resource-based authorization
-    var state = basePath != null
-        ? TomAuthorization.resolveAuth(basePath!)
-        : TomAuthState.full;
-
-    // 2. Group authorization (if member of a group), resolved in the scope
-    //    [basePath] was built from. [build] re-enters that scope, so reading
-    //    the state from inside a build was always right; every other reader —
-    //    [TomAuthorizationGroup.members] and the inspection getters defined on
-    //    it — stands outside it, and would otherwise see a different ceiling
-    //    than the one the widget renders under.
-    if (tomGroup != null) {
-      state = tomGroup!.applyMode(state, constructionScope);
-    }
-
-    // 3. Per-widget authorizer
-    if (authorizer != null) {
-      state = authorizer!.effectiveAuth(state);
-    }
-
-    // 4. Build-time UI state controller (can only narrow)
-    if (uiStateController != null) {
-      state = uiStateController!.apply(state);
-    }
-
-    return state;
-  }
+  /// The group resolves in [constructionScope], the scope [basePath] was built
+  /// from. [build] re-enters that scope, so reading the state from inside a
+  /// build was always right; every other reader — [TomAuthorizationGroup.members]
+  /// and the inspection getters defined on it — stands outside it, and would
+  /// otherwise see a different ceiling than the one the widget renders under.
+  TomAuthState resolveEffectiveAuth() => TomAuthLayers.resolve(
+    basePath: basePath,
+    group: tomGroup,
+    groupScope: constructionScope,
+    authorizer: authorizer,
+    uiStateController: uiStateController,
+  );
 
   @override
   TomAuthState get effectiveAuthState => resolveEffectiveAuth();

@@ -24,6 +24,7 @@
 /// Prose: `doc/widget_base.md`.
 library;
 
+export 'tom_auth_layers.dart';
 export 'tom_construction_helpers.dart';
 export 'tom_family_base.dart';
 export 'tom_node_base.dart';

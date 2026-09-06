@@ -163,6 +163,7 @@ import re
 import sys
 from itertools import chain
 from pathlib import Path
+from typing import Optional
 
 from gate_report import report_faults
 
@@ -434,7 +435,11 @@ ConstIndex = dict[Path, dict[tuple[str, str], set[bool]]]
 # decidably in one file and undecidably in another yields ``{2, None}``, whose
 # size alone disqualifies it -- the undecidable declaration cannot be silently
 # outvoted by the decidable one.
-ArityIndex = dict[Path, dict[tuple[str, str], set[int | None]]]
+# ``Optional[int]`` rather than ``int | None``: this is a runtime assignment,
+# not an annotation, so ``from __future__ import annotations`` does not defer
+# it, and PEP 604 unions only became subscriptable at runtime in 3.10 — while
+# the ``python3`` first on PATH here is macOS's own 3.9.
+ArityIndex = dict[Path, dict[tuple[str, str], set[Optional[int]]]]
 
 
 def constructor_index(root: Path) -> tuple[Index, ConstIndex, ArityIndex]:

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../widget_base/tom_auth_layers.dart';
 import '../widget_base/tom_construction_helpers.dart';
 import '../widget_base/tom_scope_path.dart';
 import '../widget_base/tom_widget_surface.dart';
@@ -44,34 +45,21 @@ mixin TomWidgetMixin on Widget implements TomWidgetSurface {
 
   /// Gets the effective authorization state for this widget.
   ///
-  /// Combines resource auth, group auth, authorizer, and UI state controller,
-  /// in that order — the same four layers, in the same sequence, as
-  /// `TomPolicyNodeBase.resolveEffectiveAuth`.
-  TomAuthState getAuth() {
-    // 1. Resource-based authorization
-    var state = (basePath != null)
-        ? TomAuthorization.resolveAuth(basePath!)
-        : TomAuthState.full;
-
-    // 2. Group authorization (if member of a group), resolved in the same
-    //    scope as the base path above — an explicit scope reaches both or the
-    //    group's ceiling is quietly looked up somewhere else.
-    if (tomGroup != null) {
-      state = tomGroup!.applyMode(state, effectiveScope);
-    }
-
-    // 3. Per-widget authorizer
-    if (authorizer != null) {
-      state = authorizer!.effectiveAuth(state);
-    }
-
-    // 4. Build-time UI state controller (can only narrow)
-    if (uiStateController != null) {
-      state = uiStateController!.apply(state);
-    }
-
-    return state;
-  }
+  /// The layers and their order live in [TomAuthLayers.resolve], shared with
+  /// `TomPolicyNodeBase.resolveEffectiveAuth` and
+  /// `TomField.resolveEffectiveAuth`; this widget supplies no `narrowBy`,
+  /// which only `forms/` has.
+  ///
+  /// The group resolves in [effectiveScope] — the same scope [basePath] was
+  /// built from, so an explicit scope reaches both or the group's ceiling is
+  /// quietly looked up somewhere else.
+  TomAuthState getAuth() => TomAuthLayers.resolve(
+    basePath: basePath,
+    group: tomGroup,
+    groupScope: effectiveScope,
+    authorizer: authorizer,
+    uiStateController: uiStateController,
+  );
 
   @override
   TomAuthState get effectiveAuthState => getAuth();

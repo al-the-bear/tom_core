@@ -6,6 +6,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../actions/tom_action.dart';
 import '../actions/tom_action_controller.dart';
+import '../widget_base/tom_auth_layers.dart';
 import '../widget_base/tom_construction_helpers.dart';
 import '../widget_base/tom_scope_path.dart';
 import '../widget_base/tom_screen_elements_provider.dart';
@@ -818,45 +819,26 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Resolve the effective authorization state for this field.
   ///
-  /// CRITICAL: All five layers must be evaluated. Skipping any layer
-  /// (especially group auth) is a severe bug.
+  /// The layers and their order live in [TomAuthLayers.resolve], shared with
+  /// the two widget-side resolvers (`TomPolicyNodeBase.resolveEffectiveAuth`
+  /// and `TomWidgetMixin.getAuth`) and matching `tom_ui_widgets_forms.md` §19.
+  /// A field is the only element that supplies the `narrowBy` layer: its
+  /// enclosing form is an implicit group that can only narrow.
   ///
-  /// Resolution order, per `tom_ui_widgets_forms.md` §19:
-  /// 1. Resource-based authorization via basePath
-  /// 2. Group authorization (applies group's auth via narrowing)
-  /// 3. Form authorization (implicit group — always narrows)
-  /// 4. Per-widget authorizer
-  /// 5. Build-time UI state controller
-  TomAuthState resolveEffectiveAuth() {
-    // 1. Resource-based auth
-    var state = TomAuthorization.resolveAuth(basePath);
-
-    // 2. Group auth (CRITICAL — must not be skipped)
-    // The group is resolved in the frame [basePath] was built from. Read
-    // against the ambient scope instead, the ceiling lands on whichever
-    // same-named group the *reader* happens to stand in — or, at the root, on
-    // no group rule at all.
-    if (tomGroup != null) {
-      state = tomGroup!.applyMode(state, constructionScope);
-    }
-
-    // 3. Form auth (narrows)
-    if (form != null) {
-      state = state.narrow(TomAuthorization.resolveAuth(form!.basePath));
-    }
-
-    // 4. Per-widget authorizer
-    if (authorizer != null) {
-      state = authorizer!.effectiveAuth(state);
-    }
-
-    // 5. UI state controller
-    if (uiStateController != null) {
-      state = uiStateController!.apply(state);
-    }
-
-    return state;
-  }
+  /// The group resolves in [constructionScope], the frame [basePath] was built
+  /// from. Read against the ambient scope instead, the ceiling lands on
+  /// whichever same-named group the *reader* happens to stand in — or, at the
+  /// root, on no group rule at all.
+  TomAuthState resolveEffectiveAuth() => TomAuthLayers.resolve(
+    basePath: basePath,
+    group: tomGroup,
+    groupScope: constructionScope,
+    narrowBy: form != null
+        ? TomAuthorization.resolveAuth(form!.basePath)
+        : null,
+    authorizer: authorizer,
+    uiStateController: uiStateController,
+  );
 
   /// Whether the field is currently editable (full auth).
   bool get isEditable => effectiveAuthState == TomAuthState.full;
