@@ -1058,6 +1058,22 @@ final RegExp _envVarPattern = RegExp(r'\$\{([^:}]+)(?::([^}]*))?\}');
 /// placeholder an explicit empty default, `${VAR:}`, when empty is the intended
 /// resolution.
 ///
+/// That limit is the shell's too, and is left standing deliberately. A shell
+/// script written with `${VAR:-default}` cannot be handed an empty value
+/// either; the shell's escape is a *second* form, `${VAR-default}`, which this
+/// module has no counterpart to. Adding one would not help the operator the
+/// limit is about, because either form lives in the config file rather than in
+/// the environment they set — so the choice would still be the config author's,
+/// exactly as it is today.
+///
+/// And the author already has it. The gap bites in one combination only:
+/// the placeholder is `${VAR}` with no default *and* the operator wants empty.
+/// Writing no default is how an author says the value is mandatory, so the
+/// surviving placeholder there is the loud failure it is meant to be. Where
+/// empty is a legitimate value the author writes `${VAR:}`, and then `VAR=`
+/// and an unset `VAR` both resolve to empty — which is what the operator
+/// wanted.
+///
 /// ## Example
 /// ```dart
 /// final config = {'host': '${DB_HOST:localhost}', 'port': '${DB_PORT}'};

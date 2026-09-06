@@ -518,6 +518,20 @@ passing `Platform.environment` cannot express "this variable is deliberately
 empty" — a `VAR=` in the environment leaves a literal `${VAR}` in the config.
 Write `${VAR:}` when empty is the intended resolution.
 
+That limit is the shell's too, and stands deliberately. A script written with
+`${VAR:-default}` cannot be handed an empty value either; the shell's escape is
+a *second* form, `${VAR-default}`, which this module has no counterpart to.
+Adding one would not reach the operator the limit is about — either form lives
+in the config file, not in the environment they set, so the choice would remain
+the config author's exactly as it is now.
+
+And the author already has it. The gap bites in one combination only: the
+placeholder is `${VAR}` with no default **and** the operator wants empty.
+Writing no default is how an author says the value is mandatory, so the
+surviving placeholder there is the loud failure it is meant to be. Where empty
+is legitimate the author writes `${VAR:}`, and then `VAR=` and an unset `VAR`
+both resolve to empty — which is what the operator wanted.
+
 ### Debugging API Responses
 
 ```dart

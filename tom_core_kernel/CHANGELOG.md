@@ -7,6 +7,34 @@ API narrowings. Read the **Changed** section before upgrading — several public
 members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
+### Documentation
+
+- **`substituteEnvVars` now says why its one limit stands, not just that it
+  exists (tcincb19).** The dartdoc and `doc/json/json.md` already stated that a
+  caller passing `Platform.environment` cannot express "this variable is
+  deliberately empty". Neither said whether that was a wart awaiting a fix, so
+  the question came back as a todo.
+
+  It is not. The limit is the shell's: a script written with `${VAR:-default}`
+  cannot be handed an empty value either. The shell's escape is a second form,
+  `${VAR-default}`, and adding a counterpart here would not reach the operator
+  the limit is about — either form lives in the config file, not in the
+  environment they set, so the choice would stay the config author's exactly as
+  it is now. A `-` separator is also not available: variable names may contain
+  one today, since the placeholder pattern reads everything up to `:` or `}`.
+
+  And the author already has the choice. The gap bites in one combination only
+  — the placeholder is `${VAR}` with no default *and* the operator wants empty
+  — and writing no default is how an author says the value is mandatory, so the
+  surviving placeholder there is the loud failure it is meant to be. Where
+  empty is legitimate the author writes `${VAR:}`, and `VAR=` and an unset
+  `VAR` then both resolve to empty. All three arms are already pinned by tests.
+
+  No behaviour changed, and the `.env` layer's reasoning stays true:
+  `TomEnvFile.resolveEnvironment` drops an empty-valued key *because* the two
+  resolve identically here, which a change to the folding rule would have
+  quietly falsified.
+
 ### Added
 
 - **`TomWorkerPool.isClosed`, so a caller can ask the pool the question it can
