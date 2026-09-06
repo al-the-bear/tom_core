@@ -8,7 +8,6 @@ library;
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:pointycastle/asymmetric/api.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../sample_preamble.dart';

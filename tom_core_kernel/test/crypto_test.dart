@@ -1,8 +1,6 @@
 import 'package:test/test.dart';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:pointycastle/asymmetric/api.dart';
-import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart' as jwt;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
@@ -703,21 +701,21 @@ AQAB
       test('should create configuration with all parameters', () {
         final config = TomJwtConfiguration(
           TomJwtConfiguration.hmacKey,
-          jwt.JWTAlgorithm.HS256,
+          JWTAlgorithm.HS256,
           TomJwtConfiguration.rsaPrivKey,
           TomJwtConfiguration.rsaPubKey,
           false,
         );
 
         expect(config.key, equals(TomJwtConfiguration.hmacKey));
-        expect(config.algorithm, equals(jwt.JWTAlgorithm.HS256));
+        expect(config.algorithm, equals(JWTAlgorithm.HS256));
         expect(config.isDummy, isFalse);
       });
 
       test('should default isDummy to true', () {
         final config = TomJwtConfiguration(
           TomJwtConfiguration.hmacKey,
-          jwt.JWTAlgorithm.HS256,
+          JWTAlgorithm.HS256,
           TomJwtConfiguration.rsaPrivKey,
           TomJwtConfiguration.rsaPubKey,
         );
@@ -836,7 +834,7 @@ AQAB
         final jwtString = token.getJWT('my-auth-server');
 
         // Decode and verify issuer
-        final decoded = jwt.JWT.decode(jwtString);
+        final decoded = JWT.decode(jwtString);
         expect(decoded.issuer, equals('my-auth-server'));
       });
 
@@ -848,7 +846,7 @@ AQAB
         });
         final jwtString = token.getJWT('issuer');
 
-        final decoded = jwt.JWT.decode(jwtString);
+        final decoded = JWT.decode(jwtString);
         final payload = decoded.payload as Map<String, dynamic>;
 
         expect(payload['userId'], equals('123'));
@@ -860,7 +858,7 @@ AQAB
         final token = TomServerJwtToken({'test': 'data'});
         final jwtString = token.getJWT('issuer');
 
-        final decoded = jwt.JWT.decode(jwtString);
+        final decoded = JWT.decode(jwtString);
         final payload = decoded.payload as Map<String, dynamic>;
 
         expect(payload['validUntil'], isNotNull);
@@ -877,7 +875,7 @@ AQAB
         );
         final jwtString = token.getJWT('issuer');
 
-        final decoded = jwt.JWT.decode(jwtString);
+        final decoded = JWT.decode(jwtString);
         final payload = decoded.payload as Map<String, dynamic>;
 
         expect(payload['encrypted'], isNotNull);
@@ -890,7 +888,7 @@ AQAB
           final token = TomServerJwtToken({'userId': '123'});
           final jwtString = token.getJWT('issuer');
 
-          final decoded = jwt.JWT.decode(jwtString);
+          final decoded = JWT.decode(jwtString);
           final payload = decoded.payload as Map<String, dynamic>;
 
           expect(payload.containsKey('encrypted'), isFalse);
