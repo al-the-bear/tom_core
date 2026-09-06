@@ -145,6 +145,25 @@ mergeMapsOneSided(base, production);
 
 ## Core Components
 
+One subsection per file the module exports, in the order the
+[Overview](#overview) table lists them. The first is a pointer rather than a
+description: `TomJsonSerializable` is a contract whose interesting part is
+*when not to implement it*, and that argument is made once, above, rather than
+twice.
+
+### JSON Serializable (`json_serializable.dart`)
+
+One type, `TomJsonSerializable`, declaring one member, `Map<String, Object?>
+toJson()`.
+
+It is documented under [Overview → TomJsonSerializable](#tomjsonserializable),
+because the reason to reach for it cannot be stated without the reason not to:
+reflection is the default path, an all-`final` DTO is un-deserializable by
+construction, and implementing this contract to keep one trades a diagnosable
+refusal for a hand-written codec the guidelines discourage. That section says
+so; repeating it here would be a second copy of an argument that has to stay in
+step with the reflection module.
+
 ### Map Merge and Process (`map_merge_and_process.dart`)
 
 #### What counts as a subtree
@@ -451,7 +470,30 @@ Formats a compact JSON string with indentation (2 spaces).
 
 #### `prettyJsonLine(json)`
 
-Formats JSON but collapses to a single line (useful for logging).
+Formats JSON but collapses to a single line (useful for logging). It runs
+`prettyJson` and joins the result's lines with a space, so the indentation
+becomes runs of spaces rather than being removed — this is a one-line
+*rendering*, not a compact encoding.
+
+#### `indentEncoder`
+
+The `JsonEncoder.withIndent("  ")` both formatters ultimately run through:
+`prettyJson` converts with it, and `prettyJsonLine` flattens what `prettyJson`
+returned. It is exported because the two functions above take a **`String`** and
+decode it first, so a caller who already holds a decoded object would otherwise
+have to encode it only to have it parsed straight back:
+
+```dart
+// Already holding a Map — encode it directly rather than round-tripping.
+print(indentEncoder.convert(config));
+
+// Holding wire text — prettyJson decodes it for you.
+print(prettyJson(responseBody));
+```
+
+It is `final`, so the two-space width is fixed. A caller wanting a different
+indent builds their own `JsonEncoder.withIndent`; nothing here reads this one
+as a setting.
 
 ## Usage Examples
 

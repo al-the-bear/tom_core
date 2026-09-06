@@ -35,6 +35,31 @@ anyone who was writing them.
 
 ### Documentation
 
+- **`doc/json/json.md`'s Core Components now covers the whole module, not two
+  thirds of it (tcincb23).** The section had a subsection per file for
+  `map_merge_and_process.dart` and `pretty_json.dart` and none for
+  `json_serializable.dart`, so a reader who went there for the module's
+  reference surface found two of its three files and no signpost that the third
+  was described elsewhere. It also documented `prettyJson` and `prettyJsonLine`
+  but not `indentEncoder`, which the module exports.
+
+  `json_serializable.dart` gets a subsection that **points at** the Overview
+  rather than repeating it. `TomJsonSerializable` is a contract whose
+  interesting part is when *not* to implement it — reflection is the default
+  path, an all-`final` DTO is un-deserializable by construction, and hand-rolling
+  a codec to keep one trades a diagnosable refusal for something the guidelines
+  discourage. That argument has to stay in step with the reflection module, and
+  a second copy of it would not.
+
+  `indentEncoder` gets its own entry saying why it is exported at all: both
+  formatters take a **`String`** and decode it first, so a caller already
+  holding a decoded object would otherwise encode it only to have it parsed
+  straight back. It is `final`, so the two-space width is fixed and nothing
+  reads it as a setting.
+
+  All 13 public symbols across the three files are now named in the section,
+  checked by intersecting it with the barrel's exports rather than by reading.
+
 - **`substituteEnvVars` now says why its one limit stands, not just that it
   exists (tcincb19).** The dartdoc and `doc/json/json.md` already stated that a
   caller passing `Platform.environment` cannot express "this variable is
