@@ -2,6 +2,27 @@
 
 ### Changed
 
+- **`kernel_types_coexist_test.dart` now compares the whole name set, not the
+  four names it happens to write.** The file already imported both public
+  barrels unprefixed and named `TomEnvironment`, `TomPlatform`,
+  `TomConfigEnvironment` and `TomConfigPlatform`, so losing the rename stops it
+  compiling. That is the strong half, and it is only strong about names it
+  mentions: Dart reports an ambiguous import at the *use* site rather than at
+  the import, so a future collision on any other name would leave this file
+  green and silently strand whichever consumer named that type instead.
+
+  The added case intersects every public type under `lib/src` with every public
+  type reachable through the kernel barrel — the kernel's own, plus
+  `tom_basics` and `tom_crypto`, both of which it re-exports in full, which is
+  how `TomEnvironment` and `TomPlatform` collided in the first place. Measured
+  today that is 628 names against 233, intersecting in **none**; so the
+  environment/platform pair was the only collision the package ever had, rather
+  than the only one anybody had noticed.
+
+  Verified by declaring a `TomLogOutput` — a `tom_basics` name this file never
+  writes — under `lib/src`: the compile-time half stays green and the set
+  comparison fails naming it, which is the case the guard exists for.
+
 - **Every module readme now declares what it claims about its surface, and the
   claim is checked.** `module_readme_inventory_test.dart` held four of the nine
   modules to "the table lists everything" through an opt-in list. An opt-in list
