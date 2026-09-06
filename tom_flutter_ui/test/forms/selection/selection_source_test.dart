@@ -96,4 +96,109 @@ void main() {
       expect(source.itemsStream, isNull);
     });
   });
+
+  group('TomMutableSelectableSource', () {
+    TomMutableSelectableSource<String> newSource() {
+      final source = TomMutableSelectableSource<String>([
+        const SelectableItem(value: 'a', label: 'Alpha'),
+        const SelectableItem(value: 'b', label: 'Beta'),
+      ]);
+      addTearDown(source.dispose);
+      return source;
+    }
+
+    test('starts with the initial items', () async {
+      final source = newSource();
+
+      expect(source.items.map((i) => i.value), ['a', 'b']);
+      expect((await source.getItems()).map((i) => i.value), ['a', 'b']);
+    });
+
+    test('copies the initial list, so the caller cannot mutate it behind '
+        'the source', () async {
+      final initial = [const SelectableItem(value: 'a', label: 'Alpha')];
+      final source = TomMutableSelectableSource<String>(initial);
+      addTearDown(source.dispose);
+
+      initial.add(const SelectableItem(value: 'b', label: 'Beta'));
+
+      expect(source.items, hasLength(1));
+    });
+
+    test('setItems replaces the catalogue', () async {
+      final source = newSource();
+
+      source.setItems([const SelectableItem(value: 'c', label: 'Charlie')]);
+
+      expect(source.items.map((i) => i.value), ['c']);
+      expect((await source.getItems()).map((i) => i.value), ['c']);
+    });
+
+    test('setItems publishes the new catalogue on itemsStream', () async {
+      final source = newSource();
+      final seen = <List<String>>[];
+      final sub = source.itemsStream.listen(
+        (items) => seen.add(items.map((i) => i.value).toList()),
+      );
+      addTearDown(sub.cancel);
+
+      source.setItems([const SelectableItem(value: 'c', label: 'Charlie')]);
+      source.setItems([const SelectableItem(value: 'd', label: 'Delta')]);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(seen, [
+        ['c'],
+        ['d'],
+      ]);
+    });
+
+    test('the stream is broadcast, so several fields may share one source', () {
+      final source = newSource();
+
+      final first = source.itemsStream.listen((_) {});
+      final second = source.itemsStream.listen((_) {});
+      addTearDown(first.cancel);
+      addTearDown(second.cancel);
+
+      // A single-subscription stream would have thrown on the second listen.
+      expect(source.isDisposed, isFalse);
+    });
+
+    test('items and getItems return unmodifiable lists', () async {
+      final source = newSource();
+      const extra = SelectableItem(value: 'z', label: 'Zulu');
+
+      expect(() => source.items.add(extra), throwsUnsupportedError);
+      expect(
+        () async => (await source.getItems()).add(extra),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('dispose is idempotent', () {
+      final source = newSource();
+
+      source.dispose();
+      expect(source.isDisposed, isTrue);
+      expect(source.dispose, returnsNormally);
+    });
+
+    test('a disposed source still answers getItems', () async {
+      final source = newSource();
+      source.dispose();
+
+      expect((await source.getItems()).map((i) => i.value), ['a', 'b']);
+    });
+
+    test('setItems after dispose throws — a swap nobody can hear is a bug at '
+        'the call site', () {
+      final source = newSource();
+      source.dispose();
+
+      expect(
+        () => source.setItems(const [SelectableItem(value: 'c', label: 'C')]),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
 }

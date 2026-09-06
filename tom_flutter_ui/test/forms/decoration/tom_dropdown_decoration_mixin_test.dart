@@ -12,6 +12,12 @@ class _DropdownField extends TomField<String>
   @override
   final String? labelText;
 
+  /// The mixin declares this abstract, so the stub has to say what it is.
+  /// This field carries no description; the tests here are about style
+  /// resolution, not the description slot.
+  @override
+  String? get descriptionText => null;
+
   _DropdownField(
     super.tomId,
     super.initialValue, {

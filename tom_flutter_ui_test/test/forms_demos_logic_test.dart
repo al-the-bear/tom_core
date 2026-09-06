@@ -21,8 +21,8 @@
 ///
 ///  - (a) `_FormsOverviewDemoState` validate→save→commit→display flow and the
 ///        `_formValid` gate.
-///  - (b) `_SelectionVariantsDemoState._toggleFilter` swapping the bespoke
-///        `SwappableSource` items at runtime.
+///  - (b) `_SelectionVariantsDemoState._toggleFilter` swapping the shared
+///        `TomMutableSelectableSource` items at runtime.
 ///  - (c) the `_BooleanVariantsDemoState.sync()` lock-step guard keeping the
 ///        three shared bool concretes in step (without re-entrancy).
 ///  - (d) `_ComplexBreakpointsDemoState._bpLabel` / `_collapseRow` width-

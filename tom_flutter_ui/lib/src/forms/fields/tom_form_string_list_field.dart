@@ -20,10 +20,14 @@ import 'tom_field_widget_adapter.dart';
 
 /// Abstract base for multi-select string form fields.
 ///
-/// Binds to a `TomList<TomString>` for ordered, observable collections.
+/// The field *is* the observable — `TomField<List<String>>` — so the bound
+/// value is a plain `List<String>` in selection order, not a collection of
+/// nested observables. [toggleItem] always publishes a fresh list, which is
+/// what lets `setValue` see the change.
+///
 /// Concrete implementations render the selection as:
-/// * [TomFormStringFilterChips] — horizontal `FilterChip` row.
-/// * [TomFormStringMultiCheckbox] — vertical `CheckboxListTile` column.
+/// * [TomFormStringFilterChips] — a `Wrap` of `FilterChip`s.
+/// * [TomFormStringMultiCheckbox] — a column of tappable `Checkbox` rows.
 ///
 /// Both widgets share the same anatomy via
 /// [TomGenericFieldDecorationMixin] and pull the item set from the
@@ -241,7 +245,7 @@ class _TomFormStringFilterChipsWidgetState
 }
 
 // ---------------------------------------------------------------------------
-// TomFormStringMultiCheckbox — multi-select CheckboxListTile column
+// TomFormStringMultiCheckbox — multi-select Checkbox column
 // ---------------------------------------------------------------------------
 
 @tomReflector

@@ -20,10 +20,20 @@ import 'tom_field_anatomy.dart';
 /// `form.checkboxStyle`, `form.chipsStyle`).
 mixin TomGenericFieldDecorationMixin<T> on TomField<T> {
   /// Label text — resolved from resources or set explicitly.
-  String? get labelText => null;
+  ///
+  /// Declared abstract on purpose. A mixin member shadows the same member on
+  /// the superclass, so a default of `null` here would silently swallow the
+  /// `labelText` that bases like `TomFormStringField` already resolve — the
+  /// field would accept a `labelTextOverride` and render nothing. Leaving it
+  /// abstract makes the superclass implementation the one that runs, and makes
+  /// a field that has no implementation at all a compile error rather than a
+  /// blank label nobody notices.
+  String? get labelText;
 
   /// Description/helper text — resolved from resources or set explicitly.
-  String? get descriptionText => null;
+  ///
+  /// Abstract for the same reason as [labelText].
+  String? get descriptionText;
 
   /// Whether this field has a required validator.
   bool get hasRequiredValidator => fieldHasRequiredValidator(validators);

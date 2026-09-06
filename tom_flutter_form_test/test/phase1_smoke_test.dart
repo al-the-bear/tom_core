@@ -99,19 +99,21 @@ void main() {
   ) async {
     await openDemo(tester, 'Demo E: Selection Variants');
     expect(find.text('Demo E — Selection Variants'), findsOneWidget);
-    // Each variant card has a spec-class title with a subtitle that names
-    // its binding shape. Verify both the multi-select and single-select
-    // flavours render + the live bindings panel is active.
+    // Each field renders its own label and description through the field
+    // anatomy — the demo draws no captions of its own. Verify both the
+    // multi-select and single-select flavours render + the bindings panel.
     expect(
-      find.text('TomFormStringFilterChips — multi-select'),
+      find.text('TomFormStringFilterChips (filterChips)'),
       findsOneWidget,
     );
     expect(
-      find.text('TomFormStringChoiceChips — single-select'),
+      find.text('TomFormStringChoiceChips (choiceChips)'),
       findsOneWidget,
     );
+    expect(find.text('Multi-select — binds List<String>'), findsWidgets);
+    expect(find.text('Single-select — binds String'), findsWidgets);
     expect(find.text('Live bindings'), findsOneWidget);
-    // The shared source supplies six labels to every variant section.
+    // The shared source supplies its labels to every field.
     expect(find.text('Technology'), findsWidgets);
   });
 

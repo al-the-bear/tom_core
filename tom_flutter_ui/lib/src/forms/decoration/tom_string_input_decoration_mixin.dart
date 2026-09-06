@@ -15,10 +15,16 @@ import 'tom_field_anatomy.dart';
 /// standard field anatomy (label, error, description, action icons).
 mixin TomStringInputDecorationMixin<T> on TomField<T> {
   /// Label text — resolved from resources or set explicitly.
-  String? get labelText => null;
+  ///
+  /// Abstract for the reason spelled out on
+  /// [TomGenericFieldDecorationMixin.labelText]: a `=> null` default here
+  /// would shadow the superclass getter and silently blank the label.
+  String? get labelText;
 
   /// Description/helper text — resolved from resources or set explicitly.
-  String? get descriptionText => null;
+  ///
+  /// Abstract for the same reason as [labelText].
+  String? get descriptionText;
 
   /// Whether this field has a required validator.
   bool get hasRequiredValidator => fieldHasRequiredValidator(validators);

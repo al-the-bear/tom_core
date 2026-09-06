@@ -6,8 +6,6 @@
 /// concern so nothing is overloaded.
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
@@ -20,36 +18,6 @@ Widget _sectionTitle(BuildContext context, String text) {
     padding: const EdgeInsets.only(top: 8, bottom: 4),
     child: Text(text, style: Theme.of(context).textTheme.titleSmall),
   );
-}
-
-/// Minimal mutable [TomSelectableSource] used by Demo E to toggle the
-/// item list at runtime. The default [StaticSelectableSource] is
-/// immutable so the demo rolls its own.
-///
-/// Public (rather than library-private) so that
-/// `test/forms_dispose_test.dart` can assert the owning demo state closes
-/// it on unmount — [isDisposed] is the observable signal for that.
-class SwappableSource<T> extends TomSelectableSource<T> {
-  SwappableSource(List<SelectableItem<T>> initial) : _items = List.of(initial);
-
-  List<SelectableItem<T>> _items;
-  final _controller = StreamController<List<SelectableItem<T>>>.broadcast();
-
-  void setItems(List<SelectableItem<T>> next) {
-    _items = List.of(next);
-    _controller.add(List.unmodifiable(_items));
-  }
-
-  @override
-  Future<List<SelectableItem<T>>> getItems() async => List.unmodifiable(_items);
-
-  @override
-  Stream<List<SelectableItem<T>>> get itemsStream => _controller.stream;
-
-  /// Whether [dispose] has closed the underlying broadcast controller.
-  bool get isDisposed => _controller.isClosed;
-
-  void dispose() => _controller.close();
 }
 
 Widget _panel({required String title, required List<Widget> children}) {
@@ -92,7 +60,7 @@ class SelectionVariantsDemo extends StatefulWidget {
 class SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
   // All three single-select concretes share a single source. Each writes
   // to its own field, so the inspector can show every binding side-by-side.
-  late final SwappableSource<String> _sharedSource;
+  late final TomMutableSelectableSource<String> _sharedSource;
   late final TomFormStringSegmented _segmented;
   late final TomFormStringRadioGroup _radio;
   late final TomFormStringChoiceChips _chips;
@@ -130,7 +98,7 @@ class SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
   @override
   void initState() {
     super.initState();
-    _sharedSource = SwappableSource<String>(_fullItems);
+    _sharedSource = TomMutableSelectableSource<String>(_fullItems);
 
     _segmented = TomFormStringSegmented(
       'seg',
@@ -173,7 +141,7 @@ class SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
   /// Owned shared source — exposed for `forms_dispose_test.dart` to assert
   /// it is closed on unmount.
   @visibleForTesting
-  SwappableSource<String> get debugSharedSource => _sharedSource;
+  TomMutableSelectableSource<String> get debugSharedSource => _sharedSource;
 
   /// Number of live `>>` observer registrations — `0` once [dispose] has
   /// unregistered them.
@@ -220,9 +188,10 @@ class SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
                   const SizedBox(height: 4),
                   const Text(
                     'All five selection concretes bound to the same '
-                    'TomSelectableSource<String>. Single-select writes '
-                    'to TomString, multi-select writes to '
-                    'TomList<TomString>.',
+                    'TomMutableSelectableSource<String>. The fields are the '
+                    'observables: single-select binds a String, multi-select '
+                    'binds a List<String>. Shrink the source and watch the '
+                    'two arities reconcile differently.',
                   ),
                   const SizedBox(height: 8),
                   Row(

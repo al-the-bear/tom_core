@@ -33,6 +33,7 @@ export 'validation/validators.dart';
 export 'validation/validator_registry.dart';
 export 'selection/tom_selectable_source.dart';
 export 'selection/static_selectable_source.dart';
+export 'selection/tom_mutable_selectable_source.dart';
 export 'selection/tom_enum_selectable_source.dart';
 export 'events/tom_form_event.dart';
 export 'events/tom_form_event_listener.dart';

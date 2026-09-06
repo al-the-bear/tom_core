@@ -1,14 +1,24 @@
 /// Interaction tests for Demo E — Selection Variants.
 ///
-/// Demo E renders eight selection-style variants (FilterChips,
-/// MultiCheckbox, Segmented, RadioGroup, ChoiceChips, three boolean
-/// flavours) bound to one shared `TomSelectableSource`. The right-hand
-/// "Live bindings" panel echoes each binding so the side-effect of a
-/// tap is visible.
+/// Demo E renders the five concrete selection fields —
+/// [TomFormStringFilterChips], [TomFormStringMultiCheckbox],
+/// [TomFormStringSegmented], [TomFormStringRadioGroup],
+/// [TomFormStringChoiceChips] — plus the three boolean renderings, all five
+/// selection fields sharing one [TomMutableSelectableSource]. The right-hand
+/// "Live bindings" panel echoes every binding.
 ///
-/// These tests drive each variant once and assert the binding row in the
-/// inspector updates accordingly. They also flip the "Filtered source"
-/// switch and verify that the smaller catalogue is reflected in the UI.
+/// These tests drive each field in turn and assert the matching binding row
+/// updates. The two that carry the demo's real weight are the last pair: they
+/// shrink the shared catalogue at runtime and assert that the two arities
+/// reconcile *differently* — multi-select drops the vanished value, while
+/// single-select falls back to the first enabled item rather than to empty.
+/// Nothing in the demo implements that; each field does it for itself off the
+/// source's `itemsStream`, so these tests are what pins the framework
+/// behaviour rather than the demo's own bookkeeping.
+///
+/// Finders are scoped by the per-field `ValueKey('field-<tomId>')` the demo
+/// attaches to each row: five fields repeat the same option labels (and two
+/// repeat `SegmentedButton`), so an unscoped finder would be ambiguous.
 library;
 
 import 'dart:convert';
@@ -17,8 +27,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'package:tom_flutter_form_test/main.dart';
+import 'package:tom_flutter_form_test/panels/info_panel.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
 
 void main() {
@@ -32,8 +44,13 @@ void main() {
     );
   });
 
+  /// Every binding the demo exposes, in render order.
+  const multiSelect = ['filterChips', 'multiCheckbox'];
+  const singleSelect = ['segmented', 'radioGroup', 'choiceChips'];
+  const booleans = ['boolCheckbox', 'boolSwitch', 'boolToggle'];
+
   Future<void> openDemoE(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(2400, 2000);
+    tester.view.physicalSize = const Size(2400, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
@@ -49,223 +66,333 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Find a widget of [W] with [label] inside the variant card whose
-  /// title contains [variantTitle]. Used to disambiguate "Technology"
-  /// (which appears in five variant cards).
-  Finder inVariant<W extends Widget>(String variantTitle, String label) {
-    final card = find.ancestor(
-      of: find.textContaining(variantTitle),
-      matching: find.byType(Card),
+  /// The row the demo keys with [tomId].
+  Finder row(String tomId) => find.byKey(ValueKey('field-$tomId'));
+
+  /// The "Live bindings" panel, as distinct from the change log — both
+  /// render the same `tomId` strings, so every binding read is scoped here.
+  Finder bindingsPanel() => find.ancestor(
+    of: find.text('Live bindings'),
+    matching: find.byType(InfoPanel),
+  );
+
+  /// The value the bindings panel currently shows for [tomId].
+  ///
+  /// The panel renders each binding as `Row[Text(tomId), Text(value)]`.
+  String bindingOf(WidgetTester tester, String tomId) {
+    final label = find.descendant(
+      of: bindingsPanel(),
+      matching: find.text(tomId),
     );
-    return find.descendant(
-      of: card.first,
-      matching: find.widgetWithText(W, label),
+    expect(label, findsOneWidget, reason: '$tomId must have a binding row');
+    final bindingRow = find.ancestor(of: label, matching: find.byType(Row));
+    final texts = tester
+        .widgetList<Text>(
+          find.descendant(of: bindingRow.first, matching: find.byType(Text)),
+        )
+        .toList();
+    expect(
+      texts,
+      hasLength(2),
+      reason: '$tomId row must be exactly label + value',
+    );
+    return texts[1].data ?? '';
+  }
+
+  void expectBinding(WidgetTester tester, String tomId, String value) {
+    expect(
+      bindingOf(tester, tomId),
+      value,
+      reason: '$tomId must be "$value"',
     );
   }
 
-  /// Tap a chip / radio / checkbox inside the named variant card.
-  Future<void> tapInVariant<W extends Widget>(
+  /// Tap the descendant of type [W] carrying [label] inside field row [tomId].
+  Future<void> tapOption<W extends Widget>(
     WidgetTester tester,
-    String variantTitle,
+    String tomId,
     String label,
   ) async {
-    final finder = inVariant<W>(variantTitle, label);
+    final finder = find.descendant(
+      of: row(tomId),
+      matching: find.widgetWithText(W, label),
+    );
     expect(
       finder,
-      findsAtLeastNWidgets(1),
-      reason: 'No $W with label "$label" inside "$variantTitle" card',
+      findsOneWidget,
+      reason: 'No $W labelled "$label" inside field row "$tomId"',
     );
-    await tester.ensureVisible(finder.first);
+    await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
-    await tester.tap(finder.first);
+    await tester.tap(finder);
     await tester.pumpAndSettle();
   }
 
-  // Note: a single binding value (e.g. 'retail') appears in BOTH the
-  // bindings panel AND the change-log panel after a tap, so all
-  // post-tap assertions use `findsAtLeastNWidgets(1)`.
-
-  testWidgets('baseline — every variant card and binding row renders', (
-    tester,
+  /// Tap the segment captioned [label] inside field row [tomId].
+  ///
+  /// A `SegmentedButton` is one widget containing all its segments, so
+  /// `widgetWithText` would resolve to the button and `tap` would hit
+  /// whichever segment happens to sit at its centre. The caption is the only
+  /// finder that addresses one segment.
+  Future<void> tapSegment(
+    WidgetTester tester,
+    String tomId,
+    String label,
   ) async {
-    await openDemoE(tester);
-    expect(find.textContaining('TomFormStringFilterChips'), findsOneWidget);
-    expect(find.textContaining('TomFormStringMultiCheckbox'), findsOneWidget);
-    expect(find.textContaining('TomFormStringSegmented'), findsOneWidget);
-    expect(find.textContaining('TomFormStringRadioGroup'), findsOneWidget);
-    expect(find.textContaining('TomFormStringChoiceChips'), findsOneWidget);
-    expect(find.textContaining('TomFormBoolCheckbox'), findsOneWidget);
-    expect(find.textContaining('TomFormBoolSwitch'), findsOneWidget);
-    expect(find.textContaining('TomFormBoolToggle'), findsOneWidget);
-    // Bindings panel labels.
-    expect(find.text('filterChips'), findsOneWidget);
-    expect(find.text('multiCheckbox'), findsOneWidget);
-    expect(find.text('segmented'), findsOneWidget);
-    expect(find.text('radioGroup'), findsOneWidget);
-    expect(find.text('choiceChips'), findsOneWidget);
-  });
-
-  testWidgets('tap a FilterChip — filterChips binding gains the value', (
-    tester,
-  ) async {
-    await openDemoE(tester);
-    await tapInVariant<FilterChip>(
-      tester,
-      'TomFormStringFilterChips',
-      'Technology',
-    );
-    // The bindings table renders the list as `[tech]`. The change-log
-    // panel echoes the same value so we accept >= 1.
+    final finder = find.descendant(of: row(tomId), matching: find.text(label));
     expect(
-      find.text('[tech]'),
-      findsAtLeastNWidgets(1),
-      reason: 'filterChips binding must show [tech] after selecting it',
+      finder,
+      findsOneWidget,
+      reason: 'No segment "$label" inside field row "$tomId"',
     );
-  });
-
-  testWidgets('tap a CheckboxListTile in the multi-check variant updates '
-      'the binding', (tester) async {
-    await openDemoE(tester);
-    await tapInVariant<CheckboxListTile>(
-      tester,
-      'TomFormStringMultiCheckbox',
-      'Finance',
-    );
-    expect(
-      find.text('[finance]'),
-      findsAtLeastNWidgets(1),
-      reason: 'multiCheckbox binding must show [finance] after toggling',
-    );
-  });
-
-  testWidgets('tap a RadioListTile updates the radioGroup binding', (
-    tester,
-  ) async {
-    await openDemoE(tester);
-    await tapInVariant<RadioListTile<String>>(
-      tester,
-      'TomFormStringRadioGroup',
-      'Manufacturing',
-    );
-    // 'manufacturing' appears in the bindings table and the change log.
-    expect(find.text('manufacturing'), findsAtLeastNWidgets(1));
-  });
-
-  testWidgets('tap a ChoiceChip updates the choiceChips binding', (
-    tester,
-  ) async {
-    await openDemoE(tester);
-    await tapInVariant<ChoiceChip>(
-      tester,
-      'TomFormStringChoiceChips',
-      'Retail',
-    );
-    // 'retail' appears in the bindings table and the change log.
-    expect(find.text('retail'), findsAtLeastNWidgets(1));
-  });
-
-  testWidgets('tap the boolean checkbox flips the boolCheckbox binding', (
-    tester,
-  ) async {
-    await openDemoE(tester);
-    // Initial value: false → bindings table shows 'false'. After tap → true.
-    await tapInVariant<CheckboxListTile>(
-      tester,
-      'TomFormBoolCheckbox',
-      'Agree to terms',
-    );
-    // Bindings table value is rendered as the literal 'true'.
-    final trueCells = find.text('true');
-    expect(
-      trueCells,
-      findsAtLeastNWidgets(1),
-      reason: 'boolCheckbox should be true after a tap',
-    );
-  });
-
-  testWidgets('tap the boolean switch flips the boolSwitch binding', (
-    tester,
-  ) async {
-    await openDemoE(tester);
-    await tapInVariant<SwitchListTile>(
-      tester,
-      'TomFormBoolSwitch',
-      'Enable notifications',
-    );
-    expect(
-      find.text('true'),
-      findsAtLeastNWidgets(1),
-      reason: 'boolSwitch should be true after a tap',
-    );
-  });
-
-  testWidgets('toggling Filtered source narrows visible items to two', (
-    tester,
-  ) async {
-    await openDemoE(tester);
-    // Baseline: full catalogue → "Manufacturing" appears in multiple
-    // variant cards (FilterChips + MultiCheckbox + Segmented + Radio +
-    // ChoiceChip = at least 5 occurrences).
-    expect(find.text('Manufacturing'), findsAtLeastNWidgets(1));
-    // Toggle the source switch.
-    final filteredSwitch = find.widgetWithText(
-      SwitchListTile,
-      'Filtered source',
-    );
-    expect(filteredSwitch, findsOneWidget);
-    await tester.ensureVisible(filteredSwitch);
+    await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
-    await tester.tap(filteredSwitch);
+    await tester.tap(finder);
     await tester.pumpAndSettle();
-    // After toggle the subtitle should reflect the 2-item subset. The
-    // intro card also mentions '2-item subset', so we accept >= 1.
+  }
+
+  /// Tap the sole widget of type [W] inside field row [tomId] — used for the
+  /// boolean renderings, whose control carries no text of its own.
+  Future<void> tapControl<W extends Widget>(
+    WidgetTester tester,
+    String tomId,
+  ) async {
+    final finder = find.descendant(of: row(tomId), matching: find.byType(W));
+    expect(finder, findsOneWidget, reason: 'No $W inside field row "$tomId"');
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+    await tester.tap(finder);
+    await tester.pumpAndSettle();
+  }
+
+  /// Flip the shared source between the full catalogue and the 2-item subset.
+  Future<void> toggleFilteredSource(WidgetTester tester) async {
+    final sourceSwitch = find.widgetWithText(SwitchListTile, 'Filtered source');
+    expect(sourceSwitch, findsOneWidget);
+    await tester.ensureVisible(sourceSwitch);
+    await tester.pumpAndSettle();
+    await tester.tap(sourceSwitch);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the demo binds the real selection fields, not Material '
+      'stand-ins', (tester) async {
+    // Rendering bare FilterChips and RadioListTiles captioned with the
+    // framework widget names would tell a viewer they are looking at
+    // TomFormStringRadioGroup while they look at Material. Assert on what is
+    // actually in the tree: eight real fields (each field wraps its rendering
+    // in a TomFieldWidgetAdapter) and none of the stand-ins.
+    await openDemoE(tester);
+    expect(
+      find.byType(TomFieldWidgetAdapter),
+      findsNWidgets(8),
+      reason: 'eight real Tom form fields must render',
+    );
+    expect(
+      find.byType(CheckboxListTile),
+      findsNothing,
+      reason: 'the Material stand-ins must be gone',
+    );
+    expect(
+      find.byType(RadioListTile<String>),
+      findsNothing,
+      reason: 'the Material stand-ins must be gone',
+    );
+    // The one SwitchListTile left is the demo's own source toggle — it is a
+    // demo control, not a bound field.
+    expect(find.byType(SwitchListTile), findsOneWidget);
+    expect(find.widgetWithText(SwitchListTile, 'Filtered source'), findsOne);
+    // Labels come from the fields, so each row is individually anchored.
+    expect(
+      find.text('TomFormStringFilterChips (filterChips)'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('TomFormStringMultiCheckbox (multiCheckbox)'),
+      findsOneWidget,
+    );
+    expect(find.text('TomFormStringSegmented (segmented)'), findsOneWidget);
+    expect(find.text('TomFormStringRadioGroup (radioGroup)'), findsOneWidget);
+    expect(find.text('TomFormStringChoiceChips (choiceChips)'), findsOneWidget);
+  });
+
+  testWidgets('all five selection fields share one source', (tester) async {
+    await openDemoE(tester);
+    // Every field renders all six catalogue items, so a label from the
+    // shared source appears once per selection field.
+    for (final tomId in [...multiSelect, ...singleSelect]) {
+      expect(
+        find.descendant(of: row(tomId), matching: find.text('Manufacturing')),
+        findsOneWidget,
+        reason: '$tomId must render the shared catalogue',
+      );
+    }
+  });
+
+  testWidgets('baseline — multi-select starts empty, single-select on tech', (
+    tester,
+  ) async {
+    await openDemoE(tester);
+    for (final tomId in multiSelect) {
+      expectBinding(tester, tomId, '—');
+    }
+    for (final tomId in singleSelect) {
+      expectBinding(tester, tomId, 'tech');
+    }
+    for (final tomId in booleans) {
+      expectBinding(tester, tomId, 'false');
+    }
+  });
+
+  testWidgets('tap a FilterChip — filterChips gains the value as a list', (
+    tester,
+  ) async {
+    await openDemoE(tester);
+    await tapOption<FilterChip>(tester, 'filterChips', 'Technology');
+    expectBinding(tester, 'filterChips', '[tech]');
+    // Multi-select accumulates rather than replacing.
+    await tapOption<FilterChip>(tester, 'filterChips', 'Retail');
+    expectBinding(tester, 'filterChips', '[tech, retail]');
+    // Tapping a selected chip removes it.
+    await tapOption<FilterChip>(tester, 'filterChips', 'Technology');
+    expectBinding(tester, 'filterChips', '[retail]');
+    // The peer multi-select field is independent.
+    expectBinding(tester, 'multiCheckbox', '—');
+  });
+
+  testWidgets('tap a multi-checkbox row — multiCheckbox gains the value', (
+    tester,
+  ) async {
+    await openDemoE(tester);
+    // The field renders a bare Checkbox beside a label inside a tappable
+    // InkWell — there is no ListTile to address, so the row is the target.
+    await tapOption<InkWell>(tester, 'multiCheckbox', 'Finance');
+    expectBinding(tester, 'multiCheckbox', '[finance]');
+    expectBinding(tester, 'filterChips', '—');
+  });
+
+  testWidgets('tap a segment — segmented replaces its single value', (
+    tester,
+  ) async {
+    await openDemoE(tester);
+    await tapSegment(tester, 'segmented', 'Retail');
+    expectBinding(tester, 'segmented', 'retail');
+    // Single-select replaces rather than accumulating.
+    await tapSegment(tester, 'segmented', 'Finance');
+    expectBinding(tester, 'segmented', 'finance');
+  });
+
+  testWidgets('tap a radio row — radioGroup replaces its single value', (
+    tester,
+  ) async {
+    await openDemoE(tester);
+    await tapOption<InkWell>(tester, 'radioGroup', 'Manufacturing');
+    expectBinding(tester, 'radioGroup', 'manufacturing');
+    // The radio itself is a bare Radio<String> under an ancestor RadioGroup.
+    expect(
+      find.descendant(of: row('radioGroup'), matching: find.byType(Radio<String>)),
+      findsNWidgets(6),
+    );
+  });
+
+  testWidgets('tap a ChoiceChip — choiceChips replaces its single value', (
+    tester,
+  ) async {
+    await openDemoE(tester);
+    await tapOption<ChoiceChip>(tester, 'choiceChips', 'Retail');
+    expectBinding(tester, 'choiceChips', 'retail');
+    expectBinding(tester, 'segmented', 'tech');
+  });
+
+  testWidgets('the three boolean fields flip independently', (tester) async {
+    await openDemoE(tester);
+    await tapControl<Checkbox>(tester, 'boolCheckbox');
+    expectBinding(tester, 'boolCheckbox', 'true');
+    expectBinding(tester, 'boolSwitch', 'false');
+
+    await tapControl<Switch>(tester, 'boolSwitch');
+    expectBinding(tester, 'boolSwitch', 'true');
+
+    await tapSegment(tester, 'boolToggle', 'On');
+    expectBinding(tester, 'boolToggle', 'true');
+  });
+
+  testWidgets('shrinking the shared source narrows every field at once', (
+    tester,
+  ) async {
+    await openDemoE(tester);
+    expect(find.text('Manufacturing'), findsNWidgets(5));
+
+    await toggleFilteredSource(tester);
+
     expect(
       find.textContaining('2-item subset'),
       findsAtLeastNWidgets(1),
-      reason: 'subtitle must reflect the active filtered source',
+      reason: 'the subtitle must reflect the active filtered source',
     );
-    // "Manufacturing" should disappear from every variant card.
     expect(
       find.text('Manufacturing'),
       findsNothing,
-      reason: 'filtered source has no Manufacturing item',
+      reason: 'no field may keep an option the shared source dropped',
     );
-    // "Technology" must still be present (it's in the 2-item subset).
-    expect(find.text('Technology'), findsAtLeastNWidgets(1));
+    // Technology survives — it is in the 2-item subset.
+    expect(find.text('Technology'), findsNWidgets(5));
   });
 
-  testWidgets('toggling Filtered source prunes selections that no longer '
-      'match', (tester) async {
+  testWidgets('on shrink, multi-select drops the vanished value', (
+    tester,
+  ) async {
     await openDemoE(tester);
-    // Select Manufacturing in the radio group.
-    await tapInVariant<RadioListTile<String>>(
+    // Select one value that survives the shrink and one that does not.
+    await tapOption<FilterChip>(tester, 'filterChips', 'Technology');
+    await tapOption<FilterChip>(tester, 'filterChips', 'Manufacturing');
+    expectBinding(tester, 'filterChips', '[tech, manufacturing]');
+
+    await toggleFilteredSource(tester);
+
+    expectBinding(
       tester,
-      'TomFormStringRadioGroup',
-      'Manufacturing',
+      'filterChips',
+      '[tech]',
     );
-    expect(find.text('manufacturing'), findsAtLeastNWidgets(1));
-    // Toggle to filtered source — should prune the now-invalid selection.
-    final filteredSwitch = find.widgetWithText(
-      SwitchListTile,
-      'Filtered source',
-    );
-    await tester.ensureVisible(filteredSwitch);
-    await tester.pumpAndSettle();
-    await tester.tap(filteredSwitch);
-    await tester.pumpAndSettle();
-    // The Manufacturing radio option itself must no longer be present
-    // in the radio variant card after the source shrinks. (The change
-    // log will still echo the historical selection, so we can't assert
-    // 'manufacturing' is gone globally.)
     expect(
-      inVariant<RadioListTile<String>>(
-        'TomFormStringRadioGroup',
-        'Manufacturing',
-      ),
-      findsNothing,
-      reason:
-          'Manufacturing must be pruned from the radio variant when the '
-          'source shrinks',
+      find.descendant(of: row('filterChips'), matching: find.byType(FilterChip)),
+      findsNWidgets(2),
+      reason: 'the field must re-render against the smaller catalogue',
     );
+  });
+
+  testWidgets('on shrink, single-select falls back to the first enabled item, '
+      'not to empty', (tester) async {
+    // This is the semantic that separates the two arities: a single-select
+    // field cannot represent "nothing chosen" the way a list can, so it
+    // adopts the first item still on offer.
+    await openDemoE(tester);
+    await tapOption<InkWell>(tester, 'radioGroup', 'Manufacturing');
+    await tapOption<ChoiceChip>(tester, 'choiceChips', 'Retail');
+    expectBinding(tester, 'radioGroup', 'manufacturing');
+    expectBinding(tester, 'choiceChips', 'retail');
+
+    await toggleFilteredSource(tester);
+
+    // 'tech' is the first item of the filtered catalogue — not ''.
+    expectBinding(tester, 'radioGroup', 'tech');
+    expectBinding(tester, 'choiceChips', 'tech');
+    expect(
+      find.descendant(of: row('radioGroup'), matching: find.text('Manufacturing')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('a value that survives the shrink is left alone', (tester) async {
+    // The reconciliation only fires for values the new catalogue lost — a
+    // still-valid selection must not be reset to the first item.
+    await openDemoE(tester);
+    await tapOption<ChoiceChip>(tester, 'choiceChips', 'Healthcare');
+    expectBinding(tester, 'choiceChips', 'healthcare');
+
+    await toggleFilteredSource(tester);
+
+    expectBinding(tester, 'choiceChips', 'healthcare');
   });
 }
