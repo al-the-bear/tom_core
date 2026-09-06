@@ -17,13 +17,16 @@
 5. [Resources — Text, Icons, Configuration](#5-resources--text-icons-configuration)
 6. [Groups — Collective Visibility Control](#6-groups--collective-visibility-control)
 7. [Widget Architecture](#7-widget-architecture)
-8. [State Binding Modes](#8-state-binding-modes)
+8. [State Binding — Adapter Pattern](#8-state-binding--adapter-pattern)
 9. [Form System — TomForm\<T\>](#9-form-system--tomformt)
 10. [Action System](#10-action-system)
 11. [Screen Definition and Layout](#11-screen-definition-and-layout)
 12. [Data Sources — Lists, Trees, Master-Detail](#12-data-sources--lists-trees-master-detail)
 13. [Theming and Style System](#13-theming-and-style-system)
 14. [Debug Tooling](#14-debug-tooling)
+
+- [Appendix: Full System Flow](#appendix-full-system-flow)
+- [Related Documents](#related-documents)
 
 ---
 

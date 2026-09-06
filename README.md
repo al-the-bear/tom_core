@@ -195,7 +195,7 @@ reports and never gates.
 | [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below and holds each to its recorded fault count |
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
-| [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits every `## Table of Contents` in the tree against its own document |
+| [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's own navigation: its `## Table of Contents` and every anchor it links to itself |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
@@ -259,10 +259,19 @@ python3 tool/check_doc_tocs.py                # the whole repository
 python3 tool/check_doc_tocs.py tom_core_kernel   # one subtree
 ```
 
-It reports three faults and exits non-zero if it finds any: sections the
-contents omit, entries whose link resolves to no heading, and entries listed in
-an order the document does not follow. The last is the one a reader cannot
-easily catch, and a presence check passes it silently.
+It reports four faults and exits non-zero if it finds any: sections the
+contents omit, entries whose link resolves to no heading, entries listed in an
+order the document does not follow, and links *in the body* pointing at an
+anchor of their own document that no heading provides. The third is the one a
+reader cannot easily catch, and a presence check passes it silently.
+
+The body-link check is why the gate scans every document rather than only the
+117 that carry contents. `check_doc_links` accepts any `#fragment` and names
+this gate as the one that decides whether the heading exists, so an anchor
+nobody indexed was an anchor neither gate looked at: a `[§10](#…)` in running
+prose whose heading had since been reworded resolved to nothing, and so did two
+appendix cross-references that had picked up a doubled dash. `STALE` is this
+same fault confined to the contents block.
 
 Documents drift from their contents whenever a section is added without the
 list being touched, so the check is worth running after editing any document
@@ -1276,9 +1285,11 @@ a link from outside `_copilot_guidelines/` into it: not broken, but a layering
 fault, because `doc/` and `README.md` are what a consumer reads and
 `_copilot_guidelines/` ships with neither the package nor its pub.dev page.
 
-Anchors are deliberately not checked — whether a heading exists is
+Anchors are deliberately not checked here — whether a heading exists is
 `check_doc_tocs`'s question, and answering it twice in two dialects of
-heading-slug is how two gates come to disagree. Fenced blocks are skipped and
+heading-slug is how two gates come to disagree. That deferral is load-bearing
+in both directions, so `check_doc_tocs` checks body anchors and not only the
+ones a table of contents uses. Fenced blocks are skipped and
 inline code spans blanked, which is correctness rather than tidiness in both
 directions: a naive scan reads `operator [](Object? key)` in every
 `api_summary_*.md` as a link, and *rewrites* the template inside a ` ```markdown `

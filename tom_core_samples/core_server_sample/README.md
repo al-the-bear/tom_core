@@ -43,6 +43,8 @@ files on the wire.
 12. [Testing](#12-testing)
 13. [What is built](#13-what-is-built)
 
+- [Where this sits](#where-this-sits)
+
 ---
 
 ## 1. Why this sample exists
@@ -418,7 +420,7 @@ final Map<String, String> _environment = TomEnvFile.resolveEnvironment();
 is the package-root `.env` layered over the OS environment, and it is passed to
 every `TomYaml.loadYamlFile` call in the boot and read for the `env` overlay
 selector. It has to be explicit because Dart's process environment is read-only
-— see [§10](#10-datasources-and-configuration).
+— see [§10](#10-configuration-and-environment).
 
 **Required assets versus the optional overlay.** Every one of those paths is
 relative, so the boot only works from the package root. It draws the line

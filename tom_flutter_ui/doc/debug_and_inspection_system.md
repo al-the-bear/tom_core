@@ -18,6 +18,8 @@
 8. [Performance Considerations](#8-performance-considerations)
 9. [Implementation Plan](#9-implementation-plan)
 
+- [Appendix: Data Models](#appendix-data-models)
+
 ---
 
 ## 1. Overview

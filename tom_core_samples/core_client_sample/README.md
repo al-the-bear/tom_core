@@ -39,6 +39,8 @@ live server.
 13. [Tests](#13-tests)
 14. [Deliberate limits and the full-stack successor](#14-deliberate-limits-and-the-full-stack-successor)
 
+- [Where this sits](#where-this-sits)
+
 ---
 
 ## 1. What you are looking at

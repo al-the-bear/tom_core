@@ -21,53 +21,74 @@ This document is the complete specification for the Tom Forms Framework — a sy
 ## Table of Contents
 
 ### Part 1 — Architecture Overview
-1. [Form System Overview](#1-form-system-overview)
-2. [Logical Form vs Visual Presentation](#2-logical-form-vs-visual-presentation)
-3. [Input Type Abstraction](#3-input-type-abstraction)
+- [1. Form System Overview](#1-form-system-overview)
+- [2. Logical Form vs Visual Presentation](#2-logical-form-vs-visual-presentation)
+- [3. Input Type Abstraction](#3-input-type-abstraction)
 
 ### Part 2 — Core Types
-4. [TomField — The Base Form Field](#4-tomfield--the-base-form-field)
-5. [TomForm — Form Container](#5-tomform--form-container)
-6. [Abstract Field Types Catalog](#6-abstract-field-types-catalog)
+- [4. TomField — The Base Form Field](#4-tomfield--the-base-form-field)
+- [5. TomForm — Form Container](#5-tomform--form-container)
+- [6. Abstract Field Types Catalog](#6-abstract-field-types-catalog)
 
 ### Part 3 — Concrete Implementations
-7. [Concrete Implementation Classes](#7-concrete-implementation-classes)
-8. [Flutter Widget Binding Strategy](#8-flutter-widget-binding-strategy)
-9. [Current Implementation Status](#9-current-implementation-status)
-10. [Form Field Anatomy](#10-form-field-anatomy)
+- [7. Concrete Implementation Classes](#7-concrete-implementation-classes)
+- [8. Flutter Widget Binding Strategy](#8-flutter-widget-binding-strategy)
+- [9. Current Implementation Status](#9-current-implementation-status)
+- [10. Form Field Anatomy](#10-form-field-anatomy)
+- [10a. Form Theming — TomFormStyle](#10a-form-theming--tomformstyle)
 
 ### Part 4 — Nested and Reusable Forms
-11. [Nested Forms](#11-nested-forms)
-12. [Form Templates and Reuse](#12-form-templates-and-reuse)
-13. [List Forms](#13-list-forms)
+- [11. Nested Forms](#11-nested-forms)
+- [12. Form Templates and Reuse](#12-form-templates-and-reuse)
+- [13. List Forms](#13-list-forms)
 
 ### Part 5 — Form Layout Patterns
-14. [Logical vs Visual Separation in Practice](#14-logical-vs-visual-separation-in-practice)
-15. [Master-Detail Forms](#15-master-detail-forms)
-16. [Inline Forms in Lists](#16-inline-forms-in-lists)
+- [14. Logical vs Visual Separation in Practice](#14-logical-vs-visual-separation-in-practice)
+- [15. Master-Detail Forms](#15-master-detail-forms)
+- [16. Inline Forms in Lists](#16-inline-forms-in-lists)
 
 ### Part 6 — Authorization, Resources, and Groups
-17. [Form Identity and Resource Resolution](#17-form-identity-and-resource-resolution)
-18. [Form Authorization](#18-form-authorization)
-19. [TomAuthorizationGroup and Forms](#19-tomauthorizationgroup-and-forms)
+- [17. Form Identity and Resource Resolution](#17-form-identity-and-resource-resolution)
+- [18. Form Authorization](#18-form-authorization)
+- [19. TomAuthorizationGroup and Forms](#19-tomauthorizationgroup-and-forms)
 
 ### Part 7 — Validation and Lifecycle
-20. [Validation System](#20-validation-system)
-21. [Form Lifecycle](#21-form-lifecycle)
-22. [Form Actions](#22-form-actions)
+- [20. Validation System](#20-validation-system)
+- [21. Form Lifecycle](#21-form-lifecycle)
+- [22. Form Actions](#22-form-actions)
 
 ### Part 8 — Non-Form Custom Widgets
-23. [Custom Tom Widgets (Non-Form)](#23-custom-tom-widgets-non-form)
+- [23. Custom Tom Widgets (Non-Form)](#23-custom-tom-widgets-non-form)
 
 ### Part 9 — Implementation Guide
-24. [Package Structure](#24-package-structure)
-25. [Extension Roadmap](#25-extension-roadmap)
-26. [API Summary](#26-api-summary)
+- [24. Package Structure](#24-package-structure)
+- [24a. Inspection and Event Callbacks](#24a-inspection-and-event-callbacks)
+- [24b. Demo Application Specification](#24b-demo-application-specification)
+- [25. Implementation Plan](#25-implementation-plan)
+- [26. API Summary](#26-api-summary)
 
 ### Appendices
 - [Appendix A — Data Type Coverage Analysis](#appendix-a--data-type-coverage-analysis)
+  - [A.1. Dart SDK Primitive and Core Types](#a1-dart-sdk-primitive-and-core-types)
+  - [A.2. Flutter SDK Value Types](#a2-flutter-sdk-value-types)
+  - [A.3. Tom Core Kernel Types](#a3-tom-core-kernel-types)
+  - [A.4. Candidate Types NOT in Tom Core (need custom implementation)](#a4-candidate-types-not-in-tom-core-need-custom-implementation)
 - [Appendix B — Form Widget Cross-Reference](#appendix-b--form-widget-cross-reference)
 - [Appendix C — Form Class Hierarchy Inventory](#appendix-c--form-class-hierarchy-inventory)
+  - [C.1. Text](#c1-text)
+  - [C.2. Numeric](#c2-numeric)
+  - [C.3. Numeric Range](#c3-numeric-range)
+  - [C.4. Boolean](#c4-boolean)
+  - [C.5. Date & Time](#c5-date--time)
+  - [C.6. Date & Time Range](#c6-date--time-range)
+  - [C.7. Single-Select](#c7-single-select)
+  - [C.8. Multi-Select](#c8-multi-select)
+  - [C.9. File](#c9-file)
+  - [C.10. Selectable Sources](#c10-selectable-sources)
+  - [C.11. Nullable Inputs](#c11-nullable-inputs)
+  - [C.12. Summary](#c12-summary)
+
+- [Related Documents](#related-documents)
 
 ---
 
@@ -283,7 +304,7 @@ The one binding that *is* reactive is the option list, and it is reactive
 through the source rather than through the field: a `TomSelectableSource<T>`
 whose `itemsStream` is non-null re-emits, and the field rebuilds. See
 [§7](#7-concrete-implementation-classes) for the contract and
-[Appendix C.10](#c10--selectable-sources) for the four shipped sources.
+[Appendix C.10](#c10-selectable-sources) for the four shipped sources.
 
 ```dart
 country = TomFormStringDropdown('country', '', source: countrySource);
@@ -919,7 +940,7 @@ class SelectableItem<T> {
 Separating the source from the field is what lets one dropdown class serve a
 hard-coded list, an enum whose labels come from the text bundle, and a set that
 changes while the form is open. The four shipped sources are listed in
-[Appendix C.10](#c10--selectable-sources); two of them cover most forms:
+[Appendix C.10](#c10-selectable-sources); two of them cover most forms:
 
 ```dart
 final countrySource = StaticSelectableSource<String>(const [
@@ -5183,7 +5204,7 @@ fallen behind merely reads as incomplete.
 **How to read the tables.** The first column is the abstract type; the next two
 are its concrete implementations. A `—` means no implementation ships for that
 platform, which is a fact about the package rather than a placeholder. Nullable
-inputs bind `T?` directly and are listed together in [C.11](#c11--nullable-inputs);
+inputs bind `T?` directly and are listed together in [C.11](#c11-nullable-inputs);
 the value each abstract type binds is in [§6](#6-abstract-field-types-catalog),
 not repeated here.
 
@@ -5198,7 +5219,7 @@ not repeated here.
 One string type and one plain input per platform. Email, URL, phone, password
 and multiline are **constructor parameters** — `keyboardType`, `obscureText`,
 `maxLines` — plus a validator where the format needs one, not separate classes.
-The selection concretes over `TomFormStringField` are in [C.7](#c7--single-select).
+The selection concretes over `TomFormStringField` are in [C.7](#c7-single-select).
 
 ## C.2. Numeric
 
@@ -5261,7 +5282,7 @@ subclass them; they are not implemented because no shipped form needed one. See
 ## C.7. Single-Select
 
 Every class here takes a required `source:` — see
-[C.10](#c10--selectable-sources).
+[C.10](#c10-selectable-sources).
 
 | Abstract Type | Material | Cupertino |
 |---------------|----------|-----------|
@@ -5301,7 +5322,7 @@ class AddressForm extends TomForm {
 
 The initial value is `''` and not `null` because `TomFormStringField` binds a
 non-nullable `String`. A field that must start empty is a nullable input — see
-[C.11](#c11--nullable-inputs).
+[C.11](#c11-nullable-inputs).
 
 ## C.8. Multi-Select
 

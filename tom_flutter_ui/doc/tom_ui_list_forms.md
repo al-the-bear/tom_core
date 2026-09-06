@@ -27,6 +27,8 @@ It is the practical companion to [tom_ui_widgets_forms.md](tom_ui_widgets_forms.
 10. [Patterns the components do NOT solve](#10-patterns-the-components-do-not-solve)
 11. [Resources and authorization](#11-resources-and-authorization)
 
+- [See also](#see-also)
+
 ---
 
 ## 1. Why a separate list-form layer

@@ -64,7 +64,6 @@ column-level access rights (C-4).
     - [TomAnnotationAnalyzer](#tomannotationanalyzer)
   - [Exceptions](#exceptions)
 - [Enums](#enums)
-  - [TomSortDirection](#tomsortdirection)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview

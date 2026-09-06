@@ -39,6 +39,8 @@ breakpoints, lists and master-detail for free. It is the verified
 17. [Tests](#17-tests)
 18. [Extending the showcase](#18-extending-the-showcase)
 
+- [Where this sits](#where-this-sits)
+
 ---
 
 ## 1. What you are looking at

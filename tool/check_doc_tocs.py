@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit every ``## Table of Contents`` in the tom_core tree against its file.
+"""Audit a document's own navigation: its table of contents and its anchors.
 
 Run from anywhere::
 
@@ -8,7 +8,14 @@ Run from anywhere::
 
 Exits non-zero when any document is defective, so it can gate a build.
 
-Three faults are reported, and the third is the one worth keeping:
+``check_doc_links`` deliberately accepts any ``#fragment`` and names this gate
+as the one that answers whether the heading exists, so that the two never
+disagree about how a heading becomes a slug. That makes every in-document
+anchor this gate's business -- not only the ones a table of contents happens to
+use. A ``[§10](#10-datasources-and-configuration)`` in running prose is the
+same defect as a stale contents entry, and nothing else looks for it.
+
+Four faults are reported, and the third is the one worth keeping:
 
 ``MISSING``
     An ``##`` section the ToC does not list. This is the common defect — a
@@ -21,6 +28,10 @@ Three faults are reported, and the third is the one worth keeping:
     A presence check passes this happily; it is only caught by comparing
     sequences, and it is what makes a ToC misleading rather than merely
     incomplete.
+``DANGLING``
+    A link in the *body* pointing at an anchor of its own document that no
+    heading provides. ``STALE`` is this same fault confined to the contents
+    block; a document need not carry a table of contents to be checked for it.
 
 Why this file exists at all: it has now been written from scratch twice, and
 both times most of the effort went into rediscovering the same five ways of
@@ -48,6 +59,12 @@ HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 # it, so the two sides stop resembling each other.
 TOC_ENTRY = re.compile(r"^(\s*)(?:[-*]|\d+[.)])\s+\[(.+?)\]\(#([^)]*)\)")
 
+#: Any inline link whose target is an anchor in this same document. Blanking
+#: code spans first keeps a documented ``[x](#y)`` out of the results -- there
+#: it is an example of the syntax, not a link the reader can follow.
+BODY_ANCHOR_LINK = re.compile(r"\[[^\]]*\]\(\s*#([^)\s]+)\s*\)")
+CODE_SPAN = re.compile(r"``[^`]*``|`[^`]*`")
+
 SKIP_DIRS = {"node_modules", ".dart_tool", ".git", "build", "ztmp"}
 
 
@@ -74,10 +91,12 @@ class Report:
         self.missing: list[tuple[int, str]] = []
         self.stale: list[tuple[str, str]] = []
         self.order: tuple[list[str], list[str]] | None = None
+        self.dangling: list[tuple[int, str]] = []
+        self.has_toc = False
 
     @property
     def clean(self) -> bool:
-        return not (self.missing or self.stale or self.order)
+        return not (self.missing or self.stale or self.order or self.dangling)
 
     def render(self) -> str:
         lines = [f"{self.path.relative_to(REPO_ROOT)}"]
@@ -85,6 +104,8 @@ class Report:
             lines.append(f"    MISSING  :{line_no:<5} {text}")
         for text, target in self.stale:
             lines.append(f"    STALE          [{text}](#{target})")
+        for line_no, target in self.dangling:
+            lines.append(f"    DANGLING :{line_no:<5} #{target}")
         if self.order:
             doc_order, toc_order = self.order
             lines.append("    ORDER    document: " + " ".join(doc_order))
@@ -92,23 +113,29 @@ class Report:
         return "\n".join(lines)
 
 
-def audit(path: Path) -> Report | None:
-    """Return a Report, or None if the file carries no table of contents."""
+def audit(path: Path) -> Report:
+    """Audit one document's contents block and its own-document anchors.
+
+    Always returns a Report: a file with no table of contents still has
+    anchors, and a link into a heading that was later reworded goes nowhere
+    whether or not the document indexes itself.
+    """
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
 
     toc_start = next((i for i, l in enumerate(lines) if TOC_HEADING.match(l)), None)
-    if toc_start is None:
-        return None
+    toc_end = len(lines)
+    if toc_start is not None:
+        for i in range(toc_start + 1, len(lines)):
+            if lines[i].startswith("## "):
+                toc_end = i
+                break
 
     entries: list[tuple[str, str]] = []  # (label, target)
-    for line in lines[toc_start + 1:]:
-        if line.startswith("## "):
-            break
-        match = TOC_ENTRY.match(line)
-        if match:
-            entries.append((match.group(2), match.group(3)))
-    if not entries:
-        return None
+    if toc_start is not None:
+        for line in lines[toc_start + 1:toc_end]:
+            match = TOC_ENTRY.match(line)
+            if match:
+                entries.append((match.group(2), match.group(3)))
 
     # `headings` holds every level, because an entry pointing at an `####` is a
     # perfectly good link and staleness must be judged against the whole file.
@@ -117,6 +144,7 @@ def audit(path: Path) -> Report | None:
     # holding it to every `###` manufactures defects instead of finding them.
     headings: list[tuple[int, str]] = []
     listable: list[tuple[int, str]] = []
+    body_links: list[tuple[int, str]] = []
     in_fence = False
     for i, line in enumerate(lines):
         if line.lstrip().startswith("```"):
@@ -124,6 +152,13 @@ def audit(path: Path) -> Report | None:
             continue
         if in_fence:
             continue
+
+        # Links inside the contents block are judged as entries, below; a link
+        # anywhere else is prose the reader is invited to follow.
+        if toc_start is None or not (toc_start <= i < toc_end):
+            prose = CODE_SPAN.sub(lambda m: " " * len(m.group()), line)
+            body_links += [(i + 1, a) for a in BODY_ANCHOR_LINK.findall(prose)]
+
         match = HEADING.match(line)
         if not match:
             continue
@@ -141,6 +176,13 @@ def audit(path: Path) -> Report | None:
     targets = {target.lower() for _, target in entries}
 
     report = Report(path)
+    report.has_toc = bool(entries)
+    report.dangling = [
+        (n, a) for n, a in body_links if a.lower() not in heading_anchors
+    ]
+    if not entries:
+        return report
+
     report.missing = [(n, t) for n, t in listable if anchor(t) not in targets]
     report.stale = [(l, t) for l, t in entries if t.lower() not in heading_anchors]
 
@@ -158,15 +200,15 @@ def main(argv: list[str]) -> int:
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
+    scanned = 0
     checked = 0
     defective: list[Report] = []
     for path in sorted(root.rglob("*.md")):
         if SKIP_DIRS & set(path.parts):
             continue
         report = audit(path)
-        if report is None:
-            continue
-        checked += 1
+        scanned += 1
+        checked += report.has_toc
         if not report.clean:
             defective.append(report)
 
@@ -176,14 +218,17 @@ def main(argv: list[str]) -> int:
     missing = sum(len(r.missing) for r in defective)
     stale = sum(len(r.stale) for r in defective)
     order = sum(1 for r in defective if r.order)
+    dangling = sum(len(r.dangling) for r in defective)
 
     print()
+    print(f"documents scanned                  : {scanned}")
     print(f"documents with a table of contents : {checked}")
     print(f"documents defective                : {len(defective)}")
     print(f"  unlisted sections                : {missing}")
-    print(f"  links resolving to no heading    : {stale}")
+    print(f"  contents links to no heading     : {stale}")
     print(f"  contents out of document order   : {order}")
-    return report_faults(missing + stale + order)
+    print(f"  body links to no heading         : {dangling}")
+    return report_faults(missing + stale + order + dangling)
 
 
 if __name__ == "__main__":

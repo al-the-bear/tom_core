@@ -168,9 +168,17 @@ def write_baselines(results: list[dict], baselines: dict) -> None:
     today = datetime.date.today().isoformat()
     gates = {}
     for result in sorted(results, key=lambda r: r["name"]):
-        if result["faults"] is None:
-            continue
         was = baselines.get(result["name"], {})
+        if result["faults"] is None:
+            # The gate ran but produced no count -- it crashed, or a tool it
+            # shells out to is absent on this machine. Its recorded count and
+            # its hand-written note are the only things that survive that, so
+            # carry the entry through untouched. Dropping it would let an
+            # --update run for an unrelated gate erase the baseline of the one
+            # gate that is currently broken.
+            if was:
+                gates[result["name"]] = was
+            continue
         entry = {"faults": result["faults"]}
         entry["measured"] = (
             was.get("measured", today)

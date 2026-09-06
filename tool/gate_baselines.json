@@ -82,9 +82,9 @@
       "measured": "2026-09-03"
     },
     "check_doc_tocs": {
-      "faults": 33,
-      "measured": "2026-09-05",
-      "note": "30 sections no table of contents lists, 2 entries linking to no heading, and 1 contents list in an order its document does not follow, across 9 documents. Down from 42 because tom_ui_widgets_forms.md's Appendix B lost the nine ## subsections of its widget cross-reference when that second inventory was collapsed onto Appendix C; the twelve C.n headings that replaced them are themselves unlisted and are part of the 30."
+      "faults": 0,
+      "measured": "2026-09-07",
+      "note": "Zero is the steady state. The gate now covers every in-document anchor, not only the ones a table of contents uses: check_doc_links accepts any #fragment and names this gate as the one that decides whether the heading exists, so a [§10](#stale-anchor) in running prose is this gate's fault to report. 253 documents are scanned for that; 117 of them carry a table of contents and are additionally held to listing every ## section, in document order. The four faults are exercised by planting each in a real document and requiring it to fire."
     },
     "check_field_grade_matrix": {
       "faults": 0,
