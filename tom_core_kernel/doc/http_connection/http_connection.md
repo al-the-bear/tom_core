@@ -447,9 +447,17 @@ call.abort();
 ```
 
 A call sends **once**. A second `send` throws, and so does a load that sets more
-than one body — but both refusals happen before the load is applied, so the
-request still describes what was actually sent rather than what was refused.
-Use `reset()` to send the same call again.
+than one body, or a form body labelled as anything but a form — every refusal
+happens before the load is applied, so the request still describes what was
+actually sent rather than what was refused. Use `reset()` to send the same call
+again.
+
+The load's `contentType` is applied ahead of its body, which is what lets
+`package:http` attach the `encoding`'s charset to the type the caller named
+instead of to the `text/plain` it would otherwise assume. There is no
+`contentLength` to go with it: a non-streaming request measures its own body and
+refuses to be told a length, so streaming uploads — the case where a length must
+be declared — go through `TomHttpFileTransferClient` rather than through a load.
 
 A call is also read **once**: the body is a stream, and draining it leaves
 nothing behind. `readAsString` *is* `read` with a decode on the end, so the two
@@ -609,8 +617,18 @@ final body = await call.readAsString(utf8);
 
 ### Using Form Data
 
+Form fields are sent as `application/x-www-form-urlencoded`, and nothing else
+may claim otherwise — so this spec carries no `Content-Type` of its own. Naming
+one that is not a form, on either the spec or the load, throws
+`TomServerConnectionException` before anything is written to the request.
+
 ```dart
-final call = TomServerCall(client, specs);
+final formSpecs = TomServerCallSpecs(
+  'POST',
+  Uri.parse('https://api.example.com/login'),
+);
+
+final call = TomServerCall(client, formSpecs);
 call.send(TomServerCallLoad(
   bodyFields: {
     'username': 'john',

@@ -737,7 +737,6 @@ settings needed to make a request.
 TomServerCallSpecs(
   String method,
   Uri url, {
-  int? contentLength,
   bool? followRedirects,
   Map<String, String>? headers,
   int? maxRedirects,
@@ -768,11 +767,20 @@ TomServerCallSpecs(
 
 Payload data for an HTTP request. Supports three mutually exclusive body kinds:
 `stringBody` (text), `byteBody` (binary), or `bodyFields` (URL-encoded form).
-Supplying more than one throws `TomServerConnectionException`.
+Supplying more than one throws `TomServerConnectionException`, as does labelling
+a `bodyFields` body with a `contentType` that is not
+`application/x-www-form-urlencoded` — the request could not carry that
+combination, and the load is the only place that holds both values before
+anything has been written.
 
-Every field is final, so that check describes the object for its whole life: a
+Every field is final, so those checks describe the object for its whole life: a
 load that exists carries exactly one body, and consumers such as
 `TomServerCall.applyLoadValues` need not re-check it.
+
+There is no `contentLength`. A non-streaming request derives its length from its
+body and refuses to be told one, so the field could hold no value that did not
+crash the send. Streaming uploads, where a length must be declared, go through
+`TomHttpFileTransferClient`.
 
 ##### Constructors
 
@@ -783,7 +791,6 @@ TomServerCallLoad({
   Map<String, String>? bodyFields,
   String? contentType,
   Encoding? encoding,
-  int? contentLength,
 })
 ```
 
@@ -793,9 +800,8 @@ All properties are final.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `contentType` | `String?` | The `Content-Type` header value. |
+| `contentType` | `String?` | The `Content-Type` header value, applied to the request ahead of the body so the body is labelled with it. `null` lets the body choose: `text/plain` for `stringBody`, `application/x-www-form-urlencoded` for `bodyFields`, both carrying the `encoding`'s charset. |
 | `encoding` | `Encoding?` | Character encoding for the body. |
-| `contentLength` | `int?` | `Content-Length` header value. |
 | `stringBody` | `String?` | String body content (mutually exclusive with `byteBody` / `bodyFields`). |
 | `byteBody` | `Uint8List?` | Binary body content (mutually exclusive with `stringBody` / `bodyFields`). |
 | `bodyFields` | `Map<String, String>?` | Form-field body (mutually exclusive with `stringBody` / `byteBody`). A copy of the map the constructor was given; `null` stays `null` rather than becoming an empty form. |

@@ -8,6 +8,7 @@ import 'package:http/http.dart'
         BaseClient,
         BaseRequest,
         ClientException,
+        Request,
         StreamedResponse,
         RequestAbortedException;
 import 'package:test/test.dart';
@@ -1901,7 +1902,6 @@ void main() {
         expect(load.bodyFields, isNull);
         expect(load.contentType, isNull);
         expect(load.encoding, isNull);
-        expect(load.contentLength, isNull);
       });
 
       test('should create load with string body', () {
@@ -2064,6 +2064,179 @@ void main() {
           reason:
               'These fields are settable after construction, so the '
               'constructor check no longer holds for the object: $mutable',
+        );
+      });
+    });
+
+    // A load is only worth the fields it can deliver. These assert what
+    // `applyLoadValues` actually puts on the request, because a field that the
+    // type accepts and the request never receives reads as configuration and
+    // behaves as a comment.
+    group('reaches the request', () {
+      /// Sends [load] through a [TomServerCall] and returns the request the
+      /// client was handed.
+      BaseRequest sent(TomServerCallLoad load) {
+        final client = _MockClient((request) async => _streamed('{}'));
+        TomServerCall(
+          client,
+          TomServerCallSpecs('POST', Uri.parse('https://api.example.com/x')),
+        ).send(load);
+        return client.lastRequest!;
+      }
+
+      test('the content type a load names is the one that is sent', () {
+        // Was silently dropped: `applyLoadValues` never read the field, so
+        // `body =` found no content-type header and defaulted the request to
+        // `text/plain`. Every TomServerEndpoint call went out mislabelled.
+        final request = sent(
+          TomServerCallLoad(
+            stringBody: '{"name":"John"}',
+            contentType: 'application/json',
+          ),
+        );
+
+        expect(
+          TomMimeType.parse(request.headers[TomHeader.contentType]!),
+          predicate<TomMimeType>((t) => t.isEqualType(TomMimeType.json)),
+          reason: 'the load named application/json',
+        );
+      });
+
+      test('a load that names no content type still gets the default', () {
+        // package:http labels a string body `text/plain` when nothing else
+        // says otherwise. Applying the field must not disturb that.
+        final request = sent(TomServerCallLoad(stringBody: 'plain words'));
+
+        expect(
+          TomMimeType.parse(request.headers[TomHeader.contentType]!),
+          predicate<TomMimeType>((t) => t.isEqualType(TomMimeType.plainText)),
+        );
+      });
+
+      test('the charset follows the encoding the load asked for', () {
+        // The content type is applied before the body, which is what lets
+        // package:http add the charset to the type the caller named rather
+        // than to a type it invented. A type other than `text/plain` is used
+        // deliberately: the default is `text/plain`, so the two are only
+        // distinguishable when the caller names something else.
+        final request = sent(
+          TomServerCallLoad(
+            stringBody: '<a>näh</a>',
+            contentType: 'application/xml',
+            encoding: latin1,
+          ),
+        );
+
+        final type = TomMimeType.parse(request.headers[TomHeader.contentType]!);
+        expect(type.isEqualType(TomMimeType.xml), isTrue);
+        expect(type.charset?.toLowerCase(), equals('iso-8859-1'));
+      });
+
+      test('a form body is labelled as a form', () {
+        final request = sent(TomServerCallLoad(bodyFields: {'k': 'v'}));
+
+        expect(
+          TomMimeType.parse(request.headers[TomHeader.contentType]!),
+          predicate<TomMimeType>((t) => t.isEqualType(TomMimeType.urlEncoded)),
+        );
+      });
+
+      test('the request derives its own length and refuses to be told one', () {
+        // This is why TomServerCallLoad has no contentLength field. The call
+        // builds a non-streaming request, whose length is its body's length
+        // and whose setter throws for every value. A field for it could hold
+        // nothing that did not crash the send, so there is no field.
+        final request = sent(TomServerCallLoad(stringBody: 'hello!')) as Request;
+
+        expect(request.contentLength, equals(6));
+        expect(() => request.contentLength = 6, throwsUnsupportedError);
+      });
+    });
+
+    group('refuses a form body it could not label', () {
+      /// Sends [load] under [specHeaders], returning whatever `send` did.
+      void send(TomServerCallLoad load, {Map<String, String>? specHeaders}) {
+        TomServerCall(
+          _MockClient((request) async => _streamed('{}')),
+          TomServerCallSpecs(
+            'POST',
+            Uri.parse('https://api.example.com/x'),
+            headers: specHeaders,
+          ),
+        ).send(load);
+      }
+
+      final refused = throwsA(
+        isA<TomServerConnectionException>().having(
+          (e) => e.key,
+          'key',
+          'server.connect.form_body_needs_form_content_type',
+        ),
+      );
+
+      test('when the load names a content type that is not a form', () {
+        // package:http rejects this combination with a bare StateError naming
+        // neither the call nor the setting that disagreed, thrown partway
+        // through writing the request.
+        expect(
+          () => send(
+            TomServerCallLoad(
+              bodyFields: {'k': 'v'},
+              contentType: 'application/json',
+            ),
+          ),
+          refused,
+        );
+      });
+
+      test('when the spec headers name it instead of the load', () {
+        // The label has two sources. A check on the load alone would pass this
+        // one — which is the shape the module documentation had, reusing a
+        // JSON spec for a form body.
+        expect(
+          () => send(
+            TomServerCallLoad(bodyFields: {'k': 'v'}),
+            specHeaders: {'Content-Type': 'application/json'},
+          ),
+          refused,
+        );
+      });
+
+      test('a form content type carrying parameters is still a form', () {
+        expect(
+          () => send(
+            TomServerCallLoad(
+              bodyFields: {'k': 'v'},
+              contentType: 'application/x-www-form-urlencoded; charset=utf-8',
+            ),
+          ),
+          returnsNormally,
+        );
+      });
+
+      test('a non-form content type is fine without a form body', () {
+        expect(
+          () => send(
+            TomServerCallLoad(
+              stringBody: '{}',
+              contentType: 'application/json',
+            ),
+          ),
+          returnsNormally,
+        );
+      });
+
+      test('a content type that cannot be parsed is left to package:http', () {
+        // Naming a form/label conflict would be a guess: the value states no
+        // media type at all, so the fault is the value itself.
+        expect(
+          () => send(
+            TomServerCallLoad(
+              bodyFields: {'k': 'v'},
+              contentType: 'not-a-media-type',
+            ),
+          ),
+          throwsA(isNot(isA<TomServerConnectionException>())),
         );
       });
     });
@@ -2583,18 +2756,6 @@ void main() {
       );
 
       expect(load.encoding, equals(utf8));
-    });
-
-    test('should create load with content length', () {
-      final load = TomServerCallLoad(stringBody: 'test', contentLength: 4);
-
-      expect(load.contentLength, equals(4));
-    });
-
-    test('should carry a content length that differs from the body length', () {
-      final load = TomServerCallLoad(stringBody: 'test', contentLength: 100);
-
-      expect(load.contentLength, equals(100));
     });
   });
 

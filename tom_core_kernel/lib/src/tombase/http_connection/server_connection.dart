@@ -40,6 +40,8 @@ import '../little_things/exception_base.dart';
 import '../reflection/reflection.dart';
 import '../security/bearer_authentication.dart';
 import 'endpoints_apis.dart';
+import 'headers.dart';
+import 'mimetypes.dart';
 import 'remote_context.dart';
 
 // =============================================================================
@@ -172,7 +174,6 @@ class TomServerCallSpecs {
   TomServerCallSpecs(
     this.method,
     this.url, {
-    int? contentLength,
     this.followRedirects,
     Map<String, String>? headers,
     this.maxRedirects,
@@ -216,14 +217,25 @@ class TomServerCallSpecs {
 /// );
 /// ```
 class TomServerCallLoad {
-  /// The Content-Type header value.
+  /// The `Content-Type` header value, or `null` to let the body choose one.
+  ///
+  /// Applied to the request ahead of the body, so `package:http` labels the
+  /// bytes with what the caller named. Left `null`, the body picks the default
+  /// its own shape implies: `text/plain` for [stringBody] and
+  /// `application/x-www-form-urlencoded` for [bodyFields], both carrying the
+  /// [encoding]'s charset. [byteBody] implies nothing and stays unlabelled.
+  ///
+  /// There is deliberately no `contentLength` beside this. A `Content-Type` is
+  /// the caller's to state — the bytes do not say what they mean — whereas a
+  /// `Content-Length` is a fact about the body that the request measures for
+  /// itself, and that this module's non-streaming request refuses to be told.
+  /// Streaming uploads, where the length genuinely is unknown until it is
+  /// declared, go through [TomHttpFileTransferClient] rather than through a
+  /// load.
   final String? contentType;
 
   /// Character encoding for the body.
   final Encoding? encoding;
-
-  /// Content-Length header value.
-  final int? contentLength;
 
   /// String body content (mutually exclusive with [byteBody] and [bodyFields]).
   final String? stringBody;
@@ -242,13 +254,17 @@ class TomServerCallLoad {
   /// Only one of [stringBody], [byteBody], or [bodyFields] may be set; supplying
   /// more than one throws [TomServerConnectionException]. Because the fields are
   /// final, passing that check is the only way a load can come into existence.
+  ///
+  /// A [bodyFields] body must also be labelled as a form, but that check is not
+  /// here: the label can equally come from [TomServerCallSpecs.headers], which
+  /// a load never sees. It is made once, against the request's effective
+  /// content type, in [TomServerCall.applyLoadValues].
   TomServerCallLoad({
     this.stringBody,
     this.byteBody,
     Map<String, String>? bodyFields,
     this.contentType,
     this.encoding,
-    this.contentLength,
     // Null must survive the copy: an empty map is a body, and turning "no form
     // fields" into "an empty form" would both change the body count and make
     // applyLoadValues write form fields nobody asked for.
@@ -509,14 +525,65 @@ class TomServerCall {
   /// is re-checked here. Were two ever to arrive, the fields would be applied in
   /// order and `package:http` would reject the second against the content type
   /// the first had already set, leaving the request half-written.
+  ///
+  /// The order of the two lines that precede the body is load-bearing, because
+  /// `package:http` reads both back when the body is assigned. The encoding is
+  /// the charset the body is encoded with, and the content type is the header
+  /// that charset is then written into; a type applied *after* the body would
+  /// be a type the body never saw, replacing the labelling `package:http` had
+  /// just derived and dropping the charset with it.
   void applyLoadValues(TomServerCallLoad load) {
+    if (load.bodyFields != null) {
+      // Checked before anything is written, so a refused load leaves the
+      // request as it was rather than half-labelled.
+      _requireFormContentType(
+        load.contentType ?? abortableRequest.headers[TomHeader.contentType],
+      );
+    }
     if (load.encoding != null) abortableRequest.encoding = load.encoding!;
-    if (load.contentLength != null) {
-      abortableRequest.contentLength = load.contentLength!;
+    if (load.contentType != null) {
+      abortableRequest.headers[TomHeader.contentType] = load.contentType!;
     }
     if (load.stringBody != null) abortableRequest.body = load.stringBody!;
     if (load.byteBody != null) abortableRequest.bodyBytes = load.byteBody!;
     if (load.bodyFields != null) abortableRequest.bodyFields = load.bodyFields!;
+  }
+
+  /// Refuses a form body that [contentType] labels as something else.
+  ///
+  /// `package:http` encodes form fields as `application/x-www-form-urlencoded`
+  /// and rejects any other declared type — with a bare `StateError` that names
+  /// neither the call nor the setting that disagreed, raised partway through
+  /// writing the request.
+  ///
+  /// The check belongs here rather than on [TomServerCallLoad] because the
+  /// label has two sources: the load's own `contentType` and the spec's
+  /// `headers`. Only the request has seen both, so a constructor check would
+  /// pass every load whose spec carried the offending header — a guard that
+  /// reads as complete and is not.
+  ///
+  /// A type that merely carries parameters — `...urlencoded; charset=utf-8` —
+  /// is the same type, so the media types are compared rather than the strings.
+  /// An unparseable value is left alone: `package:http` reports a malformed
+  /// content type in its own terms, and guessing here would name the wrong
+  /// fault.
+  static void _requireFormContentType(String? contentType) {
+    if (contentType == null) return;
+    final TomMimeType declared;
+    try {
+      declared = TomMimeType.parse(contentType);
+    } on TomMimeTypeException {
+      return;
+    }
+    if (declared.isEqualType(TomMimeType.urlEncoded)) return;
+    throw TomServerConnectionException(
+      "server.connect.form_body_needs_form_content_type",
+      "bodyFields is sent as "
+          "${TomMimeType.urlEncoded.primaryType}/"
+          "${TomMimeType.urlEncoded.subType}, so it cannot be labelled "
+          "'$contentType'. Drop the content type, or encode the body yourself "
+          "into stringBody if it needs that one.",
+    );
   }
 
   /// Completer used to trigger request abort.
