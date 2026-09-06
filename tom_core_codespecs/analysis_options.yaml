@@ -1,1 +1,15 @@
 include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    # The package is at 100% public-API dartdoc coverage
+    # (tom_specs_documentation_standard.md §5 sets the bar at 95%). The lint
+    # makes `dart analyze` the ratchet: a new public member without a doc
+    # comment fails at edit time rather than waiting for a coverage sweep.
+    public_member_api_docs: true
+
+    # Paired with it — an unresolvable `[Reference]` is otherwise invisible
+    # until `dart doc` runs. Where a barrel's library comment names symbols it
+    # only re-exports, the fix is `@docImport` rather than backticks; see the
+    # standard's §5.
+    comment_references: true

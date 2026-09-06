@@ -108,6 +108,13 @@
 /// `TomTabularResult`: the envelope's locus is *shared* (the client reads it
 /// too) and this package is dependency-free, so the server adapts one way onto
 /// the tabular shape — the same placement decision CE-DB records for entities.
+/// @docImport 'src/client_application.dart';
+/// @docImport 'src/job_declaration.dart';
+/// @docImport 'src/layout_node.dart';
+/// @docImport 'src/message_key.dart';
+/// @docImport 'src/notification_model.dart';
+/// @docImport 'src/report_model.dart';
+/// @docImport 'src/route_flow.dart';
 library;
 
 export 'src/client_application.dart';
