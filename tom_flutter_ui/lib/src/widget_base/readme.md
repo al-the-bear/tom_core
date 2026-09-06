@@ -15,16 +15,83 @@ next to the callers it serves; the resolvers here return data and ids.
 
 ## Key types
 
+This table is a complete inventory of what `widget_base/widget_base.dart`
+exports; `test/module_readme_inventory_test.dart` fails if the module gains a
+public type or static this table does not name.
+
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomWidgetSurface` | The four members every Tom wrapper adds over its Flutter widget — `tomId`, `tomGroup`, `basePath`, `effectiveAuthState` |
 | `TomNodeBase` / `TomPolicyNodeBase` | Base widget classes carrying `tomId` + authorization |
-| `TomWidgetFamily` | Material / Cupertino family selection |
+| `TomFamilyBase` | The root of the family bases below: it fixes a widget's `TomWidgetFamily` at compile time |
+| `TomWidgetFamily` | The role tag a family base fixes — what a widget is *for*, not what it looks like |
+| `TomAuthLayers` | Composes the four authorization layers in order; `TomAuthLayers.resolve` is the one place that order lives |
 | `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | Construction-time base helpers |
-| `TomScreenElementsProviderBase` | The element-provider contract forms/ACL build against |
-| `TomScopePath` | The one place a scope path and a `tomId` are joined into a canonical resource path |
-| `TomCtr` | Resolver helpers — `text` / `color` / `doubleVal` / `textStyle` by resource path |
-| `TomStyleResolvers` | Parse style maps into `ButtonStyle` / `ShapeBorder` etc. |
+| `TomScreenElementsProvider` / `TomScreenElementsProviderBase` | The element-provider contract forms/ACL build against |
+| `TomScopePath` | Joins a scope path and a `tomId` into a canonical resource path — `TomScopePath.join`, `qualify`, `resolve` |
+| `TomCtr` | Resource resolvers (below) |
+| `TomStyleResolvers` | Style-map parsers (below) |
+
+### The family bases
+
+Twenty subclasses of `TomFamilyBase`, one per widget role, whose only job is to
+fix the `family` its widgets report. A wrapper extends exactly one of them,
+which is what lets `widgets/` state a widget's role without any widget
+declaring it:
+
+`TomButtonBase`, `TomInputBase`, `TomSelectBase`, `TomToggleBase`,
+`TomSliderBase`, `TomContainerBase`, `TomDialogBase`, `TomTableBase`,
+`TomLabelBase`, `TomImageBase`, `TomNavigationBase`, `TomProgressBase`,
+`TomChipBase`, `TomListBase`, `TomTreeBase`, `TomSliverBase`,
+`TomAnimatedBase`, `TomEffectBase`, `TomInteractionBase`, `TomBuilderBase`.
+
+### `TomCtr` — resource entry to Dart value
+
+Each reader takes a resource path and answers a typed value. Three shapes say
+what a *miss* means, so the caller picks rather than the resolver: plain (`text`)
+answers the key back — a missing label renders as its own path, which is how you
+spot one on screen — `…OrNull` answers `null`, and `…OrFail` throws.
+
+| Member | Answers |
+| ------ | ------- |
+| `text` / `textOrNull` / `textOrFail` | A `String` |
+| `color` / `colorOrFail` | A `Color`, resolved through `TomUIColors` |
+| `icon` / `iconOrFail` | An `IconData`, resolved through `TomUIIcons` |
+| `doubleVal` / `doubleOrFail` | A `double` |
+| `intVal` / `intOrFail` | An `int` |
+| `boolVal` | A `bool` |
+| `value` | The raw entry, whatever type it holds |
+| `list` / `map` | A `List` / `Map` entry |
+| `edgeInsets` | An `EdgeInsets` from a number or a map |
+| `textStyle` | A `TextStyle` from a style map |
+| `inputBorder` | An `InputBorder` |
+| `widgetStateColor` | A `WidgetStateProperty<Color>` from per-state entries |
+| `exists` | Whether the entry is there at all, without reading it |
+| `resolvePath` / `childTomId` | Path arithmetic: the full path for a `tomId`, and a child's id beneath it |
+
+### `TomStyleResolvers` — style map to Flutter object
+
+Every entry is a `parse…` / `resolve…` pair: `parse…` takes a map you already
+hold, `resolve…` takes a resource path and reads the map first. They cover
+`TextStyle` (`parseTextStyle` / `resolveTextStyle`), `ButtonStyle`
+(`parseButtonStyle` / `resolveButtonStyle`), `InputDecoration`
+(`parseInputDecoration` / `resolveInputDecoration`), `MenuStyle`
+(`parseMenuStyle` / `resolveMenuStyle`), `ShapeBorder` (`parseShapeBorder` /
+`resolveShapeBorder`), `BorderSide` (`parseBorderSide` / `resolveBorderSide`),
+`BorderRadius` (`parseBorderRadius` / `resolveBorderRadius`), `Decoration`
+(`parseDecoration` / `resolveDecoration`), `BoxConstraints`
+(`parseBoxConstraints` / `resolveBoxConstraints`), `Alignment`
+(`parseAlignment` / `resolveAlignment`), `Offset` (`parseOffset` /
+`resolveOffset`), `TableBorder` (`parseTableBorder` / `resolveTableBorder`),
+`VisualDensity` (`parseVisualDensity` / `resolveVisualDensity`),
+`IconThemeData` (`parseIconThemeData` / `resolveIconThemeData`), `StrutStyle`
+(`parseStrutStyle` / `resolveStrutStyle`), `TextHeightBehavior`
+(`parseTextHeightBehavior` / `resolveTextHeightBehavior`) and `ScrollPhysics`
+(`parseScrollPhysics` / `resolveScrollPhysics`).
+
+Two have no `resolve…` twin, because nothing addresses them by their own
+resource path — they are read as part of a larger map: `parseEdgeInsets` and
+`parseFontWeight`.
 
 ## Quick start
 

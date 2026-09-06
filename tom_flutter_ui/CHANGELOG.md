@@ -2,6 +2,52 @@
 
 ### Changed
 
+- **Every module readme now declares what it claims about its surface, and the
+  claim is checked.** `module_readme_inventory_test.dart` held four of the nine
+  modules to "the table lists everything" through an opt-in list. An opt-in list
+  says nothing about the modules outside it, so five sat uncovered without
+  anyone having decided they should — `custom/` among them, which passed the
+  inventory assertions all along and had simply never been added.
+
+  The list is now an exhaustive classification, and a test fails when a module
+  ships a readme the map does not classify (or the map names one that no longer
+  exists). Seven modules are `inventory`; two are `rule`.
+
+  **`advanced_container_layout` and `widget_base` joined the inventory**, which
+  meant writing the missing rows rather than relaxing anything. ACL was short 16
+  types and 10 statics — ordinary API (`AclDirection`, `AclScope`,
+  `AclSeparatorStyle`, the four `AclFlags` cross-dimension constants, the
+  `AclDeviceContext` resolvers), plain drift of the kind the check exists to
+  stop. `widget_base` was short 22 types and 52 statics: the twenty family bases
+  are now one section, and `TomCtr` and `TomStyleResolvers` have tables, so the
+  resolver API an author actually calls is written down for the first time.
+
+  **`widgets` and `forms` are `rule`**, and a `rule` readme has to carry a
+  literal `**Not an inventory.**` callout — the classification is not licence to
+  say nothing. Each names the rule it follows and points at its complete list,
+  and in both cases that list is already machine-checked: the widget kit's is
+  `test/widgets/widget_conformance_registry.dart`, held to the module in both
+  directions by that suite's `tccm1` group, and the field catalogue's is
+  Appendix C of `doc/tom_ui_widgets_forms.md`, held to `lib/src/forms/fields` by
+  `tool/check_doc_class_inventories.py`. So a reader is never left without an
+  exhaustive list, and no list is kept twice.
+
+  Two supporting fixes the classification forced. `_exportedSources` hard-coded
+  `<module>/<module>.dart`, which threw for `custom/` and `forms/` — they name
+  their barrels after what they hold — so those two could not have been
+  classified without a lookup; and the barrel file itself is now scanned, since
+  a module may declare a type there rather than beneath it.
+
+- **The inventory check stopped passing vacuously on short names.** It asked
+  `readme.contains(symbol)`, and this module set is full of symbols that are
+  substrings of ordinary English: `TomCtr` alone declares `text`, `list`, `map`,
+  `value` and `exists`, and `AclScope` declares `of`. Each of those passed
+  against any prose at all, so the check was weakest exactly where a reader
+  needs the documentation most. A symbol now counts only as a whole word inside
+  an inline code span, which is how these readmes write API — whole-word alone
+  would not do, since "one **of** them" is a word. All seven inventory modules
+  pass under the strict matcher.
+
 - **The config enums are `TomConfigEnvironment` / `TomConfigPlatform`, so this
   package and `tom_core_kernel` can be imported into one library.** They were
   `TomEnvironment` and `TomPlatform` — the names two *classes* in `tom_basics`

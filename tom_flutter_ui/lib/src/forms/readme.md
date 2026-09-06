@@ -11,6 +11,23 @@ discard, validation, and authorization.
 
 ## Key types
 
+> **Not an inventory.** The field catalogue is a parallel Material/Cupertino set
+> running to dozens of classes, and the table below names the machinery a reader
+> has to understand rather than every field. The readme states the rule and
+> points at the list instead of copying it.
+>
+> **The rule:** a field is `TomForm<Kind><Variant>`, with `TomCupertinoForm…`
+> for the Cupertino half of the pair, and you do not usually name either — you
+> declare the field once and `FormFieldFamily` builds the concrete for the
+> family in scope. Reach for a concrete only when a screen is deliberately
+> single-family.
+>
+> **The complete list** is Appendix C of
+> [`doc/tom_ui_widgets_forms.md`](../../../doc/tom_ui_widgets_forms.md), which
+> is generated from `lib/src/forms/fields` and held to it by
+> `tool/check_doc_class_inventories.py` in both directions — a class missing
+> from the appendix and an appendix entry naming no class are both faults.
+
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomForm<T>` | The form base — bind / save / discard, validation, authorization |

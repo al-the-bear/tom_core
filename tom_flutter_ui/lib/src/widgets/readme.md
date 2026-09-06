@@ -40,6 +40,48 @@ than a probe.
 
 ## Key types
 
+> **Not an inventory.** This module is a catalogue — one mechanical wrapper per
+> Flutter widget — and the table below is a sample of it, chosen to show the
+> shape rather than to enumerate. Listing every wrapper here would produce a
+> worse document than the summary above and a second copy of a list that is
+> already kept, so the readme states the rule and points at the list.
+>
+> **The rule** is about the surface, not the name: every type here carries
+> `TomWidgetSurface` — `tomId`, the four-state authorization, resource
+> resolution — and adds nothing else. That one is a law, and it is checked per
+> type by `widget_conformance_test.dart`.
+>
+> Naming is the *usual case* rather than a law: a wrapper is normally Flutter's
+> widget with a `Tom` prefix (`TomSwitch` → `Switch`, `TomCupertinoPicker` →
+> `CupertinoPicker`). The exceptions are worth knowing, because looking for the
+> Flutter original is how you would otherwise read this module. They are a
+> different cut from the nine `nonWidgetTypes` in
+> `test/widgets/widget_census.dart`, which asks whether a type is a widget at
+> all: `TomDataCell` is not a widget yet is named after `DataCell`, while
+> `TomInkImage` is a widget named after nothing:
+>
+> - Flutter's **function**-based APIs cannot be extended by a widget base, so
+>   they are static facades — `TomDialogs` (`showDialog` and friends) and
+>   `TomMessenger` (`ScaffoldMessenger.showSnackBar`) — and
+>   `TomModalBottomSheet` is the widget form of one of them.
+> - `TomPageRoute` is not a widget at all; it extends `MaterialPageRoute` to
+>   carry the scope across a push.
+> - `TomTreeNode` is a data node, not a wrapper.
+> - `TomInkImage` and `TomFormClassic` compose more than one Flutter widget, so
+>   no single original exists to name them after.
+> - `TomCupertinoLinearActivityIndicator` is Tom-built: Cupertino ships no
+>   linear indicator to wrap.
+> - `TomAclBuilder` wraps Tom's own ACL engine rather than anything of
+>   Flutter's.
+>
+> **The complete list** is `test/widgets/widget_conformance_registry.dart`,
+> and it is exhaustive by construction rather than by care: its
+> registry-completeness case in `widget_conformance_test.dart` fails both ways
+> round — a widget the module
+> declares but the registry omits, and a registry entry `widgets/` no longer
+> declares. So the list cannot drift from the module in either direction, which
+> is the property a hand-kept table here would not have.
+
 | Type | What it is |
 | ---- | ---------- |
 | `TomElevatedButton` / `TomTextButton` / `TomIconButton` | Authorization-aware buttons |

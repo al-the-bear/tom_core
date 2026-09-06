@@ -3,20 +3,71 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// The modules whose readme claims to be a *complete* inventory of what the
-/// module exports.
+/// What a module readme claims about the surface its module exports.
 ///
-/// Not every module can make that claim, and this list is the honest half of
-/// saying so. `widgets/` exports 290 mostly-mechanical Flutter wrappers and
-/// `widget_base/` 24 `…Base` types; enumerating either would produce a worse
-/// document than the summary that is there, so neither is checked. The four
-/// below are small enough that "the table lists everything" is both true and
-/// useful — and that is exactly the claim that rots, because adding a type to a
-/// module is a one-line edit away from leaving the table behind.
+/// Every module is classified, and that is the point of the enum rather than a
+/// list: an opt-in list is silent about the modules outside it, so a module can
+/// sit uncovered without anyone deciding it should. `custom/` did — it passed
+/// the inventory assertions all along and was simply never added.
+enum _Claim {
+  /// The readme names every public type and static the module barrel exports.
+  ///
+  /// This is the claim that rots, because adding a type to a module is a
+  /// one-line edit away from leaving the table behind. A module earns this
+  /// classification by having a readme that already lists everything. Never
+  /// move a module here and then loosen the assertions to accommodate it.
+  inventory,
+
+  /// The readme states the rule the module follows and points at the complete
+  /// list, which lives somewhere that is itself checked.
+  ///
+  /// Reserved for the two catalogues, where enumerating in the readme would
+  /// produce a worse document *and* a second copy of a list already kept:
+  /// `widgets/` is 290 mechanical Flutter wrappers whose exhaustive list is
+  /// `test/widgets/widget_conformance_registry.dart` (held to the module in
+  /// both directions by that suite's registry-completeness case), and `forms/`
+  /// is a parallel
+  /// Material/Cupertino field catalogue whose exhaustive list is Appendix C of
+  /// `doc/tom_ui_widgets_forms.md` (held to `lib/src/forms/fields` by
+  /// `tool/check_doc_class_inventories.py`).
+  ///
+  /// The classification is not an excuse to say nothing. A `rule` readme must
+  /// carry [_notAnInventoryMarker], so a reader is told the table is a sample
+  /// before they conclude from its absence that a type does not exist.
+  rule,
+}
+
+/// Every module under `lib/src/` that ships a readme, and what that readme
+/// claims. `_everyModuleIsClassified` fails if the two ever disagree.
+const _moduleClaims = <String, _Claim>{
+  'actions': _Claim.inventory,
+  'advanced_container_layout': _Claim.inventory,
+  'custom': _Claim.inventory,
+  'forms': _Claim.rule,
+  'groups': _Claim.inventory,
+  'resource_auth': _Claim.inventory,
+  'theme': _Claim.inventory,
+  'widget_base': _Claim.inventory,
+  'widgets': _Claim.rule,
+};
+
+/// The callout a `rule` readme has to carry, verbatim.
 ///
-/// A module joins this list by having a readme that already lists everything.
-/// Never add one and then loosen the assertions to accommodate it.
-const _inventoryModules = ['actions', 'groups', 'resource_auth', 'theme'];
+/// Checking for a fixed string rather than reading the prose is deliberate: the
+/// assertion is not that the readme is well written, it is that the reader was
+/// *told* the table is partial. A marker either appears or it does not.
+const _notAnInventoryMarker = '**Not an inventory.**';
+
+/// The module barrel, which is not always `<module>/<module>.dart`.
+///
+/// `custom/` and `forms/` name theirs after what they hold
+/// (`tom_custom_widgets.dart`, `tom_forms.dart`), and hard-coding the tidy
+/// convention is what kept both out of this check: `_exportedSources` threw for
+/// them, so classifying them was impossible without this lookup.
+const _moduleBarrels = <String, String>{
+  'custom': 'tom_custom_widgets.dart',
+  'forms': 'tom_forms.dart',
+};
 
 /// A public top-level declaration. The leading alternation is the modifier
 /// soup Dart allows (`abstract base class`, `mixin class`, `sealed class`);
@@ -116,13 +167,18 @@ List<File> _surfaceDocuments() => [
 /// and demanding the readme document it would be wrong.
 List<String> _exportedSources(String module) {
   final dir = 'lib/src/$module';
-  final barrel = File('$dir/$module.dart').readAsStringSync();
-  return _export
-      .allMatches(barrel)
-      .map((m) => File('$dir/${m.group(1)}'))
-      .where((f) => f.existsSync())
-      .map((f) => f.readAsStringSync())
-      .toList();
+  final barrelName = _moduleBarrels[module] ?? '$module.dart';
+  final barrel = File('$dir/$barrelName').readAsStringSync();
+  return [
+    // The barrel itself, because a module may declare a type in it rather than
+    // in a file beneath it. Omitting it made the barrel a blind spot.
+    barrel,
+    ..._export
+        .allMatches(barrel)
+        .map((m) => File('$dir/${m.group(1)}'))
+        .where((f) => f.existsSync())
+        .map((f) => f.readAsStringSync()),
+  ];
 }
 
 Set<String> _publicNames(List<String> sources, RegExp pattern) => sources
@@ -131,9 +187,86 @@ Set<String> _publicNames(List<String> sources, RegExp pattern) => sources
     .where((n) => !n.startsWith('_'))
     .toSet();
 
+/// Whether [readme] names [symbol] as API, rather than merely containing the
+/// letters somewhere.
+///
+/// A plain `readme.contains(symbol)` passes vacuously for every short name, and
+/// this module set is full of them: `TomCtr` alone declares `text`, `list`,
+/// `map`, `value` and `exists`, and `AclScope` declares `of`. Each of those is
+/// a substring of ordinary English, so the readme could name none of them and
+/// still pass — the check would be strongest exactly where the documentation is
+/// least self-explanatory.
+///
+/// So a symbol counts only when it appears as a whole word inside an inline
+/// code span, which is how every one of these readmes writes API. Whole-word
+/// alone would not do: "one **of** them" is a word.
+bool _names(String readme, String symbol) {
+  final code = _inlineCode.allMatches(readme).map((m) => m.group(1)!).join(' ');
+  return RegExp(r'(?<!\w)' + RegExp.escape(symbol) + r'(?!\w)').hasMatch(code);
+}
+
 void main() {
+  test('every module with a readme is classified, and every classification '
+      'names a module', () {
+    // The check this whole file rests on. An unclassified module is not a
+    // module that passes, it is one nobody has looked at — which is the state
+    // `custom/`, `forms/`, `widget_base/`, `widgets/` and
+    // `advanced_container_layout/` were all in while the opt-in list named
+    // four of the nine.
+    final onDisk = Directory('lib/src')
+        .listSync()
+        .whereType<Directory>()
+        .map((d) => d.path.split(Platform.pathSeparator).last)
+        .where((m) => File('lib/src/$m/readme.md').existsSync())
+        .toSet();
+
+    expect(
+      onDisk,
+      isNotEmpty,
+      reason: 'found no module readmes — the scan is broken, not the tree',
+    );
+    expect(
+      onDisk.difference(_moduleClaims.keys.toSet()).toList()..sort(),
+      isEmpty,
+      reason:
+          'these modules ship a readme and _moduleClaims does not say what it '
+          'claims — classify them rather than leaving them unchecked',
+    );
+    expect(
+      _moduleClaims.keys.toSet().difference(onDisk).toList()..sort(),
+      isEmpty,
+      reason: '_moduleClaims names modules that no longer ship a readme',
+    );
+  });
+
+  group('a rule readme says so', () {
+    for (final module
+        in _moduleClaims.entries
+            .where((e) => e.value == _Claim.rule)
+            .map((e) => e.key)) {
+      test('$module/readme.md tells the reader its table is a sample', () {
+        // Without this a `rule` classification would be indistinguishable from
+        // an unchecked one: the readme would carry a partial table and say
+        // nothing about it, and a reader would take a type's absence for the
+        // type not existing.
+        final readme = File('lib/src/$module/readme.md').readAsStringSync();
+        expect(
+          readme,
+          contains(_notAnInventoryMarker),
+          reason:
+              'lib/src/$module/readme.md is classified _Claim.rule, so it must '
+              'carry the literal "$_notAnInventoryMarker" callout naming the '
+              'rule it follows and where the complete list is kept',
+        );
+      });
+    }
+  });
+
   group('module readmes list the surface their module exports', () {
-    for (final module in _inventoryModules) {
+    for (final module
+        in _moduleClaims.entries
+            .where((e) => e.value == _Claim.inventory)
+            .map((e) => e.key)) {
       final sources = _exportedSources(module);
       final readme = File('lib/src/$module/readme.md').readAsStringSync();
 
@@ -147,8 +280,7 @@ void main() {
               'the declaration pattern is broken, not the readme',
         );
 
-        final missing = types.where((t) => !readme.contains(t)).toList()
-          ..sort();
+        final missing = types.where((t) => !_names(readme, t)).toList()..sort();
         expect(
           missing,
           isEmpty,
@@ -164,7 +296,7 @@ void main() {
         // `reset` and the `clearCustom…` pair — none of which a table of
         // types has a row for, and all of which are what authors get wrong.
         final statics = _publicNames(sources, _staticMember);
-        final missing = statics.where((s) => !readme.contains(s)).toList()
+        final missing = statics.where((s) => !_names(readme, s)).toList()
           ..sort();
         expect(
           missing,
