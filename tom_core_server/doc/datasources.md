@@ -846,7 +846,7 @@ way.
 
 `test/datasources_test.dart` always runs, and reaches further into the driver
 than "no connection" suggests. Beyond the dialect's SQL generation and the
-`TomDbType.of` conversions it covers `MariadbPreparedStatement`'s
+`TomDbInt.of` / `TomDbBool.of` conversions it covers `MariadbPreparedStatement`'s
 `buildPositionalParameters` and `normalizeGeneratedId`,
 `MariaDbDatasource.toPositionalStatement` and the placeholder scan it shares
 with `crud_repository`, `sqlInstant` / `parseSqlInstant` /

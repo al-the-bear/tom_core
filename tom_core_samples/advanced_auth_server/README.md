@@ -187,7 +187,7 @@ produced. Full walkthrough:
 
 `erin` holds the `two_factor_optional` role and no factor, so her login is met
 with an *offer* rather than a challenge. `POST /auth/enrol/begin` generates a
-fresh random secret (`TomTotp2FAService.encodeBase32`) and returns it once with
+fresh random secret (`TomTotp2FAService.generateSecret`) and returns it once with
 the `clientData` a QR code is built from; `POST /auth/enrol/confirm` proves one
 code against it and stores the enrolment; `POST /auth/enrol/skip` declines and
 completes the login unchanged. An account that confirms is challenged on its

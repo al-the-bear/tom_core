@@ -202,6 +202,7 @@ reports and never gates.
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_attributions.py`](tool/check_doc_attributions.py) | Finds prose that names a source file and then names a type that file has not got |
+| [`tool/check_member_attributions.py`](tool/check_member_attributions.py) | Finds documentation that writes `Type.member` for a member the type does not declare |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, quote its signature with the wrong parameter kind, or `const` one that is not |
 | [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, and every framework name in it must resolve |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
@@ -937,6 +938,47 @@ prose mentions as row claims was the source of its false positives. Only type
 declarations count, never a same-named function. `CHANGELOG.md` is out of scope
 — an entry records what was true when it was written, and editing it would
 falsify a record rather than repair a claim.
+
+```bash
+python3 tool/check_member_attributions.py                 # the whole repository
+python3 tool/check_member_attributions.py tom_flutter_ui  # one subtree
+python3 tool/check_member_attributions.py --self-test     # check the checker
+```
+
+A document that writes `` `TomCtr.doubleVal` `` is making two claims at once, and
+the neighbouring gates check only the first. `check_dartdoc_refs` and
+`check_doc_attributions` ask whether the *type* resolves — `TomCtr` does, so both
+pass — while the assertion a reader actually acts on is that `doubleVal` is a
+thing they can call on it. That second half went unchecked, and
+`tom_flutter_ui_test/doc/widget_resource_parameters.md` showed what accumulates
+in the gap: a nineteen-row table of resolver methods, seven of which existed
+nowhere, attributed to a type that declares no resolvers at all, and citing the
+wrong exception for four more. Every individual row looked vetted.
+
+The interesting property of that document is that it was not invented. Each
+fictional name mapped one-to-one onto a real member — `resolveDoubleOrNull` onto
+`TomCtr.doubleVal`, `resolveColorOrFail` onto `TomCtr.colorOrFail` — and the
+per-method citation counts tracked the real call-site counts, one of them
+exactly. It was a systematic rename away from the truth rather than fiction,
+which is harder to see by reading and trivial to see by checking.
+
+**Writing a name qualified is what puts it in scope.** The checker reads
+`` `Type.member` `` and nothing else, so a document that names its methods bare
+under a heading is invisible to it — which is precisely how that table survived.
+Repairing it meant qualifying all 1,181 references, and that, not the renaming,
+is what moved the document from unverifiable to verified.
+
+Four restrictions keep it from inventing faults. The reference must be
+backticked and qualified; the type must start `Tom` and be declared in this
+repository, which puts SDK types out of scope by construction; the member must
+start lowercase, so `Type.NestedType` is not read as a member; and — the
+load-bearing one — **it abstains entirely when the inheritance closure leaves the
+repository**. A class extending `StatelessWidget` has a member list this repo
+cannot see, and reporting half a list as complete would fail open on what it has
+while accusing documents of naming members that genuinely exist. Members Dart
+supplies without declaring them are added back: `Object`'s four, and `index` /
+`name` / `values` on an enum, which implements `Enum` implicitly and so offers
+`closure` no supertype to abstain on.
 
 ```bash
 python3 tool/check_doc_class_inventories.py                # every document

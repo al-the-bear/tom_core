@@ -1124,7 +1124,7 @@ Used by: `TomFormBoolCheckbox`, `TomFormNullableBoolCheckbox`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
-| `value` | Value binding | `TomBool.value` | |
+| `value` | Value binding | `TomBool.get()` | |
 | `onChanged` | Write-back | `(v) => field.setValue(v!)` | null when not editable |
 | `tristate` | Static config | `false` for `TomFormBoolField`, `true` for `TomFormNullableBoolField` | Tri-state |
 | All color/shape params | Theme | Tom theme resolution | |
@@ -1135,7 +1135,7 @@ Used by: `TomFormBoolSwitch`, `TomFormBoolToggle`
 
 | Flutter Parameter | Category | Tom Binding | Notes |
 |-------------------|----------|-------------|-------|
-| `value` | Value binding | `TomBool.value` | |
+| `value` | Value binding | `TomBool.get()` | |
 | `onChanged` | Write-back | `(v) => field.setValue(v)` | null when not editable |
 | All color/thumb params | Theme | Tom theme resolution | |
 
@@ -1544,7 +1544,7 @@ description are built by the same code whatever the inner widget is.
 
 The benefit is **uniform look and feel** across all field types. A `TomFormStringInput`, `TomFormBoolCheckbox`, and `TomFormStringDropdown` all share the same label/error/description structure, spacing, and style inheritance from `TomFormStyle`. This makes per-section and per-form theming consistent without special-casing text fields.
 
-> **Required indicator:** When a field has `Validators.required()` in its validators list, the decoration mixin appends a required symbol (default: red asterisk `*`) to the label text. The indicator style is configurable via `TomFormStyle.requiredIndicator`.
+> **Required indicator:** When a field has `Validators.required()` in its validators list, the decoration mixin appends a required symbol (default: red asterisk `*`) to the label text. The indicator style is configurable via `TomFieldStyle.requiredIndicator`.
 
 ### Anatomy Configuration Options
 
@@ -4714,7 +4714,7 @@ Exercises `TomFormStyleScope` at multiple nesting levels with layout **and** sty
 | Outer-scope breakpoints | 3-band `styleBpOverrides` (compact / comfortable / spacious) — fields change gap/padding/border as the window crosses the thresholds. |
 | Per-section theme-only scope | A nested `TomFormStyleScope(style: null, themeSpec: …)` around one form panel recolours it without re-declaring the form style. Sibling panels are unaffected. |
 | Resource-driven override | A form with `tomId` set, driving labels, hints AND the new `descriptionFieldGap` / `borderWidth` / `focusedBorderWidth` keys from JSON resources. The same demo's `@bp.mobile` block swaps `borderWidth` to show that the resource path covers the new keys. |
-| ACL layout breakpoints | A two-column form that collapses to one column at a width threshold via `TomAclBuilder.setBpMinWidth` + `setAclDefaultRowVerticalAlignment(center)`. Resizing the panel triggers both the ACL layout breakpoint AND the form-style breakpoint so the interaction is visible. |
+| ACL layout breakpoints | A two-column form that collapses to one column at a width threshold via `TomAclBuilder.addRowBreakpoint` + `setAclDefaultRowVerticalAlignment(center)`. Resizing the panel triggers both the ACL layout breakpoint AND the form-style breakpoint so the interaction is visible. |
 
 **Demo H — Complex Authorization Scenarios** *(new in Phase 2)*
 

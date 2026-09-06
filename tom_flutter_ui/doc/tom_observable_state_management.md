@@ -734,8 +734,8 @@ a `TomForm` already holds, which is what makes the two fit without an adapter.
 | Component | Source | Example |
 |-----------|--------|---------|
 | Container ID | ACL container `setAclId()` | `"userProfile"` |
-| Form name | `TomForm` / `TomField.formName` | `"registration"` |
-| Field name | `TomField.fieldName` | `"email"` |
+| Form name | `TomForm.formId` | `"registration"` |
+| Field name | `TomField.tomId` | `"email"` |
 
 **Resource key structure (constants per field type):**
 
