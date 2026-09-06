@@ -45,6 +45,26 @@
 
 ### Added
 
+- **`test/bearer_auth_barrel_export_test.dart`**, which holds
+  `TomClientJwtToken` to being *nameable* through this barrel (tcincb13). The
+  type is `tom_crypto`'s; it reaches a Flutter application across two blanket
+  re-exports — `tom_core_kernel`'s of `tom_crypto`, and this package's of
+  `tom_core_kernel` — and `TomBearerAuthentication` returns it from two public
+  getters. A consumer therefore has to write the name to hold what it gets
+  back, which `tom_uam_client` does:
+  `static TomClientJwtToken? clientToken;`, with `tom_core_flutter` as its only
+  Tom import.
+
+  The existing coverage could not have caught the loss. `preferences_test.dart`
+  already drives `TomBearerAuthentication.setTokens` through this barrel and
+  would keep passing with the type unreachable — a call site never has to write
+  the type of what it ignores. The new file writes it, importing nothing but
+  this barrel, so narrowing either re-export stops it compiling instead of
+  silently shrinking the surface. Its first test reads its own source and holds
+  the import list to that one barrel, since a stray `tom_core_kernel` import
+  would leave the guard green and empty. The kernel carries the twin guard for
+  the other re-export in the chain.
+
 - **`lib/src/tomclient/configuration/readme.md`** — the one artifact the module
   lacked. Its six siblings each carry a module readme; `configuration` shipped
   with dartdoc, a doc page, an API summary, an example and a suite, but no

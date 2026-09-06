@@ -1078,6 +1078,33 @@ anyone who was writing them.
 
 ### Tests
 
+- **`bearer_auth_barrel_export_test.dart` pins that a consumer can *name*
+  `TomClientJwtToken`, not merely call the members that return it
+  (tcincb13).** `TomBearerAuthentication` puts the type in three public
+  positions — `clientJwtToken`, `clientAuthorizationJwtToken` and both
+  parameters of `convertTokenPayloadToPrincipal` — but it is declared in
+  `tom_crypto`, and it reaches consumers only because the barrel re-exports
+  that package unfiltered. Nothing said so and nothing checked it, so
+  narrowing that one `export` line to a `show` list would have dropped the
+  type from the public surface with every file under `lib/` still compiling:
+  they all import `tom_crypto` directly, and the break is visible only from
+  outside the package.
+
+  The guard is compile-time, following `timezones_barrel_export_test.dart`:
+  it imports nothing but the barrel and writes the type in each position the
+  API uses it, so losing the re-export stops the file compiling rather than
+  failing an assertion. Its first test reads its own source and holds the
+  import list to the barrel alone — adding a direct `tom_crypto` import would
+  otherwise leave it green while proving nothing. `tom_core_flutter` carries
+  the matching guard for the barrel it re-exports this one through, which is
+  the import a Flutter application actually writes; using the API is not the
+  same as naming its types, and that package's existing coverage called
+  `setTokens` through its barrel without ever writing `TomClientJwtToken`.
+
+  `doc/security/security.md` now states the contract next to the `tom_crypto`
+  dependency row: a dependency's type in this module's own signatures has to
+  be nameable, and it is, through the barrel and with no second import.
+
 - **`timezone_throw_contract_test.dart` now guards which type a refusal
   surfaces as, not only why it happens (tcinc339).** A second table lists the
   module's three refusal shapes — `fromName` returning `null`, `findTimezone`

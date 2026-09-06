@@ -1416,6 +1416,18 @@ disappears a few seconds after login, with nothing in the logs.
 | `crypto` | package | `two_factor.dart` | `Hmac`/`sha1`, the TOTP primitive |
 | `meta` | package | `access_controls.dart` | `@nonVirtual` only; no runtime behaviour |
 
+`TomClientJwtToken` is a dependency's type that this module puts in its **own
+public signatures** — two getters return it and `convertTokenPayloadToPrincipal`
+takes two — so a consumer has to be able to write the name, not merely call the
+members. It can: the package barrel re-exports `tom_crypto` in full, so the type
+arrives with the rest of the kernel and needs no second import. That is the
+whole of the contract, and it rests on one unfiltered `export` line, so
+`test/bearer_auth_barrel_export_test.dart` names the type while importing
+nothing but the barrel — narrowing the re-export stops that file compiling
+instead of silently shrinking the public surface. `tom_core_flutter` carries the
+same guard for the barrel it re-exports this one through, which is the import a
+Flutter application actually writes.
+
 Two entries that used to appear here are gone, and both were wrong in the same
 way — they named a module whose subject matter *runs through* this one:
 
