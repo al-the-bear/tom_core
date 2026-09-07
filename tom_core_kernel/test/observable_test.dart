@@ -91,6 +91,23 @@ class TestPricedItem extends TomClass {
 /// a nested `TomMap`/`TomList` element could be deserialized into, and it is
 /// what pins the half of the widening rule that says an element type merely
 /// *accepting* a double is not a reason to produce one.
+/// Container members whose element type is a *nullable* leaf wrapper.
+///
+/// `_createFrom` builds only the non-nullable leaves, so before the element
+/// factory learned the destination type these members rejected every payload
+/// they were given, and a JSON `null` had no representation among them at all.
+@tomReflector
+class TestNullableElements extends TomClass {
+  final tags = TomList<TomNString>();
+  final rates = TomList<TomNDouble>();
+  final counts = TomList<TomNInt>();
+  final flags = TomList<TomNBool>();
+  final stamps = TomList<TomNDateTime>();
+  final labels = TomMap<String, TomNString>();
+  final amounts = TomMap<String, TomNDouble>();
+  final zoned = TomList<TomNOZonedDateTime>();
+}
+
 @tomReflector
 class TestUntypedContainers extends TomClass {
   final anyList = TomList<TomObject>();
@@ -3918,12 +3935,21 @@ void main() {
         expect(item.counts.map((e) => e.get()), everyElement(isA<int>()));
       });
 
-      // A `TomList<TomNDouble>` is also a double-holding destination and the
-      // widening does fire for it, but the element cannot be installed: no
-      // nullable leaf type can, because `_createFrom` only ever builds the
-      // non-nullable ones (a `TomList<TomNString>` rejects a plain string the
-      // same way). That test belongs with whatever teaches `_createFrom` the
-      // nullable leaf types, not here.
+      test('integral numbers in a TomList<TomNDouble> widen', () {
+        // The nullable double list is a double-holding destination too, so the
+        // widening has to fire for it and the widened value has to be
+        // installable. It is the case that distinguishes a destination test
+        // written against `TomObject<double?>` from one written against the
+        // non-nullable `TomObject<double>`.
+        final nullable = TestNullableElements();
+
+        nullable.setValues({
+          'rates': [1, 2],
+        });
+
+        expect(nullable.rates, everyElement(isA<TomNDouble>()));
+        expect(nullable.rates.map((e) => e.get()).toList(), equals([1.0, 2.0]));
+      });
     });
 
     group('the typed path (a scalar member)', () {
@@ -4027,6 +4053,100 @@ void main() {
   // that held them. These tests pin identity in both directions: distinct
   // instances stay unequal however alike their contents, and one instance stays
   // findable however much its contents change.
+  group('a nullable element type deserializes', () {
+    // `_createFrom` chooses from the runtime type of the payload alone, so it
+    // only ever built the non-nullable leaves. Every container whose element
+    // type was a nullable sibling therefore rejected every element it was
+    // given — a `TomList<TomNString>` refused a plain string — and a JSON
+    // `null` had no representation among the leaves at all.
+    late TestNullableElements item;
+
+    setUp(() => item = TestNullableElements());
+
+    test('each nullable leaf type accepts its own value', () {
+      item.setValues({
+        'tags': ['a'],
+        'counts': [1],
+        'rates': [1.5],
+        'flags': [true],
+        'stamps': ['@!@2024-01-15T09:30:00.000Z'],
+      });
+
+      expect(item.tags.single, isA<TomNString>());
+      expect(item.tags.single.get(), equals('a'));
+      expect(item.counts.single, isA<TomNInt>());
+      expect(item.counts.single.get(), equals(1));
+      expect(item.rates.single, isA<TomNDouble>());
+      expect(item.rates.single.get(), equals(1.5));
+      expect(item.flags.single, isA<TomNBool>());
+      expect(item.flags.single.get(), isTrue);
+      expect(item.stamps.single, isA<TomNDateTime>());
+      expect(
+        item.stamps.single.get(),
+        equals(DateTime.parse('2024-01-15T09:30:00.000Z')),
+      );
+    });
+
+    test('a null element becomes the nullable leaf holding null', () {
+      // The point of a nullable element type. `_createFrom(null)` answers the
+      // tomNull sentinel, which is not an instance of any leaf type, so this
+      // is the case that had no representation at all before.
+      item.setValues({
+        'tags': ['a', null],
+        'flags': [null],
+      });
+
+      expect(item.tags.map((e) => e.get()).toList(), equals(['a', null]));
+      expect(item.tags[1], isA<TomNString>());
+      expect(item.flags.single, isA<TomNBool>());
+      expect(item.flags.single.get(), isNull);
+    });
+
+    test('a nullable map value is built the same way', () {
+      item.setValues({
+        'labels': {'set': 'v', 'unset': null},
+      });
+
+      expect(item.labels['set'], isA<TomNString>());
+      expect(item.labels['set']!.get(), equals('v'));
+      expect(item.labels['unset'], isA<TomNString>());
+      expect(item.labels['unset']!.get(), isNull);
+    });
+
+    test('a nullable zoned element parses its prefixed wire form', () {
+      item.setValues({
+        'zoned': ['@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo', null],
+      });
+
+      expect(item.zoned.first, isA<TomNOZonedDateTime>());
+      expect(item.zoned.first.get()?.timezone.timezone, equals('Asia/Tokyo'));
+      expect(item.zoned[1].get(), isNull);
+    });
+
+    test('a value the element type cannot hold is still refused', () {
+      // The factory only widens what is accepted; a genuine mismatch must
+      // still be reported by the element check, which names the member and
+      // the position rather than failing as a bare cast.
+      expect(
+        () => item.setValues({
+          'counts': ['not a number'],
+        }),
+        throwsA(isA<TomObservableException>()),
+      );
+    });
+
+    test('a non-nullable element type still refuses a null', () {
+      // The rule is keyed on the destination: only a nullable element type
+      // gains the ability to hold one.
+      expect(
+        () => TestPricedItem().setValues({
+          'counts': [null],
+        }),
+        throwsA(isA<TomObservableException>()),
+      );
+    });
+  });
+
   group('an untyped container member deserializes', () {
     // `TomList<TomObject>` / `TomMap<String, TomObject>` commit to no element
     // type. Both setters used to resolve the element's ClassMirror before

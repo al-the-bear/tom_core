@@ -316,6 +316,68 @@ class TomObject<T> extends TomObservable {
   static dynamic _widenForDoubleTarget<T extends TomObject>(dynamic v) =>
       v is int && <T>[] is List<TomObject<double?>> ? v.toDouble() : v;
 
+  /// Builds the wrapper a destination of type [T] should hold for [v].
+  ///
+  /// [_createFrom] decides from the runtime type of [v] alone, which is the
+  /// right rule when nothing is known about the destination and the wrong one
+  /// when something is: it only ever builds the *non-nullable* leaves, so a
+  /// `TomList<TomNString>` rejected every string it was handed, and a JSON
+  /// `null` had no representation among them at all — `_createFrom(null)`
+  /// answers [tomNull], which is not an instance of any leaf type.
+  ///
+  /// Only a nullable destination changes the answer. Every other case is left
+  /// to [_createFrom], the untyped destination included, since a member that
+  /// commits to no element type asks for nothing: this can therefore widen
+  /// what deserialization accepts but never narrow it.
+  ///
+  /// The destination test is `<TomNXxx>[] is List<T>` and deliberately not its
+  /// reverse. [TomObject] is covariant in its value type, so
+  /// `<T>[] is List<TomObject<String?>>` is true for [TomString] as well as
+  /// [TomNString] and cannot tell the two apart — the same covariance
+  /// [_widenForDoubleTarget] relies on, which is exactly why it cannot serve
+  /// here. Asking whether the *nullable* wrapper fits the destination can:
+  /// `TomNString` is not a `TomString`, because `String?` is not a `String`.
+  ///
+  /// A value the destination cannot hold falls through to [_createFrom] rather
+  /// than throwing, so the mismatch is still reported by the element check in
+  /// [TomClass._setListMember], which names the member and the position.
+  static TomObject _createForTarget<T extends TomObject>(dynamic v) {
+    if (<TomObject<dynamic>>[] is List<T>) return _createFrom(v);
+
+    if (<TomNString>[] is List<T>) {
+      if (v == null || v is String) return TomNString(v as String?);
+    } else if (<TomNInt>[] is List<T>) {
+      if (v == null || v is int) return TomNInt(v as int?);
+    } else if (<TomNDouble>[] is List<T>) {
+      if (v == null || v is double) return TomNDouble(v as double?);
+    } else if (<TomNBool>[] is List<T>) {
+      if (v == null || v is bool) return TomNBool(v as bool?);
+    } else if (<TomNDateTime>[] is List<T>) {
+      if (v == null) return TomNDateTime(null);
+      if (v is DateTime) return TomNDateTime(v);
+      // The wire form is `@!@<iso8601>`; DateTime.parse would reject the
+      // prefix, so it is stripped here exactly as the factory table does.
+      if (v is String) {
+        return TomNDateTime(
+          DateTime.parse(_stripPrefix(v, TomDateTime.serializationPrefix)),
+        );
+      }
+    } else if (<TomNOZonedDate>[] is List<T>) {
+      if (v == null) return TomNOZonedDate(null);
+      // The zoned parsers consume their own prefix, so the string goes in whole.
+      if (v is String) return TomNOZonedDate(TomZonedDate.parseFromString(v));
+    } else if (<TomNOZonedTime>[] is List<T>) {
+      if (v == null) return TomNOZonedTime(null);
+      if (v is String) return TomNOZonedTime(TomZonedTime.parseFromString(v));
+    } else if (<TomNOZonedDateTime>[] is List<T>) {
+      if (v == null) return TomNOZonedDateTime(null);
+      if (v is String) {
+        return TomNOZonedDateTime(TomZonedDateTime.parseFromString(v));
+      }
+    }
+    return _createFrom(v);
+  }
+
   @override
   String toString() {
     return "~$_value";
@@ -1202,7 +1264,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
           }
           member[key] = obj;
         } else {
-          member[key] = TomObject._createFrom(member._widenValue(element));
+          member[key] = member._valueFrom(member._widenValue(element));
         }
       }
     } else {
@@ -1257,7 +1319,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
         }
         newElements.add(obj);
       } else {
-        newElements.add(TomObject._createFrom(member._widenElement(element)));
+        newElements.add(member._elementFrom(member._widenElement(element)));
       }
     }
     // Check every element against the member's declared element type before
@@ -1838,6 +1900,14 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// type. See [TomObject._widenForDoubleTarget] for the rule itself.
   dynamic _widenElement(dynamic raw) => TomObject._widenForDoubleTarget<E>(raw);
 
+  /// Builds the element this list should hold for [raw].
+  ///
+  /// Like [_acceptsElement] and [_widenElement] this exists because `E` is
+  /// only in scope here: [TomClass._setListMember] holds the raw JSON value
+  /// but not the element type it has to become.
+  TomObject<dynamic> _elementFrom(dynamic raw) =>
+      TomObject._createForTarget<E>(raw);
+
   /// Whether this list's element type is the untyped base [TomObject].
   ///
   /// True for `TomList<TomObject>` and false for `TomList<TomDouble>` or any
@@ -2292,6 +2362,11 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
   /// the raw JSON value but not the value type. See
   /// [TomObject._widenForDoubleTarget] for the rule itself.
   dynamic _widenValue(dynamic raw) => TomObject._widenForDoubleTarget<V>(raw);
+
+  /// Builds the value this map should hold for [raw]; the map-side counterpart
+  /// of `TomList._elementFrom`.
+  TomObject<dynamic> _valueFrom(dynamic raw) =>
+      TomObject._createForTarget<V>(raw);
 
   /// Whether this map's value type is the untyped base [TomObject].
   ///
