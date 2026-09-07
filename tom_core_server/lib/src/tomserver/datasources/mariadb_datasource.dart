@@ -1257,6 +1257,18 @@ class MariaDbDatasource implements TomDataSource {
     }
   }
 
+  /// Binds [settings] onto this driver's fields and opens the connection.
+  ///
+  /// **Deliberately tolerant of keys it does not declare.** The shared
+  /// [tomReflectionInfo] is used rather than a
+  /// `TomReflectionInfo(strictUnknownFields: true)`, and that is a property of
+  /// the map rather than a lax choice: [settings] is the whole datasource block
+  /// from the configuration, and `TomDataSourceInfo.initialize` reads `type`
+  /// and `delegateTo` out of the same map before handing it here. Neither is a
+  /// field of this class, so strictness would refuse every correctly configured
+  /// datasource. A driver-specific key this class does not know is
+  /// indistinguishable from those, which is the cost: a typo'd setting is
+  /// dropped and the default stands.
   @override
   Future<void> initialize(Map<String, dynamic> settings) async {
     tomReflectionInfo.setValues<MariaDbDatasource>(

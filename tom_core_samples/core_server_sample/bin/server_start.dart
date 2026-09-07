@@ -105,6 +105,11 @@ class ServerConfiguration extends TomBaseServerConfiguration {
     listenToAnyIP = true;
   }
 
+  /// Binds the merged configuration onto this instance.
+  ///
+  /// The shared [tomReflectionInfo], deliberately: the merged map carries the
+  /// whole process environment, so a `strictUnknownFields` converter would
+  /// refuse to start. See [TomBaseServerConfiguration.setValues].
   @override
   void setValues(Map<String, dynamic> values) {
     tomReflectionInfo.setValues<ServerConfiguration>(this, values);

@@ -41,6 +41,19 @@ class TomArgs {
   /// [T] must be a type registered with the reflection system
   /// (`tomReflectionInfo.setValues` performs the assignment); unknown keys that
   /// do not map to a field are ignored by the reflection layer.
+  ///
+  /// **Deliberately tolerant, not an oversight.** The shared
+  /// [tomReflectionInfo] is used rather than a
+  /// `TomReflectionInfo(strictUnknownFields: true)`, so a typo'd `--prot=8080`
+  /// is dropped and the field keeps its default instead of failing the start.
+  /// Strictness is wrong *here* for two reasons that are properties of a
+  /// command line rather than of this method. A wrapper script routinely hands
+  /// one flag set to several tools, so every flag meant for another one would
+  /// become fatal. And a bare flag is recorded as `key=true`, which puts every
+  /// undeclared switch — `--verbose`, `--dry-run` — in the same category. A
+  /// caller that does want an unrecognised option to stop the process should
+  /// compare the parsed keys against what it declares and say so itself, which
+  /// is a decision about that program rather than about argument parsing.
   static T fillFromArgs<T extends Object>(List<String> args, T fillIn) {
     tomReflectionInfo.setValues<T>(fillIn, _parseArgs(args));
     return fillIn;

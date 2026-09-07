@@ -97,6 +97,11 @@ class OpsServerConfiguration extends TomBaseServerConfiguration {
     isolateLogging = false;
   }
 
+  /// Binds the merged configuration onto this instance.
+  ///
+  /// The shared [tomReflectionInfo], deliberately: the merged map carries the
+  /// whole process environment, so a `strictUnknownFields` converter would
+  /// refuse to start. See [TomBaseServerConfiguration.setValues].
   @override
   void setValues(Map<String, dynamic> values) {
     tomReflectionInfo.setValues<OpsServerConfiguration>(this, values);
@@ -127,7 +132,10 @@ void initializeRuntime(List<String> args) {
   TomRuntime.addEnvironment(environmentProd);
   TomRuntime.addEnvironment(environmentDev);
   TomRuntime.setRootEnvironment(environmentProd);
-  TomRuntime.setCurrentEnvironment(selectedRuntimeEnvironmentName(args), 'prod');
+  TomRuntime.setCurrentEnvironment(
+    selectedRuntimeEnvironmentName(args),
+    'prod',
+  );
   TomRuntime.getCurrentEnvironment().initialize();
   TomRuntime.initializePlatform();
 }

@@ -661,6 +661,23 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   ///
   /// Implemented by the generated reflection for the concrete subclass; each
   /// known field is set from the matching key in [values].
+  ///
+  /// **Implement it with the shared `tomReflectionInfo`, not with a
+  /// `TomReflectionInfo(strictUnknownFields: true)`.** Strictness turns a key
+  /// naming no field into `reflection.set.unknown_field`, which is the right
+  /// setting for a map whose two ends are both yours — and [values] is not
+  /// that map. [getDefaultValues] merges the entire process environment into
+  /// it, in both the `SCREAMING_SNAKE_CASE` spelling and the field spelling
+  /// [TomArgs.resolveEnvironmentNames] derives from it, so a configuration
+  /// resolved on an ordinary developer machine arrives here carrying `PATH`,
+  /// `path`, `HOME`, `home` and eighty or so of their neighbours. A strict
+  /// converter would refuse the first of them and no server would start.
+  ///
+  /// The cost is the one strictness exists to remove: a key misspelled in a
+  /// configuration file is dropped in silence and the field keeps its default.
+  /// Catching *that* needs the check applied to the configuration layer alone,
+  /// before the environment is merged over it — a narrower question than this
+  /// method is in a position to ask.
   void setValues(Map<String, Object?> values);
 
   /// Creates the configuration, resolving and applying values from all sources
