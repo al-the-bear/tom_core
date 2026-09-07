@@ -204,14 +204,18 @@ The notifications simply stop, at a point determined by when the collector
 happens to run, and a program that was working keeps running with one of its
 observers no longer connected.
 
-The rule follows from `addObserver`, which registers a `WeakReference` rather
-than the observer itself:
+The rule follows from `addObserver`, which registers a handle holding a
+`WeakReference` rather than the observer itself:
 
 ```dart
 void addObserver(TomObserver observer) {
-  registrations.add(WeakReference(observer)); // weak, not strong
+  _observers.add(_ObserverRef(observer));
 }
 ```
+
+`_ObserverRef` is the registry's private handle: it holds its observer through
+a `WeakReference` and carries the observer's identity hash, so a handle stays
+findable in the set after its target is gone and can therefore be pruned.
 
 Registration is keyed on the **identity** of the observer, so registering the
 same object twice attaches it once, while two observers that declare themselves
