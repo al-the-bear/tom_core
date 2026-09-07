@@ -962,17 +962,30 @@ This module depends on:
   underneath `TomServerChannel`
 - **`package:meta`**: `@visibleForTesting` only; no runtime behaviour
 
-### Most of these arrive through the package barrel
+### The list above is the import list
 
-Only `endpoints_apis.dart` names its kernel siblings directly
-(`little_things/exception_base.dart`, `security/access_controls.dart`). The
-other five source files import
-**`package:tom_core_kernel/tom_core_kernel.dart`** — this package's own barrel —
-and pick up everything above through it.
+Every source file here names the siblings it uses by relative path, so the
+dependencies of any one file are readable from its first few lines and the list
+above is derivable from them rather than compiled by hand from the symbols.
+`prefer_relative_imports` is enabled for this package, so a `package:` URI back
+into `lib/` — including one naming the package's own barrel — is reported.
 
-That is worth knowing for two reasons. Reading an import list in this module
-tells you almost nothing about what it actually uses, so the table above was
-compiled from the symbols rather than from the imports. And because the barrel
-exports every module, the analyzer cannot flag a new coupling introduced here:
-a file that starts using a module it has no business touching still compiles
-without an import line changing.
+That matters more here than in most modules, because `http_connection` sits in
+two import cycles, and a cycle is only visible while the edges that make it are
+visible:
+
+- **`http_connection` ↔ `little_things`.** Seven files here import
+  `little_things/exception_base.dart` for `TomException`, and
+  `exception_base.dart` imports `http_connection/server_connection.dart` in
+  return, because `TomException` carries a `TomServerCallError? serverCallError`
+  — the framework's base exception type holds a transport-specific payload.
+- **`http_connection` ↔ `security`.** `server_connection.dart` and
+  `http_file_transfer.dart` need `bearer_authentication.dart` to attach a token,
+  and `endpoints_apis.dart` needs `access_controls.dart` for the endpoint access
+  policies; `security/oauth_contract.dart` imports `endpoints_apis.dart` and
+  `httpmethods.dart` back, to declare the OAuth endpoints it specifies.
+
+Neither cycle is an error — Dart resolves cyclic library imports — and neither
+is accidental: each is one type reaching across the seam in each direction. They
+are recorded because a new edge from this module can close a *third* cycle
+without anything complaining, and an import line is the only place that shows up.
