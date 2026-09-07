@@ -67,13 +67,13 @@ class TomUserPreferenceDto {
   /// devices.
   ///
   /// The conversion preserves the instant; it only settles how the instant is
-  /// named. Doing it here is what makes the wire safe, because reflection
-  /// writes a `DateTime` with `toIso8601String()` — which emits a zone marker
-  /// for a UTC instant and *none* for a local one — and reads it back with
-  /// `DateTime.parse`, which resolves a zoneless string against the reading
-  /// device. A local timestamp would therefore not merely arrive
-  /// unconverted: it would arrive as a different instant, with nothing left
-  /// to convert from. Normalising before it is ever serialized removes that.
+  /// named. Reflection now applies the same normalisation on the way out — a
+  /// bare `DateTime` is written as `toUtc().toIso8601String()`, so the wire is
+  /// safe whatever a caller assigned — which makes this the *field's* rule
+  /// rather than the wire's last line of defence. It is still worth having
+  /// here: a reader of `updatedAt` gets a UTC instant from the object as well
+  /// as from the payload, so the two cannot disagree, and code that never
+  /// serializes the DTO sees the same value the code that does would send.
   ///
   /// Assigning the field directly afterwards is not intercepted — a wire
   /// DTO's fields are plain and public (G-DTO), so there is no setter to hook.

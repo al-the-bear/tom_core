@@ -1317,12 +1317,26 @@ void main() {
       expect(values['age'], isNull);
     });
 
-    test('should get DateTime as ISO string', () {
+    test('should get DateTime as the UTC instant it denotes', () {
+      // Renegotiated deliberately. This asserted the zoneless
+      // `2024-06-15T14:30:00.000` — the wall-clock reading with no zone — which
+      // is the form `DateTime.parse` resolves against whichever machine reads
+      // it. The written text now names the instant instead, so it means the
+      // same thing on every host.
+      //
+      // Stated against the value rather than a frozen literal, because the
+      // literal would only be right in the timezone this file was written in.
       final holder = DateTimeHolder();
-      holder.dateTime = DateTime(2024, 6, 15, 14, 30, 0, 0);
+      final local = DateTime(2024, 6, 15, 14, 30, 0, 0);
+      holder.dateTime = local;
 
       final values = tomReflectionInfo.getValues(holder);
-      expect(values['dateTime'], '2024-06-15T14:30:00.000');
+      expect(values['dateTime'], local.toUtc().toIso8601String());
+      expect(
+        values['dateTime'],
+        endsWith('Z'),
+        reason: 'the text must name its zone, or the reader invents one',
+      );
     });
 
     test('should get TomZonedDate as serialized string', () {
@@ -1650,9 +1664,21 @@ void main() {
       final newHolder = DateTimeMapHolder();
       tomReflectionInfo.setValues(newHolder, values);
 
-      expect(newHolder.dateTimeMap!['start']!.year, 2024);
-      expect(newHolder.dateTimeMap!['start']!.month, 1);
-      expect(newHolder.dateTimeMap!['end']!.month, 12);
+      // Renegotiated with its list sibling and the scalar assertion, and for
+      // the same reason: `.year` / `.month` read a wall clock, which is exactly
+      // what a wire carrying instants does not promise. `DateTime(2024, 1, 1)`
+      // east of UTC is still 2023 in UTC — this passed in one timezone and
+      // failed in the next, which is the shape of every bug this change is
+      // about.
+      for (final key in ['start', 'end']) {
+        expect(
+          newHolder.dateTimeMap![key]!.isAtSameMomentAs(
+            holder.dateTimeMap![key]!,
+          ),
+          isTrue,
+          reason: "'$key' came back as a different moment",
+        );
+      }
     });
 
     test('should roundtrip Map<String, TomZonedDate>', () {
@@ -1676,6 +1702,109 @@ void main() {
     });
   });
 
+  group('a bare DateTime crosses the wire as an instant', () {
+    // The convention, and the reason it needs stating. `toIso8601String` emits
+    // the `Z` for a UTC instant and *no zone marker at all* for a local one,
+    // and the read side parses with `DateTime.parse`, which resolves a zoneless
+    // string against the *reading* device. A local `DateTime` therefore did not
+    // arrive unconverted — it arrived as a different instant, shifted by the
+    // offset between the two machines, with nothing in the payload to convert
+    // from. None of that is visible on one host, which is why it survived this
+    // suite: every assertion below that could have caught it was written in
+    // wall-clock terms, and a wall clock is what agrees with itself.
+    //
+    // The `TomZoned*` types are matched before `DateTime` when a value is
+    // written, so a value reaching the bare branch is a `DateTime` and means an
+    // instant. UTC is that instant's unambiguous name.
+
+    test('a local DateTime is written as the instant it denotes', () {
+      final holder = DateTimeHolder();
+      final local = DateTime(2024, 6, 15, 14, 30);
+      holder.dateTime = local;
+
+      final written = tomReflectionInfo.getValues(holder)['dateTime'] as String;
+
+      expect(written, local.toUtc().toIso8601String());
+      expect(DateTime.parse(written).isAtSameMomentAs(local), isTrue);
+    });
+
+    test('the written text always names its zone', () {
+      // The machine-independent half, and the one that makes the round trip
+      // below mean anything on a host other than this one: a reader cannot
+      // shift an instant it was never asked to resolve. Asserted for a local
+      // and a UTC value alike, because the old form was only ambiguous for one
+      // of them and a rule that holds for half the inputs is not a rule.
+      final holder = DateTimeHolder();
+      for (final value in [
+        DateTime(2024, 6, 15, 14, 30),
+        DateTime.utc(2024, 6, 15, 14, 30),
+        DateTime(2024, 1, 1),
+        DateTime(2024, 12, 31, 23, 59, 59),
+      ]) {
+        holder.dateTime = value;
+        final written =
+            tomReflectionInfo.getValues(holder)['dateTime'] as String;
+        expect(written, endsWith('Z'), reason: 'wrote $value as $written');
+        expect(
+          DateTime.parse(written).isUtc,
+          isTrue,
+          reason: '$written would be resolved against the reading device',
+        );
+      }
+    });
+
+    test('a local DateTime round-trips to the same instant, not the same '
+        'wall clock', () {
+      // The defect stated as the property it broke. On a host east of UTC the
+      // old wire wrote `2024-06-15T14:30:00.000`, which a host west of UTC read
+      // back as *its* 14:30 — the same reading, a different moment. What
+      // survives now is the moment.
+      final source = DateTimeHolder();
+      source.dateTime = DateTime(2024, 6, 15, 14, 30);
+
+      final restored = DateTimeHolder();
+      tomReflectionInfo.setValues(
+        restored,
+        tomReflectionInfo.getValues(source),
+      );
+
+      expect(restored.dateTime!.isAtSameMomentAs(source.dateTime!), isTrue);
+      expect(
+        restored.dateTime!.isUtc,
+        isTrue,
+        reason:
+            'the instant arrives named, and a reader calls toLocal() '
+            'if it wants a wall clock',
+      );
+    });
+
+    test('a UTC DateTime is unchanged by the normalisation', () {
+      // The conversion settles how an instant is named and never which instant
+      // it is, so a value that was already named passes through untouched.
+      final holder = DateTimeHolder();
+      final utc = DateTime.utc(2024, 6, 15, 12, 30);
+      holder.dateTime = utc;
+
+      expect(
+        tomReflectionInfo.getValues(holder)['dateTime'],
+        utc.toIso8601String(),
+      );
+    });
+
+    test('a nested DateTime obeys the same rule', () {
+      // The conversion is one function, and lists and maps route back through
+      // it — so this is not a second implementation but a check that they do.
+      final holder = DateTimeListHolder();
+      final local = DateTime(2024, 6, 15, 14, 30);
+      holder.dateTimeList = [local];
+
+      final written =
+          (tomReflectionInfo.getValues(holder)['dateTimeList'] as List).single;
+
+      expect(written, local.toUtc().toIso8601String());
+    });
+  });
+
   group('TomReflector - DateTime List serialization roundtrip', () {
     test('should roundtrip List<DateTime>', () {
       final holder = DateTimeListHolder();
@@ -1689,10 +1818,22 @@ void main() {
       final newHolder = DateTimeListHolder();
       tomReflectionInfo.setValues(newHolder, values);
 
+      // Renegotiated with the scalar assertion above: this compared the
+      // *month* of each round-tripped value, which is a wall-clock reading and
+      // is not what crosses the wire. `DateTime(2024, 1, 1)` west of UTC is
+      // still 2023 in UTC, so the old form asserted that the conversion had not
+      // happened. The instant is the thing that survives, so the instant is
+      // what this asks about.
       expect(newHolder.dateTimeList!.length, 3);
-      expect(newHolder.dateTimeList![0].month, 1);
-      expect(newHolder.dateTimeList![1].month, 6);
-      expect(newHolder.dateTimeList![2].month, 12);
+      for (var index = 0; index < 3; index++) {
+        expect(
+          newHolder.dateTimeList![index].isAtSameMomentAs(
+            holder.dateTimeList![index],
+          ),
+          isTrue,
+          reason: 'element $index came back as a different moment',
+        );
+      }
     });
 
     test('should roundtrip List<TomZonedDateTime>', () {

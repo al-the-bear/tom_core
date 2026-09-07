@@ -41,6 +41,7 @@ Flutter web, where `dart:mirrors` is unavailable.
 - [Supported Types](#supported-types)
   - [Primitive Types](#primitive-types)
   - [DateTime Types](#datetime-types)
+    - [A temporal value crosses the wire naming its zone](#a-temporal-value-crosses-the-wire-naming-its-zone)
   - [Collection Types](#collection-types)
   - [Dynamic Collections Carry Values, Not Types](#dynamic-collections-carry-values-not-types)
 - [Working with Collections](#working-with-collections)
@@ -608,10 +609,48 @@ The same widening applies inside collections, for the same reason:
 
 The following DateTime types are automatically serialized/deserialized:
 
-- `DateTime` - ISO 8601 string format
+- `DateTime` - ISO 8601, **always in UTC**
 - `TomZonedDate` - Custom date with timezone
 - `TomZonedTime` - Custom time with timezone
 - `TomZonedDateTime` - Custom datetime with timezone
+
+#### A temporal value crosses the wire naming its zone
+
+The `TomZoned*` types carry their zone in their own encoding. A bare `DateTime`
+cannot carry one in its type, so the wire normalises it: a value is written as
+`value.toUtc().toIso8601String()` and therefore always ends in `Z`.
+
+That is a rule about *naming*, not about the value. `toUtc` never changes which
+moment a `DateTime` denotes; it changes only how the moment is spelled. A reader
+that wants a wall-clock reading calls `toLocal()`, which is its own machine's
+question to ask.
+
+Without the rule there is no reader-side fix. `toIso8601String` emits the `Z`
+for a UTC instant and **no zone marker at all** for a local one, and the read
+path parses with `DateTime.parse`, which resolves a zoneless string against the
+*reading* device. A DTO carrying a local `DateTime` did not merely arrive
+unconverted — it arrived as a different instant, shifted by the offset between
+the writing and reading machines, with nothing left in the payload to convert
+from. None of it is visible on a single host.
+
+`toUtc` and not a new encoding, because the three `TomZoned*` types are matched
+*before* `DateTime` when a value is written. A value reaching the bare branch is
+a `DateTime`, which in Dart means an instant and nothing else, and UTC is that
+instant's unambiguous name.
+
+```dart
+class Order extends TomClass {
+  DateTime placedAt = DateTime(2024, 6, 15, 14, 30); // local, UTC+2
+}
+
+tomReflectionInfo.getValues(order)['placedAt'];
+// '2024-06-15T12:30:00.000Z' — the same moment, named
+
+// Read back anywhere:
+final restored = DateTime.parse('2024-06-15T12:30:00.000Z');
+restored.isUtc;                     // true
+restored.toLocal();                 // this machine's wall clock, if wanted
+```
 
 A string that will not parse into the field's date/time type raises
 `reflection.set.date_parse_failed`, naming the class, the field and the

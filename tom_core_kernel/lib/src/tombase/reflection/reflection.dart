@@ -2182,6 +2182,12 @@ class TomReflectionInfo {
   /// Converts a value to a JSON-compatible format.
   ///
   /// Handles primitives, DateTime types, Maps, Lists, and nested objects.
+  ///
+  /// **A temporal value crosses this wire naming its zone.** The `TomZoned*`
+  /// types carry theirs in their own encoding; a bare [DateTime] cannot carry
+  /// one in its type, so it is normalised to UTC here and written with the `Z`
+  /// the reader needs. See the `DateTime` branch for why that is the whole
+  /// convention rather than a preference.
   Object? _convertValueForJson(Object? value) {
     // Primitives and null
     if (value == null ||
@@ -2196,7 +2202,23 @@ class TomReflectionInfo {
     if (value is TomZonedDate) return value.toString();
     if (value is TomZonedTime) return value.toString();
     if (value is TomZonedDateTime) return value.toString();
-    if (value is DateTime) return value.toIso8601String();
+    // `toUtc()` first, and this is the whole zone convention of the reflection
+    // wire. `toIso8601String` emits the `Z` for a UTC instant and *no zone
+    // marker at all* for a local one, and the read side parses the text with
+    // `DateTime.parse`, which resolves a zoneless string against the *reading*
+    // device. A local `DateTime` therefore did not merely arrive unconverted —
+    // it arrived as a different instant, shifted by the offset between the two
+    // machines, with nothing left in the payload to convert from. Invisible on
+    // one host, which is why it survived.
+    //
+    // Normalising rather than inventing an encoding, because the three lines
+    // above have already claimed every value that carries a zone of its own: a
+    // value reaching here is a bare `DateTime`, which in Dart means an instant
+    // and nothing else. UTC is that instant's unambiguous name, so the
+    // conversion loses nothing — `isUtc` becomes true and the moment is
+    // unchanged. A reader wanting wall-clock time calls `toLocal()`, which is
+    // its own machine's question to ask and not the writer's to answer.
+    if (value is DateTime) return value.toUtc().toIso8601String();
 
     // Maps - always convert to ensure nested DateTime values are serialized
     if (value is Map) {
