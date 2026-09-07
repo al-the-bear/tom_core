@@ -13,7 +13,7 @@
 /// - `convertPrincipalToTokenPayload` and the public/private split
 /// - which identity fields redaction removes, and whose keys decide it
 /// - `setTokens` / `getPrincipal` / `clearTokens`
-/// - `updatePrincipal`, and the fact that it *replaces* an ACI
+/// - `replacePrincipalAci`, and the fact that it *replaces* an ACI
 ///
 /// `03_advanced_access_control_example.dart` owns [TomResourceKeyProtection]
 /// in general — `protect()` against the ambient zone. What example 4 below
@@ -458,9 +458,9 @@ class BearerAuthenticationExample {
   }
 
   // --------------------------------------------------------------------------
-  // Example 7: A session, and what updatePrincipal does to it
+  // Example 7: A session, and what replacePrincipalAci does to it
   // --------------------------------------------------------------------------
-  static void example7UpdatePrincipal() {
+  static void example7ReplacePrincipalAci() {
     print('\n7. Installing a session and updating its rights:');
 
     final (authentication, authorization) = _issueTokens(_subject());
@@ -481,17 +481,19 @@ class BearerAuthenticationExample {
     print('     groups        : $groupsBefore');
     print('     resourceRoles : $resourceRolesBefore');
 
-    // Four positional collections and one optional named one. Note what is
-    // *not* passed: resourceRoles.
-    TomBearerAuthentication.updatePrincipal(
-      ['contractors'],
-      ['admin'],
-      ['feature.billing.view'],
-      ['user.phone'],
+    // Five required named collections. Clearing one is available and has to
+    // be spelled: `const {}` here says "this principal now holds no
+    // per-resource grants", where leaving the parameter out would not compile.
+    TomBearerAuthentication.replacePrincipalAci(
+      groups: ['contractors'],
+      roles: ['admin'],
+      entitlements: ['feature.billing.view'],
+      resourceKeys: ['user.phone'],
+      resourceRoles: const {},
     );
 
     final after = TomBearerAuthentication.getPrincipal();
-    print('   After updatePrincipal() — resourceRoles omitted:');
+    print('   After replacePrincipalAci() — resourceRoles cleared:');
     print('     roles         : ${after.aci.roles}');
     print('     groups        : ${after.aci.groups}');
     print('     entitlements  : ${after.aci.entitlements}');
@@ -511,7 +513,7 @@ class BearerAuthenticationExample {
     assert(rolesBefore.contains('premium'), 'The session started with it');
     assert(
       !after.aci.roles.contains('premium') && after.aci.roles.contains('admin'),
-      'updatePrincipal replaces the role list rather than adding to it',
+      'replacePrincipalAci replaces the role list rather than adding to it',
     );
     assert(
       !after.aci.groups.contains('engineering'),
@@ -529,14 +531,14 @@ class BearerAuthenticationExample {
       !session.aci.roles.contains('premium'),
       'An earlier reference reports the updated rights',
     );
-    // This is the trap worth knowing: resourceRoles is the one optional
-    // parameter, so omitting it compiles and silently drops every
-    // per-resource grant the principal held.
+    // Clearing is a thing a caller can ask for, and asking is the only way
+    // to get it: every parameter is required, so a refresh cannot drop the
+    // per-resource grants by forgetting them.
     assert(
       resourceRolesBefore.isNotEmpty && after.aci.resourceRoles.isEmpty,
-      'Omitting resourceRoles clears the grants it would have carried',
+      'An explicit empty map clears the grants it would have carried',
     );
-    assert(updateReplacesAci, 'updatePrincipal should replace the ACI');
+    assert(updateReplacesAci, 'replacePrincipalAci should replace the ACI');
   }
 
   // --------------------------------------------------------------------------
@@ -627,7 +629,7 @@ void run() {
   BearerAuthenticationExample.example4ResourceProtection();
   BearerAuthenticationExample.example5ClientLimits();
   BearerAuthenticationExample.example6TokenFlowPattern();
-  BearerAuthenticationExample.example7UpdatePrincipal();
+  BearerAuthenticationExample.example7ReplacePrincipalAci();
   BearerAuthenticationExample.example8StaticAccessors();
 
   // Final assertions
@@ -653,7 +655,7 @@ void run() {
   );
   assert(
     BearerAuthenticationExample.updateReplacesAci,
-    'updatePrincipal should replace the ACI',
+    'replacePrincipalAci should replace the ACI',
   );
   assert(
     BearerAuthenticationExample.sessionLifecycleWorks,

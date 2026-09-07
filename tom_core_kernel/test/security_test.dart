@@ -2881,7 +2881,7 @@ void main() {
       });
     });
 
-    group('setTokens / updatePrincipal', () {
+    group('setTokens / replacePrincipalAci', () {
       test('setTokens parses the token and exposes a principal', () {
         final jwt = _makeJwt({
           'username': 'dave',
@@ -2898,15 +2898,15 @@ void main() {
         expect(TomBearerAuthentication.authorizationToken, equals(jwt));
       });
 
-      test('updatePrincipal replaces the ACI on the current principal', () {
+      test('replacePrincipalAci replaces the ACI on the current principal', () {
         final jwt = _makeJwt({'username': 'erin', 'userId': 8});
         TomBearerAuthentication.setTokens(jwt, jwt, false);
 
-        TomBearerAuthentication.updatePrincipal(
-          ['team-a'],
-          ['lead'],
-          ['feature.x'],
-          ['key.y'],
+        TomBearerAuthentication.replacePrincipalAci(
+          groups: ['team-a'],
+          roles: ['lead'],
+          entitlements: ['feature.x'],
+          resourceKeys: ['key.y'],
           resourceRoles: {'project.apollo': 'owner'},
         );
 
@@ -2918,20 +2918,24 @@ void main() {
         expect(aci.resourceRoles, equals({'project.apollo': 'owner'}));
       });
 
-      test('updatePrincipal clears resourceRoles when they are omitted', () {
-        // The trap the documentation warns about. `resourceRoles` is the only
-        // optional parameter, so a caller that leaves it out still compiles —
-        // and because the call replaces the ACI rather than merging into it,
-        // the principal's per-resource grants are gone. A periodic refresh
-        // written that way drops them on every tick.
+      test('an explicitly empty collection is the way to clear one', () {
+        // Replacement is the contract, so clearing is available — but only by
+        // saying so. Every parameter is `required` and named, which is what
+        // removes the trap this test used to demonstrate: a refresh that
+        // simply forgot `resourceRoles` once compiled and dropped every
+        // per-resource grant on each tick, and because
+        // `TomResourceRoleAdapter` grades an ungranted resource `none`, the
+        // symptom was UI thinning out rather than an error. That call no
+        // longer compiles, so what is left to check is that the deliberate
+        // spelling still does what it says.
         final jwt = _makeJwt({'username': 'erin', 'userId': 8});
         TomBearerAuthentication.setTokens(jwt, jwt, false);
 
-        TomBearerAuthentication.updatePrincipal(
-          ['team-a'],
-          ['lead'],
-          ['feature.x'],
-          ['key.y'],
+        TomBearerAuthentication.replacePrincipalAci(
+          groups: ['team-a'],
+          roles: ['lead'],
+          entitlements: ['feature.x'],
+          resourceKeys: ['key.y'],
           resourceRoles: {'project.apollo': 'owner'},
         );
         expect(
@@ -2939,12 +2943,12 @@ void main() {
           equals({'project.apollo': 'owner'}),
         );
 
-        // The same call, one argument short.
-        TomBearerAuthentication.updatePrincipal(
-          ['team-a'],
-          ['lead'],
-          ['feature.x'],
-          ['key.y'],
+        TomBearerAuthentication.replacePrincipalAci(
+          groups: ['team-a'],
+          roles: ['lead'],
+          entitlements: ['feature.x'],
+          resourceKeys: ['key.y'],
+          resourceRoles: const {},
         );
 
         expect(

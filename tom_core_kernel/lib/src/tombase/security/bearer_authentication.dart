@@ -426,32 +426,37 @@ class TomBearerAuthentication {
     return bearerAuthentication._principal!;
   }
 
-  /// Updates the current principal's access control information.
+  /// Replaces the current principal's access control information.
   ///
-  /// This allows refreshing the user's permissions without requiring
-  /// a full re-authentication. Useful when permissions change during
-  /// a session.
+  /// Refreshes a user's permissions without a full re-authentication, which is
+  /// what a periodic poll of the server's authorization state needs: the
+  /// server holds the whole answer, so the whole answer is what arrives here.
   ///
-  /// **Replaces the ACI; it does not merge into it.** Every collection is set
-  /// to exactly what this call is given, so pass the full set the principal
-  /// should end up with rather than a delta. [resourceRoles] is the one to
-  /// watch: it is the only optional parameter, so omitting it compiles and
-  /// silently clears every per-resource grant the principal held. Since
+  /// **Replacement, stated in the name and enforced by the signature.** Every
+  /// collection is set to exactly what this call is given, so what a caller
+  /// passes is the set the principal ends up with, never a delta. All five are
+  /// `required` and named: none can be left out, and none can be transposed
+  /// with its neighbour — four adjacent `List<String>` parameters
+  /// distinguished only by position would grant the wrong things at run time
+  /// while compiling cleanly, and an optional `resourceRoles` would let a
+  /// caller clear every per-resource grant by saying nothing. Since
   /// `TomResourceRoleAdapter` resolves an ungranted resource to
-  /// `TomAuthState.none`, the visible effect is UI vanishing rather than an
-  /// error.
+  /// `TomAuthState.none`, that omission is invisible: the UI thins out and
+  /// nothing is raised.
   ///
-  /// - [groups]: Updated list of group memberships
-  /// - [roles]: Updated list of roles
-  /// - [entitlements]: Updated list of entitlements
-  /// - [resourceKeys]: Updated list of resource keys
-  /// - [resourceRoles]: Updated per-resource role map (`resourceKey → roleName`)
-  static void updatePrincipal(
-    List<String> groups,
-    List<String> roles,
-    List<String> entitlements,
-    List<String> resourceKeys, {
-    Map<String, String> resourceRoles = const {},
+  /// Pass `const []` or `const {}` deliberately to clear one.
+  ///
+  /// - [groups]: The group memberships the principal should end up with
+  /// - [roles]: The roles it should end up with
+  /// - [entitlements]: The entitlements it should end up with
+  /// - [resourceKeys]: The resource keys it should end up with
+  /// - [resourceRoles]: The per-resource role map (`resourceKey → roleName`)
+  static void replacePrincipalAci({
+    required List<String> groups,
+    required List<String> roles,
+    required List<String> entitlements,
+    required List<String> resourceKeys,
+    required Map<String, String> resourceRoles,
   }) {
     var principal = getPrincipal();
     principal.aci = TomAccessControlInformation(

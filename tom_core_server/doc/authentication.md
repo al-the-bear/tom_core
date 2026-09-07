@@ -196,7 +196,7 @@ Two consequences worth knowing before you rely on it. The limits are a
 **login-time snapshot** — they ride in the *public* half of the JWT as the
 `subscription_enabledModules` / `subscription_quotas` claims and are read back
 into `principal.cli` when a token is parsed, and there is no updater for them
-the way `updatePrincipal` can replace the ACI, so a subscription change takes
+the way `replacePrincipalAci` can replace the ACI, so a subscription change takes
 effect on the user's next login. And because that half is public, the quota
 figures are readable by anyone holding the token: they are a ceiling to enforce
 against, not a secret. Nothing in the framework counts usage or refuses the

@@ -380,7 +380,7 @@ the claims `subscription_enabledModules` and `subscription_quotas`, and are read
 back into `principal.cli` when the token is parsed. Two consequences follow, and
 both matter in practice. First, they are a **login-time snapshot**: a principal's
 CLI is fixed when the principal is built, there is no updater for it (unlike the
-ACI, which [`updatePrincipal`](#token-management) can replace mid-session), so a
+ACI, which [`replacePrincipalAci`](#token-management) can replace mid-session), so a
 subscription change takes effect on the next login. Second, being in the public
 half, the quota figures are readable by anyone holding the token.
 
@@ -636,10 +636,8 @@ automatically. The group's path is `<scopePath>.<groupId>` (see the
 final shipping = TomAuthorizationGroup('shipping',
     mode: AuthGroupMode.controlsAll);
 shipping.register(streetField); // and shipping.unregister(streetField)
-// Declaratively, in Tom Flutter UI — input widgets take the group as
-// `tomGroup` and register themselves. Mind the name: form- and
-// container-level widgets in that package call the same thing
-// `authorizationGroup`.
+// Declaratively, in Tom Flutter UI — every widget, form and action
+// controller takes the group as `tomGroup` and registers itself.
 // TomTextField(tomId: 'street', tomGroup: shipping, ...)
 // TomTextField(tomId: 'city',   tomGroup: shipping, ...)
 ```
@@ -1146,20 +1144,21 @@ var token = TomBearerAuthentication.token;
 var authzToken = TomBearerAuthentication.authorizationToken;
 
 // Update permissions without re-login
-TomBearerAuthentication.updatePrincipal(
-  ['new-group'],
-  ['new-role'],
-  ['new-entitlement'],
-  ['new-resource-key'],
+TomBearerAuthentication.replacePrincipalAci(
+  groups: ['new-group'],
+  roles: ['new-role'],
+  entitlements: ['new-entitlement'],
+  resourceKeys: ['new-resource-key'],
   resourceRoles: {'project.apollo': 'owner'},
 );
 ```
 
-`updatePrincipal` **replaces** the ACI rather than merging into it, so every
-collection it is not given comes back empty. `resourceRoles` is the easiest one
-to lose, because it is the only optional parameter: omit it and the principal's
-per-resource grants are silently dropped. Pass the full set you want the
-principal to have, not the delta.
+`replacePrincipalAci` **replaces** the ACI rather than merging into it, so pass
+the full set the principal should end up with, not a delta. All five are
+required and named, so the two ways to get this wrong silently are both
+compile errors: none can be omitted, and none can be transposed with the
+identically typed collection beside it. Clearing one is still available — say
+`const []` or `const {}` and mean it.
 
 ---
 
@@ -1410,24 +1409,23 @@ Permissions may change during a session:
 // Periodically refresh from server
 void refreshPermissions() async {
   var newAci = await fetchCurrentPermissions();
-  TomBearerAuthentication.updatePrincipal(
-    newAci.groups,
-    newAci.roles,
-    newAci.entitlements,
-    newAci.resourceKeys,
-    // Optional to the compiler, not in practice: the call replaces the ACI,
-    // so omitting this clears every per-resource grant on every refresh.
+  TomBearerAuthentication.replacePrincipalAci(
+    groups: newAci.groups,
+    roles: newAci.roles,
+    entitlements: newAci.entitlements,
+    resourceKeys: newAci.resourceKeys,
     resourceRoles: newAci.resourceRoles,
   );
 }
 ```
 
-Pass all five collections every time. [`updatePrincipal` replaces the
-ACI](#token-management) rather than merging into it, and `resourceRoles` is the
-only one that can be left out without a compile error — so a refresh that
-forgets it silently drops the principal's per-resource grants, and
-[`TomResourceRoleAdapter`](#per-resource-roles-the-shipped-adapter) resolves an
-ungranted resource to `none`. Run that on a timer and the symptom is UI that
+A refresh names all five because [the call replaces the
+ACI](#token-management), and it *can* name all five because the source it
+refreshes from holds the whole answer. Where a source does not — a settings
+payload that carries the four lists and no per-resource grants — read the
+grants back off the principal and pass them through, rather than clearing what
+that source cannot speak for: [`TomResourceRoleAdapter`](#per-resource-roles-the-shipped-adapter)
+grades an ungranted resource `none`, so on a timer the symptom is UI that
 disappears a few seconds after login, with nothing in the logs.
 
 ---
