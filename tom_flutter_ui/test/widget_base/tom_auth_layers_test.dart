@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 class _MapAuthAdapter implements TomAuthorizationAdapter {
@@ -177,5 +178,60 @@ void main() {
   test('every layer is optional', () {
     TomAuthorization.adapter = _MapAuthAdapter({});
     expect(_resolve(), TomAuthState.full);
+  });
+
+  group('the global UI-protection switch', () {
+    tearDown(
+      () =>
+          TomResourceKeyProtection.globalSettingUseAutomaticUIProtection = true,
+    );
+
+    test('is read here — off, every protected element resolves granted', () {
+      // The switch replaced three that nothing read, so the point of this test
+      // is that this one is read: flip it and the composition below, which
+      // otherwise denies outright, stops being consulted.
+      TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.none});
+      final group = TomAuthorizationGroup('g', mode: AuthGroupMode.controlsAll);
+
+      expect(
+        _resolve(
+          basePath: 'w',
+          group: group,
+          authorizer: TomAuthorizer.fixed(TomAuthState.none),
+          narrowBy: TomAuthState.none,
+        ),
+        TomAuthState.none,
+        reason: 'with protection on, four layers each say no',
+      );
+
+      TomResourceKeyProtection.globalSettingUseAutomaticUIProtection = false;
+
+      expect(
+        _resolve(
+          basePath: 'w',
+          group: group,
+          authorizer: TomAuthorizer.fixed(TomAuthState.none),
+          narrowBy: TomAuthState.none,
+        ),
+        TomAuthState.full,
+        reason: 'with it off, none of them is consulted',
+      );
+    });
+
+    test('the bypass does not make a view-mode screen editable', () {
+      // The one layer that survives, and the reason it does: a
+      // TomUIStateController describes the screen, not the principal, so a
+      // diagnostic aimed at authorization must leave it alone.
+      TomAuthorization.adapter = _MapAuthAdapter({'w': TomAuthState.none});
+      TomResourceKeyProtection.globalSettingUseAutomaticUIProtection = false;
+
+      expect(
+        _resolve(
+          basePath: 'w',
+          uiStateController: _narrowTo(TomAuthState.read),
+        ),
+        TomAuthState.read,
+      );
+    });
   });
 }

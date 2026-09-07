@@ -48,6 +48,11 @@ class TomAuthLayers {
   /// [TomAuthorizationGroup] while standing at the root would otherwise see a
   /// different ceiling than the one the widget renders under.
   ///
+  /// The whole composition is skipped when
+  /// [TomResourceKeyProtection.globalSettingUseAutomaticUIProtection] is
+  /// `false` — see the note on that switch, and on step 0 below for what
+  /// survives the bypass.
+  ///
   /// [narrowBy] is an additional ceiling applied between the group and the
   /// authorizer. Only `forms/` supplies one: a field is bounded by its
   /// enclosing form, which behaves as an implicit group that can only narrow.
@@ -62,6 +67,19 @@ class TomAuthLayers {
     required TomUIStateController? uiStateController,
     TomAuthState? narrowBy,
   }) {
+    // 0. The global bypass. With UI protection switched off the model is not
+    //    consulted at all and every element it protects resolves as granted —
+    //    which is what makes it a one-step answer to "is this hidden because
+    //    of authorization, or because of something else?".
+    //
+    //    [uiStateController] still applies, and deliberately: it is the only
+    //    layer that is not about the principal. A controller saying "this form
+    //    is in view mode" describes the screen, and a diagnostic that made a
+    //    view-mode form editable would be answering a different question.
+    if (!TomResourceKeyProtection.globalSettingUseAutomaticUIProtection) {
+      return uiStateController?.apply(TomAuthState.full) ?? TomAuthState.full;
+    }
+
     // 1. Resource-based authorization.
     var state = basePath != null
         ? TomAuthorization.resolveAuth(basePath)

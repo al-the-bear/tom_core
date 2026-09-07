@@ -60,15 +60,17 @@ import 'user_principal_aci.dart';
 /// - [globalSettingUseAutomaticEndpointProtection]: Auto-protect API endpoints
 /// - [globalSettingUseAutomaticJsonProtection]: Auto-protect JSON serialization
 /// - [globalSettingUseAutomaticDatabaseProtection]: Auto-protect database queries
-/// - [globalSettingUseAutomaticFormFieldProtection]: Auto-protect form fields
-/// - [globalSettingUseAutomaticActionProtection]: Auto-protect actions
-/// - [globalSettingUseAutomaticActionProtectionForDisabling]: Auto-disable action triggers like buttons
+/// - [globalSettingUseAutomaticUIProtection]: Whether the Flutter toolkit's
+///   four-state authorization model applies at all
 ///
-/// Of the six automatic switches, **only
-/// [globalSettingUseAutomaticEndpointProtection] currently does anything** —
-/// the server's endpoint pipeline consults it. The other five are declared and
-/// documented but read by nothing, so setting one to `true` has no effect. Each
-/// says so on its own declaration; do not rely on one until it does.
+/// Two of the four are honoured: [globalSettingUseAutomaticEndpointProtection]
+/// by the server's endpoint pipeline, and [globalSettingUseAutomaticUIProtection]
+/// by `tom_flutter_ui`'s `TomAuthLayers`. The remaining two —
+/// [globalSettingUseAutomaticJsonProtection] and
+/// [globalSettingUseAutomaticDatabaseProtection] — name tiers that do not exist
+/// yet and are read by nothing; each says so on its own declaration, and until
+/// a tier is built, the protection at that layer is whatever the deployment
+/// writes by hand with [protect].
 ///
 /// ## Example
 ///
@@ -90,46 +92,61 @@ class TomResourceKeyProtection {
   /// access is evaluated based on the current principal's resource keys.
   static bool globalSettingProtectionDefault = false;
 
-  // TODO: five of the six switches below have no reader anywhere. Decide per
-  // switch whether to implement the tier or delete the flag — a `bool` that
-  // reads like a control and performs nothing is worse than an absent one.
-
   /// When enabled, API endpoints are automatically protected based on metadata.
   ///
   /// The one automatic switch that is honoured: `tom_core_server`'s endpoint
   /// pipeline consults it when the ordinary access check has already refused.
   static bool globalSettingUseAutomaticEndpointProtection = false;
 
-  /// When enabled, JSON serialization automatically respects resource protection.
+  /// Whether `tom_flutter_ui`'s four-state authorization model applies.
   ///
-  /// **Not implemented.** Nothing reads this flag; the `json` module does not
-  /// reference resource-key protection at all.
+  /// `true` by default and normally left there: with it on, every element
+  /// resolves through `TomAuthLayers` — resource, group, enclosing ceiling,
+  /// authorizer, UI-state controller — and renders at the state that
+  /// composition produces.
+  ///
+  /// Setting it `false` **bypasses the model and grants every UI resource it
+  /// protects**. Build-time UI state still applies, because a controller that
+  /// says "this form is in view mode" is describing the screen rather than the
+  /// principal. This is a diagnostic switch: it answers "is this element hidden
+  /// because of authorization, or because of something else?" in one step,
+  /// without editing grants. It is not a deployment setting, and a server that
+  /// relies on it for anything is relying on the client to police itself.
+  ///
+  /// It replaces three earlier switches — for form fields, for actions, and for
+  /// disabling rather than hiding an action — that described distinctions the
+  /// four-state model already draws: hidden, read-only and disabled are three
+  /// of its four states, resolved per element rather than per category.
+  static bool globalSettingUseAutomaticUIProtection = true;
+
+  // TODO: neither of the two switches below has a tier behind it. Each names a
+  // layer at which protection could be applied automatically, and at which
+  // nothing applies it, so what protects a payload or a query today is
+  // whatever the deployment writes by hand with `protect`. Building either is
+  // a design question rather than a wiring one -- JSON needs a per-member
+  // resource key and pays a per-object cost, and a query predicate derived
+  // from the principal silently changes result sets and meets the transaction
+  // and cache layers. The switches are kept, and say what they do not do, so
+  // the gap stays visible instead of being closed by deleting the evidence.
+
+  /// When enabled, JSON serialization would automatically respect resource
+  /// protection.
+  ///
+  /// **No tier implements this.** Nothing reads the flag; the `json` module
+  /// does not reference resource-key protection at all, so setting it changes
+  /// nothing. Serialization protects what the caller protects explicitly with
+  /// [protect] or [protectFor], and nothing else.
   static bool globalSettingUseAutomaticJsonProtection = false;
 
-  /// When enabled, database queries automatically filter protected resources.
+  /// When enabled, database queries would automatically filter protected
+  /// resources.
   ///
-  /// **Not implemented.** Nothing reads this flag; `object_persistence` does
-  /// not reference resource-key protection at all.
+  /// **No tier implements this.** Nothing reads the flag; `object_persistence`
+  /// does not reference resource-key protection, so setting it changes
+  /// nothing. Row-level filtering that *is* implemented lives in the server's
+  /// data-scope layer (`TomDataScope` and its sources), which is a separate
+  /// mechanism keyed on scopes rather than on resource keys.
   static bool globalSettingUseAutomaticDatabaseProtection = false;
-
-  /// When enabled, form fields are automatically protected based on their
-  /// resource keys.
-  ///
-  /// **Not implemented.** Nothing reads this flag. Form fields resolve their
-  /// visibility from [TomAuthState] instead — see `tom_flutter_ui`'s forms.
-  static bool globalSettingUseAutomaticFormFieldProtection = false;
-
-  /// When enabled, actions are automatically protected based on their resource
-  /// keys.
-  ///
-  /// **Not implemented.** Nothing reads this flag.
-  static bool globalSettingUseAutomaticActionProtection = false;
-
-  /// When enabled, a protected action that the principal may not trigger is
-  /// automatically disabled rather than hidden.
-  ///
-  /// **Not implemented.** Nothing reads this flag.
-  static bool globalSettingUseAutomaticActionProtectionForDisabling = false;
 
   /// Protects a value based on [principal]'s resource key access.
   ///

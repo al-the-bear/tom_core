@@ -322,11 +322,13 @@ bool hidden = TomResourceKeyProtection.isProtected('checkout.emailField');
 var value = TomResourceKeyProtection.protect(user.email, '[hidden]', 'user.email');
 ```
 
-Global protection mode switches (defined, not yet wired to UI):
+One global switch governs whether the four-state model applies at all:
 
-- `globalSettingUseAutomaticFormFieldProtection`
-- `globalSettingUseAutomaticActionProtection`
-- `globalSettingUseAutomaticActionProtectionForDisabling`
+- `globalSettingUseAutomaticUIProtection` — `true` by default. Setting it
+  `false` bypasses the model and grants every UI resource it protects, so an
+  element that is still hidden or disabled is hidden for some other reason.
+  Read by `TomAuthLayers.resolve`; the build-time `TomUIStateController`
+  survives the bypass, because it describes the screen rather than the user.
 
 **TomAccessControl hierarchy**
 

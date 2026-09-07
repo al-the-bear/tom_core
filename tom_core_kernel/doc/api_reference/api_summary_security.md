@@ -718,11 +718,9 @@ principal the current request installed. Every one of them is gated on
 | -------- | ---- | ----------- |
 | `globalSettingProtectionDefault` | `bool` | Master switch for resource protection. **Defaults to `false`**, and while it is off every method below short-circuits to "accessible" — a protection call added to the code protects nothing until this is set. |
 | `globalSettingUseAutomaticEndpointProtection` | `bool` | When enabled, API endpoints are automatically protected based on metadata. Defaults to `false`. The one automatic switch that is honoured — `tom_core_server`'s endpoint pipeline consults it. |
-| `globalSettingUseAutomaticJsonProtection` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag, and the `json` module does not reference resource-key protection at all. |
-| `globalSettingUseAutomaticDatabaseProtection` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag, and `object_persistence` does not reference resource-key protection at all. |
-| `globalSettingUseAutomaticFormFieldProtection` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag; form fields resolve visibility from `TomAuthState`. |
-| `globalSettingUseAutomaticActionProtection` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag. |
-| `globalSettingUseAutomaticActionProtectionForDisabling` | `bool` | Defaults to `false`. **Not implemented** — nothing reads this flag. |
+| `globalSettingUseAutomaticUIProtection` | `bool` | Whether `tom_flutter_ui`'s four-state model applies. **Defaults to `true`**, unlike every other switch here. Setting it `false` bypasses the model and grants every UI resource it protects, leaving only the build-time `TomUIStateController` in force — a diagnostic for "is this hidden by authorization or by something else?", read by `TomAuthLayers.resolve`. It replaces three switches for form fields, actions and action-disabling that nothing read and that named distinctions the four states already draw. |
+| `globalSettingUseAutomaticJsonProtection` | `bool` | Defaults to `false`. **No tier implements this** — nothing reads the flag, and the `json` module does not reference resource-key protection at all. Serialization protects what a caller protects explicitly with `protect`, and nothing else. |
+| `globalSettingUseAutomaticDatabaseProtection` | `bool` | Defaults to `false`. **No tier implements this** — nothing reads the flag, and `object_persistence` does not reference resource-key protection. Row filtering that *is* implemented is the server's data-scope layer, a separate mechanism keyed on scopes rather than resource keys. |
 
 #### Static Methods
 
