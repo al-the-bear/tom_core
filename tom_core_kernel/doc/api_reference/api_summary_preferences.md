@@ -17,6 +17,7 @@ and device-side preference stores.
   - [TomUserPreferenceCodec](#tomuserpreferencecodec)
   - [TomUserPreferenceCodecException](#tomuserpreferencecodecexception)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [tomUserPreferencesApi](#tomuserpreferencesapi)
 
 ## Overview
 

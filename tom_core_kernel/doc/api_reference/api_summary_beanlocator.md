@@ -14,6 +14,8 @@ environment- and platform-specific implementations.
   - [TomNoInterface](#tomnointerface)
   - [TomBean\<T\>](#tombeant)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [Constants](#constants)
+  - [Functions](#functions)
 
 ## Overview
 

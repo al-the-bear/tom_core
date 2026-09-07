@@ -6,10 +6,27 @@ The Settings module provides client-server communication for retrieving applicat
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
+  - [1. Import the Module](#1-import-the-module)
+  - [2. Build the Endpoint](#2-build-the-endpoint)
+  - [3. Create a Settings Request](#3-create-a-settings-request)
+  - [4. Process the Response](#4-process-the-response)
 - [Core Components](#core-components)
+  - [TomGetSettingsMessage](#tomgetsettingsmessage)
+  - [TomGetSettingsResult](#tomgetsettingsresult)
+    - [Constructor](#constructor)
 - [Usage Examples](#usage-examples)
+  - [Basic Settings Retrieval](#basic-settings-retrieval)
+  - [Role-Based Feature Access](#role-based-feature-access)
+  - [Localized Text Display](#localized-text-display)
+  - [Multi-Tenant Configuration](#multi-tenant-configuration)
 - [Best Practices](#best-practices)
+  - [1. Cache Settings Appropriately](#1-cache-settings-appropriately)
+  - [2. Handle Missing Values Gracefully](#2-handle-missing-values-gracefully)
+  - [3. Validate Authorization Early](#3-validate-authorization-early)
+  - [4. Separate Concerns](#4-separate-concerns)
+  - [5. Use Type-Safe Configuration Access](#5-use-type-safe-configuration-access)
 - [Dependencies](#dependencies)
+  - [What this module does *not* depend on](#what-this-module-does-not-depend-on)
 
 ---
 

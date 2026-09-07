@@ -61,6 +61,8 @@ streaming file-transfer client (`TomFileTransferClient`,
     - [TomFileTransferException](#tomfiletransferexception)
 - [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [Constants](#constants)
+  - [Functions](#functions)
 
 ## Overview
 

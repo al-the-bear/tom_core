@@ -18,6 +18,11 @@ The Tom Execution Context System provides zone-based context propagation for pas
 - [Context Composition](#context-composition)
 - [Default Context](#default-context)
 - [Best Practices](#best-practices)
+  - [1. Always write the entry's type parameter](#1-always-write-the-entrys-type-parameter)
+  - [2. Handle Missing Context](#2-handle-missing-context)
+  - [3. Create Context Once](#3-create-context-once)
+  - [4. Choose the variant by what the body returns, not by whether it is async](#4-choose-the-variant-by-what-the-body-returns-not-by-whether-it-is-async)
+  - [5. Document Context Dependencies](#5-document-context-dependencies)
 - [Dependencies](#dependencies)
 
 ## Overview

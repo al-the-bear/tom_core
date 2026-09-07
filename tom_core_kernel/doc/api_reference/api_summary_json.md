@@ -12,6 +12,8 @@ pretty-printing formatters.
 - [Classes](#classes)
   - [TomJsonSerializable](#tomjsonserializable)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [Constants](#constants)
+  - [Functions](#functions)
 
 ## Overview
 

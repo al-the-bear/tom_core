@@ -14,6 +14,8 @@ asynchronous call chains without explicit parameter passing.
   - [TomContextEntry\<T\>](#tomcontextentryt)
   - [TomContextProviders](#tomcontextproviders)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [Constants](#constants)
+  - [Functions](#functions)
 
 ## Overview
 

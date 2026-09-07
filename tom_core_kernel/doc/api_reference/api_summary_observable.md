@@ -12,6 +12,7 @@ JSON-serializable data models.
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomObservable](#tomobservable)
+  - [TomObservableObservation](#tomobservableobservation)
   - [TomObserver](#tomobserver)
   - [TomFunctionObserver](#tomfunctionobserver)
   - [TomObservableException](#tomobservableexception)
@@ -44,6 +45,8 @@ JSON-serializable data models.
   - [TomObservableEnum](#tomobservableenum)
   - [TomEnumResourceSegment](#tomenumresourcesegment)
 - [Global Values and Functions](#global-values-and-functions)
+  - [Values](#values)
+  - [Functions](#functions)
 
 ## Overview
 

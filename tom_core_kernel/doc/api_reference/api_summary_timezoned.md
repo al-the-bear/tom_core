@@ -17,6 +17,7 @@ initialization.
   - [TomTimezoneException](#tomtimezoneexception)
   - [TomTimezone](#tomtimezone)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [Functions](#functions)
 
 ## Overview
 

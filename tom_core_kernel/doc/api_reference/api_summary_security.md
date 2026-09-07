@@ -58,6 +58,9 @@ per-principal-per-resource role resolution.
   - [AuthGroupMode](#authgroupmode)
   - [TomAuthorizerStrategy](#tomauthorizerstrategy)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [Functions](#functions)
+  - [Constants](#constants)
+  - [Typedefs](#typedefs)
 
 ## Overview
 

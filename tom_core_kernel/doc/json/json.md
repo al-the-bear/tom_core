@@ -5,11 +5,25 @@ This module provides utilities for working with JSON data structures in Dart, in
 ## Table of Contents
 
 - [Overview](#overview)
+  - [TomJsonSerializable](#tomjsonserializable)
 - [Quick Start](#quick-start)
+  - [Pretty Printing JSON](#pretty-printing-json)
+  - [Merging Configuration Maps](#merging-configuration-maps)
 - [Core Components](#core-components)
+  - [JSON Serializable (`json_serializable.dart`)](#json-serializable-json_serializabledart)
+  - [Map Merge and Process (`map_merge_and_process.dart`)](#map-merge-and-process-map_merge_and_processdart)
+  - [Pretty JSON (`pretty_json.dart`)](#pretty-json-pretty_jsondart)
 - [Usage Examples](#usage-examples)
+  - [Configuration Layering](#configuration-layering)
+  - [Environment Variable Substitution](#environment-variable-substitution)
+  - [Debugging API Responses](#debugging-api-responses)
 - [Best Practices](#best-practices)
+  - [1. Immutability Consideration](#1-immutability-consideration)
+  - [2. Error Handling for Paths](#2-error-handling-for-paths)
+  - [3. Type Safety](#3-type-safety)
+  - [4. JSON Sanitization](#4-json-sanitization)
 - [Dependencies](#dependencies)
+  - [What the module logs](#what-the-module-logs)
 
 ---
 

@@ -29,6 +29,7 @@ run, and a tick loop that plans, claims, dispatches and retries.
   - [TomScheduledJobs](#tomscheduledjobs)
 - [The store](#the-store)
   - [TomJobRun](#tomjobrun)
+  - [TomJobClaim](#tomjobclaim)
   - [TomJobStore](#tomjobstore)
   - [TomMemoryJobStore](#tommemoryjobstore)
   - [TomFileJobStore](#tomfilejobstore)
@@ -41,6 +42,10 @@ run, and a tick loop that plans, claims, dispatches and retries.
 - [The scheduler](#the-scheduler)
   - [TomScheduler](#tomscheduler)
 - [Enums](#enums)
+  - [TomMissedWindowPolicy](#tommissedwindowpolicy)
+  - [TomJobRunState](#tomjobrunstate)
+  - [TomCalendarRule](#tomcalendarrule)
+  - [TomJobAlertKind](#tomjobalertkind)
 - [Exceptions and mixins](#exceptions-and-mixins)
 - [Global Functions and Constants](#global-functions-and-constants)
 

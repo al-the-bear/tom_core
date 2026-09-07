@@ -12,6 +12,8 @@ and a UTC-offset formatting helper.
   - [TomException](#tomexception)
   - [TomFormattingException](#tomformattingexception)
 - [Global Functions and Constants](#global-functions-and-constants)
+  - [Constants](#constants)
+  - [Functions](#functions)
 
 ## Overview
 

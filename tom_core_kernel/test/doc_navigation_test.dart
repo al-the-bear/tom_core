@@ -8,12 +8,26 @@
 ///
 /// Two invariants, both of which have already broken:
 ///
-///  * **A table of contents lists every `##` heading, in document order.** The
+///  * **A table of contents lists every `##` and `###` heading, in document
+///    order, and any deeper heading the page's own body links to.** The
 ///    preferences guide once omitted its `## Usage Examples` section — the
 ///    longest worked-example section in the file — so a reader navigating by
 ///    the contents skipped precisely the part they had come for. The omission
 ///    was not visible from the contents, which is the whole problem: an
 ///    incomplete list of sections advertises itself as the complete one.
+///
+///    The subsection half was the same harm one level down, at scale: fourteen
+///    of the module guides listed no `###` at all, so 305 of 384 subsections
+///    were unreachable from the only index of their page — `preferences.md`
+///    put 514 of its lines behind one entry. The `####` clause is narrower and
+///    covers the case no depth policy makes go away: a page that links from its
+///    own body to a heading has declared that heading a destination, and an
+///    index that then omits it contradicts the page it indexes. Forty-five such
+///    headings were found across eight guides.
+///
+///    Deeper headings are *permitted* beyond that, never required, and never
+///    removed: the API summaries index their classes at `####` and are the most
+///    navigable pages in the tree.
 ///  * **Every in-page link resolves to a heading.** A `](#anchor)` that matches
 ///    no heading is a link that silently does nothing when clicked. These
 ///    guides cross-reference themselves heavily, and a heading rename breaks
@@ -179,18 +193,28 @@ String _decodeEntities(String text) => text
 /// `### Constructors` is `constructors`, the next `constructors-1`. The API
 /// summaries repeat a handful of section names once per class, so without this
 /// every summary but the smallest would look like it had colliding anchors.
-Set<String> _anchorsOf(List<_Heading> headings) {
+Set<String> _anchorsOf(List<_Heading> headings) =>
+    _anchorList(headings).toSet();
+
+/// The same anchors, one per heading and in the same order.
+///
+/// A list rather than a set, because [_requiredAnchors] needs to say *which*
+/// heading an anchor belongs to. The set form above is the membership question
+/// and would answer the positional one only by the accident that the values
+/// happen to be unique.
+List<String> _anchorList(List<_Heading> headings) {
   final seen = <String, int>{};
-  final anchors = <String>{};
-  for (final heading in headings) {
-    final count = seen.update(
-      heading.anchor,
-      (value) => value + 1,
-      ifAbsent: () => 0,
-    );
-    anchors.add(count == 0 ? heading.anchor : '${heading.anchor}-$count');
-  }
-  return anchors;
+  return [
+    for (final heading in headings)
+      () {
+        final count = seen.update(
+          heading.anchor,
+          (value) => value + 1,
+          ifAbsent: () => 0,
+        );
+        return count == 0 ? heading.anchor : '${heading.anchor}-$count';
+      }(),
+  ];
 }
 
 /// Every Markdown page under `doc/`, sorted by path.
@@ -233,12 +257,46 @@ List<String> _contentsAnchors(List<_Heading> headings, List<_Link> links) {
       .toList();
 }
 
-/// The `##` anchors of [headings], in document order, excluding the contents
-/// heading itself.
-List<String> _sectionAnchors(List<_Heading> headings) => headings
-    .where((h) => h.level == 2 && h.anchor != 'table-of-contents')
-    .map((h) => h.anchor)
-    .toList();
+/// The anchors a contents block must list, in document order.
+///
+/// Every `##` and `###`, plus any deeper heading [bodyLinks] shows the page
+/// linking to from outside its own contents block. The contents heading itself
+/// is excluded — an entry for the contents is a link to where the reader
+/// already is.
+///
+/// Disambiguated by [_anchorList], so a page with two `### Methods` is compared
+/// against the anchors a renderer would actually produce rather than against
+/// the first one twice.
+List<String> _requiredAnchors(List<_Heading> headings, Set<String> bodyLinks) {
+  final anchors = _anchorList(headings);
+  final required = <String>[];
+  for (var index = 0; index < headings.length; index++) {
+    final heading = headings[index];
+    final anchor = anchors[index];
+    if (anchor == 'table-of-contents' || heading.level < 2) continue;
+    if (heading.level <= 3 || bodyLinks.contains(anchor)) {
+      required.add(anchor);
+    }
+  }
+  return required;
+}
+
+/// The anchors the page links to from outside its contents block.
+Set<String> _bodyLinkAnchors(List<_Heading> headings, List<_Link> links) {
+  final contents = _contentsHeading(headings);
+  if (contents == null) return const {};
+  var end = 1 << 30;
+  for (final heading in headings) {
+    if (heading.line > contents.line && heading.level <= 2) {
+      end = heading.line;
+      break;
+    }
+  }
+  return links
+      .where((link) => link.line <= contents.line || link.line >= end)
+      .map((link) => link.anchor)
+      .toSet();
+}
 
 void main() {
   group('every doc page is navigable', () {
@@ -262,28 +320,33 @@ void main() {
       );
     });
 
-    test('a table of contents lists every section, in document order', () {
+    test('a table of contents lists every section and subsection, in document '
+        'order', () {
       final wrong = <String>[];
       for (final page in _pages()) {
         final parsed = _parse(page);
         if (_contentsHeading(parsed.headings) == null) continue;
 
-        final sections = _sectionAnchors(parsed.headings);
+        final required = _requiredAnchors(
+          parsed.headings,
+          _bodyLinkAnchors(parsed.headings, parsed.links),
+        );
         final listed = _contentsAnchors(parsed.headings, parsed.links);
-        // Only the section-level entries are compared, so a contents block that
-        // also links subsections is free to; what it may not do is skip a
-        // section or list two out of order.
-        final listedSections = listed.where(sections.contains).toList();
+        // Only the required entries are compared, so a contents block that
+        // indexes deeper than the rule asks — as the API summaries do, down to
+        // each class — is free to, and is never asked to give that up. What it
+        // may not do is skip one or list two out of order.
+        final listedRequired = listed.where(required.contains).toList();
 
-        if (listedSections.toString() != sections.toString()) {
-          final omitted = sections.where((s) => !listed.contains(s)).toList();
+        if (listedRequired.toString() != required.toString()) {
+          final omitted = required.where((s) => !listed.contains(s)).toList();
           final fault = omitted.isEmpty
               ? 'listed out of document order'
               : 'omits ${omitted.join(', ')}';
           wrong.add(
             '${page.path}: $fault '
-            '(contents lists ${listedSections.join(', ')}; '
-            'sections are ${sections.join(', ')})',
+            '(contents lists ${listedRequired.join(', ')}; '
+            'required are ${required.join(', ')})',
           );
         }
       }
@@ -294,9 +357,12 @@ void main() {
         reason:
             'These tables of contents do not match their pages:\n'
             '  ${wrong.join('\n  ')}\n'
-            'A contents block that omits a section still reads as the complete '
-            'list, so the section it skips is one no reader navigating by the '
-            'contents will find.',
+            'A contents block that omits a heading still reads as the complete '
+            'list, so the part it skips is one no reader navigating by the '
+            'contents will find. Every `##` and `###` must be listed, and so '
+            'must any deeper heading the page links to from its own body — a '
+            'page that calls a heading worth linking to and then leaves it out '
+            'of its own index contradicts itself.',
       );
     });
 
