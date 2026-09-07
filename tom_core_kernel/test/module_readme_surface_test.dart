@@ -29,15 +29,11 @@ import 'package:test/test.dart';
 
 /// Modules the package barrel exports that ship no `readme.md`.
 ///
-/// Listed rather than skipped silently, because a module with no readme is not
-/// a module that passes — it is one nobody has written up, and an exclusion
-/// that states no reason decays into one nobody revisits.
-const _withoutReadme = {
-  // 35 public types across 6 files, and the largest undocumented surface in the
-  // package. Writing it up is a document, not a table row, and is tracked
-  // separately rather than being smuggled in behind a check.
-  'scheduling',
-};
+/// Empty, and the second test below keeps it that way in both directions: a
+/// module that loses its readme has to be named here with a reason, and one
+/// that gains a readme has to be removed. An entry is therefore always a live
+/// admission rather than a stale exemption nobody revisits.
+const _withoutReadme = <String>{};
 
 final _declaration = RegExp(
   r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|mixin\s+)*'
