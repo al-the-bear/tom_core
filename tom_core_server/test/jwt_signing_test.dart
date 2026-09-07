@@ -1,7 +1,6 @@
 // `SecretKey` is `dart_jsonwebtoken`'s, and tom_crypto does not re-export it —
 // so a test that wants to read the installed HMAC key back out reaches for the
 // package directly, exactly as `jwt_signing.dart` does.
-import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 

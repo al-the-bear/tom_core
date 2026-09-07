@@ -18,7 +18,7 @@ dependencies:
     path: ../tom_flutter_ui
   tom_core_kernel:
     path: ../tom_core_kernel
-  tom_basics: ">=2.0.0"
+  tom_basics: ">=3.0.0"
   tom_reflection: ">=1.0.1"
   timezone: any
   # Cupertino icon font — required by every Cupertino widget the

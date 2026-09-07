@@ -28,16 +28,15 @@ dependencies:
   # StreamQueue drives the SMTP line protocol (messaging/smtp_transport.dart);
   # declared explicitly for the same reason as crypto above.
   async: ^2.11.0
-  # RSAPrivateKey/RSAPublicKey for signing audit anchors
-  # (audit/audit_anchor.dart). tom_crypto supplies rsaSign/rsaVerify but not the
-  # key types, which stay pointycastle's; declared explicitly rather than
-  # inherited through tom_crypto's own dependency.
+  # Needed by the generated reflection output, which imports
+  # `pointycastle/asymmetric/api.dart` directly to name RSAPrivateKey and
+  # RSAPublicKey. Hand-written code no longer imports it: tom_crypto 1.2.0
+  # re-exports both key types, so they arrive through the kernel barrel.
   pointycastle: ^3.9.1
-  # SecretKey for the configured HMAC signing key
-  # (authentication/jwt_signing.dart). TomJwtConfiguration's `key` field is
-  # typed as this package's JWTKey and tom_crypto does not re-export it, so
-  # building one from a configured passphrase needs the dependency directly —
-  # same reason as pointycastle above.
+  # Needed by the generated reflection output, and by
+  # authentication/jwt_signing.dart, which imports it under a prefix. The names
+  # this package's own code uses — SecretKey, JWT — are re-exported by
+  # tom_crypto 1.2.0, so the unprefixed imports that once needed this are gone.
   dart_jsonwebtoken: ^3.1.1
   # PDF generation for the export renderers (export/pdf_renderer.dart).
   # Apache-2.0; see doc/export.md for why this one and not a hand-written

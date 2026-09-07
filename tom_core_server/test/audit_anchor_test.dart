@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:pointycastle/asymmetric/api.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 

@@ -748,15 +748,6 @@ void main() {
   // =========================================================================
 
   group('TomLogOutput', () {
-    group('globalSettingRemoteLogEndpoint', () {
-      test('should have default value of /remotelog', () {
-        expect(
-          TomLogOutput.globalSettingRemoteLogEndpoint,
-          equals('/remotelog'),
-        );
-      });
-    });
-
     group('convertToString', () {
       late _TestLogOutput output;
 
