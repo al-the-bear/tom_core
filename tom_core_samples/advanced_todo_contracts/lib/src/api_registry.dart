@@ -156,12 +156,24 @@ final TomApi adminApi = TomApi(
       method: TomHttpMethod.post,
       access: adminAccess,
     ),
+    // The updates below address the collection, not the item: `PUT /users`
+    // rather than `PUT /users/{id}`. The request DTO already carries the
+    // subject — `UserDto.id` here, `RoleDto.key`, `GroupDto.id`,
+    // `Workspace.id`, `TodoItem.id`, `Subtask.id` below — and a request that
+    // states its subject twice can state it two different ways. The pipeline
+    // does resolve that (the path overwrites the folded body), but precedence
+    // is the answer to a question a contract should not be asking: a caller
+    // reading the body as authoritative would be wrong without ever being
+    // told. See `TomApiEndpoint.urlParameterMapping`, whose worked example is
+    // the kernel's `tomUserPreferencesApi` write endpoint.
+    //
+    // The by-id DELETEs keep `/{id}`, and for the same reason: they take
+    // `EntityIdRequest`, a DTO that exists solely to receive the addressed id,
+    // and a DELETE carries no body — so there the path is the only statement.
     TomApiEndpoint<UserDto, UserDto>(
       id: 'adminUpdateUser',
-      uri: '/users/{id}',
+      uri: '/users',
       method: TomHttpMethod.put,
-      // `{id}` → `UserDto.id` (identity): the addressed account.
-      urlParameterMapping: const {'id': 'id'},
       access: adminAccess,
     ),
     TomApiEndpoint<Object?, EntityIdRequest>(
@@ -187,10 +199,8 @@ final TomApi adminApi = TomApi(
     ),
     TomApiEndpoint<RoleDto, RoleDto>(
       id: 'adminUpdateRole',
-      uri: '/roles/{key}',
+      uri: '/roles',
       method: TomHttpMethod.put,
-      // `{key}` → `RoleDto.key` (identity): the addressed role.
-      urlParameterMapping: const {'key': 'key'},
       access: adminAccess,
     ),
     TomApiEndpoint<Object?, EntityIdRequest>(
@@ -216,10 +226,8 @@ final TomApi adminApi = TomApi(
     ),
     TomApiEndpoint<GroupDto, GroupDto>(
       id: 'adminUpdateGroup',
-      uri: '/groups/{id}',
+      uri: '/groups',
       method: TomHttpMethod.put,
-      // `{id}` → `GroupDto.id` (identity): the addressed group.
-      urlParameterMapping: const {'id': 'id'},
       access: adminAccess,
     ),
     TomApiEndpoint<Object?, EntityIdRequest>(
@@ -303,10 +311,8 @@ final TomApi appApi = TomApi(
     ),
     TomApiEndpoint<Workspace, Workspace>(
       id: 'appUpdateWorkspace',
-      uri: '/workspaces/{id}',
+      uri: '/workspaces',
       method: TomHttpMethod.put,
-      // `{id}` → `Workspace.id` (identity): the addressed workspace.
-      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, EntityIdRequest>(
@@ -364,10 +370,8 @@ final TomApi appApi = TomApi(
     ),
     TomApiEndpoint<TodoItem, TodoItem>(
       id: 'appUpdateItem',
-      uri: '/items/{id}',
+      uri: '/items',
       method: TomHttpMethod.put,
-      // `{id}` → `TodoItem.id` (identity): the addressed item.
-      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, EntityIdRequest>(
@@ -423,10 +427,8 @@ final TomApi appApi = TomApi(
     ),
     TomApiEndpoint<Subtask, Subtask>(
       id: 'appUpdateSubtask',
-      uri: '/subtasks/{id}',
+      uri: '/subtasks',
       method: TomHttpMethod.put,
-      // `{id}` → `Subtask.id` (identity): the addressed subtask.
-      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, ShareRequest>(

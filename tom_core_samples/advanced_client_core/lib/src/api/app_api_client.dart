@@ -239,7 +239,7 @@ class AppApiClient implements AppApiService {
       parseWorkspace(
         (await _send(
           'PUT',
-          '/workspaces/${workspace.id.get()}',
+          '/workspaces',
           body: jsonEncode(workspace.toJson()),
         )).jsonObject,
       );
@@ -285,11 +285,7 @@ class AppApiClient implements AppApiService {
 
   @override
   Future<TodoItem> updateItem(TodoItem item) async => parseItem(
-    (await _send(
-      'PUT',
-      '/items/${item.id.get()}',
-      body: jsonEncode(item.toJson()),
-    )).jsonObject,
+    (await _send('PUT', '/items', body: jsonEncode(item.toJson()))).jsonObject,
   );
 
   @override
@@ -330,7 +326,7 @@ class AppApiClient implements AppApiService {
   Future<Subtask> updateSubtask(Subtask subtask) async => parseSubtask(
     (await _send(
       'PUT',
-      '/subtasks/${subtask.id.get()}',
+      '/subtasks',
       body: jsonEncode(subtask.toJson()),
     )).jsonObject,
   );

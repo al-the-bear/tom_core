@@ -163,7 +163,7 @@ The app server ships the principal's flat `resourceKey → roleName` map via the
 narrowing it by the shared per-role field-grade rows (`projectRoleFieldGrades`),
 then rendering through a `TomAuthorizer.fixed(state)`. Per-field grades never
 cross the wire on a read. Writes are still re-checked field-by-field
-server-side: a `PUT /items/{id}` touching a field the principal is not `full` on
+server-side: a `PUT /items` touching a field the principal is not `full` on
 is rejected. [`GradedFieldDto`](lib/src/graded_field_dto.dart)
 (`{resourceKey, access}`) survives only as the per-cell grade of the **admin**
 grant matrix ([`GrantMatrixDto`](lib/src/grant_matrix_dto.dart), the auth

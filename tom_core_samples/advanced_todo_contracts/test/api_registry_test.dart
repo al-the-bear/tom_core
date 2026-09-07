@@ -148,6 +148,68 @@ void main() {
       expect(endpoint.requestTypes, isEmpty);
     });
 
+    test('no PUT states its subject twice', () {
+      // A PUT carries the whole entity, so its request DTO necessarily names
+      // the subject. Adding a `{id}` capture on top would let one request name
+      // two — `PUT /users/7` with `{"id": 9}` — and the pipeline resolves that
+      // silently, by folding the body first and letting the path overwrite it.
+      // Precedence is the answer to a question the contract should not be
+      // asking, so every PUT here addresses the bare collection. See
+      // `TomApiEndpoint.urlParameterMapping`.
+      //
+      // Scoped to PUT deliberately. A DELETE or a GET carries no body, so its
+      // capture is the only statement; and whether a POST to a nested
+      // subcollection (`POST /items/{id}/comments`, whose `TodoComment` also
+      // carries `itemId`) should lose its nesting is a separate question about
+      // the sample's REST surface, not about this rule.
+      for (final api in [authApi, adminApi, appApi]) {
+        for (final endpoint in api.endpoints.values) {
+          if (endpoint.method != TomHttpMethod.put) continue;
+          expect(
+            endpoint.uri,
+            isNot(contains('{')),
+            reason:
+                '${api.id}.${endpoint.id}: a PUT must address the bare '
+                'collection — its body already names the subject',
+          );
+          expect(
+            endpoint.urlParameterMapping,
+            isEmpty,
+            reason:
+                '${api.id}.${endpoint.id}: a PUT declares no URL parameter '
+                'mapping — there is no capture for one to bind',
+          );
+        }
+      }
+    });
+
+    test('the by-id deletes keep the capture that addresses them', () {
+      // The other half of the rule, asserted so that "no captures anywhere"
+      // cannot pass for a repair: a DELETE has no body, so the path is the only
+      // place its subject can be stated.
+      final byId = <String>[
+        'adminDeleteUser',
+        'adminDeleteRole',
+        'adminDeleteGroup',
+        'appDeleteWorkspace',
+        'appDeleteItem',
+      ];
+      final found = <String>[];
+      for (final api in [authApi, adminApi, appApi]) {
+        for (final endpoint in api.endpoints.values) {
+          if (!byId.contains(endpoint.id)) continue;
+          found.add(endpoint.id);
+          expect(endpoint.method, TomHttpMethod.delete);
+          expect(
+            endpoint.uri,
+            contains('{'),
+            reason: '${endpoint.id}: addressed by path, having no body',
+          );
+        }
+      }
+      expect(found..sort(), equals(byId.toList()..sort()));
+    });
+
     test('registerAdvancedTodoApis is idempotent and registers all three', () {
       registerAdvancedTodoApis();
       registerAdvancedTodoApis(); // second call must not throw or duplicate.

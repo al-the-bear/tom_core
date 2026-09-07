@@ -142,7 +142,14 @@ endpoint id, its URI, and its access policy.
   request fields via a **`urlParameterMapping`** map on the `@TomApiEndpoint`
   annotation. The pipeline injects the mapped path params into `jsonBodyData`
   before `createInstanceFromJson`. A bare-`String` handler parameter is retained
-  as **one documented example** only, not the norm.
+  as **one documented example** only, not the norm. Bind a capture to a field
+  the request DTO does *not* otherwise carry: an update whose DTO already names
+  its subject is declared on the bare collection (`PUT /items`, not
+  `PUT /items/{id}`), because a request that states its subject twice can state
+  it two different ways. The pipeline resolves that — the path overwrites the
+  folded body — but a caller reading the body as authoritative would be wrong
+  without ever being told. The by-id DELETEs keep `/{id}`: their
+  `EntityIdRequest` exists solely to receive it and a DELETE carries no body.
 - **G-API-3** — Per-endpoint **access policy is declared on the API
   declaration** in contracts and applied on the implementation by referencing it
   — e.g. `@appApi.listItemsAccess` used directly as an annotation on the

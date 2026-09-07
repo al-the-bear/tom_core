@@ -24,11 +24,11 @@
 /// second seam for bytes.
 ///
 /// Nor is the carry signature-for-signature, deliberately. The wire contract
-/// addresses a row by folding its id into the payload (`updateUser(UserDto)`,
-/// `deleteUser(EntityIdRequest)`) because that is what binds a `{id}` path
-/// capture; a UI seam should not make a screen build a request object to delete
-/// a row, so here the id is a leading parameter. [LiveAdminBackend] is the one
-/// place the two shapes meet.
+/// addresses a row from the payload — `updateUser(UserDto)` carries the id in
+/// the DTO it is already sending, and `deleteUser(EntityIdRequest)` in a DTO
+/// that exists for nothing else — while a UI seam should not make a screen
+/// build a request object to delete a row, so here the id is a leading
+/// parameter. [LiveAdminBackend] is the one place the two shapes meet.
 ///
 /// Every administrative operation requires the `admin` role: each `/admin/*`
 /// endpoint's contract declares `TomRoleAccess(['admin'])`
@@ -145,8 +145,9 @@ abstract class AdminBackend {
   /// password-free projection with its assigned id.
   Future<UserDto> createUser(CreateUserRequest request);
 
-  /// Updates the mutable profile/status of the account [id] (`PUT
-  /// /admin/users/{id}`); the password is never changed here.
+  /// Updates the mutable profile/status of the account [id]
+  /// (`PUT /admin/users`, which addresses the account by `UserDto.id`); the
+  /// password is never changed here.
   Future<UserDto> updateUser(String id, UserDto user);
 
   /// Removes the account [id] (`DELETE /admin/users/{id}`).
@@ -160,7 +161,8 @@ abstract class AdminBackend {
   /// Creates a role (`POST /admin/roles`).
   Future<RoleDto> createRole(RoleDto role);
 
-  /// Updates the role with [key] (`PUT /admin/roles/{key}`).
+  /// Updates the role with [key] (`PUT /admin/roles`, addressed by
+  /// `RoleDto.key`).
   Future<RoleDto> updateRole(String key, RoleDto role);
 
   /// Removes the role with [key] (`DELETE /admin/roles/{key}`).
@@ -174,7 +176,8 @@ abstract class AdminBackend {
   /// Creates a group (`POST /admin/groups`).
   Future<GroupDto> createGroup(GroupDto group);
 
-  /// Updates the name + membership of the group [id] (`PUT /admin/groups/{id}`).
+  /// Updates the name + membership of the group [id] (`PUT /admin/groups`,
+  /// addressed by `GroupDto.id`).
   Future<GroupDto> updateGroup(String id, GroupDto group);
 
   /// Removes the group [id] (`DELETE /admin/groups/{id}`).

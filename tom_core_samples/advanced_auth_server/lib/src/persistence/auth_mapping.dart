@@ -103,7 +103,7 @@ UserDto userRecordToDto(UserRecord record) => UserDto(
 );
 
 /// Applies the mutable profile fields of a [UserDto] onto a [UserRecord] (the
-/// `PUT /admin/users/{id}` update path). Returns the same [record] for chaining.
+/// `PUT /admin/users` update path). Returns the same [record] for chaining.
 ///
 /// The password/hash columns are deliberately untouched: an update echoes the
 /// password-free `UserDto`, so a profile edit must never clear the stored hash.

@@ -90,9 +90,11 @@ abstract class AdminApiService {
   /// password crosses the wire.
   Future<UserDto> createUser(CreateUserRequest request);
 
-  /// `adminUpdateUser` — `PUT /admin/users/{id}`. [user] carries the mutable
-  /// profile/status fields (no password); its `id` is the addressed account
-  /// (the `{id}` path capture binds onto `UserDto.id` via `urlParameterMapping`).
+  /// `adminUpdateUser` — `PUT /admin/users`. [user] carries the mutable
+  /// profile/status fields (no password) *and* its `id`, which is the addressed
+  /// account. The URI is the bare collection because the body already names the
+  /// subject: a `PUT /admin/users/{id}` would let one request name two accounts.
+  /// See `TomApiEndpoint.urlParameterMapping`.
   Future<UserDto> updateUser(UserDto user);
 
   /// `adminDeleteUser` — `DELETE /admin/users/{id}`. The `{id}` path capture
@@ -105,9 +107,9 @@ abstract class AdminApiService {
   /// `adminCreateRole` — `POST /admin/roles`.
   Future<RoleDto> createRole(RoleDto role);
 
-  /// `adminUpdateRole` — `PUT /admin/roles/{key}`. [role] carries the mutable
-  /// name; its `key` is the addressed role (the `{key}` path capture binds onto
-  /// `RoleDto.key` via `urlParameterMapping`).
+  /// `adminUpdateRole` — `PUT /admin/roles`. [role] carries the mutable name
+  /// and its `key`, which is the addressed role. Bare collection for the same
+  /// reason as [updateUser].
   Future<RoleDto> updateRole(RoleDto role);
 
   /// `adminDeleteRole` — `DELETE /admin/roles/{key}`. The `{key}` path capture
@@ -120,9 +122,9 @@ abstract class AdminApiService {
   /// `adminCreateGroup` — `POST /admin/groups`.
   Future<GroupDto> createGroup(GroupDto group);
 
-  /// `adminUpdateGroup` — `PUT /admin/groups/{id}` (name + membership). Its `id`
-  /// is the addressed group (the `{id}` path capture binds onto `GroupDto.id`
-  /// via `urlParameterMapping`).
+  /// `adminUpdateGroup` — `PUT /admin/groups` (name + membership). Its `id` is
+  /// the addressed group. Bare collection for the same reason as
+  /// [updateUser].
   Future<GroupDto> updateGroup(GroupDto group);
 
   /// `adminDeleteGroup` — `DELETE /admin/groups/{id}`. The `{id}` path capture
@@ -172,12 +174,13 @@ abstract class AppApiService {
   /// and an explicit C-5 owner grant is recorded (mirroring `createProject`).
   Future<Workspace> createWorkspace(Workspace workspace);
 
-  /// `appUpdateWorkspace` — `PUT /workspaces/{id}`. **Owner-only by
-  /// construction**: the update routes through the framework CRUD repository,
-  /// whose `@TomDbScope` write enforcement rejects an update to a workspace the
+  /// `appUpdateWorkspace` — `PUT /workspaces`. **Owner-only by construction**:
+  /// the update routes through the framework CRUD repository, whose
+  /// `@TomDbScope` write enforcement rejects an update to a workspace the
   /// caller does not own with a `TomDataScopeAuthorizationException` — the app
-  /// server maps that to **403**. The `{id}`
-  /// path capture binds onto `Workspace.id` via `urlParameterMapping`.
+  /// server maps that to **403**. Bare collection: `Workspace.id` in the body is
+  /// the addressed workspace, so the URI does not restate it. See
+  /// `TomApiEndpoint.urlParameterMapping`.
   Future<Workspace> updateWorkspace(Workspace workspace);
 
   /// `appDeleteWorkspace` — `DELETE /workspaces/{id}`. Owner-only by the same
@@ -215,9 +218,9 @@ abstract class AppApiService {
   /// grade is not `full` on.
   Future<TodoItem> createItem(TodoItem item);
 
-  /// `appUpdateItem` — `PUT /items/{id}`. Field-level authorized: a write to a
-  /// field graded below `full` is rejected. The `{id}` path capture binds onto
-  /// `TodoItem.id` via `urlParameterMapping`.
+  /// `appUpdateItem` — `PUT /items`. Field-level authorized: a write to a
+  /// field graded below `full` is rejected. Bare collection: `TodoItem.id` in
+  /// the body is the addressed item.
   Future<TodoItem> updateItem(TodoItem item);
 
   /// `appDeleteItem` — `DELETE /items/{id}` (owner/editor only). The `{id}` path
@@ -244,9 +247,11 @@ abstract class AppApiService {
   /// comment on it). The `{id}` path capture binds onto `Subtask.itemId`.
   Future<Subtask> addSubtask(Subtask subtask);
 
-  /// `appUpdateSubtask` — `PUT /subtasks/{id}` (editor and above). Used to
-  /// toggle `done`; the gate is resolved from the *parent item*, so a subtask
-  /// can never be edited by someone who could not edit the item it belongs to.
+  /// `appUpdateSubtask` — `PUT /subtasks` (editor and above). Used to toggle
+  /// `done`; the gate is resolved from the *parent item*, so a subtask can
+  /// never be edited by someone who could not edit the item it belongs to. Bare
+  /// collection: `Subtask.id` in the body is the addressed subtask, and it is
+  /// the subtask's *own* id — the parent link is server-owned.
   Future<Subtask> updateSubtask(Subtask subtask);
 
   /// `appShare` — `POST /share`. Owner shares a resource with a user at a role.

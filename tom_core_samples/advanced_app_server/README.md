@@ -104,15 +104,15 @@ ownership/share and per-field grade are enforced inside the handlers.
 | `GET /status` | public | Typed JSON status (`{status, service}`) |
 | `GET /health` | public | Framework plain-text liveness probe (`OK`) — auto-mounted |
 | `GET /workspaces` · `POST /workspaces` | authenticated | List (owner-scoped) / create a workspace |
-| `PUT /workspaces/{id}` · `DELETE /workspaces/{id}` | authenticated | Update / delete a workspace (owner-scoped at the database) |
+| `PUT /workspaces` · `DELETE /workspaces/{id}` | authenticated | Update / delete a workspace (owner-scoped at the database) |
 | `GET /projects` · `POST /projects` | authenticated | List / create a project (workspace owner/editor) |
 | `GET /lists` | authenticated | Lists the caller can reach |
 | `GET /items` · `POST /items` | authenticated | List / create items (create: editor+, field-graded) |
-| `PUT /items/{id}` · `DELETE /items/{id}` | authenticated | Update (field-graded) / delete (editor+) an item |
+| `PUT /items` · `DELETE /items/{id}` | authenticated | Update (field-graded) / delete (editor+) an item |
 | `GET /attachments` | authenticated | Attachment descriptors for the visible items of a list |
 | `GET /items/{id}/comments` · `POST /items/{id}/comments` | authenticated | Read / add a comment on an item (add: commenter+) |
 | `GET /items/{id}/subtasks` · `POST /items/{id}/subtasks` | authenticated | Read / add a checklist step (add: editor+) |
-| `PUT /subtasks/{id}` | authenticated | Update a checklist step (editor+) |
+| `PUT /subtasks` | authenticated | Update a checklist step (editor+) |
 | `GET /resource-roles` | authenticated | The caller's flat `resourceKey → roleName` map (client grades fields locally) |
 | `GET /resources` | authenticated | The app client's text resource bundle |
 | `POST /share` | authenticated | **Owner-only** — grant a user a role on a resource |

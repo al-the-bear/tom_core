@@ -379,12 +379,14 @@ void main() {
       expect((jsonDecode(call.body!) as Map)['title'], 'c');
     });
 
-    test('TC-24-19: updateSubtask PUTs to the subtask, not the item', () async {
-      // The update is addressed by the subtask's *own* id: the parent link is
-      // server-owned, so the client never re-states it in the URL.
+    test('TC-24-19: updateSubtask addresses the subtask, not the item', () async {
+      // The update is addressed by the subtask's *own* id, and the parent link
+      // is server-owned. Since the endpoint is a bare-collection PUT, the body
+      // is where the address lives — so that is where this asserts it, rather
+      // than in the URL.
       storeBearer();
       final transport = _RoutingTransport({
-        '/subtasks/9': [
+        '/subtasks': [
           HttpJsonResponse(
             200,
             jsonEncode({'id': '9', 'itemId': '11', 'title': 'c', 'done': true}),
@@ -401,7 +403,11 @@ void main() {
       );
 
       expect(saved.done.get(), isTrue);
-      expect(transport.callsTo('/subtasks/9').single.method, 'PUT');
+      final call = transport.callsTo('/subtasks').single;
+      expect(call.method, 'PUT');
+      // The URL names no subject at all, so it cannot disagree with the body.
+      expect(call.uri.path, '/subtasks');
+      expect((jsonDecode(call.body!) as Map)['id'], '9');
     });
 
     test(

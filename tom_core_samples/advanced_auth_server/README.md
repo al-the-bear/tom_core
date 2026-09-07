@@ -99,11 +99,11 @@ request and exposes it through `GET /resource-roles`, which the client reads.
 | `GET /auth/me` | authenticated | The caller's `UserDto` |
 | `POST /auth/logout` | authenticated | No-op (stateless JWT) |
 | `GET /admin/users` · `POST /admin/users` | admin | List / create users |
-| `PUT /admin/users/{id}` · `DELETE /admin/users/{id}` | admin | Update / delete a user |
+| `PUT /admin/users` · `DELETE /admin/users/{id}` | admin | Update / delete a user |
 | `GET /admin/roles` · `POST /admin/roles` | admin | List / create roles |
-| `PUT /admin/roles/{key}` · `DELETE /admin/roles/{key}` | admin | Rename / delete a role |
+| `PUT /admin/roles` · `DELETE /admin/roles/{key}` | admin | Rename / delete a role |
 | `GET /admin/groups` · `POST /admin/groups` | admin | List / create groups |
-| `PUT /admin/groups/{id}` · `DELETE /admin/groups/{id}` | admin | Update / delete a group |
+| `PUT /admin/groups` · `DELETE /admin/groups/{id}` | admin | Update / delete a group |
 | `GET /admin/grants` · `PUT /admin/grants` | admin | Read / write the `(role, resourceKey) → TomAuthState` matrix |
 | `POST /admin/assignments` | admin | Assign a user to a role and/or group |
 | `GET /admin/resources` | admin | The admin console's resource bundle |

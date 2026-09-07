@@ -128,7 +128,7 @@ class AdminApiClient implements AdminApiService {
   Future<UserDto> updateUser(UserDto user) async => parseUser(
     (await _send(
       'PUT',
-      '/admin/users/${user.id}',
+      '/admin/users',
       body: dtoToJsonString(user),
     )).jsonObject,
   );
@@ -156,7 +156,7 @@ class AdminApiClient implements AdminApiService {
   Future<RoleDto> updateRole(RoleDto role) async => parseRole(
     (await _send(
       'PUT',
-      '/admin/roles/${role.key}',
+      '/admin/roles',
       body: dtoToJsonString(role),
     )).jsonObject,
   );
@@ -184,7 +184,7 @@ class AdminApiClient implements AdminApiService {
   Future<GroupDto> updateGroup(GroupDto group) async => parseGroup(
     (await _send(
       'PUT',
-      '/admin/groups/${group.id}',
+      '/admin/groups',
       body: dtoToJsonString(group),
     )).jsonObject,
   );

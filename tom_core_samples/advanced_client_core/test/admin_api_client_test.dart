@@ -300,11 +300,13 @@ void main() {
     );
 
     test(
-      'TC-25-13: updateRole PUTs /admin/roles/{key} and parses the result',
+      'TC-25-13: updateRole PUTs the collection, addressing by body key',
       () async {
+        // A bare-collection PUT: the addressed role is `RoleDto.key` in the
+        // body and nowhere else, so no request can name two roles.
         storeAdminBearer();
         final transport = _RoutingTransport({
-          '/admin/roles/editor': [
+          '/admin/roles': [
             HttpJsonResponse(
               200,
               jsonEncode({'key': 'editor', 'name': 'Editor (renamed)'}),
@@ -318,7 +320,10 @@ void main() {
         );
 
         expect(role.name, 'Editor (renamed)');
-        expect(transport.callsTo('/admin/roles/editor').single.method, 'PUT');
+        final call = transport.callsTo('/admin/roles').single;
+        expect(call.method, 'PUT');
+        expect(call.uri.path, '/admin/roles');
+        expect((jsonDecode(call.body!) as Map)['key'], 'editor');
       },
     );
   });
