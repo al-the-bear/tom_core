@@ -1968,11 +1968,9 @@ condition can occur on more than one type without ambiguity.
 | `observable.class_initialization.could_not_register_superclass_members` | Registering inherited members for observation failed |
 | `observable.class_set_values.member_assignment_failed` | A member rejected the value `setValues` offered it |
 | `observable.class_set_map_member.not_a_map` | A `TomMap` member was given something other than a `Map` |
-| `observable.class_set_map_member.invalid_list_type` | A list inside a map member holds a type that is neither `TomObject` nor `TomClass` |
 | `observable.class_set_map_member.invalid_element_type` | A map member's element cannot be deserialized from the value given |
 | `observable.class_set_list_member.not_a_list` | A `TomList` member was given something other than a `List` |
 | `observable.class_set_list_member.not_a_map` | A list member's `TomClass` element was given something other than a `Map` |
-| `observable.class_set_list_member.invalid_list_type` | A list member holds a type that is neither `TomObject` nor `TomClass` |
 | `observable.class_set_list_member.invalid_element_type` | A list member's element deserializes to the wrong type |
 | `observable.class_get_values.member_serialization_failed` | A member threw while `getValues` was reading it |
 

@@ -1025,6 +1025,59 @@ void main() {
     });
   });
 
+  group('the member-deserialization type test is the narrow one', () {
+    // `_setListMember` and `_setMapMember` decide whether a collection element
+    // is built reflectively as a TomClass or handed to the value path, and the
+    // question they ask has to be `isSubtypeOf`. These tests pin the reason,
+    // which lives in `tom_reflection` rather than at the call site: if
+    // `isAssignableTo` ever stopped being bidirectional, the comment there
+    // would be describing a hazard that no longer exists, and this group is
+    // where that shows.
+
+    ClassMirror mirrorOf(Type type) =>
+        tomReflector.reflectType(type) as ClassMirror;
+
+    test('isAssignableTo answers yes for a supertype of TomClass', () {
+      // The trap. TomObject is TomClass's superclass, so it is *not* a
+      // TomClass — but `isAssignableTo` is `a.isSubtypeOf(b) ||
+      // b.isSubtypeOf(a)`, and the second half is true.
+      expect(
+        mirrorOf(TomObject).isAssignableTo(mirrorOf(TomClass)),
+        isTrue,
+        reason: 'if this is false the bidirectional rule has changed',
+      );
+    });
+
+    test('isSubtypeOf answers no for the same supertype', () {
+      expect(mirrorOf(TomObject).isSubtypeOf(mirrorOf(TomClass)), isFalse);
+    });
+
+    test('both answer yes for TomClass itself', () {
+      // The narrowing must not cost the case the branch exists for.
+      expect(mirrorOf(TomClass).isSubtypeOf(mirrorOf(TomClass)), isTrue);
+      expect(mirrorOf(TomClass).isAssignableTo(mirrorOf(TomClass)), isTrue);
+    });
+
+    test('an unrelated TomObject subtype is refused by both', () {
+      expect(mirrorOf(TomString).isSubtypeOf(mirrorOf(TomClass)), isFalse);
+      expect(mirrorOf(TomString).isAssignableTo(mirrorOf(TomClass)), isFalse);
+    });
+
+    test(
+      'the wide test would have reached a constructor that is not there',
+      () {
+        // Why the difference is not academic: taken down the TomClass branch,
+        // TomObject is asked for the unnamed constructor the generator did not
+        // give it, and the caller sees a reflection error naming neither the
+        // member nor the payload.
+        expect(
+          () => mirrorOf(TomObject).newInstance('', []),
+          throwsA(isA<ReflectionNoSuchMethodError>()),
+        );
+      },
+    );
+  });
+
   group('TomList', () {
     test('creates empty list', () {
       final list = TomList<TomInt>();

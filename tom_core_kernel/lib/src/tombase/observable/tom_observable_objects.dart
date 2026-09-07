@@ -1244,22 +1244,20 @@ class TomClass extends TomObject<Map<String, TomObject>>
           : tomReflectionInfo.mapValueElementType(member);
       for (var key in value.keys) {
         var element = value[key];
+        // `isSubtypeOf`, not `isAssignableTo`: the latter is deliberately
+        // bidirectional (`a.isSubtypeOf(b) || b.isSubtypeOf(a)`), so a
+        // *supertype* of TomClass passes it too — `TomObject` does — and the
+        // instance this branch then constructs is not a TomClass at all. Asked
+        // the narrow way, the cast below cannot fail.
         if (memberMirror != null &&
-            memberMirror.isAssignableTo(TomClass._classMirror)) {
-          var obj = memberMirror.newInstance("", []);
-          if (obj is TomClass) {
-            if (element is Map<String, dynamic>) {
-              obj.setValues(element);
-            } else {
-              throw TomObservableException(
-                "observable.class_set_map_member.invalid_element_type",
-                "TomClass elements of type ${memberMirror.simpleName} must be deserialized from Map objects but found ${element.runtimeType}",
-              );
-            }
+            memberMirror.isSubtypeOf(TomClass._classMirror)) {
+          final obj = memberMirror.newInstance("", []) as TomClass;
+          if (element is Map<String, dynamic>) {
+            obj.setValues(element);
           } else {
             throw TomObservableException(
-              "observable.class_set_map_member.invalid_list_type",
-              "Only lists with TomObject or TomClass types are allowed. Found ${obj.runtimeType}",
+              "observable.class_set_map_member.invalid_element_type",
+              "TomClass elements of type ${memberMirror.simpleName} must be deserialized from Map objects but found ${element.runtimeType}",
             );
           }
           member[key] = obj;
@@ -1299,22 +1297,17 @@ class TomClass extends TomObject<Map<String, TomObject>>
         : tomReflectionInfo.singleElementType(member);
     final newElements = <TomObject<dynamic>>[];
     for (var element in value) {
+      // See `_setMapMember` for why this asks `isSubtypeOf` rather than
+      // `isAssignableTo`.
       if (memberMirror != null &&
-          memberMirror.isAssignableTo(TomClass._classMirror)) {
-        var obj = memberMirror.newInstance("", []);
-        if (obj is TomClass) {
-          if (element is Map<String, dynamic>) {
-            obj.setValues(element);
-          } else {
-            throw TomObservableException(
-              "observable.class_set_list_member.not_a_map",
-              "TomClass elements of type ${memberMirror.simpleName} must be deserialized from Map objects but found ${element.runtimeType}",
-            );
-          }
+          memberMirror.isSubtypeOf(TomClass._classMirror)) {
+        final obj = memberMirror.newInstance("", []) as TomClass;
+        if (element is Map<String, dynamic>) {
+          obj.setValues(element);
         } else {
           throw TomObservableException(
-            "observable.class_set_list_member.invalid_list_type",
-            "Only lists with TomObject or TomClass types are allowed. Found ${obj.runtimeType}",
+            "observable.class_set_list_member.not_a_map",
+            "TomClass elements of type ${memberMirror.simpleName} must be deserialized from Map objects but found ${element.runtimeType}",
           );
         }
         newElements.add(obj);
