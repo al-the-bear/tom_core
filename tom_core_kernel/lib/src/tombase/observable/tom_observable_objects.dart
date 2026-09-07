@@ -864,7 +864,19 @@ class TomNOZonedDateTime extends TomNOTimezoned<TomZonedDateTime?> {
 
 /// An observable date range with start and end dates.
 ///
-/// Both dates are nullable [TomNOZonedDate] values, allowing open-ended ranges.
+/// Both dates are nullable [TomNOZonedDate] values, allowing open-ended
+/// ranges, and a fresh range holds `null` at both ends.
+///
+/// `null` rather than the `noZonedDate` epoch sentinel, because the two
+/// families answer "no value" differently and these members belong to the
+/// nullable one: [TomOZonedDate.setByString] turns an empty `@D@` into the
+/// sentinel, [TomNOZonedDate.setByString] turns it into `null`. Initialising a
+/// nullable member with the other family's sentinel gave a range two distinct
+/// empty states — a fresh one where [TomObject.isNull] answered `false`, and
+/// one deserialized from an empty marker where it answered `true` — so a
+/// consumer branching on `isNull` got different answers for two ranges that
+/// were both unset, and a fresh range serialized two timestamps nobody had
+/// entered.
 ///
 /// Example:
 /// ```dart
@@ -877,39 +889,43 @@ class TomNOZonedDateTime extends TomNOTimezoned<TomZonedDateTime?> {
 /// ```
 @tomReflector
 class TomDateRange extends TomClass {
-  /// The start date of the range (nullable).
-  TomNOZonedDate startDate = TomNOZonedDate(TomNOZonedDate.noZonedDate);
+  /// The start date of the range, or `null` when the range is open at the
+  /// start.
+  TomNOZonedDate startDate = TomNOZonedDate(null);
 
-  /// The end date of the range (nullable).
-  TomNOZonedDate endDate = TomNOZonedDate(TomNOZonedDate.noZonedDate);
+  /// The end date of the range, or `null` when the range is open at the end.
+  TomNOZonedDate endDate = TomNOZonedDate(null);
 }
 
 /// An observable time range with start and end times.
 ///
-/// Both times are nullable [TomNOZonedTime] values, allowing open-ended ranges.
+/// Both times are nullable [TomNOZonedTime] values, allowing open-ended
+/// ranges. A fresh range holds `null` at both ends — see [TomDateRange] for
+/// why that is `null` and not the epoch sentinel.
 @tomReflector
 class TomTimeRange extends TomClass {
-  /// The start time of the range (nullable).
-  TomNOZonedTime startTime = TomNOZonedTime(TomNOZonedTime.noZonedTime);
+  /// The start time of the range, or `null` when the range is open at the
+  /// start.
+  TomNOZonedTime startTime = TomNOZonedTime(null);
 
-  /// The end time of the range (nullable).
-  TomNOZonedTime endTime = TomNOZonedTime(TomNOZonedTime.noZonedTime);
+  /// The end time of the range, or `null` when the range is open at the end.
+  TomNOZonedTime endTime = TomNOZonedTime(null);
 }
 
 /// An observable datetime range with start and end datetimes.
 ///
-/// Both datetimes are nullable [TomNOZonedDateTime] values, allowing open-ended ranges.
+/// Both datetimes are nullable [TomNOZonedDateTime] values, allowing
+/// open-ended ranges. A fresh range holds `null` at both ends — see
+/// [TomDateRange] for why that is `null` and not the epoch sentinel.
 @tomReflector
 class TomDateTimeRange extends TomClass {
-  /// The start datetime of the range (nullable).
-  TomNOZonedDateTime startDateTime = TomNOZonedDateTime(
-    TomNOZonedDateTime.noZonedDateTime,
-  );
+  /// The start datetime of the range, or `null` when the range is open at the
+  /// start.
+  TomNOZonedDateTime startDateTime = TomNOZonedDateTime(null);
 
-  /// The end datetime of the range (nullable).
-  TomNOZonedDateTime endDateTime = TomNOZonedDateTime(
-    TomNOZonedDateTime.noZonedDateTime,
-  );
+  /// The end datetime of the range, or `null` when the range is open at the
+  /// end.
+  TomNOZonedDateTime endDateTime = TomNOZonedDateTime(null);
 }
 
 /// A base class for complex observable objects with multiple [TomObject] members.

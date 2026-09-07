@@ -769,15 +769,24 @@ final observer = event >> (obs) => print("Event modified!");
 event.removeObserver(observer);
 ```
 
-A freshly constructed range is not empty — both ends are seeded with the "no
-value" sentinel of the matching type, described next.
+A freshly constructed range is empty: both ends hold `null`, so
+`range.startDate.isNull` answers `true` until a value is written, and a range
+that has never been filled in serializes as the bare prefix rather than as two
+timestamps nobody entered. Writing one end leaves the other `null`, which is
+how a half-open range is expressed.
+
+`null` and not the "no value" sentinel described next, because the range
+members are declared with the *nullable* wrappers and the two families answer
+"no value" differently — `TomOZonedDate.setByString` turns an empty `@D@` into
+the sentinel, `TomNOZonedDate.setByString` turns it into `null`. The sentinel
+is for a field that *cannot* hold `null`.
 
 ### The "no value" sentinels
 
 Each date/time type carries a sentinel meaning "no value", for code that needs
-a placeholder but cannot use `null` (a non-nullable field, or a range end that
-must always hold an object). They come in pairs: a **plain** one holding the
-bare value, and an **observable** one already wrapped.
+a placeholder but cannot use `null` — a non-nullable field, most often. They
+come in pairs: a **plain** one holding the bare value, and an **observable** one
+already wrapped.
 
 | Type | Plain sentinel | Observable sentinel |
 |------|----------------|---------------------|

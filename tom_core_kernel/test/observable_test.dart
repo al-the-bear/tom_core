@@ -2094,6 +2094,63 @@ void main() {
     });
   });
 
+  group('a fresh range is empty at both ends', () {
+    // The members are declared with the *nullable* wrappers, so `isNull` is
+    // the question a consumer asks to find out whether a range has been filled
+    // in — form validation, query building, wire serialization all branch on
+    // it. It used to answer `false` for a range nobody had touched, because
+    // the members were initialised with the epoch sentinel that belongs to the
+    // non-nullable family.
+
+    test('TomDateRange starts null at both ends', () {
+      final range = TomDateRange();
+      expect(range.startDate.isNull, isTrue);
+      expect(range.endDate.isNull, isTrue);
+    });
+
+    test('TomTimeRange starts null at both ends', () {
+      final range = TomTimeRange();
+      expect(range.startTime.isNull, isTrue);
+      expect(range.endTime.isNull, isTrue);
+    });
+
+    test('TomDateTimeRange starts null at both ends', () {
+      final range = TomDateTimeRange();
+      expect(range.startDateTime.isNull, isTrue);
+      expect(range.endDateTime.isNull, isTrue);
+    });
+
+    test('a fresh range serializes no timestamp', () {
+      // The epoch initialisation put two dates on the wire that nobody had
+      // entered. An empty range now carries the bare prefix.
+      final range = TomDateRange();
+      expect(range.toJson(), equals({'startDate': '@D@', 'endDate': '@D@'}));
+    });
+
+    test('an empty range survives its own round trip', () {
+      // The two empty states were not interchangeable: the constructor gave
+      // the epoch and an empty `@D@` off the wire gave null, so a fresh range
+      // and a deserialized empty one disagreed about `isNull`. They agree now,
+      // which is what makes the round trip meaningful rather than lossy.
+      final source = TomDateRange();
+      final restored = TomDateRange()..setValues(source.getValues());
+
+      expect(restored.startDate.isNull, isTrue);
+      expect(restored.endDate.isNull, isTrue);
+      expect(restored.toJson(), equals(source.toJson()));
+    });
+
+    test('writing one end leaves the other null', () {
+      // The point of the nullable declaration: a half-open range is a range,
+      // not a range with a 1970 end.
+      final range = TomDateRange();
+      range.startDate | TomZonedDate.fromDateTime(DateTime.utc(2024, 1, 1));
+
+      expect(range.startDate.isNull, isFalse);
+      expect(range.endDate.isNull, isTrue);
+    });
+  });
+
   group('TomDateRange', () {
     test('has start and end dates', () {
       final range = TomDateRange();
@@ -4948,26 +5005,23 @@ void main() {
       );
     });
 
-    test('the range classes default to the epoch on both ends', () {
-      // The three range classes seed both ends from the plain zoned family,
-      // so they inherit whatever those sentinels denote.
-      final dates = TomDateRange();
-      expectEpoch('TomDateRange().startDate', dates.startDate.get()!);
-      expectEpoch('TomDateRange().endDate', dates.endDate.get()!);
+    test('the sentinel is for fields that cannot hold null', () {
+      // The boundary of the convention, asserted here because it is the thing
+      // most easily got wrong: the sentinel answers "no value" for the
+      // *non-nullable* family, and the range classes are not in it. Their
+      // members are declared with the nullable wrappers, so their empty state
+      // is null — see the group `a fresh range is empty at both ends`. Seeding
+      // them from the sentinel instead gave a range two empty states that
+      // disagreed about isNull.
+      expect(TomDateRange().startDate.isNull, isTrue);
+      expect(TomTimeRange().startTime.isNull, isTrue);
+      expect(TomDateTimeRange().startDateTime.isNull, isTrue);
 
-      final times = TomTimeRange();
-      expectEpoch('TomTimeRange().startTime', times.startTime.get()!);
-      expectEpoch('TomTimeRange().endTime', times.endTime.get()!);
-
-      final dateTimes = TomDateTimeRange();
-      expectEpoch(
-        'TomDateTimeRange().startDateTime',
-        dateTimes.startDateTime.get()!,
-      );
-      expectEpoch(
-        'TomDateTimeRange().endDateTime',
-        dateTimes.endDateTime.get()!,
-      );
+      // Written explicitly, the sentinel still denotes the epoch in a nullable
+      // holder — nothing about the value changed, only what a fresh range
+      // starts out holding.
+      final holder = TomNOZonedDate(TomNOZonedDate.noZonedDate);
+      expectEpoch('an explicitly seeded TomNOZonedDate', holder.get()!);
     });
 
     test('a sentinel serializes to the epoch on the wire', () {
@@ -4975,7 +5029,10 @@ void main() {
       // read by another is worse than no sentinel: the reader silently sees a
       // real date rather than "no value". The wire form is UTC-stamped, so it
       // is enough to pin the instant it carries.
-      final written = TomDateRange();
+      // Seeded explicitly: a fresh range holds null, which is a different
+      // question (asserted in `a fresh range is empty at both ends`). What
+      // this test is for is the instant a *sentinel* carries once written.
+      final written = TomDateRange()..startDate.set(TomNOZonedDate.noZonedDate);
 
       final wire = written.getValues()['startDate'] as String;
 
@@ -4989,7 +5046,9 @@ void main() {
     });
 
     test('a sentinel survives a round trip through a TomClass', () {
-      final written = TomDateRange();
+      final written = TomDateRange()
+        ..startDate.set(TomNOZonedDate.noZonedDate)
+        ..endDate.set(TomNOZonedDate.noZonedDate);
       final read = TomDateRange();
 
       read.setValues(written.getValues());

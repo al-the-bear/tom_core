@@ -653,7 +653,7 @@ TomNOZonedDateTime(TomZonedDateTime? initialValue)
 
 ### TomDateRange
 
-Observable date range with nullable start and end dates.
+Observable date range with nullable start and end dates. Both ends of a fresh range are `null`.
 
 - **Extends:** `TomClass`
 
@@ -667,12 +667,12 @@ TomDateRange()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `startDate` | `TomNOZonedDate` | The start date of the range (nullable). |
-| `endDate` | `TomNOZonedDate` | The end date of the range (nullable). |
+| `startDate` | `TomNOZonedDate` | The start date of the range, or `null` when the range is open at the start. |
+| `endDate` | `TomNOZonedDate` | The end date of the range, or `null` when the range is open at the end. |
 
 ### TomTimeRange
 
-Observable time range with nullable start and end times.
+Observable time range with nullable start and end times. Both ends of a fresh range are `null`.
 
 - **Extends:** `TomClass`
 
@@ -686,12 +686,12 @@ TomTimeRange()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `startTime` | `TomNOZonedTime` | The start time of the range (nullable). |
-| `endTime` | `TomNOZonedTime` | The end time of the range (nullable). |
+| `startTime` | `TomNOZonedTime` | The start time of the range, or `null` when the range is open at the start. |
+| `endTime` | `TomNOZonedTime` | The end time of the range, or `null` when the range is open at the end. |
 
 ### TomDateTimeRange
 
-Observable datetime range with nullable start and end datetimes.
+Observable datetime range with nullable start and end datetimes. Both ends of a fresh range are `null`.
 
 - **Extends:** `TomClass`
 
@@ -705,8 +705,8 @@ TomDateTimeRange()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `startDateTime` | `TomNOZonedDateTime` | The start datetime of the range (nullable). |
-| `endDateTime` | `TomNOZonedDateTime` | The end datetime of the range (nullable). |
+| `startDateTime` | `TomNOZonedDateTime` | The start datetime of the range, or `null` when the range is open at the start. |
+| `endDateTime` | `TomNOZonedDateTime` | The end datetime of the range, or `null` when the range is open at the end. |
 
 ### TomClass
 

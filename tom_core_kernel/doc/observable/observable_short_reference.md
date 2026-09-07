@@ -267,7 +267,7 @@ Nullable types deserialize to `null` when the serialized string has only the pre
 | `TomTimeRange` | `startTime`, `endTime` (`TomNOZonedTime`) | Observable start/end time pair |
 | `TomDateTimeRange` | `startDateTime`, `endDateTime` (`TomNOZonedDateTime`) | Observable start/end datetime pair |
 
-All range types extend `TomClass` and their members are automatically registered for observation via reflection. Both ends of a fresh range hold the "no value" sentinel of the matching type.
+All range types extend `TomClass` and their members are automatically registered for observation via reflection. Both ends of a fresh range hold `null` — the members are the nullable wrappers, so `isNull` is `true` until a value is written, and a half-open range is one end written and the other left alone. Not the "no value" sentinel below: that is for fields which cannot hold `null`.
 
 ---
 
