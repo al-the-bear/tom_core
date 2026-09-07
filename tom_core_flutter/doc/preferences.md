@@ -158,7 +158,9 @@ components instead and lets the four-tier selection choose:
 @tomReflector
 @TomComponent(TomDevicePreferences)
 @platformIos
-class IosDevicePreferences extends TomStoredDevicePreferences { … }
+class IosDevicePreferences extends TomStoredDevicePreferences {
+  IosDevicePreferences(super.store);
+}
 ```
 
 The framework ships **no** default component. A default would have to be the

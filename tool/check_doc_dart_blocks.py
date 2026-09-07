@@ -96,10 +96,18 @@ SCRATCH_ROOT = TOOL_DIR / "ztmp" / "doc_dart_blocks"
 #: Packages whose documents are gated -- every one that has been triaged to
 #: zero. A package with a backlog is not listed: adding one here without
 #: repairing it first would pin the backlog in place rather than fix it. Pass a
-#: package name on the command line to survey one ad hoc; `tom_core_server` and
-#: the Flutter-side packages still answer with faults, and the Flutter ones
-#: additionally need a preamble this checker does not yet write.
-PACKAGES = ["tom_core_kernel", "tom_core_agentic", "tom_core_codespecs"]
+#: package name on the command line to survey one ad hoc; `tom_core_server`,
+#: `tom_flutter_ui` and `tom_flutter_ui_test` still answer with faults, and the
+#: last two need a `package:flutter` preamble this checker does not yet write.
+#: `tom_core_flutter` needs no preamble -- its documents are about the binding
+#: layer, not about widgets -- but gating it does mean the scratch package
+#: resolves against the Flutter SDK, so this gate now needs one on PATH.
+PACKAGES = [
+    "tom_core_kernel",
+    "tom_core_agentic",
+    "tom_core_codespecs",
+    "tom_core_flutter",
+]
 
 #: Document subtrees left out, keyed by the reason (see the module docstring).
 #: Two names for one thing: the packages disagree on whether the generated API
@@ -510,7 +518,13 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
     write_scratch(package, [])
     got = run_dart(scratch, "pub", "get")
     if got.returncode != 0:
-        raise SystemExit(got.stdout + got.stderr)
+        # Named, because the likeliest cause is environmental rather than a
+        # document fault: a package that depends on the Flutter SDK cannot be
+        # resolved by a Dart-only toolchain, and a bare pub log does not say
+        # which of the gated packages asked for it.
+        raise SystemExit(
+            f"could not resolve the scratch package for {package.name}:\n"
+            + got.stdout + got.stderr)
 
     # Blocks settle in the first context that parses, so each pass carries only
     # what the previous ones could not place.

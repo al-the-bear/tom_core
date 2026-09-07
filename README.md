@@ -531,11 +531,14 @@ them parse would take a mechanical `;` per block and buy nothing, because a
 declaration never consults the real API and so the second rule could never
 fire. A green light there would be coverage in appearance only.
 
-`tom_core_kernel`, `tom_core_agentic` and `tom_core_codespecs` are triaged to
-zero and gated; `tom_core_server` and the Flutter-side packages still answer
-with faults, and adding one to `PACKAGES` before repairing it would pin that
-backlog in place rather than fix it — run them with the argument in the
-meantime.
+`tom_core_kernel`, `tom_core_agentic`, `tom_core_codespecs` and
+`tom_core_flutter` are triaged to zero and gated; `tom_core_server`,
+`tom_flutter_ui` and `tom_flutter_ui_test` still answer with faults, and adding
+one to `PACKAGES` before repairing it would pin that backlog in place rather
+than fix it — run them with the argument in the meantime. Gating
+`tom_core_flutter` means the scratch package resolves against the Flutter SDK,
+so this gate needs one on PATH; the two `tom_flutter_*` packages need more than
+that, a `package:flutter` preamble the checker does not yet write.
 
 ```bash
 python3 tool/check_section_refs.py                  # the whole repository

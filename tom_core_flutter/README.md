@@ -222,8 +222,8 @@ name | 'Grace'; // widget now shows "Grace"
 ### Reading typed configuration
 
 ```dart
-final timeout = TomIntProperty('http.timeoutSeconds');
-final seconds = timeout.withDefault(30); // falls back when unset
+final timeout = TomIntProperty.withDefault('http.timeoutSeconds', 30);
+final seconds = ~timeout; // 30 when the key is unset
 ```
 
 ### Holding this install's settings
