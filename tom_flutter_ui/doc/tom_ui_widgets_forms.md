@@ -2676,11 +2676,23 @@ class CustomerMasterDetail {
 
 class CustomerScreenState extends State<CustomerScreen> {
   final customerForm = CustomerForm(formId: 'customerDetail');
+  late final TomFunctionObserver<TomNInt> _selectionObserver;
 
   @override
   void initState() {
     super.initState();
-    masterDetail.selectedIndex >> (_) => _onSelectionChanged();
+    // Held in a field, not left on initState's stack: observers are weakly
+    // referenced, so a discarded wrapper stops firing at the next collection —
+    // which typically means the screen works in development and goes deaf
+    // under memory pressure.
+    _selectionObserver =
+        masterDetail.selectedIndex >> (_) => _onSelectionChanged();
+  }
+
+  @override
+  void dispose() {
+    masterDetail.selectedIndex.removeObserver(_selectionObserver);
+    super.dispose();
   }
 
   void _onSelectionChanged() {

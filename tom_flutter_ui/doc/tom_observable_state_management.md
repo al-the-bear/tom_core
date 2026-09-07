@@ -124,14 +124,26 @@ Wraps a closure as a `TomObserver`, enabling the `>>` operator syntax:
 ```dart
 final counter = Counter();
 
-// These are equivalent:
-counter >> (obs) => print('Changed!');
+// `>>` wraps the callback, registers it, and hands the wrapper back. Doing
+// it by hand is the same two steps:
+final observer = counter >> (obs) => print('Changed!');
 
-final observer = TomFunctionObserver<Counter>((obs) => print('Changed!'));
-counter.addObserver(observer);
+final byHand = TomFunctionObserver<Counter>((obs) => print('Changed!'));
+counter.addObserver(byHand);
+
+// Registration is keyed on identity, so these are two observers and both
+// fire. Either way, keep the wrapper for as long as you want notifications,
+// and end each observation with it:
+counter.removeObserver(observer);
+counter.removeObserver(byHand);
 ```
 
-The `>>` operator returns the `TomFunctionObserver`, allowing the caller to keep a reference for later removal.
+The `>>` operator returns the `TomFunctionObserver`, and the caller **must**
+keep it. It is the only strong reference to the callback — see [Memory
+management](#tomobservable--base-class) above — as well as what
+`removeObserver` needs later. The fire-and-forget form
+`counter >> (obs) => print('Changed!');`, with the result discarded, subscribes
+a callback that stops firing at the next garbage collection.
 
 ### Operator Syntax
 
@@ -150,12 +162,15 @@ String v1 = ~name;        // "John"
 String v2 = name();       // "John"
 String v3 = name.get();   // "John"
 
+// Subscribe — keep the returned observer, or the callback is collected
+final observer = name >> (obs) => print("Changed to: ${~name}");
+
 // Set (triggers notification)
 name | "Jane";
 name.set("Jane");
 
-// Subscribe
-name >> (obs) => print("Changed to: ${~name}");
+// End the observation with the wrapper `>>` handed back
+name.removeObserver(observer);
 ```
 
 ---
@@ -288,9 +303,13 @@ class Customer extends TomClass {
 }
 
 final customer = Customer();
-customer >> (obs) => print("Customer changed!");
+// Retained: the wrapper `>>` returns is the only thing keeping the callback
+// subscribed.
+final customerObserver = customer >> (obs) => print("Customer changed!");
 
 customer.address.city | "Berlin";  // Prints: "Customer changed!"
+
+customer.removeObserver(customerObserver);
 ```
 
 The propagation chain is: `city.notifyObservers()` → `address.onNotify()` → `address.notifyObservers()` → `customer.onNotify()` → `customer.notifyObservers()` → callback fires.
@@ -316,7 +335,7 @@ person.fromJson('{"name": "Bob", "age": 25}');
 ```dart
 final person = Person();
 int count = 0;
-person >> (obs) => count++;
+final personObserver = person >> (obs) => count++;
 
 // Without muting: 3 notifications
 person.name | "A";
@@ -332,6 +351,8 @@ person.age | 2;
 person.isActive | true;
 person.unmute();
 // count == 1
+
+person.removeObserver(personObserver);
 ```
 
 For `TomClass`, `TomList`, and `TomMap`, muting propagates to contained children.
@@ -349,10 +370,12 @@ An observable list that:
 
 ```dart
 final tasks = TomList<Task>();
-tasks >> (obs) => print("Tasks changed!");
+final tasksObserver = tasks >> (obs) => print("Tasks changed!");
 
 tasks.add(Task()..title | "Buy groceries");     // "Tasks changed!"
 tasks[0].title | "Buy organic groceries";        // "Tasks changed!" (element change)
+
+tasks.removeObserver(tasksObserver);
 ```
 
 **Constructors:** `TomList()`, `TomList.from(...)`, `TomList.of(...)`, `TomList.ofList(...)`
@@ -368,10 +391,12 @@ An observable map that:
 
 ```dart
 final users = TomMap<String, User>();
-users >> (obs) => print("Users changed!");
+final usersObserver = users >> (obs) => print("Users changed!");
 
 users['alice'] = User()..name | "Alice";   // "Users changed!"
 users['alice']!.score | 100;                // "Users changed!" (value change)
+
+users.removeObserver(usersObserver);
 ```
 
 **Constructors:** `TomMap()`, `TomMap.from(...)`, `TomMap.of(...)`, `TomMap.ofMap(...)`
