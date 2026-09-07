@@ -1,4 +1,3 @@
-// ignore_for_file: unnecessary_type_check
 /// Advanced Reflection Example
 ///
 /// This example demonstrates advanced reflection techniques including
@@ -191,10 +190,29 @@ class AdvancedReflectionExample {
 
     createdProduct = product1;
 
-    // Assertions
-    assert(product1 is ProductAdvanced, 'Should create ProductAdvanced');
-    assert(product2 is ProductAdvanced, 'Should create ProductAdvanced');
-    assert(product3 is ProductAdvanced, 'Should create ProductAdvanced');
+    // Assertions. Only the middle one of the three is a real check: the
+    // generic call and the ClassMirror call are both statically
+    // `ProductAdvanced` already — one by its type argument, the other by its
+    // cast — so `is` there asks the compiler a question it has already
+    // answered. `createInstance(Type)` is the one that returns dynamic, and so
+    // the one whose `is` can fail.
+    assert(product2 is ProductAdvanced, 'Creating by Type should give one');
+
+    // What the other two can still get wrong is the *runtime* type: a
+    // reflector that handed back a subclass, a stand-in, or a shared instance
+    // would satisfy the static types above and fail here.
+    assert(
+      product1.runtimeType == ProductAdvanced,
+      'The generic call should construct the exact class, not a subtype',
+    );
+    assert(
+      product3.runtimeType == ProductAdvanced,
+      'newInstance should construct the exact class, not a subtype',
+    );
+    assert(
+      !identical(product1, product2) && !identical(product2, product3),
+      'Each call should construct a fresh instance, not return a cached one',
+    );
   }
 
   // -------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-// ignore_for_file: unnecessary_cast
 /// Demonstrates TomUser, TomPrincipal, and TomAccessControlInformation usage.
 library;
 
@@ -135,7 +134,7 @@ class ClientLimitsInfoExample {
     quotas = cli.quotas;
     modulesCount = cli.enabledModules.length;
     hasReporting = cli.enabledModules.contains('reporting');
-    apiQuota = cli.quotas['api_calls_per_day'] as int?;
+    apiQuota = cli.quotas['api_calls_per_day'];
 
     assert(modulesCount == 3, 'Should have 3 modules');
     assert(hasReporting, 'Should have reporting module');

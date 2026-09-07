@@ -1,4 +1,3 @@
-// ignore_for_file: unused_catch_clause
 /// Timezone Lookup Example
 ///
 /// This example demonstrates the various ways to find and look up timezones:
@@ -94,6 +93,7 @@ void run() {
   } on TomTimezoneException catch (e) {
     invalidOffsetThrew = true;
     print('   findTimezone("UTC", 60): Correctly threw exception');
+    print('     ${e.defaultUserMessage}');
     print('     (UTC has offset 0, not 60 minutes)\n');
   }
 

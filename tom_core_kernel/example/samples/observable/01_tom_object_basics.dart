@@ -1,4 +1,3 @@
-// ignore_for_file: unnecessary_type_check
 /// TomObject Basics Example
 ///
 /// This example demonstrates the fundamental features of TomObject:
@@ -42,10 +41,19 @@ class TomObjectBasicsExample {
     print('   Created 5 TomObject instances');
     print('   Types: TomString, TomInt, TomDouble, TomBool, TomDateTime');
 
-    // Assertions
-    assert(name is TomString, 'Should be TomString');
-    assert(age is TomInt, 'Should be TomInt');
-    assert(balance is TomDouble, 'Should be TomDouble');
+    // Assertions. Each wrapper's type is fixed by its declaration at the top
+    // of this class, so asserting `name is TomString` would only restate the
+    // compiler and would still pass if TomString stopped storing anything.
+    // What construction has to get right is that the value handed to the
+    // constructor is the value the wrapper holds.
+    assert(~name == 'John', 'TomString should hold the value it was built with');
+    assert(~age == 25, 'TomInt should hold the value it was built with');
+    assert(~balance == 100.50, 'TomDouble should hold its value');
+    assert(~isActive == true, 'TomBool should hold its value');
+    assert(
+      ~createdAt == DateTime(2024, 1, 15),
+      'TomDateTime should hold its value',
+    );
   }
 
   // -------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-// ignore_for_file: unnecessary_type_check
 /// Demonstrates JSON navigation and manipulation utilities including
 /// deep merging, tree traversal, path-based access, and JSON sanitization.
 library;
@@ -220,7 +219,7 @@ class ObjectFromTreeExample {
 class MapSanitizationExample {
   static int originalEntryCount = 0;
   static int cleanedEntryCount = 0;
-  static bool hasStringKeysOnly = false;
+  static bool everyStringKeySurvived = false;
   static bool cleaningWorks = false;
 
   static void example6MapSanitization() {
@@ -241,15 +240,28 @@ class MapSanitizationExample {
     final cleanMap = makeCleanJsonMap(dirtyMap);
     cleanedEntryCount = cleanMap.length;
 
-    hasStringKeysOnly = cleanMap.keys.every((key) => key is String);
-    cleaningWorks = cleanedEntryCount < originalEntryCount && hasStringKeysOnly;
+    // `makeCleanJsonMap` returns `Map<String, Object?>`, so asking whether its
+    // keys are Strings is a question the return type has already answered —
+    // and so is asking whether the numeric key survived, since it could not
+    // have been stored. What is worth checking is the other half of the
+    // filter: that dropping the numeric key cost nothing else. With the entry
+    // counts asserted below, "every string key survived" pins the outcome
+    // exactly.
+    everyStringKeySurvived = dirtyMap.keys
+        .whereType<String>()
+        .every((key) => cleanMap.containsKey(key));
+    cleaningWorks =
+        cleanedEntryCount < originalEntryCount && everyStringKeySurvived;
 
     assert(originalEntryCount == 7, 'Original should have 7 entries');
     assert(
       cleanedEntryCount == 6,
       'Cleaned should have 6 entries (no numeric key)',
     );
-    assert(hasStringKeysOnly, 'All keys should be strings');
+    assert(
+      everyStringKeySurvived,
+      'Dropping the non-string key should cost no string key',
+    );
     assert(cleaningWorks, 'Cleaning should work');
   }
 }
@@ -352,7 +364,10 @@ void run() {
   print('6. makeCleanJsonMap drops entries JSON cannot represent:');
   print('   entries before  : ${MapSanitizationExample.originalEntryCount}');
   print('   entries after   : ${MapSanitizationExample.cleanedEntryCount}');
-  print('   all keys String : ${MapSanitizationExample.hasStringKeysOnly}');
+  print(
+    '   every string key survived : '
+    '${MapSanitizationExample.everyStringKeySurvived}',
+  );
   print('   cleaning works  : ${MapSanitizationExample.cleaningWorks}');
   print('');
 

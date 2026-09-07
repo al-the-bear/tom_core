@@ -1,4 +1,3 @@
-// ignore_for_file: unnecessary_cast
 /// TomList - Observable Lists Example
 ///
 /// This example demonstrates TomList:
@@ -174,7 +173,7 @@ class TomListExample {
     values[0] | 1.5;
     print('   After values[0] | 1.5: ${~values[0]}');
 
-    print('   values: [${values.map((e) => ~(e as TomDouble)).join(', ')}]');
+    print('   values: [${values.map((e) => ~e).join(', ')}]');
     print('   Total notifications: $modifyCount');
 
     // Assertions
@@ -200,16 +199,16 @@ class TomListExample {
         .append(TomString('banana'))
         .append(TomString('cherry'));
 
-    print('   Before: [${fruits.map((e) => ~(e as TomString)).join(', ')}]');
+    print('   Before: [${fruits.map((e) => ~e).join(', ')}]');
 
     fruits.removeAt(1); // Remove "banana"
     print(
-      '   After removeAt(1): [${fruits.map((e) => ~(e as TomString)).join(', ')}]',
+      '   After removeAt(1): [${fruits.map((e) => ~e).join(', ')}]',
     );
 
     fruits.removeLast();
     print(
-      '   After removeLast: [${fruits.map((e) => ~(e as TomString)).join(', ')}]',
+      '   After removeLast: [${fruits.map((e) => ~e).join(', ')}]',
     );
 
     // Assertions
@@ -231,7 +230,7 @@ class TomListExample {
 
     final combined = list1 + list2;
     print(
-      '   list1 + list2: [${combined.map((e) => ~(e as TomInt)).join(', ')}]',
+      '   list1 + list2: [${combined.map((e) => ~e).join(', ')}]',
     );
 
     // Original lists unchanged
