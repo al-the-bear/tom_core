@@ -87,6 +87,34 @@ coordinator is a deliberate lightweight-tier alternative to the kernel's
 `YamlConfigReader`/`MapFieldReader`/`YamlConfigWriter`) keep their
 existing unit tests.
 
+## Runnable examples
+
+Four programs under [`example/`](example/), one per module that has a surface
+worth driving directly:
+
+| Example | Demonstrates |
+| ------- | ------------ |
+| [`example/placeholders/`](example/placeholders/placeholders_example.dart) | The placeholder forms, both entry points, the lexical scope stack, transitive recursion and the typed failures |
+| [`example/lifecycle_guards/`](example/lifecycle_guards/lifecycle_guards_example.dart) | Cooperative cancellation and the close-guard family |
+| [`example/isolate_streaming/`](example/isolate_streaming/isolate_streaming_example.dart) | Streaming results back across an isolate boundary |
+| [`example/mcp_auth/`](example/mcp_auth/mcp_auth_example.dart) | Bearer-token verification and the principal it resolves |
+
+**Run them with the flag their headers name:**
+
+```bash
+dart run --enable-asserts example/placeholders/placeholders_example.dart
+```
+
+`--enable-asserts` is not optional. Each example states its expectations with
+`assert`, and `dart run` leaves assertions *disabled* — that is what the flag is
+for — so a flagless run prints the same transcript and exits 0 with every
+expectation in it removed. `test/examples_test.dart` holds both halves: it runs
+every example under exactly that command, and it requires every header to name
+it, because a sweep that passes a flag the header omits proves nothing about
+what a reader will see. (`tom_core_server` answers the same question the other
+way, with a helper that throws instead of asserting; either is sound, and
+documenting one while verifying the other is not.)
+
 ## What does NOT live here
 
 Anything brain- or domain-specific. The `sha256:<hex>` prompt-hash
