@@ -649,6 +649,7 @@ def audit_text(text: str, path: Path) -> Report | None:
     measured |= audit_package_inventory(text, report)
     measured |= audit_library_size(text, report)
     measured |= audit_index_sections(text, report)
+    measured |= audit_overview_sections(text, report)
 
     module_match = MODULE_PATH.search(text)
     if module_match is not None:
@@ -1560,6 +1561,66 @@ def audit_index_sections(text: str, report: Report) -> bool:
     return True
 
 
+#: A module heading beneath a project heading.
+OVERVIEW_MODULE = re.compile(r"(?m)^#### `([\w/]+)`\s*$")
+
+#: A submodule tally in a section heading -- `### Changed submodules (15)`.
+#: The number counts the `####` children beneath it, so it is checkable by
+#: counting them and needs no reference to the tree at all.
+OVERVIEW_TALLY = re.compile(r"(?m)^### [^\n(]*\((\d+)\)\s*$")
+
+#: Any heading that closes a `###` section: the next `###` or the next `##`.
+OVERVIEW_BOUNDARY = re.compile(r"(?m)^#{2,3} (?!#)")
+
+def audit_overview_sections(text: str, report: Report) -> bool:
+    """Check the tallies in the overview's own section headings.
+
+    Returns whether the document has such headings at all.
+
+    `### Changed submodules (15)` states how many `####` children follow it.
+    That is a claim about the document's own structure, so no audit that reads
+    the tree can see it and none did: a submodule added or moved leaves the
+    parenthesis behind, and a number in a heading is exactly the thing a reader
+    trusts and never counts.
+
+    It is checkable without reference to the tree at all -- the children are
+    right there -- which is what makes it worth checking and cheap to keep.
+    """
+    tallies = list(OVERVIEW_TALLY.finditer(text))
+    modules = list(OVERVIEW_MODULE.finditer(text))
+    if not tallies and not modules:
+        return False
+
+    # Each tally counts the `####` headings under it, which end at the next
+    # heading of *any* higher level -- not at the next tally. A section without
+    # a parenthesis, or the next project, closes the previous one just as
+    # surely, and bounding by the next tally would silently annex it.
+    boundaries = [m.start() for m in OVERVIEW_BOUNDARY.finditer(text)]
+    for tally in tallies:
+        end = next(
+            (b for b in boundaries if b > tally.start()),
+            len(text),
+        )
+        measured = sum(1 for m in modules if tally.end() < m.start() < end)
+        heading = text[tally.start():text.index("\n", tally.start())].strip()
+        if int(tally.group(1)) != measured:
+            report.faults.append(
+                f"OVERVIEW {heading} states {tally.group(1)}; has {measured}"
+            )
+            report.edits.append(rewrite_groups(tally, {1: str(measured)}))
+
+    # The per-module file counts in the section bodies are deliberately not
+    # audited here. They look unchecked, and they are not: the same sentence is
+    # the index entry for that module's document, so `audit_index_sections`
+    # already measures it against the module. Reading it twice produced two
+    # edits over one span, and `--fix` applying both dropped the sentence's
+    # full stop -- the checker corrupting the document it exists to keep
+    # correct. Verified by perturbing one count with this half removed: the
+    # index audit reports it alone.
+
+    return True
+
+
 #: The numeric claims the self-test proves this checker can still catch.
 #:
 #: Each case names a pattern that finds one figure, the group holding its
@@ -1575,6 +1636,7 @@ SELF_TEST_CASES: list[tuple[str, re.Pattern[str], int, str, re.Pattern[str] | No
     ("census directory split", PKG_UNDER, 1, "audit_package_inventory", None),
     ("census line total", PKG_LINES, 1, "audit_package_inventory", PKG_SEGMENT),
     ("per-file line label", LAYOUT_LINES, 2, "audit_layout_lines", LAYOUT_FENCE),
+    ("submodule tally", OVERVIEW_TALLY, 1, "audit_overview_sections", None),
 ]
 
 
