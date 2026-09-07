@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -458,6 +460,73 @@ void main() {
       });
       expect(store.calls, 2);
     });
+
+    test('two concurrent runCached bodies never share a cache', () async {
+      // The security-relevant half of the guarantee, and the one that must
+      // hold whatever else changes: each call installs a *fresh* map on a
+      // child zone of its own, so two requests in flight together are siblings
+      // with nothing in common. If they shared, the second body would read the
+      // first's entry and the store would be called once, not twice.
+      final store = _CountingGrantStore([_grant(1, 'project:alpha', 'owner')]);
+      TomResourceDataScope.install(
+        TomDelegationResolver(
+          InMemoryPrincipalDelegationStore(const []),
+          TomPrincipalResourceRoleResolver(store),
+        ),
+      );
+      final started = Completer<void>();
+      final release = Completer<void>();
+      final first = TomResourceDataScope.runCached(() async {
+        await read(_principal(1));
+        started.complete();
+        await release.future;
+      });
+      await started.future;
+      await TomResourceDataScope.runCached(() async {
+        await read(_principal(1));
+      });
+      release.complete();
+      await first;
+      expect(store.calls, 2);
+    });
+
+    test(
+      'work the body schedules keeps reading the cache after it returns',
+      () async {
+        // The half that is *not* true: a zone bounds reachability, not lifetime.
+        // An unawaited continuation started inside the body inherits the zone,
+        // so it still reads that request's cache long after runCached completed
+        // — resolving against a snapshot rather than re-reading live. This test
+        // exists so the dartdoc's warning is a checked statement rather than a
+        // caution, and it is the reason background work belongs outside the body.
+        final store = _CountingGrantStore([
+          _grant(1, 'project:alpha', 'owner'),
+        ]);
+        TomResourceDataScope.install(
+          TomDelegationResolver(
+            InMemoryPrincipalDelegationStore(const []),
+            TomPrincipalResourceRoleResolver(store),
+          ),
+        );
+        late Future<void> escaped;
+        final resume = Completer<void>();
+        await TomResourceDataScope.runCached(() async {
+          await read(_principal(1));
+          escaped = resume.future.then((_) => read(_principal(1)));
+        });
+        expect(store.calls, 1, reason: 'the body itself read once');
+
+        // runCached has returned. A resolution outside any zone reads afresh.
+        await read(_principal(1));
+        expect(store.calls, 2);
+
+        // The continuation the body left behind does not: it is still in the
+        // request's zone and answers from the cache built there.
+        resume.complete();
+        await escaped;
+        expect(store.calls, 2);
+      },
+    );
   });
 
   group("the scope's own input tables are never auto-scoped", () {

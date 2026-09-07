@@ -108,8 +108,21 @@ class TomResourceDataScope implements TomResourceScopeSource {
   /// live *across* requests, which is where liveness actually matters: a
   /// revocation still takes effect on the next request, never mid-request.
   ///
-  /// The cache lives in the zone, so it cannot outlive [body] and cannot leak
-  /// between concurrently-served requests.
+  /// **Two requests never share a cache.** Each call builds a fresh map and
+  /// installs it on a child zone of its own, so concurrently-served requests
+  /// hold sibling zones with nothing in common. The isolation is by
+  /// construction rather than by discipline: there is no shared map to clear
+  /// and no window in which one could be reused.
+  ///
+  /// **The zone bounds reachability, not lifetime**, which is the part a
+  /// caller has to hold. Anything [body] schedules without awaiting — a
+  /// `Future`, a `Timer`, a stream subscription — inherits the zone, so it
+  /// reads *this* cache whenever it later runs, however long after the request
+  /// returned. Such a continuation resolves grants against a snapshot taken
+  /// during the request, and a revocation that lands afterwards is invisible
+  /// to it for as long as it lives. The cache is request-scoped only if the
+  /// request is the whole of what runs in the zone: start background work
+  /// outside [body], or let it resolve its own grants.
   static Future<T> runCached<T>(Future<T> Function() body) =>
       runZoned(body, zoneValues: {_cacheKey: <String, Map<String, String>>{}});
 

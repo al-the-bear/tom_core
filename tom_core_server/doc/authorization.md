@@ -319,9 +319,21 @@ await TomResourceDataScope.runCached(() async {
 });
 ```
 
-The cache lives in the zone, so it cannot outlive the body and cannot leak
-between concurrently-served requests — resolution stays live *across* requests,
-which is where liveness actually matters.
+Two requests never share a cache. Each call builds a fresh map and installs it
+on a child zone of its own, so concurrently-served requests hold sibling zones
+with nothing in common — the isolation is by construction, not by discipline.
+Resolution stays live *across* requests, which is where liveness actually
+matters.
+
+The zone bounds *reachability*, not lifetime, and that is the part the caller
+has to hold. Anything the body schedules without awaiting — a `Future`, a
+`Timer`, a stream subscription — inherits the zone and reads the same cache
+whenever it later runs, however long after the request returned. Such a
+continuation resolves grants against a snapshot taken during the request, so a
+revocation that lands afterwards stays invisible to it for as long as it lives.
+The cache is request-scoped only if the request is the whole of what runs in the
+zone: start background work outside the body, or let it resolve its own
+grants.
 
 ### Two guards worth knowing
 
