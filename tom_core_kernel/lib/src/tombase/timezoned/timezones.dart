@@ -400,27 +400,28 @@ class TomTimezone {
 
   /// Returns a string representation of this timezone.
   ///
-  /// Format: `{offset}_{timezone}` followed by one trailing space, where
-  /// offset is `Z` for UTC or `+HH:MM`/`-HH:MM` for other timezones.
+  /// Format: `{offset}_{timezone}`, where offset is `Z` for UTC or
+  /// `+HH:MM`/`-HH:MM` for other timezones.
   ///
-  /// The space is part of the output, not an accident of printing: every
-  /// zoned value renders its zone through this method, so it is the final
-  /// character of every serialized string the module produces. Parsing
-  /// tolerates its absence; equality does not.
+  /// Every zoned value renders its zone through this method, so whatever this
+  /// returns is the tail of every serialized string the module produces —
+  /// which is why it ends where the zone name ends. A trailing character
+  /// nobody asked for is carried into every stored value, every map key and
+  /// every URL built from one, and is invisible in each of them.
   ///
   /// Example:
   /// ```dart
-  /// print(TomTimezone.utc.toString()); // 'Z_UTC '
-  /// print(TomTimezone.fromName('Asia/Tokyo')!.toString()); // '+09:00_Asia/Tokyo '
+  /// print(TomTimezone.utc.toString()); // 'Z_UTC'
+  /// print(TomTimezone.fromName('Asia/Tokyo')!.toString()); // '+09:00_Asia/Tokyo'
   /// ```
   @override
   String toString() {
-    return "${convertMinutesToUtcOffset(timezoneOffsetMin)}_$timezone ";
+    return "${convertMinutesToUtcOffset(timezoneOffsetMin)}_$timezone";
   }
 
   /// Returns a string representation of this timezone at a specific date/time.
   ///
-  /// Format: `{offset}_{timezone}` followed by one trailing space, as
+  /// Format: `{offset}_{timezone}`, as
   /// [toString], with the offset calculated for the given date and
   /// accounting for DST transitions.
   ///
@@ -431,13 +432,13 @@ class TomTimezone {
   /// final newYork = TomTimezone.fromName('America/New_York')!;
   ///
   /// // Winter (EST: UTC-5)
-  /// print(newYork.toStringOn(DateTime.utc(2024, 1, 15))); // '-05:00_America/New_York '
+  /// print(newYork.toStringOn(DateTime.utc(2024, 1, 15))); // '-05:00_America/New_York'
   ///
   /// // Summer (EDT: UTC-4)
-  /// print(newYork.toStringOn(DateTime.utc(2024, 7, 15))); // '-04:00_America/New_York '
+  /// print(newYork.toStringOn(DateTime.utc(2024, 7, 15))); // '-04:00_America/New_York'
   /// ```
   String toStringOn(DateTime when) {
-    return "${getUtcOffsetStringOn(when)}_$timezone ";
+    return "${getUtcOffsetStringOn(when)}_$timezone";
   }
 
   /// Converts a UTC offset in minutes to a formatted string.

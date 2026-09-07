@@ -35,9 +35,10 @@ prefix), `TomZonedTime` (time-only anchored at 1970-01-01, `@T@` prefix), and
 `ISO8601_OFFSET_TIMEZONE` and parses back with a matching `parseFromString` /
 `isTom…String` pair. The ISO section must end in `Z`, since it is the only part
 of the string that fixes a point in time; the offset that follows is derived
-from the zone, is written for readability, and is not read back. Every produced
-string ends in a trailing space, appended by `TomTimezone.toString()`; the parse
-regexes tolerate its absence with `\s?`, but string equality does not.
+from the zone, is written for readability, and is not read back. A produced
+string ends where the zone name ends: `TomTimezone.toString()` appends nothing,
+and the parse regexes anchor there, so stray whitespace is rejected rather than
+accepted into a value that then fails an equality check for no visible reason.
 
 `TomTimezone` wraps the `timezone` package's `Location`: it looks zones up by
 name or UTC offset, computes offsets (including DST) at any instant, and
@@ -69,8 +70,7 @@ Object
 
 Base class for timezone-aware date/time values. Extends `DateTime`; the internal
 value is always stored in UTC, and `local*` accessors return the values in the
-associated `TomTimezone`. Serializes to `ISO8601_OFFSET_TIMEZONE`, ending in a
-trailing space.
+associated `TomTimezone`. Serializes to `ISO8601_OFFSET_TIMEZONE`.
 
 - **Extends:** `DateTime`
 
@@ -112,7 +112,7 @@ converts to UTC. `parseFromString` throws `FormatException` for an invalid
 string or unknown zone.
 
 All of them return `TomTimezoned` itself rather than one of the subclasses, so
-the methods below are the whole of what such a value offers. `convertToTimezone`
+the methods below are the whole of what such a value offers. `convertToTzSameInstant`
 is not among them — each subclass declares its own, narrowed to its own return
 type — so converting a base value means rebuilding it as the subclass first.
 
@@ -142,7 +142,7 @@ type — so converting a base value means rebuilding it as the subclass first.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getSerializationPrefix` | `String getSerializationPrefix()` | The serialization prefix for this type (empty for the base class; overridden by subclasses). For recognising a stored value's type before parsing — `toString()` already carries the prefix, so prepending this to it doubles it into a string no parser accepts. |
-| `toString` | `String toString()` | *(override)* The serialized string in `ISO8601_OFFSET_TIMEZONE` format, ending in a trailing space. |
+| `toString` | `String toString()` | *(override)* The serialized string in `ISO8601_OFFSET_TIMEZONE` format. |
 | `toDateTime` | `DateTime toDateTime()` | The local time representation (a `TZDateTime`) in the associated timezone. |
 
 ### TomZonedDate
@@ -199,8 +199,9 @@ zone.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getSerializationPrefix` | `String getSerializationPrefix()` | *(override)* Returns `@D@`. |
-| `toString` | `String toString()` | *(override)* The `@D@ISO8601_OFFSET_TIMEZONE` serialized string, ending in a trailing space. |
-| `convertToTimezone` | `TomZonedDate convertToTimezone(TomTimezone targetTimezone)` | A new date at the same instant displayed in `targetTimezone`. |
+| `toString` | `String toString()` | *(override)* The `@D@ISO8601_OFFSET_TIMEZONE` serialized string. |
+| `convertToTzSameInstant` | `TomZonedDate convertToTzSameInstant(TomTimezone targetTimezone)` | The same instant, read in `targetTimezone` — **not closed over this type**. Midnight on the 15th in Tokyo is 11:00 on the 14th in New York, so the result carries a time of day and a different calendar day, which the type's anchoring otherwise rules out. Answers "when was this, over there". |
+| `convertToTzSameDate` | `TomZonedDate convertToTzSameDate(TomTimezone targetTimezone)` | The same calendar day, re-anchored to midnight in `targetTimezone` — closed over the type, so the result is a well-formed date. The instant moves. Answers "what date is this, expressed over there", which is what a holiday or an invoice date means. |
 
 ### TomZonedTime
 
@@ -251,8 +252,9 @@ zone.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getSerializationPrefix` | `String getSerializationPrefix()` | *(override)* Returns `@T@`. |
-| `toString` | `String toString()` | *(override)* The `@T@ISO8601_OFFSET_TIMEZONE` serialized string, ending in a trailing space. |
-| `convertToTimezone` | `TomZonedTime convertToTimezone(TomTimezone targetTimezone)` | A new time at the same instant displayed in `targetTimezone`. |
+| `toString` | `String toString()` | *(override)* The `@T@ISO8601_OFFSET_TIMEZONE` serialized string. |
+| `convertToTzSameInstant` | `TomZonedTime convertToTzSameInstant(TomTimezone targetTimezone)` | The same instant, read in `targetTimezone` — **not closed over this type**. The clock reading moves, and the local date can leave 1970-01-01, so the result fails `isTime`. Answers "what time was that, over there". |
+| `convertToTzSameTime` | `TomZonedTime convertToTzSameTime(TomTimezone targetTimezone)` | The same clock reading, re-anchored to 1970-01-01 in `targetTimezone` — closed over the type, so `isTime` still holds. The instant moves. Answers "what does 09:00 mean over there", which is what a daily standup means. |
 | `inTimezoneOn` | `DateTime inTimezoneOn(DateTime when)` | Applies this local time to the date of `when`, yielding a `TZDateTime` (DST-aware). |
 
 ### TomZonedDateTime
@@ -304,8 +306,8 @@ zone.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getSerializationPrefix` | `String getSerializationPrefix()` | *(override)* Returns `@X@`. |
-| `toString` | `String toString()` | *(override)* The `@X@ISO8601_OFFSET_TIMEZONE` serialized string, ending in a trailing space. |
-| `convertToTimezone` | `TomZonedDateTime convertToTimezone(TomTimezone targetTimezone)` | A new datetime at the same UTC instant displayed in `targetTimezone`. |
+| `toString` | `String toString()` | *(override)* The `@X@ISO8601_OFFSET_TIMEZONE` serialized string. |
+| `convertToTzSameInstant` | `TomZonedDateTime convertToTzSameInstant(TomTimezone targetTimezone)` | The same UTC instant, read in `targetTimezone`. Closed over this type, which does name an instant — so unlike its date-only and time-only siblings it needs no re-anchoring counterpart. |
 
 ### TomTimezoneException
 
@@ -384,8 +386,8 @@ it is not a lookup: ask a zone you already hold, with `getUtcOffsetOn`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `toString` | `String toString()` | *(override)* `{offset}_{timezone}` using the current offset, followed by one trailing space. This is where every serialized value gets its own final space. |
-| `toStringOn` | `String toStringOn(DateTime when)` | `{offset}_{timezone}` with the offset computed for `when` (DST-aware), followed by one trailing space as in `toString`. |
+| `toString` | `String toString()` | *(override)* `{offset}_{timezone}` using the current offset. Every serialized value ends with whatever this returns, which is why it appends nothing. |
+| `toStringOn` | `String toStringOn(DateTime when)` | `{offset}_{timezone}` with the offset computed for `when` (DST-aware). |
 | `getUtcOffsetOn` | `int getUtcOffsetOn(DateTime dt)` | The UTC offset in minutes at `dt`. |
 | `getUtcOffsetStringOn` | `String getUtcOffsetStringOn(DateTime dt)` | The formatted UTC offset string at `dt`. |
 | `getCurrentUtcOffset` | `int getCurrentUtcOffset()` | The current UTC offset in minutes. |

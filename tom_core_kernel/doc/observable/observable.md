@@ -728,7 +728,7 @@ deadline | TomZonedDateTime(
 );
 
 // Set from serialized string
-deadline.setByString("@X@2024-12-31T23:59:00.000Z_Z_UTC ");
+deadline.setByString("@X@2024-12-31T23:59:00.000Z_Z_UTC");
 ```
 
 #### The abstract bases, and why `setByString` has no default

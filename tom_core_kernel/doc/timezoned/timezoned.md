@@ -122,7 +122,7 @@ void main() {
   );
   
   // Convert to New York time (same moment, different timezone)
-  final inNY = meeting.convertToTimezone(newYork);
+  final inNY = meeting.convertToTzSameInstant(newYork);
   print('Tokyo: ${meeting.localHour}:${meeting.localMinute}');   // 14:30
   print('New York: ${inNY.localHour}:${inNY.localMinute}');      // 01:30
   
@@ -204,13 +204,12 @@ newYork.getCurrentUtcOffsetString();  // Offset as string
 ```dart
 final newYork = TomTimezone.fromName('America/New_York')!;
 
-newYork.toString();                          // Current: '-05:00_America/New_York ' or '-04:00_... '
-newYork.toStringOn(DateTime.utc(2024, 1, 15)); // '-05:00_America/New_York '
-newYork.toStringOn(DateTime.utc(2024, 7, 15)); // '-04:00_America/New_York '
+newYork.toString();                          // Current: '-05:00_America/New_York' or '-04:00_... '
+newYork.toStringOn(DateTime.utc(2024, 1, 15)); // '-05:00_America/New_York'
+newYork.toStringOn(DateTime.utc(2024, 7, 15)); // '-04:00_America/New_York'
 ```
 
-Both end in a trailing space, which is where every serialized value gets its
-own — see [Serialization](#serialization).
+Both end where the zone name ends — see [Serialization](#serialization).
 
 ### TZDateTime Interop
 
@@ -245,7 +244,7 @@ All types share these features, because `TomTimezoned` itself has them:
 ```
 
 Conversion is not on that list. Each of the three subclasses declares its own
-`convertToTimezone`, narrowed to return its own type, so there is no single
+`convertToTzSameInstant`, narrowed to return its own type, so there is no single
 signature the base class could hold — see [TomZonedDateTime](#tomzoneddatetime),
 [TomZonedDate](#tomzoneddate) and [TomZonedTime](#tomzonedtime).
 
@@ -257,9 +256,9 @@ what tells you so. Rebuild it as the type you want first:
 ```dart
 final base = TomTimezoned.now();
 
-// The instant and the zone are all convertToTimezone needs.
+// The instant and the zone are all convertToTzSameInstant needs.
 final moved = TomZonedDateTime.fromDateTime(base, base.timezone)
-    .convertToTimezone(newYork);
+    .convertToTzSameInstant(newYork);
 ```
 
 ### TomZonedDateTime
@@ -287,7 +286,7 @@ final parsed = TomZonedDateTime.parseFromString(
 if (TomZonedDateTime.isTomZonedDateTimeString(input)) { ... }
 
 // Same instant, read in another timezone
-final inNewYork = dt.convertToTimezone(newYork); // TomZonedDateTime
+final inNewYork = dt.convertToTzSameInstant(newYork); // TomZonedDateTime
 ```
 
 ### TomZonedDate
@@ -312,9 +311,23 @@ final parsed = TomZonedDate.parseFromString(
 // Check if a DateTime is date-only
 if (TomZonedDate.isDate(someDateTime)) { ... }
 
-// Which calendar day is this same instant, in another timezone?
-final dateInNY = date.convertToTimezone(newYork); // TomZonedDate
+// Two different questions, two methods, because they give different answers.
+// "When was this, over there" — the instant is kept, so the local day moves
+// and the result carries a time of day:
+final momentInNY = date.convertToTzSameInstant(newYork); // 14th, 11:00
+
+// "What date is this, expressed over there" — the day is kept and re-anchored
+// to midnight, so the result is still a well-formed date:
+final dateInNY = date.convertToTzSameDate(newYork);      // 15th, 00:00
 ```
+
+Only the second is *closed* over `TomZonedDate`. Preserving an instant across
+zones necessarily moves the local day and introduces a time of day — the two
+things this type's anchoring otherwise guarantees it has not got — so
+`convertToTzSameInstant` answers a real question and hands back a value that no
+longer satisfies `isDate`. Reach for `convertToTzSameDate` whenever the date is
+a label rather than a moment, which is what a holiday, a birthday and an
+invoice date all are.
 
 `fromDateTime` asks its question of the *target* timezone, so the day it picks
 can differ from the UTC one: 22:30 UTC is already tomorrow in Tokyo.
@@ -366,9 +379,19 @@ final parsed = TomZonedTime.parseFromString(
 // Check if a DateTime is time-only
 if (TomZonedTime.isTime(someDateTime)) { ... }
 
-// What does another timezone's clock read at that same moment?
-final standupUtc = standup.convertToTimezone(TomTimezone.utc); // TomZonedTime
+// "What time was that, over there" — the instant is kept, so the clock reading
+// moves and the local date can leave 1970-01-01:
+final momentUtc = standup.convertToTzSameInstant(TomTimezone.utc);
+
+// "What does 09:00 mean over there" — the reading is kept and re-anchored, so
+// `isTime` still holds:
+final standupUtc = standup.convertToTzSameTime(TomTimezone.utc);
 ```
+
+The same split as `TomZonedDate`, for the same reason: only
+`convertToTzSameTime` is closed over the type. A daily standup is 09:00
+wherever it is run, and a shift that starts at 22:00 starts at 22:00 in every
+office — for those, the clock reading is the content and the instant is not.
 
 `isTime` reads a `TomTimezoned` in its own timezone just as `isDate` does, so a
 `TomZonedTime` passes even where the epoch anchor puts the stored date on
@@ -414,15 +437,13 @@ space behind:
 - **TIMEZONE**: IANA timezone name
 - **SPACE**: one literal space, always present
 
-The trailing space is the part of the format that is easiest to lose, because
-nothing shows it. `TomTimezone.toString()` appends it, and since every zoned
-value renders its zone through that method, every string the module produces
-ends in a space — `'@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo '`, with the
-closing quote one character clear of the zone name. Reading is lenient: each
-parse regex ends in `\s?`, so a string without the space is still accepted.
-Equality is not. A stored value compared against a hand-written literal that
-omits the space will not match, and neither string is malformed, so nothing
-reports why.
+The form ends where the zone name ends, with no trailing character. That is
+worth saying because the alternative is invisible: a serialized value is
+compared, used as a map key and written into URLs and filenames, and a byte
+nobody asked for travels into all of them without ever showing on a printed
+line. The parse patterns are correspondingly exact — they anchor straight after
+the zone — so a string carrying stray whitespace is rejected rather than
+silently accepted and then failing an equality check nothing explains.
 
 `toString()` produces the whole form, prefix included, and `parseFromString`
 reads it back as it stands. `getSerializationPrefix()` exists for the other
@@ -453,14 +474,14 @@ and `getUtcOffsetOn(when)` compute it.
 
 ### Examples
 
-Exactly as produced, trailing space included — the quotes are what make it
-visible:
+Exactly as produced; the quotes are there to show that nothing follows the
+zone name:
 
 ```text
-'@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo '  TomZonedDateTime
-'@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo '  TomZonedDate
-'@T@1970-01-01T14:00:00.000Z_+09:00_Asia/Tokyo '  TomZonedTime
-'@X@2024-06-15T14:30:00.000Z_Z_UTC '              UTC
+'@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo'  TomZonedDateTime
+'@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo'  TomZonedDate
+'@T@1970-01-01T14:00:00.000Z_+09:00_Asia/Tokyo'  TomZonedTime
+'@X@2024-06-15T14:30:00.000Z_Z_UTC'              UTC
 ```
 
 ### Parsing
@@ -628,7 +649,7 @@ final tokyoTime = TomZonedDateTime(
 );
 
 // Same moment, different timezone
-final newYorkTime = tokyoTime.convertToTimezone(newYork);
+final newYorkTime = tokyoTime.convertToTzSameInstant(newYork);
 print('${newYorkTime.localHour}:${newYorkTime.localMinute}'); // 01:30
 ```
 

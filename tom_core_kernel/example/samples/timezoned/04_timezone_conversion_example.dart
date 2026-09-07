@@ -47,8 +47,8 @@ class TimezoneConversionExample {
     );
 
     // Convert to other timezones
-    nyMeeting = tokyoMeeting.convertToTimezone(newYork);
-    londonMeeting = tokyoMeeting.convertToTimezone(london);
+    nyMeeting = tokyoMeeting.convertToTzSameInstant(newYork);
+    londonMeeting = tokyoMeeting.convertToTzSameInstant(london);
 
     print('   - Meeting scheduled at:');
     print(
@@ -143,15 +143,22 @@ class TimezoneConversionExample {
     final sao = TomTimezone.fromName('America/Sao_Paulo')!;
 
     print('   - UTC: ${utcEvent.localHour}:00 on Sept 1');
-    print('   - Tokyo: ${utcEvent.convertToTimezone(tokyo).localHour}:00');
-    print('   - Sydney: ${utcEvent.convertToTimezone(sydney).localHour}:00');
+    print('   - Tokyo: ${utcEvent.convertToTzSameInstant(tokyo).localHour}:00');
     print(
-      '   - Los Angeles: ${utcEvent.convertToTimezone(losAngeles).localHour}:00 on ${utcEvent.convertToTimezone(losAngeles).localMonth}/${utcEvent.convertToTimezone(losAngeles).localDay}',
+      '   - Sydney: ${utcEvent.convertToTzSameInstant(sydney).localHour}:00',
     );
-    print('   - São Paulo: ${utcEvent.convertToTimezone(sao).localHour}:00');
+    print(
+      '   - Los Angeles: ${utcEvent.convertToTzSameInstant(losAngeles).localHour}:00 on ${utcEvent.convertToTzSameInstant(losAngeles).localMonth}/${utcEvent.convertToTzSameInstant(losAngeles).localDay}',
+    );
+    print(
+      '   - São Paulo: ${utcEvent.convertToTzSameInstant(sao).localHour}:00',
+    );
 
     // Assertions
-    assert(utcEvent.convertToTimezone(tokyo).localHour == 21, 'Tokyo is UTC+9');
+    assert(
+      utcEvent.convertToTzSameInstant(tokyo).localHour == 21,
+      'Tokyo is UTC+9',
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -173,7 +180,7 @@ class TimezoneConversionExample {
       timezone: tokyo,
     );
 
-    final honoluluTime = tokyoNewYear.convertToTimezone(honolulu);
+    final honoluluTime = tokyoNewYear.convertToTzSameInstant(honolulu);
 
     print(
       '   - Tokyo: ${tokyoNewYear.localYear}-${tokyoNewYear.localMonth.toString().padLeft(2, '0')}-${tokyoNewYear.localDay.toString().padLeft(2, '0')} ${tokyoNewYear.localHour}:00',
@@ -211,8 +218,8 @@ class TimezoneConversionExample {
       timezone: sanFrancisco,
     );
 
-    final bangaloreMeeting = meeting.convertToTimezone(bangalore);
-    final dublinMeeting = meeting.convertToTimezone(dublin);
+    final bangaloreMeeting = meeting.convertToTzSameInstant(bangalore);
+    final dublinMeeting = meeting.convertToTzSameInstant(dublin);
 
     print('   - Standup meeting scheduled:');
     print('   - San Francisco: ${meeting.localHour}:00 (local working hours)');
@@ -265,10 +272,10 @@ class TimezoneConversionExample {
     );
 
     // Convert to Singapore
-    final singaporeTime = originalTime.convertToTimezone(singapore);
+    final singaporeTime = originalTime.convertToTzSameInstant(singapore);
 
     // Convert back to Paris
-    final backToParis = singaporeTime.convertToTimezone(paris);
+    final backToParis = singaporeTime.convertToTzSameInstant(paris);
 
     print(
       '   - Original Paris time: ${originalTime.localHour}:${originalTime.localMinute}',
@@ -316,10 +323,10 @@ class TimezoneConversionExample {
     );
 
     // Convert to UTC
-    final utcTime = cairoTime.convertToTimezone(TomTimezone.utc);
+    final utcTime = cairoTime.convertToTzSameInstant(TomTimezone.utc);
 
     // Convert back to Cairo
-    final backToCairo = utcTime.convertToTimezone(cairo);
+    final backToCairo = utcTime.convertToTzSameInstant(cairo);
 
     print('   - Cairo time: ${cairoTime.localHour}:${cairoTime.localMinute}');
     print('   - As UTC: ${utcTime.localHour}:${utcTime.localMinute}');

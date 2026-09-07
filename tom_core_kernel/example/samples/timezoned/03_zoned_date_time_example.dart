@@ -248,7 +248,7 @@ class ZonedDateTimeExample {
       timezone: tokyo,
     );
 
-    final laChristmas = tokyoChristmas.convertToTimezone(losAngeles);
+    final laChristmas = tokyoChristmas.convertToTzSameInstant(losAngeles);
 
     print(
       '   - Tokyo date: ${tokyoChristmas.localYear}-${tokyoChristmas.localMonth}-${tokyoChristmas.localDay}',
@@ -260,7 +260,7 @@ class ZonedDateTimeExample {
 
     // Time conversion
     final tokyoTime = TomZonedTime(hour: 10, minute: 0, timezone: tokyo);
-    final laTime = tokyoTime.convertToTimezone(losAngeles);
+    final laTime = tokyoTime.convertToTzSameInstant(losAngeles);
 
     print(
       '   - Tokyo time: ${tokyoTime.localHour}:${tokyoTime.localMinute.toString().padLeft(2, '0')}',

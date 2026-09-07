@@ -735,7 +735,7 @@ void main() {
         () {
           expect(
             TomTimezoned.isTomTimezonedString(
-              '2024-06-15T12:30:00.000Z_+09:00_Asia/Tokyo ',
+              '2024-06-15T12:30:00.000Z_+09:00_Asia/Tokyo',
             ),
             isTrue,
           );
@@ -1065,7 +1065,7 @@ void main() {
       test('should return true for TomZonedDate with trailing space', () {
         expect(
           TomZonedDate.isTomZonedDateString(
-            '@D@2024-06-15T00:00:00.000Z_+09:00_Asia/Tokyo ',
+            '@D@2024-06-15T00:00:00.000Z_+09:00_Asia/Tokyo',
           ),
           isTrue,
         );
@@ -1444,7 +1444,7 @@ void main() {
       test('should return true for TomZonedTime with trailing space', () {
         expect(
           TomZonedTime.isTomZonedTimeString(
-            '@T@1970-01-01T09:00:00.000Z_+09:00_Asia/Tokyo ',
+            '@T@1970-01-01T09:00:00.000Z_+09:00_Asia/Tokyo',
           ),
           isTrue,
         );
@@ -1834,7 +1834,7 @@ void main() {
       test('should return true for TomZonedDateTime with trailing space', () {
         expect(
           TomZonedDateTime.isTomZonedDateTimeString(
-            '@X@2024-06-15T14:30:00.000Z_+09:00_Asia/Tokyo ',
+            '@X@2024-06-15T14:30:00.000Z_+09:00_Asia/Tokyo',
           ),
           isTrue,
         );
@@ -1907,8 +1907,8 @@ void main() {
     });
   });
 
-  group('convertToTimezone', () {
-    group('TomZonedDateTime.convertToTimezone', () {
+  group('convertToTzSameInstant', () {
+    group('TomZonedDateTime.convertToTzSameInstant', () {
       test('should convert Tokyo to New York and match TZDateTime', () {
         final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
         final newYork = TomTimezone.fromName('America/New_York')!;
@@ -1924,7 +1924,7 @@ void main() {
         );
 
         // Convert to New York using our method
-        final nyDt = tokyoDt.convertToTimezone(newYork);
+        final nyDt = tokyoDt.convertToTzSameInstant(newYork);
 
         // Do the same with TZDateTime for comparison
         final tokyoLocation = tz.getLocation('Asia/Tokyo');
@@ -1955,7 +1955,7 @@ void main() {
           timezone: utc,
         );
 
-        final londonDt = utcDt.convertToTimezone(london);
+        final londonDt = utcDt.convertToTzSameInstant(london);
 
         // Verify with TZDateTime
         final utcLocation = tz.UTC;
@@ -1981,7 +1981,7 @@ void main() {
           timezone: utc,
         );
 
-        final londonDt = utcDt.convertToTimezone(london);
+        final londonDt = utcDt.convertToTzSameInstant(london);
 
         // Verify with TZDateTime
         final utcLocation = tz.UTC;
@@ -2007,7 +2007,7 @@ void main() {
           timezone: tokyo,
         );
 
-        final laDt = tokyoDt.convertToTimezone(la);
+        final laDt = tokyoDt.convertToTzSameInstant(la);
 
         // Verify with TZDateTime
         final tokyoLocation = tz.getLocation('Asia/Tokyo');
@@ -2036,7 +2036,7 @@ void main() {
           timezone: la,
         );
 
-        final tokyoDt = laDt.convertToTimezone(tokyo);
+        final tokyoDt = laDt.convertToTzSameInstant(tokyo);
 
         // Verify with TZDateTime
         final laLocation = tz.getLocation('America/Los_Angeles');
@@ -2064,7 +2064,7 @@ void main() {
           timezone: tokyo,
         );
 
-        final nyDt = tokyoDt.convertToTimezone(newYork);
+        final nyDt = tokyoDt.convertToTzSameInstant(newYork);
 
         // Verify with TZDateTime that both represent the same instant
         final tokyoLocation = tz.getLocation('Asia/Tokyo');
@@ -2098,7 +2098,7 @@ void main() {
           timezone: tokyo,
         );
 
-        final sameTzDt = dt.convertToTimezone(tokyo);
+        final sameTzDt = dt.convertToTzSameInstant(tokyo);
 
         expect(sameTzDt.localYear, equals(dt.localYear));
         expect(sameTzDt.localMonth, equals(dt.localMonth));
@@ -2133,8 +2133,8 @@ void main() {
           timezone: utc,
         );
 
-        final nyBefore = beforeDst.convertToTimezone(newYork);
-        final nyAfter = afterDst.convertToTimezone(newYork);
+        final nyBefore = beforeDst.convertToTzSameInstant(newYork);
+        final nyAfter = afterDst.convertToTzSameInstant(newYork);
 
         // Verify with TZDateTime
         final utcLocation = tz.UTC;
@@ -2151,7 +2151,7 @@ void main() {
       });
     });
 
-    group('TomZonedDate.convertToTimezone', () {
+    group('TomZonedDate.convertToTzSameInstant', () {
       test('should convert date between timezones', () {
         final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
         final newYork = TomTimezone.fromName('America/New_York')!;
@@ -2163,7 +2163,7 @@ void main() {
           timezone: tokyo,
         );
 
-        final nyDate = tokyoDate.convertToTimezone(newYork);
+        final nyDate = tokyoDate.convertToTzSameInstant(newYork);
 
         // Verify with TZDateTime
         // Tokyo June 15 at 00:00 local = June 14 at 15:00 UTC
@@ -2191,7 +2191,7 @@ void main() {
           timezone: tokyo,
         );
 
-        final laDate = tokyoDate.convertToTimezone(la);
+        final laDate = tokyoDate.convertToTzSameInstant(la);
 
         // Verify with TZDateTime
         final tokyoLocation = tz.getLocation('Asia/Tokyo');
@@ -2205,14 +2205,14 @@ void main() {
       });
     });
 
-    group('TomZonedTime.convertToTimezone', () {
+    group('TomZonedTime.convertToTzSameInstant', () {
       test('should convert time between timezones', () {
         final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
         final utc = TomTimezone.utc;
 
         final tokyoTime = TomZonedTime(hour: 14, minute: 30, timezone: tokyo);
 
-        final utcTime = tokyoTime.convertToTimezone(utc);
+        final utcTime = tokyoTime.convertToTzSameInstant(utc);
 
         // Tokyo is UTC+9, so 14:30 Tokyo = 5:30 UTC
         expect(utcTime.localHour, equals(5));
@@ -2227,7 +2227,7 @@ void main() {
         // 23:00 UTC = 08:00 next day in Tokyo
         final utcTime = TomZonedTime(hour: 23, minute: 0, timezone: utc);
 
-        final tokyoTime = utcTime.convertToTimezone(tokyo);
+        final tokyoTime = utcTime.convertToTzSameInstant(tokyo);
 
         // Verify with TZDateTime (using base date 1970-01-01)
         final utcLocation = tz.UTC;
@@ -2250,7 +2250,7 @@ void main() {
           timezone: la,
         );
 
-        final nyTime = laTime.convertToTimezone(newYork);
+        final nyTime = laTime.convertToTzSameInstant(newYork);
 
         // LA to NY is +3 hours
         expect(nyTime.localHour, equals(13));
@@ -2274,8 +2274,8 @@ void main() {
           timezone: tokyo,
         );
 
-        final toNy = original.convertToTimezone(newYork);
-        final backToTokyo = toNy.convertToTimezone(tokyo);
+        final toNy = original.convertToTzSameInstant(newYork);
+        final backToTokyo = toNy.convertToTzSameInstant(tokyo);
 
         expect(backToTokyo.localYear, equals(original.localYear));
         expect(backToTokyo.localMonth, equals(original.localMonth));
@@ -2301,10 +2301,10 @@ void main() {
         );
 
         // Chain conversions
-        final toLondon = original.convertToTimezone(london);
-        final toNy = toLondon.convertToTimezone(newYork);
-        final toLa = toNy.convertToTimezone(la);
-        final backToTokyo = toLa.convertToTimezone(tokyo);
+        final toLondon = original.convertToTzSameInstant(london);
+        final toNy = toLondon.convertToTzSameInstant(newYork);
+        final toLa = toNy.convertToTzSameInstant(la);
+        final backToTokyo = toLa.convertToTzSameInstant(tokyo);
 
         // All should represent the same instant
         expect(
@@ -2313,6 +2313,91 @@ void main() {
         );
         expect(backToTokyo.localHour, equals(original.localHour));
       });
+    });
+  });
+
+  // The counterpart pair, and the reason the names differ.
+  //
+  // `convertToTzSameInstant` answers "when was this, over there" and is *not*
+  // closed over a date-only or time-only type: preserving the instant moves the
+  // local day and gives a date a time of day, which is precisely what the
+  // type's anchoring otherwise guarantees it has not got. These methods answer
+  // the other question — "what date is this, expressed over there" — and are
+  // closed. A shared name for two operations that disagree about which of them
+  // they mean is what these tests exist to keep apart.
+  group('convertToTzSameDate / convertToTzSameTime re-anchor', () {
+    final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+    final newYork = TomTimezone.fromName('America/New_York')!;
+
+    test('a date keeps its calendar day and stays anchored to midnight', () {
+      final dateInTokyo = TomZonedDate(
+        year: 2024,
+        month: 6,
+        day: 15,
+        timezone: tokyo,
+      );
+
+      final sameDate = dateInTokyo.convertToTzSameDate(newYork);
+
+      expect(sameDate.localYear, equals(2024));
+      expect(sameDate.localMonth, equals(6));
+      expect(sameDate.localDay, equals(15), reason: 'the same calendar day');
+      expect(sameDate.localHour, equals(0), reason: 'still a date, not a time');
+      expect(sameDate.timezone.timezone, equals('America/New_York'));
+
+      // The instant necessarily moves — that is the trade, and the difference
+      // from the instant-preserving sibling, which lands on the 14th at 11:00.
+      final sameInstant = dateInTokyo.convertToTzSameInstant(newYork);
+      expect(sameInstant.localDay, equals(14));
+      expect(sameInstant.localHour, equals(11));
+    });
+
+    test('a time keeps its clock reading and still satisfies isTime', () {
+      final standupTokyo = TomZonedTime(hour: 9, minute: 30, timezone: tokyo);
+
+      final sameTime = standupTokyo.convertToTzSameTime(newYork);
+
+      expect(sameTime.localHour, equals(9), reason: 'the same clock reading');
+      expect(sameTime.localMinute, equals(30));
+      expect(
+        TomZonedTime.isTime(sameTime),
+        isTrue,
+        reason: 'closed over the type: still anchored to 1970-01-01',
+      );
+      expect(sameTime.timezone.timezone, equals('America/New_York'));
+    });
+
+    test('the instant-preserving sibling can leave a time unanchored', () {
+      // Why the pair exists. 00:30 in Tokyo is 10:30 on 1969-12-31 in New
+      // York, so the same-instant reading fails the type's own predicate.
+      final lateTokyo = TomZonedTime(hour: 0, minute: 30, timezone: tokyo);
+
+      final sameInstant = lateTokyo.convertToTzSameInstant(newYork);
+
+      expect(TomZonedTime.isTime(sameInstant), isFalse);
+      expect(
+        TomZonedTime.isTime(lateTokyo.convertToTzSameTime(newYork)),
+        isTrue,
+      );
+    });
+
+    test('re-anchoring twice returns to where it started', () {
+      // Closed operations compose: a date round-tripped through another zone is
+      // the date it began as. The instant-preserving pair has no such property.
+      final start = TomZonedDate(
+        year: 2024,
+        month: 12,
+        day: 31,
+        timezone: tokyo,
+      );
+
+      final back = start
+          .convertToTzSameDate(newYork)
+          .convertToTzSameDate(tokyo);
+
+      expect(back.localYear, equals(start.localYear));
+      expect(back.localMonth, equals(start.localMonth));
+      expect(back.localDay, equals(start.localDay));
     });
   });
 
@@ -2431,7 +2516,7 @@ void main() {
         '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo',
         '2024-06-15T05:30:00Z_Z_UTC',
         '2024-06-15T05:30:00.123456Z_-04:00_America/New_York',
-        '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo ',
+        '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo',
         '2024-06-15T05:30:00.000_+09:00_Asia/Tokyo',
         '2024-06-15T05:30:00.000Z_Asia/Tokyo',
         'not a serialized value',

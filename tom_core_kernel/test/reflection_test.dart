@@ -1352,7 +1352,7 @@ void main() {
 
       final values = tomReflectionInfo.getValues(holder);
       expect(values['zonedDate'], startsWith('@D@2024-06-14T22:00:00.000Z_'));
-      expect(values['zonedDate'], endsWith('Europe/Berlin '));
+      expect(values['zonedDate'], endsWith('Europe/Berlin'));
     });
 
     test('should get TomZonedTime as serialized string', () {
@@ -1369,7 +1369,7 @@ void main() {
 
       final values = tomReflectionInfo.getValues(holder);
       expect(values['zonedTime'], startsWith('@T@1970-01-01T05:30:00.000Z_'));
-      expect(values['zonedTime'], endsWith('Asia/Tokyo '));
+      expect(values['zonedTime'], endsWith('Asia/Tokyo'));
     });
 
     test('should get TomZonedDateTime as serialized string', () {

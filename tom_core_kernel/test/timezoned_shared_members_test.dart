@@ -104,17 +104,17 @@ void main() {
     test('conversion is not offered as a shared member', () {
       // The narrowed return type is why there is no shared declaration to
       // inherit: each subclass returns its own type, so the base has none.
-      expect(_sharedBlockNames(), isNot(contains('convertToTimezone')));
-      expect(_sharedMembers.keys, isNot(contains('convertToTimezone')));
+      expect(_sharedBlockNames(), isNot(contains('convertToTzSameInstant')));
+      expect(_sharedMembers.keys, isNot(contains('convertToTzSameInstant')));
     });
 
     test('each subclass section shows it', () {
       for (final heading in _subclassHeadings) {
         expect(
           _section(heading).join('\n'),
-          contains('convertToTimezone'),
+          contains('convertToTzSameInstant'),
           reason:
-              '$heading declares convertToTimezone, and the shared block no '
+              '$heading declares convertToTzSameInstant, and the shared block no '
               'longer mentions it, so this section is the only place a reader '
               'can find it.',
         );
@@ -193,7 +193,7 @@ const String _document = 'doc/timezoned/timezoned.md';
 /// The heading that introduces the shared-member block.
 const String _sharedHeading = '## TomTimezoned Types';
 
-/// The headings whose types declare their own `convertToTimezone`.
+/// The headings whose types declare their own `convertToTzSameInstant`.
 const List<String> _subclassHeadings = [
   '### TomZonedDateTime',
   '### TomZonedDate',

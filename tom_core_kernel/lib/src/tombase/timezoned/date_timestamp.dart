@@ -33,9 +33,8 @@ const String _zoneSection = r'[a-zA-Z0-9_/-]+';
 /// string one half of the library will accept and the other half will refuse.
 ///
 /// Group 1 is the instant, group 2 the offset, group 3 the zone name.
-RegExp _serializedForm(String prefix) => RegExp(
-  '^$prefix($_instantSection)_($_offsetSection)_($_zoneSection)\\s?\$',
-);
+RegExp _serializedForm(String prefix) =>
+    RegExp('^$prefix($_instantSection)_($_offsetSection)_($_zoneSection)\$');
 
 /// The form of an unprefixed [TomTimezoned].
 final RegExp _timezonedForm = _serializedForm('');
@@ -697,10 +696,22 @@ class TomZonedDate extends TomTimezoned {
   ///   timezone: tokyo,
   /// );
   ///
-  /// final dateInNY = dateInTokyo.convertToTimezone(nyTz);
+  /// final dateInNY = dateInTokyo.convertToTzSameInstant(nyTz);
   /// print(dateInNY.timezone.timezone); // 'America/New_York'
+  /// print(dateInNY.localDay);          // 14 — not 15
+  /// print(dateInNY.localHour);         // 11 — a date carrying a time of day
   /// ```
-  TomZonedDate convertToTimezone(TomTimezone targetTimezone) {
+  ///
+  /// **The result is not a well-formed date**, and the name says which
+  /// question was asked. Midnight on the 15th in Tokyo *is* 11:00 on the 14th
+  /// in New York, so preserving the instant necessarily moves the local day and
+  /// gives the value a time of day — the two things [TomZonedDate]'s anchoring
+  /// otherwise guarantees it has not got. That is the honest answer to "when
+  /// was this, for someone over there", and it is the wrong answer to "what
+  /// date is this, expressed over there": a public holiday is the same date
+  /// everywhere. For that, use [convertToTzSameDate], which is closed over the
+  /// type.
+  TomZonedDate convertToTzSameInstant(TomTimezone targetTimezone) {
     // The UTC time stays the same, just change the timezone
     return TomZonedDate._fromUtcValues(
       utcYear: year,
@@ -714,6 +725,34 @@ class TomZonedDate extends TomTimezoned {
       timezone: targetTimezone,
     );
   }
+
+  /// The same calendar day, expressed in [targetTimezone].
+  ///
+  /// The counterpart to [convertToTzSameInstant], and the one that is *closed*
+  /// over this type: the day, month and year are carried across unchanged and
+  /// re-anchored to midnight in the new zone, so the result is a well-formed
+  /// [TomZonedDate] again. The instant moves, necessarily — midnight on the
+  /// 15th in Tokyo and midnight on the 15th in New York are fourteen hours
+  /// apart — and that is the point. A date is a label on a calendar, not a
+  /// moment: a public holiday, a birthday and an invoice date are the same date
+  /// wherever they are read.
+  ///
+  /// ```dart
+  /// final dateInTokyo = TomZonedDate(
+  ///   year: 2024, month: 6, day: 15,
+  ///   timezone: tokyo,
+  /// );
+  ///
+  /// final dateInNY = dateInTokyo.convertToTzSameDate(nyTz);
+  /// print(dateInNY.localDay);  // 15 — the same date
+  /// print(dateInNY.localHour); // 0  — still anchored to midnight
+  /// ```
+  TomZonedDate convertToTzSameDate(TomTimezone targetTimezone) => TomZonedDate(
+    year: localYear,
+    month: localMonth,
+    day: localDay,
+    timezone: targetTimezone,
+  );
 }
 
 /// A timezone-aware time value (without date components).
@@ -904,13 +943,18 @@ class TomZonedTime extends TomTimezoned {
     return local.year == 1970 && local.month == 1 && local.day == 1;
   }
 
-  /// Converts this time to another timezone.
+  /// The same instant, read in [targetTimezone].
   ///
-  /// Returns a new [TomZonedTime] representing the same instant in time
-  /// but displayed in a different timezone.
+  /// **The result is not a well-formed time**, and the name says which question
+  /// was asked. Preserving the instant moves the local clock reading, and can
+  /// move the local date off 1970-01-01 — which is exactly what [isTime] tests
+  /// for, so the returned value fails it. That is the honest answer to "what
+  /// time was that, over there", and the wrong answer to "what does 09:00 mean
+  /// over there": a 09:00 standup is 09:00 wherever it is run. For that, use
+  /// [convertToTzSameTime], which is closed over the type.
   ///
-  /// [targetTimezone] The timezone to convert to.
-  TomZonedTime convertToTimezone(TomTimezone targetTimezone) {
+  /// [targetTimezone] The timezone to read the instant in.
+  TomZonedTime convertToTzSameInstant(TomTimezone targetTimezone) {
     // The UTC time stays the same, just change the timezone
     return TomZonedTime._fromUtcValues(
       utcYear: year,
@@ -924,6 +968,32 @@ class TomZonedTime extends TomTimezoned {
       timezone: targetTimezone,
     );
   }
+
+  /// The same clock reading, expressed in [targetTimezone].
+  ///
+  /// The counterpart to [convertToTzSameInstant], and the one that is *closed*
+  /// over this type: the hour, minute and sub-second components are carried
+  /// across unchanged and re-anchored to 1970-01-01 in the new zone, so the
+  /// result satisfies [isTime] again. The instant moves, and that is the point.
+  /// A time of day is a reading on a clock, not a moment: a 09:00 standup is
+  /// 09:00 wherever it is run, and a shift that starts at 22:00 starts at 22:00
+  /// in every office that runs it.
+  ///
+  /// ```dart
+  /// final standupTokyo = TomZonedTime(hour: 9, timezone: tokyo);
+  ///
+  /// final standupNY = standupTokyo.convertToTzSameTime(nyTz);
+  /// print(standupNY.localHour);           // 9 — the same clock reading
+  /// print(TomZonedTime.isTime(standupNY)); // true
+  /// ```
+  TomZonedTime convertToTzSameTime(TomTimezone targetTimezone) => TomZonedTime(
+    hour: localHour,
+    minute: localMinute,
+    second: localSecond,
+    millisecond: localMillisecond,
+    microsecond: localMicrosecond,
+    timezone: targetTimezone,
+  );
 
   /// Returns a [DateTime] representing this time on the given date.
   ///
@@ -1000,7 +1070,7 @@ class TomZonedTime extends TomTimezoned {
 ///
 /// // Convert to another timezone
 /// final ny = TomTimezone.fromName('America/New_York');
-/// final dtNy = dt.convertToTimezone(ny);
+/// final dtNy = dt.convertToTzSameInstant(ny);
 /// print(dtNy.localHour); // 1 (local time in New York)
 /// ```
 ///
@@ -1208,12 +1278,12 @@ class TomZonedDateTime extends TomTimezoned {
   ///   timezone: tokyo,
   /// );
   ///
-  /// final meetingInNY = meetingInTokyo.convertToTimezone(nyTz);
+  /// final meetingInNY = meetingInTokyo.convertToTzSameInstant(nyTz);
   /// print(meetingInNY.timezone.timezone); // 'America/New_York'
   /// print(meetingInNY.localHour); // 1 (local time in New York)
   /// print(meetingInNY.hour); // 5 (UTC - same as original)
   /// ```
-  TomZonedDateTime convertToTimezone(TomTimezone targetTimezone) {
+  TomZonedDateTime convertToTzSameInstant(TomTimezone targetTimezone) {
     // The UTC time stays the same, just change the timezone
     return TomZonedDateTime._fromUtcValues(
       utcYear: year,

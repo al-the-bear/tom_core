@@ -140,22 +140,22 @@ void run() {
 
   print('   UTC: ${utcTime.hour}:${utcTime.minute.toString().padLeft(2, '0')}');
 
-  // Convert using convertToTimezone method
-  final inNy = utcZoned.convertToTimezone(newYork);
+  // Convert using convertToTzSameInstant method
+  final inNy = utcZoned.convertToTzSameInstant(newYork);
   final nyLocalHour = inNy.localHour;
   final nyLocalMinute = inNy.localMinute;
   print(
     '   New York (EDT): $nyLocalHour:${nyLocalMinute.toString().padLeft(2, '0')}',
   );
 
-  final inLondon = utcZoned.convertToTimezone(london);
+  final inLondon = utcZoned.convertToTzSameInstant(london);
   final londonLocalHour = inLondon.localHour;
   final londonLocalMinute = inLondon.localMinute;
   print(
     '   London (BST): $londonLocalHour:${londonLocalMinute.toString().padLeft(2, '0')}',
   );
 
-  final inTokyo = utcZoned.convertToTimezone(tokyo);
+  final inTokyo = utcZoned.convertToTzSameInstant(tokyo);
   final tokyoLocalHour = inTokyo.localHour;
   final tokyoLocalMinute = inTokyo.localMinute;
   print(

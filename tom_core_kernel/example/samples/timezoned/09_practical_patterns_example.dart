@@ -45,10 +45,10 @@ void run() {
   print('   Meeting scheduled: 2:00 PM Tokyo time');
   print('   Stored as: $meetingSerialized');
 
-  // Convert to other timezones using convertToTimezone method
-  final inNewYork = meetingTokyo.convertToTimezone(newYork);
-  final inLondon = meetingTokyo.convertToTimezone(london);
-  final inTokyo = meetingTokyo.convertToTimezone(tokyo);
+  // Convert to other timezones using convertToTzSameInstant method
+  final inNewYork = meetingTokyo.convertToTzSameInstant(newYork);
+  final inLondon = meetingTokyo.convertToTzSameInstant(london);
+  final inTokyo = meetingTokyo.convertToTzSameInstant(tokyo);
 
   final tokyoTimeStr =
       '${inTokyo.localHour}:${inTokyo.localMinute.toString().padLeft(2, '0')}';

@@ -4,45 +4,36 @@ import 'package:test/test.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-/// Every string the module serializes ends in a space, and every document that
-/// states the format has to say so.
+/// No string the module serializes ends in whitespace, and no document claims
+/// one does.
 ///
-/// `TomTimezone.toString()` appends one, and because every zoned value renders
-/// its zone through that method, the space reaches the end of every serialized
-/// form the module produces. It is the one part of the format a reader cannot
-/// see: it survives into stored data, it is invisible in a log line, and two
-/// values that differ only by it compare unequal. A document that shows the
-/// shape without it is not merely incomplete — it is the exact form that a
-/// reader will write an equality check against, and the check will fail.
+/// Every zoned value renders its zone through `TomTimezone.toString()`, so
+/// whatever that method appends reaches the end of every serialized form the
+/// module produces. For a long time it appended a space, which is the one part
+/// of a format a reader cannot see: it travelled into stored data, into map
+/// keys and into URLs, and two values differing only by it compared unequal
+/// with nothing to show why.
 ///
-/// So the emitted bytes are the anchor. A format template is a claim about the
-/// whole of the output, and wherever one appears the passage around it must
-/// state the space. Both halves are needed: a behaviour test alone cannot
-/// notice a document that has stopped matching it, and a keyword scan alone
-/// would pass against a space that emission no longer produces.
-///
-/// If the space is ever removed, this guard is what says which documents have
-/// to change with it.
+/// So the emitted bytes are the anchor, and the documents are checked against
+/// them. Both halves are needed: a behaviour test alone cannot notice a
+/// document that has stopped matching, and a documentation scan alone would
+/// pass against emission that had quietly changed.
 void main() {
   setUpAll(tz_data.initializeTimeZones);
 
   // ===========================================================================
   // What is emitted
   // ===========================================================================
-  group('the serialized form ends in a space', () {
-    test('every emitter appends exactly one', () {
+  group('the serialized form ends where the zone name ends', () {
+    test('no emitter appends whitespace', () {
       for (final emitter in _emitters) {
         final rendered = emitter.render();
         expect(
           rendered,
-          endsWith(' '),
-          reason: '${emitter.what} does not end in the trailing space',
+          equals(rendered.trimRight()),
+          reason: '${emitter.what} ends in whitespace',
         );
-        expect(
-          rendered.trimRight(),
-          isNot(endsWith(' ')),
-          reason: '${emitter.what} ends in more than one space',
-        );
+        expect(rendered, isNotEmpty, reason: '${emitter.what} renders nothing');
       }
     });
 
@@ -55,22 +46,23 @@ void main() {
       }
     });
 
-    test('the space is what makes two equal values compare unequal', () {
-      // Not decoration: this is the failure a reader meets when they compare a
-      // stored value against a format example that omits it.
+    test('a value carrying stray whitespace is rejected, not absorbed', () {
+      // The reason the parse patterns anchor at the zone name rather than
+      // tolerating `\s?`: a lenient reader accepts a string it will then
+      // compare unequal to the one it produces, and neither is malformed, so
+      // nothing reports why.
       final rendered = _emitters.last.render();
       expect(TomTimezoned.isTomTimezonedString(rendered), isTrue);
-      expect(TomTimezoned.isTomTimezonedString(rendered.trimRight()), isTrue);
-      expect(rendered, isNot(equals(rendered.trimRight())));
+      expect(TomTimezoned.isTomTimezonedString('\$rendered '), isFalse);
     });
   });
 
   // ===========================================================================
   // What is documented
   // ===========================================================================
-  group('every stated format mentions the trailing space', () {
-    test('no format template stands without it', () {
-      expect(_silentTemplates(), isEmpty, reason: _reason);
+  group('no stated format claims a trailing space', () {
+    test('no passage around a format template mentions one', () {
+      expect(_templatesClaimingSpace(), isEmpty, reason: _reason);
     });
 
     test('the scan finds the templates it claims to check', () {
@@ -79,17 +71,17 @@ void main() {
       expect(_templateSites(), hasLength(greaterThanOrEqualTo(8)));
     });
 
-    test('the scan rejects a passage that omits it', () {
-      const silent = ['## Heading', '', '`ISO8601_OFFSET_TIMEZONE`', ''];
-      expect(_mentionsSpaceNear(silent, 2, '.md'), isFalse);
+    test('the scan still recognises a passage that claims one', () {
+      const clean = ['## Heading', '', '`ISO8601_OFFSET_TIMEZONE`', ''];
+      expect(_mentionsSpaceNear(clean, 2, '.md'), isFalse);
 
-      const stated = [
+      const claiming = [
         '## Heading',
         '',
         '`ISO8601_OFFSET_TIMEZONE`, ending in a trailing space.',
         '',
       ];
-      expect(_mentionsSpaceNear(stated, 2, '.md'), isTrue);
+      expect(_mentionsSpaceNear(claiming, 2, '.md'), isTrue);
     });
   });
 }
@@ -182,9 +174,9 @@ List<String> _templateSites() => [
 ];
 
 /// Template occurrences whose passage never names the space.
-List<String> _silentTemplates() => [
+List<String> _templatesClaimingSpace() => [
   for (final site in _scan())
-    if (!site.mentionsSpace) '${site.path}:${site.line}: ${site.text.trim()}',
+    if (site.mentionsSpace) '${site.path}:${site.line}: ${site.text.trim()}',
 ];
 
 class _Site {
@@ -273,8 +265,8 @@ bool _mentionsSpaceNear(List<String> lines, int index, String extension) {
 }
 
 const _reason =
-    'A format template states the whole shape of a serialized string, and '
-    'every string the module produces ends in a space. A passage that gives '
-    'the template without saying so describes a value that is one character '
-    'short of anything the module emits — and it is the form a reader will '
-    'compare stored data against.';
+    'A format template states the whole shape of a serialized string, and no '
+    'string the module produces ends in whitespace. A passage that still '
+    'claims a trailing space describes a value one character longer than '
+    'anything the module emits — and it is the form a reader will compare '
+    'stored data against.';
