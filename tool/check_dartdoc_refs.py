@@ -315,6 +315,11 @@ def private_references(text: str) -> list[tuple[int, str]]:
     return found
 
 
+#: The prefix that marks a name as this workspace's own, and therefore one
+#: whose absence from all code is decidable rather than merely unindexed.
+OUR_PREFIX = "Tom"
+
+
 def code_names(text: str) -> set[str]:
     """Every capitalised identifier appearing outside a doc comment."""
     lines = [ln for ln in text.split("\n") if not DOC_LINE.match(ln)]
@@ -369,11 +374,30 @@ def judge_public(
     declares. Where it is not, the question is whether a member exists on
     somebody else's type, which needs a resolved type index this gate
     deliberately does not have. See the module docstring's third-check section.
+
+    **The head itself is judged when it is one of ours.** Skipping every
+    unrecognised head leaves a hole the same size as the check: a reference
+    whose *type* was renamed is not decidable by its leaf, so ``[Head.member]``
+    passes on a ``Head`` that exists nowhere. ``[TomCrudRepository.save]`` sat
+    in ``crud_repository.dart`` -- beside the ``TomRepository`` it meant --
+    through every gate, because the head was unknown and the reference was
+    therefore never looked at. A ``Tom``-prefixed name is this workspace's own
+    vocabulary: if it existed, it would appear in code here, so its absence is
+    decidable on exactly the terms the leaf test uses. Other prefixes are left
+    alone because they are not: ``RandomAccessFile``, ``EnumName`` and
+    ``AgentQuery`` are all real names this tree reaches only through inference
+    or a dependency, and judging them would be the wolf-crying the first check
+    exists to avoid. All three were measured -- of the twelve dotted references
+    whose head appears in no code under ``tom_ai/core``, those three plus
+    ``EnumName``'s eight repeats are correct and only the two above are not.
     """
     judged = 0
     hits = []
     for number, name, head, leaf in public_references(text):
         if "." in name and head not in declared:
+            if head.startswith(OUR_PREFIX) and head not in known_words:
+                judged += 1
+                hits.append((number, name))
             continue
         judged += 1
         if leaf not in known_words:

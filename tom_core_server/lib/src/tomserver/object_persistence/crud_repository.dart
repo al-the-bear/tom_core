@@ -24,8 +24,8 @@ import 'data_scope.dart';
 /// Raised when a repository operation cannot complete: the entity's data source
 /// was never registered, a primary-key lookup matched more than one row, a
 /// `COUNT(*)` returned other than one row, a row written by
-/// [TomCrudRepository.save] could not be read back, or
-/// [TomCrudRepository.delete] was handed an entity that was never persisted.
+/// [TomRepository.save] could not be read back, or
+/// [TomRepository.delete] was handed an entity that was never persisted.
 ///
 /// All but the last are *server* faults — a broken registration or a database
 /// that contradicts its own schema — so [TomServerException.clientThrow]
