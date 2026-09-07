@@ -281,6 +281,16 @@ Future<bool> collectGarbageUntilCleared(WeakReference<Object> probe) async {
 /// returning it is the only way to assert what the compiler concluded.
 Type staticTypeOf<X>(X value) => X;
 
+/// Observers registered by tests that only count notifications.
+///
+/// `TomObservable` holds its observers by [WeakReference], so the wrapper `>>`
+/// returns is the only strong reference keeping such a callback subscribed. A
+/// test that discards it is betting the collector will not run before the last
+/// `expect` — a bet that is usually won and occasionally not. Parking the
+/// wrapper here retains it for the length of the test; the `tearDown` in
+/// [main] empties the list between tests so nothing carries over.
+final retainedObservers = <TomObserver>[];
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -288,6 +298,7 @@ Type staticTypeOf<X>(X value) => X;
 void main() {
   initializeReflection();
   tz.initializeTimeZones();
+  tearDown(retainedObservers.clear);
 
   group('TomObservable', () {
     test('addObserver and notifyObservers', () {
@@ -691,7 +702,7 @@ void main() {
       final obj = TomString("initial");
       int notifyCount = 0;
 
-      obj >> (obs) => notifyCount++;
+      retainedObservers.add(obj >> (obs) => notifyCount++);
 
       obj.set("updated");
       expect(obj.get(), equals("updated"));
@@ -702,7 +713,7 @@ void main() {
       final obj = TomString("value");
       int notifyCount = 0;
 
-      obj >> (obs) => notifyCount++;
+      retainedObservers.add(obj >> (obs) => notifyCount++);
 
       obj.set("value"); // Same value
       expect(notifyCount, equals(0));
@@ -865,7 +876,7 @@ void main() {
       final person = TestPerson();
       int notifyCount = 0;
 
-      person >> (obs) => notifyCount++;
+      retainedObservers.add(person >> (obs) => notifyCount++);
 
       person.name | "John";
       expect(notifyCount, equals(1));
@@ -975,7 +986,7 @@ void main() {
       final customer = TestCustomer();
       int notifyCount = 0;
 
-      customer >> (obs) => notifyCount++;
+      retainedObservers.add(customer >> (obs) => notifyCount++);
 
       customer.name | "Test";
       expect(notifyCount, equals(1));
@@ -991,7 +1002,7 @@ void main() {
       final person = TestPerson();
       int notifyCount = 0;
 
-      person >> (obs) => notifyCount++;
+      retainedObservers.add(person >> (obs) => notifyCount++);
 
       person.mute();
       person.name | "John";
@@ -1045,7 +1056,7 @@ void main() {
       final list = TomList<TomString>();
       int notifyCount = 0;
 
-      list >> (obs) => notifyCount++;
+      retainedObservers.add(list >> (obs) => notifyCount++);
 
       list.add(TomString("test"));
       expect(notifyCount, equals(1));
@@ -1059,7 +1070,7 @@ void main() {
       int notifyCount = 0;
 
       list.append(TomInt(10));
-      list >> (obs) => notifyCount++;
+      retainedObservers.add(list >> (obs) => notifyCount++);
 
       list[0] | 20;
       expect(notifyCount, equals(1));
@@ -1175,7 +1186,7 @@ void main() {
       final list = TomList<TestTask>();
       int notifyCount = 0;
 
-      list >> (obs) => notifyCount++;
+      retainedObservers.add(list >> (obs) => notifyCount++);
 
       final task = TestTask();
       task.title | "Test Task";
@@ -1232,7 +1243,7 @@ void main() {
       final list = TomList<TomInt>();
       list.append(TomInt(1)).append(TomInt(2)).append(TomInt(3));
       int notifyCount = 0;
-      list >> (obs) => notifyCount++;
+      retainedObservers.add(list >> (obs) => notifyCount++);
 
       list.mute();
       list[0] | 10;
@@ -1251,7 +1262,7 @@ void main() {
       final person2 = TestPerson();
       list.append(person1).append(person2);
       int notifyCount = 0;
-      list >> (obs) => notifyCount++;
+      retainedObservers.add(list >> (obs) => notifyCount++);
 
       list.mute();
       person1.name | "John";
@@ -1269,7 +1280,7 @@ void main() {
       final list = TomList<TomString>();
       list.append(TomString("a")).append(TomString("b")).append(TomString("c"));
       int notifyCount = 0;
-      list >> (obs) => notifyCount++;
+      retainedObservers.add(list >> (obs) => notifyCount++);
 
       list.mute();
       list[0] | "x";
@@ -1289,7 +1300,7 @@ void main() {
 
       // Observe the individual element
       int elementNotifyCount = 0;
-      item >> (obs) => elementNotifyCount++;
+      retainedObservers.add(item >> (obs) => elementNotifyCount++);
 
       list.mute();
       expect(item.isMuted, isTrue);
@@ -1331,7 +1342,7 @@ void main() {
       final map = TomMap<String, TomString>();
       int notifyCount = 0;
 
-      map >> (obs) => notifyCount++;
+      retainedObservers.add(map >> (obs) => notifyCount++);
 
       map["key"] = TomString("value");
       expect(notifyCount, equals(1));
@@ -1342,7 +1353,7 @@ void main() {
       int notifyCount = 0;
 
       map["num"] = TomInt(10);
-      map >> (obs) => notifyCount++;
+      retainedObservers.add(map >> (obs) => notifyCount++);
 
       map["num"]! | 20;
       expect(notifyCount, equals(1));
@@ -1424,7 +1435,7 @@ void main() {
       final map = TomMap<String, TestUserProfile>();
       int notifyCount = 0;
 
-      map >> (obs) => notifyCount++;
+      retainedObservers.add(map >> (obs) => notifyCount++);
 
       final user = TestUserProfile();
       user.displayName | "Alice";
@@ -1456,7 +1467,7 @@ void main() {
       map["b"] = TomInt(2);
       map["c"] = TomInt(3);
       int notifyCount = 0;
-      map >> (obs) => notifyCount++;
+      retainedObservers.add(map >> (obs) => notifyCount++);
 
       map.mute();
       map["a"]! | 10;
@@ -1476,7 +1487,7 @@ void main() {
       map["p1"] = person1;
       map["p2"] = person2;
       int notifyCount = 0;
-      map >> (obs) => notifyCount++;
+      retainedObservers.add(map >> (obs) => notifyCount++);
 
       map.mute();
       person1.name | "John";
@@ -1496,7 +1507,7 @@ void main() {
       map["b"] = TomString("beta");
       map["c"] = TomString("gamma");
       int notifyCount = 0;
-      map >> (obs) => notifyCount++;
+      retainedObservers.add(map >> (obs) => notifyCount++);
 
       map.mute();
       map["a"]! | "x";
@@ -1516,7 +1527,7 @@ void main() {
 
       // Observe the individual value
       int valueNotifyCount = 0;
-      item >> (obs) => valueNotifyCount++;
+      retainedObservers.add(item >> (obs) => valueNotifyCount++);
 
       map.mute();
       expect(item.isMuted, isTrue);
@@ -2041,7 +2052,7 @@ void main() {
       final range = TomDateRange();
       int notifyCount = 0;
 
-      range >> (obs) => notifyCount++;
+      retainedObservers.add(range >> (obs) => notifyCount++);
 
       range.startDate | TomZonedDate.fromDateTime(DateTime(2024, 1, 1));
       expect(notifyCount, equals(1));
@@ -2062,7 +2073,7 @@ void main() {
       final range = TomTimeRange();
       int notifyCount = 0;
 
-      range >> (obs) => notifyCount++;
+      retainedObservers.add(range >> (obs) => notifyCount++);
 
       range.startTime |
           TomZonedTime(hour: 9, minute: 0, timezone: TomTimezone.utc);
@@ -2081,7 +2092,7 @@ void main() {
       final range = TomDateTimeRange();
       int notifyCount = 0;
 
-      range >> (obs) => notifyCount++;
+      retainedObservers.add(range >> (obs) => notifyCount++);
 
       range.startDateTime |
           TomZonedDateTime.fromDateTime(DateTime(2024, 1, 1, 10, 0));
@@ -2151,7 +2162,7 @@ void main() {
       list.append(item);
 
       int notifyCount = 0;
-      list >> (obs) => notifyCount++;
+      retainedObservers.add(list >> (obs) => notifyCount++);
 
       list.removeAt(0);
       expect(notifyCount, equals(1)); // Removal notifies
@@ -2166,7 +2177,7 @@ void main() {
       map["key"] = item;
 
       int notifyCount = 0;
-      map >> (obs) => notifyCount++;
+      retainedObservers.add(map >> (obs) => notifyCount++);
 
       // Two separate effects, measured separately: the removal itself is a
       // change of the map's contents and notifies once...
@@ -2202,7 +2213,7 @@ void main() {
       final customer = TestCustomer();
       int notifyCount = 0;
 
-      customer >> (obs) => notifyCount++;
+      retainedObservers.add(customer >> (obs) => notifyCount++);
 
       customer.name | "Updated";
       expect(notifyCount, equals(1));

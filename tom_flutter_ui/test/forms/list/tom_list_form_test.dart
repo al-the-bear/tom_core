@@ -391,7 +391,10 @@ void main() {
     test('a structural change wakes this list-form up', () {
       final list = OrderItemListForm()..bind(orderWith(['Bolt']).items);
       var notifications = 0;
-      list >> (_) => notifications++;
+      // Observers are held weakly; the tear-down read is what retains this
+      // one for the length of the test.
+      final observer = list >> (_) => notifications++;
+      addTearDown(() => list.removeObserver(observer));
 
       list.add();
 
@@ -404,7 +407,8 @@ void main() {
       // in the constructor, the notification would stop at the sub-form.
       final list = OrderItemListForm()..bind(orderWith(['Bolt']).items);
       var notifications = 0;
-      list >> (_) => notifications++;
+      final observer = list >> (_) => notifications++;
+      addTearDown(() => list.removeObserver(observer));
 
       list[0].product.setValue('Screw');
 
@@ -436,7 +440,8 @@ void main() {
       list.removeAt(0);
 
       final observedLengths = <int>[];
-      list >> (_) => observedLengths.add(list.length);
+      final observer = list >> (_) => observedLengths.add(list.length);
+      addTearDown(() => list.removeObserver(observer));
 
       list.discard();
 
