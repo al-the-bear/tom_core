@@ -1172,10 +1172,18 @@ class TomClass extends TomObject<Map<String, TomObject>>
       member.clear();
     }
     if (value is Map) {
-      var memberMirror = tomReflectionInfo.mapValueElementType(member);
+      // An untyped value type accepts anything and is not a TomClass, so every
+      // entry takes the value path below and no mirror is needed. Asking for
+      // one would fail rather than answer: `TomObject<dynamic>` is generic, and
+      // the resolver refuses a generic value type because for every committed
+      // member shape that means a nested collection.
+      final memberMirror = member._hasUntypedValues
+          ? null
+          : tomReflectionInfo.mapValueElementType(member);
       for (var key in value.keys) {
         var element = value[key];
-        if (memberMirror.isAssignableTo(TomClass._classMirror)) {
+        if (memberMirror != null &&
+            memberMirror.isAssignableTo(TomClass._classMirror)) {
           var obj = memberMirror.newInstance("", []);
           if (obj is TomClass) {
             if (element is Map<String, dynamic>) {
@@ -1221,10 +1229,16 @@ class TomClass extends TomObject<Map<String, TomObject>>
     // resetWith() (used when clear=true) can fire onBeforeClear while the
     // old elements are still intact, then install all new elements, then
     // fire onAfterReset with a fully populated list.
-    var memberMirror = tomReflectionInfo.singleElementType(member);
+    // See `_setMapMember`: an untyped element type is not a TomClass and
+    // cannot be resolved, so the mirror is skipped and every element takes the
+    // value path.
+    final memberMirror = member._hasUntypedElements
+        ? null
+        : tomReflectionInfo.singleElementType(member);
     final newElements = <TomObject<dynamic>>[];
     for (var element in value) {
-      if (memberMirror.isAssignableTo(TomClass._classMirror)) {
+      if (memberMirror != null &&
+          memberMirror.isAssignableTo(TomClass._classMirror)) {
         var obj = memberMirror.newInstance("", []);
         if (obj is TomClass) {
           if (element is Map<String, dynamic>) {
@@ -1260,7 +1274,7 @@ class TomClass extends TomObject<Map<String, TomObject>>
           "TomList member '$key' element $i cannot be deserialized from a "
               "${value[i].runtimeType}: that yields a "
               "${candidate.runtimeType}, but the list holds "
-              "${memberMirror.simpleName}",
+              "${memberMirror?.simpleName ?? member._elementTypeName}",
           parameters: {
             "key": key,
             "index": i,
@@ -1824,6 +1838,20 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   /// type. See [TomObject._widenForDoubleTarget] for the rule itself.
   dynamic _widenElement(dynamic raw) => TomObject._widenForDoubleTarget<E>(raw);
 
+  /// Whether this list's element type is the untyped base [TomObject].
+  ///
+  /// True for `TomList<TomObject>` and false for `TomList<TomDouble>` or any
+  /// other committed element type. Like [_acceptsElement] it lives here
+  /// because `E` is only in scope here, and it is the question
+  /// [TomClass._setListMember] has to answer *before* it can ask reflection
+  /// anything: an untyped element type is generic, and the resolver rejects a
+  /// generic element type because for every other member shape that means a
+  /// nested collection.
+  bool get _hasUntypedElements => <TomObject<dynamic>>[] is List<E>;
+
+  /// The declared element type, named as Dart names it, for error messages.
+  String get _elementTypeName => '$E';
+
   /// Loosely-typed variant of [resetWith] used by deserialization.
   ///
   /// [TomClass._setListMember] builds new elements reflectively into a
@@ -2264,6 +2292,12 @@ class TomMap<K, V extends TomObject> extends TomObject<Map<K, V>>
   /// the raw JSON value but not the value type. See
   /// [TomObject._widenForDoubleTarget] for the rule itself.
   dynamic _widenValue(dynamic raw) => TomObject._widenForDoubleTarget<V>(raw);
+
+  /// Whether this map's value type is the untyped base [TomObject].
+  ///
+  /// The map-side counterpart of `TomList._hasUntypedElements`; see there for
+  /// why [TomClass._setMapMember] has to ask before consulting reflection.
+  bool get _hasUntypedValues => <TomObject<dynamic>>[] is List<V>;
 
   /// The identity hash, and therefore **stable across every mutation**.
   ///

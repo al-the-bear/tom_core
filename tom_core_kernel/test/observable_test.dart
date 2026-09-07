@@ -84,6 +84,19 @@ class TestPricedItem extends TomClass {
   final counts = TomList<TomInt>();
 }
 
+/// Container members whose element type is left as the base [TomObject].
+///
+/// `TomList<TomObject>` means `TomList<TomObject<dynamic>>`, so the element
+/// type accepts anything and commits to nothing. That is the only member shape
+/// a nested `TomMap`/`TomList` element could be deserialized into, and it is
+/// what pins the half of the widening rule that says an element type merely
+/// *accepting* a double is not a reason to produce one.
+@tomReflector
+class TestUntypedContainers extends TomClass {
+  final anyList = TomList<TomObject>();
+  final anyMap = TomMap<String, TomObject>();
+}
+
 /// Test class whose only non-scalar member is a nested [TomClass] carrying
 /// collections of its own.
 ///
@@ -3845,13 +3858,35 @@ void main() {
         expect(item.surcharges['handling']!.get(), equals(4.0));
       });
 
-      // An untyped container member (`TomList<TomObject>` /
-      // `TomMap<String, TomObject>`) would pin the other half of the rule —
-      // that an element type which merely *accepts* a double is not a reason
-      // to produce one. It cannot be tested here: such a member cannot be
-      // deserialized at all, because reflection resolves no ClassMirror for
-      // `TomObject<dynamic>`. Those two tests belong with whatever closes that
-      // resolution gap, not here.
+      // The other half of the rule: an element type which merely *accepts* a
+      // double is not a reason to produce one. An untyped container accepts
+      // anything, so nothing about it says "double", and an integer stays an
+      // integer.
+      test('an integer in an untyped list stays an integer', () {
+        final untyped = TestUntypedContainers();
+
+        untyped.setValues({
+          'anyList': [1, 2.5],
+        });
+
+        expect(untyped.anyList[0], isA<TomInt>());
+        expect(untyped.anyList[0].get(), equals(1));
+        expect(untyped.anyList[1], isA<TomDouble>());
+        expect(untyped.anyList[1].get(), equals(2.5));
+      });
+
+      test('an integer in an untyped map stays an integer', () {
+        final untyped = TestUntypedContainers();
+
+        untyped.setValues({
+          'anyMap': {'whole': 1, 'fractional': 2.5},
+        });
+
+        expect(untyped.anyMap['whole'], isA<TomInt>());
+        expect(untyped.anyMap['whole']!.get(), equals(1));
+        expect(untyped.anyMap['fractional'], isA<TomDouble>());
+        expect(untyped.anyMap['fractional']!.get(), equals(2.5));
+      });
 
       test('a fractional number nested in a list survives', () {
         item.setValues({
@@ -3992,6 +4027,91 @@ void main() {
   // that held them. These tests pin identity in both directions: distinct
   // instances stay unequal however alike their contents, and one instance stays
   // findable however much its contents change.
+  group('an untyped container member deserializes', () {
+    // `TomList<TomObject>` / `TomMap<String, TomObject>` commit to no element
+    // type. Both setters used to resolve the element's ClassMirror before
+    // looking at the payload, and reflection refuses a generic element type
+    // because for every committed member shape that means a nested collection
+    // — so an untyped member threw on every setValues, including an empty one.
+    late TestUntypedContainers item;
+
+    setUp(() => item = TestUntypedContainers());
+
+    test('an empty payload is accepted', () {
+      item.setValues({'anyList': <dynamic>[], 'anyMap': <String, dynamic>{}});
+
+      expect(item.anyList, isEmpty);
+      expect(item.anyMap, isEmpty);
+    });
+
+    test('a list of mixed scalars keeps each element its own type', () {
+      item.setValues({
+        'anyList': ['text', 7, 1.5, true],
+      });
+
+      expect(
+        item.anyList.map((e) => e.runtimeType.toString()).toList(),
+        equals(['TomString', 'TomInt', 'TomDouble', 'TomBool']),
+      );
+      expect(
+        item.anyList.map((e) => e.get()).toList(),
+        equals(['text', 7, 1.5, true]),
+      );
+    });
+
+    test('a map of mixed scalars keeps each value its own type', () {
+      item.setValues({
+        'anyMap': {'s': 'text', 'i': 7, 'd': 1.5, 'b': true},
+      });
+
+      expect(item.anyMap['s'], isA<TomString>());
+      expect(item.anyMap['i'], isA<TomInt>());
+      expect(item.anyMap['d'], isA<TomDouble>());
+      expect(item.anyMap['b'], isA<TomBool>());
+    });
+
+    // The recursive branches of `TomObject._createFrom` build a TomMap or a
+    // TomList for a nested payload. An untyped member is the only destination
+    // that can hold one, so before this fix those branches were unreachable
+    // from deserialization.
+    test('a nested map becomes a TomMap element', () {
+      item.setValues({
+        'anyList': [
+          {'inner': 3},
+        ],
+      });
+
+      final nested = item.anyList.single;
+      expect(nested, isA<TomMap>());
+      expect(((nested as TomMap)['inner'] as TomObject).get(), equals(3));
+    });
+
+    test('a nested list becomes a TomList value', () {
+      item.setValues({
+        'anyMap': {
+          'row': [1, 'two'],
+        },
+      });
+
+      final nested = item.anyMap['row'];
+      expect(nested, isA<TomList>());
+      expect(
+        (nested as TomList).map((e) => e.get()).toList(),
+        equals([1, 'two']),
+      );
+    });
+
+    test('a committed element type still rejects a wrong element', () {
+      // The fix must not loosen a member that *does* name its element type.
+      expect(
+        () => TestPricedItem().setValues({
+          'counts': ['not a number'],
+        }),
+        throwsA(isA<TomObservableException>()),
+      );
+    });
+  });
+
   group('container equality is identity, not contents', () {
     group('TomList', () {
       test('equal contents in distinct instances are unequal', () {
