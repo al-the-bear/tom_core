@@ -561,6 +561,7 @@ class TomShutdownCleanup {
 /// tomShutdownCleanup.addDisposable(myController);
 /// ```
 ///
-/// [TomShutdownCleanup.start] is optional and is not part of this setup — it
-/// writes a log breadcrumb and nothing else.
+/// Because construction is what arms it, there is no setup call to forget —
+/// and equally none to reach for: a shared instance is already listening
+/// before the first resource is registered.
 final TomShutdownCleanup tomShutdownCleanup = TomShutdownCleanup();
