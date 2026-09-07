@@ -17,7 +17,7 @@ UI) by **type**, not just by message.
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 

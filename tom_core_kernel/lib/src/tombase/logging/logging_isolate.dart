@@ -21,7 +21,7 @@
 /// ### Main Isolate Setup
 ///
 /// ```dart
-/// void main() async {
+/// void main(List<String> args) async {
 ///   // Start isolated logging with a single logging worker
 ///   await TomIsolateLogging.startIsolatedLogging(args);
 ///

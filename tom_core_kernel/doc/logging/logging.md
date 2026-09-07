@@ -50,7 +50,7 @@ The TomBase logging system provides:
 
 ### Basic Usage
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
@@ -463,13 +463,13 @@ a later corruption replaces it.
 
 ### Multi-Isolate Logging
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-void main() async {
+void main(List<String> args) async {
   // Main isolate: Start isolated logging
   await TomIsolateLogging.startIsolatedLogging(args);
-  
+
   // All logs now route through the logging isolate
   tomLog.info('This goes through the logging isolate');
 }

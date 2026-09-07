@@ -28,7 +28,7 @@ this module. See
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 class FactorialCommand extends TomCommand {

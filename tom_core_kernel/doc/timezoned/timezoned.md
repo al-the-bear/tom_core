@@ -78,7 +78,7 @@ in memory. No startup call, no `await`.
 **On web the database is fetched over the network**, which cannot happen
 synchronously — so it has to be done before anything reads a timezone:
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 Future<void> main() async {
@@ -106,7 +106,7 @@ exist there.
 
 ## Quick Start
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {

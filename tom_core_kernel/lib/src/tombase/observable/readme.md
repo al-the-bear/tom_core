@@ -29,7 +29,7 @@ read, `>>` to observe — that the forms and UI layers build on.
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {

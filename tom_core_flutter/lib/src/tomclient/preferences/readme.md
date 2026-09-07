@@ -35,10 +35,16 @@ call site changing.
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
 Future<void> main() async {
+  // Wherever this platform keeps application support files — on a Flutter app
+  // typically `getApplicationSupportDirectory().path`. It is named here rather
+  // than resolved, because which directory that is belongs to the app and not
+  // to this module.
+  const supportDirectory = '/var/lib/example-app';
+
   // Register once at startup — the only line that knows about storage.
   TomBean.withType(
     TomDevicePreferences,

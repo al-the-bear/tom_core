@@ -43,7 +43,7 @@ mark.
 
 ## Quick Start
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 void main() {
@@ -73,7 +73,7 @@ web, macos
 Every collection argument defaults to a **fresh** empty collection, never a
 shared constant, so two default-constructed holders never alias:
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 void main() {
@@ -135,7 +135,7 @@ dependency here would retract both.
 Keeping them apart is what lets the base be regenerated without losing authored
 adjustments.
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 void main() {
@@ -184,7 +184,7 @@ reparent, setContainerProp, setSlotHint, insertContainer, removeContainer
 reports the overrides whose `targetNodeId` the new base no longer contains, so a
 delta orphaned by a model change surfaces instead of silently doing nothing.
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 void main() {
@@ -216,7 +216,7 @@ true
 `TomMessageKeyRegistry` is the *closed* catalogue: every piece of user-facing
 copy has exactly one key, one base copy, and its per-locale translations.
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 void main() {
@@ -262,7 +262,7 @@ the copy that explains it.
 `TomRouteRegistry` holds three things: the addressable screens, which form sits
 on which screen, and the conditional edges between screens.
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 void main() {
@@ -304,7 +304,7 @@ assignment or a flow edge names that the registry does not hold. It is a **`Set`
 not a list — the same missing route named by three edges is one problem — so an
 empty set is the pass.
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 void main() {
@@ -333,7 +333,7 @@ The gap here is precise: the messaging runtime delivers a composed message on a
 — types, their channels, and the preferences that narrow them — is what this
 module holds.
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 void main() {
@@ -394,7 +394,7 @@ the "how much", and **columns** what is actually displayed. `TomReportDefinition
 is the authored holder; `TomReportResult` is the shared envelope an operation
 returns.
 
-```dart
+```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 
 class Order {}

@@ -20,7 +20,7 @@ signal handlers and runs them when the process shuts down, so resources
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 class CacheService implements TomClosable {

@@ -29,7 +29,7 @@ survives a restart during an endpoint outage.
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 Future<void> main(List<String> args) async {

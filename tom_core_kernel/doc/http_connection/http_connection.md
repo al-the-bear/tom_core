@@ -65,7 +65,7 @@ The module is made up of nine files:
 
 First, set up where your application should send requests:
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {

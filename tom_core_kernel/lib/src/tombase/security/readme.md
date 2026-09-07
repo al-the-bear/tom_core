@@ -53,7 +53,7 @@ an element is hidden, locked, read-only, or fully editable.
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {

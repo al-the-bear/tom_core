@@ -80,7 +80,7 @@ one node when several are running.
 Write the job as a class and say when it runs. The annotation *is* the
 registration, so start-up carries nothing job-specific:
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 @tomReflector

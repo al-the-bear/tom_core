@@ -205,7 +205,7 @@ reports and never gates.
 | [`tool/check_doc_attributions.py`](tool/check_doc_attributions.py) | Finds prose that names a source file and then names a type that file has not got |
 | [`tool/check_member_attributions.py`](tool/check_member_attributions.py) | Finds documentation that writes `Type.member` for a member the type does not declare |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, quote its signature with the wrong parameter kind, or `const` one that is not |
-| [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, and every framework name in it must resolve |
+| [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, every framework name in it must resolve, and a fence marked ` ```dart complete ` must analyze clean outright |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
 | [`tool/check_comments_read_as_is.py`](tool/check_comments_read_as_is.py) | Finds work-item ids and history narration in shipped text |
@@ -539,6 +539,22 @@ failure the gate exists to find, because a mistyped `TomBeen` would be stubbed
 into existence and pass. A name beginning `Tom`/`tom` is not fiction — that
 prefix is the framework's, so a sample using one is *claiming* the framework has
 it.
+
+**A fence that says it is whole must analyze clean.** The second rule's
+concession is also its blind spot: a snippet using an undeclared `preference`
+and reading back a `stored` it never named passed both rules, because neither
+name begins `Tom` and that fiction is what the rule allows. A fence can opt in
+by naming itself in its own info string — ` ```dart complete ` — and is then
+judged by *every* diagnostic. Opt-in and not opt-out, because most fences here
+are deliberately fragments; a snippet that wants checking is written whole
+rather than given a preamble the reader cannot see.
+
+The marker is a claim the gate holds the page to. Of 29 fences carrying both an
+import and a `main` — and so *looking* whole — 22 were: three import a file
+`build_runner` generates and four stand in an application they invent, and those
+stay unmarked. One was neither, and is the reason the rule exists:
+`logging.md`'s multi-isolate sample passed `args` to `startIsolatedLogging` from
+a `main()` that declared none, so a reader copying it got an undefined name.
 
 The documents' elision conventions are honoured rather than edited away: `{ ... }`
 for a body and `// ...` for elided statements are how a sample says "the rest is

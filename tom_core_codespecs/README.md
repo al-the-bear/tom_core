@@ -130,7 +130,7 @@ A gap class is an ordinary Dart class with no framework around it. The CE-TX
 catalogue is the smallest one that shows why the part is a gap at all: it
 answers *which keys may exist*, which the runtime lookup store cannot.
 
-```dart
+```dart complete
 // dart run example.dart
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
 

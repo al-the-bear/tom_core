@@ -24,7 +24,7 @@ agree on, in the one package they both already depend on.
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {

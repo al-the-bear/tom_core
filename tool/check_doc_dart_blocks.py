@@ -40,6 +40,31 @@ so a sample using one is *claiming* the framework has it. Those must resolve.
 So the check keeps the whole of what the manual pass demonstrated and gives up
 only the part that would need fiction to evaluate.
 
+*Rule C -- a fence that says it is whole must analyze clean.* Rule B's
+concession is also its blind spot: a snippet that used an undeclared
+``preference`` and read back a ``stored`` it never named passed, because
+neither name begins ``Tom`` and the fiction is what B allows. That is a real
+defect and it is the one kind a compiler catches outright, so a fence can opt
+in by naming itself in its own info string::
+
+    ```dart complete
+
+and is then judged by *every* diagnostic. Opt-in rather than opt-out because
+most fences here are deliberately fragments -- a bare statement, a class body,
+a method signature with no enclosing class -- all the right thing to show and
+none of them programs. Requiring a fragment to declare the context it omits
+would either bury the point in scaffolding or park a preamble somewhere the
+reader cannot see it; a snippet that wants checking is written whole instead.
+
+The marker is a claim the gate then holds the page to, which is what makes it
+worth having rather than decorative. Of 29 fences that carried both an import
+and a `main` -- and so looked whole -- 22 were, and 7 were not: three import a
+file `build_runner` generates, and four stand in an application they invent
+(`UserService`, `DatabaseConnection`). Those stay unmarked, which is the
+honest answer for them. One was neither: `logging.md`'s multi-isolate sample
+passed `args` to `startIsolatedLogging` from a `main()` that declared none, so
+a reader copying it got exactly the error this rule exists to report.
+
 **The documents' elision conventions are honoured, not edited away.** `{ ... }`
 for a body and `// ...` for elided statements are how a sample says "the rest
 is not the point", and they are legitimate. [desugar] translates them. Three
@@ -150,7 +175,13 @@ PREAMBLE = "\n".join([
 #: blocks are settled by the first pass and the rest cost only their own size.
 WRAPPERS = ["mixed", "top", "fn", "member", "expr"]
 
-FENCE_OPEN = re.compile(r"^\s*```dart\s*$")
+#: A ```dart fence, with whatever else its info string carries. The word
+#: `complete` there is the opt-in marker -- see [COMPLETE] and the module
+#: docstring.
+FENCE_OPEN = re.compile(r"^\s*```dart(?P<info>[^\n]*)$")
+
+#: The marker that says "this fence is a whole program, judge it as one".
+COMPLETE = "complete"
 FENCE_CLOSE = re.compile(r"^\s*```\s*$")
 
 BRACE_ELLIPSIS = re.compile(r"\{\s*\.\.\.\s*\}")
@@ -170,16 +201,23 @@ TOM_NAME = re.compile(r"'(?:[\w.<>]*\b)?([Tt]om[A-Z]\w*)")
 
 
 def fenced_dart(text: str):
-    """Every ```dart block in `text`, as `(first content line, body)`."""
+    """Every ```dart block, as `(first content line, body, is complete)`.
+
+    `is complete` is the opt-in of the module docstring: the fence said so in
+    its own info string, so this one is judged by every diagnostic rather than
+    by the two rules a fragment is held to.
+    """
     lines = text.split("\n")
     index = 0
     while index < len(lines):
-        if FENCE_OPEN.match(lines[index]):
+        opened = FENCE_OPEN.match(lines[index])
+        if opened:
             start = index + 1
             end = start
             while end < len(lines) and not FENCE_CLOSE.match(lines[end]):
                 end += 1
-            yield start + 1, "\n".join(lines[start:end])
+            complete = COMPLETE in opened.group("info").split()
+            yield start + 1, "\n".join(lines[start:end]), complete
             index = end
         index += 1
 
@@ -444,20 +482,29 @@ def analyze(scratch: Path) -> dict[str, list[dict]]:
     return found
 
 
-def partition(diagnostics: list[dict]) -> tuple[list[dict], list[dict]]:
-    """`(Rule A failures, Rule B failures)`.
+def partition(
+    diagnostics: list[dict], complete: bool = False
+) -> tuple[list[dict], list[dict]]:
+    """`(Rule A failures, Rule B/C failures)`.
 
     The analyzer's own `type` field makes the split exact: a `SYNTACTIC_ERROR`
     is the parser's, everything else is resolution's. Of the latter only those
     naming a framework identifier count -- the rest are the document's fiction.
+
+    Unless the fence declared itself `complete`, in which case there is no
+    fiction to allow and every resolution error counts. That is Rule C, and it
+    is the only rule that catches an undeclared plain name: the snippet this
+    gate's opt-in was built for used a `preference` it never declared and read
+    back a `stored` it never named, neither of which begins `Tom`.
     """
     syntax = [d for d in diagnostics if d.get("type") == "SYNTACTIC_ERROR"]
-    framework = [
-        d for d in diagnostics
-        if d.get("type") != "SYNTACTIC_ERROR"
-        and TOM_NAME.search(d.get("problemMessage", ""))
+    resolution = [d for d in diagnostics if d.get("type") != "SYNTACTIC_ERROR"]
+    if complete:
+        return syntax, resolution
+    return syntax, [
+        d for d in resolution
+        if TOM_NAME.search(d.get("problemMessage", ""))
     ]
-    return syntax, framework
 
 
 # =============================================================================
@@ -500,19 +547,25 @@ class Fault:
 
 
 def check(package: Path) -> tuple[list[Fault], int, int]:
-    """`(faults, blocks checked, blocks skipped)` for one package."""
+    """`(faults, blocks checked, blocks skipped, blocks marked complete)`."""
     foreign_import = re.compile(
         rf"^\s*import\s+'package:(?!{re.escape(package.name)}/)", re.M)
 
     origin: dict[str, tuple[str, str]] = {}
+    complete: set[str] = set()
     skipped = 0
     for path in documents(package):
-        for line, block in fenced_dart(path.read_text(encoding="utf-8")):
+        for line, block, is_complete in fenced_dart(
+            path.read_text(encoding="utf-8")
+        ):
             if foreign_import.search(block):
                 skipped += 1
                 continue
             where = f"{path.relative_to(package)}:{line}"
-            origin[slug(path, package, line)] = (where, desugar(block))
+            name = slug(path, package, line)
+            origin[name] = (where, desugar(block))
+            if is_complete:
+                complete.add(name)
 
     scratch = scratch_for(package)
     write_scratch(package, [])
@@ -541,7 +594,9 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
         found = analyze(scratch)
         still: dict[str, tuple[str, str]] = {}
         for name, (where, body) in pending.items():
-            syntax, framework = partition(found.get(name, []))
+            syntax, framework = partition(
+                found.get(name, []), name in complete
+            )
             if syntax:
                 previous = best_syntax.get(name)
                 if previous is None or len(syntax) < len(previous):
@@ -550,7 +605,13 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
                 continue
             if framework:
                 faults.append(Fault(
-                    name, where, "framework", wrapper, framework, scratch))
+                    name,
+                    where,
+                    "complete" if name in complete else "framework",
+                    wrapper,
+                    framework,
+                    scratch,
+                ))
         pending = still
 
     for name, (where, _) in pending.items():
@@ -567,7 +628,7 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
                            fault.wrapper or WRAPPERS[0], package.name))
         for fault in faults
     ])
-    return faults, len(origin), skipped
+    return faults, len(origin), skipped, len(complete)
 
 
 def main(argv: list[str]) -> int:
@@ -578,33 +639,41 @@ def main(argv: list[str]) -> int:
         return 2
 
     total_faults: list[Fault] = []
-    checked = skipped = 0
+    checked = skipped = opted_in = 0
     for name in wanted:
         package = REPO_ROOT / name
         if not (package / "pubspec.yaml").is_file():
             print(f"{name} is not a package under {REPO_ROOT}",
                   file=sys.stderr)
             return 2
-        faults, blocks, left_out = check(package)
+        faults, blocks, left_out, marked = check(package)
         if blocks == 0:
             print(f"no ```dart blocks found under {name}", file=sys.stderr)
             return 2
         total_faults.extend(faults)
         checked += blocks
         skipped += left_out
+        opted_in += marked
 
     parse = [f for f in total_faults if f.rule == "parse"]
     framework = [f for f in total_faults if f.rule == "framework"]
+    incomplete = [f for f in total_faults if f.rule == "complete"]
 
     if parse:
         print("=== blocks that do not parse in any context ===")
         for fault in sorted(parse, key=lambda f: f.where):
             print(fault.render())
+    if incomplete:
+        print("\n=== blocks marked `complete` that do not analyze clean ===")
+        for fault in sorted(incomplete, key=lambda f: f.where):
+            print(fault.render())
     if framework:
         print("\n=== blocks naming something the framework does not have ===")
         for fault in sorted(framework, key=lambda f: f.where):
             print(fault.render())
-        codes = Counter(d["code"] for f in framework for d in f.diagnostics)
+        codes = Counter(
+            d["code"] for f in framework + incomplete for d in f.diagnostics
+        )
         print("\n-- most common --")
         for code, count in codes.most_common(10):
             print(f"  {count:3d}  {code}")
@@ -614,8 +683,10 @@ def main(argv: list[str]) -> int:
         f"\npackages checked        : {', '.join(wanted)}\n"
         f"dart blocks analyzed    : {checked}\n"
         f"blocks skipped (foreign): {skipped}\n"
+        f"blocks marked `complete`: {opted_in}\n"
         f"blocks that do not parse: {len(parse)}\n"
-        f"framework names missing : {sum(f.weight for f in framework)}"
+        f"framework names missing : {sum(f.weight for f in framework)}\n"
+        f"complete blocks unclean : {sum(f.weight for f in incomplete)}"
     )
     return report_faults(faults)
 

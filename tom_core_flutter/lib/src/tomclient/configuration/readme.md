@@ -31,7 +31,7 @@ usual.
 
 ## Quick start
 
-```dart
+```dart complete
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
 class AppConfiguration extends TomBaseClientConfiguration {
