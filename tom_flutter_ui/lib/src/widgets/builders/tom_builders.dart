@@ -28,7 +28,7 @@ class TomStatefulBuilder extends TomBuilderBase {
     super.authorizer,
     super.uiStateController,
     required StatefulWidgetBuilder builder,
-  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
+  }) : builder = ScopeCapture(scope: scope).wrap2(builder);
 
   /// The builder function that creates the widget tree with setState capability.
   final StatefulWidgetBuilder builder;
@@ -58,7 +58,7 @@ class TomStreamBuilder<T> extends TomBuilderBase {
     this.initialData,
     this.stream,
     required AsyncWidgetBuilder<T> builder,
-  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
+  }) : builder = ScopeCapture(scope: scope).wrap2(builder);
 
   /// The initial data to use before the stream emits any events.
   final T? initialData;
@@ -98,7 +98,7 @@ class TomFutureBuilder<T> extends TomBuilderBase {
     this.initialData,
     this.future,
     required AsyncWidgetBuilder<T> builder,
-  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
+  }) : builder = ScopeCapture(scope: scope).wrap2(builder);
 
   /// The initial data to use before the future completes.
   final T? initialData;
@@ -138,7 +138,7 @@ class TomValueListenableBuilder<T> extends TomBuilderBase {
     required this.valueListenable,
     required ValueWidgetBuilder<T> builder,
     this.child,
-  }) : builder = InScopeBuilder(scope: scope).wrap3(builder);
+  }) : builder = ScopeCapture(scope: scope).wrap3(builder);
 
   /// The [ValueListenable] to listen to.
   final ValueListenable<T> valueListenable;
@@ -178,7 +178,7 @@ class TomListenableBuilder extends TomBuilderBase {
     required this.listenable,
     required TransitionBuilder builder,
     this.child,
-  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
+  }) : builder = ScopeCapture(scope: scope).wrap2(builder);
 
   /// The [Listenable] to listen to.
   final Listenable listenable;
@@ -224,8 +224,8 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
     required ValueWidgetBuilder<T> builder,
     VoidCallback? onEnd,
     this.child,
-  }) : builder = InScopeBuilder(scope: scope).wrap3(builder),
-       onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : builder = ScopeCapture(scope: scope).wrap3(builder),
+       onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedCurve =
         curve ??
         _resolveCurve(TomCtr.textOrNull(basePath, 'curve')) ??
@@ -280,7 +280,7 @@ class TomOrientationBuilder extends TomBuilderBase {
     super.authorizer,
     super.uiStateController,
     required OrientationWidgetBuilder builder,
-  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
+  }) : builder = ScopeCapture(scope: scope).wrap2(builder);
 
   /// The builder function that creates the widget tree based on orientation.
   final OrientationWidgetBuilder builder;
@@ -308,7 +308,7 @@ class TomLayoutBuilder extends TomBuilderBase {
     super.authorizer,
     super.uiStateController,
     required LayoutWidgetBuilder builder,
-  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
+  }) : builder = ScopeCapture(scope: scope).wrap2(builder);
 
   /// The builder function that creates the widget tree based on constraints.
   final LayoutWidgetBuilder builder;

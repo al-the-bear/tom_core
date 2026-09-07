@@ -1005,7 +1005,7 @@ Every Flutter widget parameter falls into one of these categories:
 | **Auth-driven state** | Enabled/disabled/read-only based on authorization | `TomPolicyNodeBase` (auth system) | `enabled`, `readOnly`, null `onChanged` |
 | **Resource-driven text** | Labels, hints, errors resolved from scoped resources | Tom resource system | `labelText`, `hintText`, `helperText`, `errorText`, `cancelText` |
 | **Theme-driven style** | Colors, shapes, typography from the Tom theme | Tom theme resolution | `activeColor`, `fillColor`, `shape`, `textStyle` |
-| **User callbacks** | Optional pass-through callbacks for form authors | Scope-wrapped (`InScopeBuilder`) | `onSubmitted`, `onChangeStart`, `onChangeEnd`, `onTap` |
+| **User callbacks** | Optional pass-through callbacks for form authors | Scope-wrapped (`ScopeCapture`) | `onSubmitted`, `onChangeStart`, `onChangeEnd`, `onTap` |
 | **Static config** | Non-reactive configuration set once at construction | Constructor params (plain values) | `divisions`, `obscureText`, `tristate`, `minuteInterval` |
 
 ### 8.2. Binding Pattern — Observable → Flutter Widget

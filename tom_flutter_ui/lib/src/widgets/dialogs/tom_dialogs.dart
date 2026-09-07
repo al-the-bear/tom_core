@@ -450,9 +450,9 @@ class TomBottomSheet extends TomDialogBase {
     this.showDragHandle,
     BottomSheetDragStartHandler? onDragStart,
     BottomSheetDragEndHandler? onDragEnd,
-  }) : builder = InScopeBuilder(scope: scope).wrap1(builder),
-       onClosing = InScopeBuilder(scope: scope).wrap0(onClosing),
-       onDragStart = InScopeBuilder(scope: scope).wrap1n(onDragStart),
+  }) : builder = ScopeCapture(scope: scope).wrap1(builder),
+       onClosing = ScopeCapture(scope: scope).wrap0(onClosing),
+       onDragStart = ScopeCapture(scope: scope).wrap1n(onDragStart),
        onDragEnd = _wrapDragEndHandler(scope, onDragEnd) {
     _resolvedBackgroundColor =
         backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
@@ -664,7 +664,7 @@ class TomMaterialBanner extends TomDialogBase {
     this.overflowAlignment = OverflowBarAlignment.end,
     this.animation,
     VoidCallback? onVisible,
-  }) : onVisible = InScopeBuilder(scope: scope).wrap0n(onVisible) {
+  }) : onVisible = ScopeCapture(scope: scope).wrap0n(onVisible) {
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedBackgroundColor =
         backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
@@ -770,7 +770,7 @@ class TomTooltip extends TomDialogBase {
     this.enableFeedback,
     TooltipTriggeredCallback? onTriggered,
     this.child,
-  }) : onTriggered = InScopeBuilder(scope: scope).wrap0n(onTriggered) {
+  }) : onTriggered = ScopeCapture(scope: scope).wrap0n(onTriggered) {
     _resolvedMessage = richMessage != null
         ? null
         : (message ?? TomCtr.textOrFail(basePath, 'tooltip'));
@@ -977,7 +977,7 @@ class TomModalBottomSheet extends TomDialogBase {
     this.routeSettings,
     this.transitionAnimationController,
     this.anchorPoint,
-  }) : builder = InScopeBuilder(scope: scope).wrap1(builder);
+  }) : builder = ScopeCapture(scope: scope).wrap1(builder);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1009,7 +1009,7 @@ class TomDialogs {
     Offset? anchorPoint,
     TraversalEdgeBehavior? traversalEdgeBehavior,
   }) {
-    final wrappedBuilder = InScopeBuilder(
+    final wrappedBuilder = ScopeCapture(
       scope: _findScopeFromContext(context),
     ).wrap1(builder);
     return material.showDialog<T>(
@@ -1048,7 +1048,7 @@ class TomDialogs {
     AnimationController? transitionAnimationController,
     Offset? anchorPoint,
   }) {
-    final wrappedBuilder = InScopeBuilder(
+    final wrappedBuilder = ScopeCapture(
       scope: _findScopeFromContext(context),
     ).wrap1(builder);
     return material.showModalBottomSheet<T>(
@@ -1673,7 +1673,7 @@ class TomTimePickerDialog extends TomDialogBase {
     this.initialEntryMode = TimePickerEntryMode.dial,
     this.orientation,
     EntryModeChangeCallback? onEntryModeChanged,
-  }) : onEntryModeChanged = InScopeBuilder(
+  }) : onEntryModeChanged = ScopeCapture(
          scope: scope,
        ).wrap1n(onEntryModeChanged) {
     _resolvedCancelText = cancelText ?? TomCtr.textOrNull(basePath, 'cancel');
@@ -1710,7 +1710,7 @@ BottomSheetDragEndHandler? _wrapDragEndHandler(
   BottomSheetDragEndHandler? handler,
 ) {
   if (handler == null) return null;
-  final s = InScopeBuilder(scope: scope);
+  final s = ScopeCapture(scope: scope);
   return (DragEndDetails details, {required bool isClosing}) {
     s.wrap0(() => handler(details, isClosing: isClosing))();
   };
@@ -1767,7 +1767,7 @@ class TomSimpleDialogOption extends TomDialogBase {
     VoidCallback? onPressed,
     this.padding,
     this.child,
-  }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
+  }) : onPressed = ScopeCapture(scope: scope).wrap0n(onPressed) {
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 

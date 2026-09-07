@@ -59,10 +59,10 @@ class TomSlider extends TomSliderBase {
     this.focusNode,
     this.autofocus = false,
     this.allowedInteraction,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
-       onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd),
-       semanticFormatterCallback = InScopeBuilder(
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onChangeStart = ScopeCapture(scope: scope).wrap1n(onChangeStart),
+       onChangeEnd = ScopeCapture(scope: scope).wrap1n(onChangeEnd),
+       semanticFormatterCallback = ScopeCapture(
          scope: scope,
        ).wrap1n(semanticFormatterCallback) {
     _resolvedLabel = label ?? TomCtr.textOrNull(basePath, 'label');
@@ -142,10 +142,10 @@ class TomRangeSlider extends TomSliderBase {
     this.inactiveColor,
     this.overlayColor,
     SemanticFormatterCallback? semanticFormatterCallback,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
-       onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd),
-       semanticFormatterCallback = InScopeBuilder(
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onChangeStart = ScopeCapture(scope: scope).wrap1n(onChangeStart),
+       onChangeEnd = ScopeCapture(scope: scope).wrap1n(onChangeEnd),
+       semanticFormatterCallback = ScopeCapture(
          scope: scope,
        ).wrap1n(semanticFormatterCallback) {
     _resolvedMin = TomCtr.doubleVal(basePath, 'min') ?? min;
@@ -213,9 +213,9 @@ class TomCupertinoSlider extends TomSliderBase {
     this.divisions,
     this.activeColor,
     this.thumbColor = CupertinoColors.white,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
-       onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onChangeStart = ScopeCapture(scope: scope).wrap1n(onChangeStart),
+       onChangeEnd = ScopeCapture(scope: scope).wrap1n(onChangeEnd) {
     _resolvedMin = TomCtr.doubleVal(basePath, 'min') ?? min;
     _resolvedMax = TomCtr.doubleVal(basePath, 'max') ?? max;
     _resolvedDivisions = divisions ?? TomCtr.intVal(basePath, 'divisions');

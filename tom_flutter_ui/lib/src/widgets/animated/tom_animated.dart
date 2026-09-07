@@ -44,7 +44,7 @@ class TomAnimatedAlign extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedHeightFactor =
         heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
     _resolvedWidthFactor =
@@ -99,7 +99,7 @@ class TomAnimatedBuilder extends TomAnimatedBase {
     this.child,
   }) : _listenable = listenable,
        _animation = animation,
-       builder = InScopeBuilder(scope: scope).wrap2(builder);
+       builder = ScopeCapture(scope: scope).wrap2(builder);
 
   Listenable get effectiveListenable {
     final anim = _animation ?? _listenable;
@@ -174,7 +174,7 @@ class TomAnimatedContainer extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
@@ -270,7 +270,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
     AnimatedCrossFadeBuilder layoutBuilder =
         AnimatedCrossFade.defaultLayoutBuilder,
     this.excludeBottomFocus,
-  }) : layoutBuilder = InScopeBuilder(scope: scope).wrap4(layoutBuilder) {
+  }) : layoutBuilder = ScopeCapture(scope: scope).wrap4(layoutBuilder) {
     _resolvedExcludeBottomFocus =
         excludeBottomFocus ??
         TomCtr.boolVal(basePath, 'excludeBottomFocus') ??
@@ -344,7 +344,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedStyle = _resolveTextStyle('style');
     _resolvedSoftWrap =
         softWrap ?? TomCtr.boolVal(basePath, 'softWrap') ?? true;
@@ -409,7 +409,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedWidthFactor =
         widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
     _resolvedHeightFactor =
@@ -468,7 +468,7 @@ class TomAnimatedOpacity extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
     this.alwaysIncludeSemantics,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedOpacity = opacity ?? TomCtr.doubleOrFail(basePath, 'opacity');
     _resolvedAlwaysIncludeSemantics =
         alwaysIncludeSemantics ??
@@ -518,7 +518,7 @@ class TomAnimatedPadding extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedDuration =
         duration ??
@@ -589,7 +589,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedElevation =
         elevation ?? TomCtr.doubleOrFail(basePath, 'elevation');
     _resolvedColor = color ?? TomCtr.colorOrFail(basePath, 'color');
@@ -825,7 +825,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedTurns = turns ?? TomCtr.doubleOrFail(basePath, 'turns');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDuration =
@@ -883,7 +883,7 @@ class TomAnimatedScale extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedScale = scale ?? TomCtr.doubleOrFail(basePath, 'scale');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDuration =
@@ -940,7 +940,7 @@ class TomAnimatedSize extends TomAnimatedBase {
     this.curve = Curves.linear,
     this.clipBehavior = Clip.hardEdge,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDuration =
         duration ??
@@ -992,7 +992,7 @@ class TomAnimatedSlide extends TomAnimatedBase {
     this.duration,
     this.curve = Curves.linear,
     VoidCallback? onEnd,
-  }) : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
+  }) : onEnd = ScopeCapture(scope: scope).wrap0n(onEnd) {
     _resolvedOffset = offset ?? _resolveOffset('offset') ?? Offset.zero;
     _resolvedDuration =
         duration ??
@@ -1045,10 +1045,8 @@ class TomAnimatedSwitcher extends TomAnimatedBase {
         AnimatedSwitcher.defaultTransitionBuilder,
     AnimatedSwitcherLayoutBuilder layoutBuilder =
         AnimatedSwitcher.defaultLayoutBuilder,
-  }) : transitionBuilder = InScopeBuilder(
-         scope: scope,
-       ).wrap2(transitionBuilder),
-       layoutBuilder = InScopeBuilder(scope: scope).wrap2(layoutBuilder) {
+  }) : transitionBuilder = ScopeCapture(scope: scope).wrap2(transitionBuilder),
+       layoutBuilder = ScopeCapture(scope: scope).wrap2(layoutBuilder) {
     _resolvedDuration =
         duration ??
         Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
@@ -1096,10 +1094,10 @@ class TomHero extends TomAnimatedBase {
     this.transitionOnUserGestures,
     required this.child,
   }) : flightShuttleBuilder = flightShuttleBuilder != null
-           ? InScopeBuilder(scope: scope).wrap5(flightShuttleBuilder)
+           ? ScopeCapture(scope: scope).wrap5(flightShuttleBuilder)
            : null,
        placeholderBuilder = placeholderBuilder != null
-           ? InScopeBuilder(scope: scope).wrap3(placeholderBuilder)
+           ? ScopeCapture(scope: scope).wrap3(placeholderBuilder)
            : null {
     _resolvedTransitionOnUserGestures =
         transitionOnUserGestures ??

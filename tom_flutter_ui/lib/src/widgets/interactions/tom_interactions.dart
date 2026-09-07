@@ -120,79 +120,73 @@ class TomGestureDetector extends TomInteractionBase {
     this.supportedDevices,
     this.trackpadScrollCausesScale,
     this.trackpadScrollToScaleFactor = kDefaultTrackpadScrollToScaleFactor,
-  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-       onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
-       onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
-       onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
-       onSecondaryTap = InScopeBuilder(scope: scope).wrap0n(onSecondaryTap),
-       onSecondaryTapDown = InScopeBuilder(
+  }) : onTap = ScopeCapture(scope: scope).wrap0n(onTap),
+       onTapCancel = ScopeCapture(scope: scope).wrap0n(onTapCancel),
+       onTapDown = ScopeCapture(scope: scope).wrap1n(onTapDown),
+       onTapUp = ScopeCapture(scope: scope).wrap1n(onTapUp),
+       onSecondaryTap = ScopeCapture(scope: scope).wrap0n(onSecondaryTap),
+       onSecondaryTapDown = ScopeCapture(
          scope: scope,
        ).wrap1n(onSecondaryTapDown),
-       onSecondaryTapUp = InScopeBuilder(scope: scope).wrap1n(onSecondaryTapUp),
-       onSecondaryTapCancel = InScopeBuilder(
+       onSecondaryTapUp = ScopeCapture(scope: scope).wrap1n(onSecondaryTapUp),
+       onSecondaryTapCancel = ScopeCapture(
          scope: scope,
        ).wrap0n(onSecondaryTapCancel),
-       onTertiaryTapDown = InScopeBuilder(
-         scope: scope,
-       ).wrap1n(onTertiaryTapDown),
-       onTertiaryTapUp = InScopeBuilder(scope: scope).wrap1n(onTertiaryTapUp),
-       onTertiaryTapCancel = InScopeBuilder(
+       onTertiaryTapDown = ScopeCapture(scope: scope).wrap1n(onTertiaryTapDown),
+       onTertiaryTapUp = ScopeCapture(scope: scope).wrap1n(onTertiaryTapUp),
+       onTertiaryTapCancel = ScopeCapture(
          scope: scope,
        ).wrap0n(onTertiaryTapCancel),
-       onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
-       onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
-       onLongPressStart = InScopeBuilder(scope: scope).wrap1n(onLongPressStart),
-       onLongPressMoveUpdate = InScopeBuilder(
+       onDoubleTap = ScopeCapture(scope: scope).wrap0n(onDoubleTap),
+       onLongPress = ScopeCapture(scope: scope).wrap0n(onLongPress),
+       onLongPressStart = ScopeCapture(scope: scope).wrap1n(onLongPressStart),
+       onLongPressMoveUpdate = ScopeCapture(
          scope: scope,
        ).wrap1n(onLongPressMoveUpdate),
-       onLongPressUp = InScopeBuilder(scope: scope).wrap0n(onLongPressUp),
-       onLongPressEnd = InScopeBuilder(scope: scope).wrap1n(onLongPressEnd),
-       onVerticalDragDown = InScopeBuilder(
+       onLongPressUp = ScopeCapture(scope: scope).wrap0n(onLongPressUp),
+       onLongPressEnd = ScopeCapture(scope: scope).wrap1n(onLongPressEnd),
+       onVerticalDragDown = ScopeCapture(
          scope: scope,
        ).wrap1n(onVerticalDragDown),
-       onVerticalDragStart = InScopeBuilder(
+       onVerticalDragStart = ScopeCapture(
          scope: scope,
        ).wrap1n(onVerticalDragStart),
-       onVerticalDragUpdate = InScopeBuilder(
+       onVerticalDragUpdate = ScopeCapture(
          scope: scope,
        ).wrap1n(onVerticalDragUpdate),
-       onVerticalDragEnd = InScopeBuilder(
-         scope: scope,
-       ).wrap1n(onVerticalDragEnd),
-       onVerticalDragCancel = InScopeBuilder(
+       onVerticalDragEnd = ScopeCapture(scope: scope).wrap1n(onVerticalDragEnd),
+       onVerticalDragCancel = ScopeCapture(
          scope: scope,
        ).wrap0n(onVerticalDragCancel),
-       onHorizontalDragDown = InScopeBuilder(
+       onHorizontalDragDown = ScopeCapture(
          scope: scope,
        ).wrap1n(onHorizontalDragDown),
-       onHorizontalDragStart = InScopeBuilder(
+       onHorizontalDragStart = ScopeCapture(
          scope: scope,
        ).wrap1n(onHorizontalDragStart),
-       onHorizontalDragUpdate = InScopeBuilder(
+       onHorizontalDragUpdate = ScopeCapture(
          scope: scope,
        ).wrap1n(onHorizontalDragUpdate),
-       onHorizontalDragEnd = InScopeBuilder(
+       onHorizontalDragEnd = ScopeCapture(
          scope: scope,
        ).wrap1n(onHorizontalDragEnd),
-       onHorizontalDragCancel = InScopeBuilder(
+       onHorizontalDragCancel = ScopeCapture(
          scope: scope,
        ).wrap0n(onHorizontalDragCancel),
-       onPanDown = InScopeBuilder(scope: scope).wrap1n(onPanDown),
-       onPanStart = InScopeBuilder(scope: scope).wrap1n(onPanStart),
-       onPanUpdate = InScopeBuilder(scope: scope).wrap1n(onPanUpdate),
-       onPanEnd = InScopeBuilder(scope: scope).wrap1n(onPanEnd),
-       onPanCancel = InScopeBuilder(scope: scope).wrap0n(onPanCancel),
-       onScaleStart = InScopeBuilder(scope: scope).wrap1n(onScaleStart),
-       onScaleUpdate = InScopeBuilder(scope: scope).wrap1n(onScaleUpdate),
-       onScaleEnd = InScopeBuilder(scope: scope).wrap1n(onScaleEnd),
-       onForcePressStart = InScopeBuilder(
-         scope: scope,
-       ).wrap1n(onForcePressStart),
-       onForcePressPeak = InScopeBuilder(scope: scope).wrap1n(onForcePressPeak),
-       onForcePressUpdate = InScopeBuilder(
+       onPanDown = ScopeCapture(scope: scope).wrap1n(onPanDown),
+       onPanStart = ScopeCapture(scope: scope).wrap1n(onPanStart),
+       onPanUpdate = ScopeCapture(scope: scope).wrap1n(onPanUpdate),
+       onPanEnd = ScopeCapture(scope: scope).wrap1n(onPanEnd),
+       onPanCancel = ScopeCapture(scope: scope).wrap0n(onPanCancel),
+       onScaleStart = ScopeCapture(scope: scope).wrap1n(onScaleStart),
+       onScaleUpdate = ScopeCapture(scope: scope).wrap1n(onScaleUpdate),
+       onScaleEnd = ScopeCapture(scope: scope).wrap1n(onScaleEnd),
+       onForcePressStart = ScopeCapture(scope: scope).wrap1n(onForcePressStart),
+       onForcePressPeak = ScopeCapture(scope: scope).wrap1n(onForcePressPeak),
+       onForcePressUpdate = ScopeCapture(
          scope: scope,
        ).wrap1n(onForcePressUpdate),
-       onForcePressEnd = InScopeBuilder(scope: scope).wrap1n(onForcePressEnd) {
+       onForcePressEnd = ScopeCapture(scope: scope).wrap1n(onForcePressEnd) {
     _resolvedExcludeFromSemantics =
         excludeFromSemantics ??
         TomCtr.boolVal(basePath, 'excludeFromSemantics') ??
@@ -351,25 +345,25 @@ class TomInkWell extends TomInteractionBase {
     this.autofocus = false,
     this.statesController,
     this.hoverDuration,
-  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-       onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
-       onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
-       onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
-       onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
-       onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
-       onSecondaryTap = InScopeBuilder(scope: scope).wrap0n(onSecondaryTap),
-       onSecondaryTapUp = InScopeBuilder(scope: scope).wrap1n(onSecondaryTapUp),
-       onSecondaryTapDown = InScopeBuilder(
+  }) : onTap = ScopeCapture(scope: scope).wrap0n(onTap),
+       onDoubleTap = ScopeCapture(scope: scope).wrap0n(onDoubleTap),
+       onLongPress = ScopeCapture(scope: scope).wrap0n(onLongPress),
+       onTapDown = ScopeCapture(scope: scope).wrap1n(onTapDown),
+       onTapUp = ScopeCapture(scope: scope).wrap1n(onTapUp),
+       onTapCancel = ScopeCapture(scope: scope).wrap0n(onTapCancel),
+       onSecondaryTap = ScopeCapture(scope: scope).wrap0n(onSecondaryTap),
+       onSecondaryTapUp = ScopeCapture(scope: scope).wrap1n(onSecondaryTapUp),
+       onSecondaryTapDown = ScopeCapture(
          scope: scope,
        ).wrap1n(onSecondaryTapDown),
-       onSecondaryTapCancel = InScopeBuilder(
+       onSecondaryTapCancel = ScopeCapture(
          scope: scope,
        ).wrap0n(onSecondaryTapCancel),
-       onHighlightChanged = InScopeBuilder(
+       onHighlightChanged = ScopeCapture(
          scope: scope,
        ).wrap1n(onHighlightChanged),
-       onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
-       onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
+       onHover = ScopeCapture(scope: scope).wrap1n(onHover),
+       onFocusChange = ScopeCapture(scope: scope).wrap1n(onFocusChange) {
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
     _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
     _resolvedHighlightColor =
@@ -521,17 +515,17 @@ class TomInkResponse extends TomInteractionBase {
     this.canRequestFocus,
     this.statesController,
     this.hoverDuration,
-  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-       onTapDown = InScopeBuilder(scope: scope).wrap1n(onTapDown),
-       onTapUp = InScopeBuilder(scope: scope).wrap1n(onTapUp),
-       onTapCancel = InScopeBuilder(scope: scope).wrap0n(onTapCancel),
-       onDoubleTap = InScopeBuilder(scope: scope).wrap0n(onDoubleTap),
-       onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
-       onHighlightChanged = InScopeBuilder(
+  }) : onTap = ScopeCapture(scope: scope).wrap0n(onTap),
+       onTapDown = ScopeCapture(scope: scope).wrap1n(onTapDown),
+       onTapUp = ScopeCapture(scope: scope).wrap1n(onTapUp),
+       onTapCancel = ScopeCapture(scope: scope).wrap0n(onTapCancel),
+       onDoubleTap = ScopeCapture(scope: scope).wrap0n(onDoubleTap),
+       onLongPress = ScopeCapture(scope: scope).wrap0n(onLongPress),
+       onHighlightChanged = ScopeCapture(
          scope: scope,
        ).wrap1n(onHighlightChanged),
-       onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
-       onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
+       onHover = ScopeCapture(scope: scope).wrap1n(onHover),
+       onFocusChange = ScopeCapture(scope: scope).wrap1n(onFocusChange) {
     _resolvedContainedInkWell =
         containedInkWell ??
         TomCtr.boolVal(basePath, 'containedInkWell') ??
@@ -660,13 +654,13 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
     this.rootOverlay,
     this.hitTestBehavior = HitTestBehavior.deferToChild,
     this.allowedButtonsFilter = true,
-  }) : onDragStarted = InScopeBuilder(scope: scope).wrap0n(onDragStarted),
-       onDragUpdate = InScopeBuilder(scope: scope).wrap1n(onDragUpdate),
-       onDraggableCanceled = InScopeBuilder(
+  }) : onDragStarted = ScopeCapture(scope: scope).wrap0n(onDragStarted),
+       onDragUpdate = ScopeCapture(scope: scope).wrap1n(onDragUpdate),
+       onDraggableCanceled = ScopeCapture(
          scope: scope,
        ).wrap2n(onDraggableCanceled),
-       onDragEnd = InScopeBuilder(scope: scope).wrap1n(onDragEnd),
-       onDragCompleted = InScopeBuilder(scope: scope).wrap0n(onDragCompleted) {
+       onDragEnd = ScopeCapture(scope: scope).wrap1n(onDragEnd),
+       onDragCompleted = ScopeCapture(scope: scope).wrap0n(onDragCompleted) {
     _resolvedMaxSimultaneousDrags =
         maxSimultaneousDrags ?? TomCtr.intVal(basePath, 'maxSimultaneousDrags');
     _resolvedIgnoringFeedbackSemantics =
@@ -740,15 +734,15 @@ class TomDragTarget<T extends Object> extends TomInteractionBase {
     DragTargetLeave<T>? onLeave,
     DragTargetMove<T>? onMove,
     this.hitTestBehavior,
-  }) : builder = InScopeBuilder(scope: scope).wrap3(builder),
-       onWillAcceptWithDetails = InScopeBuilder(
+  }) : builder = ScopeCapture(scope: scope).wrap3(builder),
+       onWillAcceptWithDetails = ScopeCapture(
          scope: scope,
        ).wrap1n(onWillAcceptWithDetails),
-       onAcceptWithDetails = InScopeBuilder(
+       onAcceptWithDetails = ScopeCapture(
          scope: scope,
        ).wrap1n(onAcceptWithDetails),
-       onLeave = InScopeBuilder(scope: scope).wrap1n(onLeave),
-       onMove = InScopeBuilder(scope: scope).wrap1n(onMove) {
+       onLeave = ScopeCapture(scope: scope).wrap1n(onLeave),
+       onMove = ScopeCapture(scope: scope).wrap1n(onMove) {
     _resolvedHitTestBehavior =
         hitTestBehavior ??
         _resolveHitTestBehavior(
@@ -822,13 +816,13 @@ class TomLongPressDraggable<T extends Object> extends TomInteractionBase {
     this.ignoringFeedbackSemantics,
     this.ignoringFeedbackPointer,
     this.delay = kLongPressTimeout,
-  }) : onDragStarted = InScopeBuilder(scope: scope).wrap0n(onDragStarted),
-       onDragUpdate = InScopeBuilder(scope: scope).wrap1n(onDragUpdate),
-       onDraggableCanceled = InScopeBuilder(
+  }) : onDragStarted = ScopeCapture(scope: scope).wrap0n(onDragStarted),
+       onDragUpdate = ScopeCapture(scope: scope).wrap1n(onDragUpdate),
+       onDraggableCanceled = ScopeCapture(
          scope: scope,
        ).wrap2n(onDraggableCanceled),
-       onDragEnd = InScopeBuilder(scope: scope).wrap1n(onDragEnd),
-       onDragCompleted = InScopeBuilder(scope: scope).wrap0n(onDragCompleted) {
+       onDragEnd = ScopeCapture(scope: scope).wrap1n(onDragEnd),
+       onDragCompleted = ScopeCapture(scope: scope).wrap0n(onDragCompleted) {
     _resolvedMaxSimultaneousDrags =
         maxSimultaneousDrags ?? TomCtr.intVal(basePath, 'maxSimultaneousDrags');
     _resolvedHapticFeedbackOnStart =
@@ -959,9 +953,9 @@ class TomMouseRegion extends TomInteractionBase {
     this.opaque,
     this.hitTestBehavior,
     this.child,
-  }) : onEnter = InScopeBuilder(scope: scope).wrap1n(onEnter),
-       onExit = InScopeBuilder(scope: scope).wrap1n(onExit),
-       onHover = InScopeBuilder(scope: scope).wrap1n(onHover) {
+  }) : onEnter = ScopeCapture(scope: scope).wrap1n(onEnter),
+       onExit = ScopeCapture(scope: scope).wrap1n(onExit),
+       onHover = ScopeCapture(scope: scope).wrap1n(onHover) {
     _resolvedOpaque = opaque ?? TomCtr.boolVal(basePath, 'opaque') ?? true;
     _resolvedHitTestBehavior =
         hitTestBehavior ??

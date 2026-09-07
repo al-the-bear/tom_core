@@ -134,7 +134,7 @@ void main() {
     }
 
     /// A scope handed over as a value, never installed on a zone — the shape
-    /// `InScopeBuilder` and the screen-element providers produce.
+    /// `ScopeCapture` and the screen-element providers produce.
     TomScope detachedCheckout() => TomScopeBase(scopeId: 'checkout');
 
     test('resolveGroupPath honours the scope it is given', () {

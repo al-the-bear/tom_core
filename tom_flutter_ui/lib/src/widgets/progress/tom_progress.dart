@@ -195,7 +195,7 @@ class TomRefreshIndicator extends TomProgressBase {
     this.semanticsValue,
     this.strokeWidth = RefreshProgressIndicator.defaultStrokeWidth,
     this.triggerMode = RefreshIndicatorTriggerMode.onEdge,
-  }) : onRefresh = InScopeBuilder(scope: scope).wrap0(onRefresh) {
+  }) : onRefresh = ScopeCapture(scope: scope).wrap0(onRefresh) {
     _resolvedLabel =
         semanticsLabel ??
         TomCtr.textOrNull(basePath, 'semanticsLabel') ??
@@ -355,8 +355,8 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
     RefreshControlIndicatorBuilder? builder =
         CupertinoSliverRefreshControl.buildRefreshIndicator,
     RefreshCallback? onRefresh,
-  }) : builder = InScopeBuilder(scope: scope).wrap5n(builder),
-       onRefresh = InScopeBuilder(scope: scope).wrap0n(onRefresh) {
+  }) : builder = ScopeCapture(scope: scope).wrap5n(builder),
+       onRefresh = ScopeCapture(scope: scope).wrap0n(onRefresh) {
     _resolvedRefreshTriggerPullDistance =
         refreshTriggerPullDistance ??
         TomCtr.doubleVal(basePath, 'refreshTriggerPullDistance') ??

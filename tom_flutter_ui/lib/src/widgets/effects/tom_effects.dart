@@ -201,7 +201,7 @@ class TomSelectableRegion extends TomEffectBase {
     ValueChanged<SelectedContent?>? onSelectionChanged,
     this.contextMenuBuilder,
     this.magnifierConfiguration = TextMagnifierConfiguration.disabled,
-  }) : onSelectionChanged = InScopeBuilder(
+  }) : onSelectionChanged = ScopeCapture(
          scope: scope,
        ).wrap1n(onSelectionChanged);
 
@@ -242,7 +242,7 @@ class TomSelectionArea extends TomEffectBase {
     this.magnifierConfiguration,
     ValueChanged<SelectedContent?>? onSelectionChanged,
     required this.child,
-  }) : onSelectionChanged = InScopeBuilder(
+  }) : onSelectionChanged = ScopeCapture(
          scope: scope,
        ).wrap1n(onSelectionChanged);
 

@@ -238,8 +238,8 @@ class TomSelectableText extends TomLabelBase {
     this.magnifierConfiguration,
     this.selectionControls,
     SelectionChangedCallback? onSelectionChanged,
-  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-       onSelectionChanged = InScopeBuilder(
+  }) : onTap = ScopeCapture(scope: scope).wrap0n(onTap),
+       onSelectionChanged = ScopeCapture(
          scope: scope,
        ).wrap2n(onSelectionChanged) {
     _resolvedText = text ?? TomCtr.textOrFail(basePath, 'label');
@@ -600,8 +600,8 @@ class TomListTile extends TomLabelBase {
     this.minTileHeight,
     this.titleAlignment,
     this.mouseCursor,
-  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-       onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress) {
+  }) : onTap = ScopeCapture(scope: scope).wrap0n(onTap),
+       onLongPress = ScopeCapture(scope: scope).wrap0n(onLongPress) {
     _resolvedTitle =
         titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
     _resolvedIsThreeLine =
@@ -764,7 +764,7 @@ class TomChip extends TomLabelBase {
     this.visualDensity,
     this.iconTheme,
     this.color,
-  }) : onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted) {
+  }) : onDeleted = ScopeCapture(scope: scope).wrap0n(onDeleted) {
     _resolvedLabel =
         labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _resolvedDeleteIconColor =
@@ -988,7 +988,7 @@ class TomMenuAcceleratorLabel extends TomLabelBase {
     this.label,
     MenuAcceleratorChildBuilder? builder,
   }) : builder = builder != null
-           ? InScopeBuilder(scope: scope).wrap3(builder)
+           ? ScopeCapture(scope: scope).wrap3(builder)
            : null {
     _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
   }

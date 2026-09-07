@@ -88,8 +88,8 @@ class TomFilterChip extends TomChipBase {
     VoidCallback? onDeleted,
     this.deleteIconColor,
     this.deleteButtonTooltipMessage,
-  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
-       onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted) {
+  }) : onSelected = ScopeCapture(scope: scope).wrap1n(onSelected),
+       onDeleted = ScopeCapture(scope: scope).wrap0n(onDeleted) {
     _resolvedLabel =
         labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _chipLabel = label ?? Text(_resolvedLabel);
@@ -242,7 +242,7 @@ class TomChoiceChip extends TomChipBase {
     this.visualDensity,
     this.elevation,
     this.pressElevation,
-  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected) {
+  }) : onSelected = ScopeCapture(scope: scope).wrap1n(onSelected) {
     _resolvedLabel =
         labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _chipLabel = label ?? Text(_resolvedLabel);
@@ -375,7 +375,7 @@ class TomActionChip extends TomChipBase {
     this.visualDensity,
     this.elevation,
     this.pressElevation,
-  }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
+  }) : onPressed = ScopeCapture(scope: scope).wrap0n(onPressed) {
     _resolvedLabel =
         labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
@@ -531,9 +531,9 @@ class TomInputChip extends TomChipBase {
     this.elevation,
     this.pressElevation,
     this.tooltip,
-  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
-       onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted),
-       onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
+  }) : onSelected = ScopeCapture(scope: scope).wrap1n(onSelected),
+       onDeleted = ScopeCapture(scope: scope).wrap0n(onDeleted),
+       onPressed = ScopeCapture(scope: scope).wrap0n(onPressed) {
     _resolvedLabel =
         labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
@@ -717,9 +717,9 @@ class TomRawChip extends TomChipBase {
     this.materialTapTargetSize,
     this.elevation,
     this.tooltip,
-  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
-       onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted),
-       onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
+  }) : onSelected = ScopeCapture(scope: scope).wrap1n(onSelected),
+       onDeleted = ScopeCapture(scope: scope).wrap0n(onDeleted),
+       onPressed = ScopeCapture(scope: scope).wrap0n(onPressed) {
     _resolvedLabel =
         labelText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: label);
     _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');

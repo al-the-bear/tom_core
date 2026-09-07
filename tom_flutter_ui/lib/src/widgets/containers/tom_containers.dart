@@ -169,7 +169,7 @@ class TomExpansionTile extends TomContainerBase {
     this.children = const [],
     this.dense = false,
     this.showTrailingIcon = true,
-  }) : onExpansionChanged = InScopeBuilder(
+  }) : onExpansionChanged = ScopeCapture(
          scope: scope,
        ).wrap1n(onExpansionChanged) {
     _resolvedTitle =
@@ -2635,7 +2635,7 @@ class TomCarouselView extends TomContainerBase {
     this.scrollDirection = Axis.horizontal,
     this.reverse = false,
     ValueChanged<int>? onTap,
-  }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
+  }) : onTap = ScopeCapture(scope: scope).wrap1n(onTap) {
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedBackgroundColor =
         backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
@@ -2810,7 +2810,7 @@ class TomCupertinoTabScaffold extends TomContainerBase {
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
     this.restorationId,
-  }) : tabBuilder = InScopeBuilder(scope: scope).wrap2(tabBuilder) {
+  }) : tabBuilder = ScopeCapture(scope: scope).wrap2(tabBuilder) {
     _resolvedBackgroundColor =
         backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
   }
@@ -2975,7 +2975,7 @@ class TomNestedScrollView extends TomContainerBase {
     this.clipBehavior = Clip.hardEdge,
     this.restorationId,
     this.scrollBehavior,
-  }) : headerSliverBuilder = InScopeBuilder(
+  }) : headerSliverBuilder = ScopeCapture(
          scope: scope,
        ).wrap2(headerSliverBuilder) {
     _resolvedFloatHeaderSlivers =
@@ -3173,7 +3173,7 @@ class TomDraggableScrollableSheet extends TomContainerBase {
     this.controller,
     this.shouldCloseOnMinExtent,
     required ScrollableWidgetBuilder builder,
-  }) : builder = InScopeBuilder(scope: scope).wrap2(builder) {
+  }) : builder = ScopeCapture(scope: scope).wrap2(builder) {
     _resolvedInitialChildSize =
         initialChildSize ??
         TomCtr.doubleVal(basePath, 'initialChildSize') ??
@@ -3261,11 +3261,11 @@ class TomInteractiveViewer extends TomContainerBase {
     this.transformationController,
     this.alignment,
     required this.child,
-  }) : onInteractionEnd = InScopeBuilder(scope: scope).wrap1n(onInteractionEnd),
-       onInteractionStart = InScopeBuilder(
+  }) : onInteractionEnd = ScopeCapture(scope: scope).wrap1n(onInteractionEnd),
+       onInteractionStart = ScopeCapture(
          scope: scope,
        ).wrap1n(onInteractionStart),
-       onInteractionUpdate = InScopeBuilder(
+       onInteractionUpdate = ScopeCapture(
          scope: scope,
        ).wrap1n(onInteractionUpdate) {
     _resolvedBoundaryMargin =

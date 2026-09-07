@@ -80,7 +80,7 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 | ---- | -------------- |
 | `TomExecutionContext` | Ambient, zone-propagated execution context |
 | `TomContextEntry<T>` | A typed value carried on the context |
-| `TomScope` / `InScopeBuilder` | Hierarchical, zone-propagated scope identifiers |
+| `TomScope` / `ScopeCapture` | Hierarchical, zone-propagated scope identifiers |
 
 ### Dependency injection (`beanlocator`)
 

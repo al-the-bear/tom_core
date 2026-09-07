@@ -14,7 +14,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// resolve its resources and identity against the wrong scope.
 ///
 /// [TomPageRoute] captures [TomScope.current] at construction (push time) and
-/// re-enters it around [builder] via [InScopeBuilder] — the same mechanism the
+/// re-enters it around [builder] via [ScopeCapture] — the same mechanism the
 /// Tom widgets use to carry scope through callbacks — so the pushed screen is
 /// constructed in the pushing scope. This closes the propagation gap and gives
 /// navigation the same scope guarantee the widget bases give. Pass [scope] to
@@ -38,5 +38,5 @@ class TomPageRoute<T> extends MaterialPageRoute<T> {
     super.fullscreenDialog,
     super.allowSnapshotting,
     super.barrierDismissible,
-  }) : super(builder: InScopeBuilder(scope: scope).wrap1(builder));
+  }) : super(builder: ScopeCapture(scope: scope).wrap1(builder));
 }

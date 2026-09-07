@@ -6,7 +6,7 @@
 /// so that instance *is* a scope. This example shows:
 /// - A custom class `with TomScopeMixin` initialised via `initScope`
 /// - The custom instance participating fully as a scope (`current`, path,
-///   `runInScope`, `InScopeBuilder`)
+///   `runInScope`, `ScopeCapture`)
 /// - `initScope` called *after* construction, for a scope whose parent is only
 ///   known once the enclosing scope exists
 /// - What that window costs: until `initScope` runs the instance is not yet a
@@ -91,12 +91,12 @@ void run() {
   print('');
 
   // ===========================================================================
-  // Example 3: The custom scope works with InScopeBuilder
+  // Example 3: The custom scope works with ScopeCapture
   // ===========================================================================
 
-  print('3. InScopeBuilder captures the custom scope:');
+  print('3. ScopeCapture captures the custom scope:');
 
-  final wrapped = InScopeBuilder(scope: checkout).wrap1<String, String>(
+  final wrapped = ScopeCapture(scope: checkout).wrap1<String, String>(
     (field) => '${TomScope.current.getScopePath()}.$field',
   );
   final wrappedResult = wrapped('orderForm');
@@ -204,7 +204,7 @@ void run() {
   assert(insidePath == 'app.checkout');
   assert(afterPath.isEmpty);
 
-  // Example 3: InScopeBuilder observes the captured custom scope
+  // Example 3: ScopeCapture observes the captured custom scope
   assert(wrappedResult == 'app.checkout.orderForm');
 
   // Example 4: a post-construction initScope assigns the identity

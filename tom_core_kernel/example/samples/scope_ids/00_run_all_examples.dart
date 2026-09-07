@@ -14,7 +14,7 @@ library;
 import '../../sample_bootstrap.dart';
 
 import '01_scope_basics_example.dart' as scope_basics;
-import '02_inscope_builder_example.dart' as inscope_builder;
+import '02_scope_capture_example.dart' as scope_capture;
 import '03_scope_mixin_example.dart' as scope_mixin;
 
 /// Standalone entry point for running scope IDs examples.
@@ -33,7 +33,7 @@ void run() {
   );
 
   scope_basics.run();
-  inscope_builder.run();
+  scope_capture.run();
   scope_mixin.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');

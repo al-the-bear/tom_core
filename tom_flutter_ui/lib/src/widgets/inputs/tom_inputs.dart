@@ -245,18 +245,16 @@ class TomTextField extends TomInputBase {
     this.label,
     this.hint,
     InputCounterWidgetBuilder? buildCounter,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onEditingComplete = InScopeBuilder(
-         scope: scope,
-       ).wrap0n(onEditingComplete),
-       onSubmitted = InScopeBuilder(scope: scope).wrap1n(onSubmitted),
-       onAppPrivateCommand = InScopeBuilder(
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onEditingComplete = ScopeCapture(scope: scope).wrap0n(onEditingComplete),
+       onSubmitted = ScopeCapture(scope: scope).wrap1n(onSubmitted),
+       onAppPrivateCommand = ScopeCapture(
          scope: scope,
        ).wrap2n(onAppPrivateCommand),
-       onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-       onTapOutside = InScopeBuilder(scope: scope).wrap1n(onTapOutside),
+       onTap = ScopeCapture(scope: scope).wrap0n(onTap),
+       onTapOutside = ScopeCapture(scope: scope).wrap1n(onTapOutside),
        buildCounter = buildCounter != null
-           ? InScopeBuilder(scope: scope).wrapCounter(buildCounter)
+           ? ScopeCapture(scope: scope).wrapCounter(buildCounter)
            : null {
     _resolvedCursorColor = cursorColor ?? TomCtr.color(basePath, 'cursorColor');
     _resolvedCursorErrorColor =
@@ -476,13 +474,11 @@ class TomTextFormField extends TomInputBase {
     this.autovalidateMode,
     this.label,
     this.hint,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onEditingComplete = InScopeBuilder(
-         scope: scope,
-       ).wrap0n(onEditingComplete),
-       onFieldSubmitted = InScopeBuilder(scope: scope).wrap1n(onFieldSubmitted),
-       onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
-       validator = InScopeBuilder(scope: scope).wrap1n(validator) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onEditingComplete = ScopeCapture(scope: scope).wrap0n(onEditingComplete),
+       onFieldSubmitted = ScopeCapture(scope: scope).wrap1n(onFieldSubmitted),
+       onSaved = ScopeCapture(scope: scope).wrap1n(onSaved),
+       validator = ScopeCapture(scope: scope).wrap1n(validator) {
     _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
     _resolvedMinLines = minLines ?? TomCtr.intVal(basePath, 'minLines');
     _resolvedMaxLength = maxLength ?? TomCtr.intVal(basePath, 'maxLength');
@@ -597,8 +593,8 @@ class TomSearchBar extends TomInputBase {
     this.constraints,
     this.autoFocus = false,
     this.textCapitalization = TextCapitalization.none,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onTap = ScopeCapture(scope: scope).wrap0n(onTap) {
     _resolvedHint =
         hintText ??
         (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
@@ -663,10 +659,10 @@ class TomAutocomplete<T extends Object> extends TomInputBase {
     AutocompleteOptionsViewBuilder<T>? optionsViewBuilder,
     this.optionsViewOpenDirection = OptionsViewOpenDirection.down,
     this.initialValue,
-  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
-       fieldViewBuilder = InScopeBuilder(scope: scope).wrap4(fieldViewBuilder),
+  }) : onSelected = ScopeCapture(scope: scope).wrap1n(onSelected),
+       fieldViewBuilder = ScopeCapture(scope: scope).wrap4(fieldViewBuilder),
        optionsViewBuilder = optionsViewBuilder != null
-           ? InScopeBuilder(scope: scope).wrap3(optionsViewBuilder)
+           ? ScopeCapture(scope: scope).wrap3(optionsViewBuilder)
            : null;
 
   static Widget _defaultFieldViewBuilder(
@@ -754,9 +750,9 @@ class TomSearchAnchor extends TomInputBase {
     this.textCapitalization,
     this.viewOnSubmitted,
   }) : builder = builder != null
-           ? InScopeBuilder(scope: scope).wrap2(builder)
+           ? ScopeCapture(scope: scope).wrap2(builder)
            : null,
-       suggestionsBuilder = InScopeBuilder(
+       suggestionsBuilder = ScopeCapture(
          scope: scope,
        ).wrap2(suggestionsBuilder) {
     _resolvedHint =
@@ -910,14 +906,12 @@ class TomEditableText extends TomInputBase {
     this.rendererIgnoresPointer = false,
     this.enableInteractiveSelection = true,
     this.clipBehavior = Clip.hardEdge,
-  }) : onSelectionChanged = InScopeBuilder(
+  }) : onSelectionChanged = ScopeCapture(
          scope: scope,
        ).wrap2n(onSelectionChanged),
-       onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onEditingComplete = InScopeBuilder(
-         scope: scope,
-       ).wrap0n(onEditingComplete),
-       onSubmitted = InScopeBuilder(scope: scope).wrap1n(onSubmitted) {
+       onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onEditingComplete = ScopeCapture(scope: scope).wrap0n(onEditingComplete),
+       onSubmitted = ScopeCapture(scope: scope).wrap1n(onSubmitted) {
     _resolvedBackgroundCursorColor =
         backgroundCursorColor ??
         TomCtr.color(basePath, 'backgroundCursorColor') ??
@@ -1056,11 +1050,9 @@ class TomCupertinoTextField extends TomInputBase {
     ValueChanged<String>? onSubmitted,
     this.enabled = true,
     this.readOnly = false,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onEditingComplete = InScopeBuilder(
-         scope: scope,
-       ).wrap0n(onEditingComplete),
-       onSubmitted = InScopeBuilder(scope: scope).wrap1n(onSubmitted) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onEditingComplete = ScopeCapture(scope: scope).wrap0n(onEditingComplete),
+       onSubmitted = ScopeCapture(scope: scope).wrap1n(onSubmitted) {
     _resolvedPlaceholder =
         placeholder ??
         (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
@@ -1145,7 +1137,7 @@ class TomCalendarDatePicker extends TomInputBase {
     required ValueChanged<DateTime> onDateChanged,
     this.currentDate,
     this.selectableDayPredicate,
-  }) : onDateChanged = InScopeBuilder(scope: scope).wrap1(onDateChanged);
+  }) : onDateChanged = ScopeCapture(scope: scope).wrap1(onDateChanged);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1200,9 +1192,7 @@ class TomCupertinoDatePicker extends TomInputBase {
     this.backgroundColor,
     this.showDayOfWeek = false,
     this.itemExtent,
-  }) : onDateTimeChanged = InScopeBuilder(
-         scope: scope,
-       ).wrap1(onDateTimeChanged) {
+  }) : onDateTimeChanged = ScopeCapture(scope: scope).wrap1(onDateTimeChanged) {
     _resolvedBackgroundColor =
         backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedItemExtent =
@@ -1296,9 +1286,9 @@ class TomCupertinoSearchTextField extends TomInputBase {
     this.enabled = true,
     this.smartQuotesType,
     this.smartDashesType,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onSubmitted = InScopeBuilder(scope: scope).wrap1n(onSubmitted),
-       onSuffixTap = InScopeBuilder(scope: scope).wrap0n(onSuffixTap) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onSubmitted = ScopeCapture(scope: scope).wrap1n(onSubmitted),
+       onSuffixTap = ScopeCapture(scope: scope).wrap0n(onSuffixTap) {
     // Guarded exactly like the other two Cupertino text inputs: a placeholder
     // is optional in Flutter — CupertinoSearchTextField substitutes the
     // localized "Search" for a null one — so a widget with no tomId has
@@ -1393,7 +1383,7 @@ class TomCupertinoTimerPicker extends TomInputBase {
     this.backgroundColor,
     this.itemExtent,
     required ValueChanged<Duration> onTimerDurationChanged,
-  }) : onTimerDurationChanged = InScopeBuilder(
+  }) : onTimerDurationChanged = ScopeCapture(
          scope: scope,
        ).wrap1(onTimerDurationChanged) {
     _resolvedBackgroundColor =
@@ -1442,8 +1432,8 @@ class TomFormClassic extends TomInputBase {
     VoidCallback? onChanged,
     this.canPop,
     PopInvokedWithResultCallback<Object?>? onPopInvokedWithResult,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap0n(onChanged),
-       onPopInvokedWithResult = InScopeBuilder(
+  }) : onChanged = ScopeCapture(scope: scope).wrap0n(onChanged),
+       onPopInvokedWithResult = ScopeCapture(
          scope: scope,
        ).wrap2n(onPopInvokedWithResult);
 
@@ -1510,8 +1500,8 @@ class TomInputDatePickerFormField extends TomInputBase {
     this.autofocus = false,
     this.acceptEmptyDate = false,
     this.focusNode,
-  }) : onDateSubmitted = InScopeBuilder(scope: scope).wrap1n(onDateSubmitted),
-       onDateSaved = InScopeBuilder(scope: scope).wrap1n(onDateSaved) {
+  }) : onDateSubmitted = ScopeCapture(scope: scope).wrap1n(onDateSubmitted),
+       onDateSaved = ScopeCapture(scope: scope).wrap1n(onDateSaved) {
     // Why the tomId guard: every one of these is optional in Flutter, which
     // falls back to MaterialLocalizations. Demanding a resource for them made
     // a plain `TomInputDatePickerFormField(...)` unconstructible.
@@ -1579,7 +1569,7 @@ class TomYearPicker extends TomInputBase {
     required this.selectedDate,
     required ValueChanged<DateTime> onChanged,
     this.dragStartBehavior = DragStartBehavior.start,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1(onChanged);
+  }) : onChanged = ScopeCapture(scope: scope).wrap1(onChanged);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1717,14 +1707,12 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
     this.contextMenuBuilder,
     this.spellCheckConfiguration,
     this.restorationId,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-       onEditingComplete = InScopeBuilder(
-         scope: scope,
-       ).wrap0n(onEditingComplete),
-       onFieldSubmitted = InScopeBuilder(scope: scope).wrap1n(onFieldSubmitted),
-       onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
-       validator = InScopeBuilder(scope: scope).wrap1n(validator) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onTap = ScopeCapture(scope: scope).wrap0n(onTap),
+       onEditingComplete = ScopeCapture(scope: scope).wrap0n(onEditingComplete),
+       onFieldSubmitted = ScopeCapture(scope: scope).wrap1n(onFieldSubmitted),
+       onSaved = ScopeCapture(scope: scope).wrap1n(onSaved),
+       validator = ScopeCapture(scope: scope).wrap1n(validator) {
     _resolvedPlaceholder =
         placeholder ??
         (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
@@ -1895,9 +1883,9 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
     this.autovalidateMode = AutovalidateMode.disabled,
     FormFieldValidator<T>? validator,
     this.forceErrorText,
-  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
-       onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
-       validator = InScopeBuilder(scope: scope).wrap1n(validator) {
+  }) : onSelected = ScopeCapture(scope: scope).wrap1n(onSelected),
+       onSaved = ScopeCapture(scope: scope).wrap1n(onSaved),
+       validator = ScopeCapture(scope: scope).wrap1n(validator) {
     _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
     _resolvedHint =
         hintText ??

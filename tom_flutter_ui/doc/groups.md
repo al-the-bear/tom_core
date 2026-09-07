@@ -261,7 +261,7 @@ TomScope.withScope('checkout', () {
 
 **Explicit** — the scope is handed over as a value. This is what the `scope`
 constructor parameter is for, and it is the case
-[`InScopeBuilder`](../lib/src/widget_base/tom_scope_widgets.dart) exists to
+[`ScopeCapture`](../lib/src/widget_base/tom_scope_widgets.dart) exists to
 serve: Flutter invokes a builder callback from its own zone, long after the
 constructing one has been left, so `TomScope.current` there is the *wrong*
 answer and the scope has to travel as an argument instead.

@@ -63,7 +63,7 @@ class TomSwitch extends TomToggleBase {
     this.autofocus = false,
     this.overlayColor,
     this.splashRadius,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedActiveTrackColor =
         activeTrackColor ?? TomCtr.color(basePath, 'activeTrackColor');
@@ -157,7 +157,7 @@ class TomCheckbox extends TomToggleBase {
     this.isError = false,
     this.focusNode,
     this.autofocus = false,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedCheckColor = checkColor ?? TomCtr.color(basePath, 'checkColor');
     _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
@@ -393,7 +393,7 @@ class TomSwitchListTile extends TomToggleBase {
     this.visualDensity,
     this.enableFeedback,
     this.hoverColor,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged) {
     _resolvedTitle =
         titleText ??
         TomCtr.textOrNull(basePath, 'titleText') ??
@@ -535,7 +535,7 @@ class TomCheckboxListTile extends TomToggleBase {
     this.autofocus = false,
     this.focusNode,
     this.checkboxShape,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged) {
     _resolvedTitle =
         titleText ??
         TomCtr.textOrNull(basePath, 'titleText') ??
@@ -812,7 +812,7 @@ class TomToggleButtons extends TomToggleBase {
     this.verticalDirection = VerticalDirection.down,
     this.constraints,
     this.textStyle,
-  }) : onPressed = InScopeBuilder(scope: scope).wrap1n(onPressed) {
+  }) : onPressed = ScopeCapture(scope: scope).wrap1n(onPressed) {
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
     _resolvedSelectedColor =
         selectedColor ?? TomCtr.color(basePath, 'selectedColor');
@@ -907,7 +907,7 @@ class TomCupertinoSwitch extends TomToggleBase {
     this.offLabelColor,
     this.focusNode,
     this.autofocus = false,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged) {
     _resolvedActiveTrackColor =
         activeTrackColor ?? TomCtr.color(basePath, 'activeTrackColor');
     _resolvedThumbColor = thumbColor ?? TomCtr.color(basePath, 'thumbColor');
@@ -987,7 +987,7 @@ class TomCupertinoCheckbox extends TomToggleBase {
     this.side,
     this.shape,
     this.semanticLabel,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedInactiveColor =
         inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');

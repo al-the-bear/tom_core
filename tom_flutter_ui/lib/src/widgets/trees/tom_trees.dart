@@ -212,8 +212,8 @@ class TomTreeSliver<T> extends TomTreeBase {
     this.addAutomaticKeepAlives,
     this.addRepaintBoundaries,
     this.addSemanticIndexes,
-  }) : treeNodeBuilder = InScopeBuilder(scope: scope).wrap3(treeNodeBuilder),
-       onNodeToggle = InScopeBuilder(scope: scope).wrap1n(onNodeToggle) {
+  }) : treeNodeBuilder = ScopeCapture(scope: scope).wrap3(treeNodeBuilder),
+       onNodeToggle = ScopeCapture(scope: scope).wrap1n(onNodeToggle) {
     _resolvedAddAutomaticKeepAlives =
         addAutomaticKeepAlives ??
         TomCtr.boolVal(basePath, 'addAutomaticKeepAlives') ??

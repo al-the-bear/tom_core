@@ -11,7 +11,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // their authorization, against the wrong scope.
 //
 // TomPageRoute captures TomScope.current at construction (push) time and runs
-// the builder inside it via InScopeBuilder.wrap1.
+// the builder inside it via ScopeCapture.wrap1.
 //
 // Test mechanics matter here: a zone propagates across `await`, so driving the
 // pump from inside `TomScope.withScope` would keep the scope current during the

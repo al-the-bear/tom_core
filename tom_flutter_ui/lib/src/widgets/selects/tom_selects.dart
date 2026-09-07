@@ -86,8 +86,8 @@ class TomDropdownButton<T> extends TomSelectBase {
     this.borderRadius,
     this.padding,
     this.hint,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onTap = ScopeCapture(scope: scope).wrap0n(onTap) {
     _resolvedHint =
         hint ??
         TomCtr.textOrNull(basePath, 'hint') ??
@@ -231,9 +231,9 @@ class TomPopupMenuButton<T> extends TomSelectBase {
     this.constraints,
     this.position,
     this.clipBehavior = Clip.none,
-  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
-       onCanceled = InScopeBuilder(scope: scope).wrap0n(onCanceled),
-       itemBuilder = InScopeBuilder(scope: scope).wrap1(itemBuilder) {
+  }) : onSelected = ScopeCapture(scope: scope).wrap1n(onSelected),
+       onCanceled = ScopeCapture(scope: scope).wrap0n(onCanceled),
+       itemBuilder = ScopeCapture(scope: scope).wrap1(itemBuilder) {
     _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
@@ -368,8 +368,8 @@ class TomDropdownMenu<T> extends TomSelectBase {
     this.requestFocusOnTap = true,
     this.expandedInsets,
     SearchCallback<T>? searchCallback,
-  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
-       searchCallback = InScopeBuilder(scope: scope).wrap2n(searchCallback) {
+  }) : onSelected = ScopeCapture(scope: scope).wrap1n(onSelected),
+       searchCallback = ScopeCapture(scope: scope).wrap2n(searchCallback) {
     _resolvedLabel =
         label ??
         TomCtr.textOrNull(basePath, 'label') ??
@@ -480,10 +480,10 @@ class TomMenuAnchor extends TomSelectBase {
     VoidCallback? onClose,
     this.consumeOutsideTap = false,
     Widget Function(BuildContext, MenuController, Widget?)? builder,
-  }) : onOpen = InScopeBuilder(scope: scope).wrap0n(onOpen),
-       onClose = InScopeBuilder(scope: scope).wrap0n(onClose),
+  }) : onOpen = ScopeCapture(scope: scope).wrap0n(onOpen),
+       onClose = ScopeCapture(scope: scope).wrap0n(onClose),
        builder = builder != null
-           ? InScopeBuilder(scope: scope).wrap3(builder)
+           ? ScopeCapture(scope: scope).wrap3(builder)
            : null {
     _resolvedAlignmentOffset =
         alignmentOffset ?? _resolveOffset('alignmentOffset');
@@ -608,10 +608,10 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     FormFieldSetter<T>? onSaved,
     FormFieldValidator<T>? validator,
     this.autovalidateMode,
-  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
-       onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
-       onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
-       validator = InScopeBuilder(scope: scope).wrap1n(validator) {
+  }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged),
+       onTap = ScopeCapture(scope: scope).wrap0n(onTap),
+       onSaved = ScopeCapture(scope: scope).wrap1n(onSaved),
+       validator = ScopeCapture(scope: scope).wrap1n(validator) {
     // The label resource is only needed for the fallback decoration, so it is
     // resolved lazily at the end of the chain — an explicit decoration already
     // carries its own label.
@@ -733,7 +733,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
     this.thumbColor,
     this.padding,
     this.backgroundColor,
-  }) : onValueChanged = InScopeBuilder(scope: scope).wrap1(onValueChanged) {
+  }) : onValueChanged = ScopeCapture(scope: scope).wrap1(onValueChanged) {
     _resolvedBackgroundColor =
         backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedThumbColor = thumbColor ?? TomCtr.color(basePath, 'thumbColor');
@@ -1043,7 +1043,7 @@ class TomCupertinoPicker extends TomSelectBase {
     required this.children,
     this.selectionOverlay = const CupertinoPickerDefaultSelectionOverlay(),
     this.looping = false,
-  }) : onSelectedItemChanged = InScopeBuilder(
+  }) : onSelectedItemChanged = ScopeCapture(
          scope: scope,
        ).wrap1(onSelectedItemChanged) {
     _resolvedDiameterRatio =
@@ -1112,7 +1112,7 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
     this.borderColor,
     this.pressedColor,
     this.padding,
-  }) : onValueChanged = InScopeBuilder(scope: scope).wrap1(onValueChanged) {
+  }) : onValueChanged = ScopeCapture(scope: scope).wrap1(onValueChanged) {
     _resolvedUnselectedColor =
         unselectedColor ?? TomCtr.color(basePath, 'unselectedColor');
     _resolvedSelectedColor =

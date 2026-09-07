@@ -235,7 +235,7 @@ class TomAuthorizationGroup {
   /// whenever the caller is standing in the frame it is asking about. It is
   /// wrong for the two cases a scope is passed as a *value* rather than
   /// installed on a zone — a member constructed with an explicit `scope`, and
-  /// a callback wrapped by [InScopeBuilder] — and those are exactly the cases
+  /// a callback wrapped by [ScopeCapture] — and those are exactly the cases
   /// that supply it here.
   ///
   /// The member's own path and this one have to come out of the same frame:

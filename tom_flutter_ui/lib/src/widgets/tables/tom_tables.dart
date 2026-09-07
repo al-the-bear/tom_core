@@ -81,7 +81,7 @@ class TomDataTable extends TomTableBase {
     this.border,
     this.clipBehavior = Clip.none,
     required this.rows,
-  }) : onSelectAll = InScopeBuilder(scope: scope).wrap1n(onSelectAll) {
+  }) : onSelectAll = ScopeCapture(scope: scope).wrap1n(onSelectAll) {
     _resolvedSortColumnIndex =
         sortColumnIndex ?? TomCtr.intVal(basePath, 'sortColumnIndex');
     _resolvedSortAscending =
@@ -236,9 +236,9 @@ class TomPaginatedDataTable extends TomTableBase {
     this.headingRowColor,
     this.showEmptyRows = false,
     required this.source,
-  }) : onSelectAll = InScopeBuilder(scope: scope).wrap1n(onSelectAll),
-       onPageChanged = InScopeBuilder(scope: scope).wrap1n(onPageChanged),
-       onRowsPerPageChanged = InScopeBuilder(
+  }) : onSelectAll = ScopeCapture(scope: scope).wrap1n(onSelectAll),
+       onPageChanged = ScopeCapture(scope: scope).wrap1n(onPageChanged),
+       onRowsPerPageChanged = ScopeCapture(
          scope: scope,
        ).wrap1n(onRowsPerPageChanged) {
     _resolvedSortColumnIndex =
@@ -521,9 +521,9 @@ class TomReorderableListView extends TomTableBase {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
     this.autoScrollerVelocityScalar,
-  }) : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
-       onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
-       onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
+  }) : onReorderItem = ScopeCapture(scope: scope).wrap2(onReorderItem),
+       onReorderStart = ScopeCapture(scope: scope).wrap1n(onReorderStart),
+       onReorderEnd = ScopeCapture(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent =
         itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
     final cacheExtentPixels =

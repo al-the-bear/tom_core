@@ -74,7 +74,7 @@ class TomNavigationRail extends TomNavigationBase {
     this.selectedIconTheme,
     this.unselectedIconTheme,
     this.extended = false,
-  }) : onDestinationSelected = InScopeBuilder(
+  }) : onDestinationSelected = ScopeCapture(
          scope: scope,
        ).wrap1n(onDestinationSelected) {
     _resolvedSelectedIndex =
@@ -197,7 +197,7 @@ class TomNavigationBar extends TomNavigationBase {
     this.height,
     this.labelTextStyle,
     this.overlayColor,
-  }) : onDestinationSelected = InScopeBuilder(
+  }) : onDestinationSelected = ScopeCapture(
          scope: scope,
        ).wrap1n(onDestinationSelected) {
     _resolvedSelectedIndex =
@@ -322,7 +322,7 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
     this.splashBorderRadius,
     this.tabAlignment,
     this.textScaler,
-  }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
+  }) : onTap = ScopeCapture(scope: scope).wrap1n(onTap) {
     _resolvedIsScrollable =
         TomCtr.boolVal(basePath, 'isScrollable') ?? isScrollable;
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
@@ -446,7 +446,7 @@ class TomNavigationDrawer extends TomNavigationBase {
     this.indicatorColor,
     this.indicatorShape,
     this.tilePadding,
-  }) : onDestinationSelected = InScopeBuilder(
+  }) : onDestinationSelected = ScopeCapture(
          scope: scope,
        ).wrap1n(onDestinationSelected) {
     _resolvedSelectedIndex =
@@ -629,7 +629,7 @@ class TomBottomNavigationBar extends TomNavigationBase {
     this.enableFeedback,
     this.landscapeLayout,
     this.mouseCursor,
-  }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
+  }) : onTap = ScopeCapture(scope: scope).wrap1n(onTap) {
     _resolvedCurrentIndex =
         TomCtr.intVal(basePath, 'currentIndex') ?? currentIndex;
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
@@ -731,10 +731,10 @@ class TomStepper extends TomNavigationBase {
     this.margin,
     this.connectorThickness,
     this.connectorColor,
-  }) : onStepTapped = InScopeBuilder(scope: scope).wrap0n(onStepTapped),
-       onStepContinue = InScopeBuilder(scope: scope).wrap0n(onStepContinue),
-       onStepCancel = InScopeBuilder(scope: scope).wrap0n(onStepCancel),
-       controlsBuilder = InScopeBuilder(scope: scope).wrap2n(controlsBuilder) {
+  }) : onStepTapped = ScopeCapture(scope: scope).wrap0n(onStepTapped),
+       onStepContinue = ScopeCapture(scope: scope).wrap0n(onStepContinue),
+       onStepCancel = ScopeCapture(scope: scope).wrap0n(onStepCancel),
+       controlsBuilder = ScopeCapture(scope: scope).wrap2n(controlsBuilder) {
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
     _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedConnectorThickness =
@@ -853,7 +853,7 @@ class TomPageView extends TomNavigationBase {
     this.clipBehavior = Clip.hardEdge,
     this.scrollBehavior,
     this.padEnds = true,
-  }) : onPageChanged = InScopeBuilder(scope: scope).wrap1n(onPageChanged);
+  }) : onPageChanged = ScopeCapture(scope: scope).wrap1n(onPageChanged);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -912,7 +912,7 @@ class TomCupertinoTabBar extends TomNavigationBase {
     this.iconSize,
     this.height,
     this.border,
-  }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
+  }) : onTap = ScopeCapture(scope: scope).wrap1n(onTap) {
     _resolvedBackgroundColor =
         backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
@@ -1513,9 +1513,7 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
     this.accountEmail,
     VoidCallback? onDetailsPressed,
     this.arrowColor,
-  }) : onDetailsPressed = InScopeBuilder(
-         scope: scope,
-       ).wrap0n(onDetailsPressed) {
+  }) : onDetailsPressed = ScopeCapture(scope: scope).wrap0n(onDetailsPressed) {
     _resolvedArrowColor =
         arrowColor ?? TomCtr.color(basePath, 'arrowColor') ?? Colors.white;
   }
@@ -1558,7 +1556,7 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
     this.color,
     this.previousPageTitle,
     VoidCallback? onPressed,
-  }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
+  }) : onPressed = ScopeCapture(scope: scope).wrap0n(onPressed) {
     _resolvedTitle =
         previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
   }

@@ -118,7 +118,7 @@ class TomListView extends TomListBase {
     this.addSemanticIndexes = true,
   }) : _children = null,
        _childrenDelegate = SliverChildBuilderDelegate(
-         InScopeBuilder(scope: scope).wrap2(itemBuilder),
+         ScopeCapture(scope: scope).wrap2(itemBuilder),
          childCount: itemCount,
          addAutomaticKeepAlives: addAutomaticKeepAlives,
          addRepaintBoundaries: addRepaintBoundaries,
@@ -159,7 +159,7 @@ class TomListView extends TomListBase {
        semanticChildCount = itemCount,
        _children = null,
        _childrenDelegate = SliverChildBuilderDelegate(
-         InScopeBuilder(scope: scope).wrap2((BuildContext context, int index) {
+         ScopeCapture(scope: scope).wrap2((BuildContext context, int index) {
            final int itemIndex = index ~/ 2;
            if (index.isEven) {
              return itemBuilder(context, itemIndex);
@@ -330,7 +330,7 @@ class TomAnimatedList extends TomListBase {
     this.shrinkWrap = false,
     this.padding,
     this.clipBehavior = Clip.hardEdge,
-  }) : itemBuilder = InScopeBuilder(scope: scope).wrap3(itemBuilder) {
+  }) : itemBuilder = ScopeCapture(scope: scope).wrap3(itemBuilder) {
     _resolvedInitialItemCount =
         TomCtr.intVal(basePath, 'initialItemCount') ?? initialItemCount;
     _resolvedReverse = TomCtr.boolVal(basePath, 'reverse') ?? reverse;
@@ -405,10 +405,10 @@ class TomDismissible extends TomListBase {
     this.crossAxisEndOffset,
     this.dragStartBehavior = DragStartBehavior.start,
     this.behavior = HitTestBehavior.opaque,
-  }) : confirmDismiss = InScopeBuilder(scope: scope).wrap1n(confirmDismiss),
-       onResize = InScopeBuilder(scope: scope).wrap0n(onResize),
-       onUpdate = InScopeBuilder(scope: scope).wrap1n(onUpdate),
-       onDismissed = InScopeBuilder(scope: scope).wrap1n(onDismissed) {
+  }) : confirmDismiss = ScopeCapture(scope: scope).wrap1n(confirmDismiss),
+       onResize = ScopeCapture(scope: scope).wrap0n(onResize),
+       onUpdate = ScopeCapture(scope: scope).wrap1n(onUpdate),
+       onDismissed = ScopeCapture(scope: scope).wrap1n(onDismissed) {
     _resolvedCrossAxisEndOffset =
         crossAxisEndOffset ??
         TomCtr.doubleVal(basePath, 'crossAxisEndOffset') ??
@@ -493,7 +493,7 @@ class TomListWheelScrollView extends TomListBase {
     this.restorationId,
     this.scrollBehavior,
     required this.childDelegate,
-  }) : onSelectedItemChanged = InScopeBuilder(
+  }) : onSelectedItemChanged = ScopeCapture(
          scope: scope,
        ).wrap1n(onSelectedItemChanged) {
     _resolvedDiameterRatio =
@@ -589,7 +589,7 @@ class TomCupertinoListTile extends TomListBase {
     this.padding,
     this.leadingSize,
     this.leadingToTitle,
-  }) : onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
+  }) : onTap = ScopeCapture(scope: scope).wrap0n(onTap) {
     _resolvedTitle =
         titleText ??
         TomCtr.textOrNull(basePath, 'titleText') ??
@@ -763,9 +763,9 @@ class TomReorderableList extends TomListBase {
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
-  }) : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
-       onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
-       onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
+  }) : onReorderItem = ScopeCapture(scope: scope).wrap2(onReorderItem),
+       onReorderStart = ScopeCapture(scope: scope).wrap1n(onReorderStart),
+       onReorderEnd = ScopeCapture(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent =
         itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
     _resolvedShrinkWrap =
@@ -865,9 +865,9 @@ class TomSliverReorderableList extends TomListBase {
     this.itemExtentBuilder,
     this.prototypeItem,
     this.proxyDecorator,
-  }) : onReorderItem = InScopeBuilder(scope: scope).wrap2(onReorderItem),
-       onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
-       onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
+  }) : onReorderItem = ScopeCapture(scope: scope).wrap2(onReorderItem),
+       onReorderStart = ScopeCapture(scope: scope).wrap1n(onReorderStart),
+       onReorderEnd = ScopeCapture(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent =
         itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
   }

@@ -1,4 +1,4 @@
-/// Demonstrates [InScopeBuilder] — captures the active [TomScope] at
+/// Demonstrates [ScopeCapture] — captures the active [TomScope] at
 /// construction time and wraps callbacks so they run inside that scope even
 /// when invoked later from an unrelated zone (e.g. a Flutter `itemBuilder`).
 ///
@@ -11,7 +11,7 @@
 /// - The named-parameter `wrapCounter` variant
 ///
 /// The core guarantee: the wrapped callback always observes the scope that was
-/// current when the [InScopeBuilder] was built, regardless of where it is
+/// current when the [ScopeCapture] was built, regardless of where it is
 /// finally called.
 library;
 
@@ -20,7 +20,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../../sample_preamble.dart';
 
 void run() {
-  print('=== 02: InScopeBuilder Example ===\n');
+  print('=== 02: ScopeCapture Example ===\n');
 
   // ===========================================================================
   // Example 1: Capture the current scope at construction
@@ -32,7 +32,7 @@ void run() {
   late String Function() wrapped0;
   TomScope.withScope('app', () {
     TomScope.withScope('checkout', () {
-      final builder = InScopeBuilder();
+      final builder = ScopeCapture();
       wrapped0 = builder.wrap0<String>(() => TomScope.current.getScopePath());
     });
   });
@@ -54,7 +54,7 @@ void run() {
 
   late String Function(int) wrapped1;
   TomScope.withScope('list', () {
-    final builder = InScopeBuilder();
+    final builder = ScopeCapture();
     wrapped1 = builder.wrap1<String, int>(
       (index) => '${TomScope.current.getScopePath()}#$index',
     );
@@ -72,7 +72,7 @@ void run() {
   print('3. An explicit scope overrides the ambient one:');
 
   final explicitScope = TomScopeBase(scopeId: 'widget', parentScope: null);
-  final explicitBuilder = InScopeBuilder(scope: explicitScope);
+  final explicitBuilder = ScopeCapture(scope: explicitScope);
   final explicitWrapped = explicitBuilder.wrap0<String>(
     () => TomScope.current.getScopePath(),
   );
@@ -88,7 +88,7 @@ void run() {
 
   print('4. wrap1n returns null for a null callback:');
 
-  final nullableBuilder = InScopeBuilder(scope: explicitScope);
+  final nullableBuilder = ScopeCapture(scope: explicitScope);
   final String Function(int)? nullWrapped = nullableBuilder.wrap1n<String, int>(
     null,
   );
@@ -107,7 +107,7 @@ void run() {
   print('5. wrapCounter handles a callback with named parameters:');
 
   final counterScope = TomScopeBase(scopeId: 'form', parentScope: null);
-  final counterBuilder = InScopeBuilder(scope: counterScope);
+  final counterBuilder = ScopeCapture(scope: counterScope);
   final counter = counterBuilder.wrapCounter<String, String, int, int, bool>(
     (label, {required currentLength, required maxLength, required isFocused}) =>
         '${TomScope.current.getScopePath()}:$label $currentLength/$maxLength',

@@ -401,9 +401,9 @@ void main() {
       expect(TomScope.current, same(TomScope.defaultScope));
     });
 
-    test('the custom mixin scope integrates with InScopeBuilder', () {
+    test('the custom mixin scope integrates with ScopeCapture', () {
       final section = _MixinScope(scopeId: 'section');
-      final wrapped = InScopeBuilder(
+      final wrapped = ScopeCapture(
         scope: section,
       ).wrap0<String>(() => TomScope.current.getScopePath());
       expect(wrapped(), equals('section'));
@@ -474,15 +474,12 @@ void main() {
         );
       });
 
-      test(
-        'InScopeBuilder refuses to run a callback in the captured scope',
-        () {
-          final wrapped = InScopeBuilder(
-            scope: _LazyMixinScope(),
-          ).wrap0<String>(() => TomScope.current.getScopePath());
-          expectNamesTypeAndInitScope(wrapped);
-        },
-      );
+      test('ScopeCapture refuses to run a callback in the captured scope', () {
+        final wrapped = ScopeCapture(
+          scope: _LazyMixinScope(),
+        ).wrap0<String>(() => TomScope.current.getScopePath());
+        expectNamesTypeAndInitScope(wrapped);
+      });
 
       // Reading the identity directly already threw, but as a
       // LateInitializationError naming a mangled private field. The diagnosis
@@ -579,7 +576,7 @@ void main() {
   // it is false the moment the body schedules anything.
   //
   // The distinction between the two groups below is also the entire reason
-  // InScopeBuilder exists: async-scheduled callbacks inherit the zone for
+  // ScopeCapture exists: async-scheduled callbacks inherit the zone for
   // free, and directly-invoked stored closures do not.
   group('zone propagation', () {
     group('a scope DOES outlive the body it was installed for', () {
@@ -666,17 +663,17 @@ void main() {
 
         // Zone inheritance covers callbacks the async machinery schedules, not
         // a closure someone else calls directly later. This is the gap that
-        // InScopeBuilder closes.
+        // ScopeCapture closes.
         expect(stored(), isEmpty);
         TomScope.withScope('elsewhere', () {
           expect(stored(), equals('elsewhere'));
         });
       });
 
-      test('InScopeBuilder closes that gap for a stored closure', () {
+      test('ScopeCapture closes that gap for a stored closure', () {
         late String Function() wrapped;
         TomScope.withScope('origin', () {
-          wrapped = InScopeBuilder().wrap0<String>(
+          wrapped = ScopeCapture().wrap0<String>(
             () => TomScope.current.getScopePath(),
           );
         });
@@ -692,13 +689,13 @@ void main() {
   });
 
   // ===========================================================================
-  // InScopeBuilder — wraps callbacks so they run in a captured scope
+  // ScopeCapture — wraps callbacks so they run in a captured scope
   // ===========================================================================
-  group('InScopeBuilder', () {
+  group('ScopeCapture', () {
     test('captures the current scope at construction by default', () {
-      late InScopeBuilder builder;
+      late ScopeCapture builder;
       TomScope.withScope('captured', () {
-        builder = InScopeBuilder();
+        builder = ScopeCapture();
       });
       // Called outside the original zone — wrap0 must restore the scope.
       final wrapped = builder.wrap0<String>(
@@ -709,7 +706,7 @@ void main() {
 
     test('uses an explicitly supplied scope over current', () {
       final explicit = TomScopeBase(scopeId: 'explicit', parentScope: null);
-      final builder = InScopeBuilder(scope: explicit);
+      final builder = ScopeCapture(scope: explicit);
       final wrapped = builder.wrap0<String>(
         () => TomScope.current.getScopePath(),
       );
@@ -717,9 +714,9 @@ void main() {
     });
 
     test('wrap1 restores the scope and forwards the argument', () {
-      late InScopeBuilder builder;
+      late ScopeCapture builder;
       TomScope.withScope('captured', () {
-        builder = InScopeBuilder();
+        builder = ScopeCapture();
       });
       final wrapped = builder.wrap1<String, int>(
         (a) => '${TomScope.current.getScopePath()}:$a',
@@ -728,9 +725,9 @@ void main() {
     });
 
     test('wrap2..wrap5 restore the scope and forward all arguments', () {
-      late InScopeBuilder builder;
+      late ScopeCapture builder;
       TomScope.withScope('captured', () {
-        builder = InScopeBuilder();
+        builder = ScopeCapture();
       });
       final w2 = builder.wrap2<String, int, int>(
         (a, b) => '${TomScope.current.getScopePath()}:${a + b}',
@@ -754,7 +751,7 @@ void main() {
     });
 
     test('nullable wrappers return null for null callbacks', () {
-      final builder = InScopeBuilder(
+      final builder = ScopeCapture(
         scope: TomScopeBase(scopeId: 'x', parentScope: null),
       );
       expect(builder.wrap0n<int>(null), isNull);
@@ -766,9 +763,9 @@ void main() {
     });
 
     test('nullable wrappers wrap non-null callbacks in the captured scope', () {
-      late InScopeBuilder builder;
+      late ScopeCapture builder;
       TomScope.withScope('captured', () {
-        builder = InScopeBuilder();
+        builder = ScopeCapture();
       });
 
       // Every arity, not just wrap1n: each `wrapNn` is a separate hand-written
@@ -812,7 +809,7 @@ void main() {
     // called from.
     group('the captured scope replaces the ambient one, not just the root', () {
       test('a builder captured outside any scope resets an ambient scope', () {
-        final builder = InScopeBuilder();
+        final builder = ScopeCapture();
         final wrapped = builder.wrap0<String>(
           () => TomScope.current.getScopePath(),
         );
@@ -836,8 +833,8 @@ void main() {
       });
 
       test('a builder captured in one scope overrides a different one', () {
-        late InScopeBuilder builder;
-        TomScope.withScope('a', () => builder = InScopeBuilder());
+        late ScopeCapture builder;
+        TomScope.withScope('a', () => builder = ScopeCapture());
         final wrapped = builder.wrap1<String, int>(
           (n) => '${TomScope.current.getScopePath()}:$n',
         );
@@ -857,9 +854,9 @@ void main() {
     });
 
     test('wrapCounter restores the scope and forwards named arguments', () {
-      late InScopeBuilder builder;
+      late ScopeCapture builder;
       TomScope.withScope('captured', () {
-        builder = InScopeBuilder();
+        builder = ScopeCapture();
       });
       final wrapped = builder.wrapCounter<String, int, int, int, bool>(
         (a, {required currentLength, required maxLength, required isFocused}) =>

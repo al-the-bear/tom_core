@@ -830,7 +830,7 @@ void main() {
     tearDown(TomAuthorization.reset);
 
     /// A scope handed over as a value, never installed on a zone — the shape
-    /// `InScopeBuilder` and the screen-element providers produce.
+    /// `ScopeCapture` and the screen-element providers produce.
     TomScope detachedCheckout() => TomScopeBase(scopeId: 'checkout');
 
     /// Three rules, and the third is the point. `billing: full` is what an

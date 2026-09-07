@@ -138,7 +138,7 @@ abstract class TomScope {
   /// Zone inheritance covers callbacks the async machinery schedules; it does
   /// not cover a closure that is merely *stored* here and invoked directly by
   /// someone else later, which runs in the invoker's scope. Wrap those with
-  /// [InScopeBuilder].
+  /// [ScopeCapture].
   static T withScope<T>(String scope, T Function() body) {
     return runZoned(
       body,
@@ -286,13 +286,13 @@ mixin TomScopeMixin on Object implements TomScope {
 /// class TomFoo extends TomNodeBase {
 ///   final WidgetBuilder _builder;
 ///   TomFoo({required WidgetBuilder builder, super.scope})
-///       : _builder = InScopeBuilder(scope: scope).wrap1(builder);
+///       : _builder = ScopeCapture(scope: scope).wrap1(builder);
 /// }
 /// ```
-class InScopeBuilder {
+class ScopeCapture {
   final TomScope _scope;
 
-  InScopeBuilder({TomScope? scope}) : _scope = scope ?? TomScope.current;
+  ScopeCapture({TomScope? scope}) : _scope = scope ?? TomScope.current;
 
   /// Wraps a 0-argument callback.
   R Function() wrap0<R>(R Function() fn) =>

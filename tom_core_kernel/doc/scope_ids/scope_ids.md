@@ -14,7 +14,7 @@ threading an identifier through every call.
   - [TomScope](#tomscope)
   - [TomScopeBase and TomScopeMixin](#tomscopebase-and-tomscopemixin)
     - [The window before initScope](#the-window-before-initscope)
-  - [InScopeBuilder](#inscopebuilder)
+  - [ScopeCapture](#scopecapture)
 - [Scope Paths](#scope-paths)
   - [Ids may not contain the separator](#ids-may-not-contain-the-separator)
   - [The chain must be acyclic](#the-chain-must-be-acyclic)
@@ -43,7 +43,7 @@ authorization — use as a lookup prefix.
 | `TomScope` | Abstract contract: `id`, `parent`, path building, zone install |
 | `TomScopeBase` | Concrete scope built from a scope id and optional parent |
 | `TomScopeMixin` | Reusable implementation backing `TomScopeBase` |
-| `InScopeBuilder` | Wraps callbacks so they run in a captured scope when invoked later |
+| `ScopeCapture` | Wraps callbacks so they run in a captured scope when invoked later |
 
 ## Quick Start
 
@@ -137,7 +137,7 @@ Two entry points enforce it, and between them they close the window:
 
 | Entry point | Refuses |
 | ----------- | ------- |
-| `runInScope` — and everything built on it, including `InScopeBuilder` | installing a scope that has no identity |
+| `runInScope` — and everything built on it, including `ScopeCapture` | installing a scope that has no identity |
 | `initScope` | a `parentScope` that has no identity, and an unusable `scopeId` |
 
 Checking the parent at `initScope`, rather than when the path is built, is what
@@ -151,25 +151,25 @@ zone perfectly well, so the failure surfaces at whichever later call first asks
 for a path — a resource lookup, an authorization check — on a stack that
 mentions neither scopes nor the constructor that skipped `initScope`.
 
-`InScopeBuilder` still *captures* an uninitialised scope without complaint; it
+`ScopeCapture` still *captures* an uninitialised scope without complaint; it
 is the invocation that is refused. Capture is not use, and a widget may legally
 be constructed with a scope that gets its identity before the first build.
 
-### InScopeBuilder
+### ScopeCapture
 
 Flutter invokes builder callbacks (`itemBuilder`, `builder`, …) **outside** the
-zone in which the widget was constructed. `InScopeBuilder` captures the scope at
+zone in which the widget was constructed. `ScopeCapture` captures the scope at
 construction time and wraps a callback so it re-installs that scope when called:
 
 ```dart
 class TomFoo extends TomNodeBase {
   final WidgetBuilder _builder;
   TomFoo({required WidgetBuilder builder, super.scope})
-      : _builder = InScopeBuilder(scope: scope).wrap1(builder);
+      : _builder = ScopeCapture(scope: scope).wrap1(builder);
 }
 ```
 
-`InScopeBuilder` provides `wrap0`…`wrap5` for fixed-arity callbacks, the
+`ScopeCapture` provides `wrap0`…`wrap5` for fixed-arity callbacks, the
 `wrap0n`…`wrap5n` nullable variants (return `null` when the callback is `null`),
 and `wrapCounter` for Flutter's named-parameter `InputCounterWidgetBuilder`
 signature.
@@ -352,7 +352,7 @@ TomScope.withScope('origin', () {
 stored(); // "" — not "origin"
 ```
 
-This is precisely the gap `InScopeBuilder` closes, and the reason it exists:
+This is precisely the gap `ScopeCapture` closes, and the reason it exists:
 Flutter stores builder callbacks and calls them from its own build pipeline, so
 they arrive outside the zone that constructed the widget.
 
@@ -360,7 +360,7 @@ So the two tools are:
 
 - `withScope` / `runInScope` — install a scope for a body **and everything that
   body schedules**.
-- `InScopeBuilder` — capture the scope now and re-install it inside a callback
+- `ScopeCapture` — capture the scope now and re-install it inside a callback
   that will be invoked directly, from outside the zone.
 
 ## Best Practices
@@ -370,7 +370,7 @@ So the two tools are:
    into your own type, prefer calling `initScope` from the constructor — that
    leaves no window in which the instance is not yet a scope.
 2. **Wrap framework callbacks.** Any builder that the UI framework calls back
-   into should be wrapped with `InScopeBuilder` so resource/authorization
+   into should be wrapped with `ScopeCapture` so resource/authorization
    lookups resolve against the right path.
 3. **Expect an id derived from data to be checked.** Scope ids become
    dot-separated path segments, so an empty id or one containing `.` is refused

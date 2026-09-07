@@ -149,7 +149,7 @@ void run() {
   });
 
   // The same scope handed over as a value instead of installed on a zone —
-  // what `InScopeBuilder` does for callbacks Flutter invokes from its own zone.
+  // what `ScopeCapture` does for callbacks Flutter invokes from its own zone.
   // Both paths must come out prefixed, or the group would be looked up
   // somewhere the member never was.
   final checkout = TomScopeBase(scopeId: 'checkout');

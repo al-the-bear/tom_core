@@ -250,10 +250,10 @@ class TomCircleAvatar extends TomImageBase {
     this.radius,
     this.minRadius,
     this.maxRadius,
-  }) : onBackgroundImageError = InScopeBuilder(
+  }) : onBackgroundImageError = ScopeCapture(
          scope: scope,
        ).wrap2n(onBackgroundImageError),
-       onForegroundImageError = InScopeBuilder(
+       onForegroundImageError = ScopeCapture(
          scope: scope,
        ).wrap2n(onForegroundImageError) {
     _resolvedBackgroundColor =
@@ -344,10 +344,10 @@ class TomFadeInImage extends TomImageBase {
     ImageErrorWidgetBuilder? placeholderErrorBuilder,
     ImageErrorWidgetBuilder? imageErrorBuilder,
   }) : placeholderErrorBuilder = placeholderErrorBuilder != null
-           ? InScopeBuilder(scope: scope).wrap3(placeholderErrorBuilder)
+           ? ScopeCapture(scope: scope).wrap3(placeholderErrorBuilder)
            : null,
        imageErrorBuilder = imageErrorBuilder != null
-           ? InScopeBuilder(scope: scope).wrap3(imageErrorBuilder)
+           ? ScopeCapture(scope: scope).wrap3(imageErrorBuilder)
            : null {
     _resolvedSemanticLabel =
         imageSemanticLabel ??
@@ -573,13 +573,13 @@ class TomNetworkImage extends TomImageBase {
     ImageLoadingBuilder? loadingBuilder,
     ImageErrorWidgetBuilder? errorBuilder,
   }) : frameBuilder = frameBuilder != null
-           ? InScopeBuilder(scope: scope).wrap4(frameBuilder)
+           ? ScopeCapture(scope: scope).wrap4(frameBuilder)
            : null,
        loadingBuilder = loadingBuilder != null
-           ? InScopeBuilder(scope: scope).wrap3(loadingBuilder)
+           ? ScopeCapture(scope: scope).wrap3(loadingBuilder)
            : null,
        errorBuilder = errorBuilder != null
-           ? InScopeBuilder(scope: scope).wrap3(errorBuilder)
+           ? ScopeCapture(scope: scope).wrap3(errorBuilder)
            : null {
     _resolvedSemanticLabel =
         semanticLabel ??
@@ -695,10 +695,10 @@ class TomAssetImage extends TomImageBase {
     this.cacheWidth,
     this.cacheHeight,
   }) : frameBuilder = frameBuilder != null
-           ? InScopeBuilder(scope: scope).wrap4(frameBuilder)
+           ? ScopeCapture(scope: scope).wrap4(frameBuilder)
            : null,
        errorBuilder = errorBuilder != null
-           ? InScopeBuilder(scope: scope).wrap3(errorBuilder)
+           ? ScopeCapture(scope: scope).wrap3(errorBuilder)
            : null {
     _resolvedSemanticLabel =
         semanticLabel ??
@@ -795,10 +795,10 @@ class TomFileImage extends TomImageBase {
     ImageFrameBuilder? frameBuilder,
     ImageErrorWidgetBuilder? errorBuilder,
   }) : frameBuilder = frameBuilder != null
-           ? InScopeBuilder(scope: scope).wrap4(frameBuilder)
+           ? ScopeCapture(scope: scope).wrap4(frameBuilder)
            : null,
        errorBuilder = errorBuilder != null
-           ? InScopeBuilder(scope: scope).wrap3(errorBuilder)
+           ? ScopeCapture(scope: scope).wrap3(errorBuilder)
            : null {
     _resolvedSemanticLabel =
         semanticLabel ??

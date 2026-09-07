@@ -1001,10 +1001,10 @@ abstract class TomStatelessWidget extends StatelessWidget {
 }
 ```
 
-**Callback wrapping** — `InScopeBuilder` wraps all callbacks (`onPressed`, `onChanged`, etc.) so widgets created inside callbacks see the correct scope:
+**Callback wrapping** — `ScopeCapture` wraps all callbacks (`onPressed`, `onChanged`, etc.) so widgets created inside callbacks see the correct scope:
 
 ```dart
-class InScopeBuilder {
+class ScopeCapture {
   final TomScope _scope;
   R Function(A) wrap1<R, A>(R Function(A) fn) =>
       (a) => _scope.runInScope(() => fn(a));

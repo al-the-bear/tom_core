@@ -13,7 +13,7 @@ original zone still resolve resources correctly.
   - [TomScopeBase](#tomscopebase)
   - [TomScopeMixin](#tomscopemixin)
   - [TomScopeException](#tomscopeexception)
-  - [InScopeBuilder](#inscopebuilder)
+  - [ScopeCapture](#scopecapture)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -25,7 +25,7 @@ namespace resource lookups. Scopes form a parent chain rooted at `defaultScope`,
 and the active scope is carried on the current `Zone`, so `TomScope.current`
 resolves to whichever scope the nearest enclosing `withScope` / `runInScope`
 call installed. `TomScopeBase` is the concrete implementation, built from
-`TomScopeMixin`, whose write-once identity is set via `initScope`. `InScopeBuilder`
+`TomScopeMixin`, whose write-once identity is set via `initScope`. `ScopeCapture`
 captures a scope at construction time and wraps callback functions (0–5
 arguments, nullable variants, and a Flutter counter-builder shape) so they
 execute within that scope when Flutter later calls them outside the original
@@ -42,7 +42,7 @@ TomScopeMixin  (mixin on Object, implements TomScope)
 TomException
     └── TomScopeException
 
-InScopeBuilder
+ScopeCapture
 ```
 
 `TomScopeBase` is a `TomScope` by *interface*, not by inheritance: it extends
@@ -165,7 +165,7 @@ offending value.
 | `scope_ids.init_scope.separator_in_id` | `initScope` is given a `scopeId` containing `.` (`parameters['scopeId']`, `parameters['separator']`) |
 | `scope_ids.use_scope.no_identity` | a `TomScopeMixin` instance is installed or used as a parent before `initScope` has run (`parameters['type']`) |
 
-### InScopeBuilder
+### ScopeCapture
 
 Captures a `TomScope` at construction time and wraps callback functions so they
 execute within that scope when called later. Used so Tom widgets created inside
@@ -175,7 +175,7 @@ resources against the correct scope.
 #### Constructors
 
 ```dart
-InScopeBuilder({TomScope? scope})
+ScopeCapture({TomScope? scope})
 ```
 
 Omitting `scope` captures `TomScope.current` **at construction time**, which is
