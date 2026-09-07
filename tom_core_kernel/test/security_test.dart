@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'security_test.reflection.dart';
+import 'support/recording_client.dart';
 
 // =============================================================================
 // Test Helper Classes
@@ -4345,6 +4346,82 @@ void main() {
       expect(registerTomOAuthApi, returnsNormally);
       expect(tomRemoteApis.apis.length, registeredCount);
     });
+  });
+
+  // The OAuth contract declares three endpoints, and until this group nothing
+  // sent over any of them: the suite built the DTOs and checked the
+  // declarations. A documented exchange with no executable counterpart is the
+  // condition under which a wrong transport survives — which is how a
+  // `authService.login(...)` that never existed came to be documented in four
+  // places before anyone read it closely.
+  group('the OAuth contract over a stubbed client', () {
+    test(
+      'begin authorization answers a provider URI and a state handle',
+      () async {
+        final begin = tomOAuthApi[tomOAuthBeginEndpointId];
+        final client = RecordingClient(
+          (request) async => jsonResponse(
+            request,
+            r'{"authorizationUri":"https://accounts.example.com/o/auth?client_id=x",'
+            r'"state":"st-42"}',
+          ),
+        );
+        final endpoint =
+            TomServerEndpoint<
+              TomOAuthAuthorizationRequest,
+              TomOAuthAuthorizationDto
+            >(
+              TomServerChannel(
+                'api.example.com',
+                443,
+                clientFactory: RecordingClientFactory(client),
+              ),
+              TomServerCallSpecs(
+                begin.method.name.toUpperCase(),
+                begin.resolveUri(Uri.parse('https://api.example.com')),
+              ),
+            );
+
+        final (dto, error) = await endpoint.send(
+          TomOAuthAuthorizationRequest(providerId: 'google', client: 'flutter'),
+        );
+
+        expect(error?.hasError ?? false, isFalse);
+        expect(dto.state, equals('st-42'));
+        expect(
+          dto.authorizationUri,
+          startsWith('https://accounts.example.com/'),
+        );
+        expect(client.lastRequest!.method, equals('POST'));
+        expect(
+          client.lastRequest!.url,
+          equals(Uri.parse('https://api.example.com/oauth/authorize')),
+        );
+      },
+    );
+
+    test(
+      'the callback endpoint addresses the query the provider redirects with',
+      () {
+        // No send: the provider redirects a *browser* here, so the exchange this
+        // endpoint describes is not one a client makes. What is checkable — and
+        // what the mapping exists for — is that the URL it resolves carries the
+        // provider's own snake_case spelling.
+        final complete = tomOAuthApi[tomOAuthCompleteEndpointId];
+        final uri = complete.resolveUri(
+          Uri.parse('https://api.example.com'),
+          parameters: {'code': 'c-1', 'state': 'st-42'},
+        );
+
+        expect(uri.path, equals('/oauth/callback'));
+        expect(uri.queryParameters['code'], equals('c-1'));
+        expect(uri.queryParameters['state'], equals('st-42'));
+        expect(
+          complete.urlParameterMapping['error_description'],
+          equals('errorDescription'),
+        );
+      },
+    );
   });
 }
 

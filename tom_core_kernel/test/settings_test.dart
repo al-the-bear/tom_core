@@ -1,11 +1,9 @@
-import 'dart:convert';
-
-import 'package:http/http.dart';
 import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'settings_test.reflection.dart';
+import 'support/recording_client.dart';
 
 // =============================================================================
 // TomGetSettingsMessage Tests
@@ -1201,24 +1199,18 @@ void main() {
     /// client that answers [body] with [statusCode].
     (
       TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>,
-      _RecordingClient,
+      RecordingClient,
     )
     documentedEndpoint(String body, {int statusCode = 200}) {
-      final client = _RecordingClient((request) async {
-        final bytes = utf8.encode(body);
-        return StreamedResponse(
-          Stream<List<int>>.value(bytes),
-          statusCode,
-          contentLength: bytes.length,
-          request: request,
-        );
-      });
+      final client = RecordingClient(
+        (request) async => jsonResponse(request, body, statusCode: statusCode),
+      );
       final endpoint =
           TomServerEndpoint<TomGetSettingsMessage, TomGetSettingsResult>(
             TomServerChannel(
               'api.example.com',
               443,
-              clientFactory: _RecordingClientFactory(client),
+              clientFactory: RecordingClientFactory(client),
             ),
             TomServerCallSpecs(
               'POST',
@@ -1268,30 +1260,4 @@ void main() {
       expect(result.roles, isEmpty);
     });
   });
-}
-
-/// A [BaseClient] that answers from [handler] and remembers the last request,
-/// so a test can assert what actually went onto the wire.
-class _RecordingClient extends BaseClient {
-  _RecordingClient(this.handler);
-
-  final Future<StreamedResponse> Function(BaseRequest request) handler;
-
-  BaseRequest? lastRequest;
-
-  @override
-  Future<StreamedResponse> send(BaseRequest request) {
-    lastRequest = request;
-    return handler(request);
-  }
-}
-
-/// Hands a [TomServerChannel] the one [_RecordingClient] under test.
-class _RecordingClientFactory extends TomHttpClientFactory {
-  _RecordingClientFactory(this._client);
-
-  final _RecordingClient _client;
-
-  @override
-  _RecordingClient getClient() => _client;
 }

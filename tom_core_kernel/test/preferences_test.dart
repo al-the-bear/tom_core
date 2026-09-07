@@ -5,6 +5,7 @@ import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'preferences_test.reflection.dart';
+import 'support/recording_client.dart';
 
 // =============================================================================
 // Helpers
@@ -2322,10 +2323,122 @@ void main() {
       expect(tomRemoteApis.apis.length, registeredCount);
     });
   });
+
+  _wireTests();
 }
 
 /// The `Type` object for [T].
 ///
+/// Executes the contract, rather than only constructing it.
+///
+/// The module declares four endpoints and a service interface, and until this
+/// group nothing sent over any of them: the suite built the DTOs and checked
+/// the declarations. That is the condition under which a wrong transport
+/// survives — an invented API is caught by reading, an executed one by
+/// running — and it is how a call that never existed came to be documented
+/// four times in the settings and security modules.
+void _wireTests() {
+  group('the preferences contract over a stubbed client', () {
+    (TomServerEndpoint<T, R>, RecordingClient)
+    endpointFor<T extends Object, R extends Object>(
+      TomApiEndpoint endpoint,
+      String body, {
+      Map<String, Object?> args = const {},
+    }) {
+      final client = RecordingClient(
+        (request) async => jsonResponse(request, body),
+      );
+      return (
+        TomServerEndpoint<T, R>(
+          TomServerChannel(
+            'api.example.com',
+            443,
+            clientFactory: RecordingClientFactory(client),
+          ),
+          TomServerCallSpecs(
+            endpoint.method.name.toUpperCase(),
+            endpoint.resolveUri(
+              Uri.parse('https://api.example.com'),
+              parameters: args,
+            ),
+            includeBearerAuthentication: true,
+          ),
+        ),
+        client,
+      );
+    }
+
+    test('the read endpoint addresses the key it was given', () async {
+      final read = tomUserPreferencesApi[tomUserPreferencesReadEndpointId];
+      final (
+        endpoint,
+        client,
+      ) = endpointFor<TomUserPreferenceKeyRequest, TomUserPreferenceDto>(
+        read,
+        r'{"key":"tom.theme","valueType":"String","value":"\"dark\""}',
+        args: {'key': TomUserPreferenceKeys.theme},
+      );
+
+      final (dto, error) = await endpoint.send(
+        TomUserPreferenceKeyRequest()..key = TomUserPreferenceKeys.theme,
+      );
+
+      expect(error?.hasError ?? false, isFalse);
+      expect(dto.key, equals(TomUserPreferenceKeys.theme));
+      expect(TomUserPreferenceCodec.decode<String>(dto), equals('dark'));
+      // What went out, not only what came back: the key belongs in the path
+      // for this endpoint, and a round trip that checks only the answer passes
+      // just as well when the request addressed the wrong preference.
+      expect(client.lastRequest!.method, equals('GET'));
+      expect(
+        client.lastRequest!.url,
+        equals(
+          Uri.parse(
+            'https://api.example.com/preferences/${TomUserPreferenceKeys.theme}',
+          ),
+        ),
+      );
+    });
+
+    test(
+      'the write endpoint carries the key in the body, not the path',
+      () async {
+        // The one key-taking endpoint whose URI has no `{key}`, because its
+        // request already has the field. This is the assertion that would fail
+        // if the declaration grew a path capture: the URL would name the
+        // preference twice with no rule saying which one wins.
+        final write = tomUserPreferencesApi[tomUserPreferencesWriteEndpointId];
+        final (
+          endpoint,
+          client,
+        ) = endpointFor<TomUserPreferenceWriteRequest, TomUserPreferenceDto>(
+          write,
+          r'{"key":"tom.theme","valueType":"String","value":"\"light\""}',
+        );
+
+        final (dto, error) = await endpoint.send(
+          TomUserPreferenceWriteRequest()
+            ..key = TomUserPreferenceKeys.theme
+            ..valueType = 'String'
+            ..value = r'"light"',
+        );
+
+        expect(error?.hasError ?? false, isFalse);
+        expect(TomUserPreferenceCodec.decode<String>(dto), equals('light'));
+        expect(client.lastRequest!.method, equals('PUT'));
+        expect(
+          client.lastRequest!.url,
+          equals(Uri.parse('https://api.example.com/preferences')),
+        );
+        expect(
+          jsonDecode((client.lastRequest as dynamic).body as String)['key'],
+          equals(TomUserPreferenceKeys.theme),
+        );
+      },
+    );
+  });
+}
+
 /// `void` cannot be written as an expression, so `expect(x, void)` does not
 /// parse and the only way to name the type of an endpoint that answers with
 /// nothing is to reify it through a type parameter.

@@ -15,6 +15,7 @@ import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'http_connection_test.reflection.dart';
+import 'support/recording_client.dart';
 
 // ============================================================================
 // Reflected DTOs for the TomServerEndpoint.send tests
@@ -4068,6 +4069,63 @@ void main() {
       );
       expect(result, equals(401));
       expect(refresher.refreshCount, equals(0));
+    });
+  });
+
+  // The logging module's documented remote wiring, executed.
+  //
+  // It lives here rather than in `logging_test.dart` for a reason worth
+  // naming: that suite has no generated reflection registry, and the remote
+  // send serializes `TomRemoteLogMessage` through one. Its existing remote
+  // tests substitute a mock *endpoint*, which proves the module reaches its
+  // endpoint and proves nothing about the channel, the method or the URL the
+  // documentation tells a reader to write. This suite has both a registry and
+  // the transport under test, so the documented wiring can be run end to end.
+  group('the logging module\'s documented remote wiring', () {
+    tearDown(() => TomRemoteLogOutput.remoteEndpoint = null);
+
+    test('a record reaches the URL the documentation wires', () async {
+      final sent = Completer<void>();
+      final client = RecordingClient(
+        (request) async =>
+            jsonResponse(request, '{"hasError":false,"errorMessage":""}'),
+      )..onSend = () => sent.complete();
+
+      // Built exactly as `TomRemoteLogOutput`'s dartdoc shows it.
+      TomRemoteLogOutput.remoteEndpoint =
+          TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>(
+            TomServerChannel(
+              'logs.example.com',
+              443,
+              clientFactory: RecordingClientFactory(client),
+            ),
+            TomServerCallSpecs(
+              'POST',
+              Uri.parse('https://logs.example.com/api/logs'),
+            ),
+          );
+
+      TomRemoteLogOutput().output(
+        TomLogLevel.production,
+        TomLogLevel.info,
+        'INFO   ',
+        'the message that goes out',
+        'main',
+        DateTime(2026, 1, 2, 10, 0, 0),
+        null,
+      );
+      await sent.future.timeout(const Duration(seconds: 10));
+
+      expect(client.lastRequest!.method, equals('POST'));
+      expect(
+        client.lastRequest!.url,
+        equals(Uri.parse('https://logs.example.com/api/logs')),
+      );
+      final body =
+          jsonDecode((client.lastRequest! as Request).body)
+              as Map<String, Object?>;
+      expect(body['message'], contains('the message that goes out'));
+      expect(body['isolateName'], equals('main'));
     });
   });
 }
