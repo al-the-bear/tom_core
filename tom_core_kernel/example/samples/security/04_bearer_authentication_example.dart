@@ -87,13 +87,15 @@ class BearerAuthenticationExample {
   static (String authentication, String authorization) _issueTokens(
     TomPrincipal principal,
   ) {
-    final (public, private) =
-        TomBearerAuthentication.convertPrincipalToTokenPayload(
-          principal,
-          null, // no ACI definition for this example
-          'US',
-          'en',
-        );
+    final (
+      public,
+      private,
+    ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+      principal,
+      null, // no ACI definition for this example
+      'US',
+      'en',
+    );
     return (
       TomServerJwtToken(public).getJWT('auth.example.com'),
       TomServerJwtToken(
@@ -115,13 +117,19 @@ class BearerAuthenticationExample {
     final auth = TomBearerAuthentication.bearerAuthentication;
     TomBearerAuthentication.clearTokens();
 
-    print('   - the statics read through one instance : '
-        '${identical(auth, TomBearerAuthentication.bearerAuthentication)}');
+    print(
+      '   - the statics read through one instance : '
+      '${identical(auth, TomBearerAuthentication.bearerAuthentication)}',
+    );
     print('   - authentication token : ${TomBearerAuthentication.token}');
-    print('   - authorization token  : '
-        '${TomBearerAuthentication.authorizationToken}');
-    print('   - parsed auth token    : '
-        '${TomBearerAuthentication.clientJwtToken}');
+    print(
+      '   - authorization token  : '
+      '${TomBearerAuthentication.authorizationToken}',
+    );
+    print(
+      '   - parsed auth token    : '
+      '${TomBearerAuthentication.clientJwtToken}',
+    );
 
     // With no token there is no identity, and the class says so rather than
     // handing back an empty principal that would read as an anonymous user.
@@ -219,22 +227,47 @@ class BearerAuthenticationExample {
     // The tree above is a claim about the payload example 2 built, so it is
     // checked against it rather than left to drift.
     const publicGroups = [
-      'username', 'userId', 'firstname', 'lastname', 'email', 'phone',
-      'mobile', 'addressLine1', 'userTimezone', 'organization', 'application',
-      'process', 'organizationId', 'applicationId', 'processId', 'language',
-      'country', 'timezone', 'clientLanguage', 'clientCountry',
-      'clientTimezone', 'requires2FA', 'twoFactorType',
-      'subscription_enabledModules', 'subscription_quotas',
+      'username',
+      'userId',
+      'firstname',
+      'lastname',
+      'email',
+      'phone',
+      'mobile',
+      'addressLine1',
+      'userTimezone',
+      'organization',
+      'application',
+      'process',
+      'organizationId',
+      'applicationId',
+      'processId',
+      'language',
+      'country',
+      'timezone',
+      'clientLanguage',
+      'clientCountry',
+      'clientTimezone',
+      'requires2FA',
+      'twoFactorType',
+      'subscription_enabledModules',
+      'subscription_quotas',
     ];
     const privateGroups = [
-      'context', 'groups', 'roles', 'entitlements', 'resourceKeys',
+      'context',
+      'groups',
+      'roles',
+      'entitlements',
+      'resourceKeys',
       'resourceRoles',
     ];
 
-    final missingPublic =
-        publicGroups.where((k) => !publicPayload.containsKey(k)).toList();
-    final missingPrivate =
-        privateGroups.where((k) => !privatePayload.containsKey(k)).toList();
+    final missingPublic = publicGroups
+        .where((k) => !publicPayload.containsKey(k))
+        .toList();
+    final missingPrivate = privateGroups
+        .where((k) => !privatePayload.containsKey(k))
+        .toList();
 
     print('');
     print('   - documented public claims absent  : $missingPublic');
@@ -273,20 +306,24 @@ class BearerAuthenticationExample {
     // by the subject the token is *for* — not by the ambient zone, which on
     // the login path holds nobody yet, and reading it would blank every
     // protected field of every minted token.
-    final (holdsEmail, _) =
-        TomBearerAuthentication.convertPrincipalToTokenPayload(
-          _subject(resourceKeys: ['tom.user.email']),
-          null,
-          'US',
-          'en',
-        );
-    final (holdsNothing, _) =
-        TomBearerAuthentication.convertPrincipalToTokenPayload(
-          _subject(resourceKeys: const []),
-          null,
-          'US',
-          'en',
-        );
+    final (
+      holdsEmail,
+      _,
+    ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+      _subject(resourceKeys: ['tom.user.email']),
+      null,
+      'US',
+      'en',
+    );
+    final (
+      holdsNothing,
+      _,
+    ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+      _subject(resourceKeys: const []),
+      null,
+      'US',
+      'en',
+    );
 
     TomResourceKeyProtection.globalSettingProtectionDefault = wasProtecting;
 
@@ -294,7 +331,9 @@ class BearerAuthenticationExample {
     print('     email     : ${holdsEmail['email']}');
     print('     phone     : ${holdsEmail['phone']}   (key not held)');
     print('     firstname : ${holdsEmail['firstname']}   (key not held)');
-    print('     attributes: ${holdsEmail['attributes']}     (falls back to {})');
+    print(
+      '     attributes: ${holdsEmail['attributes']}     (falls back to {})',
+    );
     print('   Subject holding no keys at all:');
     print('     email     : ${holdsNothing['email']}');
     print('   Never filtered, for either subject:');
@@ -316,7 +355,8 @@ class BearerAuthenticationExample {
       'A field it does not hold falls back to null',
     );
     assert(
-      holdsEmail['attributes'] is Map && (holdsEmail['attributes'] as Map).isEmpty,
+      holdsEmail['attributes'] is Map &&
+          (holdsEmail['attributes'] as Map).isEmpty,
       'attributes falls back to an empty map rather than null',
     );
     assert(holdsNothing['email'] == null, 'Redaction follows the subject');
@@ -502,14 +542,22 @@ class BearerAuthenticationExample {
 
     // Example 7 left a session installed.
     print('   While signed in:');
-    print('     token                : '
-        '${TomBearerAuthentication.token?.length} chars');
-    print('     authorizationToken   : '
-        '${TomBearerAuthentication.authorizationToken?.length} chars');
-    print('     clientJwtToken       : '
-        '${TomBearerAuthentication.clientJwtToken?.issuer}');
-    print('     getPrincipal()       : '
-        '${TomBearerAuthentication.getPrincipal().username}');
+    print(
+      '     token                : '
+      '${TomBearerAuthentication.token?.length} chars',
+    );
+    print(
+      '     authorizationToken   : '
+      '${TomBearerAuthentication.authorizationToken?.length} chars',
+    );
+    print(
+      '     clientJwtToken       : '
+      '${TomBearerAuthentication.clientJwtToken?.issuer}',
+    );
+    print(
+      '     getPrincipal()       : '
+      '${TomBearerAuthentication.getPrincipal().username}',
+    );
 
     final signedIn =
         TomBearerAuthentication.token != null &&

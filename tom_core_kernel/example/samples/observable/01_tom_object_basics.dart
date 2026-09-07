@@ -46,7 +46,10 @@ class TomObjectBasicsExample {
     // compiler and would still pass if TomString stopped storing anything.
     // What construction has to get right is that the value handed to the
     // constructor is the value the wrapper holds.
-    assert(~name == 'John', 'TomString should hold the value it was built with');
+    assert(
+      ~name == 'John',
+      'TomString should hold the value it was built with',
+    );
     assert(~age == 25, 'TomInt should hold the value it was built with');
     assert(~balance == 100.50, 'TomDouble should hold its value');
     assert(~isActive == true, 'TomBool should hold its value');

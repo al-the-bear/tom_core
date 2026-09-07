@@ -136,13 +136,17 @@ class AdvancedJwtExample {
       signingConfiguration: customConfig,
     ).getJWT('custom-issuer');
 
-    final parsed = TomClientJwtToken(signed, signingConfiguration: customConfig);
+    final parsed = TomClientJwtToken(
+      signed,
+      signingConfiguration: customConfig,
+    );
 
     print('   - issuer     : ${parsed.issuer}');
     print('   - secretData : ${parsed.secretData}');
 
     customConfigRoundTrips =
-        parsed.issuer == 'custom-issuer' && parsed.secretData?['apiKey'] == 'k-9';
+        parsed.issuer == 'custom-issuer' &&
+        parsed.secretData?['apiKey'] == 'k-9';
 
     // Assertions
     assert(defaultConfig.isDummy, 'The shipped default is a development one');
@@ -190,7 +194,9 @@ class AdvancedJwtExample {
     print('     - validUntil : $validUntil1');
     print('   Delayed token (notBefore: 5min):');
     print('     - validFrom  : $validFrom2');
-    print('     - opens ${validFrom2.difference(validFrom1).inMinutes} minutes later');
+    print(
+      '     - opens ${validFrom2.difference(validFrom1).inMinutes} minutes later',
+    );
 
     validityWindowWorks =
         validUntil1.difference(validFrom1).inMinutes == 120 &&
@@ -438,8 +444,7 @@ class AdvancedJwtExample {
     print('   - the encrypted one is not    : $secretIsUnreadable');
 
     // ...and the holder of the private key gets it back.
-    final recovered =
-        TomClientJwtToken(jwt).secretData?['apiKey'] as String?;
+    final recovered = TomClientJwtToken(jwt).secretData?['apiKey'] as String?;
     print('   - recovered with the key      : $recovered');
 
     secretStaysConfidential =
@@ -464,13 +469,15 @@ class AdvancedJwtExample {
     // `validUntil` is Tom's own ISO-8601 claim, next to the standard numeric
     // `exp`. It is a string a client can parse without a JWT library.
     final live = TomClientJwtToken(
-      TomServerJwtToken({'userId': 'u'}, expiresIn: Duration(hours: 2))
-          .getJWT('issuer'),
+      TomServerJwtToken({
+        'userId': 'u',
+      }, expiresIn: Duration(hours: 2)).getJWT('issuer'),
       decrypt: false,
     );
     final stale = TomClientJwtToken(
-      TomServerJwtToken({'userId': 'u'}, expiresIn: Duration(seconds: -30))
-          .getJWT('issuer'),
+      TomServerJwtToken({
+        'userId': 'u',
+      }, expiresIn: Duration(seconds: -30)).getJWT('issuer'),
       decrypt: false,
     );
 

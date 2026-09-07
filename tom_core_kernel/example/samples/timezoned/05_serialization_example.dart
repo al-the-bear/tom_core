@@ -251,8 +251,10 @@ class SerializationExample {
     // answers for a string carrying *no* prefix. Reading its name as "is this
     // timezoned at all" is the mistake it invites, so the case is pinned.
     const prefixed = '@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo';
-    print('   TomTimezoned.isTomTimezonedString on a prefixed string: '
-        '${TomTimezoned.isTomTimezonedString(prefixed)}');
+    print(
+      '   TomTimezoned.isTomTimezonedString on a prefixed string: '
+      '${TomTimezoned.isTomTimezonedString(prefixed)}',
+    );
     assert(
       TomZonedDateTime.isTomZonedDateTimeString(prefixed) &&
           !TomTimezoned.isTomTimezonedString(prefixed),
@@ -334,10 +336,7 @@ class SerializationExample {
 
       // Assertions. Without this the loop reports an unexpected success and
       // then passes anyway, which is the one outcome it exists to catch.
-      assert(
-        raised != null,
-        'Parsing $shown should be refused, not accepted',
-      );
+      assert(raised != null, 'Parsing $shown should be refused, not accepted');
     }
   }
 

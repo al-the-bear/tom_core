@@ -202,14 +202,10 @@ class TomListExample {
     print('   Before: [${fruits.map((e) => ~e).join(', ')}]');
 
     fruits.removeAt(1); // Remove "banana"
-    print(
-      '   After removeAt(1): [${fruits.map((e) => ~e).join(', ')}]',
-    );
+    print('   After removeAt(1): [${fruits.map((e) => ~e).join(', ')}]');
 
     fruits.removeLast();
-    print(
-      '   After removeLast: [${fruits.map((e) => ~e).join(', ')}]',
-    );
+    print('   After removeLast: [${fruits.map((e) => ~e).join(', ')}]');
 
     // Assertions
     assert(fruits.length == 1, 'Should have 1 fruit after removeLast');
@@ -229,9 +225,7 @@ class TomListExample {
     list2.append(TomInt(3)).append(TomInt(4));
 
     final combined = list1 + list2;
-    print(
-      '   list1 + list2: [${combined.map((e) => ~e).join(', ')}]',
-    );
+    print('   list1 + list2: [${combined.map((e) => ~e).join(', ')}]');
 
     // Original lists unchanged
     print('   list1.length: ${list1.length}, list2.length: ${list2.length}');

@@ -247,9 +247,9 @@ class MapSanitizationExample {
     // filter: that dropping the numeric key cost nothing else. With the entry
     // counts asserted below, "every string key survived" pins the outcome
     // exactly.
-    everyStringKeySurvived = dirtyMap.keys
-        .whereType<String>()
-        .every((key) => cleanMap.containsKey(key));
+    everyStringKeySurvived = dirtyMap.keys.whereType<String>().every(
+      (key) => cleanMap.containsKey(key),
+    );
     cleaningWorks =
         cleanedEntryCount < originalEntryCount && everyStringKeySurvived;
 
