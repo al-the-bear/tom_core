@@ -261,7 +261,8 @@ stored value resolves to `none`, the closed default.
 `TomGradedAccessControlInformation` resolves the effective grade for a key,
 using an explicit grade where one exists and otherwise bridging the kernel's
 legacy binary `resourceKeys` list (present → `full`, absent → `none`), so a
-deployment that has only the binary list behaves exactly as before.
+deployment that has only the binary list keeps resolving every key to `full`
+or `none`.
 
 All three entities are annotated `@TomDbScope.unscoped()`: they are the row
 scope's *input*, and filtering them by the scope they feed would close the

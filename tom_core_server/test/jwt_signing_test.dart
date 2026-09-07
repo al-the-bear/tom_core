@@ -107,10 +107,10 @@ void main() {
     });
 
     test('two servers configured alike arrive at the same signing key', () {
-      // This is the property the advanced sample's cross-server trust rests on,
-      // and the one that was previously an accident of a shared default: set
-      // the same secret in both deployments and their tokens verify against
-      // each other; set it in one only and they do not.
+      // This is the property the advanced sample's cross-server trust rests
+      // on, and it has to be configured rather than inherited from a shared
+      // default: set the same secret in both deployments and their tokens
+      // verify against each other; set it in one only and they do not.
       selectEnvironment(development: false);
       final auth = installJwtSigning(_fullyConfigured());
       final app = installJwtSigning(_fullyConfigured());

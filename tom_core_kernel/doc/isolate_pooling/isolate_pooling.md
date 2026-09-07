@@ -689,8 +689,8 @@ try {
 **One exception to the type guarantee.** Not everything can cross an isolate
 port — an exception holding a closure or a `ReceivePort` is rejected by `send`.
 Such a failure arrives as a `RemoteError` built from the original's
-`toString()`: still a throw, still naming what went wrong, but no longer matched
-by an `on` clause for its own type. The substitution exists because the `send`
+`toString()`: still a throw, still naming what went wrong, but not matched by
+an `on` clause for its own type. The substitution exists because the `send`
 that discovers the problem runs inside a port handler, where a throw would be
 caught by nobody and would leave the request unanswered forever. Keep failure
 types plain data if their type has to survive the trip.

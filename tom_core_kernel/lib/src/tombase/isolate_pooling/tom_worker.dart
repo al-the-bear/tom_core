@@ -1246,8 +1246,8 @@ class TomWorker {
   /// The exception arrives with its own type wherever it can cross the port.
   /// An exception that cannot be sent — one holding a closure or a port —
   /// arrives as a [RemoteError] built from its `toString()` instead: still a
-  /// throw, still naming the failure, but no longer matched by an `on` clause
-  /// for its original type.
+  /// throw, still naming the failure, but not matched by an `on` clause for
+  /// its original type.
   ///
   /// Throws [TomWorkerException] if called from the main isolate.
   ///
@@ -1302,8 +1302,8 @@ class TomWorker {
   /// exception object, so the failure can be caught by type exactly as if the
   /// command had run locally. An exception that cannot cross the port — one
   /// holding a closure or a port — arrives as a [RemoteError] built from its
-  /// `toString()` instead: still a throw, but no longer matched by an `on`
-  /// clause for its original type. [executeInCreator] carries failures the same
+  /// `toString()` instead: still a throw, but not matched by an `on` clause
+  /// for its original type. [executeInCreator] carries failures the same
   /// way, so the contract does not depend on which direction a command travels.
   ///
   /// Throws [TomWorkerException] if this worker has been closed — the same

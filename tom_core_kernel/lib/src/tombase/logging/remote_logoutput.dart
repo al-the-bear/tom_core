@@ -262,9 +262,9 @@ class TomInMemoryLogReplayStore implements TomLogReplayStore {
 ///
 /// That snippet is a copy of step 3 of
 /// `example/samples/logging/05_isolate_and_remote_logging_example.dart`, where
-/// it is compiled, analyzed and asserted. Change it there and copy it out: it
-/// previously showed a `baseUrl`/`path` constructor that does not exist, and
-/// documentation has no build to fail.
+/// it is compiled, analyzed and asserted. Change it there and copy it out:
+/// documentation has no build to fail, so a constructor invented here is
+/// caught by nobody.
 ///
 /// ## Fallback Behavior
 ///

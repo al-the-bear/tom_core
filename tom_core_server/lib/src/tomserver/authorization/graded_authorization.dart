@@ -11,9 +11,9 @@
 /// the effective state for a key — using an explicit grade when one exists and
 /// falling back to the legacy binary list otherwise.
 ///
-/// The fallback keeps the extension backward compatible: a system that has only
-/// the binary list still resolves every key to [TomAuthState.full] (granted) or
-/// [TomAuthState.none] (denied), exactly as before.
+/// The fallback is what lets the two coexist: a system that has only the binary
+/// list still resolves every key to [TomAuthState.full] (granted) or
+/// [TomAuthState.none] (denied).
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

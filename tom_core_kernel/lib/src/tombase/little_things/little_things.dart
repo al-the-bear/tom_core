@@ -236,7 +236,7 @@ T runCheckedSync<T>(
 void tomPrintStackTrace(StackTrace? s, {String? message, int depth = -1}) {
   // Composing from the parts that have content, rather than concatenating
   // unconditionally, decides all four combinations in one place — and drops
-  // the separator that a message with no trace used to leave dangling.
+  // the separator a message with no trace would otherwise leave dangling.
   final trace = tomGetStackTrace(s, depth);
   final parts = [
     if (message != null && message.isNotEmpty) message,

@@ -96,8 +96,8 @@ the deployment the code runs in — the ambient `TomServerPrincipal` from
 the `TomAuthState` ladder. Deployment grants cap every user's grants and never
 widen them, so a control the user satisfies can still resolve to `none`. When no
 server principal is installed the meet is skipped entirely and the user's grade
-stands alone, which is how every deployment predating server-as-principal keeps
-behaving exactly as before. See `doc/security/security.md` §"The Server
+stands alone, so a deployment that installs none is governed by its users'
+grants alone. See `doc/security/security.md` §"The Server
 Principal and the Meet"; the server-side login that installs the principal is
 `tom_core_server`'s `TomServerSelfLogin`.
 

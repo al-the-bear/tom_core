@@ -93,9 +93,9 @@ raw keys.
 Installation is the *only* way a bundle becomes application-wide, and that is
 what keeps `appResourcesRevision` honest: every installed bundle went through
 the one call that bumps the counter. A lazily self-installing lookup could not
-make that promise — it used to put a bundle in place at revision 0, so
-observers registered before the first lookup never heard about the bundle that
-the lookup itself had just loaded.
+make that promise — it would put a bundle in place at revision 0, so observers
+registered before the first lookup would never hear about the bundle the lookup
+itself had just loaded.
 
 Test suites install in `setUp` (or, for Flutter packages, once in
 `test/flutter_test_config.dart`), exactly as an application installs in
@@ -476,7 +476,7 @@ Note what this does *not* do: it does not await inside a `loader`. `loader` is
 `Map<String, dynamic> Function()` — synchronous — and that is deliberate rather
 than an oversight. `getText` is synchronous, so the bundle has to be in memory
 before the first read, and a constructor cannot await. An `async` closure would
-return `Future<Map<String, dynamic>>` and no longer match the field type, so
+return `Future<Map<String, dynamic>>`, which does not match the field type, so
 `TomTextResourceProvider.load(() async => ...)` does not compile.
 
 The rule that follows is short: **produce the map first, then install it.**

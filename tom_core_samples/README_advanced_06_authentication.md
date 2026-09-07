@@ -208,8 +208,8 @@ public claims.)
 
 ### Pass 1 — the password is checked, but you are not authenticated
 
-`AdvancedAuthenticationService` verifies the password exactly as before and then
-builds a principal that says so out loud:
+`AdvancedAuthenticationService` verifies the password in the ordinary way and
+then builds a principal that says so out loud:
 
 ```dart
 final twoFactorType = record.twoFactorType ?? '';

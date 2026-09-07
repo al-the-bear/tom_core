@@ -4055,8 +4055,8 @@ void main() {
     });
 
     test('a class that still contributes a field is not refused', () {
-      // The `final` member is dropped exactly as before. Only the total loss
-      // is diagnosed, because only the total loss is indistinguishable from a
+      // The `final` member is still dropped. Only the total loss is
+      // diagnosed, because only the total loss is indistinguishable from a
       // class that genuinely has nothing to say.
       final values = tomReflectionInfo.getValues(
         PartlyFinalHolder('abc')..label = 'visible',
@@ -4106,9 +4106,9 @@ void main() {
   });
 
   group('an unparseable date string names where it came from', () {
-    // The parse failure used to escape as a bare FormatException carrying
+    // Letting the parse failure escape as a bare FormatException would carry
     // only the offending text — no field, no class, no position, no
-    // exception id — which defeated both `on TomReflectorException` and the
+    // exception id — and would defeat both `on TomReflectorException` and the
     // module's auto-logging. Each test below asserts on the *context*, not
     // merely on the fact that something threw.
 

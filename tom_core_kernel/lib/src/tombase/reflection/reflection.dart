@@ -1013,8 +1013,8 @@ class TomReflectionInfo {
   ///
   /// This is **the** inbound entry point, and it honours every decoding hook
   /// the framework recognises. [createInstanceFromJson] resolves to the same
-  /// order, so the answer no longer depends on which of the two a caller
-  /// happened to reach for.
+  /// order, so the answer does not depend on which of the two a caller
+  /// happens to reach for.
   ///
   /// ## Precedence
   ///
@@ -1038,9 +1038,9 @@ class TomReflectionInfo {
   /// **Use the return value.** `converter.setValues(x, map)` and then reading
   /// `x` is correct for every other shape and wrong for this one; write
   /// `x = converter.setValues(x, map)`. The alternative — field-walking a
-  /// `fromJson` type, as this method used to — meant the same class decoded
-  /// two different ways depending on the entry point, which is the asymmetry
-  /// this ordering exists to remove.
+  /// `fromJson` type — would mean the same class decodes two different ways
+  /// depending on the entry point, which is the asymmetry this ordering
+  /// exists to remove.
   ///
   /// ## Supported Field Types
   ///

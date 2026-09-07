@@ -769,7 +769,7 @@ leaving it at the `200` default would describe a success that never happened.
 
 `TomServerCall`, the layer beneath, still signals these by throwing
 `TomRequestTimeoutException` and `TomRequestAbortedException`; a caller working
-at that level catches them as before. The translation to `noResponseError`
+at that level catches them directly. The translation to `noResponseError`
 belongs to the endpoint, because the tuple is the endpoint's contract.
 
 ### Custom HTTP Client Factory

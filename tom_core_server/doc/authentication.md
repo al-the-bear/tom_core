@@ -559,7 +559,7 @@ holding nothing, and the server draws exactly that distinction:
 
 | What the store lookup yields | Means | Pass 1 does |
 | ---------------------------- | ----- | ----------- |
-| `null` | **No store is installed.** Nobody tracks enrolments here | Challenges the mechanism, exactly as before enrolment existed. The adaptor remains the only authority on whether the user has a factor |
+| `null` | **No store is installed.** Nobody tracks enrolments here | Challenges the mechanism, as a deployment with no enrolment support does. The adaptor remains the only authority on whether the user has a factor |
 | `[]` | A store **is** installed, and this user has enrolled nothing | Branches into the enrolment offer |
 | a non-empty list | These are the user's factors | Challenges the primary one |
 

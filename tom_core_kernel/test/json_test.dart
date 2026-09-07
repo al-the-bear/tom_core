@@ -428,9 +428,9 @@ void main() {
       });
 
       test('a longer override replaces the overlap and appends its tail', () {
-        // Previously this produced ['a', 'b', 'C'] — base wins at 0-1, override
-        // wins at 2 — a blend of two rules that matched neither the documents
-        // nor any coherent merge policy.
+        // Merging element by element would produce ['a', 'b', 'C'] — base
+        // wins at 0-1, override wins at 2 — a blend of two rules that matches
+        // neither the documents nor any coherent merge policy.
         final base = <String, dynamic>{
           'f': ['a', 'b'],
         };

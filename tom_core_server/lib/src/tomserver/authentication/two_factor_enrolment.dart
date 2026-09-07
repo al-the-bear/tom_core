@@ -545,7 +545,8 @@ abstract class Tom2FAEnrolmentStore {
   /// The store this deployment installed, or `null`.
   ///
   /// Nullable with **no** default, unlike [Tom2FAPolicy.resolve]: a policy has
-  /// a meaningful "behave as before" fallback, whereas a fallback store would
+  /// a meaningful "challenge the mechanism" fallback, whereas a fallback store
+  /// would
   /// be an empty one — and an empty store is indistinguishable from *this user
   /// has enrolled nothing*, which is exactly the answer callers must not be
   /// given wrongly. `null` says "no store here, ask the legacy hook"; an empty

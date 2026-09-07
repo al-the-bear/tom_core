@@ -146,7 +146,7 @@ A user who owes a factor but has none set up is branched into **enrolment**
 instead. `Tom2FAEnrolmentStore` is where a principal's `Tom2FAEnrolment`s live;
 `resolve()` on it is nullable **with no fallback**, and the three outcomes are
 distinguished deliberately — `null` means no store is installed (the mechanism
-stays the only authority on whether the user has a factor, exactly as before),
+stays the only authority on whether the user has a factor),
 an empty list means a store is installed and this user has enrolled nothing
 (branch into the offer), a non-empty list names what to challenge. Enrolment
 itself is `Tom2FAEnrolmentSupport`, a contract separate from `Tom2FAService`
@@ -1435,7 +1435,7 @@ Statics only — the constructor is private.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `logIn` | `static Future<TomPrincipal> logIn(TomServiceCredential credential, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in with `credential` and returns the deployment's principal. Throws `TomServerSelfLoginException` when the auth server is unreachable, refuses, answers in an unexpected shape, or returns a token that carries no payload. |
-| `loginAndInstall` | `static Future<bool> loginAndInstall(TomBaseServerConfiguration config, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in from `config` and installs the principal into `TomServerPrincipal`; returns whether one was installed. Returns `false` silently when self-login is not configured, so a deployment predating server-as-principal behaves exactly as before. `TomServer.start()` calls this itself before binding the socket; call it directly only from a process that has no `TomServer`. |
+| `loginAndInstall` | `static Future<bool> loginAndInstall(TomBaseServerConfiguration config, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in from `config` and installs the principal into `TomServerPrincipal`; returns whether one was installed. Returns `false` silently when self-login is not configured, so a deployment that configures none is unaffected. `TomServer.start()` calls this itself before binding the socket; call it directly only from a process that has no `TomServer`. |
 
 ### TomOAuthException
 

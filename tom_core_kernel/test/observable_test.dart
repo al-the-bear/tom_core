@@ -2046,11 +2046,11 @@ void main() {
   });
 
   group('members register under their public getter name', () {
-    // Why this matters: setOrMergeValues used to look up
-    // `_value[key] ?? _value["_$key"]`, an inline underscore-prefix convention
-    // with nothing explaining it. These tests pin why the fallback could never
-    // fire — reflection excludes private fields and private accessors, so an
-    // underscore-prefixed key cannot be in the member map to be found.
+    // Why this matters: a `_value[key] ?? _value["_$key"]` lookup in
+    // setOrMergeValues would be an inline underscore-prefix convention with
+    // nothing explaining it, and its fallback could never fire — reflection
+    // excludes private fields and private accessors, so an underscore-prefixed
+    // key cannot be in the member map to be found. These tests pin that.
 
     test('a private field published by a public getter registers publicly', () {
       final o = TestPrivateBackedMember();
@@ -4270,10 +4270,10 @@ void main() {
 
   group('an untyped container member deserializes', () {
     // `TomList<TomObject>` / `TomMap<String, TomObject>` commit to no element
-    // type. Both setters used to resolve the element's ClassMirror before
-    // looking at the payload, and reflection refuses a generic element type
-    // because for every committed member shape that means a nested collection
-    // — so an untyped member threw on every setValues, including an empty one.
+    // type. Resolving the element's ClassMirror before looking at the payload
+    // cannot work for them: reflection refuses a generic element type, because
+    // for every committed member shape that means a nested collection — so an
+    // untyped member would throw on every setValues, including an empty one.
     late TestUntypedContainers item;
 
     setUp(() => item = TestUntypedContainers());
@@ -5443,8 +5443,8 @@ void main() {
       () {
         // `tomNull` is one process-wide instance handed to every caller, so two
         // holders are necessarily aliases. That aliasing is the hazard the
-        // immutability removes: a successful write through one holder was
-        // formerly observed through every other, anywhere in the program.
+        // immutability removes: a successful write through one holder would
+        // be observed through every other, anywhere in the program.
         final holderA = tomNull;
         final holderB = tomNull;
         expect(identical(holderA, holderB), isTrue);

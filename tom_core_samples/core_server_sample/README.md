@@ -681,9 +681,9 @@ Its last group closes the loop the endpoint actually walks. The seeded
 grouped by role, folded through the authorizer, and required to equal the
 `states` map printed in [§9](#9-the-live-server-boot). Neither side is restated
 in Dart — both are read from the artifacts that make the claim — so re-grading a
-field in the migration fails here until this README is corrected, on any machine.
-Previously that link was made only by the example (which checks three of the
-twelve cells) and by the live suite (which needs Docker).
+field in the migration fails here until this README is corrected, on any
+machine — where the example checks three of the twelve cells and the live suite
+needs Docker.
 
 `test/boot_assets_test.dart` covers the last database-free thing the boot does
 before it needs anything external: deciding which configuration files it may

@@ -1218,8 +1218,8 @@ void main() {
 
         await TomFileJobStore(path).all();
 
-        // Partial corruption used to present as a shorter queue, which reads
-        // exactly like a queue that had been drained.
+        // Partial corruption must not present as a shorter queue, which
+        // reads exactly like a queue that has been drained.
         final reported = captured.messages.join('\n');
         expect(reported, contains(path));
         expect(reported, contains('2'));

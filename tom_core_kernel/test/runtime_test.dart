@@ -920,9 +920,8 @@ void main() {
         // setCurrentEnvironment is an unconditional setter: when the requested
         // name is not registered it resolves the fallback and *replaces* the
         // current environment, regardless of whether one was already active.
-        // (Previously the fallback was guarded by `_currentEnvironment == null`,
-        // so an already-set environment was silently kept — a setter that
-        // refused to set. That was a bug, not the contract.)
+        // (Guarding the fallback on `_currentEnvironment == null` would keep
+        // an already-set environment silently — a setter that refuses to set.)
         TomRuntime.reset();
         const activeEnv = TomEnvironment('env-active');
         const fallbackEnv = TomEnvironment('env-fallback-test');

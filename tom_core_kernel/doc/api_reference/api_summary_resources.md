@@ -197,7 +197,7 @@ TomConfigResourceProvider.from(Map<String, dynamic> resources)
 Both `loader` fields are `Map<String, dynamic> Function()` — synchronous, and
 deliberately so. `getText` is synchronous, so the bundle must be in memory
 before the first read, and a constructor cannot await. An `async` closure
-returns `Future<Map<String, dynamic>>` and no longer matches the field type, so
+returns `Future<Map<String, dynamic>>`, which does not match the field type, so
 `TomTextResourceProvider.load(() async => ...)` does not compile.
 
 `loader` and `.load` are therefore for bundles that can be produced without

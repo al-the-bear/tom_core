@@ -1016,12 +1016,12 @@ apart.
 The four conversion hooks — the `fromJson` constructor, the `jsonDecode` and
 `toJson` methods and the `jsonEncode` getter — are all optional, so *not having
 one* is the ordinary case and must stay silent. It does: a class that declares
-no hook is converted by the field walk exactly as before. (The two *nominal*
+no hook is converted by the field walk. (The two *nominal*
 forms, `TomClass` and `TomJsonSerializable`, need none of this machinery: an
 `is` test cannot mistake absence for failure, so a throw from either propagates
 unwrapped.)
 
-What is no longer silent is a hook that **exists and fails**:
+A hook that **exists and fails** is not silent:
 
 ```dart
 @tomReflector
@@ -1037,20 +1037,20 @@ tomReflectionInfo.getValues(Broken());
 //  not a missing hook but a failing one: Bad state: nope"
 ```
 
-Previously both cases were one event. Each hook was located by *calling* it
-inside an unqualified `catch`, so a hook that threw was indistinguishable from
-a hook that was absent, and the field walk quietly took over. The consequences
-differed by hook and were all bad:
+The two cases have to be separated *before* the call, because a hook located
+by calling it inside an unqualified `catch` cannot be told apart from an absent
+one, and the field walk would quietly take over. The consequences would differ
+by hook and all be bad:
 
-- a bug inside a caller's own `fromJson` was swallowed, the object was rebuilt
+- a bug inside a caller's own `fromJson` would be swallowed, the object rebuilt
   from the same payload by the fallback path, and the error the caller
-  eventually saw — if any — named a *field* and pointed at the reflection
+  eventually saw — if any — would name a *field* and point at the reflection
   layer rather than at their constructor;
-- a throwing `jsonDecode`, `toJson` or `jsonEncode` did not even produce an
-  error: the custom representation was simply not used, and a plausible-looking
-  field-by-field result was returned in its place.
+- a throwing `jsonDecode`, `toJson` or `jsonEncode` would not even produce an
+  error: the custom representation would simply not be used, and a
+  plausible-looking field-by-field result returned in its place.
 
-Each hook is now looked up before it is called — `instanceMembers` for the
+Each hook is therefore looked up before it is called — `instanceMembers` for the
 methods and the getter, the declared constructor names for `fromJson` — so
 absence is settled without running anything, and the `catch` around the call
 exists only to attribute a failure. Nothing is inferred from the *type* of the
@@ -1084,10 +1084,10 @@ being annotated*. The capability set includes deep type-annotation
 quantification, so every type that appears as a field type of an annotated
 class — `String`, `int`, `double`, `bool`, `DateTime`, `List`, `Map`, `Object`
 — has generated data too. Those types reflect happily and then present no
-settable fields, so without the check `getValues` walked zero declarations and
-returned an empty map, and `convertToJsonString` returned the string `"{}"`: a
+settable fields, so without the check `getValues` would walk zero declarations
+and return an empty map, and `convertToJsonString` the string `"{}"`: a
 valid-looking payload with every field dropped, reported as a success.
-`setValues` was the mirror image, returning the object untouched.
+`setValues` is the mirror image, returning the object untouched.
 
 Two keys distinguish the two ways a target can be unusable:
 
@@ -1146,7 +1146,7 @@ table is how the two would drift. A bare `DateTime` sitting directly in a map
 is therefore refused rather than silently rendered.
 
 A bare scalar stays refused as well: a `String` is not a container, so it takes
-the object path and meets the annotation guard exactly as before.
+the object path and meets the annotation guard like any other object.
 
 ### Atomic Collection Updates
 
@@ -1327,8 +1327,8 @@ Two things the guard deliberately does *not* do:
 
 - **It does not fire on partial loss.** The condition is *nothing contributed
   **and** something dropped*. `PartlyFinalDto` with one `final` and one settable
-  field renders the settable one and omits the other, as before; a class with no
-  wire members at all still renders `{}`, which is the truth about it.
+  field renders the settable one and omits the other; a class with no wire
+  members at all renders `{}`, which is the truth about it.
 - **It does not forbid immutable DTOs.** All four rendering hooks are consulted
   ahead of the field walk (see [Outbound precedence](#outbound-precedence--getvalues)),
   so an all-`final` class that declares `toJson()`, a `jsonEncode` getter,
@@ -1479,11 +1479,11 @@ sibling method takes. A three-argument generic belongs to neither, so both
 methods report the count and stop — pointing at a method that would refuse the
 same collection would send the reader in a circle.
 
-Why the check exists: `singleElementType` on a `Map<K, V>` used to resolve the
-**key** type and report success. For `Map<String, Person>` that is the mirror
-for `String`; for `Map<Address, Person>` it is a perfectly valid mirror for
-`Address`. Nothing at the call site could distinguish that from the right
-answer, so the wrong half of the collection propagated silently.
+Why the check exists: without it, `singleElementType` on a `Map<K, V>` resolves
+the **key** type and reports success. For `Map<String, Person>` that is the
+mirror for `String`; for `Map<Address, Person>` it is a perfectly valid mirror
+for `Address`. Nothing at the call site can distinguish that from the right
+answer, so the wrong half of the collection would propagate silently.
 
 Both resolve the element type by **simple name** against the classes annotated
 with `@tomReflector`, which is why they go one level deep and no further: a

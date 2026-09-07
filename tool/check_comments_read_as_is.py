@@ -94,6 +94,11 @@ SKIP_DIRS = {
     "__pycache__",
     "_copilot_guidelines",
     "testlog",
+    # Scratch output. `check_doc_dart_blocks.py` extracts every ```dart block
+    # in the corpus to `tool/ztmp/` so `dart analyze` can compile it; the copy
+    # carries whatever the document carried, and the document is scanned here
+    # already. Reporting both makes one fault two.
+    "ztmp",
 }
 
 #: Everything a reader can end up holding: sources, tests, examples, the
@@ -210,13 +215,36 @@ PLAN_ID = re.compile(r"\b(RC-\d+|D-(?:RC)?[A-Z]?\d+)\b")
 WORK_ITEM_POINTER = re.compile(r"\b(Todo|plan step)\s+#?\d+\b")
 
 #: Past-indicative narration about the code's own history.
+#:
+#: ``used to`` is matched only before the verbs that cannot follow it in the
+#: *passive* sense -- "the scope segment used to resolve display keys" is a
+#: reduced relative clause, not a claim about the past, and dartdoc is full of
+#: them. A verb that reads both ways (``resolve``, ``reach``, ``look``,
+#: ``present``) would make the gate demand a rewrite of correct prose, so it
+#: stays out and the shapes below carry the rest of the rule.
+#:
+#: ``as before`` has no innocent reading in shipped text: whatever it compares
+#: to, the reader is not holding it. ``formerly`` likewise. ``Previously``
+#: leading a sentence is narration; the same word *inside* one is usually
+#: adjectival ("previously persisted records", "a run previously lost"), so
+#: the lowercase form is matched only when a determiner or pronoun follows it
+#: and a clause is therefore starting.
 NARRATION = re.compile(
     r"\b(used to (be|been|return|claim|carry|call|stand|reflect|throw|write"
-    r"|test|exercise|live|sit|happen)"
+    r"|test|exercise|live|sit|happen|recurse|appear)"
     r"|(before|after|prior to) the fix"
     r"|the todo that"
-    r"|this todo)\b",
+    r"|this todo"
+    r"|as before"
+    r"|formerly)\b",
     re.IGNORECASE,
+)
+
+#: The sentence-initial half of the narration rule, which is case-sensitive
+#: and so cannot live in [NARRATION].
+NARRATION_CASED = re.compile(
+    r"\bPreviously\b"
+    r"|\bpreviously\s+(the|a|an|it|this|that|these|those|they|we)\b"
 )
 
 #: The three rules that read a whole line. They match shapes no code
@@ -226,6 +254,7 @@ PATTERNS = {
     "build-plan id": PLAN_ID,
     "work-item pointer": WORK_ITEM_POINTER,
     "history narration": NARRATION,
+    "history narration (sentence-initial)": NARRATION_CASED,
 }
 
 #: The parts of a line a reader reads as prose, which is the only place a

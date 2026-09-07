@@ -611,10 +611,10 @@ Future<void> run() async {
     'origin': null,
   });
 
-  // 10d: a crash mid-write used to leave a half-written array that the next
-  // start could not open at all — the durable buffer taking down the process
-  // it exists to protect. The store now opens it, reports the loss, and moves
-  // the unreadable bytes aside for diagnosis rather than overwriting them.
+  // 10d: a crash mid-write leaves a half-written array. Refusing to open it
+  // would be the durable buffer taking down the process it exists to protect,
+  // so the store opens it, reports the loss, and moves the unreadable bytes
+  // aside for diagnosis rather than overwriting them.
   // Nothing is salvaged here, and that is not a shortcoming of the recovery:
   // JSON parses all-or-nothing, so a truncated array has no readable prefix.
   File(storePath).writeAsStringSync('[${onDisk('lost to truncation')}, "half');

@@ -1456,15 +1456,15 @@ instead of silently shrinking the public surface. `tom_core_flutter` carries the
 same guard for the barrel it re-exports this one through, which is the import a
 Flutter application actually writes.
 
-Two entries that used to appear here are gone, and both were wrong in the same
-way — they named a module whose subject matter *runs through* this one:
+Two modules are absent from the table although their subject matter *runs
+through* this one, which is the shape a spurious dependency takes here:
 
 - There is **no crypto module** in this package. JWT work is
   [`package:tom_crypto`](https://pub.dev/packages/tom_crypto), a hosted
   dependency, and only `bearer_authentication.dart` touches it.
 - The **observable module** supplies nothing here. It re-exports
-  `@tomReflector`, so importing DTO annotations *through* it used to look like a
-  dependency; the annotation is the reflection module's and is now imported from
+  `@tomReflector`, so importing DTO annotations *through* it would look like a
+  dependency; the annotation is the reflection module's and is imported from
   there directly.
 
 Note the shape of the reflection row: it is the only dependency shared by more

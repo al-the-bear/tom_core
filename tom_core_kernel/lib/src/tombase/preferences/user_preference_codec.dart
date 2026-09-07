@@ -522,8 +522,8 @@ class TomUserPreferenceCodec {
   /// `jsonEncode` and the reflection registry report the same thing — "could
   /// not convert" — which is the one fact the caller already has. Five
   /// situations arrive here and they have five different remedies, and for
-  /// four of them the `@tomReflector` annotation this message used to advise
-  /// for all of them is not something the caller could add: a `Set` and a
+  /// four of them a `@tomReflector` annotation is not something the caller
+  /// could add: a `Set` and a
   /// `Map<int, …>` have no class of their own to annotate, a `List<Thing>`
   /// stays an unsupported shape however well `Thing` is annotated, and a
   /// non-finite number is not a shape problem at all.

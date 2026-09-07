@@ -235,8 +235,9 @@ class TomFileLogReplayStore implements TomLogReplayStore {
       }
     }
     if (skipped > 0) {
-      // Partial corruption used to present as "the queue was empty". Keep what
-      // is readable, and count what is not rather than dropping it in silence.
+      // Partial corruption must not present as "the queue was empty". Keep
+      // what is readable, and count what is not rather than dropping it in
+      // silence.
       _recoverFrom(
         'contained $skipped unreadable '
         '${skipped == 1 ? 'entry' : 'entries'} which were dropped '

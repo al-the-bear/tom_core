@@ -73,10 +73,10 @@ serialization policy of its own.
 The field walk skips `final` members, because deserialization can never assign
 one back — emitting them would buy a payload that serializes and never
 restores, which loses data in the quieter direction. But a class whose members
-are *all* final used to reach the wire as `{}`, reported as a success: the same
+are *all* final would reach the wire as `{}`, reported as a success: the same
 valid-looking payload with everything dropped that `reflector.type.not_annotated`
-exists to prevent, arrived at by a different route. `getValues` now raises
-`reflector.type.all_final`, naming the type and the members it skipped. The
+exists to prevent, arrived at by a different route. `getValues` raises
+`reflector.type.all_final` instead, naming the type and the members it skipped. The
 condition is deliberately narrow — **nothing contributed *and* something
 dropped** — so a class with no wire members at all still renders `{}` truthfully,
 and a class contributing even one field is left alone. Nor is it a ban on

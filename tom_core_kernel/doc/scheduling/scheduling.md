@@ -802,7 +802,7 @@ run. Whether that is a problem depends on the store:
   can both come away believing they claimed the same run.
 - A **`TomSqlJobStore`**'s claim *is* atomic: it is a conditional `UPDATE` and
   the database picks the winner. The lock is still worth having — it is what
-  enforces `allowOverlap` across nodes — but the store no longer needs it to
+  enforces `allowOverlap` across nodes — but this store does not need it to
   make a claim mean something.
 
 The `lock` is the arbiter that makes the answer uniform:

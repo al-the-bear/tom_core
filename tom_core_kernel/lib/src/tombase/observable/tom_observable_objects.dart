@@ -518,7 +518,7 @@ abstract class TomOTimezoned<TZ extends TomTimezoned?> extends TomObject<TZ> {
   /// A sentinel value representing "no datetime" (Unix epoch in UTC).
   ///
   /// A [TomOZonedDateTime] rather than a bare [TomOTimezoned], which the
-  /// abstract base no longer permits. The datetime flavour is the right
+  /// abstract base does not permit. The datetime flavour is the right
   /// choice: it is the one whose prefix [getSerializationPrefix] already
   /// returns by default.
   static final TomOTimezoned noDateTime = TomOZonedDateTime(

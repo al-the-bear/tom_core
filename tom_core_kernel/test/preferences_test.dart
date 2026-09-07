@@ -324,8 +324,8 @@ void main() {
       }
 
       test('reports text that is no timestamp at all as a mismatch', () {
-        // Previously this escaped as a bare FormatException from
-        // `DateTime.parse`, naming neither the preference nor the codec.
+        // Letting `DateTime.parse` throw would escape as a bare
+        // FormatException, naming neither the preference nor the codec.
         expect(
           () => decodeStored<DateTime>(storedText('yesterday'), 'ui.lastSeen'),
           throwsCodecKey('preferences.decode.type_mismatch'),

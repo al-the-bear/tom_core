@@ -137,9 +137,9 @@ class TomServerCallSpecs {
   ///
   /// Non-null and mutable, on the same terms as [TomServerCallError.headers]:
   /// the constructor copies what it is given, so the map is this spec's own and
-  /// writing to it always works. It was previously nullable with a `const {}`
-  /// default, which meant it was never actually null — every `!= null` test
-  /// against it was true — while every write to it threw.
+  /// writing to it always works. A nullable field with a `const {}` default
+  /// would be the worst of both: never actually null, so every `!= null` test
+  /// against it is true, and unmodifiable, so every write to it throws.
   final Map<String, String> headers;
 
   /// Maximum number of redirects to follow.
@@ -1005,10 +1005,10 @@ class TomHttpClientFactory implements TomHttpClientAbstractFactory {
   /// to a factory already in it — most easily by registering a plain
   /// `TomHttpClientFactory` as the global, which then forwards to itself.
   ///
-  /// Such a chain used to recurse until the stack ran out, reporting a wiring
-  /// mistake as a `StackOverflowError` that named neither the factory nor the
-  /// registration. It is now refused under
-  /// `server.connect.client_factory_delegation_cycle`.
+  /// Such a chain would recurse until the stack ran out, reporting a wiring
+  /// mistake as a `StackOverflowError` that names neither the factory nor the
+  /// registration. It is refused under
+  /// `server.connect.client_factory_delegation_cycle` instead.
   @override
   Client getClient() {
     if (_resolvingClient) {
@@ -1190,7 +1190,7 @@ class TomServerEndpoint<T extends Object, R extends Object> {
       } else {
         // A no-content status has no body by definition, so there is nothing to
         // deserialize and [response] keeps its defaults. Every other status is
-        // parsed as before — a body that was promised and not sent stays a
+        // parsed normally — a body that was promised and not sent stays a
         // parse failure rather than becoming a silent empty result.
         if (!TomServerCallError.isNoContentStatusCode(statusCode)) {
           response = tomReflectionInfo.convertFromJsonString<R>(

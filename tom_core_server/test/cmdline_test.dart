@@ -156,8 +156,8 @@ void main() {
     // The shape test says "all digits", but Dart's int is 64-bit, so a longer
     // run has no int to become. It stays a String for the same reason `-5` and
     // `12px` do: the value is not something this converter can represent as an
-    // int, so it is left as the text it arrived as. Previously the shape alone
-    // decided and the unguarded parse threw, taking the whole parse down.
+    // int, so it is left as the text it arrived as. Deciding on the shape
+    // alone and parsing unguarded would throw, taking the whole parse down.
     test('a digit run too large for an int stays a String', () {
       expect(convert('99999999999999999999'), '99999999999999999999');
     });

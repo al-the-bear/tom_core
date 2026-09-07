@@ -482,8 +482,9 @@ class TomServer {
   /// window in which requests are served *uncapped* — the one direction in which
   /// getting it wrong grants access rather than denying it.
   ///
-  /// Does nothing when the deployment configured no service credential, which is
-  /// the default and keeps every pre-existing server behaving exactly as before.
+  /// Does nothing when the deployment configured no service credential, which
+  /// is the default: such a server binds with no principal installed and caps
+  /// nothing.
   /// A *configured* deployment that cannot log in aborts the start: the error is
   /// logged and rethrown, so the socket is never bound. Starting anyway would
   /// mean running uncapped after explicitly asking to be capped.

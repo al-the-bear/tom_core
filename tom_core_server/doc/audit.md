@@ -762,7 +762,8 @@ completed without leaving a record is precisely the outcome the trail exists to
 make impossible, so the framework prefers to refuse the action.
 
 With **no sink installed** the trail is a no-op — `TomAuditTrail.record`
-returns immediately and every chokepoint behaves exactly as before. Auditing is
+returns immediately and every chokepoint behaves as if the trail were not
+there. Auditing is
 switched on by installing a sink at startup:
 
 ```dart

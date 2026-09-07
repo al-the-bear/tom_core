@@ -430,11 +430,10 @@ constants, so it has the durability the registry name has, for the same reason:
 there is no compiler rendering in it. That is why `<String, int>{}` is storable
 as `Map<String, int>` even though its runtime class is the private `_Map`.
 
-The cost is that `typeNameOf` and `typeNameForType` can now throw
-`preferences.type.not_reflected` where they previously always answered. That is
-the point rather than a regression — a value with no name the reader can ask
-for was already unreadable, and failing at the write is failing on the device
-that can still do something about it. Callers building a write request by hand
+The cost is that `typeNameOf` and `typeNameForType` can throw
+`preferences.type.not_reflected` instead of answering. That is the point: a
+value with no name the reader can ask for is unreadable either way, and failing
+at the write is failing on the device that can still do something about it. Callers building a write request by hand
 should pass the key, so the exception names the preference.
 
 #### Where the two naming methods diverge

@@ -192,14 +192,33 @@ bool _pointsAtAWorkItem(File file, String line) {
 /// used to fail a command"), and "was removed"/"has since been" routinely
 /// describe *runtime* events ("returns true when an entry was removed"), so
 /// those bare forms are excluded — a guard that cries wolf gets switched off.
+/// The verb list is the discriminator: each of these reads as a claim about
+/// the past and none of them follows "used in order to", which is why
+/// `resolve`, `reach`, `look` and `present` are absent however often they
+/// narrate — demanding a rewrite of "the scope segment used to resolve display
+/// keys" would be the crying wolf.
+///
+/// `as before` and `formerly` have no innocent reading in shipped text:
+/// whatever they compare to, the reader is not holding it. `Previously`
+/// leading a sentence is narration; the same word inside one is usually
+/// adjectival ("previously persisted records"), so the lowercase form is
+/// matched only where a determiner or pronoun follows and a clause is
+/// therefore starting.
+///
+/// Kept in step with `tool/check_comments_read_as_is.py`, which enforces the
+/// same rule across every package in `tom_ai/core`.
 final _narrationPatterns = <RegExp>[
   RegExp(
-    r'\bused to (be|been|return|claim|carry|call|stand|reflect|throw|write|test|exercise|live|sit|happen)\b',
+    r'\bused to (be|been|return|claim|carry|call|stand|reflect|throw|write|test|exercise|live|sit|happen|recurse|appear)\b',
     caseSensitive: false,
   ),
   RegExp(r'\b(before|after|prior to) the fix\b', caseSensitive: false),
   RegExp(r'\bthe todo that\b', caseSensitive: false),
   RegExp(r'\bthis todo\b', caseSensitive: false),
+  RegExp(r'\bas before\b', caseSensitive: false),
+  RegExp(r'\bformerly\b', caseSensitive: false),
+  RegExp(r'\bPreviously\b'),
+  RegExp(r'\bpreviously\s+(the|a|an|it|this|that|these|those|they|we)\b'),
 ];
 
 /// The `§` uses that are *not* work-item pointers and must not be flagged.

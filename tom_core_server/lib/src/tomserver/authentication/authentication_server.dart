@@ -926,14 +926,13 @@ class TomAuthenticationServer {
   /// [TomPrincipal.clientTimezone] is what the *device* says it is in — a fact
   /// only the device knows, and one that changes when the user travels.
   /// [TomPrincipal.timezone] is what the *user chose*, which follows them onto
-  /// the next device and is therefore the server's to answer. Before
-  /// server-stored preferences existed there was nowhere to read the second
-  /// from, so the client's assertion had to serve as both.
+  /// the next device and is therefore the server's to answer. With no stored
+  /// preference there is nowhere to read the second from, so the client's
+  /// assertion serves as both.
   ///
   /// The preference wins when it exists because it is the only one of the two
   /// the user set deliberately; the device's assertion remains the fallback,
-  /// which is what makes a user who has never set the preference behave exactly
-  /// as before.
+  /// so a user who has never set the preference keeps the device's answer.
   Future<void> _applyStoredTimezone(
     TomPrincipal principal,
     TomAuthenticationMessage m,

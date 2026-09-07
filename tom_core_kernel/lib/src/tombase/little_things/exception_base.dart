@@ -225,10 +225,9 @@ class TomException extends TomBaseException implements TomLoggable {
     // none of the code that failed. A wrong trace is worse than no trace,
     // because it looks right.
     //
-    // The substitution used to also narrow: `stack` was inherited as `Object?`,
-    // so a value no formatter could use reached it. `TomBaseException.stack` is
-    // `StackTrace?` as of tom_basics 1.1.0, so the only unusable value left is
-    // the absent one, and a null check is the whole of it.
+    // `TomBaseException.stack` is `StackTrace?` as of tom_basics 1.1.0, so the
+    // absent value is the only unusable one and a null check is the whole of
+    // the substitution.
     tomPrintStackTrace(
       stack ?? StackTrace.empty,
       depth: depth,
