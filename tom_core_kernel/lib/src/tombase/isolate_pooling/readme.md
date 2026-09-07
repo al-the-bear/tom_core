@@ -112,6 +112,13 @@ reach the caller by different routes:
 
 ```dart
 class DatabaseContext extends TomWorkerContext {
+  DatabaseContext(
+    super.tomEnvironment,
+    super.tomPlatform,
+    super.args,
+    super.namePrefix,
+  );
+
   @override
   Future<void> initializeIsolate() async {
     await Database.connect(url); // a connection failure aborts the spawn

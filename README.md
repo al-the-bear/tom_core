@@ -487,7 +487,10 @@ python3 tool/check_doc_dart_blocks.py tom_core_server  # one package, ad hoc
 
 The sibling that does invoke the compiler. Every ` ```dart ` block in a
 package's documents is written into a scratch package with a path dependency on
-that package and handed to `dart analyze`, under two rules.
+that package and handed to `dart analyze`, under two rules. Three trees are
+walked rather than listed: `doc/`, the package `README.md`, and the per-module
+`readme.md` files under `lib/` — the documentation closest to the code, and the
+one a developer reads while already in the source.
 
 **It must parse.** A block is wrapped in each context a sample can occupy — at
 top level, inside an async function, as class members, as a single expression,
@@ -516,18 +519,23 @@ This is the defect class that is invisible to review by construction. Four
 non-compiling samples were found in `beanlocator.md`; two were spotted by
 reading, and two — an elided `[...]` in argument position, and a class declared
 twice in one block — were not, having already survived a careful pass. A
-failing block is left behind in `tool/ztmp/doc_dart_blocks/lib/samples/` as the
-source the analyzer actually saw, which reads far more easily than a line
-number; a clean run leaves nothing.
+failing block is left behind as the source the analyzer actually saw — under
+`tool/ztmp/doc_dart_blocks/<package>/lib/samples/` — which reads far more
+easily than a line number; a clean run leaves nothing. The scratch directory is
+per package, because the pubspec inside it names exactly one path dependency.
 
-`doc/api_reference/` is excluded. Those fences quote *signatures*, and a
-signature is a declaration rather than a use: making them parse would take a
-mechanical `;` per block and buy nothing, because a declaration never consults
-the real API and so the second rule could never fire. A green light there would
-be coverage in appearance only. `tom_core_kernel` is repaired and gated at
-zero; the other packages have a backlog that has not been triaged, and adding
-one to `PACKAGES` before triaging it would pin that backlog in place rather than
-fix it — run them with the argument in the meantime.
+The generated API summaries are excluded — `doc/api_reference/` in some
+packages, `doc/api/` in others, one category under two names. Those fences
+quote *signatures*, and a signature is a declaration rather than a use: making
+them parse would take a mechanical `;` per block and buy nothing, because a
+declaration never consults the real API and so the second rule could never
+fire. A green light there would be coverage in appearance only.
+
+`tom_core_kernel`, `tom_core_agentic` and `tom_core_codespecs` are triaged to
+zero and gated; `tom_core_server` and the Flutter-side packages still answer
+with faults, and adding one to `PACKAGES` before repairing it would pin that
+backlog in place rather than fix it — run them with the argument in the
+meantime.
 
 ```bash
 python3 tool/check_section_refs.py                  # the whole repository

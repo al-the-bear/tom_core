@@ -48,7 +48,16 @@ a *type* body becomes empty, a *collection literal* becomes empty, and a
 *function* body cannot be empty -- a non-void function that completes normally
 is an error -- so it throws.
 
-**What is not covered, and why.** `doc/api_reference/` is excluded. Those
+**Where it looks.** Three trees, walked rather than listed: `doc/`, the
+package `README.md`, and the per-module `readme.md` files under `lib/`. The
+last of those is the documentation closest to the code and the one a developer
+reads while already in the source; the sweep that first reached it found a
+sample subclassing `TomWorkerContext` without forwarding to a constructor that
+has no zero-argument form -- eight lines under a paragraph stating that the
+constructor argument in question is required.
+
+**What is not covered, and why.** The generated API summaries are excluded --
+`doc/api_reference/` in some packages, `doc/api/` in others. Those
 fences quote *signatures* -- `factory TomBean.fromName(String name)`,
 `const TomComponent(Type type)` -- and a signature is a declaration, not a use.
 Making them parse would take a mechanical `;` per block and would buy nothing:
@@ -77,16 +86,26 @@ from gate_report import report_faults
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
-SCRATCH = TOOL_DIR / "ztmp" / "doc_dart_blocks"
+#: Where the generated libraries are written, one subdirectory per package.
+#: Per package rather than shared, because the pubspec inside points at exactly
+#: one path dependency and the failures left behind are only readable against
+#: it -- with several packages gated, a single directory would describe
+#: whichever ran last and misreport the rest.
+SCRATCH_ROOT = TOOL_DIR / "ztmp" / "doc_dart_blocks"
 
-#: Packages whose documents are gated. `tom_core_kernel` is repaired and held
-#: at zero; the others have a backlog that has never been triaged, and adding
-#: one here without triaging it first would pin that backlog in place rather
-#: than fix it. Pass a package name on the command line to survey one ad hoc.
-PACKAGES = ["tom_core_kernel"]
+#: Packages whose documents are gated -- every one that has been triaged to
+#: zero. A package with a backlog is not listed: adding one here without
+#: repairing it first would pin the backlog in place rather than fix it. Pass a
+#: package name on the command line to survey one ad hoc; `tom_core_server` and
+#: the Flutter-side packages still answer with faults, and the Flutter ones
+#: additionally need a preamble this checker does not yet write.
+PACKAGES = ["tom_core_kernel", "tom_core_agentic", "tom_core_codespecs"]
 
 #: Document subtrees left out, keyed by the reason (see the module docstring).
-EXCLUDED_DIRS = {"api_reference"}
+#: Two names for one thing: the packages disagree on whether the generated API
+#: summaries live under `doc/api_reference/` or `doc/api/`, and the content is
+#: the same quoted signatures either way.
+EXCLUDED_DIRS = {"api_reference", "api"}
 
 PUBSPEC = """name: doc_dart_blocks
 publish_to: none
@@ -158,14 +177,29 @@ def fenced_dart(text: str):
 
 
 def documents(package: Path):
-    """The documents of `package` that this gate reads, in a stable order."""
+    """The markdown of `package` that this gate reads, in a stable order.
+
+    Three trees, because a reader trusts a fenced sample wherever it is printed
+    and does not know or care which tree it came from. `doc/` is the manual,
+    `README.md` is the first page anyone opens, and the per-module `readme.md`
+    files under `lib/` are the ones a developer reads while already in the
+    source -- the closest documentation to the code, and the only kind that was
+    never checked.
+
+    Derived by walking each tree rather than from a list of files, so a
+    document that appears somewhere new is covered the day it appears. Only
+    `EXCLUDED_DIRS` is left out, for the reason in the module docstring.
+    """
     doc_root = package / "doc"
-    if not doc_root.is_dir():
-        return []
-    return sorted(
-        path for path in doc_root.rglob("*.md")
-        if not EXCLUDED_DIRS & set(path.relative_to(doc_root).parts)
-    )
+    found: list[Path] = []
+    if doc_root.is_dir():
+        found += [
+            path for path in doc_root.rglob("*.md")
+            if not EXCLUDED_DIRS & set(path.relative_to(doc_root).parts)
+        ]
+    found += package.glob("*.md")
+    found += (package / "lib").rglob("*.md")
+    return sorted(found)
 
 
 # =============================================================================
@@ -355,33 +389,39 @@ def build(body: str, wrapper: str, package: str) -> str:
 # =============================================================================
 
 
-def slug(path: Path, doc_root: Path, line: int) -> str:
-    relative = path.relative_to(doc_root).with_suffix("")
+def slug(path: Path, root: Path, line: int) -> str:
+    relative = path.relative_to(root).with_suffix("")
     return re.sub(r"\W+", "_", f"{relative}_{line}").strip("_").lower()
 
 
+def scratch_for(package: Path) -> Path:
+    """The generated-library directory for `package`."""
+    return SCRATCH_ROOT / package.name
+
+
 def write_scratch(package: Path, cases: list[tuple[str, str]]) -> None:
-    samples = SCRATCH / "lib" / "samples"
+    scratch = scratch_for(package)
+    samples = scratch / "lib" / "samples"
     samples.mkdir(parents=True, exist_ok=True)
     for stale in samples.glob("*.dart"):
         stale.unlink()
-    (SCRATCH / "pubspec.yaml").write_text(
+    (scratch / "pubspec.yaml").write_text(
         PUBSPEC.format(package=package.name, path=package.resolve()),
         encoding="utf-8")
-    (SCRATCH / "analysis_options.yaml").write_text(
+    (scratch / "analysis_options.yaml").write_text(
         ANALYSIS_OPTIONS, encoding="utf-8")
     for name, source in cases:
         (samples / f"{name}.dart").write_text(source, encoding="utf-8")
 
 
-def run_dart(*args: str) -> subprocess.CompletedProcess:
+def run_dart(scratch: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["dart", *args], capture_output=True, text=True,
-                          cwd=SCRATCH)
+                          cwd=scratch)
 
 
-def analyze() -> dict[str, list[dict]]:
+def analyze(scratch: Path) -> dict[str, list[dict]]:
     """Every ERROR the analyzer reports, grouped by the sample it came from."""
-    done = run_dart("analyze", "--format=json", str(SCRATCH))
+    done = run_dart(scratch, "analyze", "--format=json", str(scratch))
     try:
         payload = json.loads(done.stdout)
     except json.JSONDecodeError:
@@ -421,12 +461,13 @@ class Fault:
     """One block that failed, and the diagnostics that condemned it."""
 
     def __init__(self, name: str, where: str, rule: str, wrapper: str | None,
-                 diagnostics: list[dict]) -> None:
+                 diagnostics: list[dict], scratch: Path) -> None:
         self.name = name
         self.where = where
         self.rule = rule
         self.wrapper = wrapper
         self.diagnostics = diagnostics
+        self.scratch = scratch
 
     @property
     def weight(self) -> int:
@@ -441,7 +482,8 @@ class Fault:
     def render(self) -> str:
         head = (f"{self.where}"
                 + (f" [{self.wrapper}]" if self.wrapper else "")
-                + f"  -> tool/ztmp/doc_dart_blocks/lib/samples/{self.name}.dart")
+                + f"  -> {self.scratch.relative_to(REPO_ROOT)}"
+                  f"/lib/samples/{self.name}.dart")
         lines = [head]
         for diagnostic in self.diagnostics[:4]:
             lines.append(f"      {diagnostic['code']}: "
@@ -451,7 +493,6 @@ class Fault:
 
 def check(package: Path) -> tuple[list[Fault], int, int]:
     """`(faults, blocks checked, blocks skipped)` for one package."""
-    doc_root = package / "doc"
     foreign_import = re.compile(
         rf"^\s*import\s+'package:(?!{re.escape(package.name)}/)", re.M)
 
@@ -462,11 +503,12 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
             if foreign_import.search(block):
                 skipped += 1
                 continue
-            where = f"{path.relative_to(doc_root)}:{line}"
-            origin[slug(path, doc_root, line)] = (where, desugar(block))
+            where = f"{path.relative_to(package)}:{line}"
+            origin[slug(path, package, line)] = (where, desugar(block))
 
+    scratch = scratch_for(package)
     write_scratch(package, [])
-    got = run_dart("pub", "get")
+    got = run_dart(scratch, "pub", "get")
     if got.returncode != 0:
         raise SystemExit(got.stdout + got.stderr)
 
@@ -482,7 +524,7 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
             (name, build(body, wrapper, package.name))
             for name, (_, body) in pending.items()
         ])
-        found = analyze()
+        found = analyze(scratch)
         still: dict[str, tuple[str, str]] = {}
         for name, (where, body) in pending.items():
             syntax, framework = partition(found.get(name, []))
@@ -493,12 +535,13 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
                 still[name] = (where, body)
                 continue
             if framework:
-                faults.append(
-                    Fault(name, where, "framework", wrapper, framework))
+                faults.append(Fault(
+                    name, where, "framework", wrapper, framework, scratch))
         pending = still
 
     for name, (where, _) in pending.items():
-        faults.append(Fault(name, where, "parse", None, best_syntax[name]))
+        faults.append(
+            Fault(name, where, "parse", None, best_syntax[name], scratch))
 
     # Leave behind exactly the libraries that failed, and nothing else. They
     # are the evidence -- a fault reads far more easily as the source the
@@ -530,7 +573,7 @@ def main(argv: list[str]) -> int:
             return 2
         faults, blocks, left_out = check(package)
         if blocks == 0:
-            print(f"no ```dart blocks found under {name}/doc", file=sys.stderr)
+            print(f"no ```dart blocks found under {name}", file=sys.stderr)
             return 2
         total_faults.extend(faults)
         checked += blocks
