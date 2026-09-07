@@ -135,20 +135,129 @@ class TomUserPreferenceCodec {
   /// constant expression. That is the same trade [_collectionTypes] makes: a
   /// table that holds what the code does cannot drift from the code that does
   /// it, which is worth more than a constness nothing here asks for.
+  ///
+  /// Every question either side of the column asks about a scalar is answered
+  /// from these rows — the Dart type, the stored name, the write-side and
+  /// read-side shape tests, the narrowing back to a Dart value, and the two
+  /// typed collection constructors. **A sixth scalar is one row**, which is the
+  /// property this table exists for: the alternative had the write side reading
+  /// the table while the read side re-listed the same five names in three
+  /// switches, none of which failed to compile when a row was added — so a
+  /// forgotten edit was a preference that stored and then could not be read.
   static final List<_ScalarKind> _scalars = [
-    _ScalarKind(String, stringType, (v) => v is String, (j) => j is String),
-    _ScalarKind(int, intType, (v) => v is int, (j) => j is int),
+    _ScalarKind(
+      dartType: String,
+      name: stringType,
+      matchesValue: (v) => v is String,
+      matchesJson: (j) => j is String,
+      toJson: (v) => v,
+      narrow: (raw, _, _) => raw is String ? raw : null,
+      listType: List<String>,
+      mapType: Map<String, String>,
+      isListOf: (v) => v is List<String>,
+      isMapOf: (v) => v is Map<String, String>,
+      listFrom: List<String>.from,
+      mapFrom: Map<String, String>.from,
+    ),
+    _ScalarKind(
+      dartType: int,
+      name: intType,
+      matchesValue: (v) => v is int,
+      matchesJson: (j) => j is int,
+      toJson: (v) => v,
+      narrow: (raw, _, _) => raw is int ? raw : null,
+      listType: List<int>,
+      mapType: Map<String, int>,
+      isListOf: (v) => v is List<int>,
+      isMapOf: (v) => v is Map<String, int>,
+      listFrom: List<int>.from,
+      mapFrom: Map<String, int>.from,
+    ),
     // `num` and not `double` on the read side: JSON writes `1.0` as `1`, and a
     // row a non-Dart client wrote is integral even where the preference is not.
-    _ScalarKind(double, doubleType, (v) => v is double, (j) => j is num),
-    _ScalarKind(bool, boolType, (v) => v is bool, (j) => j is bool),
+    // The narrowing is the second half of that admission: without it a row this
+    // row admits at the boundary would fail to decode.
     _ScalarKind(
-      DateTime,
-      dateTimeType,
-      (v) => v is DateTime,
-      (j) => j is String && DateTime.tryParse(j) != null,
+      dartType: double,
+      name: doubleType,
+      matchesValue: (v) => v is double,
+      matchesJson: (j) => j is num,
+      toJson: (v) => v,
+      narrow: (raw, _, _) => raw is double
+          ? raw
+          : raw is int
+          ? raw.toDouble()
+          : null,
+      listType: List<double>,
+      mapType: Map<String, double>,
+      isListOf: (v) => v is List<double>,
+      isMapOf: (v) => v is Map<String, double>,
+      listFrom: List<double>.from,
+      mapFrom: Map<String, double>.from,
+    ),
+    _ScalarKind(
+      dartType: bool,
+      name: boolType,
+      matchesValue: (v) => v is bool,
+      matchesJson: (j) => j is bool,
+      toJson: (v) => v,
+      narrow: (raw, _, _) => raw is bool ? raw : null,
+      listType: List<bool>,
+      mapType: Map<String, bool>,
+      isListOf: (v) => v is List<bool>,
+      isMapOf: (v) => v is Map<String, bool>,
+      listFrom: List<bool>.from,
+      mapFrom: Map<String, bool>.from,
+    ),
+    _ScalarKind(
+      dartType: DateTime,
+      name: dateTimeType,
+      matchesValue: (v) => v is DateTime,
+      matchesJson: (j) => j is String && DateTime.tryParse(j) != null,
+      toJson: (v) => (v as DateTime).toUtc().toIso8601String(),
+      // A tear-off rather than a literal: this row's narrowing is the only one
+      // with something to explain, and twenty lines of error text inside a
+      // table literal would stop the table being readable as a table. See
+      // [_narrowInstant].
+      narrow: _narrowInstant,
+      listType: List<DateTime>,
+      mapType: Map<String, DateTime>,
+      isListOf: (v) => v is List<DateTime>,
+      isMapOf: (v) => v is Map<String, DateTime>,
+      listFrom: List<DateTime>.from,
+      mapFrom: Map<String, DateTime>.from,
     ),
   ];
+
+  /// The first row [value] has the shape of, or `null` when it is not a
+  /// scalar.
+  ///
+  /// *First*, and the order is the one [_scalars] documents: on the web an
+  /// integral `double` answers to `is int`, so which row claims such a value
+  /// is decided here and nowhere else.
+  static _ScalarKind? _scalarOf(Object value) {
+    for (final scalar in _scalars) {
+      if (scalar.matchesValue(value)) return scalar;
+    }
+    return null;
+  }
+
+  /// The row named [scalarType], or `null` when no row claims that name.
+  ///
+  /// The one lookup by stored name, so that "which scalar is this" is answered
+  /// from the table by every side of the column — the boundary check, the
+  /// narrowing, and the collection rebuild — rather than by a `switch` each of
+  /// them keeps in step by hand.
+  ///
+  /// `null` for an unclaimed name is load-bearing rather than defensive: it is
+  /// how a `valueType` naming a reflected class reaches the object branch
+  /// instead of being mistaken for an unrecognised scalar.
+  static _ScalarKind? _scalarNamed(String scalarType) {
+    for (final scalar in _scalars) {
+      if (scalar.name == scalarType) return scalar;
+    }
+    return null;
+  }
 
   /// The scalar type names, in the order [typeNameOf] tests them.
   ///
@@ -184,35 +293,28 @@ class TomUserPreferenceCodec {
   /// [_listTypeOf] and [_mapTypeOf] so that the naming rule lives in one place
   /// and this table cannot drift from [_collectionParts], which parses it.
   static final Map<Type, String> _collectionTypes = {
-    List<String>: _listTypeOf(stringType),
-    List<int>: _listTypeOf(intType),
-    List<double>: _listTypeOf(doubleType),
-    List<bool>: _listTypeOf(boolType),
-    List<DateTime>: _listTypeOf(dateTimeType),
-    Map<String, String>: _mapTypeOf(stringType),
-    Map<String, int>: _mapTypeOf(intType),
-    Map<String, double>: _mapTypeOf(doubleType),
-    Map<String, bool>: _mapTypeOf(boolType),
-    Map<String, DateTime>: _mapTypeOf(dateTimeType),
+    for (final scalar in _scalars) scalar.listType: _listTypeOf(scalar.name),
+    for (final scalar in _scalars) scalar.mapType: _mapTypeOf(scalar.name),
   };
 
   /// The stored name of [value] if it is a supported collection, else `null`.
   ///
-  /// An `is` chain rather than a `runtimeType` lookup in [_collectionTypes],
-  /// because a runtime class is not the declared one: a decoded list is a
-  /// `JSArray` under dart2js and a map literal is a `_Map`, neither of which is
-  /// `== List<String>`. `is` asks the question the table cannot.
+  /// An `is` test per row rather than a `runtimeType` lookup in
+  /// [_collectionTypes], because a runtime class is not the declared one: a
+  /// decoded list is a `JSArray` under dart2js and a map literal is a `_Map`,
+  /// neither of which is `== List<String>`. `is` asks the question the table
+  /// cannot — so the test lives in the row, as [_ScalarKind.isListOf].
+  ///
+  /// Every list is tried before any map, and the rows are tried in [_scalars]
+  /// order within each, which is the order the hand-written chain this replaced
+  /// had. The `int`-before-`double` reason applies here too.
   static String? _collectionNameOf(Object value) {
-    if (value is List<String>) return _listTypeOf(stringType);
-    if (value is List<int>) return _listTypeOf(intType);
-    if (value is List<double>) return _listTypeOf(doubleType);
-    if (value is List<bool>) return _listTypeOf(boolType);
-    if (value is List<DateTime>) return _listTypeOf(dateTimeType);
-    if (value is Map<String, String>) return _mapTypeOf(stringType);
-    if (value is Map<String, int>) return _mapTypeOf(intType);
-    if (value is Map<String, double>) return _mapTypeOf(doubleType);
-    if (value is Map<String, bool>) return _mapTypeOf(boolType);
-    if (value is Map<String, DateTime>) return _mapTypeOf(dateTimeType);
+    for (final scalar in _scalars) {
+      if (scalar.isListOf(value)) return _listTypeOf(scalar.name);
+    }
+    for (final scalar in _scalars) {
+      if (scalar.isMapOf(value)) return _mapTypeOf(scalar.name);
+    }
     return null;
   }
 
@@ -281,9 +383,8 @@ class TomUserPreferenceCodec {
   /// a caller may ask for a value's stored name before it has decided where to
   /// put it.
   static String typeNameOf(Object value, [String key = '']) {
-    for (final scalar in _scalars) {
-      if (scalar.matchesValue(value)) return scalar.name;
-    }
+    final scalar = _scalarOf(value);
+    if (scalar != null) return scalar.name;
     final collection = _collectionNameOf(value);
     if (collection != null) return collection;
     if (value is Iterable || value is Map) {
@@ -368,9 +469,10 @@ class TomUserPreferenceCodec {
   /// `List<double>` that [typeNameOf] names, so the defect is the number, not
   /// the shape.
   static String encodeValue(Object value, [String key = '']) {
-    if (value is String || value is int || value is double || value is bool) {
+    final scalar = _scalarOf(value);
+    if (scalar != null) {
       try {
-        return jsonEncode(value);
+        return jsonEncode(scalar.toJson(value));
       } catch (error, stack) {
         // JSON has no NaN and no Infinity, so there is nothing to write and
         // nothing to fall back on — a substitute would be a different value
@@ -390,9 +492,6 @@ class TomUserPreferenceCodec {
           stack: stack,
         );
       }
-    }
-    if (value is DateTime) {
-      return jsonEncode(value.toUtc().toIso8601String());
     }
     if (value is Enum) {
       // As an object rather than a bare string, so that "a non-scalar value is
@@ -599,12 +698,21 @@ class TomUserPreferenceCodec {
 
   /// Encodes a collection element `jsonEncode` cannot write by itself.
   ///
-  /// Only [DateTime] qualifies, and it is encoded exactly as a top-level one
-  /// is. Anything else is rejected rather than given a `toString()` fallback:
-  /// a fallback would write text no reader could turn back into the value, and
-  /// [encodeValue] would report success.
+  /// Rendered by the element's own row — [_ScalarKind.toJson] — so an element
+  /// is written exactly as a top-level value of that type is. Today only
+  /// [DateTime] reaches here, the other four shapes being JSON's own; asking
+  /// the row rather than naming `DateTime` is what keeps that true of the next
+  /// scalar too, whose collections would otherwise fail to encode while the
+  /// scalar itself encoded fine.
+  ///
+  /// Anything the table does not claim is rejected rather than given a
+  /// `toString()` fallback: a fallback would write text no reader could turn
+  /// back into the value, and [encodeValue] would report success.
   static Object _encodeNested(Object? value) {
-    if (value is DateTime) return value.toUtc().toIso8601String();
+    if (value != null) {
+      final scalar = _scalarOf(value);
+      if (scalar != null) return scalar.toJson(value);
+    }
     throw JsonUnsupportedObjectError(value);
   }
 
@@ -703,12 +811,8 @@ class TomUserPreferenceCodec {
   /// `false` for a name no row claims, which is how a `valueType` naming a
   /// class reaches [validateEncoded]'s object branch rather than being mistaken
   /// for an unrecognised scalar.
-  static bool _scalarMatches(String scalarType, Object? raw) {
-    for (final scalar in _scalars) {
-      if (scalar.name == scalarType) return scalar.matchesJson(raw);
-    }
-    return false;
-  }
+  static bool _scalarMatches(String scalarType, Object? raw) =>
+      _scalarNamed(scalarType)?.matchesJson(raw) ?? false;
 
   /// Every text in [raw] that the declared [valueType] says is an instant.
   ///
@@ -1051,59 +1155,73 @@ class TomUserPreferenceCodec {
   /// is narrowing an element. It appears only in errors, so that a bad element
   /// is reported against the preference the reader actually asked for.
   ///
-  /// An `int` widens to a `double` here — for the *row*, not for the reader.
-  /// JSON writes `1.0` as `1`, so a `double` preference a non-Dart client
-  /// wrote arrives integral, and [validateEncoded] admits it on that
-  /// understanding: the read-side predicate for `double` is `is num`. The
-  /// widening is the second half of that admission, so removing it would let
-  /// a row through the boundary that the read then refuses.
+  /// The narrowing itself belongs to the row — [_ScalarKind.narrow] — so that
+  /// a scalar is described in one place on both sides of the column. What is
+  /// here is the single failure text for "not decodable as the requested
+  /// type", which every row would otherwise state for itself.
+  ///
+  /// An `int` widens to a `double` — for the *row*, not for the reader. JSON
+  /// writes `1.0` as `1`, so a `double` preference a non-Dart client wrote
+  /// arrives integral, and [validateEncoded] admits it on that understanding:
+  /// the read-side predicate for `double` is `is num`. The widening is the
+  /// second half of that admission, and the two now sit in the same row, so
+  /// removing one and keeping the other would take an edit that reads wrong.
   ///
   /// A caller reading an `int`-declared preference as a `double` never gets
   /// here. [decode] compares the stored name against the requested one before
   /// any narrowing, and refuses — the widening is not a way around a declared
   /// type.
   ///
-  /// A `DateTime` must name its zone — see [parseInstant].
+  /// A `DateTime` must name its zone — see [_narrowInstant] and
+  /// [parseInstant].
   static Object _narrowScalar(
     String scalarType,
     Object? raw,
     String key,
     String requested,
   ) {
-    switch (scalarType) {
-      case stringType:
-        if (raw is String) return raw;
-      case intType:
-        if (raw is int) return raw;
-      case doubleType:
-        if (raw is double) return raw;
-        if (raw is int) return raw.toDouble();
-      case boolType:
-        if (raw is bool) return raw;
-      case dateTimeType:
-        if (raw is String) {
-          final instant = parseInstant(raw);
-          if (instant != null) return instant;
-          final isTimestamp = DateTime.tryParse(raw) != null;
-          throw TomUserPreferenceCodecException(
-            isTimestamp
-                ? 'preferences.decode.not_an_instant'
-                : 'preferences.decode.type_mismatch',
-            isTimestamp
-                ? "Preference '$key' holds a timestamp that names no time "
-                      "zone, so reading it would have to invent one — this "
-                      "device's. That is an instant the writer did not "
-                      'necessarily mean, so it is refused instead.'
-                : "Preference '$key' was read as a $requested but its text is "
-                      'not a timestamp.',
-            parameters: {'key': key, 'requested': requested, 'value': raw},
-          );
-        }
-    }
+    final narrowed = _scalarNamed(scalarType)?.narrow(raw, key, requested);
+    if (narrowed != null) return narrowed;
     throw TomUserPreferenceCodecException(
       'preferences.decode.failed',
       "Preference '$key' could not be decoded as $requested.",
       parameters: {'key': key, 'requested': requested},
+    );
+  }
+
+  /// Narrows the stored text of a [dateTimeType] row to the instant it names.
+  ///
+  /// The [_ScalarKind.narrow] of the `DateTime` row, written out rather than
+  /// inlined into the table: the other four narrowings are a type test and a
+  /// value, and this one has a rule to state and two errors to tell apart.
+  ///
+  /// A timestamp that names no zone is *refused*, not read as local. Reading it
+  /// would have to invent an offset — this device's — and a preference follows
+  /// its user across devices, so the invented instant would differ from the one
+  /// the writer meant, differently on each of them. Text that is not a
+  /// timestamp at all is a different failure and says so, because "not an
+  /// instant" would send a reader looking for a zone in a value that has no
+  /// date in it.
+  ///
+  /// `null` only for a [raw] that is not a `String`, which is the plain
+  /// mismatch [_narrowScalar] reports for every row.
+  static Object? _narrowInstant(Object? raw, String key, String requested) {
+    if (raw is! String) return null;
+    final instant = parseInstant(raw);
+    if (instant != null) return instant;
+    final isTimestamp = DateTime.tryParse(raw) != null;
+    throw TomUserPreferenceCodecException(
+      isTimestamp
+          ? 'preferences.decode.not_an_instant'
+          : 'preferences.decode.type_mismatch',
+      isTimestamp
+          ? "Preference '$key' holds a timestamp that names no time zone, so "
+                "reading it would have to invent one — this device's. That is "
+                'an instant the writer did not necessarily mean, so it is '
+                'refused instead.'
+          : "Preference '$key' was read as a $requested but its text is not a "
+                'timestamp.',
+      parameters: {'key': key, 'requested': requested, 'value': raw},
     );
   }
 
@@ -1114,43 +1232,42 @@ class TomUserPreferenceCodec {
   /// obeys exactly the rule a top-level value of that type obeys — the zone
   /// check and the `int`-to-`double` widening included — rather than a second,
   /// looser copy of it.
+  ///
+  /// The typed collection is built by the same row, through
+  /// [_ScalarKind.listFrom] / [_ScalarKind.mapFrom]. It has to be *typed*: a
+  /// `List<Object>` would satisfy the cast below in name only and fail the
+  /// caller at the first use. Reading the constructor out of the row rather
+  /// than out of a `switch` is what makes a sixth scalar one row rather than
+  /// one row and two edits made somewhere else.
   static T _decodeCollection<T extends Object>(
     Object? raw,
     String key,
     String storedName,
     ({bool isMap, String element}) parts,
   ) {
+    // Only a scalar element reaches here: `parts` came from
+    // [_collectionParts], which recognises nothing else, so the row exists.
+    final element = _scalarNamed(parts.element)!;
     if (parts.isMap) {
       if (raw is! Map<String, Object?>) {
         throw _notDecodable(key, storedName);
       }
-      final values = <String, Object>{
-        for (final entry in raw.entries)
-          entry.key: _narrowScalar(parts.element, entry.value, key, storedName),
-      };
-      return switch (parts.element) {
-            stringType => Map<String, String>.from(values),
-            intType => Map<String, int>.from(values),
-            doubleType => Map<String, double>.from(values),
-            boolType => Map<String, bool>.from(values),
-            // Only the five scalars reach here: `parts` came from
-            // [_collectionParts], which recognises nothing else.
-            _ => Map<String, DateTime>.from(values),
-          }
+      return element.mapFrom({
+            for (final entry in raw.entries)
+              entry.key: _narrowScalar(
+                parts.element,
+                entry.value,
+                key,
+                storedName,
+              ),
+          })
           as T;
     }
     if (raw is! List<Object?>) throw _notDecodable(key, storedName);
-    final values = [
-      for (final element in raw)
-        _narrowScalar(parts.element, element, key, storedName),
-    ];
-    return switch (parts.element) {
-          stringType => List<String>.from(values),
-          intType => List<int>.from(values),
-          doubleType => List<double>.from(values),
-          boolType => List<bool>.from(values),
-          _ => List<DateTime>.from(values),
-        }
+    return element.listFrom([
+          for (final value in raw)
+            _narrowScalar(parts.element, value, key, storedName),
+        ])
         as T;
   }
 
@@ -1215,12 +1332,24 @@ class TomUserPreferenceCodec {
 /// where that shows — `is double` going in, `is num` coming back.
 class _ScalarKind {
   /// Creates a row of the scalar table.
-  const _ScalarKind(
-    this.dartType,
-    this.name,
-    this.matchesValue,
-    this.matchesJson,
-  );
+  ///
+  /// Named rather than positional: a row states eleven things about one scalar,
+  /// and eleven positional arguments is a table nobody can read a row of
+  /// without counting commas against the constructor.
+  const _ScalarKind({
+    required this.dartType,
+    required this.name,
+    required this.matchesValue,
+    required this.matchesJson,
+    required this.toJson,
+    required this.narrow,
+    required this.listType,
+    required this.mapType,
+    required this.isListOf,
+    required this.isMapOf,
+    required this.listFrom,
+    required this.mapFrom,
+  });
 
   /// The Dart type this shape is, as a caller names it when reading a
   /// preference back by type rather than by value.
@@ -1241,4 +1370,68 @@ class _ScalarKind {
   /// Whether decoded JSON has this shape — the read side's question, asked by
   /// [TomUserPreferenceCodec.validateEncoded].
   final bool Function(Object? raw) matchesJson;
+
+  /// The JSON-ready form of a Dart value of this shape, asked by
+  /// [TomUserPreferenceCodec.encodeValue].
+  ///
+  /// Identity for the four shapes JSON has of its own; `DateTime` is the one
+  /// that has to be rendered, and it renders in UTC because a preference
+  /// follows its user across devices — see
+  /// [TomUserPreferenceCodec.dateTimeType].
+  final Object Function(Object value) toJson;
+
+  /// Turns decoded JSON into the Dart value of this shape, or `null` when
+  /// [raw] is not of this shape.
+  ///
+  /// The counterpart of [matchesJson] on the way out, and in the same row for
+  /// the same reason: a shape the codec admits at the boundary has to be one it
+  /// can then build. `double` is where the pair earns its keep — its
+  /// [matchesJson] is `is num`, because JSON writes `1.0` as `1`, and this is
+  /// the widening that admission promises.
+  ///
+  /// `null` rather than a throw for a plain mismatch, so that the one error
+  /// text for "not decodable as the requested type" lives at the single call
+  /// site instead of once per row. A row that has *more* than that to say —
+  /// `DateTime`, whose text explains why an unzoned timestamp is refused rather
+  /// than guessed — throws its own, which is why the signature carries [key]
+  /// and [requested].
+  final Object? Function(Object? raw, String key, String requested) narrow;
+
+  /// The `Type` a caller reads a list of this shape back as — `List<String>`
+  /// for the `String` row.
+  ///
+  /// A `Type` literal and not something composed, because there is nothing to
+  /// compose it from: `List<T>` for a `T` held in a variable is not a type a
+  /// Dart expression can name. That is the whole reason this belongs in the
+  /// row — the row is the one place the element type is written as a *type*
+  /// rather than as a name.
+  final Type listType;
+
+  /// The `Type` a caller reads a map of this shape back as.
+  final Type mapType;
+
+  /// Whether [value] is a list of this shape.
+  ///
+  /// An `is` test rather than a `runtimeType` comparison against [listType],
+  /// because a runtime class is not the declared one: a decoded list is a
+  /// `JSArray` under dart2js and a map literal is a `_Map`, neither of which is
+  /// `== List<String>`.
+  final bool Function(Object value) isListOf;
+
+  /// Whether [value] is a map of this shape, keyed by `String`.
+  final bool Function(Object value) isMapOf;
+
+  /// Builds the typed `List` of this shape from already-narrowed values.
+  ///
+  /// The declared element type is what makes the decoded collection usable —
+  /// `List<Object>` would satisfy the cast in name only and fail the caller's
+  /// `as List<DateTime>` at the first use — and it is a thing only this row
+  /// knows, so it belongs here rather than in a switch the reader has to keep
+  /// in step with the table.
+  final List<Object> Function(List<Object> values) listFrom;
+
+  /// Builds the typed `Map` of this shape from already-narrowed values.
+  ///
+  /// The key is always `String`; see [TomUserPreferenceCodec.stringType].
+  final Map<String, Object> Function(Map<String, Object> values) mapFrom;
 }

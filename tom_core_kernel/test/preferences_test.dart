@@ -1753,6 +1753,117 @@ void main() {
       }
     });
 
+    test('every scalar a write can produce is one a read reconstructs', () {
+      // The other direction of the same loop, and the one the codec's scalar
+      // table was extended for: the write side answered every question about a
+      // scalar from one row while the read side re-listed the same five names
+      // in three switches — a narrowing and two collection constructors — none
+      // of which failed to compile when a row was added. A sixth scalar was one
+      // row on the way in and three unrelated edits on the way out, and
+      // forgetting any of them was a preference that stored and then could not
+      // be read.
+      //
+      // One row per scalar rather than parallel lists, and keyed to
+      // `scalarTypes` below, so a scalar added to the codec fails here rather
+      // than going untested — and so the samples and the decoders that must
+      // agree about a type cannot drift apart.
+      //
+      // The collection samples are written out with their element type rather
+      // than derived from `sample`: a literal built from an `Object` infers
+      // `List<Object>`, which is not a preference value at all, so deriving
+      // them would test the wrong thing or nothing.
+      final rows =
+          <
+            ({
+              Object sample,
+              Object listSample,
+              Object mapSample,
+              Object Function(TomUserPreferenceDto) readScalar,
+              Object Function(TomUserPreferenceDto) readList,
+              Object Function(TomUserPreferenceDto) readMap,
+            })
+          >[
+            (
+              sample: 'dark',
+              listSample: <String>['dark'],
+              mapSample: <String, String>{'a': 'dark'},
+              readScalar: TomUserPreferenceCodec.decode<String>,
+              readList: TomUserPreferenceCodec.decode<List<String>>,
+              readMap: TomUserPreferenceCodec.decode<Map<String, String>>,
+            ),
+            (
+              sample: 14,
+              listSample: <int>[14],
+              mapSample: <String, int>{'a': 14},
+              readScalar: TomUserPreferenceCodec.decode<int>,
+              readList: TomUserPreferenceCodec.decode<List<int>>,
+              readMap: TomUserPreferenceCodec.decode<Map<String, int>>,
+            ),
+            (
+              sample: 1.25,
+              listSample: <double>[1.25],
+              mapSample: <String, double>{'a': 1.25},
+              readScalar: TomUserPreferenceCodec.decode<double>,
+              readList: TomUserPreferenceCodec.decode<List<double>>,
+              readMap: TomUserPreferenceCodec.decode<Map<String, double>>,
+            ),
+            (
+              sample: true,
+              listSample: <bool>[true],
+              mapSample: <String, bool>{'a': true},
+              readScalar: TomUserPreferenceCodec.decode<bool>,
+              readList: TomUserPreferenceCodec.decode<List<bool>>,
+              readMap: TomUserPreferenceCodec.decode<Map<String, bool>>,
+            ),
+            (
+              sample: DateTime.utc(2026, 3, 4),
+              listSample: <DateTime>[DateTime.utc(2026, 3, 4)],
+              mapSample: <String, DateTime>{'a': DateTime.utc(2026, 3, 4)},
+              readScalar: TomUserPreferenceCodec.decode<DateTime>,
+              readList: TomUserPreferenceCodec.decode<List<DateTime>>,
+              readMap: TomUserPreferenceCodec.decode<Map<String, DateTime>>,
+            ),
+          ];
+      expect(
+        rows.map((r) => TomUserPreferenceCodec.typeNameOf(r.sample)).toList(),
+        TomUserPreferenceCodec.scalarTypes,
+        reason: 'the rows must cover every scalar, in the published order',
+      );
+
+      for (final row in rows) {
+        final name = TomUserPreferenceCodec.typeNameOf(row.sample);
+
+        // The scalar itself, decoded back to an equal value.
+        expect(
+          row.readScalar(
+            TomUserPreferenceCodec.encode('ui.sample', row.sample),
+          ),
+          row.sample,
+          reason: '$name did not survive a round trip',
+        );
+
+        // The list of it. The declared element type is what matters and what a
+        // forgotten switch arm got wrong: a `List<Object>` would satisfy the
+        // codec's own cast in name only and fail the caller at the first use.
+        // `decode<List<$name>>` asserts it by succeeding — the cast inside the
+        // codec is to exactly that type.
+        expect(
+          row.readList(
+            TomUserPreferenceCodec.encode('ui.samples', row.listSample),
+          ),
+          row.listSample,
+          reason: 'List<$name> did not survive a round trip',
+        );
+
+        // And the map of it.
+        expect(
+          row.readMap(TomUserPreferenceCodec.encode('ui.map', row.mapSample)),
+          row.mapSample,
+          reason: 'Map<String, $name> did not survive a round trip',
+        );
+      }
+    });
+
     test('int is published before double, because the web needs it so', () {
       // On the web an integral `double` answers to `is int` — both are JS
       // numbers and the test is one of integrality — so the first matching
