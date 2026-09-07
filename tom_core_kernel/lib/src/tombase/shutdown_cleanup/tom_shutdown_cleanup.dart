@@ -39,7 +39,6 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:tom_basics/tom_basics.dart';
 import 'package:tom_reflection/mirrors.dart';
 
 import '../little_things/little_things.dart';
@@ -543,18 +542,6 @@ class TomShutdownCleanup {
   /// watchers stop leaking; the process-lifetime global
   /// [tomShutdownCleanup] normally never needs it.
   Future<void> dispose() => cancelAll();
-
-  /// Emits a diagnostic log line confirming the cleanup system is in use.
-  ///
-  /// This method does **not** perform any initialization: the SIGHUP/SIGINT
-  /// listeners are registered in the constructor, so calling — or not calling —
-  /// `start()` has no effect on shutdown behaviour. It only writes an
-  /// informational `tomLog` entry, which is handy as a startup breadcrumb.
-  void start() {
-    // The wording is deliberate: the line records that the cleanup system is
-    // in use, and claims no initialization, because the call performs none.
-    tomLog.info("Shutdown cleanup in use");
-  }
 }
 
 // =============================================================================

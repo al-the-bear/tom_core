@@ -556,13 +556,14 @@ void main() {
       });
     }, skip: _signalSendingSkipReason);
 
-    group('start', () {
-      // The contract the two tests below pin: start() is a log breadcrumb,
-      // not an arming step. The constructor registers the SIGHUP/SIGINT
-      // listeners, so cleanup must behave identically whether start() is
-      // never called, called before registration, or called after it. Leaving
-      // this untested is what let four documentation sites drift into calling
-      // start() a setup step and prescribing where in the sequence to put it.
+    group('registration order decides cleanup order', () {
+      // What the removed `start()` group was really pinning: cleanup runs in
+      // one order regardless of *when* anything else was called on the
+      // instance. The constructor registers the SIGHUP/SIGINT listeners, so
+      // there is no arming step whose position in the sequence could matter —
+      // which is why a method named `start()` had to go: it implied a
+      // lifecycle the class does not have, and four documentation sites drifted
+      // into describing it as setup.
 
       /// Registers one cleanup of each kind on [cleanup], recording the
       /// category it belongs to into [log] when it runs.
@@ -574,36 +575,31 @@ void main() {
 
       const expectedOrder = ['handler', 'closable', 'disposable'];
 
-      test('is not required for cleanup to run', () {
-        // Arrange
+      test('a freshly constructed instance is already armed', () {
+        // No call of any kind between construction and registration: the
+        // watchers are installed by the constructor, so cleanup runs.
         final log = <String>[];
         final cleanup = _newCleanup();
         registerRecorders(cleanup, log);
 
-        // Act - start() is never called anywhere in this test.
         cleanup.performShutdown();
 
-        // Assert
         expect(log, equals(expectedOrder));
       });
 
-      test('changes nothing wherever it is called in the sequence', () {
-        // Arrange & Act - started before any registration.
-        final beforeLog = <String>[];
-        final before = _newCleanup()..start();
-        registerRecorders(before, beforeLog);
-        before.performShutdown();
+      test('two instances registered alike clean up alike', () {
+        final firstLog = <String>[];
+        final first = _newCleanup();
+        registerRecorders(first, firstLog);
+        first.performShutdown();
 
-        // Arrange & Act - started after every registration.
-        final afterLog = <String>[];
-        final after = _newCleanup();
-        registerRecorders(after, afterLog);
-        after.start();
-        after.performShutdown();
+        final secondLog = <String>[];
+        final second = _newCleanup();
+        registerRecorders(second, secondLog);
+        second.performShutdown();
 
-        // Assert - both match the no-start() outcome above.
-        expect(beforeLog, equals(expectedOrder));
-        expect(afterLog, equals(expectedOrder));
+        expect(firstLog, equals(expectedOrder));
+        expect(secondLog, equals(expectedOrder));
       });
     });
 

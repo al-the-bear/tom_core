@@ -12,7 +12,7 @@ The shutdown cleanup module provides a comprehensive system for managing gracefu
   - [TomShutdownCleanup](#tomshutdowncleanup)
     - [paused and silent](#paused-and-silent)
     - [Tearing an instance down — dispose() and cancelAll()](#tearing-an-instance-down--dispose-and-cancelall)
-    - [start() — an optional log breadcrumb](#start--an-optional-log-breadcrumb)
+    - [There is no arming step](#there-is-no-arming-step)
 - [Usage Examples](#usage-examples)
   - [Basic Resource Cleanup](#basic-resource-cleanup)
   - [Custom Signal Handlers](#custom-signal-handlers)
@@ -255,20 +255,22 @@ Neither method runs the cleanup. Disposing releases the instance's watchers; it
 does not close the closables registered on it. Call `performShutdown()` first
 if the resources still need releasing.
 
-#### start() — an optional log breadcrumb
+#### There is no arming step
 
-`start()` does not start anything. Signal listening is armed by the
-constructor, so calling it or omitting it makes no difference to shutdown
-behaviour; the method writes one constant `tomLog.info` line and returns.
+A constructed instance is already listening. `TomShutdownCleanup()` installs
+the SIGHUP and SIGINT watchers, so `addClosable`/`addDisposable`/
+`addSignalHandler` are the whole of the setup and there is no call whose
+position in the sequence matters.
 
-```dart
-tomShutdownCleanup.start(); // Logs "Shutdown cleanup in use". Nothing else.
-```
+That is worth stating because it is easy to assume otherwise, and there is no
+`start()` to reach for: a method of that name would imply a lifecycle this
+class has not got, and would do nothing but write a log line. A server that
+wants a "cleanup is wired up" breadcrumb writes that line itself, where it is
+one statement rather than a method whose name contradicts its body.
 
-It is worth calling in a long-running server, where the line is useful
-evidence in the log that the process had cleanup wired up. It is not a setup
-step, it has no required position relative to the `add*` calls, and no example
-in this document uses it.
+The corollary is the one thing a caller *does* have to remember: because
+construction arms, a short-lived instance leaks its watchers unless it is
+disposed. See [`dispose()`](#tearing-an-instance-down--dispose-and-cancelall).
 
 ## Usage Examples
 
@@ -525,7 +527,6 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
 | [**Reflection Module**](../reflection/reflection.md) | kernel module | The global `tomReflector`, which is how `TomCloseAdaptor` finds a `close`/`dispose` method on an object that implements neither interface |
 | [**Little Things Module**](../little_things/little_things.md) | kernel module | `tomGetStackTrace`, which formats and depth-limits the trace attached to a failed cleanup's diagnostic |
 | `tom_reflection` | package | `ClassMirror`, walked up the supertype chain by the adaptor — `ClassMirror.declarations` holds only a type's *own* members, so an inherited `close` needs the walk |
-| `tom_basics` | package | `tomLog`, for the module's only log line — the breadcrumb [`start()`](#start--an-optional-log-breadcrumb) writes. Nothing logs during shutdown itself; those diagnostics are `print` |
 | `dart:io` | SDK | `ProcessSignal` — the whole signal-handling half of the module, and what makes it native-only |
 | `dart:async` | SDK | `StreamSubscription`, held per registered signal so the handlers can be cancelled |
 
@@ -534,11 +535,10 @@ from generated reflection data, so a package registering objects through
 `TomCloseAdaptor` needs a **`build_runner` step**. Objects that implement
 [`TomClosable` or `TomDisposable`](#interfaces) directly need none of it — the build step is the price of the adaptor, not of the module.
 
-Note what is *not* here. The module does not depend on the
-[logging module](../logging/logging.md): its one log line — the breadcrumb
-[`start()`](#start--an-optional-log-breadcrumb) writes, which is not part of
-shutdown at all — goes through `tomLog`, the live global from `tom_basics`,
-which needs no wiring. Nor does it depend on the
+Note what is *not* here. The module logs nothing at all — its shutdown
+diagnostics are `print`, deliberately, because a logger may already be closed
+by the time they run — so it depends on neither `tom_basics` nor the
+[logging module](../logging/logging.md). Nor does it depend on the
 [observable module](../observable/observable.md): `tomReflector` belongs to the
 reflection module and is imported from there directly. Observable re-exports
 it, which is the only reason the two are ever confused.
