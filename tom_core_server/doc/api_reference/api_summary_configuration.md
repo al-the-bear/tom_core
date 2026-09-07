@@ -106,7 +106,10 @@ Reflected base class for a server's configuration. Subclasses declare typed
 fields; the reflection layer fills them from the merged configuration sources in
 the constructor.
 
-- **Extends:** none (abstract). Annotated `@tomReflector`.
+- **Extends:** none (abstract base)
+- **Annotations:** `@tomReflector` — the generated reflection data the
+  constructor reads the subclass's fields from. A subclass that skips
+  `build_runner` has no fields to fill.
 
 #### Constructors
 

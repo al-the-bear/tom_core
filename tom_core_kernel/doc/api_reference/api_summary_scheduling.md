@@ -121,7 +121,7 @@ TomPermanentFailure  (mixin)
 The "when" contract. A schedule computes fire times and knows nothing about
 jobs, runs, or the scheduler.
 
-- **Extends:** none (abstract class).
+- **Extends:** none (abstract class)
 
 #### Constructors
 
@@ -409,7 +409,7 @@ a job name exists to name in the message.
 How a job's command is executed. Separating this from the scheduler is what lets
 the same job definition run inline in a test and on a worker pool in production.
 
-- **Extends:** none (abstract class).
+- **Extends:** none (abstract class)
 
 #### Constructors
 
@@ -660,8 +660,6 @@ repeats. `TomJobRun.claimedAt` cannot serve in its place: it is the heartbeat an
 `renewClaim` moves it, so a ticket fenced on it would be invalidated by the first
 heartbeat of the attempt it certifies.
 
-- **Extends:** none.
-
 #### Constructors
 
 ```dart
@@ -704,7 +702,8 @@ outcome belongs to an attempt nobody is waiting for. The check costs nothing whe
 nothing went wrong, and it is what makes the five safe to call without first
 re-reading the store.
 
-- **Extends:** none (abstract class).
+- **Kind:** abstract class, used as an interface.
+- **Implemented by:** `TomMemoryJobStore` — and so by `TomFileJobStore`
 
 #### Static Members
 
@@ -869,7 +868,7 @@ arrived at by leaving the argument out.
 
 The mutual-exclusion contract.
 
-- **Extends:** none (abstract class).
+- **Extends:** none (abstract class)
 
 #### Constructors
 
