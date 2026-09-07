@@ -1512,15 +1512,16 @@ TomOAuthAuthorizationRequest({
 | `application` | `String` | The application the login is for. |
 | `process` | `String` | The process the login is for. |
 | `organization` | `String` | The organization the login is for. |
-| `clientLanguage` | `String` | The client's language code. Defaults to `''`, **not** to the `"en"` its namesake [TomAuthenticationMessage.clientLanguage] uses. |
-| `clientCountry` | `String` | The client's country code. Defaults to `''`, not to `"XX"`. |
-| `clientTimezone` | `String` | The client's IANA timezone name. Defaults to `''`, not to `"utc"`. |
+| `clientLanguage` | `String` | The client's language code. Defaults to [TomClientContext.defaultLanguage] (`"en"`), as its namesake [TomAuthenticationMessage.clientLanguage] does. |
+| `clientCountry` | `String` | The client's country code. Defaults to [TomClientContext.noCountry] (`"XX"`). |
+| `clientTimezone` | `String` | The client's IANA timezone name. Defaults to [TomClientContext.defaultTimezone] (`"utc"`). |
 
 These three carry the same names as their [TomAuthenticationMessage]
-counterparts but not the same defaults: the password path starts from
-`"en"`/`"XX"`/`"utc"`, the OAuth path from the empty string. A caller that
-leaves them unset therefore produces a different client context depending on
-which login it used.
+counterparts and the same defaults, so an omitted field means the same thing
+whichever login produced the request. Both classes read the values from
+[TomClientContext] rather than writing the literals out, which is also what
+keeps a consumer's *test* for "no country" in step with what the wire actually
+carries.
 
 Note what is **absent**: a redirect URI. Where the provider sends the user back
 is server configuration, because a redirect target a caller may choose is an

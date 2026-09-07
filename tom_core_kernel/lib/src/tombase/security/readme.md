@@ -19,6 +19,7 @@ an element is hidden, locked, read-only, or fully editable.
 | `TomResourceRoleRegistry` / `TomResourceRoleAdapter` | Per-principal-per-resource roles: the `roleName → TomAuthState` table, and the kernel's only shipped `TomAuthorizationAdapter`, which resolves a resource key through the principal's role for it. Closed by design — an ungranted resource or an unregistered role yields `none`, never a fallback. |
 | `TomUser` / `TomPrincipal` | Authenticated identity and its security context. |
 | `TomGroup` / `TomRole` / `TomEntitlement` | Authorization subjects a user can hold. |
+| `TomClientContext` | The language, country and timezone a principal carries when nothing better is known. Named once because they are compared as often as assigned: `noCountry` (`XX`) is a non-locale sentinel a locale key must drop, not a country. |
 | `TomBearerAuthentication` | Bearer-token authentication. |
 | `TomAuthenticationMessage` / `TomAuthenticationResult` | Authentication request/response payloads. |
 | `TomAuthorizationGroup` / `AuthGroupMode` | Collective authorization: widgets register with a group, and the mode decides how the group's state applies to its members. |

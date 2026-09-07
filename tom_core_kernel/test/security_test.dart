@@ -4113,11 +4113,31 @@ void main() {
       expect(TomOAuthProviderDto().displayNameKey, isEmpty);
       expect(TomOAuthProviderDto().iconKey, isEmpty);
       expect(TomOAuthAuthorizationRequest().providerId, isEmpty);
-      expect(TomOAuthAuthorizationRequest().clientTimezone, isEmpty);
       expect(TomOAuthAuthorizationDto().authorizationUri, isEmpty);
       expect(TomOAuthAuthorizationDto().state, isEmpty);
       expect(TomOAuthCallbackRequest().code, isEmpty);
       expect(TomOAuthCallbackRequest().error, isEmpty);
+    });
+
+    test('the client context starts where the password login starts it', () {
+      // The three client-context fields are the exception to the rule above,
+      // and deliberately so: an omitted one has to mean the same thing
+      // whichever login produced the request. Empty is not a resolvable
+      // language, country or zone, so a consumer that parses rather than
+      // forwards would behave differently on this path — which is what the
+      // divergence used to cause.
+      final oauth = TomOAuthAuthorizationRequest();
+      final password = TomAuthenticationMessage();
+
+      expect(oauth.clientLanguage, password.clientLanguage);
+      expect(oauth.clientCountry, password.clientCountry);
+      expect(oauth.clientTimezone, password.clientTimezone);
+
+      // And both read them from the one place that defines them, so a third
+      // caller cannot drift by writing the literals out again.
+      expect(oauth.clientLanguage, TomClientContext.defaultLanguage);
+      expect(oauth.clientCountry, TomClientContext.noCountry);
+      expect(oauth.clientTimezone, TomClientContext.defaultTimezone);
     });
 
     test('scoped derives both provider keys under the oauth scope', () {

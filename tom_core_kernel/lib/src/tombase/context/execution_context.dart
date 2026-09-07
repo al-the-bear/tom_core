@@ -481,39 +481,40 @@ class TomContextProviders {
   /// no language, not that this user reads English. A caller deciding what
   /// language to *write to somebody in* wants `TomTextLocale.fromPrincipal`,
   /// which distinguishes the two by answering `null`.
-  static String getLanguage() => _fromPrincipal((p) => p.language, "en");
+  static String getLanguage() =>
+      _fromPrincipal((p) => p.language, TomClientContext.defaultLanguage);
 
-  /// Returns the stored country from the current principal, or "XX".
-  ///
-  /// `XX` is a **deliberate non-locale sentinel**, not a country. It is in the
-  /// range ISO 3166-1 permanently withholds from assignment (`AA`, `QM`-`QZ`,
-  /// `XA`-`XZ`, `ZZ`) precisely so applications can use it for "none", which is
-  /// what it means here and in [TomAuthenticationMessage.clientCountry]. It is
-  /// two letters, so anything checking only the shape will accept it as a
-  /// country; consumers that build a locale key must reject it, and
-  /// `TomTextLocale` does.
-  static String getCountry() => _fromPrincipal((p) => p.country, "XX");
+  /// Returns the stored country from the current principal, or
+  /// [TomClientContext.noCountry] — the non-locale sentinel described there,
+  /// which a consumer building a locale key must drop rather than treat as a
+  /// region.
+  static String getCountry() =>
+      _fromPrincipal((p) => p.country, TomClientContext.noCountry);
 
-  /// Returns the server timezone from the current principal, or "utc".
-  static String getTimezone() => _fromPrincipal((p) => p.timezone, "utc");
+  /// Returns the server timezone from the current principal, or
+  /// [TomClientContext.defaultTimezone].
+  static String getTimezone() =>
+      _fromPrincipal((p) => p.timezone, TomClientContext.defaultTimezone);
 
-  /// Returns the client language from the current principal, or "en".
+  /// Returns the client language from the current principal, or
+  /// [TomClientContext.defaultLanguage].
   static String getClientLanguage() =>
-      _fromPrincipal((p) => p.clientLanguage, "en");
+      _fromPrincipal((p) => p.clientLanguage, TomClientContext.defaultLanguage);
 
-  /// Returns the client country from the current principal, or "XX".
+  /// Returns the client country from the current principal, or
+  /// [TomClientContext.noCountry].
   ///
-  /// The same non-locale sentinel as [getCountry], and here it is often the
-  /// *stored* value rather than the fallback:
-  /// [TomAuthenticationMessage.clientCountry] defaults to `XX`, so a device
-  /// that names no region sends it and it reaches the principal through an
-  /// ordinary sign-in.
+  /// Here the sentinel is often the *stored* value rather than the fallback:
+  /// [TomAuthenticationMessage.clientCountry] starts there, so a device that
+  /// names no region sends it and it reaches the principal through an ordinary
+  /// sign-in.
   static String getClientCountry() =>
-      _fromPrincipal((p) => p.clientCountry, "XX");
+      _fromPrincipal((p) => p.clientCountry, TomClientContext.noCountry);
 
-  /// Returns the client timezone from the current principal, or "utc".
+  /// Returns the client timezone from the current principal, or
+  /// [TomClientContext.defaultTimezone].
   static String getClientTimezone() =>
-      _fromPrincipal((p) => p.clientTimezone, "utc");
+      _fromPrincipal((p) => p.clientTimezone, TomClientContext.defaultTimezone);
 }
 
 // =============================================================================

@@ -39,6 +39,50 @@
 library;
 
 // =============================================================================
+// CLIENT CONTEXT DEFAULTS
+// =============================================================================
+
+/// The language, country and timezone a principal carries when nothing better
+/// is known.
+///
+/// Named rather than written out, because these are *compared* about as often
+/// as they are assigned: a consumer that has to recognise "no country" writes
+/// the same two letters as the class that produced them, and the two drift
+/// apart silently — a literal in a comparison is a copy of a decision, not a
+/// reference to it. Every login message, every OAuth request and every
+/// `TomContextProviders` fallback reads them from here.
+class TomClientContext {
+  TomClientContext._();
+
+  /// The language code used when the client names none: `en`.
+  ///
+  /// A default rather than a sentinel — it names a real language, and a
+  /// consumer that resolves a bundle for it gets an English one. That is the
+  /// point: the alternative to guessing is rendering raw keys.
+  static const String defaultLanguage = 'en';
+
+  /// The country code used when the client names none: `XX`.
+  ///
+  /// A **deliberate non-locale sentinel**, not a country. It is in the range
+  /// ISO 3166-1 permanently withholds from assignment (`AA`, `QM`-`QZ`,
+  /// `XA`-`XZ`, `ZZ`) precisely so applications can use it for "none". Being
+  /// two letters, anything checking only the shape accepts it as a country;
+  /// anything building a locale key must drop it instead, and `TomTextLocale`
+  /// does.
+  ///
+  /// It travels the wire as an ordinary value rather than a rare one: a device
+  /// that names no region sends it verbatim, and it reaches
+  /// [TomPrincipal.clientCountry] unchanged.
+  static const String noCountry = 'XX';
+
+  /// The timezone identifier used when the client names none: `utc`.
+  ///
+  /// Resolvable, unlike an empty string, so a consumer that parses it gets a
+  /// zone rather than an error.
+  static const String defaultTimezone = 'utc';
+}
+
+// =============================================================================
 // ACCESS CONTROL INFORMATION
 // =============================================================================
 

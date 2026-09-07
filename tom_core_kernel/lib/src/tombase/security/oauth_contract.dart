@@ -35,6 +35,7 @@ import '../http_connection/httpmethods.dart';
 import '../reflection/reflection.dart';
 import 'access_controls.dart';
 import 'authentication_authorization.dart';
+import 'user_principal_aci.dart';
 
 /// One configured external-identity provider, as a client sees it.
 ///
@@ -116,14 +117,23 @@ class TomOAuthAuthorizationRequest {
   /// The organization the login is for.
   String organization = '';
 
-  /// The client's language code.
-  String clientLanguage = '';
+  /// The client's language code. Defaults to [TomClientContext.defaultLanguage].
+  ///
+  /// The three client-context fields start where
+  /// [TomAuthenticationMessage]'s namesakes start, so a request that omits
+  /// them carries the same context whichever login produced it. They were
+  /// once empty here, which made an omitted field mean something different on
+  /// this path — `''` is not a resolvable language, country or zone, so a
+  /// consumer that parses rather than forwards behaved differently depending
+  /// on the entry point.
+  String clientLanguage = TomClientContext.defaultLanguage;
 
-  /// The client's country code.
-  String clientCountry = '';
+  /// The client's country code, or [TomClientContext.noCountry] for none.
+  String clientCountry = TomClientContext.noCountry;
 
-  /// The client's IANA timezone name.
-  String clientTimezone = '';
+  /// The client's IANA timezone name. Defaults to
+  /// [TomClientContext.defaultTimezone].
+  String clientTimezone = TomClientContext.defaultTimezone;
 
   /// Creates an authorization request.
   TomOAuthAuthorizationRequest({
@@ -132,9 +142,9 @@ class TomOAuthAuthorizationRequest {
     this.application = '',
     this.process = '',
     this.organization = '',
-    this.clientLanguage = '',
-    this.clientCountry = '',
-    this.clientTimezone = '',
+    this.clientLanguage = TomClientContext.defaultLanguage,
+    this.clientCountry = TomClientContext.noCountry,
+    this.clientTimezone = TomClientContext.defaultTimezone,
   });
 
   @override
