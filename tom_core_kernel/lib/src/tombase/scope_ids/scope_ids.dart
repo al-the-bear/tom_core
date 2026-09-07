@@ -345,7 +345,7 @@ class InScopeBuilder {
   ) => fn == null ? null : wrap5(fn);
 
   /// Wraps a callback with one positional and named parameters.
-  /// Use for Flutter's [InputCounterWidgetBuilder] and similar typedefs
+  /// Use for Flutter's `InputCounterWidgetBuilder` and similar typedefs
   /// that use named parameters.
   R Function(
     A, {

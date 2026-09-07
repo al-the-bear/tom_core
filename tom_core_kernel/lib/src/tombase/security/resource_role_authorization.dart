@@ -82,8 +82,10 @@ class TomResourceRoleRegistry {
 /// through the [TomResourceRoleRegistry].
 ///
 /// The resolution is deliberately closed (C-5):
-/// - resource key not in the map → the principal has no role there → [none];
-/// - role not in the registry → an unknown role grants nothing → [none].
+/// - resource key not in the map → the principal has no role there →
+///   [TomAuthState.none];
+/// - role not in the registry → an unknown role grants nothing →
+///   [TomAuthState.none].
 ///
 /// ```dart
 /// // At login (from the authorization token's resourceRoles claim):

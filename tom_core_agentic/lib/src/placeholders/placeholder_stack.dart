@@ -30,7 +30,8 @@
 ///
 /// This is **not** the grammar of the simple `${name}` form. That form has
 /// no grammar: the scanner routes on prefix alone, so every body that is
-/// not `env:` / `file:` / `state:` becomes a lookup key, and [bind] accepts
+/// not `env:` / `file:` / `state:` becomes a lookup key, and
+/// [PlaceholderStack.bind] accepts
 /// any string as a name. `${role.anchor}` — a built-in of the brain
 /// substrate, and the first thing its system scaffold emits — is a bound,
 /// resolvable, deliberately dotted name.

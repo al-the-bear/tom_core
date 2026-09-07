@@ -59,9 +59,10 @@ final class ProcedureRerankWeights {
   double get _total => embedding + requiresOverlap + successRate + recency;
 }
 
-/// Folds the four re-rank factors into one comparable score in [0,1].
+/// Folds the four re-rank factors into one comparable score in `[0, 1]`.
 ///
-/// Each factor is clamped to [0,1] (so an out-of-range input cannot pull the
+/// Each factor is clamped to `[0, 1]` (so an out-of-range input cannot pull
+/// the
 /// score past the bounds), then combined as a weight-normalised average. A zero
 /// total weight yields `0.0` rather than NaN — a degenerate weighting ranks
 /// everything equally at the floor rather than crashing the sort.
@@ -83,7 +84,7 @@ double scoreProcedureCandidate({
 }
 
 /// Maps the age of a candidate's last successful run to a recency score in
-/// [0,1] via exponential half-life decay.
+/// `[0, 1]` via exponential half-life decay.
 ///
 /// A run that just happened scores `1.0`; one a full [halfLifeMillis] old
 /// scores `0.5`; older runs decay monotonically toward `0`. A negative age

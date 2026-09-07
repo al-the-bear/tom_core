@@ -12,9 +12,9 @@ import 'package:path/path.dart' as p;
 
 /// A root that admits a resolved path, paired with that resolved path.
 ///
-/// [root] is the normalised, absolute root (so callers can rebase a match back
-/// onto it); [path] is the resolved, containment-checked absolute path under
-/// that root.
+/// `root` is the normalised, absolute root (so callers can rebase a match
+/// back onto it); `path` is the resolved, containment-checked absolute path
+/// under that root. Both are record fields, which dartdoc cannot link.
 typedef ScopedPath = ({String root, String path});
 
 /// A union of filesystem roots a path must stay within.

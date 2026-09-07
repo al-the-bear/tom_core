@@ -115,7 +115,7 @@ import 'remote_logoutput.dart';
 class TomRemoteLogServer {
   /// The output destination for received log messages.
   ///
-  /// Defaults to the current [tomLog.logOutput] at initialization time.
+  /// Defaults to [tomLog]'s [TomLogger.logOutput] at initialization time.
   static TomLogOutput localOutput = tomLog.logOutput;
 
   /// Processes an incoming remote log message.

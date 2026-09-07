@@ -205,8 +205,9 @@ class TomTextLocale {
   /// ever be keyed with one.
   ///
   /// They matter more than their rarity suggests, because they are exactly
-  /// what a caller supplies when it has *no* country. `TomLoginMessage`
-  /// defaults `clientCountry` to `XX`, clients send it verbatim when the
+  /// what a caller supplies when it has *no* country.
+  /// `TomAuthenticationMessage` defaults `clientCountry` to `XX`, clients send
+  /// it verbatim when the
   /// device names no region, and it reaches [TomPrincipal.clientCountry]
   /// through an ordinary sign-in; the kernel's `TomContextProviders.getCountry`
   /// answers the same sentinel, and CLDR spells the idea `ZZ`. Admitting one

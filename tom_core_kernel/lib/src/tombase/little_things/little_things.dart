@@ -152,8 +152,8 @@ Object? getObjectFromCurrentZone(Type t) {
 /// ```
 ///
 /// [onError] returns `Object`, so any type will do; returning a [TomException]
-/// is what carries [error] and [stacktrace] forward rather than discarding
-/// them.
+/// is what carries its `error` and `stacktrace` arguments forward rather than
+/// discarding them.
 ///
 /// ## Parameters
 ///

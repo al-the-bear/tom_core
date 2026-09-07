@@ -111,7 +111,7 @@ void main() {
     });
 
     test('the "no country" sentinel arrives as data and costs the country', () {
-      // Not a hypothetical composition. `TomLoginMessage.clientCountry`
+      // Not a hypothetical composition. `TomAuthenticationMessage.clientCountry`
       // defaults to `XX` and clients send it verbatim when the device names no
       // region, so it reaches `TomPrincipal.clientCountry` in ordinary
       // traffic — and this is the path a signed-in user with no stored

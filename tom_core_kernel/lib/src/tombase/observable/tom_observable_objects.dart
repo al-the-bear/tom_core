@@ -40,7 +40,7 @@ class TomObservableException extends TomException {
 ///
 /// This is **one instance shared by the whole program**, so callers test for it
 /// by identity (`identical(x, tomNull)`). That sharing is why it is read-only:
-/// [set] — and therefore `|` and `<<` — throws
+/// [TomObject.set] — and therefore `|` and `<<` — throws
 /// `observable.null_sentinel.set_not_allowed` rather than writing. A single
 /// careless assignment would otherwise be observed by every later reader of the
 /// sentinel, in unrelated objects, anywhere in the process.

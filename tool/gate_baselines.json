@@ -15,6 +15,11 @@
       "faults": 0,
       "measured": "2026-09-03"
     },
+    "check_dartdoc_build": {
+      "faults": 0,
+      "measured": "2026-09-07",
+      "note": "Zero, and held there. `dart doc` must report neither a warning nor an error for tom_core_kernel, tom_core_agentic or tom_core_codespecs. Every fault is one bracketed name in one comment, so a rise of one is a real regression rather than noise -- this count was 11 for tom_core_kernel alone before the gate existed."
+    },
     "check_dartdoc_refs": {
       "faults": 0,
       "measured": "2026-09-03"

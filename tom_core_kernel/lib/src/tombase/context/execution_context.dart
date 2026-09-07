@@ -488,9 +488,9 @@ class TomContextProviders {
   /// `XX` is a **deliberate non-locale sentinel**, not a country. It is in the
   /// range ISO 3166-1 permanently withholds from assignment (`AA`, `QM`-`QZ`,
   /// `XA`-`XZ`, `ZZ`) precisely so applications can use it for "none", which is
-  /// what it means here and in [TomLoginMessage.clientCountry]. It is two
-  /// letters, so anything checking only the shape will accept it as a country;
-  /// consumers that build a locale key must reject it, and
+  /// what it means here and in [TomAuthenticationMessage.clientCountry]. It is
+  /// two letters, so anything checking only the shape will accept it as a
+  /// country; consumers that build a locale key must reject it, and
   /// `TomTextLocale` does.
   static String getCountry() => _fromPrincipal((p) => p.country, "XX");
 
@@ -504,9 +504,10 @@ class TomContextProviders {
   /// Returns the client country from the current principal, or "XX".
   ///
   /// The same non-locale sentinel as [getCountry], and here it is often the
-  /// *stored* value rather than the fallback: [TomLoginMessage.clientCountry]
-  /// defaults to `XX`, so a device that names no region sends it and it reaches
-  /// the principal through an ordinary sign-in.
+  /// *stored* value rather than the fallback:
+  /// [TomAuthenticationMessage.clientCountry] defaults to `XX`, so a device
+  /// that names no region sends it and it reaches the principal through an
+  /// ordinary sign-in.
   static String getClientCountry() =>
       _fromPrincipal((p) => p.clientCountry, "XX");
 

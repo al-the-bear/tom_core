@@ -252,9 +252,11 @@ class TomAuthorizationGroup {
 
   /// Applies this group's authorization mode to a member's state.
   ///
-  /// - [controlsAll]: group state replaces the member's state
-  /// - [controlsWidest]: group state is the ceiling (narrows the member)
-  /// - [controlsNarrowest]: group state is the floor (widens the member)
+  /// - [AuthGroupMode.controlsAll]: group state replaces the member's state
+  /// - [AuthGroupMode.controlsWidest]: group state is the ceiling (narrows
+  ///   the member)
+  /// - [AuthGroupMode.controlsNarrowest]: group state is the floor (widens
+  ///   the member)
   ///
   /// [scope] is the frame the group is resolved in — see [resolveGroupPath].
   /// A caller that resolved the member's own path against an explicit scope

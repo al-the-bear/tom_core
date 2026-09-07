@@ -200,6 +200,7 @@ reports and never gates.
 | [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
+| [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation and requires `dart doc` to report nothing |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_attributions.py`](tool/check_doc_attributions.py) | Finds prose that names a source file and then names a type that file has not got |
 | [`tool/check_member_attributions.py`](tool/check_member_attributions.py) | Finds documentation that writes `Type.member` for a member the type does not declare |
@@ -364,6 +365,37 @@ several of them cycles. This check takes the part of the problem that has no
 such ambiguity — a private name can only ever resolve inside its own library, so
 whether it exists is answerable from that library alone. That is also exactly
 the shape a rename leaves behind.
+
+```bash
+python3 tool/check_dartdoc_build.py                  # the gated packages
+python3 tool/check_dartdoc_build.py tom_core_server  # one package, ad hoc
+```
+
+The other half of the same question, and the only thing in the toolchain that
+answers it: `dart doc` itself. The gate above asks whether a referenced name
+*exists*; this one builds the documentation and requires the build to say
+nothing at all.
+
+The two are complements rather than rivals, and the difference is the
+population. `comment_references` judges every reference in the tree, which is
+why it cannot be turned on here. `dart doc` judges only what is reachable from
+the package barrel — the surface that ships, where a reference either resolves
+for the reader or does not and there is no import graph to trade away. Eleven
+references in `tom_core_kernel`, against the 353 the lint would have raised.
+
+Left alone the class does not stay still: eight unresolved references were
+recorded in this package on 2026-08-19, and three weeks later the same command
+reported eleven — two of the original eight repaired in passing, five new ones
+arrived, across four unrelated modules. Each is one bracketed word inside a
+comment that reads perfectly, which is why review does not catch them and a
+build does.
+
+Every warning counts, not only unresolved references: a documentation build
+that is allowed to say one thing is a build nobody reads. The rendered HTML is
+thrown away — 18 MB for `tom_core_kernel` alone, and what the gate wants is the
+log, which names every fault by file and line. The log is kept under
+`tool/ztmp/dartdoc/`. Packages are gated only once they are silent, the same
+rule `check_doc_dart_blocks.py` states.
 
 ```bash
 python3 tool/check_consumer_claims.py                 # the whole repository
