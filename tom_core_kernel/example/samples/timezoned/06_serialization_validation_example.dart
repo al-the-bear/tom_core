@@ -3,6 +3,11 @@
 /// This example demonstrates the serialization and parsing capabilities
 /// of TomTimezoned types. It shows the string format, how to serialize
 /// to strings, and how to parse strings back to objects.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/06_serialization_validation_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

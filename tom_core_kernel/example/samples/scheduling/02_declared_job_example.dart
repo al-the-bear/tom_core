@@ -14,6 +14,11 @@
 /// at fault. That is the whole difference from a scheduler that stores a job's
 /// class as a string and resolves it at fire time, where a rename fails at
 /// 03:00 into a log nobody reads.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/scheduling/02_declared_job_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

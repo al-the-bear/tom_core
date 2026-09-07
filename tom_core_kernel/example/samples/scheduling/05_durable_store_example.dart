@@ -23,6 +23,11 @@
 ///    increasing across the restart.
 /// 4. And the honest limit: a file store's claim is not atomic between
 ///    processes, which is *why* the file pair wants the lock beside it.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/scheduling/05_durable_store_example.dart
+/// ```
 library;
 
 import 'dart:convert';

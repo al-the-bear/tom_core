@@ -6,6 +6,11 @@
 /// - UTC timezone singleton
 /// - Finding timezones by offset
 /// - Timezone string representation
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/01_timezone_basics_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -1,4 +1,9 @@
 /// Demonstrates basic logging functionality using the TomLogger system.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/logging/01_basic_logging_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

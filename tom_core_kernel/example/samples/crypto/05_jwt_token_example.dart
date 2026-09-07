@@ -3,6 +3,11 @@
 /// This example demonstrates JWT token creation and parsing using the
 /// TomBase crypto module. JWT (JSON Web Tokens) are commonly used for
 /// authentication and secure data exchange.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/crypto/05_jwt_token_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

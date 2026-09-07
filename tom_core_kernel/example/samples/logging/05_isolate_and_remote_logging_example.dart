@@ -33,6 +33,11 @@
 /// `TomLoggingExecutor`'s dartdoc shows for redirecting the logging isolate's
 /// output, and only a compiler can confirm it forwards the constructor
 /// arguments its superclass requires.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/logging/05_isolate_and_remote_logging_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

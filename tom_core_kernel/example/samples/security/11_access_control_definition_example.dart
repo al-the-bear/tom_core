@@ -27,6 +27,11 @@
 ///   not define is kept, not dropped
 /// - Resource roles (C-5) pass through untouched, because they are per-resource
 ///   assignments rather than anything the graph could derive
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/11_access_control_definition_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

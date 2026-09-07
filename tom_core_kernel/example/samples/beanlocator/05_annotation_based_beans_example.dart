@@ -7,11 +7,7 @@
 ///
 /// These annotations enable automatic bean discovery via
 /// `initializeBeanContext()`, and this sample **performs that discovery
-/// itself** rather than inheriting a registry someone else built:
-///
-/// ```bash
-/// dart run --enable-asserts example/samples/beanlocator/05_annotation_based_beans_example.dart
-/// ```
+/// itself** rather than inheriting a registry someone else built.
 ///
 /// That is the point of the reset at the start of [run]. A sample about
 /// annotation-based registration that resolves beans a *different* sample
@@ -19,6 +15,11 @@
 /// apart, because a resolved bean looks the same either way. Clearing the
 /// registry first and asserting it is empty is what makes the beans that
 /// follow attributable to the annotations on this page.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/beanlocator/05_annotation_based_beans_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

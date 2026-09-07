@@ -11,6 +11,11 @@
 /// - Enabling supervision with `healthCheckInterval`
 /// - Observing a [TomWorkerDiedException] for the in-flight command
 /// - Confirming the pool recovers and keeps serving requests
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/isolate_pooling/04_worker_pool_supervision_example.dart
+/// ```
 library;
 
 import 'dart:isolate';

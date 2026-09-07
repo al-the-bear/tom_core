@@ -4,6 +4,11 @@
 /// spawning worker isolates, executing commands, using the TomCommand
 /// pattern, what happens to a message no executor claims, and managing
 /// worker lifecycle.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/isolate_pooling/01_worker_basics_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

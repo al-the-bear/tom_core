@@ -7,6 +7,11 @@
 /// context you hold, and [TomExecutionContext.getValueFromCurrentZone] once you
 /// are inside a `runInContext` body. Direct `contextMap` access appears only
 /// where the map itself is the subject — entry counts and key listings.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/context/03_context_providers_example.dart
+/// ```
 library;
 
 import 'dart:async';

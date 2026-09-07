@@ -4,6 +4,11 @@
 /// The store itself is server-side (a table, a repository, a row scope), and
 /// none of it appears here. What appears here is the part the two halves must
 /// agree on, which is why it lives in the one package they both depend on.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/preferences/02_preference_contract_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

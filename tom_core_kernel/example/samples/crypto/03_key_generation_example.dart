@@ -3,6 +3,11 @@
 /// This example demonstrates RSA key pair generation using the
 /// TomBase crypto module. Key generation is essential for creating
 /// new cryptographic identities for encryption and signing.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/crypto/03_key_generation_example.dart
+/// ```
 library;
 
 import 'dart:convert';

@@ -5,6 +5,11 @@
 /// - Understanding UTC storage model
 /// - Working with DST transitions
 /// - Practical use cases like meeting scheduling
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/04_timezone_conversion_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

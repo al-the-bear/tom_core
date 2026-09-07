@@ -27,6 +27,11 @@
 /// - Why [TomEntitlementAccess] is the grant carrier: entitlements are the one
 ///   requirement kind that means the same thing asked of either principal,
 ///   while role and group controls keep the `full` (uncapped) default
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/08_server_principal_meet_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

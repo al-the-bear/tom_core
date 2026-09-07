@@ -6,6 +6,11 @@
 /// - Map operators and methods
 /// - Notifications on map and value changes
 /// - Merging maps with + operator
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/observable/05_tom_map.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

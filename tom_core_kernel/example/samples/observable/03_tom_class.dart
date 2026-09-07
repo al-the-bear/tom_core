@@ -9,6 +9,11 @@
 /// - getMembers for accessing registered members
 ///
 /// NOTE: This example requires the reflection build step to run.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/observable/03_tom_class.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

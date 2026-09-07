@@ -7,6 +7,11 @@
 /// - TomLoggable interface for custom log representation
 /// - Global settings configuration
 /// - limited() helper function
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/logging/04_advanced_logging_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

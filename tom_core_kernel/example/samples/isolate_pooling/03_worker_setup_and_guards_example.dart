@@ -30,6 +30,11 @@
 /// calls directly — is in `doc/api_reference/api_summary_isolate_pooling.md`.
 /// That summary is the one inventory; keeping a second one here would only let
 /// the two disagree.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/isolate_pooling/03_worker_setup_and_guards_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

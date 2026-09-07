@@ -9,7 +9,8 @@
 /// - TomLoggable interface
 /// - TomServerCallError integration
 ///
-/// Run with (asserts MUST be enabled so the invariants below are checked):
+/// To run this file on its own (asserts MUST be enabled so the invariants
+/// below are checked):
 /// ```bash
 /// dart run --enable-asserts example/samples/little_things/03_tom_exception_example.dart
 /// ```

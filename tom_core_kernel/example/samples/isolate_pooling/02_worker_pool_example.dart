@@ -3,6 +3,11 @@
 /// This example demonstrates TomWorkerPool for managing multiple
 /// worker isolates with automatic load distribution. Worker pools
 /// are ideal for CPU-intensive parallel processing.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/isolate_pooling/02_worker_pool_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

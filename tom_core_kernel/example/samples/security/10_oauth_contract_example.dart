@@ -31,6 +31,11 @@
 /// - [TomPublicAccess] on all three endpoints, and why public is not unguarded
 /// - [registerTomOAuthApi] as the explicit, idempotent registration both halves
 ///   call, and [TomOAuthApiService] as the contract's Dart face
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/10_oauth_contract_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

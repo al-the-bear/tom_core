@@ -5,6 +5,11 @@
 /// - Parsing from serialized strings
 /// - Type detection from prefixes
 /// - Error handling for invalid strings
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/05_serialization_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

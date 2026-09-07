@@ -8,6 +8,11 @@
 /// - Using TomBean.fromName() for named dependencies
 /// - Using TomBean.withName() to register named beans
 /// - Callable syntax: service() instead of service.get()
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/beanlocator/02_bean_dependency_patterns_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

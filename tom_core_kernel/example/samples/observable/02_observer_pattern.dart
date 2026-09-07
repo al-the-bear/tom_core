@@ -6,6 +6,11 @@
 /// - Muting and unmuting notifications
 /// - Removing observers
 /// - Multiple observers on same observable
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/observable/02_observer_pattern.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -19,6 +19,11 @@
 /// `03_initialization_sequence_example.dart` install the real
 /// `TomStandalonePlatformUtils`; this file works with local implementations so
 /// it can show what each contract actually promises.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/runtime/01_platform_detection_example.dart
+/// ```
 library;
 
 import 'dart:io';

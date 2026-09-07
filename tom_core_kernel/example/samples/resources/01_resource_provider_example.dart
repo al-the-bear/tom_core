@@ -1,5 +1,10 @@
 /// Demonstrates resource provider usage for managing text resources and
 /// configuration values.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/resources/01_resource_provider_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

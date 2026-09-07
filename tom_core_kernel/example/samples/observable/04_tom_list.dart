@@ -8,6 +8,11 @@
 /// - Notifications on list and element changes
 /// - Concatenating lists with + operator
 /// - Replacing the whole list with the &lt;&lt; operator
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/observable/04_tom_list.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

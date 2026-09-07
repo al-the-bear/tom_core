@@ -13,6 +13,11 @@
 /// The core guarantee: the wrapped callback always observes the scope that was
 /// current when the [ScopeCapture] was built, regardless of where it is
 /// finally called.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/scope_ids/02_scope_capture_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -14,6 +14,11 @@
 /// Every provider here is a local instance. The application-wide singleton —
 /// `setAppConfigProvider` / `getAppConfig`, the static `loader`, and the
 /// independence of the text and config singletons — belongs to example 04.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/resources/02_config_resource_provider_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

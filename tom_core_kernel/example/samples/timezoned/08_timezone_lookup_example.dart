@@ -2,6 +2,11 @@
 ///
 /// This example demonstrates the various ways to find and look up timezones:
 /// by name, by offset, and how to list all available timezones.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/08_timezone_lookup_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

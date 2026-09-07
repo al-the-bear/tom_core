@@ -13,6 +13,11 @@
 /// Scopes are carried on the current [Zone], so `TomScope.current` always
 /// resolves to whichever scope was installed by the nearest enclosing
 /// `withScope` / `runInScope` call, and is restored automatically on exit.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/scope_ids/01_scope_basics_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

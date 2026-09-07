@@ -19,6 +19,11 @@
 /// The runtime half of this — platform detection, environment hierarchies,
 /// initializers — is the subject of `samples/runtime/03_…`; this sample
 /// configures the minimum the locator needs and moves on.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/beanlocator/01_initialization_sequence_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

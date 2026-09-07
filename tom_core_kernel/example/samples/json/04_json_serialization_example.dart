@@ -16,6 +16,11 @@
 /// Formatting the resulting JSON is `01_json_formatting_example.dart`;
 /// sanitizing an arbitrary untyped map is example 6 of
 /// `02_json_navigation_example.dart`.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/json/04_json_serialization_example.dart
+/// ```
 library;
 
 import 'dart:convert';

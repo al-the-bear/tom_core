@@ -31,6 +31,11 @@
 /// The counter is a process-wide `static final TomInt` that nothing resets, so
 /// this example reads it with `~` up front and compares deltas rather than
 /// absolute values.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/resources/05_resource_revision_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

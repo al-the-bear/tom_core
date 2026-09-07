@@ -10,6 +10,11 @@
 /// (nothing survives a restart) and sharing (one process only) — which is
 /// exactly why the cluster story needs a database, and why it is demonstrated
 /// in `tom_core_server` rather than here.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/scheduling/01_memory_substrate_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

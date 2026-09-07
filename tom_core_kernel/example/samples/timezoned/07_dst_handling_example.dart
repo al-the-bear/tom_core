@@ -3,6 +3,11 @@
 /// This example demonstrates how TomTimezone handles Daylight Saving Time
 /// (DST) transitions. It shows how offsets change across DST boundaries
 /// and how to work with timezones that observe DST.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/07_dst_handling_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

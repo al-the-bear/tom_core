@@ -1,4 +1,9 @@
 /// Demonstrates access control mechanisms in the Tom security framework.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/02_access_control_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

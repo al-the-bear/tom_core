@@ -36,6 +36,11 @@
 ///   stop legitimately has no deadline
 /// - [Tom2FAMethodDescriptor.scoped] carrying resource *keys*, never display
 ///   text, so the tier that renders resolves them against the user's locale
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/09_two_factor_login_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

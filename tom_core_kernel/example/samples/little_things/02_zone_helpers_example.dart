@@ -1,5 +1,10 @@
 /// Demonstrates zone-related helper functions from the little_things module
 /// including typed zone value retrieval and async checked execution.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/little_things/02_zone_helpers_example.dart
+/// ```
 library;
 
 import 'dart:async';

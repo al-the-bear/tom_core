@@ -4,6 +4,11 @@
 /// every example below is really the same question asked of a different type:
 /// what was stored, and does reading it back give the same value — with the
 /// same type?
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/preferences/01_preference_codec_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

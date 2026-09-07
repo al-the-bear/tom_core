@@ -1,4 +1,9 @@
 /// Demonstrates environment and platform configuration using TomRuntime.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/runtime/02_environment_platform_example.dart
+/// ```
 library;
 
 import 'package:tom_basics_console/tom_basics_console.dart';

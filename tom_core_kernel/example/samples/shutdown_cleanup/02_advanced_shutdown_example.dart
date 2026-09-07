@@ -22,6 +22,11 @@
 /// `01_shutdown_handler_example.dart` owns registration in general and
 /// `03_shutdown_execution_example.dart` owns the execution semantics — phase
 /// order, once-only execution, fault isolation, `paused`, `silent`.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/shutdown_cleanup/02_advanced_shutdown_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

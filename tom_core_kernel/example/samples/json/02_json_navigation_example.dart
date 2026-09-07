@@ -1,5 +1,10 @@
 /// Demonstrates JSON navigation and manipulation utilities including
 /// deep merging, tree traversal, path-based access, and JSON sanitization.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/json/02_json_navigation_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -14,6 +14,11 @@
 ///
 /// `05_jwt_token_example.dart` owns creation, parsing and the encrypted
 /// round-trip, and nothing here repeats them.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/crypto/06_advanced_jwt_example.dart
+/// ```
 library;
 
 import 'dart:convert';

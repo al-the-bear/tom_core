@@ -8,6 +8,11 @@
 ///
 /// The HTTP layer is faked with a scripted sender so the example is
 /// deterministic and offline: each `send()` pops the next pre-scripted response.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/http_connection/06_auth_retry_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

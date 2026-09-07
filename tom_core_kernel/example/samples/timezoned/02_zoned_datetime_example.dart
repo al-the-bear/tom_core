@@ -6,6 +6,11 @@
 /// - Accessing UTC and local time components
 /// - Converting from DateTime
 /// - Using the now() factory
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/02_zoned_datetime_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

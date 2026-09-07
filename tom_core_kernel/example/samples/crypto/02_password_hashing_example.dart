@@ -3,6 +3,11 @@
 /// This example demonstrates secure password hashing using the Argon2
 /// algorithm. Argon2 is the winner of the Password Hashing Competition
 /// and is recommended for secure password storage.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/crypto/02_password_hashing_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

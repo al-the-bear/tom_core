@@ -14,6 +14,11 @@
 /// sense in motion. The last two are the point of the file: what a missed-window
 /// policy governs is **windows after the last one on record**, which decides a
 /// one-shot deadline's fate in a way that reads backwards until you see it.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/scheduling/03_schedule_kinds_example.dart
+/// ```
 library;
 
 import 'dart:async';

@@ -9,6 +9,11 @@
 /// - File extension to MIME type mapping
 /// - HTTP header constants
 /// - TomApiEndpoint for structured API definitions
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/http_connection/02_connection_config_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

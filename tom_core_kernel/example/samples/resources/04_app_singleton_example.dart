@@ -30,6 +30,11 @@
 /// asynchronous source — a JSON asset, a file, a download — is awaited in
 /// `main()` first and installed with `.from(...)`; see
 /// `doc/resources/resources.md`.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/resources/04_app_singleton_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

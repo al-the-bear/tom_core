@@ -14,7 +14,8 @@
 /// - Why the same rule keeps the parent chain acyclic, which the unguarded
 ///   walk in `buildScopePath` relies on
 ///
-/// Run with (asserts MUST be enabled so the invariants below are checked):
+/// To run this file on its own (asserts MUST be enabled so the invariants
+/// below are checked):
 /// ```bash
 /// dart run --enable-asserts example/samples/scope_ids/03_scope_mixin_example.dart
 /// ```

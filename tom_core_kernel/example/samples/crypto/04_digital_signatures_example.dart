@@ -3,6 +3,11 @@
 /// This example demonstrates RSA digital signatures for data integrity
 /// and authentication. Signatures prove that data was created by the
 /// holder of a private key and has not been modified.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/crypto/04_digital_signatures_example.dart
+/// ```
 library;
 
 import 'dart:convert';

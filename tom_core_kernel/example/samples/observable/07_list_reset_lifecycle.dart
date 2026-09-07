@@ -13,6 +13,11 @@
 /// and restores the bind-time snapshot.
 ///
 /// NOTE: Run `dart run build_runner build` before executing this example.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/observable/07_list_reset_lifecycle.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

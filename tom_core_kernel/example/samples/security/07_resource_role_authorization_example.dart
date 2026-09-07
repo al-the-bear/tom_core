@@ -18,6 +18,11 @@
 ///   through it
 /// - [TomResourceRoleAdapter.stateOf] for server-side enforcement call sites
 ///   that gate an operation without going through the global singleton
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/07_resource_role_authorization_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

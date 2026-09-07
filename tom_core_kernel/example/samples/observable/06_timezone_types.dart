@@ -6,6 +6,11 @@
 /// - Serialization with prefixes (@D@, @T@, @X@)
 /// - Range types: TomDateRange, TomTimeRange, TomDateTimeRange
 /// - Using setByString for deserialization
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/observable/06_timezone_types.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

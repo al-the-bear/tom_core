@@ -19,6 +19,11 @@
 /// in general — `protect()` against the ambient zone. What example 4 below
 /// adds is the part specific to minting a token: the operand is the subject
 /// the token is *for*, not whoever the zone names.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/04_bearer_authentication_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

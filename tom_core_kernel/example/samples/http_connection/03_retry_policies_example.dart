@@ -9,6 +9,11 @@
 /// - Implementing retry logic patterns
 /// - Retryable status code detection
 /// - Internal error handling
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/http_connection/03_retry_policies_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -9,6 +9,11 @@
 /// - Accessing the current context
 /// - Error handling for double initialization
 /// - Which of the two URIs a built endpoint addresses
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/http_connection/05_remote_context_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

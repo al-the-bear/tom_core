@@ -5,6 +5,11 @@
 /// - TomZonedTime for time values without date components
 /// - Differences from TomZonedDateTime
 /// - Serialization prefixes
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/03_zoned_date_time_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -7,6 +7,11 @@
 /// - TomClientRemoteContext for server configuration
 /// - Bracket notation for accessing APIs and endpoints
 /// - Resolving an endpoint's address from its own declaration
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/http_connection/04_api_endpoint_definition_example.dart
+/// ```
 library;
 
 import 'dart:convert';

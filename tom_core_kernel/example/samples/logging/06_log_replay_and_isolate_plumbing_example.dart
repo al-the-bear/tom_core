@@ -26,7 +26,7 @@
 /// stand-in that answers in memory. This keeps the example deterministic and
 /// fast while still touching the real public API.
 ///
-/// Run with:
+/// To run this file on its own:
 /// ```bash
 /// dart run --enable-asserts example/samples/logging/06_log_replay_and_isolate_plumbing_example.dart
 /// ```

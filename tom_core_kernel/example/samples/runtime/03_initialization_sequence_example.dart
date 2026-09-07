@@ -1,4 +1,9 @@
 /// Demonstrates the complete runtime initialization sequence.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/runtime/03_initialization_sequence_example.dart
+/// ```
 library;
 
 import 'package:tom_basics_console/tom_basics_console.dart';

@@ -6,6 +6,11 @@
 /// - Chaining writes with the &lt;&lt; operator
 /// - Observer notifications
 /// - Nullable wrappers
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/observable/01_tom_object_basics.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

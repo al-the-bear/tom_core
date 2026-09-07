@@ -15,6 +15,11 @@
 /// - [TomAccessControl.resolveAuthState]'s default binary→four-state bridge
 /// - [TomGradedAccess.checkAccessibility] collapsing to [TomAuthState.showsContent]
 /// - The [TomAuthState] predicates: `isVisible`, `isInteractive`, `showsContent`
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/06_graded_access_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -16,6 +16,11 @@
 ///   as the same exception type, in both directions
 /// - Recognizing TomExecutor.noResult, the answer a creator gives when nothing
 ///   on its side claimed the message
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/isolate_pooling/05_creator_backchannel_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

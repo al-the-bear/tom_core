@@ -26,6 +26,11 @@
 /// The last one steps back from the duplicate to the policy that spaces them:
 /// how far apart retries actually fall, and why the curve settles below the
 /// ceiling rather than on it.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/scheduling/04_execution_guarantee_example.dart
+/// ```
 library;
 
 import 'dart:math';

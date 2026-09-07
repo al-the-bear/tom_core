@@ -12,6 +12,11 @@
 /// Producing that JSON from a value object in the first place is the
 /// serialization contract — `TomJsonSerializable.toJson()` and
 /// `makeCleanJsonMap` — demonstrated in `04_json_serialization_example.dart`.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/json/01_json_formatting_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

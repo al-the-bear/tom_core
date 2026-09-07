@@ -1,4 +1,9 @@
 /// Demonstrates log output formatting and customization in TomLogger.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/logging/03_log_formatting_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

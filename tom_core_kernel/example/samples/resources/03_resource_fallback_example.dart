@@ -12,6 +12,11 @@
 /// `getText`/`getObject` surface the key itself so missing resources are
 /// obvious on screen, while the `OrNull` variants are for code that wants to
 /// branch on presence.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/resources/03_resource_fallback_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

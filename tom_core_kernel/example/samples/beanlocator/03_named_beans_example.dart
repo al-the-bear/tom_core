@@ -9,6 +9,11 @@
 /// - Multiple beans of the same type with different names
 /// - Static bean access methods
 /// - Callable syntax: bean() vs bean.get()
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/beanlocator/03_named_beans_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -18,6 +18,11 @@
 /// sees are the ones the server sent.
 ///
 /// NOTE: Run `dart run build_runner build` before executing this example.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/observable/08_observable_enum.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

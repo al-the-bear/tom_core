@@ -1,5 +1,10 @@
 /// Demonstrates utility functions from the little_things module including
 /// checked execution, stack trace processing, and exception handling.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/little_things/01_utility_functions_example.dart
+/// ```
 library;
 
 import 'dart:convert';

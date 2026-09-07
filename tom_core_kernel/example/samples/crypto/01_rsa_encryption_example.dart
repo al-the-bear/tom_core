@@ -4,6 +4,11 @@
 /// TomBase crypto module. RSA is an asymmetric encryption algorithm
 /// where data encrypted with a public key can only be decrypted with
 /// the corresponding private key.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/crypto/01_rsa_encryption_example.dart
+/// ```
 library;
 
 import 'dart:convert';

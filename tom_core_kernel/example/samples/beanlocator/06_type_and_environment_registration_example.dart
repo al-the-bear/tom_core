@@ -11,6 +11,11 @@
 /// - the static accessors [TomBean.getBeanByType] / [TomBean.getBeanByName].
 /// - the two distinct type-path errors: `no_bean_found_uninitialized` (nothing
 ///   registered) and `more_than_one_implementation_found` (ambiguous).
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/beanlocator/06_type_and_environment_registration_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

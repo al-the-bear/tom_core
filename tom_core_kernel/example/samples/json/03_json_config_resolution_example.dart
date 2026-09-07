@@ -11,6 +11,11 @@
 /// raw config tree (with `${VAR}` placeholders and `key@path@profile` directives)
 /// into a fully resolved structure. Rendering the result onto the wire is a
 /// separate concern — see `04_json_serialization_example.dart`.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/json/03_json_config_resolution_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

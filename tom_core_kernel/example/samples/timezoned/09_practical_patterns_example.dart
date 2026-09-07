@@ -3,6 +3,11 @@
 /// This example demonstrates common real-world patterns for using TomTimezoned
 /// types: scheduling meetings across timezones, storing/retrieving from
 /// databases, working with user preferences, and more.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/timezoned/09_practical_patterns_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

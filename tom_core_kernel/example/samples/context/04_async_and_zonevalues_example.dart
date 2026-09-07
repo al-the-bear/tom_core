@@ -12,6 +12,11 @@
 ///   deliberately not.
 /// - The [TomZoneValues] mutation API: `[]`/`[]=`, `addAll`, `containsKey`,
 ///   `remove` and `clear`, plus the `existingValues` merge constructor.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/context/04_async_and_zonevalues_example.dart
+/// ```
 library;
 
 import 'dart:async';

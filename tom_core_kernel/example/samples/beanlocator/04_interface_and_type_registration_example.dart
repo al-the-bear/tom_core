@@ -5,6 +5,11 @@
 /// - Manual type-based registration with TomBean.withType()
 /// - Static accessor methods: TomBean.getBeanByType() and TomBean.getBeanByName()
 /// - Error handling with TomBeanLocatorException
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/beanlocator/04_interface_and_type_registration_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

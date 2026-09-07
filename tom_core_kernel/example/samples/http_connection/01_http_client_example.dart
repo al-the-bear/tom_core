@@ -9,6 +9,11 @@
 /// - TomServerCallLoad for request payloads
 /// - TomServerChannel for connection management
 /// - TomServerCallError for response/error handling
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/http_connection/01_http_client_example.dart
+/// ```
 library;
 
 import 'dart:typed_data';

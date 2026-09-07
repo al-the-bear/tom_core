@@ -14,6 +14,11 @@
 /// Authorization state is ordered from most to least permissive:
 /// `none < disabled < read < full`. Most combinators take the more restrictive
 /// (narrower) of two states; only `widen` and `controlsNarrowest` raise it.
+///
+/// To run this file on its own:
+/// ```bash
+/// dart run --enable-asserts example/samples/security/05_ui_authorization_example.dart
+/// ```
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
