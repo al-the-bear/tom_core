@@ -210,6 +210,56 @@ void main() {
       expect(found..sort(), equals(byId.toList()..sort()));
     });
 
+    test('an endpoint that answers with an empty body declares void', () {
+      // A handler returning nothing makes the pipeline answer 200 with no
+      // payload, so there is no value for a caller to read and no type to give
+      // it. `Object?` promised a JSON value that never arrives, and it promised
+      // it in the only place a reader, a generated client or a documentation
+      // mirror can look: nothing in the framework reads
+      // `TomApiEndpoint.responseType`, so the declaration is not checked by
+      // anything else and is not corrected by any behaviour.
+      //
+      // Stated as a universal rather than as a list of the ten endpoints that
+      // were wrong, so an endpoint added later cannot reintroduce the spelling.
+      // An endpoint that genuinely returns an arbitrary JSON value would need
+      // an exemption here — which is the point: it would be a deliberate one.
+      for (final api in [authApi, adminApi, appApi]) {
+        for (final endpoint in api.endpoints.values) {
+          expect(
+            endpoint.responseType.toString(),
+            isNot(anyOf('Object?', 'Object')),
+            reason:
+                '${api.id}.${endpoint.id}: declare the result type it answers '
+                'with, or `void` when it answers with an empty body',
+          );
+        }
+      }
+    });
+
+    test('the void endpoints are the ones whose service returns nothing', () {
+      // The other half: `void` everywhere would satisfy the rule above and be
+      // just as dishonest. These ten are exactly the endpoints whose
+      // counterpart in `api_services.dart` is a `Future<void>`, which is the
+      // correspondence the declaration is supposed to mirror.
+      final empty = <String>[
+        for (final api in [authApi, adminApi, appApi])
+          for (final endpoint in api.endpoints.values)
+            if (endpoint.responseType.toString() == 'void') endpoint.id,
+      ];
+      expect(empty..sort(), [
+        'adminAssign',
+        'adminDeleteGroup',
+        'adminDeleteRole',
+        'adminDeleteUser',
+        'adminPutGrants',
+        'appDeleteItem',
+        'appDeleteWorkspace',
+        'appRevokeShare',
+        'appShare',
+        'authLogout',
+      ]);
+    });
+
     test('registerAdvancedTodoApis is idempotent and registers all three', () {
       registerAdvancedTodoApis();
       registerAdvancedTodoApis(); // second call must not throw or duplicate.

@@ -169,322 +169,178 @@ const _dataScopeWriteKey = 'data_scope.write.out_of_scope';
 void main() {
   setUpAll(initializeReflection);
 
-  group('cross-tier scenario (live auth + app servers)', () {
-    setUp(
-      () => TomBearerAuthentication.bearerAuthentication =
-          TomBearerAuthentication(),
-    );
-    tearDown(
-      () => TomBearerAuthentication.bearerAuthentication =
-          TomBearerAuthentication(),
-    );
+  // Every test here drives two live servers over a socket, and the first one
+  // to run also pays for the JIT warm-up of the whole client tier. `dart test`
+  // allows 30 seconds by default, which the first test has been observed to
+  // exceed on a loaded machine — reporting a timeout for a stack that is
+  // working, and costing whoever is verifying a change a second full run to
+  // find that out. Two minutes is not a claim that any of these is slow; it is
+  // the point past which a hang is a hang.
+  group(
+    'cross-tier scenario (live auth + app servers)',
+    timeout: const Timeout(Duration(minutes: 2)),
+    () {
+      setUp(
+        () => TomBearerAuthentication.bearerAuthentication =
+            TomBearerAuthentication(),
+      );
+      tearDown(
+        () => TomBearerAuthentication.bearerAuthentication =
+            TomBearerAuthentication(),
+      );
 
-    test('TC-37-01: admin grant edit reaches the end-user write enforcement, and '
-        'a share reveals a project to a second user', () async {
-      // One live transport, shared by the AuthClient and both API clients (the
-      // runtime wiring), closed regardless of outcome.
-      final transport = IoJsonTransport();
-      final authBase = Uri.parse(_authBaseUri);
-      final appBase = Uri.parse(_appBaseUri);
-      final auth = AuthClient(authBase, transport: transport);
-      final authorized = AuthorizedHttp(transport, auth);
-      final admin = AdminApiClient(authBase, authorized);
-      final app = AppApiClient(appBase, authorized);
+      test('TC-37-01: admin grant edit reaches the end-user write enforcement, and '
+          'a share reveals a project to a second user', () async {
+        // One live transport, shared by the AuthClient and both API clients (the
+        // runtime wiring), closed regardless of outcome.
+        final transport = IoJsonTransport();
+        final authBase = Uri.parse(_authBaseUri);
+        final appBase = Uri.parse(_appBaseUri);
+        final auth = AuthClient(authBase, transport: transport);
+        final authorized = AuthorizedHttp(transport, auth);
+        final admin = AdminApiClient(authBase, authorized);
+        final app = AppApiClient(appBase, authorized);
 
-      try {
-        // Health-gate the whole scenario: an unreachable app server short-circuits
-        // to the skip path before any login.
-        final health = await app.health();
-        expect(health['status'], equals('ok'));
-
-        // --- Beat 1: admin normalises viewer.title -> read (known baseline). ---
-        await auth.login(_adminLogin);
-        await admin.putGrants(_viewerRow(TomAuthState.read));
-
-        // --- Beat 2: carol (a viewer) cannot write title while it is `read`. ---
-        await auth.login(_carolLogin);
-        final beforeGrant = await _findVisibleItem(app, _carolItemId);
-        expect(
-          beforeGrant,
-          isNotNull,
-          reason: 'carol (viewer) can read item 1 before attempting a write',
-        );
-        beforeGrant!.title.set('${beforeGrant.title.get()} (carol edit)');
-        await expectLater(
-          app.updateItem(beforeGrant),
-          throwsA(
-            isA<AppApiException>()
-                .having((e) => e.statusCode, 'statusCode', 403)
-                .having((e) => e.key, 'key', 'app.item.field_forbidden'),
-          ),
-          reason:
-              'title is graded `read` for the viewer role, so the write is '
-              'rejected field-by-field',
-        );
-
-        // --- Beat 3: admin grants viewer.title -> full. ---
-        await auth.login(_adminLogin);
-        await admin.putGrants(_viewerRow(TomAuthState.full));
-
-        // --- Beat 4: carol re-fetches and the same title write now succeeds —
-        //     the live admin edit reached the app server's field enforcement. ---
-        await auth.login(_carolLogin);
-        final afterGrant = await _findVisibleItem(app, _carolItemId);
-        expect(afterGrant, isNotNull);
-        final editedTitle = '${afterGrant!.title.get()} (carol edit)';
-        final saved = await app.updateItem(afterGrant..title.set(editedTitle));
-        expect(
-          saved.title.get(),
-          equals(editedTitle),
-          reason:
-              'the admin regrade to `full` lets carol write the field the '
-              'app server previously refused',
-        );
-
-        // --- Beat 5: alice creates a fresh project in her workspace. ---
-        await auth.login(_aliceLogin);
-        final created = await app.createProject(
-          Project()
-            ..workspaceId.set(_aliceWorkspaceId)
-            ..name.set('Cross-tier integration project')
-            ..description.set('Created by the cross-tier integration test.')
-            ..colour.set('#3366cc')
-            ..archived.set(false),
-        );
-        final newProjectId = created.id.get();
-        expect(newProjectId, isNotEmpty);
-
-        // --- Beat 6: bob cannot see the new project yet. ---
-        await auth.login(_bobLogin);
-        final before = await app.listProjects(_aliceWorkspaceId);
-        expect(
-          before.where((p) => p.id.get() == newProjectId),
-          isEmpty,
-          reason: 'bob has no access to the project before the share',
-        );
-
-        // --- Beat 7: alice shares the project with bob as an editor. ---
-        await auth.login(_aliceLogin);
-        await app.share(
-          ShareRequest(
-            resourceType: 'project',
-            resourceId: newProjectId,
-            granteeUserId: _bobUserId,
-            projectRole: ProjectRole.editor,
-          ),
-        );
-
-        // --- Beat 8: bob now sees the shared project. ---
-        await auth.login(_bobLogin);
-        final after = await app.listProjects(_aliceWorkspaceId);
-        expect(
-          after.where((p) => p.id.get() == newProjectId),
-          isNotEmpty,
-          reason: 'the share makes the project visible to bob',
-        );
-      } on SocketException catch (e) {
-        markTestSkipped(
-          'auth/app server not reachable on $_authBaseUri/$_appBaseUri — '
-          'run tool/run_cross_tier_integration.sh (or start both servers + '
-          'their databases) to run this end-to-end test ($e)',
-        );
-        return;
-      } finally {
-        // Restore viewer.title -> read so auth_db is left exactly as seeded; if
-        // the stack is already down this is just another connection refusal.
         try {
+          // Health-gate the whole scenario: an unreachable app server short-circuits
+          // to the skip path before any login.
+          final health = await app.health();
+          expect(health['status'], equals('ok'));
+
+          // --- Beat 1: admin normalises viewer.title -> read (known baseline). ---
           await auth.login(_adminLogin);
           await admin.putGrants(_viewerRow(TomAuthState.read));
-        } on SocketException {
-          // Servers unreachable — nothing to restore.
+
+          // --- Beat 2: carol (a viewer) cannot write title while it is `read`. ---
+          await auth.login(_carolLogin);
+          final beforeGrant = await _findVisibleItem(app, _carolItemId);
+          expect(
+            beforeGrant,
+            isNotNull,
+            reason: 'carol (viewer) can read item 1 before attempting a write',
+          );
+          beforeGrant!.title.set('${beforeGrant.title.get()} (carol edit)');
+          await expectLater(
+            app.updateItem(beforeGrant),
+            throwsA(
+              isA<AppApiException>()
+                  .having((e) => e.statusCode, 'statusCode', 403)
+                  .having((e) => e.key, 'key', 'app.item.field_forbidden'),
+            ),
+            reason:
+                'title is graded `read` for the viewer role, so the write is '
+                'rejected field-by-field',
+          );
+
+          // --- Beat 3: admin grants viewer.title -> full. ---
+          await auth.login(_adminLogin);
+          await admin.putGrants(_viewerRow(TomAuthState.full));
+
+          // --- Beat 4: carol re-fetches and the same title write now succeeds —
+          //     the live admin edit reached the app server's field enforcement. ---
+          await auth.login(_carolLogin);
+          final afterGrant = await _findVisibleItem(app, _carolItemId);
+          expect(afterGrant, isNotNull);
+          final editedTitle = '${afterGrant!.title.get()} (carol edit)';
+          final saved = await app.updateItem(
+            afterGrant..title.set(editedTitle),
+          );
+          expect(
+            saved.title.get(),
+            equals(editedTitle),
+            reason:
+                'the admin regrade to `full` lets carol write the field the '
+                'app server previously refused',
+          );
+
+          // --- Beat 5: alice creates a fresh project in her workspace. ---
+          await auth.login(_aliceLogin);
+          final created = await app.createProject(
+            Project()
+              ..workspaceId.set(_aliceWorkspaceId)
+              ..name.set('Cross-tier integration project')
+              ..description.set('Created by the cross-tier integration test.')
+              ..colour.set('#3366cc')
+              ..archived.set(false),
+          );
+          final newProjectId = created.id.get();
+          expect(newProjectId, isNotEmpty);
+
+          // --- Beat 6: bob cannot see the new project yet. ---
+          await auth.login(_bobLogin);
+          final before = await app.listProjects(_aliceWorkspaceId);
+          expect(
+            before.where((p) => p.id.get() == newProjectId),
+            isEmpty,
+            reason: 'bob has no access to the project before the share',
+          );
+
+          // --- Beat 7: alice shares the project with bob as an editor. ---
+          await auth.login(_aliceLogin);
+          await app.share(
+            ShareRequest(
+              resourceType: 'project',
+              resourceId: newProjectId,
+              granteeUserId: _bobUserId,
+              projectRole: ProjectRole.editor,
+            ),
+          );
+
+          // --- Beat 8: bob now sees the shared project. ---
+          await auth.login(_bobLogin);
+          final after = await app.listProjects(_aliceWorkspaceId);
+          expect(
+            after.where((p) => p.id.get() == newProjectId),
+            isNotEmpty,
+            reason: 'the share makes the project visible to bob',
+          );
+        } on SocketException catch (e) {
+          markTestSkipped(
+            'auth/app server not reachable on $_authBaseUri/$_appBaseUri — '
+            'run tool/run_cross_tier_integration.sh (or start both servers + '
+            'their databases) to run this end-to-end test ($e)',
+          );
+          return;
         } finally {
-          transport.close();
-        }
-      }
-    });
-
-    // --- Live-DB ownership-grant and share-delegation checks, same stack. -----
-
-    test('TC-37-02: row-scope reads are filtered — a non-owner never sees '
-        "another principal's workspace (@TomDbScope)", () async {
-      final c = _liveClients();
-      try {
-        expect((await c.app.health())['status'], equals('ok'));
-
-        // alice owns workspace 1 — the owner scope lets it through.
-        await c.auth.login(_aliceLogin);
-        final aliceWorkspaces = await c.app.listWorkspaces();
-        expect(
-          aliceWorkspaces.map((w) => w.id.get()),
-          contains(_aliceWorkspaceId),
-          reason: 'the owner sees her own workspace',
-        );
-
-        // bob owns no workspace — the owner scope filters alice's out. bob is a
-        // seeded share on project 1, but a share never targets or flows up to a
-        // workspace, so the row scope hides it.
-        await c.auth.login(_bobLogin);
-        final bobWorkspaces = await c.app.listWorkspaces();
-        expect(
-          bobWorkspaces.map((w) => w.id.get()),
-          isNot(contains(_aliceWorkspaceId)),
-          reason: 'the workspace owner scope hides a non-owner',
-        );
-      } on SocketException catch (e) {
-        markTestSkipped(_skipMessage(e));
-        return;
-      } finally {
-        c.transport.close();
-      }
-    });
-
-    test('TC-37-03: a delegation grants, then withholds — revoking the seeded '
-        'share removes the grantee\'s access', () async {
-      final c = _liveClients();
-      var revoked = false;
-      try {
-        expect((await c.app.health())['status'], equals('ok'));
-
-        // Grant (seeded, active): bob sees project 1 through the editor share.
-        await c.auth.login(_bobLogin);
-        expect(
-          await _canSeeProject(c.app, _sharedProjectId),
-          isTrue,
-          reason: 'the seeded share grants bob the project',
-        );
-
-        // Withhold: alice (the owner) revokes the seeded delegation.
-        await c.auth.login(_aliceLogin);
-        await c.app.revokeShare(_seededBobShareId);
-        revoked = true;
-
-        // bob's only path to project 1 was that share — it is now gone.
-        await c.auth.login(_bobLogin);
-        expect(
-          await _canSeeProject(c.app, _sharedProjectId),
-          isFalse,
-          reason: 'revoking the delegation withholds bob the project',
-        );
-      } on SocketException catch (e) {
-        markTestSkipped(_skipMessage(e));
-        return;
-      } finally {
-        // Restore bob's access so the run leaves the shared grant in place (a
-        // fresh row id; the fresh-seeded next run resets it regardless).
-        if (revoked) {
+          // Restore viewer.title -> read so auth_db is left exactly as seeded; if
+          // the stack is already down this is just another connection refusal.
           try {
-            await c.auth.login(_aliceLogin);
-            await c.app.share(
-              ShareRequest(
-                resourceType: 'project',
-                resourceId: _sharedProjectId,
-                granteeUserId: _bobUserId,
-                projectRole: ProjectRole.editor,
-              ),
-            );
+            await auth.login(_adminLogin);
+            await admin.putGrants(_viewerRow(TomAuthState.read));
           } on SocketException {
             // Servers unreachable — nothing to restore.
+          } finally {
+            transport.close();
           }
         }
-        c.transport.close();
-      }
-    });
+      });
 
-    test('TC-37-04: a write to a viewer resource is rejected — carol cannot '
-        'change a field her role only reads', () async {
-      final c = _liveClients();
-      try {
-        expect((await c.app.health())['status'], equals('ok'));
+      // --- Live-DB ownership-grant and share-delegation checks, same stack. -----
 
-        await c.auth.login(_carolLogin);
-        // A faithful baseline: fetch the stored item, flip only its title (a
-        // field the `viewer` role grades `read`, not `full`).
-        final stored = await _findVisibleItem(c.app, _carolItemId);
-        expect(
-          stored,
-          isNotNull,
-          reason: 'carol (viewer) can read item 1 before attempting a write',
-        );
-        stored!.title.set('${stored.title.get()} (carol edit)');
-
-        await expectLater(
-          c.app.updateItem(stored),
-          throwsA(
-            isA<AppApiException>()
-                .having((e) => e.statusCode, 'statusCode', 403)
-                .having((e) => e.key, 'key', 'app.item.field_forbidden'),
-          ),
-          reason: 'a below-`full` field write is rejected field-by-field',
-        );
-      } on SocketException catch (e) {
-        markTestSkipped(_skipMessage(e));
-        return;
-      } finally {
-        c.transport.close();
-      }
-    });
-
-    test("TC-37-05: a second user's delete of another principal's row is "
-        'rejected (write-scope counterpart)', () async {
-      final c = _liveClients();
-      try {
-        expect((await c.app.health())['status'], equals('ok'));
-
-        // carol is a `viewer` on project 1 — below the `editor` a delete needs —
-        // so deleting alice's item 1 is denied. The row is not carol's to mutate.
-        await c.auth.login(_carolLogin);
-        await expectLater(
-          c.app.deleteItem(EntityIdRequest(id: _carolItemId)),
-          throwsA(
-            isA<AppApiException>()
-                .having((e) => e.statusCode, 'statusCode', 403)
-                .having((e) => e.key, 'key', 'app.access.forbidden'),
-          ),
-          reason: 'a non-editor may not delete another principal\'s item',
-        );
-      } on SocketException catch (e) {
-        markTestSkipped(_skipMessage(e));
-        return;
-      } finally {
-        c.transport.close();
-      }
-    });
-
-    test(
-      'TC-37-06: the live resource-role map reflects ownership and shares',
-      () async {
+      test('TC-37-02: row-scope reads are filtered — a non-owner never sees '
+          "another principal's workspace (@TomDbScope)", () async {
         final c = _liveClients();
         try {
           expect((await c.app.health())['status'], equals('ok'));
 
-          // alice owns workspace 1 (an ownership grant); the app server's
-          // `/resource-roles` expands it down the containment chain, so she holds
-          // `owner` on the project and its items — the surrogate ids the live
-          // entities carry, so `item:1`/`project:1` match the client's lookups.
+          // alice owns workspace 1 — the owner scope lets it through.
           await c.auth.login(_aliceLogin);
-          final aliceRoles = await c.app.resourceRoles();
+          final aliceWorkspaces = await c.app.listWorkspaces();
           expect(
-            aliceRoles[ResourceRoleKeys.project('1')],
-            ProjectRole.owner.name,
-          );
-          expect(
-            aliceRoles[ResourceRoleKeys.item('1')],
-            ProjectRole.owner.name,
+            aliceWorkspaces.map((w) => w.id.get()),
+            contains(_aliceWorkspaceId),
+            reason: 'the owner sees her own workspace',
           );
 
-          // bob holds only the seeded `editor` share on project 1 — no
-          // ownership — so his map grades the project subtree `editor` and never
-          // reaches the workspace (a share does not flow up).
+          // bob owns no workspace — the owner scope filters alice's out. bob is a
+          // seeded share on project 1, but a share never targets or flows up to a
+          // workspace, so the row scope hides it.
           await c.auth.login(_bobLogin);
-          final bobRoles = await c.app.resourceRoles();
+          final bobWorkspaces = await c.app.listWorkspaces();
           expect(
-            bobRoles[ResourceRoleKeys.project('1')],
-            ProjectRole.editor.name,
-          );
-          expect(bobRoles[ResourceRoleKeys.item('1')], ProjectRole.editor.name);
-          expect(
-            bobRoles.containsKey(ResourceRoleKeys.workspace('1')),
-            isFalse,
+            bobWorkspaces.map((w) => w.id.get()),
+            isNot(contains(_aliceWorkspaceId)),
+            reason: 'the workspace owner scope hides a non-owner',
           );
         } on SocketException catch (e) {
           markTestSkipped(_skipMessage(e));
@@ -492,13 +348,170 @@ void main() {
         } finally {
           c.transport.close();
         }
-      },
-    );
+      });
 
-    test(
-      'TC-37-07: the DB-side union scope reaches a shared subtree at the item '
-      'level — a share-only user lists the shared project\'s descendant item',
-      () async {
+      test('TC-37-03: a delegation grants, then withholds — revoking the seeded '
+          'share removes the grantee\'s access', () async {
+        final c = _liveClients();
+        var revoked = false;
+        try {
+          expect((await c.app.health())['status'], equals('ok'));
+
+          // Grant (seeded, active): bob sees project 1 through the editor share.
+          await c.auth.login(_bobLogin);
+          expect(
+            await _canSeeProject(c.app, _sharedProjectId),
+            isTrue,
+            reason: 'the seeded share grants bob the project',
+          );
+
+          // Withhold: alice (the owner) revokes the seeded delegation.
+          await c.auth.login(_aliceLogin);
+          await c.app.revokeShare(_seededBobShareId);
+          revoked = true;
+
+          // bob's only path to project 1 was that share — it is now gone.
+          await c.auth.login(_bobLogin);
+          expect(
+            await _canSeeProject(c.app, _sharedProjectId),
+            isFalse,
+            reason: 'revoking the delegation withholds bob the project',
+          );
+        } on SocketException catch (e) {
+          markTestSkipped(_skipMessage(e));
+          return;
+        } finally {
+          // Restore bob's access so the run leaves the shared grant in place (a
+          // fresh row id; the fresh-seeded next run resets it regardless).
+          if (revoked) {
+            try {
+              await c.auth.login(_aliceLogin);
+              await c.app.share(
+                ShareRequest(
+                  resourceType: 'project',
+                  resourceId: _sharedProjectId,
+                  granteeUserId: _bobUserId,
+                  projectRole: ProjectRole.editor,
+                ),
+              );
+            } on SocketException {
+              // Servers unreachable — nothing to restore.
+            }
+          }
+          c.transport.close();
+        }
+      });
+
+      test('TC-37-04: a write to a viewer resource is rejected — carol cannot '
+          'change a field her role only reads', () async {
+        final c = _liveClients();
+        try {
+          expect((await c.app.health())['status'], equals('ok'));
+
+          await c.auth.login(_carolLogin);
+          // A faithful baseline: fetch the stored item, flip only its title (a
+          // field the `viewer` role grades `read`, not `full`).
+          final stored = await _findVisibleItem(c.app, _carolItemId);
+          expect(
+            stored,
+            isNotNull,
+            reason: 'carol (viewer) can read item 1 before attempting a write',
+          );
+          stored!.title.set('${stored.title.get()} (carol edit)');
+
+          await expectLater(
+            c.app.updateItem(stored),
+            throwsA(
+              isA<AppApiException>()
+                  .having((e) => e.statusCode, 'statusCode', 403)
+                  .having((e) => e.key, 'key', 'app.item.field_forbidden'),
+            ),
+            reason: 'a below-`full` field write is rejected field-by-field',
+          );
+        } on SocketException catch (e) {
+          markTestSkipped(_skipMessage(e));
+          return;
+        } finally {
+          c.transport.close();
+        }
+      });
+
+      test("TC-37-05: a second user's delete of another principal's row is "
+          'rejected (write-scope counterpart)', () async {
+        final c = _liveClients();
+        try {
+          expect((await c.app.health())['status'], equals('ok'));
+
+          // carol is a `viewer` on project 1 — below the `editor` a delete needs —
+          // so deleting alice's item 1 is denied. The row is not carol's to mutate.
+          await c.auth.login(_carolLogin);
+          await expectLater(
+            c.app.deleteItem(EntityIdRequest(id: _carolItemId)),
+            throwsA(
+              isA<AppApiException>()
+                  .having((e) => e.statusCode, 'statusCode', 403)
+                  .having((e) => e.key, 'key', 'app.access.forbidden'),
+            ),
+            reason: 'a non-editor may not delete another principal\'s item',
+          );
+        } on SocketException catch (e) {
+          markTestSkipped(_skipMessage(e));
+          return;
+        } finally {
+          c.transport.close();
+        }
+      });
+
+      test(
+        'TC-37-06: the live resource-role map reflects ownership and shares',
+        () async {
+          final c = _liveClients();
+          try {
+            expect((await c.app.health())['status'], equals('ok'));
+
+            // alice owns workspace 1 (an ownership grant); the app server's
+            // `/resource-roles` expands it down the containment chain, so she holds
+            // `owner` on the project and its items — the surrogate ids the live
+            // entities carry, so `item:1`/`project:1` match the client's lookups.
+            await c.auth.login(_aliceLogin);
+            final aliceRoles = await c.app.resourceRoles();
+            expect(
+              aliceRoles[ResourceRoleKeys.project('1')],
+              ProjectRole.owner.name,
+            );
+            expect(
+              aliceRoles[ResourceRoleKeys.item('1')],
+              ProjectRole.owner.name,
+            );
+
+            // bob holds only the seeded `editor` share on project 1 — no
+            // ownership — so his map grades the project subtree `editor` and never
+            // reaches the workspace (a share does not flow up).
+            await c.auth.login(_bobLogin);
+            final bobRoles = await c.app.resourceRoles();
+            expect(
+              bobRoles[ResourceRoleKeys.project('1')],
+              ProjectRole.editor.name,
+            );
+            expect(
+              bobRoles[ResourceRoleKeys.item('1')],
+              ProjectRole.editor.name,
+            );
+            expect(
+              bobRoles.containsKey(ResourceRoleKeys.workspace('1')),
+              isFalse,
+            );
+          } on SocketException catch (e) {
+            markTestSkipped(_skipMessage(e));
+            return;
+          } finally {
+            c.transport.close();
+          }
+        },
+      );
+
+      test('TC-37-07: the DB-side union scope reaches a shared subtree at the item '
+          'level — a share-only user lists the shared project\'s descendant item', () async {
         final c = _liveClients();
         try {
           expect((await c.app.health())['status'], equals('ok'));
@@ -537,316 +550,316 @@ void main() {
         } finally {
           c.transport.close();
         }
-      },
-    );
+      });
 
-    test("TC-37-08: a non-owner's workspace UPDATE/DELETE raises the framework "
-        'TomDataScopeAuthorizationException (scoped-entity write)', () async {
-      // The one client write path onto a `@TomDbScope` entity. `WorkspaceRecord`
-      // carries `@TomDbScope(field: 'ownerId')`, so an update/delete of a
-      // workspace the caller does not own is rejected by the framework CRUD
-      // repository *before any statement runs* — the literal
-      // `TomDataScopeAuthorizationException`, mapped by the app server to a 403
-      // carrying its own `data_scope.write.out_of_scope` key (distinct from the
-      // service-layer `app.access.forbidden` TC-37-05 asserts). This is the live
-      // end-to-end reach of the connection-free framework write-scope tests.
-      final c = _liveClients();
-      String? bobWorkspaceId;
-      try {
-        expect((await c.app.health())['status'], equals('ok'));
-
-        // Positive create: bob makes his own workspace and becomes its owner
-        // (the `ownerId` column plus the ownership grant); the insert-scope
-        // check permits a row scoped to his own id.
-        await c.auth.login(_bobLogin);
-        final created = await c.app.createWorkspace(
-          Workspace()..name.set('Bob cross-tier workspace'),
-        );
-        bobWorkspaceId = created.id.get();
-        expect(bobWorkspaceId, isNotEmpty);
-        expect(
-          created.ownerId.get(),
-          _bobUserId,
-          reason: 'the creator is stamped as the workspace owner',
-        );
-
-        // Positive owner update: bob renames his own workspace — the write-scope
-        // permits a row within his owner-scope.
-        final renamed = await c.app.updateWorkspace(
-          created..name.set('Bob renamed'),
-        );
-        expect(renamed.name.get(), 'Bob renamed');
-
-        // Negative update: bob updates alice's seeded workspace 1, which he does
-        // not own — the framework write-scope rejects it with its own key.
-        await expectLater(
-          c.app.updateWorkspace(
-            Workspace()
-              ..id.set(_aliceWorkspaceId)
-              ..name.set('hijack'),
-          ),
-          throwsA(
-            isA<AppApiException>()
-                .having((e) => e.statusCode, 'statusCode', 403)
-                .having((e) => e.key, 'key', _dataScopeWriteKey),
-          ),
-          reason: 'a non-owner may not update a @TomDbScope workspace row',
-        );
-
-        // Negative delete: the same framework rejection on the delete path.
-        await expectLater(
-          c.app.deleteWorkspace(EntityIdRequest(id: _aliceWorkspaceId)),
-          throwsA(
-            isA<AppApiException>()
-                .having((e) => e.statusCode, 'statusCode', 403)
-                .having((e) => e.key, 'key', _dataScopeWriteKey),
-          ),
-          reason: 'a non-owner may not delete a @TomDbScope workspace row',
-        );
-      } on SocketException catch (e) {
-        markTestSkipped(_skipMessage(e));
-        return;
-      } finally {
-        // Owner delete (also the positive delete-path proof): bob removes his own
-        // workspace, leaving app_db as seeded. A fresh-seeded next run resets it
-        // regardless, so a failure here never blocks re-runs.
-        if (bobWorkspaceId != null && bobWorkspaceId.isNotEmpty) {
-          try {
-            await c.auth.login(_bobLogin);
-            await c.app.deleteWorkspace(EntityIdRequest(id: bobWorkspaceId));
-          } on SocketException {
-            // Servers unreachable — nothing to clean up.
-          }
-        }
-        c.transport.close();
-      }
-    });
-
-    test('TC-37-09: an admin grant edit reaches the file endpoint — narrowing '
-        "the owner's attachment grade takes away her upload", () async {
-      // The file step of the cross-tier loop, and the reason the file feature
-      // belongs in *this* sample rather than in a framework example: the grade
-      // that decides whether bytes may be written is not a file-specific
-      // permission model but the very `tom_resource_grant` row TC-37-01 edits
-      // for a form field, through the same admin API and the same console
-      // screen. The app server resolves it per row at the file endpoint, so an
-      // administrator narrowing one cell changes what an *owner* may do with her
-      // own attachment — without a redeploy, a restart, or a line of code.
-      final c = _liveClients();
-      final files = ioFileTransferClient(Uri.parse(_appBaseUri));
-      var uploaded = false;
-      try {
-        expect((await c.app.health())['status'], equals('ok'));
-
-        // --- Beat 1: admin normalises owner.attachment -> full (the seed). ---
-        await c.auth.login(_adminLogin);
-        await c.admin.putGrants(_ownerRow(TomAuthState.full));
-
-        // --- Beat 2: alice owns item 1 and may write its attachment. ---
-        await c.auth.login(_aliceLogin);
-        final bytes = utf8.encode('uploaded while the owner was graded full');
-        final stored = await files.upload(
-          slot: _attachmentSlot,
-          source: TomFileSource.bytes(
-            'cross-tier.txt',
-            bytes,
-            mediaType: 'text/plain',
-          ),
-        );
-        uploaded = true;
-        expect(stored.byteCount, equals(bytes.length));
-
-        // --- Beat 3: admin narrows owner.attachment -> read. ---
-        await c.auth.login(_adminLogin);
-        await c.admin.putGrants(_ownerRow(TomAuthState.read));
-
-        // --- Beat 4: the same principal, the same row, the same slot — the
-        //     download still works and the upload is now refused. ---
-        await c.auth.login(_aliceLogin);
-        expect(
-          await _downloadAll(files, _attachmentSlot),
-          equals(bytes),
-          reason:
-              'a read grade still serves the file — the edit took away '
-              'the write, not the row',
-        );
-        await expectLater(
-          files.upload(
-            slot: _attachmentSlot,
-            source: TomFileSource.bytes('denied.txt', utf8.encode('nope')),
-          ),
-          throwsA(
-            isA<TomFileTransferException>().having(
-              (e) => e.parameters?['statusCode'],
-              'statusCode',
-              403,
-            ),
-          ),
-          reason:
-              'the admin edit reached the file endpoint: the owner of the '
-              'item may no longer replace its attachment',
-        );
-
-        // --- Beat 5: restore the grade and the upload works again, proving
-        //     beat 4's refusal was the grant row and nothing else. ---
-        await c.auth.login(_adminLogin);
-        await c.admin.putGrants(_ownerRow(TomAuthState.full));
-        await c.auth.login(_aliceLogin);
-        final again = await files.upload(
-          slot: _attachmentSlot,
-          source: TomFileSource.bytes(
-            'restored.txt',
-            utf8.encode('and again once the grade came back'),
-          ),
-        );
-        expect(again.key, isNotEmpty);
-      } on SocketException catch (e) {
-        markTestSkipped(_skipMessage(e));
-        return;
-      } finally {
+      test("TC-37-08: a non-owner's workspace UPDATE/DELETE raises the framework "
+          'TomDataScopeAuthorizationException (scoped-entity write)', () async {
+        // The one client write path onto a `@TomDbScope` entity. `WorkspaceRecord`
+        // carries `@TomDbScope(field: 'ownerId')`, so an update/delete of a
+        // workspace the caller does not own is rejected by the framework CRUD
+        // repository *before any statement runs* — the literal
+        // `TomDataScopeAuthorizationException`, mapped by the app server to a 403
+        // carrying its own `data_scope.write.out_of_scope` key (distinct from the
+        // service-layer `app.access.forbidden` TC-37-05 asserts). This is the live
+        // end-to-end reach of the connection-free framework write-scope tests.
+        final c = _liveClients();
+        String? bobWorkspaceId;
         try {
-          // Leave both databases as seeded: the grant row back at `full`, the
-          // slot empty. Order matters — the clear needs the restored grade.
-          await c.auth.login(_adminLogin);
-          await c.admin.putGrants(_ownerRow(TomAuthState.full));
-          if (uploaded) {
-            await c.auth.login(_aliceLogin);
-            await files.remove(_attachmentSlot);
-          }
-        } on SocketException {
-          // Servers unreachable — nothing to restore.
+          expect((await c.app.health())['status'], equals('ok'));
+
+          // Positive create: bob makes his own workspace and becomes its owner
+          // (the `ownerId` column plus the ownership grant); the insert-scope
+          // check permits a row scoped to his own id.
+          await c.auth.login(_bobLogin);
+          final created = await c.app.createWorkspace(
+            Workspace()..name.set('Bob cross-tier workspace'),
+          );
+          bobWorkspaceId = created.id.get();
+          expect(bobWorkspaceId, isNotEmpty);
+          expect(
+            created.ownerId.get(),
+            _bobUserId,
+            reason: 'the creator is stamped as the workspace owner',
+          );
+
+          // Positive owner update: bob renames his own workspace — the write-scope
+          // permits a row within his owner-scope.
+          final renamed = await c.app.updateWorkspace(
+            created..name.set('Bob renamed'),
+          );
+          expect(renamed.name.get(), 'Bob renamed');
+
+          // Negative update: bob updates alice's seeded workspace 1, which he does
+          // not own — the framework write-scope rejects it with its own key.
+          await expectLater(
+            c.app.updateWorkspace(
+              Workspace()
+                ..id.set(_aliceWorkspaceId)
+                ..name.set('hijack'),
+            ),
+            throwsA(
+              isA<AppApiException>()
+                  .having((e) => e.statusCode, 'statusCode', 403)
+                  .having((e) => e.key, 'key', _dataScopeWriteKey),
+            ),
+            reason: 'a non-owner may not update a @TomDbScope workspace row',
+          );
+
+          // Negative delete: the same framework rejection on the delete path.
+          await expectLater(
+            c.app.deleteWorkspace(EntityIdRequest(id: _aliceWorkspaceId)),
+            throwsA(
+              isA<AppApiException>()
+                  .having((e) => e.statusCode, 'statusCode', 403)
+                  .having((e) => e.key, 'key', _dataScopeWriteKey),
+            ),
+            reason: 'a non-owner may not delete a @TomDbScope workspace row',
+          );
+        } on SocketException catch (e) {
+          markTestSkipped(_skipMessage(e));
+          return;
         } finally {
-          files.close();
+          // Owner delete (also the positive delete-path proof): bob removes his own
+          // workspace, leaving app_db as seeded. A fresh-seeded next run resets it
+          // regardless, so a failure here never blocks re-runs.
+          if (bobWorkspaceId != null && bobWorkspaceId.isNotEmpty) {
+            try {
+              await c.auth.login(_bobLogin);
+              await c.app.deleteWorkspace(EntityIdRequest(id: bobWorkspaceId));
+            } on SocketException {
+              // Servers unreachable — nothing to clean up.
+            }
+          }
           c.transport.close();
         }
-      }
-    });
+      });
 
-    test('TC-37-10: the item thread and checklist cross principals — an owner '
-        'comments, a share-only user reads the history and appends a step, and '
-        'a viewer may do neither', () async {
-      // The two child collections of an item, live. They are gated one step
-      // apart on purpose — a comment is *about* an item (commenter and above),
-      // a subtask is *part of* it (editor and above) — and that difference is
-      // only observable when more than one principal touches the same item, so
-      // it is asserted here rather than in a socket-free unit test.
-      //
-      // Re-runnable without a reseed: both writes append and every assertion is
-      // relative (the tail of the list, one position past the previous tail),
-      // so a second run against the same volume passes with the rows the first
-      // one left. Neither collection has a client delete path, so there is
-      // nothing to restore — the integration script's fresh volume resets them.
-      final c = _liveClients();
-      final marker = 'cross-tier comment ${DateTime.now().toIso8601String()}';
-      final item = EntityIdRequest(id: _carolItemId);
-      try {
-        expect((await c.app.health())['status'], equals('ok'));
+      test('TC-37-09: an admin grant edit reaches the file endpoint — narrowing '
+          "the owner's attachment grade takes away her upload", () async {
+        // The file step of the cross-tier loop, and the reason the file feature
+        // belongs in *this* sample rather than in a framework example: the grade
+        // that decides whether bytes may be written is not a file-specific
+        // permission model but the very `tom_resource_grant` row TC-37-01 edits
+        // for a form field, through the same admin API and the same console
+        // screen. The app server resolves it per row at the file endpoint, so an
+        // administrator narrowing one cell changes what an *owner* may do with her
+        // own attachment — without a redeploy, a restart, or a line of code.
+        final c = _liveClients();
+        final files = ioFileTransferClient(Uri.parse(_appBaseUri));
+        var uploaded = false;
+        try {
+          expect((await c.app.health())['status'], equals('ok'));
 
-        // --- Beat 1: alice owns item 1 and appends to its thread. ---
-        await c.auth.login(_aliceLogin);
-        final posted = await c.app.addComment(
-          TodoComment()
-            ..itemId.set(_carolItemId)
-            ..body.set(marker),
-        );
-        expect(posted.id.get(), isNotEmpty);
-        expect(posted.body.get(), marker);
+          // --- Beat 1: admin normalises owner.attachment -> full (the seed). ---
+          await c.auth.login(_adminLogin);
+          await c.admin.putGrants(_ownerRow(TomAuthState.full));
 
-        // --- Beat 2: bob, whose only grant is the seeded editor *share* on
-        //     project 1, reads the same thread. The history he sees is not his
-        //     own: it carries the seeded comment authored by him and alice's
-        //     new one, oldest first, so the share reaches the child collection
-        //     down the containment chain exactly as it reaches the item. ---
-        await c.auth.login(_bobLogin);
-        final thread = await c.app.listComments(item);
-        expect(
-          thread.map((comment) => comment.body.get()),
-          contains(marker),
-          reason: "the share reveals another principal's comment",
-        );
-        expect(
-          thread.last.body.get(),
-          marker,
-          reason: 'the thread is oldest first, so the newest is last',
-        );
+          // --- Beat 2: alice owns item 1 and may write its attachment. ---
+          await c.auth.login(_aliceLogin);
+          final bytes = utf8.encode('uploaded while the owner was graded full');
+          final stored = await files.upload(
+            slot: _attachmentSlot,
+            source: TomFileSource.bytes(
+              'cross-tier.txt',
+              bytes,
+              mediaType: 'text/plain',
+            ),
+          );
+          uploaded = true;
+          expect(stored.byteCount, equals(bytes.length));
 
-        // --- Beat 3: the same share-only user appends a checklist step. The
-        //     server owns `position`, so the new step lands one past the
-        //     current tail rather than wherever the client guessed. ---
-        final before = await c.app.listSubtasks(item);
-        expect(before, isNotEmpty, reason: 'the seed gives item 1 two steps');
-        final step = await c.app.addSubtask(
-          Subtask()
-            ..itemId.set(_carolItemId)
-            ..title.set('Verify the cross-tier loop')
-            ..position.set(99), // ignored — the server appends
-        );
-        final after = await c.app.listSubtasks(item);
-        expect(after, hasLength(before.length + 1));
-        expect(after.last.id.get(), step.id.get());
-        expect(after.last.title.get(), 'Verify the cross-tier loop');
-        expect(
-          after.last.position.get(),
-          before.last.position.get() + 1,
-          reason: 'the step appended, one past the previous tail',
-        );
+          // --- Beat 3: admin narrows owner.attachment -> read. ---
+          await c.auth.login(_adminLogin);
+          await c.admin.putGrants(_ownerRow(TomAuthState.read));
 
-        // --- Beat 4: bob ticks his own step — the editor-and-above update
-        //     path, and the one write the checklist screen performs most. ---
-        final ticked = await c.app.updateSubtask(step..done.set(true));
-        expect(ticked.done.get(), isTrue);
+          // --- Beat 4: the same principal, the same row, the same slot — the
+          //     download still works and the upload is now refused. ---
+          await c.auth.login(_aliceLogin);
+          expect(
+            await _downloadAll(files, _attachmentSlot),
+            equals(bytes),
+            reason:
+                'a read grade still serves the file — the edit took away '
+                'the write, not the row',
+          );
+          await expectLater(
+            files.upload(
+              slot: _attachmentSlot,
+              source: TomFileSource.bytes('denied.txt', utf8.encode('nope')),
+            ),
+            throwsA(
+              isA<TomFileTransferException>().having(
+                (e) => e.parameters?['statusCode'],
+                'statusCode',
+                403,
+              ),
+            ),
+            reason:
+                'the admin edit reached the file endpoint: the owner of the '
+                'item may no longer replace its attachment',
+          );
 
-        // --- Beat 5: carol is a `viewer` on the same project. She reads the
-        //     history she may not add to (the thread is gated by the *item's*
-        //     readability, not by the commenter role) and is refused both
-        //     writes — the comment because a viewer is below `commenter`, the
-        //     step because she is below `editor`. ---
-        await c.auth.login(_carolLogin);
-        expect(
-          (await c.app.listComments(item)).map((cm) => cm.body.get()),
-          contains(marker),
-          reason: 'a viewer sees the history she may not extend',
-        );
-        expect(await c.app.listSubtasks(item), hasLength(after.length));
+          // --- Beat 5: restore the grade and the upload works again, proving
+          //     beat 4's refusal was the grant row and nothing else. ---
+          await c.auth.login(_adminLogin);
+          await c.admin.putGrants(_ownerRow(TomAuthState.full));
+          await c.auth.login(_aliceLogin);
+          final again = await files.upload(
+            slot: _attachmentSlot,
+            source: TomFileSource.bytes(
+              'restored.txt',
+              utf8.encode('and again once the grade came back'),
+            ),
+          );
+          expect(again.key, isNotEmpty);
+        } on SocketException catch (e) {
+          markTestSkipped(_skipMessage(e));
+          return;
+        } finally {
+          try {
+            // Leave both databases as seeded: the grant row back at `full`, the
+            // slot empty. Order matters — the clear needs the restored grade.
+            await c.auth.login(_adminLogin);
+            await c.admin.putGrants(_ownerRow(TomAuthState.full));
+            if (uploaded) {
+              await c.auth.login(_aliceLogin);
+              await files.remove(_attachmentSlot);
+            }
+          } on SocketException {
+            // Servers unreachable — nothing to restore.
+          } finally {
+            files.close();
+            c.transport.close();
+          }
+        }
+      });
 
-        await expectLater(
-          c.app.addComment(
+      test('TC-37-10: the item thread and checklist cross principals — an owner '
+          'comments, a share-only user reads the history and appends a step, and '
+          'a viewer may do neither', () async {
+        // The two child collections of an item, live. They are gated one step
+        // apart on purpose — a comment is *about* an item (commenter and above),
+        // a subtask is *part of* it (editor and above) — and that difference is
+        // only observable when more than one principal touches the same item, so
+        // it is asserted here rather than in a socket-free unit test.
+        //
+        // Re-runnable without a reseed: both writes append and every assertion is
+        // relative (the tail of the list, one position past the previous tail),
+        // so a second run against the same volume passes with the rows the first
+        // one left. Neither collection has a client delete path, so there is
+        // nothing to restore — the integration script's fresh volume resets them.
+        final c = _liveClients();
+        final marker = 'cross-tier comment ${DateTime.now().toIso8601String()}';
+        final item = EntityIdRequest(id: _carolItemId);
+        try {
+          expect((await c.app.health())['status'], equals('ok'));
+
+          // --- Beat 1: alice owns item 1 and appends to its thread. ---
+          await c.auth.login(_aliceLogin);
+          final posted = await c.app.addComment(
             TodoComment()
               ..itemId.set(_carolItemId)
-              ..body.set('viewer comment'),
-          ),
-          throwsA(
-            isA<AppApiException>().having(
-              (e) => e.statusCode,
-              'statusCode',
-              403,
-            ),
-          ),
-          reason: 'a viewer is below the commenter gate',
-        );
-        await expectLater(
-          c.app.addSubtask(
+              ..body.set(marker),
+          );
+          expect(posted.id.get(), isNotEmpty);
+          expect(posted.body.get(), marker);
+
+          // --- Beat 2: bob, whose only grant is the seeded editor *share* on
+          //     project 1, reads the same thread. The history he sees is not his
+          //     own: it carries the seeded comment authored by him and alice's
+          //     new one, oldest first, so the share reaches the child collection
+          //     down the containment chain exactly as it reaches the item. ---
+          await c.auth.login(_bobLogin);
+          final thread = await c.app.listComments(item);
+          expect(
+            thread.map((comment) => comment.body.get()),
+            contains(marker),
+            reason: "the share reveals another principal's comment",
+          );
+          expect(
+            thread.last.body.get(),
+            marker,
+            reason: 'the thread is oldest first, so the newest is last',
+          );
+
+          // --- Beat 3: the same share-only user appends a checklist step. The
+          //     server owns `position`, so the new step lands one past the
+          //     current tail rather than wherever the client guessed. ---
+          final before = await c.app.listSubtasks(item);
+          expect(before, isNotEmpty, reason: 'the seed gives item 1 two steps');
+          final step = await c.app.addSubtask(
             Subtask()
               ..itemId.set(_carolItemId)
-              ..title.set('viewer step'),
-          ),
-          throwsA(
-            isA<AppApiException>().having(
-              (e) => e.statusCode,
-              'statusCode',
-              403,
+              ..title.set('Verify the cross-tier loop')
+              ..position.set(99), // ignored — the server appends
+          );
+          final after = await c.app.listSubtasks(item);
+          expect(after, hasLength(before.length + 1));
+          expect(after.last.id.get(), step.id.get());
+          expect(after.last.title.get(), 'Verify the cross-tier loop');
+          expect(
+            after.last.position.get(),
+            before.last.position.get() + 1,
+            reason: 'the step appended, one past the previous tail',
+          );
+
+          // --- Beat 4: bob ticks his own step — the editor-and-above update
+          //     path, and the one write the checklist screen performs most. ---
+          final ticked = await c.app.updateSubtask(step..done.set(true));
+          expect(ticked.done.get(), isTrue);
+
+          // --- Beat 5: carol is a `viewer` on the same project. She reads the
+          //     history she may not add to (the thread is gated by the *item's*
+          //     readability, not by the commenter role) and is refused both
+          //     writes — the comment because a viewer is below `commenter`, the
+          //     step because she is below `editor`. ---
+          await c.auth.login(_carolLogin);
+          expect(
+            (await c.app.listComments(item)).map((cm) => cm.body.get()),
+            contains(marker),
+            reason: 'a viewer sees the history she may not extend',
+          );
+          expect(await c.app.listSubtasks(item), hasLength(after.length));
+
+          await expectLater(
+            c.app.addComment(
+              TodoComment()
+                ..itemId.set(_carolItemId)
+                ..body.set('viewer comment'),
             ),
-          ),
-          reason: 'a viewer is below the editor gate the checklist needs',
-        );
-      } on SocketException catch (e) {
-        markTestSkipped(_skipMessage(e));
-        return;
-      } finally {
-        c.transport.close();
-      }
-    });
-  });
+            throwsA(
+              isA<AppApiException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                403,
+              ),
+            ),
+            reason: 'a viewer is below the commenter gate',
+          );
+          await expectLater(
+            c.app.addSubtask(
+              Subtask()
+                ..itemId.set(_carolItemId)
+                ..title.set('viewer step'),
+            ),
+            throwsA(
+              isA<AppApiException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                403,
+              ),
+            ),
+            reason: 'a viewer is below the editor gate the checklist needs',
+          );
+        } on SocketException catch (e) {
+          markTestSkipped(_skipMessage(e));
+          return;
+        } finally {
+          c.transport.close();
+        }
+      });
+    },
+  );
 }
 
 /// Every byte [slot] serves, or `null` when the slot holds no file.

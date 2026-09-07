@@ -14,6 +14,22 @@
 /// authoritative per-endpoint policy, and the server pipeline extracts them on
 /// first call unless an implementation handler overrides them locally. There is
 /// no companion access map — the endpoint declaration is the single source.
+///
+/// **An endpoint that answers with an empty body declares `void`.** A handler
+/// returning nothing makes the pipeline answer `200` with no payload, so there
+/// is no value for a caller to read and no type to give it; `Object?` would
+/// promise a JSON value that never arrives. The two spellings behave
+/// identically — nothing in the framework reads `TomApiEndpoint.responseType` —
+/// which is exactly why the declaration has to be the honest one: it is the
+/// only statement of the wire's shape a reader, a generated client or a
+/// documentation mirror can consult. The kernel's `tomUserPreferencesApi`
+/// delete endpoint is the same call.
+///
+/// `Object?` on the *request* side is a different thing and is not that
+/// inaccuracy: paired with `requestTypes: const []` it is how this registry
+/// spells "this endpoint takes no request DTO" — `authRefresh`, `authLogout`,
+/// `authMe` and `appRevokeShare`, the last of which takes its `{id}` through
+/// the framework's primitive path-parameter coercion instead.
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
@@ -118,7 +134,7 @@ final TomApi authApi = TomApi(
       requestTypes: const [],
       access: TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<Object?, Object?>(
+    TomApiEndpoint<void, Object?>(
       id: 'authLogout',
       uri: '/logout',
       method: TomHttpMethod.post,
@@ -176,7 +192,7 @@ final TomApi adminApi = TomApi(
       method: TomHttpMethod.put,
       access: adminAccess,
     ),
-    TomApiEndpoint<Object?, EntityIdRequest>(
+    TomApiEndpoint<void, EntityIdRequest>(
       id: 'adminDeleteUser',
       uri: '/users/{id}',
       method: TomHttpMethod.delete,
@@ -203,7 +219,7 @@ final TomApi adminApi = TomApi(
       method: TomHttpMethod.put,
       access: adminAccess,
     ),
-    TomApiEndpoint<Object?, EntityIdRequest>(
+    TomApiEndpoint<void, EntityIdRequest>(
       id: 'adminDeleteRole',
       uri: '/roles/{key}',
       method: TomHttpMethod.delete,
@@ -230,7 +246,7 @@ final TomApi adminApi = TomApi(
       method: TomHttpMethod.put,
       access: adminAccess,
     ),
-    TomApiEndpoint<Object?, EntityIdRequest>(
+    TomApiEndpoint<void, EntityIdRequest>(
       id: 'adminDeleteGroup',
       uri: '/groups/{id}',
       method: TomHttpMethod.delete,
@@ -245,13 +261,13 @@ final TomApi adminApi = TomApi(
       requestTypes: const [],
       access: adminAccess,
     ),
-    TomApiEndpoint<Object?, GrantMatrixDto>(
+    TomApiEndpoint<void, GrantMatrixDto>(
       id: 'adminPutGrants',
       uri: '/grants',
       method: TomHttpMethod.put,
       access: adminAccess,
     ),
-    TomApiEndpoint<Object?, AssignmentRequest>(
+    TomApiEndpoint<void, AssignmentRequest>(
       id: 'adminAssign',
       uri: '/assignments',
       method: TomHttpMethod.post,
@@ -315,7 +331,7 @@ final TomApi appApi = TomApi(
       method: TomHttpMethod.put,
       access: TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<Object?, EntityIdRequest>(
+    TomApiEndpoint<void, EntityIdRequest>(
       id: 'appDeleteWorkspace',
       uri: '/workspaces/{id}',
       method: TomHttpMethod.delete,
@@ -374,7 +390,7 @@ final TomApi appApi = TomApi(
       method: TomHttpMethod.put,
       access: TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<Object?, EntityIdRequest>(
+    TomApiEndpoint<void, EntityIdRequest>(
       id: 'appDeleteItem',
       uri: '/items/{id}',
       method: TomHttpMethod.delete,
@@ -431,7 +447,7 @@ final TomApi appApi = TomApi(
       method: TomHttpMethod.put,
       access: TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<Object?, ShareRequest>(
+    TomApiEndpoint<void, ShareRequest>(
       id: 'appShare',
       uri: '/share',
       method: TomHttpMethod.post,
@@ -441,7 +457,7 @@ final TomApi appApi = TomApi(
     // request DTO and no `urlParameterMapping`, so the `{id}` capture reaches the
     // handler through the framework's primitive path-parameter coercion. Every
     // other by-id endpoint above binds `{id}` onto a typed request DTO instead.
-    TomApiEndpoint<Object?, Object?>(
+    TomApiEndpoint<void, Object?>(
       id: 'appRevokeShare',
       uri: '/share/{id}',
       method: TomHttpMethod.delete,
