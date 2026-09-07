@@ -2822,12 +2822,10 @@ void main() {
       });
 
       // Tom's own issuer writes `requires2FA` as a string, but this is the
-      // gate that decides `authenticated`, so the reading is deliberately the
-      // lenient one ([Tom2FAClaims.isTrue]) rather than exact string equality.
-      // The asymmetry is the whole point: reading the JSON boolean too means
-      // *more* tokens are held back as "still owes a factor". Reading only the
-      // string would let a peer that encoded it the other way authenticate a
-      // token that had not finished logging in.
+      // gate that decides `authenticated`, so both encodings the framework
+      // produces are read ([Tom2FAClaims.isTrue]). Reading only the string
+      // would let a peer that encoded it the other way authenticate a token
+      // that had not finished logging in.
       test('the requires2FA claim is read in either wire encoding', () {
         TomPrincipal restore(Object? claim) =>
             TomBearerAuthentication.convertTokenPayloadToPrincipal(
@@ -2849,25 +2847,45 @@ void main() {
           expect(principal.authenticated, isFalse);
         }
 
-        // Nothing else does. The near-misses are listed explicitly: leniency
-        // covers the two encodings the framework itself produces, and stops
-        // there rather than becoming a general truthiness coercion.
-        for (final claim in <Object?>[
-          false,
-          'True',
-          'TRUE',
-          1,
-          'false',
-          null,
-        ]) {
+        // The four values that mean "nothing owed", plus the absent claim,
+        // which is the ordinary case.
+        for (final claim in <Object?>[false, 'false', null]) {
           final principal = restore(claim);
           expect(
             principal.requires2FA,
             isFalse,
             reason:
-                'claim $claim (${claim.runtimeType}) is neither `true` nor "true"',
+                'claim $claim (${claim.runtimeType}) says no factor is owed',
           );
           expect(principal.authenticated, isTrue);
+        }
+      });
+
+      test('an unreadable requires2FA claim is refused, not read as "no"', () {
+        // The direction that matters. Every value outside the four the
+        // framework writes used to fall through to "nothing owed" and
+        // authenticate — so an issuer who meant *this login is not finished*,
+        // and spelled it `'True'` or `1`, got a full session. Tokens are
+        // signed, so such a value can only come from an issuer this deployment
+        // already trusts, which is exactly the external-identity case: a third
+        // party's reasonable encoding choice has to become an error rather
+        // than a bypass.
+        for (final claim in <Object?>['True', 'TRUE', 1, 0, 'yes', '']) {
+          expect(
+            () => TomBearerAuthentication.convertTokenPayloadToPrincipal(
+              _FakeClientJwtToken(
+                payload: {'username': 'dave', Tom2FAClaims.requires2FA: claim},
+              ),
+            ),
+            throwsA(
+              isA<TomException>().having(
+                (e) => e.key,
+                'key',
+                'security.two_factor.unreadable_claim',
+              ),
+            ),
+            reason: '$claim (${claim.runtimeType}) is not a value Tom writes',
+          );
         }
       });
     });
@@ -3159,13 +3177,29 @@ void main() {
         expect(decode(true), isNotNull);
         expect(decode('true'), isNotNull);
 
-        // Leniency covers the two encodings the framework produces and stops
-        // there — it is not a general truthiness coercion.
-        for (final raw in <Object?>[false, 'True', 1, 'yes', null]) {
+        // The values that say "nothing owed", and the absent claim.
+        for (final raw in <Object?>[false, 'false', null]) {
           expect(
             decode(raw),
             isNull,
-            reason: '$raw (${raw.runtimeType}) is neither `true` nor "true"',
+            reason: '$raw (${raw.runtimeType}) says no factor is owed',
+          );
+        }
+
+        // Anything else is refused here too — the same reader, so the same
+        // rule: a challenge is not silently skipped because its gate carried a
+        // value nobody can interpret.
+        for (final raw in <Object?>['True', 1, 'yes']) {
+          expect(
+            () => decode(raw),
+            throwsA(
+              isA<TomException>().having(
+                (e) => e.key,
+                'key',
+                'security.two_factor.unreadable_claim',
+              ),
+            ),
+            reason: '$raw (${raw.runtimeType}) is not a value Tom writes',
           );
         }
       });
@@ -3664,14 +3698,32 @@ void main() {
 
         expect(Tom2FAPendingEnrolment.fromClaims(asBool), isNotNull);
 
-        // Leniency stops at the two encodings; it is not truthiness.
-        for (final raw in <Object?>['True', 1, 'yes']) {
+        // `false` in either spelling says no enrolment is pending.
+        for (final raw in <Object?>[false, 'false']) {
           expect(
             Tom2FAPendingEnrolment.fromClaims(
               claims()..[Tom2FAEnrolmentClaims.pendingEnrolment] = raw,
             ),
             isNull,
-            reason: '$raw (${raw.runtimeType}) is neither `true` nor "true"',
+            reason: '$raw (${raw.runtimeType}) says nothing is pending',
+          );
+        }
+
+        // Anything else is refused rather than read as "nothing pending" —
+        // the same reader as the `requires2FA` gate, so the same rule.
+        for (final raw in <Object?>['True', 1, 'yes']) {
+          expect(
+            () => Tom2FAPendingEnrolment.fromClaims(
+              claims()..[Tom2FAEnrolmentClaims.pendingEnrolment] = raw,
+            ),
+            throwsA(
+              isA<TomException>().having(
+                (e) => e.key,
+                'key',
+                'security.two_factor.unreadable_claim',
+              ),
+            ),
+            reason: '$raw (${raw.runtimeType}) is not a value Tom writes',
           );
         }
       });

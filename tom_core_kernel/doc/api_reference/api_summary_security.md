@@ -1123,7 +1123,7 @@ whatever the mechanism needs on the second pass.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `requires2FA` | `String` | Claim marking the token as an interim one: a second factor is still owed. Written as the string `"true"`, read with [isTrue]. |
+| `requires2FA` | `String` | Claim marking the token as an interim one: a second factor is still owed. Written as the string `"true"` — matching the rest of this string-encoded claim family — and read with [isTrue], which also accepts the JSON boolean and refuses anything else. |
 | `type` | `String` | Claim holding the mechanism type, e.g. `'totp'`. |
 | `hint` | `String` | Claim holding the mechanism's display hint, e.g. a masked phone number. |
 | `attempt` | `String` | Claim holding the number of attempts already consumed. |
@@ -1136,7 +1136,7 @@ whatever the mechanism needs on the second pass.
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `isTrue(Object? raw)` | `bool` | The single rule for reading a boolean claim in **either** 2FA claim family, on both tiers: true for the JSON boolean `true` and for the string `"true"`, false for everything else. The two families disagree on encoding — `requires2FA` and `pendingEnrolment` are strings, `skippable` and `skipSpendsGrace` are JSON booleans — so every read accepts both. Deliberately not general truthiness: `"True"`, `1` and `"yes"` are false, because widening past what a Tom tier writes would be guessing at other issuers' conventions rather than reconciling our own. |
+| `isTrue(Object? raw)` | `bool` | The single rule for reading a boolean claim in **either** 2FA claim family, on both tiers: true for the JSON boolean `true` and the string `"true"`, false for `false`, `"false"` and an absent claim, and a `security.two_factor.unreadable_claim` `TomException` for anything else. The two families disagree on encoding — `requires2FA` and `pendingEnrolment` are strings, `skippable` and `skipSpendsGrace` are JSON booleans — so every read accepts both. Deliberately not general truthiness, and deliberately not silent about the difference: `"True"`, `1` and `"yes"` are refused rather than read as false, because these claims gate whether a login is finished and a value the reader cannot interpret is not evidence that it is. Tokens are signed, so an unreadable value comes from an issuer the deployment already trusts — the external-identity case, where a third party's encoding choice must surface as an error rather than a bypass. |
 
 ### Tom2FAChallenge
 
@@ -1197,14 +1197,14 @@ claim holding the whole offer including the mechanism's server-only section, so
 any instance can confirm an enrolment another began.
 
 Two encoding details are worth knowing before reading a token by hand.
-`pendingEnrolment` is the string `"true"`, for the same compatibility reason
-[Tom2FAClaims.requires2FA] is; `skippable` and `skipSpendsGrace` are JSON
-booleans, because they are newer and have no tokens in flight to stay
-compatible with. That the two disagree is why **every** boolean claim in both
-families is read with [Tom2FAClaims.isTrue], which accepts either encoding —
-on the client (`Tom2FAPendingEnrolment.fromClaims`) and on the server
-(`Tom2FAEnrolmentState.fromClaims`) alike, since the two decode the same token
-and must not disagree about what it says.
+`pendingEnrolment` is the string `"true"`, matching the family
+[Tom2FAClaims.requires2FA] belongs to; `skippable` and `skipSpendsGrace` are
+JSON booleans, because they were added to the newer family and follow its
+spelling. That the two disagree is why **every** boolean claim in both families
+is read with [Tom2FAClaims.isTrue], which accepts either encoding and refuses
+what is neither — on the client (`Tom2FAPendingEnrolment.fromClaims`) and on
+the server (`Tom2FAEnrolmentState.fromClaims`) alike, since the two decode the
+same token and must not disagree about what it says.
 
 #### Constructors
 

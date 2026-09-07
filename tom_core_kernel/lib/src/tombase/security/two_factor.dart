@@ -38,6 +38,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 
+import '../little_things/exception_base.dart';
 import '../reflection/reflection.dart';
 import 'authentication_authorization.dart';
 
@@ -52,11 +53,13 @@ class Tom2FAClaims {
 
   /// Public claim: `"true"` while the token still owes a second factor.
   ///
-  /// A string rather than a bool because the surrounding payload has always
-  /// encoded it that way; changing the encoding would break tokens in flight.
-  /// Written as a string by every Tom tier — but **read with [isTrue]**, which
-  /// accepts the JSON boolean too. This claim gates `authenticated`, so a
-  /// reader that missed the other encoding would fail open.
+  /// A string rather than a bool to match the rest of this claim family, which
+  /// is string-encoded throughout: one payload that spells its booleans two
+  /// ways is a payload every reader has to know a table about. Written as a
+  /// string by every Tom tier — but **read with [isTrue]**, which accepts the
+  /// JSON boolean too, and refuses anything else. This claim gates
+  /// `authenticated`, so a reader that silently took an unreadable value for
+  /// "nothing owed" would fail open.
   static const String requires2FA = 'requires2FA';
 
   /// Public claim: the mechanism key (e.g. `'totp'`) the challenge belongs to.
@@ -104,11 +107,37 @@ class Tom2FAClaims {
   /// reader did not expect, that it has not finished logging in would
   /// otherwise authenticate.
   ///
-  /// Deliberately **not** general truthiness: only the two encodings the
-  /// framework itself produces are accepted. `'True'`, `1` and `'yes'` are
-  /// not, because widening past what any Tom tier writes would start guessing
-  /// at other issuers' conventions rather than reconciling our own.
-  static bool isTrue(Object? raw) => raw == true || raw == 'true';
+  /// Deliberately **not** general truthiness: only the four encodings the
+  /// framework itself produces are recognised — `true`/`'true'` and
+  /// `false`/`'false'` — plus an absent claim, which is the ordinary case and
+  /// reads as `false`. Widening past what any Tom tier writes would start
+  /// guessing at other issuers' conventions rather than reconciling our own.
+  ///
+  /// **Anything else throws.** `'True'`, `1`, `'yes'` and any other value are
+  /// refused with `security.two_factor.unreadable_claim` rather than being
+  /// read as "nothing owed". Silence was the old behaviour and it picked the
+  /// unsafe side: a token whose issuer meant *this login is not finished*, and
+  /// spelled it in an encoding this reader did not expect, authenticated in
+  /// full. Tokens are signed, so such a value can only arrive from an issuer
+  /// the deployment already trusts — which is exactly the external-identity
+  /// case, where a third party's reasonable encoding choice must become an
+  /// error rather than a bypass. A refusal is loud, appears in the log with
+  /// the offending value, and denies access; the alternative was neither.
+  static bool isTrue(Object? raw) {
+    if (raw == null) return false;
+    if (raw == true || raw == 'true') return true;
+    if (raw == false || raw == 'false') return false;
+    throw TomException(
+      'security.two_factor.unreadable_claim',
+      'A 2FA boolean claim carried the unreadable value '
+          '$raw (${raw.runtimeType}). The claim decides whether '
+          'a login is finished, so a value this reader cannot interpret is '
+          'refused rather than assumed to mean "nothing owed". Tom writes '
+          "'true'/'false' as strings; the JSON booleans are read too.",
+      parameters: {'value': '$raw', 'type': '${raw.runtimeType}'},
+      autoLog: true,
+    );
+  }
 }
 
 /// The claim names under which a pending 2FA *enrolment* travels in a token.
@@ -170,9 +199,9 @@ class Tom2FAEnrolmentClaims {
 
   /// Public claim: `true` when the user may decline the offer and complete the
   /// login without a second factor. A JSON boolean, unlike the string-encoded
-  /// [Tom2FAClaims.requires2FA] — this claim is newer and has no tokens in
-  /// flight to stay compatible with. That the two families disagree on
-  /// encoding is exactly why both are read with [Tom2FAClaims.isTrue].
+  /// [Tom2FAClaims.requires2FA] — the two claim families settled on different
+  /// spellings, and neither is worth churning the other to match. That they
+  /// disagree is exactly why both are read with [Tom2FAClaims.isTrue].
   ///
   /// Decided once, on the pass that made the offer, and carried — so the
   /// authority for "may I skip?" is the token the server signed, never a flag
