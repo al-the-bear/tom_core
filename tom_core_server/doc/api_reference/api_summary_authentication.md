@@ -926,13 +926,26 @@ predictable rather than durable.
 
 One persisted enrolment row (`@tomReflector`,
 `@TomDbTable(datasource: 'main', table: 'tom_user_two_factor_enrolment',
-primaryKeyField: 'id')`). Columns: `id`, `principal_id`, `enrolment_id`,
-`mechanism`, `hint`, `enrolled_at`, `is_primary`, `secret_data` — the last held
-as `secretDataCipher`, base64 of RSA-OAEP over the secret map's JSON, never
-readable from the row alone. A `UNIQUE KEY (principal_id, enrolment_id)` makes
-the upsert the database's rule and not only the store's; without it, which
-secret answers a login would depend on row order. Every field defaults, because
-the repository instantiates a blank entity and fills it column by column.
+primaryKeyField: 'id')`). A `UNIQUE KEY (principal_id, enrolment_id)` makes the
+upsert the database's rule and not only the store's; without it, which secret
+answers a login would depend on row order. Every field defaults, because the
+repository instantiates a blank entity and fills it column by column.
+
+#### Properties
+
+The column each field maps to is given beside it: the two spellings differ, and
+the Dart name is the one a caller writes.
+
+| Property | Type | Column | Description |
+| -------- | ---- | ------ | ----------- |
+| `id` | `int` | `id` | Surrogate primary key, `-1` until persisted. Read-only: the database assigns it. |
+| `principalId` | `String` | `principal_id` | The principal the factor belongs to — `TomPrincipal.id` stringified, matching `TomPrincipalResourceGrant.principalId`. |
+| `enrolmentId` | `String` | `enrolment_id` | The enrolment's stable client-facing handle (`Tom2FAEnrolment.enrolmentId`). |
+| `mechanism` | `String` | `mechanism` | The mechanism key (`Tom2FAEnrolment.type`). |
+| `hint` | `String` | `hint` | The displayable hint (`Tom2FAEnrolment.hint`). |
+| `enrolledAt` | `DateTime?` | `enrolled_at` | When the factor was set up, **UTC** — `DATETIME(6)`, the width the instant convention writes, so the microseconds it always renders are not rounded off. |
+| `isPrimary` | `bool` | `is_primary` | Whether this is the user's default factor. |
+| `secretDataCipher` | `String` | `secret_data` | The encrypted `Tom2FAEnrolment.secretData`: base64 of RSA-OAEP over the map's JSON. Never readable from the row alone, which is why `secretData` itself is not a column. |
 
 #### Static Properties
 
@@ -1711,11 +1724,27 @@ are the same statement rather than two copies of one.
 One `tom_oauth_state` row, as `peek` and `consume` read it back — reflected,
 `@TomDbTable`-mapped, and internal to the store.
 
-Thirteen `@TomDbColumn` fields: `state`, `provider_id`, `pkce_verifier`,
-`pkce_challenge`, `created_at`, `expires_at`, `client`, `application`,
-`process`, `organization`, `client_language`, `client_country`,
-`client_timezone`. The two instants are typed `String` because the driver
-decodes `DATETIME` as local time; `parseSqlInstant` turns them back into UTC.
+Thirteen `@TomDbColumn` fields. The two instants are typed `String` because the
+driver decodes `DATETIME` as local time; `parseSqlInstant` turns them back into
+UTC.
+
+#### Properties
+
+| Property | Type | Column | Description |
+| -------- | ---- | ------ | ----------- |
+| `state` | `String` | `state` | The opaque handle the provider echoes back. |
+| `providerId` | `String` | `provider_id` | Which provider the flow is against. |
+| `pkceVerifier` | `String?` | `pkce_verifier` | The PKCE secret, or `null` for a provider configured without PKCE. |
+| `pkceChallenge` | `String?` | `pkce_challenge` | The PKCE challenge that travelled to the provider. |
+| `createdAt` | `String` | `created_at` | When the flow began, as the stored `DATETIME(6)` text — see above for why it is not a `DateTime`. |
+| `expiresAt` | `String` | `expires_at` | When the record stops being completable, as the stored text. |
+| `client` | `String` | `client` | The client the login was started from. |
+| `application` | `String` | `application` | The application the login is for. |
+| `process` | `String` | `process` | The process the login is for. |
+| `organization` | `String` | `organization` | The organization the login is for. |
+| `clientLanguage` | `String` | `client_language` | The client's language code. |
+| `clientCountry` | `String` | `client_country` | The client's country code. |
+| `clientTimezone` | `String` | `client_timezone` | The client's IANA timezone name. |
 
 ### TomOAuthStateStoreType
 
@@ -1905,6 +1934,14 @@ link, because a grant belongs to the external identity that consented to it.
 
 A map-backed store for tests and single-process bring-up. Not a production
 default — a grant that vanishes on restart is a user sent through consent again.
+
+- **Implements:** `TomOAuthTokenStore`
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `clear` | `void clear()` | Drops every grant, so one test's grants cannot reach the next. The affordance a suite calls between cases; the persistent store has no counterpart, because a test that wants an empty table truncates it. |
 
 ### TomExternalIdentityToken
 

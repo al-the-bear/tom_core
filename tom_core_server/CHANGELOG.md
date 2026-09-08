@@ -2,6 +2,33 @@
 
 ### Fixed
 
+- **Two authentication entities were documented by their column names, which no
+  caller can write (tcincb123).** `TomUserTwoFactorEnrolment` and
+  `TomOAuthStateRow` each had a section that read as a complete account of the
+  row — it listed every column — while naming none of the identifiers a reader
+  came for. `principal_id` is what the table holds; `principalId` is what a
+  caller writes, and only the second is a member. Twelve of the thirteen missing
+  members were that: `enrolledAt`, `enrolmentId`, `isPrimary`, `principalId`,
+  and `clientCountry`, `clientLanguage`, `clientTimezone`, `createdAt`,
+  `expiresAt`, `pkceChallenge`, `pkceVerifier`, `providerId`. The three that
+  happened to be spelled the same in both worlds — `id`, `mechanism`, `hint` —
+  are why the omission was invisible to a reader skimming the section.
+
+  Both classes now carry a Properties table giving the Dart name, the type, the
+  column it maps to, and what it is for, taken from the declaration rather than
+  inferred from the name: `enrolledAt` is documented as UTC and as `DATETIME(6)`
+  (the width the instant convention writes), and `TomOAuthStateRow`'s two
+  instants are documented as `String` with the reason — the driver decodes
+  `DATETIME` as local time, and `parseSqlInstant` is what turns them back.
+
+  The thirteenth was `TomMemoryOAuthTokenStore.clear`, the affordance a suite
+  calls between cases. Its sibling `TomMemory2FAEnrolmentStore.clear` was
+  documented; this one was not.
+
+  `_memberListsPendingReconciliation` is gone with its `skip:` and its staleness
+  meta-test — the last quarantine on this check.
+
+
 - **The API index omitted 19 exported names, and three whole feature areas of
   `object_persistence` with them (tcincb122).** `api_summary_index.md` is the
   only place in the package where a reader can conclude that a name does not

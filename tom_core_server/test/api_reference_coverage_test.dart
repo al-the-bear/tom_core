@@ -325,8 +325,14 @@
 /// initialisers; and a member heading split by subject (`##### Methods —
 /// aggregates`) matched neither class nor member section, which closed the
 /// class and orphaned every row beneath it. Each of those was silently
-/// weakening the attribution check as well. Two modules' summaries remain
-/// genuinely incomplete and are quarantined on their own named lists.
+/// weakening the attribution check as well. Every module's summary satisfies it
+/// now, and the last one to do so is worth keeping in view: `authentication`'s
+/// two persisted entities listed their *column* names in place of their *field*
+/// names — `principal_id` where a caller writes `principalId`, `pkce_verifier`
+/// where a caller writes `pkceVerifier`. A section can read as a complete
+/// account of a row while naming none of the identifiers the reader came for,
+/// which is the case that most needs a check reading declarations rather than
+/// trusting a list to be one.
 ///
 /// Everything here reads the working tree, so the failure names the missing
 /// file, type, field or section and appears the moment the next one lands.
@@ -3057,16 +3063,6 @@ const Set<String> _verificationPendingAttribution = {
   'server',
   'transactions',
 };
-
-/// The modules whose class sections do not yet name every member their classes
-/// declare.
-///
-/// The debt is rarely spread evenly across a module's classes. It clusters on
-/// whichever mechanism spans several of them, so one omission shows up as three
-/// — and the members most likely to be missing are the ones that make a
-/// behaviour the *default* rather than an annotation someone has to remember,
-/// which is exactly the half a reader will not think to go looking for.
-const Set<String> _memberListsPendingReconciliation = {'authentication'};
 
 /// The modules whose `lib/src/tomserver/<module>/readme.md` still leaves at
 /// least one exported file unmentioned.
@@ -6100,44 +6096,33 @@ One: `TomKind`, documented beside the type that carries it.
 
   group('every class section names the members its class declares', () {
     for (final module in _modules()) {
-      test(
-        module,
-        () {
-          final incomplete = _incompleteSectionsOf(module);
-          expect(
-            incomplete,
-            isEmpty,
-            reason:
-                'doc/api_reference/api_summary_$module.md documents these '
-                'classes without naming every public member they declare: '
-                '${incomplete.join('; ')}. A member list is read as complete — '
-                'that is the only way to read one — so an omission does not '
-                'say "look at the source", it says the member is not there. '
-                'The datasources summary described `TomOperator` for a year '
-                'without mentioning `children`, which is the single edge the '
-                'whole operator tree is walked along.',
-          );
-        },
-        skip: _memberListsPendingReconciliation.contains(module)
-            ? 'member lists not reconciled yet.'
-            : null,
-      );
+      test(module, () {
+        final incomplete = _incompleteSectionsOf(module);
+        expect(
+          incomplete,
+          isEmpty,
+          reason:
+              'doc/api_reference/api_summary_$module.md documents these '
+              'classes without naming every public member they declare: '
+              '${incomplete.join('; ')}. A member list is read as complete — '
+              'that is the only way to read one — so an omission does not '
+              'say "look at the source", it says the member is not there. '
+              'The datasources summary described `TomOperator` for a year '
+              'without mentioning `children`, which is the single edge the '
+              'whole operator tree is walked along.',
+        );
+      });
     }
 
-    test('every quarantined module still has members to reconcile', () {
-      final stale = _memberListsPendingReconciliation
-          .where((module) => _incompleteSectionsOf(module).isEmpty)
-          .toList();
-      expect(
-        stale,
-        isEmpty,
-        reason:
-            'These modules are quarantined but their class sections are now '
-            'complete: ${stale.join(', ')}. Drop the entry and let the module '
-            'be checked, or the quarantine grows into a list of modules '
-            'nobody checks for a reason nobody remembers.',
-      );
-    });
+    // Every module passes, so there is no quarantine. Its last entry was
+    // `authentication`, and what it held open is worth keeping in view: two of
+    // the three classes were persisted entities whose sections listed their
+    // *column* names and not their *field* names. `principal_id` and
+    // `pkce_verifier` are what the table holds; `principalId` and
+    // `pkceVerifier` are what a caller writes, and only the second kind is a
+    // member. A section can therefore look like a complete account of a row
+    // while naming none of the identifiers a reader came for — which is why
+    // this check reads declarations rather than trusting a list to be one.
 
     test('the one documented toString survives a consistency pass', () {
       // `_universalMembers` exempts `toString` from being demanded, and thirty-
