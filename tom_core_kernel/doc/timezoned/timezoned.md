@@ -169,6 +169,17 @@ same zone twice a year. And when the question is really "what was the offset
 then", it is not a lookup at all: ask a zone you already hold, with
 `getUtcOffsetOn` (see [UTC Offset Operations](#utc-offset-operations)).
 
+A third follows from the index being built once: `TomTimezone.timezones` and
+`allWithOffset` hand back **unmodifiable views** of it, not the collections
+themselves. Sorting a returned bucket in place, or filtering it with
+`removeWhere`, would not shape a local result — it would rewrite the index for
+the rest of the process, and the damage would surface somewhere else entirely,
+as a later `firstWithOffset` naming a different zone. Both throw
+`UnsupportedError` at the call instead, which is the only place a caller can act
+on it.
+Copy first when you need a modifiable one: `Map.of(TomTimezone.timezones)`,
+`[...?TomTimezone.allWithOffset(0)]`.
+
 `firstWithOffset` is likewise a weaker promise than it looks. *First* means
 first in the bucket, which is IANA name order rather than the best-known zone
 at that offset: `firstWithOffset(0)` yields `Africa/Abidjan`, not `UTC`. Where a
@@ -710,6 +721,7 @@ if (TomZonedDateTime.isTomZonedDateTimeString(input)) {
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
+| `dart:collection` | dart | `timezones.dart` | `UnmodifiableMapView`, `UnmodifiableListView` — the lookups hand out views onto the index rather than the index itself |
 | `meta` | package | `timezones.dart` | `@visibleForTesting` only; no runtime behaviour |
 | `timezone` | package | every file | The IANA database and `tz.TZDateTime`. This is the module — the Tom types are a typed, observable surface over it |
 | `tom_basics` | package | `timezones.dart` | `tomLog`, at `debug` when a zone lookup falls back and at `error` when initialization fails |

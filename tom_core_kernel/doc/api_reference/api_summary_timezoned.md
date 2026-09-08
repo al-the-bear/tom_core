@@ -351,7 +351,7 @@ None — the constructor is private. Obtain instances via `TomTimezone.utc`,
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `utc` | `TomTimezone` | The UTC timezone singleton (offset 0, no DST). |
-| `timezones` | `Map<String, TomTimezone>` | *(getter)* All available timezones, keyed by uppercase name. Lazily initialized. |
+| `timezones` | `Map<String, TomTimezone>` | *(getter)* All available timezones, keyed by uppercase name. Lazily initialized, and **unmodifiable** — a view onto the index every lookup here reads. Take `Map.of(...)` to work with a copy. |
 
 #### Static Methods
 
@@ -359,7 +359,7 @@ None — the constructor is private. Obtain instances via `TomTimezone.utc`,
 | ------ | ----------- | ----------- |
 | `fromName(String name)` | `TomTimezone?` | Finds a timezone by IANA name (case-insensitive); `null` if not found. |
 | `firstWithOffset(int utcOffsetMinutes)` | `TomTimezone?` | The first zone whose **current** offset is `utcOffsetMinutes`, or `null` if none is at it now. *First* is bucket order — IANA name order — not the best-known zone: `firstWithOffset(0)` yields `Africa/Abidjan`, not `UTC`. |
-| `allWithOffset(int utcOffsetMinutes)` | `List<TomTimezone>?` | Every zone whose **current** offset is `utcOffsetMinutes`, or `null` if none is at it now. |
+| `allWithOffset(int utcOffsetMinutes)` | `List<TomTimezone>?` | Every zone whose **current** offset is `utcOffsetMinutes`, or `null` if none is at it now. **Unmodifiable**, like `timezones`, and for the same reason: it is the bucket `firstWithOffset` reads. Take `[...?…]` to sort or filter. |
 | `findTimezone(String? name, int? utcOffsetMinutes)` | `TomTimezone?` | Looks up a zone by name, optionally validating its offset. A name-only lookup returns the named zone; an unknown name, or a name whose current offset differs from a supplied `utcOffsetMinutes`, throws `TomTimezoneException`. With `name` null, returns the first zone at the given offset — `null` if no zone is at it, and `null` if both arguments are null. That branch reads the same index as `firstWithOffset` and inherits its shelf life. |
 | `convertMinutesToUtcOffset(int totalMinutes)` | `String` | Formats a minute offset as `Z`, `+HH:MM`, or `-HH:MM`. Throws `TomFormattingException` outside ±840 minutes (±14:00, inclusive), which no real zone reaches. Offsets read from a zone are always inside that range, so this static entry point — the only one taking an arbitrary `int` — is also the only one that can raise; `getUtcOffsetStringOn`, `toStringOn` and `toString` cannot. |
 | `changeLocation(DateTime dt, TomTimezone inTimezone, TomTimezone toTimezone)` | `DateTime` | Reads the calendar fields of `dt` as a wall-clock reading **in `inTimezone`**, resolves them to an instant there, and renders that instant in `toTimezone`. The instant `dt` itself denotes is ignored, so the result never depends on the host's local zone and `DateTime(...)` / `DateTime.utc(...)` with the same fields convert alike. Use `toTZDateTime` instead to re-render an instant you already hold. |
@@ -377,6 +377,12 @@ answering for the season it started in.
 Use these for discovery and store the `timezone` name they yield, never the
 offset it was found under. When the question is "what was the offset *then*",
 it is not a lookup: ask a zone you already hold, with `getUtcOffsetOn`.
+
+`timezones` and `allWithOffset` return **unmodifiable views** of that index
+rather than the index itself. A write throws `UnsupportedError` where it is
+made; the alternative is that it succeeds and the database stays wrong for the
+life of the process, since the index is built once and never rebuilt. Copy
+before sorting or filtering.
 
 #### Properties
 

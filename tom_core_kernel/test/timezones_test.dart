@@ -125,6 +125,76 @@ void main() {
       });
     });
 
+    // =========================================================================
+    // The lookups hand out views, not the index
+    // =========================================================================
+    //
+    // Handing back the internal collection itself would let one line from
+    // outside the class corrupt the database for the life of the process: the
+    // index is built once at first access and never rebuilt, so nothing would
+    // repair it. The damage would also be quiet — sorting a returned list, or
+    // filtering it with `removeWhere`, reads as ordinary work, and the
+    // consequence appears somewhere else entirely, as `firstWithOffset`
+    // answering with a different zone or `fromName` resolving a name the IANA
+    // database has never held.
+    //
+    // So the refusal has to be at the call, which is the only place a caller
+    // can act on it. Each test asserts two things, and they fail to different
+    // mistakes: that the write throws, which a live collection does not, and
+    // that the lookups still answer afterwards, which an unmodifiable view over
+    // the wrong collection — an empty one, a snapshot taken too early — would
+    // not. Refusing to be written is worth nothing if the price is refusing to
+    // be read.
+    group('the lookup results are unmodifiable', () {
+      test('the timezone map refuses a write, and keeps its contents', () {
+        final map = TomTimezone.timezones;
+        final before = map.length;
+
+        expect(
+          () => map['ZZZ'] = TomTimezone.utc,
+          throwsUnsupportedError,
+          reason: 'A write here would make fromName resolve an invented name.',
+        );
+        expect(() => map.remove('UTC'), throwsUnsupportedError);
+        expect(() => map.clear(), throwsUnsupportedError);
+
+        expect(TomTimezone.fromName('ZZZ'), isNull);
+        expect(TomTimezone.fromName('UTC'), isNotNull);
+        expect(TomTimezone.timezones.length, equals(before));
+      });
+
+      test('an offset bucket refuses a write, and keeps its contents', () {
+        final bucket = TomTimezone.allWithOffset(0)!;
+        final before = bucket.length;
+        final first = TomTimezone.firstWithOffset(0)!.timezone;
+
+        expect(() => bucket.add(TomTimezone.utc), throwsUnsupportedError);
+        // The two that do not read as dangerous, which is why they are here.
+        expect(() => bucket.sort(), throwsUnsupportedError);
+        expect(
+          () => bucket.removeWhere((tz) => tz.timezone != 'UTC'),
+          throwsUnsupportedError,
+        );
+
+        expect(TomTimezone.allWithOffset(0), hasLength(before));
+        expect(TomTimezone.firstWithOffset(0)!.timezone, equals(first));
+      });
+
+      test('a view still reads what the index holds', () {
+        // The other half of the contract: unmodifiable must not mean stale or
+        // partial. Both getters answer with everything the class itself sees.
+        final map = TomTimezone.timezones;
+        expect(map.containsKey('UTC'), isTrue);
+        expect(map['EUROPE/LONDON']?.timezone, equals('Europe/London'));
+
+        final bucket = TomTimezone.allWithOffset(0)!;
+        expect(bucket, contains(TomTimezone.firstWithOffset(0)));
+        for (final zone in bucket) {
+          expect(zone.timezoneOffsetMin, equals(0));
+        }
+      });
+    });
+
     // The offset lookups answer "who is at this offset *right now*", and the
     // documentation says so in three places. These tests are what those
     // sentences are measured against — without them the caveat is a claim

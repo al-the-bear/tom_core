@@ -9,6 +9,33 @@ anyone who was writing them.
 
 ### Changed
 
+- **The timezone lookups hand out views, not the index (tcincb87).**
+  `TomTimezone.timezones` returned `_timezonesMap` and `allWithOffset` returned
+  `_timezoneByOffset[offset]` — the internal collections themselves — so
+  corrupting the database from outside the class took one line, and both of
+  these were run against the build and took effect:
+
+  ```dart
+  TomTimezone.allWithOffset(0)!.add(TomTimezone.utc); // bucket 0 gains a duplicate
+  TomTimezone.timezones['ZZZ'] = TomTimezone.utc;     // fromName('ZZZ') resolves
+  ```
+
+  The index is built once at first access and never rebuilt, so neither
+  mutation was ever repaired: both lasted the life of the process. What made it
+  worth fixing in code rather than in a sentence is that neither mistake reads
+  as one — sorting a returned list, or filtering it with `removeWhere`, is
+  ordinary work on what looks like a local result, and the consequence appears
+  somewhere else entirely as a later `firstWithOffset` naming a different zone.
+
+  Both getters return `UnmodifiableMapView` / `UnmodifiableListView`, both O(1)
+  and neither copying, so a write throws `UnsupportedError` at the call. Copy
+  to work with a modifiable one: `Map.of(TomTimezone.timezones)`,
+  `[...?TomTimezone.allWithOffset(0)]`. A defensive copy per call was the
+  alternative and was rejected: it never throws, so a caller who mutates it
+  expecting the change to stick gets silence, which is today's failure with an
+  extra allocation.
+
+
 - **Six module readmes presented incomplete Key-types tables as inventories;
   all sixteen now cover their module's full exported surface (tcincb26).**
   `security` was missing 23 of 47 names, `observable` 14 of 33,

@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:meta/meta.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:tom_basics/tom_basics.dart';
@@ -228,10 +230,18 @@ class TomTimezone {
   static final Map<String, TomTimezone> _timezonesMap = {};
   static final Map<int, List<TomTimezone>> _timezoneByOffset = {};
 
-  /// Returns a map of all available timezones.
+  /// Every available timezone, keyed by uppercase IANA name (e.g.
+  /// `'AMERICA/NEW_YORK'`).
   ///
-  /// Keys are uppercase timezone names (e.g., 'AMERICA/NEW_YORK').
-  /// The map is lazily initialized on first access.
+  /// The database is lazily built on first access, and the map is
+  /// **unmodifiable**: it is a view onto the index every lookup in this class
+  /// reads, so a write would not add a timezone, it would corrupt the database
+  /// for the rest of the process. An attempted one throws `UnsupportedError`
+  /// where the mistake is, rather than surfacing later as [fromName] resolving
+  /// a name the IANA database has never held.
+  ///
+  /// To work with a modifiable copy — to sort, filter, or add entries of your
+  /// own — take one: `Map.of(TomTimezone.timezones)`.
   ///
   /// Example:
   /// ```dart
@@ -241,7 +251,7 @@ class TomTimezone {
   /// ```
   static Map<String, TomTimezone> get timezones {
     _initialize();
-    return _timezonesMap;
+    return UnmodifiableMapView(_timezonesMap);
   }
 
   static void _insertTimezone(TomTimezone tomTz) {
@@ -319,6 +329,13 @@ class TomTimezone {
   /// contain `Europe/London`, which is on BST and sits at 60; in January it
   /// does. Treat the result as a snapshot, not as a membership rule.
   ///
+  /// The list is **unmodifiable**, and for the same reason [timezones] is: it
+  /// is a view onto the bucket [firstWithOffset] reads, so sorting or filtering
+  /// it in place would not shape a local result, it would rewrite the index for
+  /// the rest of the process. Neither operation reads as dangerous, which is
+  /// why the refusal is at the call rather than in a comment. Take a copy to
+  /// work with: `[...?TomTimezone.allWithOffset(0)]`.
+  ///
   /// [utcOffsetMinutes] The UTC offset in minutes.
   ///
   /// Returns `null` if no timezone is at that offset now.
@@ -332,7 +349,8 @@ class TomTimezone {
   /// ```
   static List<TomTimezone>? allWithOffset(int utcOffsetMinutes) {
     _initialize();
-    return _timezoneByOffset[utcOffsetMinutes];
+    final bucket = _timezoneByOffset[utcOffsetMinutes];
+    return bucket == null ? null : UnmodifiableListView(bucket);
   }
 
   /// Finds a timezone by name, optionally validating its UTC offset.
