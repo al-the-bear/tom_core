@@ -74,5 +74,6 @@ finished, user-appropriate message. The common pattern is
 
 ## Dependencies
 
-- **`tom_core_kernel`**: the base `TomException` (logging, UUID, server-error
-  tracking) that both types extend.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `tom_core_kernel` | package | every file | the base `TomException` (logging, UUID, server-error tracking) that both types extend |

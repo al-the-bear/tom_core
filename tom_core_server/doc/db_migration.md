@@ -973,9 +973,18 @@ here it cannot drift silently.
 
 ## Dependencies
 
-- `tom_core_kernel` — `tomReflector` (adaptor discovery, row mapping), `tomLog`.
-- The datasources module — `TomDataSourceInfo` (named data sources) and its
-  `executeCommand` / `executeQuery`.
-- The object-persistence module — `TomDbTable` / `TomDbColumn` on `TomDbVersion`.
-- `path` — migration-file name parsing.
-- `dart:io` — walking the migration directory tree.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `mariadb_migration_adapter.dart` | `Future` |
+| `dart:convert` | dart | `mariadb_migration_adapter.dart` | `utf8` |
+| `dart:io` | dart | `db_migration.dart`, `schema_convergence.dart` | walking the migration directory tree |
+| `crypto` | package | `mariadb_migration_adapter.dart` | `sha256`, for the checksum that pins a migration's SQL to the row recording it |
+| `path` | package | `db_migration.dart`, `schema_convergence.dart` | migration-file name parsing |
+| `tom_core_kernel` | package | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart` | `tomReflector` (adaptor discovery, row mapping), `tomLog` |
+| [audit](audit.md) | module | `framework_convergence.dart` | `auditTrailTable`, `defaultAuditTrailTable` |
+| [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `oauthStateTable` |
+| [datasources](datasources.md) | module | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart`, `schema_ddl_reader.dart`, `schema_model.dart` | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery` |
+| [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
+| [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion` |
+| [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable` |

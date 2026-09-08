@@ -182,12 +182,12 @@ TomAuthState.full.narrow(TomAuthState.disabled);  // disabled — the tree's cap
 
 ## Dependencies
 
-- `package:flutter/material.dart` — the underlying widgets each composite
-  assembles.
-- `package:tom_core_kernel/...` — `TomAuthState`, `TomAuthorization`,
-  `TomScope`, and the resource provider used by `TomEmptyState`.
-- `../widget_base/tom_construction_helpers.dart` — `TomCtr` resource resolvers
-  (used by `TomEmptyState`).
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `flutter` | package | 8 of 9 files | `widgets.dart` and `material.dart` |
+| `tom_core_kernel` | package | `tom_auth_guard.dart`, `tom_auth_tree.dart`, `tom_empty_state.dart`, `tom_radio_group.dart` | `TomAuthState`, `TomAuthorization`, `TomScope`, and the resource provider used by `TomEmptyState` |
+| [widget_base](widget_base.md) | module | `tom_auth_guard.dart`, `tom_auth_tree.dart`, `tom_empty_state.dart`, `tom_radio_group.dart` | `TomCtr` resource resolvers (used by `TomEmptyState`) |
+
 - the sibling custom widgets — `TomInfiniteScroll` reuses `TomEmptyState` and
   `TomSkeletonLoader`.
 

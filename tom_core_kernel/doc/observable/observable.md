@@ -2219,13 +2219,16 @@ class Address extends TomClass {
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| [**Reflection Module**](../reflection/reflection.md) | kernel module | `tom_observable.dart`, `tom_observable_objects.dart` | The `@tomReflector` annotation and the global reflector behind `TomClass` field discovery |
-| `tom_reflection` | package | `tom_observable_objects.dart` | `ClassMirror`, the mirror type `TomClass` walks to find its own observable fields |
-| [**Timezoned Module**](../timezoned/timezoned.md) | kernel module | `tom_observable_objects.dart` | `TomTimezoned`, `TomZonedDate`, `TomZonedTime`, `TomZonedDateTime` — the observable wrappers for zoned values |
-| [**Little Things Module**](../little_things/little_things.md) | kernel module | `tom_observable_objects.dart` | `TomException`, the base of `TomObservableException` |
-| [**Resources Module**](../resources/resources.md) | kernel module | `tom_observable_enum.dart` | `TomTextResourceProvider.appResourcesRevision` — how an enum's displayed label re-resolves when the resource bundle changes |
-| [**Scope IDs Module**](../scope_ids/scope_ids.md) | kernel module | `tom_observable_enum.dart` | `TomScope`, which supplies the implicit scope segment in an enum's resource key |
+| `dart:collection` | dart | `tom_observable_objects.dart` | `UnmodifiableListView`, `UnmodifiableMapView` |
+| `dart:convert` | dart | `tom_observable_objects.dart` | `json`, `jsonDecode` |
+| `dart:math` | dart | `tom_observable_objects.dart` | `Random`, `e` |
 | `tom_basics` | package | `tom_observable_enum.dart` | `tomLog`, for the warnings raised when an enum label cannot be resolved |
+| `tom_reflection` | package | `tom_observable_objects.dart` | `ClassMirror`, the mirror type `TomClass` walks to find its own observable fields |
+| [little_things](../little_things/little_things.md) | module | `tom_observable_objects.dart` | `TomException`, the base of `TomObservableException` |
+| [reflection](../reflection/reflection.md) | module | `tom_observable.dart`, `tom_observable_objects.dart` | The `@tomReflector` annotation and the global reflector behind `TomClass` field discovery |
+| [resources](../resources/resources.md) | module | `tom_observable_enum.dart` | `TomTextResourceProvider.appResourcesRevision` — how an enum's displayed label re-resolves when the resource bundle changes |
+| [scope_ids](../scope_ids/scope_ids.md) | module | `tom_observable_enum.dart` | `TomScope`, which supplies the implicit scope segment in an enum's resource key |
+| [timezoned](../timezoned/timezoned.md) | module | `tom_observable_objects.dart` | `TomTimezoned`, `TomZonedDate`, `TomZonedTime`, `TomZonedDateTime` — the observable wrappers for zoned values |
 
 The last three rows belong to `tom_observable_enum.dart` alone. That file is
 the module's only outward-reaching part — the rest of the observable system

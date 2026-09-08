@@ -672,10 +672,10 @@ final jsonString = jsonEncode(safeData);
 
 ## Dependencies
 
-| Dependency | Imported by | For |
-| ---------- | ----------- | --- |
-| `package:tom_basics` | `map_merge_and_process.dart` | `tomLog`, for the reports listed below |
-| `dart:convert` | `pretty_json.dart` | The `JsonEncoder` behind the formatters |
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:convert` | dart | `pretty_json.dart` | The `JsonEncoder` behind the formatters |
+| `tom_basics` | package | `map_merge_and_process.dart` | `tomLog`, for the reports listed below |
 
 `json_serializable.dart` imports nothing — the interface is plain Dart. Note
 that `map_merge_and_process.dart` does *not* use `dart:convert`:

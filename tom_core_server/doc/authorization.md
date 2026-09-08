@@ -388,11 +388,10 @@ against MariaDB.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomPrincipal`, `TomClientJwtToken`, `TomWorker`,
-  `TomExecutor`, `TomException`, `TomAuthState`, `TomResourceRoleRegistry`,
-  `TomAccessControlInformation`, `tomReflector`, and the logging helpers.
-- The object-persistence module — the mapping annotations (including
-  `@TomDbScope`), `TomSqlDatasourceRepository` for the record stores, and the
-  `TomResourceScopeSource` hook / `TomDataScope.runUnscoped` bypass the row
-  scope plugs into.
-- The datasources module — the `TomDbType` boxes the record columns declare.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `authorization_cache.dart`, `resource_data_scope.dart` | `Future`, `Timer`, `Zone` |
+| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomWorker`, `TomExecutor`, `TomException`, `TomAuthState`, `TomResourceRoleRegistry`, `TomAccessControlInformation`, `tomReflector`, and the logging helpers |
+| [datasources](datasources.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart` | the `TomDbType` boxes the record columns declare |
+| [little_things](little_things.md) | module | `authorization_cache.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart`, `resource_data_scope.dart` | the mapping annotations (including `@TomDbScope`), `TomSqlDatasourceRepository` for the record stores, and the `TomResourceScopeSource` hook / `TomDataScope.runUnscoped` bypass the row scope plugs into |

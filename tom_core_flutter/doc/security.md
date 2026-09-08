@@ -411,15 +411,9 @@ the base32 fallback string beside it, not a transcription of the code.
 
 ## Dependencies
 
-- **`tom_core_kernel`**: the wire types the controller surfaces
-  (`Tom2FAPendingEnrolment`, `Tom2FAChallenge`, `Tom2FAMethodDescriptor` and
-  its resource-key convention), `TomTextResourceProvider` for text lookup, and
-  `TomTotp` for the default code width.
-- **`tom_flutter_ui`**: the widget vocabulary every panel is built from —
-  `TomText`, `TomListTile`, `TomTextButton`, `TomSelectableText`,
-  `TomTextField` and `TomFilledButton` — plus `TomUIIcons`, which resolves the
-  chooser's icon names to drawable icons.
-- **`flutter`**: `material` for the flow frame, which styles its title, error
-  line and footnotes from the ambient theme; `widgets` for the mechanism panels,
-  which have no such need; `services` for the digits-only input formatter.
-- **`qr`**: the pure-Dart QR encoder `TomQrCodeView` paints.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `flutter` | package | `qr_code_view.dart`, `two_factor_client.dart`, `two_factor_flow.dart`, `two_factor_totp_client.dart` | `material` for the flow frame, which styles its title, error line and footnotes from the ambient theme; `widgets` for the mechanism panels, which have no such need; `services` for the digits-only input formatter |
+| `qr` | package | `qr_code_view.dart` | the pure-Dart QR encoder `TomQrCodeView` paints |
+| `tom_core_kernel` | package | `two_factor_client.dart`, `two_factor_flow.dart`, `two_factor_texts.dart`, `two_factor_totp_client.dart` | the wire types the controller surfaces (`Tom2FAPendingEnrolment`, `Tom2FAChallenge`, `Tom2FAMethodDescriptor` and its resource-key convention), `TomTextResourceProvider` for text lookup, and `TomTotp` for the default code width |
+| `tom_flutter_ui` | package | `two_factor_flow.dart`, `two_factor_totp_client.dart` | `TomText`, `TomListTile`, `TomTextButton`, `TomSelectableText`, `TomTextField` and `TomFilledButton` — plus `TomUIIcons`, which resolves the chooser's icon names to drawable icons |

@@ -734,9 +734,12 @@ falsifiable from the suite, as is each limitation it admits to.
 
 ## Dependencies
 
-- `tom_core_kernel` — `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`,
-  `makeCleanJsonMap`, `substituteEnvVars`.
-- The cmdline module — `TomArgs` and `TomEnvFile` (source parsing/merging).
-- `shelf` — the `Middleware` / `Handler` / `Request` / `Response` types used by
-  the configuration's handler fields.
-- `yaml` — YAML parsing for `TomYaml`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:io` | dart | `base_server_configuration.dart`, `runtime_environment.dart`, `yaml_resources.dart` | `File`, `Platform` |
+| `shelf` | package | `base_server_configuration.dart` | the `Middleware` / `Handler` / `Request` / `Response` types used by the configuration's handler fields |
+| `tom_core_kernel` | package | `base_server_configuration.dart`, `yaml_resources.dart` | `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`, `makeCleanJsonMap`, `substituteEnvVars` |
+| `yaml` | package | `yaml_resources.dart` | YAML parsing for `TomYaml` |
+| [cmdline](cmdline.md) | module | `base_server_configuration.dart`, `runtime_environment.dart` | `TomArgs` and `TomEnvFile` (source parsing/merging) |
+| [little_things](little_things.md) | module | `tom_config.dart` | `TomServerException` |
+| [server](server.md) | module | `base_server_configuration.dart` | `tomLoggingMiddleware` |

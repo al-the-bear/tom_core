@@ -897,17 +897,18 @@ per example would be twenty-three tests of one function.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomHeader` (the two response headers), `TomServerException`
-  by way of `TomExportException`.
-- The `file_storage` module — `TomBlobStore` and its registry, used only by
-  `TomBlobExportStore`; the rest of the module does not know it exists.
-- The `object_persistence` module — `TomAnnotationAnalyzer` and
-  `TomColumnInformation`, read only by the reflected projection.
-- The `audit` module — `TomAuditTrail.policyFor`, so that the fields a trail
-  redacts are the fields an export omits. Consulting the same declaration is the
-  point; a second redaction list here would be a second thing to get wrong.
-- `pdf` (Apache-2.0) — the PDF document model and its layout engine.
-- `shelf` — the `Response` returned by the `apiResponse` channel.
-- `path` — key-to-path joining in `TomDirectoryExportStore`.
-- `dart:io` — `ZLibEncoder` for the XLSX archive; `File` / `Directory` for the
-  filesystem store.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | 7 of 8 files | `Future`, `Stream` |
+| `dart:convert` | dart | `csv_renderer.dart`, `export_store.dart`, `xlsx_renderer.dart` | `utf8` |
+| `dart:io` | dart | `export_store.dart`, `xlsx_renderer.dart` | `ZLibEncoder` for the XLSX archive; `File` / `Directory` for the filesystem store |
+| `dart:typed_data` | dart | `export_store.dart`, `xlsx_renderer.dart` | `Uint32List`, `Uint8List` |
+| `path` | package | `export_store.dart` | key-to-path joining in `TomDirectoryExportStore` |
+| `pdf` | package | `pdf_renderer.dart` | the PDF document model and its layout engine |
+| `shelf` | package | `export_service.dart` | the `Response` returned by the `apiResponse` channel |
+| `tom_core_kernel` | package | `export_service.dart` | `TomHeader` (the two response headers), `TomServerException` by way of `TomExportException` |
+| [audit](audit.md) | module | `tabular_result.dart` | `TomAuditTrail.policyFor`, so that the fields a trail redacts are the fields an export omits. Consulting the same declaration is the point; a second redaction list here would be a second thing to get wrong |
+| [datasources](datasources.md) | module | `tabular_result.dart` | `TomSqlTypeFamily` |
+| [file_storage](file_storage.md) | module | `blob_export_store.dart`, `export_service.dart`, `export_store.dart` | `TomBlobStore` and its registry, used only by `TomBlobExportStore`; the rest of the module does not know it exists |
+| [little_things](little_things.md) | module | `tabular_result.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `tabular_result.dart` | `TomAnnotationAnalyzer` and `TomColumnInformation`, read only by the reflected projection |

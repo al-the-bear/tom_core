@@ -133,6 +133,7 @@ listener slot, and both accessors behave differently from the contract's name.
 
 ## Dependencies
 
-- **`tom_core_kernel`**: `TomObservable` and `TomObserver`, the observation
-  primitives both adapters bridge.
-- **`flutter`**: `StatefulWidget`/`State` and `ValueListenable`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `flutter` | package | every file | `StatefulWidget`/`State` and `ValueListenable` |
+| `tom_core_kernel` | package | every file | `TomObservable` and `TomObserver`, the observation primitives both adapters bridge |

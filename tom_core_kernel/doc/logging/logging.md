@@ -740,12 +740,14 @@ that route records off the emitting isolate.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `tom_basics` | package | all four files | `tomLog` and the `TomLogOutput` interface this module plugs into. The module does not *define* logging — it supplies outputs for the logger that already exists |
-| [**HTTP Connection Module**](../http_connection/http_connection.md) | kernel module | `remote_logoutput.dart` | `TomServerEndpoint`, which ships batches to the log server |
-| [**Reflection Module**](../reflection/reflection.md) | kernel module | `remote_logoutput.dart`, `remote_logserver.dart` | `@tomReflector` on the wire DTOs — the remote path does not work without generated reflection data |
-| [**Isolate Pooling Module**](../isolate_pooling/isolate_pooling.md) | kernel module | `logging_isolate.dart` | `TomWorker`, which is what moves file writes off the calling isolate |
-| [**Little Things Module**](../little_things/little_things.md) | kernel module | `remote_logoutput.dart` (`little_things.dart`), `file_log_replay_store.dart` (`atomic_file.dart`) | `getFromCurrentZone` for the ambient `TomLoggingContext`, and `tomWriteFileAtomically` for the replay store. Note that `exception_base.dart` is *not* imported — this module raises no `TomException` |
-| `dart:io` | SDK | `file_log_replay_store.dart` | The replay store's file access, and the reason that one file is native-only |
+| `dart:async` | dart | `logging_isolate.dart`, `remote_logoutput.dart` | `Completer`, `Future`, `unawaited` |
+| `dart:convert` | dart | `file_log_replay_store.dart` | `jsonDecode`, `jsonEncode` |
+| `dart:io` | dart | `file_log_replay_store.dart` | The replay store's file access, and the reason that one file is native-only |
+| `tom_basics` | package | every file | `tomLog` and the `TomLogOutput` interface this module plugs into. The module does not *define* logging — it supplies outputs for the logger that already exists |
+| [http_connection](../http_connection/http_connection.md) | module | `remote_logoutput.dart` | `TomServerEndpoint`, which ships batches to the log server |
+| [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `logging_isolate.dart` | `TomWorker`, which is what moves file writes off the calling isolate |
+| [little_things](../little_things/little_things.md) | module | `file_log_replay_store.dart`, `remote_logoutput.dart` | `getFromCurrentZone` for the ambient `TomLoggingContext`, and `tomWriteFileAtomically` for the replay store. Note that `exception_base.dart` is *not* imported — this module raises no `TomException` |
+| [reflection](../reflection/reflection.md) | module | `remote_logoutput.dart`, `remote_logserver.dart` | `@tomReflector` on the wire DTOs — the remote path does not work without generated reflection data |
 
 The isolate-pooling row runs one way only: logging depends on isolate pooling,
 never the reverse — see

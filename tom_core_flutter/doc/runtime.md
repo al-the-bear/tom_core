@@ -144,15 +144,16 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
 
 ## Dependencies
 
-- **`tom_core_kernel`** (direct): the barrel each variant imports. It is the
-  route to the contract, not its home — `tom_core_kernel.dart` re-exports the
-  whole of `tom_basics`, which is where `TomPlatformUtils` and
-  `TomFallbackPlatformUtils` are actually declared
-  (`lib/src/runtime/platform_neutral.dart`). Read the contract's dartdoc there,
-  and look there for what a new predicate has to override; `tom_core_kernel`
-  declares neither type.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:io` | dart | `platform_detection_flutter_io.dart` | `HttpClient`, `Platform` |
+| `dart:isolate` | dart | `platform_detection_flutter_io.dart` | `Isolate` |
+| `fetch_client` | package | `platform_detection_web.dart` | the HTTP `Client` per target |
+| `flutter` | package | `platform_detection_flutter_io.dart`, `platform_detection_neutral.dart`, `platform_detection_web.dart` | `defaultTargetPlatform` / `kIsWeb` for platform predicates |
+| `http` | package | `platform_detection_flutter_io.dart`, `platform_detection_neutral.dart`, `platform_detection_web.dart` | the HTTP `Client` per target |
+| `tom_core_kernel` | package | every file | The barrel each variant imports. It is the route to the contract, not its home — `tom_core_kernel.dart` re-exports the whole of `tom_basics`, where `TomPlatformUtils` and `TomFallbackPlatformUtils` are declared; `tom_core_kernel` declares neither type |
+| `web` | package | `platform_detection_web.dart` | the HTTP `Client` per target |
+
 - **`tom_basics`** (transitive): the contract these variants implement. Not a
   direct dependency of this package — it arrives through the kernel's
   re-export, which is why the import line in every variant names the kernel.
-- **`flutter`**: `defaultTargetPlatform` / `kIsWeb` for platform predicates.
-- **`http`** (+ `fetch_client` / `web` on web): the HTTP `Client` per target.

@@ -258,14 +258,17 @@ narrowing layers.
 
 ## Dependencies
 
-- `package:flutter/material.dart` + `package:flutter/cupertino.dart` — the
-  underlying widgets every wrapper delegates to.
-- `package:tom_core_kernel/...` — `TomAuthState`, `TomAuthorization`,
-  `TomAuthorizationGroup`, `TomScope`, `TomTextResourceProvider`, and the
-  authorizer/UI-state types.
-- `../widget_base/...` — the family base classes, `TomCtr`, and the style
-  resolvers; `../groups/...` for `TomWidgetMixin`; `../theme/...` for the
-  read-only style used by the readonly treatment.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:io` | dart | `images/tom_images.dart` | `File` |
+| `dart:ui` | dart | `effects/tom_effects.dart`, `images/tom_images.dart`, `inputs/tom_inputs.dart` | `Color`, `Image`, `ImageFilter`, `Offset`, `Radius`, `Rect` |
+| `flutter` | package | 23 of 24 files | the underlying widgets every wrapper delegates to |
+| `tom_core_kernel` | package | 22 of 24 files | `TomAuthState`, `TomAuthorization`, `TomAuthorizationGroup`, `TomScope`, `TomTextResourceProvider`, and the authorizer/UI-state types |
+| [advanced_container_layout](advanced_container_layout.md) | module | `containers/acl/tom_acl.dart` | `AclBorderKind`, `AclBorderStyle`, `AclBuilder`, `AclDensity`, `AclDirection`, `AclFormFactor` |
+| [groups](groups.md) | module | 8 of 24 files | `TomAuthGate`, `TomWidgetMixin` |
+| [resource_auth](resource_auth.md) | module | `images/tom_images.dart` | `TomIcon`'s icon table, through `tom_icons.dart` |
+| [theme](theme.md) | module | `containers/acl/tom_acl.dart` | `TomThemeScope` |
+| [widget_base](widget_base.md) | module | 21 of 24 files | the family base classes, `TomCtr`, and the style resolvers; `../groups/...` for `TomWidgetMixin`; `../theme/...` for the read-only style used by the readonly treatment |
 
 > The family tags, `basePath`, `effectiveAuthState`, and resource resolution
 > are all pure (no widget tree), but the package barrel pulls in

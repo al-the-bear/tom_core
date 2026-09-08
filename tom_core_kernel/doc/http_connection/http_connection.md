@@ -968,28 +968,18 @@ TomApiEndpoint<PublicData, void>(
 
 ## Dependencies
 
-This module depends on:
-
-- [**Little Things Module**](../little_things/little_things.md): `TomException`,
-  the base class for error handling
-- [**Security Module**](../security/security.md): `TomBearerAuthentication`, for
-  the token attached when `includeBearerAuthentication` is set, and
-  `TomAccessControl` / `TomPublicAccess` / `TomAuthenticatedAccess` for the
-  endpoint access policies
-- [**Bean Locator Module**](../beanlocator/beanlocator.md): `TomBean` for
-  resolving the active `TomAuthRetryPolicy`
-- [**Reflection Module**](../reflection/reflection.md): the global
-  `tomReflectionInfo` — `createInstance`, `convertToJsonString` and
-  `convertFromJsonString`, which *are* the send path. A DTO sent through this
-  module needs generated reflection data; without it the send fails loudly —
-  `reflector.reflect.not_reflectable` for a class with no generated data at all,
-  `reflector.type.not_annotated` for one that reflects but carries no
-  `@tomReflector` — rather than sending something empty
-- **Runtime Module** (`tom_basics`): `TomPlatformUtils.current.httpClient()`,
-  which is how a channel obtains a platform-appropriate client
-- **`package:http`**: `Client`, `Response` and `StreamedResponse`, the transport
-  underneath `TomServerChannel`
-- **`package:meta`**: `@visibleForTesting` only; no runtime behaviour
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `file_transfer.dart`, `http_file_transfer.dart`, `remote_context.dart`, `server_connection.dart` | `Completer`, `Future`, `Stream`, `unawaited` |
+| `dart:convert` | dart | `endpoints_apis.dart`, `file_transfer.dart`, `http_file_transfer.dart`, `server_connection.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:typed_data` | dart | `file_transfer.dart`, `server_connection.dart` | `Uint8List` |
+| `http` | package | `http_file_transfer.dart`, `server_connection.dart` | `Client`, `Request`, `Response`, `StreamedResponse` — the transport every call and file transfer goes over |
+| `meta` | package | `remote_context.dart` | `@visibleForTesting` only; no runtime behaviour |
+| `tom_basics` | package | `remote_context.dart`, `server_connection.dart` | `TomPlatformUtils.current.httpClient()`, which is how a channel obtains a platform-appropriate client |
+| [beanlocator](../beanlocator/beanlocator.md) | module | `auth_retry.dart` | `TomBean` for resolving the active `TomAuthRetryPolicy` |
+| [little_things](../little_things/little_things.md) | module | `auth_retry.dart`, `endpoints_apis.dart`, `file_transfer.dart`, `mimetypes.dart`, `remote_context.dart`, `server_connection.dart` | `TomException`, the base class for error handling |
+| [reflection](../reflection/reflection.md) | module | `server_connection.dart` | `createInstance`, `convertToJsonString` and `convertFromJsonString`, which *are* the send path. A DTO sent through this module needs generated reflection data; without it the send fails loudly — `reflector.reflect.not_reflectable` for a class with no generated data at all, `reflector.type.not_annotated` for one that reflects but carries no `@tomReflector` — rather than sending something empty |
+| [security](../security/security.md) | module | `endpoints_apis.dart`, `http_file_transfer.dart`, `server_connection.dart` | `TomBearerAuthentication`, for the token attached when `includeBearerAuthentication` is set, and `TomAccessControl` / `TomPublicAccess` / `TomAuthenticatedAccess` for the endpoint access policies |
 
 ### The list above is the import list
 

@@ -236,9 +236,11 @@ one.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomException` (the base class), `getFromCurrentZone`.
-- `uuid` — v4 UUID generation for `TomRequestId`.
-- `dart:isolate` — `Isolate.current` for the worker's debug name.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:isolate` | dart | `server_exception.dart` | `Isolate.current` for the worker's debug name |
+| `tom_core_kernel` | package | `server_exception.dart` | `TomException` (the base class), `getFromCurrentZone` |
+| `uuid` | package | `request_id.dart` | v4 UUID generation for `TomRequestId` |
 
 The module imports no other module of this package, which is the point: it sits
 at the bottom of the dependency graph and everything else may depend on it.

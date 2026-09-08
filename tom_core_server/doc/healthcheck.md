@@ -123,15 +123,13 @@ single assignment applies to every request.
 
 ## Dependencies
 
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `tom_core_kernel` | package | every file | `tomReflector` (reflection), `tomComponent` (the bean locator's component annotation), `TomPublicAccess` (an access control), and `TomHttpMethod` / `TomMimeType` (the HTTP vocabulary the endpoint annotation is written in) |
+| [endpoints](endpoints.md) | module | every file | `tomService` and `TomEndpoint`, the two annotations by which the endpoints pipeline discovers the route |
+
 `health_check.dart` imports exactly two things, and between them they supply
 every symbol it uses:
-
-- `package:tom_core_kernel/tom_core_kernel.dart` — `tomReflector`
-  (reflection), `tomComponent` (the bean locator's component annotation),
-  `TomPublicAccess` (an access control), and `TomHttpMethod` / `TomMimeType`
-  (the HTTP vocabulary the endpoint annotation is written in).
-- `../endpoints/endpoint_annotation.dart` — `tomService` and `TomEndpoint`,
-  the two annotations by which the endpoints pipeline discovers the route.
 
 Note that `@tomComponent` and `@TomPublicAccess` are *kernel* annotations even
 though the endpoints pipeline is what acts on them: the pipeline resolves the

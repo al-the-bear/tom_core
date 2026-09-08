@@ -1003,14 +1003,17 @@ produce either on demand.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomScheduler`, `TomJobStore`, `TomJobDefinition`,
-  `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`,
-  `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `tomLog`, and
-  `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call
-  layer `TomSmsTransport` reaches its gateway through, rather than a raw client.
-- `resources` — `TomLocalizedTextResources` and `TomTextLocale`, which
-  `TomTemplatedMessageService` resolves every template through (see
-  `doc/resources.md`).
-- `async` — `StreamQueue` drives the SMTP line protocol.
-- `path` — file naming in `TomFileMessageTransport`.
-- `dart:io` — `Socket` / `SecureSocket`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `message_transport.dart`, `outbox.dart`, `sms_transport.dart`, `smtp_transport.dart` | `Future`, `Stream`, `StreamController`, `unawaited` |
+| `dart:convert` | dart | `message.dart`, `mime_encoder.dart`, `sms_transport.dart`, `smtp_transport.dart` | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:io` | dart | `message_transport.dart`, `smtp_transport.dart` | `Socket` / `SecureSocket` |
+| `dart:math` | dart | `mime_encoder.dart` | `Random`, `min` |
+| `dart:typed_data` | dart | `message.dart` | `Uint8List` |
+| `async` | package | `smtp_transport.dart` | `StreamQueue` drives the SMTP line protocol |
+| `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
+| `tom_core_kernel` | package | `email_service.dart`, `message_transport.dart`, `outbox.dart`, `sms_service.dart`, `sms_transport.dart`, `smtp_transport.dart` | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `tomLog`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport` reaches its gateway through, rather than a raw client |
+| `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
+| [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
+| [little_things](little_things.md) | module | `message.dart` | `TomServerException` |
+| [resources](resources.md) | module | `email_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |

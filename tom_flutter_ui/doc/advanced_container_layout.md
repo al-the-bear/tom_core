@@ -890,12 +890,12 @@ top of it.
 
 ## Dependencies
 
-- `package:flutter/material.dart` — `Widget`, `BuildContext`, `InheritedWidget`,
-  `VisualDensity`, `TargetPlatform`, the render primitives in `AclContainer`.
-- `package:flutter/foundation.dart` — `ValueNotifier` / `ValueListenable` behind
-  the visibility controllers, `kIsWeb`.
-- `package:tom_core_kernel/...` — `TomAuthorizable` / `TomAuthState` for the
-  authorization-aware hiding.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:math` | dart | `acl_container.dart` | `max`, `min` |
+| `flutter` | package | `acl_builder.dart`, `acl_container.dart`, `acl_device_context.dart`, `acl_flow.dart`, `acl_group_visibility.dart`, `acl_scope.dart` | `widgets.dart`, `material.dart`, `rendering.dart` and `foundation.dart` — the layout engine reaches down to the render layer |
+| `tom_core_kernel` | package | `acl_container.dart` | `TomAuthorizable` / `TomAuthState` for the authorization-aware hiding |
+| [theme](theme.md) | module | `acl_container.dart` | `TomThemeScope` |
 
 > The builder, flags, device-context resolvers, and visibility controllers are
 > pure and need no widget tree (only the render path does), but the package

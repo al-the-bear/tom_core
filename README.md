@@ -198,6 +198,7 @@ reports and never gates.
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's own navigation: its `## Table of Contents` and every anchor it links to itself |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
+| [`tool/check_module_dependencies.py`](tool/check_module_dependencies.py) | Audits each *module* document's Dependencies table against the imports its module actually has |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation and requires `dart doc` to report nothing |
@@ -319,6 +320,30 @@ earn much of their value from naming what is *absent* — no Flutter, no
 A document is audited when its opening inventory resolves to a directory with a
 `pubspec.yaml`, the same rule `check_doc_inventories.py` uses, so module
 documents are skipped rather than faulted.
+
+```bash
+python3 tool/check_module_dependencies.py                # every module document
+python3 tool/check_module_dependencies.py tom_core_kernel # one package
+python3 tool/check_module_dependencies.py --self-test     # perturb and require detection
+```
+
+Module documents get the same audit one level down, against imports rather than
+against a pubspec. A dependency table is the one part of a prose document that
+is wholly derivable from the source, and the part that goes stale most quietly:
+an import added to a file changes nothing a reader can see, so the table keeps
+listing what the module used to need and the omission looks exactly like a
+dependency that was never there. It is checked in both directions, and the
+`Imported by` column per dependency — a table can name the right four
+dependencies and still attribute them to the wrong files.
+
+That is only possible because there is one shape to parse. These 57 sections
+came in four table layouts plus 51 written as prose, which is why exactly one of
+them had ever been checked: a checker tolerant of five formats can verify only
+what each format happens to state, and `| Dependency | Used for |` names no
+importing file at all. The `For` column is prose and is held only to being
+non-empty; requiring every name in it to resolve was tried and rejected, because
+those cells routinely name a type the dependency does not declare, which is the
+sentence worth writing.
 
 ```bash
 python3 tool/check_doc_error_keys.py                 # every "Error keys" section

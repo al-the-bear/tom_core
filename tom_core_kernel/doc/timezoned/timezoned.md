@@ -710,10 +710,10 @@ if (TomZonedDateTime.isTomZonedDateTimeString(input)) {
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `timezone` | package | every file | The IANA database and `tz.TZDateTime`. This is the module — the Tom types are a typed, observable surface over it |
-| [**Little Things Module**](../little_things/little_things.md) | kernel module | `timezones.dart` | `TomException`, the base of the module's exception (`exception_base.dart`), and `convertMinutesToUtcOffset` for rendering a UTC offset (`formatting.dart`) |
-| `tom_basics` | package | `timezones.dart` | `tomLog`, at `debug` when a zone lookup falls back and at `error` when initialization fails |
 | `meta` | package | `timezones.dart` | `@visibleForTesting` only; no runtime behaviour |
+| `timezone` | package | every file | The IANA database and `tz.TZDateTime`. This is the module — the Tom types are a typed, observable surface over it |
+| `tom_basics` | package | `timezones.dart` | `tomLog`, at `debug` when a zone lookup falls back and at `error` when initialization fails |
+| [little_things](../little_things/little_things.md) | module | `timezones.dart` | `TomException`, the base of the module's exception (`exception_base.dart`), and `convertMinutesToUtcOffset` for rendering a UTC offset (`formatting.dart`) |
 
 Note that `date_timestamp.dart` — where `TomZonedDate`, `TomZonedTime` and
 `TomZonedDateTime` live — imports only `timezone` and its sibling

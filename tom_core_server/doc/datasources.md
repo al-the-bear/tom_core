@@ -1038,11 +1038,11 @@ test here requires this file in particular to keep using it.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomObject`, `tomReflector` / `ClassMirror` /
-  `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`,
-  `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog`.
-- The transactions module — `TomTransactionParticipant`.
-- The object-persistence module — `TomAnnotationAnalyzer`,
-  `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`,
-  `TomGroupedSelect` / `TomGroupedRow`.
-- `mysql_client` — the MariaDB / MySQL driver used by `MariaDbDatasource`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `mysql_client` | package | `mariadb_datasource.dart`, `sql_failure_mode.dart` | the MariaDB / MySQL driver used by `MariaDbDatasource` |
+| `tom_basics` | package | `sql_failure_mode.dart` | `TomBaseException`, walked to find the driver exception at the root of a failure chain |
+| `tom_core_kernel` | package | `datasource_initialization.dart`, `mariadb_datasource.dart`, `sql_dialects.dart`, `types_operator.dart` | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
+| [little_things](little_things.md) | module | `datasource_initialization.dart`, `mariadb_datasource.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `mariadb_datasource.dart`, `sql_dialects.dart` | `TomAnnotationAnalyzer`, `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow` |
+| [transactions](transactions.md) | module | `datasource_initialization.dart` | `TomTransactionParticipant` |

@@ -1496,26 +1496,15 @@ searching for a type that cannot exist.
 
 ## Dependencies
 
-This module depends on:
-
-- **`tom_reflection`** (hosted on pub.dev, constraint `>=1.0.1`): supplies
-  `Reflection`, the `ClassMirror`/`InstanceMirror` types and
-  `NoSuchCapabilityError`. A Tom-framework package rather than a third-party
-  one, but consumed by version constraint like any other hosted dependency —
-  there is no path dependency and no override. Its mirror data is produced at
-  build time by `tom_reflection_generator` (a dev dependency); see
-  [Build Configuration](#build-configuration).
-- **Observable Module**: `TomClass` and the observable field types, which the
-  JSON conversion special-cases rather than treating as opaque objects
-- **Timezoned Module**: `TomZonedDate`, `TomZonedTime` and `TomZonedDateTime` —
-  the conversion knows these three types by name, which is why a zoned value
-  survives a round trip that a general object graph would flatten
-- **Little Things Module**: `TomException`, the base of `TomReflectorException`
-- **`tom_basics`**: `tomLog`, used at `trace` level throughout the conversion to
-  report each declaration and value it resolves. This is verbose by design and
-  is the first thing to turn up when a field fails to serialize
-- **`dart:convert`**: the `jsonEncode`/`jsonDecode` behind the string-level
-  conversion entry points
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:convert` | dart | every file | the `jsonEncode`/`jsonDecode` behind the string-level conversion entry points |
+| `tom_basics` | package | every file | `tomLog`, used at `trace` level throughout the conversion to report each declaration and value it resolves. This is verbose by design and is the first thing to turn up when a field fails to serialize |
+| `tom_reflection` | package | every file | `Reflection`, the `ClassMirror` / `InstanceMirror` types and `NoSuchCapabilityError`. A Tom-framework package, but consumed by version constraint like any other hosted dependency — no path dependency and no override. Its mirror data is produced at build time by `tom_reflection_generator`, a dev dependency; see [Build Configuration](#build-configuration) |
+| [json](../json/json.md) | module | every file | `TomJsonSerializable` |
+| [little_things](../little_things/little_things.md) | module | every file | `TomException`, the base of `TomReflectorException` |
+| [observable](../observable/observable.md) | module | every file | `TomClass` and the observable field types, which the JSON conversion special-cases rather than treating as opaque objects |
+| [timezoned](../timezoned/timezoned.md) | module | every file | the conversion knows these three types by name, which is why a zoned value survives a round trip that a general object graph would flatten |
 
 The whole module is one file, `reflection.dart`, so every row above applies to
 it.

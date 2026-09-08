@@ -403,6 +403,7 @@ quietly while nobody is reading.
 
 ## Dependencies
 
-- `tom_core_kernel` — `tomReflectionInfo` (the reflection entry point used by
-  `fillFromArgs`).
-- `dart:io` — `File` reads for `TomEnvFile`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:io` | dart | `env_file.dart` | `File` reads for `TomEnvFile` |
+| `tom_core_kernel` | package | `args.dart` | `tomReflectionInfo` (the reflection entry point used by `fillFromArgs`) |

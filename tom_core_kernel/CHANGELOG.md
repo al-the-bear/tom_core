@@ -124,6 +124,27 @@ anyone who was writing them.
 
 ### Documentation
 
+- **Every module document's Dependencies section is now one table, held to the
+  module's imports (tcincb85).** Across the five packages these 57 sections came
+  in four different table layouts and 51 were written as prose, which is why
+  exactly one of them had ever been checked: a checker tolerant of five formats
+  can verify only what each format happens to state, and `| Dependency | Used
+  for |` names no importing file at all.
+
+  They are now `| Dependency | Kind | Imported by | For |`, ordered dart,
+  package, module and alphabetical within each. The sweep did not only reshape
+  them: measured against the imports, the old sections named 208 of the 323
+  dependencies these modules actually have, so 115 rows are dependencies no
+  document had ever mentioned. `tool/check_module_dependencies.py` holds all of
+  it — both directions, the `Imported by` column per dependency, the kind, the
+  ordering, and a `For` cell that says something — and self-tests ten
+  perturbations, one per fault it can report.
+
+  `For` is prose and is held only to being non-empty. Requiring every name in it
+  to resolve was tried and rejected: these cells routinely name a type the
+  dependency does not declare, which is the sentence worth writing.
+
+
 - **Conversion stays on the subclasses, and the documents now give the true
   reason (tcincb84).** Four places said a shared `convertToTz*` declaration is
   impossible because each subclass narrows its return type. Dart permits

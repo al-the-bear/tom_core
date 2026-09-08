@@ -692,13 +692,9 @@ placeholder.
 
 ## Dependencies
 
-This module depends on:
-
-- **JSON Module**: `getObjectFromTree`, the tree walk behind every dotted-path
-  lookup
-- **Observable Module**: `TomInt`, the type of `appResourcesRevision`. This is
-  the module's only outward-facing signal — it is what carries a bundle change
-  to everything derived from the bundle, so a locale switch reaches bound
-  widgets at all
-- **Little Things Module**: `TomException`, the base of `TomResourceException`
-- **`package:meta`**: `@visibleForTesting` only; no runtime behaviour
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `meta` | package | every file | `@visibleForTesting` only; no runtime behaviour |
+| [json](../json/json.md) | module | every file | `getObjectFromTree`, the tree walk behind every dotted-path lookup |
+| [little_things](../little_things/little_things.md) | module | every file | `TomException`, the base of `TomResourceException` |
+| [observable](../observable/observable.md) | module | every file | it is what carries a bundle change to everything derived from the bundle, so a locale switch reaches bound widgets at all |

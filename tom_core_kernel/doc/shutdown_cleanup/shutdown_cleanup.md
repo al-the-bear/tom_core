@@ -520,15 +520,15 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
 
 ## Dependencies
 
-`tom_shutdown_cleanup.dart` is the module's only source file. Its imports:
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | every file | `StreamSubscription`, held per registered signal so the handlers can be cancelled |
+| `dart:io` | dart | every file | `ProcessSignal` — the whole signal-handling half of the module, and what makes it native-only |
+| `tom_reflection` | package | every file | `ClassMirror`, walked up the supertype chain by the adaptor — `ClassMirror.declarations` holds only a type's *own* members, so an inherited `close` needs the walk |
+| [little_things](../little_things/little_things.md) | module | every file | `tomGetStackTrace`, which formats and depth-limits the trace attached to a failed cleanup's diagnostic |
+| [reflection](../reflection/reflection.md) | module | every file | The global `tomReflector`, which is how `TomCloseAdaptor` finds a `close`/`dispose` method on an object that implements neither interface |
 
-| Dependency | Kind | Used for |
-| ---------- | ---- | -------- |
-| [**Reflection Module**](../reflection/reflection.md) | kernel module | The global `tomReflector`, which is how `TomCloseAdaptor` finds a `close`/`dispose` method on an object that implements neither interface |
-| [**Little Things Module**](../little_things/little_things.md) | kernel module | `tomGetStackTrace`, which formats and depth-limits the trace attached to a failed cleanup's diagnostic |
-| `tom_reflection` | package | `ClassMirror`, walked up the supertype chain by the adaptor — `ClassMirror.declarations` holds only a type's *own* members, so an inherited `close` needs the walk |
-| `dart:io` | SDK | `ProcessSignal` — the whole signal-handling half of the module, and what makes it native-only |
-| `dart:async` | SDK | `StreamSubscription`, held per registered signal so the handlers can be cancelled |
+`tom_shutdown_cleanup.dart` is the module's only source file. Its imports:
 
 The reflection rows are the ones that cost something: `tomReflector` answers
 from generated reflection data, so a package registering objects through

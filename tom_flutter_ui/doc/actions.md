@@ -252,12 +252,11 @@ any extra glue.
 
 ## Dependencies
 
-- `package:tom_core_kernel/tom_core_kernel.dart` — `TomAuthorizable`,
-  `TomAuthorizationGroup`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`,
-  `TomScope`.
-- `../widget_base/tom_construction_helpers.dart` — `TomCtr` for `label` /
-  `tooltip` / `iconName` resource resolution.
-- `package:flutter/widgets.dart` — `VoidCallback` (used by `TomActionTrigger`).
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `flutter` | package | `tom_action_trigger.dart` | `package:flutter/widgets.dart` only — the trigger is a widget, not a Material one |
+| `tom_core_kernel` | package | `tom_action.dart`, `tom_action_context.dart`, `tom_action_controller.dart` | `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope` |
+| [widget_base](widget_base.md) | module | `tom_action.dart`, `tom_action_controller.dart` | `TomCtr` for `label` / `tooltip` / `iconName` resource resolution |
 
 > The action classes themselves are pure logic and need no widget tree. Because
 > the package barrel pulls in `flutter/material` (→ `dart:ui`), run the example

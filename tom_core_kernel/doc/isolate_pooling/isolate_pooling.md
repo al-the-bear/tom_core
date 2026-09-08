@@ -733,18 +733,18 @@ surface, or the dartdoc in `lib/src/tombase/isolate_pooling/tom_worker.dart`.
 
 ## Dependencies
 
-This module depends on:
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | every file | `Completer`, `Future`, `Timer`, `unawaited` |
+| `dart:collection` | dart | every file | `UnmodifiableListView` |
+| `dart:isolate` | dart | every file | directly, which is what makes the module native-only |
+| `meta` | package | every file | `@visibleForTesting` only; no runtime behaviour |
+| `tom_basics` | package | every file | `tomLog`, at `trace` for the dispatch loop and `warn` / `error` for a worker that died |
+| [little_things](../little_things/little_things.md) | module | every file | `TomException`, the base of `TomWorkerException` and `TomWorkerDiedException`, and `tomPrintStackTrace` for reporting a failure raised inside a worker isolate |
 
 - **Runtime Module**: `TomEnvironment` and `TomPlatform`, carried in a
   `TomWorkerContext` for the application's own isolate-side setup to read — see
   [Platform support](#platform-support)
-- **`dart:isolate`**: directly, which is what makes the module native-only
-- **Little Things Module**: `TomException`, the base of `TomWorkerException` and
-  `TomWorkerDiedException`, and `tomPrintStackTrace` for reporting a failure
-  raised inside a worker isolate
-- **`package:tom_basics`**: `tomLog`, the sink for everything the pool reports —
-  see [What the pool logs](#what-the-pool-logs) below
-- **`package:meta`**: `@visibleForTesting` only; no runtime behaviour
 
 ### The logging module is a dependent, not a dependency
 

@@ -417,12 +417,12 @@ extension ConfigExtensions on TomGetSettingsResult {
 
 ## Dependencies
 
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| [reflection](../reflection/reflection.md) | module | every file | `@tomReflector`, the annotation both classes carry. It is the whole of the dependency — and it is what makes the wire round trip work, because the JSON conversion in both directions is driven by the generated reflection data |
+
 `settings_client_authorization.dart` is the module's only source file, and it
 has exactly one import:
-
-| Dependency | Used for |
-| ---------- | -------- |
-| [**Reflection Module**](../reflection/reflection.md) | `@tomReflector`, the annotation both classes carry. It is the whole of the dependency — and it is what makes the wire round trip work, because the JSON conversion in both directions is driven by the generated reflection data |
 
 That is the entire list. The module declares two annotated data classes and
 nothing else: no transport, no storage, no validation. A package that consumes

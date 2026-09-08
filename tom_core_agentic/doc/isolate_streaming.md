@@ -235,6 +235,6 @@ generic error); `isRegistered` and `registeredTypes` expose the taxonomy.
 
 ## Dependencies
 
-- `dart:async` only. The module is `dart:io`-free and depends on no other
-  `tom_core_agentic` module, so it is safe to reuse from any tier (including
-  `dart:io`-forbidding consumers).
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `backpressure_tracker.dart`, `isolate_cancellation.dart`, `isolate_request_guard.dart`, `isolate_stream_close_signal.dart` | `dart:async` only. The module is `dart:io`-free and depends on no other `tom_core_agentic` module, so it is safe to reuse from any tier (including `dart:io`-forbidding consumers) |

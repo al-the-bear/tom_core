@@ -1434,13 +1434,16 @@ disappears a few seconds after login, with nothing in the logs.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| [**Reflection Module**](../reflection/reflection.md) | kernel module | `authentication_authorization.dart`, `oauth_contract.dart`, `two_factor.dart` | `@tomReflector` — the annotation on every DTO in this module, and hence the JSON round trip that carries them over the wire |
-| [**HTTP Connection Module**](../http_connection/http_connection.md) | kernel module | `oauth_contract.dart` | `TomApi` / `TomApiEndpoint` and `TomHttpMethod`, for the external-identity contract |
-| [**Scope IDs Module**](../scope_ids/scope_ids.md) | kernel module | `tom_authorization.dart` | `TomScope` path resolution for `TomAuthorizationGroup` |
-| [**Little Things Module**](../little_things/little_things.md) | kernel module | `access_controls.dart` | `getFromCurrentZone<TomPrincipal>()` — how resource protection finds the ambient principal without being passed one |
-| `tom_crypto` | package | `bearer_authentication.dart` | `TomClientJwtToken`, the parsed form of both bearer tokens |
+| `dart:collection` | dart | `tom_authorization.dart` | `HashSet` |
+| `dart:math` | dart | `two_factor.dart` | `e`, `pow` |
+| `dart:typed_data` | dart | `two_factor.dart` | `Uint8List` |
 | `crypto` | package | `two_factor.dart` | `Hmac`/`sha1`, the TOTP primitive |
 | `meta` | package | `access_controls.dart` | `@nonVirtual` only; no runtime behaviour |
+| `tom_crypto` | package | `bearer_authentication.dart` | `TomClientJwtToken`, the parsed form of both bearer tokens |
+| [http_connection](../http_connection/http_connection.md) | module | `oauth_contract.dart` | `TomApi` / `TomApiEndpoint` and `TomHttpMethod`, for the external-identity contract |
+| [little_things](../little_things/little_things.md) | module | `access_controls.dart`, `two_factor.dart` | `getFromCurrentZone<TomPrincipal>()` — how resource protection finds the ambient principal without being passed one |
+| [reflection](../reflection/reflection.md) | module | `authentication_authorization.dart`, `oauth_contract.dart`, `two_factor.dart` | `@tomReflector` — the annotation on every DTO in this module, and hence the JSON round trip that carries them over the wire |
+| [scope_ids](../scope_ids/scope_ids.md) | module | `tom_authorization.dart` | `TomScope` path resolution for `TomAuthorizationGroup` |
 
 `TomClientJwtToken` is a dependency's type that this module puts in its **own
 public signatures** — two getters return it and `convertTokenPayloadToPrincipal`
@@ -1457,16 +1460,12 @@ Flutter application actually writes.
 Two modules are absent from the table although their subject matter *runs
 through* this one, which is the shape a spurious dependency takes here:
 
-- There is **no crypto module** in this package. JWT work is
-  [`package:tom_crypto`](https://pub.dev/packages/tom_crypto), a hosted
-  dependency, and only `bearer_authentication.dart` touches it.
 - The **observable module** supplies nothing here. It re-exports
   `@tomReflector`, so importing DTO annotations *through* it would look like a
   dependency; the annotation is the reflection module's and is imported from
   there directly.
 
-Note the shape of the reflection row: it is the only dependency shared by more
-than one file, and it is the one with a build-time cost. `tomReflector` answers
-from generated data, so a package that serializes these DTOs needs
-`tom_reflection_generator` as a dev dependency and a `dart run build_runner
-build`.
+Note the shape of the reflection row: it reaches the most files of any row, and
+it is the only one with a build-time cost. `tomReflector` answers from generated
+data, so a package that serializes these DTOs needs `tom_reflection_generator`
+as a dev dependency and a `dart run build_runner build`.

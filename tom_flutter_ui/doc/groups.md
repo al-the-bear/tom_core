@@ -312,11 +312,12 @@ ceiling for both.
 
 ## Dependencies
 
-- `package:flutter/widgets.dart` — `Widget`, `BuildContext`, the visual
-  treatments in `applyAuthState`.
-- `package:tom_core_kernel/...` — `TomAuthorizationGroup`, `AuthGroupMode`,
-  `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope`, `TomCtr`.
-- `../theme/tom_theme.dart` — the read-only style for the `read` treatment.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `flutter` | package | `tom_auth_gate.dart`, `tom_widget_mixin.dart` | `package:flutter/widgets.dart` only |
+| `tom_core_kernel` | package | `tom_auth_gate.dart`, `tom_widget_mixin.dart` | `TomAuthorizationGroup`, `AuthGroupMode`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope`, `TomCtr` |
+| [theme](theme.md) | module | `tom_widget_mixin.dart` | the read-only style for the `read` treatment |
+| [widget_base](widget_base.md) | module | `tom_widget_mixin.dart` | `TomAuthLayers`, `TomCtr`, `TomScopePath`, `TomWidgetSurface` |
 
 > The group and mixin resolution logic is pure and needs no widget tree (only
 > `applyAuthState` does), but the package barrel pulls in `flutter/material`

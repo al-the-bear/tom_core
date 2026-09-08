@@ -914,20 +914,20 @@ and therefore auditable in its own right.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomPrincipal`, `TomUser`, `getFromCurrentZone`,
-  `TomClosable`, `tomReflector` (policy resolution by mirror), and — through its
-  `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures.
-- `crypto` — SHA-256 for the hash chain.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `audit_anchor_store.dart`, `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `Future`, `Timer`, `unawaited` |
+| `dart:convert` | dart | `audit_anchor.dart`, `audit_anchor_store.dart`, `audit_sink.dart`, `sql_audit_sink.dart` | `base64Decode`, `base64Encode`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:io` | dart | `audit_anchor_store.dart`, `audit_sink.dart` | `Directory`, `File`, `FileMode` |
+| `dart:typed_data` | dart | `audit_anchor.dart` | `Uint8List` |
+| `crypto` | package | `audit_sink.dart` | SHA-256 for the hash chain |
+| `path` | package | `audit_anchor_store.dart`, `audit_sink.dart` | `p.basename`, `p.basenameWithoutExtension`, `p.join` |
+| `tom_core_kernel` | package | `audit_anchor.dart`, `audit_anchor_store.dart`, `audit_record.dart`, `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `TomPrincipal`, `TomUser`, `getFromCurrentZone`, `TomClosable`, `tomReflector` (policy resolution by mirror), and — through its `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures |
+| [datasources](datasources.md) | module | `sql_audit_sink.dart`, `sql_audit_sql.dart` | `TomSqlAuditSink` writes through a `TomDataSource` directly, and encodes instants with `sqlInstant` |
+| [little_things](little_things.md) | module | `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `TomRequestId`, recovered from the zone to supply `requestId`. This is the module's only intra-package dependency below the endpoints/persistence layer, and it is deliberately the bottom one: the id type lives beside the exception base, so attributing an entry to its request does not drag the whole server module in |
+| [object_persistence](object_persistence.md) | module | `sql_audit_sink.dart` | `TomSqlDatasourceRepository` calls the trail on every mutation |
+
 - `pointycastle` — the `RSAPrivateKey` / `RSAPublicKey` types anchor signing
   takes.
-- The little-things module — `TomRequestId`, recovered from the zone to supply
-  `requestId`. This is the module's only intra-package dependency below the
-  endpoints/persistence layer, and it is deliberately the bottom one: the id
-  type lives beside the exception base, so attributing an entry to its request
-  does not drag the whole server module in.
 - The endpoints module — `TomEndpointHandler` calls the trail at the denial and
   declared-invocation points.
-- The object-persistence module — `TomSqlDatasourceRepository` calls the trail
-  on every mutation.
-- The datasources module — `TomSqlAuditSink` writes through a `TomDataSource`
-  directly, and encodes instants with `sqlInstant`.

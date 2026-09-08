@@ -254,6 +254,9 @@ text:
 
 ## Dependencies
 
-- **`tom_core_kernel`**: `TomObservable` / `TomObject` (the observation
-  substrate), `TomConfigResourceProvider` (the shipped config layer),
-  `TomException`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:convert` | dart | `file_configuration_store_io.dart` | `jsonDecode`, `jsonEncode` |
+| `dart:io` | dart | `file_configuration_store_io.dart` | `File` |
+| `tom_core_kernel` | package | `client_configuration.dart`, `client_configuration_store.dart` | `TomObservable` / `TomObject` (the observation substrate), `TomConfigResourceProvider` (the shipped config layer), `TomException` |
+| [little_things](little_things.md) | module | `client_configuration_store.dart` | `TomClientException` |

@@ -259,13 +259,17 @@ and an application that needs one builds it today rather than waiting:
 
 ## Dependencies
 
-- `shelf` / `shelf_router` — the HTTP pipeline, `Request`/`Response`/`Handler`/
-  `Middleware`/`Router`/`Cascade`, and `serve`.
-- `tom_core_kernel` — `TomPrincipal`, `TomClientJwtToken`,
-  `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`,
-  `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`.
-- The little-things module — `TomServerException` (its `clientThrow` flag feeds
-  the error response) and `TomRequestId` (seeded into every request zone).
-- The configuration module — `TomBaseServerConfiguration`.
-- The endpoints module — `TomEndpointRouting` (router initialisation).
-- The authorization module — `TomAuthorizationCache` (principal resolution).
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | every file | `Future`, `FutureOr` |
+| `dart:convert` | dart | every file | `json`, `jsonEncode`, `utf8` |
+| `dart:io` | dart | every file | `HttpServer`, `InternetAddress`, `SecurityContext` |
+| `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
+| `shelf_router` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
+| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException` |
+| [authentication](authentication.md) | module | every file | `TomServerSelfLogin`, `TomServerSelfLoginException` |
+| [authorization](authorization.md) | module | every file | `TomAuthorizationCache` (principal resolution) |
+| [configuration](configuration.md) | module | every file | `TomBaseServerConfiguration` |
+| [endpoints](endpoints.md) | module | every file | `TomEndpointRouting` (router initialisation) |
+| [little_things](little_things.md) | module | every file | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (seeded into every request zone) |
+| [transactions](transactions.md) | module | every file | `TomTransactionManager` |

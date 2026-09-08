@@ -108,6 +108,11 @@
       "measured": "2026-09-06",
       "note": "Lands at zero because every fault it found on its first repo-wide run was repaired in the same pass. The subject was tom_flutter_ui_test/doc/widget_resource_parameters.md, whose resolver table named seven methods that existed nowhere and attributed the rest to TomNodeBase, which declares no resolvers; the 1,181 references were requalified onto TomCtr and TomStyleResolvers, the types the widgets actually call. That exposed eight more across four other documents, each a single wrong name -- TomTotp2FAService.encodeBase32 for generateSecret, TomBool.value for get(), TomFormStyle.requiredIndicator for the field it is declared on, TomAclBuilder.setBpMinWidth for addRowBreakpoint, TomField.formName/fieldName for TomForm.formId and TomField.tomId, and TomDbType.of for the of() the subclasses carry. A rise means a document now names a member its type does not declare; a fall means a member was deleted or renamed and the baseline should follow it down."
     },
+    "check_module_dependencies": {
+      "faults": 2,
+      "measured": "2026-09-08",
+      "note": "Two, and both are the same absence: tom_core_agentic's `agent` and `llm` modules have no document, so they have no Dependencies section to hold to their imports. Reported rather than skipped, because a module the gate cannot see is indistinguishable from one it approves of, and these two are the largest in the package. Every one of the 57 documents that does exist passes: the sweep that landed this gate normalised four table shapes and 51 prose sections into one, and filled the 115 rows no section had ever carried."
+    },
     "check_pubspec_boilerplate": {
       "faults": 0,
       "measured": "2026-09-03"

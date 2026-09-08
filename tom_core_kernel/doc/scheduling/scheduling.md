@@ -983,15 +983,18 @@ Three questions and where they are answered:
 
 ## Dependencies
 
-| Dependency | Kind | Used for |
-| ---------- | ---- | -------- |
-| `tom_reflection` | package | `ClassMirror`, which appears in `TomScheduledJobs.discover`'s own signature. The whole of [Declaring a Job](#declaring-a-job) rests on it |
-| `reflection` | kernel module | The global `tomReflector` and the `@tomReflector` annotation — the only query the scan has |
-| `tom_basics` | package | `tomLog`, the default `onAlert` sink |
-| `little_things` | kernel module | `TomException`, base of `TomScheduleException` and `TomScheduledJobException`; `tomWriteFileAtomically` for `TomFileJobStore` |
-| `isolate_pooling` | kernel module | `TomCommand`, which *is* the job body type; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |
-| `shutdown_cleanup` | kernel module | `TomClosable`, implemented by `TomScheduler` |
-| `dart:io` | SDK | `TomFileJobStore` and `TomFileLeaseLock` only |
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `job_definition.dart`, `scheduler.dart` | `Completer`, `Future`, `StreamSubscription`, `Timer`, `unawaited` |
+| `dart:convert` | dart | `job_store.dart`, `lease_lock.dart` | `base64Url`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:io` | dart | `job_store.dart`, `lease_lock.dart` | `TomFileJobStore` and `TomFileLeaseLock` only |
+| `dart:math` | dart | `job_definition.dart`, `scheduler.dart` | `Random`, `pow` |
+| `tom_basics` | package | `job_store.dart`, `scheduler.dart` | `tomLog`, the default `onAlert` sink |
+| `tom_reflection` | package | `scheduled_job.dart` | `ClassMirror`, which appears in `TomScheduledJobs.discover`'s own signature. The whole of [Declaring a Job](#declaring-a-job) rests on it |
+| [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `job_definition.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomCommand`, which *is* the job body type; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |
+| [little_things](../little_things/little_things.md) | module | `job_store.dart`, `schedule.dart`, `scheduled_job.dart` | `TomException`, base of `TomScheduleException` and `TomScheduledJobException`; `tomWriteFileAtomically` for `TomFileJobStore` |
+| [reflection](../reflection/reflection.md) | module | `scheduled_job.dart` | The global `tomReflector` and the `@tomReflector` annotation — the only query the scan has |
+| [shutdown_cleanup](../shutdown_cleanup/shutdown_cleanup.md) | module | `scheduler.dart` | `TomClosable`, implemented by `TomScheduler` |
 
 The two reflection rows are the ones that cost something. Declaring a job by
 annotation means the declaring package needs a **`build_runner` step**:

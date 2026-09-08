@@ -389,16 +389,17 @@ So the two tools are:
 
 ## Dependencies
 
-`scope_ids.dart` is the module's only source file, and the
-[little things module](../little_things/little_things.md) is its only
-dependency — nothing else, from this package or outside it:
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | every file | `Zone` and `runZoned` — the scope is a zone value, which is what makes it ambient |
+| [little_things](../little_things/little_things.md) | module | every file | `getFromCurrentZone`, for reading the active scope off the current zone |
 
-- `little_things.dart` — `getFromCurrentZone`, for reading the active scope off
-  the current zone
-- `exception_base.dart` — `TomException`, the base of `TomScopeException`
+`scope_ids.dart` is the module's only source file, and the two rows above are
+the whole of what it reaches: one SDK library and one kernel module, through
+`exception_base.dart` for `TomException`, the base of `TomScopeException`.
 
-There are no package dependencies and no SDK imports. That is what lets the
-module sit as far down the graph as it does — the two kernel modules that use
-`TomScope` for key resolution, [security](../security/security.md)
-(`tom_authorization.dart`) and [observable](../observable/observable.md)
-(`tom_observable_enum.dart`), reach it without dragging anything along.
+There is no package dependency at all. That is what lets the module sit as far
+down the graph as it does — the two kernel modules that use `TomScope` for key
+resolution, [security](../security/security.md) (`tom_authorization.dart`) and
+[observable](../observable/observable.md) (`tom_observable_enum.dart`), reach it
+without dragging anything along.

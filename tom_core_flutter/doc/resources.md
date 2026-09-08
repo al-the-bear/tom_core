@@ -156,11 +156,7 @@ value's actual runtime type — the message names only the type that was wanted.
 
 ## Dependencies
 
-- **`tom_core_kernel`**: `TomConfigResourceProvider`, the resource provider
-  every property reads from — resolution is a single `getObjectOrNull` call on
-  the provider returned by its `getAppConfig()`.
-  It is populated by `setAppConfigProvider`, which is the call an application
-  must make before constructing any property. The *text* provider family
-  (`setAppResourceProvider`) is a separate installation with its own backing
-  map and is not consulted here, so installing it instead leaves every property
-  unresolved.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `tom_core_kernel` | package | every file | `TomConfigResourceProvider`, the provider every property reads from — resolution is a single `getObjectOrNull` call on the provider returned by its `getAppConfig()`, which an application populates with `setAppConfigProvider` |
+| [little_things](little_things.md) | module | every file | `TomClientException` |

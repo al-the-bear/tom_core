@@ -615,7 +615,8 @@ than a `!`.
 
 ## Dependencies
 
-This module depends on:
-
-- **Little Things Module**: Zone utilities for context propagation
-- **Security Module**: `TomPrincipal` for authenticated user context
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | every file | `Future` |
+| [little_things](../little_things/little_things.md) | module | every file | `getFromCurrentZone`, the zone lookup the context installs itself for |
+| [security](../security/security.md) | module | every file | `TomPrincipal` for authenticated user context |

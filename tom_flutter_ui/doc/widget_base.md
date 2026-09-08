@@ -529,15 +529,12 @@ asserted the same way for every entry in it.
 
 ## Dependencies
 
-- `package:flutter/material.dart` — `TomCtr` and `TomStyleResolvers` require the
-  Material library; the base classes use `package:flutter/widgets.dart`, and
-  `TomScopePath` uses no Flutter library at all.
-- `tom_core_kernel` — `TomScope`, `TomAuthorization`, `TomAuthState`,
-  `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`,
-  `TomTextResourceProvider`.
-- Sibling modules: `resource_auth/` (`TomUIColors`, `TomUIIcons`), `theme/`
-  (`TomThemeScope`, `TomStateStyle`), `widgets/` (`TomText` for the
-  default-widget helpers).
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `flutter` | package | `tom_construction_helpers.dart`, `tom_node_base.dart`, `tom_policy_node_base.dart`, `tom_scope_widgets.dart`, `tom_style_resolvers.dart` | `widgets.dart` and `material.dart` — the base classes every Tom widget extends |
+| `tom_core_kernel` | package | 8 of 12 files | `TomScope`, `TomAuthorization`, `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`, `TomTextResourceProvider` |
+| [resource_auth](resource_auth.md) | module | `tom_construction_helpers.dart`, `tom_style_resolvers.dart` | `TomUIColors`, `TomUIIcons` |
+| [theme](theme.md) | module | `tom_policy_node_base.dart` | `TomThemeScope` |
 
 > Because the barrel pulls in `flutter/material` (→ `dart:ui`), code that
 > imports `widget_base` runs under the Flutter toolchain. Two executable

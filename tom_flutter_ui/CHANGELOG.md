@@ -2,6 +2,12 @@
 
 ### Changed
 
+- **This package's module documents follow the framework-wide Dependencies
+  table (tcincb85).** `| Dependency | Kind | Imported by | For |`, ordered
+  dart, package, module, and held to the module's real imports by
+  `tom_ai/core/tool/check_module_dependencies.py` — in both directions, and per
+  dependency for the files credited with it.
+
 - **One spelling for the authorization group: `tomGroup`, everywhere.**
   `TomForm` and `TomActionController` took the same
   `TomAuthorizationGroup?` as `authorizationGroup` while the ~45 declarations of

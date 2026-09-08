@@ -809,15 +809,20 @@ it means "nothing a caller can see", not "nothing at all".
 
 ## Dependencies
 
-- `shelf` / `shelf_router` — the HTTP `Request` / `Response` / `Router` types.
-- `shelf_multipart` — decoding a `multipart/form-data` body into its parts.
-- `shelf_web_socket` / `web_socket_channel` — the handshake upgrade and the
-  channel a socket handler talks through.
-- `tom_core_kernel` — `tomReflector` and the mirror types (annotation
-  discovery, parameter binding, result conversion), `TomHttpMethod`,
-  `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`,
-  `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`,
-  `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `tomLog`.
-- The server module — `TomRequestLogInfo`.
-- The little-things module — `TomServerException`, `TomRequestId`.
-- The transactions module — `TomTransactionManager` / `TomTransaction`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `endpoint_pipeline.dart`, `file_endpoint.dart`, `web_socket_endpoint.dart` | `Future`, `Stream`, `StreamController`, `StreamSubscription`, `Zone`, `unawaited` |
+| `dart:convert` | dart | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `file_endpoint.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:typed_data` | dart | `form_binding.dart` | `Uint8List` |
+| `shelf` | package | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `endpoint_results.dart`, `file_endpoint.dart`, `form_binding.dart` | the HTTP `Request` / `Response` / `Router` types |
+| `shelf_multipart` | package | `form_binding.dart` | decoding a `multipart/form-data` body into its parts |
+| `shelf_router` | package | `endpoint_pipeline.dart`, `file_endpoint.dart` | the HTTP `Request` / `Response` / `Router` types |
+| `shelf_web_socket` | package | `endpoint_pipeline.dart` | the handshake upgrade and the channel a socket handler talks through |
+| `tom_core_kernel` | package | every file | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `tomLog` |
+| `web_socket_channel` | package | `endpoint_pipeline.dart`, `web_socket_endpoint.dart` | the handshake upgrade and the channel a socket handler talks through |
+| [audit](audit.md) | module | `endpoint_pipeline.dart` | `TomAuditAction`, `TomAuditOutcome`, `TomAuditTrail`, `TomAudited` |
+| [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomStorageException`, `TomStoredBlob` |
+| [little_things](little_things.md) | module | `endpoint_pipeline.dart`, `file_endpoint.dart`, `form_binding.dart`, `web_socket_endpoint.dart` | `TomServerException`, `TomRequestId` |
+| [object_persistence](object_persistence.md) | module | `file_endpoint.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomFileReference` |
+| [server](server.md) | module | `endpoint_pipeline.dart` | `TomRequestLogInfo` |
+| [transactions](transactions.md) | module | `endpoint_pipeline.dart` | `TomTransactionManager` / `TomTransaction` |

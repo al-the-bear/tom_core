@@ -1250,12 +1250,12 @@ from the grammar, and a sentence using it is refused.
 
 ## Dependencies
 
-- `tom_core_kernel` — `tomReflector` (mirrors), the `TomZoned*` date/time types.
-- The datasources module — `TomDbType`/`TomOperator`/`SqlString`,
-  `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`,
-  `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family
-  (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`),
-  `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`,
-  `TomDataSourceInfo`, `TomPreparedStatement`.
-- The little-things module — `TomServerException` (base of the module's
-  exceptions).
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `data_scope.dart` | `Future` |
+| `tom_core_kernel` | package | 7 of 12 files | `tomReflector` (mirrors), the `TomZoned*` date/time types |
+| `uuid` | package | `file_reference.dart` | `Uuid.v4`, for the file name in a blob key |
+| [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
+| [datasources](datasources.md) | module | 9 of 12 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement` |
+| [file_storage](file_storage.md) | module | `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
+| [little_things](little_things.md) | module | `annotation_analyzer.dart`, `column_authorization.dart`, `crud_repository.dart`, `data_scope.dart`, `operators_expressions.dart` | `TomServerException` (base of the module's exceptions) |

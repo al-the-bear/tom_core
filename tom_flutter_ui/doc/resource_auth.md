@@ -243,12 +243,14 @@ registering overrides, with zero widget changes.
 
 ## Dependencies
 
-- `dart:ui` / `package:flutter/widgets.dart` / `package:flutter/material.dart` /
-  `package:flutter/cupertino.dart` — `Color`, `IconData`, and the generated
-  palettes/icon sets.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:ui` | dart | `tom_colors.dart` | `Color`, `IconData`, and the generated palettes/icon sets |
+| `flutter` | package | `tom_colors_generated.dart`, `tom_icons.dart`, `tom_icons_generated.dart` | `widgets.dart`, `material.dart` and `cupertino.dart` — the icon and colour tables name both design languages |
 
-No kernel dependency: every file here imports Flutter and its sibling
-generated file, and nothing else.
+No kernel dependency, and none on any other module of this package: the two
+rows above are the whole of it, and the rest of what a file here imports is its
+sibling generated file.
 
 > The colour, icon, and config resolvers are pure logic and need no widget tree,
 > but the package barrel pulls in `flutter/material` (→ `dart:ui`), so run the

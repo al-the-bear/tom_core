@@ -2160,40 +2160,27 @@ resolves the pending record for its context and calls
 
 ## Dependencies
 
-- **`tom_core_kernel`**: `TomPrincipal`, `TomAccessControlDefinition`,
-  `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types
-  `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` /
-  `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes
-  itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the
-  holder server self-login installs into), and the wire types
-  `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live
-  there and not here because the server writes them and the client reads them.
-- **Crypto** (kernel): `TomJwtConfiguration`'s RSA key encrypts an enrolment's
-  `secretData` before `TomPersistent2FAEnrolmentStore` writes it, so the same
-  key that protects a token's encrypted claims protects a stored factor.
-- **Configuration** (this package): `TomBaseServerConfiguration` supplies the
-  service-account fields `TomServiceCredential.fromConfiguration` reads.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `two_factor.dart` | `Future`, `FutureOr` |
+| `dart:convert` | dart | `oauth_flow.dart`, `oauth_tokens.dart`, `server_self_login.dart`, `two_factor.dart`, `two_factor_delivered_code.dart`, `two_factor_enrolment.dart` | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:math` | dart | `oauth_flow.dart` | `Random`, `exp` |
+| `dart:typed_data` | dart | `two_factor_delivered_code.dart` | `Uint8List` |
+| `crypto` | package | `oauth_flow.dart`, `two_factor_delivered_code.dart` | `sha256`, for the PKCE code challenge and the delivered-code digest |
+| `dart_jsonwebtoken` | package | `jwt_signing.dart` | `jwt.SecretKey`, `jwt.signing` |
+| `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
+| `tom_core_kernel` | package | 14 of 15 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the service-account fields `TomServiceCredential.fromConfiguration` reads |
+| [datasources](datasources.md) | module | `oauth_identity.dart`, `oauth_state_sql.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomDbBool`, `TomDbDateTime`, `TomDbInt`, `TomDbString` |
+| [endpoints](endpoints.md) | module | `oauth_endpoints.dart` | `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract |
+| [little_things](little_things.md) | module | 9 of 15 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException` and `TomOAuthException` |
+| [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
+| [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
+| [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |
+| [resources](resources.md) | module | `two_factor_delivered_code.dart` | no user-facing text originates in this module |
+
 - **Server** (this package): `TomServerChannel` carries the default self-login
   transport, and `TomServer` calls `loginAndInstall` before binding its socket.
-- **Messaging** (this package): `TomEmailService` and `TomSmsService` deliver
-  the one-time codes, through `TomTemplatedMessageService.deliverNow` rather
-  than the outbox. A deployment that registers neither can still run TOTP.
-- **Resources** (this package): `TomLocalizedTextResources` renders every
-  delivered message and every mechanism name — no user-facing text originates
-  in this module.
-- **Little Things** (this package): `TomServerException`, the base of
-  `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException` and
-  `TomOAuthException`.
-- **Endpoints** (this package): `TomOAuthServer` implements the kernel's
-  `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()`
-  registers the contract.
-- **Object Persistence** (this package): `TomExternalIdentityLink` and
-  `TomUserTwoFactorEnrolment` are ordinary entities over
-  `TomSqlDatasourceRepository`. Neither table is created by the framework; each
-  entity carries its own `createTableSql` for a deployment's migration to run.
 - **Bean Locator** (kernel): `Tom2FAPolicy` and `Tom2FAEnrolmentStore` are
   resolved by type through `TomBean`, which is what makes both of them
   swappable without a configuration key.
-- **Configuration** (this package): the provider set is read through
-  `TomServerConfigResourceProvider`, which already performs `${...}` env-var
-  substitution.

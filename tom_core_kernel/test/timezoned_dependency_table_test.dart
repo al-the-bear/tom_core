@@ -2,84 +2,36 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-/// The dependency table in the timezoned prose, held to the module's imports.
+/// The two claims about the timezoned dependency table that only source can
+/// settle, and that the repository gate cannot.
 ///
-/// A dependency table is the one part of a document that is wholly derivable
-/// from the source, and it is also the part that goes stale most quietly. An
-/// import added to a file changes nothing a reader can see; the table keeps
-/// listing what the module used to need, and the omission looks exactly like a
-/// dependency that was never there. The table had lost a `little_things` file
-/// that way — the module reaches that module through two files and the table
-/// named one.
+/// `tool/check_module_dependencies.py` holds every module document's table to
+/// its module's imports — in both directions, including which files are
+/// credited with each dependency — across all 57 of them. That is where the
+/// general rule lives, and a second implementation of it here would be a copy
+/// that can disagree with the original.
 ///
-/// So the source is the anchor and the table is compared to it in both
-/// directions: a dependency with no row is an omission, a row with no
-/// dependency is a leftover, and both are wrong in the same way. The
-/// `Imported by` column is checked the same way, per dependency, because a
-/// table can name the right four things and still attribute them to the wrong
-/// files.
+/// What stays is what is specific to this module:
+///
+/// * **Which sibling file a module row names.** The gate checks *importers* —
+///   which files in this module reach a dependency. This checks the other
+///   direction: which files *of the sibling module* are reached. The table lost
+///   `formatting.dart` that way, naming one of the two entry points into
+///   `little_things`, and the gate would not have seen it.
+/// * **The note after the table.** It names a module file that carries none of
+///   the kernel dependencies and says what it imports instead. That is a
+///   sentence about a file the table deliberately does not have a row for, so
+///   nothing derivable from the table can keep it true.
 ///
 /// What this file does *not* cover is the conditional import that selects the
 /// platform initializer, and the `package:timezone/…` entry points the prose
 /// credits to each platform — `timezoned_platform_selection_test.dart` owns
-/// those, following the imports into the `timezone` package to do it. Here a
-/// dependency is a name and a set of importing files, nothing deeper.
+/// those, following the imports into the `timezone` package to do it.
 void main() {
-  // ===========================================================================
-  // Which dependencies are named
-  // ===========================================================================
-  group('the table names the module\'s dependencies', () {
-    test('every dependency has a row', () {
-      expect(
-        _dependencies().keys.toSet().difference(_rows().keys.toSet()),
-        isEmpty,
-        reason:
-            'The module imports something the dependency table never mentions. '
-            'A reader auditing what this module pulls in gets an answer that is '
-            'short by exactly the entry they would have cared about.',
-      );
-    });
-
-    test('no row names something the module does not import', () {
-      expect(
-        _rows().keys.toSet().difference(_dependencies().keys.toSet()),
-        isEmpty,
-        reason:
-            'The dependency table has a row for something no file in the module '
-            'imports. Either the dependency was dropped and the row outlived '
-            'it, or the row was never right.',
-      );
-    });
-
-    // Both comparisons above are set differences, and a set difference against
-    // an empty set is empty. Each side has to have found something.
-    test('both sides of the comparison found something', () {
-      expect(_dependencies(), hasLength(greaterThanOrEqualTo(4)));
-      expect(_rows(), hasLength(greaterThanOrEqualTo(4)));
-    });
-  });
-
   // ===========================================================================
   // Which files reach them
   // ===========================================================================
-  group('the Imported by column is what the files import', () {
-    test('each row attributes its dependency to the right files', () {
-      final actual = _dependencies();
-      final offenders = <String>[];
-
-      for (final row in _rows().entries) {
-        final claimed = _importers(row.value);
-        final real = actual[row.key];
-        if (real == null || _setEquals(claimed, real)) continue;
-        offenders.add(
-          '${row.key}: the table says ${_list(claimed)}, the source says '
-          '${_list(real)}',
-        );
-      }
-
-      expect(offenders, isEmpty, reason: _wrongImporterReason);
-    });
-
+  group('the sibling files a module row names', () {
     test('each sibling module row names the files it is reached through', () {
       final offenders = <String>[];
 
@@ -128,27 +80,6 @@ void main() {
 // -----------------------------------------------------------------------------
 
 const String _moduleDirectory = 'lib/src/tombase/timezoned';
-
-/// Every dependency the module reaches outside its own directory, mapped to
-/// the module files that import it.
-///
-/// A dependency is named the way the table names it: a package by its package
-/// name, a sibling kernel module by its directory. Imports within the module
-/// are not dependencies — they are the module — and neither are `dart:`
-/// libraries, which no table row could usefully describe.
-Map<String, Set<String>> _dependencies() {
-  final found = <String, Set<String>>{};
-
-  for (final file in _moduleFiles()) {
-    for (final uri in _importsIn(file)) {
-      final key = _dependencyKey(uri);
-      if (key == null) continue;
-      (found[key] ??= <String>{}).add(_name(file));
-    }
-  }
-
-  return found;
-}
 
 /// The sibling kernel files each sibling module is reached through, keyed by
 /// module directory — `little_things` → `exception_base.dart`, `formatting.dart`.
@@ -202,8 +133,6 @@ Set<String> _importsIn(File file) => {
     match.group(1)!,
 };
 
-String _name(File file) => file.uri.pathSegments.last;
-
 // -----------------------------------------------------------------------------
 // The scan: what the table states
 // -----------------------------------------------------------------------------
@@ -234,16 +163,6 @@ Map<String, String> _rows() {
   }
 
   return rows;
-}
-
-/// The files a row's `Imported by` cell credits.
-///
-/// `every file` is the one phrase that names a set rather than its members, so
-/// it is resolved against the module rather than parsed.
-Set<String> _importers(String row) {
-  final cell = _cells(row)[2];
-  if (cell.contains('every file')) return _moduleFiles().map(_name).toSet();
-  return {for (final m in _backtickedFile.allMatches(cell)) m.group(1)!};
 }
 
 /// The sentence that follows the table, naming a module file that carries none
@@ -325,20 +244,6 @@ final _separator = RegExp(r'^-+$');
 final _backtickedWord = RegExp(r'`([\w./:]+)`');
 final _backtickedFile = RegExp(r'`([\w.]+\.dart)`');
 final _linkedModule = RegExp(r'\]\(\.\./(\w+)/');
-
-bool _setEquals(Set<String> a, Set<String> b) =>
-    a.length == b.length && a.containsAll(b);
-
-String _list(Set<String> values) {
-  final sorted = values.toList()..sort();
-  return sorted.join(', ');
-}
-
-const _wrongImporterReason =
-    'A dependency table row credits the wrong files with an import. The column '
-    'exists so a reader can tell which half of the module carries which '
-    'dependency — the lookup half or the value types — and a wrong entry sends '
-    'them to the wrong file.';
 
 const _unnamedEntryFileReason =
     'The module reaches a sibling kernel module through a file the table never '

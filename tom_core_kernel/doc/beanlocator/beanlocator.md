@@ -697,7 +697,6 @@ To avoid changes to the code for deployment it is most convenient to have separa
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'main.dart' as app;
 
-
 // Application main
 void main() {
   // 1. Set environment variable (before anything else)
@@ -714,9 +713,9 @@ void main() {
 
 ## Dependencies
 
-This module depends on:
-
-- [**Runtime System**](../../../../basics/tom_basics/doc/runtime/runtime.md) (`tom_basics`): `TomEnvironment` and `TomPlatform` for environment and platform-specific bean selection
-- `package:tom_reflection`: `tomReflector` and `ClassMirror`, imported directly by `bean_locator.dart` — the kernel's Reflection Module below defines its own types *on* that package rather than re-exporting it, so a caller of the mirrors needs both
-- [**Reflection Module**](../reflection/reflection.md): For bean discovery and instantiation via reflection
-- [**Little Things Module**](../little_things/little_things.md): `TomException`, the base of `TomBeanLocatorException`
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `tom_basics` | package | every file | `TomEnvironment` and `TomPlatform` for environment and platform-specific bean selection |
+| `tom_reflection` | package | every file | `tomReflector` and `ClassMirror` — the scan that finds `@TomComponent` classes and constructs them |
+| [little_things](../little_things/little_things.md) | module | every file | `TomException`, the base of `TomBeanLocatorException` |
+| [reflection](../reflection/reflection.md) | module | every file | For bean discovery and instantiation via reflection |

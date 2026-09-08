@@ -424,14 +424,13 @@ between devices, so an `updatedAt` that names no time zone throws
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomUserPreferenceKeys`, `TomUserPreferenceDto`,
-  `TomUserPreferenceCodec`, `TomBean`, `TomRuntime`, and for the client
-  `tomUserPreferencesApi`, `TomApiEndpoint.resolveUri`, `TomServerChannel`,
-  `TomBearerAuthentication`
-  (see `../../tom_core_kernel/doc/preferences/preferences.md`).
-- The little-things module — `TomClientException` (see
-  [little_things.md](little_things.md)).
-- `dart:io` / `package:web` — in the respective compile-time variants only.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:convert` | dart | `device_preference_json.dart`, `user_preferences_client.dart` | `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:io` | dart | `platform_device_preference_store_io.dart` | in the respective compile-time variants only |
+| `tom_core_kernel` | package | 8 of 9 files | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `TomBean`, `TomRuntime`, and for the client `tomUserPreferencesApi`, `TomApiEndpoint.resolveUri`, `TomServerChannel`, `TomBearerAuthentication` (see `../../tom_core_kernel/doc/preferences/preferences.md`) |
+| `web` | package | `platform_device_preference_store_web.dart` | `window.localStorage` — the browser store the web implementation writes its one entry to |
+| [little_things](little_things.md) | module | `device_preferences.dart`, `user_preferences_client.dart` | `TomClientException` (see [little_things.md](little_things.md)) |
 
 The client reaches the network through `TomPlatformUtils.current.httpClient()`,
 so an application must register its platform

@@ -551,6 +551,9 @@ itself accounts for. None of them can drift quietly while nobody is reading.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomWorker`, `TomCommand`, and the logging helpers.
-- The module's `little_things/server_exception.dart` — `TomServerException`,
-  the base of `TomCacheException`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | every file | `Future`, `Timer`, `Zone` |
+| `dart:isolate` | dart | every file | `Isolate` |
+| `tom_core_kernel` | package | every file | `TomWorker`, `TomCommand`, and the logging helpers |
+| [little_things](little_things.md) | module | every file | `TomServerException`, the base of `TomCacheException` |

@@ -376,10 +376,10 @@ translation gap into a red suite rather than a blank line in somebody's mail.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomTextResourceProvider` (the resolution this module
-  layers over), `TomPrincipal`, `TomBean`.
-- `little_things` — `TomServerException`, the base of
-  `TomResourceLocaleException`.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `tom_core_kernel` | package | every file | `TomTextResourceProvider` (the resolution this module layers over), `TomPrincipal`, `TomBean` |
+| [little_things](little_things.md) | module | every file | `TomServerException`, the base of `TomResourceLocaleException` |
 
 Not a dependency of the module, but of anyone installing one: the
 **configuration** module supplies `TomYaml.loadYamlFile`, which is how a bundle

@@ -639,10 +639,15 @@ of wall clock, so it is run deliberately, not by `testkit :test`.
 
 ## Dependencies
 
-- **`tom_core_kernel`** — `TomJobStore`, `TomLeaseLock`, `TomJobRun`, `TomLease`
-  and the scheduler that drives them.
-- **`datasources`** — `TomDataSource` / `TomDataSourceInfo` for connections and
-  parameterised statements.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `sql_job_store.dart`, `sql_lease_lock.dart` | `Future` |
+| `dart:convert` | dart | `sql_job_store.dart` | `jsonDecode` |
+| `tom_core_kernel` | package | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomJobStore`, `TomLeaseLock`, `TomJobRun`, `TomLease` and the scheduler that drives them |
+| [datasources](datasources.md) | module | every file | `TomDataSource` / `TomDataSourceInfo` for connections and parameterised statements |
+| [little_things](little_things.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomDbColumn`, `TomDbTable` |
+
 - **`db_migration`** — optional; the route by which a deployment creates the
   schema instead of letting the stores create it.
 - **`reflection`** — the row types are reflected so the data source can

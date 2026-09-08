@@ -199,13 +199,10 @@ family-keyed theme would apply in some places and silently not in others.
 
 ## Dependencies
 
-- `package:flutter/widgets.dart` — `TomStateStyle`, `TomTheme`,
-  `TomThemeScope` (`InheritedWidget`, `Opacity`, `AbsorbPointer`,
-  `ColorFiltered`).
-- `package:tom_core_kernel/tom_core_kernel.dart` — `TomAuthState`, the enum
-  `TomTheme.applyAuthState` switches over.
-- `package:flutter/material.dart` — `TomButtonVariants` (`ButtonStyle`,
-  `ColorScheme`, the `*Button.styleFrom` factories).
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `flutter` | package | `tom_state_style.dart`, `tom_style_variants.dart`, `tom_theme.dart` | `widgets.dart` and `material.dart` — `InheritedWidget` and the `ButtonStyle` / `ColorScheme` the variants build |
+| `tom_core_kernel` | package | `tom_theme.dart` | `TomAuthState`, the enum `TomTheme.applyAuthState` switches over |
 
 > Because the barrel pulls in `flutter/material` (→ `dart:ui`), code that
 > imports `theme` runs under the Flutter toolchain. See

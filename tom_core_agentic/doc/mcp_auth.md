@@ -87,6 +87,6 @@ the code is here and the taxonomy is not.
 
 ## Dependencies
 
-- [Bearer Auth](bearer_auth.md), for the `BearerAuthFailure` /
-  `BearerTokenAuthenticator` types the constants are used with. Nothing beyond
-  the Dart core library otherwise; the module is `dart:io`-free.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| [bearer_auth](bearer_auth.md) | module | `mcp_bearer_wire.dart` | `BearerAuthFailure` and `BearerTokenAuthenticator`, the types the constants are used with |

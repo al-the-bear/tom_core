@@ -186,8 +186,11 @@ identity-guarded, so a concluded transaction can never wipe a successor.
 
 ## Dependencies
 
-- The little-things module — `TomServerException` (base of
-  `TomTransactionException`).
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | every file | `Future`, `Zone` |
+| [little_things](little_things.md) | module | every file | `TomServerException` (base of `TomTransactionException`) |
+
 - The datasources module — `TomDataSource` is the concrete
   `TomTransactionParticipant`.
 - The endpoints module — drives `startTransaction` / `commitTransaction` /

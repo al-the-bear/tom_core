@@ -904,13 +904,17 @@ pins `TomExportStore.validateKey` against `TomBlobStore.validateKey`.
 
 ## Dependencies
 
-- `tom_core_kernel` — `TomServerException` by way of `TomStorageException`,
-  `tomLog`, and the `TomAuthState` grades the C-4 gate reads.
-- `object_persistence` — `TomColumnInformation` and `TomAnnotationAnalyzer` for
-  resolving file columns; `TomSqlDatasourceRepository` for the entity API.
-- `datasources` — `TomDataSource` for the database backend.
-- `crypto` — HMAC-SHA256 and SHA-256 for SigV4.
-- `http` — the S3 backend's transport (injectable, so it is mockable).
-- `uuid` — key generation and the database backend's upload ids.
-- `path` — key-to-path joining in the directory backend.
-- `dart:io` — `File` / `Directory` for the directory backend.
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `blob_store.dart`, `blob_store_registry.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `Future`, `FutureOr`, `Stream` |
+| `dart:convert` | dart | `aws_v4_signer.dart`, `blob_store.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `base64`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:io` | dart | `blob_store_registry.dart`, `directory_blob_store.dart` | `File` / `Directory` for the directory backend |
+| `dart:typed_data` | dart | `blob_store.dart` | `Uint8List` |
+| `crypto` | package | `aws_v4_signer.dart` | HMAC-SHA256 and SHA-256 for SigV4 |
+| `http` | package | `s3_blob_store.dart` | the S3 backend's transport (injectable, so it is mockable) |
+| `path` | package | `directory_blob_store.dart` | key-to-path joining in the directory backend |
+| `tom_core_kernel` | package | `database_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads |
+| `uuid` | package | `database_blob_store.dart` | key generation and the database backend's upload ids |
+| [datasources](datasources.md) | module | `database_blob_sql.dart`, `database_blob_store.dart` | `TomDataSource` for the database backend |
+| [little_things](little_things.md) | module | `blob_store.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `database_blob_store.dart` | `TomColumnInformation` and `TomAnnotationAnalyzer` for resolving file columns; `TomSqlDatasourceRepository` for the entity API |

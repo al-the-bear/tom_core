@@ -806,11 +806,11 @@ its registry.
 
 ## Dependencies
 
-This module depends on:
-
-- **HTTP Connection Module**: `TomApi`, `TomApiEndpoint`, the API registry
-- `dart:convert`: `jsonEncode` / `jsonDecode` in `user_preference_codec.dart`, which is how a preference value crosses the store boundary as text
-- `package:tom_reflection`: `tomReflector`, `Reflection` and `ClassMirror`, imported directly by `user_preference_codec.dart` — the kernel's Reflection Module defines its own types *on* that package rather than re-exporting it, so a caller of the mirrors needs both
-- **Reflection Module**: `@tomReflector` and the JSON conversion path
-- **Security Module**: `TomAuthenticatedAccess` for the endpoint access policy
-- **Little Things Module**: `TomException`, the base of the codec's exception
+| Dependency | Kind | Imported by | For |
+| ---------- | ---- | ----------- | --- |
+| `dart:convert` | dart | `user_preference_codec.dart` | `jsonEncode` / `jsonDecode` in `user_preference_codec.dart`, which is how a preference value crosses the store boundary as text |
+| `tom_reflection` | package | `user_preference_codec.dart` | `tomReflector`, `ClassMirror` and `TomReflectionInfo` — a preference object crosses the wire as reflected JSON |
+| [http_connection](../http_connection/http_connection.md) | module | `user_preferences_contract.dart` | `TomApi`, `TomApiEndpoint`, the API registry |
+| [little_things](../little_things/little_things.md) | module | `user_preference_codec.dart`, `user_preference_keys.dart` | `TomException`, the base of the codec's exception |
+| [reflection](../reflection/reflection.md) | module | `user_preference_codec.dart`, `user_preferences_contract.dart` | `@tomReflector` and the JSON conversion path |
+| [security](../security/security.md) | module | `user_preferences_contract.dart` | `TomAuthenticatedAccess` for the endpoint access policy |
