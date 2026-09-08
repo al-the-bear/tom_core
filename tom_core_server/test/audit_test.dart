@@ -882,6 +882,122 @@ void main() {
       expect(sink.headHash, tomAuditGenesisHash);
       expect(sink.droppedCount, 0);
     });
+
+    // Refusing after close is `TomAuditSink.close`'s promise, not either
+    // persistent sink's, and a caller holding the interface cannot ask which
+    // implementation it got. A lenient memory sink is the worse direction of
+    // that disagreement: it is the sink a suite substitutes for a real one, so
+    // a shutdown path exercised against it would pass here and refuse in
+    // production.
+    group('a closed sink refuses records', () {
+      test('the write future carries the refusal, not the call site', () {
+        final sink = TomMemoryAuditSink();
+        sink.close();
+
+        // Deliberately not `expect(() => sink.write(r), throwsA(...))`: that
+        // form passes whichever channel the error takes, and the channel is
+        // part of the contract — the future has to be obtainable first.
+        late final Future<TomAuditEntry> refused;
+        expect(() => refused = sink.write(_record('r1')), returnsNormally);
+        expect(
+          refused,
+          throwsA(
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.sink.closed',
+            ),
+          ),
+        );
+      });
+
+      test('nothing is stored, and the chain does not move', () async {
+        final sink = TomMemoryAuditSink();
+        await sink.write(_record('r1'));
+        final head = sink.headHash;
+        sink.close();
+
+        await expectLater(
+          sink.write(_record('r2')),
+          throwsA(isA<TomAuditException>()),
+        );
+
+        // The refusal has to be complete: a sink that rejected the caller and
+        // stored the entry anyway would be the worst of the three answers.
+        expect(sink.records.map((r) => r.id), ['r1']);
+        expect(sink.headHash, head);
+        expect(sink.entryCount, 1);
+      });
+
+      test('closing ends the writing, not the reading', () async {
+        final sink = TomMemoryAuditSink();
+        await sink.write(_record('r1'));
+        sink.close();
+
+        expect(sink.entries, hasLength(1));
+        expect(sink.records.single.id, 'r1');
+        expect(sink.verify().isValid, isTrue);
+      });
+
+      test('close is idempotent, and flushAndClose closes', () async {
+        final sink = TomMemoryAuditSink()
+          ..close()
+          ..close();
+        await expectLater(
+          sink.write(_record('r1')),
+          throwsA(isA<TomAuditException>()),
+        );
+
+        final flushed = TomMemoryAuditSink();
+        await flushed.flushAndClose();
+        await expectLater(
+          flushed.write(_record('r1')),
+          throwsA(isA<TomAuditException>()),
+        );
+      });
+    });
+  });
+
+  // The three sinks are asserted separately above and in `audit_sql_test.dart`
+  // — each has its own construction and its own reason to be believed — and
+  // this is the claim those three make together: whichever one a caller holds,
+  // a write after close fails the same way with the same key. It is the one
+  // assertion that would notice a fourth sink joining with an answer of its
+  // own, so it names them rather than looping over a registry that does not
+  // exist.
+  group('every sink answers a closed write the same way', () {
+    late Directory dir;
+
+    setUp(() {
+      dir = Directory.systemTemp.createTempSync('tom_audit_closed_');
+    });
+    tearDown(() {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    });
+
+    test('memory and file refuse with audit.sink.closed', () async {
+      final sinks = <String, TomAuditSink>{
+        'memory': TomMemoryAuditSink(),
+        'file': TomFileAuditSink(directory: dir),
+      };
+
+      for (final entry in sinks.entries) {
+        final sink = entry.value..close();
+        await expectLater(
+          sink.write(_record('r1')),
+          throwsA(
+            isA<TomAuditException>().having(
+              (e) => e.key,
+              'key',
+              'audit.sink.closed',
+            ),
+          ),
+          reason:
+              'the ${entry.key} sink answers a closed write differently from '
+              'its siblings, so TomAuditSink.close means two things',
+        );
+      }
+    });
   });
 
   group('TomFileAuditSink', () {

@@ -487,6 +487,7 @@ class TomMemoryAuditSink implements TomAuditSink {
   String _headHash = tomAuditGenesisHash;
   int _droppedCount = 0;
   int _entryCount = 0;
+  bool _closed = false;
 
   /// Creates a memory sink retaining at most [maxEntries] entries.
   TomMemoryAuditSink({this.maxEntries = 1000});
@@ -513,6 +514,7 @@ class TomMemoryAuditSink implements TomAuditSink {
 
   @override
   Future<TomAuditEntry> write(TomAuditRecord record) async {
+    if (_closed) throw _closedException();
     final entry = TomAuditEntry.chain(record, _headHash, index: _entryCount);
     _entries.add(entry);
     _headHash = entry.hash;
@@ -548,8 +550,31 @@ class TomMemoryAuditSink implements TomAuditSink {
     _headHash = tomAuditGenesisHash;
   }
 
+  /// The refusal a closed sink answers a write with.
+  ///
+  /// The same key the file and SQL sinks raise, because the refusal is
+  /// [TomAuditSink.close]'s promise rather than either implementation's: a
+  /// caller holding the interface cannot ask which sink it got, so a lenient
+  /// one would make the documented contract false wherever a test substituted
+  /// it for a real one.
+  TomAuditException _closedException() => TomAuditException(
+    'audit.sink.closed',
+    'Memory audit sink is closed and cannot accept records.',
+  );
+
+  /// Closes the sink. Idempotent, and reading what it holds still works.
+  ///
+  /// There is no queue to refuse — [write] has stored the entry by the time its
+  /// future completes — so closing costs nothing here beyond refusing later
+  /// writes. That is the whole of the point: the refusal is what makes this
+  /// sink answer a shutdown the way the two persistent ones do, so a suite that
+  /// exercises shutdown against it is exercising the contract rather than this
+  /// class's convenience.
+  ///
+  /// [entries], [records], [verify], [headHash] and [entryCount] keep
+  /// answering: closing ends the writing, not the reading.
   @override
-  void close() {}
+  void close() => _closed = true;
 
   /// Nothing to drain: [write] stores the entry before its future completes
   /// and there is no queue behind it.

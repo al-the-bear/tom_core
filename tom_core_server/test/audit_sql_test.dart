@@ -234,10 +234,10 @@ void main() {
     });
   });
 
-  // The file sink's counterpart lives in `audit_test.dart`; the reasoning is
-  // there. It is asserted twice because it is a promise of `TomAuditSink`
-  // rather than of either implementation, and a caller holding the abstract
-  // type has no way to ask which one it got.
+  // The memory and file sinks' counterparts live in `audit_test.dart`; the
+  // reasoning is there. It is asserted for all three because it is a promise of
+  // `TomAuditSink` rather than of any one implementation, and a caller holding
+  // the abstract type has no way to ask which it got.
   group('write reports failure through the future it returns', () {
     test('refusing a record does not throw at the call site', () {
       final sink = TomSqlAuditSink(_UnusedDataSource(), writer: 'node-a');

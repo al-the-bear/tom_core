@@ -500,11 +500,11 @@ TomMemoryAuditSink({int maxEntries = 1000})
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Chains `record` onto the head, appends it, and drops the oldest entries once `maxEntries` is exceeded. |
+| `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Chains `record` onto the head, appends it, and drops the oldest entries once `maxEntries` is exceeded. After `close()` the returned future completes with `audit.sink.closed` and nothing is stored — the same refusal the two persistent sinks give, because it is `TomAuditSink`'s promise rather than theirs. |
 | `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries, starting from the oldest retained link rather than genesis so a bounded sink does not report a false break at the front. Synchronous, and not a `TomAuditSink` member — read-back is per implementation by design. |
 | `clear` | `void clear()` | Discards every retained entry and resets the chain. Test-support only. |
-| `close` | `void close()` | *(override)* No-op. |
-| `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Nothing to drain — `write` stores the entry before its future completes and there is no queue behind it. |
+| `close` | `void close()` | *(override)* Refuses later writes. Idempotent, and reading keeps working — `entries`, `records`, `verify`, `headHash` and `entryCount` all still answer. There is no queue to refuse *from*: `write` has stored the entry by the time its future completes. |
+| `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Nothing to drain — `write` stores the entry before its future completes and there is no queue behind it — so this is `close()` with an `await` in front of it. |
 
 ### TomFileAuditSink
 

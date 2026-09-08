@@ -837,6 +837,20 @@ the sink as a `TomClosable` remains the backstop for the paths that cannot.
 Calling both is safe: `flushAndClose()` after `close()` is a no-op, not a second
 close, and it will not reopen anything.
 
+**All three sinks answer the same way.** `TomMemoryAuditSink` has no queue —
+`write` has stored the entry by the time its future completes — so it has
+nothing to refuse *from* one, but a write submitted after `close()` is refused
+with the same `audit.sink.closed`. That is deliberate rather than incidental:
+the refusal is a promise of `TomAuditSink`, and a caller holding the interface
+cannot ask which implementation it got. A lenient memory sink would be the worse
+direction of that disagreement, because it is the sink a suite substitutes for a
+real one — a shutdown path exercised against it would pass in the test and
+refuse in production.
+
+Closing ends the writing, not the reading: `entries`, `records`, `verify()`,
+`headHash` and `entryCount` keep answering afterwards, which is what makes a
+closed memory sink still useful as the subject of an assertion.
+
 ```dart
 final sink = TomFileAuditSink(directory: Directory('/var/audit/app'));
 TomAuditTrail.install(sink);

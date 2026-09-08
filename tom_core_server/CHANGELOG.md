@@ -2,6 +2,33 @@
 
 ### Fixed
 
+- **`TomMemoryAuditSink` accepted records after `close()`; it refuses them now
+  (tcincb89).** Its `close` was `void close() {}` with no flag behind it, so
+  `write` kept chaining, storing and advancing `headHash` for as long as
+  anything held the sink. Measured rather than inferred: a probe closed a memory
+  sink, wrote to it, and found the entry stored, while `TomFileAuditSink` and
+  `TomSqlAuditSink` both refused the same probe with `audit.sink.closed`.
+
+  What makes that a defect rather than a harmless simplification is that the
+  refusal is `TomAuditSink.close`'s promise, not either persistent
+  implementation's — its dartdoc argues it at length, and `doc/audit.md` states
+  it as a two-row contract table covering both methods without distinguishing
+  sinks. A caller holding the interface cannot ask which sink it got. And the
+  disagreement ran the awkward way round: the *test* sink was the lenient one,
+  so a suite exercising shutdown against it would pass while the production
+  sinks refused.
+
+  `write` now refuses with the same key, nothing is stored and the chain does
+  not move; `close` is idempotent and `flushAndClose` still closes, there being
+  no queue to drain. Closing ends the writing, not the reading — `entries`,
+  `records`, `verify()`, `headHash` and `entryCount` keep answering — and
+  `clear()` is untouched, being test support for the contents rather than part
+  of the lifecycle.
+
+  Nothing was relying on the leniency: the server suite and the
+  `advanced_ops_server` suite are green without a change to either.
+
+
 - **`TomAuditEntry.toString()` threw `RangeError` on a hash shorter than eight
   characters (tcincb88).** It ended in `hash.substring(0, 8)`, so the one method
   whose job is to describe an object crashed instead — and crashed in exactly
