@@ -13,6 +13,41 @@
 
 ### Fixed
 
+- **A limitations bullet could name a class that no longer exists and nothing
+  disagreed (tcincb139).** The sweep over `## Not Yet Implemented` checked that
+  a guide *has* the section and that claims of unfinished work live only inside
+  it. It never read the bullets. A section nobody re-reads is the one place in a
+  guide where staleness is invisible — a bullet naming a renamed class reads
+  exactly like one naming a class that is still there — so the names are now
+  checked against `lib/`.
+
+  The rule is the case hump, and it was chosen by measurement rather than
+  assumed. Backticks in these guides mark *any* literal token: 192 of the 365
+  backticked spans in these twenty sections are a JWT claim (`exp`, `iat`), a
+  SQL keyword (`DATE`, `LIMIT`), a locale tag (`de_AT`), an HTTP header
+  (`Range`), a shell fragment or a value. "A backticked identifier must exist"
+  would therefore be a rule about vocabulary, enforceable only with a list of
+  exempt words that grows whenever a guide names a new protocol. A
+  lowercase-then-uppercase transition is Dart's naming convention and no other
+  vocabulary's here, so it selects the 173 spans this package could have
+  declared — `TomFileSlots`, `MariadbMigrationAdaptor`,
+  `coercePrimitiveParameter`, `globalSettingMaxFilePartBytes` — and nothing
+  else, with no exempt list at all.
+
+- **`doc/object_persistence.md` set the query keywords it has and the ones it
+  has not in the same typography (tcincb139).** Both lists were code spans, so
+  the only way to tell which sentence the grammar accepts was to read the prose
+  between them — and two of the absent keywords (`isEmpty`, `isNotEmpty`)
+  happen to be real Dart members, which made the collision invisible. The absent
+  ones are now italic and the supported ones stay as code, with the guide saying
+  which register means which.
+
+  24 new tests in `test/api_reference_coverage_test.dart` (476 → 500), verified
+  by mutation on the real documents: a renamed class, a renamed member inside a
+  dotted name, and the keyword bullet restored to its old typography each fail
+  their own module's test, and twenty-one non-Dart tokens are asserted *not* to
+  be judged.
+
 - **Four documented signatures gave a parameter a type the source does not, and
   nothing could have said so (tcincb138).** `api_summary_messaging.md` typed
   `TomDeliveryException.permanent`'s and `.transient`'s `stack` as `Object?`

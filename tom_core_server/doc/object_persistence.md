@@ -1324,9 +1324,11 @@ from the grammar, and a sentence using it is refused.
   one currently has no effect. Detection is field-level — the analyzer reads a
   field's metadata — so although the callbacks take the whole entity, one placed
   on a class declaration is not seen at all.
-- Additional query-sentence keywords (`After`, `Before`, `Containing`,
-  `EndsWith`, `StartsWith`, `Exists`, `isEmpty`/`isNotEmpty`, `Within`, …). The
-  sentence grammar covers comparison, `LIKE` / `NOT LIKE`, `REGEXP`,
+- Additional query-sentence keywords — *After*, *Before*, *Containing*,
+  *EndsWith*, *StartsWith*, *Exists*, *isEmpty* / *isNotEmpty*, *Within* and
+  the like. They are set in italics, not as code, because none of them is
+  code: a sentence using one is refused. What the grammar does cover is set as
+  code, because it exists — comparison, `LIKE` / `NOT LIKE`, `REGEXP`,
   `IS IN` / `IS NOT IN`, `IS NULL` / `IS NOT NULL`, `AND` / `OR` / `NOT` and
   parenthesised groups.
 

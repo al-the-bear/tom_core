@@ -3167,6 +3167,103 @@ final RegExp _limitationsHeading = RegExp(
 bool _hasLimitationsSection(String module) =>
     File('doc/$module.md').readAsLinesSync().any(_limitationsHeading.hasMatch);
 
+/// The body of `doc/[module].md`'s limitations section — the lines between its
+/// heading and the next `##`, empty when the guide has none.
+List<({int line, String text})> _limitationsBodyOf(String module) {
+  final lines = File('doc/$module.md').readAsLinesSync();
+  final start = lines.indexWhere(_limitationsHeading.hasMatch);
+  if (start < 0) return const [];
+  var end = lines.length;
+  for (var i = start + 1; i < lines.length; i++) {
+    if (lines[i].startsWith('## ')) {
+      end = i;
+      break;
+    }
+  }
+  return [for (var i = start + 1; i < end; i++) (line: i + 1, text: lines[i])];
+}
+
+/// A backticked span, and the shape of the one that is a Dart name rather than
+/// some other literal token.
+///
+/// Backticks in these guides mark *any* literal: a JWT claim (`exp`, `iat`), a
+/// SQL keyword (`DATE`, `LIMIT`), a locale tag (`de_AT`), a settings key, a
+/// table name, an HTTP header (`Range`), a shell fragment. Sixteen per cent of
+/// the identifier-shaped spans in these sections are one of those, so "a
+/// backticked identifier must exist in the package" is not a rule about code —
+/// it is a rule about vocabulary, and the only way to write it would be a list
+/// of exempt words that grows whenever a guide names a new protocol.
+///
+/// What *is* a rule about code is the case hump. `TomFileSlots`,
+/// `MariadbMigrationAdaptor`, `coercePrimitiveParameter`,
+/// `globalSettingMaxFilePartBytes` all carry a lowercase-then-uppercase
+/// transition, which is Dart's naming convention and no other vocabulary's
+/// here: a SQL keyword is upper, a claim and a locale tag are lower or snake,
+/// a single English word is neither. So the hump selects the names this
+/// package could have declared and nothing else — 173 of the 365 spans, with
+/// no exempt list at all.
+final RegExp _backtickedSpan = RegExp(r'`([^`]+)`');
+final RegExp _dartName = RegExp(
+  r'^@?([A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*)(?:\(\))?$',
+);
+final RegExp _caseHump = RegExp(r'[a-z0-9][A-Z]');
+
+/// Every identifier that occurs in the package's own source, this one and the
+/// kernel it is written against.
+///
+/// Comments are stripped and string literals are not, which is the level the
+/// question needs. A renamed class disappears from the code entirely, so the
+/// bar catches it; a name that lives only inside a literal —
+/// `delegateTo` is a settings key, `errorType` an envelope field — is a real
+/// name of this package all the same, and dropping literals would report both
+/// as missing. Prose is excluded because a dartdoc sentence mentions everything
+/// and would make the census answer "yes" to anything.
+final Set<String> _packageVocabulary = {
+  for (final root in const ['lib', '../tom_core_kernel/lib'])
+    if (Directory(root).existsSync())
+      for (final file in Directory(root).listSync(recursive: true))
+        if (file is File && file.path.endsWith('.dart'))
+          ..._identifier
+              .allMatches(
+                _withoutBlockComments(
+                  _withoutLineComments(file.readAsStringSync()),
+                ),
+              )
+              .map((match) => match.group(0)!),
+};
+
+final RegExp _identifier = RegExp(r'[A-Za-z_$][A-Za-z0-9_$]*');
+
+/// [source] with every `//` comment removed, line by line.
+String _withoutLineComments(String source) =>
+    source.split('\n').map(_withoutLineComment).join('\n');
+
+/// The names [module]'s limitations section writes as code that the package
+/// does not have — empty when every one of them resolves.
+///
+/// This is the half of "is the bullet still true" that a program can decide. A
+/// limitation that was quietly fixed while its symbol survived still reads as
+/// live and is not caught here; a limitation whose symbol was renamed or
+/// deleted is, and renaming is what actually happens to a section nobody
+/// re-reads.
+List<String> _unresolvedNamesOf(String module) => [
+  for (final (:line, :text) in _limitationsBodyOf(module))
+    for (final report in _unresolvedNamesIn(text))
+      'doc/$module.md:$line $report',
+];
+
+/// [_unresolvedNamesOf] over one line, so a synthetic bullet can be measured
+/// the same way a guide's is.
+List<String> _unresolvedNamesIn(String text) => [
+  for (final span in _backtickedSpan.allMatches(text))
+    if (_dartName.firstMatch(span.group(1)!.trim()) case final name?)
+      if (name.group(1)!.split('.') case final parts
+          when parts.any(_caseHump.hasMatch))
+        for (final part in parts)
+          if (!_packageVocabulary.contains(part))
+            '`${span.group(1)}` — no $part in lib/',
+];
+
 /// A link *to* the limitations section, as the table of contents and the
 /// cross-references in the prose both write it.
 ///
@@ -6098,6 +6195,116 @@ class After {}
         );
       });
     }
+
+    for (final module in _modules()) {
+      test('$module names code that is still there', () {
+        final unresolved = _unresolvedNamesOf(module);
+        expect(
+          unresolved,
+          isEmpty,
+          reason:
+              'these names in doc/$module.md\'s limitations section are not in '
+              'the package: ${unresolved.join('; ')}. A limitation reads as '
+              'live however old it is, so the section is the one place in a '
+              'guide where nothing goes stale visibly — a bullet naming a '
+              'class that was renamed out from under it looks exactly like a '
+              'bullet naming one that is still there.',
+        );
+      });
+    }
+
+    test('the census reads the section and nothing else', () {
+      // Each assertion above passes on an empty read, so the read is pinned.
+      // Twenty guides, 173 names — if either number collapses the checks are
+      // agreeing that nothing is missing from nothing.
+      final names = [
+        for (final module in _modules())
+          for (final (:line, :text) in _limitationsBodyOf(module))
+            for (final span in _backtickedSpan.allMatches(text))
+              if (_dartName.firstMatch(span.group(1)!.trim()) case final name?)
+                if (name.group(1)!.split('.').any(_caseHump.hasMatch))
+                  (line, span.group(1)!),
+      ];
+      expect(names, hasLength(greaterThan(150)));
+      expect(
+        _packageVocabulary,
+        hasLength(greaterThan(5000)),
+        reason: 'an empty vocabulary would report every name as missing',
+      );
+      expect(_packageVocabulary, contains('TomFileSlots'));
+      // Two names that occur only inside string literals — a settings key and
+      // an error-envelope field. Stripping literals reports both as missing.
+      expect(_packageVocabulary, containsAll(['delegateTo', 'errorType']));
+      // Prose is not vocabulary. `Within` appears in dartdoc and nowhere in
+      // code, and a census built from raw text would answer "yes" to it.
+      expect(_packageVocabulary, isNot(contains('Within')));
+    });
+
+    test('a renamed class in a bullet is reported', () {
+      expect(
+        _unresolvedNamesIn('- `TomFileSlots` is a process-wide registry.'),
+        isEmpty,
+      );
+      expect(
+        _unresolvedNamesIn('- `TomFileSlabs` is a process-wide registry.'),
+        ['`TomFileSlabs` — no TomFileSlabs in lib/'],
+      );
+      expect(
+        _unresolvedNamesIn('- `TomFileSlots.resat()` is process-wide.'),
+        ['`TomFileSlots.resat()` — no resat in lib/'],
+        reason: 'the member half of a dotted name is checked too',
+      );
+    });
+
+    test('a token that is not a Dart name is not read as one', () {
+      // The measurement behind the rule: of the 365 backticked spans in these
+      // sections, 173 carry a case hump and 192 do not — JWT claims, SQL
+      // keywords, locale tags, HTTP headers, shell fragments, values. None of
+      // them is code, and a check that demanded they resolve would need a list
+      // of exempt words rather than a rule.
+      for (final token in const [
+        '`exp`',
+        '`iat`',
+        '`id_token`',
+        '`max_age`',
+        '`DATE`',
+        '`LIMIT`',
+        '`LIKE`',
+        '`REGEXP`',
+        '`de_AT`',
+        '`en`',
+        '`Range`',
+        '`GUEST`',
+        '`tom_oauth_state`',
+        '`--port=8080`',
+        '`500`',
+        '`{name}`',
+        '`After`',
+        '`Before`',
+        '`Containing`',
+        '`Exists`',
+        '`Within`',
+      ]) {
+        expect(
+          _unresolvedNamesIn('- a bullet naming $token'),
+          isEmpty,
+          reason: '$token is not a Dart name and must not be judged as one',
+        );
+      }
+    });
+
+    test('a bullet that names nothing at all is allowed', () {
+      // Naming something is not required, and cannot be. 19 of the 119
+      // bullets in these sections name no symbol whatever, and every one of
+      // them describes a missing *feature* — "Inbound mail", "DKIM signing",
+      // "Content addressing / deduplication", "Server-rendered forms". A
+      // feature that does not exist has nothing to name, so a rule demanding
+      // a name would be answered by inventing one.
+      expect(
+        _unresolvedNamesIn('- **Inbound mail.** This module sends only.'),
+        isEmpty,
+      );
+    });
 
     test('the heading has to be the section, not a mention of one', () {
       expect(_limitationsHeading.hasMatch('## Not Yet Implemented'), isTrue);
