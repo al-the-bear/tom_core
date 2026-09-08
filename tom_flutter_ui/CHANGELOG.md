@@ -2,6 +2,22 @@
 
 ### Changed
 
+- **The package is `dart format`-clean, and a gate keeps it that way
+  (tcincb91).** The 245-file reformat this todo asked for landed on its own in
+  an earlier pass, and the `Radio.onChanged` deprecation it flagged was closed
+  by the `RadioGroup` migration a week before that — both verified here rather
+  than assumed. What was still missing is the part that stops it recurring:
+  this package had drifted twice and had no guard, unlike `tom_core_kernel` and
+  `tom_core_server`, which each grew an in-suite `formatting_test.dart` after
+  the same experience.
+
+  `tom_ai/core/tool/check_dart_format.py` holds every Dart file in the
+  repository — 1537 across 23 packages — to `dart format`, with `--fix` to
+  repair and a self-test that perturbs a file and requires the gate to object.
+  One gate rather than a third copy of the test: nothing about the rule is per
+  package, so copies would differ only in which files they walk, which is the
+  part that goes stale.
+
 - **This package's module documents follow the framework-wide Dependencies
   table (tcincb85).** `| Dependency | Kind | Imported by | For |`, ordered
   dart, package, module, and held to the module's real imports by

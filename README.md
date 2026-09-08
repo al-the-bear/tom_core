@@ -199,6 +199,7 @@ reports and never gates.
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
 | [`tool/check_module_dependencies.py`](tool/check_module_dependencies.py) | Audits each *module* document's Dependencies table against the imports its module actually has |
+| [`tool/check_dart_format.py`](tool/check_dart_format.py) | Holds every Dart file in the repository to `dart format`, across all 23 packages |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation and requires `dart doc` to report nothing |
@@ -344,6 +345,28 @@ importing file at all. The `For` column is prose and is held only to being
 non-empty; requiring every name in it to resolve was tried and rejected, because
 those cells routinely name a type the dependency does not declare, which is the
 sentence worth writing.
+
+```bash
+python3 tool/check_dart_format.py           # every package
+python3 tool/check_dart_format.py --fix     # format them instead
+python3 tool/check_dart_format.py --self-test
+```
+
+Formatting drift is invisible to the check everybody runs: `dart analyze` says
+nothing about line wrapping, so a file can be analyzer-clean, test-green,
+reviewed and merged while being unformatted. The cost is not the whitespace — it
+is that every later change drags an arbitrary slice of the pending reformat into
+its diff, so a 173-line change arrives as a 6,000-line one and stops being
+reviewable. This repository has paid that bill four times, and on the day this
+gate landed a fifth package had four drifted files that nothing could see.
+
+The scope is every `.dart` file under `tom_ai/core`, found by walking it rather
+than from a list of directories to keep up to date. Left out: dot-directories,
+`tool/ztmp` (the scratch tree `check_doc_dart_blocks.py` writes documentation
+snippets into — their wrapping is not a package's defect), and generated output.
+`tom_core_kernel` and `tom_core_server` keep their own in-suite
+`formatting_test.dart`, which is where a developer working in those packages
+gets the signal; this covers the other 21, which had nothing.
 
 ```bash
 python3 tool/check_doc_error_keys.py                 # every "Error keys" section

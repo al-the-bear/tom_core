@@ -15,6 +15,11 @@
       "faults": 0,
       "measured": "2026-09-03"
     },
+    "check_dart_format": {
+      "faults": 0,
+      "measured": "2026-09-08",
+      "note": "Zero, and it must stay there: the fix is never a code change, it is `python3 tool/check_dart_format.py --fix`. 1537 files across 23 packages. It landed at zero only because the four drifted files it found on the day -- all in tom_flutter_form_test, a package with no guard -- were formatted in the same pass. Two packages carry their own in-suite `formatting_test.dart` and keep it; this covers the other 21, which had nothing. If it fails where nothing was edited, the SDK's formatter changed its output: reformat and commit that alone, and do not raise this."
+    },
     "check_dartdoc_build": {
       "faults": 0,
       "measured": "2026-09-07",
