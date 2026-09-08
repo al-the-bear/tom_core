@@ -124,6 +124,33 @@ anyone who was writing them.
 
 ### Documentation
 
+- **Conversion stays on the subclasses, and the documents now give the true
+  reason (tcincb84).** Four places said a shared `convertToTz*` declaration is
+  impossible because each subclass narrows its return type. Dart permits
+  return-type covariance in an override, so it is not: a base
+  `TomTimezoned convertToTzSameInstant(TomTimezone)` overridden by
+  `TomZonedDate convertToTzSameInstant(TomTimezone)` compiles. The
+  documentation was defending the design with a constraint that does not exist.
+
+  What does rule it out is that the three types offer different conversion
+  sets. A date has `convertToTzSameInstant` and `convertToTzSameDate`, a time
+  has `convertToTzSameInstant` and `convertToTzSameTime`, and a datetime has
+  only `convertToTzSameInstant` — it already names an instant, so a re-anchoring
+  counterpart would have nothing to move. The one method common to all three is
+  therefore the instant-preserving one, which is exactly the wrong default for a
+  date and for a time: it is what gives a date a time of day and takes a time
+  off 1970-01-01. Hoisting it onto a base class whose values have no declared
+  kind would apply that default wherever the kind had not been established, and
+  it would compile, so nothing would say so.
+
+  The `TomTimezoned` dartdoc, `doc/timezoned/timezoned.md`, the API mirror and
+  the module readme now state that, show the one-line rebuild a base value
+  needs, and say what the base type *is* for — the supertype every zoned value
+  shares, which is what `TomOTimezoned` binds to.
+  `timezoned_shared_members_test.dart` holds all of it: the per-type sets, that
+  the base declares none of them, and that the document's table says what the
+  code does.
+
 - **`doc/json/json.md`'s Core Components now covers the whole module, not two
   thirds of it (tcincb23).** The section had a subsection per file for
   `map_merge_and_process.dart` and `pretty_json.dart` and none for
@@ -2093,8 +2120,10 @@ anyone who was writing them.
   `doc/timezoned/timezoned.md` introduced its shared-member block with "All
   types share these features" and listed `convertToTimezone` among them.
   `TomTimezoned` declares no such method: each of the three subclasses declares
-  its own, narrowed to return its own type, so there is no single signature the
-  base could hold. That is not a pedantic distinction, because `TomTimezoned`
+  its own. (The reason given here at the time — that the narrowed return types
+  leave no signature the base could hold — is wrong; Dart permits return-type
+  covariance in an override. The real reason is stated under 1.1.16.) That is
+  not a pedantic distinction, because `TomTimezoned`
   is a type readers actually hold — `now()` and `parseFromString` both return
   the base class rather than a subclass — so following the document produced a
   compile error, with no diagnostic pointing at the document that caused it.

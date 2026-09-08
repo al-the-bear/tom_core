@@ -102,22 +102,23 @@ void main() {
   // ===========================================================================
   group('per-subclass members are documented per subclass', () {
     test('conversion is not offered as a shared member', () {
-      // The narrowed return type is why there is no shared declaration to
-      // inherit: each subclass returns its own type, so the base has none.
       expect(_sharedBlockNames(), isNot(contains('convertToTzSameInstant')));
       expect(_sharedMembers.keys, isNot(contains('convertToTzSameInstant')));
     });
 
-    test('each subclass section shows it', () {
-      for (final heading in _subclassHeadings) {
-        expect(
-          _section(heading).join('\n'),
-          contains('convertToTzSameInstant'),
-          reason:
-              '$heading declares convertToTzSameInstant, and the shared block no '
-              'longer mentions it, so this section is the only place a reader '
-              'can find it.',
-        );
+    test('each subclass section shows every conversion its type has', () {
+      for (final entry in _conversionsByType.entries) {
+        final body = _section('### ${entry.key}').join('\n');
+        for (final method in entry.value) {
+          expect(
+            body,
+            contains(method),
+            reason:
+                '${entry.key} declares $method, and the shared block does not '
+                'mention it, so this section is the only place a reader can '
+                'find it.',
+          );
+        }
       }
     });
 
@@ -129,6 +130,94 @@ void main() {
           reason: 'no section body found for $heading',
         );
       }
+    });
+  });
+
+  // ===========================================================================
+  // Why conversion stays per-subclass
+  // ===========================================================================
+  //
+  // The reason is not that a shared declaration is impossible — Dart permits an
+  // override to narrow its return type, so a base `convertToTzSameInstant` that
+  // each subclass narrowed would compile. It is that the three types do not
+  // offer the same set, and the one method they share is the wrong default for
+  // two of them. Hoisting it would install that default on any value whose kind
+  // the caller has not established, and it would compile, so nothing would say
+  // so.
+  //
+  // That argument only holds while the sets really do differ, so this is where
+  // it is checked rather than asserted in prose.
+  group('the conversion sets differ by type', () {
+    final zone = TomTimezone.fromName('America/New_York')!;
+
+    test('each type has the conversions its kind admits', () {
+      // Statically typed on purpose: a method that leaves its class takes this
+      // file's compilation with it rather than failing at run time.
+      expect(_zonedDate().convertToTzSameInstant(zone), isA<TomZonedDate>());
+      expect(_zonedDate().convertToTzSameDate(zone), isA<TomZonedDate>());
+      expect(_zonedTime().convertToTzSameInstant(zone), isA<TomZonedTime>());
+      expect(_zonedTime().convertToTzSameTime(zone), isA<TomZonedTime>());
+      expect(
+        _zonedDateTime().convertToTzSameInstant(zone),
+        isA<TomZonedDateTime>(),
+      );
+    });
+
+    test('and none of the ones it does not', () {
+      // Through `dynamic`, because "this member does not exist" is not
+      // something a static call can express: the guard has to survive
+      // compilation to be able to fail.
+      expect(
+        () => (_zonedDate() as dynamic).convertToTzSameTime(zone),
+        throwsNoSuchMethodError,
+        reason: 'a date has no clock reading to re-anchor',
+      );
+      expect(
+        () => (_zonedTime() as dynamic).convertToTzSameDate(zone),
+        throwsNoSuchMethodError,
+        reason: 'a time has no calendar day to re-anchor',
+      );
+      expect(
+        () => (_zonedDateTime() as dynamic).convertToTzSameDate(zone),
+        throwsNoSuchMethodError,
+        reason: 'a datetime already names an instant; nothing is left to move',
+      );
+      expect(
+        () => (_zonedDateTime() as dynamic).convertToTzSameTime(zone),
+        throwsNoSuchMethodError,
+      );
+    });
+
+    test('the base class has none of them', () {
+      // This is the decision itself. If a conversion is ever hoisted onto
+      // TomTimezoned, this is what says so — and the reasoning above, in this
+      // file and in the module documents, is what has to be revisited.
+      final base = _baseInstance();
+      expect(
+        () => (base as dynamic).convertToTzSameInstant(zone),
+        throwsNoSuchMethodError,
+      );
+      expect(
+        () => (base as dynamic).convertToTzSameDate(zone),
+        throwsNoSuchMethodError,
+      );
+      expect(
+        () => (base as dynamic).convertToTzSameTime(zone),
+        throwsNoSuchMethodError,
+      );
+    });
+
+    test('the document states the same sets', () {
+      expect(
+        _documentedConversions(),
+        _conversionsByType,
+        reason:
+            'The conversion table under $_sharedHeading is the reader\'s map '
+            'of which conversion belongs to which type, and it is the '
+            'justification for the base class having none. A table that no '
+            'longer matches the code argues for a design the code does not '
+            'have.',
+      );
     });
   });
 }
@@ -193,12 +282,72 @@ const String _document = 'doc/timezoned/timezoned.md';
 /// The heading that introduces the shared-member block.
 const String _sharedHeading = '## TomTimezoned Types';
 
-/// The headings whose types declare their own `convertToTzSameInstant`.
+/// The headings whose types declare their own conversions.
 const List<String> _subclassHeadings = [
   '### TomZonedDateTime',
   '### TomZonedDate',
   '### TomZonedTime',
 ];
+
+/// Which conversion each type offers.
+///
+/// The sets differ, and that difference is the whole reason conversion is not
+/// hoisted onto [TomTimezoned]: the only method all three share preserves the
+/// instant, which is the wrong answer for a date and for a time.
+const Map<String, List<String>> _conversionsByType = {
+  'TomZonedDate': ['convertToTzSameInstant', 'convertToTzSameDate'],
+  'TomZonedTime': ['convertToTzSameInstant', 'convertToTzSameTime'],
+  'TomZonedDateTime': ['convertToTzSameInstant'],
+};
+
+TomZonedDate _zonedDate() => TomZonedDate(
+  year: 2024,
+  month: 6,
+  day: 15,
+  timezone: TomTimezone.fromName('Asia/Tokyo')!,
+);
+
+TomZonedTime _zonedTime() => TomZonedTime(
+  hour: 9,
+  minute: 30,
+  timezone: TomTimezone.fromName('Asia/Tokyo')!,
+);
+
+TomZonedDateTime _zonedDateTime() => TomZonedDateTime(
+  year: 2024,
+  month: 6,
+  day: 15,
+  hour: 14,
+  minute: 30,
+  timezone: TomTimezone.fromName('Asia/Tokyo')!,
+);
+
+/// The conversion table in the document's shared lead-in, read back.
+///
+/// One row per type, naming the conversions it offers in backticks. Reading it
+/// rather than trusting it is what keeps the argument for the base class having
+/// none tied to the code that makes the argument true.
+Map<String, List<String>> _documentedConversions() {
+  final rows = <String, List<String>>{};
+  final name = RegExp(r'\[(Tom\w+)\]');
+  final method = RegExp(r'`(convertToTz\w+)`');
+
+  for (final line in _leadIn(_sharedHeading)) {
+    if (!line.startsWith('|')) continue;
+    final cells = line.split('|');
+    if (cells.length < 3) continue;
+    final type = name.firstMatch(cells[1]);
+    if (type == null) continue;
+    final methods = method
+        .allMatches(cells[2])
+        .map((m) => m.group(1)!)
+        .toList();
+    if (methods.isEmpty) continue;
+    rows[type.group(1)!] = methods;
+  }
+
+  return rows;
+}
 
 /// The member names listed in the shared block.
 ///

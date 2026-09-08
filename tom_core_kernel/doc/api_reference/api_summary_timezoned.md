@@ -112,9 +112,13 @@ converts to UTC. `parseFromString` throws `FormatException` for an invalid
 string or unknown zone.
 
 All of them return `TomTimezoned` itself rather than one of the subclasses, so
-the methods below are the whole of what such a value offers. `convertToTzSameInstant`
-is not among them — each subclass declares its own, narrowed to its own return
-type — so converting a base value means rebuilding it as the subclass first.
+the methods below are the whole of what such a value offers. No `convertToTz*`
+method is among them, and that is a decision rather than a language limit: an
+override may narrow its return type, so a hoisted declaration would compile.
+What rules it out is that the three subclasses offer different conversion
+*sets*, and the only one they share — preserve the instant — is the wrong
+default for a date and for a time. Converting a base value therefore means
+rebuilding it as the subclass first, which is one line.
 
 #### Static Methods
 

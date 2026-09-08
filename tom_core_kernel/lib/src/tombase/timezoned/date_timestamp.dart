@@ -113,6 +113,52 @@ final RegExp _zonedDateTimeForm = _serializedForm(
 /// - `@T@` for times
 /// - `@X@` for datetimes
 ///
+/// ## Conversion lives on the subclasses
+///
+/// None of the `convertToTz*` methods is declared here, so a value obtained
+/// from [TomTimezoned.now], [TomTimezoned.parseFromString] or the default
+/// factory cannot be converted at that type: the call does not compile.
+///
+/// That is a decision, not a limitation of the language. Dart permits an
+/// override to narrow its return type, so a base declaration that each
+/// subclass narrowed to its own type would compile perfectly well. The reason
+/// against it is that *which* conversion is meaningful depends on what the
+/// value is, and the three types do not agree:
+///
+/// - [TomZonedDate] has [TomZonedDate.convertToTzSameInstant] and
+///   [TomZonedDate.convertToTzSameDate].
+/// - [TomZonedTime] has [TomZonedTime.convertToTzSameInstant] and
+///   [TomZonedTime.convertToTzSameTime].
+/// - [TomZonedDateTime] has only [TomZonedDateTime.convertToTzSameInstant]. It
+///   names an instant, so a re-anchoring counterpart would have nothing to
+///   move.
+///
+/// A value held at this type has no declared kind, so the only method that
+/// could be hoisted is the instant-preserving one — and preserving the instant
+/// is the wrong answer for a date and for a time, which is precisely why those
+/// two carry a second conversion. Hoisting it would install that wrong default
+/// on every value whose kind the reader has not yet established, and it would
+/// do so silently, because it would compile.
+///
+/// So the compile error is the type system asking which kind of value this is.
+/// Answering it costs one line:
+///
+/// ```dart
+/// final base = TomTimezoned.now();
+///
+/// // The instant and the zone are all a conversion needs.
+/// final moved = TomZonedDateTime.fromDateTime(base, base.timezone)
+///     .convertToTzSameInstant(newYork);
+/// ```
+///
+/// ## What this type is for
+///
+/// Holding a value at [TomTimezoned] is right where the kind genuinely does
+/// not matter: as the supertype every zoned value shares — `TomOTimezoned`
+/// binds its type parameter to it — for the accessors above, and for a
+/// serialization round trip that carries a value through without asking what
+/// it is.
+///
 /// ## Usage
 ///
 /// ```dart

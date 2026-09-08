@@ -13,7 +13,7 @@ full variants used by the observable date/time cells.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomTimezone` | A named IANA zone; `TomTimezone.utc`, `TomTimezone.fromName('Asia/Tokyo')` — `null` for a name the database does not hold. |
-| `TomTimezoned` | `DateTime` with an attached zone; base for the variants below. |
+| `TomTimezoned` | `DateTime` with an attached zone; base for the variants below, and the supertype to hold one at. Declares no conversion — see [Conversion](#conversion). |
 | `TomZonedDate` | Date-only zoned value. |
 | `TomZonedTime` | Time-only zoned value. |
 | `TomZonedDateTime` | Full zoned date-and-time value. |
@@ -42,6 +42,28 @@ void main() {
   );
   print(meeting.year); // 2026
 }
+```
+
+## Conversion
+
+Conversion is declared on the three variants and **not** on `TomTimezoned`, so
+a value from `TomTimezoned.now()`, `TomTimezoned.parseFromString(...)` or the
+default factory cannot be converted at that type — the call does not compile.
+
+That is a decision. Dart permits an override to narrow its return type, so a
+hoisted declaration would compile; what rules it out is that the variants do
+not offer the same set. A date has `convertToTzSameInstant` and
+`convertToTzSameDate`, a time has `convertToTzSameInstant` and
+`convertToTzSameTime`, and a datetime has only `convertToTzSameInstant` because
+it already names an instant. The one method common to all three is the wrong
+default for two of them, and hoisting it would apply that default to any value
+whose kind the caller has not established — silently, since it would compile.
+
+Rebuild first; it is one line:
+
+```dart
+final base = TomTimezoned.now();
+TomZonedDateTime.fromDateTime(base, base.timezone).convertToTzSameInstant(zone);
 ```
 
 ## Failures

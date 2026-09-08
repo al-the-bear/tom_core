@@ -731,11 +731,15 @@ void main() {
       );
 
       test(
-        'should return true for valid TomTimezoned string with trailing space',
+        'should return true for a TomTimezoned string with stray whitespace',
         () {
+          // Nothing emits the space — the serialized form ends where the zone
+          // name ends — but the predicate trims before matching, so a value
+          // that picked one up in transit is still recognised rather than
+          // silently failing to be a timezoned string at all.
           expect(
             TomTimezoned.isTomTimezonedString(
-              '2024-06-15T12:30:00.000Z_+09:00_Asia/Tokyo',
+              '  2024-06-15T12:30:00.000Z_+09:00_Asia/Tokyo ',
             ),
             isTrue,
           );
@@ -1062,10 +1066,11 @@ void main() {
         );
       });
 
-      test('should return true for TomZonedDate with trailing space', () {
+      test('should return true for TomZonedDate with stray whitespace', () {
+        // The predicate trims; nothing emits the space.
         expect(
           TomZonedDate.isTomZonedDateString(
-            '@D@2024-06-15T00:00:00.000Z_+09:00_Asia/Tokyo',
+            '  @D@2024-06-15T00:00:00.000Z_+09:00_Asia/Tokyo ',
           ),
           isTrue,
         );
@@ -1441,10 +1446,11 @@ void main() {
         );
       });
 
-      test('should return true for TomZonedTime with trailing space', () {
+      test('should return true for TomZonedTime with stray whitespace', () {
+        // The predicate trims; nothing emits the space.
         expect(
           TomZonedTime.isTomZonedTimeString(
-            '@T@1970-01-01T09:00:00.000Z_+09:00_Asia/Tokyo',
+            '  @T@1970-01-01T09:00:00.000Z_+09:00_Asia/Tokyo ',
           ),
           isTrue,
         );
@@ -1831,10 +1837,11 @@ void main() {
         );
       });
 
-      test('should return true for TomZonedDateTime with trailing space', () {
+      test('should return true for TomZonedDateTime with stray whitespace', () {
+        // The predicate trims; nothing emits the space.
         expect(
           TomZonedDateTime.isTomZonedDateTimeString(
-            '@X@2024-06-15T14:30:00.000Z_+09:00_Asia/Tokyo',
+            '  @X@2024-06-15T14:30:00.000Z_+09:00_Asia/Tokyo ',
           ),
           isTrue,
         );

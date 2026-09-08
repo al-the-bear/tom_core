@@ -243,23 +243,45 @@ All types share these features, because `TomTimezoned` itself has them:
   toString()                  // Serialize to string
 ```
 
-Conversion is not on that list. Each of the three subclasses declares its own
-`convertToTzSameInstant`, narrowed to return its own type, so there is no single
-signature the base class could hold — see [TomZonedDateTime](#tomzoneddatetime),
-[TomZonedDate](#tomzoneddate) and [TomZonedTime](#tomzonedtime).
+Conversion is not on that list, and that is deliberate. It matters because
+`TomTimezoned.now()`, `TomTimezoned.parseFromString(...)` and the default
+factory all hand back the base class rather than a subclass, so a value held at
+that type has no conversion method to call and the compiler is what tells you
+so.
 
-This is worth knowing because `TomTimezoned.now()` and
-`TomTimezoned.parseFromString(...)` hand back the base class, not a subclass. A
-value held at that type has no conversion method to call, and the compiler is
-what tells you so. Rebuild it as the type you want first:
+The narrowed return types are **not** the obstacle: Dart permits an override to
+narrow its return type, so a base declaration that each subclass narrowed would
+compile. What stops it is that which conversion is meaningful depends on what
+the value is, and the three types do not offer the same set:
+
+| Type | Conversions |
+| ---- | ----------- |
+| [TomZonedDate](#tomzoneddate) | `convertToTzSameInstant`, `convertToTzSameDate` |
+| [TomZonedTime](#tomzonedtime) | `convertToTzSameInstant`, `convertToTzSameTime` |
+| [TomZonedDateTime](#tomzoneddatetime) | `convertToTzSameInstant` only — it names an instant, so a re-anchoring counterpart would have nothing to move |
+
+A base value has no declared kind, so the only method that could be hoisted is
+the instant-preserving one — and preserving the instant is the wrong answer for
+a date and for a time, which is exactly why those two carry a second
+conversion. Hoisting it would install that wrong default on every value whose
+kind the reader has not yet established, and it would compile, so nothing would
+say so.
+
+The compile error is therefore the type system asking which kind of value this
+is. Answering it costs one line:
 
 ```dart
 final base = TomTimezoned.now();
 
-// The instant and the zone are all convertToTzSameInstant needs.
+// The instant and the zone are all a conversion needs.
 final moved = TomZonedDateTime.fromDateTime(base, base.timezone)
     .convertToTzSameInstant(newYork);
 ```
+
+Hold a value at `TomTimezoned` where the kind genuinely does not matter: as the
+supertype every zoned value shares — `TomOTimezoned` binds its type parameter
+to it — for the accessors above, and for a serialization round trip that
+carries a value through without asking what it is.
 
 ### TomZonedDateTime
 
