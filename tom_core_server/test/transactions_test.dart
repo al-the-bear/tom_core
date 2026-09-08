@@ -317,6 +317,40 @@ void main() {
     );
   });
 
+  group('clearing the scope', () {
+    test('a concluded transaction does not wipe its successor', () async {
+      // The scope is cleared by identity, and this is the case that needs it.
+      // A transaction concludes at a point in time; the scope may already have
+      // moved on, and concluding it a second time -- neither `commit` nor
+      // `rollback` refuses a transaction that has already ended -- must not
+      // take the successor with it. Without the identity check the second
+      // transaction is silently dropped from the scope while still running, so
+      // the next `startTransaction()` opens a third and the work enlisted in
+      // the second is concluded by nobody.
+      //
+      // Found by mutation: replacing the guard with an unconditional
+      // `current = null` left the whole suite green.
+      final (first, _) = TomTransactionManager.startTransaction();
+      await first.commitTransaction();
+
+      final (second, opened) = TomTransactionManager.startTransaction();
+      expect(opened, isTrue, reason: 'the first must have cleared itself');
+      expect(TomTransactionManager.getCurrentTransaction(), same(second));
+
+      await first.rollbackTransaction();
+
+      expect(
+        TomTransactionManager.getCurrentTransaction(),
+        same(second),
+        reason:
+            'the concluded transaction cleared its successor from the scope',
+      );
+      expect(second.isRunning, isTrue);
+
+      await second.rollbackTransaction();
+    });
+  });
+
   group('registerParticipant', () {
     test('deduplicates participants by id, enlisting only once', () async {
       final (txn, _) = TomTransactionManager.startTransaction();

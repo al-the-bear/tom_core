@@ -300,7 +300,31 @@ void main() {
       );
       await tomLoggingMiddleware()((req) => Response.ok('ok'))(request);
 
-      expect(output.messages.single, contains('billing'));
+      expect(output.messages.single, contains('[billing] '));
+    });
+
+    test('an unnamed application leaves no empty bracket on the line', () async {
+      // The other half of the conditional prefix. A deployment that never sets
+      // `appId` -- which is every one that has not needed the distinction --
+      // must get the line it always got, not one opening `[] `. An empty
+      // bracket reads as a *named* application whose name failed to render,
+      // which is a worse report than no bracket at all.
+      //
+      // Found by mutation: making the prefix unconditional left the suite
+      // green, the only assertion on the text being that it contains the name.
+      _AppIdConfig('');
+      final output = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      addTearDown(() => tomLog.logOutput = previous);
+      tomLog.logOutput = output;
+
+      final request = _get().change(
+        context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
+      );
+      await tomLoggingMiddleware()((req) => Response.ok('ok'))(request);
+
+      expect(output.messages.single, isNot(contains('[]')));
+      expect(output.messages.single, startsWith('HTTP/'));
     });
   });
 

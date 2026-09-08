@@ -1130,6 +1130,28 @@ CREATE OR REPLACE VIEW widget_v AS SELECT id FROM widget;
       expect(missing.origin, 'FixtureTaskRecord');
     });
 
+    test('the datasource is matched case-insensitively', () {
+      // A datasource name reaches this check from three places that need not
+      // agree on case: the `@TomDbTable` annotation, the configuration key the
+      // migration runner is given, and the directory the artifacts live in.
+      // Matching exactly would make an entity declared for `TOM_CORE_SERVER_
+      // TEST` invisible to a run named `tom_core_server_test` -- and invisible
+      // is the dangerous answer here, because a table nobody claims is reported
+      // as converged rather than as missing.
+      //
+      // Found by mutation: dropping both `toLowerCase()` calls left the suite
+      // green, every fixture having been spelled the same way on both sides.
+      final report = check.verify(
+        datasource: fixtureDatasource.toUpperCase(),
+        schema: fixtureSchema,
+        chain: const [],
+        entityTypes: [FixtureTaskRecord],
+      );
+      final missing = report.errors.single;
+      expect(missing.kind, TomSchemaDivergenceKind.missingTable);
+      expect(missing.table, 'fixture_task');
+    });
+
     test('a differing primary key is reported once, per table', () {
       final report = check.verify(
         datasource: fixtureDatasource,

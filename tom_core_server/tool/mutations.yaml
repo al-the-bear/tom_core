@@ -1,0 +1,415 @@
+# What has been asked, and of which tests.
+#
+# One entry per behaviour this package promises: a fallback, a precedence rule,
+# a guard, an error path. `find` is the smallest edit that removes the promise
+# and `tests` are the files expected to notice. Run with
+# `python3 tool/mutation_sweep.py`; a surviving mutation is a behaviour the
+# suite names without pinning.
+#
+# A module absent from this file has not been swept. That is the reason the
+# catalogue is committed and not the script alone.
+#
+# `find` must match its file exactly once, so an entry cannot silently drift
+# onto a different line.
+#
+# Two entries have to be written carefully, and both were got wrong first:
+#
+#  * An **equivalent mutant** survives for no fault of the suite -- rewriting
+#    `rows.isEmpty ? null : rows.first` as `rows.firstOrNull` is the same
+#    function, so its survival says nothing about coverage and only trains a
+#    reader to ignore the report. One such entry was written and removed.
+#  * A behaviour covered only by a `db`-tagged suite carries `requires: db`.
+#    Those suites self-skip without a MariaDB on 127.0.0.1:3309, and a skipped
+#    suite passes -- so without the marker every one of them reports as
+#    surviving on a machine with no database, which is a false alarm about the
+#    one thing this tool exists to report truthfully.
+
+healthcheck:
+  - behaviour: the default analyzer answers OK
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "  Future<String> analyzeHealth() async {\n    return \"OK\";"
+    replace: "  Future<String> analyzeHealth() async {\n    return \"FINE\";"
+    tests: test/healthcheck_test.dart
+  - behaviour: health() delegates to the installed analyzer rather than answering itself
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    return healthAnalyzer.analyzeHealth();"
+    replace: "    return \"OK\";"
+    tests: test/healthcheck_test.dart
+  - behaviour: probe traffic is kept out of the request log
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    logRequests: false,"
+    replace: "    logRequests: true,"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: the endpoint is mounted at /health
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    uri: \"/health\","
+    replace: "    uri: \"/healthz\","
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: the endpoint is public, so an unauthenticated probe reaches it
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "  @TomPublicAccess()\n  @TomEndpoint("
+    replace: "  @TomEndpoint("
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: the response is plain text, not JSON
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    produces: TomMimeType.plainText,"
+    replace: "    produces: TomMimeType.json,"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+
+transactions:
+  - behaviour: a vetoing participant rolls the whole transaction back
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "      if (!ok) {\n        return rollbackTransaction();\n      }"
+    replace: "      if (!ok) {\n        continue;\n      }"
+    tests: test/transactions_test.dart
+  - behaviour: a concluded transaction accepts no further participants
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (!_isRunning) {\n      throw TomTransactionException("
+    replace: "    if (false) {\n      throw TomTransactionException("
+    tests: test/transactions_test.dart
+  - behaviour: registering an already-enlisted participant is a no-op
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (_participants[ttp.getParticipantId()] == null) {"
+    replace: "    if (true) {"
+    tests: test/transactions_test.dart
+  - behaviour: commit ends every participant even after one reports failure
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "      final ended = await p.endTransaction();\n      ok = ok && ended;\n    }\n    _scope._clear(this);\n    return ok;\n  }\n\n  /// Rolls back every participant"
+    replace: "      ok = ok && await p.endTransaction();\n    }\n    _scope._clear(this);\n    return ok;\n  }\n\n  /// Rolls back every participant"
+    tests: test/transactions_test.dart
+  - behaviour: rollback ends every participant even after one reports failure
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "      final ended = await p.endTransaction();\n      ok = ok && ended;\n    }\n    _scope._clear(this);\n    return ok;\n  }\n}"
+    replace: "      ok = ok && await p.endTransaction();\n    }\n    _scope._clear(this);\n    return ok;\n  }\n}"
+    tests: test/transactions_test.dart
+  - behaviour: a concluded transaction clears itself from its scope
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (identical(current, transaction)) current = null;"
+    replace: "    if (false) current = null;"
+    tests: test/transactions_test.dart
+  - behaviour: a concluded transaction cannot wipe a successor in the same scope
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (identical(current, transaction)) current = null;"
+    replace: "    current = null;"
+    tests: test/transactions_test.dart
+  - behaviour: commit marks the transaction not-running before it runs
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    bool ok = true;\n    _isRunning = false;"
+    replace: "    bool ok = true;"
+    tests: test/transactions_test.dart
+
+cache:
+  - behaviour: a read promotes the entry to most-recently-used
+    file: lib/src/tomserver/cache/server_cache.dart
+    find: "        if (_first != entry) {"
+    replace: "        if (false) {"
+    tests: test/cache_test.dart
+  - behaviour: promoting the tail makes its predecessor the new tail
+    file: lib/src/tomserver/cache/server_cache.dart
+    find: "            // The promoted entry was the tail; the new tail is its predecessor.\n            _last = oldBefore;"
+    replace: "            // The promoted entry was the tail; the new tail is its predecessor."
+    tests: test/cache_test.dart
+  - behaviour: an entry past its deletion time is a miss, not a hit
+    file: lib/src/tomserver/cache/server_cache.dart
+    find: "        if (entry.deletionTime != null &&\n            !entry.deletionTime!.isAfter(DateTime.now())) {"
+    replace: "        if (false) {"
+    tests: test/cache_test.dart
+  - behaviour: an entry with no deletion time never expires
+    file: lib/src/tomserver/cache/server_cache.dart
+    find: "        if (entry.deletionTime != null &&\n            !entry.deletionTime!.isAfter(DateTime.now())) {\n          cache.removeEntry(key);"
+    replace: "        if (!(entry.deletionTime?.isAfter(DateTime.now()) ?? false)) {\n          cache.removeEntry(key);"
+    tests: test/cache_test.dart
+  - behaviour: an expired entry is dropped from the cache, not merely reported absent
+    file: lib/src/tomserver/cache/server_cache.dart
+    find: "          cache.removeEntry(key);\n          return null;"
+    replace: "          return null;"
+    tests: test/cache_test.dart
+
+cmdline:
+  - behaviour: an .env line with no `=` is skipped, not stored under an empty key
+    file: lib/src/tomserver/cmdline/env_file.dart
+    find: "      final equalsIndex = line.indexOf('=');\n      if (equalsIndex == -1) {\n        continue;\n      }"
+    replace: "      final equalsIndex = line.indexOf('=');\n      if (equalsIndex == -1) {\n        result[line] = '';\n        continue;\n      }"
+    tests: test/cmdline_test.dart
+  - behaviour: a comment line is skipped
+    file: lib/src/tomserver/cmdline/env_file.dart
+    find: "      if (line.isEmpty || line.startsWith('#')) {"
+    replace: "      if (line.isEmpty) {"
+    tests: test/cmdline_test.dart
+  - behaviour: an .env line with an empty key is skipped
+    file: lib/src/tomserver/cmdline/env_file.dart
+    find: "      final key = line.substring(0, equalsIndex).trim();\n      if (key.isEmpty) {\n        continue;\n      }"
+    replace: "      final key = line.substring(0, equalsIndex).trim();"
+    tests: test/cmdline_test.dart
+  - behaviour: a quoted value keeps its inline # rather than losing it to a comment
+    file: lib/src/tomserver/cmdline/env_file.dart
+    find: "      if (unquoted != null) {\n        // Remove quotes and use as string (don't convert to other types)\n        result[key] = unquoted;\n        continue;\n      }"
+    replace: "      if (unquoted != null) {\n        value = unquoted;\n      }"
+    tests: test/cmdline_test.dart
+  - behaviour: an unquoted value drops an inline comment
+    file: lib/src/tomserver/cmdline/env_file.dart
+    find: "      if (commentIndex != -1) {\n        value = value.substring(0, commentIndex).trim();\n      }"
+    replace: "      if (false) {\n        value = value.substring(0, commentIndex).trim();\n      }"
+    tests: test/cmdline_test.dart
+  - behaviour: an argument whose key is empty is dropped
+    file: lib/src/tomserver/cmdline/args.dart
+    find: "      if (key.isEmpty) {\n        continue;"
+    replace: "      if (false) {\n        continue;"
+    tests: test/cmdline_test.dart
+
+resources:
+  - behaviour: the stored language wins over the client-advertised one
+    file: lib/src/tomserver/resources/localized_text_resources.dart
+    find: "    final stored = principal.language;\n    if (stored != null && stored.trim().isNotEmpty) {"
+    replace: "    final stored = principal.language;\n    if (false) {"
+    tests: test/resources_test.dart
+  - behaviour: a blank stored language falls through to the client one
+    file: lib/src/tomserver/resources/localized_text_resources.dart
+    find: "    if (stored != null && stored.trim().isNotEmpty) {"
+    replace: "    if (stored != null) {"
+    tests: test/resources_test.dart
+  - behaviour: a principal that advertises no language resolves to no locale
+    file: lib/src/tomserver/resources/localized_text_resources.dart
+    find: "      return TomTextLocale.lenient(client, principal.clientCountry);\n    }\n    return null;"
+    replace: "      return TomTextLocale.lenient(client, principal.clientCountry);\n    }\n    return TomTextLocale('en');"
+    tests: test/resources_test.dart
+  - behaviour: a null parameter leaves its placeholder standing
+    file: lib/src/tomserver/resources/localized_text_resources.dart
+    find: "      if (value == null) continue;"
+    replace: "      if (value == null) { result = result.replaceAll('{${entry.key}}', ''); continue; }"
+    tests: test/resources_test.dart
+  - behaviour: a blank country counts as no country
+    file: lib/src/tomserver/resources/localized_text_resources.dart
+    find: "      country = (country == null || country.trim().isEmpty)"
+    replace: "      country = (country == null)"
+    tests: test/resources_test.dart
+  - behaviour: an empty language is refused
+    file: lib/src/tomserver/resources/localized_text_resources.dart
+    find: "    if (this.language.isEmpty) {"
+    replace: "    if (false) {"
+    tests: test/resources_test.dart
+
+little_things:
+  - behaviour: the envelope omits errorKey for a non-Tom error rather than nulling it
+    file: lib/src/tomserver/little_things/server_exception.dart
+    find: "  if (error is TomException) {\n    envelope['errorKey'] = error.key;"
+    replace: "  if (true) {\n    envelope['errorKey'] = error is TomException ? error.key : null;"
+    tests: test/little_things_test.dart test/server_exception_family_test.dart
+  - behaviour: the envelope omits clientThrow for a kernel exception
+    file: lib/src/tomserver/little_things/server_exception.dart
+    find: "  if (error is TomServerException) {\n    envelope['clientThrow'] = error.clientThrow;\n  }"
+    replace: "  envelope['clientThrow'] =\n      error is TomServerException ? error.clientThrow : null;"
+    tests: test/little_things_test.dart test/server_exception_family_test.dart
+  - behaviour: the envelope always names the runtime type
+    file: lib/src/tomserver/little_things/server_exception.dart
+    find: "  final envelope = <String, Object?>{'errorType': error.runtimeType.toString()};"
+    replace: "  final envelope = <String, Object?>{};"
+    tests: test/little_things_test.dart test/server_exception_family_test.dart
+  - behaviour: clientThrow defaults to true
+    file: lib/src/tomserver/little_things/server_exception.dart
+    find: "    this.clientThrow = true,"
+    replace: "    this.clientThrow = false,"
+    tests: test/little_things_test.dart test/server_exception_family_test.dart
+  - behaviour: toString names the isolate and the masking flag
+    file: lib/src/tomserver/little_things/server_exception.dart
+    find: "    return \"${super.toString()} $isolateName client-throw: $clientThrow$request\";"
+    replace: "    return \"${super.toString()}$request\";"
+    tests: test/little_things_test.dart test/server_exception_family_test.dart
+
+export:
+  - behaviour: a formula-leading cell is neutralised before a spreadsheet reads it
+    file: lib/src/tomserver/export/csv_renderer.dart
+    find: "        guardFormula && field.isNotEmpty && '=+-@'.contains(field[0]);"
+    replace: "        false && field.isNotEmpty && '=+-@'.contains(field[0]);"
+    tests: test/export_test.dart
+  - behaviour: an embedded quote is doubled
+    file: lib/src/tomserver/export/csv_renderer.dart
+    find: "    final escaped = field.replaceAll('\"', '\"\"');"
+    replace: "    final escaped = field;"
+    tests: test/export_test.dart
+  - behaviour: a field holding the separator is quoted
+    file: lib/src/tomserver/export/csv_renderer.dart
+    find: "        field.contains(fieldSeparator) ||"
+    replace: ""
+    tests: test/export_test.dart
+  - behaviour: a field holding a newline is quoted
+    file: lib/src/tomserver/export/csv_renderer.dart
+    find: "        field.contains('\\n') ||"
+    replace: ""
+    tests: test/export_test.dart
+  - behaviour: a file name that sanitises to nothing gets the fallback base name
+    file: lib/src/tomserver/export/export_service.dart
+    find: "    return sanitised.isEmpty ? _unnamedExportBaseName : sanitised;"
+    replace: "    return sanitised;"
+    tests: test/export_test.dart
+  - behaviour: a path separator is replaced rather than kept in a file name
+    file: lib/src/tomserver/export/export_service.dart
+    find: "          rune != 0x2F; // /"
+    replace: "          true; // /"
+    tests: test/export_test.dart
+
+authorization:
+  - behaviour: the stronger of two roles is the one the registry ranks higher
+    file: lib/src/tomserver/authorization/principal_resource_grant.dart
+    find: "    return sa.index >= sb.index ? a : b;"
+    replace: "    return sa.index > sb.index ? a : b;"
+    tests: test/principal_resource_grant_test.dart test/graded_authorization_test.dart
+  - behaviour: a role the registry does not know ranks as none, not as strongest
+    file: lib/src/tomserver/authorization/principal_resource_grant.dart
+    find: "    final sa = TomResourceRoleRegistry.stateFor(a) ?? TomAuthState.none;"
+    replace: "    final sa = TomResourceRoleRegistry.stateFor(a) ?? TomAuthState.write;"
+    tests: test/principal_resource_grant_test.dart test/graded_authorization_test.dart
+  - behaviour: a caller supplying no comparator gets the registry ordering
+    file: lib/src/tomserver/authorization/principal_resource_grant.dart
+    find: "  }) : strongerRole = strongerRole ?? registryStrength;"
+    replace: "  }) : strongerRole = strongerRole ?? ((a, b) => a);"
+    tests: test/principal_resource_grant_test.dart test/graded_authorization_test.dart
+
+audit:
+  - behaviour: a record with no username is attributed to the system actor
+    file: lib/src/tomserver/audit/audit_record.dart
+    find: "    username: json['username'] as String? ?? systemUsername,"
+    replace: "    username: json['username'] as String? ?? '',"
+    tests: test/audit_test.dart
+  - behaviour: an actor whose json omits the flag is not authenticated
+    file: lib/src/tomserver/audit/audit_record.dart
+    find: "    authenticated: json['authenticated'] as bool? ?? false,"
+    replace: "    authenticated: json['authenticated'] as bool? ?? true,"
+    tests: test/audit_test.dart
+  - behaviour: an unverifiable chain counts as a finding, not as silence
+    file: lib/src/tomserver/audit/audit_anchor_monitor.dart
+    find: "      failure != null || (verification?.indicatesTampering ?? false);"
+    replace: "      verification?.indicatesTampering ?? false;"
+    tests: test/audit_anchor_monitor_test.dart
+
+db_migration:
+  - behaviour: a table of another datasource is not this datasource's to converge
+    file: lib/src/tomserver/db_migration/schema_convergence.dart
+    find: "    if (table.datasource.toLowerCase() != datasource.toLowerCase())\n      return false;"
+    replace: "    if (false) return false;"
+    tests: test/schema_convergence_test.dart test/framework_schema_test.dart
+  - behaviour: a table declaring no schema belongs to whichever schema is asked
+    file: lib/src/tomserver/db_migration/schema_convergence.dart
+    find: "    return declared == null || declared.toLowerCase() == schema.toLowerCase();"
+    replace: "    return declared != null && declared.toLowerCase() == schema.toLowerCase();"
+    tests: test/schema_convergence_test.dart test/framework_schema_test.dart
+  - behaviour: datasource and schema are matched case-insensitively
+    file: lib/src/tomserver/db_migration/schema_convergence.dart
+    find: "    if (table.datasource.toLowerCase() != datasource.toLowerCase())"
+    replace: "    if (table.datasource != datasource)"
+    tests: test/schema_convergence_test.dart test/framework_schema_test.dart
+
+preferences:
+  - behaviour: remove reports whether a row was there
+    file: lib/src/tomserver/preferences/user_preferences_service.dart
+    find: "    if (row == null) return false;"
+    replace: "    if (row == null) return true;"
+    requires: db
+    tests: test/user_preferences_db_test.dart
+  - behaviour: an unwritten preference answers the fallback
+    file: lib/src/tomserver/preferences/user_preferences_service.dart
+    find: "      await get<T>(key) ?? fallback;"
+    replace: "      (await get<T>(key))!;"
+    requires: db
+    tests: test/user_preferences_db_test.dart
+  - behaviour: a key is validated before the store is touched
+    file: lib/src/tomserver/preferences/user_preferences_service.dart
+    find: "  Future<bool> remove(String key) async {\n    TomUserPreferenceKeys.validate(key);"
+    replace: "  Future<bool> remove(String key) async {"
+    tests: test/user_preferences_endpoints_test.dart test/user_preference_key_test.dart
+
+messaging:
+  - behaviour: a message needing more segments than the cap is refused
+    file: lib/src/tomserver/messaging/sms_service.dart
+    find: "    if (cap != null && segmentation.segments > cap) {"
+    replace: "    if (false) {"
+    tests: test/sms_service_test.dart
+  - behaviour: the cap is a maximum, so a message exactly at it is sent
+    file: lib/src/tomserver/messaging/sms_service.dart
+    find: "    if (cap != null && segmentation.segments > cap) {"
+    replace: "    if (cap != null && segmentation.segments >= cap) {"
+    tests: test/sms_service_test.dart
+  - behaviour: an empty recipient list is refused
+    file: lib/src/tomserver/messaging/sms_service.dart
+    find: "    if (to.isEmpty) {"
+    replace: "    if (false) {"
+    tests: test/sms_service_test.dart
+  - behaviour: a blank template key is refused
+    file: lib/src/tomserver/messaging/sms_service.dart
+    find: "    if (templateKey.trim().isEmpty) {"
+    replace: "    if (templateKey.isEmpty) {"
+    tests: test/sms_service_test.dart
+
+file_storage:
+  - behaviour: an entry's own factory wins over the registered backend for its type
+    file: lib/src/tomserver/file_storage/blob_store_registry.dart
+    find: "    final factory = _factory ?? _backends[type];"
+    replace: "    final factory = _backends[type] ?? _factory;"
+    tests: test/file_storage_test.dart
+  - behaviour: a backend nobody registered is a configuration error, not a null store
+    file: lib/src/tomserver/file_storage/blob_store_registry.dart
+    find: "    final factory = _factory ?? _backends[type];\n    if (factory == null) {"
+    replace: "    final factory = _factory ?? _backends[type];\n    if (false) {"
+    tests: test/file_storage_test.dart
+  - behaviour: an entry naming no type reports an empty one rather than throwing
+    file: lib/src/tomserver/file_storage/blob_store_registry.dart
+    find: "  String get type => '${settings['type'] ?? ''}';"
+    replace: "  String get type => '${settings['type']}';"
+    tests: test/file_storage_test.dart
+
+scheduling:
+  - behaviour: losing the claim race is a null, not an error
+    file: lib/src/tomserver/scheduling/sql_job_store.dart
+    find: "    if (affected != BigInt.one) return null;"
+    replace: "    if (affected > BigInt.one) return null;"
+    requires: db
+    tests: test/scheduling_db_test.dart
+  - behaviour: a definite SQL failure is rethrown rather than resolved as ambiguous
+    file: lib/src/tomserver/scheduling/sql_job_store.dart
+    find: "      if (classifySqlFailure(error) == TomSqlFailureMode.definite) rethrow;"
+    replace: ""
+    tests: test/scheduling_cluster_test.dart test/scheduling_schema_test.dart
+
+endpoints:
+  - behaviour: a path capture with no mapping binds under its own name
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "      jsonBodyData[mapping[captureName] ?? captureName] = value;"
+    replace: "      jsonBodyData[mapping[captureName]!] = value;"
+    tests: test/endpoints_pipeline_test.dart
+  - behaviour: a query parameter the endpoint does not declare is not bound
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "    mapping.forEach((queryName, fieldName) {\n      final value = queryParameters[queryName];\n      if (value != null) jsonBodyData[fieldName] = value;"
+    replace: "    queryParameters.forEach((queryName, value) {\n      jsonBodyData[mapping[queryName] ?? queryName] = value;"
+    tests: test/endpoints_pipeline_test.dart
+  - behaviour: an endpoint declaring no form fields takes all of them
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "    if (declared.isEmpty) {\n      jsonBodyData.addAll(form.fields);\n      return;\n    }"
+    replace: "    if (declared.isEmpty) {\n      return;\n    }"
+    tests: test/endpoints_pipeline_test.dart test/file_endpoint_test.dart
+  - behaviour: an endpoint declaring form fields takes only those
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "    for (final field in declared) {\n      final value = form.fields[field];\n      if (value != null) jsonBodyData[field] = value;"
+    replace: "    jsonBodyData.addAll(form.fields);\n    for (final field in declared) {\n      final value = form.fields[field];\n      if (value != null) jsonBodyData[field] = value;"
+    tests: test/endpoints_pipeline_test.dart test/file_endpoint_test.dart
+
+server:
+  - behaviour: the access line opens with the application id
+    file: lib/src/tomserver/server/server.dart
+    find: "          \"${appId.isEmpty ? \"\" : \"[$appId] \"}HTTP/"
+    replace: "          \"HTTP/"
+    tests: test/server_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: an unnamed application leaves no empty bracket on the line
+    file: lib/src/tomserver/server/server.dart
+    find: "          \"${appId.isEmpty ? \"\" : \"[$appId] \"}HTTP/"
+    replace: "          \"[$appId] HTTP/"
+    tests: test/server_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: the configuration's error handler replaces the default
+    file: lib/src/tomserver/server/server.dart
+    find: "    errorHandler = configuration.errorHandler ?? errorHandler;"
+    replace: ""
+    tests: test/server_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: the authentication error handler falls back to the general one
+    file: lib/src/tomserver/server/server.dart
+    find: "        configuration.authenticationErrorHandler ?? errorHandler;"
+    replace: "        configuration.authenticationErrorHandler;"
+    tests: test/server_test.dart test/endpoints_pipeline_test.dart

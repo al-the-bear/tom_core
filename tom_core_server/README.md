@@ -379,4 +379,11 @@ apps get the full kernel API through one dependency. See the
   `dart analyze` cannot see any of these. The one check too slow to run that way
   is `tool/check_reflection_current.sh`, which regenerates and compares
   exactly (two to four minutes).
+- **Mutation sweep:** `python3 tool/mutation_sweep.py` breaks one recorded
+  behaviour at a time in `lib/` and reports whether the suite noticed. A green
+  test that *names* a behaviour is not the same as one that pins it, and
+  reading the test cannot tell them apart. The catalogue is
+  `tool/mutations.yaml` and is the committed half: a module absent from it has
+  not been swept. Not part of a normal test run — it edits `lib/`, restores in
+  a `finally`, and takes minutes.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

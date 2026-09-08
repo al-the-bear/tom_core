@@ -1,5 +1,52 @@
 ## 1.3.0
 
+### Added
+
+- **`tool/mutation_sweep.py`, and the catalogue that records what has been
+  asked (tcincb111).** A green test that *names* a behaviour is not the same as
+  one that pins it, and reading the test cannot tell them apart — the assertion
+  may be about something the mutation does not touch, or about a value the code
+  would produce either way. The only way to know is to break the behaviour in
+  `lib/` and watch.
+
+  The committed half is `tool/mutations.yaml`, not the script: it names one
+  behaviour per entry, the smallest edit that removes it, and the tests expected
+  to notice, so **a module absent from it has not been swept**. Sixteen of the
+  twenty are in it — 71 entries, four of them `requires: db`. Seventeen
+  survived; thirteen are now pinned by new tests, and the four in `endpoints`
+  are recorded in the follow-up, needing a pipeline fixture that declares a
+  `urlParameterMapping` and `formFields`.
+
+  What the survivors were. `healthcheck`'s four route facts — its path, its
+  public access, its plain-text media type, its `logRequests: false` — were
+  asserted only through *generated reflection*, so changing the annotation in
+  `lib/` left every route test green until somebody regenerated; they are now
+  read from the declaration. A concluded transaction could wipe a *successor*
+  from its scope, which the guard's own dartdoc argues against and nothing
+  tested. An expired cache entry was reported as a miss without being dropped,
+  which for a cache with no sweep timer means it is held for the life of the
+  process. A commented-out `.env` assignment (`# DB_HOST=parked`) was covered
+  only by a bare `# a comment`, which the no-separator rule drops anyway. A
+  stored language of blanks beat a real device locale. `TomAuditActor.fromJson`
+  read a missing username as nobody and a missing flag as authenticated —
+  neither reachable by a round trip, because `toJson` always writes both.
+  `registryStrength`'s tie-break, which decides the role name a fold reports.
+  The datasource and schema case-insensitivity in schema convergence, where
+  every fixture had been spelled the same way on both sides. A blob-store entry
+  with no type rendering as the word `null`, and an entry with its own builder
+  deferring to a backend. And the access line's app-id prefix, whose *absent*
+  half would have printed `[] ` for every deployment that never named itself.
+
+  Two things the harness had to learn, both from getting them wrong. It runs
+  the suite once unmutated first, because a red suite calls every mutation
+  killed — a test file that stopped compiling is red in exactly the way that
+  looks like success, and reported six of six killed on a suite that never ran.
+  And an entry whose only coverage is a `db`-tagged suite carries `requires:
+  db`: those suites self-skip without a MariaDB and a skipped suite passes, so
+  without the marker they report as surviving on every machine with no
+  database. An equivalent mutant — rewriting an expression as a synonym — is
+  removed rather than recorded, its survival saying nothing about coverage.
+
 ### Fixed
 
 - **A server's remote log records now say which server they came from

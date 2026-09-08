@@ -178,6 +178,23 @@ void main() {
       expect(locale!.tag, 'fr_CH');
     });
 
+    test('a stored language of blanks is nothing stored', () {
+      // `TomPrincipal.language` is a free-form column, so "unset" arrives as a
+      // null *or* as whitespace -- a form that submitted an untouched field, a
+      // migration that defaulted the column to `''`. Only the null case is
+      // covered by the test above, and the two branches are separate lines:
+      // found by mutation, dropping the blank check left the suite green while
+      // making a blank stored language beat a real device one.
+      final locale = TomTextLocale.fromPrincipal(
+        fixturePrincipal(
+          language: '   ',
+          clientLanguage: 'fr',
+          clientCountry: 'CH',
+        ),
+      );
+      expect(locale!.tag, 'fr_CH');
+    });
+
     test('a principal with no locale at all yields null, not a guess', () {
       expect(TomTextLocale.fromPrincipal(fixturePrincipal()), isNull);
     });

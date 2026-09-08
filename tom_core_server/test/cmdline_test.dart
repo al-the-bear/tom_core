@@ -595,6 +595,21 @@ void main() {
       expect(env, {'KEY': 'value'});
     });
 
+    test('skips a commented-out assignment, not just prose', () {
+      // The case the `#` rule is actually for. A bare `# a comment` carries no
+      // `=` and is dropped by the no-separator rule whether or not `#` is
+      // honoured, so the test above passes with the comment rule deleted --
+      // found by mutation. A *commented-out setting* is the shape a reader
+      // writes when parking a value, and reading it back would override the
+      // live one from a line that looks disabled.
+      final env = TomEnvFile.parse([
+        'DB_HOST=live',
+        '# DB_HOST=parked',
+        '#DB_PORT=3306',
+      ]);
+      expect(env, {'DB_HOST': 'live'});
+    });
+
     test('keeps a quoted value as a String without conversion', () {
       final env = TomEnvFile.parse(['NAME="my service"', 'NUM="123"']);
       expect(env['NAME'], 'my service');

@@ -373,6 +373,34 @@ void main() {
       expect(await TomCache.fromNameCache<String>('c', 'k'), isNull);
     });
 
+    test('drops the expired entry rather than merely reporting a miss', () {
+      // The read is also the sweep for the key it touches: an unbounded cache
+      // has no eviction and a bounded one evicts by recency, so an entry nobody
+      // reads again is held until the background timer runs -- and a cache with
+      // no `deletionIntervalSeconds` has no timer at all. Without this the
+      // expired value stays in the map for the life of the process.
+      //
+      // Asserted through the cache object rather than through a second read,
+      // which would answer `null` either way and so could not tell "dropped"
+      // from "still there and still expired". Found by mutation: deleting the
+      // `removeEntry` left the whole suite green.
+      final cache = _cache('c');
+      TomCacheManager.addCache(cache);
+      cache.putEntry(
+        'k',
+        TomCacheEntry('v', DateTime.now().subtract(const Duration(seconds: 1))),
+      );
+      expect(
+        cache.getEntry('k'),
+        isNotNull,
+        reason: 'the premise: it is there',
+      );
+
+      expect(TomCache.fromNameCache<String>('c', 'k'), completion(isNull));
+
+      expect(cache.getEntry('k'), isNull);
+    });
+
     test(
       'returns a value stored without a deletion time (cache forever)',
       () async {

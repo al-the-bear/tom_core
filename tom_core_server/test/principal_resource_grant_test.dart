@@ -52,6 +52,36 @@ void main() {
     });
     tearDown(TomResourceRoleRegistry.reset);
 
+    test('registryStrength keeps the first of two equally strong roles', () {
+      // `owner` and `editor` are both `full` here, and the resolver folds
+      // several grants for one resource through this comparator -- so on a tie
+      // the answer decides which role name a caller sees, and it has to be the
+      // same answer every time or an effective-role map changes between runs
+      // on grants that did not.
+      //
+      // Keeping the first is what makes the fold left-associative: the
+      // accumulator wins unless the newcomer is genuinely stronger. Found by
+      // mutation -- narrowing `>=` to `>`, which reverses exactly this case,
+      // left the suite green.
+      expect(
+        TomPrincipalResourceRoleResolver.registryStrength('owner', 'editor'),
+        'owner',
+      );
+      expect(
+        TomPrincipalResourceRoleResolver.registryStrength('editor', 'owner'),
+        'editor',
+      );
+      // And a genuine difference is still decided by strength, either way round.
+      expect(
+        TomPrincipalResourceRoleResolver.registryStrength('viewer', 'owner'),
+        'owner',
+      );
+      expect(
+        TomPrincipalResourceRoleResolver.registryStrength('owner', 'viewer'),
+        'owner',
+      );
+    });
+
     test(
       'Alice\'s role differs per resource → per-resource role map',
       () async {

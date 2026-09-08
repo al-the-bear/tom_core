@@ -143,6 +143,22 @@ void main() {
       expect(back.organizationId, actor.organizationId);
       expect(back.applicationId, actor.applicationId);
     });
+
+    test('reads a record that names no actor as the system, unauthenticated', () {
+      // The reader's two defaults, which a round trip cannot reach: `toJson`
+      // always writes both keys, so every existing test hands `fromJson` a
+      // complete map. The keys are absent for a row written by an older schema
+      // or by a job that ran outside a request -- and the defaults are the
+      // safe direction of each: attributed to the system rather than to
+      // nobody, and unauthenticated rather than trusted.
+      //
+      // Found by mutation: an empty username and an `authenticated` default of
+      // `true` both left the suite green.
+      final actor = TomAuditActor.fromJson(const <String, Object?>{});
+
+      expect(actor.username, TomAuditActor.systemUsername);
+      expect(actor.authenticated, isFalse);
+    });
   });
 
   group('TomAuditRecord', () {

@@ -2084,6 +2084,42 @@ fileStores:
       expect(TomBlobStoreInfo.storeNamed('custom'), isA<TomMemoryBlobStore>());
     });
 
+    test('an entry with no type reports an empty one, not the word null', () {
+      // `type` is interpolated into the `unknown_backend` report and compared
+      // against the backend table, so an entry whose settings name no type must
+      // read as absent rather than as a backend called "null" -- which is what
+      // a bare interpolation of a missing key produces, and which would send a
+      // reader looking for a backend of that name. Found by mutation: dropping
+      // the `?? ''` left the suite green.
+      TomBlobStoreInfo.register('provided', TomMemoryBlobStore());
+      final entry = TomBlobStoreInfo.getBlobStoreInfo('provided')!;
+      expect(entry.type, TomBlobStoreInfo.providedType);
+
+      expect(TomBlobStoreInfo('bare', const {}).type, isEmpty);
+    });
+
+    test('an entry with its own builder does not defer to a backend', () async {
+      // Precedence between the two ways an entry can know how to build itself.
+      // `open` prefers the entry's own factory and falls back to the backend
+      // registered for its `type`; reversed, an entry that carries a builder
+      // *and* names a type would be built by the backend instead, which is a
+      // different store from the one the caller handed over.
+      //
+      // Reached through `open` rather than through `register`, which assigns
+      // `_store` directly and so never consults either -- the first version of
+      // this test went that way and the mutation survived it.
+      final own = TomMemoryBlobStore();
+      final backend = TomMemoryBlobStore();
+      TomBlobStoreInfo.registerBackend('fixture', (name, settings) => backend);
+
+      final entry = TomBlobStoreInfo('either', <String, dynamic>{
+        'type': 'fixture',
+      }, factory: (name, settings) => own);
+      await entry.open();
+
+      expect(entry.store, same(own));
+    });
+
     test('an unregistered backend type fails at configuration time', () async {
       await expectLater(
         TomBlobStoreInfo.initializeBlobStores({
