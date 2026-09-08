@@ -122,9 +122,8 @@ void main() {
     tags.toggleItem('incident', true);
     await tester.pumpAndSettle();
 
-    expect(
-      [for (final tag in phase2ProjectBriefState.tags) tag.get()],
-      contains('incident'),
-    );
+    expect([
+      for (final tag in phase2ProjectBriefState.tags) tag.get(),
+    ], contains('incident'));
   });
 }

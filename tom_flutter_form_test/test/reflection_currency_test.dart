@@ -73,12 +73,14 @@ const String _rootPath = 'lib/main.dart';
 
 /// Everything hand-written under `lib/`: the sources the root's import graph
 /// reaches, minus the generator's own output.
-Iterable<File> _handWrittenSources() => Directory(
-  'lib',
-).listSync(recursive: true).whereType<File>().where(
-  (file) =>
-      file.path.endsWith('.dart') && !file.path.endsWith('.reflection.dart'),
-);
+Iterable<File> _handWrittenSources() => Directory('lib')
+    .listSync(recursive: true)
+    .whereType<File>()
+    .where(
+      (file) =>
+          file.path.endsWith('.dart') &&
+          !file.path.endsWith('.reflection.dart'),
+    );
 
 /// The classes in [source] carrying a `@tomReflector` annotation.
 ///
@@ -233,7 +235,8 @@ void main() {
       final missing =
           declaredFields
               .where(
-                (name) => !RegExp('\\b${RegExp.escape(name)}\\b').hasMatch(generated),
+                (name) =>
+                    !RegExp('\\b${RegExp.escape(name)}\\b').hasMatch(generated),
               )
               .toList()
             ..sort();

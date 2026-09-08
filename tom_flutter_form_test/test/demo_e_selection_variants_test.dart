@@ -100,11 +100,7 @@ void main() {
   }
 
   void expectBinding(WidgetTester tester, String tomId, String value) {
-    expect(
-      bindingOf(tester, tomId),
-      value,
-      reason: '$tomId must be "$value"',
-    );
+    expect(bindingOf(tester, tomId), value, reason: '$tomId must be "$value"');
   }
 
   /// Tap the descendant of type [W] carrying [label] inside field row [tomId].
@@ -203,10 +199,7 @@ void main() {
     expect(find.byType(SwitchListTile), findsOneWidget);
     expect(find.widgetWithText(SwitchListTile, 'Filtered source'), findsOne);
     // Labels come from the fields, so each row is individually anchored.
-    expect(
-      find.text('TomFormStringFilterChips (filterChips)'),
-      findsOneWidget,
-    );
+    expect(find.text('TomFormStringFilterChips (filterChips)'), findsOneWidget);
     expect(
       find.text('TomFormStringMultiCheckbox (multiCheckbox)'),
       findsOneWidget,
@@ -290,7 +283,10 @@ void main() {
     expectBinding(tester, 'radioGroup', 'manufacturing');
     // The radio itself is a bare Radio<String> under an ancestor RadioGroup.
     expect(
-      find.descendant(of: row('radioGroup'), matching: find.byType(Radio<String>)),
+      find.descendant(
+        of: row('radioGroup'),
+        matching: find.byType(Radio<String>),
+      ),
       findsNWidgets(6),
     );
   });
@@ -350,13 +346,12 @@ void main() {
 
     await toggleFilteredSource(tester);
 
-    expectBinding(
-      tester,
-      'filterChips',
-      '[tech]',
-    );
+    expectBinding(tester, 'filterChips', '[tech]');
     expect(
-      find.descendant(of: row('filterChips'), matching: find.byType(FilterChip)),
+      find.descendant(
+        of: row('filterChips'),
+        matching: find.byType(FilterChip),
+      ),
       findsNWidgets(2),
       reason: 'the field must re-render against the smaller catalogue',
     );
@@ -379,7 +374,10 @@ void main() {
     expectBinding(tester, 'radioGroup', 'tech');
     expectBinding(tester, 'choiceChips', 'tech');
     expect(
-      find.descendant(of: row('radioGroup'), matching: find.text('Manufacturing')),
+      find.descendant(
+        of: row('radioGroup'),
+        matching: find.text('Manufacturing'),
+      ),
       findsNothing,
     );
   });

@@ -102,14 +102,8 @@ void main() {
     // Each field renders its own label and description through the field
     // anatomy — the demo draws no captions of its own. Verify both the
     // multi-select and single-select flavours render + the bindings panel.
-    expect(
-      find.text('TomFormStringFilterChips (filterChips)'),
-      findsOneWidget,
-    );
-    expect(
-      find.text('TomFormStringChoiceChips (choiceChips)'),
-      findsOneWidget,
-    );
+    expect(find.text('TomFormStringFilterChips (filterChips)'), findsOneWidget);
+    expect(find.text('TomFormStringChoiceChips (choiceChips)'), findsOneWidget);
     expect(find.text('Multi-select — binds List<String>'), findsWidgets);
     expect(find.text('Single-select — binds String'), findsWidgets);
     expect(find.text('Live bindings'), findsOneWidget);
