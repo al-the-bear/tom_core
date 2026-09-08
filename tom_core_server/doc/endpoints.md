@@ -92,24 +92,56 @@ describing it, which a raw body cannot express:
 
 ## Declaring an Endpoint
 
-Annotate a method on a `@tomService` class with `@TomEndpoint`:
+A service is **two** types: an annotated declaration carrying the
+`@TomEndpoint` methods, and an annotated implementation carrying their bodies.
 
 ```dart
+@tomReflector
 @tomService
-class GreetingService {
+abstract class GreetingService {
+  @TomPublicAccess()
   @TomEndpoint(uri: '/greet', methods: [TomHttpMethod.post])
+  GreetingResponse greet(GreetingRequest request);
+}
+
+@tomReflector
+@tomComponent
+class GreetingServer implements GreetingService {
+  @override
   GreetingResponse greet(GreetingRequest request) =>
       GreetingResponse('Hello, ${request.name}');
 }
 ```
 
+**Two types, not one, and the reason is mechanical.**
+`findServiceInstance` matches an implementation to its service by *supertype* —
+`superclass` or one of `superinterfaces` — and a class is not its own supertype.
+So a single self-referential `@tomService @tomComponent` class is well-formed
+Dart that resolves to no instance, and `initializeRouter` refuses it at start-up
+with `endpoint_pipeline.initialize_router.no_service_instance`. The compiler
+cannot warn about it: it checks neither the annotation set nor the instance
+resolution.
+
+`GreetingRequest` and `GreetingResponse` are ordinary `@tomReflector` classes
+with a default constructor — that is all a DTO has to be, because the body is
+bound and the result encoded by the same reflective field walk.
+
 Every `TomEndpoint` field has a default (`GET`, JSON in/out, the default error
-handler), so only the differing ones need to be supplied. Alternatively, an
-endpoint declared centrally in the remote-API registry is bound with
-`@TomApiEndpointImplementation(apiId: ..., endpointId: ...)` on a class
-annotated `@TomApiImplementation(apiId: ...)`; the route details come from the
-registry and the annotation only carries implementation-side overrides
+handler), so only the differing ones need to be supplied. `@TomPublicAccess()`
+is shown because the pipeline's default is to *protect* a route; see
+[Access Control](#access-control) for what an endpoint may declare instead.
+
+Alternatively, an endpoint declared centrally in the remote-API registry is
+bound with `@TomApiEndpointImplementation(apiId: ..., endpointId: ...)` on a
+class annotated `@TomApiImplementation(apiId: ...)`; the route details come from
+the registry and the annotation only carries implementation-side overrides
 (`errorHandler`, `logRequests`, CORS).
+
+> The pair above is compiled, mounted and served by the test suite — it is
+> `GreetingService` / `GreetingServer` in `test/fixtures/reflection_fixture.dart`,
+> kept verbatim identical to this snippet, and
+> `test/endpoints_pipeline_test.dart` posts a body to `/greet` and reads the
+> greeting back. For a scanned pipeline "it compiles" is only half the claim.
 
 ### Which Methods May Be Declared
 

@@ -13,6 +13,34 @@
 
 ### Fixed
 
+- **`doc/endpoints.md`'s first worked example showed a service that mounts
+  nothing (tcincb137).** `@tomService class GreetingService` — one concrete
+  class carrying both the annotation and its own method bodies — is well-formed
+  Dart that resolves to no instance: `findServiceInstance` matches an
+  implementation to its service by *supertype*, and a class is not its own
+  supertype, so `initializeRouter` refuses it at start-up with
+  `endpoint_pipeline.initialize_router.no_service_instance`. The compiler cannot
+  warn about it, because it checks neither the annotation set nor the instance
+  resolution — which is why the guide's first snippet went a long time being
+  the one shape that cannot work.
+
+  The example is now the two-type pair the module readme already shows, and it
+  is **anchored in compiled code rather than corrected in prose**:
+  `GreetingService` / `GreetingServer` and their two DTOs are declared in
+  `test/fixtures/reflection_fixture.dart`, and `endpoints_pipeline_test.dart`
+  mounts the route, posts a body and reads the greeting back, resolves the
+  `@tomComponent` as the service instance, and asserts the pair is **verbatim
+  identical** to the snippet in the document. For a scanned pipeline "it
+  compiles" is only half the claim.
+
+  The prose no longer implies one class suffices — it states the supertype rule
+  and what start-up does about it — and `@TomPublicAccess()` is shown, because
+  the pipeline's default is to protect a route and the reader's first endpoint
+  would otherwise answer 403 the moment they hardened their server.
+
+  The sweep for other occurrences found none: the WebSocket example in the same
+  document was already the two-type shape.
+
 - **An accepted WebSocket upgrade was never logged (tcincb136).** The pipeline's
   handshake line stood after `await handler(req)` — and `handler` is
   `shelf_web_socket`'s, which for a valid upgrade calls `Request.hijack` and so

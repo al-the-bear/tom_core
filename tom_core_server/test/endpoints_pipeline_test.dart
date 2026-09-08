@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -18,6 +19,7 @@ import 'fixtures/reflection_fixture.dart'
         FixtureApiServer,
         FixtureConflictingAccessService,
         FixtureParseRequest,
+        GreetingServer,
         TodoApiServer,
         fixtureContractAccess,
         fixtureContractRequestHeaders,
@@ -876,6 +878,132 @@ void main() {
   // class it described would not have been scanned if it had. So the snippet is
   // declared as real reflected code in the fixture ([TodoApi] / [TodoApiServer])
   // and asserted here, end to end, in the three steps the readme names.
+  // The worked example of `doc/endpoints.md`'s "Declaring an Endpoint" — the
+  // first snippet a reader of that document meets. It showed one concrete
+  // `@tomService class GreetingService` carrying its own body, which is
+  // well-formed Dart that mounts nothing: `findServiceInstance` matches by
+  // supertype and a class is not its own supertype. The guide now shows the
+  // two-type pair, and these tests are what let it say the pair works — for a
+  // scanned pipeline "it compiles" is only half the claim, since the compiler
+  // checks neither the annotation set nor the instance resolution.
+  group('the endpoints guide worked example', () {
+    late Router router;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(GreetingServer, GreetingServer());
+      router = TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    test('mounts the route the snippet declares', () {
+      expect(
+        TomEndpointRouting.routingInfo.containsKey((
+          uri: '/greet',
+          method: 'POST',
+        )),
+        isTrue,
+      );
+    });
+
+    test('binds the request body and returns the response', () async {
+      // The half a mount check cannot make: the DTOs are ordinary reflected
+      // classes, and the guide says so, so the round trip is what establishes
+      // that "ordinary" is enough — body decoded into `GreetingRequest`, result
+      // encoded from `GreetingResponse`, by the same field walk.
+      final response = await router.call(
+        _post('/greet', jsonEncode({'name': 'Ada'})),
+      );
+      expect(response.statusCode, 200);
+      expect(jsonDecode(await response.readAsString()), {
+        'greeting': 'Hello, Ada',
+      });
+    });
+
+    test('resolves the @tomComponent as the @tomService instance', () {
+      // The assertion that fails if the guide is ever collapsed back into one
+      // class: a self-referential service resolves to nothing, so the route
+      // would mount against no instance.
+      expect(
+        _routeInfo('/greet', 'POST').handler.instance.reflectee,
+        isA<GreetingServer>(),
+      );
+    });
+
+    test('stays anonymous when the deployment protects by default', () async {
+      // The snippet declares `@TomPublicAccess()`, which looks decorative under
+      // the suite's permissive default. It is not: a deployment that turns
+      // automatic protection on is the case it exists for, and without it the
+      // guide's first route would answer 403 the moment the reader hardened
+      // their server.
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      addTearDown(
+        () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+      );
+      final response = await router.call(
+        _post('/greet', jsonEncode({'name': 'Ada'})),
+      );
+      expect(response.statusCode, 200);
+    });
+
+    test('is the pair doc/endpoints.md shows, verbatim', () {
+      // The three tests above establish that this pair mounts and serves. They
+      // say nothing about the *guide*, which is where a reader meets it — so
+      // this is what joins the two claims. Without it the fixture could be
+      // corrected and the document left showing the shape that mounts nothing,
+      // which is exactly the state this group was written for.
+      //
+      // Compared without comments or blank lines: the fixture carries dartdoc
+      // the guide has no room for, and requiring that to match too would make
+      // the pair impossible to keep identical rather than merely required to
+      // be.
+      List<String> code(String source) => source
+          .split('\n')
+          .map((line) => line.trimRight())
+          .where((line) => line.isNotEmpty && !line.trimLeft().startsWith('//'))
+          .toList();
+
+      const opening =
+          '@tomReflector\n@tomService\nabstract class '
+          'GreetingService';
+      const closing = '}';
+
+      final guide = File('doc/endpoints.md').readAsStringSync();
+      final fixture = File(
+        'test/fixtures/reflection_fixture.dart',
+      ).readAsStringSync();
+
+      expect(
+        guide.contains(opening),
+        isTrue,
+        reason: 'no GreetingService pair in doc/endpoints.md',
+      );
+
+      // The guide's pair runs from the declaration to the fence that closes the
+      // block; the fixture's is the same many lines from the same opening.
+      final fromGuide = code(
+        guide.substring(guide.indexOf(opening)),
+      ).takeWhile((line) => line != '```').toList();
+      final fromFixture = code(
+        fixture.substring(fixture.indexOf(opening)),
+      ).take(fromGuide.length).toList();
+
+      expect(fromGuide.last, closing, reason: 'the snippet ends at a class');
+      expect(
+        fromFixture,
+        fromGuide,
+        reason:
+            'doc/endpoints.md and test/fixtures/reflection_fixture.dart have '
+            'drifted apart. The guide tells a reader the pair it shows is the '
+            'one the suite mounts and serves; keep them identical, or stop '
+            'claiming it.',
+      );
+    });
+  });
+
   group('the readme Quick start', () {
     late Router router;
 

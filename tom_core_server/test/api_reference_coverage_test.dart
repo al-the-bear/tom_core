@@ -2677,12 +2677,18 @@ final RegExp _listingHeader = RegExp(r'^abstract class ([A-Za-z_]\w*)');
 /// listing whose class has quietly been renamed still fails, because the
 /// rename produces a name that is not on this list.
 ///
-/// An entry here exempts a class from *resolution*, not from being correct. The
-/// socket example is checked by other means — the same declaration is compiled
-/// as `FixtureApiService.ticker` and asserted in `endpoints_pipeline_test.dart`
-/// — which is the standard an illustration has to meet before it earns a place
-/// on this list.
-const Set<String> _illustrativeListings = {'AdminApi', 'TickerService'};
+/// An entry here exempts a class from *resolution*, not from being correct.
+/// Each is checked by other means, which is the standard an illustration has to
+/// meet before it earns a place on this list: the socket example is compiled as
+/// `FixtureApiService.ticker`, and `GreetingService` — the guide's first worked
+/// example — is compiled as the fixture pair
+/// `GreetingService` / `GreetingServer`, mounted, served, and asserted verbatim
+/// against the document, all in `endpoints_pipeline_test.dart`.
+const Set<String> _illustrativeListings = {
+  'AdminApi',
+  'GreetingService',
+  'TickerService',
+};
 
 /// A member declaration that cannot be abstract whatever its shape.
 ///

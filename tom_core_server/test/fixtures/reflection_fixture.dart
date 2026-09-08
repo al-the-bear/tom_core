@@ -1064,6 +1064,65 @@ class TodoApiServer implements TodoApi {
   Future<List<String>> listTodos() async => ['buy milk', 'write readme'];
 }
 
+/// The worked example of `doc/endpoints.md`'s "Declaring an Endpoint", as
+/// compiled code.
+///
+/// The guide previously showed one concrete `@tomService class GreetingService`
+/// carrying its own method body. That is well-formed Dart and mounts nothing:
+/// `findServiceInstance` matches an implementation to a service by *supertype*,
+/// and a class is not its own supertype, so a self-referential service resolves
+/// to no instance and `initializeRouter` fails it with
+/// `endpoint_pipeline.initialize_router.no_service_instance`.
+///
+/// Which is the whole reason the snippet is anchored here rather than corrected
+/// in place. For a scanned pipeline "it compiles" is only half the claim — the
+/// compiler checks neither the annotation set nor the instance resolution — so
+/// the only way to say the guide's first example works is to mount it and serve
+/// it. This pair and its sibling test do that, and are kept **verbatim
+/// identical** to the guide, which is why the names are un-prefixed: renaming
+/// them to the fixture convention would break the correspondence the test
+/// exists to enforce.
+@tomReflector
+@tomService
+abstract class GreetingService {
+  /// The one endpoint the guide declares.
+  @TomPublicAccess()
+  @TomEndpoint(uri: '/greet', methods: [TomHttpMethod.post])
+  GreetingResponse greet(GreetingRequest request);
+}
+
+/// The implementation half of the guide's worked example. See
+/// [GreetingService].
+@tomReflector
+@tomComponent
+class GreetingServer implements GreetingService {
+  @override
+  GreetingResponse greet(GreetingRequest request) =>
+      GreetingResponse('Hello, ${request.name}');
+}
+
+/// The request body [GreetingService.greet] binds — an ordinary reflected class,
+/// which is all a DTO has to be.
+@tomReflector
+class GreetingRequest {
+  /// Who to greet.
+  String name = '';
+
+  /// Creates an empty request; the field walk fills it from the JSON body.
+  GreetingRequest();
+}
+
+/// The response [GreetingService.greet] returns, encoded to JSON by the
+/// pipeline.
+@tomReflector
+class GreetingResponse {
+  /// The greeting.
+  String greeting = '';
+
+  /// Creates a response carrying [greeting].
+  GreetingResponse([this.greeting = '']);
+}
+
 /// A class whose endpoint method carries **two** `TomAccessControl` annotations
 /// — the shape `getClassMethodMetadata` rejects with
 /// `endpoint_pipeline.get_class_method_metadata.multiple_access_control`.
