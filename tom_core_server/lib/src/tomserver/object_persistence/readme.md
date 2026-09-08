@@ -37,6 +37,11 @@ is the explicit opt-out.
 | `TomDataScopeRegistry` | The named scope-kind resolvers (`owner`, `group`, `resource`, plus application kinds), sync or async, read and write. |
 | `TomDataScope` | Renders a resolver's answer into a bound `IN` (or OR-union) predicate; `runUnscoped` is the recursion guard async resolvers run their own reads inside. |
 | `TomResourceScopeSource` | The hook behind the `resource` kind, implemented and installed by the authorization module. |
+| `TomColumnAuthorization` · `TomColumnWriteDecision` | The per-column half of the same idea: which columns of a row this principal may *write*, resolved through a `TomColumnAuthResolver` — or a `TomRowColumnAuthResolver` when the answer depends on the row. |
+| `TomFileReference` · `TomFileReferenceKeys` | Marks a `String` column as holding a blob storage key rather than the bytes, and mints the keys for it. The bytes live in the file-storage module; the column holds the way back to them. |
+| `MariadbRepository<T, K>` | The MariaDB binding of `TomSqlDatasourceRepository` — constructed directly, and the only thing it adds is `MariadbSqlDialect`. |
+| `TomQuerySentenceCompiler` | Compiles a written sentence (`find by owner = :who order by created_at`) into the same operator tree the builder produces, so a query can be data. |
+| `TomGroupedSelect` · `TomGroupedRow` · `TomAggregate` | `GROUP BY` and its aggregates — `CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max` — projected under an alias and read back off the row by it. |
 
 ## Quick start
 

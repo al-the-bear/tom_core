@@ -3155,30 +3155,6 @@ const Set<String> _suiteNamingPending = {'preferences'};
 
 /// The modules whose `lib/src/tomserver/<module>/readme.md` still leaves at
 /// least one exported file unmentioned.
-const Set<String> _moduleReadmesPendingReconciliation = {
-  'authentication',
-  'datasources',
-  'endpoints',
-  'object_persistence',
-  'scheduling',
-};
-
-/// The modules with no `readme.md` at all.
-///
-/// Separate from the set above because it is the stronger failure. An
-/// incomplete table is a document that under-describes its module; a missing
-/// readme is the source directory answering a reader's first question with
-/// nothing, and it is invisible to every check that reads a table, because
-/// there is no table to read. The cost rises with the module: nine exported
-/// files across four layers, and nothing in the directory saying which file
-/// holds which, leaves the structure recoverable only by reading all of it.
-const Set<String> _modulesWithoutReadme = {
-  'audit',
-  'export',
-  'file_storage',
-  'resources',
-};
-
 /// A `Type  (module)` line in a summary's class-hierarchy diagram — a pointer
 /// telling a reader which module to open for a type the diagram shows but does
 /// not document.
@@ -3691,62 +3667,54 @@ class RealClass {}
   // a name introduced in the prose or the quick-start has been introduced. That
   // is not a loophole but the only satisfiable form of the rule — `scheduling`
   // exports a file of nothing but free functions, and a `| Type |` table has
-  // nowhere to put `jobRunTableDdl`.
+  // nowhere to put `jobRunTableDdl`, which is now introduced in its Schema
+  // section beside the descriptor the DDL is rendered from.
+  //
+  // Four modules had no readme at all — `audit`, `export`, `file_storage` and
+  // `resources` — which is the failure this check exists for and the one it
+  // could least see: every other check here reads a table, and there was no
+  // table to read. Writing them was the larger half of settling this, and what
+  // it found is what the rule predicts. A module's unreached files are not
+  // scattered: they cluster on whichever half of the module arrived after the
+  // readme was written, so `endpoints` was missing all four of its transports
+  // and `object_persistence` its column authorization, its file references and
+  // the whole of grouping.
   group('each module readme reaches every exported file', () {
     for (final module in _modules()) {
-      test(
-        module,
-        () {
-          expect(
-            _readmeTableTypes(module),
-            isNotNull,
-            reason:
-                'lib/src/tomserver/$module/readme.md is missing, or has no '
-                '`| Type |` table. The directory readme is what a developer '
-                'already in the source tree reads first, and a module that '
-                'answers that reader with nothing is documented only to '
-                'whoever already knows to look in doc/.',
-          );
+      test(module, () {
+        expect(
+          _readmeTableTypes(module),
+          isNotNull,
+          reason:
+              'lib/src/tomserver/$module/readme.md is missing, or has no '
+              '`| Type |` table. The directory readme is what a developer '
+              'already in the source tree reads first, and a module that '
+              'answers that reader with nothing is documented only to '
+              'whoever already knows to look in doc/.',
+        );
 
-          final unrepresented = _unrepresentedFiles(module);
-          expect(
-            unrepresented,
-            isEmpty,
-            reason:
-                'lib/src/tomserver/$module/readme.md mentions no public name '
-                'from these exported files: ${unrepresented.join(', ')}. A '
-                '"Key types" table may select, but a file mentioned nowhere at '
-                'all is not a selection — it is a capability the reader has no '
-                'way to learn exists, so they conclude the module is what the '
-                'readme shows.',
-          );
-        },
-        skip:
-            _modulesWithoutReadme.contains(module) ||
-                _moduleReadmesPendingReconciliation.contains(module)
-            ? 'module readme not reconciled yet.'
-            : null,
-      );
+        final unrepresented = _unrepresentedFiles(module);
+        expect(
+          unrepresented,
+          isEmpty,
+          reason:
+              'lib/src/tomserver/$module/readme.md mentions no public name '
+              'from these exported files: ${unrepresented.join(', ')}. A '
+              '"Key types" table may select, but a file mentioned nowhere at '
+              'all is not a selection — it is a capability the reader has no '
+              'way to learn exists, so they conclude the module is what the '
+              'readme shows.',
+        );
+      });
     }
 
-    test('every quarantined module still has something to reconcile', () {
-      final settled = [
-        for (final module in _modulesWithoutReadme)
-          if (_readmeTableTypes(module) != null) module,
-        for (final module in _moduleReadmesPendingReconciliation)
-          if (_readmeTableTypes(module) != null &&
-              _unrepresentedFiles(module).isEmpty)
-            module,
-      ]..sort();
-      expect(
-        settled,
-        isEmpty,
-        reason:
-            'These modules are quarantined but now pass: ${settled.join(', ')}. '
-            'The exemption has to expire by itself, or the list becomes a '
-            'record of debt that was paid and never collected.',
-      );
-    });
+    // Every module has a readme and every readme reaches every file its module
+    // exports, so there is no quarantine. The two it carried were separate
+    // because the fixes were different in kind — extending a table is an edit,
+    // writing a missing readme is authoring a document — and the second set was
+    // the worse half: an incomplete table under-describes a module, while a
+    // missing readme is invisible to every check that reads a table, there
+    // being no table to read.
 
     test('a file declaring nothing public is represented vacuously', () {
       // The three cases of the rule, pinned directly rather than through a

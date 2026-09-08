@@ -198,6 +198,10 @@ a test suite keep the in-memory store and need no database at all.
 | `TomOAuthTokenGrant` | One provider grant: access token, refresh token, scopes, lifetime. Never prints either token. |
 | `TomOAuthTokenStore` · `TomMemoryOAuthTokenStore` | Where a grant lives, keyed `(issuer, subject)`. Unregistered means nothing is ever stored. |
 | `TomPersistentOAuthTokenStore` · `TomExternalIdentityToken` | The grant over `tom_external_identity_token`, encrypted at rest. |
+| `TomOAuthServer` | The three `/oauth/*` endpoints the handshake is driven through — list the providers, begin an authorization, complete one. |
+| `oauthStateTable` · `oauthStateTableDdl` | The single declaration of `tom_oauth_state`, from which its DDL and the convergence check are derived; `defaultOAuthStateTable` is the name a deployment gets when it chooses none. |
+| `Tom2FAEnrolment` · `Tom2FAEnrolmentStore` · `Tom2FAEnrolmentSupport` | A factor a principal has set up, where those live, and the extra contract a mechanism implements to be enrollable *through* a login rather than out of band. `TomMemory2FAEnrolmentStore` and `TomPersistent2FAEnrolmentStore` are the two shipped stores; `TomUserTwoFactorEnrolment` is the row behind the second. |
+| `TomDeliveredCode2FAService` | The shape every *delivered* one-time code shares — generate, seal, send, recognise — with `TomEmailCode2FAService` and `TomSmsCode2FAService` as the two shipped mechanisms. |
 | `TomServerSelfLogin` | Logs the *deployment* in as itself and installs the `TomServerPrincipal` that caps user grants. `TomServer.start()` calls it before binding the socket. |
 | `TomServiceCredential` | The deployment's own credential and where to present it, read from the configuration; `null` when none was configured, which is what makes the whole feature opt-in. |
 | `TomServiceLoginTransport` | The one JSON POST the self-login makes — the seam a test replaces instead of running an auth server. |

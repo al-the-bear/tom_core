@@ -21,6 +21,10 @@ MariaDB/MySQL driver, a typed SQL-dialect renderer, and typed query objects.
 | `TomSelect` · `TomCount` · `TomDelete` · `TomLiteralSelect` | Typed generated queries. |
 | `TomDbType<T>` family | Column types: `TomDbInt`, `TomDbDouble`, `TomDbString`, `TomDbBool`, `TomDbDateTime`, `TomDbDate`, `TomDbTime`. |
 | `sqlInstant` · `parseSqlInstant` | The one encoding of an instant in a `DATETIME(6)` column — see below. |
+| `sqlDate` · `parseSqlDate` · `sqlTimeOfDay` · `parseSqlTimeOfDay` | The two halves an instant splits into, written and read as labelled: a `DATE` and a `TIME` column. |
+| `TomFrameworkTable` · `TomFrameworkColumn` · `TomFrameworkKey` | The single declaration of a table the framework itself owns, from which its DDL, its reflected row type and the convergence check are all derived. `frameworkOwnedTables()` lists them; `unknownFrameworkColumns` audits a hand-written statement against one. |
+| `TomSqlFailureMode` · `classifySqlFailure` | Whether a failed write is known not to have happened (`definite`) or may have (`ambiguous`) — the difference between a safe retry and a duplicate. `isLostConnectionFailure` is the narrower question the driver's own retry asks. |
+| `SqlPlaceholderScan` | Rewrites the generated `:name` placeholders into the positional `?` form the MySQL binary protocol binds, leaving quoted text alone. |
 
 ## Instants are UTC, everywhere
 

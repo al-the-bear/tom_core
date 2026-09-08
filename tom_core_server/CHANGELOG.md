@@ -1,6 +1,47 @@
 ## 1.3.0
 
+### Added
+
+- **`example/resources/resources_example.dart`** — the module had no example at
+  all, which is what the readme convention exposed: a readme must name something
+  under `example/<module>/`, and there was nothing to name. Seven steps in
+  memory (bundles are maps, so nothing opens a file or a connection), ending on
+  the two properties a reader most needs to have seen happen rather than read
+  about: a half-translated bundle serving what it has and falling through for
+  the rest, and a placeholder with no value left standing where a proof-reader
+  can see it.
+
 ### Fixed
+
+- **Nine module readmes did not reach every file their module exports; four had
+  no readme at all (tcincb131).** A `Key types` table may select — a per-name
+  rule would force an 83-row table on `object_persistence` and make the worst
+  readme worse — but a file mentioned nowhere is not a selection. It is a
+  capability the reader has no way to learn exists, so they conclude the module
+  is what the readme shows.
+
+  `audit`, `export`, `file_storage` and `resources` now have one. That was the
+  larger half and the worse failure: an incomplete table under-describes a
+  module, while a missing readme is invisible to every check that reads a table,
+  there being no table to read. `authentication`, `datasources`, `endpoints`,
+  `object_persistence` and `scheduling` gained rows for the files they had never
+  reached — and the omissions are not scattered, which is what the rule
+  predicts. They cluster on whichever half of a module arrived after its readme
+  was written: all four of `endpoints`' transports, `object_persistence`'s
+  column authorization, file references and the whole of grouping,
+  `datasources`' framework tables, failure classification and placeholder scan.
+
+  Writing them made three other suites speak up, each having held a stale list:
+  the readme-pointer suite's map of modules without one, and the quick-start
+  suite's classification table — which then compiled all four new snippets and
+  ran them, catching four API errors in prose I had written from memory
+  (`TomTabularColumn`'s positional name, `put`'s named arguments,
+  `TomStoredBlob.byteCount`, and a `const` on a non-const constructor). A quick
+  start nothing compiles is a suggestion.
+
+  `_moduleReadmesPendingReconciliation` and `_modulesWithoutReadme` are gone
+  with their `skip:` and their staleness meta-test.
+
 
 - **The API-coverage census lost every declaration after a `/*` written inside a
   dartdoc (tcincb130).** It built its idea of "not code" by deleting

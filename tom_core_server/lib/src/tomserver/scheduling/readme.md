@@ -116,7 +116,20 @@ the memory and SQL stores cannot drift apart on it.
 
 The DDL lives in `sql_scheduling_sql.dart` and is shipped as migration files
 under `example/scheduling/migrations/`; `test/scheduling_schema_test.dart`
-asserts the two have not drifted apart. Both stores can also create their table
+asserts the two have not drifted apart.
+
+Each of the three tables is declared once there, as a `TomFrameworkTable`
+descriptor, and everything else is derived from it:
+
+| Declaration | What it gives |
+| ----------- | ------------- |
+| `jobRunTable(table)` · `leaseTable(table)` · `schedulerNodeTable(table)` | The descriptor for one table under a caller-chosen name — the columns, their families, and the keys. |
+| `jobRunTableDdl(table)` · `leaseTableDdl(table)` · `schedulerNodeTableDdl(table)` | That descriptor rendered as `CREATE TABLE`, which is what `createSchema: true` runs and what the shipped migration contains. |
+| `defaultJobRunTable` · `defaultLeaseTable` · `defaultSchedulerNodeTable` | The names used when a deployment chooses none: `tom_job_run`, `tom_lease`, `tom_scheduler_node`. |
+
+The table name is a parameter rather than a constant so two deployments can
+share one database, and the descriptor is what the convergence check compares a
+provisioned schema against. Both stores can also create their table
 on first use (`createSchema: true`, the default), which is what a test or a
 single-service deployment wants; set it `false` when the migration module owns
 the schema and the application's database user may not run DDL.

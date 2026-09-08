@@ -31,12 +31,12 @@ List<String> _modules() =>
 ///
 /// Stated rather than skipped: a module absent from this map and absent from
 /// disk fails the first test, so the set can shrink but cannot silently grow.
-const _withoutReadme = <String, String>{
-  'audit': 'documented in doc/audit.md; no module readme yet',
-  'export': 'documented in doc/export.md; no module readme yet',
-  'file_storage': 'documented in doc/file_storage.md; no module readme yet',
-  'resources': 'documented in doc/resources.md; no module readme yet',
-};
+///
+/// **Empty, and that is the assertion.** Every module carries one. The map
+/// stays because it is the mechanism by which the first test reads in both
+/// directions — a module that loses its readme fails there rather than dropping
+/// silently out of every test below.
+const _withoutReadme = <String, String>{};
 
 /// Where a path named by a readme may live.
 ///

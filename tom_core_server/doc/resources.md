@@ -395,6 +395,18 @@ unasserted. The suite pins that property, the two keys apart from each other, th
 refused country carried as a parameter, and that a caller catching the base type
 still reaches it.
 
+```bash
+dart run example/resources/resources_example.dart
+```
+
+`example/resources/resources_example.dart` walks the same ground in seven steps,
+all in memory: bundles are maps, so nothing there opens a file or a connection.
+It ends on the two properties a reader most needs to have seen happen rather
+than read about — a half-translated bundle serving what it has and falling
+through for the rest, and a placeholder with no value left standing where a
+proof-reader can see it. Every step checks its own result through the package's
+throwing `check` helper, and `test/examples_test.dart` runs it.
+
 It renders against `test/fixtures/localized_texts.dart`, a deliberately
 half-translated set that `test/email_service_test.dart` shares. That
 incompleteness is the point of the fixture: against a fully translated set, an
