@@ -114,7 +114,7 @@ not the caller's: an entry belongs to one position in one chain, which is why
 #### Constructors
 
 ```dart
-TomCacheEntry(Object? value, [DateTime? deletionTime])
+TomCacheEntry(Object value, [DateTime? deletionTime])
 ```
 
 #### Properties
@@ -122,7 +122,7 @@ TomCacheEntry(Object? value, [DateTime? deletionTime])
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `deletionTime` | `DateTime?` | The instant after which this entry is expired; `null` means it does not expire on its own — it may still be evicted by an LRU bound or a clear. |
-| `value` | `Object?` | The cached value. |
+| `value` | `Object` | The cached value. Non-nullable: an entry holding `null` would be a value no read could surface, since `null` is already what a miss answers. |
 
 ### TomCacheManager
 
@@ -235,7 +235,7 @@ hold.
 #### Constructors
 
 ```dart
-TomCacheStoreMessage(String cacheName, String key, Object? value, DateTime? deletionTime)
+TomCacheStoreMessage(String cacheName, String key, Object value, DateTime? deletionTime)
 ```
 
 #### Properties
@@ -244,7 +244,7 @@ TomCacheStoreMessage(String cacheName, String key, Object? value, DateTime? dele
 | -------- | ---- | ----------- |
 | `cacheName` | `String` | Name of the target cache. |
 | `key` | `String` | Entry key. |
-| `value` | `Object?` | Value to store. |
+| `value` | `Object` | Value to store. Non-nullable, like `TomCache.toNameCache`'s own parameter. |
 | `deletionTime` | `DateTime?` | The expiry the caller asked for, applied on arrival in the main isolate. `null` means no explicit expiry, and the target cache's `deleteEntriesAfterSeconds` fills it in. |
 
 #### Methods

@@ -554,8 +554,8 @@ whether the subtype mixes in `TomPermanentFailure`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `permanent` | `static TomPermanentDeliveryException permanent(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, Object? stack})` | A failure that retrying cannot fix; the returned type carries the scheduler's give-up marker. |
-| `transient` | `static TomTransientDeliveryException transient(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, Object? stack})` | A failure that a later attempt may well survive. |
+| `permanent` | `static TomPermanentDeliveryException permanent(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, StackTrace? stack})` | A failure that retrying cannot fix; the returned type carries the scheduler's give-up marker. |
+| `transient` | `static TomTransientDeliveryException transient(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, StackTrace? stack})` | A failure that a later attempt may well survive. |
 
 #### Properties
 

@@ -1817,15 +1817,43 @@ class _Declaration {
   /// The names in the `implements` clause. See [superclass].
   final Set<String> interfaces = {};
 
-  /// The parameter names of each constructor, keyed by constructor name — the
-  /// empty string for the unnamed one.
+  /// The parameters of each constructor, keyed by constructor name — the empty
+  /// string for the unnamed one.
   ///
   /// Separate from [members] because a parameter is not a member. Most are
   /// both, since `this.x` declares a field and takes it; the ones that are only
   /// parameters — `super.stack`, a plain `Type value` consumed in the body —
   /// belong to no member list and so are invisible to every check that reads
   /// one, while still being what a caller has to write.
-  final Map<String, List<String>> constructorParameters = {};
+  final Map<String, List<_Parameter>> constructorParameters = {};
+
+  /// The parameters of each method, keyed by member name.
+  ///
+  /// Kept beside [constructorParameters] rather than merged into it because the
+  /// two are reached by different names: a constructor is looked up by the
+  /// constructor name (empty for the unnamed one), a method by its own. Merging
+  /// them would collide a factory `TomX.of` with a method `of`.
+  final Map<String, List<_Parameter>> memberParameters = {};
+
+  /// The type parameters the declaration itself introduces — `T` of
+  /// `class TomConfigValue<T extends Object>`.
+  ///
+  /// Held so that a resolved type can be recognised as one this parser cannot
+  /// finish. `TomStringConfig extends TomConfigValue<String>` inherits
+  /// `withDefault(T value)`, and the type a caller writes is `String`, not `T`;
+  /// substituting it needs the type-argument binding of every `extends` in the
+  /// chain, which is a real element model's job. So a type that mentions one of
+  /// these is reported as unresolved rather than compared, and the summary's
+  /// (correct) `String` is left alone.
+  final Set<String> typeParameters = {};
+
+  /// The declared type of each field, keyed by field name.
+  ///
+  /// This is where a `this.x` parameter's type comes from: the constructor
+  /// states the name and the field states the type, and a summary that renders
+  /// the parameter has to render the field's type or it renders a signature
+  /// that will not compile.
+  final Map<String, String> fieldTypes = {};
 }
 
 /// Matches a type declaration that can own members, anchored at column zero.
@@ -2058,15 +2086,55 @@ String _parenthesisBody(String text, int open) {
   return '';
 }
 
-/// The parameter names declared in a parameter-list body, in source order.
+/// One parameter of a declaration, as it is written.
 ///
 /// Every shape a parameter is written in ends with its name — `this.slot`,
 /// `super.stack`, `required TomApi api`, `Map<String, Object?>? parameters`,
 /// `@deprecated int retries = 3` — so the name is the trailing identifier of
-/// each comma-separated chunk once the default value is cut. That is why this
-/// reads names and not types: the name is at a fixed place in every shape, and
-/// the type is not.
-List<String> _parameterNames(String body) {
+/// each comma-separated chunk once the default value is cut. The name is at a
+/// fixed place in every shape; the *type* is not, which is why it is optional
+/// here rather than a second `String`.
+///
+/// [type] is what precedes the name once the modifiers are stripped, and is
+/// `null` in exactly the two shapes that state no type: `this.slot` and
+/// `super.stack` name a field or an inherited parameter and take its type from
+/// there. [forwarding] records which of the two it was, because the two resolve
+/// in different directions — `this` to this class's field, `super` to the
+/// superclass's constructor.
+typedef _Parameter = ({String name, String? type, String? forwarding});
+
+/// The modifiers that may precede a parameter's type.
+///
+/// Distinct from [_memberModifiers] because the two vocabularies barely
+/// overlap: `required` appears only here and `static` only there. Sharing one
+/// pattern would either let `required` through — making the type read
+/// `required StackTrace?` and mismatching every source spelling of it — or
+/// admit `static` into a parameter list, where it cannot occur.
+final RegExp _parameterModifiers = RegExp(
+  r'^\s*(?:@\w+(?:\s*\((?:[^()]|\([^()]*\))*\))?\s*|required\s+'
+  r'|covariant\s+|final\s+|const\s+)*',
+);
+
+/// One parameter read from its declaration text, or `null` when the text holds
+/// no name — an empty chunk from a trailing comma.
+_Parameter? _parameterOf(String declaration) {
+  final name = _trailingIdentifier.firstMatch(declaration.trim())?.group(1);
+  if (name == null) return null;
+  var head = declaration.trim();
+  head = head.substring(0, head.length - name.length);
+  head = head.substring(_parameterModifiers.matchAsPrefix(head)?.end ?? 0);
+  head = head.trim();
+  if (head.endsWith('this.')) {
+    return (name: name, type: null, forwarding: 'this');
+  }
+  if (head.endsWith('super.')) {
+    return (name: name, type: null, forwarding: 'super');
+  }
+  return (name: name, type: head.isEmpty ? null : head, forwarding: null);
+}
+
+/// The parameters declared in a parameter-list body, in source order.
+List<_Parameter> _parameters(String body) {
   // The `{`/`[` that open the named and optional groups wrap the parameters
   // rather than belonging to one, so they are dropped before splitting; a `[`
   // inside a `const []` default goes with them, which costs nothing because the
@@ -2095,7 +2163,7 @@ List<String> _parameterNames(String body) {
   }
   chunks.add(chunk.toString());
 
-  final names = <String>[];
+  final parameters = <_Parameter>[];
   for (final raw in chunks) {
     var declaration = raw;
     var nesting = 0;
@@ -2108,10 +2176,10 @@ List<String> _parameterNames(String body) {
         break;
       }
     }
-    final name = _trailingIdentifier.firstMatch(declaration.trim())?.group(1);
-    if (name != null) names.add(name);
+    final parameter = _parameterOf(declaration);
+    if (parameter != null) parameters.add(parameter);
   }
-  return names;
+  return parameters;
 }
 
 /// Matches the header of a constructor of [type], named or not, wherever it can
@@ -2123,15 +2191,22 @@ RegExp _constructorHeader(String type) => RegExp(
   r'(?:\.(\w+))?\s*\(',
 );
 
-/// Every type the package declares, keyed by name.
+/// Every type declared under [root], keyed by name.
 ///
 /// The multi-line string literals and block comments go first: their contents
 /// are unindented prose, and a line of it at column zero would be read as the
 /// end of the enclosing class, silently truncating the member list of whatever
 /// class happened to contain one.
-Map<String, _Declaration> _parseDeclarations() {
+Map<String, _Declaration> _parseDeclarations(String root) {
   final declarations = <String, _Declaration>{};
-  final sources = Directory('lib/src/tomserver')
+  final directory = Directory(root);
+  // A missing root yields an empty census rather than an exception, so that a
+  // sibling package that is not checked out fails *once*, by name, in the test
+  // that asserts it is there — instead of fifteen times, as a path error
+  // thrown out of a top-level initialiser and reported against whichever test
+  // touched it first.
+  if (!directory.existsSync()) return declarations;
+  final sources = directory
       .listSync(recursive: true)
       .whereType<File>()
       .where((entry) => entry.path.endsWith('.dart'));
@@ -2159,7 +2234,47 @@ Map<String, _Declaration> _parseDeclarations() {
     // read from the whole of it rather than from its first line.
     final header = <String>[];
 
+    void readTypeParameters(String text) {
+      // Anchored at the class's own name: the first `<` of
+      // `class Foo extends Bar<Baz>` opens the *supertype's* argument list, and
+      // reading it would give Foo a type parameter called `Baz`.
+      final opening = RegExp(
+        '\\b${RegExp.escape(current!.name)}'
+        r'\s*<',
+      ).firstMatch(text);
+      if (opening == null) return;
+      var depth = 0;
+      var end = text.length;
+      for (var i = opening.end - 1; i < text.length; i++) {
+        if (text[i] == '<') depth++;
+        if (text[i] == '>' && --depth == 0) {
+          end = i;
+          break;
+        }
+      }
+      final body = text.substring(opening.end, end);
+      depth = 0;
+      final chunk = StringBuffer();
+      final chunks = <String>[];
+      for (final character in body.split('')) {
+        if (character == '<') depth++;
+        if (character == '>') depth--;
+        if (character == ',' && depth == 0) {
+          chunks.add(chunk.toString());
+          chunk.clear();
+          continue;
+        }
+        chunk.write(character);
+      }
+      chunks.add(chunk.toString());
+      for (final raw in chunks) {
+        final name = RegExp(r'^\s*([A-Za-z_]\w*)').firstMatch(raw)?.group(1);
+        if (name != null) current.typeParameters.add(name);
+      }
+    }
+
     void readSupertypes(String text) {
+      readTypeParameters(text);
       final flattened = _withoutTypeArguments(text);
       final clause = _supertypeClause.firstMatch(flattened);
       if (clause == null) return;
@@ -2219,6 +2334,7 @@ Map<String, _Declaration> _parseDeclarations() {
       if (member != null) {
         current.members.add(member);
         if (_endsWithoutBody(lines, index)) current.bodilessMembers.add(member);
+        _readMemberSignature(current, member, lines, index);
       }
       final value = _enumValue.firstMatch(line);
       if (value != null) current.members.add(value.group(1)!);
@@ -2237,8 +2353,7 @@ Map<String, _Declaration> _parseDeclarations() {
           : null;
       if (constructor != null) {
         final text = lines.skip(index).take(40).join('\n');
-        current.constructorParameters[constructor.group(1) ??
-            ''] = _parameterNames(
+        current.constructorParameters[constructor.group(1) ?? ''] = _parameters(
           _parenthesisBody(text, text.indexOf('(', constructor.end - 2)),
         );
       }
@@ -2247,9 +2362,68 @@ Map<String, _Declaration> _parseDeclarations() {
   return declarations;
 }
 
+/// Records what [member], declared at [index], states about its own type: the
+/// parameter list when it has one, the field type when it does not.
+///
+/// A getter is neither. `Object? get value => _value;` reaches the field type
+/// through an expression body rather than declaring one, and reading the text
+/// before the name would record `Object? get` as the type of a field that does
+/// not exist. So only a line whose declaration ends at a `;` or an `=` — a real
+/// field — contributes a type.
+void _readMemberSignature(
+  _Declaration owner,
+  String member,
+  List<String> lines,
+  int index,
+) {
+  final line = _withoutLineComment(lines[index]).trimRight();
+  final opening = _parameterList.firstMatch(line);
+  if (opening != null && opening.group(1) == member) {
+    final text = lines.skip(index).take(40).join('\n');
+    owner.memberParameters[member] = _parameters(
+      _parenthesisBody(text, text.indexOf('(', opening.end - 1)),
+    );
+    return;
+  }
+  if (opening != null) return;
+  if (RegExp(
+    r'\bget\s+'
+    '$member'
+    r'\b',
+  ).hasMatch(line))
+    return;
+
+  final head = line.substring(0, _declarationEnd(line)).trimRight();
+  if (!head.endsWith(member) && !head.endsWith('$member;')) return;
+  final field = _parameterOf(
+    head.endsWith(';') ? head.substring(0, head.length - 1) : head,
+  );
+  if (field != null && field.name == member && field.type != null) {
+    owner.fieldTypes[member] = field.type!;
+  }
+}
+
 /// Parsed once: every test in the attribution group reads the same census, and
 /// re-walking the package per test would be the slowest thing in the suite.
-final Map<String, _Declaration> _declarations = _parseDeclarations();
+final Map<String, _Declaration> _declarations = _parseDeclarations(
+  'lib/src/tomserver',
+);
+
+/// The kernel's declarations, read for one purpose: a parameter this package
+/// forwards with `super.` is *declared* there, so its type cannot be resolved
+/// without them.
+///
+/// Kept out of [_declarations] rather than merged in. That map answers "does
+/// this package declare the type this heading names", and a kernel name in it
+/// would make a summary heading of `TomException` read as a class section this
+/// package owes members to.
+final Map<String, _Declaration> _kernelDeclarations = _parseDeclarations(
+  '../tom_core_kernel/lib/src/tombase',
+);
+
+/// [type]'s declaration, from this package or else the kernel.
+_Declaration? _declarationOf(String type) =>
+    _declarations[type] ?? _kernelDeclarations[type];
 
 /// Whether [type] declares or inherits [member] — `null` when the answer
 /// cannot be established because some ancestor is not declared in this
@@ -2353,10 +2527,19 @@ List<_Attribution> _attributions() => [
 typedef _ClassSection = ({
   String file,
   String type,
-  List<({int line, String member})> rows,
+  List<_MemberRow> rows,
   Set<String> mentions,
   List<_ConstructorListing> constructors,
 });
+
+/// One member row: the name in its first cell, and the second cell verbatim.
+///
+/// The signature is carried because a `Static Methods` table renders whole
+/// declarations — `static TomPermanentDeliveryException permanent(String key,
+/// …)` — and those are signatures a reader copies exactly as a `Constructors`
+/// block's listings are. A row's `Type` cell holds no parameter list and simply
+/// yields nothing to check.
+typedef _MemberRow = ({int line, String member, String signature});
 
 /// One constructor as a summary's `Constructors` block writes it.
 ///
@@ -2364,7 +2547,11 @@ typedef _ClassSection = ({
 /// because the two answer different questions. A mention says the name occurs
 /// somewhere under the class; a listing is a *signature*, and a signature is
 /// read as the whole of what the caller passes.
-typedef _ConstructorListing = ({int line, String name, Set<String> parameters});
+typedef _ConstructorListing = ({
+  int line,
+  String name,
+  List<_Parameter> parameters,
+});
 
 /// The constructors of [type] that [text] — the body of one fenced block —
 /// lists, with the line each starts on given a block starting at [firstLine].
@@ -2377,9 +2564,7 @@ List<_ConstructorListing> _constructorListingsOf(
     (
       line: firstLine + '\n'.allMatches(text.substring(0, match.start)).length,
       name: match.group(1) ?? '',
-      parameters: _parameterNames(
-        _parenthesisBody(text, match.end - 1),
-      ).toSet(),
+      parameters: _parameters(_parenthesisBody(text, match.end - 1)),
     ),
 ];
 
@@ -2455,8 +2640,14 @@ List<_ClassSection> _classSectionsOf(String file, List<String> lines) {
       continue;
     }
     if (current == null) continue;
-    final member = memberRow.firstMatch(lines[i])?.group(1);
-    if (member != null) current.rows.add((line: i + 1, member: member));
+    final row = memberRow.firstMatch(lines[i]);
+    if (row != null) {
+      current.rows.add((
+        line: i + 1,
+        member: row.group(1)!,
+        signature: _signatureCell(lines[i]) ?? '',
+      ));
+    }
     current.mentions.addAll(
       identifier.allMatches(lines[i]).map((match) => match.group(0)!),
     );
@@ -2537,6 +2728,176 @@ List<String> _undocumentedMembers(String type) =>
         .toList()
       ..sort();
 
+/// The second cell of a member row, unwrapped from its backticks — `null` when
+/// the row has no second cell or it is not code.
+///
+/// Read on its own rather than by widening the row pattern, because the cell is
+/// the only part of a table whose content is a *declaration*: the first cell is
+/// a name and the third is prose, and neither is anything a reader copies.
+String? _signatureCell(String line) {
+  final cells = line.split('|');
+  if (cells.length < 3) return null;
+  final cell = cells[2].trim();
+  if (!cell.startsWith('`') || !cell.endsWith('`') || cell.length < 3) {
+    return null;
+  }
+  return cell.substring(1, cell.length - 1);
+}
+
+/// The type the source declares for [parameter] of [type]'s [member], or `null`
+/// when the answer cannot be established.
+///
+/// Three shapes, resolved in the direction each one points. A parameter that
+/// states its own type answers immediately. `this.x` takes the type of this
+/// class's field. `super.x` takes the type of the parameter the *superclass*
+/// constructor declares under the same name, which is the whole reason the
+/// kernel is parsed: `TomException` is where `stack` is finally spelled, and
+/// every exception in this package reaches it through a chain of `super.stack`.
+///
+/// `null` where the chain leaves both packages — a supertype from `tom_basics`,
+/// say — so an unresolvable parameter is skipped rather than guessed at.
+String? _declaredParameterType(
+  String type,
+  String member,
+  String parameter, {
+  bool constructor = true,
+  Set<String>? visited,
+}) {
+  final seen = visited ?? <String>{};
+  if (!seen.add('$type.$member.$parameter.$constructor')) return null;
+
+  final declaration = _declarationOf(type);
+  if (declaration == null) return null;
+
+  final declared = constructor
+      ? declaration.constructorParameters[member]
+      : declaration.memberParameters[member];
+  if (declared == null) {
+    // A method is inherited; a constructor never is.
+    if (constructor) return null;
+    for (final parent in declaration.supertypes) {
+      final inherited = _declaredParameterType(
+        parent,
+        member,
+        parameter,
+        constructor: false,
+        visited: seen,
+      );
+      if (inherited != null) return inherited;
+    }
+    return null;
+  }
+
+  /// A type is an answer only when it is written in terms the caller shares.
+  String? settled(String? type) =>
+      type == null ||
+          _typeIdentifier
+              .allMatches(type)
+              .any((m) => declaration.typeParameters.contains(m.group(0)))
+      ? null
+      : type;
+
+  for (final candidate in declared) {
+    if (candidate.name != parameter) continue;
+    if (candidate.type != null) return settled(candidate.type);
+    if (candidate.forwarding == 'this') {
+      return settled(declaration.fieldTypes[parameter]);
+    }
+    if (candidate.forwarding == 'super') {
+      // Every constructor of the superclass, not just the unnamed one: a class
+      // whose `super.x` forwards to a named super constructor is rarer than the
+      // plain case but declares the parameter just as truly.
+      for (final parent in declaration.supertypes) {
+        final ancestor = _declarationOf(parent);
+        if (ancestor == null) continue;
+        for (final name in ancestor.constructorParameters.keys) {
+          final inherited = _declaredParameterType(
+            parent,
+            name,
+            parameter,
+            visited: seen,
+          );
+          if (inherited != null) return inherited;
+        }
+      }
+    }
+    return null;
+  }
+  return null;
+}
+
+/// An identifier inside a type, which is what a type parameter appears as.
+final RegExp _typeIdentifier = RegExp(r'[A-Za-z_]\w*');
+
+/// [type] with every run of whitespace removed, so `Map<String, dynamic>?` and
+/// `Map<String,dynamic>?` compare equal — the two spellings are one type, and a
+/// difference in spacing is not the drift being chased.
+String _normalisedType(String type) => type.replaceAll(RegExp(r'\s+'), '');
+
+/// Every signature in [module]'s summary that gives a parameter a type the
+/// source does not — empty when the summary agrees with `lib/`.
+///
+/// Both places a signature appears are read: the fenced listings under
+/// `Constructors`, and the `Signature` cell of a member table, which is where a
+/// static factory is written because it has no constructor block to live in.
+///
+/// Only parameters the summary *types* are checked, and only where the source
+/// type resolves. A summary is free to abbreviate — it may leave a parameter
+/// out, which is [_underListedConstructorsOf]'s question, not this one. What it
+/// may not do is state a type that is not the declared one, because that is the
+/// one part of a summary a reader copies verbatim, and a copied parameter whose
+/// type is wider than the one it forwards to does not compile.
+List<String> _mistypedParametersOf(String module) => _mistypedParametersIn([
+  for (final section in _classSections)
+    if (section.file == 'api_summary_$module.md') section,
+]);
+
+/// [_mistypedParametersOf] over an explicit list of sections, so a synthetic
+/// one can be measured the same way a summary's is.
+List<String> _mistypedParametersIn(List<_ClassSection> sections) => [
+  for (final section in sections) ...[
+    for (final listing in section.constructors)
+      for (final parameter in listing.parameters)
+        if (parameter.type case final documented?)
+          if (_declaredParameterType(section.type, listing.name, parameter.name)
+              case final declared?)
+            if (_normalisedType(declared) != _normalisedType(documented))
+              '${section.file}:${listing.line} ${section.type}'
+                  '${listing.name.isEmpty ? '' : '.${listing.name}'} '
+                  'types ${parameter.name} as $documented, '
+                  'declared $declared',
+    for (final row in section.rows)
+      for (final parameter in _signatureParameters(row))
+        if (parameter.type case final documented?)
+          if (_declaredParameterType(
+                section.type,
+                row.member,
+                parameter.name,
+                constructor: false,
+              )
+              case final declared?)
+            if (_normalisedType(declared) != _normalisedType(documented))
+              '${section.file}:${row.line} ${section.type}.${row.member} '
+                  'types ${parameter.name} as $documented, '
+                  'declared $declared',
+  ],
+];
+
+/// The parameters [row]'s signature cell declares, empty when it declares none.
+///
+/// The list is found by [_MemberRow.member] rather than by the first `(` in the
+/// cell, because a return type can carry one — `static (String, List<String>)
+/// toPositionalStatement(…)` opens a parenthesis that belongs to the record
+/// type and closes before the parameters begin.
+List<_Parameter> _signatureParameters(_MemberRow row) {
+  final opening = RegExp(
+    '\\b${RegExp.escape(row.member)}'
+    r'\s*(?:<[^<>]*>)?\s*\(',
+  ).firstMatch(row.signature);
+  if (opening == null) return const [];
+  return _parameters(_parenthesisBody(row.signature, opening.end - 1));
+}
+
 /// Every constructor listing in [module]'s summary that names fewer parameters
 /// than the constructor it claims to be — empty when the summary is complete.
 ///
@@ -2552,7 +2913,12 @@ List<String> _underListedConstructorsOf(String module) => [
         if (_declarations[section.type]?.constructorParameters[listing.name]
             case final declared?)
           if (declared
-                  .where((parameter) => !listing.parameters.contains(parameter))
+                  .map((parameter) => parameter.name)
+                  .where(
+                    (parameter) => !listing.parameters.any(
+                      (listed) => listed.name == parameter,
+                    ),
+                  )
                   .toList()
               case final missing when missing.isNotEmpty)
             '${section.file}:${listing.line} ${section.type}'
@@ -6514,7 +6880,10 @@ class After {}
       // real parameter of the constructor, a member of no class, and therefore
       // invisible to every check that reads a member list.
       final oauth = _declarations['TomOAuthException']!;
-      expect(oauth.constructorParameters[''], contains('stack'));
+      expect(
+        oauth.constructorParameters['']!.map((parameter) => parameter.name),
+        contains('stack'),
+      );
       expect(oauth.members, isNot(contains('stack')));
     });
 
@@ -6540,22 +6909,32 @@ class After {}
 
       // The class this guard was written for, read end to end: the wrapped
       // parameter list, the named group, and the parameter that started it.
-      expect(_declarations['TomMethodMetadata']!.constructorParameters[''], [
-        'endpoint',
-        'methodMirror',
-        'access',
-        'transactionInfo',
-        'audited',
-        'webSocket',
-        'apiEndpointImplementation',
-        'apiImplementation',
-        'api',
-        'apiEndpoint',
-      ]);
+      expect(
+        _declarations['TomMethodMetadata']!.constructorParameters['']!.map(
+          (parameter) => parameter.name,
+        ),
+        [
+          'endpoint',
+          'methodMirror',
+          'access',
+          'transactionInfo',
+          'audited',
+          'webSocket',
+          'apiEndpointImplementation',
+          'apiImplementation',
+          'api',
+          'apiEndpoint',
+        ],
+      );
       final metadata = _classSections.singleWhere(
         (section) => section.type == 'TomMethodMetadata',
       );
-      expect(metadata.constructors.single.parameters, contains('audited'));
+      expect(
+        metadata.constructors.single.parameters.map(
+          (parameter) => parameter.name,
+        ),
+        contains('audited'),
+      );
     });
 
     test('a listing is measured the way the summaries write one', () {
@@ -6586,7 +6965,240 @@ class After {}
 
       final listing = sections.single.constructors.single;
       expect(listing.name, 'column');
-      expect(listing.parameters, {'name', 'onFailure', 'seeds'});
+      expect(listing.parameters, [
+        (name: 'name', type: 'String', forwarding: null),
+        (
+          name: 'onFailure',
+          type: 'void Function(Object error)',
+          forwarding: null,
+        ),
+        (name: 'seeds', type: 'Map<String, int>', forwarding: null),
+      ]);
+    });
+  });
+
+  group('every documented signature types its parameters as the source does', () {
+    for (final module in _modules()) {
+      test(module, () {
+        final mistyped = _mistypedParametersOf(module);
+        expect(
+          mistyped,
+          isEmpty,
+          reason:
+              'these signatures in doc/api_reference/api_summary_$module.md '
+              'give a parameter a type the source does not: '
+              '${mistyped.join('; ')}. A signature is copied rather than read, '
+              'and a type copied wider than the declared one does not compile — '
+              'the reader finds that out from the analyzer, not from the '
+              'summary.',
+        );
+      });
+    }
+
+    test('a super-forwarded parameter resolves through the kernel', () {
+      // The case the group exists for. Every exception in this package writes
+      // `super.stack` and states no type; the type is `TomException`'s, three
+      // packages' worth of `extends` away, and until it is resolved a summary
+      // can render the parameter as anything at all.
+      expect(
+        _declarationOf('TomDeliveryException')!.constructorParameters['']!
+            .firstWhere((parameter) => parameter.name == 'stack'),
+        (name: 'stack', type: null, forwarding: 'super'),
+      );
+      expect(
+        _declaredParameterType('TomDeliveryException', '', 'stack'),
+        'StackTrace?',
+      );
+      expect(
+        _declaredParameterType('TomPermanentDeliveryException', '', 'stack'),
+        'StackTrace?',
+      );
+    });
+
+    test('a this-forwarded parameter resolves to the field it names', () {
+      expect(_declarationOf('TomCacheEntry')!.fieldTypes['value'], 'Object');
+      expect(_declaredParameterType('TomCacheEntry', '', 'value'), 'Object');
+    });
+
+    test('a static factory in a member table is read as a signature', () {
+      // The two `TomDeliveryException` factories have no constructor block to
+      // live in — they are rows under `Static Methods` — so a check that read
+      // only fenced listings could never see them.
+      final section = _classSections.singleWhere(
+        (section) =>
+            section.file == 'api_summary_messaging.md' &&
+            section.type == 'TomDeliveryException',
+      );
+      final row = section.rows.singleWhere((row) => row.member == 'permanent');
+      expect(
+        _signatureParameters(row).map((parameter) => parameter.name),
+        containsAll(<String>['key', 'message', 'statusCode', 'stack']),
+      );
+      expect(
+        _declaredParameterType(
+          'TomDeliveryException',
+          'permanent',
+          'stack',
+          constructor: false,
+        ),
+        'StackTrace?',
+      );
+    });
+
+    test('a type cell holds no parameters and is not read as a signature', () {
+      // A `Properties` row's second cell is a type, not a declaration, and the
+      // member name does not appear in it at all.
+      expect(
+        _signatureParameters((
+          line: 1,
+          member: 'value',
+          signature: 'Map<String, Object?>?',
+        )),
+        isEmpty,
+      );
+    });
+
+    test('the kernel source the resolver depends on is present', () {
+      // Without it every `super.`-forwarded parameter resolves to null and is
+      // skipped, which is most of what this group exists to read: the twenty
+      // constructor listings that widened `stack` are all `super.stack`, and a
+      // parameter that resolves to nothing is compared against nothing. The
+      // half that survives is the parameters the source types outright. So the
+      // sentinel is what makes the silence audible.
+      expect(
+        Directory('../tom_core_kernel/lib/src/tombase').existsSync(),
+        isTrue,
+        reason:
+            'the sibling package is where an inherited parameter is finally '
+            'declared; without it this group is silently empty',
+      );
+      expect(_kernelDeclarations, contains('TomException'));
+    });
+
+    test('a parameter modifier is not read as part of the type', () {
+      expect(
+        _parameters('{required StackTrace? stack, covariant int retries = 3}'),
+        [
+          (name: 'stack', type: 'StackTrace?', forwarding: null),
+          (name: 'retries', type: 'int', forwarding: null),
+        ],
+      );
+    });
+
+    test('a listing that widens an inherited parameter is reported', () {
+      // The defect this group was written for, planted: the type of the field
+      // `stack` eventually reaches is `Object?`, so writing the *field's* type
+      // where the *constructor's* belongs is the mistake a careful author
+      // makes. It does not compile at the call site and nothing else says so.
+      expect(
+        _mistypedParametersIn(
+          _classSectionsOf('synthetic.md', [
+            '### TomTransientDeliveryException',
+            '',
+            '#### Constructors',
+            '',
+            '```dart',
+            'TomTransientDeliveryException(String key, String defaultUserMessage,',
+            '    {int? statusCode, Object? stack})',
+            '```',
+          ]),
+        ),
+        [
+          'synthetic.md:6 TomTransientDeliveryException types stack as '
+              'Object?, declared StackTrace?',
+        ],
+      );
+    });
+
+    test('a listing that narrows a parameter is reported too', () {
+      // The check is not a nullability check. A summary that drops the `?` is
+      // as uncopyable as one that adds it — the caller passes null and the
+      // analyzer, not the summary, explains why that was never allowed.
+      expect(
+        _mistypedParametersIn(
+          _classSectionsOf('synthetic.md', [
+            '### TomTransientDeliveryException',
+            '',
+            '#### Constructors',
+            '',
+            '```dart',
+            'TomTransientDeliveryException(String key, String defaultUserMessage,',
+            '    {int statusCode})',
+            '```',
+          ]),
+        ),
+        [
+          'synthetic.md:6 TomTransientDeliveryException types statusCode as '
+              'int, declared int?',
+        ],
+      );
+    });
+
+    test('a member row that mistypes a parameter is reported', () {
+      expect(
+        _mistypedParametersIn(
+          _classSectionsOf('synthetic.md', [
+            '### TomDeliveryException',
+            '',
+            '#### Static Methods',
+            '',
+            '| Method | Signature | Description |',
+            '| ------ | --------- | ----------- |',
+            '| `permanent` | `static TomPermanentDeliveryException '
+                'permanent(String key, String message, {Object? stack})` | . |',
+          ]),
+        ),
+        [
+          'synthetic.md:7 TomDeliveryException.permanent types stack as '
+              'Object?, declared StackTrace?',
+        ],
+      );
+    });
+
+    test('a listing agreeing with the source is reported by neither', () {
+      // Both directions, or the two tests above pass on a census that reports
+      // everything.
+      expect(
+        _mistypedParametersIn(
+          _classSectionsOf('synthetic.md', [
+            '### TomTransientDeliveryException',
+            '',
+            '#### Constructors',
+            '',
+            '```dart',
+            'TomTransientDeliveryException(String key, String defaultUserMessage,',
+            '    {int? statusCode, StackTrace? stack})',
+            '```',
+          ]),
+        ),
+        isEmpty,
+      );
+    });
+
+    test('an inherited type parameter is left to the summary', () {
+      // `TomStringConfig extends TomConfig<String>` forwards `super.value` to
+      // `TomConfig.withDefault(String key, T value)`. The summary writes
+      // `String`, which is right and is not what the source says; substituting
+      // the argument needs a real element model. So the parameter resolves to
+      // nothing and is skipped — the alternative being four false reports in
+      // `configuration` alone.
+      expect(_declarationOf('TomConfig')!.typeParameters, contains('T'));
+      expect(
+        _declarationOf('TomConfig')!.constructorParameters['withDefault'],
+        contains((name: 'value', type: 'T', forwarding: null)),
+      );
+      expect(
+        _declaredParameterType('TomStringConfig', 'withDefault', 'value'),
+        isNull,
+      );
+    });
+
+    test('a function-typed parameter keeps its whole type', () {
+      expect(_parameters('void Function(Object error) onFailure').single, (
+        name: 'onFailure',
+        type: 'void Function(Object error)',
+        forwarding: null,
+      ));
     });
   });
 

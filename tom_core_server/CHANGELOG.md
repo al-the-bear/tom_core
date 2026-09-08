@@ -13,6 +13,41 @@
 
 ### Fixed
 
+- **Four documented signatures gave a parameter a type the source does not, and
+  nothing could have said so (tcincb138).** `api_summary_messaging.md` typed
+  `TomDeliveryException.permanent`'s and `.transient`'s `stack` as `Object?`
+  where both factories declare `StackTrace?`, and `api_summary_cache.md` typed
+  `TomCacheEntry`'s and `TomCacheStoreMessage`'s `value` as `Object?` where both
+  fields are a non-nullable `Object` — a nullability the source dartdoc spells
+  out ("Never `null`") and the summary's own `toNameCache` row already
+  contradicted. Both are the same mistake in the same direction: a parameter
+  documented from the *field* it eventually reaches rather than from the
+  *constructor* it is passed to. A reader copying either signature writes a
+  parameter wider than the one it forwards to, and hears about it from the
+  analyzer.
+
+  The reason a hand sweep could not close this is that a signature is the one
+  part of a summary nothing was reading. `test/api_reference_coverage_test.dart`
+  parsed constructor listings for *presence* — that every declared parameter is
+  named — and deliberately read names only, because a name sits at a fixed place
+  in every declaration shape and a type does not. It now reads types as well,
+  and resolves the two shapes that state none: `this.x` from the field it names,
+  and `super.x` from the superclass constructor — walking into `tom_core_kernel`,
+  because `TomException` is where `stack` is finally spelled and every exception
+  in this package reaches it through a chain of `super.stack`. Where the chain
+  leaves both packages, or ends on an unsubstituted type parameter
+  (`TomConfig<T>.withDefault(T value)`, which the summaries correctly write as
+  `String`), the parameter is skipped rather than guessed at.
+
+  Member tables are read too, not only fenced blocks: the two messaging faults
+  are rows under `Static Methods`, because a static factory has no constructor
+  block to live in — so a check that read only fenced listings could never have
+  seen the two it was written for. 32 new tests in
+  `api_reference_coverage_test.dart` (444 → 476), the census verified by
+  mutation in both directions — a widened type, a narrowed one, an agreeing one,
+  and the sibling package removed, which is the failure the guard could not
+  otherwise report about itself.
+
 - **`doc/endpoints.md`'s first worked example showed a service that mounts
   nothing (tcincb137).** `@tomService class GreetingService` — one concrete
   class carrying both the annotation and its own method bodies — is well-formed
