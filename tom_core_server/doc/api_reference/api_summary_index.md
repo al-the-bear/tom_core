@@ -63,6 +63,13 @@ surface documented here.
 | `TomMemoryAuditAnchorStore` | class | In-memory anchor store, for tests. |
 | `TomFileAuditAnchorStore` | class | JSON Lines anchor store, one file per writer. |
 | `TomAuditAnchorPublisher` | class | Publishes anchors for a sink's chain on a schedule. |
+| `TomAuditAnchorMonitor` | class | Verifies each declared chain against the latest anchor published for it. |
+| `TomAuditWatchedChain` | class | One chain the deployment declares, and the read it supplies for it. |
+| `TomAuditChainReader` | typedef | Reads back the retained entries of one chain, oldest first. |
+| `TomAuditAnchorCheck` | class | What one declared chain's check concluded. |
+| `TomAuditAnchorCheckFailure` | enum | Why a declared chain produced no verification at all. |
+| `TomAuditAnchorReport` | class | What one round of anchor verification concluded. |
+| `TomAuditAnchorVerificationJob` | class | The scheduled job that runs a verification round hourly. |
 | `TomAuditWriteOnceCheck` | class | What a deployment's audit table actually permits, as observed. |
 | `TomAuditTrailRow` | class | One row of the audit trail table. |
 | `TomAuditHeadRow` | class | The columns projected when recovering a chain head. |
@@ -643,13 +650,19 @@ surface documented here.
 | `TomAuditAction` | Audit |
 | `TomAuditActor` | Audit |
 | `TomAuditAnchor` | Audit |
+| `TomAuditAnchorCheck` | Audit |
+| `TomAuditAnchorCheckFailure` | Audit |
+| `TomAuditAnchorMonitor` | Audit |
 | `TomAuditAnchorPublisher` | Audit |
+| `TomAuditAnchorReport` | Audit |
 | `TomAuditAnchorSigner` | Audit |
 | `TomAuditAnchorStatus` | Audit |
 | `TomAuditAnchorStore` | Audit |
 | `TomAuditAnchorVerification` | Audit |
+| `TomAuditAnchorVerificationJob` | Audit |
 | `TomAuditAnchorVerifier` | Audit |
 | `TomAuditBypass` | Audit |
+| `TomAuditChainReader` | Audit |
 | `TomAuditChainVerification` | Audit |
 | `TomAudited` | Audit |
 | `TomAuditEntry` | Audit |
@@ -666,6 +679,7 @@ surface documented here.
 | `TomAuditTrail` | Audit |
 | `TomAuditTrailRow` | Audit |
 | `TomAuditTriggerRow` | Audit |
+| `TomAuditWatchedChain` | Audit |
 | `TomAuditWriteOnceCheck` | Audit |
 | `TomAuthenticationAdaptor` | Authentication |
 | `TomAuthenticationData` | Authentication |

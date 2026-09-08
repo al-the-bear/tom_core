@@ -99,6 +99,7 @@ principal into an authentication token and an authorization token.
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints, exposed via `@TomApiImplementation` |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake |
 | `installJwtSigning` | function | Installs the configured JWT key material at boot, and refuses the bundled sample keys outside development |
+| `verifyBearerToken` | function | Checks an inbound bearer token's signature against the installed key, returning it decoded or `null` |
 | `TomSigningKeyException` | class | Raised by that refusal; names the unset fields and the environment variables that would fill them |
 
 One type every service in the list throws lives in `little_things`, with the
@@ -261,6 +262,49 @@ ordinary configuration, so they can come from a YAML resource, the process
 environment, a `.env` file, or the command line, in that order of increasing
 precedence — see [configuration.md](configuration.md#source-precedence) for the
 merge and for how the `SCREAMING_SNAKE_CASE` spellings above reach the fields.
+
+### Verifying an inbound token
+
+Signing is half of it. A JWT's public section is base64, not ciphertext: the
+holder can read every claim in it and can just as easily rewrite one and send it
+back. Decoding notices nothing — the same string comes apart the same way — so
+the signature is the only thing that separates a token this server minted from a
+token a client typed.
+
+`verifyBearerToken` is where that is checked, and `extractAuthentication` is the
+one place it is called, because the `Authorization: Bearer` header is the one
+path a client-supplied token enters by. A token that fails is treated as **no
+credentials at all**: the request is served anonymously and refused by the
+ordinary access-denied path, which is the same answer a request presenting
+nothing gets. That is deliberate — throwing would turn a hostile request into an
+HTTP 500 and tell the sender the difference between a rejected signature and an
+accepted one. Every rejection is logged at warning level, because a bad
+signature on a live server is either two deployments configured with different
+secrets or somebody probing, and an operator wants to see both.
+
+The check is unconditional and has no opt-out. A flag permitting an unverified
+token would be the same exposure with a name on it, and the deployment shape
+that might have wanted one — a server running the bundled sample keys — is
+already refused at boot by `installJwtSigning`.
+
+**The signature, and not the validity window.** `verifyBearerToken` passes
+`checkExpiresIn: false` / `checkNotBefore: false`, which looks like a gap and is
+not. An expired token still has to reach the request zone: it is the only thing
+left identifying who is asking, and a refresh or re-login endpoint is reached
+with exactly it. Expiry is answered one layer up, where
+`tomDefaultAuthenticationMiddleware` resolves an expired session to *no
+principal* while leaving the credentials in place. The two questions are
+different — *is this ours* and *is it still current* — and only the first can be
+forged.
+
+**Why not in `TomClientJwtToken`.** Verifying in the constructor would be the
+tighter guarantee, since no code path could then hold an unverified token. But
+the same class runs in Flutter clients that hold no verifying key, so it would
+need an opt-out, and the opt-out is the hole again. The check therefore lives on
+the server, next to the configuration that installs the key it checks against.
+What the value class does offer is that `payload` hands back an **unmodifiable
+view**: a reader of a token cannot quietly become a writer of it, so the
+signature check keeps meaning something after the moment it was made.
 
 ## Two-Factor Authentication
 
@@ -616,7 +660,11 @@ is a decision that could have gone the other way:
 - **A skip must have been permitted by the server.**
   `skipTwoFactorEnrolment` refuses unless the presented — server-signed — token
   says `skippable`, so a client that decides for itself that it may decline
-  achieves nothing (`login.error.2fa.enrolment-required`).
+  achieves nothing (`login.error.2fa.enrolment-required`). "Server-signed" is
+  load-bearing and is only worth anything because the signature is checked: see
+  [Verifying an inbound token](#verifying-an-inbound-token). A JWT's public
+  section is plain base64, so without that check the flag would be a claim the
+  caller writes.
 - **Confirming completes the login outright.** A user who has just derived a
   code from the secret they were handed has demonstrated possession; challenging
   them for a second code a moment later would prove nothing. A wrong code spends

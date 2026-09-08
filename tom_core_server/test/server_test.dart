@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart' as jwt;
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -17,6 +18,29 @@ import 'package:test/test.dart';
 /// self-contained closure that maps a thrown error to a JSON HTTP-500 response;
 /// it touches no socket, so it *is* pinned here (constructing a [TomServer] from
 /// a no-op configuration subclass, without bootstrapping codegen reflection).
+
+/// A JWT signed with the configuration this deployment has installed.
+String _signed(Map<String, dynamic> claims) =>
+    TomServerJwtToken(claims).getJWT('issuer');
+
+/// [token] with its public claims edited by [edit] and its original signature
+/// left in place — what a client can produce with three lines and a base64
+/// decoder, and what a decode-only server could not tell from the real thing.
+String _withEditedPayload(
+  String token,
+  void Function(Map<String, dynamic> claims) edit,
+) {
+  String pad(String s) => s.padRight((s.length + 3) & ~3, '=');
+  final parts = token.split('.');
+  final claims =
+      jsonDecode(utf8.decode(base64Url.decode(pad(parts[1]))))
+          as Map<String, dynamic>;
+  edit(claims);
+  final edited = base64Url
+      .encode(utf8.encode(jsonEncode(claims)))
+      .replaceAll('=', '');
+  return '${parts[0]}.$edited.${parts[2]}';
+}
 
 Request _get([Map<String, String>? headers]) =>
     Request('GET', Uri.parse('http://localhost/resource'), headers: headers);
@@ -96,6 +120,87 @@ void main() {
       );
       expect(principal, isNull);
       expect(token, isNull);
+    });
+
+    test('accepts a token this deployment signed', () {
+      final (principal, token) = extractAuthentication(
+        _get({
+          'authorization': 'Bearer ${_signed({'userId': 'u'})}',
+        }),
+      );
+      expect(token, isNotNull);
+      expect(token!.payload!['userId'], 'u');
+      expect(principal, isNotNull);
+    });
+
+    test('refuses a token whose payload was edited after issue', () {
+      // The whole point. The claims are re-encoded and the original signature
+      // is carried over unchanged — which is exactly what a client can do,
+      // because the public section is plain base64 and nothing about decoding
+      // objects to it.
+      final forged = _withEditedPayload(
+        _signed({'userId': 'u', 'role': 'user'}),
+        (claims) => claims['role'] = 'admin',
+      );
+      final (principal, token) = extractAuthentication(
+        _get({'authorization': 'Bearer $forged'}),
+      );
+      expect(token, isNull, reason: 'an edited payload must not decode at all');
+      expect(principal, isNull);
+    });
+
+    test('refuses a token signed with somebody else\'s key', () {
+      // A well-formed, correctly-signed token from a server this one does not
+      // share a `jwtSharedSecretKey` with. Before the signature was checked,
+      // "well-formed" was the whole test.
+      final foreign = jwt
+          .JWT({'userId': 'u'}, issuer: 'other-server')
+          .sign(jwt.SecretKey('a-different-secret'));
+      final (principal, token) = extractAuthentication(
+        _get({'authorization': 'Bearer $foreign'}),
+      );
+      expect(token, isNull);
+      expect(principal, isNull);
+    });
+
+    test('accepts a token this deployment signed that has expired', () {
+      // Deliberate, and the opposite of what a signature check might be
+      // expected to do. An expired token is still *ours*, and it is the only
+      // thing left identifying who is asking — a refresh or re-login endpoint
+      // is reached with exactly it. Expiry is answered one layer up, where
+      // `tomDefaultAuthenticationMiddleware` resolves the session to no
+      // principal while the credentials survive; see the middleware group
+      // below, which asserts both halves.
+      final expired = TomServerJwtToken({
+        'userId': 'u',
+      }, expiresIn: const Duration(hours: -1)).getJWT('issuer');
+      final (_, token) = extractAuthentication(
+        _get({'authorization': 'Bearer $expired'}),
+      );
+      expect(token, isNotNull);
+    });
+  });
+
+  group('verifyBearerToken', () {
+    test('returns the decoded token for a signature it can check', () {
+      final verified = verifyBearerToken(_signed({'userId': 'u'}));
+      expect(verified, isNotNull);
+      expect(verified!.payload!['userId'], 'u');
+    });
+
+    test('returns null rather than throwing for every rejection', () {
+      // The caller's contract is that an unusable token means *no
+      // credentials*; throwing would turn a hostile request into a 500 and
+      // hand the sender a way to tell a rejected signature from an accepted
+      // one.
+      expect(verifyBearerToken('not-a-jwt'), isNull);
+      expect(verifyBearerToken(''), isNull);
+      expect(
+        verifyBearerToken(
+          jwt.JWT({'userId': 'u'}).sign(jwt.SecretKey('wrong')),
+        ),
+        isNull,
+      );
     });
   });
 

@@ -713,7 +713,9 @@ class TomAuthenticationServer {
   ///
   /// Refuses unless the presented token says the offer was skippable. That flag
   /// is one this server signed, so a client that decides for itself that it may
-  /// decline achieves nothing.
+  /// decline achieves nothing — but only because the signature is *checked*:
+  /// `verifyBearerToken` does that on the inbound path, and without it the flag
+  /// would be plain base64 the caller could edit. See `jwt_signing.dart`.
   Future<TomAuthenticationResult> skipTwoFactorEnrolment(
     TomAuthenticationMessage m, {
     TomClientJwtToken? enrolmentToken,

@@ -62,22 +62,36 @@ void main() {
 
   group('the publisher is not on the scheduler, and must stay off it', () {
     test('this server declares exactly three scheduled jobs', () {
-      final discovered = TomScheduledJobs.discover();
       // Named rather than counted, so the failure message says *which* job
       // appeared — a bare `hasLength(3)` would report a number and leave the
-      // reader to work out what it means.
-      expect(discovered.map((job) => job.name).toSet(), {
+      // reader to work out what it means. Scoped to this server's `ops.`
+      // namespace: discovery scans the whole reflection build, and what the
+      // framework declares is not this suite's to pin.
+      final declaredHere = TomScheduledJobs.discover()
+          .map((job) => job.name)
+          .where((name) => name.startsWith('ops.'))
+          .toSet();
+      expect(declaredHere, {
         opsPurgeJobName,
         opsReportJobName,
         opsDigestJobName,
       });
     });
 
-    test('no declared job mentions anchoring', () {
+    test('no job this server declares publishes anchors', () {
       // The specific regression: somebody adds `@TomScheduledJob` to a class
       // that publishes anchors, and the cluster starts attesting one node's
       // chain on behalf of all of them.
+      //
+      // Publication, not the word "anchor". `tom_core_server` ships
+      // `tom.audit.anchorVerification`, which is a scheduled job about anchors
+      // and is *correctly* so: verification reads a chain that already exists,
+      // concludes the same thing whichever node asks, and therefore wants
+      // running once across the cluster — the exact argument that makes
+      // publication belong on a timer instead. Matching the word alone cannot
+      // tell those two apart, so the scope is this server's own declarations.
       for (final job in TomScheduledJobs.discover()) {
+        if (!job.name.startsWith('ops.')) continue;
         expect(job.name, isNot(contains('anchor')));
       }
     });

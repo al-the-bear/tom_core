@@ -6,6 +6,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import '../authentication/jwt_signing.dart';
 import '../authentication/server_self_login.dart';
 import '../little_things/request_id.dart';
 import '../little_things/server_exception.dart';
@@ -40,24 +41,39 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
 /// Extracts the bearer credentials from a request's `Authorization` header.
 ///
 /// Reads the `Authorization` header and, when it carries a `Bearer <jwt>`
-/// token, parses it into a [TomClientJwtToken] and derives the [TomPrincipal]
-/// via [TomBearerAuthentication.convertTokenPayloadToPrincipal]. Returns a
-/// record `(principal, token)`; either element is `null` when the header is
-/// absent, not a bearer token, or fails to parse. Parsing/derivation errors are
-/// swallowed (the corresponding element stays `null`) so an invalid token is
-/// treated as "no credentials" rather than raising — authorization decisions
-/// are made downstream.
+/// token, **verifies its signature** with [verifyBearerToken] and derives the
+/// [TomPrincipal] via [TomBearerAuthentication.convertTokenPayloadToPrincipal].
+/// Returns a record `(principal, token)`; either element is `null` when the
+/// header is absent, not a bearer token, or fails verification. Derivation
+/// errors are swallowed (the corresponding element stays `null`) so an
+/// unusable token is treated as "no credentials" rather than raising —
+/// authorization decisions are made downstream.
+///
+/// ## Why the signature is checked here
+///
+/// A JWT's public payload is plain base64: a client can edit any claim in it
+/// and re-send it, and nothing about decoding notices. Everything this request
+/// is then judged by is reconstructed from that payload — the principal, its
+/// roles, and the 2FA claims whose own documentation says a client "achieves
+/// nothing" by editing them. That sentence is only true if somebody checks the
+/// signature, and this is the only inbound path where a client-supplied token
+/// enters the server, so this is where it is checked.
+///
+/// The check is not conditional and there is no opt-out. A flag permitting an
+/// unverified token would be the same exposure with a name, and the one
+/// deployment shape that might have wanted it — a server running the
+/// framework's bundled sample keys — is already refused at boot by
+/// [installJwtSigning] outside a development or test environment.
 (TomPrincipal?, TomClientJwtToken?) extractAuthentication(Request req) {
   TomPrincipal? resultA;
   TomClientJwtToken? resultB;
   String? header = req.headers["authorization"];
   if (header != null) {
     if (header.startsWith("Bearer ")) {
-      try {
-        resultB = TomClientJwtToken(header.substring(7));
-      } catch (e) {
-        // resultB remains null
-      }
+      // Verification and decoding in one call: a token that fails the signature
+      // check never becomes a `TomClientJwtToken` here at all, so there is no
+      // window in which an unverified one is in hand.
+      resultB = verifyBearerToken(header.substring(7));
       try {
         if (resultB != null) {
           resultA = TomBearerAuthentication.convertTokenPayloadToPrincipal(
@@ -65,7 +81,13 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
           );
         }
       } catch (e) {
-        // resultA remains null
+        // A verified token whose payload will not yield a principal is a
+        // genuine oddity — the token is ours, so the claims are malformed
+        // rather than forged — and the request proceeds anonymously either
+        // way. Reported for the same reason the signature rejection is: a
+        // credential that was refused and said nothing is the one an operator
+        // cannot investigate.
+        tomLog.warn('Bearer token verified but yielded no principal: $e');
       }
     }
   }

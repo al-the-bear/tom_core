@@ -80,6 +80,11 @@ is a peer of the other three layers rather than an option on the sink.
 | Anchor | `TomAuditAnchorStore` | abstract class | An append-only archive of published anchors, kept where the audited server cannot rewrite it |
 | Anchor | `TomMemoryAuditAnchorStore` / `TomFileAuditAnchorStore` | classes | The test store; the local-file store |
 | Anchor | `TomAuditAnchorPublisher` | class | Publishes anchors for a sink's chain on a timer — per node, not per cluster |
+| Anchor | `TomAuditAnchorMonitor` | class | Reads the latest anchor of each declared chain back and checks the chain against it — per cluster, not per node |
+| Anchor | `TomAuditWatchedChain` / `TomAuditChainReader` | class / typedef | One chain the deployment declares, and the read it supplies for it |
+| Anchor | `TomAuditAnchorCheck` / `TomAuditAnchorReport` | classes | What one declared chain concluded, and what a whole round did |
+| Anchor | `TomAuditAnchorCheckFailure` | enum | Why a declared chain produced no verification: never anchored, or unreadable |
+| Anchor | `TomAuditAnchorVerificationJob` | class | The `@TomScheduledJob` that runs a round hourly |
 
 ## Audit Is Not Logging
 
@@ -727,6 +732,86 @@ own timer and that **no `@TomScheduledJob` declares it**, which is the shape of
 the mistake this section exists to prevent. See
 [`README_advanced_14_operations.md`](../../tom_core_samples/README_advanced_14_operations.md).
 
+### Reading the anchors back
+
+Publishing an anchor detects nothing on its own. `TomAuditAnchorMonitor` is the
+other half: it takes the chains a deployment expects to exist, reads the latest
+anchor published for each, and checks the chain against it — and
+`TomAuditAnchorVerificationJob` is a `@TomScheduledJob` that runs the round
+hourly.
+
+```dart
+final monitor = TomAuditAnchorMonitor(
+  store: anchorStore,
+  chains: [
+    TomAuditWatchedChain(writer: 'node-a', read: nodeASink.readAll),
+    TomAuditWatchedChain(writer: 'node-b', read: nodeBSink.readAll),
+  ],
+  verifier: anchorVerifier,
+  onFinding: (finding) => outbox.alertOperator(finding.detail),
+);
+TomBean.withName(tomAuditAnchorMonitorBean, monitor);
+```
+
+**Verification is a scheduled job where publication is a timer, and the reason
+is the same one.** Publication is per writer because each node must anchor its
+own head. Verification is a *read* over a chain that already exists: it
+concludes the same thing whichever node asks, and it is idempotent, which is
+what the scheduler's at-least-once guarantee wants. Running it on every node
+would multiply the read cost and the alerts by the cluster size for no extra
+coverage.
+
+**The writers are declared, not discovered.** Enumerating them from the anchor
+store would find only the writers that have published at least once — so a node
+that never anchored would be invisible, and that silence is exactly the finding:
+an unanchored chain is the one a rewrite leaves no evidence of. A declared chain
+the store has nothing for is reported as `neverAnchored`.
+
+**The chain is read through a callback** the deployment supplies, because
+[reading a trail back is per sink](#reading-a-trail-back-is-per-sink-deliberately)
+and a generic monitor would have to invent the interface that section
+deliberately withholds. `TomSqlAuditSink.readAll` is the usual answer.
+
+**A finding reaches two places, and both ship.** Every one is logged at error
+level, and every one is handed to `onFinding` — the log being the channel that
+always exists and the callback the one that can act: route to the messaging
+outbox, fail a health check, page somebody. Which of those is right is a
+property of the deployment, so the framework does not choose.
+
+| Outcome | `isFinding` | `isClean` | Reaches `onFinding` |
+| ------- | ----------- | --------- | ------------------- |
+| `matched` / `extended` | no | yes | no |
+| `diverged` / `truncated` / `chainBroken` / `signatureInvalid` | yes | no | yes |
+| `beforeRetention` / `writerMismatch` | no | no | no |
+| `neverAnchored` / `readFailed` | yes | no | yes |
+
+The inconclusive row is the one worth arguing. A deployment that prunes reaches
+`beforeRetention` on every ordinary run, so alerting there would train the
+operator to ignore the channel a real divergence arrives on. It is still not
+*clean* — `isClean` requires a verification that matched — so a dashboard can
+show the difference between "checked and intact" and "could not conclude"
+without either of them being an alert.
+
+**The run reports the round, not the verdict.** A diverged chain does not fail
+the job: `TomRetryPolicy` would retry it, the second attempt would reach the same
+answer, and the retries would burn the alerting budget without changing
+anything. A deployment that wants the run itself to fail throws from
+`onFinding`, which propagates out of `verifyAll` — and because the callbacks run
+only after every chain has been checked and logged, aborting there abandons the
+reporting rather than the checking.
+
+Because the job ships in the framework and carries `@tomReflector`, it is in the
+reflection build of every application that reflects `tom_core_server`, including
+ones that anchor nothing. Those get a run that reports `no audit anchor monitor
+registered` rather than an hourly failure; an application that does not want the
+job at all excludes it with `TomScheduledJobs.discover`'s `where` filter.
+
+`test/audit_anchor_monitor_test.dart` covers the three shapes this layer adds
+over a single `verifyAgainstAnchor` call — the declared-but-never-anchored
+chain, the read that throws, and the routing — including that an inconclusive
+check reaches neither the findings nor the callback, and that a throwing
+callback propagates only after every chain has been checked.
+
 ### Shutting the publisher down
 
 The final anchor of a graceful shutdown is the one that pins the chain's last
@@ -914,29 +999,25 @@ and therefore auditable in its own right.
 - Anchor stores for specific external services (object storage with a
   deny-delete policy, a countersigning service). The `TomAuditAnchorStore` seam
   is here; the implementations are deployment-specific by nature.
-- **Scheduled verification, and anywhere for a finding to go.**
-  `TomAuditAnchorPublisher` is the only periodic actor in the module: it
-  *writes* anchors on a timer and nothing reads them back. A divergence is
-  therefore detected when somebody runs `verifyAgainstAnchor`, and not
-  before — which, for the one attack anchoring exists to catch, can be months.
-  `TomAuditAnchorVerification` is likewise just a value returned to its caller,
-  so there is no seam a `diverged` status is routed through. The check itself
-  is shown under [Anchoring the Chain Head](#anchoring-the-chain-head); putting
-  it on a cadence, and deciding what a divergence should reach, is left
-  entirely to the deployment. Unlike the two items above, this one is an
-  omission rather than a deliberate seam.
+- **Routing a finding somewhere other than a log or a callback.**
+  `TomAuditAnchorMonitor` ships both of those and nothing else — see [Reading
+  the anchors back](#reading-the-anchors-back). A deployment that wants a
+  divergence to reach the messaging outbox, a health check or a pager wires it
+  in `onFinding`; the framework does not ship those routes because which of
+  them is right is a property of the deployment. This is a seam rather than an
+  omission.
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `audit_anchor_store.dart`, `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `Future`, `Timer`, `unawaited` |
+| `dart:async` | dart | `audit_anchor_monitor.dart`, `audit_anchor_store.dart`, `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `Future`, `Timer`, `unawaited` |
 | `dart:convert` | dart | `audit_anchor.dart`, `audit_anchor_store.dart`, `audit_sink.dart`, `sql_audit_sink.dart` | `base64Decode`, `base64Encode`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `audit_anchor_store.dart`, `audit_sink.dart` | `Directory`, `File`, `FileMode` |
 | `dart:typed_data` | dart | `audit_anchor.dart` | `Uint8List` |
 | `crypto` | package | `audit_sink.dart` | SHA-256 for the hash chain |
 | `path` | package | `audit_anchor_store.dart`, `audit_sink.dart` | `p.basename`, `p.basenameWithoutExtension`, `p.join` |
-| `tom_core_kernel` | package | `audit_anchor.dart`, `audit_anchor_store.dart`, `audit_record.dart`, `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `TomPrincipal`, `TomUser`, `getFromCurrentZone`, `TomClosable`, `tomReflector` (policy resolution by mirror), and — through its `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures |
+| `tom_core_kernel` | package | 7 of 8 files | `TomPrincipal`, `TomUser`, `getFromCurrentZone`, `TomClosable`, `tomReflector` (policy resolution by mirror), `TomScheduledJob` / `TomJobBase` / `TomRetryPolicy` and `TomBean` / `TomBeanLocatorException` for the verification job, `tomLog` for the finding channel, and — through its `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures |
 | [datasources](datasources.md) | module | `sql_audit_sink.dart`, `sql_audit_sql.dart` | `TomSqlAuditSink` writes through a `TomDataSource` directly, and encodes instants with `sqlInstant` |
 | [little_things](little_things.md) | module | `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `TomRequestId`, recovered from the zone to supply `requestId`. This is the module's only intra-package dependency below the endpoints/persistence layer, and it is deliberately the bottom one: the id type lives beside the exception base, so attributing an entry to its request does not drag the whole server module in |
 | [object_persistence](object_persistence.md) | module | `sql_audit_sink.dart` | `TomSqlDatasourceRepository` calls the trail on every mutation |

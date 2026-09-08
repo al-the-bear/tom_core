@@ -222,10 +222,6 @@ somewhere other than the call site.
   a transaction scope that cannot be opened. A deployment that supplies a
   rejecting middleware loses the line for every rejection, which is the class of
   request most worth having one.
-- **`extractAuthentication` cannot report a bad token.** An absent header, a
-  non-bearer scheme and a bearer token that will not parse all answer
-  `(null, null)`, so a malformed credential is indistinguishable from no
-  credential — to the handler, and to a log line that records neither.
 - **`start()` cannot be awaited and hands back no handle.** It is
   `void … async`, so a failure after the self-login — a port already in use, an
   unreadable certificate — arrives as an unhandled asynchronous error rather
@@ -233,9 +229,20 @@ somewhere other than the call site.
   to close. That the socket is bound at all is observable only through the log
   line `start()` emits.
 
-All four are pinned by tests in `test/api_reference_coverage_test.dart`, in the
+All three are pinned by tests in `test/api_reference_coverage_test.dart`, in the
 group "the server guide's Not Yet Implemented section matches the module", so
 closing one turns a test red rather than leaving this section quietly wrong.
+There were four: `extractAuthentication` could not report a bad token, because
+it swallowed both its failures into empty catches. It reports both now — the
+signature rejection from `verifyBearerToken` and the derivation failure at the
+call site, each at warning level with its reason.
+
+What it still does not do is *distinguish* them to the caller. An absent header,
+a non-bearer scheme, an unverifiable token and a verified token that yields no
+principal all answer `(null, null)`, and that is deliberate rather than
+outstanding: a caller who could tell "your signature was wrong" from "you sent
+nothing" is an attacker who can tell whether they guessed. The operator gets the
+detail, through the log; the caller gets one answer.
 
 ### What this module does not do at all
 

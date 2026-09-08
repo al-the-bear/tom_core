@@ -35,6 +35,13 @@ hash-chained by the sink, and optionally anchored outside the audited server.
   - [TomMemoryAuditAnchorStore](#tommemoryauditanchorstore)
   - [TomFileAuditAnchorStore](#tomfileauditanchorstore)
   - [TomAuditAnchorPublisher](#tomauditanchorpublisher)
+  - [TomAuditChainReader](#tomauditchainreader)
+  - [TomAuditWatchedChain](#tomauditwatchedchain)
+  - [TomAuditAnchorCheckFailure](#tomauditanchorcheckfailure)
+  - [TomAuditAnchorCheck](#tomauditanchorcheck)
+  - [TomAuditAnchorReport](#tomauditanchorreport)
+  - [TomAuditAnchorMonitor](#tomauditanchormonitor)
+  - [TomAuditAnchorVerificationJob](#tomauditanchorverificationjob)
   - [TomAuditWriteOnceCheck](#tomauditwriteoncecheck)
   - [TomSqlAuditSink](#tomsqlauditsink)
   - [TomAuditTrailRow](#tomaudittrailrow)
@@ -50,6 +57,7 @@ Source: `lib/src/tomserver/audit/audit_record.dart`,
 `lib/src/tomserver/audit/audit_trail.dart`,
 `lib/src/tomserver/audit/audit_anchor.dart`,
 `lib/src/tomserver/audit/audit_anchor_store.dart`,
+`lib/src/tomserver/audit/audit_anchor_monitor.dart`,
 `lib/src/tomserver/audit/sql_audit_sink.dart`,
 `lib/src/tomserver/audit/sql_audit_sql.dart`.
 
@@ -1034,6 +1042,165 @@ TomAuditAnchorPublisher({
 | `publishNow` | `Future<TomAuditAnchor> publishNow()` | Captures the sink's position, signs it when a signer is configured, appends it to the store and returns it. Throws when the store refuses, and throws `TomAuditException` (`audit.anchor.publisher_closed`) once the publisher is closed — this is the single choke point every publication passes through. |
 | `publishAndClose` | `Future<void> publishAndClose()` | Cancels the schedule, publishes a final anchor, then closes. The anchor that pins the chain's last head, which a synchronous `close` cannot deliver. A store failure is thrown, unlike the scheduled path; the publisher closes either way. Idempotent, and a no-op after `close`. |
 | `close` | `void close()` | *(override)* Cancels the schedule and closes. **Publishes nothing** — `TomClosable`'s contract is synchronous, and a publication started without waiting is one a departing process never finishes. Use `publishAndClose` wherever an `await` is available. |
+
+### TomAuditChainReader
+
+```dart
+typedef TomAuditChainReader = Future<List<TomAuditEntry>> Function();
+```
+
+Reads back the retained entries of one chain, oldest first. May return a
+*suffix* — retention prunes from the front — which `verifyAgainstAnchor` handles
+by comparing on `TomAuditEntry.index` rather than on position. Supplied by the
+deployment because reading a trail back is per sink by design; `TomSqlAuditSink.readAll`
+is the usual answer.
+
+### TomAuditWatchedChain
+
+One chain the deployment expects to exist, and how to read it back. The monitor
+takes these rather than enumerating the anchor store, because an enumeration
+finds only writers that have published at least once — so a node that never
+anchored would be invisible, and that silence is the finding.
+
+#### Constructors
+
+```dart
+const TomAuditWatchedChain({
+  required String writer,
+  required TomAuditChainReader read,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `writer` | `String` | The chain's name, matching the writer identity its anchors carry (final). |
+| `read` | `TomAuditChainReader` | Reads this chain's retained entries (final). |
+
+### TomAuditAnchorCheckFailure
+
+Why a declared chain produced no verification at all. Distinct from
+`TomAuditAnchorStatus`, which describes what a verification *concluded*; these
+are the two cases where none could be performed, and both are findings.
+
+| Value | Meaning |
+| ----- | ------- |
+| `neverAnchored` | The store holds no anchor for this writer. The finding a store enumeration cannot reach: a chain that was never anchored has nothing to diverge from, so a rewrite of it leaves no trace. |
+| `readFailed` | Reading the chain back threw. Not evidence of tampering and not evidence of its absence — the check did not happen, and a check that did not happen must not read as a pass. |
+
+### TomAuditAnchorCheck
+
+What one declared chain's check concluded. Exactly one of `verification` and
+`failure` is set; the constructor asserts it.
+
+#### Constructors
+
+```dart
+const TomAuditAnchorCheck({
+  required String writer,
+  required String detail,
+  TomAuditAnchorVerification? verification,
+  TomAuditAnchorCheckFailure? failure,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `writer` | `String` | The chain that was checked (final). |
+| `verification` | `TomAuditAnchorVerification?` | The verification, or `null` when `failure` says none was performed (final). |
+| `failure` | `TomAuditAnchorCheckFailure?` | Why no verification was performed, or `null` when one was (final). |
+| `detail` | `String` | A one-line explanation, suitable for an operator alert (final). |
+| `isFinding` | `bool` | *(getter)* Whether an operator must act. Every `failure` counts, and every verification that `indicatesTampering`. An inconclusive verification does not: a deployment that prunes reaches `beforeRetention` on every ordinary run. |
+| `isClean` | `bool` | *(getter)* Whether the chain verified against its anchor. |
+
+### TomAuditAnchorReport
+
+What one round of `TomAuditAnchorMonitor.verifyAll` concluded.
+
+#### Constructors
+
+```dart
+TomAuditAnchorReport({
+  required List<TomAuditAnchorCheck> checks,
+  required DateTime checkedAt,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `checks` | `List<TomAuditAnchorCheck>` | One entry per declared chain, in declaration order; unmodifiable (final). |
+| `checkedAt` | `DateTime` | When the round ran (final). |
+| `findings` | `Iterable<TomAuditAnchorCheck>` | *(getter)* The checks an operator must act on. |
+| `isClean` | `bool` | *(getter)* Whether every declared chain verified. Stricter than "no findings": an inconclusive check is not a finding but is not a clean bill of health either. False for an empty report, so a monitor watching nothing cannot answer "all clear". |
+
+### TomAuditAnchorMonitor
+
+Verifies each declared chain against the latest anchor published for it — the
+counterpart of `TomAuditAnchorPublisher`. Where publication is per process
+because each node anchors its own head, verification is a read over a chain that
+already exists: it concludes the same thing whichever node asks and is
+idempotent, so once across the cluster is right.
+
+#### Constructors
+
+```dart
+TomAuditAnchorMonitor({
+  required TomAuditAnchorStore store,
+  required List<TomAuditWatchedChain> chains,
+  TomAuditAnchorVerifier? verifier,
+  void Function(TomAuditAnchorCheck finding)? onFinding,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `store` | `TomAuditAnchorStore` | Where anchors are read from (final). |
+| `chains` | `List<TomAuditWatchedChain>` | The chains the deployment expects to exist; unmodifiable (final). |
+| `verifier` | `TomAuditAnchorVerifier?` | Requires each anchor's signature. Omitting it checks the position only, which is the honest thing to do for an unsigned anchor from a trusted store (final). |
+| `onFinding` | `void Function(TomAuditAnchorCheck)?` | Called once per finding, after every chain has been checked and logged — so a callback that throws aborts the reporting rather than the checking (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `verifyAll` | `Future<TomAuditAnchorReport> verifyAll()` | Checks every declared chain and reports what was found. Never throws for a chain that cannot be read or was never anchored — those are `TomAuditAnchorCheck`s, because a round that gave up on the first would leave the rest unchecked. Logs every finding at error level and every inconclusive check at warn, then invokes `onFinding` per finding; only that callback throws. |
+
+### TomAuditAnchorVerificationJob
+
+The `@TomScheduledJob` that runs a round hourly (`cron: '0 * * * *'`, two
+attempts, ten-minute timeout), resolving its monitor from the bean named
+`tomAuditAnchorMonitorBean`.
+
+Ships in the framework and carries `@tomReflector`, so it is in the reflection
+build of every application that reflects `tom_core_server` — including ones that
+anchor nothing. Those get a run reporting `noMonitorRegistered` rather than an
+hourly failure; an application that does not want the job excludes it with
+`TomScheduledJobs.discover`'s `where` filter.
+
+The run reports the round, not the verdict: a diverged chain does not fail it,
+because a retry would reach the same answer and burn the alerting budget. A
+deployment that wants the run to fail throws from `onFinding`.
+
+- **Extends:** `TomJobBase`
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `noMonitorRegistered` | `String` | *(static const)* What the run reports when no monitor is registered. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<Object?> execute()` | *(override)* Resolves the monitor and returns its round's `toString`. Returns `noMonitorRegistered` when the bean is absent; any other exception propagates. |
 
 ### TomAuditWriteOnceCheck
 

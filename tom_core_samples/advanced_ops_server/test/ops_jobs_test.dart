@@ -46,11 +46,19 @@ void main() {
 
   group('the three jobs are discoverable and distinctly named', () {
     test('discovery finds exactly the three this server declares', () {
-      expect(TomScheduledJobs.discover().map((job) => job.name).toSet(), {
-        opsPurgeJobName,
-        opsReportJobName,
-        opsDigestJobName,
-      });
+      // Filtered to this server's own namespace, because discovery scans the
+      // whole reflection build and the framework declares jobs of its own —
+      // `tom_core_server` ships an audit-anchor verification job, and any
+      // package this one depends on may ship more. An unfiltered "exactly
+      // three" would be an assertion about *everybody's* declarations, which
+      // this suite has no business making and could not keep true.
+      expect(
+        TomScheduledJobs.discover()
+            .map((job) => job.name)
+            .where((name) => name.startsWith('ops.'))
+            .toSet(),
+        {opsPurgeJobName, opsReportJobName, opsDigestJobName},
+      );
     });
 
     test('the names are namespaced, so two packages can share one store', () {

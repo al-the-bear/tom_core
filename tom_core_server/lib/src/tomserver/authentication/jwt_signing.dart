@@ -164,3 +164,98 @@ TomJwtConfiguration installJwtSigning(
   TomJwtConfiguration.defaultSignConfiguration = installed;
   return installed;
 }
+
+/// Verifies [token]'s signature against the installed signing configuration and
+/// returns it decoded, or `null` when it is not a token this deployment issued.
+///
+/// ## Why this exists at all
+///
+/// [TomClientJwtToken] *decodes*: it splits the token, base64-decodes the
+/// payload and decrypts the `encrypted` section, and at no point consults the
+/// signature. That is right for the client half, which holds no verifying key
+/// and has nothing to gain from lying to itself. It is wrong for the inbound
+/// server path, where the payload is whatever the caller last wrote in it —
+/// and everything the request is then judged by, the [TomPrincipal] included,
+/// is reconstructed from that payload.
+///
+/// The signature is the only thing that distinguishes a token this server
+/// minted from a token a client typed. This function is where that is checked,
+/// and [extractAuthentication] is the one call site that matters.
+///
+/// ## Why here and not in the value class
+///
+/// Verifying inside [TomClientJwtToken]'s constructor would be the tighter
+/// guarantee — no code path could hold an unverified token — but the same class
+/// runs in Flutter clients that have no verifying key, so it would need an
+/// opt-out, and an opt-out is the hole again with a flag in front of it. The
+/// check therefore lives on the server, next to the configuration that installs
+/// the key it checks against.
+///
+/// ## What is checked
+///
+/// **The signature, and only the signature** — against
+/// [TomJwtConfiguration.defaultSignConfiguration]'s key, the same key
+/// [TomServerJwtToken.getJWT] signs with, which is what makes an auth server
+/// and an application server that share a `jwtSharedSecretKey` trust each
+/// other's tokens and nobody else's.
+///
+/// The validity window is deliberately *not* checked here, and that is a
+/// decision rather than an omission. An expired token still has to reach the
+/// request zone: it is the only thing left identifying who is asking, and a
+/// refresh or re-login endpoint is reached with exactly it. The framework
+/// already answers expiry one layer up — `tomDefaultAuthenticationMiddleware`
+/// resolves an expired session to *no principal*, so the request is served as
+/// anonymous while the credentials survive for the endpoint that can renew
+/// them. Rejecting `exp` here would drop the token as well and break the
+/// renewal path, which is the one thing an expired session still needs.
+///
+/// The two questions are genuinely different: the signature asks *is this ours*
+/// and the window asks *is it still current*. Only the first can be forged, and
+/// only the first is this function's business.
+///
+/// ## What a failure produces
+///
+/// `null`, and a warning naming the reason. Not an exception: the caller's
+/// contract is that a token it cannot use means *no credentials*, so a forged
+/// token buys anonymous access rather than the claims it forged, and
+/// authorization is decided downstream exactly as it is for a request that
+/// presented nothing. Throwing would turn a hostile request into a 500 and hand
+/// the sender a way to tell a rejected signature from an accepted one.
+///
+/// The warning matters more than it looks: a bad signature on a live server is
+/// either a misconfigured pair of deployments or somebody probing, and both are
+/// things an operator wants to see. It is a warning rather than an error
+/// because a caller can produce it at will.
+TomClientJwtToken? verifyBearerToken(String token, {bool decrypt = true}) {
+  final configuration = TomJwtConfiguration.defaultSignConfiguration;
+  try {
+    jwt.JWT.verify(
+      token,
+      configuration.key,
+      // See "What is checked": the window belongs to the layer that can act on
+      // it, and dropping an expired token here would take the credentials a
+      // renewal endpoint needs with it.
+      checkExpiresIn: false,
+      checkNotBefore: false,
+    );
+  } on jwt.JWTException catch (e) {
+    tomLog.warn('Rejected a bearer token: ${e.message}');
+    return null;
+  } on Object catch (e) {
+    // Anything else the decoder objects to — a malformed token, a payload that
+    // is not JSON — is the same answer to the caller: this is not a token this
+    // server issued. Reported separately because an unexpected type here means
+    // the library changed under us, and a silent `null` would hide that.
+    tomLog.warn('Rejected an unreadable bearer token: $e');
+    return null;
+  }
+  try {
+    return TomClientJwtToken(token, decrypt: decrypt);
+  } on Object catch (e) {
+    // A verified signature and an undecryptable body is a genuine oddity: the
+    // token is ours, so this is a key rotation caught mid-flight or a corrupted
+    // `encrypted` section rather than a forgery.
+    tomLog.warn('Rejected a signed bearer token that would not decode: $e');
+    return null;
+  }
+}

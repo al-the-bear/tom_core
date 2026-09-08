@@ -6112,13 +6112,6 @@ One: `TomKind`, documented beside the type that carries it.
             'and the explanation is wrong as well as the limitation gone',
       );
       expect(
-        limitations.bearerFailuresAreSilent,
-        isTrue,
-        reason:
-            'the guide says `extractAuthentication` cannot report a bad token; '
-            'it swallows both decode failures, and stops doing so here first',
-      );
-      expect(
         limitations.startIsFireAndForget,
         isTrue,
         reason:
@@ -6159,9 +6152,9 @@ One: `TomKind`, documented beside the type that carries it.
     });
 
     test('a limitation the source has closed is reported', () {
-      // Each of the four read independently, so a parser that answered `false`
-      // to everything would pass the group above by accident. Feed it a source
-      // in which all four are fixed and check it says so.
+      // Each of the three read independently, so a parser that answered
+      // `false` to everything would pass the group above by accident. Feed it a
+      // source in which all three are fixed and check it says so.
       final fixed = _serverLimitationsOf(const [
         'Response? Function(Request, Object, StackTrace) errorHandler =',
         '    (request, error, stacktrace) {',
@@ -6184,7 +6177,6 @@ One: `TomKind`, documented beside the type that carries it.
       expect(fixed.defaultErrorHandlerAlwaysFails, isFalse);
       expect(fixed.logsBelowAuthentication, isFalse);
       expect(fixed.startIsFireAndForget, isFalse);
-      expect(fixed.bearerFailuresAreSilent, isFalse);
     });
   });
 
@@ -6692,22 +6684,24 @@ List<String> _disownedFileComplaints(
               'the guide is disowning something the module ships',
 ];
 
-/// The four limitations `doc/server.md` records, as the source still shows
+/// The three limitations `doc/server.md` records, as the source still shows
 /// them.
+///
+/// There were four. `extractAuthentication` could not report a bad token, and
+/// now reports both of its failures; the guide says so where the bullet was,
+/// and the flag that measured it went with the bullet.
 typedef _ServerLimitations = ({
   bool defaultErrorHandlerAlwaysFails,
   bool logsBelowAuthentication,
   bool startIsFireAndForget,
-  bool bearerFailuresAreSilent,
 });
 
-/// Reads the four limitations out of [lines].
+/// Reads the three limitations out of [lines].
 ///
 /// Each is read from the one construct that decides it, so that fixing a
 /// limitation flips exactly the one flag: the status the default handler
-/// builds, the order the two middlewares are added to the pipeline, the return
-/// type `start()` declares, and whether `extractAuthentication` still has
-/// nothing but empty catches.
+/// builds, the order the two middlewares are added to the pipeline, and the
+/// return type `start()` declares.
 _ServerLimitations _serverLimitationsOf(List<String> lines) {
   final joined = lines.join('\n');
 
@@ -6741,8 +6735,6 @@ _ServerLimitations _serverLimitationsOf(List<String> lines) {
     logsBelowAuthentication:
         logging >= 0 && authentication >= 0 && logging > authentication,
     startIsFireAndForget: joined.contains('void start() async'),
-    bearerFailuresAreSilent:
-        extractor.where((line) => line.contains('catch (e)')).length == 2,
   );
 }
 
