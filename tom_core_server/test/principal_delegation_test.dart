@@ -533,62 +533,78 @@ void main() {
     });
   });
 
-  group('the validity window is an instant, not a wall clock', () {
-    // `[validFrom, validTo]` decides whether a delegate holds a role. Stored as
-    // the writing node's local wall clock it means a different moment on every
-    // node that reads it, so two servers of one cluster disagree about when a
-    // delegation begins and ends — and the one that is wrong is wrong in the
-    // direction of granting access outside the window its owner set.
+  group(
+    'the validity window is an instant, not a wall clock',
+    () {
+      // `[validFrom, validTo]` decides whether a delegate holds a role. Stored
+      // as the writing node's local wall clock it means a different moment on
+      // every node that reads it, so two servers of one cluster disagree about
+      // when a delegation begins and ends — and the one that is wrong is wrong
+      // in the direction of granting access outside the window its owner set.
 
-    /// Runs the probe with `TZ` forced to [zone] and returns its four fields.
-    Future<List<String>> probe(String zone) async {
-      final result = await Process.run(
-        Platform.resolvedExecutable,
-        ['run', p.join('test', 'fixtures', 'delegation_window_tz_probe.dart')],
-        environment: {'TZ': zone},
-      );
-      expect(
-        result.exitCode,
-        0,
-        reason: 'probe failed under $zone: ${result.stdout}${result.stderr}',
-      );
-      return (result.stdout as String).trim().split('|');
-    }
+      // The two probe results, taken once for the group.
+      //
+      // Both zone tests below read the *same* two probes with the same inputs,
+      // so taking them per test costs four subprocesses to obtain two answers.
+      // Each spawn is a fresh VM start and a JIT compile of the fixture, and
+      // what it costs is how busy the machine is, not what the fixture does:
+      // ~4.5 s idle, ~6.5 s against four competing VMs, ~10.7 s against eight,
+      // and past ~20 competitors a per-test pair exceeds the 30 s default and
+      // raises `TimeoutException` — which is what an intermittent red here
+      // looks like, and why it is followed by a green re-run of an identical
+      // tree. Taken per test, both zone tests time out at that load; taken
+      // once, as here, the whole group finishes in ~35 s.
+      //
+      // A non-zero probe exit would report the child's own output through the
+      // `expect` in `probe`, and has not occurred in any run at any load, so
+      // that is not the hazard this group carries.
+      late final List<String> east;
+      late final List<String> west;
 
-    test(
-      'two nodes in different zones store the same characters',
-      () async {
+      /// Runs the probe with `TZ` forced to [zone] and returns its four fields.
+      Future<List<String>> probe(String zone) async {
+        final result = await Process.run(
+          Platform.resolvedExecutable,
+          [
+            'run',
+            p.join('test', 'fixtures', 'delegation_window_tz_probe.dart'),
+          ],
+          environment: {'TZ': zone},
+        );
+        expect(
+          result.exitCode,
+          0,
+          reason: 'probe failed under $zone: ${result.stdout}${result.stderr}',
+        );
+        return (result.stdout as String).trim().split('|');
+      }
+
+      setUpAll(() async {
         // Fourteen hours east and twelve west: 26 hours apart, so the two
         // hosts are not merely at different clock readings but on different
         // calendar days for the probe's instant.
-        final east = await probe('Pacific/Kiritimati');
-        final west = await probe('Etc/GMT+12');
+        east = await probe('Pacific/Kiritimati');
+        west = await probe('Etc/GMT+12');
 
         // Believe the columns only once the forced zones are known to have
         // taken effect — two processes that both silently stayed at UTC would
-        // agree trivially and the assertion below would prove nothing.
+        // agree trivially and every assertion below would prove nothing.
+        // Asserted here rather than in each test so that a zone that did not
+        // apply fails the group once, naming the cause, instead of failing
+        // each test with a symptom.
         expect(int.parse(east.first), 14, reason: 'TZ did not take effect');
         expect(int.parse(west.first), -12, reason: 'TZ did not take effect');
+      });
 
+      test('two nodes in different zones store the same characters', () {
         // The property: the column is the instant, so the characters do not
         // depend on who wrote them.
         expect(east[1], west[1]);
         expect(east[1], '2026-08-11 23:30:00.000000');
-      },
-      skip: Platform.isWindows
-          ? 'the Windows C runtime does not honour TZ'
-          : null,
-    );
+      });
 
-    test(
-      'a stored window bound reads back as the instant it names, in any zone',
-      () async {
-        final east = await probe('Pacific/Kiritimati');
-        final west = await probe('Etc/GMT+12');
-
-        expect(int.parse(east.first), 14, reason: 'TZ did not take effect');
-        expect(int.parse(west.first), -12, reason: 'TZ did not take effect');
-
+      test('a stored window bound reads back as the instant it names, in any '
+          'zone', () {
         // Both read the *same* stored text; a reader that parses it as its own
         // local time lands 14 hours early on one host and 12 hours late on the
         // other, which is 26 hours of window either side of the truth.
@@ -599,27 +615,35 @@ void main() {
         // window comparisons and the tests are written with.
         expect(east[3], 'utc');
         expect(west[3], 'utc');
-      },
-      skip: Platform.isWindows
-          ? 'the Windows C runtime does not honour TZ'
-          : null,
-    );
+      });
 
-    test('the window columns carry the sub-second precision the '
-        'convention specifies', () {
-      // `DATETIME` is whole seconds; the instant convention is `DATETIME(6)`.
-      // A window bound rounded to the second is a window whose edge moves by up
-      // to half a second relative to the one that was set.
-      expect(
-        TomPrincipalDelegation.createTableSql,
-        contains('valid_from DATETIME(6) NULL'),
-      );
-      expect(
-        TomPrincipalDelegation.createTableSql,
-        contains('valid_to DATETIME(6) NULL'),
-      );
-    });
-  });
+      test('the window columns carry the sub-second precision the '
+          'convention specifies', () {
+        // `DATETIME` is whole seconds; the instant convention is `DATETIME(6)`.
+        // A window bound rounded to the second is a window whose edge moves by
+        // up to half a second relative to the one that was set.
+        expect(
+          TomPrincipalDelegation.createTableSql,
+          contains('valid_from DATETIME(6) NULL'),
+        );
+        expect(
+          TomPrincipalDelegation.createTableSql,
+          contains('valid_to DATETIME(6) NULL'),
+        );
+      });
+    },
+    // Two minutes, against ~35 s for the whole group under the 24-way load
+    // that defeats the 30 s default. That default is a reasonable bound on a
+    // test that computes; it is the wrong kind of bound on one that starts a
+    // VM, where the number being bounded is the machine's load.
+    timeout: const Timeout(Duration(minutes: 2)),
+    // The whole group, not each test: `setUpAll` spawns the probes, so a
+    // per-test skip would leave the setUp running on a platform where it
+    // cannot work.
+    skip: Platform.isWindows
+        ? 'the Windows C runtime does not honour TZ'
+        : null,
+  );
 
   group('TomDelegationResolver — grant reads per resolution', () {
     final now = DateTime.utc(2026, 3, 1);
