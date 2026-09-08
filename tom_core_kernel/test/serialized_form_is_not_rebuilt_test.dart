@@ -124,14 +124,12 @@ const _scannedExtensions = ['.dart', '.md'];
 /// - This file states the patterns it forbids, so it matches all of them.
 /// - `CHANGELOG.md` is a history document: recording a defect means being able
 ///   to show it.
-/// - The `.reflection.dart` mirrors and `doc/analyzer_analysis.json` are
-///   generated. They restate whatever the sources hold and are corrected by
-///   regenerating, never by editing.
+/// - The `.reflection.dart` mirrors are generated. They restate whatever the
+///   sources hold and are corrected by regenerating, never by editing.
 bool _isExempt(String path) =>
     path.endsWith('serialized_form_is_not_rebuilt_test.dart') ||
     path.endsWith('CHANGELOG.md') ||
-    path.endsWith('.reflection.dart') ||
-    path.endsWith('analyzer_analysis.json');
+    path.endsWith('.reflection.dart');
 
 /// Returns `'<path>:<line>: <text>'` for every line matching [patterns].
 List<String> _scan(List<RegExp> patterns) {

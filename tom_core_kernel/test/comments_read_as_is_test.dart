@@ -276,13 +276,9 @@ const _scannedRoot = '.';
 /// - `CHANGELOG.md` is a history document by definition; naming the work item
 ///   behind an entry is what a changelog is *for*. It sits in [_scannedRoot],
 ///   so this exemption is what actually keeps it out.
-/// - `doc/analyzer_analysis.json` is generated: it snapshots dartdoc text, so
-///   it carries whatever the sources carried at generation time and is fixed by
-///   regenerating, never by editing.
 bool _isExempt(String path) =>
     path.endsWith('comments_read_as_is_test.dart') ||
-    path.endsWith('CHANGELOG.md') ||
-    path.endsWith('analyzer_analysis.json');
+    path.endsWith('CHANGELOG.md');
 
 /// A testkit id in the leading `ID: description` position of a test or group
 /// name (`tccc3-05: reports at ERROR level`). That position becomes the ID

@@ -124,6 +124,32 @@ anyone who was writing them.
 
 ### Documentation
 
+- **`doc/analyzer_analysis.json` and its builder configuration are removed
+  (tcincb86).** An 18.5 MB analyzer dump sat under `doc/`, which is
+  hand-authored by workspace rule, and `build.yaml` plus `tom_analyzer.yaml`
+  configured a `tom_analyzer:tom_analyzer` builder to regenerate it. No such
+  package is a dependency and none exists here, so a full `build_runner build`
+  ran the reflection generator and left the dump untouched: the configuration
+  was inert and the file was frozen at whatever the sources said when it was
+  last produced somewhere else.
+
+  The search for a consumer is what settled it. The dump had exactly one
+  reader — a `tom_reflector` test — and that test asserted every element the
+  analyzer finds is present in the dump, which is a check that *the dump is
+  current* and says nothing about the analyzer. So the file existed to be
+  verified by the only thing that read it. The test now analyzes the package,
+  carries the result through `JsonSerializer` / `JsonDeserializer` in-process
+  and compares that, which asks the question worth asking; it is
+  mutation-verified by dropping a class from the encoder.
+
+  Three guards carried an exemption for the file — `comments_read_as_is_test`,
+  `serialized_form_is_not_rebuilt_test` and
+  `tool/check_comments_read_as_is.py` — each justified by "generated, fixed by
+  regenerating, never by editing", which was only honest while regenerating was
+  possible. All three exemptions go with the file, and
+  `tool/check_doc_artifacts.py` drops from one baselined fault to zero.
+
+
 - **Every module document's Dependencies section is now one table, held to the
   module's imports (tcincb85).** Across the five packages these 57 sections came
   in four different table layouts and 51 were written as prose, which is why

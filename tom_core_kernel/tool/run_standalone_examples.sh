@@ -130,12 +130,9 @@ mkdir -p "$LOG_DIR"
 # written anywhere else — which is precisely when it is needed.
 #
 # Exclusions. `.dart_tool/`, `build/`, `coverage/` and `testlog/` are generated
-# or gitignored, so nothing in them is documentation; `doc/analyzer_analysis.json`
-# falls out for the same reason via the file-type allowlist, being a generated
-# analyzer dump that holds stale copies of dartdoc from before the paths moved.
-# And this script excludes *itself*: the prose above describing the check matches
-# the pattern the check looks for, and a guard that always reports itself reports
-# nothing.
+# or gitignored, so nothing in them is documentation. And this script excludes
+# *itself*: the prose above describing the check matches the pattern the check
+# looks for, and a guard that always reports itself reports nothing.
 flagless=()
 while IFS= read -r hit; do
   [ -n "$hit" ] && flagless+=("$hit")
@@ -266,10 +263,7 @@ fi
 # "Error when reading '…': No such file or directory".
 #
 # It is also the failure most likely to arrive unaided. Renaming a sample is a
-# `git mv`; its header is prose in a neighbouring file and stays behind. This
-# package has already been through one such move — `doc/analyzer_analysis.json`
-# still holds dartdoc from before the paths changed, which is why the file-type
-# allowlist above leaves it out.
+# `git mv`; its header is prose in a neighbouring file and stays behind.
 #
 # Nothing needs to be run to check this, which is the point: the reader's
 # command is a string, and whether the string names a file is answerable

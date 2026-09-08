@@ -34,20 +34,3 @@ targets:
           - example/run_all_samples.dart
         options:
           formatted: true
-
-      # tom_analyzer configuration for barrel analysis.
-      tom_analyzer:tom_analyzer:
-        options:
-          barrels:
-            - lib/tom_core_kernel.dart
-          workspace_root: .
-          output_format: json
-          output_file: doc/analyzer_analysis.json
-          followReExports:
-            - tom_core_kernel
-            - tom_basics
-            - tom_crypto
-            - tom_reflection
-          skipReExports:
-            - tom_crypto
-            - tom_reflection

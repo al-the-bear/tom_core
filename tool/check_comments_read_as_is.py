@@ -116,7 +116,6 @@ EXEMPT_FILES = {
     "comments_read_as_is_test.dart",
     "shipped_text_test.dart",
     "CHANGELOG.md",
-    "analyzer_analysis.json",
 }
 
 #: Generated reflection output, which carries whatever the sources carried at
