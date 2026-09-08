@@ -23,6 +23,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [The MariaDB Adaptor](#the-mariadb-adaptor)
   - [The outcome row is written with bound parameters](#the-outcome-row-is-written-with-bound-parameters)
 - [Idempotency and Stability](#idempotency-and-stability)
+  - [A recorded failure stops the next run](#a-recorded-failure-stops-the-next-run)
   - [The checksum has to outlive the process that wrote it](#the-checksum-has-to-outlive-the-process-that-wrote-it)
   - [An unreadable checksum is not an edited migration](#an-unreadable-checksum-is-not-an-edited-migration)
 - [Schema Convergence](#schema-convergence)
@@ -492,6 +493,34 @@ genuinely new versions execute. Recording the **checksum** enforces that
 historical migrations stay immutable — editing an already-applied script is a
 hard error rather than a silent divergence between environments.
 
+### A recorded failure stops the next run
+
+The outcome row is written on both paths: a script that raised is recorded with
+`success = 0` before the error is rethrown. That row is read back.
+`initializeMigration` refuses to bind to a schema whose history holds one,
+raising `mariadb_migration_adapter.initialize.failed_migration_recorded` and
+naming the version, the description, the schema and the repair.
+
+Read back, because for a long time it was not, and the consequence is the reason
+this section exists at all. A failed version is *present* in the history, and its
+description and checksum agree with the script — both were written from it — so
+the idempotency rule above found it applied and skipped it, silently, from then
+on. The column recording the failure was written by this module and read by
+nobody in it.
+
+The refusal is deliberately blunt. MariaDB does not roll DDL back, so a script
+that failed halfway left statements behind and the schema is in a state nothing
+describes; re-running it blindly meets its own `CREATE TABLE` on a table that
+now exists. So the run stops, before any script is offered — which also stops
+the migrations *after* the failed one, and stops on a node whose environment
+tags mean it would never have run that script. Both follow from where the
+damage is: in the database the node is about to use, not in the tree it would
+have applied.
+
+Repair is a human's. Finish or undo what the script left, then set `success = 1`
+on the row to record it as applied, or delete the row to have the migration run
+again.
+
 ### The checksum has to outlive the process that wrote it
 
 The checksum is written once, when a migration is applied, and read back on
@@ -937,19 +966,23 @@ here it cannot drift silently.
 
 ## Not Yet Implemented
 
-- **A failed migration is recorded and never reconsidered.** `applyMigration`
-  writes the outcome row on both paths — `success = 0` when the script threw —
-  and then rethrows, so the run aborts. But nothing ever reads `success` back.
-  The next run loads the history, finds the version present, agrees on the
-  description and the checksum (both were written from the same script) and
-  returns as though the migration had succeeded. So a migration that failed is
-  skipped from then on, and the column that records the failure is written by
-  this module and read by nobody in it. There is no repair or retry path
-  either: the fix is a hand-written correction to the versioning table. What the
-  right behaviour *is* takes a decision rather than an implementation — MariaDB
-  does not roll DDL back, so a script that failed halfway has already applied
-  the statements before the failure, and re-running it blindly is not obviously
-  safer than skipping it.
+- **A failed migration is not repaired, only refused.** `initializeMigration`
+  reads the history and stops the run when it holds a `success = 0` row, naming
+  the version, the description and the table to correct — see
+  [Idempotency and Stability](#idempotency-and-stability). That is the whole of
+  the handling: nothing retries the script and nothing undoes what it left, so a
+  failed migration wedges the schema until a human finishes or reverses the
+  part-applied change and then sets `success = 1` or deletes the row.
+
+  Refusing is the answer rather than retrying because **MariaDB does not roll
+  DDL back**: a script that failed halfway has already applied the statements
+  before the failure, so a blind re-run meets its own `CREATE TABLE` on a table
+  that now exists and fails again, every time. And the refusal is not
+  conditional on the node caring about that migration — a schema whose middle is
+  unknown is not one later statements can be reasoned about, so it blocks the
+  migrations after it too, and blocks on a node whose environment tags mean it
+  would never have run the script. The damage is in the database the node is
+  about to use, not in the tree it would have applied.
 - **Migrations are forward-only.** `TomDbMigrator` is `initializeMigration` /
   `applyMigration` / `reset`; there is no down-migration and no `TomDbVersion`
   state for one. Undoing a release means writing the next migration.

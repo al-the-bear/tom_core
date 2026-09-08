@@ -34,7 +34,10 @@ class MariadbMigrationException extends TomServerException {
 /// [applyMigration] skips a version already present — but first verifies its
 /// description and script checksum are unchanged, failing if a past migration
 /// was edited — and otherwise runs the script and records the outcome. A failed
-/// script is still recorded (with `success = 0`) before the error is rethrown.
+/// script is still recorded (with `success = 0`) before the error is rethrown,
+/// and that row is read back: [initializeMigration] refuses to run at all
+/// against a schema whose history holds one, because a failed script leaves a
+/// part-applied schema and MariaDB does not roll DDL back.
 ///
 /// One instance serves every schema of every `"mariadb"` data source in turn,
 /// so [initializeMigration] **rebinds**: it replaces the loaded [versions]
@@ -341,10 +344,71 @@ SELECT installedRank, version, description, checksum, installedBy, installedOn, 
         rootException: error,
       );
     }
+    _refuseFailedHistory(dsi, schemaName, currentVersions);
     // Assigned, never appended: the list describes this schema's history and
     // must not carry the previous schema's versions into it.
     versions = currentVersions;
     _boundTo = _binding(dsi, schemaName);
+  }
+
+  /// Throws when [history] holds a migration that was recorded as failed.
+  ///
+  /// A row with `success = 0` says a script ran and did not finish. **MariaDB
+  /// does not roll DDL back**, so what it left behind is a schema in a state
+  /// nobody wrote down: some statements applied, one raised, the rest never
+  /// reached. That is not a state this module can reason about, and the two
+  /// things it could do instead of stopping are both worse.
+  ///
+  /// It could re-run the script — right when the failure was environmental (a
+  /// server that went away mid-run), and wrong when the script is half applied,
+  /// where the re-run meets its own `CREATE TABLE` on a table that now exists
+  /// and fails again, forever. Or it could do what it did before this check
+  /// existed and treat the row as applied, which is how a failed migration came
+  /// to be skipped silently from then on: the version is present, and the
+  /// description and checksum agree because both were written from the same
+  /// script. The column recording the failure was written by this module and
+  /// read by nobody in it.
+  ///
+  /// So the run stops, and stops *here* — as the history is read, before any
+  /// script is offered. Two consequences follow from that placement, both
+  /// intended. A failed migration blocks the migrations after it as well as its
+  /// own, because a schema whose middle is unknown is not a schema later
+  /// statements can be reasoned about. And it blocks on every node, including
+  /// one whose environment tags mean it would never have run that migration —
+  /// the damage is in the database the node is about to use, not in the tree it
+  /// would have applied.
+  ///
+  /// Repair is a human's: finish or undo what the script left, then correct or
+  /// delete the row. The message names the version, the description and the
+  /// schema, because an operator holding only "a migration failed" has to go
+  /// looking for which one.
+  void _refuseFailedHistory(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    List<TomDbVersion> history,
+  ) {
+    final failed = history.where((v) => v.success != 1).toList();
+    if (failed.isEmpty) return;
+    final named = failed
+        .map((v) => '${v.version} (${v.description})')
+        .join(', ');
+    throw MariadbMigrationException(
+      "mariadb_migration_adapter.initialize.failed_migration_recorded",
+      "MariadbMigrationAdaptor: schema $schemaName in datasource ${dsi.name} "
+          "has ${failed.length == 1 ? 'a migration' : 'migrations'} recorded as "
+          "failed: $named. A failed script leaves the schema part-applied — "
+          "MariaDB does not roll DDL back — so the migration run has been "
+          "abandoned rather than continued over a state nothing describes. "
+          "Finish or undo what the script left behind, then correct the "
+          "${schemaName}_versioning row (set success = 1) or delete it to have "
+          "the migration applied again.",
+      parameters: {
+        "schema": schemaName,
+        "datasource": dsi.name,
+        "versions": failed.map((v) => v.version).toList(),
+      },
+      autoLog: true,
+    );
   }
 }
 
@@ -401,6 +465,11 @@ class TomDbVersion {
   int executionTimeMs = 0;
 
   /// `1` if the migration script succeeded, `0` if it failed.
+  ///
+  /// Read back, not merely written: [MariadbMigrationAdaptor.initializeMigration]
+  /// refuses to run against a schema whose history holds a row that is not `1`.
+  /// A column this module writes and never reads is how a failed migration came
+  /// to be skipped from then on.
   @TomDbColumn(columnName: "success")
   int success = 0;
 }

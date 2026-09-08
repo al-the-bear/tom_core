@@ -13,6 +13,35 @@
 
 ### Fixed
 
+- **A migration that failed was recorded as failed and then treated as applied
+  forever (tcincb133).** `applyMigration` writes the outcome row on both paths —
+  `success = 0` when the script threw — and rethrows, so the run aborts. Nothing
+  read the column back. On the next run the failed version was *present* in the
+  history, and its description and checksum agreed because both were written
+  from the same script, so the idempotency rule found it applied and skipped it,
+  silently, from then on. The column recording the failure was written by this
+  module and read by nobody in it.
+
+  `initializeMigration` now refuses to bind to a schema whose history holds such
+  a row, raising
+  `mariadb_migration_adapter.initialize.failed_migration_recorded` and naming
+  the version, the description, the schema and the repair.
+
+  **Refusing rather than retrying, because MariaDB does not roll DDL back.** A
+  script that failed halfway left statements behind and the schema is in a state
+  nothing describes; a blind re-run meets its own `CREATE TABLE` on a table that
+  now exists and fails again, every time. So the run stops before any script is
+  offered — which also stops the migrations *after* the failed one, and stops on
+  a node whose environment tags mean it would never have run that script. Both
+  follow from where the damage is: in the database the node is about to use, not
+  in the tree it would have applied.
+
+  Repair is a human's, and the message says so: finish or undo what the script
+  left, then set `success = 1` to record it as applied, or delete the row to
+  have it run again. Both repairs are asserted, as is that a refused adaptor is
+  left unbound — so a caller that swallowed the exception cannot go on to apply
+  migrations judged against a history that never loaded.
+
 - **Fourteen guides' contents lists omitted every one of their sub-sections; 146
   entries were missing (tcincb132).** The check stopped at `##` by construction,
   so a reader deciding whether a document answers their question saw a fraction

@@ -213,6 +213,129 @@ void main() async {
     // constant in `db_migration_test.dart`; what only a server can show is that
     // the value the adaptor *writes* is that same digest, and that reading it
     // back decides correctly whether the script was edited.
+    // A `success = 0` row says a script ran and did not finish, and MariaDB
+    // does not roll DDL back — so what it left behind is a schema in a state
+    // nobody wrote down. The column was written by this module and read by
+    // nobody in it, which is how a failed migration came to be skipped from
+    // then on: the version is present, and the description and the checksum
+    // agree because both were written from the same script.
+    group('a migration recorded as failed', () {
+      /// Applies the fixture chain, then fails a script so the schema's history
+      /// holds one `success = 0` row — through the real path, so the row is
+      /// exactly the one a failure leaves.
+      Future<void> leaveAFailedRow() async {
+        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        await expectLater(
+          adaptor.applyMigration(
+            dsi,
+            _schemaName,
+            99,
+            'deliberately_broken',
+            'THIS IS NOT VALID SQL;',
+          ),
+          throwsA(isA<MariadbMigrationException>()),
+        );
+        expect(
+          (await appliedVersions()).firstWhere((v) => v.version == 99).success,
+          0,
+        );
+      }
+
+      Matcher refusesTheHistory(
+        List<int> versions,
+      ) => isA<MariadbMigrationException>()
+          .having(
+            (e) => e.key,
+            'key',
+            'mariadb_migration_adapter.initialize.failed_migration_recorded',
+          )
+          .having((e) => e.parameters?['versions'], 'versions', versions)
+          .having((e) => e.parameters?['schema'], 'schema', _schemaName);
+
+      test('is not treated as applied on the next run', () async {
+        await leaveAFailedRow();
+        await expectLater(
+          MariadbMigrationAdaptor().initializeMigration(dsi, _schemaName),
+          throwsA(refusesTheHistory([99])),
+        );
+      });
+
+      test('stops the whole run, not just its own version', () async {
+        // The consequence the decision turns on: a schema whose middle is
+        // unknown is not one later statements can be reasoned about, so the
+        // orchestrator stops rather than continuing over it.
+        await leaveAFailedRow();
+        await expectLater(
+          TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir)),
+          throwsA(isA<MariadbMigrationException>()),
+        );
+      });
+
+      test('names the version and the description in its message', () async {
+        // An operator holding only "a migration failed" has to go looking for
+        // which one, in a table they may not know the name of.
+        await leaveAFailedRow();
+        try {
+          await MariadbMigrationAdaptor().initializeMigration(dsi, _schemaName);
+          fail('the history holds a failed row and was accepted');
+        } on MariadbMigrationException catch (e) {
+          expect(e.defaultUserMessage, contains('99'));
+          expect(e.defaultUserMessage, contains('deliberately_broken'));
+          expect(e.defaultUserMessage, contains('${_schemaName}_versioning'));
+        }
+      });
+
+      test('leaves the adaptor unbound, so nothing runs against it', () async {
+        // The refusal happens before `versions` is assigned and before the
+        // binding is set, so a caller that swallowed the exception cannot go on
+        // to apply migrations judged against a history that never loaded.
+        await leaveAFailedRow();
+        final adaptor = MariadbMigrationAdaptor();
+        await expectLater(
+          adaptor.initializeMigration(dsi, _schemaName),
+          throwsA(refusesTheHistory([99])),
+        );
+        expect(adaptor.versions, isEmpty);
+        await expectLater(
+          adaptor.applyMigration(dsi, _schemaName, 1, 'anything', 'SELECT 1;'),
+          throwsA(
+            isA<MariadbMigrationException>().having(
+              (e) => e.key,
+              'key',
+              'mariadb_migration.apply_migration.not_initialized_for_schema',
+            ),
+          ),
+        );
+      });
+
+      test('repairing the row is what lets the run continue', () async {
+        // The documented repair, asserted rather than described: the message
+        // tells an operator to set `success = 1` once they have finished or
+        // undone what the script left, and doing so unblocks the schema.
+        await leaveAFailedRow();
+        await dsi.datasource.executeCommand(
+          'UPDATE ${_schemaName}_versioning SET success = 1 WHERE version = 99',
+        );
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        expect(adaptor.versions.map((v) => v.version), contains(99));
+      });
+
+      test('deleting the row has it applied again', () async {
+        // The other repair the message offers, and the one that matters when
+        // the script left nothing behind: the version goes back to pending.
+        await leaveAFailedRow();
+        await dsi.datasource.executeCommand(
+          'DELETE FROM ${_schemaName}_versioning WHERE version = 99',
+        );
+        final adaptor = MariadbMigrationAdaptor();
+        await adaptor.initializeMigration(dsi, _schemaName);
+        expect(adaptor.versions.map((v) => v.version), isNot(contains(99)));
+      });
+    });
+
     group('the recorded checksum', () {
       test('is the digest of the script it was recorded with', () async {
         await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
