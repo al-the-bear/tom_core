@@ -6913,6 +6913,53 @@ One: `TomKind`, documented beside the type that carries it.
         isFalse,
       );
     });
+
+    // The other way a shipped comment can send a reader nowhere. The markers
+    // above catch a pointer at something outside the package; this catches one
+    // at something *inside* it that is not there — a `doc/…` path that has
+    // been renamed, moved into a subdirectory, or never existed.
+    //
+    // It is the same defect one level up, and the reason it needs its own
+    // check is that the failure is silent in both directions: nothing compiles
+    // a path inside a comment, and a document is renamed by someone reading the
+    // document, not the source that names it. `@TomJoinTable` and
+    // `@TomPersistenceEventHandler` each point at `doc/object_persistence.md`
+    // for the section listing them beside their sibling, which is the pointer
+    // this check exists to keep honest.
+    test('every doc/ path named in a source is a file that exists', () {
+      final missing = <String>[];
+      final pattern = RegExp(r'`(doc/[A-Za-z0-9_/]+\.md)`');
+      for (final path in _libSources()) {
+        final lines = File(path).readAsLinesSync();
+        for (var index = 0; index < lines.length; index++) {
+          for (final match in pattern.allMatches(lines[index])) {
+            if (File(match.group(1)!).existsSync()) continue;
+            missing.add('$path:${index + 1}: ${match.group(1)}');
+          }
+        }
+      }
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'these sources point a reader at a document the package does not '
+            'have: ${missing.join(', ')}. A path inside a comment is compiled '
+            'by nothing, and a document is renamed by someone reading the '
+            'document rather than the source that names it.',
+      );
+    });
+
+    test('the doc-path reader finds a path and judges it', () {
+      // Both verdicts, on the two shapes this package writes: the backticked
+      // path a dartdoc uses, and a name no file answers to.
+      final pattern = RegExp(r'`(doc/[A-Za-z0-9_/]+\.md)`');
+      expect(
+        pattern.firstMatch('/// (see `doc/cmdline.md`).')?.group(1),
+        'doc/cmdline.md',
+      );
+      expect(File('doc/cmdline.md').existsSync(), isTrue);
+      expect(File('doc/no_such_document.md').existsSync(), isFalse);
+    });
   });
 }
 

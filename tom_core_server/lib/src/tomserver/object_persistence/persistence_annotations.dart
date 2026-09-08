@@ -254,6 +254,10 @@ class TomFileReference {
 /// has no effect whatsoever — not a partial one, and not a failure either. A
 /// many-to-many association has to be traversed by querying the join table
 /// directly.
+///
+/// Listed with the module's other two unimplemented declarations under *Not
+/// Yet Implemented* in `doc/object_persistence.md`, which is where a reader
+/// meets them together rather than one annotation at a time.
 class TomJoinTable {
   /// The entity on the far side of the join.
   final Type targetEntity;
@@ -362,6 +366,10 @@ class TomReference<
 /// The resolution is *field-level*: the analyzer looks for this annotation only
 /// in a field's metadata, so although the callbacks take the whole entity, one
 /// placed on a class declaration is not seen at all.
+///
+/// Listed with the module's other two unimplemented declarations under *Not
+/// Yet Implemented* in `doc/object_persistence.md`, which is where a reader
+/// meets them together rather than one annotation at a time.
 class TomPersistenceEventHandler<DBTYPE> {
   /// Called after the entity is persisted.
   final void Function(DBTYPE)? postPersist;

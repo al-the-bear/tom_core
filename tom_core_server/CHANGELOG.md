@@ -1,5 +1,28 @@
 ## 1.3.0
 
+### Documentation
+
+- **The two inert `object_persistence` annotations point at the section that
+  lists them, and a guard keeps such pointers honest (tcincb112).**
+  `@TomJoinTable` and `@TomPersistenceEventHandler` each state their own
+  limitation in full, which is right, but neither said the package documents it
+  — with the third, the missing query-sentence keywords — in one place. Both
+  now name `doc/object_persistence.md`'s *Not Yet Implemented* section, which
+  is where a reader meets the three together rather than one annotation at a
+  time.
+
+  A path inside a comment is compiled by nothing, and a document is renamed by
+  someone reading the document rather than the source that names it — so a
+  pointer added to fix a dangling pointer is worth guarding.
+  `api_reference_coverage_test.dart` now checks that every `` `doc/…md` ``
+  named in a `lib/` source is a file that exists. Six distinct documents are
+  named across the package and all six are present, so this is a recurrence
+  guard rather than a backlog.
+
+  It is the counterpart of the group it joins: *shipped text stands on its own*
+  catches a comment pointing at something **outside** the package, and this
+  catches one pointing at something **inside** it that is not there.
+
 ### Added
 
 - **`tool/mutation_sweep.py`, and the catalogue that records what has been
