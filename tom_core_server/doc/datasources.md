@@ -515,6 +515,42 @@ await TomDataSourceInfo.initializeDatasourceInfo({
 final ds = TomDataSourceInfo.getDataSourceInfo('main')!.datasource;
 ```
 
+### Every settings key has to bind
+
+`type` and `delegateTo` are the registry's own — `type` selects the driver,
+`delegateTo` makes the entry an alias — and neither is a field of any driver.
+They are **removed** from the block before it reaches the driver, so a driver is
+handed only what is addressed to it.
+
+Everything that remains has to name a field the configured driver declares. A
+key that names none fails the start-up with a `TomDatasourceInitException`
+carrying `tom_datasource_info.initialize.unknown_setting`, whose `parameters`
+give the data source under `datasource` and the offending keys under `keys`:
+
+```
+Datasource 'app_db' (type 'mariadb') is configured with a setting 'database'
+that names no field of MariaDbDatasource. Check the spelling in the datasource
+configuration for 'app_db'.
+```
+
+Both halves of that message are load-bearing: the key is what to fix, and the
+data-source name is which block to open. Every offending key is listed, so a
+block with two typos in it takes one restart to correct rather than two.
+
+The check is the registry's rather than each driver's, which is what puts the
+data-source name in the message — a driver never learns the name it was
+configured under — and what makes the guarantee hold for a driver the framework
+never saw. The field set is read off *that* driver through reflection, so a
+deployment's own driver is checked against its own settings, not against
+MariaDB's.
+
+Bind-time tolerance is right on the wire, where the sender may be newer than the
+receiver, and the shared `tomReflectionInfo` still provides it. It is wrong for
+a file the operator wrote against a driver whose field set is fixed and shipped:
+absorbed, a misspelling surfaces much later as a connection error that names
+neither the schema nor the credentials the driver was never given, and never
+mentions the key that caused it.
+
 ## When a Write Fails
 
 A write that throws has two very different meanings, and the exception does not

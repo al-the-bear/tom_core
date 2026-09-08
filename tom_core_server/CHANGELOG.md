@@ -1,5 +1,46 @@
 ## 1.3.0
 
+### Changed
+
+- **A datasource settings key that binds nothing now fails the start-up, naming
+  the key and the data source (tcincb119).** `TomDataSourceInfo.initialize`
+  handed the whole configuration block to the driver, which bound it with the
+  shared, deliberately tolerant `tomReflectionInfo`. A key naming no field was
+  dropped without a throw and without a log the caller sees — and what the
+  operator eventually got was a connection error that named neither the schema
+  nor the credentials the driver was never given, and never mentioned the key
+  that caused it, because nothing ever looked at it.
+
+  ```
+  Datasource 'app_db' (type 'mariadb') is configured with a setting 'database'
+  that names no field of MariaDbDatasource. Check the spelling in the datasource
+  configuration for 'app_db'.
+  ```
+
+  Tolerance is right on the wire, where the sender may be newer than the
+  receiver; a datasource block is a file the operator wrote against a driver
+  whose field set is fixed and shipped. Every offending key is listed, so a
+  block with two typos in it takes one restart to correct.
+
+  **The check is the registry's, not each driver's**, for two reasons. The name
+  of the data source lives at the registry — it is the half of the message that
+  says which block to open, and a driver never learns it. And a check here
+  covers every driver including one the framework never saw: the field set is
+  read off *that* driver through reflection, so a deployment's own driver is
+  checked against its own settings rather than confined to MariaDB's vocabulary.
+  The suite asserts that asymmetry in both directions with a fixture driver
+  declaring a field MariaDB does not.
+
+  `type` and `delegateTo` are the registry's own keys and are **stripped** from
+  the block before the driver sees it, rather than excused by an allowlist
+  inside the check — so the boundary says the same thing twice over: a driver is
+  handed only what is addressed to it, and every key it is handed has to bind.
+  They are published as `TomDataSourceInfo.registryKeys`.
+
+  No shipped configuration changes: every datasource block in the samples and in
+  `tom_uam` already binds. The behaviour that changes is what a *misspelled* one
+  does.
+
 ### Removed
 
 - **`TomRepositoryType` is gone, and no shipped source or guide describes a

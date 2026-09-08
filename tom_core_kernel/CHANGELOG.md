@@ -7,6 +7,28 @@ API narrowings. Read the **Changed** section before upgrading — several public
 members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
+### Added
+
+- **`TomReflectionInfo.unknownFields` — the strict-mode question, asked in
+  advance (tcincb119).** `strictUnknownFields` answers it as the walk goes and
+  stops at the first offender, in this module's own words. That is the wrong
+  shape for a caller binding a *document* it owns — a configuration block, a
+  settings map — which wants to name every mistake at once, in its own
+  vocabulary, and to say which file the keys came from. `unknownFields(o,
+  values)` returns the keys naming no writable declaration on `o`, in the order
+  the map lists them.
+
+  It applies the same rule as the field walk, so the two cannot drift, and the
+  suite pins that agreement directly: every key it names is one a strict
+  `setValues` rejects, and every key it passes over is one a strict `setValues`
+  accepts. A member that exists but cannot be written is not reported — it is
+  not unknown. A class that takes the map over entirely (a `TomClass`, a
+  `fromJson` constructor, a `jsonDecode` hook) answers empty, because what
+  counts as a known key is then theirs to define.
+
+  `tom_core_server` is the first consumer: its data-source registry rejects a
+  settings key that binds no field of the configured driver.
+
 ### Fixed
 
 - **Every remote log record said it came from `"RDEF"` (tcincb110).**

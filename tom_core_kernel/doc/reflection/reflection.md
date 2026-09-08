@@ -28,6 +28,7 @@ Flutter web, where `dart:mirrors` is unavailable.
   - [Basic Usage](#basic-usage)
   - [From JSON String](#from-json-string)
   - [Unknown Keys](#unknown-keys)
+    - [Asking the question in advance](#asking-the-question-in-advance)
   - [TomClass Integration](#tomclass-integration)
   - [Custom Deserialization](#custom-deserialization)
 - [Serialization (Object to JSON)](#serialization-object-to-json)
@@ -184,6 +185,7 @@ The main class for reflection operations. Key methods:
 | `createInstance<T>()` | Create a new instance using default constructor |
 | `createInstanceFromJson<T>(mirror, data)` | Create instance and populate from JSON; returns a `T` or throws |
 | `setValues<T>(object, values)` | Set field values on an existing object |
+| `unknownFields<T>(object, values)` | The keys of `values` that name no writable declaration on `object` |
 | `getValues(object)` | Get all field values as a map |
 | `convertToJsonString(object)` | Serialize object to JSON string; a `List` or `Map` is encoded as itself, with complex elements rendered by `getValues` |
 | `convertFromJsonString<T>(object, json)` | Deserialize JSON string to object |
@@ -351,6 +353,33 @@ Two neighbouring cases are **not** governed by the flag:
   The member does exist, so it is not an unknown field; the walk simply has no
   declared return type to resolve a non-primitive value against. A primitive
   value reaches such a setter normally.
+
+#### Asking the question in advance
+
+A strict converter answers as it goes and stops at the first offender, in this
+module's own words. That is the wrong shape for a caller binding a **document**
+— a configuration block, a settings map — which wants to name every mistake at
+once, in its own vocabulary, and to say *which file* the keys came from.
+`unknownFields` is the same question asked in advance:
+
+```dart
+final unknown = tomReflectionInfo.unknownFields(driver, settings);
+if (unknown.isNotEmpty) throw MyConfigException(blockName, unknown);
+```
+
+It applies the same rule as the field walk, so the two cannot drift, and it
+returns the keys in the order the map lists them — which is the order the file
+lists them. The two neighbouring cases above keep their meanings: a member that
+exists but cannot be written is not reported, because it is not unknown.
+
+A class that takes the map over entirely — a `TomClass`, a `fromJson`
+constructor, a `jsonDecode` hook — answers empty. What counts as a known key is
+theirs to define, and this converter has no view of it.
+
+`tom_core_server` uses this at its data-source registry: a settings key that
+binds no field of the configured driver fails the start-up naming the key and
+the data source, rather than being dropped and surfacing later as a connection
+error that mentions neither.
 
 ### TomClass Integration
 

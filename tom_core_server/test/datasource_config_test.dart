@@ -7,25 +7,30 @@ import 'package:tom_core_server/tom_core_server.dart';
 // global reflection data, which is what lets this suite *ask*
 // `MariaDbDatasource` which keys it can be configured through instead of
 // restating a list here that would drift away from the class.
+import 'fixtures/reflection_fixture.dart';
 import 'fixtures/reflection_fixture.reflection.dart';
 
 /// The keys `TomDataSourceInfo` reads itself, before any driver exists.
 ///
 /// `type` selects the driver and `delegateTo` turns the entry into an alias
-/// for another one; see `TomDataSourceInfo.initialize`. Neither is a field on
-/// a data source, so neither shows up in the reflected set — yet both are
-/// legitimate in a configuration block, so both belong here.
-const _registryKeys = {'type', 'delegateTo'};
+/// for another one. Neither is a field on a data source, so neither shows up in
+/// the reflected set — yet both are legitimate in a configuration block. Taken
+/// from the registry rather than restated, because the registry strips exactly
+/// this set before the driver sees the block: a copy here would let the two
+/// definitions of "not a driver setting" drift apart, which is the failure the
+/// strict check exists to make impossible.
+const _registryKeys = TomDataSourceInfo.registryKeys;
 
 /// The settings keys an instance of [type] can actually be configured through.
 ///
 /// Derived from reflection rather than written out, because binding *is*
-/// reflection: `MariaDbDatasource.initialize` hands the whole settings map to
+/// reflection: a driver's `initialize` hands the settings map to
 /// `tomReflectionInfo.setValues`, which assigns entry by entry through the
-/// setter named by the key. A key with no setter therefore binds nothing —
-/// and, because the shared converter is deliberately tolerant of unknown
-/// fields, it is dropped without a word. Deriving the set here means a
-/// *renamed field* fails this suite too, not just a mistyped document.
+/// setter named by the key. A key with no setter therefore binds nothing, and
+/// `TomDataSourceInfo.initialize` refuses the block for it. Deriving the set
+/// here means a *renamed field* fails this suite too, not just a mistyped
+/// document — and it is the same derivation the registry makes, so the two
+/// cannot disagree about what a driver accepts.
 Set<String> _bindableKeys(Type type) {
   final mirror = tomReflector.reflectType(type) as ClassMirror;
   return {
@@ -57,6 +62,15 @@ class _ConfigBlock {
 /// to spell a branch `database:`, which is not a settings key and must not be
 /// read as one.
 final _anchor = RegExp(r'''['"]?type['"]?\s*:\s*['"]?(mariadb[A-Za-z_]*)''');
+
+/// Marks a block that is deliberately wrong, so the sweep leaves it alone.
+///
+/// The sweep polices blocks a reader might copy, and a block written to be
+/// *rejected* is not one of those — the tests below need a misspelled key in a
+/// real configuration block to have anything to assert. Opting out by an
+/// explicit marker rather than by excluding this file keeps the sweep over the
+/// rest of it: a genuinely mistaken example here still fails.
+const _counterexample = 'not-a-valid-block';
 
 /// A settings key opening a line, in either YAML (`host:`) or Dart
 /// (`'host':`) spelling.
@@ -134,6 +148,7 @@ List<_ConfigBlock> _shippedConfigBlocks() {
       }
       final lines = entry.readAsLinesSync().map(_uncomment).toList();
       for (var i = 0; i < lines.length; i++) {
+        if (lines[i].contains(_counterexample)) continue;
         if (_anchor.hasMatch(lines[i])) blocks.add(_blockAt(lines, i, path));
       }
     }
@@ -220,10 +235,17 @@ void main() {
       expect(unresolved, isEmpty);
     });
 
-    test('a key no field matches is dropped in silence', () {
-      // The cost of a wrong key, stated as behaviour: no throw, no log the
-      // caller sees, and a data source left at its defaults. This is why the
-      // documents have to be right rather than merely close.
+    test('the shared converter still drops a key no field matches', () {
+      // What a configuration block would cost if it reached the converter: no
+      // throw, no log the caller sees, and a data source left at its defaults,
+      // which then fails to connect naming neither the schema nor the
+      // credentials it was never given.
+      //
+      // The tolerance is right where the converter is normally used — a wire
+      // payload whose sender may be newer than its receiver — so it is pinned
+      // here rather than removed. What changed is that a datasource block no
+      // longer arrives here to be tolerated: the registry checks the keys
+      // first. The group below is that check.
       final datasource = MariaDbDatasource();
       tomReflectionInfo.setValues<MariaDbDatasource>(datasource, {
         'database': 'app_db',
@@ -231,6 +253,129 @@ void main() {
       });
       expect(datasource.databaseName, isEmpty);
       expect(datasource.username, isEmpty);
+    });
+  });
+
+  group('a settings key that binds nothing is refused', () {
+    setUp(TomDataSourceInfo.datasources.clear);
+    tearDown(TomDataSourceInfo.datasources.clear);
+
+    /// Registers a single datasource block named [name] and returns whatever
+    /// it threw, or null when it initialised.
+    ///
+    /// The whole registry entry point rather than the check alone, because the
+    /// behaviour under test is what a *configuration file* does at start-up —
+    /// and the two keys the registry consumes on the way are half the question.
+    Future<Object?> register(String name, Map<String, dynamic> block) async {
+      try {
+        await TomDataSourceInfo.initializeDatasourceInfo({name: block});
+        return null;
+      } catch (error) {
+        return error;
+      }
+    }
+
+    Matcher unknownSetting(String datasource, List<String> keys) =>
+        isA<TomDatasourceInitException>()
+            .having(
+              (e) => e.key,
+              'key',
+              'tom_datasource_info.initialize.unknown_setting',
+            )
+            .having(
+              (e) => e.parameters?['datasource'],
+              'datasource',
+              datasource,
+            )
+            .having((e) => e.parameters?['keys'], 'keys', keys);
+
+    test('a misspelled key names itself and the data source', () async {
+      // `database` for `databaseName` — the misspelling the shipped documents
+      // carried until they were corrected, and the one every other database's
+      // documentation invites. Both halves of the message matter: the key is
+      // what to fix, and the data-source name is which block to open. The
+      // driver knows only the first, which is why the check is the registry's.
+      final error = await register('app_db', {
+        'type': 'fixture_settings',
+        'host': 'localhost',
+        'database': 'app_db',
+      });
+      expect(error, unknownSetting('app_db', ['database']));
+      expect('$error', contains('app_db'));
+      expect('$error', contains("'database'"));
+    });
+
+    test('every offending key is named, not just the first', () {
+      // A block with two typos in it should take one restart to fix, not two.
+      return register('app_db', {
+        'type': 'fixture_settings',
+        'database': 'app_db',
+        'user': 'app',
+      }).then(
+        (error) =>
+            expect(error, unknownSetting('app_db', ['database', 'user'])),
+      );
+    });
+
+    test('the registry keys are not settings, and pass', () async {
+      // `type` is read by the registry and is a field of no driver, so a strict
+      // check that saw it would refuse every correctly configured data source.
+      // It passes because the registry *removes* it rather than excusing it —
+      // and the driver, which never sees it, cannot be asked to.
+      final error = await register('app_db', {
+        'type': 'fixture_settings',
+        'host': 'localhost',
+        'port': 3306,
+        'databaseName': 'app_db',
+      });
+      expect(error, isNull);
+      final driver =
+          TomDataSourceInfo.getDataSourceInfo('app_db')!.datasource
+              as FixtureSettingsDatasource;
+      expect(driver.databaseName, 'app_db');
+      expect(driver.port, 3306);
+    });
+
+    test('a delegate block is an alias and is never checked as settings', () {
+      // `delegateTo` returns before a driver exists, so there is nothing to
+      // check the block against — which is why it is a registry key and not an
+      // allowlisted exception inside the check.
+      final base = TomDataSourceInfo('base', <String, dynamic>{});
+      TomDataSourceInfo.datasources['base'] = base;
+      return register('alias', {'delegateTo': 'base'}).then((error) {
+        expect(error, isNull);
+        expect(TomDataSourceInfo.getDataSourceInfo('alias'), same(base));
+      });
+    });
+
+    test('a driver that declares extra fields accepts them', () async {
+      // The set is read off the driver the block selected, not off the one
+      // driver the framework ships. `applicationName` exists on the fixture
+      // driver and on no other.
+      final error = await register('app_db', {
+        'type': 'fixture_settings',
+        'databaseName': 'app_db',
+        'applicationName': 'reporting',
+      });
+      expect(error, isNull);
+      final driver =
+          TomDataSourceInfo.getDataSourceInfo('app_db')!.datasource
+              as FixtureSettingsDatasource;
+      expect(driver.applicationName, 'reporting');
+    });
+
+    test('and another driver refuses the same key', () async {
+      // The other half of the asymmetry. Without it the test above passes on a
+      // check that accepts everything.
+      final error = await register('app_db', {
+        // The marker is spelled out because a comment is not interpolated;
+        // `_counterexample` names the same text for the sweep that reads it.
+        'type': 'mariadb', // not-a-valid-block
+        'databaseName': 'app_db',
+        'applicationName': 'reporting',
+      });
+      expect(error, unknownSetting('app_db', ['applicationName']));
+      expect('$error', contains('MariaDbDatasource'));
     });
   });
 }

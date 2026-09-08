@@ -847,6 +847,7 @@ TomDataSourceInfo(String name, Map<String, dynamic> settings)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `datasources` | `Map<String, TomDataSourceInfo>` | All registered data sources, keyed by name. |
+| `registryKeys` | `Set<String>` | The settings keys the registry reads itself and does not pass on — `type`, which selects the driver, and `delegateTo`, which makes the entry an alias. Neither is a field of any driver. They are removed from the block before it reaches `TomDataSource.initialize` rather than being excused by an allowlist inside the unknown-key check, so that a driver is handed only what is addressed to it and every key it is handed has to bind. |
 
 ##### Static Methods
 
@@ -870,7 +871,7 @@ TomDataSourceInfo(String name, Map<String, dynamic> settings)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initialize` | `Future<void> initialize()` | Registers this entry and opens its data source (honouring a `delegateTo` alias). |
+| `initialize` | `Future<void> initialize()` | Registers this entry and opens its data source (honouring a `delegateTo` alias). Strips `registryKeys` from `settings`, then requires every remaining key to name a field the configured driver declares — one that does not throws `TomDatasourceInitException` (`tom_datasource_info.initialize.unknown_setting`) naming every offending key and the data source. Both halves of the message are load-bearing: the key is what to fix, and the name is which block to open. The check lives here rather than in each driver because a driver never learns the name it was configured under, and because a check here covers a driver the framework never saw — the field set is read off *that* driver by reflection, so a deployment's own driver is checked against its own settings. |
 | `toString` | `String toString()` | *(override)* Debug description of the entry. |
 
 ### The MariaDB Driver
@@ -1238,6 +1239,7 @@ tells the two apart.
 | `tom_datasource_info.initialize.delegate_not_found` | A `delegateTo` setting names an unregistered data source |
 | `tom_datasource_info.initialize.no_datasource_obtained_for_type` | `createDatasourceOf` returned nothing for the configured type |
 | `tom_datasource_info.initialize.no_type_specified` | The configuration entry carries no `type` |
+| `tom_datasource_info.initialize.unknown_setting` | A settings key names no field of the configured driver |
 
 #### MariadbDatasourceException
 

@@ -918,6 +918,100 @@ void main() {
     });
   });
 
+  // The same question strictness answers as it goes, asked in advance. A caller
+  // binding a document it owns wants to report every offending key at once, in
+  // its own vocabulary and naming the document — none of which this converter
+  // can do, because it knows the class and not where the map came from.
+  group('tomReflectionInfo.unknownFields', () {
+    test('names every key the target declares no member for', () {
+      expect(
+        tomReflectionInfo.unknownFields(SimplePerson(), {
+          'name': 'John',
+          'nickname': 'Jo',
+          'headcount': 2,
+        }),
+        ['nickname', 'headcount'],
+      );
+    });
+
+    test('answers empty for a map that binds completely', () {
+      expect(
+        tomReflectionInfo.unknownFields(SimplePerson(), {
+          'name': 'John',
+          'age': 30,
+        }),
+        isEmpty,
+      );
+    });
+
+    test('preserves the order the keys were written in', () {
+      // The report is read next to the file it came from, so the keys should
+      // arrive in the order that file lists them.
+      expect(
+        tomReflectionInfo.unknownFields(SimplePerson(), {
+          'zeta': 1,
+          'alpha': 2,
+        }),
+        ['zeta', 'alpha'],
+      );
+    });
+
+    // The sibling fault, and deliberately not this method's: `hashCode` exists
+    // on every object and cannot be written. Reporting it as *unknown* would
+    // send a reader looking for a declaration that is right there, and
+    // setValues raises on it in both modes anyway.
+    test('does not report a member that exists but cannot be written', () {
+      expect(
+        tomReflectionInfo.unknownFields(SimplePerson(), {'hashCode': 7}),
+        isEmpty,
+      );
+    });
+
+    // A hook takes the map over entirely, so what counts as a known key is the
+    // hook's to define. Answering anything else would be a verdict on a
+    // question this converter was never asked.
+    test('answers empty for a class whose jsonDecode hook owns the map', () {
+      expect(
+        tomReflectionInfo.unknownFields(JsonHookHolder(), {'anything': 1}),
+        isEmpty,
+      );
+    });
+
+    test('answers empty for a class with a fromJson constructor', () {
+      expect(
+        tomReflectionInfo.unknownFields(PersonWithFromJson(), {'anything': 1}),
+        isEmpty,
+      );
+    });
+
+    // The agreement that keeps the pre-flight and the walk from drifting: every
+    // key this method names is one a strict setValues rejects, and every key it
+    // passes over is one a strict setValues accepts.
+    test('agrees with what a strict setValues does with the same map', () {
+      final strict = TomReflectionInfo(strictUnknownFields: true);
+      const values = {'name': 'John', 'nickname': 'Jo'};
+      expect(tomReflectionInfo.unknownFields(SimplePerson(), values), [
+        'nickname',
+      ]);
+      expect(
+        () => strict.setValues(SimplePerson(), values),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.parameters?['key'],
+            'key',
+            'nickname',
+          ),
+        ),
+      );
+      final accepted = {'name': 'John'};
+      expect(
+        tomReflectionInfo.unknownFields(SimplePerson(), accepted),
+        isEmpty,
+      );
+      expect(strict.setValues(SimplePerson(), accepted).name, 'John');
+    });
+  });
+
   group('tomReflectionInfo.setValues - DateTime', () {
     test('should set DateTime from ISO string', () {
       final holder = DateTimeHolder();

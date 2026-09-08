@@ -270,13 +270,25 @@ class TomDataSourceInfo {
   /// Creates an (uninitialised) registry entry from [name] and [settings].
   TomDataSourceInfo(this.name, this.settings);
 
+  /// The [settings] keys this registry reads itself, and so does not pass on.
+  ///
+  /// `type` selects the driver and `delegateTo` aliases one name onto another;
+  /// neither is a field of any driver. They are removed from the map before it
+  /// reaches [TomDataSource.initialize] rather than being excused by an
+  /// allowlist inside the unknown-key check, so that the boundary says the
+  /// same thing twice over: a driver is handed only what is addressed to it,
+  /// and every key it is handed has to bind.
+  static const Set<String> registryKeys = {'type', 'delegateTo'};
+
   /// Registers this entry and opens its data source.
   ///
   /// With a `delegateTo` setting, aliases [name] onto the referenced
   /// already-registered data source. Otherwise resolves the `type`, creates the
-  /// driver via [TomDataSource.createDatasourceOf], and initialises it with
-  /// [settings]. Throws a [TomDatasourceInitException] on any failure (missing
-  /// delegate, absent/empty `type`, or no driver for the type).
+  /// driver via [TomDataSource.createDatasourceOf], strips [registryKeys] from
+  /// [settings], checks that every remaining key binds a field the driver
+  /// declares, and initialises it with what is left. Throws a
+  /// [TomDatasourceInitException] on any failure (missing delegate,
+  /// absent/empty `type`, no driver for the type, or an unknown settings key).
   Future<void> initialize() async {
     String? delegate = settings["delegateTo"];
     if (delegate != null) {
@@ -296,7 +308,12 @@ class TomDataSourceInfo {
     if (type.isNotEmpty) {
       var datasourceCandidate = TomDataSource.createDatasourceOf(type);
       if (datasourceCandidate != null) {
-        await datasourceCandidate.initialize(settings);
+        final driverSettings = <String, dynamic>{
+          for (final e in settings.entries)
+            if (!registryKeys.contains(e.key)) e.key: e.value,
+        };
+        _rejectUnknownSettings(datasourceCandidate, driverSettings);
+        await datasourceCandidate.initialize(driverSettings);
         _datasource = datasourceCandidate;
       } else {
         throw TomDatasourceInitException(
@@ -312,6 +329,45 @@ class TomDataSourceInfo {
         autoLog: true,
       );
     }
+  }
+
+  /// Throws when [driverSettings] carries a key [driver] declares no field for.
+  ///
+  /// A datasource block is a file the operator wrote, for a driver whose field
+  /// set is fixed and shipped — so a key that binds nothing is a mistake, and
+  /// the only question is whether it is reported or absorbed. Absorbed, it
+  /// surfaces later as a connection error that names neither the schema nor the
+  /// credentials the driver was never given, and never mentions the key that
+  /// caused it, because nothing ever looked at it.
+  ///
+  /// That tolerance is right on the wire, where the sender may be newer than
+  /// the receiver, and it is what the shared `tomReflectionInfo` provides. It
+  /// is not right here, and the check is made *at the registry* rather than by
+  /// giving the driver a strict converter, for two reasons. The name of the
+  /// data source lives here and not in the driver, and it is the half of the
+  /// message that tells an operator which block to open. And a check here
+  /// covers every driver, including one the framework never saw — a driver
+  /// that binds tolerantly cannot opt out of it.
+  ///
+  /// Every offending key is named, not just the first: a block with two typos
+  /// in it should not take two restarts to fix.
+  void _rejectUnknownSettings(
+    TomDataSource driver,
+    Map<String, dynamic> driverSettings,
+  ) {
+    final unknown = tomReflectionInfo.unknownFields(driver, driverSettings);
+    if (unknown.isEmpty) return;
+    throw TomDatasourceInitException(
+      "tom_datasource_info.initialize.unknown_setting",
+      "Datasource '$name' (type '$type') is configured with "
+          "${unknown.length == 1 ? 'a setting' : 'settings'} "
+          "${unknown.map((k) => "'$k'").join(', ')} that "
+          "${unknown.length == 1 ? 'names' : 'name'} no field of "
+          "${driver.runtimeType}. Check the spelling in the datasource "
+          "configuration for '$name'.",
+      parameters: {"datasource": name, "keys": unknown},
+      autoLog: true,
+    );
   }
 
   @override

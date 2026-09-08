@@ -1097,6 +1097,52 @@ class TomReflectionInfo {
     return o;
   }
 
+  /// The keys of [values] that name no writable declaration on [o], in the
+  /// order they appear.
+  ///
+  /// The question [strictUnknownFields] answers as it goes, asked in advance
+  /// and answered for the whole map rather than for the first offender. A
+  /// caller binding a document it owns — a configuration block, a settings
+  /// map — uses this to report *every* misspelled key at once, in its own
+  /// vocabulary and naming the document the keys came from, which is context
+  /// this converter does not have and cannot invent.
+  ///
+  /// ```dart
+  /// final unknown = tomReflectionInfo.unknownFields(driver, settings);
+  /// if (unknown.isNotEmpty) throw MyConfigException(name, unknown);
+  /// ```
+  ///
+  /// It applies the same rule as the field walk, so the two cannot drift: a
+  /// key is unknown when the target declares neither a getter nor a setter for
+  /// it. A member that exists but cannot be written — static, final, private —
+  /// is **not** listed, because it is not unknown; [setValues] raises on it in
+  /// both modes, which is where that fault belongs.
+  ///
+  /// Returns empty for a [TomClass], for a class declaring a `fromJson`
+  /// constructor, and for one declaring a `jsonDecode` hook. Each of those
+  /// takes the map over entirely, so what counts as a known key is theirs to
+  /// define and this converter has no view of it — reporting their keys as
+  /// unknown would be an answer to a question that was never asked here.
+  List<String> unknownFields<T extends Object>(
+    T o,
+    Map<String, dynamic> values,
+  ) {
+    if (o is TomClass) return const [];
+
+    final im = _reflect(o, 'unknownFields');
+    final cm = _annotatedType(im, o, 'unknownFields');
+
+    if (_declaresConstructor(cm, "fromJson")) return const [];
+    if (cm.instanceMembers.containsKey("jsonDecode")) return const [];
+
+    return [
+      for (final key in values.keys)
+        if (cm.instanceMembers[key] == null &&
+            cm.instanceMembers['$key='] == null)
+          key,
+    ];
+  }
+
   /// Invokes the optional `jsonDecode` hook, if [cm] declares one.
   ///
   /// Returns true when the hook ran, having taken over deserialization

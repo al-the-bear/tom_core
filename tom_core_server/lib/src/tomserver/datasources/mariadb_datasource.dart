@@ -1259,16 +1259,13 @@ class MariaDbDatasource implements TomDataSource {
 
   /// Binds [settings] onto this driver's fields and opens the connection.
   ///
-  /// **Deliberately tolerant of keys it does not declare.** The shared
-  /// [tomReflectionInfo] is used rather than a
-  /// `TomReflectionInfo(strictUnknownFields: true)`, and that is a property of
-  /// the map rather than a lax choice: [settings] is the whole datasource block
-  /// from the configuration, and `TomDataSourceInfo.initialize` reads `type`
-  /// and `delegateTo` out of the same map before handing it here. Neither is a
-  /// field of this class, so strictness would refuse every correctly configured
-  /// datasource. A driver-specific key this class does not know is
-  /// indistinguishable from those, which is the cost: a typo'd setting is
-  /// dropped and the default stands.
+  /// [settings] is the datasource block minus the keys the registry reads
+  /// itself (`TomDataSourceInfo.registryKeys`), and every key in it has already
+  /// been checked against this class's fields — a block with a misspelling in
+  /// it never reaches this method. So the shared, tolerant [tomReflectionInfo]
+  /// is used here and nothing is lost by it: there is no unknown key left to
+  /// tolerate. A driver written outside the framework inherits the same
+  /// guarantee, because the check is the registry's rather than each driver's.
   @override
   Future<void> initialize(Map<String, dynamic> settings) async {
     tomReflectionInfo.setValues<MariaDbDatasource>(

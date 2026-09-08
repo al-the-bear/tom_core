@@ -2131,3 +2131,36 @@ class FixtureDisplayPreference {
   /// A boolean member.
   bool compact = false;
 }
+
+/// A reflected **data-source driver** that declares a field MariaDB does not.
+///
+/// `TomDataSourceInfo.initialize` rejects a settings key that binds no field on
+/// the driver the block's `type:` selected. Whether that set is genuinely read
+/// off *the driver* — rather than off `MariaDbDatasource`, the only driver the
+/// framework ships — is not observable with one driver in the world, and it is
+/// the whole of the claim: a deployment's own driver has its own settings, and
+/// the check has to grow with it rather than confine every driver to MariaDB's
+/// vocabulary.
+///
+/// So this one adds [applicationName], and the suite asserts the asymmetry in
+/// both directions: this driver accepts the key, and the MariaDB driver refuses
+/// the same key in the same position.
+///
+/// It extends [MariaDbDatasource] to inherit the execution surface, and
+/// overrides [initialize] to bind without connecting — a driver that opened a
+/// socket would make every one of these assertions need a database to state a
+/// fact about spelling.
+@tomReflector
+@TomDatasourceDriver('fixture_settings')
+class FixtureSettingsDatasource extends MariaDbDatasource {
+  /// The extra setting, and the only reason this class exists.
+  String applicationName = '';
+
+  @override
+  Future<void> initialize(Map<String, dynamic> settings) async {
+    tomReflectionInfo.setValues<FixtureSettingsDatasource>(
+      this,
+      MariaDbDatasource.normalizePort(settings),
+    );
+  }
+}
