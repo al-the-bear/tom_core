@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
-/// Builds a client JWT token whose `validUntil` claim is [validFor] from now.
+/// Builds a client JWT token whose `exp` claim is [validFor] from now.
 /// Pass a negative duration to obtain an already-expired token.
 TomClientJwtToken _token(
   String userId, {
@@ -15,7 +15,7 @@ TomClientJwtToken _token(
 
 /// Builds a client token carrying [payload] verbatim.
 ///
-/// [TomServerJwtToken] always writes a well-formed `validUntil`, so it cannot
+/// [TomServerJwtToken] always writes a well-formed `exp`, so it cannot
 /// produce the tokens the guard exists for. A client can: `TomClientJwtToken`
 /// decodes without verifying, which is what makes the payload untrusted input
 /// in the first place, so a hand-assembled token is the honest fixture here —
@@ -190,12 +190,17 @@ void main() {
 
     test('a cached principal outlives its token by nothing', () async {
       // Where the entry's expiry comes from, asserted by watching it arrive:
-      // the token says it is good for 300ms, so the principal is a hit now and
-      // an expiry once that instant has passed -- with no interval of its own
-      // in between. The entry used to accept a one-day default for callers who
-      // named no instant, which would have kept this principal for a day past
-      // the token that authorized it.
-      final token = _token('dana', validFor: const Duration(milliseconds: 300));
+      // the token says it is good for two seconds, so the principal is a hit
+      // now and an expiry once that instant has passed -- with no interval of
+      // its own in between. A default lifetime for callers who named no
+      // instant would keep this principal past the token that authorized it,
+      // which is why there is none.
+      //
+      // Seconds, not milliseconds. `exp` is epoch *seconds*, so a cache entry's
+      // lifetime has one-second resolution and a sub-second token cannot be
+      // expressed: `floor(now + 0.3s)` is usually the current second, and the
+      // entry would read as expired the moment it was written.
+      final token = _token('dana', validFor: const Duration(seconds: 2));
       await TomAuthorizationCache.storePrincipal(token, _principal('dana'));
 
       expect(
@@ -206,7 +211,7 @@ void main() {
       // The sweep would also remove it; stop it so that what expires the entry
       // is unambiguously the token's own instant.
       TomAuthorizationCache.stopEviction();
-      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
 
       await expectLater(
         () => TomAuthorizationCache.getPrincipal(token),
@@ -417,12 +422,12 @@ void main() {
     );
   });
 
-  // The token is client-supplied, so `validUntil` is untrusted input and every
-  // shape of it has to land somewhere deliberate. The entry's lifetime *is* the
+  // The token is client-supplied, so `exp` is untrusted input and every shape
+  // of it has to land somewhere deliberate. The entry's lifetime *is* the
   // token's, so there is no safe default to fall back on: a lifetime invented
   // here would keep a principal cached after the token authorizing it expired.
-  group('TomAuthorizationCache.storePrincipal (malformed validUntil)', () {
-    test('rejects a token that carries no validUntil claim', () async {
+  group('TomAuthorizationCache.storePrincipal (malformed exp)', () {
+    test('rejects a token that carries no exp claim', () async {
       final token = _tokenWithPayload({'userId': 'ivan'});
 
       await expectLater(
@@ -431,16 +436,21 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'authorization.cache.missing_valid_until',
+            'authorization.cache.missing_expiry',
           ),
         ),
       );
     });
 
-    test('rejects a validUntil that is not a string', () async {
+    test('rejects an exp that is not an integer', () async {
       // A JSON payload can carry any type, so the claim being present says
-      // nothing about it being readable.
-      final token = _tokenWithPayload({'userId': 'ivy', 'validUntil': 1787});
+      // nothing about it being readable. A string is the shape to pin: `exp`
+      // is seconds, and the ISO spelling belongs to `validUntil`, which this
+      // module deliberately does not read.
+      final token = _tokenWithPayload({
+        'userId': 'ivy',
+        'exp': '2026-08-22T03:45:45',
+      });
 
       await expectLater(
         () => TomAuthorizationCache.storePrincipal(token, _principal('ivy')),
@@ -448,17 +458,17 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'authorization.cache.missing_valid_until',
+            'authorization.cache.missing_expiry',
           ),
         ),
       );
     });
 
-    test('rejects a validUntil that is not a date', () async {
-      final token = _tokenWithPayload({
-        'userId': 'igor',
-        'validUntil': 'tomorrow-ish',
-      });
+    test('rejects an exp no clock can represent', () async {
+      // An integer is always a number and not always an instant: past roughly
+      // ±275 000 years there is no DateTime to build, and a client can put any
+      // integer in a payload nobody verified.
+      final token = _tokenWithPayload({'userId': 'igor', 'exp': 9223372036854});
 
       await expectLater(
         () => TomAuthorizationCache.storePrincipal(token, _principal('igor')),
@@ -466,18 +476,42 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'authorization.cache.invalid_valid_until',
+            'authorization.cache.invalid_expiry',
+          ),
+        ),
+      );
+    });
+
+    test('a validUntil claim alone does not satisfy the guard', () async {
+      // The claim this module used to read, on its own. Naming it is what
+      // makes the switch to `exp` visible rather than incidental: a token
+      // carrying only the Tom convenience is not cacheable, because nothing
+      // the rest of the system enforces agrees with it.
+      final token = _tokenWithPayload({
+        'userId': 'iris',
+        'validUntil': DateTime.now()
+            .add(const Duration(hours: 2))
+            .toIso8601String(),
+      });
+
+      await expectLater(
+        () => TomAuthorizationCache.storePrincipal(token, _principal('iris')),
+        throwsA(
+          isA<TomAuthorizationCacheException>().having(
+            (e) => e.key,
+            'key',
+            'authorization.cache.missing_expiry',
           ),
         ),
       );
     });
 
     test('names the claim and the token in the failure', () async {
-      // The complaint this guard answers was diagnosability: the old TypeError
+      // The complaint this guard answers was diagnosability: a bare TypeError
       // named neither, so the message is part of the contract, not decoration.
       final token = _tokenWithPayload({
         'userId': 'irene',
-        'validUntil': 'tomorrow-ish',
+        'exp': 'tomorrow-ish',
       });
 
       Object? caught;
@@ -488,7 +522,7 @@ void main() {
       }
 
       final message = (caught as TomAuthorizationCacheException).parameters;
-      expect(message?['claim'], 'validUntil');
+      expect(message?['claim'], 'exp');
       expect(message?['value'], 'tomorrow-ish');
       expect(message?['token'], startsWith(token.tokenString.substring(0, 20)));
     });
@@ -507,19 +541,48 @@ void main() {
       expect(await TomAuthorizationCache.getPrincipal(token), isNull);
     });
 
-    test('accepts a well-formed validUntil supplied by a client', () async {
+    test('accepts a well-formed exp supplied by a client', () async {
       // The companion case: the guard must not reject the tokens this server
-      // actually issues, and the parsed instant must be the one in the claim.
-      final expiry = DateTime.now().add(const Duration(hours: 3));
+      // actually issues, and the instant it reads must be the one in the claim.
+      final expiry = DateTime.now().toUtc().add(const Duration(hours: 3));
       final token = _tokenWithPayload({
-        'userId': 'iris',
-        'validUntil': expiry.toIso8601String(),
+        'userId': 'isla',
+        'exp': expiry.millisecondsSinceEpoch ~/ 1000,
       });
 
-      await TomAuthorizationCache.storePrincipal(token, _principal('iris'));
+      await TomAuthorizationCache.storePrincipal(token, _principal('isla'));
 
       final cached = await TomAuthorizationCache.getPrincipal(token);
-      expect(cached!.username, 'iris');
+      expect(cached!.username, 'isla');
+    });
+
+    test('an exp is read as UTC whatever the reading zone is', () async {
+      // The reason for preferring `exp` that a same-zone test cannot show. An
+      // ISO string without an offset means whatever the reader's zone says, so
+      // a token minted in one zone and cached by a server in another was off by
+      // the difference. An epoch second has no zone to get wrong: the instant
+      // built here is the instant the claim names, and the check below is that
+      // the entry lives exactly as long as the claim says rather than as long
+      // as this machine's offset would make it.
+      final expiry = DateTime.now().toUtc().add(const Duration(hours: 3));
+      final token = _tokenWithPayload({
+        'userId': 'ivor',
+        'exp': expiry.millisecondsSinceEpoch ~/ 1000,
+        // A local ISO string naming a *different* instant, as a same-payload
+        // decoy: reading it instead would put the entry three hours out
+        // wherever this runs with a non-zero offset, and would expire it
+        // outright anywhere east of UTC.
+        'validUntil': DateTime.now()
+            .subtract(const Duration(hours: 1))
+            .toIso8601String(),
+      });
+
+      await TomAuthorizationCache.storePrincipal(token, _principal('ivor'));
+
+      expect(
+        (await TomAuthorizationCache.getPrincipal(token))!.username,
+        'ivor',
+      );
     });
   });
 
@@ -704,7 +767,7 @@ void main() {
           .executeCommand(StoreThroughWorkerCommand(token, _principal('ivan')))
           .timeout(const Duration(seconds: 10));
 
-      expect(answer, 'rejected:authorization.cache.missing_valid_until');
+      expect(answer, 'rejected:authorization.cache.missing_expiry');
       expect(await TomAuthorizationCache.getPrincipal(token), isNull);
     });
 
@@ -835,7 +898,7 @@ void main() {
           isA<TomAuthorizationCacheException>().having(
             (e) => e.key,
             'key',
-            'authorization.cache.missing_valid_until',
+            'authorization.cache.missing_expiry',
           ),
         ),
       );

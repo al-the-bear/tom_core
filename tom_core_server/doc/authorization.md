@@ -26,7 +26,7 @@ row scope.
 | ---- | ---- | ------- |
 | `TomAuthorizationCache` | class | The main-isolate cache: `getPrincipal` / `storePrincipal` keyed by JWT token string, plus the eviction sweep's lifecycle |
 | `TomAuthorizationCacheEntry` | class | One cached principal paired with its expiry (`deletionTime`) |
-| `TomAuthorizationCacheException` | class | Thrown when a cached entry has expired, or when a token's `validUntil` claim is unreadable so nothing was cached |
+| `TomAuthorizationCacheException` | class | Thrown when a cached entry has expired, when a token's `exp` claim is unreadable so nothing was cached, or when a worker forwards to a creator with no cache executor registered |
 | `TomAuthorizationCacheStoreMessage` | class | Cross-isolate command: store a principal in the main isolate |
 | `TomAuthorizationCacheRetrieveMessage` | class | Cross-isolate command: read a principal from the main isolate |
 | `TomAuthorizationCacheExecutor` | class | Services the two messages in the main isolate |
@@ -82,7 +82,7 @@ logs it, and resolves the request's principal to `null` — the same answer a
 request bearing no credentials gets.
 
 It does **not** fall back to `callPrincipal`, even though one is sitting right
-there. An entry's expiry *is* the token's `validUntil`, so an expired entry
+there. An entry's expiry *is* the token's `exp`, so an expired entry
 means this token has expired; `TomBearerAuthentication.convertTokenPayloadToPrincipal`
 performs no expiry check and would rebuild the dead session as authenticated.
 Falling back would make the cache's presence decide whether an expired token is
@@ -136,7 +136,7 @@ cache reachable from every request regardless of which isolate handles it.
 ## Lifetime and Expiry
 
 Each `TomAuthorizationCacheEntry` carries a `deletionTime`. When stored via
-`storePrincipal`, this is set from the token's `validUntil` payload claim, so a
+`storePrincipal`, this is set from the token's standard `exp` payload claim, so a
 cached principal expires together with the token that authorized it.
 
 The entry has no default expiry, and cannot be given one later: both
@@ -144,13 +144,41 @@ constructor arguments are required and both fields are `final`. An entry's
 lifetime is the token's, so any instant the class invented on a caller's behalf
 would be an instant no token granted — and it would apply precisely to the
 caller who had no token expiry to hand. This is the same rule that makes
-`storePrincipal` refuse a token whose `validUntil` it cannot read, seen from
-the other side.
+`storePrincipal` refuse a token whose `exp` it cannot read, seen from
+the other side. That refusal is `authorization.cache.missing_expiry` when the
+claim is absent or is not an integer, and `authorization.cache.invalid_expiry`
+when it is an integer no clock can represent; both name the claim, the value
+found and an excerpt of the token, and neither leaves anything in the map.
+
+**Why `exp` and not `validUntil`.** A `TomServerJwtToken` writes both, and two
+claims naming one instant is one too many for a cache to choose between. `exp`
+is the registered claim a JWT verifier already enforces, so reading anything
+else would let the cache's notion of expiry drift from the one the rest of the
+system applies. And it is unambiguous: an ISO string without an offset means
+whatever the *reader's* zone says it means, so a token minted in one zone and
+cached by a server in another was out by the difference between them.
+`validUntil` remains in the payload as the readable form of the same instant —
+`TomServerJwtToken` derives both from one clock read, truncated to the whole
+seconds `exp` is encoded in, so the pair cannot drift.
+
+The consequence to know is that an entry's lifetime has **one-second
+resolution**: `exp` carries seconds, so a token good for 300 ms cannot be
+expressed and reads as already expired.
+
+**A worker whose creator has no executor** is refused rather than served.
+`getPrincipal` and `storePrincipal` forward to the main isolate, and a creator
+that answers `TomExecutor.notHandled` has no `TomAuthorizationCacheExecutor`
+registered — a start-up mistake, not a cache outcome. Both raise
+`authorization.cache.executor_not_registered` (`clientThrow: false`, since it
+names this deployment's configuration and not the caller's request). Read as a
+miss it would be invisible: every lookup would re-resolve its principal for
+ever, and every store would report a success it never performed.
 
 Expiry is enforced two ways:
 
 - **Lazily on read** — `getPrincipal` throws
-  `TomAuthorizationCacheException` if a matching entry is found but already
+  `TomAuthorizationCacheException` (`authorization.cache.expired_principal`) if
+  a matching entry is found but already
   past its `deletionTime`. The distinct exception type lets the caller catch it
   specifically and treat it as a prompt to re-authorize (a true cache *miss*,
   by contrast, simply returns `null`). The rejecting read **removes the entry**
@@ -362,7 +390,7 @@ against MariaDB.
   `authorizedPrincipal` with its `deletionTime`.
 - **`TomAuthorizationCacheException`** — signals an entry that was found
   expired (and dropped by the read that found it), or a token whose
-  `validUntil` claim could not be read.
+  `exp` claim could not be read.
 - **`TomAuthorizationCacheStoreMessage` / `TomAuthorizationCacheRetrieveMessage`**
   — the commands worker isolates send to the main isolate.
 - **`TomAuthorizationCacheExecutor`** — the `TomExecutor` registered in the

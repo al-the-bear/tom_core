@@ -318,16 +318,42 @@ class TomAuthorizationCache implements TomDisposable {
     );
   }
 
-  /// Reads the entry's expiry from the token's `validUntil` payload claim.
+  /// Reads the entry's expiry from the token's standard `exp` claim.
   ///
-  /// Throws [TomAuthorizationCacheException] when the claim is absent or not a
-  /// string (`missing_valid_until`), or when it is a string that is not an ISO
-  /// 8601 instant (`invalid_valid_until`). Both name the claim, the value seen
-  /// and the token.
+  /// ## Why `exp` and not `validUntil`
+  ///
+  /// A `TomServerJwtToken` carries both. `exp` is the registered JWT claim, in
+  /// epoch seconds; `validUntil` is a Tom convenience written beside it, as an
+  /// ISO 8601 string. Two claims naming one instant is one claim too many for
+  /// a cache to choose between, and the standard one wins on two counts.
+  ///
+  /// It is the claim a JWT verifier enforces. `verifyBearerToken` hands this
+  /// module tokens whose signature it has checked, and any deployment fronted
+  /// by a gateway is checking `exp` there too — so reading anything else means
+  /// the cache's notion of expiry can diverge from the one the rest of the
+  /// system enforces, silently, in whichever direction the two happen to
+  /// disagree.
+  ///
+  /// And it is unambiguous. `exp` is an absolute instant by definition. An ISO
+  /// string is only absolute if it carries an offset, and one written without
+  /// means whatever the *reader's* zone says it means: [DateTime.tryParse]
+  /// answers with a local `DateTime`, so a token minted in one zone and cached
+  /// by a server in another was off by the difference between them.
+  ///
+  /// `validUntil` remains in the payload as the human-readable form of the same
+  /// instant — see `TomServerJwtToken`, which derives both from one clock read
+  /// so they cannot drift — and nothing on the server reads it.
+  ///
+  /// ## What it refuses
+  ///
+  /// Throws [TomAuthorizationCacheException] when the claim is absent or is not
+  /// an integer (`missing_expiry`), and when it is an integer no instant can be
+  /// built from (`invalid_expiry`). Both name the claim, the value seen and the
+  /// token.
   ///
   /// The token comes from a client, so this is a boundary: the claim is
-  /// untrusted input rather than internal data, and the three shapes above are
-  /// what a caller can actually present.
+  /// untrusted input rather than internal data, and both shapes are what a
+  /// caller can actually present.
   ///
   /// Refusing the write is the only safe answer, which is why there is no
   /// fallback lifetime. The entry's lifetime *is* the token's — that is the
@@ -337,42 +363,36 @@ class TomAuthorizationCache implements TomDisposable {
   /// of being re-authorized.
   static DateTime _expiryFromToken(TomClientJwtToken authenticationToken) {
     final Object? payload = authenticationToken.token.payload;
-    final Object? claim = payload is Map ? payload['validUntil'] : null;
+    final Object? claim = payload is Map ? payload['exp'] : null;
     final String tokenExcerpt = limited(authenticationToken.tokenString, 100);
 
-    if (claim is! String) {
+    if (claim is! int) {
       throw TomAuthorizationCacheException(
-        "authorization.cache.missing_valid_until",
-        "Authentication token carries no readable validUntil claim, so the "
-            "principal cannot be cached",
-        parameters: {
-          'claim': 'validUntil',
-          'value': claim,
-          'token': tokenExcerpt,
-        },
+        "authorization.cache.missing_expiry",
+        "Authentication token carries no readable exp claim, so the principal "
+            "cannot be cached",
+        parameters: {'claim': 'exp', 'value': claim, 'token': tokenExcerpt},
       );
     }
 
-    // tryParse rather than parse: the FormatException would name the value but
-    // not the claim it came from, and this is the one frame that still knows.
-    final DateTime? parsed = DateTime.tryParse(claim);
-    if (parsed == null) {
+    // Seconds to milliseconds, in UTC because that is what an epoch offset is.
+    // The multiplication is where an absurd claim stops being representable, so
+    // it is the range check: `fromMillisecondsSinceEpoch` throws past roughly
+    // ±275 000 years, and a client can put any integer here.
+    try {
+      return DateTime.fromMillisecondsSinceEpoch(claim * 1000, isUtc: true);
+    } on Object {
       throw TomAuthorizationCacheException(
-        "authorization.cache.invalid_valid_until",
-        "Authentication token carries a validUntil claim that is not an ISO "
-            "8601 instant, so the principal cannot be cached",
-        parameters: {
-          'claim': 'validUntil',
-          'value': claim,
-          'token': tokenExcerpt,
-        },
+        "authorization.cache.invalid_expiry",
+        "Authentication token carries an exp claim that is not an instant any "
+            "clock can represent, so the principal cannot be cached",
+        parameters: {'claim': 'exp', 'value': claim, 'token': tokenExcerpt},
       );
     }
-    return parsed;
   }
 
   /// Stores [authorizedPrincipal] under [authenticationToken], using the
-  /// token's `validUntil` payload claim as the entry's expiry.
+  /// token's standard `exp` payload claim as the entry's expiry.
   ///
   /// Throws [TomAuthorizationCacheException] when that claim is missing or
   /// unreadable; nothing is cached in that case, and the caller keeps resolving

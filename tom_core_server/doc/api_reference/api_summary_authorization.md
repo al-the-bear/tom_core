@@ -112,10 +112,11 @@ responses.
 | Key | Meaning |
 | --- | ------- |
 | `authorization.cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
-| `authorization.cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
-| `authorization.cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
+| `authorization.cache.missing_expiry` | The token carries no readable `exp` claim -- absent, or not an integer -- so nothing was cached. |
+| `authorization.cache.invalid_expiry` | The token's `exp` claim is an integer no clock can represent, so nothing was cached. |
+| `authorization.cache.executor_not_registered` | A worker forwarded to a creator where nothing claimed the command, which means `TomAuthorizationCacheExecutor` was never registered. |
 
-The two `validUntil` keys report a malformed token rather than anything about
+The two `exp` keys report a malformed token rather than anything about
 the principal. Each carries three exception parameters -- the name of the claim,
 the value found in it, and an excerpt of the token -- so the diagnosis does not
 depend on the stack.
@@ -157,7 +158,7 @@ TomAuthorizationCacheEntry(TomPrincipal authorizedPrincipal, DateTime deletionTi
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `deletionTime` | `final DateTime` | Instant after which the entry is expired and may be evicted; normally the `validUntil` of the token the principal was authorized under. |
+| `deletionTime` | `final DateTime` | Instant after which the entry is expired and may be evicted; normally the `exp` of the token the principal was authorized under. |
 | `authorizedPrincipal` | `final TomPrincipal` | The principal resolved for the associated authentication token. |
 
 ### TomAuthorizationCache
@@ -191,7 +192,7 @@ can populate, so there is exactly one.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` when the entry has expired, and removes that entry as part of the same read -- so the expiry is reported once and a second read of the same token is an ordinary miss. Called from a worker isolate the lookup is forwarded to the main isolate, and all three answers survive the trip -- a hit returns the principal, a miss returns `null`, an expiry rethrows -- so callers need no isolate-dependent handling. |
-| `storePrincipal` | `static Future<void> storePrincipal(TomClientJwtToken authenticationToken, TomPrincipal authorizedPrincipal)` | Stores the principal under the token, using the token's `validUntil` claim as expiry, and starts the eviction sweep if it is not already running. Throws `TomAuthorizationCacheException` (`missing_valid_until` / `invalid_valid_until`) when that claim is absent, not a string, or not an ISO 8601 instant -- there is no fallback lifetime, because an invented one would keep a principal cached past the expiry of the token authorizing it. Nothing is cached in that case and the caller keeps resolving the principal per request. The future carries completion and failure only: a store either happens or throws, so there is nothing to branch on. |
+| `storePrincipal` | `static Future<void> storePrincipal(TomClientJwtToken authenticationToken, TomPrincipal authorizedPrincipal)` | Stores the principal under the token, using the token's standard `exp` claim as expiry, and starts the eviction sweep if it is not already running. Throws `TomAuthorizationCacheException` (`missing_expiry` / `invalid_expiry`) when that claim is absent, is not an integer, or is an integer no clock can represent -- there is no fallback lifetime, because an invented one would keep a principal cached past the expiry of the token authorizing it. Nothing is cached in that case and the caller keeps resolving the principal per request. The future carries completion and failure only: a store either happens or throws, so there is nothing to branch on. |
 | `startEviction` | `static void startEviction({Duration interval = evictionInterval})` | Starts the sweep at `interval`, replacing any sweep already running -- so the postcondition "a sweep is running at this interval" holds whenever it returns. Rarely needed: a store starts one at the hourly default. For a server that wants a different interval, and for tests that cannot wait an hour. Not needed to control the sweep's zone: it is created in `Zone.root` whichever path starts it. |
 | `stopEviction` | `static void stopEviction()` | Cancels the sweep; a no-op when none is running. Cached entries are left in place -- stopping the sweep suspends the bounding of the map, it does not invalidate its contents. Reads still reject expired entries and still drop the ones they reject, so a stopped cache sheds the tokens anyone asks about, just not the ones nobody does. |
 
@@ -251,7 +252,7 @@ worker isolates, delegating to `TomAuthorizationCache`. Returns
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `execute` | `Object execute(Object command)` | *(override)* Dispatches store/retrieve messages to `TomAuthorizationCache`, returning the delegate's future rather than awaiting it -- so a creator-side failure (an expired entry on a retrieve, an unreadable `validUntil` on a store) reaches the asking worker as a throw. Returns `TomExecutor.noResult` otherwise. |
+| `execute` | `Object execute(Object command)` | *(override)* Dispatches store/retrieve messages to `TomAuthorizationCache`, returning the delegate's future rather than awaiting it -- so a creator-side failure (an expired entry on a retrieve, an unreadable `exp` on a store) reaches the asking worker as a throw. Returns `TomExecutor.noResult` otherwise. |
 
 ### TomAuthStateCodec
 
