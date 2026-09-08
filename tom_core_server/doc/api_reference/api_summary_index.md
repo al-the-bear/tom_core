@@ -23,7 +23,7 @@ surface documented here.
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
-| Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, data scoping, column authorization. |
+| Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
@@ -158,7 +158,9 @@ surface documented here.
 | `TomExternalIdentityTokenRepository` | class | SQL repository for `TomExternalIdentityToken`. |
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints. |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake (extends `TomServerException`). |
+| `Tom2FAPrerequisite` | abstract class | What an adaptor implements when it works only if something else was installed — a mail service, an SMS gateway, a push credential. |
 | `installJwtSigning` | top-level function | Installs the configured JWT key material at boot; refuses the bundled sample keys outside development. |
+| `verifyBearerToken` | top-level function | Checks an inbound token's signature against the deployment's own key and returns it decoded, or `null` when this deployment did not issue it. |
 | `TomSigningKeyException` | class | The refusal: names the unset key fields and their environment variables (extends `TomServerException`). |
 
 ### Authorization (`lib/src/tomserver/authorization/`)
@@ -457,8 +459,20 @@ surface documented here.
 | `TomCountResult` | class | Count query result. |
 | `TomQueryBuilder` | mixin | Fluent query building. |
 | `TomQuerySentenceCompiler` | class | Compiles query sentences to SQL. |
-| `TomOperator` expression tree | class | `TomUnaryOperator`, `TomBinaryOperator`, `Parameter`, `DbCol`/`IntCol`/`StringCol`/`DoubleCol`/`BoolCol`/`DateTimeCol`/`DateCol`/`TimeCol`, the `*Literal` set, and `And`/`Or`/`Not`/`Eq`/`Neq`/`Lt`/`Gt`/`Lte`/`Gte`/`Like`/`NotLike`/`In`/`Group`/`Between`/`Regexp`/`IsNull`/`IsNotNull`. |
+| `TomOperator` / `TomUnaryOperator` / `TomBinaryOperator` / `Parameter` | abstract class | The expression tree: a node, its one- and two-operand bases, and a bound parameter. The concrete nodes are `DbCol`/`IntCol`/`StringCol`/`DoubleCol`/`BoolCol`/`DateTimeCol`/`DateCol`/`TimeCol`, the `*Literal` set, and `And`/`Or`/`Not`/`Eq`/`Neq`/`Lt`/`Gt`/`Lte`/`Gte`/`Like`/`NotLike`/`In`/`Group`/`Between`/`Regexp`/`IsNull`/`IsNotNull`. |
+| `TomAggregate<R, V>` | abstract class | An aggregate function applied to a group: `COUNT(*)`, `SUM(t.amount)`, `MAX(t.created)`. |
+| `CountAll` / `Count<T>` / `Sum<T>` / `Avg<T>` / `Min<R, V>` / `Max<R, V>` | class | The concrete aggregate nodes. |
+| `TomGroupedSelect` | class | A `SELECT … GROUP BY …` over the entity types, with `WHERE` and `HAVING`. |
+| `TomGroupedRow` | class | One row of a grouped result: group keys plus aggregates, each under its projected alias. |
+| `TomPageRequest` | class | One window of a result set: `offset` rows in, at most `limit` wide, ordered by `sort`. |
+| `TomSortField` | class | One term of a sort: a field and the direction it orders in. |
+| `TomSortDirection` | enum | `ascending` / `descending`, rendering `ASC` / `DESC`. |
 | `TomQuerySyntaxException` | class | Query syntax error. |
+| `TomRepositoryException` | class | A repository precondition fails — unregistered datasource, a key lookup matching more than one row, a row that could not be read back. |
+| `TomResourceScopeSource` | abstract class | The grant-driven source behind the built-in `resource` scope kind. |
+| `TomFileReference` | class | Annotation marking a `String` column as holding a blob storage key rather than the bytes. |
+| `TomFileReferenceKeys` | class | Resolves the store and mints the keys for a `@TomFileReference` column (static). |
+| `TomFileRepository<T, K>` | abstract class | The subset of a repository the file surfaces need: load a row, move one column's bytes. |
 | `TomDataScope` | class | Row-level data scoping (static). |
 | `TomDataScopeRegistry` / `TomDataScopePredicate` / `TomDataScopeBypass` | class | Data-scope machinery. |
 | `TomDataScopeResolver` / `TomAsyncDataScopeResolver` | typedef | Scope resolver signatures. |
@@ -542,6 +556,7 @@ surface documented here.
 | `auditTrailNoUpdateTriggerName` | Audit |
 | `auditTrailTable` | Audit |
 | `auditTrailTableDdl` | Audit |
+| `Avg` | Object Persistence |
 | `Between` | Object Persistence |
 | `blobChunkTable` | File Storage |
 | `blobChunkTableDdl` | File Storage |
@@ -551,6 +566,8 @@ surface documented here.
 | `BoolLiteral` | Object Persistence |
 | `classifySqlFailure` | Datasources |
 | `contextSetupMiddleware` | Server |
+| `Count` | Object Persistence |
+| `CountAll` | Object Persistence |
 | `DateCol` | Object Persistence |
 | `DateLiteral` | Object Persistence |
 | `DateTimeCol` | Object Persistence |
@@ -574,8 +591,8 @@ surface documented here.
 | `Gte` | Object Persistence |
 | `In` | Object Persistence |
 | `InMemoryPrincipalDelegationStore` | Authorization |
-| `installJwtSigning` | Authentication |
 | `InMemoryPrincipalResourceGrantStore` | Authorization |
+| `installJwtSigning` | Authentication |
 | `IntCol` | Object Persistence |
 | `IntegerLiteral` | Object Persistence |
 | `isLostConnectionFailure` | Datasources |
@@ -587,7 +604,6 @@ surface documented here.
 | `leaseTable` | Scheduling |
 | `leaseTableDdl` | Scheduling |
 | `Like` | Object Persistence |
-| `TomLoginException` | Authentication |
 | `Lt` | Object Persistence |
 | `Lte` | Object Persistence |
 | `MariaDbDatasource` | Datasources |
@@ -599,6 +615,8 @@ surface documented here.
 | `MariadbRepository` | Object Persistence |
 | `MariadbSqlDialect` | Datasources |
 | `MariaDbXADatasource` | Datasources |
+| `Max` | Object Persistence |
+| `Min` | Object Persistence |
 | `Neq` | Object Persistence |
 | `noopHandler` | Server |
 | `Not` | Object Persistence |
@@ -627,15 +645,27 @@ surface documented here.
 | `sqlTimeOfDay` | Datasources |
 | `StringCol` | Object Persistence |
 | `StringLiteral` | Object Persistence |
+| `Sum` | Object Persistence |
 | `TimeCol` | Object Persistence |
 | `TimeLiteral` | Object Persistence |
 | `Tom2FAAdaptor` | Authentication |
 | `Tom2FAChallengeSpec` | Authentication |
 | `Tom2FAContext` | Authentication |
+| `Tom2FADecision` | Authentication |
+| `Tom2FAEnrolment` | Authentication |
+| `Tom2FAEnrolmentOffer` | Authentication |
+| `Tom2FAEnrolmentState` | Authentication |
+| `Tom2FAEnrolmentStore` | Authentication |
+| `Tom2FAEnrolmentSupport` | Authentication |
 | `Tom2FAException` | Authentication |
+| `Tom2FAGraceAccounting` | Authentication |
+| `Tom2FAPolicy` | Authentication |
+| `Tom2FAPrerequisite` | Authentication |
 | `Tom2FARegistry` | Authentication |
+| `Tom2FARequirement` | Authentication |
 | `Tom2FAService` | Authentication |
 | `Tom2FASubmission` | Authentication |
+| `TomAggregate` | Object Persistence |
 | `TomAggregateFunction` | Datasources |
 | `TomAnnotationAnalyzer` | Object Persistence |
 | `TomAnnotationAnalyzerException` | Object Persistence |
@@ -785,8 +815,8 @@ surface documented here.
 | `TomEntityId` | Object Persistence |
 | `TomEntitySchemaReader` | Database Migration |
 | `TomEnvFile` | Command Line |
-| `TomErrorHandler` | Endpoints |
 | `tomErrorEnvelope` | Little Things |
+| `TomErrorHandler` | Endpoints |
 | `TomExportException` | Export |
 | `TomExportFormats` | Export |
 | `TomExportService` | Export |
@@ -804,6 +834,9 @@ surface documented here.
 | `TomFileAuditSink` | Audit |
 | `TomFileEndpoint` | Endpoints |
 | `TomFileMessageTransport` | Messaging |
+| `TomFileReference` | Object Persistence |
+| `TomFileReferenceKeys` | Object Persistence |
+| `TomFileRepository` | Object Persistence |
 | `TomFileServer` | Endpoints |
 | `TomFileService` | Endpoints |
 | `TomFileSlot` | Endpoints |
@@ -819,6 +852,8 @@ surface documented here.
 | `TomFrameworkTable` | Datasources |
 | `TomGeneratedQuery` | Datasources |
 | `TomGradedAccessControlInformation` | Authorization |
+| `TomGroupedRow` | Object Persistence |
+| `TomGroupedSelect` | Object Persistence |
 | `TomHealthAnalyzer` | Health Check |
 | `TomHealthServer` | Health Check |
 | `TomHealthService` | Health Check |
@@ -833,6 +868,8 @@ surface documented here.
 | `TomLiteralSelect` | Datasources |
 | `TomLocalizedTextResources` | Resources |
 | `tomLoggingMiddleware` | Server |
+| `TomLoginException` | Authentication |
+| `TomMemory2FAEnrolmentStore` | Authentication |
 | `TomMemoryAuditAnchorStore` | Audit |
 | `TomMemoryAuditSink` | Audit |
 | `TomMemoryBlobStore` | File Storage |
@@ -876,14 +913,16 @@ surface documented here.
 | `TomOAuthTokenTransport` | Authentication |
 | `TomOperator` | Datasources |
 | `tomOutboxJobName` | Messaging |
+| `TomPageRequest` | Object Persistence |
 | `TomPdfRenderer` | Export |
 | `TomPermanentDeliveryException` | Messaging |
-| `TomTransientDeliveryException` | Messaging |
 | `TomPersistenceEventHandler` | Object Persistence |
+| `TomPersistent2FAEnrolmentStore` | Authentication |
 | `TomPersistentExternalIdentityStore` | Authentication |
 | `TomPersistentOAuthTokenStore` | Authentication |
 | `TomPreparedStatement` | Datasources |
 | `TomPrincipalDelegation` | Authorization |
+| `TomPrincipalFlag2FAPolicy` | Authentication |
 | `TomPrincipalResourceGrant` | Authorization |
 | `TomPrincipalResourceRoleResolver` | Authorization |
 | `TomQuery` | Datasources |
@@ -895,11 +934,14 @@ surface documented here.
 | `TomRedirect` | Endpoints |
 | `TomReference` | Object Persistence |
 | `TomRepository` | Object Persistence |
+| `TomRepositoryException` | Object Persistence |
 | `TomRequestId` | Little Things |
 | `TomRequestLogInfo` | Server |
 | `TomResourceDataScope` | Authorization |
 | `TomResourceGrant` | Authorization |
 | `TomResourceLocaleException` | Resources |
+| `TomResourceScopeSource` | Object Persistence |
+| `TomRole2FAPolicy` | Authentication |
 | `TomRowColumnAuthorization` | Object Persistence |
 | `TomRowColumnAuthResolver` | Object Persistence |
 | `TomRsaAuditAnchorSigner` | Audit |
@@ -947,6 +989,8 @@ surface documented here.
 | `TomSmtpSettings` | Messaging |
 | `TomSmtpTransport` | Messaging |
 | `TomSocketSmtpConnection` | Messaging |
+| `TomSortDirection` | Object Persistence |
+| `TomSortField` | Object Persistence |
 | `TomSqlAuditSink` | Audit |
 | `TomSqlDatasourceRepository` | Object Persistence |
 | `TomSqlFailureMode` | Datasources |
@@ -976,6 +1020,7 @@ surface documented here.
 | `TomTransactionException` | Transactions |
 | `TomTransactionManager` | Transactions |
 | `TomTransactionParticipant` | Transactions |
+| `TomTransientDeliveryException` | Messaging |
 | `TomTypedPersistenceBase` | Datasources |
 | `TomTypePersistenceInfo` | Datasources |
 | `TomUnaryOperator` | Object Persistence |
@@ -985,6 +1030,8 @@ surface documented here.
 | `TomUserPreferences` | Preferences |
 | `TomUserPreferencesErrorHandler` | Preferences |
 | `TomUserPreferencesServer` | Preferences |
+| `TomUserTwoFactorEnrolment` | Authentication |
+| `TomUserTwoFactorEnrolmentRepository` | Authentication |
 | `TomWebSocketConnection` | Endpoints |
 | `TomWebSocketEndpoint` | Endpoints |
 | `TomWebSocketException` | Endpoints |
@@ -993,3 +1040,4 @@ surface documented here.
 | `unknownFrameworkColumns` | Datasources |
 | `verifyAgainstAnchor` | Audit |
 | `verifyAuditChain` | Audit |
+| `verifyBearerToken` | Authentication |

@@ -2,6 +2,41 @@
 
 ### Fixed
 
+- **The API index omitted 19 exported names, and three whole feature areas of
+  `object_persistence` with them (tcincb122).** `api_summary_index.md` is the
+  only place in the package where a reader can conclude that a name does not
+  exist without opening a file, which is exactly why that conclusion must not be
+  drawable wrongly. It named neither `Tom2FAPrerequisite` nor `verifyBearerToken`
+  from `authentication`, and from `object_persistence` none of `TomAggregate`,
+  the six aggregate nodes (`Avg`, `Count`, `CountAll`, `Max`, `Min`, `Sum`),
+  `TomGroupedSelect`, `TomGroupedRow`, `TomPageRequest`, `TomSortField`,
+  `TomSortDirection`, `TomResourceScopeSource`, `TomFileReference`,
+  `TomFileReferenceKeys`, `TomFileRepository` or `TomRepositoryException`.
+
+  Counted as names that is nineteen; read as capability it is three feature
+  areas — grouped queries and their aggregates, paging and sorting, and
+  file-reference columns — of which the module's index table said nothing
+  whatever. The table looked complete because it listed twenty-odd other types.
+  The Quick Navigation blurb for the module said nothing about them either, and
+  now does.
+
+  A further thirteen `object_persistence` types were named only inside a
+  *description* cell — `TomOperator`'s expression-tree row listed
+  `TomUnaryOperator`, `TomBinaryOperator` and `Parameter` in its prose — which
+  reads to a person and is invisible to the column an index is looked up by.
+  They are in the Type column now.
+
+  34 rows were added to the Alphabetical Type Index, which is 493 rows and
+  case-insensitively sorted. **Nothing checked that it was sorted**: every check
+  around it asks whether a row exists, and a row in the wrong place exists, so
+  the reader is the one who finds out — by looking where the name should be and
+  concluding it is not there. A test now reads the table in document order and
+  names the first five rows out of place.
+
+  `_indexPendingReconciliation` is gone with both its `skip:`s and its staleness
+  meta-test.
+
+
 - **The Source-list check reported four documented files as undocumented, and a
   quarantine held that reading open (tcincb121).** `api_reference_coverage_test`
   compares each `api_summary_<module>.md` opening `Source:` list against the

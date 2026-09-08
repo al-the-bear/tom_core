@@ -202,13 +202,22 @@
 /// them, so the reader who looked them up was told, by the document built to
 /// answer that question, that there was nothing to find.
 ///
-/// The index check carries a quarantine, because it was measured across all
-/// twenty modules before being enforced and found debt older than the module
-/// that exposed it. The quarantine is a visible skip naming its list, and a
-/// meta-test fails when an entry has nothing left to suppress, so the exemption
-/// expires by itself rather than by being remembered. The `Source:` check
-/// carried one too and no longer does; what its last entry turned out to need
-/// is described above.
+/// Both the `Source:` check and the index check carried a quarantine while that
+/// debt was worked off, and neither does now. The index's last two entries were
+/// `authentication`, one name short, and `object_persistence`, which was short
+/// of three whole feature areas — grouped queries and their aggregates, paging
+/// and sorting, and file-reference columns — none of which the module's table
+/// mentioned at all. That is the shape the set's own comment predicted: a table
+/// covering two of a unit's six sources looks complete, because it lists plenty
+/// of types, so the number of missing names says nothing about how much of the
+/// module is undescribed.
+///
+/// The index carries one further check the others do not need. Its alphabetical
+/// table is the half an index exists for — the reader who has the name and not
+/// the module — and 493 rows answer that only while they are in order. Every
+/// check around it asks whether a row *exists*, and a row in the wrong place
+/// exists; the reader is the one who finds out, by looking where the name
+/// should be and concluding it is not there.
 ///
 /// The group after those two is the same completeness question asked about the
 /// one kind of API the class-shaped checks structurally cannot reach. A summary
@@ -888,6 +897,30 @@ List<String> _missingFromIndexTable(String module) => [
     if (!(_indexTables.byModule[module] ?? const <String>{}).contains(type))
       type,
 ]..sort();
+
+/// The names the Alphabetical Type Index lists, in the order it lists them.
+///
+/// Document order, not a set: what this reads is the table's *sequence*, which
+/// is the one property of it a membership test cannot see. [_indexTables]
+/// collapses the same rows to a set, because every other check asks whether a
+/// name is there.
+List<String> _indexAlphaOrder() {
+  final lines = File(
+    'doc/api_reference/api_summary_index.md',
+  ).readAsLinesSync();
+  final start = lines.indexWhere(
+    (l) => l.trim() == '## Alphabetical Type Index',
+  );
+  if (start < 0) return const [];
+  final names = <String>[];
+  final row = RegExp(r'^\|\s*`([A-Za-z_][A-Za-z0-9_]*)(?:<[^`]*>)?`\s*\|');
+  for (final line in lines.skip(start + 1)) {
+    if (line.startsWith('#')) break;
+    final match = row.firstMatch(line);
+    if (match != null) names.add(match.group(1)!);
+  }
+  return names;
+}
 
 /// The types [module]'s summary sections that the index's alphabetical table
 /// omits, sorted.
@@ -3035,25 +3068,6 @@ const Set<String> _verificationPendingAttribution = {
 /// which is exactly the half a reader will not think to go looking for.
 const Set<String> _memberListsPendingReconciliation = {'authentication'};
 
-/// The modules the index does not yet describe fully.
-///
-/// Gates **two** checks, deliberately one set for both: that every exported name
-/// appears in the index at all, and that the type appears under its own module's
-/// table and in the alphabetical table. Giving the second check a set of its own
-/// would deadlock the pair — a module fixed for one check has to leave that set,
-/// which makes the other check start running against a module that still fails
-/// it. Sharing the set means a module stays quarantined while *either* is
-/// outstanding, and leaves in one step when both are met.
-///
-/// A module's index debt is usually not a handful of scattered names. A table
-/// that covers two of a unit's six sources looks complete — it lists plenty of
-/// types — while omitting whole feature areas, so the count of missing entries
-/// says nothing about how much of the module is undescribed.
-const Set<String> _indexPendingReconciliation = {
-  'authentication',
-  'object_persistence',
-};
-
 /// The modules whose `lib/src/tomserver/<module>/readme.md` still leaves at
 /// least one exported file unmentioned.
 const Set<String> _moduleReadmesPendingReconciliation = {
@@ -3813,50 +3827,22 @@ class RealClass {}
     ).readAsStringSync();
 
     for (final module in _modules()) {
-      test(
-        module,
-        () {
-          final missing = _exportedApi(
-            module,
-          ).where((name) => !_indexNames(index, name)).toList();
-          expect(
-            missing,
-            isEmpty,
-            reason:
-                'api_summary_index.md names none of these, which the barrel '
-                'exports from $module: ${missing.join(', ')}. The index is '
-                'where a reader who does not yet know which module owns a name '
-                'goes to look it up, so a name absent from it is a name that '
-                'can only be found by someone who did not need the index.',
-          );
-        },
-        skip: _indexPendingReconciliation.contains(module)
-            ? 'Index not reconciled yet.'
-            : null,
-      );
+      test(module, () {
+        final missing = _exportedApi(
+          module,
+        ).where((name) => !_indexNames(index, name)).toList();
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              'api_summary_index.md names none of these, which the barrel '
+              'exports from $module: ${missing.join(', ')}. The index is '
+              'where a reader who does not yet know which module owns a name '
+              'goes to look it up, so a name absent from it is a name that '
+              'can only be found by someone who did not need the index.',
+        );
+      });
     }
-
-    test('every quarantined module still has something missing', () {
-      // A disjunction over both checks the set gates, which is what lets one
-      // set serve both without deadlocking them — see the set's own comment.
-      final clean = _indexPendingReconciliation
-          .where(
-            (m) =>
-                _exportedApi(m).every((n) => _indexNames(index, n)) &&
-                _missingFromIndexTable(m).isEmpty &&
-                _missingFromIndexAlpha(m).isEmpty,
-          )
-          .toList();
-      expect(
-        clean,
-        isEmpty,
-        reason:
-            'These modules are quarantined but the index already names '
-            'everything they export, under the right module and in the '
-            'alphabetical table: ${clean.join(', ')}. Remove the entry, '
-            'or the check stays off for a module that has nothing left to fix.',
-      );
-    });
 
     test('the sweep is reading the index it claims to check', () {
       // Every finding above is an emptiness assertion, so an index that failed
@@ -3875,39 +3861,58 @@ class RealClass {}
 
   group('the index files every documented type under its own module', () {
     for (final module in _modules()) {
-      test(
-        module,
-        () {
-          final fromTable = _missingFromIndexTable(module);
-          expect(
-            fromTable,
-            isEmpty,
-            reason:
-                'api_summary_$module.md gives each of these a section of its '
-                'own, but the index\'s $module table has no row for them: '
-                '${fromTable.join(', ')}. The check above only asks whether the '
-                'index names them somewhere, so a type filed under the wrong '
-                'module — or reachable only through the alphabetical table — '
-                'passes it while still telling a reader the wrong thing.',
-          );
+      test(module, () {
+        final fromTable = _missingFromIndexTable(module);
+        expect(
+          fromTable,
+          isEmpty,
+          reason:
+              'api_summary_$module.md gives each of these a section of its '
+              'own, but the index\'s $module table has no row for them: '
+              '${fromTable.join(', ')}. The check above only asks whether the '
+              'index names them somewhere, so a type filed under the wrong '
+              'module — or reachable only through the alphabetical table — '
+              'passes it while still telling a reader the wrong thing.',
+        );
 
-          final fromAlpha = _missingFromIndexAlpha(module);
-          expect(
-            fromAlpha,
-            isEmpty,
-            reason:
-                'The Alphabetical Type Index has no row for these, which '
-                'api_summary_$module.md documents: ${fromAlpha.join(', ')}. '
-                'That table is the one a reader uses who knows the name and '
-                'not the module, which is the only case in which an index is '
-                'the document they need.',
-          );
-        },
-        skip: _indexPendingReconciliation.contains(module)
-            ? 'Index not reconciled yet.'
-            : null,
-      );
+        final fromAlpha = _missingFromIndexAlpha(module);
+        expect(
+          fromAlpha,
+          isEmpty,
+          reason:
+              'The Alphabetical Type Index has no row for these, which '
+              'api_summary_$module.md documents: ${fromAlpha.join(', ')}. '
+              'That table is the one a reader uses who knows the name and '
+              'not the module, which is the only case in which an index is '
+              'the document they need.',
+        );
+      });
     }
+
+    // The alphabetical table is the one an index is *for* — the reader who has
+    // the name and not the module — and a table of 493 rows answers that only
+    // while it is in order. Nothing else notices when it stops being: every
+    // check around this one asks whether a row exists, and a row in the wrong
+    // place exists. The reader is the one who finds out, by looking where the
+    // name should be, not finding it, and concluding it is not there.
+    test('the alphabetical table is in alphabetical order', () {
+      final rows = _indexAlphaOrder();
+      final sorted = [...rows]
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      final firstOutOfPlace = [
+        for (var i = 0; i < rows.length; i++)
+          if (rows[i] != sorted[i]) '${rows[i]} (expected ${sorted[i]})',
+      ];
+      expect(
+        firstOutOfPlace.take(5),
+        isEmpty,
+        reason:
+            'The Alphabetical Type Index is out of order at: '
+            '${firstOutOfPlace.take(5).join(', ')}. Case is ignored, which is '
+            'what puts `auditDiff` between `And` and `Between` — the order a '
+            'reader scans in, not the order a byte comparison produces.',
+      );
+    });
 
     test('the tables are sliced per module, not read flat', () {
       // Every finding above is an emptiness assertion over a parse, so a
