@@ -533,6 +533,88 @@ String _withoutMultilineStrings(String source) => source
     .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
     .replaceAll(RegExp(r'"""[\s\S]*?"""'), '""');
 
+/// [source] with its **block comments** emptied, newlines kept.
+///
+/// A `/*` opens a block comment only where one can be opened: not inside a
+/// `//` or `///` line, and not inside a string literal. That is the whole of
+/// what this adds over deleting `/\*[\s\S]*?\*/`, and it is not a nicety.
+/// A dartdoc line reading ``/// … `--`, `#` or `/*`.`` carries a marker that
+/// opens nothing in Dart and everything to a regular expression, which then
+/// runs forward to the next `*/` anywhere in the file — through however many
+/// declarations lie between — and deletes them all.
+///
+/// Both directions of the resulting damage are silent in different ways. A
+/// member swallowed this way is absent from the census, so the ownership check
+/// reports its perfectly correct summary row as documenting something the
+/// package does not declare: a *loud* failure with a false cause, which is the
+/// worst kind to debug. And the reverse checks read the same census, so the
+/// same member also stops being *required* to be documented — a documentation
+/// hole that reports nothing at all. The module where `/*` is most likely to
+/// appear in prose is the one whose subject is SQL comments, which is exactly
+/// where the omission would matter.
+///
+/// A string literal is honoured on the **opening** side only, and `sql_lexer`
+/// is why markers reach this package's code as data at all: it holds the
+/// literal `'*/'`. An opener inside a string must not start a comment. A
+/// *closer* inside one does end it, quotes and all, because a block comment
+/// contains no string literals — that is the language's rule, verified against
+/// the analyzer, and matching it is the point.
+///
+/// Newlines inside a removed comment are preserved, so line numbers survive the
+/// blanking. The regular expression collapsed them, which cost nothing today
+/// and would silently misreport a position the day anything records one.
+String _withoutBlockComments(String source) {
+  final out = StringBuffer();
+  var index = 0;
+  while (index < source.length) {
+    final char = source[index];
+    final next = index + 1 < source.length ? source[index + 1] : '';
+
+    if (char == '/' && next == '/') {
+      // Copied through rather than removed: the declaration walk recognises a
+      // `///` line and skips it itself, and a `//` line is harmless.
+      final end = source.indexOf('\n', index);
+      out.write(source.substring(index, end < 0 ? source.length : end));
+      index = end < 0 ? source.length : end;
+      continue;
+    }
+
+    if (char == '/' && next == '*') {
+      final close = source.indexOf('*/', index + 2);
+      final end = close < 0 ? source.length : close + 2;
+      // An unterminated block comment runs to the end of the file, which is
+      // what Dart does with one. It cannot be reached by a phantom opener any
+      // more, so a file that gets here does not compile either.
+      out.write('\n' * '\n'.allMatches(source.substring(index, end)).length);
+      index = end;
+      continue;
+    }
+
+    if (char == "'" || char == '"') {
+      // `r'…'` is raw, so a backslash in it escapes nothing. Checked behind
+      // rather than ahead because the quote is what was matched.
+      final raw = index > 0 && source[index - 1] == 'r';
+      var cursor = index + 1;
+      while (cursor < source.length && source[cursor] != char) {
+        // A string does not span a line unless it is raw or escaped, and an
+        // unterminated one would otherwise swallow the rest of the file.
+        if (source[cursor] == '\n') break;
+        // A single backslash, written escaped: `r'\'` is not a legal raw
+        // string, and `r'\\'` is two characters and would match nothing.
+        cursor += (!raw && source[cursor] == '\\') ? 2 : 1;
+      }
+      final end = cursor < source.length ? cursor + 1 : source.length;
+      out.write(source.substring(index, end));
+      index = end;
+      continue;
+    }
+
+    out.write(char);
+    index++;
+  }
+  return out.toString();
+}
+
 /// The public top-level names [source] declares — its types and its functions.
 ///
 /// Separated from [_exportedApi] so the scan can be driven over a source string
@@ -1221,11 +1303,14 @@ List<String> _unnamedApi(String module) {
 /// were this one's, which is invisible in a file that declares a single class
 /// and wrong in the eighty that do not.
 String _classBody(String path, String className) {
-  final lines = File(path)
-      .readAsStringSync()
-      .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
-      .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '')
-      .split('\n');
+  // The same two blankers the declaration census uses, in the same order and
+  // through the same helpers. This held its own copy of both expressions,
+  // which meant it also held its own copy of the phantom-comment bug — and a
+  // body that starts or ends at the wrong line carries the wrong members,
+  // which is the failure this function's own bounding exists to prevent.
+  final lines = _withoutBlockComments(
+    _withoutMultilineStrings(File(path).readAsStringSync()),
+  ).split('\n');
 
   final declared = lines.indexWhere(
     (line) => _ownerDeclaration.firstMatch(line)?.group(1) == className,
@@ -1999,11 +2084,14 @@ Map<String, _Declaration> _parseDeclarations() {
       .where((entry) => entry.path.endsWith('.dart'));
 
   for (final file in sources) {
-    final source = file
-        .readAsStringSync()
-        .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
-        .replaceAll(RegExp(r'"""[\s\S]*?"""'), '""')
-        .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
+    // The two blankers in the order they have to run: triple-quoted strings
+    // first, so a `/*` inside embedded DDL is gone before block comments are
+    // read, and the shared helper rather than a second copy of its two
+    // expressions, so the census and the API scans cannot disagree about what
+    // a string is.
+    final source = _withoutBlockComments(
+      _withoutMultilineStrings(file.readAsStringSync()),
+    );
 
     _Declaration? current;
     // Recomputed whenever the enclosing class changes rather than per line: the
@@ -4828,6 +4916,115 @@ One: `TomKind`, documented beside the type that carries it.
             'instead of supplying it out of band — but a value marked secret '
             'that is not one is checked too, because a marker that is '
             'sometimes wrong stops being read.',
+      );
+    });
+  });
+
+  // The census is built by blanking what is not code and then scanning what is
+  // left, so its idea of "not code" is load-bearing for every check that reads
+  // it. Deleting `/*` … `*/` with a regular expression got that wrong in the
+  // one place the package is most likely to write the marker: a dartdoc line
+  // about SQL comments. These tests drive the blanker over fixtures rather
+  // than over the package, because the package is where the bug was *absent*
+  // — it had one balanced pair per line, so it happened not to be bitten, and
+  // a check that only reads the package would have gone on passing.
+  group('the census blanker opens a comment only where Dart would', () {
+    test('a `/*` inside a dartdoc line opens nothing', () {
+      const source = '''
+/// Whether a comment opens at [index] — `--`, `#` or `/*`.
+static bool commentOpensAt(String sql, int index) => false;
+
+/* A real block comment. */
+class After {}
+''';
+      final blanked = _withoutBlockComments(source);
+      expect(
+        blanked,
+        contains('commentOpensAt'),
+        reason: 'the declaration under the dartdoc must survive',
+      );
+      expect(
+        blanked,
+        contains('class After'),
+        reason:
+            'and so must everything up to the next `*/`, which the regular '
+            'expression consumed as the close of a comment that never opened',
+      );
+      expect(
+        blanked,
+        isNot(contains('A real block comment')),
+        reason: 'the comment that did open is still removed',
+      );
+    });
+
+    test('a `//` line comment does not open one either', () {
+      const source = '// see /* below\nclass After {}\n/* gone */\n';
+      expect(_withoutBlockComments(source), contains('class After'));
+      expect(_withoutBlockComments(source), isNot(contains('gone')));
+    });
+
+    test('a `/*` inside a string literal opens nothing', () {
+      // `sql_lexer` holds the literal `'*/'`, so markers do reach this
+      // package's code as data. An opener in a string must not start a
+      // comment.
+      const source = "final a = '/*';\nclass After {}\n";
+      expect(_withoutBlockComments(source), contains('class After'));
+    });
+
+    test('but a `*/` inside a comment closes it, quotes and all', () {
+      // Not an oversight — it is what Dart does, verified against the
+      // analyzer: there are no string literals *inside* a block comment, so
+      // the first `*/` ends it wherever it sits. That asymmetry is why the
+      // string handling above belongs on the opener alone; teaching the
+      // closer about quotes would make this blanker disagree with the
+      // language rather than with a regular expression.
+      const source = "/* open\nfinal a = '*/';\nclass Inside {}\n";
+      expect(_withoutBlockComments(source), contains('class Inside'));
+    });
+
+    test('an escaped quote does not end the string it is in', () {
+      const source = "final a = 'it\\'s /*';\nclass After {}\n";
+      expect(_withoutBlockComments(source), contains('class After'));
+    });
+
+    test('a raw string takes its backslash literally', () {
+      // `r'\'` cannot be written, but `r'a\'` can, and treating its backslash
+      // as an escape would swallow the closing quote and everything after it.
+      const source =
+          r"final a = r'a\';"
+          "\nclass After {}\n";
+      expect(_withoutBlockComments(source), contains('class After'));
+    });
+
+    test('a removed comment keeps its newlines', () {
+      // So a position recorded against the blanked text still names the line
+      // it came from. Nothing records one today; the regular expression made
+      // that unrecoverable, and this makes it merely unused.
+      const source = '/* one\ntwo\nthree */\nclass After {}\n';
+      expect(_withoutBlockComments(source).split('\n').length, 5);
+    });
+
+    test('an unterminated block comment still runs to the end', () {
+      // What Dart does with one. It is unreachable from a phantom opener now,
+      // so a file that gets here does not compile either — but the blanker
+      // must not quietly keep the text and let the census read a comment.
+      const source = '/* open\nclass After {}\n';
+      expect(_withoutBlockComments(source), isNot(contains('class After')));
+    });
+
+    test('the census holds the member the regular expression ate', () {
+      // The end of it, against the package: `commentOpensAt` is declared after
+      // a dartdoc line carrying a bare `/*`, and its dartdoc no longer has to
+      // be phrased around the blanker to stay visible.
+      expect(_declarations['TomSqlLexer']?.members, contains('commentOpensAt'));
+      expect(
+        File(
+          'lib/src/tomserver/db_migration/sql_lexer.dart',
+        ).readAsStringSync(),
+        contains('`--`, `#` or `/*`'),
+        reason:
+            'the dartdoc is written the natural way; if it was rephrased '
+            'again, the blanker is what to check first',
       );
     });
   });

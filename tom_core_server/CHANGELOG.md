@@ -2,6 +2,40 @@
 
 ### Fixed
 
+- **The API-coverage census lost every declaration after a `/*` written inside a
+  dartdoc (tcincb130).** It built its idea of "not code" by deleting
+  `/\*[\s\S]*?\*/`, so a line reading ``/// … `--`, `#` or `/*`.`` opened a
+  block comment that ran forward to the next `*/` anywhere in the file and took
+  every declaration between with it.
+
+  Both directions of the damage were silent in different ways. A swallowed
+  member is absent from the census, so the ownership check reports its perfectly
+  correct summary row as documenting something the package does not declare — a
+  loud failure with a false cause. And the reverse checks read the same census,
+  so the member also stops being *required* to be documented: a documentation
+  hole that reports nothing. The module where `/*` is likeliest to appear in
+  prose is the one whose subject is SQL comments.
+
+  `_withoutBlockComments` replaces the expression with a scanner that opens a
+  comment only where Dart would: not inside a `//` or `///` line, and not inside
+  a string literal — `sql_lexer` holds the literal `'*/'`, so markers reach this
+  package's code as data. A `*/` *inside* a comment still closes it, quotes and
+  all, because a block comment contains no string literals; that asymmetry is
+  the language's, verified against the analyzer, and matching it is the point.
+  Newlines inside a removed comment are preserved, so a position read off the
+  blanked text still names its line.
+
+  The same expression had a **second copy** in `_classBody`, which feeds the
+  Properties census — so the fix would have landed once and stayed broken twice.
+  Both now call the one helper. `TomSqlLexer.commentOpensAt`'s dartdoc, which
+  had been rephrased to keep the marker balanced, is written the natural way
+  again, and a test pins that it can be.
+
+  `tom_core_flutter`'s `sourceWithoutComments` had the same defect, with two
+  live `` `/preferences/*` `` dartdocs in reach of it. Its line filter now runs
+  before its block-comment removal, which needs no scanner and closes both.
+
+
 - **Nothing could read a `DATE` or a `TIME` column, and what was written into
   one was the wrong day (tcincb127).** Three defects, each hidden by the next.
 

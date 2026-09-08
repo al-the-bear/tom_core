@@ -107,8 +107,7 @@ class TomSqlLexer {
     return newline < 0 ? sql.length - 1 : newline - 1;
   }
 
-  /// Whether a comment opens at [index] — `--`, `#`, or the opening of a
-  /// `/* … */` block.
+  /// Whether a comment opens at [index] — `--`, `#` or `/*`.
   ///
   /// Only meaningful outside a quoted run; `'-- not a comment'` is a string.
   static bool commentOpensAt(String sql, int index) {

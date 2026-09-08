@@ -39,16 +39,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// [source] with `///` and `//` comment lines and `/* */` blocks removed.
 ///
-/// Line-oriented, which is all these declaration-shape checks need: it does not
-/// understand a `//` inside a string literal. Nothing it is used on contains
-/// one, and a guard that quietly mis-parses is worse than one with a stated
-/// limit.
+/// Line-oriented, which is all these declaration-shape checks need, and the
+/// order is the load-bearing part: comment *lines* go first, so a `/*` written
+/// inside one — `` `/preferences/*` `` appears twice in this package's dartdoc
+/// — cannot open a block comment that runs forward to the next `*/` anywhere in
+/// the file, taking every declaration between with it.
+///
+/// Two limits remain stated rather than fixed, because a guard that quietly
+/// mis-parses is worse than one whose edges are written down: a `/*` in a
+/// *trailing* comment on a code line still opens one, and a `//` or `/*` inside
+/// a string literal is not recognised. Nothing this is used on contains either.
 String sourceWithoutComments(String source) {
-  final withoutBlocks = source.replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
-  return withoutBlocks
+  final withoutCommentLines = source
       .split('\n')
       .where((line) => !line.trimLeft().startsWith('//'))
       .join('\n');
+  return withoutCommentLines.replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
 }
 
 /// Whether [file] *declares* [className]'s constructor `const` — as code, not
