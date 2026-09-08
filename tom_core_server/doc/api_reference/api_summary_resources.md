@@ -114,6 +114,7 @@ request where a throw would be wrong.
 | `country` | `String?` | ISO 3166-1 alpha-2, uppercase; `null` when the locale names only a language. Enforced by the constructor. |
 | `tag` | `String` | The bundle key: `de` or `de_AT`. |
 | `fallbackTags` | `List<String>` | This locale's tags from most to least specific. |
+| `hashCode` | `int` | *(getter)* *(override)* Derived from `tag`, so equal locales hash alike — `de-AT`, `de_AT` and `DE_at` reach the same bucket as well as comparing equal. |
 
 #### Methods
 

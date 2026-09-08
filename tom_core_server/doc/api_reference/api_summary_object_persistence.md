@@ -924,6 +924,7 @@ TomUnaryOperator(T operant1)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `operant1` | `T` | The single operand. |
+| `children` | `List<TomOperator>` | *(getter)* *(override)* `operant1`'s operand children — the operands that are themselves operators, which `getParameters` and `getFields` recurse over. A plain value contributes none. |
 
 ##### Methods
 
@@ -953,6 +954,7 @@ TomBinaryOperator(T1 operant1, T2 operant2)
 | -------- | ---- | ----------- |
 | `operant1` | `T1` | The left operand. |
 | `operant2` | `T2` | The right operand. |
+| `children` | `List<TomOperator>` | *(getter)* *(override)* Both operands' operator children, left before right, which `getParameters` and `getFields` recurse over in that order. |
 
 ##### Methods
 

@@ -505,8 +505,8 @@ const Tom2FASubmission({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `submitted` | `String` | What the user submitted (the typed code, the signed assertion, …). |
-| `challenge` | `Tom2FAChallenge` | The challenge being answered, with this attempt already counted — so `challenge.attemptsRemaining` reads as it will *after* this submission. |
 | `verificationData` | `Map<String, Object?>` | The `Tom2FAChallengeSpec.verificationData` recovered from the interim token's encrypted section; empty when the adaptor stored none. |
+| `challenge` | `Tom2FAChallenge` | The challenge being answered, with this attempt already counted — so `challenge.attemptsRemaining` reads as it will *after* this submission. |
 
 ### Tom2FAService
 
@@ -860,6 +860,7 @@ Tom2FAEnrolmentState({
 | `hasOffer` | `bool` | Whether a mechanism has been chosen — the two states a client renders differently. |
 | `attemptsRemaining` | `int` | `offer.attemptsAllowed - attempt`, floored at zero. |
 | `isExhausted` | `bool` | Whether an offer exists and has no attempts left. |
+| `secretClaims` | `Map<String, Object?>?` | *(getter)* The claims this state contributes to the token's **encrypted** section, or `null` in the offered shape. The whole offer goes in, secret included, so that the confirmation is checked against material the client could not have edited on the way past. |
 
 #### Methods
 
@@ -1106,9 +1107,9 @@ answerable at registration rather than discovered at the challenge.
 | `enrolmentTemplateKey` | `String` | *(abstract)* Resource key prefix of the message carrying an enrolment code. |
 | `enrolmentAttemptsAllowed` | `int` | *(abstract)* How many confirmation attempts one enrolment offer tolerates. |
 | `enrolmentValidity` | `Duration` | *(abstract)* How long an enrolment offer stays confirmable. |
-| `descriptor` | `Tom2FAMethodDescriptor` | *(override)* `Tom2FAMethodDescriptor.scoped(type)` — resource keys only, no literal text. |
 | `deliveryServiceType` | `Type` | *(abstract)* The bean type `resolveDeliveryService` looks for. A `Type` rather than a string so the "install this" diagnostics survive a rename: every message that has to name what is missing interpolates it. |
 | `unmetPrerequisite` | `String?` | *(override)* `null`, unless this deployment installed no `deliveryServiceType` — in which case the adaptor could accept a challenge and send no code, so the scan leaves the mechanism out of the registry and logs this line. |
+| `descriptor` | `Tom2FAMethodDescriptor` | *(override)* `Tom2FAMethodDescriptor.scoped(type)` — resource keys only, no literal text. |
 
 #### Methods
 
@@ -1170,6 +1171,14 @@ TomEmailCode2FAService()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `type` | `String` | *(override)* `mechanismType` — `'email'`. |
+| `codeDigits` | `int` | *(override)* Reads `globalSettingCodeDigits` (`6`). |
+| `attemptsAllowed` | `int` | *(override)* Reads `globalSettingAttemptsAllowed` (`3`). |
+| `challengeValidity` | `Duration` | *(override)* Reads `globalSettingChallengeValidity` (10 minutes). |
+| `challengeTemplateKey` | `String` | *(override)* Reads `globalSettingChallengeTemplateKey` (`'email.two_factor_code'`). |
+| `enrolmentTemplateKey` | `String` | *(override)* Reads `globalSettingEnrolmentTemplateKey` (`'email.two_factor_enrolment'`). |
+| `enrolmentAttemptsAllowed` | `int` | *(override)* Reads `globalSettingEnrolmentAttemptsAllowed` (`3`). |
+| `enrolmentValidity` | `Duration` | *(override)* Reads `globalSettingEnrolmentValidity` (15 minutes). |
 | `deliveryServiceType` | `Type` | *(override)* `TomEmailService` — what the skip message tells an operator to install. |
 
 #### Methods
@@ -1221,6 +1230,14 @@ TomSmsCode2FAService()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `type` | `String` | *(override)* `mechanismType` — `'sms'`. |
+| `codeDigits` | `int` | *(override)* Reads `globalSettingCodeDigits` (`6`). |
+| `attemptsAllowed` | `int` | *(override)* Reads `globalSettingAttemptsAllowed` (`3`). |
+| `challengeValidity` | `Duration` | *(override)* Reads `globalSettingChallengeValidity` (5 minutes). |
+| `challengeTemplateKey` | `String` | *(override)* Reads `globalSettingChallengeTemplateKey` (`'sms.two_factor_code'`). |
+| `enrolmentTemplateKey` | `String` | *(override)* Reads `globalSettingEnrolmentTemplateKey` (`'sms.two_factor_enrolment'`). |
+| `enrolmentAttemptsAllowed` | `int` | *(override)* Reads `globalSettingEnrolmentAttemptsAllowed` (`3`). |
+| `enrolmentValidity` | `Duration` | *(override)* Reads `globalSettingEnrolmentValidity` (10 minutes). |
 | `deliveryServiceType` | `Type` | *(override)* `TomSmsService` — what the skip message tells an operator to install. |
 
 #### Methods

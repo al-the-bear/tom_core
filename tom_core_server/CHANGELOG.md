@@ -2,6 +2,45 @@
 
 ### Fixed
 
+- **All 219 `#### Properties` tables in `doc/api_reference/` are censused
+  against the classes they document; one was censused before (tcincb105).** A
+  table headed `Property` claims to be the class's property surface, and a
+  reader who finds eight of ten has no signal that two are missing. Only
+  `TomBaseServerConfiguration` was held to that claim, because it was the one
+  class cheap to check: all plain fields, one class in its file, so the census
+  could assume both.
+
+  Generalising meant removing both assumptions and settling what a property is.
+  A type now carries the file that declares it, so a section names its class
+  and the census finds the source; a class body stops at the `}` that closes it
+  rather than running to the end of the file, which is what a file declaring
+  eighty classes requires; and a property is a public *instance* field or
+  getter, which is what the tables list — a getter row is marked `*(getter)*`
+  and sits among the fields, while statics have a table of their own.
+
+  Eleven tables disagreed with their class. Six omitted properties: the getter
+  carrying a deployment's whole request-logging decision and the key pair every
+  unannotated endpoint is protected under (`TomEndpointHandler`), the encrypted
+  claims an enrolment offer contributes to its token (`Tom2FAEnrolmentState`),
+  the operand edge the whole operator tree is walked along
+  (`TomUnaryOperator`, `TomBinaryOperator`), and the eight settings the email
+  and SMS second-factor services each surface from their statics. Three were
+  complete but reordered, so the table could not be read beside the class. One
+  table had no heading at all — `TomAggregateFunction.sqlName`, a `Property`
+  column floating under the enum's values — and one more was a defect in the
+  reader rather than in a document: a row sharing its cell with a sibling
+  (`` `errorCodePath` / `errorMessagePath` ``) counted as one property, so the
+  siblings read as undocumented. All are repaired, and the group carries no
+  quarantine: an empty one reads as debt that is not there.
+
+  Two guards keep new tables in. The census length is held to the number of
+  `Properties` headings the summaries carry, so a class renamed in the source
+  and not in its section title takes its table out of the census loudly; and
+  every `| Property |` column must sit under a heading the census reads or one
+  of the three spellings named as deliberately unread (`Static Properties`,
+  `Properties (DbCol)`, `Properties and Methods`), checked in both directions
+  so a spelling that stops being used stops being exempt.
+
 - **`TomMemoryAuditSink` accepted records after `close()`; it refuses them now
   (tcincb89).** Its `close` was `void close() {}` with no flag behind it, so
   `write` kept chaining, storing and advancing `headHash` for as long as

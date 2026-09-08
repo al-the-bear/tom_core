@@ -32,17 +32,26 @@
 /// worse than none: a reader who finds fourteen of twenty types has no signal
 /// that six are missing, so they conclude the six do not exist.
 ///
-/// The last group goes one level finer again, for one class. A summary's
-/// `#### Properties` table makes the same completeness claim about a class's
-/// fields that the Overview table makes about a module's types, and
-/// [TomBaseServerConfiguration] had drifted furthest: it declared 48 fields and
-/// the table listed 25, so the whole server self-login block, the whole
-/// outbound-mail block and the whole outbound-SMS block — 23 deployment-facing
-/// settings, four of them secret-bearing — were absent from the page a deployer
-/// reads to find out what can be configured. That class is checked because it
-/// is the one whose readers are operators rather than callers: an undocumented
-/// method can be found in the source by the developer calling it, whereas an
-/// undocumented setting is invisible to the person who needed to set it.
+/// The last group goes one level finer again, for every documented class. A
+/// summary's `#### Properties` table makes the same completeness claim about a
+/// class's properties that the Overview table makes about a module's types, and
+/// it drifts the same way. [TomBaseServerConfiguration] is the case that shows
+/// what is at stake: 48 fields declared against 25 listed, so the whole server
+/// self-login block, the whole outbound-mail block and the whole outbound-SMS
+/// block — 23 deployment-facing settings, four of them secret-bearing — were
+/// absent from the page a deployer reads to find out what can be configured.
+/// An undocumented method can be found in the source by the developer calling
+/// it; an undocumented setting is invisible to the person who needed to set it.
+///
+/// Every table is censused, in both directions and in source order, which takes
+/// the reading the configuration class earned and applies it to the classes
+/// nobody thought to single out. "Property" is a field or a getter,
+/// because that is what the tables list — a getter row is marked `*(getter)*`
+/// and sits among the fields. Statics are excluded, having a table of their
+/// own. There is no quarantine: every table agrees today, and the only named
+/// list is of the three heading spellings the census deliberately does not
+/// read, itself checked in both directions so that a spelling which stops
+/// being used stops being exempt.
 ///
 /// The final group goes one level finer still, and changes the question from
 /// *completeness* to *attribution*. Every previous check asks whether a member
@@ -1000,10 +1009,21 @@ Set<String>? _enumSectionMentionsOf(String summary) {
 /// `unexpectedTable`, and so on. Reading first cells here would take every value
 /// for a type the module does not declare, and the staleness check would fail on
 /// the summaries that got the section right.
+///
+/// `###` only, which is the level every summary gives an enum. Deeper headings
+/// inside the subsection are the enum's own member sections — a `####
+/// Properties` for the getter an enum declares — and reading them would take
+/// `Properties` for an enum the module fails to export.
 List<String>? _enumSectionHeadingsOf(String summary) {
   final section = _enumSection(summary);
   if (section == null) return null;
-  return _headingNamesOf(section).toList()..sort();
+  return [
+    for (final heading in RegExp(
+      r'^###\s+(.*?)\s*$',
+      multiLine: true,
+    ).allMatches(section))
+      heading.group(1)!.replaceAll(RegExp(r'&lt;.*&gt;|<[^<>]*>'), '').trim(),
+  ]..sort();
 }
 
 /// The text under [summary]'s `## Enums` heading, or `null` when it has none.
@@ -1063,20 +1083,48 @@ List<String> _unnamedApi(String module) {
   return _exportedApi(module).where((name) => !named.contains(name)).toList();
 }
 
-/// The body of `class <className>`, from its opening brace to the end of the
-/// file, with the constructs that would otherwise be misread removed.
+/// The body of the type named [className] in [path], from its header to the
+/// `}` that closes it, with the constructs that would otherwise be misread
+/// removed.
 ///
 /// A multi-line default — the PEM certificate pair — is data whose lines would
 /// be taken for declarations, and a block comment can hold anything at all.
 /// Dartdoc is deliberately *kept*: [_secretBearingFields] reads it.
+///
+/// The closing brace is found by the package's own layout rather than by
+/// counting: a top-level declaration closes with a `}` in column zero, and
+/// nothing inside one is written there. Bounding matters — a body that ran to
+/// the end of the file would carry every *later* class's members as if they
+/// were this one's, which is invisible in a file that declares a single class
+/// and wrong in the eighty that do not.
 String _classBody(String path, String className) {
-  final source = File(path).readAsStringSync();
-  final start = source.indexOf('class $className {');
-  if (start < 0) return '';
-  return source
-      .substring(start)
+  final lines = File(path)
+      .readAsStringSync()
       .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
-      .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
+      .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '')
+      .split('\n');
+
+  final declared = lines.indexWhere(
+    (line) => _ownerDeclaration.firstMatch(line)?.group(1) == className,
+  );
+  if (declared < 0) return '';
+
+  // The header, not the body, when a long type-parameter list wraps it across
+  // lines. Those lines are indented exactly like members and read as them —
+  // `resultType extends Object` declares a field called `Object` — so the body
+  // starts at the brace that ends the header rather than at the header.
+  var start = declared;
+  while (start < lines.length && !lines[start].contains('{')) {
+    if (lines[start].contains(';')) return '';
+    start++;
+  }
+
+  final body = <String>[];
+  for (final line in lines.skip(start)) {
+    body.add(line);
+    if (body.length > 1 && line == '}') break;
+  }
+  return body.join('\n');
 }
 
 /// The field name [line] declares, or `null` when it declares no field.
@@ -1209,42 +1257,234 @@ bool _isDeploymentSetting(String field) =>
   return (names, secrets);
 }
 
-/// The property names the `#### Properties` table under `### <className>` in
-/// `doc/api_reference/api_summary_<module>.md` carries, in table order.
+/// A getter's name, read from a declaration head.
 ///
-/// Scoped to the class's own section, because one summary documents several
-/// classes and each has a Properties table of its own.
-List<String> _summaryProperties(String module, String className) {
-  final lines = File(
-    'doc/api_reference/api_summary_$module.md',
-  ).readAsLinesSync();
+/// `get` is matched as a whole word so that a field called `budget` or a method
+/// called `getRow` is not read as one.
+final RegExp _getterName = RegExp(r'(?:^|\s)get\s+([A-Za-z_][A-Za-z0-9_]*)');
 
-  final section = lines.indexWhere((line) => line.trim() == '### $className');
-  if (section < 0) return const [];
-  final heading = lines.indexWhere(
-    (line) => line.startsWith('| Property |'),
-    section,
-  );
+/// The public instance property [line] declares — a field or a getter — or
+/// `null` when it declares none.
+///
+/// Three kinds are excluded, each because the summaries put them somewhere
+/// else or nowhere:
+///
+/// * **Statics**, which the summaries carry under `#### Static Properties`.
+/// * **Setters**, which pair with a getter and are described in its row; a
+///   `#### Properties` table has no `*(setter)*` marker anywhere in the
+///   reference, so a table that named one would be inventing a convention.
+/// * **Enum values**, which the summaries carry under `#### Values`.
+///
+/// Methods and constructors fall out on their parameter list, exactly as in
+/// [_memberNameOf], with the same `Function` exception: `final DateTime
+/// Function() clock;` is a field whose *type* spells a parameter list.
+String? _propertyNameOf(String rawLine) {
+  if (!rawLine.startsWith('  ') || rawLine.startsWith('   ')) return null;
+  final line = _withoutLineComment(rawLine).trimRight();
+  if (_continuationLine.hasMatch(line)) return null;
+  if (_enumValue.hasMatch(line)) return null;
+
+  final full = line.substring(0, _declarationEnd(line));
+  final modifiers = _memberModifiers.matchAsPrefix(full)?.end ?? 0;
+  if (full.substring(0, modifiers).contains('static')) return null;
+  final head = full.substring(modifiers);
+
+  final getter = _getterName.firstMatch(head);
+  if (getter != null) {
+    final name = getter.group(1)!;
+    return name.startsWith('_') ? null : name;
+  }
+
+  for (final match in _parameterList.allMatches(head)) {
+    if (match.group(1) != 'Function') return null;
+  }
+
+  var remainder = head.trimRight();
+  if (remainder.endsWith(';')) {
+    remainder = remainder.substring(0, remainder.length - 1).trimRight();
+  }
+  // A declaration has a type before its name; a lone identifier is the tail of
+  // something this line does not begin.
+  if (!remainder.trim().contains(RegExp(r'\s'))) return null;
+  final name = _trailingIdentifier.firstMatch(remainder)?.group(1);
+  return name == null || name.startsWith('_') ? null : name;
+}
+
+/// The public instance properties [className] declares in [path], in source
+/// order.
+///
+/// "Property" is what a `#### Properties` table claims to list: the values a
+/// reader reaches through a `.` and does not call. Fields and getters are both
+/// that, and the summaries already treat them as one list — a getter row is
+/// marked `*(getter)*` and sits among the fields rather than in a table of its
+/// own.
+List<String> _declaredProperties(String path, String className) {
+  final body = _classBody(
+    path,
+    className,
+  ).replaceAll(RegExp(r'^\s*///.*$', multiLine: true), '');
+
+  final properties = <String>[];
+  for (final line in body.split('\n')) {
+    final name = _propertyNameOf(line);
+    if (name != null && !properties.contains(name)) properties.add(name);
+  }
+  return properties;
+}
+
+/// One `#### Properties` table in the API reference, and the type it describes.
+class _PropertyTable {
+  _PropertyTable(this.module, this.type, this.line, this.properties);
+
+  /// The module whose summary carries the table.
+  final String module;
+
+  /// The type the table's enclosing section names.
+  final String type;
+
+  /// The 1-based line of the `Properties` heading, so a failure can be opened.
+  final int line;
+
+  /// The names in the table's first column, in table order.
+  final List<String> properties;
+
+  /// The key a quarantine entry is written with.
+  String get id => '$module/$type';
+}
+
+/// The type a summary heading names, or `null` when it names none.
+///
+/// The reference escapes type arguments for HTML — `TomEndpoint&lt;requestType,
+/// resultType&gt;` — and a heading is the *type's* name whether or not it
+/// carries them, so both spellings are stripped before the lookup. Membership
+/// of the declaration census is what decides: a heading like `Operators &
+/// Expressions` groups classes rather than naming one, and the tables beneath
+/// it belong to the `####` headings inside it.
+String? _headingType(String title) {
+  final name = title
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll(RegExp(r'<[^<>]*>'), '')
+      .replaceAll('`', '')
+      .trim();
+  return _declarations.containsKey(name) ? name : null;
+}
+
+/// Every `#### Properties` table in `doc/api_reference`, in document order.
+///
+/// A table belongs to the nearest heading above it that names a type, at any
+/// level: most summaries put the class at `###`, while `datasources` and
+/// `object_persistence` group classes under a topic and put the class at
+/// `####`. A heading that names no type and is at or above the level of the
+/// one in force ends that type's section, so a table can never be attributed
+/// across a topic boundary to a class that a previous topic happened to end
+/// with.
+List<_PropertyTable> _propertyTables() {
+  final tables = <_PropertyTable>[];
+  for (final module in _modules()) {
+    final lines = File(
+      'doc/api_reference/api_summary_$module.md',
+    ).readAsLinesSync();
+
+    String? type;
+    var typeLevel = 0;
+    for (var index = 0; index < lines.length; index++) {
+      final heading = RegExp(r'^(#+)\s+(.*)$').firstMatch(lines[index]);
+      if (heading == null) continue;
+      final level = heading.group(1)!.length;
+      final title = heading.group(2)!.trim();
+
+      if (title == 'Properties') {
+        if (type != null) {
+          tables.add(
+            _PropertyTable(module, type, index + 1, _firstColumn(lines, index)),
+          );
+        }
+        continue;
+      }
+
+      final named = _headingType(title);
+      if (named != null) {
+        type = named;
+        typeLevel = level;
+      } else if (level <= typeLevel) {
+        type = null;
+      }
+    }
+  }
+  return tables;
+}
+
+/// The backticked names in the first column of the table that follows the
+/// heading on [index], in table order.
+///
+/// *Every* name in the cell, not the first. The summaries share a row between
+/// properties that are described by one sentence — `` `remoteIdPath` /
+/// `errorCodePath` / `errorMessagePath` `` is one row and three properties —
+/// and reading only the leading name reports the other two as undocumented
+/// when they are documented in the same breath.
+List<String> _firstColumn(List<String> lines, int index) {
+  final heading = lines.indexWhere((line) => line.startsWith('| '), index);
   if (heading < 0) return const [];
 
   final names = <String>[];
-  // +2 skips the heading and the `| -------- |` separator beneath it.
+  // +2 skips the column titles and the `| -------- |` separator beneath them.
   for (final line in lines.skip(heading + 2)) {
     if (!line.startsWith('|')) break;
-    final cell = RegExp(
-      r'`([A-Za-z_][A-Za-z0-9_]*)`',
-    ).firstMatch(line.split('|')[1]);
-    if (cell != null) names.add(cell.group(1)!);
+    names.addAll(
+      RegExp(
+        r'`([A-Za-z_][A-Za-z0-9_]*)`',
+      ).allMatches(line.split('|')[1]).map((match) => match.group(1)!),
+    );
   }
   return names;
 }
 
+/// The property headings `api_summary_<module>.md` carries: each one's level
+/// and its title.
+///
+/// Every heading whose title starts with `Properties`, plus `Static
+/// Properties`. What this is for is the *titles the census does not read* — a
+/// table headed anything else than `Properties` is checked by nothing, and the
+/// only way that stays deliberate is for the set of such titles to be named.
+List<(int, String)> _propertiesHeadingsOf(String module) => [
+  for (final line in File(
+    'doc/api_reference/api_summary_$module.md',
+  ).readAsLinesSync())
+    if (RegExp(r'^(#+)\s+((?:Static )?Properties\b.*)$').firstMatch(line)
+        case final heading?)
+      (heading.group(1)!.length, heading.group(2)!.trim()),
+];
+
+/// The property-heading titles the census deliberately does not read.
+///
+/// `Static Properties` is a table of statics, which a class's instance
+/// declarations say nothing about. The other two are mixed tables whose first
+/// column holds methods as well as properties, so "every name here is a
+/// property" is not what they claim.
+const Set<String> _uncensusedPropertyHeadings = {
+  'Static Properties',
+  'Properties (DbCol)',
+  'Properties and Methods',
+};
+
+/// Parsed once: every test in the property-table group reads the same census.
+final List<_PropertyTable> _propertyTableCensus = _propertyTables();
+
 /// One type declared by the package, with what it declares and what it
 /// inherits from.
 class _Declaration {
-  _Declaration(this.name);
+  _Declaration(this.name, this.path);
 
   final String name;
+
+  /// The file the type is declared in.
+  ///
+  /// Carried on the declaration rather than derived from the module, because a
+  /// module is many files and a summary section names only the type. Without
+  /// it every census that has to read a class's source can only be written for
+  /// a module that happens to hold one class.
+  final String path;
 
   /// Whether the type is declared `abstract`.
   bool isAbstract = false;
@@ -1663,7 +1903,10 @@ Map<String, _Declaration> _parseDeclarations() {
       final declared = _ownerDeclaration.firstMatch(line);
       if (declared != null) {
         final name = declared.group(1)!;
-        current = declarations.putIfAbsent(name, () => _Declaration(name));
+        current = declarations.putIfAbsent(
+          name,
+          () => _Declaration(name, file.path),
+        );
         constructorHeader = _constructorHeader(name);
         current.isAbstract = line.startsWith('abstract ');
         if (line.contains('{')) {
@@ -4040,74 +4283,234 @@ One: `TomKind`, documented beside the type that carries it.
     });
   });
 
-  group('the configuration summary lists every configurable field', () {
-    const module = 'configuration';
-    const className = 'TomBaseServerConfiguration';
-    const path = 'lib/src/tomserver/$module/base_server_configuration.dart';
-
-    test('the census recovers both sides', () {
-      // Neither side may come back empty, or the two comparisons below would
-      // pass by finding nothing to disagree about.
+  // A `#### Properties` table is the same completeness claim the Overview table
+  // makes about a module, one level down: it says "these are the class's
+  // properties". A reader who finds eight of ten has no signal that two are
+  // missing, and the two that are missing are the ones nobody thought about —
+  // which is how a getter carrying a deployment's whole logging decision, and
+  // the pair every unannotated endpoint is protected under, came to be absent
+  // from the class's own table.
+  //
+  // Every table, censused in both directions and in source order. No
+  // quarantine: all of them agree, and an empty quarantine is worse than none —
+  // it reads as outstanding debt that is not there, and it is the kind of list
+  // nobody revisits.
+  group('every Properties table lists the properties its class declares', () {
+    test('the census recovers the tables', () {
+      // Neither a parser that finds nothing nor one that attributes a table to
+      // no type can fail the comparisons below, because it gives them nothing
+      // to disagree about. So the count is asserted first, against the number
+      // of `Properties` headings the documents actually carry.
+      final headings = [
+        for (final module in _modules())
+          ..._propertiesHeadingsOf(module).where((h) => h.$2 == 'Properties'),
+      ];
+      expect(headings, isNotEmpty, reason: 'no Properties headings were found');
       expect(
-        _declaredFields(path, className),
-        isNotEmpty,
-        reason: 'no field declarations were recovered from $path',
-      );
-      expect(
-        _summaryProperties(module, className),
-        isNotEmpty,
+        _propertyTableCensus.length,
+        headings.length,
         reason:
-            'no Properties table was found under "### $className" in '
-            'doc/api_reference/api_summary_configuration.md',
+            'the census holds ${_propertyTableCensus.length} tables but the '
+            'summaries carry ${headings.length} "Properties" headings. A '
+            'heading the census misses is a table nothing checks, and it is '
+            'missed by sitting under a section whose heading names no type — '
+            'which is what happens when a class is renamed in the source and '
+            'not in its section title.',
       );
     });
 
-    test('every declared field has a row', () {
-      final documented = _summaryProperties(module, className);
-      final missing = _declaredFields(
-        path,
-        className,
-      ).where((field) => !documented.contains(field)).toList();
+    for (final module in _modules()) {
+      test(module, () {
+        final complaints = <String>[];
+        for (final table in _propertyTableCensus.where(
+          (table) => table.module == module,
+        )) {
+          final declaration = _declarations[table.type]!;
+          final declared = _declaredProperties(declaration.path, table.type);
+
+          final missing = declared
+              .where((property) => !table.properties.contains(property))
+              .toList();
+          if (missing.isNotEmpty) {
+            complaints.add(
+              '${table.type} (line ${table.line}) omits '
+              '${missing.join(', ')}, which ${declaration.path} declares',
+            );
+          }
+
+          // Resolved through the supertypes, because a subclass's table may
+          // describe a property it inherits rather than declares. `false` is
+          // the only verdict acted on: `null` means an ancestor is outside
+          // this package, where a name this census cannot see may still live.
+          final orphaned = table.properties
+              .where(
+                (property) => _resolveMember(table.type, property) == false,
+              )
+              .toList();
+          if (orphaned.isNotEmpty) {
+            complaints.add(
+              '${table.type} (line ${table.line}) has rows for '
+              '${orphaned.join(', ')}, which the class neither declares nor '
+              'inherits',
+            );
+          }
+
+          // Restricted to the declared properties on both sides, so a row for
+          // a static — which the summaries mark in the type column and which
+          // belongs to no instance-declaration order — does not read as a
+          // reordering.
+          final rows = table.properties.where(declared.contains).toList();
+          final source = declared.where(table.properties.contains).toList();
+          if ('$rows' != '$source') {
+            complaints.add(
+              '${table.type} (line ${table.line}) is complete but reordered: '
+              'the table reads $rows where the source declares $source',
+            );
+          }
+        }
+
+        expect(
+          complaints,
+          isEmpty,
+          reason:
+              'api_summary_$module.md and the classes it documents disagree '
+              'about their properties:\n  ${complaints.join('\n  ')}\n'
+              'A table headed "Property" claims to be the class\'s property '
+              'surface. Kept in declaration order it also stays diffable '
+              'against the source, so a property inserted mid-block lands in '
+              'the table where it lands in the class.',
+        );
+      });
+    }
+
+    test('every Properties heading is either censused or named here', () {
+      // The census reads the heading `Properties` exactly. Three other
+      // spellings exist, and each is deliberate: `Static Properties` is a
+      // table of statics, which the summaries keep separate; `Properties
+      // (DbCol)` and `Properties and Methods` are mixed tables. Naming them
+      // here is what stops a *fourth* spelling — a table that would then be
+      // checked by nothing — from arriving unnoticed.
+      final unchecked = {
+        for (final module in _modules())
+          for (final heading in _propertiesHeadingsOf(module))
+            if (heading.$2 != 'Properties') heading.$2,
+      };
       expect(
-        missing,
+        unchecked,
+        _uncensusedPropertyHeadings,
+        reason:
+            'the summaries carry property headings this census does not read '
+            'and this list does not name: '
+            '${unchecked.difference(_uncensusedPropertyHeadings).join(', ')} — '
+            'either spell such a heading `Properties` so it is checked, or '
+            'name it here with the reason it cannot be. And this list names '
+            'headings no summary writes any more: '
+            '${_uncensusedPropertyHeadings.difference(unchecked).join(', ')} — '
+            'an exemption with nothing left to exempt reads as a table the '
+            'census is choosing not to check, and it quietly re-arms if the '
+            'spelling ever comes back.',
+      );
+    });
+
+    test('every table of properties sits under one of those headings', () {
+      // Read from the tables rather than from the headings, which is the
+      // direction that catches a heading spelt something else entirely: a
+      // `#### Props` carries a `| Property |` column all the same, and the
+      // check above — which enumerates headings — would never look at it.
+      final stray = <String>[];
+      for (final module in _modules()) {
+        final lines = File(
+          'doc/api_reference/api_summary_$module.md',
+        ).readAsLinesSync();
+        String title = '';
+        for (var index = 0; index < lines.length; index++) {
+          final heading = RegExp(r'^#+\s+(.*)$').firstMatch(lines[index]);
+          if (heading != null) {
+            title = heading.group(1)!.trim();
+            continue;
+          }
+          if (!lines[index].startsWith('| Property |')) continue;
+          if (title == 'Properties') continue;
+          if (_uncensusedPropertyHeadings.contains(title)) continue;
+          stray.add('api_summary_$module.md:${index + 1} under "$title"');
+        }
+      }
+      expect(
+        stray,
         isEmpty,
         reason:
-            'api_summary_configuration.md\'s Properties table for $className '
-            'omits these fields: ${missing.join(', ')}. Every field on this '
-            'class is a deployment-facing setting, and one that is absent from '
-            'the table is invisible to the operator who needed to set it.',
+            'these tables have a `Property` column but sit under a heading '
+            'the census does not read: ${stray.join(', ')}. A table nothing '
+            'reads makes the same completeness claim as one that is read, and '
+            'nothing holds it to it.',
       );
     });
 
-    test('every row has a declared field', () {
-      final declared = _declaredFields(path, className);
-      final orphaned = _summaryProperties(
-        'configuration',
-        className,
-      ).where((property) => !declared.contains(property)).toList();
+    test('the parser reads a declaration the way the package writes one', () {
+      // The shapes that decide the census, pinned rather than trusted.
+      expect(_propertyNameOf('  final String language;'), 'language');
       expect(
-        orphaned,
-        isEmpty,
-        reason:
-            'api_summary_configuration.md\'s Properties table for $className '
-            'lists these, which the class no longer declares: '
-            '${orphaned.join(', ')}. A row for a removed field is worse than a '
-            'missing one, because it reads as a setting that can be supplied.',
+        _propertyNameOf('  late final bool declaresNoResult;'),
+        'declaresNoResult',
+      );
+      expect(_propertyNameOf('  String get tag => language;'), 'tag');
+      expect(_propertyNameOf('  Duration get validity {'), 'validity');
+      expect(_propertyNameOf('  List<TomOperator> get children;'), 'children');
+      // A field whose *type* spells a parameter list is still a field.
+      expect(_propertyNameOf('  final DateTime Function() clock;'), 'clock');
+      // A wrapped initialiser puts the name before the `=`, not before a `;`.
+      expect(_propertyNameOf('  final Map<String, String> fields ='), 'fields');
+
+      // Not properties, each for its own reason.
+      expect(
+        _propertyNameOf('  static int globalSettingCodeDigits = 6;'),
+        isNull,
+      );
+      expect(_propertyNameOf('  set thing(String value) {}'), isNull);
+      expect(
+        _propertyNameOf('  String maskDestination(String d) => d;'),
+        isNull,
+      );
+      expect(_propertyNameOf('  TomTextLocale(this.language);'), isNull);
+      expect(_propertyNameOf('  final String _cached;'), isNull);
+      expect(_propertyNameOf('  integer(int),'), isNull);
+      expect(
+        _propertyNameOf('  }) : id = id ?? const UuidV4().generate(),'),
+        isNull,
+      );
+      // Two-space indent is the class's own level; deeper is a method body.
+      expect(_propertyNameOf('    final String local = x;'), isNull);
+
+      // The one shape this reader cannot tell from a field, and the reason
+      // [_classBody] starts at the brace that closes the header rather than at
+      // the header: a wrapped type-parameter list is indented exactly like a
+      // member, and `resultType extends Object` reads as a field called
+      // `Object`. Pinned so that a body which stopped skipping the header
+      // fails here, where the cause is written down, rather than in four
+      // module tests at once.
+      expect(_propertyNameOf('  resultType extends Object'), 'Object');
+      expect(
+        _declaredProperties(
+          'lib/src/tomserver/endpoints/endpoint_annotation.dart',
+          'TomApiEndpointImplementation',
+        ),
+        isNot(contains('Object')),
       );
     });
 
-    test('the rows are in source order', () {
-      // The table is a mirror, so the reader can hold it beside the class. Kept
-      // in source order it stays diffable against the declarations, and a field
-      // inserted mid-block lands in the table where it lands in the source
-      // rather than at the end.
+    test('a class body stops at the class', () {
+      // The bound is what makes the census per-class rather than per-file: a
+      // body that ran to the end of the file would carry the next class's
+      // properties as if they were this one's.
+      const path = 'lib/src/tomserver/messaging/message.dart';
       expect(
-        _summaryProperties(module, className),
-        _declaredFields(path, className),
+        _declaredProperties(path, 'TomMessageChannel'),
+        isNot(contains('address')),
         reason:
-            'the Properties table for $className is complete but reordered; '
-            'keep it in declaration order so the two can be read side by side.',
+            'TomRecipient.address is a later class in the same file; a body '
+            'that reaches it is unbounded',
       );
+      expect(_declaredProperties(path, 'TomRecipient'), contains('address'));
     });
   });
 

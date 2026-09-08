@@ -1298,9 +1298,11 @@ compiler reports every site when a member is added.
 | `min` | `MIN` | The smallest operand value in the group. |
 | `max` | `MAX` | The largest operand value in the group. |
 
+#### Properties
+
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `sqlName` | `String` | The SQL function name the member renders as (the upper-cased member name). |
+| `sqlName` | `String` | *(getter)* The SQL function name the member renders as (the upper-cased member name). |
 
 ### TomSqlTypeFamily
 

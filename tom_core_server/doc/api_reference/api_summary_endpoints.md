@@ -465,6 +465,8 @@ TomEndpointHandler({
 | `methodName` | `String` | The method's own name, unqualified, as it appears in a resource key (`<Interface>.<methodName>`). |
 | `metadata` | `TomMethodMetadata` | The collected annotation metadata (endpoint, access, transaction, API). |
 | `declaresNoResult` | `late final bool` | Whether the endpoint's declaration promises the caller no result, so that the response body is empty whatever the invocation completes with. Read off the annotated declaration (`metadata.methodMirror`) rather than the implementation's mirror, which may narrow `Future<void>` to something that carries a value. |
+| `shouldLogRequests` | `bool` | *(getter)* Whether this route logs. `TomEndpoint.logRequests` is three-state and `null` — the value for an endpoint that says nothing — defers to `globalSettingLogRequestsDefault`. Every logging decision in the pipeline reads this rather than the annotation, because reading the annotation collapses the third state into `false` and leaves the global setting governing nothing. |
+| `automaticProtectionKeys` | `(String container, String member)` | *(getter)* The resource-key pair an endpoint without an explicit key is protected under. Keyed on `interface` when the method is routed through one and on the contract's `implementation` when it is not; non-nullable, because there is no unprotectable endpoint. |
 | `globalSettingLogRequestsDefault` | `static bool` | Whether requests are logged when an endpoint does not specify `logRequests`. |
 | `globalSettingCorsAllowedOriginsDefault` | `static String` | Default `Access-Control-Allow-Origin` when an endpoint does not override it. |
 | `globalSettingCorsAllowedMethodsDefault` | `static String` | Default `Access-Control-Allow-Methods` when an endpoint does not override it. |
@@ -589,11 +591,11 @@ TomMethodMetadata({
 | `access` | `TomAccessControl?` | The access-control rule, if the method declared one. |
 | `transactionInfo` | `TomTransactional?` | The transaction directive, if the method declared one. |
 | `audited` | `TomAudited?` | The `@TomAudited` declaration, if the method opted its invocation into the audit trail. `null` for the great majority of endpoints, and that is the intended state: endpoint auditing is *declared*, because most endpoint calls are reads whose auditing would drown the trail. Mutation auditing needs no declaration — it happens at the repository. |
+| `webSocket` | `TomWebSocketEndpoint?` | The socket declaration, when the method is a WebSocket endpoint (kept alongside the `endpoint` it converts to). |
 | `apiEndpointImplementation` | `TomApiEndpointImplementation?` | The `@TomApiEndpointImplementation` tag, for registry-based endpoints. |
 | `apiImplementation` | `TomApiImplementation?` | The class's `@TomApiImplementation` tag, for registry-based endpoints. |
 | `api` | `TomApi?` | The resolved remote API, for registry-based endpoints. |
 | `apiEndpoint` | `TomApiEndpoint?` | The resolved remote-API endpoint, for registry-based endpoints. |
-| `webSocket` | `TomWebSocketEndpoint?` | The socket declaration, when the method is a WebSocket endpoint (kept alongside the `endpoint` it converts to). |
 
 ### TomClassScanResult
 
