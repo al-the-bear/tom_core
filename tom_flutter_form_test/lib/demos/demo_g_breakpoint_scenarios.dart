@@ -536,9 +536,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
   }
 
   /// The brief's current tags as the plain `List<String>` the field holds.
-  List<String> _seedTags() => [
-    for (final tag in widget.state.tags) tag.get(),
-  ];
+  List<String> _seedTags() => [for (final tag in widget.state.tags) tag.get()];
 
   /// Mirrors an edit back onto `state.tags`, which is what the rest of the
   /// demo (and Demo H's field-state panel) reads.

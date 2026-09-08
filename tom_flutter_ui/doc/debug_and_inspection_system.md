@@ -339,7 +339,7 @@ class TomWidgetTreeCollector {
           tomId: widget.tomId,
           fullPath: fullPath,
           authState: authState,
-          groupMembership: widget.authorizationGroup?.id,
+          groupMembership: widget.tomGroup?.id,
         ));
       }
       element.visitChildren(visitor);
@@ -373,7 +373,7 @@ class TomWidgetInfo {
       widgetType: widget.runtimeType.toString(),
       tomId: widget.tomId,
       fullIdPath: widget.basePath,
-      groupName: widget.authorizationGroup?.id,
+      groupName: widget.tomGroup?.id,
       debugLabel: widget.debugLabel,
       depth: _calculateDepth(element),
     );

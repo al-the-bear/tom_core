@@ -434,7 +434,7 @@ Groups provide semantic control over entire UI regions without requiring individ
 
 ### Rules
 
-- A widget or action can belong to **zero or one** group (set via `authorizationGroup`).
+- A widget or action can belong to **zero or one** group (set via `tomGroup`).
 - Groups can contain **both widgets and actions**.
 - Parent containers can add inherited group influence.
 - If any member with an ID controls the group's visibility, all members follow.
@@ -465,9 +465,9 @@ final shippingGroup = TomAuthorizationGroup('shippingPanel');
 TomGroupScope(
   groupId: 'shippingPanel',
   child: Column(children: [
-    TomTextField(tomId: 'street', authorizationGroup: shippingGroup, ...),
-    TomTextField(tomId: 'city', authorizationGroup: shippingGroup, ...),
-    TomTextField(tomId: 'zip', authorizationGroup: shippingGroup, ...),
+    TomTextField(tomId: 'street', tomGroup: shippingGroup, ...),
+    TomTextField(tomId: 'city', tomGroup: shippingGroup, ...),
+    TomTextField(tomId: 'zip', tomGroup: shippingGroup, ...),
   ]),
 )
 ```
@@ -492,25 +492,25 @@ class TomAuthorizationGroup {
 
 ### Widget registration
 
-Widgets with an `authorizationGroup` register on mount and unregister on dispose. The mixin provides the registration hook:
+Widgets with an `tomGroup` register on mount and unregister on dispose. The mixin provides the registration hook:
 
 ```dart
 mixin TomWidgetMixin on Widget implements TomAuthorizable {
   String? get tomId;
-  TomAuthorizationGroup? get authorizationGroup => null;
+  TomAuthorizationGroup? get tomGroup => null;
 
   void registerWithGroup() {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   void unregisterFromGroup() {
-    authorizationGroup?.unregister(this);
+    tomGroup?.unregister(this);
     }
   }
 
   /// Called by State.dispose() or StatelessWidget unmount.
   void unregisterFromGroup() {
-    authorizationGroup?.unregister(this);
+    tomGroup?.unregister(this);
   }
 }
 ```
@@ -608,7 +608,7 @@ class TomElevatedButton extends TomButtonBase {
   const TomElevatedButton({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     this.onPressed,
     this.child,
     this.label,
@@ -630,7 +630,7 @@ class TomElevatedButton extends TomButtonBase {
 ```
 
 **Key points:**
-- `tomId` and `authorizationGroup` are inherited from `TomFamilyBase` via `super`
+- `tomId` and `tomGroup` are inherited from `TomFamilyBase` via `super`
 - Authorization (`checkHidden`) and auth state styling are handled by the base class `build()` method
 - Use `resolveResource(suffix)` for resource lookup (uses `basePath` resolved at construction from `TomScope`)
 - Only `buildContent()` needs implementation — returns the Flutter widget
@@ -675,11 +675,11 @@ class TomTab extends Tab with TomWidgetMixin {
   final String tomId;
 
   @override
-  final TomAuthorizationGroup? authorizationGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   TomTab({
     required this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     super.text,
     super.icon,
     super.child,
@@ -738,7 +738,7 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   String? get tomId;
 
   /// Optional group membership.
-  TomAuthorizationGroup? get authorizationGroup => null;
+  TomAuthorizationGroup? get tomGroup => null;
 
   /// Optional per-widget authorizer.
   TomAuthorizer? get authorizer => null;
@@ -782,7 +782,7 @@ The mixin provides:
 | Member | Purpose |
 |--------|---------|
 | `tomId` | Abstract — each widget declares its ID |
-| `authorizationGroup` | Optional group membership (defaults to `null`) |
+| `tomGroup` | Optional group membership (defaults to `null`) |
 | `authorizer` | Optional per-widget auth modifier |
 | `authorizerStrategy` | How authorizer interacts with resource auth |
 | `uiStateController` | Build-time narrowing callback |
@@ -810,7 +810,7 @@ For widgets like `Tab`, `NavigationDestination`, chips — the widget overrides 
 class TomTab extends Tab with TomWidgetMixin {
   TomTab({
     required this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     super.text,
     super.icon,
     super.child,
@@ -821,7 +821,7 @@ class TomTab extends Tab with TomWidgetMixin {
   final String tomId;
 
   @override
-  final TomAuthorizationGroup? authorizationGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   Widget build(BuildContext context) {
@@ -845,7 +845,7 @@ For widgets like `PopupMenuItem`, `SnackBarAction` — the widget has the mixin 
 class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   TomPopupMenuItem({
     required this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     required super.child,
     super.value,
     super.onTap,
@@ -856,7 +856,7 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   final String tomId;
 
   @override
-  final TomAuthorizationGroup? authorizationGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   @override
   PopupMenuItemState<T, TomPopupMenuItem<T>> createState() =>
@@ -886,7 +886,7 @@ For `Expanded`, `Flexible`, `Positioned` — these have no `build()` method — 
 class TomExpanded extends Expanded with TomWidgetMixin {
   TomExpanded({
     required this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     required super.child,
     super.flex,
     super.key,
@@ -896,7 +896,7 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   final String tomId;
 
   @override
-  final TomAuthorizationGroup? authorizationGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   // No build override needed — parent handles visibility
 }
@@ -1233,7 +1233,7 @@ Each Tom widget class must:
 - **Implement** `buildContent(BuildContext context)` — create and return the Flutter widget.
 - **Use** `resolveResource(suffix)` for resource lookup (label, tooltip, etc.).
 
-Authorization, auth-state styling, and `tomId`/`authorizationGroup` are inherited from `TomFamilyBase` via the family base class.
+Authorization, auth-state styling, and `tomId`/`tomGroup` are inherited from `TomFamilyBase` via the family base class.
 
 #### Extension pattern (~18 constrained widgets)
 
@@ -1242,7 +1242,7 @@ Each Tom widget class must:
 - **Extend** the original Flutter widget (not compose it).
 - **Mix in** `TomWidgetMixin` for Tom functionality.
 - **Inherit** the original widget's full public API via `super`.
-- **Add** `tomId` (required) and `authorizationGroup` (optional) properties.
+- **Add** `tomId` (required) and `tomGroup` (optional) properties.
 - **Override** `build()` (or State's `build()`) to enforce authorization.
 
 This pattern is required only for widgets listed in the "Widgets requiring extension pattern" table above.

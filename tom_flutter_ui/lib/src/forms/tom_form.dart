@@ -105,7 +105,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   final List<TomAction> _actions = [];
 
   @override
-  TomAuthorizationGroup? authorizationGroup;
+  TomAuthorizationGroup? tomGroup;
 
   @override
   String get controllerId => formId;

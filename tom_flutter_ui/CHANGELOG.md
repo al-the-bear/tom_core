@@ -2,6 +2,20 @@
 
 ### Changed
 
+- **One spelling for the authorization group: `tomGroup`, everywhere.**
+  `TomForm` and `TomActionController` took the same
+  `TomAuthorizationGroup?` as `authorizationGroup` while the ~45 declarations of
+  the `TomNodeBase` family took it as `tomGroup` — and the two spellings sat in
+  one file on sibling types, so a reader who had just written a `TomForm` had
+  no way to guess the field inside it used the other name. The analyzer's only
+  feedback was `No named parameter with the name 'tomGroup'`, which reads like
+  the group is unsupported there rather than renamed, and that trap had already
+  produced one wrong kernel dartdoc. Both are now `tomGroup`; the generated
+  reflection companions in this package, `tom_core_flutter`, five
+  `tom_core_samples` packages and `tom_uam_client` are regenerated rather than
+  edited, because the generator deduplicates a map key rather than substituting
+  it and a hand-edit does not reproduce.
+
 - **`kernel_types_coexist_test.dart` now compares the whole name set, not the
   four names it happens to write.** The file already imported both public
   barrels unprefixed and named `TomEnvironment`, `TomPlatform`,

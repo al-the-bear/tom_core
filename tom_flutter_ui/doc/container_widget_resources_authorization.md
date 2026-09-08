@@ -2185,7 +2185,7 @@ class ProfileScreenElements extends TomScreenElementsProviderBase {
   late final isAdmin = TomFormBoolSwitch(
     tomId: 'isAdmin',
     binding: appState.user.isAdmin,
-    authorizationGroup: adminGroup,
+    tomGroup: adminGroup,
     scope: this,
   );
 
@@ -2193,7 +2193,7 @@ class ProfileScreenElements extends TomScreenElementsProviderBase {
     tomId: 'adminNotes',
     binding: appState.user.adminNotes,
     maxLines: 5,
-    authorizationGroup: adminGroup,
+    tomGroup: adminGroup,
     scope: this,
   );
 

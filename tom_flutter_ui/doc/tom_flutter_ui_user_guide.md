@@ -129,9 +129,9 @@ Group widgets together for collective authorization:
 final shippingGroup = TomAuthorizationGroup('shippingPanel');
 
 Column(children: [
-  TomTextField(tomId: 'street', authorizationGroup: shippingGroup),
-  TomTextField(tomId: 'city', authorizationGroup: shippingGroup),
-  TomTextField(tomId: 'zip', authorizationGroup: shippingGroup),
+  TomTextField(tomId: 'street', tomGroup: shippingGroup),
+  TomTextField(tomId: 'city', tomGroup: shippingGroup),
+  TomTextField(tomId: 'zip', tomGroup: shippingGroup),
 ])
 ```
 
@@ -197,7 +197,7 @@ class TomElevatedButton extends TomButtonBase {
   const TomElevatedButton({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     this.onPressed,
     this.child,
   });

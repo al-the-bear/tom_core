@@ -107,7 +107,7 @@ final _emailDomainValidator = SlowValidator<String>((value) async {
 class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   CompanyBasicInfoForm({TomAuthorizationGroup? authGroup})
     : super(formId: 'companyBasicInfo') {
-    authorizationGroup = authGroup;
+    tomGroup = authGroup;
   }
 
   @override
@@ -185,7 +185,7 @@ class AddressForm extends TomForm<Address> {
     TomForm<TomClass>? parent,
     TomAuthorizationGroup? authGroup,
   }) : super(formId: tomId, parentForm: parent) {
-    authorizationGroup = authGroup;
+    tomGroup = authGroup;
   }
 
   @override
@@ -233,7 +233,7 @@ class PersonForm extends TomForm<Person> {
     TomForm<TomClass>? parent,
     TomAuthorizationGroup? authGroup,
   }) : super(formId: tomId, parentForm: parent) {
-    authorizationGroup = authGroup;
+    tomGroup = authGroup;
   }
 
   @override
@@ -281,7 +281,7 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
     TomForm<TomClass>? parent,
     TomAuthorizationGroup? authGroup,
   }) : super(formId: 'settings', parentForm: parent) {
-    authorizationGroup = authGroup;
+    tomGroup = authGroup;
   }
 
   @override

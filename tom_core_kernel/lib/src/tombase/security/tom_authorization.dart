@@ -141,9 +141,8 @@ enum AuthGroupMode {
 /// ```
 ///
 /// UI packages built on this kernel wire the same thing up declaratively. In
-/// Tom Flutter UI the input widgets take the group as `tomGroup` and register
-/// themselves — note the name, since form- and container-level widgets in that
-/// package spell the same concept `authorizationGroup`:
+/// Tom Flutter UI every widget, form and action controller takes the group as
+/// `tomGroup` — one spelling throughout — and registers itself:
 ///
 /// ```dart
 /// TomTextField(tomId: 'street', tomGroup: shipping, ...),

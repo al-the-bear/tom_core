@@ -29,7 +29,11 @@ class TomActionController {
   final TomScope? scope;
 
   /// Optional authorization group for collective action control.
-  final TomAuthorizationGroup? authorizationGroup;
+  ///
+  /// Named `tomGroup` like every other authorization-group parameter in this
+  /// package, including the ones on `TomNodeBase` widgets, so the concept has
+  /// one spelling wherever it is reached for.
+  final TomAuthorizationGroup? tomGroup;
 
   /// The frame this controller and, by default, its actions resolve in: the
   /// explicit [scope] when it was given one, otherwise whatever the zone
@@ -43,11 +47,8 @@ class TomActionController {
   /// Registered actions in this controller.
   final List<TomAction> _actions = [];
 
-  TomActionController({
-    required this.controllerId,
-    this.scope,
-    this.authorizationGroup,
-  }) : constructionScope = scope ?? TomScope.current;
+  TomActionController({required this.controllerId, this.scope, this.tomGroup})
+    : constructionScope = scope ?? TomScope.current;
 
   /// Registers an action with this controller.
   ///

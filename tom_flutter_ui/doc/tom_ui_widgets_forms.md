@@ -675,10 +675,10 @@ class AddressForm extends TomForm<TomClass> {
   AddressForm({
     required String tomId,
     TomForm? form,
-    TomAuthorizationGroup? tomGroup,
+    TomAuthorizationGroup? authGroup,
   })  : super(formId: tomId) {
     if (form != null) super.form = form;
-    if (tomGroup != null) authorizationGroup = tomGroup;
+    if (authGroup != null) tomGroup = authGroup;
   }
 
   // Fields are `late final` members that pass `form: this` so the
