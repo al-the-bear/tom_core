@@ -69,8 +69,28 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 #: in `tom_ai/ai_build` -- so the search for a target starts above this repo.
 WORKSPACE = REPO_ROOT.parent.parent
 
-SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__",
-             "ztmp", ".venv"}
+#: Directories whose contents are never a document a reader opens, and which
+#: therefore must not be able to move either gate's count.
+#:
+#: ``ztmp`` is the workspace-wide scratch name (gitignored) and it earns its
+#: place the hard way: ``check_doc_dart_blocks.py`` writes every sample it
+#: analyzes into ``tool/ztmp/doc_dart_blocks/``, so a single ad-hoc run of that
+#: gate over an ungated package left ten copied ``§`` references sitting under
+#: ``tool/`` -- a shipped directory here -- and turned this gate red over files
+#: that are not in the repository. ``_copilot_guidelines`` is the other
+#: direction: it is development documentation for this workspace, addressed to
+#: whoever changes the package rather than to whoever uses it, so a plan
+#: reference in it is correct writing.
+SKIP_DIRS = {
+    ".dart_tool",
+    "build",
+    ".git",
+    "node_modules",
+    "__pycache__",
+    "ztmp",
+    ".venv",
+    "_copilot_guidelines",
+}
 
 #: The file set that ships, matching `check_section_refs.py` exactly. The two
 #: gates ask consecutive questions about the same references -- does it name a
@@ -80,6 +100,16 @@ SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__",
 #: a green pair of gates.
 SHIPPED_DIRS = {"lib", "test", "example", "bin", "tool"}
 SHIPPED_DOC_DIR = "doc"
+
+#: The markdown that ships outside ``doc/``: a package or module ``readme``, in
+#: either case, and the ``README_advanced_*.md`` series the samples package
+#: keeps at its root. Matching only the exact name ``README.md`` was the rule
+#: once, and it silently cost both gates 72 documents -- every module readme
+#: under ``lib/src/`` and all 22 of the advanced sample's chapters. A gate is
+#: only as good as the population it reads, and a population that omits the
+#: module documentation reports zero for a reason that has nothing to do with
+#: the repository being clean.
+SHIPPED_DOC_NAME = re.compile(r"^(README.*\.md|readme\.md)$")
 EXEMPT_DOCS = {Path("README.md")}
 EXEMPT_DOC_NAMES = {"CHANGELOG.md"}
 GENERATED_SUFFIX = ".reflection.dart"
@@ -151,7 +181,7 @@ def shipped_files(root: Path):
                 continue
             yield path
         elif path.suffix == ".md":
-            if SHIPPED_DOC_DIR not in path.parts and path.name != "README.md":
+            if SHIPPED_DOC_DIR not in path.parts and not SHIPPED_DOC_NAME.match(path.name):
                 continue
             if path.name in EXEMPT_DOC_NAMES:
                 continue

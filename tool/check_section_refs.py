@@ -5,8 +5,18 @@ Run from anywhere::
 
     python3 tool/check_section_refs.py                  # the whole repo
     python3 tool/check_section_refs.py tom_core_server  # one subtree
+    python3 tool/check_section_refs.py --self-test      # check the checker
 
 Exits non-zero when any reference is unresolvable, so it can gate a build.
+
+``--self-test`` asks the opposite question of the repository: it writes one
+reference of each shape the rules below distinguish and requires this checker to
+reach the stated verdict on it. A gate pinned to zero passes exactly as well
+when it has stopped reading anything, so the count alone cannot tell working
+coverage from absent coverage -- and this checker's coverage is unusually easy
+to lose, because five of its six rules *resolve* a reference rather than fault
+it. A regex that stopped matching would show up as a repository that got
+cleaner. See :func:`self_test`.
 
 A ``§`` reference is fine when the sentence says *what it indexes*::
 
@@ -110,12 +120,35 @@ from __future__ import annotations
 
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 from gate_report import report_faults
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}
+
+#: Directories whose contents are never a document a reader opens, and which
+#: therefore must not be able to move either gate's count.
+#:
+#: ``ztmp`` is the workspace-wide scratch name (gitignored) and it earns its
+#: place the hard way: ``check_doc_dart_blocks.py`` writes every sample it
+#: analyzes into ``tool/ztmp/doc_dart_blocks/``, so a single ad-hoc run of that
+#: gate over an ungated package left ten copied ``§`` references sitting under
+#: ``tool/`` -- a shipped directory here -- and turned this gate red over files
+#: that are not in the repository. ``_copilot_guidelines`` is the other
+#: direction: it is development documentation for this workspace, addressed to
+#: whoever changes the package rather than to whoever uses it, so a plan
+#: reference in it is correct writing.
+SKIP_DIRS = {
+    ".dart_tool",
+    "build",
+    ".git",
+    "node_modules",
+    "__pycache__",
+    "ztmp",
+    ".venv",
+    "_copilot_guidelines",
+}
 
 #: The directories whose Dart ships. Everything else in a package is
 #: workspace-internal and may reference the plans freely. ``bin`` and ``tool``
@@ -127,6 +160,16 @@ SHIPPED_DIRS = {"lib", "test", "example", "bin", "tool"}
 #: Kept separate from [SHIPPED_DIRS] because prose resolves differently from
 #: code: a document may cite its own sections, and code has no sections.
 SHIPPED_DOC_DIR = "doc"
+
+#: The markdown that ships outside ``doc/``: a package or module ``readme``, in
+#: either case, and the ``README_advanced_*.md`` series the samples package
+#: keeps at its root. Matching only the exact name ``README.md`` was the rule
+#: once, and it silently cost both gates 72 documents -- every module readme
+#: under ``lib/src/`` and all 22 of the advanced sample's chapters. A gate is
+#: only as good as the population it reads, and a population that omits the
+#: module documentation reports zero for a reason that has nothing to do with
+#: the repository being clean.
+SHIPPED_DOC_NAME = re.compile(r"^(README.*\.md|readme\.md)$")
 
 #: Files that quote the forbidden constructions in order to forbid them. A rule
 #: has to be able to state the shape it rejects, so the in-suite guard's own
@@ -207,7 +250,7 @@ def shipped_files(root: Path):
                 continue
             yield path
         elif path.suffix == ".md":
-            if SHIPPED_DOC_DIR not in path.parts and path.name != "README.md":
+            if SHIPPED_DOC_DIR not in path.parts and not SHIPPED_DOC_NAME.match(path.name):
                 continue
             if path.name in EXEMPT_DOC_NAMES:
                 continue
@@ -286,7 +329,106 @@ def unresolved(path: Path) -> list[tuple[int, str]]:
     return faults
 
 
+#: One probe per rule the checker distinguishes, as
+#: ``(name, suffix, text, expected_faults)``. Both verdicts are represented on
+#: purpose: a suite of faults alone would pass a checker that reported
+#: everything, and a suite of resolutions alone would pass one that reported
+#: nothing. Each resolving probe names the rule that carries it, so a rule that
+#: stops working is identified rather than merely counted.
+SELF_TESTS = [
+    (
+        "bare number in Dart is a fault",
+        ".dart",
+        "/// Before §22 the unanchored regex accepted this.\n",
+        1,
+    ),
+    (
+        "NAMED_SOURCE — document immediately left",
+        ".dart",
+        "/// per `codespecs_mapping.md` §5.16\n",
+        0,
+    ),
+    (
+        "DOCUMENT_NAME in view — named to the right",
+        ".dart",
+        '/// See "Container IDs" (§24) in `doc/acl_design_specification.md`.\n',
+        0,
+    ),
+    (
+        "DOCUMENT_NAME in view — named on the next line",
+        ".dart",
+        "/// (§11.2 / §11.4 of\n/// `tom_specs_editor_specification.md`)\n",
+        0,
+    ),
+    (
+        "NAMED_SOURCE — an RFC is a document",
+        ".dart",
+        "/// RFC 7636 §1 defines the transform.\n",
+        0,
+    ),
+    (
+        "WORK_ITEM_MARKER overrides a document in view",
+        ".dart",
+        "/// bug §77 / tests §61(e): see\n/// `doc/widget_base.md` for the rule.\n",
+        1,
+    ),
+    (
+        "REFERENCE — a lettered appendix number is seen",
+        ".dart",
+        "/// The layout follows §A.4.\n",
+        1,
+    ),
+    (
+        "own_sections — a heading the document has resolves",
+        ".md",
+        "## 5. Things\n\nAs §5 says, the order is fixed.\n",
+        0,
+    ),
+    (
+        "own_sections — a heading it has not is a fault",
+        ".md",
+        "## 5. Things\n\nAs §23 says, the order is fixed.\n",
+        1,
+    ),
+    (
+        "a numbered heading declares rather than references",
+        ".md",
+        "## 23. Things §23\n",
+        0,
+    ),
+]
+
+
+def self_test() -> int:
+    """Prove every rule still reaches its verdict.
+
+    The probes are written to a scratch directory rather than planted in the
+    tree, because what this checker reads is the *shape of a sentence* and not a
+    measurement of the repository: there is no file whose contents make a rule
+    true. Writing them out keeps [unresolved] the thing under test -- it is
+    handed a real path and reads it exactly as it does in a run.
+    """
+    failures = 0
+    with tempfile.TemporaryDirectory() as scratch:
+        for name, suffix, body, expected in SELF_TESTS:
+            probe = Path(scratch) / f"probe{suffix}"
+            probe.write_text(body, encoding="utf-8")
+            got = len(unresolved(probe))
+            if got == expected:
+                verdict = "faults" if expected else "resolves"
+                print(f"  ok    {name} — {verdict}")
+            else:
+                print(f"  FAIL  {name} — expected {expected} fault(s), got {got}")
+                failures += 1
+
+    print(f"\n{len(SELF_TESTS) - failures} of {len(SELF_TESTS)} rules behave")
+    return report_faults(failures)
+
+
 def main(argv: list[str]) -> int:
+    if "--self-test" in argv:
+        return self_test()
+
     root = REPO_ROOT / argv[0] if argv else REPO_ROOT
     if not root.exists():
         print(f"no such path: {root}", file=sys.stderr)

@@ -639,6 +639,7 @@ that, a `package:flutter` preamble the checker does not yet write.
 ```bash
 python3 tool/check_section_refs.py                  # the whole repository
 python3 tool/check_section_refs.py tom_core_server  # one subtree
+python3 tool/check_section_refs.py --self-test      # check the checker
 ```
 
 A `§` reference is fine when the sentence says what it indexes — ``per
@@ -678,7 +679,20 @@ still cannot be resolved from anywhere and is still a fault.
 `comments_read_as_is_test.dart` is skipped: a rule has to be able to quote the
 shape it rejects.
 
-The whole repository is clean and held there, prose included.
+The whole repository is clean and held there, prose included — every package,
+in one pass, which is what makes it a gate rather than a thing somebody
+remembers to run per package. The two `*_test` harnesses are held to the same
+rule as shipped code: they never leave the workspace, but a test name is read as
+a specification wherever it lives, and a red `createPlaceholderBytes (§69)`
+names nothing.
+
+Zero is also the count this checker would report if it had stopped reading, and
+that risk is sharper here than elsewhere: five of its six rules *resolve* a
+reference rather than fault it, so a regex that quietly stopped matching would
+look like a repository that got cleaner. `--self-test` writes one reference of
+each shape to a scratch directory and requires the stated verdict on it —
+faulting probes and resolving probes both, since a suite of one kind alone would
+pass a checker that answered everything the same way.
 
 ```bash
 python3 tool/check_section_numbers.py                  # the whole repository
@@ -692,11 +706,20 @@ actually has that section. Both failures read identically in the source — a
 plausible number beside a plausible filename — and only the second survives the
 first check, so it needs its own pass.
 
-The two scan **exactly the same files**, and that is a property to preserve
-rather than a coincidence. They ask consecutive questions about one reference,
-so a file only one of them sees is half-checked in the shape hardest to notice:
-a green pair of gates. Widening the first to shipped prose therefore widened
-this one too, which brought 41 previously invisible markdown citations under it.
+The two scan **the same files**, and that is a property to preserve rather than
+a coincidence. They ask consecutive questions about one reference, so a file only
+one of them sees is half-checked in the shape hardest to notice: a green pair of
+gates. Widening the first to shipped prose therefore widened this one too, which
+brought 41 previously invisible markdown citations under it; widening again to
+the markdown that ships outside `doc/` — every module `readme.md` under
+`lib/src/`, and the samples package's `README_advanced_*` chapters — brought 72
+more documents under both, and both stayed at zero.
+
+The one deliberate difference is `comments_read_as_is_test.dart`, which only
+`check_section_refs.py` skips. That guard has to quote `bug §50` to say which
+shape it rejects, and a quoted work item names no document — so it is a fault to
+the first gate and simply invisible to the second, which never gets a document to
+look a section up in.
 
 ```bash
 python3 tool/check_comments_read_as_is.py                  # the whole repository
