@@ -1,12 +1,13 @@
 /// Executable example for the resources module of `tom_core_flutter`.
 ///
 /// Demonstrates resolving typed config values via `TomProperty` subclasses and
-/// the `.withDefault` fallback, and **both ways resolution can fail** — an
-/// obligatory key that is not configured, and a configured value that cannot be
-/// cast to the property's type. A deterministic in-memory config provider is
-/// installed so the example is self-contained.
+/// the `.withDefault` fallback, the one conversion resolution performs, and
+/// **both ways resolution can fail** — an obligatory key that is not
+/// configured, and a configured value that cannot be cast to the property's
+/// type. A deterministic in-memory config provider is installed so the example
+/// is self-contained.
 ///
-/// Every one of those five outcomes is decided in the *constructor*: a property
+/// Every one of those six outcomes is decided in the *constructor*: a property
 /// reads its key once, when it is declared. That is why the two failures below
 /// are shown wrapped around a declaration and not around a read — there is no
 /// read that can fail, and a property that constructs never throws again.
@@ -30,6 +31,9 @@ void run() {
       'app.retries': 3,
       'app.ratio': 1.5,
       'app.flag': true,
+      // Written as a whole number, read as a double — the case example 4 is
+      // about. No configuration format can spell the difference.
+      'app.rate': 2,
     }),
   );
 
@@ -60,7 +64,20 @@ void run() {
   assert(~timeout == 30);
   assert(~ratioOrDefault == 1.5);
 
-  // Example 4: an obligatory key that is not configured. The throw happens
+  // Example 4: a whole number configured for a double property. `rate: 2` in
+  // YAML and `"rate": 2` in JSON both decode to an int, so refusing it would
+  // fail a value that is exactly what the operator meant — and the reflected
+  // configuration path fills a declared `double` field from the same entry, so
+  // one file could fill a field and fail the matching property.
+  final rate = TomDoubleProperty('app.rate');
+  // The widening is reached only after a cast has failed, so it cannot convert
+  // a value some other type already accepted: `num` takes the int as an int.
+  final rateAsNum = TomProperty<num>('app.rate');
+  print('rate (widened)=${~rate} rate as num=${(~rateAsNum).runtimeType}');
+  assert(~rate == 2.0);
+  assert(~rateAsNum is int);
+
+  // Example 5: an obligatory key that is not configured. The throw happens
   // during construction, not on a first read — the property never comes into
   // existence, so there is nothing to guard a later `get()` against.
   try {
@@ -74,7 +91,7 @@ void run() {
     assert(error.defaultUserMessage.contains('app.region'));
   }
 
-  // Example 5: a configured value that cannot be cast to the property's type.
+  // Example 6: a configured value that cannot be cast to the property's type.
   // This throw is at construction too, and `.withDefault` does not soften it —
   // a default covers an *absent* key, not an unusable one, so a mistyped entry
   // fails at start-up whether or not a fallback was supplied.

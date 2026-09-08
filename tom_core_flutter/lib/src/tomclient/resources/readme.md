@@ -14,7 +14,7 @@ it; read it back with `get()` or the `~` operator.
 | `TomProperty<T>` | Generic config-value holder; resolves `key` from the app config at construction (or a `withDefault` fallback), caches it, exposes `get()` / `~`. Use a typed subclass for the four non-nullable value types below; the generic is the intended form when `T` is nullable. |
 | `TomStringProperty` | `TomProperty<String>`. |
 | `TomIntProperty` | `TomProperty<int>`. |
-| `TomDoubleProperty` | `TomProperty<double>`. |
+| `TomDoubleProperty` | `TomProperty<double>`. A configured whole number widens, since no config file can say "double"; it does not narrow and does not parse. |
 | `TomBoolProperty` | `TomProperty<bool>`. |
 | `TomPropertyException` | Raised from the constructor when resolution fails. One type, two `key` codes: `resources.property.not_configured` (absent, no default) and `resources.property.type_mismatch` (present, uncastable — `rootException` holds the `TypeError`). |
 

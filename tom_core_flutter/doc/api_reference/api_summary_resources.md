@@ -25,8 +25,9 @@ A `TomProperty<T>` reads its value for `key` from the application
 `TomConfigResourceProvider` **once, at construction**, and caches it. The value
 is read with `get()` or the `~` operator. Resolution rules (at construction):
 one configuration lookup answers both whether the key is present and what it
-holds; an existing key is cast to `T`; an absent key uses the `withDefault`
-default; an absent key with no default throws. The value is eager and
+holds; an existing key is cast to `T`, widening a configured `int` when `T`
+accepts a `double`; an absent key uses the `withDefault` default; an absent key
+with no default throws. The value is eager and
 immutable — later
 config changes are not reflected, so construct the property after the config
 providers are populated. Use the typed subclasses for the four non-nullable
@@ -121,6 +122,19 @@ TomIntProperty.withDefault(String key, int value)
 
 A `TomProperty` holding a `double` config value.
 
+A configured whole number widens rather than being refused: no configuration
+file can say "double" — `rate: 2` in YAML and `"rate": 2` in JSON both decode
+to an `int` — and the reflected path already fills a declared `double` field
+from one, so without this a single file could fill a field and fail the
+matching property. `TomConfig` on the server widens identically.
+
+The widening is reached only *after* a cast has failed, which is what keeps it
+from converting a value some other `T` already accepted: `0.0 is num` is true,
+so a check placed before the cast would turn `TomProperty<num>` over a
+configured `2` into a `double`. It does not narrow (`2.5` under
+`TomIntProperty` is still a mismatch — narrowing needs a rounding policy) and
+it does not parse (`'2'` is still a mismatch).
+
 - **Extends:** `TomProperty<double>`
 
 #### Constructors
@@ -162,11 +176,16 @@ return the cached value.
 | `key` | Condition | Message |
 | ----- | --------- | ------- |
 | `resources.property.not_configured` | The key is absent and no default was supplied | `Obligatory resource <key> not found in configuration resources` |
-| `resources.property.type_mismatch` | The key is present but its value cannot be cast to `T` | `Could not set property of type <T> from value of property <key> with value <value>` |
+| `resources.property.type_mismatch` | The key is present but its value cannot be cast to `T`, and is not an `int` a `double` would accept | `Could not set property of type <T> from value of property <key> with value <value>` |
 
 `parameters` carries `key` for both, and additionally `expectedType` and
 `value` for a type mismatch, so a log formatter can render the failure without
-parsing the message.
+parsing the message. `rootException` carries the `TypeError` the cast raised,
+which is the only record of the value's *actual* type — the message names only
+the type that was wanted. That matters most for a generic mismatch: a
+configured `['alpha', 'beta']` read as `List<String>` fails on the element
+type, and the message reports `with value [alpha, beta]`, which is what the
+operator wrote and looks perfectly valid.
 
 `rootException` carries the `TypeError` the cast raised, on the type-mismatch
 path only. It is worth reading: the message names the type that was *wanted*

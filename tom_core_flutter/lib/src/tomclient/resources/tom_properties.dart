@@ -62,6 +62,16 @@ class TomPropertyException extends TomClientException {
 /// both absent and has no default throws. Both failures raise
 /// [TomPropertyException] — see it for the two `key` codes.
 ///
+/// **A configured whole number fills a `double`.** No configuration file can
+/// say "double" — `rate: 2` in YAML and `"rate": 2` in JSON both decode to an
+/// `int` — so a cast that fails on an `int` where [T] accepts a `double` widens
+/// instead of throwing, matching the server's `TomConfig` and the reflected
+/// path that fills a declared `double` field. It does not narrow (`2.5` under
+/// [TomIntProperty] is still a mismatch, because narrowing needs a rounding
+/// policy) and it does not parse (`'2'` is still a mismatch). It is reached
+/// only *after* a cast has failed, so `TomProperty<num>` over a configured `2`
+/// still holds an `int`.
+///
 /// **Key resolution:** [key] reaches the provider unchanged, so a property
 /// inherits its dot notation over nested maps. `'app.db.host'` resolves either
 /// through nested `app` / `db` maps or as a flat entry of that literal name;
@@ -136,22 +146,55 @@ class TomProperty<T> {
       try {
         _value = configured as T;
       } on TypeError catch (error, stack) {
-        // Narrow on purpose. The message below asserts that a cast failed, and
-        // only a `TypeError` from this one expression is evidence of that; a
-        // wider catch would put that assertion in front of failures it never
-        // diagnosed, sending the reader to look at their type declarations for
-        // a fault that is somewhere else entirely.
-        throw TomPropertyException(
-          'resources.property.type_mismatch',
-          "Could not set property of type $T from value of property $_propertyKey with value $configured",
-          parameters: {
-            'key': _propertyKey,
-            'expectedType': '$T',
-            'value': configured,
-          },
-          rootException: error,
-          stack: stack,
-        );
+        // Narrow on purpose. Both arms below assume a failed `as` — the
+        // widening reads the failure as "aimed at a double", the throw reports
+        // it as a type mismatch — and only a `TypeError` from this one
+        // expression is evidence of that. A wider catch would put both
+        // readings in front of failures they never diagnosed, sending the
+        // reader to look at their type declarations for a fault that is
+        // somewhere else entirely.
+        //
+        // Catching an *Error* is deliberate, and is why the clause cannot be
+        // `on Exception`. A `TypeError` normally signals a bug, but this one is
+        // raised by data the operator wrote, so it is a configuration fault and
+        // has to become a reportable exception rather than reach the caller as
+        // an Error.
+        if (configured is int && 0.0 is T) {
+          // A configuration file cannot say "double": `rate: 2` in YAML and
+          // `"rate": 2` in JSON both decode to an int, so a declared
+          // `TomDoubleProperty('rate')` would fail on a value that is exactly
+          // what the operator meant. The server's `TomConfig` widens the same
+          // way, and the reflected path widens onto a declared double field —
+          // without this, one file could fill a field and fail the matching
+          // property. The converse is deliberately absent, for the reason the
+          // reflector gives for not having it either: narrowing needs a
+          // rounding policy, and truncating 2.5 loses what the operator wrote.
+          //
+          // Why this sits *after* the failed cast rather than in front of it:
+          // `0.0 is T` is also true for `num`, `Object` and `dynamic`, where
+          // `2 as T` already succeeds and the int must survive as an int. Only
+          // a cast that has actually failed can have been aimed at a double.
+          _value = configured.toDouble() as T;
+        } else {
+          // The caught error is chained rather than summarised away. The
+          // message names the key, the wanted type and the value, which is
+          // enough for a scalar mismatch — but not for a generic one: a YAML
+          // `hosts: [a, b]` read as `List<String>` fails on the *element*
+          // type, and the message reports `with value [a, b]`, which is what
+          // the operator wrote and looks perfectly valid. Only the `TypeError`
+          // says `List<dynamic> is not a subtype of List<String>`.
+          throw TomPropertyException(
+            'resources.property.type_mismatch',
+            "Could not set property of type $T from value of property $_propertyKey with value $configured",
+            parameters: {
+              'key': _propertyKey,
+              'expectedType': '$T',
+              'value': configured,
+            },
+            rootException: error,
+            stack: stack,
+          );
+        }
       }
     } else if (_hasDefault) {
       _value = _defaultValue;
@@ -194,6 +237,9 @@ class TomIntProperty extends TomProperty<int> {
 }
 
 /// A [TomProperty] holding a [double] config value.
+///
+/// A configured whole number is widened rather than refused — see
+/// [TomProperty] for why, and for the two conversions this is not.
 class TomDoubleProperty extends TomProperty<double> {
   /// Resolves the double at [key] from config; throws if absent.
   TomDoubleProperty(super.key);

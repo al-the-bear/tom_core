@@ -1,5 +1,33 @@
 ## 1.2.1
 
+### Fixed
+
+- **A whole number configured for a `TomDoubleProperty` threw instead of
+  widening (tcincb107).** No configuration format can say "double": `rate: 2`
+  in YAML and `"rate": 2` in JSON both decode to an `int`, so a value that was
+  exactly what the operator meant failed the property declared to read it —
+  while the reflected configuration path fills a declared `double` field from
+  the same entry. One file could fill a field and fail the matching property.
+  The server's `TomConfig` had already been corrected the same way, and the two
+  are read by the same operator writing the same file.
+
+  A failed cast onto a `T` that accepts a `double`, from a value that is an
+  `int`, now widens. It sits **after** the cast rather than in front of it,
+  because `0.0 is T` is also true for `num`, `Object` and `dynamic`, where
+  `2 as T` already succeeds and the `int` must survive as one — only a cast
+  that has actually failed can have been aimed at a `double`. It does not
+  narrow (`2.5` under a `TomIntProperty` is still a mismatch — narrowing needs
+  a rounding policy) and it does not parse (`'2'` is still a mismatch).
+
+  The rest of the sibling's repair was already in place here: the catch is
+  `on TypeError`, the failure is a `TomPropertyException extends
+  TomClientException` carrying `key`, `parameters` and the `TypeError` as
+  `rootException`, and the value is read once. A test now covers the case that
+  makes the chained cause load-bearing rather than tidy — a configured
+  `['alpha', 'beta']` read as `List<String>` fails on the *element* type, and
+  the message reports `with value [alpha, beta]`, which is what the operator
+  wrote and looks perfectly valid. Only the `TypeError` names both types.
+
 ### Removed
 
 - **`TomClient2FAAdaptor`, and with it `lib/src/tomclient/security/authentication.dart`

@@ -23,7 +23,7 @@ a service or view-model.
 | `TomProperty<T>` | `T` | Generic base; prefer a typed subclass, except when `T` is nullable |
 | `TomStringProperty` | `String` | |
 | `TomIntProperty` | `int` | |
-| `TomDoubleProperty` | `double` | |
+| `TomDoubleProperty` | `double` | A configured whole number widens — see [Resolution Rules](#resolution-rules) |
 | `TomBoolProperty` | `bool` | |
 | `TomPropertyException` | — | Raised when resolution fails; one type, two `key` codes |
 
@@ -51,16 +51,42 @@ Evaluated **once, in the constructor**, from a **single** config lookup — one
 read answers both whether the key is present and what it holds, on the failure
 path as much as the success path:
 
-1. If the config key resolves to a value, it is cast to `T` (a failed cast
-   throws `TomPropertyException` with the key
-   `resources.property.type_mismatch`, naming the key and value, and carrying
-   the `TypeError` as its `rootException`).
-2. Otherwise, if a default was supplied via `.withDefault`, the default is used.
-3. Otherwise (absent key, no default) construction throws
+1. If the config key resolves to a value, it is cast to `T`.
+2. If that cast fails and the value is an `int` while `T` accepts a `double`,
+   the value is widened. See [A whole number fills a
+   double](#a-whole-number-fills-a-double).
+3. If the cast fails otherwise, construction throws `TomPropertyException` with
+   the key `resources.property.type_mismatch`, naming the key and value, and
+   carrying the `TypeError` as its `rootException`.
+4. Otherwise, if a default was supplied via `.withDefault`, the default is used.
+5. Otherwise (absent key, no default) construction throws
    `TomPropertyException` with the key `resources.property.not_configured`.
 
 A failure to read the configuration at all is not one of these: it propagates
 as whatever the provider raised, and is never re-reported as a cast failure.
+
+### A whole number fills a double
+
+A configuration file cannot say "double". `rate: 2` in YAML and `"rate": 2` in
+JSON both decode to an `int`, so a value the operator wrote for a
+`TomDoubleProperty` would otherwise fail the property declared to read it —
+while the reflected configuration path widens the same value onto a declared
+`double` field. One file could fill a field and fail the matching property.
+`TomConfig` on the server widens identically; the two are read by the same
+operator writing the same file.
+
+Three things it deliberately does not do:
+
+- **It does not narrow.** `2.5` under a `TomIntProperty` is still a mismatch:
+  narrowing needs a rounding policy, and truncating loses what the operator
+  wrote.
+- **It does not parse.** `'2'` under a `TomDoubleProperty` is still a mismatch.
+  Reading text as a number is a different decision, and this module does not
+  make it.
+- **It does not convert an `int` a cast already accepted.** The widening is
+  reached only *after* a cast has failed, so `TomProperty<num>('app.count')`
+  over a configured `2` still holds an `int`. `0.0 is num` is true, so a check
+  placed before the cast would have converted it.
 
 ### How a key resolves
 
@@ -143,6 +169,12 @@ value's actual runtime type — the message names only the type that was wanted.
   rather than treating it as "no default".
 - **Eager and immutable** — the value is captured at construction and never
   re-read.
+- **The only conversion is `int` to `double`.** A property casts; it does not
+  coerce. A `'2'` configured for a numeric property, a `'true'` for a
+  `TomBoolProperty`, a `2.5` for a `TomIntProperty` — all are mismatches. Where
+  a loosely-typed external value has to be read, the configuration module's
+  `coerceSettingValue` is the function that does it, and it is a separate
+  decision on purpose.
 - **A key configured with no value counts as absent.** The lookup reports a key
   that was never written and one written as `null` identically, and a property
   reads both as "not there": `app.region:` in a config file fails an obligatory

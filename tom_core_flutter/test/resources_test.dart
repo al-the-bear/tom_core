@@ -262,6 +262,115 @@ void main() {
         ),
       );
     });
+
+    test('a generic mismatch is diagnosable only through the chained cause', () {
+      // The case that makes chaining load-bearing rather than tidy. A scalar
+      // mismatch is legible from the message alone -- 'not-an-int' wanted as
+      // an int explains itself. A *generic* one is not: a configured
+      // `['alpha', 'beta']` decodes as `List<dynamic>` and fails an element
+      // check, and the module's message reports `with value [alpha, beta]`,
+      // which is exactly what the operator wrote and looks perfectly valid.
+      // The reader is told the value is wrong and shown a value that is right.
+      //
+      // Only the TypeError names the two types, so the assertion below is on
+      // `rootException.toString()`, not on the message: were the cause ever
+      // summarised away again, the message would still pass every check above
+      // and this one would fail.
+      installConfig({
+        'app.hosts': <dynamic>['alpha', 'beta'],
+      });
+      expect(
+        () => TomProperty<List<String>>('app.hosts'),
+        throwsA(
+          isA<TomPropertyException>()
+              .having((e) => e.key, 'key', 'resources.property.type_mismatch')
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(contains('app.hosts'), contains('[alpha, beta]')),
+              )
+              .having(
+                (e) => e.rootException.toString(),
+                'rootException',
+                allOf(contains('List<dynamic>'), contains('List<String>')),
+              ),
+        ),
+      );
+    });
+  });
+
+  group('int to double widening', () {
+    // A configuration file cannot say "double". `rate: 2` in YAML and
+    // `"rate": 2` in JSON both decode to an int, so a value the operator wrote
+    // as a whole number would otherwise fail the `TomDoubleProperty` that is
+    // declared for it -- while the reflected path widens the same value onto a
+    // declared double field, so one file could fill a field and fail the
+    // matching property. `TomConfig` on the server widens identically; the two
+    // are read by the same operator writing the same file.
+
+    test('a whole number configured for a double property widens', () {
+      installConfig({'app.rate': 2});
+      expect(TomDoubleProperty('app.rate').get(), 2.0);
+      expect(TomDoubleProperty.withDefault('app.rate', 9.5).get(), 2.0);
+      // The generic form as well, since the widening lives on it and the
+      // subclass only closes over the type.
+      expect(TomProperty<double>('app.rate').get(), 2.0);
+    });
+
+    test('a nullable double property widens too', () {
+      // `0.0 is double?` is true, so the test the widening makes is satisfied
+      // by the nullable form -- which is the form the generic exists for.
+      installConfig({'app.rate': 2});
+      expect(TomProperty<double?>.withDefault('app.rate', null).get(), 2.0);
+    });
+
+    test('the widening does not narrow', () {
+      // Deliberately absent, for the reason the reflector gives for not having
+      // it either: narrowing needs a rounding policy, and truncating 2.5 loses
+      // what the operator wrote. So a fractional value under an int property
+      // is still a mismatch, chained cause and all.
+      installConfig({'app.retries': 2.5});
+      expect(
+        () => TomIntProperty('app.retries'),
+        throwsA(
+          isA<TomPropertyException>().having(
+            (e) => e.key,
+            'key',
+            'resources.property.type_mismatch',
+          ),
+        ),
+      );
+    });
+
+    test('a widenable type that already accepts the int keeps it an int', () {
+      // Why the widening sits *after* the failed cast rather than in front of
+      // it. `0.0 is T` is also true for `num`, `Object` and `dynamic`, where
+      // `2 as T` succeeds -- so a check placed first would convert an int the
+      // caller asked for as a num into a double. Reached only by a cast that
+      // has actually failed, it cannot.
+      installConfig({'app.count': 2});
+      expect(TomProperty<num>('app.count').get(), isA<int>());
+      expect(TomProperty<Object>('app.count').get(), isA<int>());
+      expect(TomProperty<dynamic>('app.count').get(), isA<int>());
+    });
+
+    test('only an int widens, not any other mistyped value', () {
+      // The widening is keyed on the value being an int, so a string that
+      // happens to spell a number is still a mismatch: parsing text into a
+      // number is a different decision from widening one number to another,
+      // and the module does not make it.
+      installConfig({'app.rate': '2'});
+      expect(
+        () => TomDoubleProperty('app.rate'),
+        throwsA(
+          isA<TomPropertyException>().having(
+            (e) => e.key,
+            'key',
+            'resources.property.type_mismatch',
+          ),
+        ),
+      );
+    });
   });
 
   group('missing obligatory key', () {
