@@ -1,5 +1,41 @@
 ## 1.3.0
 
+### Fixed
+
+- **`registerParticipant` enlisted a participant whose `startTransaction`
+  failed (tcincb113).** It recorded the participant in the map and *then*
+  called `startTransaction()`, discarding the `bool` that came back. Both
+  halves were wrong the same way: enlistment was recorded before the start was
+  known to have succeeded.
+
+  A participant that returned `false` was enlisted anyway, so
+  `commitTransaction` later committed a resource that had never opened a
+  transaction — for `MariaDbXADatasource`, `XA COMMIT null;` against the branch
+  its failed start had just cleared, which MariaDB rejects. The failure
+  therefore surfaced as a *commit-time* error naming the wrong operation, at the
+  moment the coordinator is deciding whether to roll everyone back. A
+  participant that *threw* was worse: the map insert had already happened, so
+  the exception left the transaction holding it.
+
+  Enlistment is now all or nothing. The participant is recorded only after a
+  `true`; a `false` or a throw leaves it unenlisted and raises
+  `TomTransactionException` naming it —
+  `transaction_manager.register_participant.start_failed` and `…start_threw`,
+  the latter carrying the participant's own failure as `rootException`.
+
+  The two are reported alike deliberately. They are one event to the
+  coordinator, and the data sources that can fail here return `false` rather
+  than throwing — so the class's previous claim that *"a failure thrown by
+  `startTransaction()` surfaces through the returned future"* documented the
+  path that does not occur. A failed enlistment does not conclude the
+  transaction: the participants that did enlist are unaffected, and because the
+  failed id was never recorded, a later attempt with a participant that can
+  start is a first enlistment rather than a deduplicated no-op.
+
+  `doc/transactions.md` gains the *Failure keys* section it had never had —
+  documenting `transaction_not_running` alongside the two new keys — which
+  lowers `check_doc_error_keys` from 328 to 327.
+
 ### Documentation
 
 - **The two inert `object_persistence` annotations point at the section that

@@ -18,7 +18,7 @@ that follows has to undo committed work.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomTransactionManager` | Zone-scoped coordinator; `startTransaction([isReadOnly])` returns `(transaction, isNew)`, `getCurrentTransaction()`, `transactional`, plus `runInTransactionScope(body)` / `hasTransactionScope` for isolating one flow of work from another. Binds the transaction to a `@TomTransactional` endpoint call. |
-| `TomTransaction` | The running transaction (created via the manager); `registerParticipant`, `commitTransaction()` (rolls back on any failed participant), `rollbackTransaction()`. |
+| `TomTransaction` | The running transaction (created via the manager); `registerParticipant` (all or nothing — a participant whose `startTransaction` refuses or throws is not enlisted, and the failure is raised naming it), `commitTransaction()` (rolls back on any failed participant), `rollbackTransaction()`. |
 | `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`commit`, `rollback`, `endTransaction`). Datasources implement this. |
 
 ## Quick start

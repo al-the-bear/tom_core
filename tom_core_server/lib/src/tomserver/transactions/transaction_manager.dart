@@ -93,11 +93,29 @@ class TomTransaction {
   ///
   /// Participants are deduplicated by [TomTransactionParticipant.getParticipantId];
   /// registering an already-enlisted id is a no-op, so callers may register
-  /// freely without tracking membership. The returned future completes once the
-  /// participant's `startTransaction()` has run, so callers can `await`
-  /// enlistment and observe its result. Throws [TomTransactionException] if the
-  /// transaction is no longer running; a failure thrown by `startTransaction()`
-  /// surfaces through the returned future.
+  /// freely without tracking membership.
+  ///
+  /// **Enlistment is all or nothing.** A participant is recorded only after its
+  /// `startTransaction()` has returned `true`; one that returns `false` or
+  /// throws is not enlisted, and either way this method raises a
+  /// [TomTransactionException] naming the participant — `…start_failed` for the
+  /// refusal, `…start_threw` for the throw, the latter carrying the original as
+  /// its `rootException`. So a caller either has a participant in the
+  /// transaction or has an exception, and never a transaction holding a
+  /// resource that never opened one.
+  ///
+  /// The two failures are reported alike on purpose. `false` and a throw are
+  /// the same event to the coordinator, and the two data sources that can fail
+  /// here return `false` — so a contract that only handled the throw would be
+  /// documenting the path that does not occur. Leaving the participant enlisted
+  /// is what made this worth stating: `commitTransaction` would later commit a
+  /// resource with nothing open, which for `MariaDbXADatasource` is
+  /// `XA COMMIT null;` against the branch its failed start had already cleared
+  /// — a commit-time error naming the wrong operation, arriving exactly when
+  /// the coordinator is deciding whether to roll everyone back.
+  ///
+  /// Also throws [TomTransactionException] if the transaction is no longer
+  /// running.
   Future<void> registerParticipant(TomTransactionParticipant ttp) async {
     if (!_isRunning) {
       throw TomTransactionException(
@@ -105,10 +123,40 @@ class TomTransaction {
         "Transaction is no longer running.",
       );
     }
-    if (_participants[ttp.getParticipantId()] == null) {
-      _participants[ttp.getParticipantId()] = ttp;
-      await ttp.startTransaction();
+    final id = ttp.getParticipantId();
+    if (_participants[id] != null) return;
+
+    final bool started;
+    try {
+      started = await ttp.startTransaction();
+    } catch (error, stack) {
+      // Deliberately wide: the participant is application code — a driver, a
+      // pooled connection, a queue client — and whatever it raises means the
+      // same thing here, which is that the resource is not in the transaction.
+      // Rewrapping rather than rethrowing gives the caller one type to catch
+      // for both failures and names which participant it was, which the
+      // original exception has no reason to know.
+      throw TomTransactionException(
+        "transaction_manager.register_participant.start_threw",
+        "Participant '$id' threw while starting its transaction.",
+        parameters: {'participant': id},
+        rootException: error,
+        stack: stack,
+      );
     }
+
+    if (!started) {
+      throw TomTransactionException(
+        "transaction_manager.register_participant.start_failed",
+        "Participant '$id' refused to start its transaction.",
+        parameters: {'participant': id},
+      );
+    }
+
+    // Recorded last. Recorded first — which is what this did — enlists a
+    // resource whose start has not happened yet, and leaves it enlisted when
+    // the start turns out to fail.
+    _participants[id] = ttp;
   }
 
   /// Commits every participant, then ends them; clears the current transaction.

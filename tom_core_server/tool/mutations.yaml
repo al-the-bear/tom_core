@@ -69,8 +69,28 @@ transactions:
     tests: test/transactions_test.dart
   - behaviour: registering an already-enlisted participant is a no-op
     file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    if (_participants[ttp.getParticipantId()] == null) {"
-    replace: "    if (true) {"
+    find: "    if (_participants[id] != null) return;"
+    replace: ""
+    tests: test/transactions_test.dart
+  - behaviour: a participant whose start refuses is not enlisted
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (!started) {"
+    replace: "    if (false) {"
+    tests: test/transactions_test.dart
+  - behaviour: a participant whose start throws is not enlisted
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    } catch (error, stack) {"
+    replace: "    } on FormatException catch (error, stack) {"
+    tests: test/transactions_test.dart
+  - behaviour: the participant is recorded only after a successful start
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    final bool started;\n    try {"
+    replace: "    _participants[id] = ttp;\n    final bool started;\n    try {"
+    tests: test/transactions_test.dart
+  - behaviour: the throw carries the participant's own failure as its cause
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "        rootException: error,\n        stack: stack,"
+    replace: "        stack: stack,"
     tests: test/transactions_test.dart
   - behaviour: commit ends every participant even after one reports failure
     file: lib/src/tomserver/transactions/transaction_manager.dart

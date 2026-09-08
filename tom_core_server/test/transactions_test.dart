@@ -67,6 +67,46 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 }
 
+/// A participant whose `startTransaction` fails, in whichever of the two ways
+/// the caller asks for.
+///
+/// Both are scripted from one class so the two tests differ only in the failure
+/// and not in the participant: the coordinator is supposed to treat a refusal
+/// and a throw alike, and a fixture that made them different shapes would
+/// obscure whether it does.
+class _UnstartableParticipant extends TomTransactionParticipant {
+  _UnstartableParticipant(this.id, {required this.byThrowing});
+
+  final String id;
+  final bool byThrowing;
+  final List<String> calls = [];
+
+  @override
+  String getParticipantId() => id;
+
+  @override
+  Future<bool> startTransaction() async {
+    calls.add('start');
+    if (byThrowing) throw StateError('the resource is not there');
+    return false;
+  }
+
+  @override
+  Future<bool> commit() async {
+    calls.add('commit');
+    return true;
+  }
+
+  @override
+  Future<void> rollback() async => calls.add('rollback');
+
+  @override
+  Future<bool> endTransaction() async {
+    calls.add('end');
+    return true;
+  }
+}
+
 /// A participant that enlists itself the way a data source does — through the
 /// *ambient* current transaction rather than a handle it was given.
 ///
@@ -360,6 +400,126 @@ void main() {
       // startTransaction() called exactly once despite two registrations.
       expect(p.calls.where((c) => c == 'start').length, 1);
     });
+
+    // Enlistment is all or nothing, and the two ways a start can fail are
+    // reported alike. A participant left enlisted after a failed start is
+    // committed later by `commitTransaction` — which for `MariaDbXADatasource`
+    // is `XA COMMIT null;` against the branch its failed start had already
+    // cleared, so the failure surfaces as a commit-time error naming the wrong
+    // operation, at the moment the coordinator is deciding whether to roll
+    // everyone back.
+    //
+    // The two are separate tests because they were separately wrong: the
+    // refusal was discarded (the `bool` was not read at all) and the throw
+    // propagated *after* the map insert had already happened. Both are asserted
+    // through the same participant so the only difference is the failure.
+
+    test('a participant that refuses to start is not enlisted', () async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      final refuser = _UnstartableParticipant('refuser', byThrowing: false);
+
+      await expectLater(
+        txn.registerParticipant(refuser),
+        throwsA(
+          isA<TomTransactionException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'transaction_manager.register_participant.start_failed',
+              )
+              .having(
+                (e) => e.parameters?['participant'],
+                'participant',
+                'refuser',
+              ),
+        ),
+      );
+
+      // The point of the throw: concluding the transaction must not reach a
+      // resource that never opened one. `commit` here would be the wrong
+      // operation on a branch that is not there.
+      expect(await txn.commitTransaction(), isTrue);
+      expect(refuser.calls, ['start']);
+    });
+
+    test('a participant that throws while starting is not enlisted', () async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      final thrower = _UnstartableParticipant('thrower', byThrowing: true);
+
+      await expectLater(
+        txn.registerParticipant(thrower),
+        throwsA(
+          isA<TomTransactionException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'transaction_manager.register_participant.start_threw',
+              )
+              .having(
+                (e) => e.parameters?['participant'],
+                'participant',
+                'thrower',
+              )
+              // The original is carried rather than summarised: the coordinator
+              // knows which participant failed and nothing else, and what the
+              // resource objected to is only in what it raised.
+              .having(
+                (e) => e.rootException,
+                'rootException',
+                isA<StateError>(),
+              ),
+        ),
+      );
+
+      expect(await txn.commitTransaction(), isTrue);
+      expect(thrower.calls, ['start']);
+    });
+
+    test(
+      'a failed enlistment leaves the rest of the transaction intact',
+      () async {
+        // The transaction is not concluded by the failure — a caller that catches
+        // it may carry on with the participants that did enlist. What must not
+        // happen is the failed one joining them.
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final good = _RecordingParticipant('good');
+        await txn.registerParticipant(good);
+
+        await expectLater(
+          txn.registerParticipant(
+            _UnstartableParticipant('bad', byThrowing: false),
+          ),
+          throwsA(isA<TomTransactionException>()),
+        );
+
+        expect(txn.isRunning, isTrue);
+        expect(await txn.commitTransaction(), isTrue);
+        expect(good.calls, ['start', 'commit', 'end']);
+      },
+    );
+
+    test(
+      'a refused participant may be enlisted again once it can start',
+      () async {
+        // Nothing is remembered about the failure, which is what makes a retry
+        // possible: the id was never recorded, so a second attempt is a first
+        // enlistment rather than the deduplicated no-op it would be if the map
+        // had kept it.
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await expectLater(
+          txn.registerParticipant(
+            _UnstartableParticipant('flaky', byThrowing: false),
+          ),
+          throwsA(isA<TomTransactionException>()),
+        );
+
+        final retry = _RecordingParticipant('flaky');
+        await txn.registerParticipant(retry);
+
+        expect(await txn.commitTransaction(), isTrue);
+        expect(retry.calls, ['start', 'commit', 'end']);
+      },
+    );
 
     test('rejects enlistment once the transaction has concluded', () async {
       final (txn, _) = TomTransactionManager.startTransaction();

@@ -69,6 +69,48 @@ which calls their `startTransaction()` exactly once — registering the same id
 again is a no-op, so callers never have to track membership. Enlisting after the
 transaction has concluded throws `TomTransactionException`.
 
+**Enlistment is all or nothing.** A participant is recorded only after its
+`startTransaction()` returns `true`. One that returns `false` or throws is not
+enlisted, and either way `registerParticipant` raises a
+`TomTransactionException` naming it —
+`transaction_manager.register_participant.start_failed` for the refusal,
+`…start_threw` for the throw, the latter carrying the participant's own failure
+as its `rootException`. So a caller either has the participant in the
+transaction or has an exception, never a transaction holding a resource that
+never opened one.
+
+Both failures are reported alike because they are the same event to the
+coordinator, and because the data sources that can fail here return `false`
+rather than throwing — a contract that handled only the throw would be
+documenting the path that does not occur. What makes it worth stating is what
+the alternative costs: a participant left enlisted is one `commitTransaction`
+commits with nothing open. For `MariaDbXADatasource` that is `XA COMMIT null;`
+against the branch its failed start cleared — a commit-time error naming the
+wrong operation, arriving exactly when the coordinator is deciding whether to
+roll everyone back.
+
+A failed enlistment does not conclude the transaction. The participants that did
+enlist are unaffected, so a caller that catches the exception may carry on with
+them or roll back; and because the failed id was never recorded, a later attempt
+with a participant that *can* start is a first enlistment rather than a
+deduplicated no-op.
+
+### Failure keys
+
+Every one is raised by `registerParticipant`, and every one is a
+`TomTransactionException` — a `TomServerException`, so it flows through the
+standard server error mapping. Concluding a transaction raises none of these:
+`commitTransaction` and `rollbackTransaction` report failure by returning
+`false`, because a participant refusing to commit is an outcome the coordinator
+knows what to do with, while a participant that cannot enlist leaves nothing
+coherent to drive.
+
+| Key | Meaning |
+| --- | ------- |
+| `transaction_manager.register_participant.transaction_not_running` | The transaction has already committed or rolled back. Nothing was enlisted. |
+| `transaction_manager.register_participant.start_failed` | The participant's `startTransaction()` returned `false`. `parameters['participant']` names it; it is not enlisted. |
+| `transaction_manager.register_participant.start_threw` | The participant's `startTransaction()` threw. `parameters['participant']` names it and `rootException` carries what it raised; it is not enlisted. |
+
 The work is concluded one of two ways:
 
 - **`commitTransaction()`** — marks the transaction not-running, then calls
