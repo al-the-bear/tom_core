@@ -1,5 +1,34 @@
 ## 1.3.0
 
+### Fixed
+
+- **The Source-list check reported four documented files as undocumented, and a
+  quarantine held that reading open (tcincb121).** `api_reference_coverage_test`
+  compares each `api_summary_<module>.md` opening `Source:` list against the
+  files the barrel exports for that module. `authorization` named all five of
+  its files; it wrote four of them in the abbreviated form the list allows — one
+  full path, then bare file names carrying the module over — and the parser read
+  only full paths. So the check reported four *missing* files, the module was
+  quarantined as documentation debt, and the debt did not exist: every one of
+  those files has an Overview paragraph, sections for each of its types, and
+  table-of-contents entries.
+
+  A parser that cannot see an entry reports its absence as an omission, which is
+  the failure this file's own header warns about in another form. The parser now
+  resolves a bare name against the module of the preceding full path — what the
+  line says to a reader, and the only thing it could say — and the abbreviation
+  is checked separately, as a matter of form: nineteen of the twenty summaries
+  write every entry in full, a bare name is not a path anyone can follow, and
+  the authorization summary now writes its five in full too. The two rules then
+  name two different defects instead of one cause raising two alarms, which the
+  mutations confirm: abbreviating the list fails only the form test, dropping a
+  file from it fails only the completeness test.
+
+  `_sourceListsPendingReconciliation` is gone with its `skip:` and its staleness
+  meta-test, rather than left empty — an empty quarantine keeps a skip that can
+  never fire and a meta-test that can never fail, and the next reader has no way
+  to tell that from a live rule.
+
 ### Changed
 
 - **A datasource settings key that binds nothing now fails the start-up, naming

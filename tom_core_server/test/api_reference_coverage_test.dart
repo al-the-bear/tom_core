@@ -183,6 +183,16 @@
 /// worse, because it sends the reader to a page describing something they
 /// cannot import.
 ///
+/// A third failure sits beside those two and was learned from them. The list
+/// may be written in an abbreviated form — one full path, then bare file names
+/// carrying the module over — and reading only full paths made those entries
+/// invisible, so the check reported the files as *undocumented* when the
+/// document named every one of them. That reading kept a module quarantined on
+/// a defect it did not have. [_sourceListOf] now resolves a bare name the way a
+/// reader does, and the abbreviation is reported separately, as a matter of
+/// form: nineteen summaries write every entry in full, and a bare name is not a
+/// path anyone can follow.
+///
 /// The group after it asks the same question of the index, where the answer
 /// carries further. `api_summary_index.md` is the only place in the package
 /// where a reader can conclude that a name does not exist without opening a
@@ -192,11 +202,13 @@
 /// them, so the reader who looked them up was told, by the document built to
 /// answer that question, that there was nothing to find.
 ///
-/// Both carry a quarantine, because both were measured across all twenty
-/// modules before being enforced and both found debt older than the module that
-/// exposed them. The quarantines are visible skips naming their list,
-/// and a meta-test fails when an entry has nothing left to suppress, so the
-/// exemption expires by itself rather than by being remembered.
+/// The index check carries a quarantine, because it was measured across all
+/// twenty modules before being enforced and found debt older than the module
+/// that exposed it. The quarantine is a visible skip naming its list, and a
+/// meta-test fails when an entry has nothing left to suppress, so the exemption
+/// expires by itself rather than by being remembered. The `Source:` check
+/// carried one too and no longer does; what its last entry turned out to need
+/// is described above.
 ///
 /// The group after those two is the same completeness question asked about the
 /// one kind of API the class-shaped checks structurally cannot reach. A summary
@@ -712,22 +724,75 @@ List<String> _exportedFiles(String module) => [
     if (export.group(1) == module) '$module/${export.group(2)}',
 ]..sort();
 
-/// The `<module>/<file>` pairs the `Source:` list at the top of [summary]
-/// names, in the order given — or `null` when it has no such list.
+/// The span of [summary] its `Source:` list occupies, or `null` when it has
+/// none.
 ///
 /// The list runs from the `Source:` line (some summaries write `Sources:`) to
-/// the first blank line after it, which is how all twenty write it. Taking it
-/// as a string rather than a module lets the shapes below be checked against a
+/// the first blank line after it, which is how all twenty write it. Taking a
+/// string rather than a module lets the shapes below be checked against a
 /// fixture instead of only against the package.
-List<String>? _sourceListOf(String summary) {
+String? _sourceListSpan(String summary) {
   final start = RegExp(r'^Sources?:', multiLine: true).firstMatch(summary);
   if (start == null) return null;
   final rest = summary.substring(start.start);
   final blank = rest.indexOf('\n\n');
-  return RegExp(r'`lib/src/tomserver/([^/`]+)/([^`]+)`')
-      .allMatches(blank < 0 ? rest : rest.substring(0, blank))
-      .map((match) => '${match.group(1)}/${match.group(2)}')
-      .toList();
+  return blank < 0 ? rest : rest.substring(0, blank);
+}
+
+/// A backticked entry in a `Source:` list: either a full package path, or the
+/// bare file name that abbreviates one.
+final _sourceEntry = RegExp(
+  r'`(?:lib/src/tomserver/([^/`]+)/)?([^/`]+\.dart)`',
+);
+
+/// The `<module>/<file>` pairs the `Source:` list at the top of [summary]
+/// names, in the order given — or `null` when it has no such list.
+///
+/// A bare file name resolves against the module of the last full path before
+/// it, which is what "`…/authorization/authorization_cache.dart`,
+/// `graded_authorization.dart`" says to a reader and is the only thing it could
+/// say. Reading only full paths was a blind spot of exactly the kind this
+/// file's header warns about: the four abbreviated entries in the authorization
+/// summary matched nothing, so the check reported four *undocumented* files —
+/// naming a defect the document did not have, and hiding the one it did, for as
+/// long as the module sat quarantined on the strength of that reading. A parser
+/// that cannot see an entry reports its absence as an omission.
+///
+/// The abbreviation is a defect of its own — no other summary writes one, and a
+/// bare name is not a path a reader can follow — but it is a defect about
+/// *form*, and [_abbreviatedSourceEntries] is where it is reported, in those
+/// terms. A bare name before any full path resolves against nothing and is
+/// dropped here; it is caught there, where the message fits.
+List<String>? _sourceListOf(String summary) {
+  final span = _sourceListSpan(summary);
+  if (span == null) return null;
+  final entries = <String>[];
+  String? module;
+  for (final match in _sourceEntry.allMatches(span)) {
+    module = match.group(1) ?? module;
+    if (module != null) entries.add('$module/${match.group(2)}');
+  }
+  return entries;
+}
+
+/// The entries of [summary]'s `Source:` list written as a bare file name rather
+/// than as a full package path, in the order given.
+///
+/// Nineteen of the twenty summaries write every entry in full, and the
+/// twentieth is why this exists. A bare name is a path a reader cannot follow
+/// and a tool cannot resolve without inferring the module from a neighbouring
+/// line — an inference [_sourceListOf] now makes, deliberately, so that the
+/// completeness check reports what is missing rather than what is merely
+/// abbreviated. Making the inference is what makes reporting the abbreviation
+/// separately worth doing: the two failures then name two different defects
+/// instead of one cause raising two alarms.
+List<String> _abbreviatedSourceEntries(String summary) {
+  final span = _sourceListSpan(summary);
+  if (span == null) return const [];
+  return [
+    for (final match in _sourceEntry.allMatches(span))
+      if (match.group(1) == null) match.group(2)!,
+  ];
 }
 
 /// The `Source:` list of `doc/api_reference/api_summary_<module>.md`.
@@ -2960,15 +3025,6 @@ const Set<String> _verificationPendingAttribution = {
   'transactions',
 };
 
-/// The modules whose summary `Source:` list has not been reconciled against the
-/// barrel yet.
-///
-/// The debt is characteristically a list that names most of what the barrel
-/// exports and drops one or two files without saying so. An omitted source is
-/// often the source of a whole feature area the summary documents nowhere, so
-/// the missing line and the missing chapter are one gap seen twice.
-const Set<String> _sourceListsPendingReconciliation = {'authorization'};
-
 /// The modules whose class sections do not yet name every member their classes
 /// declare.
 ///
@@ -3614,66 +3670,75 @@ class RealClass {}
   // omission happens, because the section is the part being thought about.
   group('each summary\'s Source list names every file it covers', () {
     for (final module in _modules()) {
-      test(
-        module,
-        () {
-          final listed = _summarySourceList(module);
-          expect(
-            listed,
-            isNotNull,
-            reason:
-                'api_summary_$module.md has no "Source:" line. Every other '
-                'summary opens its Overview with one, and it is the only place '
-                'the document says which files it claims to cover.',
-          );
+      test(module, () {
+        final listed = _summarySourceList(module);
+        expect(
+          listed,
+          isNotNull,
+          reason:
+              'api_summary_$module.md has no "Source:" line. Every other '
+              'summary opens its Overview with one, and it is the only place '
+              'the document says which files it claims to cover.',
+        );
 
-          final exported = _exportedFiles(module);
+        final exported = _exportedFiles(module);
 
-          final missing = exported.where((f) => !listed!.contains(f)).toList();
-          expect(
-            missing,
-            isEmpty,
-            reason:
-                'api_summary_$module.md\'s Source list does not name these '
-                'files, which the barrel exports: ${missing.join(', ')}. A '
-                'file left off the list is a file whose public types nobody '
-                'notices are undocumented — which is how framework_table.dart '
-                'and sql_instant.dart, four types and four functions between '
-                'them, stayed out of this package\'s API reference.',
-          );
+        final missing = exported.where((f) => !listed!.contains(f)).toList();
+        expect(
+          missing,
+          isEmpty,
+          reason:
+              'api_summary_$module.md\'s Source list does not name these '
+              'files, which the barrel exports: ${missing.join(', ')}. A '
+              'file left off the list is a file whose public types nobody '
+              'notices are undocumented — which is how framework_table.dart '
+              'and sql_instant.dart, four types and four functions between '
+              'them, stayed out of this package\'s API reference.',
+        );
 
-          final orphaned = listed!.where((f) => !exported.contains(f)).toList();
-          expect(
-            orphaned,
-            isEmpty,
-            reason:
-                'api_summary_$module.md\'s Source list names these, which the '
-                'barrel does not export from $module: ${orphaned.join(', ')}. '
-                'Either the file moved, or it is module-internal and the '
-                'summary is documenting an API a consumer cannot import.',
-          );
-        },
-        skip: _sourceListsPendingReconciliation.contains(module)
-            ? 'Source list not reconciled yet.'
-            : null,
-      );
+        final orphaned = listed!.where((f) => !exported.contains(f)).toList();
+        expect(
+          orphaned,
+          isEmpty,
+          reason:
+              'api_summary_$module.md\'s Source list names these, which the '
+              'barrel does not export from $module: ${orphaned.join(', ')}. '
+              'Either the file moved, or it is module-internal and the '
+              'summary is documenting an API a consumer cannot import.',
+        );
+      });
     }
 
-    test('every quarantined module still has files missing from its list', () {
-      final clean = _sourceListsPendingReconciliation.where((module) {
-        final listed = _summarySourceList(module);
-        return listed != null &&
-            _exportedFiles(module).every(listed.contains) &&
-            listed.every(_exportedFiles(module).contains);
-      }).toList();
+    // Every module passes the check above, so it carries no quarantine — but
+    // the last module to leave one did not leave because its documentation
+    // improved. `authorization` named all five of its files and was reported as
+    // naming one, because it wrote four of them as bare names and the parser
+    // read only full paths. The quarantine held a documentation defect open for
+    // as long as it took to notice that the defect was in the reading.
+    //
+    // So the form is now checked in its own right, and separately from
+    // completeness: the parser resolves a bare name against the module of the
+    // preceding full path, which is what a reader does, and the test below
+    // reports the abbreviation as what it is.
+    test('every Source list entry is a path, not a bare file name', () {
+      final abbreviated = <String>[];
+      for (final module in _modules()) {
+        final entries = _abbreviatedSourceEntries(
+          File('doc/api_reference/api_summary_$module.md').readAsStringSync(),
+        );
+        for (final entry in entries) {
+          abbreviated.add('$module: $entry');
+        }
+      }
       expect(
-        clean,
+        abbreviated,
         isEmpty,
         reason:
-            'These modules are quarantined but their Source lists already '
-            'agree with the barrel: ${clean.join(', ')}. A quarantine entry '
-            'that suppresses nothing reads as outstanding debt that is not, '
-            'and it silently disarms the check if the list drifts again.',
+            'These Source list entries are written as bare file names: '
+            '${abbreviated.join(', ')}. Nineteen of the twenty summaries write '
+            'every entry as a full `lib/src/tomserver/<module>/<file>` path, '
+            'which is a path the reader can follow and a tool can resolve '
+            'without inferring the module from the line above it.',
       );
     });
 
@@ -3698,6 +3763,47 @@ class RealClass {}
         ['cmdline/args.dart', 'cmdline/env_file.dart'],
       );
       expect(_sourceListOf('# A summary with no Source line\n'), isNull);
+
+      // The abbreviated shape, read the way its writer meant it: the module
+      // carries over from the last full path. Pinned against a fixture rather
+      // than against the package, because the package no longer contains one —
+      // and a rule with no instance left to exercise it is a rule that quietly
+      // stops holding.
+      expect(
+        _sourceListOf(
+          'Sources: `lib/src/tomserver/authorization/authorization_cache.dart`,\n'
+          '`graded_authorization.dart`.\n'
+          '\n',
+        ),
+        [
+          'authorization/authorization_cache.dart',
+          'authorization/graded_authorization.dart',
+        ],
+      );
+      expect(
+        _abbreviatedSourceEntries(
+          'Sources: `lib/src/tomserver/authorization/authorization_cache.dart`,\n'
+          '`graded_authorization.dart`.\n'
+          '\n',
+        ),
+        ['graded_authorization.dart'],
+      );
+      expect(
+        _abbreviatedSourceEntries(
+          'Source: `lib/src/tomserver/cache/server_cache.dart`.\n\n',
+        ),
+        isEmpty,
+      );
+
+      // A bare name with no full path before it resolves against nothing, so
+      // it is dropped from the list and reported as an abbreviation instead.
+      // Reporting it as a *missing file* is the failure this whole pair exists
+      // to prevent, and it cannot be, because there is no module to name it
+      // under.
+      expect(_sourceListOf('Source: `orphan.dart`.\n\n'), isEmpty);
+      expect(_abbreviatedSourceEntries('Source: `orphan.dart`.\n\n'), [
+        'orphan.dart',
+      ]);
     });
   });
 

@@ -35,8 +35,10 @@ those roles (C-6), and the row scope that turns both into a `WHERE` clause.
 ## Overview
 
 Sources: `lib/src/tomserver/authorization/authorization_cache.dart`,
-`graded_authorization.dart`, `principal_delegation.dart`,
-`principal_resource_grant.dart`, `resource_data_scope.dart`.
+`lib/src/tomserver/authorization/graded_authorization.dart`,
+`lib/src/tomserver/authorization/principal_delegation.dart`,
+`lib/src/tomserver/authorization/principal_resource_grant.dart`,
+`lib/src/tomserver/authorization/resource_data_scope.dart`.
 
 `authorization_cache.dart` caches the `TomPrincipal` resolved for an
 authentication token so the authorization lookup runs once per token; the cache
