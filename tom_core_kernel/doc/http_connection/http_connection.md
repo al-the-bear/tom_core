@@ -987,7 +987,12 @@ Every source file here names the siblings it uses by relative path, so the
 dependencies of any one file are readable from its first few lines and the list
 above is derivable from them rather than compiled by hand from the symbols.
 `prefer_relative_imports` is enabled for this package, so a `package:` URI back
-into `lib/` — including one naming the package's own barrel — is reported.
+into `lib/` — including one naming the package's own barrel — is reported. The
+rule is raised to `warning` in `tom_ai/core/analysis_options.yaml`, because at
+its default `info` severity `dart analyze` prints the finding and still exits
+zero: the shape would be reported and not refused. `test/import_convention_test.dart`
+asserts both the absence of such an import and the severity that lets the
+analyzer fail on one.
 
 That matters more here than in most modules, because `http_connection` sits in
 two import cycles, and a cycle is only visible while the edges that make it are

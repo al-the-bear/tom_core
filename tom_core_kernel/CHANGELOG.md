@@ -7,6 +7,39 @@ API narrowings. Read the **Changed** section before upgrading — several public
 members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
+### Fixed
+
+- **The lint that stops a library importing its own barrel was reported and not
+  enforced (tcincb109).** Six `http_connection` files once imported
+  `package:tom_core_kernel/tom_core_kernel.dart`, the barrel that exports them.
+  Those imports were repaired earlier, and the repair leaned on
+  `prefer_relative_imports`, enabled in `tom_ai/core/analysis_options.yaml`, to
+  stop the shape returning.
+
+  It would not have. The rule's default severity is `info`, and `dart analyze`
+  prints an info and exits **zero** — measured by planting a barrel import and
+  reading the exit code, not inferred from the configuration. The workspace's
+  quality gate is that command, so a library importing itself would have been
+  printed among the output of a passing run.
+
+  The rule is now raised to `warning`, which makes the same violation exit 2.
+  Nothing else moved: every Dart and Flutter package in `tom_ai/core` analyzes
+  exactly as it did before, the raise having no violations to find.
+
+  `test/import_convention_test.dart` gains three tests. Two are the shape
+  itself — no `lib/` library imports the barrel, and the severity in the shared
+  options is still `warning` or `error`, because a lint is load-bearing only
+  while the gate can fail on it and a severity is one line for a later edit to
+  lower. The third is the counterpart: every module directory under
+  `lib/src/tombase` is exported by the barrel, since `lib/src` files stop
+  reaching for the barrel only while the barrel still reaches them.
+
+  The barrel-import scan matches a directive rather than any line, unlike the
+  neighbouring `src/` rule. A dartdoc that shows a consumer
+  `import 'package:tom_core_kernel/tom_core_kernel.dart';` is showing the right
+  thing, and a guard that refused it would argue against the documentation it
+  exists to protect.
+
 ### Changed
 
 - **The timezone lookups hand out views, not the index (tcincb87).**
