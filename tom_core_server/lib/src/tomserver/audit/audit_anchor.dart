@@ -198,10 +198,31 @@ class TomAuditAnchor {
   /// The anchor as one line of JSON, with no embedded newline.
   String toJsonLine() => jsonEncode(toJson());
 
+  /// The anchor as one line, carrying the head hash abbreviated.
+  ///
+  /// Abbreviated rather than sliced, for the reason [TomAuditEntry.toString]
+  /// gives: a fixed-width `substring` throws on a shorter hash, and a
+  /// description that throws is worthless in the situation that produced it.
+  /// The two render the same width so an anchor and the entry it anchors read
+  /// alike side by side; `audit_anchor_test.dart` holds them to it.
   @override
-  String toString() =>
-      'anchor[$writer @$entryCount ${headHash.substring(0, headHash.length < 8 ? headHash.length : 8)} '
-      '${createdAt.toIso8601String()}${isSigned ? " signed:$keyId" : " UNSIGNED"}]';
+  String toString() {
+    final short = headHash.isEmpty
+        ? 'no hash'
+        : (headHash.length <= _shortHashLength
+              ? headHash
+              : headHash.substring(0, _shortHashLength));
+    return 'anchor[$writer @$entryCount $short '
+        '${createdAt.toIso8601String()}'
+        '${isSigned ? " signed:$keyId" : " UNSIGNED"}]';
+  }
+
+  /// How much of the head hash a one-line description carries.
+  ///
+  /// Matched to [TomAuditEntry.toString]'s width rather than shared with it:
+  /// the two live in different libraries, and a test asserting they agree is
+  /// cheaper than an export that exists only to be a number.
+  static const int _shortHashLength = 8;
 }
 
 /// Attaches a signature to an anchor's payload.

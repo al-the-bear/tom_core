@@ -2,6 +2,36 @@
 
 ### Fixed
 
+- **`TomAuditEntry.toString()` threw `RangeError` on a hash shorter than eight
+  characters (tcincb88).** It ended in `hash.substring(0, 8)`, so the one method
+  whose job is to describe an object crashed instead — and crashed in exactly
+  the situation that calls it, a diagnostic trying to show a suspect entry. It
+  is also what the test framework calls to build a failure message, which is
+  how this was found: an assertion failed and the reporter threw
+  `RangeError (end): Invalid value: Only valid value is 0: 8` instead of
+  reporting.
+
+  The unnamed constructor is `const` and public, so it cannot validate:
+  `fromJson` refuses an empty hash, but `TomAuditEntry(hash: 'h', …)` is
+  reachable and the anchor tests already build entries with placeholder hashes.
+  Both `toString`s in the module now abbreviate rather than slice — a shorter
+  hash is shown whole and an absent one reads `no hash` rather than as empty
+  brackets, which look like a hash that rendered as nothing.
+
+  `TomAuditAnchor.toString` was already guarded but spelled its guard as an
+  inline conditional; it uses the same shape and the same eight-character width,
+  so an anchor and the entry it anchors read alike side by side. They live in
+  different libraries and cannot share the constant, so
+  `audit_anchor_test.dart` asserts they agree instead.
+
+  Every other fixed-width `substring` in the package was checked and none is
+  reachable with a short input: the two in the audit module are guarded by a
+  length test and by the file filter that precedes them, and outside it the
+  SMTP reply parser guards on `line.length < 4`, the XLSX sheet-name cap
+  truncates first, and the AWS date stamp is cut from a string the signer
+  formats itself.
+
+
 - **The readme quick-start guard timed compilation and called the result a
   hang; it now times the two separately
   (tcincb5_ahwq_tom_core_server_cache_readme-quick-start-test-is-flaky).**

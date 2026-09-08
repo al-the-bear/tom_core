@@ -116,6 +116,49 @@ void main() {
       sink.close();
     });
 
+    // An anchor is read next to the entry it anchors, so the two abbreviate the
+    // head hash to the same width. They cannot share the constant — different
+    // libraries — so this is what keeps them agreeing, and it is also what
+    // stops either slicing a fixed width off a hash that has not got it.
+    group('an anchor describes itself for any head hash', () {
+      TomAuditAnchor anchorWith(String headHash) => TomAuditAnchor(
+        writer: 'node-a',
+        entryCount: 3,
+        headHash: headHash,
+        createdAt: DateTime.utc(2026, 7, 28, 11),
+      );
+
+      test('a short head hash is shown whole', () {
+        expect(anchorWith('h').toString(), contains(' h '));
+        expect(anchorWith('abcdefgh').toString(), contains(' abcdefgh '));
+      });
+
+      test('no head hash at all says so', () {
+        expect(anchorWith('').toString(), contains(' no hash '));
+      });
+
+      test('an anchor and its entry abbreviate to the same width', () {
+        final sink = TomMemoryAuditSink();
+        final full = List.generate(
+          64,
+          (i) => 'abcdef0123456789'[i % 16],
+        ).join();
+
+        final anchorText = anchorWith(full).toString();
+        final entryText = TomAuditEntry(
+          record: _record('r0'),
+          previousHash: 'p',
+          hash: full,
+          index: 0,
+        ).toString();
+
+        expect(anchorText, contains(' ${full.substring(0, 8)} '));
+        expect(entryText, endsWith('[${full.substring(0, 8)}]'));
+        expect(anchorText, isNot(contains(full.substring(0, 9))));
+        sink.close();
+      });
+    });
+
     test('an empty chain anchors at genesis rather than at nothing', () {
       final sink = TomMemoryAuditSink();
       final anchor = TomAuditAnchor.of(sink, writer: 'node-a');

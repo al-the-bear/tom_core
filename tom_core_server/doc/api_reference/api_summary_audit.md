@@ -389,7 +389,7 @@ read is reported rather than silently reinterpreted.
 | ------ | --------- | ----------- |
 | `toJson` | `Map<String, Object?> toJson()` | The entry as JSON: the position, the chain link, then the record. |
 | `toJsonLine` | `String toJsonLine()` | The entry as one line of JSON with no embedded newline — the JSON Lines storage format. |
-| `toString` | `String toString()` | *(override)* The record's one-line form followed by the first eight hash characters. |
+| `toString` | `String toString()` | *(override)* The record's one-line form followed by the first eight hash characters — or the whole hash when it is shorter, and `no hash` when there is none. Never throws: it is what a diagnostic calls to show a suspect entry, and the unnamed constructor cannot reject a short hash. |
 
 ### TomAuditChainVerification
 
@@ -770,7 +770,7 @@ missing or of the wrong type.
 | `signedWith` | `TomAuditAnchor signedWith(TomAuditAnchorSigner signer)` | This anchor with `signer`'s key id and signature attached. The key id is set *before* the payload is signed, so an anchor cannot be re-attributed without invalidating its own signature. |
 | `toJson` | `Map<String, Object?> toJson()` | The anchor as a JSON map, including `keyId` and `signature`. |
 | `toJsonLine` | `String toJsonLine()` | The anchor as one line of JSON with no embedded newline. |
-| `toString` | `String toString()` | *(override)* Writer, position, truncated head hash, timestamp, and whether it is signed. |
+| `toString` | `String toString()` | *(override)* Writer, position, head hash abbreviated to eight characters, timestamp, and whether it is signed. Same width as `TomAuditEntry.toString`, so the two read alike side by side, and same tolerance of a short or absent hash. |
 
 ### TomAuditAnchorSigner
 

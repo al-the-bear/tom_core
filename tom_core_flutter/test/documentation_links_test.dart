@@ -391,7 +391,16 @@ void main() {
     /// never touches: `doc/preferences.md` closes by telling the reader to
     /// register a platform with `TomPlatformUtils`, which is true, load-bearing,
     /// and reached three collaborators away.
-    String dependencyBulletsOf(String file) {
+    /// The part of a `## Dependencies` section that makes claims about types.
+    ///
+    /// That is the table's **last** column — the one saying what each
+    /// dependency is *for* — plus any bullet the table left behind, which is
+    /// where a section says a dependency is absent or arrives transitively.
+    /// The first three columns are derived from the imports and are held to
+    /// them by `tom_ai/core/tool/check_module_dependencies.py`; reading them
+    /// here would re-check that and would also fault every row legitimately
+    /// naming a package rather than a type.
+    String dependencyClaimsOf(String file) {
       final prose = proseOf(file);
       final start = RegExp(
         r'^## Dependencies$',
@@ -399,22 +408,29 @@ void main() {
       ).firstMatch(prose);
       if (start == null) return '';
       var rest = prose.substring(start.end);
-      final next = RegExp(r'^## ', multiLine: true).firstMatch(rest);
+      final next = RegExp(r'^#{1,6} ', multiLine: true).firstMatch(rest);
       if (next != null) rest = rest.substring(0, next.start);
 
-      final bullets = <String>[];
-      var started = false;
+      final claims = <String>[];
+      var inBullet = false;
       for (final line in rest.split('\n')) {
-        if (line.startsWith('- ')) {
-          started = true;
-        } else if (started &&
-            !line.startsWith('  ') &&
-            line.trim().isNotEmpty) {
-          break; // the list ended and prose began
+        if (line.startsWith('|')) {
+          inBullet = false;
+          final cells = line.split('|');
+          // A row, not the heading or the `| ---- |` rule beneath it.
+          if (cells.length >= 6 && !cells[1].trim().startsWith('Dependency')) {
+            claims.add(cells[cells.length - 2]);
+          }
+          continue;
         }
-        if (started) bullets.add(line);
+        if (line.startsWith('- ')) {
+          inBullet = true;
+        } else if (inBullet && !line.startsWith('  ') && line.trim().isEmpty) {
+          inBullet = false;
+        }
+        if (inBullet) claims.add(line);
       }
-      return bullets.join('\n');
+      return claims.join('\n');
     }
 
     test('every type a module names as a dependency is one it actually refers '
@@ -450,8 +466,8 @@ void main() {
           p.basenameWithoutExtension(file),
         );
         if (!Directory(module).existsSync()) continue;
-        final bullets = dependencyBulletsOf(file);
-        if (bullets.isEmpty) continue;
+        final claims = dependencyClaimsOf(file);
+        if (claims.isEmpty) continue;
         checked++;
 
         final source = Directory(module)
@@ -462,7 +478,7 @@ void main() {
             .join('\n');
 
         final named = <String>{};
-        for (final span in inlineCode.allMatches(bullets)) {
+        for (final span in inlineCode.allMatches(claims)) {
           named.addAll(frameworkSymbol.allMatches(span[0]!).map((m) => m[0]!));
         }
         for (final symbol in named) {

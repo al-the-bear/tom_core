@@ -482,6 +482,55 @@ void main() {
       expect(entry.isSelfConsistent, isTrue);
     });
 
+    // =========================================================================
+    // Describing an entry must never be the thing that fails
+    // =========================================================================
+    //
+    // `toString` is what a diagnostic reaches for when it is trying to show a
+    // suspect entry, and it is also what the test framework calls to build a
+    // failure message. Slicing a fixed eight characters off the hash makes it
+    // throw `RangeError` on anything shorter, which turns a readable assertion
+    // failure into an unrelated exception from the reporter — that is how this
+    // was found. The unnamed constructor is `const` and public, so a short hash
+    // is reachable however strictly `fromJson` refuses one.
+    group('an entry describes itself for any hash', () {
+      TomAuditEntry entryWith(String hash) => TomAuditEntry(
+        record: _record('r1'),
+        previousHash: 'p',
+        hash: hash,
+        index: 0,
+      );
+
+      test('a hash shorter than the abbreviation is shown whole', () {
+        expect(entryWith('h').toString(), endsWith('[h]'));
+        expect(entryWith('abcdefg').toString(), endsWith('[abcdefg]'));
+      });
+
+      test('a hash of exactly the abbreviation length is shown whole', () {
+        expect(entryWith('abcdefgh').toString(), endsWith('[abcdefgh]'));
+      });
+
+      test('a full hash is cut to the abbreviation', () {
+        final entry = TomAuditEntry.chain(
+          _record('r1'),
+          tomAuditGenesisHash,
+          index: 0,
+        );
+        expect(entry.hash.length, 64);
+        expect(entry.toString(), endsWith('[${entry.hash.substring(0, 8)}]'));
+      });
+
+      test('no hash at all says so rather than showing empty brackets', () {
+        expect(entryWith('').toString(), endsWith('[no hash]'));
+      });
+
+      test('the description still carries the record', () {
+        // Abbreviating must not have cost the part a reader is looking for.
+        final entry = entryWith('h');
+        expect(entry.toString(), startsWith(entry.record.toString()));
+      });
+    });
+
     test('the same record on a different link gets a different hash', () {
       final record = _record('r1');
       final a = TomAuditEntry.chain(record, tomAuditGenesisHash, index: 0);

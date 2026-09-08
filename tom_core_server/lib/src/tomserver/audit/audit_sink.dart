@@ -220,8 +220,35 @@ class TomAuditEntry {
   /// the one file operation that cannot corrupt what came before it.
   String toJsonLine() => jsonEncode(toJson());
 
+  /// The entry as one line, ending in the first eight characters of its hash.
+  ///
+  /// The hash is abbreviated rather than sliced: taking exactly eight
+  /// characters throws `RangeError` on a shorter one, and this is the method a
+  /// diagnostic reaches for when it is trying to show a suspect entry — the
+  /// one moment a description must not become an exception. The unnamed
+  /// constructor is `const` and public, so it cannot reject a short hash;
+  /// [TomAuditEntry.fromJson] does, but an entry built directly does not go
+  /// through it, and the anchor tests already build entries with placeholder
+  /// hashes.
+  ///
+  /// An entry with no hash at all says so rather than showing empty brackets,
+  /// which read as a hash that happened to render as nothing.
   @override
-  String toString() => '${record.toString()} [${hash.substring(0, 8)}]';
+  String toString() {
+    final short = hash.isEmpty
+        ? 'no hash'
+        : (hash.length <= _shortHashLength
+              ? hash
+              : hash.substring(0, _shortHashLength));
+    return '${record.toString()} [$short]';
+  }
+
+  /// How much of a hash a one-line description carries.
+  ///
+  /// Enough to tell two entries apart by eye in a log, short enough that the
+  /// line stays readable. [TomAuditAnchor.toString] abbreviates to the same
+  /// width, so the two read alike side by side.
+  static const int _shortHashLength = 8;
 }
 
 /// The outcome of checking a chain's integrity.
@@ -672,6 +699,10 @@ class TomFileAuditSink implements TomAuditSink {
   ///
   /// A file with no sequence is the day's live file, so it sorts after every
   /// rotated file of that day.
+  ///
+  /// The unguarded `substring` below is safe because of where the files come
+  /// from: [files] admits only names beginning `<filePrefix>-`, so the
+  /// stem is at least that long and the cut is at worst the empty string.
   ({String day, int sequence}) _orderKey(File file) {
     final name = p.basename(file.path);
     final rotated = _rotatedNamePattern.firstMatch(name);

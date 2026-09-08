@@ -541,12 +541,20 @@ List<String>? _overviewTableTypes(String module) {
 /// missing exports. The distinction is not a special case: a heading that
 /// quotes an identifier is tabulating that identifier's values, not declaring a
 /// column of types.
+///
+/// So does a first column headed `Dependency`. Every module guide's
+/// `## Dependencies` section is `| Dependency | Kind | Imported by | For |`,
+/// which satisfies the `Kind` clause exactly — and its first column holds
+/// package names, `dart:` libraries and links to sibling modules, none of which
+/// this module exports. Read as a type table it reports `crypto`, `path` and
+/// `tom_core_kernel` as names the barrel has lost.
 int? _typeTableNameColumn(String line) {
   final cells = line.split('|').map((cell) => cell.trim()).toList();
   if (cells.length < 4 || cells.first.isNotEmpty || cells.last.isNotEmpty) {
     return null;
   }
   if (cells.any((cell) => cell.contains('`'))) return null;
+  if (cells[1] == 'Dependency') return null;
   final kind = cells.indexOf('Kind');
   if (kind >= 2) return kind - 1;
   return cells[1] == 'Type' || cells[1] == 'Symbol' ? 1 : null;

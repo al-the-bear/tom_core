@@ -2529,21 +2529,57 @@ void main() {
       expect(state.skipSpendsGrace, isTrue);
     });
 
-    test('leniency covers the two encodings and nothing else', () {
-      for (final raw in <Object?>[false, 'True', 1, 'yes', null]) {
+    test('the four values that mean yes or no are read as yes or no', () {
+      for (final raw in <Object?>[false, 'false', null]) {
         expect(
           Tom2FAEnrolmentState.fromClaims(
             claims()..[Tom2FAEnrolmentClaims.pendingEnrolment] = raw,
           ),
           isNull,
-          reason: '$raw (${raw.runtimeType}) is neither `true` nor "true"',
+          reason: '$raw (${raw.runtimeType}) says no enrolment is owed',
+        );
+      }
+    });
+
+    test('anything else is refused rather than read as no', () {
+      // The claim decides whether a login is finished, so a value this reader
+      // cannot interpret must not be assumed to mean "nothing owed": an issuer
+      // that meant *this login is not finished* and spelled it `True` or `1`
+      // would otherwise authenticate in full. The refusal is a throw because
+      // the tokens are signed — an unreadable value can only come from an
+      // issuer the deployment already trusts, which is the external-identity
+      // case, and there a third party's reasonable encoding choice has to
+      // become an error rather than a bypass.
+      for (final raw in <Object?>['True', 1, 'yes']) {
+        expect(
+          () => Tom2FAEnrolmentState.fromClaims(
+            claims()..[Tom2FAEnrolmentClaims.pendingEnrolment] = raw,
+          ),
+          throwsA(
+            isA<TomException>().having(
+              (e) => e.key,
+              'key',
+              'security.two_factor.unreadable_claim',
+            ),
+          ),
+          reason: '$raw (${raw.runtimeType}) is neither yes nor no',
         );
       }
 
-      final state = Tom2FAEnrolmentState.fromClaims(
-        claims()..[Tom2FAEnrolmentClaims.skippable] = 'yes',
+      // The same reader gates the two flags, so they refuse on the same terms
+      // rather than quietly reading as `false`.
+      expect(
+        () => Tom2FAEnrolmentState.fromClaims(
+          claims()..[Tom2FAEnrolmentClaims.skippable] = 'yes',
+        ),
+        throwsA(
+          isA<TomException>().having(
+            (e) => e.key,
+            'key',
+            'security.two_factor.unreadable_claim',
+          ),
+        ),
       );
-      expect(state!.skippable, isFalse);
     });
 
     test('the server and the kernel decode one payload the same way', () {
