@@ -61,6 +61,32 @@ void main() {
       );
     });
 
+    test('a date literal names the day it was written, in any zone', () {
+      // `DateTime.parse` answers a *local* value for a token with no zone, and
+      // the date renderer takes its components as labelled — so the day that
+      // reaches the SQL is the day the sentence said, on a host in Denver as
+      // in Auckland. The rule matters because a date is a label rather than a
+      // moment: converting it would move a birthday to the previous day for
+      // half the world.
+      //
+      // Pinned against the parse rather than only against the output, because
+      // what makes this hold is that the grammar admits no zone at all: the
+      // date pattern is `YYYY-MM-DD` and nothing else, so the `Z`-suffixed
+      // token that would make `DateTime.parse` answer UTC is refused as a date
+      // and claimed by the datetime rule instead.
+      final parsed = DateTime.parse('2026-07-05');
+      expect(
+        parsed.isUtc,
+        isFalse,
+        reason: 'the premise: a bare date is local',
+      );
+      expect(
+        sql('find by tag_day = 2026-07-05'),
+        contains("fixture_export.tag_day = '${sqlDate(parsed)}'"),
+      );
+      expect(sqlDate(parsed), '2026-07-05');
+    });
+
     test('a datetime literal compiles as a datetime', () {
       // Rendered as the UTC `DATETIME(6)` text every instant binds as, so the
       // assertion pins the conversion as well as the branch.

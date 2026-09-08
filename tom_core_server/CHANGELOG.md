@@ -1,5 +1,38 @@
 ## 1.3.0
 
+### Fixed
+
+- **The date and time bind arms were right and unchecked — deleting either left
+  the suite green (tcincb115).** `TomZonedDate` and `TomZonedTime` are
+  `DateTime` subtypes, so without their own arms `_toBindValue`'s general arm
+  claims them and binds a whole instant into a column that holds half of one: a
+  `DATE` gaining a time nobody named, and — for a `TIME` — a datetime-shaped
+  string the server refuses outright. Both arms exist and are correct. Neither
+  was pinned, which was measured rather than assumed: removing the date arm and
+  running `datasources_test.dart` and `object_persistence_test.dart` reported no
+  failure.
+
+  The calendar-date rule this todo was filed to settle is already the one both
+  paths follow — `dateOp` and the bind boundary reach the same `sqlDate`, and
+  `sql_instant.dart` states why a date is taken as labelled where an instant is
+  normalised. What was missing is the assertion that they *agree*, so the tests
+  compare the bound value with the inlined literal rather than each against a
+  string of its own: a change to the date spelling now moves both or fails.
+
+  The value they compare is anchored fourteen hours east, because on a
+  UTC-anchored date every rule agrees by accident — which is exactly what hides
+  a zone defect.
+
+  The third caller the report flagged, `dateOp(DateTime.parse(token))` in the
+  query-sentence compiler, turns out to be settled by the grammar rather than by
+  the renderer: the date pattern is `YYYY-MM-DD` and admits no zone, so the
+  `Z`-suffixed token that would make `DateTime.parse` answer UTC is refused as a
+  date and claimed by the datetime rule instead. Pinned against the parse as
+  well as the output, so the claim rests on something visible.
+
+  Four entries added to the mutation catalogue — the two arms, the unwrapping
+  that precedes them, and `sqlDate` converting to UTC — all killed.
+
 ### Added
 
 - **`TomDatabaseBlobStore` takes a `clock`, so its write time is checkable

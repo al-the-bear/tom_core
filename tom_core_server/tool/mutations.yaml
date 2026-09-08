@@ -302,6 +302,28 @@ audit:
     replace: "      verification?.indicatesTampering ?? false;"
     tests: test/audit_anchor_monitor_test.dart
 
+datasources:
+  - behaviour: a TomZonedDate binds the calendar day, not the instant
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "  if (unwrapped is TomZonedDate) return sqlDate(unwrapped);"
+    replace: ""
+    tests: test/datasources_test.dart
+  - behaviour: a TomZonedTime binds the time of day, not the instant
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "  if (unwrapped is TomZonedTime) return sqlTimeOfDay(unwrapped);"
+    replace: ""
+    tests: test/datasources_test.dart
+  - behaviour: the date literal takes its components as labelled
+    file: lib/src/tomserver/datasources/sql_instant.dart
+    find: "String sqlDate(DateTime value) {\n  String pad(int v, int width) => v.toString().padLeft(width, '0');\n  return '${pad(value.year, 4)}-${pad(value.month, 2)}-${pad(value.day, 2)}';"
+    replace: "String sqlDate(DateTime value) {\n  String pad(int v, int width) => v.toString().padLeft(width, '0');\n  final utc = value.toUtc();\n  return '${pad(utc.year, 4)}-${pad(utc.month, 2)}-${pad(utc.day, 2)}';"
+    tests: test/datasources_test.dart test/object_persistence_test.dart
+  - behaviour: the date box unwraps before the renderer is chosen
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "  final unwrapped = value is TomDbType ? value.get() : value;"
+    replace: "  final unwrapped = value;"
+    tests: test/datasources_test.dart
+
 db_migration:
   - behaviour: a table of another datasource is not this datasource's to converge
     file: lib/src/tomserver/db_migration/schema_convergence.dart

@@ -794,6 +794,93 @@ void main() {
       );
       expect(bound.single, '2000-01-01 12:00:00.000000');
     });
+
+    // The two kernel half-instants are `DateTime` subtypes, so the general arm
+    // above would claim them and bind a whole instant into a column holding
+    // half of one: a `DATE` gaining a time nobody named, and — for a `TIME` — a
+    // datetime-shaped string the server refuses outright.
+    //
+    // Which half a value means is decided by its *type*, exactly as the dialect
+    // decides it for an inlined literal, and through the same renderer. That
+    // agreement is the property asserted here: the bind and `dateOp` are
+    // compared to each other rather than each to a literal string, so a change
+    // to the date spelling moves both or fails.
+    //
+    // Both arms were unpinned until now — deleting either left the whole suite
+    // green.
+
+    /// A date anchored fourteen hours east, so the day it names locally and the
+    /// day it stores are not the same one. On a UTC-anchored date every rule
+    /// agrees by accident, which is exactly what hides a zone defect.
+    TomZonedDate crossesTheDateLine() => TomZonedDate(
+      year: 2026,
+      month: 7,
+      day: 5,
+      timezone: TomTimezone.fromName('Pacific/Kiritimati'),
+    );
+
+    test('a TomZonedDate binds the day, not an instant', () {
+      final date = crossesTheDateLine();
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['due_on'],
+        {'due_on': date},
+      );
+
+      expect(bound.single, sqlDate(date));
+      expect(
+        bound.single,
+        isNot(contains(':')),
+        reason:
+            'a time here means the value went through sqlInstant, which puts a '
+            'clock reading into a column that holds a calendar day',
+      );
+    });
+
+    test('the bound date and the inlined date literal are the same day', () {
+      // The agreement the two paths exist to keep. `objectOp` dispatches a
+      // TomZonedDate to `dateOp`; the bind boundary reaches `sqlDate` directly.
+      // Quoting is the only difference a caller should ever see.
+      final date = crossesTheDateLine();
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['due_on'],
+        {'due_on': date},
+      );
+
+      expect("'${bound.single}'", MariadbSqlDialect().objectOp(date));
+      expect("'${bound.single}'", MariadbSqlDialect().dateOp(date));
+    });
+
+    test('a TomDbDate box binds what the bare date binds', () {
+      // The path a reflected `@TomDbColumn<..., TomDbDate>` takes: unwrapping
+      // the box must not change which of the three renderers is chosen.
+      final date = crossesTheDateLine();
+      expect(
+        MariadbPreparedStatement.buildPositionalParameters(
+          ['d'],
+          {'d': TomDbDate(date)},
+        ),
+        MariadbPreparedStatement.buildPositionalParameters(['d'], {'d': date}),
+      );
+    });
+
+    test('a TomZonedTime binds the time of day, not an instant', () {
+      // The other half of a split timestamp, and the one the server refuses
+      // outright rather than storing wrongly: a `TIME` column reads a
+      // datetime-shaped string as a truncation error.
+      final time = TomZonedTime(hour: 14, minute: 30, second: 5);
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['at'],
+        {'at': time},
+      );
+
+      expect(bound.single, sqlTimeOfDay(time));
+      expect("'${bound.single}'", MariadbSqlDialect().objectOp(time));
+      expect(
+        bound.single,
+        isNot(contains('-')),
+        reason: 'a date here means the value went through sqlInstant',
+      );
+    });
   });
 
   group('MariaDbDatasource.toPositionalStatement', () {
