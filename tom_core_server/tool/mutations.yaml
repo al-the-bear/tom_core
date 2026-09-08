@@ -324,6 +324,25 @@ datasources:
     replace: "  final unwrapped = value;"
     tests: test/datasources_test.dart
 
+  - behaviour: the pending-reference stack is per row, so an n-row read costs n queries
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "      for (var row in qResult.rows) {\n        // Per row: the stack is drained at the end of this iteration, so a\n        // stack that outlived it would re-resolve every earlier row's\n        // references once more for each row that follows.\n        final refStack = <_PendingReference>[];"
+    replace: "      final refStack = <_PendingReference>[];\n      for (var row in qResult.rows) {"
+    requires: db
+    tests: test/reference_association_db_test.dart
+  - behaviour: a null reference field is refused rather than skipped
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "        List? value = im.invokeGetter(vm.simpleName) as List?;\n        if (value != null) {"
+    replace: "        List? value = im.invokeGetter(vm.simpleName) as List?;\n        if (value == null) { continue; }\n        if (value != null) {"
+    requires: db
+    tests: test/reference_association_db_test.dart
+  - behaviour: the referenced rows are written into the entity's list
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "            for (var r in result) {\n              value.add(r);\n            }"
+    replace: "            for (var r in <Object>[]) {\n              value.add(r);\n            }"
+    requires: db
+    tests: test/reference_association_db_test.dart
+
 db_migration:
   - behaviour: a table of another datasource is not this datasource's to converge
     file: lib/src/tomserver/db_migration/schema_convergence.dart

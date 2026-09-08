@@ -137,6 +137,60 @@ CREATE TABLE IF NOT EXISTS fixture_task (
     await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_task');
   }
 
+  /// The three tables the `@TomReference` fixture needs: the owner, the target
+  /// and the join between them.
+  ///
+  /// Created and truncated together because the association is the thing under
+  /// test: a link row pointing at a tag that no longer exists is not a state
+  /// any of these tests means to produce, and truncating them apart is how one
+  /// arrives.
+  static const List<String> _fixtureAssociationDdl = [
+    '''
+CREATE TABLE IF NOT EXISTS fixture_tag (
+  id   BIGINT       NOT NULL AUTO_INCREMENT,
+  name VARCHAR(255) NULL,
+  PRIMARY KEY (id)
+)
+''',
+    '''
+CREATE TABLE IF NOT EXISTS fixture_tagged (
+  id    BIGINT       NOT NULL AUTO_INCREMENT,
+  label VARCHAR(255) NULL,
+  PRIMARY KEY (id)
+)
+''',
+    '''
+CREATE TABLE IF NOT EXISTS fixture_tag_link (
+  id        BIGINT NOT NULL AUTO_INCREMENT,
+  tagged_id BIGINT NULL,
+  tag_id    BIGINT NULL,
+  PRIMARY KEY (id)
+)
+''',
+  ];
+
+  /// Creates the three association tables if they do not already exist.
+  static Future<void> ensureFixtureAssociationTables(
+    TomDataSourceInfo dsi,
+  ) async {
+    for (final ddl in _fixtureAssociationDdl) {
+      await dsi.datasource.executeCommand(ddl);
+    }
+  }
+
+  /// Empties all three, resetting their AUTO_INCREMENT counters.
+  static Future<void> truncateFixtureAssociationTables(
+    TomDataSourceInfo dsi,
+  ) async {
+    for (final table in const [
+      'fixture_tag_link',
+      'fixture_tagged',
+      'fixture_tag',
+    ]) {
+      await dsi.datasource.executeCommand('TRUNCATE TABLE $table');
+    }
+  }
+
   /// The DDL for `FixtureSecretRecord`, the entity carrying a column that the
   /// CE-LG audit trail redacts.
   static const String _fixtureSecretDdl = '''

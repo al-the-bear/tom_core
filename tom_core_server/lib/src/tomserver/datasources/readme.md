@@ -87,7 +87,13 @@ are the part that needs a server, and the example says so rather than
 pretending otherwise. `test/datasources_test.dart` covers the module and also
 runs the example, requiring it to print every numbered step and no others;
 `test/datasources_db_test.dart` adds what only a live MariaDB can answer, and
-self-skips when none is reachable.
+self-skips when none is reachable. `@TomReference` is split across two files for
+the same reason: `test/reference_query_test.dart` covers the sentence the
+annotation produces, which needs no connection, and
+`test/reference_association_db_test.dart` covers what the driver does with the
+rows it returns — including that an *n*-row read costs *n* reference queries
+rather than *n²*, which is a statement count because the answer is the same
+either way.
 
 ---
 

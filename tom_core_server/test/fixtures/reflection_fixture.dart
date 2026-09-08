@@ -1153,6 +1153,151 @@ class FixtureTaskRecord {
   bool? done;
 }
 
+/// The target of the fixture association: a tag a document can carry.
+///
+/// Maps to `fixture_tag`. Deliberately trivial — what the association test is
+/// about is *which* rows arrive on *which* owner, so a name is all a row needs
+/// to be identifiable in an assertion.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tag',
+  primaryKeyField: 'id',
+)
+class FixtureTag {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The tag's name, and the only thing an assertion needs to tell two apart.
+  @TomDbColumn(columnName: 'name')
+  String? name;
+}
+
+/// The MariaDB-backed repository for [FixtureTag].
+class FixtureTagRepository
+    extends TomSqlDatasourceRepository<FixtureTag, int> {}
+
+/// The join entity: one row per (document, tag) pair.
+///
+/// A `@TomReference` names this as its `joinEntity`, and the reference query is
+/// built over *this* table rather than over the target — the left-side columns
+/// bind it to the owning row and the right-side columns join it to the target.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tag_link',
+  primaryKeyField: 'id',
+)
+class FixtureTagLink {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The owning [FixtureTaggedRecord].
+  @TomDbColumn(columnName: 'tagged_id')
+  int? taggedId;
+
+  /// The [FixtureTag] the owner carries.
+  @TomDbColumn(columnName: 'tag_id')
+  int? tagId;
+}
+
+/// The MariaDB-backed repository for [FixtureTagLink].
+class FixtureTagLinkRepository
+    extends TomSqlDatasourceRepository<FixtureTagLink, int> {}
+
+/// The owner of the fixture association: a record carrying a list of tags
+/// resolved through [FixtureTagLink].
+///
+/// This is the only `@TomReference` in the framework's own fixtures, and it
+/// exists because the annotation's *execution* half — compile the sentence, run
+/// it, write the rows back through the field's mirror — is reachable only
+/// behind a live connection. `reference_query_test.dart` covers the sentence
+/// this produces; `reference_association_db_test.dart` covers what happens to
+/// the rows it returns.
+///
+/// The list is initialised and non-`null` on purpose: the data source fills the
+/// list the entity already holds rather than assigning a fresh one, because
+/// reflection cannot construct a `List<FixtureTag>` — a mirror of a generic
+/// type has no type arguments to build with. A `null` or unmodifiable list is
+/// therefore refused, which
+/// `reference_association_db_test.dart` asserts against [FixtureUntaggedRecord].
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tagged',
+  primaryKeyField: 'id',
+)
+class FixtureTaggedRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A label, so a row is identifiable in an assertion.
+  @TomDbColumn(columnName: 'label')
+  String? label;
+
+  /// The association: every [FixtureTag] this record is linked to.
+  @TomReference(
+    targetEntity: FixtureTag,
+    keyType: int,
+    repositoryType: FixtureTagRepository,
+    joinEntity: FixtureTagLink,
+    leftSideColumns: ['FixtureTagLink.taggedId=FixtureTaggedRecord.id'],
+    rightSideColumns: ['FixtureTagLink.tagId=FixtureTag.id'],
+  )
+  List<FixtureTag> tags = [];
+}
+
+/// The MariaDB-backed repository for [FixtureTaggedRecord].
+class FixtureTaggedRepository
+    extends TomSqlDatasourceRepository<FixtureTaggedRecord, int> {}
+
+/// The same owner with a **null** association field.
+///
+/// Maps to the same `fixture_tagged` table, so one row can be read as either —
+/// the difference is the Dart declaration, not the schema. Its only purpose is
+/// the refusal: the data source cannot construct the list it would need, so a
+/// `null` field must fail loudly rather than leave the association silently
+/// empty.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tagged',
+  primaryKeyField: 'id',
+)
+class FixtureUntaggedRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A label, so a row is identifiable in an assertion.
+  @TomDbColumn(columnName: 'label')
+  String? label;
+
+  /// The association the data source cannot fill, because there is no list to
+  /// fill. Declared `List?` rather than `List<FixtureTag>?` so the refusal is
+  /// about the value being `null` and not about the type.
+  @TomReference(
+    targetEntity: FixtureTag,
+    keyType: int,
+    repositoryType: FixtureTagRepository,
+    joinEntity: FixtureTagLink,
+    leftSideColumns: ['FixtureTagLink.taggedId=FixtureUntaggedRecord.id'],
+    rightSideColumns: ['FixtureTagLink.tagId=FixtureTag.id'],
+  )
+  List<FixtureTag>? tags;
+}
+
+/// The MariaDB-backed repository for [FixtureUntaggedRecord].
+class FixtureUntaggedRepository
+    extends TomSqlDatasourceRepository<FixtureUntaggedRecord, int> {}
+
 /// The MariaDB-backed repository for [FixtureTaskRecord].
 ///
 /// Extends [TomSqlDatasourceRepository] directly (no `@tomReflector`): it is

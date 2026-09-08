@@ -1,5 +1,36 @@
 ## 1.3.0
 
+### Added
+
+- **`@TomReference` association loading has a DB-backed test, and the framework
+  has its first reflected fixture that declares one (tcincb117).** The
+  annotation's *sentence* was covered by `reference_query_test.dart`; what the
+  driver does with the rows — compile, run, write them back through the field's
+  mirror — was reachable only behind a live connection and asserted nowhere. The
+  only entities in the workspace declaring `@TomReference` live in
+  `tom_uam_server`, whose suite never reads one back either.
+
+  Three fixture entities (`FixtureTagged`/`FixtureTag`/`FixtureTagLink`), their
+  three tables, and `reference_association_db_test.dart`, which asserts that the
+  rows land in the entity's list, that an owner with no links comes back empty,
+  that a row is not given the same association twice, and that a `null`
+  reference field is refused naming the field rather than leaving the
+  association silently empty.
+
+  **The per-row property turned out not to be observable in the rows**, which is
+  the finding worth recording. The report expected a multi-row read to show it:
+  with the pending-reference stack declared outside the row loop, row *k*
+  re-resolves every earlier row's association. Reverting the repair and running
+  the new tests, the rows came back *correct* — each fill clears the list before
+  adding, so resolving an owner twice recomputes the same list. What the defect
+  costs is work, quadratically: an *n*-row read issues *n(n+1)/2* reference
+  queries instead of *n*. So the assertion counts statements, off the driver's
+  own `Executing SQL` trace, and the reverted repair fails it with 11 where 5 is
+  right.
+
+  `doc/object_persistence.md` states both contracts — the refusal and the
+  one-query-per-row rule — and says why the cost is the only observable.
+
 ### Fixed
 
 - **The date and time bind arms were right and unchecked — deleting either left

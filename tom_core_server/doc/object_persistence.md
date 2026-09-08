@@ -175,7 +175,20 @@ every owner row.
 The field must be **non-null and modifiable** — `List<Role> roles = []`, not
 `List<Role>? roles`. The mapper fills the list the entity already holds instead
 of assigning a fresh one, because reflection cannot construct a `List<Role>`
-from a mirror that carries no type arguments.
+from a mirror that carries no type arguments. A `null` field is refused with
+`error.result_processing.ref_reference_field_must_have_non-null_value`, naming
+the field: leaving the association empty instead would be indistinguishable
+from an owner that genuinely has none.
+
+**One reference query per owning row.** The association cannot be resolved while
+its row is being mapped, so the mapper stacks the row's pending references and
+drains the stack at the end of *that row*. A stack shared across rows would
+re-resolve every earlier row's associations for each row that follows, turning
+an *n*-row read into *n(n+1)/2* reference queries. The answer would be the same
+— each fill clears the list before adding, so resolving an owner twice
+recomputes the same list — which is why the cost is the only observable, and why
+`test/reference_association_db_test.dart` asserts it by counting statements
+rather than by inspecting rows.
 
 ## The Repository Contract
 
