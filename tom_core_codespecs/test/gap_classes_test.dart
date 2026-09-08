@@ -403,7 +403,7 @@ void main() {
       expect(job.writtenEntities, [_Payment]);
     });
 
-    // codespecs_mapping.md §5.29 scope part 3 / §4.4.1: a CE-DB target is a
+    // codespecs_mapping.md §5.29 scope part 3 / `codespecs_mapping.md` §4.4.1: a CE-DB target is a
     // `Type` literal, so a renamed entity is a COMPILE error rather than a
     // string that silently stops resolving. What is really being asserted is
     // the static type — a `List<Type>` cannot hold `'Payment'` at all, which is
