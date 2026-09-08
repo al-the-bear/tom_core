@@ -1799,17 +1799,22 @@ void main() {
       // unnoticed. `/fixture/socket` declares no `logRequests`, which is exactly
       // the case at issue.
       //
-      // Reached with a plain GET — no `Upgrade` header — which `shelf_web_socket`
-      // refuses with a 404. That is the only way into this log line from a test:
-      // an *accepted* handshake hijacks the connection, and `hijack` throws
-      // `HijackException`, so the statement after `await handler(req)` never
-      // runs, so the accepted-upgrade path cannot be reached from here.
+      // Reached with a plain GET — no `Upgrade` header — which
+      // `shelf_web_socket` refuses with a 404. That is the *refused* outcome,
+      // and it is the only one reachable without a socket: an accepted
+      // handshake hijacks the connection, and `hijack` throws
+      // `HijackException`, so it leaves `handleWebSocketCall` by a different
+      // route entirely. Its own line is asserted over a loopback server in
+      // `endpoints_transport_test.dart`, which is the only place a real upgrade
+      // can be made.
       Future<bool> socketLogged(bool globalDefault) async {
         TomEndpointHandler.globalSettingLogRequestsDefault = globalDefault;
         captured.lines.clear();
         final response = await router.call(_get('/fixture/socket'));
         expect(response.statusCode, 404, reason: 'not a WebSocket request');
-        return captured.lines.any((l) => l.contains('[WebSocket handshake]'));
+        return captured.lines.any(
+          (l) => l.contains('[WebSocket handshake refused]'),
+        );
       }
 
       expect(await socketLogged(true), isTrue);

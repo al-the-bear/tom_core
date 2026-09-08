@@ -658,8 +658,23 @@ argument.
 
 The pipeline logs **once per exit**, and the line names the exit it came from —
 `[Normal processing]`, `[handler-supplied response]`,
-`[handleInvocationError by error handler]`, `[handleConversionError]`, or
-`[WebSocket handshake]` — together with the produced mime type and the encoding.
+`[handleInvocationError by error handler]`, `[handleConversionError]`,
+`[WebSocket handshake]` or `[WebSocket handshake refused]` — together with the
+produced mime type and the encoding.
+
+The socket exit is two exits because an upgrade leaves the pipeline two ways. A
+**refused** one — no `Upgrade` header, an unoffered subprotocol, a cross-origin
+request — is an ordinary response, and its line carries the status.
+An **accepted** one ends in `Request.hijack`, which throws `HijackException` by
+contract so that shelf can take the socket over, so it never returns a response
+at all: its line is written from the `catch`, reports `upgraded` rather than a
+status code shelf writes itself, and the exception is rethrown, because catching
+it would leave shelf writing an ordinary reply over a socket the handshake has
+already claimed.
+
+The middleware adds nothing for an accepted upgrade even without the
+`hasBeenLogged` flag, and for the same reason: it reads the response through a
+`then`, and a hijack arrives as an error.
 
 `tomLoggingMiddleware` is the backstop. The pipeline publishes its decision on
 the request's `TomRequestLogInfo` (`shouldBeLogged`) and records that it wrote

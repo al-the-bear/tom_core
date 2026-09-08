@@ -13,6 +13,34 @@
 
 ### Fixed
 
+- **An accepted WebSocket upgrade was never logged (tcincb136).** The pipeline's
+  handshake line stood after `await handler(req)` — and `handler` is
+  `shelf_web_socket`'s, which for a valid upgrade calls `Request.hijack` and so
+  throws `HijackException` by contract, letting shelf take the socket over. The
+  `await` therefore never returns on the path that matters, and the statement
+  after it was live only for **refused** upgrades. The one event an operator
+  wants in a socket access log was the one the pipeline could not record.
+
+  Both outcomes are logged now, from the two places they leave by: a refused
+  upgrade returns a response and is logged with its status as
+  `[WebSocket handshake refused]`; an accepted one is logged from a `catch` on
+  `HijackException` as `[WebSocket handshake]`, reporting `upgraded` rather than
+  a status code shelf writes itself. The exception is **rethrown** — catching it
+  would leave shelf writing an ordinary reply over a socket the handshake has
+  already claimed, which the mutation confirms: swallowing it breaks the two
+  pre-existing live socket tests as well as the new one.
+
+  The todo's open question — whether `tomLoggingMiddleware` writes its generic
+  fallback for a hijacked request — is answered and asserted: it does not, and
+  not only because `hasBeenLogged` is now set. The middleware reads the response
+  through `.then`, and a hijack arrives as an *error*, so its success callback
+  never runs at all.
+
+  Asserted over a loopback server with a real connection, which is the only
+  place an accepted upgrade exists — the connection-free suite reaches the
+  handshake site through a plain `GET`, and that is a refusal. Both suites now
+  say which outcome they are about.
+
 - **Every example transcript is now pinned to the steps it prints (tcincb134).**
   The `assert`-to-`check` conversion this todo was raised for is complete —
   no example holds an `assert`, every one states its expectations through the

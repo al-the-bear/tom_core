@@ -12,6 +12,26 @@ import 'fixtures/reflection_fixture.dart'
     show FixtureAccessApiService, FixtureApiServer, registerFixtureAccessApi;
 import 'fixtures/reflection_fixture.reflection.dart';
 
+/// A [TomLogOutput] that keeps every message handed to it.
+///
+/// Captures without consulting the level, as the pipeline suite's own does: the
+/// question is whether the pipeline *decided to log*, not whether the
+/// configured level would have printed it.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> lines = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp,
+    String? origin,
+  ) => lines.add(convertToString(message));
+}
+
 /// The three transports the endpoint annotation surface promised and the
 /// pipeline did not deliver: `multipart/form-data` binding (text parts *and* a
 /// file part), the redirect directive, and WebSocket endpoints.
@@ -730,6 +750,104 @@ void main() {
       expect(greeting, 'zone:fixture/socket;id:present');
 
       await socket.sink.close();
+    });
+
+    test('an accepted handshake is logged', () async {
+      // The one event an operator wants in a socket access log, and the one the
+      // pipeline could not record: an accepted upgrade ends in
+      // `Request.hijack`, which throws `HijackException` by contract, so the
+      // log line that stood after `await handler(req)` was reachable only for a
+      // *refused* upgrade. The connection-free suite's assertion reaches it
+      // through a plain GET, which is a refusal — so only a real socket can
+      // tell the two apart, and this is that test.
+      final captured = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      tomLog.logOutput = captured;
+      addTearDown(() => tomLog.logOutput = previous);
+
+      final socket = WebSocketChannel.connect(
+        Uri.parse('ws://localhost:${server.port}/fixture/socket'),
+      );
+      await socket.ready;
+      // The greeting proves the handshake completed rather than merely that
+      // `ready` resolved, so the log line below is being asserted about a
+      // connection that genuinely opened.
+      expect(await socket.stream.first, 'zone:fixture/socket;id:present');
+
+      final handshake = captured.lines.where(
+        (l) => l.contains('[WebSocket handshake]'),
+      );
+      expect(
+        handshake,
+        hasLength(1),
+        reason: 'an accepted upgrade is logged exactly once',
+      );
+      expect(
+        handshake.single,
+        contains('upgraded'),
+        reason:
+            'the line reports the outcome the pipeline can vouch for — shelf '
+            'has taken the socket and writes the 101 itself',
+      );
+      expect(
+        handshake.single,
+        contains('/fixture/socket'),
+        reason: 'and names the route it opened',
+      );
+      // And the middleware writes no second line for the same connection. It
+      // reads the response through `.then`, and a hijack arrives as an *error*,
+      // so the success callback never runs — `hasBeenLogged` would have
+      // suppressed it in any case, and this asserts both belts at once.
+      //
+      // Matched on the middleware's own shape (`[appId] HTTP/…`) rather than on
+      // the route, because the capture keeps trace lines too and those
+      // legitimately name the route several times.
+      final accessLog = RegExp(r'^(\[[^\]]+\] )?HTTP/');
+      expect(
+        captured.lines.where(
+          (l) =>
+              accessLog.hasMatch(l) &&
+              l.contains('/fixture/socket') &&
+              !l.contains('[WebSocket handshake]'),
+        ),
+        isEmpty,
+        reason:
+            'the middleware added a fallback line for a request the pipeline '
+            'had already recorded',
+      );
+
+      await socket.sink.close();
+    });
+
+    test('a refused upgrade is logged as refused', () async {
+      // The other outcome, over the same live server: a plain GET carries no
+      // `Upgrade` header, so `shelf_web_socket` answers 404 and the handler
+      // returns normally. Both outcomes now have a line, and they say different
+      // things — which is the whole point of separating them.
+      final captured = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      tomLog.logOutput = captured;
+      addTearDown(() => tomLog.logOutput = previous);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(
+        Uri.parse('http://localhost:${server.port}/fixture/socket'),
+      );
+      final response = await request.close();
+      await response.drain<void>();
+      expect(response.statusCode, 404);
+
+      final refused = captured.lines.where(
+        (l) => l.contains('[WebSocket handshake refused]'),
+      );
+      expect(refused, hasLength(1));
+      expect(refused.single, contains('404'));
+      expect(
+        captured.lines.any((l) => l.contains('[WebSocket handshake]')),
+        isFalse,
+        reason: 'a refusal is not an upgrade and must not read as one',
+      );
     });
 
     test('a socket handler exchanges messages over the connection', () async {

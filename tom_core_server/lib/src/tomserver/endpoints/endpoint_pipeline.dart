@@ -1111,14 +1111,46 @@ class TomEndpointHandler {
       pingInterval: declaration.pingInterval,
     );
 
-    final response = await handler(req);
-    if (shouldLogRequests) {
-      tomLog.info(
-        "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} [WebSocket handshake]",
-      );
-      logInfo?.hasBeenLogged = true;
+    // Both outcomes are logged, and they leave the handler by different
+    // routes — which is why the accepted one needs a `catch` rather than a
+    // line after the `await`.
+    //
+    // An **accepted** upgrade ends in `Request.hijack`, which throws
+    // `HijackException` by contract: shelf_io catches it and takes the socket
+    // over. So `await handler(req)` never returns on the path that matters, and
+    // a log line written after it records only the refusals. It recorded only
+    // the refusals for as long as it stood there — an accepted connection, the
+    // one event an operator actually wants in the access log, was the one the
+    // pipeline never wrote a line for.
+    //
+    // The exception is rethrown, not swallowed. It *is* the protocol: catching
+    // it and returning a response would leave shelf writing an ordinary reply
+    // over a socket the handshake has already claimed.
+    //
+    // A **refused** upgrade — no `Upgrade` header, an unoffered subprotocol, a
+    // cross-origin request — is an ordinary response from
+    // `shelf_web_socket`, and is logged with the status it carries.
+    try {
+      final response = await handler(req);
+      if (shouldLogRequests) {
+        tomLog.info(
+          "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} [WebSocket handshake refused]",
+        );
+        logInfo?.hasBeenLogged = true;
+      }
+      return response;
+    } on HijackException {
+      if (shouldLogRequests) {
+        // No status code: shelf has taken the socket and writes the 101 itself,
+        // so this line reports the outcome it can vouch for rather than a
+        // number it did not see.
+        tomLog.info(
+          "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] /$reqId-${req.url} ${req.requestedUri} => upgraded [WebSocket handshake]",
+        );
+        logInfo?.hasBeenLogged = true;
+      }
+      rethrow;
     }
-    return response;
   }
 
   /// Invokes the socket handler and closes the connection when it returns.
