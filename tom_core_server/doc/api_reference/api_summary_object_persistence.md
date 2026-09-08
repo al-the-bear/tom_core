@@ -22,7 +22,6 @@ column-level access rights (C-4).
     - [TomReference&lt;TARGET, K, REPO&gt;](#tomreferencetarget-k-repo)
     - [TomPersistenceEventHandler&lt;DBTYPE&gt;](#tompersistenceeventhandlerdbtype)
     - [TomColumnInformation](#tomcolumninformation)
-    - [TomRepositoryType](#tomrepositorytype)
   - [Repositories](#repositories)
     - [TomCountResult](#tomcountresult)
     - [TomRepository&lt;T, K&gt;](#tomrepositoryt-k)
@@ -469,23 +468,6 @@ editing its metadata in place.
 | `getVariableValue` | `Object? getVariableValue(Object instance)` | Reads this field's value from `instance` via reflection. |
 | `setVariableValue` | `Object? setVariableValue(Object instance, Object? value)` | Writes `value` to this field on `instance` via reflection. |
 
-#### TomRepositoryType
-
-Annotation binding a `TomSqlDatasourceRepository` subclass to a named data-source
-type (e.g. `"mariadb"`) for reflection-based repository discovery. `@tomReflector`.
-
-##### Constructors
-
-```dart
-const TomRepositoryType(String datasourceType)
-```
-
-##### Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `datasourceType` | `String` | The data-source type this repository serves. |
-
 ### Repositories
 
 #### TomCountResult
@@ -581,9 +563,12 @@ scoping and C-4 column masking/enforcement on the SQL data source.
 
 #### MariadbRepository&lt;T, K&gt;
 
-A `TomSqlDatasourceRepository` for MariaDB-backed entities, registered via
-`@TomRepositoryType("mariadb")`. Overrides `sqlDialect` to render with
-`MariadbSqlDialect`. `@tomReflector`.
+A `TomSqlDatasourceRepository` for MariaDB-backed entities. Constructed
+directly — `MariadbRepository<User, int>([User])` — there being no repository
+registry to resolve it from a data-source name: the type argument is what makes
+a repository the repository *for an entity*, and a lookup keyed on a string
+cannot supply one. Overrides `sqlDialect` to render with `MariadbSqlDialect`.
+`@tomReflector`.
 
 - **Extends:** `TomSqlDatasourceRepository<T, K>`
 - **Type Parameters:** `T extends Object` — the entity type; `K` — its key type.

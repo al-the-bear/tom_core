@@ -1,5 +1,31 @@
 ## 1.3.0
 
+### Removed
+
+- **`TomRepositoryType` is gone, and no shipped source or guide describes a
+  repository lookup by data-source type any more (tcincb118).** The annotation
+  bound a `TomSqlDatasourceRepository` subclass to a data-source type name
+  (`@TomRepositoryType("mariadb")` on `MariadbRepository`) for a reflection scan
+  that was never written. Nothing read it. `MariadbRepository` is reached
+  because callers construct that exact class, as every guide and every sample
+  already shows them doing.
+
+  A lookup keyed on a data-source type name could not work here even in
+  principle: a repository is generic in its entity and key, and those type
+  arguments are what make it the repository *for an entity*. A string cannot
+  supply them, so a registry could only ever hand back a raw type the caller has
+  to re-specialise — which is the construction it was meant to replace.
+
+  Three documents nevertheless described the scan as the mechanism
+  (`doc/object_persistence.md`, `doc/api_reference/api_summary_object_persistence.md`,
+  `doc/api_reference/api_summary_index.md`); all three now describe direct
+  construction. A guard in `object_persistence_test.dart` — modelled on the one
+  the sibling `@TomSqlDialect` removal left behind — fails if the name reappears
+  anywhere under `lib/` or `doc/`, so re-introducing the lookup has to be argued
+  there. Alongside it, the first test that constructs a `MariadbRepository` at
+  all, asserting the one thing the subclass adds: it renders through
+  `MariadbSqlDialect`.
+
 ### Added
 
 - **`@TomReference` association loading has a DB-backed test, and the framework

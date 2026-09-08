@@ -1777,15 +1777,3 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     return _maskRows(await _runPrepared<T>(query, params));
   }
 }
-
-/// Annotation binding a [TomSqlDatasourceRepository] subclass to a named
-/// [datasourceType] (e.g. `"mariadb"`), used by reflection-based repository
-/// discovery to pick the right implementation for a data source.
-@tomReflector
-class TomRepositoryType {
-  /// The data-source type this repository serves.
-  final String datasourceType;
-
-  /// Binds the repository to [datasourceType].
-  const TomRepositoryType(this.datasourceType);
-}

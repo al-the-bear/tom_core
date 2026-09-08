@@ -37,11 +37,10 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | ---- | ---- | ------- |
 | `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` | classes | The annotations that map an entity class and its fields to a table and columns |
 | `TomJoinTable` | class | A join-table annotation the persistence layer neither detects nor applies — declared, and inert |
-| `TomRepositoryType` | class | Binds a `TomSqlDatasourceRepository` subclass to a named datasource type, so discovery can pick an implementation |
 | `TomDartType` | class | Wraps a `Type` so it can be carried as a value, where a bare `Type` literal is awkward to pass |
 | `TomRepository<T, K>` | abstract class | The CRUD + query contract for entity `T` keyed by `K` |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL implementation of the contract |
-| `MariadbRepository<T, K>` | class | MariaDB driver binding (`@TomRepositoryType("mariadb")`) |
+| `MariadbRepository<T, K>` | class | MariaDB binding — constructed directly, and the only thing it adds is `MariadbSqlDialect` |
 | `TomPageRequest` | class | One page of a query. The repository appends the primary key as a final sort term, because "page 2" of an unordered query is otherwise not the complement of "page 1" |
 | `TomSortField` / `TomSortDirection` | class / enum | One sort term — a declared field name where the caller writes it, a rendered column expression by the time SQL is generated |
 | `TomCountResult` | class | The row a `COUNT` projects into; the column alias *is* the binding, and nothing checks it |
@@ -1206,9 +1205,12 @@ does.
 
 Every operator renders itself through a `TomStandardSqlDialect` (see
 `doc/datasources.md`). A driver subclasses the dialect to override any fragment;
-`MariadbRepository` uses `MariadbSqlDialect`. Repository discovery uses the
-`@TomRepositoryType("...")` annotation to select the right repository for a data
-source's type.
+`MariadbRepository` uses `MariadbSqlDialect`.
+
+A repository is **constructed, not discovered**: `MariadbRepository<User,
+int>([User])`, as every example above does. There is no registry keyed on a
+data-source type name, and one would not help — the type arguments are what make
+a repository the repository *for an entity*, and a string cannot supply them.
 
 ## Core Components
 

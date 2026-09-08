@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/reflection_fixture.dart';
 import 'fixtures/reflection_fixture.reflection.dart';
+import 'fixtures/scripted_datasource.dart';
 
 /// Tests for the connection-free surface of the object-persistence module:
 /// the [TomQueryBuilder] DSL and the [TomOperator] tree rendering SQL through a
@@ -599,6 +601,60 @@ void main() {
     test('an Iterable renders as a comma-separated literal list', () {
       expect(dialect.objectOp([1, 2, 'a']), "1,2,'a'");
       expect(dialect.iterableOp([1, 2, 'a']), "1,2,'a'");
+    });
+  });
+
+  group('a repository is constructed, not discovered', () {
+    // The registry is process-wide static state, so it is cleared after every
+    // test rather than left for the next file to trip over.
+    tearDown(unregisterScriptedDatasource);
+
+    test('the MariaDB repository renders through the MariaDB dialect', () {
+      registerScriptedDatasource();
+      // Constructed exactly as a caller would: the entity and key as type
+      // arguments, the entity's type in the reflectable list. The data source
+      // has to exist because the entity names one, but nothing about the
+      // repository *class* is registered and nothing looks it up.
+      expect(
+        MariadbRepository<FixtureTaskRecord, int>([
+          FixtureTaskRecord,
+        ]).sqlDialect,
+        isA<MariadbSqlDialect>(),
+      );
+    });
+
+    test('no shipped source or guide describes a repository lookup by type', () {
+      // `TomRepositoryType` was an annotation binding a repository class to a
+      // data-source type name, for a reflection scan that was never written.
+      // Nothing read it, so a repository annotated for a second type could not
+      // have been found; `MariadbRepository` is reached only because callers
+      // construct that exact class. Three documents nevertheless described the
+      // scan as the mechanism.
+      //
+      // The name is guarded rather than merely removed because a lookup keyed
+      // on a data-source type name cannot work here even in principle: a
+      // repository is generic in its entity and key, and those type arguments
+      // are what make it the repository *for an entity*. A string cannot
+      // supply them, so the registry could only ever hand back a raw type the
+      // caller has to re-specialise — which is the construction it was meant
+      // to replace. Re-introducing the lookup is a decision, and this test is
+      // where it has to be argued.
+      final claims = <String>[];
+      for (final directory in [Directory('lib'), Directory('doc')]) {
+        for (final entry in directory.listSync(recursive: true)) {
+          if (entry is! File) continue;
+          if (!entry.path.endsWith('.dart') && !entry.path.endsWith('.md')) {
+            continue;
+          }
+          final lines = entry.readAsLinesSync();
+          for (var i = 0; i < lines.length; i++) {
+            if (lines[i].contains('TomRepositoryType')) {
+              claims.add('${entry.path}:${i + 1}');
+            }
+          }
+        }
+      }
+      expect(claims, isEmpty);
     });
   });
 }

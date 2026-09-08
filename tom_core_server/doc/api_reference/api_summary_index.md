@@ -454,7 +454,6 @@ surface documented here.
 | `TomRepository<T, K>` | abstract class | Repository contract. |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL-datasource repository base. |
 | `MariadbRepository<T, K>` | class | MariaDB repository. |
-| `TomRepositoryType` | class | Repository annotation. |
 | `TomCountResult` | class | Count query result. |
 | `TomQueryBuilder` | mixin | Fluent query building. |
 | `TomQuerySentenceCompiler` | class | Compiles query sentences to SQL. |
@@ -896,7 +895,6 @@ surface documented here.
 | `TomRedirect` | Endpoints |
 | `TomReference` | Object Persistence |
 | `TomRepository` | Object Persistence |
-| `TomRepositoryType` | Object Persistence |
 | `TomRequestId` | Little Things |
 | `TomRequestLogInfo` | Server |
 | `TomResourceDataScope` | Authorization |
