@@ -13,6 +13,43 @@
 
 ### Fixed
 
+- **Fourteen guides' contents lists omitted every one of their sub-sections; 146
+  entries were missing (tcincb132).** The check stopped at `##` by construction,
+  so a reader deciding whether a document answers their question saw a fraction
+  of what it does — `authentication.md` has fifty sub-sections behind sixteen
+  chapters. That is the same failure the top-level check exists to prevent, one
+  level down.
+
+  Every guide now lists its `###` and `####` headings, indented two spaces per
+  level under the chapter they belong to, which is the shape one guide already
+  used at four levels. The check reads all three through one walk: the existing
+  completeness, dangling-anchor and document-order rules apply unchanged, and a
+  fourth was added for the indent — the only thing saying which chapter a
+  sub-entry belongs to, and without which a structured list of sixty becomes a
+  flat one nobody reads.
+
+  **The anchor rule was wrong in a way only sub-sections could reveal.** It
+  dropped every character but letters, digits, spaces and hyphens, so
+  `### tom_job_run` yielded `tom-job-run` — while GitHub keeps the underscore and
+  `scheduling.md` already links to `#tom_job_run`. The first mechanical pass
+  rewrote those three live links to the broken form and was reverted; applied to
+  sub-sections unchanged, the check would have reported three working links as
+  dangling and invited someone to repair them into links that go nowhere.
+  Underscores now survive, and the rule is pinned on those fragments.
+
+  Repeated headings are disambiguated as GitHub does it — `authentication.md`
+  heads two sections `Failure keys`, and the second is reachable only as
+  `#failure-keys-1`. The ordinal is counted over *every* heading in the file,
+  `#` to `######`, because that is the sequence GitHub counts through: reading
+  only the levels the check cares about would shift every suffix after a skipped
+  heading.
+
+  `tool/check_doc_tocs.py`, which polices the same rule across 117 documents in
+  the corpus, had the same gap and reported that guide as carrying two faults it
+  does not have: the correct `#failure-keys-1` entry as stale, and the section it
+  points at as out of document order. It now disambiguates too, through one
+  `anchors_of` walk over the whole document.
+
 - **Nine module readmes did not reach every file their module exports; four had
   no readme at all (tcincb131).** A `Key types` table may select — a per-name
   rule would force an 83-row table on `object_persistence` and make the worst

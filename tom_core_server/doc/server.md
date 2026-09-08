@@ -15,12 +15,14 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 
 - [Overview](#overview)
 - [Starting a Server](#starting-a-server)
+  - [The Deployment Logs Itself In First](#the-deployment-logs-itself-in-first)
 - [The Pipeline](#the-pipeline)
 - [Request Context and Zone Values](#request-context-and-zone-values)
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
 - [Verification](#verification)
 - [Not Yet Implemented](#not-yet-implemented)
+  - [What this module does not do at all](#what-this-module-does-not-do-at-all)
 - [Dependencies](#dependencies)
 
 ---

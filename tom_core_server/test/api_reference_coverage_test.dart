@@ -459,36 +459,89 @@ final RegExp _getterDeclaration = RegExp(
   multiLine: true,
 );
 
-/// The `##` headings of [guide] in document order, less its own contents entry.
-List<String> _guideSections(String guide) =>
-    RegExp(r'^## (.+)$', multiLine: true)
-        .allMatches(File('doc/$guide.md').readAsStringSync())
-        .map((match) => match.group(1)!.trim())
-        .where((heading) => heading != 'Table of Contents')
-        .toList();
+/// One heading of a guide: its depth, its text, and the fragment it defines.
+typedef _Heading = ({int level, String text, String anchor});
 
-/// The anchors [guide]'s table of contents links to, in document order.
+/// The `##`, `###` and `####` headings of [guide] in document order, less its
+/// own contents entry.
+///
+/// Three levels, not one. The contents list is how a reader decides whether a
+/// document answers their question without reading it, and a list that shows
+/// only the top level answers that question with a fraction of what is there —
+/// `authentication.md` has fifty sub-sections behind sixteen chapters. Which is
+/// the same failure the top-level check exists to prevent, one level down.
+///
+/// The anchors are computed over **every** heading in the file, `#` to
+/// `######`, because that is the sequence GitHub's disambiguation counts
+/// through: a repeated heading gets `-1`, `-2`, and skipping a level would
+/// shift every suffix after it.
+List<_Heading> _guideHeadings(String guide) {
+  final seen = <String, int>{};
+  final headings = <_Heading>[];
+  for (final match in RegExp(
+    r'^(#{1,6}) (.+)$',
+    multiLine: true,
+  ).allMatches(File('doc/$guide.md').readAsStringSync())) {
+    final level = match.group(1)!.length;
+    final text = match.group(2)!.trim();
+    final base = _anchorBase(text);
+    final ordinal = seen[base] ?? 0;
+    seen[base] = ordinal + 1;
+    final anchor = ordinal == 0 ? base : '$base-$ordinal';
+    if (level >= 2 && level <= 4 && text != 'Table of Contents') {
+      headings.add((level: level, text: text, anchor: anchor));
+    }
+  }
+  return headings;
+}
+
+/// The `##` headings of [guide], as the checks that are about chapters read
+/// them.
+List<String> _guideSections(String guide) => [
+  for (final heading in _guideHeadings(guide))
+    if (heading.level == 2) heading.text,
+];
+
+/// The anchors [guide]'s table of contents links to, in document order, with
+/// the indent depth each entry is written at.
 ///
 /// `null` when the guide has no contents list at all, which is a different
 /// finding from an incomplete one and is reported separately.
-List<String>? _guideContents(String guide) {
+///
+/// Indentation is read rather than ignored because it is the only thing that
+/// says which chapter a sub-entry belongs to. Two spaces per level, which is
+/// what every guide already writes and what a nested list renders from.
+List<({int level, String anchor})>? _guideContentsEntries(String guide) {
   final text = File('doc/$guide.md').readAsStringSync();
   if (!text.contains('## Table of Contents')) return null;
-  return RegExp(
-    r'^- \[[^\]]+\]\(#([^)]+)\)$',
-    multiLine: true,
-  ).allMatches(text).map((match) => match.group(1)!).toList();
+  return [
+    for (final match in RegExp(
+      r'^( *)- \[[^\]]+\]\(#([^)]+)\)$',
+      multiLine: true,
+    ).allMatches(text))
+      (level: 2 + match.group(1)!.length ~/ 2, anchor: match.group(2)!),
+  ];
 }
 
-/// The fragment GitHub derives from a `##` heading.
+/// The fragment GitHub derives from a heading, before disambiguation.
 ///
-/// Lower-cased, everything but letters, digits, spaces and hyphens dropped,
-/// spaces to hyphens. That is enough for these guides — no two sections of one
-/// guide collide, so the disambiguating `-1` suffix never arises.
-String _anchorOf(String heading) => heading
+/// Lower-cased, spaces to hyphens, and everything dropped but word characters,
+/// hyphens and spaces — so an **underscore survives**. That is not a detail:
+/// `scheduling.md` heads three sub-sections with table names, and
+/// `### tom_job_run` defines `#tom_job_run`. A rule that dropped the
+/// underscores would have reported those three live links as dangling and
+/// invited someone to "fix" them into links that go nowhere.
+String _anchorBase(String heading) => heading
     .toLowerCase()
-    .replaceAll(RegExp(r'[^a-z0-9 \-]'), '')
+    .replaceAll(RegExp(r'[^a-z0-9_ \-]'), '')
     .replaceAll(' ', '-');
+
+/// The fragment a heading defines, for a guide in which it does not repeat.
+///
+/// [_guideHeadings] is what the checks use, because only a walk of the whole
+/// file can know a heading's ordinal. This is the same rule without that
+/// context, kept for the assertions that drive it over a single string.
+String _anchorOf(String heading) => _anchorBase(heading);
 
 /// Matches one `export 'src/tomserver/<module>/<file>';` line of the barrel.
 final RegExp _barrelExport = RegExp(
@@ -4397,11 +4450,11 @@ One: `TomKind`, documented beside the type that carries it.
   group('every guide\'s table of contents matches its sections', () {
     for (final guide in _docs('doc')) {
       test(guide, () {
-        final sections = _guideSections(guide);
-        final contents = _guideContents(guide);
+        final headings = _guideHeadings(guide);
+        final entries = _guideContentsEntries(guide);
 
         expect(
-          contents,
+          entries,
           isNotNull,
           reason:
               'doc/$guide.md has no "## Table of Contents". Every other guide '
@@ -4409,10 +4462,11 @@ One: `TomKind`, documented beside the type that carries it.
               'absence as a short document rather than as a missing list.',
         );
 
-        final anchors = {for (final s in sections) _anchorOf(s): s};
+        final anchors = {for (final h in headings) h.anchor: h};
 
-        final unlisted = sections
-            .where((s) => !contents!.contains(_anchorOf(s)))
+        final unlisted = headings
+            .where((h) => !entries!.any((e) => e.anchor == h.anchor))
+            .map((h) => '${'#' * h.level} ${h.text}')
             .toList();
         expect(
           unlisted,
@@ -4423,8 +4477,9 @@ One: `TomKind`, documented beside the type that carries it.
               'reachable by scrolling.',
         );
 
-        final dangling = contents!
-            .where((a) => !anchors.containsKey(a))
+        final dangling = entries!
+            .where((e) => !anchors.containsKey(e.anchor))
+            .map((e) => e.anchor)
             .toList();
         expect(
           dangling,
@@ -4436,12 +4491,32 @@ One: `TomKind`, documented beside the type that carries it.
         );
 
         expect(
-          contents.where(anchors.containsKey).toList(),
-          sections.map(_anchorOf).toList(),
+          entries
+              .where((e) => anchors.containsKey(e.anchor))
+              .map((e) => e.anchor)
+              .toList(),
+          headings.map((h) => h.anchor).toList(),
           reason:
               'doc/$guide.md\'s contents list is not in document order. A list '
               'that does not match the order of the sections it names is worse '
               'than no list, because a reader uses it to judge distance.',
+        );
+
+        final misindented = [
+          for (final entry in entries)
+            if (anchors[entry.anchor] case final heading?)
+              if (heading.level != entry.level)
+                '${entry.anchor} is written at level ${entry.level}, and its '
+                    'heading is ${'#' * heading.level}',
+        ];
+        expect(
+          misindented,
+          isEmpty,
+          reason:
+              'doc/$guide.md\'s contents list indents entries that do not '
+              'match their headings: ${misindented.join('; ')}. The indent is '
+              'the only thing saying which chapter a sub-entry belongs to, so '
+              'a flat list of forty entries is a list nobody reads.',
         );
       });
     }
@@ -4472,6 +4547,32 @@ One: `TomKind`, documented beside the type that carries it.
       // Punctuation is dropped, not replaced — `TomJob`'s guide would otherwise
       // gain a hyphen where the backticks were.
       expect(_anchorOf('The `TomJob` Contract'), 'the-tomjob-contract');
+
+      // An underscore is a word character and survives. `scheduling.md` heads
+      // three sub-sections with table names and links to them by those exact
+      // fragments, so a rule that dropped the underscores would report three
+      // live links as dangling — and the repair someone made in response would
+      // be to point them at anchors that do not exist.
+      expect(_anchorOf('tom_job_run'), 'tom_job_run');
+      expect(_anchorOf('tom_scheduler_node'), 'tom_scheduler_node');
+    });
+
+    test('a repeated heading takes the suffix GitHub gives it', () {
+      // `authentication.md` heads two sections `Failure keys`, and the second
+      // is reachable only as `#failure-keys-1`. Counted over *every* heading in
+      // the file rather than over the ones the checks read, because that is the
+      // sequence GitHub counts through — skipping a level would shift every
+      // suffix after it.
+      final repeated = _guideHeadings(
+        'authentication',
+      ).where((h) => h.text == 'Failure keys').map((h) => h.anchor).toList();
+      expect(
+        repeated,
+        ['failure-keys', 'failure-keys-1'],
+        reason:
+            'if this stops holding, the guide gained or lost a `Failure keys` '
+            'heading and every anchor after it moved',
+      );
     });
   });
 

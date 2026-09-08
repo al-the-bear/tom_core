@@ -11,6 +11,7 @@ handle around.
 - [Overview](#overview)
 - [The Participant Contract](#the-participant-contract)
 - [The Transaction Lifecycle](#the-transaction-lifecycle)
+  - [Failure keys](#failure-keys)
 - [Ambient Access](#ambient-access)
 - [Transaction Scopes](#transaction-scopes)
 - [How the Pipeline Uses It](#how-the-pipeline-uses-it)

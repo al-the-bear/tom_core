@@ -44,6 +44,7 @@ from __future__ import annotations
 import html
 import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
 
 from gate_report import report_faults
@@ -79,10 +80,38 @@ def anchor(text: str) -> str:
     - Punctuation is dropped but ``_`` and ``-`` survive.
     - Runs of spaces are **not** collapsed. Dropping the em dash from
       ``A — B`` leaves two spaces and therefore ``a--b``.
+
+    This is the slug *before* disambiguation. A document may head two sections
+    identically, and GitHub gives the second ``-1``; see :func:`anchors_of`,
+    which is what a whole-document walk has to use.
     """
     text = html.unescape(text).lower()
     text = re.sub(r"[^a-z0-9 _-]", "", text)
     return text.replace(" ", "-")
+
+
+def anchors_of(headings: Iterable[str]) -> list[str]:
+    """The fragments [headings] define, in document order, disambiguated.
+
+    A repeated heading does not overwrite the first one's fragment: GitHub
+    appends ``-1``, ``-2``, … in the order the headings appear, so the second
+    ``### Failure keys`` in a document is reachable only as ``#failure-keys-1``.
+    Without this the second section reads as unlisted however carefully its
+    entry is written, and the entry that *is* correct reads as stale — the
+    check accusing the document of two faults it does not have.
+
+    The count runs over every heading it is given, so a caller passing only the
+    levels it cares about would shift every suffix after a skipped one. Pass
+    them all.
+    """
+    seen: dict[str, int] = {}
+    out: list[str] = []
+    for heading in headings:
+        base = anchor(heading)
+        ordinal = seen.get(base, 0)
+        seen[base] = ordinal + 1
+        out.append(base if ordinal == 0 else f"{base}-{ordinal}")
+    return out
 
 
 class Report:
@@ -172,7 +201,14 @@ def audit(path: Path) -> Report:
     # Everything is judged on the link TARGET, never the label. A numbered ToC
     # legitimately writes `[Overview](#1-overview)` against a heading
     # `1. Overview`; comparing labels would call that broken.
-    heading_anchors = {anchor(text) for _, text in headings}
+    # Disambiguated over the whole document, so a heading that repeats is
+    # judged by the fragment it actually defines rather than by the first
+    # section's. Keyed by line, because `listable` is a subset of `headings`
+    # and the two have to agree about which occurrence each one is.
+    slugs = anchors_of(text for _, text in headings)
+    assert len(slugs) == len(headings)
+    resolved = {n: slug for (n, _), slug in zip(headings, slugs)}
+    heading_anchors = set(resolved.values())
     targets = {target.lower() for _, target in entries}
 
     report = Report(path)
@@ -183,10 +219,10 @@ def audit(path: Path) -> Report:
     if not entries:
         return report
 
-    report.missing = [(n, t) for n, t in listable if anchor(t) not in targets]
+    report.missing = [(n, t) for n, t in listable if resolved[n] not in targets]
     report.stale = [(l, t) for l, t in entries if t.lower() not in heading_anchors]
 
-    doc_order = [anchor(t) for _, t in headings if anchor(t) in targets]
+    doc_order = [resolved[n] for n, _ in headings if resolved[n] in targets]
     toc_order = [t.lower() for _, t in entries if t.lower() in heading_anchors]
     if doc_order != toc_order:
         report.order = (doc_order, toc_order)

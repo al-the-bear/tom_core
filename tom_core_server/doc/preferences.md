@@ -7,10 +7,16 @@ through.
 ## Table of Contents
 
 - [Overview](#overview)
+  - [Why a service rather than a repository](#why-a-service-rather-than-a-repository)
 - [The Caller Is the Zone](#the-caller-is-the-zone)
+  - [Typed access](#typed-access)
+  - [Every key is checked on the way in](#every-key-is-checked-on-the-way-in)
 - [Authorization Is the Row Scope](#authorization-is-the-row-scope)
+  - [Why the lookups name the principal anyway](#why-the-lookups-name-the-principal-anyway)
 - [The Table and Its Migration](#the-table-and-its-migration)
 - [The Endpoints](#the-endpoints)
+  - [A miss is a 404, a bad key is a 400, and nothing else is either](#a-miss-is-a-404-a-bad-key-is-a-400-and-nothing-else-is-either)
+  - [Installing the store](#installing-the-store)
 - [Reading a Preference During Login](#reading-a-preference-during-login)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
