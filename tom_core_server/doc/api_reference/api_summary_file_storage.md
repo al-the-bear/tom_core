@@ -391,6 +391,7 @@ TomDatabaseBlobStore(
   String chunkTable = defaultBlobChunkTable,
   int chunkSize = defaultChunkSize,
   bool createSchema = true,
+  DateTime Function()? clock,
 })
 ```
 
@@ -410,6 +411,7 @@ factory TomDatabaseBlobStore.named(
   String chunkTable = defaultBlobChunkTable,
   int chunkSize = defaultChunkSize,
   bool createSchema = true,
+  DateTime Function()? clock,
 })
 ```
 
@@ -432,6 +434,7 @@ error far better caught at start-up than on the first upload.
 | `chunkTable` | `String` | The many-rows-per-blob content table (final). |
 | `chunkSize` | `int` | Raw bytes per chunk row, defaulting to `defaultChunkSize` and refused by the constructor when zero or less; the stored text is ~4/3 of that, and the upper bound on it is the server's `max_allowed_packet`, which no constructor can know (final). |
 | `createSchema` | `bool` | Whether to create the tables on first use; set `false` when the schema is owned by the migration module and the application's database user may not run DDL (final). |
+| `clock` | `DateTime Function()` | The source of a blob's `storedAt`, defaulting to `DateTime.now` (final). A seam rather than a call in place, for the reason `TomSqlLeaseLock` has one: what the store does with the reading — hand it to the data source as a `DateTime` so the bind boundary renders it through `sqlInstant` — is only observable against a known instant, and the defect it replaced was a local reading written as though it were UTC. |
 
 #### Methods
 

@@ -377,6 +377,22 @@ file_storage:
     replace: "  String get type => '${settings['type']}';"
     tests: test/file_storage_test.dart
 
+  - behaviour: the write time is bound as an instant, not formatted by the store
+    file: lib/src/tomserver/file_storage/database_blob_store.dart
+    find: "        'storedAt': storedAt,"
+    replace: "        'storedAt': storedAt.toIso8601String().substring(0, 19).replaceFirst('T', ' '),"
+    tests: test/file_storage_test.dart
+  - behaviour: the descriptor labels the write time UTC
+    file: lib/src/tomserver/file_storage/blob_store.dart
+    find: "  }) : storedAt = storedAt.toUtc();"
+    replace: "  }) : storedAt = storedAt;"
+    tests: test/file_storage_test.dart
+  - behaviour: the store reads its clock seam rather than the wall clock
+    file: lib/src/tomserver/file_storage/database_blob_store.dart
+    find: "    final storedAt = clock();"
+    replace: "    final storedAt = DateTime.now();"
+    tests: test/file_storage_test.dart
+
 scheduling:
   - behaviour: losing the claim race is a null, not an error
     file: lib/src/tomserver/scheduling/sql_job_store.dart

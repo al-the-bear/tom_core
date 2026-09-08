@@ -4,8 +4,12 @@
 /// and directory backends are real, the S3 backend is driven through an
 /// injected [MockClient] so its *requests* are asserted rather than a live
 /// object store's behaviour, and the signer is checked against AWS's published
-/// vectors. The database backend needs a server and is covered by
-/// `file_storage_db_test.dart`.
+/// vectors. The database backend needs a server for a real round trip and is
+/// covered by `file_storage_db_test.dart` — but the one property of it that is
+/// a *rule* rather than a behaviour, that a blob's write time reaches the
+/// column as an instant, is pinned here against a recording data source: a
+/// `db`-tagged assertion is skipped on every machine without a database, and a
+/// rule nothing checks on an ordinary run is a rule that returns.
 ///
 /// The properties worth pinning here are the ones the rest of the framework
 /// relies on: keys cannot escape their store, a failed write leaves nothing
@@ -205,6 +209,52 @@ Future<void> _refusesEverywhere(
   }
 }
 
+/// One statement the store issued, with the parameters it bound.
+class _IssuedStatement {
+  _IssuedStatement(this.sql, this.params);
+
+  final String sql;
+  final Map<String, dynamic>? params;
+}
+
+/// A data source that records what the blob store asked of it and answers
+/// nothing.
+///
+/// Enough for the subject: nothing here reads a row back, only what was handed
+/// to the bind boundary on the way in. Modelled on the recorder in
+/// `oauth_state_store_test.dart`, and keeping the parameters for the same
+/// reason it does — the claim is about a bound *value*, not about the SQL text
+/// around it.
+class _RecordingBlobDataSource implements TomDataSource {
+  /// Every statement issued, command and query alike, in order.
+  final List<_IssuedStatement> issued = [];
+
+  @override
+  Future<BigInt> executeCommand(
+    String command, [
+    Map<String, dynamic>? params,
+  ]) async {
+    issued.add(_IssuedStatement(command, params));
+    return BigInt.one;
+  }
+
+  @override
+  Future<List<T>> executeQuery<T extends Object>(
+    String command, [
+    Map<String, dynamic>? params,
+    Type? resultType,
+  ]) async {
+    issued.add(_IssuedStatement(command, params));
+    return <T>[];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
+    'The recording data source was asked for ${invocation.memberName}, which '
+    'no test needs. Implement it here if that changes.',
+  );
+}
+
 void main() {
   group('every backend refuses an invalid key on every method', () {
     // The grammar was enforced on `put` and left to each backend elsewhere, so
@@ -284,6 +334,84 @@ void main() {
         (request) => throw const SocketException('connection reset by peer'),
       );
       return _namesEveryFailure(store, socketFailure);
+    });
+  });
+
+  group('the database backend hands its write time to the bind boundary', () {
+    // The defect this replaced: the store rendered `stored_at` itself, with a
+    // `toIso8601String().substring(0, 19)` that had no `toUtc()` in it, and
+    // took its reading from a local `DateTime.now()`. The read side parses
+    // every `DateTime` column as UTC — so the value came back wrong by the
+    // writing node's offset, and by a *different* amount per node in a
+    // cluster. It was accidentally right on a UTC host, which is why nothing
+    // caught it.
+    //
+    // What is asserted is the shape rather than the text: the store must hand
+    // the data source a `DateTime` and let the bind boundary render it, which
+    // is where `sqlInstant` lives and where every other instant in this package
+    // is converted. A store that formats its own text is the defect, whatever
+    // that text happens to say — so the *type* of the bound value is what fails
+    // when it comes back.
+
+    /// The instant every case injects: local, and at an offset from UTC on any
+    /// host that has one. A UTC host cannot tell the two renderings apart,
+    /// which is exactly how the original defect survived.
+    final injected = DateTime(2026, 3, 14, 15, 9, 26, 535, 897);
+
+    test('the write time is bound as a DateTime, not as text', () async {
+      final datasource = _RecordingBlobDataSource();
+      final store = TomDatabaseBlobStore(
+        datasource,
+        createSchema: false,
+        clock: () => injected,
+      );
+
+      final stored = await store.putBytes(key: 'k', bytes: const [1, 2, 3]);
+
+      final manifest = datasource.issued.lastWhere(
+        (issued) => issued.params?.containsKey('storedAt') ?? false,
+      );
+      final bound = manifest.params!['storedAt'];
+
+      expect(
+        bound,
+        isA<DateTime>(),
+        reason:
+            'a String here means the store formatted the instant itself, which '
+            'is the defect: only the bind boundary applies sqlInstant',
+      );
+      expect(
+        (bound as DateTime).microsecondsSinceEpoch,
+        injected.microsecondsSinceEpoch,
+        reason: 'the moment handed over must be the moment the clock read',
+      );
+      // And the descriptor the caller gets names the same moment, labelled.
+      expect(stored.storedAt.isUtc, isTrue);
+      expect(
+        stored.storedAt.microsecondsSinceEpoch,
+        injected.microsecondsSinceEpoch,
+      );
+    });
+
+    test('the store reads the injected clock rather than the wall', () async {
+      // Without this the case above proves nothing about the store: a store
+      // that ignored the seam would still pass it on a host whose wall clock
+      // happens to be close enough, and would pass every assertion about the
+      // descriptor, which is built from the same reading either way.
+      var reads = 0;
+      final datasource = _RecordingBlobDataSource();
+      final store = TomDatabaseBlobStore(
+        datasource,
+        createSchema: false,
+        clock: () {
+          reads++;
+          return injected;
+        },
+      );
+
+      await store.putBytes(key: 'k', bytes: const [1]);
+
+      expect(reads, greaterThan(0));
     });
   });
 

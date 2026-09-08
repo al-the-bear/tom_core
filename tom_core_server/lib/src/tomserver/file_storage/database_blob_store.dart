@@ -76,13 +76,22 @@ class TomDatabaseBlobStore extends TomBlobStore {
   /// With [createSchema] left `true` the two tables are created on first use;
   /// set it `false` when the schema is owned by the migration module and the
   /// application's database user is not allowed to run DDL.
+  ///
+  /// [clock] is the source of a blob's `storedAt`, defaulting to
+  /// [DateTime.now]. A seam rather than a call in place, for the reason
+  /// [TomSqlLeaseLock] and [TomSqlOAuthStateStore] have one: what this store
+  /// does with the reading — hand it to the data source as a `DateTime` so the
+  /// bind boundary renders it as UTC, rather than formatting it here — is only
+  /// observable against a *known* instant, and the defect it replaced was
+  /// exactly a local reading written as though it were UTC.
   TomDatabaseBlobStore(
     this.datasource, {
     this.manifestTable = defaultBlobManifestTable,
     this.chunkTable = defaultBlobChunkTable,
     this.chunkSize = defaultChunkSize,
     this.createSchema = true,
-  }) {
+    DateTime Function()? clock,
+  }) : clock = clock ?? DateTime.now {
     if (chunkSize <= 0) {
       throw TomStorageException(
         'storage.database.chunk_size_not_positive',
@@ -103,6 +112,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
     String chunkTable = defaultBlobChunkTable,
     int chunkSize = defaultChunkSize,
     bool createSchema = true,
+    DateTime Function()? clock,
   }) {
     final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
     if (info == null) {
@@ -118,6 +128,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
       chunkTable: chunkTable,
       chunkSize: chunkSize,
       createSchema: createSchema,
+      clock: clock,
     );
   }
 
@@ -135,6 +146,15 @@ class TomDatabaseBlobStore extends TomBlobStore {
 
   /// Whether to create the tables on first use.
   final bool createSchema;
+
+  /// The clock a blob's `storedAt` is read from.
+  ///
+  /// Its reading is handed to the data source as a `DateTime`, not as text
+  /// this store formats: the bind boundary renders every instant through
+  /// `sqlInstant`, which is what puts a UTC value in the column. A local
+  /// reading formatted here read back as though it were UTC and was wrong by
+  /// the host's offset — and wrong by a different amount per node.
+  final DateTime Function() clock;
 
   static const Uuid _uuid = Uuid();
   bool _schemaReady = false;
@@ -219,7 +239,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
       Error.throwWithStackTrace(error, stack);
     }
 
-    final storedAt = DateTime.now();
+    final storedAt = clock();
     // The commit point: one statement, so a concurrent reader sees the old
     // upload id or the new one and never a manifest that names chunks which
     // are still arriving.

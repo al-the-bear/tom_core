@@ -1,5 +1,35 @@
 ## 1.3.0
 
+### Added
+
+- **`TomDatabaseBlobStore` takes a `clock`, so its write time is checkable
+  without a database (tcincb114).** The store's `storedAt` defect — a local
+  reading formatted by the store itself and read back as though it were UTC,
+  wrong by the writing node's offset and by a *different* amount per node — was
+  repaired earlier, but its only assertion lives in the `db`-tagged suite, which
+  is skipped on every machine without a MariaDB. A rule nothing checks on an
+  ordinary run is a rule that returns.
+
+  The seam is the house pattern: `TomSqlLeaseLock` and `TomSqlOAuthStateStore`
+  each take one, and `named` forwards it. `file_storage_test.dart` now injects a
+  fixed *local* instant against a recording data source and asserts what the
+  store hands the bind boundary — a `DateTime`, not text — because that is the
+  shape of the defect rather than its wording. A store that formats its own
+  instant is wrong whatever the text says, so the bound value's **type** is what
+  fails when it comes back; the descriptor is checked to name the same moment,
+  labelled UTC.
+
+  A second test pins the seam itself, since a store that ignored it would pass
+  the first on any host whose wall clock is close enough. Three entries added to
+  the mutation catalogue — formatting the instant in the store, dropping the
+  descriptor's `toUtc()`, and reading `DateTime.now()` past the seam — all
+  killed.
+
+  No migration. Rows already written carry the old skew, and the column is
+  human-facing metadata that nothing orders by; the only databases holding any
+  are the samples' and `tom_uam`'s, which are recreated from the DDL rather than
+  migrated.
+
 ### Fixed
 
 - **`registerParticipant` enlisted a participant whose `startTransaction`
