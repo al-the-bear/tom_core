@@ -1,5 +1,46 @@
 ## 1.3.0
 
+### Documentation
+
+- **Every field of `TomBaseServerConfiguration` now carries a dartdoc, and a
+  test keeps it that way (tcincb108).** This is the single object a deployment
+  fills in to stand a server up, so each field is a knob somebody has to set
+  correctly without being able to read the code that consumes it. Seventeen of
+  its forty-eight carried no comment at all.
+
+  The filing expected a mirroring job — the API summary already had a line for
+  every field — and that turned out to be the wrong premise for most of them.
+  The existing lines restated the name, and three restated it *wrongly*:
+  `logLevelExceptions` was described as "log level for exceptions" when it is a
+  per-logger override list whose "exception" is to the global `logLevel`;
+  `postExecutionHandler` as "runs after execution" when it is a `Cascade`
+  fallback reached only if the router answers 404, and which never sees the
+  router's response; `listenToAnyIP` as "binds to any IP" when it is read
+  *after* `host` and so discards a configured address rather than adding one.
+  Each field was read at its consumer, and the API summary and the completion
+  document were corrected alongside the source.
+
+  Four of the fields turned out to be settings the framework never reads —
+  `logLevel`, `logLevelExceptions`, `isolateLogging` and
+  `databaseMigrationsDirectory` are applied by the application's boot. That is
+  worth a deployment knowing, because it decides *when* a value takes effect:
+  everything logged before the boot reaches `setLogLevelByName` is emitted at
+  the previous level.
+
+  `privateKey` says it is a credential without using the words **secret-bearing**
+  — that phrase is a controlled marker tying a field to a row in the guide's
+  *Deployment Settings* tables, which cover the four out-of-band blocks and not
+  TLS material. The dartdoc says so, so the next reader does not conclude the
+  marker was forgotten.
+
+  The guard is all-or-nothing rather than a count: a field is the smallest thing
+  a document can omit and the easiest, since adding one is a single line and
+  nothing about writing it prompts for a comment. It reads the same class body
+  the secret-marker check does, and is pinned on the two TLS fields, whose
+  multi-line string default is the declaration shape a field reader is most
+  likely to skip — skipping them would report the class fully documented while
+  leaving the credential pair uncommented.
+
 ### Added
 
 - **`TomYaml.loadYamlFileIfPresent` and `TomYaml.mergeInYamlFileIfPresent`, the

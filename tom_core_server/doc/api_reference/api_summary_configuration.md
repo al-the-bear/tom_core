@@ -134,11 +134,11 @@ runs after it so a merged key spelled `args` cannot displace the invocation.
 | -------- | ---- | ----------- |
 | `appId` | `String` | Application id (default `""`). |
 | `args` | `List<String>` | The command line the configuration was built from. **Derived, not configurable** — assigned by the constructor after `setValues`, so a merged key spelled `args` does not land here. May hold a secret, since the command line is one of the out-of-band channels for supplying one. |
-| `serverHeader` | `String` | `Server` response header (default `""`). |
-| `autoCompress` | `bool` | Whether responses are auto-compressed (default `true`). |
-| `poweredByHeader` | `String` | `X-Powered-By` header value (default `"tom"`). |
-| `noSsl` | `bool` | Disables SSL when `true` (default `false`). |
-| `listenToAnyIP` | `bool` | Binds to any IP when `true` (default `false`). |
+| `serverHeader` | `String` | The `Server` response header, applied after the socket is listening. Empty (the default) is the "say nothing" value and sends no header. |
+| `autoCompress` | `bool` | Whether the bound socket compresses compressible responses (default `true`). Only ever turned *on*: `false` leaves the socket at Dart's own default rather than disabling compression. |
+| `poweredByHeader` | `String` | The `X-Powered-By` header value (default `"tom"`), fixed when the socket is bound. Empty sends no header. |
+| `noSsl` | `bool` | Binds plain HTTP instead of TLS (default `false`). When set, no `SecurityContext` is built and `certificateChain` / `privateKey` are never read — the supported way to run behind a TLS-terminating proxy. |
+| `listenToAnyIP` | `bool` | Overrides `host` with `anyIPv4` (default `false`). Read *after* `host`, so it does not add an address — it discards whichever one was configured, which is what a container wants when its inherited host names an address that does not exist inside it. |
 | `port` | `int` | HTTP bind port; `0` is the "unconfigured" sentinel (default `0`). |
 | `certificateChain` | `String` | TLS certificate chain; defaults to a throwaway self-signed `localhost` pair that MUST be overridden in production. |
 | `privateKey` | `String` | TLS private key; defaults to a throwaway self-signed `localhost` key that MUST be overridden in production. |
@@ -169,17 +169,17 @@ runs after it so a merged key spelled `args` cannot displace the invocation.
 | `smsTimeoutSeconds` | `int` | How long to wait for the gateway before treating the attempt as deferred. A timeout is transient — the message may have been accepted — so the attempt is retried and deduplicated by message id (default `30`). |
 | `smsMaxSegments` | `int` | The most segments a single message may occupy, or `0` for no cap. Over the cap fails *permanently* at send: a message too long now is too long on the retry (default `3`). |
 | `host` | `String` | Bind host; empty makes `TomServer.start` listen on `InternetAddress.anyIPv4` (default `""`). |
-| `isolateCount` | `int` | Number of worker isolates (default `10`). |
-| `authenticationMiddleware` | `Middleware?` | Optional authentication middleware. |
-| `errorHandler` | `Response? Function(Request, Object, StackTrace)?` | Optional error handler. |
-| `authenticationErrorHandler` | `Response? Function(Request, Object, StackTrace)?` | Optional authentication error handler. |
-| `preExecutionHandler` | `Handler?` | Optional handler run before execution. |
-| `postExecutionHandler` | `Handler?` | Optional handler run after execution. |
+| `isolateCount` | `int` | How many worker isolates the deployment runs (default `10`). The framework reads it for one decision — a count above `1` binds the socket `shared` — while starting the pool is the application's boot step, so raising this without sizing the pool from it yields a shared socket and one listener. |
+| `authenticationMiddleware` | `Middleware?` | Replaces the pipeline's authentication layer. `null` installs `tomDefaultAuthenticationMiddleware`, which publishes the principal every downstream layer reads; a replacement that publishes none leaves the pipeline running as nobody rather than failing. |
+| `errorHandler` | `Response? Function(Request, Object, StackTrace)?` | Replaces the default error response (`tomErrorEnvelope` as a 500 with `x-tom-error: true`). Installed at two pipeline layers unless `authenticationErrorHandler` separates them. Returning `null` rethrows rather than answering. |
+| `authenticationErrorHandler` | `Response? Function(Request, Object, StackTrace)?` | The error response for failures at or above the authentication layer; falls back to `errorHandler`. Separate them to answer an authentication failure with a `401` challenge rather than the `500` envelope. |
+| `preExecutionHandler` | `Handler?` | A handler offered the request before the router, in a shelf `Cascade`: it answers or returns 404 to step aside. Not middleware — it cannot see or alter the router's response. |
+| `postExecutionHandler` | `Handler?` | A handler reached only when the router answers 404 — a fallback, not a post-processing step. It never sees the router's response; use a `Middleware` when the response must be inspected. |
 | `loggingMiddleware` | `Middleware` | Request-logging middleware (default `tomLoggingMiddleware()`). Shelf's `logRequests()` drops in unchanged and adds timing, but reads nothing from the request context, so it honours neither `shouldBeLogged` (the `logRequests: false` opt-out that keeps `/health` probes out of the log) nor `hasBeenLogged`. |
-| `isolateLogging` | `bool` | Whether isolate logging is enabled (default `true`). |
-| `logLevelExceptions` | `String` | Log level for exceptions (default `""`). |
-| `logLevel` | `String` | Global log level (default `""`). |
-| `databaseMigrationsDirectory` | `String` | Directory of database migrations (default `"./database_migrations"`). |
+| `isolateLogging` | `bool` | Whether the deployment moves logging into an isolate of its own (default `true`). Gates the application's `TomIsolateLogging.startIsolatedLogging` boot step; the framework only carries the value. |
+| `logLevelExceptions` | `String` | Per-logger level overrides as `name1=level1,name2=level2` — the "exception" is to the global `logLevel`, not an error. Applied by the application's boot; an unparseable pattern is logged and the overrides are lost. |
+| `logLevel` | `String` | The global log level by name (`TRACE` … `FATAL`, or an aggregate such as `PRODUCTION`). Empty leaves the logger as it was — a deployment that says nothing does not get silence. Applied by the application's boot, so anything logged before that call uses the previous level. Environment name `LOG_LEVEL`. |
+| `databaseMigrationsDirectory` | `String` | The directory `TomDbMigrations.migrateDatabases` reads, one subdirectory per datasource name (default `"./database_migrations"`). Relative, so a server started from anywhere but its package root finds no migrations. Migration is the application's boot step. |
 
 Three of the blocks above are whole subsystems that are **off until
 configured**, and each names one field that switches it on:

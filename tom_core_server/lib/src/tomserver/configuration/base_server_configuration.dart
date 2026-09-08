@@ -197,14 +197,54 @@ abstract class TomBaseServerConfiguration {
   /// serialize individual fields, never this list.
   List<String> args = [];
 
+  /// The `Server` response header. Empty (the default) sends none.
+  ///
+  /// Applied to the bound [HttpServer] after it is listening, so it names the
+  /// *deployment*, not a route. An empty string is the "say nothing" value
+  /// rather than a header with no value: [TomServer.start] translates it to
+  /// `null`, which is what leaves the header off the wire. Naming the product
+  /// and version here tells every client — and every scanner — what is running,
+  /// so a deployment that would rather not say leaves this as it is.
   String serverHeader = "";
 
+  /// Whether the bound [HttpServer] compresses responses it judges
+  /// compressible.
+  ///
+  /// `true` by default, and only ever turned *on* by [TomServer.start] — the
+  /// flag gates an assignment, so setting this `false` leaves the socket at
+  /// Dart's own default rather than actively disabling compression. Turn it off
+  /// where a proxy in front of the server already compresses, or where response
+  /// bodies are encrypted or already compressed and the pass would only cost
+  /// CPU.
   bool autoCompress = true;
 
+  /// The `X-Powered-By` response header. Defaults to `"tom"`; empty sends none.
+  ///
+  /// Passed to `shelf_io.serve`, so unlike [serverHeader] it is fixed when the
+  /// socket is bound. Empty is again the "say nothing" value, translated to
+  /// `null` before the bind.
   String poweredByHeader = "tom";
 
+  /// Whether to bind a plain HTTP socket instead of a TLS one.
+  ///
+  /// `false` by default, which is the safe direction: a deployment gets TLS
+  /// unless it asks not to. When `true`, [TomServer.start] builds no
+  /// [SecurityContext] at all and [certificateChain] / [privateKey] are never
+  /// read — which is the supported way to run behind a TLS-terminating proxy,
+  /// and the only honest way to run without a certificate. Reading
+  /// [TomServer.securityContext] afterwards reports what was *built*; this
+  /// field reports what was asked for.
   bool noSsl = false;
 
+  /// Whether to bind every interface, overriding [host].
+  ///
+  /// Read *after* [host], so `true` wins: [TomServer.start] resolves the listen
+  /// address from [host] (or [InternetAddress.anyIPv4] when it is empty) and
+  /// then replaces it with `anyIPv4` if this is set. So it is not "also listen
+  /// on any IP" — it is "ignore whatever host was configured", which is the
+  /// setting a container image wants when the host it inherited from a
+  /// configuration file names an address that does not exist inside the
+  /// container.
   bool listenToAnyIP = false;
 
   /// HTTP bind port. `0` is the "unconfigured" sentinel: [setValues] (config /
@@ -220,6 +260,21 @@ abstract class TomBaseServerConfiguration {
   /// (see `doc/cmdline.md`).
   int port = 0;
 
+  /// The PEM-encoded TLS certificate chain [TomServer.start] binds with, unless
+  /// [noSsl] is set.
+  ///
+  /// **The default is a throwaway self-signed `localhost` pair committed to
+  /// this repository, and its private key is public.** It exists so a
+  /// development machine can speak HTTPS without a certificate authority.
+  /// Nothing refuses to start when a deployment leaves it in place, so
+  /// overriding this and [privateKey] together is the deployment's
+  /// responsibility — a server still serving this chain in production is
+  /// authenticating itself with a key anyone can read.
+  ///
+  /// Supplied as PEM text rather than a path, which is what lets a container
+  /// inject it through the environment; the bytes are handed to
+  /// [SecurityContext.useCertificateChainBytes] unparsed, so a malformed value
+  /// fails at bind time and not before.
   String certificateChain = '''
 -----BEGIN CERTIFICATE-----
 MIIFgzCCA2ugAwIBAgIUIQjzx85IYfitPxv3DWFnvTsKKYYwDQYJKoZIhvcNAQEL
@@ -254,6 +309,25 @@ Fge3ejxMrwsq13az1+esJSH161qunB6Zsrs1/bx4zwQfJc0a90CAjqQESjLv+dUC
 A1KMqQJg19+OXA5eF2Fs7N1UwFLrVsI=
 -----END CERTIFICATE-----
   ''';
+
+  /// The PEM-encoded TLS private key for [certificateChain]. **A credential:**
+  /// handle it exactly as the marked settings below are handled.
+  ///
+  /// The default is the private half of the checked-in self-signed pair and is
+  /// therefore public. See [certificateChain]: the two are overridden together
+  /// or not at all, since a chain without its matching key binds nothing.
+  ///
+  /// Never log this field, and never log [args], which may carry it. The bytes
+  /// are handed to [SecurityContext.usePrivateKeyBytes] unparsed.
+  ///
+  /// It carries a different wording from the marked settings on purpose. That
+  /// marker is a controlled one: `doc/configuration.md` tabulates the four
+  /// out-of-band blocks a deployment supplies — JWT signing, server self-login,
+  /// outbound mail, outbound SMS — and a test holds the marked fields and that
+  /// table to each other, so a field marked without a row there fails. TLS
+  /// material has no row: it is documented by the limitation naming the
+  /// checked-in pair. The difference is about which document owes a row, not
+  /// about how carefully this value is handled.
   String privateKey = '''
 -----BEGIN PRIVATE KEY-----
 MIIJQQIBADANBgkqhkiG9w0BAQEFAASCCSswggknAgEAAoICAQDFNk2kG9qWxivR
@@ -552,16 +626,81 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// placeholder such as `"t"` or `"0"` binds nothing.
   String host = "";
 
+  /// How many worker isolates the deployment runs. Defaults to `10`.
+  ///
+  /// The framework reads it for one decision only: a count above `1` binds the
+  /// socket with `shared: true`, so several isolates can accept on the same
+  /// port. Actually *starting* the isolates is the application's boot step —
+  /// `TomWorkerPool.withSize(configuration.isolateCount, …)` — which is why a
+  /// deployment that raises this without also sizing its pool from it gets a
+  /// shared socket and one listener.
+  ///
+  /// `0` is meaningful: a boot that reads it takes it as "no pool, serve from
+  /// the main isolate", and the socket is then bound unshared.
   int isolateCount = 10;
 
+  /// Replaces the authentication layer of [TomServer.start]'s pipeline.
+  ///
+  /// `null` (the default) installs [tomDefaultAuthenticationMiddleware], which
+  /// is what reads the bearer token and publishes the principal into the
+  /// request zone. A replacement takes over that whole responsibility:
+  /// everything downstream — authorization, delegation, audit attribution —
+  /// reads the principal this layer established, so a middleware that
+  /// publishes none leaves the pipeline running as nobody rather than failing.
+  ///
+  /// Supply one to authenticate against something this package does not model.
+  /// Wrapping rather than replacing is usually what is wanted, and shelf's
+  /// `Middleware` composes, so a custom layer can call the default and add to
+  /// what it produced.
   Middleware? authenticationMiddleware;
 
+  /// Replaces the server's default error response.
+  ///
+  /// `null` (the default) leaves [TomServer.errorHandler] in place, which
+  /// renders [tomErrorEnvelope] as a 500 with `x-tom-error: true` and a JSON
+  /// content type. Installed at **two** pipeline layers — the inner one below
+  /// authentication, and the outer one when
+  /// [authenticationErrorHandler] is `null` — so a single handler here covers
+  /// both unless the two are separated deliberately.
+  ///
+  /// Returning `null` from the handler rethrows the original error rather than
+  /// answering, which is the way to handle some failures and leave the rest to
+  /// shelf. The error and its stack trace are already logged before the handler
+  /// is called, so a handler that only wants to log has nothing to add.
   Response? Function(Request, Object, StackTrace)? errorHandler;
 
+  /// Replaces the error response for failures raised *at or above* the
+  /// authentication layer.
+  ///
+  /// Falls back to [errorHandler] when `null`, which is the default, so the two
+  /// differ only where a deployment wants them to. Separating them is worth it
+  /// when an authentication failure should answer differently from an
+  /// application one — a `401` with a `WWW-Authenticate` challenge rather than
+  /// the `500` envelope, say — since this layer sits outside the authentication
+  /// middleware and therefore sees what it throws.
   Response? Function(Request, Object, StackTrace)? authenticationErrorHandler;
 
+  /// A handler offered the request *before* the router, in a shelf [Cascade].
+  ///
+  /// `null` (the default) leaves the router alone. A cascade tries each handler
+  /// in turn and takes the first response that is not a 404, so this one
+  /// **answers or steps aside**: return a response to serve it, or a 404 to let
+  /// the router handle the request as usual. It is not middleware — it cannot
+  /// see or alter what the router returns, and it runs inside the pipeline, so
+  /// the principal and the request context are already established.
+  ///
+  /// Serving a fixed asset or a redirect that must not reach the router is the
+  /// case for it.
   Handler? preExecutionHandler;
 
+  /// A handler offered the request *after* the router, in the same [Cascade].
+  ///
+  /// Reached only when the router answers 404, which is what "after" means
+  /// here: it is a fallback, not a post-processing step, and it never sees the
+  /// router's response. Use it for a catch-all — a single-page-application
+  /// index, a custom not-found body — and use [loggingMiddleware] or a
+  /// [Middleware] of your own when the response itself has to be inspected or
+  /// changed.
   Handler? postExecutionHandler;
 
   /// The middleware that emits the per-request access-log line.
@@ -601,12 +740,63 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// and doubled error reports.
   Middleware loggingMiddleware = tomLoggingMiddleware();
 
+  /// Whether the deployment moves logging into an isolate of its own.
+  ///
+  /// Read by the application's boot, not by the framework: the step it gates is
+  /// `TomIsolateLogging.startIsolatedLogging`, which a `main` calls once in the
+  /// main isolate. Declared here so it arrives through the same merge as every
+  /// other setting rather than being read from the environment by hand.
+  ///
+  /// `true` by default. Isolated logging keeps formatting and writing off the
+  /// request path, which matters most for a worker pool, where every isolate
+  /// would otherwise write to the same sink; the cost is that a log line is
+  /// posted to another isolate, so a process that dies abruptly can lose the
+  /// last of them.
   bool isolateLogging = true;
 
+  /// Per-logger log-level overrides, as `name1=level1,name2=level2`.
+  ///
+  /// **Not a level for exceptions.** It is the pattern
+  /// `TomLogger.setLogLevelExceptions` parses, where each entry raises or lowers
+  /// the level for one logger *name* against the global [logLevel] — the
+  /// "exception" is to the global setting, not an error. `MyClass=DEBUG` turns
+  /// one class up while the rest of the deployment stays at `INFO`.
+  ///
+  /// Empty (the default) sets no override. An unparseable pattern is logged and
+  /// otherwise ignored, so a typo here loses the overrides silently rather than
+  /// stopping the boot. Applied by the application's boot alongside [logLevel];
+  /// the framework only carries the value.
   String logLevelExceptions = "";
 
+  /// The global log level, by name: `TRACE`, `DEBUG`, `TRAFFIC`, `INFO`,
+  /// `WARN`, `STATUS`, `ERROR`, `SEVERE`, `FATAL`, or one of the aggregate
+  /// names (`ALL`, `DEVELOPMENT`, `EXTENDED`, `ERRORS`, `PRODUCTION`, `STILL`,
+  /// `SILENT`, `OFF`).
+  ///
+  /// Empty (the default) leaves the logger at whatever it already had, so a
+  /// deployment that says nothing does not get silence. An unrecognised name is
+  /// reported as an error and the level is left alone.
+  ///
+  /// Applied by the application's boot — `tomLog.setLogLevelByName(...)` — and
+  /// not by the framework, which is why it takes effect at the point that call
+  /// is reached: everything logged earlier in the boot, this class's own merge
+  /// included, is emitted at the previous level.
+  ///
+  /// Environment name: `LOG_LEVEL` (see [getDefaultValues]).
   String logLevel = "";
 
+  /// The directory `TomDbMigrations.migrateDatabases` reads, relative to the
+  /// working directory unless absolute.
+  ///
+  /// Defaults to `./database_migrations`, which is where every sample keeps
+  /// them — and since the path is relative, a server started from anywhere but
+  /// its package root finds no migrations rather than failing to find the
+  /// directory. Migration is the application's boot step, so nothing in the
+  /// framework reads this; it is declared here so the path is configurable per
+  /// deployment through the same merge as the rest.
+  ///
+  /// The directory holds one subdirectory per datasource name, which is what
+  /// ties a migration set to the datasource key it belongs to.
   String databaseMigrationsDirectory = "./database_migrations";
 
   /// Builds the merged value map used to populate a configuration instance.

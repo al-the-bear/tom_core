@@ -1205,6 +1205,34 @@ List<String> _secretBearingFields(String path, String className) {
   return secrets;
 }
 
+/// The fields [className] declares in [path] with no dartdoc above them, in
+/// source order.
+///
+/// Reads the same body [_secretBearingFields] does and by the same rule: a
+/// dartdoc belongs to the next declaration, and a blank line detaches it. An
+/// annotation does not — `@TomDbColumn('x')` between a comment and its field is
+/// still that field's comment.
+List<String> _undocumentedFields(String path, String className) {
+  final undocumented = <String>[];
+  var documented = false;
+  for (final line in _classBody(path, className).split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.startsWith('///')) {
+      documented = true;
+      continue;
+    }
+    if (trimmed.isEmpty) {
+      documented = false;
+      continue;
+    }
+    if (trimmed.startsWith('@')) continue;
+    final name = _fieldNameOf(line);
+    if (name != null && !documented) undocumented.add(name);
+    documented = false;
+  }
+  return undocumented;
+}
+
 /// Whether [field] belongs to one of the four deployment-facing blocks the
 /// configuration guide documents: JWT signing keys, server self-login, outbound
 /// mail, outbound SMS.
@@ -4511,6 +4539,76 @@ One: `TomKind`, documented beside the type that carries it.
             'that reaches it is unbounded',
       );
       expect(_declaredProperties(path, 'TomRecipient'), contains('address'));
+    });
+  });
+
+  // The one class a deployment fills in to stand a server up. Every field is a
+  // knob somebody has to set correctly without being able to read the code that
+  // consumes it, and several are not self-describing from the name:
+  // `logLevelExceptions` is a per-logger override list rather than a level for
+  // exceptions, `listenToAnyIP` discards a configured host rather than adding
+  // an address, and `isolateCount`, `preExecutionHandler` and
+  // `postExecutionHandler` each carry a behaviour only `server.dart` reveals.
+  //
+  // A field is the smallest thing a document can omit and the easiest: adding
+  // one is a single line, and nothing about writing it prompts for a comment.
+  // So the rule is all-or-nothing rather than a count — the next field to
+  // arrive undocumented fails here, where the class is, rather than being
+  // noticed in a sweep some months later.
+  group('every configurable field is documented where it is declared', () {
+    const className = 'TomBaseServerConfiguration';
+    const path =
+        'lib/src/tomserver/configuration/base_server_configuration.dart';
+
+    /// The Properties table for this class, from the census the whole
+    /// api_reference is held to.
+    List<String> tableRows() => _propertyTableCensus
+        .firstWhere(
+          (table) => table.module == 'configuration' && table.type == className,
+        )
+        .properties;
+
+    test('the census reads the class', () {
+      // A body that came back empty would pass the assertion below by finding
+      // nothing to complain about. Held against the Properties table, which is
+      // censused in both directions elsewhere in this file, so the two readers
+      // of this class agree about what it declares — and the guard below
+      // inherits that agreement rather than asserting a number of its own.
+      expect(
+        _declaredFields(path, className),
+        tableRows(),
+        reason:
+            'the field census and the summary Properties table disagree about '
+            'what $className declares; one of the two readers is wrong, and '
+            'the check below is only as good as this one',
+      );
+    });
+
+    test('no field is left to the reader to guess at', () {
+      expect(
+        _undocumentedFields(path, className),
+        isEmpty,
+        reason:
+            'these fields on $className carry no dartdoc: '
+            '${_undocumentedFields(path, className).join(', ')}. This class is '
+            'the deployment interface — a field with no comment is a setting '
+            'somebody has to get right by reading the framework, and the '
+            'summary row alone cannot carry the reason a value matters.',
+      );
+    });
+
+    test('the census sees the fields most easily skipped', () {
+      // The two TLS fields are declared with a multi-line string default, so
+      // their declaration line ends in `= '''` rather than a `;`. `_classBody`
+      // replaces the literal before the scan, which is the only reason they
+      // read as ordinary fields — a reader that skipped them would report this
+      // class fully documented while leaving the credential pair uncommented,
+      // and the guard above would be quiet about exactly the two fields a
+      // deployment must not leave at their defaults.
+      expect(
+        _declaredFields(path, className),
+        containsAll(<String>['certificateChain', 'privateKey']),
+      );
     });
   });
 
