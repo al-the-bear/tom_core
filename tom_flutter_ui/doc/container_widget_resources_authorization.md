@@ -1862,13 +1862,13 @@ This section defines how screens are declared and how declarations connect to th
 
 ### 13.1 Screen definition approach
 
-Screen elements are defined by directly instantiating the concrete Tom widget classes. There is no factory, no type enum, no untyped config map. All widget-specific parameters (bindings, restrictions, items, callbacks) are passed as typed constructor arguments, verified by the Dart compiler.
+Screen elements are defined by directly instantiating the concrete Tom widget classes. There is no factory, no type enum, no untyped config map. All widget-specific parameters — ids, initial values, validators, selection sources, callbacks — are passed as typed constructor arguments, verified by the Dart compiler.
 
 A screen definition consists of:
 
-1. **`TomScreenElementsProvider`** — a marker interface whose base class (`TomScreenElementsProviderBase`) **is itself a `TomScope`**. Declares widgets as typed fields, discovered via `@tomReflect`.
+1. **`TomScreenElementsProvider`** — a marker interface whose base class (`TomScreenElementsProviderBase`) **is itself a `TomScope`**. Declares widgets as typed fields, reached by name through `TomAclBuilder<T>`'s selectors.
 2. Each field is a directly-instantiated Tom widget with typed constructor arguments.
-3. The **layout** (how elements are arranged on screen) is a separate `AclBuilder` call.
+3. The **layout** (how elements are arranged on screen) is a separate `TomAclBuilder<T>` call.
 
 ### 13.2 TomScreenElementsProvider — scoped widget groups
 
@@ -1878,41 +1878,33 @@ abstract interface class TomScreenElementsProvider {
   TomScope get scope;
 }
 
-/// Base class that IS a TomScope — creates hierarchical scope chain.
+/// Base class that IS a TomScope — creates a hierarchical scope chain.
 class TomScreenElementsProviderBase with TomScopeMixin
     implements TomScreenElementsProvider {
+  /// [scopeId] contributes a segment of its own; passing `null` makes the
+  /// provider pass through to the surrounding scope instead. [parent] nests
+  /// this provider under another one rather than under the current zone.
   TomScreenElementsProviderBase([String? scopeId,
-      TomScreenElementsProvider? parent]) {
-    final parentScope = parent?.scope ?? TomScope.current;
-    initScope(scopeId: scopeId ?? parentScope.id, parentScope: parentScope.parent);
-  }
-
-  @override
-  TomScope get scope => this; // the provider IS a scope
+      TomScreenElementsProvider? parent]);
 }
 ```
 
 Concrete implementation for a login screen:
 
 ```dart
-@tomReflect
 class LoginScreenElements extends TomScreenElementsProviderBase {
-  final AppState appState;
   final void Function() onLogin;
 
-  LoginScreenElements({required this.appState, required this.onLogin})
-      : super('login');
+  LoginScreenElements({required this.onLogin}) : super('login');
 
   late final email = TomTextField(
     tomId: 'email',
-    binding: appState.formData.username,
     keyboardType: TextInputType.emailAddress,
     scope: this,
   );
 
   late final password = TomTextField(
     tomId: 'password',
-    binding: appState.formData.password,
     obscureText: true,
     scope: this,
   );
@@ -1925,16 +1917,23 @@ class LoginScreenElements extends TomScreenElementsProviderBase {
 }
 ```
 
-Every parameter is type-safe. The email field takes a `TomObject<String>`, the button takes a `VoidCallback`. No `Map<String, dynamic>` config. Fields are discovered automatically via `@tomReflect` annotation — no manual element list or per-widget wrapper objects needed.
+Every parameter is type-safe: `keyboardType` takes a `TextInputType`, the button
+takes a `VoidCallback`. No `Map<String, dynamic>` config, no manual element list,
+no per-widget wrapper objects.
 
-Widget paths are resolved from the provider's scope: `login.email`, `login.password`, `login.loginButton`.
+`scope: this` is what places each widget, so paths resolve from the provider's
+scope: `login.email`, `login.password`, `login.loginButton`.
+
+A provider holds *widgets*, and a Tom-wrapped Flutter widget keeps no value of
+its own — a `TomTextField` reads and writes through the `TextEditingController`
+it is given, exactly as `TextField` does. Validated writes into the application
+state are the form layer's job (§13.4), not the provider's.
 
 ### 13.3 Nested providers
 
 Providers can nest, creating hierarchical scope chains:
 
 ```dart
-@tomReflect
 class OrderScreenProvider extends TomScreenElementsProviderBase {
   OrderScreenProvider() : super('order');
 
@@ -1942,7 +1941,6 @@ class OrderScreenProvider extends TomScreenElementsProviderBase {
   late final details = OrderDetailsProvider(this); // nested
 }
 
-@tomReflect
 class OrderDetailsProvider extends TomScreenElementsProviderBase {
   OrderDetailsProvider(TomScreenElementsProvider parent) : super('details', parent);
 
@@ -1962,19 +1960,27 @@ A form is typed to its target: `TomForm<T>` where `T extends TomClass`. The form
 
 ```dart
 /// A form that edits an Address object in the application state.
+@tomReflector
 class AddressForm extends TomForm<Address> {
   AddressForm({required super.formId});
 
-  /// Fields map to Address members. The binding is resolved
-  /// when the form is bound to a concrete Address instance.
-  late final street = field<String>('street');    // → Address.street
-  late final city = field<String>('city');        // → Address.city
-  late final zip = field<String>('zip');          // → Address.zip
-  late final country = field<String>('country');  // → Address.country
+  @override
+  void createFormElements() {}
+
+  /// Field ids match Address member names: street, city, zip, country.
+  late final street = TomFormStringInput('street', '', form: this);
+  late final city = TomFormStringInput('city', '', form: this);
+  late final zip = TomFormStringInput('zip', '', form: this);
+  late final country = TomFormStringInput('country', '', form: this);
 }
 ```
 
-The field-to-member mapping can be validated using reflection: if `Address` does not have a `street` member of type `String`, this is detected as a configuration error at startup or in the debug view.
+The field-to-member mapping is by name and is resolved when the form is bound,
+not declared: `bind` seeds the fields from `target.getValues()`, and `save`
+writes them back with `target.setValues(getValues())` — both keyed on the
+field's `tomId`. A field whose id matches no member of `T` therefore round-trips
+nothing, which the debug view's ID structure makes visible by listing the form's
+fields beside the target's members.
 
 The form definition specifies the **type** binding. The concrete **instance** is provided at mount time:
 
@@ -1989,32 +1995,48 @@ final deliveryForm = AddressForm(formId: 'deliveryAddress')
 
 #### Sub-forms and nesting
 
-Complex screens compose forms hierarchically:
+Complex screens compose forms hierarchically. A nested form is an ordinary
+member, so `getMembers()` reports it and every lifecycle call fans out into it
+without registration. A *list* of sub-forms is not a member of that kind —
+`TomListForm` is a `TomObservable` rather than a `TomObject` — so it registers
+itself with the parent from its own constructor.
 
 ```dart
+@tomReflector
 class OrderForm extends TomForm<Order> {
   OrderForm() : super(formId: 'order');
 
   // Direct fields on Order
-  late final orderNumber = field<String>('orderNumber');
-  late final notes = field<String>('notes');
+  late final orderNumber = TomFormStringInput('orderNumber', '', form: this);
+  late final notes = TomFormStringInput('notes', '', form: this, maxLines: 5);
 
-  // Sub-forms — each typed to its own TomClass
-  late final billing = subForm(AddressForm(formId: 'billingAddress'));
-  late final shipping = subForm(AddressForm(formId: 'shippingAddress'));
+  // Sub-forms — each typed to its own TomClass, discovered as members
+  late AddressForm billing;
+  late AddressForm shipping;
 
-  // Repeated sub-forms — for lists of items
-  late final items = subFormList<OrderItem, OrderItemForm>(
-    (index) => OrderItemForm(formId: 'item_$index'),
+  // Repeated sub-forms — registered with this form by the constructor
+  late final items = TomListForm<OrderItem, OrderItemForm>(
+    listId: 'items',
+    formFactory: (index) => OrderItemForm(),
+    parentForm: this,
   );
+
+  @override
+  void createFormElements() {
+    billing = AddressForm(formId: 'billingAddress');
+    shipping = AddressForm(formId: 'shippingAddress');
+  }
+
+  @override
+  void onBound() => items.bind(currentBinding!.items);
 }
 ```
 
-The owning form coordinates save/discard across all sub-forms:
+The owning form coordinates save/discard across the whole tree:
 
-- `OrderForm.save()` validates and commits the order fields, then calls `save()` on `billing`, `shipping`, and each item form.
-- If any sub-form fails validation, the entire save is aborted.
-- `OrderForm.discard()` resets all sub-forms.
+- `await OrderForm.save()` validates everything first, then commits the order fields and saves `billing`, `shipping`, and each item form.
+- If any level fails validation, nothing is committed — `save` returns `false` before the first write-back.
+- `OrderForm.discard()` resets every field, every nested form and every child container from the bind-time snapshot.
 
 #### Repeated forms
 
@@ -2022,9 +2044,11 @@ The same form type can appear multiple times, each bound to a different object:
 
 ```dart
 // Delivery section with multiple addresses
-final deliveryForms = appState.order.deliveryAddresses.map((addr, index) =>
-  AddressForm(formId: 'delivery_$index')..bind(addr)
-).toList();
+final deliveryForms = <AddressForm>[
+  for (var i = 0; i < appState.order.deliveryAddresses.length; i++)
+    AddressForm(formId: 'delivery_$i')
+      ..bind(appState.order.deliveryAddresses[i]),
+];
 ```
 
 Each instance has its own edit state, validation, and save/discard lifecycle.
@@ -2042,32 +2066,32 @@ For form components, the binding model works through the form:
 7. If field state does not map directly to target members, the form's save callback can apply business logic mapping before committing.
 
 ```dart
-abstract class TomTextFormFieldBase<T> extends TomFamilyBase {
-  /// Binding to the application state (read source + write target after validation).
-  final TomObject<T> binding;
+abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
+  @override
+  String tomId;
+  TomForm? form;
+  TomAuthorizationGroup? tomGroup;
+  T _initialValue;
 
-  /// Internal edit state — holds the user's current input.
-  /// Not visible to the application state until committed.
-  late T _editValue;
+  /// The field IS the edit state: as a `TomObject<T>` it holds the value the
+  /// user is currently editing. There is no second object it writes through.
+  TomField(this.tomId, this._initialValue, {this.form, this.tomGroup})
+      : super(_initialValue);
 
-  /// Whether the internal state has uncommitted changes.
-  bool get isDirty => _editValue != binding.value;
+  /// The value at bind time, or at the last commit.
+  T get initialValue => _initialValue;
 
-  /// Validate the current edit state. Returns list of errors (empty = valid).
-  List<String> validate();
+  /// Whether the edit state differs from that value.
+  bool get isDirty => get() != _initialValue;
 
-  /// Commit: validate, then copy to application state if valid.
-  bool commit() {
-    final errors = validate();
-    if (errors.isNotEmpty) return false;
-    binding.value = _editValue;
-    return true;
-  }
+  /// Validates the current edit state.
+  Future<ValidationResult> validate();
 
-  /// Discard: reset internal state from application state.
-  void discard() {
-    _editValue = binding.value;
-  }
+  /// Accepts the current value as the new baseline.
+  void commit();
+
+  /// Resets the edit state to the last bound / committed value.
+  void reset();
 }
 ```
 
@@ -2078,173 +2102,223 @@ This pattern ensures the application state is always in a valid, consistent stat
 **Form-level save**: The form coordinates save across all its fields and sub-forms:
 
 ```dart
-abstract class TomForm<T extends TomClass> {
-  final String formId;
-  T? _target;
+abstract class TomForm<T extends TomClass> extends TomClass
+    implements TomScreenElementsProvider, TomActionController,
+        TomFormEventSource {
+  late final String formId;
+  late final TomForm? parentForm;
 
-  TomForm({required this.formId});
+  TomForm({required this.formId, this.parentForm});
 
-  void bind(T target) => _target = target;
+  /// Declares whatever cannot be a `late final` member — nested forms above
+  /// all, which have to be built inside this form's own scope.
+  void createFormElements();
 
-  /// Validate and commit all fields. Returns true if all valid.
-  bool save() {
-    if (!validateAll()) return false;
-    commitAll(); // writes validated values to _target members
-    return true;
-  }
+  /// Seeds every field from [target] and remembers it as the write-back
+  /// target. Nested forms bind to the matching member of [target].
+  void bind(T target);
 
-  /// Discard all field edits — reset from target object.
-  void discardAll() { /* reset each field from _target */ }
+  /// Validates the whole tree, then commits. Returns false having written
+  /// nothing if any level is invalid.
+  Future<bool> save({bool? commitBaselines});
 
-  /// Validate all fields and sub-forms. Returns true if all valid.
-  bool validateAll() { /* validate fields + sub-forms */ }
+  /// Resets every field, nested form and child container from the
+  /// bind-time snapshot.
+  void discard();
+
+  /// The collected validation errors of this form and everything under it.
+  Future<List<FormValidationError>> validate();
 }
 ```
 
 ### 13.5 Connecting to ACL layout
 
-The layout arranges screen elements using `AclBuilder`. The provider gives access to elements by ID:
+The layout arranges screen elements using `TomAclBuilder<T>`, which is typed to
+the provider and reaches its elements through selector functions — so a renamed
+field is a compile error rather than a missing widget at runtime:
 
 ```dart
 Widget buildLoginScreen(BuildContext context) {
-  final form = LoginScreenElements(
-    appState: appState,
-    onLogin: handleLogin,
+  final elements = TomScope.withScope(
+    'screen',
+    () => LoginScreenElements(onLogin: handleLogin),
   );
 
-  return AclBuilder(title: 'Login')
-    ..setAclId('loginPanel')
-    ..append(form['email']!.widget)..expandX()
-    ..newRow(dist: 8)
-    ..append(form['password']!.widget)..expandX()
-    ..newRow(dist: 16)
-    ..gap()
-    ..append(form['loginButton']!.widget)
-    ..build();
+  return TomAclBuilder<LoginScreenElements>(
+        id: 'loginPanel',
+        elementProvider: elements,
+        title: 'Login',
+      )
+      .append((p) => p.email)
+      .expandX()
+      .newRow(dist: 8)
+      .append((p) => p.password)
+      .expandX()
+      .newRow(dist: 16)
+      .gap()
+      .append((p) => p.loginButton)
+      .build(context);
 }
 ```
 
 This keeps a clean separation:
 
-- `TomScreenElementsProvider` declares **what** is on the screen, with directly instantiated widgets as typed fields, discovered via reflection.
-- `AclBuilder` declares **how** it is arranged on screen.
+- `TomScreenElementsProvider` declares **what** is on the screen, as directly instantiated widgets held in typed fields.
+- `TomAclBuilder<T>` declares **how** it is arranged on screen.
 - Resources, authorization, and theming are resolved automatically by the widget system.
 
 ### 13.6 Complex example — user profile form
 
+A `TomForm` is itself a `TomScreenElementsProvider`, so a validated form needs no
+second provider class: the same `TomAclBuilder<T>` lays it out directly.
+
 ```dart
-@tomReflect
-class ProfileScreenElements extends TomScreenElementsProviderBase {
-  final AppState appState;
-  final void Function() onSave;
+@tomReflector
+class ProfileForm extends TomForm<UserProfile> {
+  ProfileForm() : super(formId: 'profileForm');
 
-  ProfileScreenElements({required this.appState, required this.onSave})
-      : super('profileForm');
+  @override
+  void createFormElements() {}
 
-  late final firstName = TomTextField(
-    tomId: 'firstName',
-    binding: appState.user.firstName,
-    scope: this,
+  /// One group gates the whole admin section — see §6.
+  final adminGroup = TomAuthorizationGroup('adminSection');
+
+  late final firstName = TomFormStringInput(
+    'firstName',
+    '',
+    form: this,
+    validators: [Validators.required()],
   );
 
-  late final lastName = TomTextField(
-    tomId: 'lastName',
-    binding: appState.user.lastName,
-    scope: this,
+  late final lastName = TomFormStringInput(
+    'lastName',
+    '',
+    form: this,
+    validators: [Validators.required()],
   );
 
-  late final email = TomTextField(
-    tomId: 'email',
-    binding: appState.user.email,
+  late final email = TomFormStringInput(
+    'email',
+    '',
+    form: this,
     keyboardType: TextInputType.emailAddress,
-    scope: this,
+    validators: [Validators.required()],
   );
 
   late final birthDate = TomFormDatePicker(
-    tomId: 'birthDate',
-    binding: appState.user.birthDate,
-    lastDate: TomZonedDate.now(),
-    scope: this,
+    'birthDate',
+    DateTime(1990, 1, 1),
+    firstDate: DateTime(1900),
+    lastDate: DateTime.now(),
+    form: this,
   );
 
   late final workStart = TomFormTimePicker(
-    tomId: 'workStart',
-    binding: appState.user.workStartTime,
-    // Dynamic restriction — bound to observable state, updates when office changes
-    restriction: appState.officeConfig.availableTimeSlots,
-    scope: this,
+    'workStart',
+    const TimeOfDay(hour: 9, minute: 0),
+    form: this,
   );
 
   late final role = TomFormEnumDropdown<Role>(
-    tomId: 'role',
-    binding: appState.user.role,
-    items: Role.values,
-    scope: this,
+    'role',
+    Role.user,
+    form: this,
+    source: TomEnumSelectableSource<Role>(Role.values),
   );
 
   late final isAdmin = TomFormBoolSwitch(
-    tomId: 'isAdmin',
-    binding: appState.user.isAdmin,
+    'isAdmin',
+    false,
+    form: this,
     tomGroup: adminGroup,
-    scope: this,
   );
 
   late final adminNotes = TomFormStringInput(
-    tomId: 'adminNotes',
-    binding: appState.user.adminNotes,
+    'adminNotes',
+    '',
+    form: this,
     maxLines: 5,
     tomGroup: adminGroup,
-    scope: this,
   );
-
-  late final save = TomElevatedButton(
-    tomId: 'save',
-    onPressed: onSave,
-    scope: this,
-  );
-
-  final adminGroup = TomAuthorizationGroup('adminSection');
-}
-
-Widget buildProfileScreen(BuildContext context) {
-  final form = ProfileScreenElements(
-    appState: appState,
-    onSave: () {
-      if (form.saveAll()) {
-        // all valid, proceed
-      }
-    },
-  );
-
-  return AclBuilder(title: 'User Profile')
-    ..setAclId('profilePanel')
-    // Name row
-    ..append(form['firstName']!.widget)..expandX()
-    ..append(form['lastName']!.widget, dist: 8)..expandX()
-    ..addRowBreakpoint(atWidth: 500)
-    ..newRow(dist: 8)
-    // Email + birth date
-    ..append(form['email']!.widget)..expandX()
-    ..append(form['birthDate']!.widget, dist: 8)
-    ..newRow(dist: 8)
-    // Work time + role
-    ..append(form['workStart']!.widget)
-    ..append(form['role']!.widget, dist: 8)..expandX()
-    ..newRow(dist: 12)
-    // Admin section
-    ..append(form['isAdmin']!.widget)
-    ..newRow(dist: 8)
-    ..startGroup('adminSection')
-    ..append(form['adminNotes']!.widget)..expandX()
-    ..endGroup()
-    ..newRow(dist: 16)
-    ..gap()
-    ..append(form['save']!.widget)
-    ..build();
 }
 ```
 
-Note how `workStart` binds its restriction to `appState.officeConfig.availableTimeSlots` — a `TomObject<TomTimeSlotRestriction>` that changes when the user selects a different office. The `TomFormTimePicker` observes this and updates its selectable slots. This is fully type-safe.
+Every field takes its id and its initial value positionally, and everything else
+by name. The initial value is not the application state — `bind` overwrites it
+from the target, and the declaration only fixes the field's type.
+
+```dart
+class _ProfileScreenState extends State<ProfileScreen> {
+  late final ProfileForm _form;
+
+  @override
+  void initState() {
+    super.initState();
+    _form = TomScope.withScope('profile', () => ProfileForm());
+    _form.bind(appState.user);
+  }
+
+  @override
+  void dispose() {
+    _form.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final saveButton = TomElevatedButton(
+      tomId: 'save',
+      onPressed: () async {
+        if (await _form.save()) Navigator.of(context).pop();
+      },
+    );
+
+    return TomAclBuilder<ProfileForm>(
+          id: 'profilePanel',
+          elementProvider: _form,
+          title: 'User Profile',
+        )
+        // Name row
+        .append((f) => f.firstName.widget)
+        .expandX()
+        .append((f) => f.lastName.widget, dist: 8)
+        .expandX()
+        .addRowBreakpoint(atWidth: 500)
+        .newRow(dist: 8)
+        // Email + birth date
+        .append((f) => f.email.widget)
+        .expandX()
+        .append((f) => f.birthDate.widget, dist: 8)
+        .newRow(dist: 8)
+        // Work time + role
+        .append((f) => f.workStart.widget)
+        .append((f) => f.role.widget, dist: 8)
+        .expandX()
+        .newRow(dist: 12)
+        // Admin section
+        .append((f) => f.isAdmin.widget)
+        .newRow(dist: 8)
+        .startGroup('adminSection')
+        .append((f) => f.adminNotes.widget)
+        .expandX()
+        .endGroup()
+        .newRow(dist: 16)
+        .gap()
+        .append((_) => saveButton)
+        .build(context);
+  }
+}
+```
+
+Two separate mechanisms carry the admin section, and they are named alike here on
+purpose. `tomGroup: adminGroup` registers the two fields with one
+`TomAuthorizationGroup`, so a single grant decision covers both wherever they are
+laid out; `startGroup('adminSection')` marks the *layout* region, so the row
+itself collapses when the group is not visible. §6 covers the pair.
+
+A time-window restriction on `workStart` — offering only the slots the selected
+office is open — is **intended, not yet built** (Appendix A.1, `TomTimeSlot` /
+`TomTimeSlotRestriction`). The shipped picker offers every time.
 
 ### 13.7 JSON-ACL layout as AclBuilder alternative
 
@@ -2259,20 +2333,20 @@ The JSON-ACL format is not a separate system — it feeds directly into `AclBuil
 ```dart
 // Option 1: Mix JSON with builder commands
 Widget buildScreen(BuildContext context) {
-  final form = LoginScreenElements(appState: appState, onLogin: handleLogin);
+  final elements = LoginScreenElements(onLogin: handleLogin);
 
   return AclBuilder(title: 'Login')
     ..setAclId('loginPanel')
-    ..processJson(layoutJson, elementProvider: form)  // insert JSON layout commands
+    ..processJson(layoutJson, elementProvider: elements)  // insert JSON layout commands
     ..build();
 }
 
 // Option 2: Build entirely from JSON
 Widget buildScreen(BuildContext context) {
-  final form = LoginScreenElements(appState: appState, onLogin: handleLogin);
+  final elements = LoginScreenElements(onLogin: handleLogin);
 
   return AclBuilder(title: 'Login')
-    .buildFromJson(layoutJson, elementProvider: form);
+    .buildFromJson(layoutJson, elementProvider: elements);
 }
 ```
 

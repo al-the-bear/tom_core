@@ -75,8 +75,8 @@ graph TB
 
 The system cleanly separates:
 
-- **Screen element definition** — what is on screen, with typed widget instances and `@tomReflect`-annotated element providers.
-- **Layout arrangement** — how elements are positioned (AclProviderBuilder or JSON-ACL).
+- **Screen element definition** — what is on screen, with typed widget instances held as fields on an element provider.
+- **Layout arrangement** — how elements are positioned (TomAclBuilder or JSON-ACL).
 - **Theming** — visual styling that can be changed independently.
 
 ---
@@ -104,7 +104,7 @@ Application state is a **global variable** — accessed directly, no providers o
 ```dart
 late final AppState appState;
 
-@tomReflect
+@tomReflector
 class AppState extends TomClass {
   late final username = TomString('username');
   late final email = TomString('email');
@@ -1641,10 +1641,10 @@ UI flows are testable — in tests, they can be stubbed to return predetermined 
 
 ### Action controllers
 
-Controllers group related actions. With `@tomReflect`, the action list and parent-child links are discovered automatically via reflection — no manual `actions` list, no manual wiring:
+Controllers group related actions. With `@tomReflector`, the action list and parent-child links are discovered automatically via reflection — no manual `actions` list, no manual wiring:
 
 ```dart
-@tomReflect
+@tomReflector
 class OrderController extends TomActionController {
   @override
   final String controllerId = 'orderMgmt';
@@ -1766,11 +1766,11 @@ The action registry merges all tiers. Lookup checks most specific scope first (f
 ```mermaid
 graph LR
     subgraph "WHAT"
-        SEP["TomScreenElementsProvider<br/>@tomReflect annotated<br/>typed widget fields"]
+        SEP["TomScreenElementsProvider<br/>typed widget fields"]
     end
 
     subgraph "HOW"
-        ACL["AclProviderBuilder&lt;T&gt;<br/>typed layout with<br/>lambda element access"]
+        ACL["TomAclBuilder&lt;T&gt;<br/>typed layout with<br/>lambda element access"]
     end
 
     subgraph "STYLE"
@@ -1785,28 +1785,36 @@ graph LR
     style THM fill:#d9a64a,color:#fff
 ```
 
-- **Screen element definition** — what is on screen, with typed widget instances as class fields, discovered via reflection.
-- **Layout** — how elements are arranged (`AclProviderBuilder<T>` with typed accessors, or JSON-ACL).
+- **Screen element definition** — what is on screen, with typed widget instances as class fields.
+- **Layout** — how elements are arranged (`TomAclBuilder<T>` with typed accessors, or JSON-ACL).
 - **Style** — visual styling applied during layout or via style system (§13).
 
 ### TomScreenElementsProvider
 
-The element provider declares all widgets for a screen as typed fields. Annotated with `@tomReflect`, reflection discovers the fields automatically — no manual element list, no wrapping in `TomScreenElement`, no string-based lookup.
+The element provider declares all widgets for a screen as typed fields. The
+layout reaches them through those fields — no manual element list, no wrapping
+in a helper class, no string-based lookup.
 
 ```dart
-@tomReflect
 class LoginScreenElements extends TomScreenElementsProviderBase {
-  TomText greeting = TomText(id: 'login_greeting');
-  TomForm loginForm = LoginForm(binding: appState.loginForm);
-  TomElevatedButton loginButton = TomElevatedButton(
-    tomId: 'login_button',
+  LoginScreenElements() : super('login');
+
+  late final greeting = TomText(tomId: 'greeting', scope: this);
+
+  late final loginForm = LoginForm()..bind(appState.loginForm);
+
+  late final loginButton = TomElevatedButton(
+    tomId: 'loginButton',
+    scope: this,
     onPressed: TomActionTrigger(
       action: loginAction,
       contextBuilder: () => LoginContext(form: appState.loginForm),
     ).trigger,
   );
-  TomElevatedButton cancelButton = TomElevatedButton(
-    tomId: 'cancel_button',
+
+  late final cancelButton = TomElevatedButton(
+    tomId: 'cancelButton',
+    scope: this,
     onPressed: TomActionTrigger(
       action: cancelAction,
       contextBuilder: () => TomActionContext(),
@@ -1818,28 +1826,40 @@ class LoginScreenElements extends TomScreenElementsProviderBase {
 **Key characteristics:**
 
 - Each field is a concrete Tom widget instance — not wrapped in a helper class.
-- Forms are instantiated directly with their state binding (e.g., `LoginForm(binding: appState.loginForm)`).
-- Buttons use `TomActionTrigger` with typed `contextBuilder` for compile-time safety.
+- A form is instantiated directly and bound to its target (`LoginForm()..bind(appState.loginForm)`); a `TomForm` is itself a `TomScreenElementsProvider`, so it can be laid out by a nested builder rather than flattened into this one.
+- Buttons use `TomActionTrigger` with a typed `contextBuilder`, so the context a trigger supplies is checked against the action it fires.
 - All state references use the global `appState` directly.
 - Resource text (greeting, labels, tooltips) is resolved from the widget's ID via the resource system (§5) — not hardcoded.
 
-### Layout with AclProviderBuilder\<T\>
+### Layout with TomAclBuilder\<T\>
 
-`AclProviderBuilder<T>` provides type-safe element access via lambda expressions. No string lookups, no `!` null assertions, no `operator[]`:
+`TomAclBuilder<T>` provides type-safe element access via lambda expressions. No string lookups, no `!` null assertions, no `operator[]`:
 
 ```dart
-Widget buildLoginScreen() {
-  return AclProviderBuilder<LoginScreenElements>(
-    id: 'loginScreen',
-    elementProvider: LoginScreenElements(),
-  )
-    .append((p) => p.greeting)
-    .newRow(dist: 24)
-    .appendForm((p) => p.loginForm)
-    .newRow(dist: 16)
-    .append((p) => p.cancelButton..style(TomButton.secondary))
-    .append((p) => p.loginButton..style(TomButton.primary))
-    .build();
+Widget buildLoginScreen(BuildContext context) {
+  final elements = TomScope.withScope('screen', () => LoginScreenElements());
+
+  return TomAclBuilder<LoginScreenElements>(
+        id: 'loginScreen',
+        elementProvider: elements,
+      )
+      .append((p) => p.greeting)
+      .newRow(dist: 24)
+      .append(
+        (p) =>
+            TomAclBuilder<LoginForm>(
+                  id: 'loginFormPane',
+                  elementProvider: p.loginForm,
+                )
+                .append((f) => f.username.widget)
+                .newRow(dist: 8)
+                .append((f) => f.password.widget)
+                .build(context),
+      )
+      .newRow(dist: 16)
+      .append((p) => p.cancelButton)
+      .append((p) => p.loginButton, dist: 8)
+      .build(context);
 }
 ```
 
@@ -1848,18 +1868,26 @@ Widget buildLoginScreen() {
 | Method | Purpose |
 |--------|---------|
 | `.append((p) => p.widget)` | Add a widget to the current row |
-| `.appendForm((p) => p.form)` | Add a form (with its sub-fields) |
+| `.append((p) => p.field.widget)` | Add a form field — `TomField.widget` is its rendered form |
 | `.newRow(dist: n)` | Start a new row with spacing |
 | `.gap()` | Add flexible gap in current row |
 | `.expandX()` | Expand previous element horizontally |
-| `..style(variant)` | Apply a style variant to the element (cascade notation) |
-| `.build()` | Produce the final widget tree |
+| `.startGroup(name)` / `.endGroup()` | Bracket a region under one authorization group |
+| `.build(context)` | Produce the final widget tree |
 
-**Style application during layout:** Style variants are applied via Dart cascade notation (`..style()`) at the point where the element is added to the builder. This keeps style decisions in the layout — co-located with positioning, separate from element definition.
+**Style application:** a widget's variant is chosen when the widget is
+constructed, not when it is appended — `TomElevatedButton` takes a `style`
+(`ButtonStyle`), and the theme layer (§13) resolves the rest from the widget's
+path. The builder positions; it does not restyle.
 
 ### JSON-ACL as alternative
 
-JSON layout feeds directly into `AclProviderBuilder`. The JSON references elements by field name; reflection resolves them:
+> **Intended — not yet built.** `TomAclBuilder` / `AclBuilder` ship for
+> programmatic layout; the JSON feed (`processJson` / `buildFromJson`) is
+> retained future work — see Appendix A.1 of
+> [container_widget_resources_authorization.md](container_widget_resources_authorization.md).
+
+JSON layout is designed to feed directly into the builder. The JSON references elements by field name:
 
 ```json
 {
@@ -1878,38 +1906,65 @@ JSON layout feeds directly into `AclProviderBuilder`. The JSON references elemen
 }
 ```
 
-```dart
-return AclProviderBuilder<LoginScreenElements>(
-    id: 'loginScreen',
-    elementProvider: LoginScreenElements(),
-).buildFromJson(layoutJson);
-```
-
-JSON is layout-only — it never defines widget types, bindings, or action triggers. Element references in JSON correspond to field names on the `@tomReflect`-annotated provider class.
+JSON is layout-only — it never defines widget types, bindings, or action triggers. Element references in JSON correspond to field names on the provider class.
 
 ---
 
 ## 12. Data Sources — Lists, Trees, Master-Detail
 
-Form fields bind to `TomClass` / `TomObject` for single-record editing. List and tree views displaying many records use a separate data source abstraction.
+Form fields bind to `TomClass` / `TomObject` for single-record editing. List and
+table views displaying many records take their rows from a data source instead.
 
-### Data source interfaces
+### Data sources
+
+Two shapes ship, and they answer different questions.
+
+A **bounded, observable** collection — an order's line items, a customer's
+addresses — is itself observable state, so the form layer reads it directly:
+`TomListForm<TItem, TForm>` builds one sub-form per element of a kernel
+`TomList` and keeps the two in step, and `TomMasterDetailListForm` adds the
+selected-row / detail pairing. Nothing has to be fetched, so nothing needs a
+paging interface.
+
+A **table over many rows** uses `TomPaginatedDataTable`, which takes Flutter's
+`DataTableSource` — exactly the row-count / row-at-index / notify contract a
+paged table needs:
 
 ```dart
-abstract class TomListDataSource<T> {
-  int get totalCount;
-  Future<List<T>> loadPage(int offset, int limit);
-  Future<T?> loadById(String id);
-  ValueNotifier<int> get revision;
-}
+class OrderTableSource extends DataTableSource {
+  OrderTableSource(this._orders);
 
-abstract class TomTreeDataSource<T> {
-  Future<List<T>> loadRoots();
-  Future<List<T>> loadChildren(T parent);
-  bool hasChildren(T node);
-  ValueNotifier<int> get revision;
+  final List<Order> _orders;
+
+  @override
+  int get rowCount => _orders.length;
+
+  @override
+  bool get isRowCountApproximate => false;
+
+  @override
+  int get selectedRowCount => 0;
+
+  @override
+  DataRow getRow(int index) {
+    final order = _orders[index];
+    return TomDataRow(
+      tomId: 'orderRow',
+      cells: [
+        TomDataCell(tomId: 'name', child: Text(order.name)),
+        TomDataCell(tomId: 'status', child: Text(order.status.label)),
+        TomDataCell(tomId: 'total', child: Text(order.total.formatted)),
+      ],
+    );
+  }
 }
 ```
+
+A `TomListDataSource` / `TomTreeDataSource` abstraction that fetches pages
+asynchronously and reports a revision — for collections too large to hold — is
+**intended, not yet built**, together with the `TomEditBuffer` that would pair
+with it. Both are catalogued in Appendix A.1 of
+[container_widget_resources_authorization.md](container_widget_resources_authorization.md).
 
 ### Master-detail pattern
 
@@ -1922,73 +1977,101 @@ abstract class TomTreeDataSource<T> {
 └──────────────────┴────────────────────────┘
 ```
 
-When a record is selected, a **`TomEditBuffer`** is created — a `TomClass` populated from the selected record. The form binds to the edit buffer, not the data source directly. On save, values are sent back to the data source (API call, local storage). The data source fires a revision notification; the list reloads.
+`TomMasterDetailListForm` is the shipped pairing, and it consumes a
+`TomListForm` directly rather than a second form instance: row N of the list
+*is* a `TomForm`, so `detailBuilder` is handed that row's form and the two panes
+edit the same object. `guardUnsavedSelectionChange` (on by default) refuses a
+selection change while the current row is dirty.
 
-This keeps the application state lean — only the currently-edited record has observable state.
+No buffer object stands between the record and the form, because the form's
+*fields* are the buffer: each `TomField<T>` is a `TomObject<T>` holding the
+value under edit, `save()` validates the whole tree before writing anything back
+through `setValues`, and `discard()` restores the bind-time snapshot. A record
+under edit is therefore never left half-written.
 
 ### Embedding data sources in typed screens
 
-Data source views integrate into screens using the same `AclProviderBuilder<T>` pattern as other elements:
+Data source views integrate into screens through the same `TomAclBuilder<T>`
+pattern as other elements:
 
 ```dart
-@tomReflect
 class OrderManagementElements extends TomScreenElementsProviderBase {
-  TomListView<Order> orderList = TomListView<Order>(
-    id: 'order_list',
-    dataSource: orderDataSource,
+  OrderManagementElements(this.source, this.detailForm) : super('orders');
+
+  final OrderTableSource source;
+  final OrderDetailForm detailForm;
+
+  late final orderTable = TomPaginatedDataTable(
+    tomId: 'orderTable',
+    scope: this,
+    source: source,
     columns: [
-      TomColumn<Order>('name', (o) => o.name),
-      TomColumn<Order>('status', (o) => o.status.label),
-      TomColumn<Order>('total', (o) => o.total.formatted),
+      TomDataColumn(tomId: 'name', label: const Text('Name')),
+      TomDataColumn(tomId: 'status', label: const Text('Status')),
+      TomDataColumn(tomId: 'total', label: const Text('Total'), numeric: true),
     ],
   );
-  TomForm detailForm = OrderDetailForm(binding: appState.editBuffer);
-  TomElevatedButton saveButton = TomElevatedButton(
-    tomId: 'save_button',
+
+  late final addButton = TomElevatedButton(
+    tomId: 'addButton',
+    scope: this,
     onPressed: TomActionTrigger(
-      action: saveAction,
-      contextBuilder: () => OrderActionContext(
-        editBuffer: appState.editBuffer,
-      ),
+      action: createOrderAction,
+      contextBuilder: () => OrderActionContext(form: detailForm),
     ).trigger,
   );
-  TomElevatedButton deleteButton = TomElevatedButton(
-    tomId: 'delete_button',
+
+  late final deleteButton = TomElevatedButton(
+    tomId: 'deleteButton',
+    scope: this,
     onPressed: TomActionTrigger(
-      action: deleteAction,
-      contextBuilder: () => OrderActionContext(
-        selectedOrder: appState.selectedOrder,
-      ),
+      action: deleteOrderAction,
+      contextBuilder: () => OrderActionContext(form: detailForm),
     ).trigger,
   );
-  TomElevatedButton addButton = TomElevatedButton(
-    tomId: 'add_button',
+
+  late final saveButton = TomElevatedButton(
+    tomId: 'saveButton',
+    scope: this,
     onPressed: TomActionTrigger(
-      action: createAction,
-      contextBuilder: () => TomActionContext(),
+      action: saveOrderAction,
+      contextBuilder: () => OrderActionContext(form: detailForm),
     ).trigger,
   );
 }
 ```
 
-Layout with master-detail arrangement:
+Layout with master-detail arrangement — the detail pane is a nested
+`TomAclBuilder` over the detail form, since a form is a
+`TomScreenElementsProvider` in its own right:
 
 ```dart
-Widget buildOrderManagement() {
-  return AclProviderBuilder<OrderManagementElements>(
-    id: 'orderManagement',
-    elementProvider: OrderManagementElements(),
-  )
-    .appendMasterDetail(
-      master: (p) => p.orderList,
-      detail: (p) => p.detailForm,
-    )
-    .newRow(dist: 16)
-    .append((p) => p.addButton..style(TomButton.secondary))
-    .gap()
-    .append((p) => p.deleteButton..style(TomButton.auxiliary))
-    .append((p) => p.saveButton..style(TomButton.primary))
-    .build();
+Widget buildOrderManagement(
+  BuildContext context,
+  OrderManagementElements elements,
+) {
+  return TomAclBuilder<OrderManagementElements>(
+        id: 'orderManagement',
+        elementProvider: elements,
+      )
+      .appendMasterDetail(
+        master: (p) => p.orderTable,
+        detail: (p) =>
+            TomAclBuilder<OrderDetailForm>(
+                  id: 'orderDetail',
+                  elementProvider: p.detailForm,
+                )
+                .append((f) => f.name.widget)
+                .newRow(dist: 8)
+                .append((f) => f.notes.widget)
+                .build(context),
+      )
+      .newRow(dist: 16)
+      .append((p) => p.addButton)
+      .gap()
+      .append((p) => p.deleteButton)
+      .append((p) => p.saveButton)
+      .build(context);
 }
 ```
 
@@ -2263,7 +2346,7 @@ The debug view is a development-only tool for validating authorization, resource
 
 ### Reflection-powered inspection
 
-With `tom_reflection`, debug tooling can inspect far more than the widget tree alone. Reflection enables deep analysis of **any** `@tomReflect`-annotated class — including controllers, element providers, state trees, and form definitions — without those classes implementing debug-specific methods.
+With `tom_reflection`, debug tooling can inspect far more than the widget tree alone. Reflection enables deep analysis of **any** `@tomReflector`-annotated class — including controllers, element providers, state trees, and form definitions — without those classes implementing debug-specific methods.
 
 **What reflection gives debug tooling:**
 
@@ -2278,7 +2361,7 @@ With `tom_reflection`, debug tooling can inspect far more than the widget tree a
 **Example — discovering resource keys from static members:**
 
 ```dart
-@tomReflect
+@tomReflector
 class AppResourceKeys {
   static const checkout_shipping = 'checkout.shipping';
   static const checkout_billing = 'checkout.billing';
@@ -2286,7 +2369,7 @@ class AppResourceKeys {
 }
 
 // Debug tooling uses reflection to enumerate all static const fields:
-final classMirror = tomReflect.reflectType(AppResourceKeys) as ClassMirror;
+final classMirror = tomReflector.reflectType(AppResourceKeys) as ClassMirror;
 final keys = classMirror.staticMembers.keys
     .map((name) => classMirror.invokeGetter(name))
     .whereType<String>()
@@ -2346,12 +2429,12 @@ graph TB
 
     subgraph "Observable State + Reflection"
         AS["Application State<br/>global TomClass tree"]
-        REF["@tomReflect<br/>InstanceMirror / ClassMirror<br/>discoverable members"]
+        REF["@tomReflector<br/>InstanceMirror / ClassMirror<br/>discoverable members"]
     end
 
     subgraph "Screen Definition"
-        SEP["TomScreenElementsProvider<br/>@tomReflect annotated<br/>typed widget fields"]
-        ACL["AclProviderBuilder&lt;T&gt;<br/>typed layout + style"]
+        SEP["TomScreenElementsProvider<br/>typed widget fields"]
+        ACL["TomAclBuilder&lt;T&gt;<br/>typed layout + style"]
     end
 
     subgraph "Widget Tree"
@@ -2361,7 +2444,7 @@ graph TB
     end
 
     subgraph "Action System"
-        CTRL["@tomReflect<br/>TomActionController<br/>reflection-discovered actions"]
+        CTRL["@tomReflector<br/>TomActionController<br/>reflection-discovered actions"]
         ACT["TomAction<br/>stateless, typed context,<br/>controller back-reference"]
         TX["TomActionTransaction<br/>undo/redo with snapshots"]
     end
@@ -2400,7 +2483,7 @@ graph TB
 
 1. **Server → Globals**: User authenticates, ACI is resolved. Authorization and resource globals are initialized at app startup — no `InheritedWidget` wrappers.
 2. **State + Reflection**: Observable state (`TomClass` tree) is a global variable. Reflection provides discoverability, snapshot/restore for undo, and annotation-based semantics.
-3. **Screen Definition → Widget Tree**: `TomScreenElementsProvider` declares typed widget fields (discovered by reflection); `AclProviderBuilder<T>` arranges them with style variants. Each widget walks the base class chain: `TomNodeBase` (ID/path) → `TomPolicyNodeBase` (auth check via global) → rendered content.
+3. **Screen Definition → Widget Tree**: `TomScreenElementsProvider` declares typed widget fields; `TomAclBuilder<T>` arranges them through typed selectors. Each widget walks the base class chain: `TomNodeBase` (ID/path) → `TomPolicyNodeBase` (auth check via global) → rendered content.
 4. **Widgets → Actions → State**: User triggers an action via `TomActionTrigger`. The action receives a typed context, executes within a transaction (reflection-powered snapshots for undo), modifies state. State changes notify widgets, completing the cycle.
 
 ---
