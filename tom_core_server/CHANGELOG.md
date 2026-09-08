@@ -13,6 +13,38 @@
 
 ### Fixed
 
+- **Every example transcript is now pinned to the steps it prints (tcincb134).**
+  The `assert`-to-`check` conversion this todo was raised for is complete —
+  no example holds an `assert`, every one states its expectations through the
+  shared throwing helper, and `examples_test.dart` refuses a private `check`, a
+  check inside a `catch` a handler would swallow, and an example nothing spawns.
+  What was left is the other half of the guarantee: a `check` that throws
+  catches an expectation that is *violated*, and says nothing about a step
+  **removed** — the run stays green with one fewer demonstration — or a step
+  **added** without anyone deciding it belonged, which is a surface nothing
+  checks.
+
+  Two module suites already recorded their step lists; the other twenty-three
+  examples did not. A manifest in `examples_test.dart` now records the count for
+  all twenty-five and asserts the transcript against a real `dart run`, in both
+  directions: an example with no entry fails rather than running unmeasured, and
+  an entry left behind after a deletion fails rather than describing a file that
+  is gone.
+
+  The unit is the step **number**, not the printed line. `export`'s step 2
+  prints a line per renderer and `messaging`'s step 8 one per delivery outcome,
+  which reads exactly as intended and would fail a rule counting lines. `0`
+  records a transcript that is not numbered — the four authentication programs
+  narrate a flow in prose — so a transcript that starts being numbered has to be
+  registered rather than arriving unmeasured.
+
+  It found one transcript already wrong:
+  `example/authorization/resource_data_scope_example.dart` printed 1, 3, 4 … 10.
+  Step 2 installs the scope over four grants and printed nothing, so a reader
+  following the transcript met a gap where a step should be. It reports what it
+  installed now.
+
+
 - **A migration that failed was recorded as failed and then treated as applied
   forever (tcincb133).** `applyMigration` writes the outcome row on both paths —
   `success = 0` when the script threw — and rethrows, so the run aborts. Nothing

@@ -63,6 +63,71 @@ const _notSpawnedHere = <String, String>{
       'a generator root: its `main` is empty by contract and checks nothing',
 };
 
+/// How many numbered steps each example's transcript prints.
+///
+/// A `check` that throws catches an expectation that is *violated*. It says
+/// nothing about a step **removed** — the run stays green with one fewer
+/// demonstration — or a step **added** without anyone deciding it belonged,
+/// which is a surface nothing checks. Recording the count is what makes both
+/// visible, and the two module suites that already do it
+/// (`datasources_test.dart`, `db_migration_test.dart`) are the shape this
+/// generalises, one manifest instead of one block per module.
+///
+/// The unit is the **step number**, not the printed line: a step may report
+/// several cases under one number, and several do. `export`'s step 2 prints a
+/// line per renderer and `messaging`'s step 8 one per delivery outcome, which
+/// reads exactly as intended and would fail a rule counting lines.
+///
+/// `0` means the program's transcript is not numbered — the four authentication
+/// programs narrate a flow in prose instead, and the package example is a tour.
+/// Recorded rather than omitted, so a transcript that *starts* being numbered
+/// has to be registered here rather than arriving unmeasured.
+const _stepCounts = <String, int>{
+  'example/audit/audit_example.dart': 10,
+  'example/authentication/authentication_example.dart': 0,
+  'example/authentication/oauth_login_example.dart': 0,
+  'example/authentication/two_factor_enrolment_example.dart': 0,
+  'example/authentication/two_factor_login_example.dart': 0,
+  'example/authorization/authorization_example.dart': 6,
+  'example/authorization/resource_data_scope_example.dart': 10,
+  'example/cache/cache_example.dart': 10,
+  'example/cmdline/cmdline_example.dart': 8,
+  'example/configuration/configuration_example.dart': 12,
+  'example/datasources/datasources_example.dart': 9,
+  'example/db_migration/db_migration_example.dart': 10,
+  'example/endpoints/endpoints_example.dart': 11,
+  'example/export/export_example.dart': 14,
+  'example/file_storage/file_storage_example.dart': 12,
+  'example/healthcheck/healthcheck_example.dart': 3,
+  'example/little_things/little_things_example.dart': 6,
+  'example/messaging/messaging_example.dart': 12,
+  'example/messaging/messaging_templated_example.dart': 12,
+  'example/object_persistence/object_persistence_example.dart': 16,
+  'example/resources/resources_example.dart': 7,
+  'example/scheduling/scheduling_example.dart': 10,
+  'example/server/server_example.dart': 5,
+  'example/tom_core_server_example.dart': 0,
+  'example/transactions/transactions_example.dart': 7,
+};
+
+/// The distinct step numbers [transcript] prints, in the order they first
+/// appear.
+///
+/// Distinct, because a step reporting several cases prints its number once per
+/// case; ordered, because a transcript whose steps arrive out of order is a
+/// program that no longer does what its numbering says.
+List<int> _stepsIn(String transcript) {
+  final steps = <int>[];
+  for (final match in RegExp(
+    r'^(\d+)\. ',
+    multiLine: true,
+  ).allMatches(transcript)) {
+    final step = int.parse(match.group(1)!);
+    if (steps.isEmpty || steps.last != step) steps.add(step);
+  }
+  return steps;
+}
+
 /// Every hand-written `.dart` file under `example/`, package-relative and
 /// slash-separated.
 ///
@@ -402,6 +467,49 @@ void main() {
           reason: '${entry.value} no longer names this example',
         );
       });
+    }
+  });
+
+  group('Every example transcript prints the steps it is recorded as having', () {
+    test('the manifest describes the directory, not a remembered version', () {
+      // Both directions, as everywhere else in this file: an example added
+      // later has no entry and fails here rather than running unmeasured, and
+      // an entry left behind after a deletion fails rather than describing a
+      // file that is gone.
+      expect(
+        _stepCounts.keys.toList()..sort(),
+        _examplePrograms()
+            .where((f) => !_notSpawnedHere.containsKey(f))
+            .toList(),
+      );
+    });
+
+    for (final entry in _stepCounts.entries) {
+      test(
+        '${entry.key} prints ${entry.value} steps',
+        () async {
+          final result = await Process.run(Platform.resolvedExecutable, [
+            'run',
+            entry.key,
+          ]);
+          expect(
+            result.exitCode,
+            0,
+            reason: 'example failed: ${result.stdout}${result.stderr}',
+          );
+          expect(
+            _stepsIn(result.stdout as String),
+            [for (var step = 1; step <= entry.value; step++) step],
+            reason:
+                'the transcript of ${entry.key} is not the consecutive run of '
+                '${entry.value} steps it is recorded as printing. A step that '
+                'stopped printing and a step added without anyone deciding it '
+                'belonged are both invisible to a `check` that throws: the run '
+                'stays green either way.',
+          );
+        },
+        timeout: const Timeout(Duration(minutes: 2)),
+      );
     }
   });
 

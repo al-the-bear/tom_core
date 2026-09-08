@@ -107,6 +107,10 @@ Future<void> run() async {
       ),
     ),
   );
+  print(
+    '2. installed    : ${grants.length} grants, '
+    '${delegations.length} delegations',
+  );
 
   // 3. On a read, a grade of `read` or wider admits the row — so Alice sees
   //    both the project she owns and the one she only views.
