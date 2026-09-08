@@ -298,7 +298,7 @@ class DelegateNullToCreator extends TomCommand {
 /// it to its executor chain instead of executing it itself — the only path on
 /// which the creator can run out of handlers. The chain then either is empty
 /// or declines, and [TomWorker.executeInCreator] resolves with
-/// [TomExecutor.noResult]. The sentinel is not `null`, so it survives the
+/// [TomExecutor.notHandled]. The sentinel is not `null`, so it survives the
 /// worker's own substitution and reaches the original caller unchanged.
 class DelegateUnhandledToCreator extends TomCommand {
   @override
@@ -554,6 +554,30 @@ void main() {
 
       test('should be distinguishable from null', () {
         expect(TomExecutor.noResult, isNot(equals(null)));
+      });
+    });
+
+    group('notHandled', () {
+      test('should be a constant sentinel value', () {
+        expect(TomExecutor.notHandled, isNotNull);
+        expect(TomExecutor.notHandled, same(TomExecutor.notHandled));
+      });
+
+      test('should be distinguishable from null', () {
+        expect(TomExecutor.notHandled, isNot(equals(null)));
+      });
+
+      test('should be distinguishable from noResult', () {
+        // The whole point of the second sentinel. `==` as well as `same`,
+        // because both are const instances with no value equality: two
+        // instances of *one* type would satisfy `isNot(same(...))` and still
+        // compare equal after a copy across a port.
+        expect(TomExecutor.notHandled, isNot(same(TomExecutor.noResult)));
+        expect(TomExecutor.notHandled, isNot(equals(TomExecutor.noResult)));
+        expect(
+          TomExecutor.notHandled.runtimeType,
+          isNot(TomExecutor.noResult.runtimeType),
+        );
       });
     });
 
@@ -1789,7 +1813,7 @@ void main() {
         // `same`, not `equals`: the sentinel carries no value equality, so a
         // caller can only recognise it if the const instance stays canonical
         // across the isolate hop. That is the invariant the answer rests on.
-        expect(result, same(TomExecutor.noResult));
+        expect(result, same(TomExecutor.notHandled));
 
         worker.close();
       });
@@ -1806,10 +1830,13 @@ void main() {
 
         // The executor runs and returns noResult, so the loop exhausts without
         // ever producing a value — the second way to reach an unanswered call.
+        // The chain's decline and the dispatch's answer are different
+        // sentinels: `noResult` goes *in* to mean "try the next", and
+        // `notHandled` comes *out* to mean "nobody did".
         final result = await worker
             .executeCommand('declined')
             .timeout(Duration(seconds: 5));
-        expect(result, equals(TomExecutor.noResult));
+        expect(result, same(TomExecutor.notHandled));
 
         worker.close();
       });
@@ -1937,7 +1964,7 @@ void main() {
         },
       );
 
-      test('executeInCreator resolves with noResult when the creator has no '
+      test('executeInCreator resolves with notHandled when the creator has no '
           'executor registered', () async {
         // The mirror image of the worker-side unhandled answer: the creator
         // also replies rather than staying silent, so the worker's await
@@ -1953,12 +1980,16 @@ void main() {
         final result = await worker
             .executeCommand(DelegateUnhandledToCreator())
             .timeout(Duration(seconds: 5));
-        expect(result, same(TomExecutor.noResult));
+        expect(result, same(TomExecutor.notHandled));
+        // Not `noResult`, which on this call means the handler answered
+        // `null`. The two were one value until a process that forgot an
+        // addExecutor was found reporting plausible answers for ever.
+        expect(result, isNot(same(TomExecutor.noResult)));
 
         worker.close();
       });
 
-      test('executeInCreator resolves with noResult when every creator '
+      test('executeInCreator resolves with notHandled when every creator '
           'executor declines', () async {
         final declining = NoOpExecutor();
         TomWorker.addExecutor(declining);
@@ -1972,7 +2003,7 @@ void main() {
         final result = await worker
             .executeCommand(DelegateUnhandledToCreator())
             .timeout(Duration(seconds: 5));
-        expect(result, same(TomExecutor.noResult));
+        expect(result, same(TomExecutor.notHandled));
         // The chain really was consulted — otherwise the assertion above would
         // also pass for a creator that never dispatched at all.
         expect(declining.executeCallCount, equals(1));
@@ -2000,7 +2031,7 @@ void main() {
             .timeout(Duration(seconds: 5));
 
         expect(
-          recorder.messages.where((m) => m.contains('NO_RESULT')),
+          recorder.messages.where((m) => m.contains('NOT_HANDLED')),
           isNotEmpty,
         );
 

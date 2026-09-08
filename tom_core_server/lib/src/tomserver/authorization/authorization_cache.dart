@@ -269,21 +269,53 @@ class TomAuthorizationCache implements TomDisposable {
       }
     } else {
       // An expiry raised on the creator side arrives here as a throw and
-      // propagates untouched, so this branch only has to separate a hit from a
-      // miss. A miss reaches us as TomExecutor.noResult rather than `null`,
-      // because executeInCreator substitutes the sentinel for a `null` result
-      // -- which is also what a command no executor claimed comes back as, so
-      // a process that never registered TomAuthorizationCacheExecutor reads as
-      // one long cache miss. The creator logs a warning in that case and this
-      // side cannot see it.
+      // propagates untouched, so this branch has two answers to separate: a
+      // hit, and a miss. A miss reaches us as TomExecutor.noResult rather than
+      // `null`, because executeInCreator substitutes the sentinel for a `null`
+      // result.
+      //
+      // TomExecutor.notHandled is the third answer and is neither. It means
+      // the creator received the message and nothing claimed it, which for
+      // this command has exactly one cause: the process never registered
+      // TomAuthorizationCacheExecutor. Read as a miss -- which it was until
+      // the transport learned to tell the two apart -- it made every lookup in
+      // such a process re-resolve its principal for ever, plausibly and
+      // silently, with the only evidence a warning on the creator that this
+      // side cannot see.
       Object? cachedResult = await TomWorker.executeInCreator(
         TomAuthorizationCacheRetrieveMessage(authenticationToken),
       );
+      _refuseUnhandled(cachedResult, 'read');
       if (cachedResult is TomPrincipal) {
         return cachedResult;
       }
     }
     return null;
+  }
+
+  /// Throws when [response] says nothing on the creator claimed the command.
+  ///
+  /// A configuration error rather than a cache outcome, so it is raised rather
+  /// than folded into the answer: the cache cannot serve this isolate at all,
+  /// and every call will do the same thing until a boot registers the
+  /// executor. [operation] names which call found it, because the two fail
+  /// differently — a read degrades to re-resolving the principal, a write is
+  /// simply lost.
+  ///
+  /// `clientThrow: false`: the message names a start-up mistake in this
+  /// deployment, which is operator-facing and no business of whoever's request
+  /// happened to arrive first.
+  static void _refuseUnhandled(Object? response, String operation) {
+    if (!identical(response, TomExecutor.notHandled)) return;
+    throw TomAuthorizationCacheException(
+      'authorization.cache.executor_not_registered',
+      'The authorization cache cannot $operation from a worker isolate: the '
+          'creator answered that nothing handled the command. Register '
+          'TomAuthorizationCacheExecutor with TomWorker.addExecutor on the '
+          'main isolate at start-up.',
+      parameters: {'operation': operation},
+      clientThrow: false,
+    );
   }
 
   /// Reads the entry's expiry from the token's `validUntil` payload claim.
@@ -370,12 +402,18 @@ class TomAuthorizationCache implements TomDisposable {
       _current._cache[authenticationToken.tokenString] =
           TomAuthorizationCacheEntry(authorizedPrincipal, expiry);
     } else {
-      await TomWorker.executeInCreator(
+      // The response was ignored entirely until the transport could say
+      // "nothing claimed this": a store into a process with no executor
+      // completed normally and reported success, so the write was lost and the
+      // caller was told it had happened. Checked rather than returned, because
+      // this method's contract is that a store either happens or throws.
+      final response = await TomWorker.executeInCreator(
         TomAuthorizationCacheStoreMessage(
           authenticationToken,
           authorizedPrincipal,
         ),
       );
+      _refuseUnhandled(response, 'store');
     }
   }
 }

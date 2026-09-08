@@ -94,7 +94,7 @@ class ProbeChainCommand extends TomCommand {
   Future<Object?> execute() async {
     if (TomWorker.isMainIsolate) return 'not-a-worker';
     final answer = await TomWorker.executeInCreator('unclaimed-probe');
-    return identical(answer, TomExecutor.noResult) ? 'noResult' : 'claimed';
+    return identical(answer, TomExecutor.notHandled) ? 'notHandled' : 'claimed';
   }
 }
 
@@ -715,8 +715,9 @@ void main() {
       // stop at the cache executor -- but the two are close enough that the
       // distinction is worth pinning rather than assuming. If a settled-to-
       // nothing store ever read as "not handled", every executor behind this
-      // one would be offered a store it has no business seeing, and the
-      // creator would log the command as unhandled while it in fact succeeded.
+      // one would be offered a store it has no business seeing, and the worker
+      // would be told its store was refused for want of an executor that was
+      // in fact registered and had in fact run.
       //
       // The other tests in this group cannot see this: with one executor
       // registered, claiming the command and falling off the end of the chain
@@ -739,13 +740,65 @@ void main() {
       final probe = await worker
           .executeCommand(ProbeChainCommand())
           .timeout(const Duration(seconds: 10));
-      expect(probe, 'noResult');
+      expect(probe, 'notHandled');
       expect(trailing.seen, contains('unclaimed-probe'));
 
       expect(
         trailing.seen.whereType<TomAuthorizationCacheStoreMessage>(),
         isEmpty,
       );
+    });
+  });
+
+  // Everything above registers the cache executor on the creator. This group
+  // is what happens when a deployment forgets to, which is the whole reason
+  // the transport learned to say "nothing claimed this".
+  //
+  // Before it could, the answer was TomExecutor.noResult -- the same value a
+  // forwarded *miss* arrives as -- so a worker read every lookup as a miss and
+  // every store as a success. Neither is visible from the worker, and both
+  // survive a green suite: the "a miss becomes a hit" test above exists
+  // because deleting the addExecutor from its setUp left the bare miss
+  // assertion passing.
+  group('TomAuthorizationCache (worker isolate, no executor registered)', () {
+    late TomWorker worker;
+
+    setUp(() async {
+      // Deliberately no addExecutor. The creator's chain is whatever the
+      // process already had, and none of it claims a cache message.
+      worker = await TomWorker.spawn(
+        TomWorker.startRemoteIsolate,
+        _CacheWorkerContext(),
+      );
+    });
+
+    tearDown(() => worker.close());
+
+    test('a read is refused rather than reported as a miss', () async {
+      final answer = await worker
+          .executeCommand(ProbeCacheCommand(_token('nora')))
+          .timeout(const Duration(seconds: 10));
+
+      // Not 'miss'. A miss is an answer about the token; this is an answer
+      // about the process, and every read in it would give the same one
+      // for ever while every request silently re-resolved its principal.
+      expect(answer, 'expired:authorization.cache.executor_not_registered');
+    });
+
+    test('a store is refused rather than reported as a success', () async {
+      // The worse of the two: storePrincipal ignored the response entirely, so
+      // a write into a process with no executor completed normally and the
+      // caller was told it had happened.
+      final token = _token('oscar');
+
+      final answer = await worker
+          .executeCommand(StoreThroughWorkerCommand(token, _principal('oscar')))
+          .timeout(const Duration(seconds: 10));
+
+      expect(answer, 'rejected:authorization.cache.executor_not_registered');
+      // And it really did not land, which is what makes the refusal honest
+      // rather than merely loud.
+      expect(await TomAuthorizationCache.getPrincipal(token), isNull);
     });
   });
 

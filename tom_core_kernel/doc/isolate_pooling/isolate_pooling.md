@@ -139,7 +139,7 @@ class. For the complete surface with full signatures see
 | Method | Description |
 |--------|-------------|
 | `sendToCreator()` | Send a message to the creator (fire-and-forget); throws in the creator |
-| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.noResult` if nothing there handled it; rethrows a creator-side failure; throws in the creator |
+| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.notHandled` if nothing there claimed it; rethrows a creator-side failure; throws in the creator |
 | `canSendToCreator()` | Whether a backchannel is available — answers on either side rather than throwing |
 
 #### Static Properties
@@ -257,32 +257,39 @@ an unmodifiable view — the message handlers dispatch through the one backing
 list, so a caller that could replace or edit it directly would silently detach
 dispatch from every later registration.
 
-Executors are tried in order and the first to return anything other than
-`noResult` wins. If the chain is exhausted — or the receiving side has no
-executor registered at all — the command is nonetheless answered, with
-`noResult` itself. **This holds in both directions**, and a caller that must
-distinguish "nobody handled this" from a real result has to test for the
-sentinel:
+**Two sentinels, and they point opposite ways.** `noResult` travels *inward*:
+an executor returns it to decline, and executors are tried in order until one
+returns something else. `notHandled` travels *outward*: if the chain is
+exhausted — or the receiving side has no executor registered at all — the
+command is nonetheless answered, with `notHandled`. **This holds in both
+directions**, and a caller that must distinguish "nobody handled this" from a
+real result tests for it:
 
 ```dart
 // creator → worker
 final result = await worker.executeCommand('nothing handles this');
-if (identical(result, TomExecutor.noResult)) {
+if (identical(result, TomExecutor.notHandled)) {
   // The worker received the message but no executor claimed it.
 }
 
 // worker → creator, from inside a worker isolate
 final answer = await TomWorker.executeInCreator('nothing handles this');
-if (identical(answer, TomExecutor.noResult)) {
+if (identical(answer, TomExecutor.notHandled)) {
   // The creator received the message but no executor claimed it.
 }
 ```
 
-`identical` rather than `==`: the sentinel is a `const` instance with no value
-equality of its own, and it stays canonical across the isolate hop — that
-canonicality is exactly what makes it recognisable. Both sides also log a
-warning naming the unclaimed command, so a forgotten `addExecutor` shows up in
-the log rather than only as a puzzling sentinel at the call site.
+For most callers that case is worth testing, because it says almost nothing
+about the command and almost everything about start-up: a `notHandled` answer
+means a missing `addExecutor`, and it will keep meaning that until one is
+added.
+
+`identical` rather than `==`: both are `const` instances with no value equality
+of their own, and they stay canonical across the isolate hop — that
+canonicality is exactly what makes them recognisable. They are also distinct
+*types*, so the pair cannot converge by an equality route either. Both sides
+log a warning naming the unclaimed command, so a forgotten `addExecutor` shows
+up in the log rather than only as a puzzling sentinel at the call site.
 
 Answering matters more than it looks. A command left unanswered leaves the
 caller's completer pending forever, and liveness supervision cannot rescue it:
@@ -316,13 +323,18 @@ values:
 | creator → worker | `worker.executeCommand(cmd)` | the string `"null"` |
 | worker → creator | `TomWorker.executeInCreator(cmd)` | `TomExecutor.noResult` |
 
-The creator-bound row reuses the same sentinel the unhandled answer uses, so
-`noResult` from `executeInCreator` is ambiguous: it means *either* "no executor
-claimed the message" *or* "a handler ran and returned `null`". Nothing in the
-response distinguishes them — only the creator's warning log does. A command
-whose caller must tell the two apart should return a sentinel of its own rather
-than `null`. The worker-bound direction has no such ambiguity, because its
-`null` becomes the string `"null"` instead.
+The creator-bound row is `noResult` and the unhandled answer is `notHandled`,
+so the two conditions the sentinel would otherwise conflate stay apart: "a
+handler ran and returned `null`" against "no executor claimed the message".
+They are opposites — the answer is nothing, against there was no answer — and
+one value for both means a process that forgot an `addExecutor` reports
+plausible answers rather than a fault. That is not hypothetical: read as a
+miss, it made `TomAuthorizationCache.getPrincipal` re-resolve every principal
+for ever, and made `storePrincipal` report a lost write as a success.
+
+The two directions still spell a *`null` answer* differently — the string
+`"null"` one way, `noResult` the other — so only the unclaimed case is
+interchangeable between them.
 
 So `executeCommand` can never resolve to `null` despite its signature. The same
 substitution applies to a `null` returned by a `TomExecutor`, not just by a
