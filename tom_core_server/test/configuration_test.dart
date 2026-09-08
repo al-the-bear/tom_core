@@ -6,6 +6,9 @@ import 'dart:io';
 import 'package:path/path.dart' as paths;
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
+// The tolerant loaders forgive an absent file and nothing else, so the test
+// that pins that names the exception a malformed one raises.
+import 'package:yaml/yaml.dart' show YamlException;
 
 /// A concrete configuration that captures the merged values instead of relying
 /// on the generated reflection, so [TomBaseServerConfiguration.getDefaultValues]
@@ -1029,17 +1032,136 @@ void main() {
 
     test('a failed merge leaves the target map untouched', () {
       // mergeInYamlFile reads before it merges, so an absent file cannot
-      // half-apply an overlay. That is what makes `try`/`catch` a usable
-      // remedy for an optional overlay: the caller can carry on with the map
-      // it already had. Worth pinning separately from the throw itself --
-      // were the read ever moved after a partial merge, the throw would still
-      // be there and the remedy would silently stop being sound.
+      // half-apply an overlay. That is what makes the tolerant pair sound: the
+      // caller can carry on with the map it already had. Worth pinning
+      // separately from the throw itself -- were the read ever moved after a
+      // partial merge, the throw would still be there and the remedy would
+      // silently stop being sound.
       final existing = <String, Object?>{'existing': 1};
       expect(
         () => TomYaml.mergeInYamlFile(existing, '${dir.path}/absent.yaml'),
         throwsA(isA<PathNotFoundException>()),
       );
       expect(existing, {'existing': 1});
+    });
+  });
+
+  group('TomYaml tolerates an absent overlay and nothing else', () {
+    // The layered-overlay pattern the module documents asks several candidate
+    // files for an overlay and expects most of them not to exist, so absence
+    // is the normal case there rather than the error case. Before the tolerant
+    // pair every consumer wrote its own: four sample servers each guarded with
+    // `existsSync`, and tom_uam wrapped the load in a bare `catch` -- which
+    // cannot tell an absent file from a malformed one, so a syntax error in a
+    // locale overlay reads as "that locale has no overrides" and the settings
+    // in it stop applying with nothing said.
+    //
+    // Three states, for each of the two entry points: absent, present, and
+    // present but unparseable. The third is the one that decides whether the
+    // tolerance is narrow enough to be safe.
+    late Directory dir;
+
+    setUp(() {
+      dir = Directory.systemTemp.createTempSync('tom_yaml_optional_');
+    });
+
+    tearDown(() => dir.deleteSync(recursive: true));
+
+    /// Writes [content] to `<dir>/<name>` and returns its path.
+    String write(String name, String content) {
+      final file = File('${dir.path}/$name')..writeAsStringSync(content);
+      return file.path;
+    }
+
+    test('an absent file loads as null and merges as false', () {
+      final missing = '${dir.path}/absent.yaml';
+      expect(File(missing).existsSync(), isFalse);
+
+      expect(TomYaml.loadYamlFileIfPresent(missing), isNull);
+
+      final target = <String, Object?>{'existing': 1};
+      expect(TomYaml.mergeInYamlFileIfPresent(target, missing), isFalse);
+      // Untouched, not merely un-thrown at: an overlay that did not apply must
+      // leave nothing of itself behind.
+      expect(target, {'existing': 1});
+    });
+
+    test('a present file loads its content and merges as true', () {
+      final path = write(
+        'present.yaml',
+        'db:\n  host: localhost\n  port: 3306\n',
+      );
+
+      // The same load as loadYamlFile, so the normalisation and the typing are
+      // the strict method's, not a second implementation's.
+      expect(TomYaml.loadYamlFileIfPresent(path), TomYaml.loadYamlFile(path));
+      expect(
+        (TomYaml.loadYamlFileIfPresent(path)!['db'] as Map)['port'],
+        isA<int>(),
+      );
+
+      final target = <String, Object?>{
+        'db': {'host': 'elsewhere', 'user': 'kept'},
+      };
+      expect(TomYaml.mergeInYamlFileIfPresent(target, path), isTrue);
+      // Per leaf, like mergeInYamlFile: `user` survives an overlay that names
+      // only its siblings.
+      expect(target['db'], {'host': 'localhost', 'user': 'kept', 'port': 3306});
+    });
+
+    test('substitution reaches the tolerant pair too', () {
+      final path = write('vars.yaml', 'host: \${OVERLAY_HOST:fallback}\n');
+
+      expect(
+        TomYaml.loadYamlFileIfPresent(
+          path,
+          environment: const {'OVERLAY_HOST': 'from-environment'},
+        )!['host'],
+        'from-environment',
+      );
+
+      final target = <String, Object?>{};
+      expect(
+        TomYaml.mergeInYamlFileIfPresent(
+          target,
+          path,
+          environment: const {'OVERLAY_HOST': 'from-environment'},
+        ),
+        isTrue,
+      );
+      expect(target['host'], 'from-environment');
+    });
+
+    test('a malformed file still throws, on both entry points', () {
+      // The defect the tolerant pair exists to stop being written: a file that
+      // is *there* and does not parse must not be reported as one that is not
+      // there. An overlay skipped for this reason is a setting that silently
+      // never applied, and nothing in the running system says so.
+      final path = write('broken.yaml', 'db:\n  host: [unclosed\n');
+
+      expect(
+        () => TomYaml.loadYamlFileIfPresent(path),
+        throwsA(isA<YamlException>()),
+      );
+      final target = <String, Object?>{'existing': 1};
+      expect(
+        () => TomYaml.mergeInYamlFileIfPresent(target, path),
+        throwsA(isA<YamlException>()),
+      );
+      expect(target, {'existing': 1});
+    });
+
+    test('a directory in place of a file is not an absent file either', () {
+      // The tolerance is keyed on PathNotFoundException, so it forgives the one
+      // condition it names and no neighbouring one. A directory where a file
+      // was expected is a misconfiguration, not a missing overlay.
+      final path = '${dir.path}/a_directory.yaml';
+      Directory(path).createSync();
+
+      expect(
+        () => TomYaml.loadYamlFileIfPresent(path),
+        throwsA(isA<FileSystemException>()),
+      );
     });
   });
 
@@ -1163,17 +1285,24 @@ void main() {
         contains('on PathNotFoundException'),
         reason: 'the example must show that an absent overlay throws',
       );
+      expect(
+        source,
+        contains('TomYaml.mergeInYamlFileIfPresent('),
+        reason:
+            'the example must show the tolerant overlay beside the strict one '
+            '-- the contrast is the point, and a reader who meets only the '
+            'throw writes the guard the framework already carries',
+      );
     });
   });
 
   // Each limitation listed under *Not Yet Implemented* in doc/configuration.md,
   // pinned so the section cannot go on warning about a behaviour that has since
   // been fixed -- a stale warning costs a reader the same working-around as a
-  // missing one. Four of the eight are pinned by their own tests above (the
+  // missing one. Three of the seven are pinned by their own tests above (the
   // key-string fallback under TomServerConfigResourceProvider, the bare-String
-  // throw under TomConfig resolution, and the substituted-YAML and
-  // missing-file ones under TomYaml); the four with nowhere else to live are
-  // here.
+  // throw under TomConfig resolution, and the substituted-YAML one under
+  // TomYaml); the four with nowhere else to live are here.
   group('the documented limitations hold', () {
     test('a misspelled setting merges as a live key and fills no field', () {
       // `prot` is a typo for `port`. Nothing validates the merged tree against

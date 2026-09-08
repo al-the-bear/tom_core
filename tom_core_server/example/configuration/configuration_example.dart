@@ -144,11 +144,7 @@ server:
 
   //    An overlay that is not there THROWS rather than being skipped, which
   //    matters because the usual reason to write this pattern is a set of
-  //    per-environment files of which only one is ever present. Guard with an
-  //    existsSync check, or catch PathNotFoundException specifically -- a bare
-  //    `catch` reports a malformed overlay as a missing one and the setting
-  //    silently stops applying. The throw happens before the merge, so the
-  //    tree is left as it was either way.
+  //    per-environment files of which only one is ever present.
   var absentThrew = false;
   try {
     TomYaml.mergeInYamlFile(tree, '${dir.path}/staging.yaml');
@@ -159,6 +155,24 @@ server:
   check(
     server['host'] == 'prod.internal',
     'the failed merge left the tree as it was',
+  );
+
+  //    mergeInYamlFileIfPresent is that pattern without the try: it forgives an
+  //    absent file, and only an absent file, so a malformed overlay still
+  //    throws instead of being reported as one that is not there. It answers
+  //    whether it applied, which is what lets a boot say which overlays it
+  //    found rather than leaving a reader to infer it from the settings.
+  final applied = TomYaml.mergeInYamlFileIfPresent(tree, production.path);
+  final skipped = TomYaml.mergeInYamlFileIfPresent(
+    tree,
+    '${dir.path}/staging.yaml',
+  );
+  print('8b. overlay applied/skipped  : $applied/$skipped');
+  check(applied, 'a present overlay reports that it applied');
+  check(!skipped, 'an absent overlay reports that it did not');
+  check(
+    server['host'] == 'prod.internal',
+    'the skipped overlay left the tree as it was',
   );
 
   // 9. The .load constructor is the explicit-provider counterpart of step 1's

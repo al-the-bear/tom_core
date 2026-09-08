@@ -568,9 +568,9 @@ read a substituted number as text and parse it:
 final port = int.parse(~TomStringConfig('database.port'));
 ```
 
-### A missing file throws
+### A missing file throws, unless you ask for the tolerant loader
 
-Both entry points read the file with no existence check, so an absent path
+The strict entry points read the file with no existence check, so an absent path
 surfaces as a `PathNotFoundException`. The file is required, not optional. The
 sibling loader in the same configuration pipeline does the opposite, and that is
 the trap — having met one, a reader has a reasonable and wrong expectation of
@@ -581,22 +581,41 @@ the other:
 | `TomEnvFile.read('.env')` | returns `{}` |
 | `TomYaml.loadYamlFile('config.yaml')` | throws `PathNotFoundException` |
 | `TomYaml.mergeInYamlFile(map, 'config.yaml')` | throws `PathNotFoundException` |
+| `TomYaml.loadYamlFileIfPresent('config.yaml')` | returns `null` |
+| `TomYaml.mergeInYamlFileIfPresent(map, 'config.yaml')` | returns `false` |
 
-This matters for the layered overlay above, where the per-environment or
-per-locale file is genuinely optional and absence is the normal case. Guard it:
+The tolerant pair is what the layered overlay above needs, where the
+per-environment or per-locale file is genuinely optional and absence is the
+normal case:
 
 ```dart
-void mergeYamlIfPresent(Map<String, Object?> into, String path) {
-  if (!File(path).existsSync()) return;
-  TomYaml.mergeInYamlFile(into, path);
+for (final env in TomRuntime.getEnvironmentHierarchy()) {
+  final applied = TomYaml.mergeInYamlFileIfPresent(
+    tree,
+    'assets/config-resources_${env.env}.yaml',
+  );
+  if (!applied) tomLog.info('no overlay for ${env.env}');
 }
 ```
 
-Catching works too — `mergeInYamlFile` reads before it merges, so a throw
-leaves the target map untouched and the caller carries on with what it had.
-But catch `PathNotFoundException` specifically. A bare `catch` around the load
-also swallows a syntax error in a file that *is* there and reports it as
-absent, so a malformed overlay silently stops being applied.
+Two things about it are deliberate.
+
+**It forgives an absent file and nothing else.** A file that is there and does
+not parse still throws. That is the difference between the tolerant loader and
+the bare `catch` it replaces: a `catch (e)` around the load also swallows a
+syntax error and reports it as absence, so a mistyped overlay goes on being
+skipped and the settings in it silently never apply — which reads, from the
+outside, exactly like a setting that was never written.
+
+**It says whether the file was there** — `null` versus a map,
+`false` versus `true`. An overlay that never applied is precisely what an
+operator hunting a setting with no effect needs to be told, and a loader that
+answers `{}` for both an absent file and an empty one cannot tell them.
+
+The strict pair remains the right choice for a file the process cannot run
+without: an asset that ships with the package and is missing at boot is almost
+always a wrong working directory, and a tolerant load turns that into a server
+started with no configuration whose first symptom appears several layers later.
 
 ## Not Yet Implemented
 
@@ -631,14 +650,6 @@ absent, so a malformed overlay silently stops being applied.
   `'3306'` where `port: 3306` yields an `int`, and `TomConfig` casts rather
   than parses. See [A substituted value is a
   string](#a-substituted-value-is-a-string).
-- **`TomYaml` has no optional load, and the two sibling loaders disagree.**
-  Both entry points throw `PathNotFoundException` for an absent file, where
-  `TomEnvFile.read` in the same pipeline returns `{}`. There is no
-  `loadYamlFileIfPresent`, so every consumer of an optional overlay writes its
-  own guard — the sample servers each carry a private `mergeYamlIfPresent`,
-  and a bare `catch` is the tempting alternative that also hides a malformed
-  file.
-  See [A missing file throws](#a-missing-file-throws).
 - **The default TLS material is a checked-in self-signed pair.**
   `certificateChain` and `privateKey` default to a throwaway `localhost`
   certificate committed to this repository — convenient for local development,

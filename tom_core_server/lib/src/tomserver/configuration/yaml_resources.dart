@@ -44,10 +44,9 @@ class TomYaml {
   /// Throws a [PathNotFoundException] if [filename] does not exist. Note the
   /// contrast with the sibling loader in the same configuration pipeline:
   /// `TomEnvFile.read` returns an empty map for an absent file, where this one
-  /// throws. For an optional overlay, guard with `File(filename).existsSync()`
-  /// or catch [PathNotFoundException] specifically — a bare `catch` would
-  /// also swallow a syntax error in a file that *is* there and report it as
-  /// absent.
+  /// throws. For an overlay that may legitimately be absent use
+  /// [loadYamlFileIfPresent], which tolerates that one condition and nothing
+  /// else.
   static Map<String, Object?> loadYamlFile(
     String filename, {
     Map<String, String>? environment,
@@ -63,8 +62,8 @@ class TomYaml {
   ///
   /// The load *is* [loadYamlFile] — same normalisation, same substitution from
   /// [environment], same [PathNotFoundException] for an absent [filename]. See
-  /// there for the placeholder syntax, for what [environment] is for, and for
-  /// what to do about an optional overlay.
+  /// there for the placeholder syntax and for what [environment] is for; for an
+  /// overlay that may legitimately be absent, see [mergeInYamlFileIfPresent].
   ///
   /// The merge is one-sided: keys from [filename] overwrite those already in
   /// [result], and keys only in [result] survive. Because the load is an
@@ -82,5 +81,62 @@ class TomYaml {
     Map<String, String>? environment,
   }) {
     mergeMapsOneSided(result, loadYamlFile(filename, environment: environment));
+  }
+
+  /// Loads [filename] with [loadYamlFile], or returns `null` when there is no
+  /// such file.
+  ///
+  /// The tolerant half of the pair. Everything [loadYamlFile] does it does —
+  /// normalisation, substitution from [environment] — and the *only* condition
+  /// it forgives is that the file is not there. A file that exists and does not
+  /// parse still throws, which is the whole point: a bare `catch` around
+  /// [loadYamlFile] reports a YAML syntax error as an absent overlay, so a
+  /// mistyped file goes on being skipped and the settings in it silently never
+  /// apply.
+  ///
+  /// `null` rather than an empty map, so a caller can tell an absent overlay
+  /// from an empty one. An overlay that never applied is exactly what an
+  /// operator hunting a setting that had no effect needs to be told, and a
+  /// method that returns `{}` for both cannot tell them.
+  ///
+  /// This is the shape the layered-overlay pattern needs: a per-environment or
+  /// per-locale file of which only one of the candidates is ever present is the
+  /// normal case, not the error case.
+  static Map<String, Object?>? loadYamlFileIfPresent(
+    String filename, {
+    Map<String, String>? environment,
+  }) {
+    try {
+      return loadYamlFile(filename, environment: environment);
+    } on PathNotFoundException {
+      // Caught rather than pre-empted with `existsSync`, which asks the
+      // question a moment before the answer is used and can be overtaken
+      // between the two. This asks it by attempting the read.
+      return null;
+    }
+  }
+
+  /// Merges [filename] into [result] with [mergeInYamlFile] if there is such a
+  /// file, and reports whether there was.
+  ///
+  /// The tolerant half of the merging pair, over [loadYamlFileIfPresent]: an
+  /// absent [filename] leaves [result] untouched and returns `false`, and every
+  /// other failure — a syntax error above all — still throws. See
+  /// [mergeInYamlFile] for what the merge does, and [loadYamlFileIfPresent] for
+  /// why absence is the only forgiven condition.
+  ///
+  /// The `bool` is the overlay's own answer to "did you apply?". A boot that
+  /// asks every environment in a hierarchy for an overlay can say which ones it
+  /// found, instead of leaving a reader to infer it from the settings that took
+  /// effect.
+  static bool mergeInYamlFileIfPresent(
+    Map<String, Object?> result,
+    String filename, {
+    Map<String, String>? environment,
+  }) {
+    final overlay = loadYamlFileIfPresent(filename, environment: environment);
+    if (overlay == null) return false;
+    mergeMapsOneSided(result, overlay);
+    return true;
   }
 }

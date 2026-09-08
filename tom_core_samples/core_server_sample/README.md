@@ -431,11 +431,16 @@ alike:
 | ----- | --------- |
 | `assets/config-resources_default.yaml` | `mergeRequiredYaml` throws |
 | `assets/datasources_default.yaml` | `mergeRequiredYaml` throws |
-| `assets/config-resources_<env>.yaml` | `mergeOptionalYaml` skips it |
+| `assets/config-resources_<env>.yaml` | `mergeOptionalYaml` skips it and says so |
 
 The overlay has to be optional because the hierarchy loop asks *every*
 environment for one and the root environment (`prod`) ships none — so
-"if present" is the correct rule there and only there. Applying it to the other
+"if present" is the correct rule there and only there. `mergeOptionalYaml` is
+`TomYaml.mergeInYamlFileIfPresent`, which forgives an absent file and nothing
+else: an overlay that is there and does not parse still stops the boot rather
+than being skipped as though it were missing. It returns whether it applied, so
+"there is no overlay for this environment" is an answer rather than an
+inference. Applying it to the other
 two is what made a wrong working directory hard to diagnose: the server started
 with no configuration and no datasource, said nothing, and surfaced a connection
 or missing-key error much further along. The throw names the absolute path it

@@ -354,8 +354,8 @@ expansion back as text, so a substituted value is always a `String`:
 `'3306'`. This is the only configuration source that reaches `TomConfig<T>`
 untyped, and `TomConfig<T>` casts rather than parses.
 
-`loadYamlFile` is the class's only loader; `mergeInYamlFile` is one line over
-it, so the two cannot disagree about how a file is read.
+`loadYamlFile` is the class's only loader; the other three methods are one line
+over it, so none of them can disagree about how a file is read.
 
 The variables come from `Platform.environment` unless an `environment` map is
 passed. Since Dart's process environment is read-only, that parameter is the
@@ -363,12 +363,15 @@ only way a `.env` file can reach a placeholder — pass
 `TomEnvFile.resolveEnvironment()`, which returns the OS environment with the
 `.env` layered over it.
 
-Both methods require the file to exist and throw `PathNotFoundException` when
-it does not — the opposite of `TomEnvFile.read`, which returns an empty map
-for an absent `.env`. There is no optional-load variant, so an optional
-overlay needs an `existsSync` guard, or a catch narrowed to
-`PathNotFoundException` so that a malformed file is not reported as a missing
-one.
+The methods come in a strict and a tolerant pair. `loadYamlFile` and
+`mergeInYamlFile` require the file to exist and throw `PathNotFoundException`
+when it does not — the opposite of `TomEnvFile.read`, which returns an empty map
+for an absent `.env`. `loadYamlFileIfPresent` and `mergeInYamlFileIfPresent`
+forgive that one condition and no other: a file that is there and does not parse
+still throws, so a mistyped overlay is not reported as a missing one. Each
+tolerant method also *says* whether the file was there — `null` versus a map,
+`false` versus `true` — because an overlay that never applied is what an
+operator hunting a setting with no effect needs to be told.
 
 #### Static Methods
 
@@ -376,6 +379,8 @@ one.
 | ------ | --------- | ----------- | ------ |
 | `loadYamlFile` | `static Map<String, Object?> loadYamlFile(String filename, {Map<String, String>? environment})` | Loads a YAML file and returns it as a map with environment-variable substitution. `environment` supplies the variables; omitted, it is `Platform.environment`. | `PathNotFoundException` if `filename` is absent |
 | `mergeInYamlFile` | `static void mergeInYamlFile(Map<String, Object?> result, String filename, {Map<String, String>? environment})` | Loads a YAML file with `loadYamlFile` and merges it one-sided into `result`, passing `environment` through. The load is an argument to the merge, so it completes first and a throw leaves `result` untouched. The merge recurses into subtrees, so the overwrite is per leaf: a file naming `db.host` alone leaves the `db` branch's other keys standing. | `PathNotFoundException` if `filename` is absent |
+| `loadYamlFileIfPresent` | `static Map<String, Object?>? loadYamlFileIfPresent(String filename, {Map<String, String>? environment})` | `loadYamlFile`, returning `null` when there is no such file. Absence is the only forgiven condition: a file that exists and does not parse still throws. `null` rather than `{}`, so an absent overlay is distinguishable from an empty one. | anything but `PathNotFoundException` — a `YamlException` for a malformed file above all |
+| `mergeInYamlFileIfPresent` | `static bool mergeInYamlFileIfPresent(Map<String, Object?> result, String filename, {Map<String, String>? environment})` | `mergeInYamlFile` over `loadYamlFileIfPresent`: an absent `filename` leaves `result` untouched and returns `false`, a present one merges and returns `true`. The shape the layered-overlay pattern needs, where most of the candidate files are expected not to exist. | anything but `PathNotFoundException` |
 
 ## Global Functions and Constants
 

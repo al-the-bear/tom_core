@@ -192,16 +192,19 @@ void mergeRequiredYaml(Map<String, dynamic> into, String path) {
   _mergeYaml(into, path);
 }
 
-/// Merges [path] into [into] if it exists, and does nothing if it does not.
+/// Merges [path] into [into] if it exists, and reports whether it did.
 ///
 /// Only the per-environment overlay may be absent: [configLoaderFunction] asks
 /// every environment in the hierarchy for one, and the root (`prod`) ships
 /// none. A wrong working directory does not reach this function undiagnosed —
 /// the required base asset is loaded first and throws.
-void mergeOptionalYaml(Map<String, dynamic> into, String path) {
-  if (!File(path).existsSync()) return;
-  _mergeYaml(into, path);
-}
+///
+/// The framework answers this, rather than a local `existsSync` guard, so that
+/// the tolerance stays narrow: `mergeInYamlFileIfPresent` forgives an absent
+/// file and nothing else, so an overlay that is *there* and does not parse
+/// still stops the boot instead of being skipped as though it were missing.
+bool mergeOptionalYaml(Map<String, dynamic> into, String path) =>
+    TomYaml.mergeInYamlFileIfPresent(into, path, environment: _environment);
 
 void _mergeYaml(Map<String, dynamic> into, String path) {
   mergeMapsOneSided(

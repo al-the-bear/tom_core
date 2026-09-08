@@ -1,5 +1,44 @@
 ## 1.3.0
 
+### Added
+
+- **`TomYaml.loadYamlFileIfPresent` and `TomYaml.mergeInYamlFileIfPresent`, the
+  tolerant half of the loader pair (tcincb106).** Both strict entry points
+  throw `PathNotFoundException` for an absent file, while the layered-overlay
+  pattern the module documents is exactly the case where absence is normal — a
+  per-environment or per-locale file of which only one candidate is ever
+  present. The sibling loader in the same pipeline is tolerant
+  (`TomEnvFile.read` returns `{}` for an absent `.env`), which is where the
+  reasonable and wrong expectation comes from.
+
+  The cost was already being paid twice, in two incompatible ways. Four sample
+  servers each carried a private `if (!File(path).existsSync()) return;`, and
+  `tom_uam` took the other route: nineteen bare `catch (exception)` blocks that
+  logged "not found", plus three more in a commented-out block. A bare catch
+  cannot tell an absent file from a malformed one, so a YAML syntax error in a
+  locale overlay was reported as that locale simply having no overrides, and the
+  settings in it silently stopped applying.
+
+  The new pair forgives `PathNotFoundException` and nothing else, so a file that
+  is there and does not parse still throws. Each reports whether the file was
+  there — `null` versus a map, `false` versus `true` — because an overlay that
+  never applied is precisely what an operator hunting an ineffective setting
+  needs to be told, and none of the previous call sites could say it. Caught
+  rather than pre-empted with `existsSync`, which asks the question a moment
+  before the answer is used.
+
+  Every consumer moved onto it. The samples' `mergeOptionalYaml` is now one line
+  over `mergeInYamlFileIfPresent` and returns its answer, which their
+  `boot_assets_test.dart` asserts in both directions; `tom_uam`'s nineteen
+  catches became `if (!TomYaml.mergeInYamlFileIfPresent(...))`, and the two that
+  logged on success as well became `if (...) { … } else { … }`. The
+  commented-out block went with them — dead code carrying three more copies of
+  the shape this change exists to remove — leaving the question it recorded as
+  prose. The
+  configuration guide's *"`TomYaml` has no optional load"* limitation is
+  retired, and step 8 of the configuration example now runs the tolerant merge
+  beside the strict one.
+
 ### Fixed
 
 - **All 219 `#### Properties` tables in `doc/api_reference/` are censused

@@ -126,7 +126,9 @@ void main() {
         mergeRequiredYaml(loaded, configResourcesAsset);
         final beforeOverlay = Map<String, dynamic>.from(loaded);
 
-        mergeOptionalYaml(loaded, _absentAsset);
+        // Reports that it did nothing, rather than leaving the caller to
+        // infer it from a map that did not change.
+        expect(mergeOptionalYaml(loaded, _absentAsset), isFalse);
 
         expect(loaded, equals(beforeOverlay));
       },
@@ -135,7 +137,7 @@ void main() {
     test('a present overlay wins over the base', () {
       final loaded = <String, dynamic>{};
       mergeRequiredYaml(loaded, configResourcesAsset);
-      mergeOptionalYaml(loaded, devConfigAsset);
+      expect(mergeOptionalYaml(loaded, devConfigAsset), isTrue);
 
       expect(
         (loaded['app'] as Map<String, Object?>?)?['title'],
