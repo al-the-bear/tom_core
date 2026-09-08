@@ -170,8 +170,16 @@
 /// database driver, declares a `TomDbTime` nothing produces and runs XA with no
 /// recovery, and mentioned none of the three. Silence reads as "no edges",
 /// which is a stronger claim than any guide in this package can make. So the
-/// per-module half requires the section to exist; eight guides are quarantined
-/// on one named list.
+/// per-module half requires the section to exist, and every guide now has one.
+///
+/// Writing the last seven is what the requirement was for. None of those
+/// modules had recorded an edge, and none of them lacked one: a transaction
+/// coordinator that does not catch a throwing `commit()`, a health endpoint
+/// that answers 200 for every verdict, a preference upsert that reads and then
+/// writes, a scheduler whose SQL is MariaDB's rather than a dialect's, an
+/// authorization cache no revocation can reach. Each was legible in the source
+/// to anyone who went looking; what was missing was the place to write it down,
+/// which is the whole of what this rule supplies.
 ///
 /// The two groups after it ask a blunter question than anything above: not
 /// whether a documented thing is documented correctly, but whether the document
@@ -2644,20 +2652,6 @@ final RegExp _limitationsHeading = RegExp(
 /// to both.
 bool _hasLimitationsSection(String module) =>
     File('doc/$module.md').readAsLinesSync().any(_limitationsHeading.hasMatch);
-
-/// Guides with no section for what the module has not done.
-///
-/// Surfaced as a `skip:` rather than a filtered list so the gap is visible in
-/// the run.
-const Set<String> _limitationsPendingSection = {
-  'authorization',
-  'healthcheck',
-  'little_things',
-  'preferences',
-  'resources',
-  'scheduling',
-  'transactions',
-};
 
 /// A link *to* the limitations section, as the table of contents and the
 /// cross-references in the prose both write it.
@@ -5447,43 +5441,23 @@ One: `TomKind`, documented beside the type that carries it.
     });
 
     for (final module in _modules()) {
-      test(
-        '$module says what it has not done',
-        () {
-          expect(
-            _hasLimitationsSection(module),
-            isTrue,
-            reason:
-                'The check above says a claim of unfinished work must live in '
-                'the limitations section. A guide without one therefore has '
-                'nowhere legal to say it, and the pressure is to leave the '
-                'edge undocumented rather than to write it down: '
-                '`doc/datasources.md` described a module that ships one '
-                'database driver, declares a `TomDbTime` nothing produces and '
-                'runs XA with no recovery, and mentioned none of it. Silence '
-                'reads as "no edges", which is a stronger claim than any of '
-                'these guides can make.',
-          );
-        },
-        skip: _limitationsPendingSection.contains(module)
-            ? 'no limitations section yet.'
-            : null,
-      );
+      test('$module says what it has not done', () {
+        expect(
+          _hasLimitationsSection(module),
+          isTrue,
+          reason:
+              'The check above says a claim of unfinished work must live in '
+              'the limitations section. A guide without one therefore has '
+              'nowhere legal to say it, and the pressure is to leave the '
+              'edge undocumented rather than to write it down: '
+              '`doc/datasources.md` described a module that ships one '
+              'database driver, declares a `TomDbTime` nothing produces and '
+              'runs XA with no recovery, and mentioned none of it. Silence '
+              'reads as "no edges", which is a stronger claim than any of '
+              'these guides can make.',
+        );
+      });
     }
-
-    test('every quarantined guide is still missing its section', () {
-      final settled = [
-        for (final module in _limitationsPendingSection)
-          if (_hasLimitationsSection(module)) module,
-      ];
-      expect(
-        settled,
-        isEmpty,
-        reason:
-            'a quarantine entry with nothing left to suppress turns a passing '
-            'guide back into an unchecked one; drop it from the set',
-      );
-    });
 
     test('the heading has to be the section, not a mention of one', () {
       expect(_limitationsHeading.hasMatch('## Not Yet Implemented'), isTrue);

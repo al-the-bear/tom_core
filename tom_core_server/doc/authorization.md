@@ -15,6 +15,7 @@ row scope.
 - [Lifetime and Expiry](#lifetime-and-expiry)
 - [Grants, Grades and Delegations](#grants-grades-and-delegations)
 - [The Grant-Driven Row Scope](#the-grant-driven-row-scope)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -380,6 +381,33 @@ the built-in `owner` and `group` scopes.
 `example/authorization/resource_data_scope_example.dart` walks all of this
 connection-free; `test/resource_data_scope_db_test.dart` covers it end to end
 against MariaDB.
+
+## Not Yet Implemented
+
+- **A cached principal outlives a revoked grant.** An entry's lifetime is its
+  token's `exp` and nothing else — see
+  [Lifetime and Expiry](#lifetime-and-expiry) — and the cache exposes no removal
+  or invalidation. So editing a grant, a delegation or a role takes effect for a
+  principal only when its token expires and the next request re-resolves it. A
+  deployment that needs a revocation to bite immediately has to shorten token
+  lifetimes; the framework offers no push.
+- **The cache is per process.** `TomAuthorizationCache` is a static singleton
+  and the worker-isolate route forwards to *this* process's main isolate, so
+  every server node keeps its own copy and nothing coordinates them. Two nodes
+  can hold different answers for one token until both expire.
+- **Eviction is opt-in.** Nothing sweeps until `startEviction()` is called.
+  Without it, an expired entry is dropped only by the read that happens to touch
+  it, so a token never read again occupies the map for the life of the process —
+  which is a leak whose size is the number of distinct tokens the node has seen.
+- **An entry's lifetime has one-second resolution.** `exp` is encoded in whole
+  seconds, so a token good for 300 ms cannot be expressed and reads as already
+  expired.
+- **The graded model has four states and no fifth.**
+  `TomAuthState.none`/`disabled`/`read`/`full` is the whole vocabulary, and
+  `TomResourceDataScope` maps it onto rows accordingly: readable at `read` or
+  wider, writable only at `full`. There is no append-only, no delete-but-not-edit
+  and no per-operation grade; a deployment needing one expresses it in its own
+  resource keys rather than in the grade.
 
 ## Verification
 

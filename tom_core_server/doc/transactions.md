@@ -15,6 +15,7 @@ handle around.
 - [Transaction Scopes](#transaction-scopes)
 - [How the Pipeline Uses It](#how-the-pipeline-uses-it)
 - [Concurrency Model](#concurrency-model)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -214,6 +215,39 @@ A transaction may conclude in a different zone from the one that opened it (afte
 an `await`, or from a callback scheduled elsewhere), so each `TomTransaction`
 holds a reference to the scope it is current in and clears *that* scope —
 identity-guarded, so a concluded transaction can never wipe a successor.
+
+## Not Yet Implemented
+
+- **There is no prepare phase, so a late veto is repaired rather than
+  prevented.** Participants commit in registration order and
+  [The Participant Contract](#the-participant-contract) says what follows: a
+  veto from the third arrives after the first two have committed for real, and
+  the coordinator's only answer is to call `rollback()` on all of them. A
+  participant that cannot undo a completed commit must do the work that can fail
+  *inside* `commit()`, so its veto is raised before anything is durable.
+- **A `commit()` or `rollback()` that throws is not caught.** `registerParticipant`
+  handles both a `false` and a thrown error from `startTransaction`, but the
+  concluding loops do not: an exception from a participant propagates out of
+  `commitTransaction`, leaving the participants behind it neither committed,
+  rolled back, nor ended — and their per-transaction resources, typically pooled
+  connections, unreleased. A participant should report failure by returning
+  `false` from `commit()`, which the coordinator understands.
+- **`isReadOnly` is recorded and never enforced.** `startTransaction(true)`
+  stores the flag on the transaction and `@TomTransactional(isReadOnly: true)`
+  passes it through, but no participant in the package reads it — a read-only
+  transaction will happily execute a write. It is a hint for a participant that
+  chooses to honour it, not a guarantee the coordinator makes.
+- **There is no transaction log, so a process that dies mid-commit is not
+  recovered.** The coordinator's state lives in a zone value; nothing is written
+  down before the first `commit()` and nothing replays afterwards. A crash
+  between two participants' commits leaves the work half-done with no record of
+  it, and repair is the database's problem (or the operator's). Use a single
+  data source where atomicity matters, so that the participant's own transaction
+  is the guarantee.
+- **The commit is not concurrent and has no timeout.** Participants are driven
+  one at a time, awaited in order, with no deadline — so one participant that
+  blocks blocks the transaction and the request behind it indefinitely. Timeouts
+  belong to the participant.
 
 ## Verification
 

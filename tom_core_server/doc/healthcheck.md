@@ -17,6 +17,7 @@ not a readiness endpoint — see
 - [One Verdict for the Process](#one-verdict-for-the-process)
 - [Customizing the Health Check](#customizing-the-health-check)
 - [How It Is Wired](#how-it-is-wired)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -112,6 +113,29 @@ caller/analyzer concern, not done by this module.
 it by reflection, resolves its bean, and mounts the `/health` route — no manual
 registration needed. The analyzer is a `static` field on `TomHealthServer`, so a
 single assignment applies to every request.
+
+## Not Yet Implemented
+
+- **Every verdict is HTTP 200.** The endpoint returns the analyzer's string
+  verbatim and never maps it to a status code, so a probe configured to check
+  the status alone reports healthy while the analyzer answers
+  `"DEGRADED: db=false"`. Mapping a verdict to a code is left to the deployment
+  (see [Customizing the Health Check](#customizing-the-health-check)); a probe
+  meant to act on the verdict has to match the body.
+- **There is no readiness endpoint, only a liveness one.** One route, one
+  analyzer, one answer for two questions with opposite consequences —
+  [One Verdict for the Process](#one-verdict-for-the-process) sets out what a
+  deployment needing both has to do, which is to encode both into the one string
+  and have the two probes match different substrings of it.
+- **The analyzer is process-wide.** `TomHealthServer.healthAnalyzer` is
+  `static`, so one assignment answers every request on every isolate; there is
+  no per-instance, per-port or per-request override. A deployment that wants two
+  different checks needs two processes.
+- **`analyzeHealth` is awaited with no deadline.** An analyzer that probes a
+  database and hangs hangs the `/health` request, which is the request an
+  orchestrator uses to decide whether the process is alive — so a slow
+  dependency reads as a dead process and earns a restart. An analyzer that
+  touches anything remote should impose its own timeout and answer degraded.
 
 ## Verification
 

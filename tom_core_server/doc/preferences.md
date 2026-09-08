@@ -13,6 +13,7 @@ through.
 - [The Endpoints](#the-endpoints)
 - [Reading a Preference During Login](#reading-a-preference-during-login)
 - [Core Components](#core-components)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
 
 ---
@@ -343,6 +344,35 @@ block every login.
   The narrowness is the design, not an omission — mapping a deployment fault
   such as `preferences.not_configured` the same way would let a client read an
   outage as absence.
+
+## Not Yet Implemented
+
+- **The upsert is read-then-write, not one statement.** `set` reads the row for
+  `(principal, key)` and saves it back, so two concurrent writes of the same key
+  can both read nothing and both insert; the table's unique key rejects the
+  loser, and the caller sees a driver error rather than a retry. Preferences are
+  written by a person at a keyboard, so the race is rare — but it is not
+  prevented, and a client that writes on every keystroke will find it.
+- **A rewrite may change a key's type, and every other reader then fails.**
+  `setEncoded` validates that the `valueType` and `valueJson` it was handed
+  agree with each other, not that they agree with what is already stored. So a
+  client writing `theme` as an object where another wrote a string succeeds, and
+  every `get<String>('theme')` on every other device throws
+  `TomUserPreferenceCodecException` from then on. A key's type is a convention
+  between the clients that share it.
+- **There is no bulk write and no bulk delete.** `set` and `remove` take one key;
+  `all()` reads them. Deleting a user's preferences — on account closure, say —
+  means one call per key, and there is no transaction around a group of writes,
+  so a partial application is a reachable state.
+- **There are no deployment-wide or role-wide defaults.** `getOr(key, fallback)`
+  takes the default at the call site, so two call sites reading one key can
+  disagree about what it means when unset, and a deployment cannot ship a
+  default without editing code. The framework stores only what a principal
+  actually wrote.
+- **A preference is per principal and nothing else.** The row is keyed on
+  `(principal_id, preference_key)`, so there is no per-device, per-application
+  or per-organization dimension: a user who wants one theme on their phone and
+  another on their desktop encodes that in the key.
 
 ## Dependencies
 

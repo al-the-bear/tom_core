@@ -29,6 +29,7 @@ covers only what changes when the substrate is a database.
 - [Time](#time)
 - [Wiring a Cluster Node](#wiring-a-cluster-node)
 - [Operating Notes](#operating-notes)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -552,6 +553,36 @@ node's work unattributable.
   `TomSqlJobStore` logs the node it declared failed and how many runs it
   recovered from it — the difference between "a run was orphaned" and "that host
   went away".
+
+## Not Yet Implemented
+
+- **Runs are claimed in insertion order, and there is no priority.** `claimDue`
+  scans `WHERE state = pending AND run_at <= now ORDER BY seq`, so a run cannot
+  be marked urgent and cannot overtake a backlog. A deployment that needs one
+  class of work to go first gives it its own scheduler and its own queue table.
+- **A job cannot be paused.** The store has no pause or disable: a job runs
+  because it is registered, so stopping one means not registering it, which is a
+  configuration change and a restart. `deleteAll` and `purgeFinished` operate on
+  *runs*, not on the schedule.
+- **`purgeFinished` deletes; it does not archive.** A purged run's outcome is
+  gone, and there is no history table beside the queue — so a deployment that
+  wants to answer "did the nightly export run last March" keeps its own record,
+  or sets the cutoff generously and accepts the table's growth.
+- **The stores speak MariaDB, not a dialect.** Both render SQL directly —
+  `LIMIT`, `INSERT … ON DUPLICATE KEY UPDATE`, `DATETIME(6)` — rather than
+  through `TomStandardSqlDialect`, so a second database means a second
+  implementation of `TomJobStore` and `TomLeaseLock` rather than a second
+  dialect. The interfaces are the kernel's and are small; that is what makes the
+  port tractable.
+- **The roll call reads peers' clocks and does not compensate for skew.** It is
+  the one place a node judges another by a timestamp the other wrote, so skew
+  beyond a second or so makes nodes accuse each other or excuse each other — see
+  [The Roll Call](#the-roll-call). Claiming and leasing are unaffected, because
+  both are arbitrated by the database's own clock. Run NTP.
+- **A recovered run is re-run, not resumed.** Recovery re-queues an abandoned
+  run from the beginning; nothing checkpoints partial work, so a job that is not
+  idempotent has to make itself so — which is the same requirement the retry
+  path already imposes.
 
 ## Verification
 

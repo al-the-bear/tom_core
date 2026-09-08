@@ -19,6 +19,7 @@ concurrently. This module makes the locale an argument.
 - [Installing a Bundle Set](#installing-a-bundle-set)
   - [The keys are validated, not just normalised](#the-keys-are-validated-not-just-normalised)
 - [Core Components](#core-components)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Dependencies](#dependencies)
 
@@ -341,6 +342,34 @@ written that way on purpose.
 | `TomTextLocale` | `localized_text_resources.dart` | Normalised language/country pair; parsing, the fallback tags, derivation from a principal |
 | `TomLocalizedTextResources` | `localized_text_resources.dart` | Bundle-per-locale storage, chain resolution, parameter substitution, bean lookup |
 | `TomResourceLocaleException` | `localized_text_resources.dart` | A locale that cannot be formed; not client-visible. Raised by `TomTextLocale`'s constructor — and so by the bundle-set constructors, which parse their keys |
+
+## Not Yet Implemented
+
+- **A bundle set is fixed at construction.** `_bundles` is filled by the
+  constructor and never changed: there is no add, replace or reload. Correcting
+  a translation or adding a language means building a new
+  `TomLocalizedTextResources` and re-registering the bean, which in practice
+  means restarting the process.
+- **Substitution is `replaceAll`, not formatting.** `substitute` replaces
+  `{name}` with `'$value'` and does nothing else: no plural forms, no gender, no
+  locale-aware number or date rendering — a `DateTime` interpolates through
+  `toString()`, in the same shape for every locale. A message whose wording
+  depends on a count needs one key per form, chosen by the caller.
+- **An unfilled placeholder is left in the text and reported to nobody.** A
+  parameter that is missing, or whose value is `null`, leaves `{name}` standing
+  where a reader will see it. That is deliberate — writing the word `null` reads
+  as finished prose and slips past a proof-reader, where a bare placeholder does
+  not — but nothing tells the *program* it happened, so there is no way to fail
+  a send on it.
+- **Two keys naming one locale collapse silently.** Tags are normalised before
+  they are stored, so `{'en': …, 'en_XX': …}` yields a single `en` bundle and
+  the last one wins with no warning. Usually that is the point — `de-AT` and
+  `de_AT` *should* be one bundle — and it stops being the point when the second
+  key is one the deployment believed was a separate regional variant.
+- **There is no completeness report.** `isTranslated(key, locale)` answers for
+  one key at a time; nothing lists the keys a locale is missing, so "is the
+  German bundle finished" is a question a deployment answers with its own script
+  over `locales` and its own key inventory.
 
 ## Verification
 

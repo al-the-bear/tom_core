@@ -2,6 +2,39 @@
 
 ### Fixed
 
+- **Seven module guides had nowhere to record an edge, so they recorded none
+  (tcincb126).** A guide with no `## Not Yet Implemented` section has nowhere
+  legal to say what the module has not done — the placement rule requires the
+  claim to live there — so the pressure is to leave the edge out rather than
+  write it down, and silence reads as "no edges". `authorization`,
+  `healthcheck`, `little_things`, `preferences`, `resources`, `scheduling` and
+  `transactions` now each carry one, established from source.
+
+  None of the seven modules lacked edges, which is the point. The transaction
+  coordinator catches a `startTransaction` that throws and **does not** catch a
+  throwing `commit()` or `rollback()`, so an exception there leaves the
+  participants behind it neither concluded nor ended; `isReadOnly` is recorded
+  and read by nothing. The health endpoint answers HTTP 200 for every verdict
+  and awaits its analyzer with no deadline, so a hanging database probe reads to
+  an orchestrator as a dead process. The preference upsert reads and then
+  writes, and a client may rewrite a key with a different type, after which
+  every other device's typed read throws. The scheduler claims `ORDER BY seq`
+  with no priority, cannot pause a job, and renders MariaDB SQL directly rather
+  than through a dialect. The authorization cache has no invalidation at all, so
+  a revoked grant binds only when the token expires — and its eviction sweep is
+  opt-in, so a token never read again occupies the map for the life of the
+  process. Each was legible in the source to anyone who looked; what was missing
+  was the place to write it down.
+
+  Writing them found one violation of a sibling rule: the scheduling section
+  named `TomSqlDialect`, a type removed with its annotation, which the
+  datasources suite's precedent guard rejects wherever it appears under `lib/`
+  or `doc/`. The type is `TomStandardSqlDialect`.
+
+  `_limitationsPendingSection` is gone with its `skip:` and its staleness
+  meta-test.
+
+
 - **Ten module guides named neither the suite nor the example that verifies
   them; all twenty now do (tcincb125).** A guide is where a reader goes to find
   out what backs the claims in it, and an example nobody points at is an example

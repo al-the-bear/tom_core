@@ -17,6 +17,7 @@ body a client receives.
 - [Request Correlation](#request-correlation)
 - [The clientThrow Flag](#the-clientthrow-flag)
 - [The Error Envelope](#the-error-envelope)
+- [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -206,6 +207,26 @@ The function is declared here for the same reason `TomRequestId` is.
 `TomServerException` decides the one conditional field, and this is the module
 every other one already depends on — so both error handlers reach the builder
 without either reaching the other.
+
+## Not Yet Implemented
+
+- **The error envelope carries no message.** `tomErrorEnvelope` reports
+  `errorType`, `errorKey`, `uuid`, `autoLog`, `requestUuid` and `clientThrow`,
+  and never the exception's `defaultUserMessage` — see
+  [The Error Envelope](#the-error-envelope). A client shows text by resolving
+  `errorKey` against its own resources, which is what makes the message
+  translatable; a client that does not recognise the key has the type and the
+  id, and nothing to display.
+- **A request id cannot be adopted from the caller.** `TomRequestId` mints a v4
+  UUID in its constructor and exposes no way to supply one, so an inbound
+  `X-Request-Id` from a proxy or an upstream service is ignored and a trace
+  spanning two services has two unrelated ids. Correlating them is the log
+  aggregator's job today.
+- **Only a request gets an id.** `tomDefaultAuthenticationMiddleware` is the
+  single place one is seeded, so work outside the request path — a scheduled
+  job, a start-up task, a script — raises exceptions with a null `requestUuid`
+  and nothing to group them by. Nothing prevents a caller from establishing one
+  with `runZoned`, but the framework does not do it.
 
 ## Verification
 
