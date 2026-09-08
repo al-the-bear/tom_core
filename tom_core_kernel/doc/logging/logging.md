@@ -237,7 +237,12 @@ void main() async {
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void setupRemoteLogging() {
-  // Configure sender identification
+  // Configure sender identification. The value form installs a resolver that
+  // answers this constant forever, which is right for a client whose name is
+  // known at this line. Where the name is not settled yet — a server that names
+  // itself in a constructor body that has not run — install the resolver
+  // instead: `globalSettingSenderIdResolver = () => tomAppId;`. A consumer of
+  // `tom_core_server` installs nothing: its configuration does this already.
   TomRemoteLogMessage.globalSettingSenderId = 'frontend-01';
 
   // Set up the remote endpoint. `TomServerEndpoint` takes a channel (host and
@@ -710,7 +715,8 @@ Resilience](#delivery-resilience) for what each knob buys.
 | `TomRemoteLogOutput.globalSettingRetryBackoff`      | `Duration.zero`             | Base delay; the wait before retry *k* is `backoff × k`                       |
 | `TomRemoteLogOutput.globalSettingReplayQueueMaxSize` | `0`                         | Records buffered after retries are exhausted. `0` disables the queue; on overflow the oldest is dropped |
 | `TomRemoteLogOutput.globalSettingReplayStore`       | `TomInMemoryLogReplayStore()` | Storage behind that queue. Swap in `TomFileLogReplayStore` to survive a restart mid-outage |
-| `TomRemoteLogMessage.globalSettingSenderId`         | `"RDEF"`                    | Identifies this client in every record it sends                              |
+| `TomRemoteLogMessage.globalSettingSenderIdResolver` | `() => ""`                  | Answers which application sent a record, asked once per message. A function so that a name settled after installation is still reported |
+| `TomRemoteLogMessage.globalSettingSenderId`         | `""`                        | The same answer as a value: reading asks the resolver, assigning installs one that answers that constant. Empty until something names the application, so an unset sender looks unset |
 
 ### Collector and Isolate Settings
 

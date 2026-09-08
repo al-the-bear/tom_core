@@ -747,6 +747,37 @@ void main() {
       _MergedAppIdConfig(['appId=second']);
       expect(tomAppId, 'second');
     });
+
+    test('names the application in every remote log record it sends', () {
+      // A remote log collector names its per-client files after the sender, so
+      // an unnamed sender puts every server of a deployment into one file set
+      // distinguished by isolate name -- which distinguishes nothing when the
+      // servers are alike, and a deployment collecting several servers is the
+      // case a collector exists for. Building a configuration is what supplies
+      // the name.
+      _install({});
+      _MergedAppIdConfig(['appId=auth']);
+
+      expect(
+        TomRemoteLogMessage.of(0, 0, '', 'hello', 'main', '', null).sender,
+        'auth',
+      );
+    });
+
+    test('names it even when the subclass names itself after the base ran', () {
+      // The reason a *resolver* is installed rather than a copy of tomAppId.
+      // The install happens in the base constructor, and this configuration
+      // does not know its own name until its subclass body runs afterwards -- so
+      // a copy taken at the install would be the empty string, which is the
+      // mistake the five hand-written lines above made.
+      _install({});
+      _LateAppIdConfig([]);
+
+      expect(
+        TomRemoteLogMessage.of(0, 0, '', 'hello', 'main', '', null).sender,
+        'fromConstructor',
+      );
+    });
   });
 
   // The merged map and the provider tree are two different stores, and the

@@ -47,19 +47,58 @@ import '../reflection/reflection.dart';
 ///
 /// ## Sender Identification
 ///
-/// Set [globalSettingSenderId] to identify which client sent the message:
+/// Install [globalSettingSenderIdResolver] to say which application sent the
+/// message:
 ///
 /// ```dart
-/// TomRemoteLogMessage.globalSettingSenderId = 'web-frontend-01';
+/// TomRemoteLogMessage.globalSettingSenderIdResolver = () => 'web-frontend-01';
 /// ```
+///
+/// A collector names its per-client files after the sender, so this is what
+/// keeps two servers of one deployment out of each other's log.
 @tomReflector
 class TomRemoteLogMessage {
-  /// Global sender identifier prepended to all messages from this client.
+  /// Answers "which application sent this", asked once per message.
   ///
-  /// Set this at application startup to identify the source of log messages.
-  static String globalSettingSenderId = "RDEF";
+  /// A **function**, not a value, and that is the whole of the design. The
+  /// obvious alternative — a `String` assigned at startup — copies whatever the
+  /// application was called at the instant of the assignment, and an
+  /// application's name is often not settled then: a `tom_core_server`
+  /// deployment names itself in its configuration *subclass* constructor, which
+  /// runs after the base constructor that would do the installing, so the copy
+  /// captures the empty string. Every one of five servers in this workspace
+  /// made that mistake with the analogous `tomAppId`. A resolver cannot be
+  /// early, because it is not read until there is a message to answer for.
+  ///
+  /// The default answers the empty string rather than a placeholder. An unset
+  /// sender then *looks* unset — a collector's file named for the isolate alone
+  /// says "nobody said who this was", where a plausible-looking default says
+  /// "this is who it was" and is wrong for every application at once.
+  ///
+  /// A consumer of `tom_core_server` needs to install nothing:
+  /// `TomBaseServerConfiguration` installs a resolver over `tomAppId` when it
+  /// registers itself as the isolate's active configuration.
+  static String Function() globalSettingSenderIdResolver = () => "";
 
-  /// The sender ID for this specific message (copied from [globalSettingSenderId]).
+  /// The sender id as a value: reading asks the resolver, assigning installs a
+  /// resolver that answers the given constant forever.
+  ///
+  /// The right form for a client whose name *is* a constant — a browser build
+  /// tagged `'web-frontend-01'` knows its name at the line that sets it. It is
+  /// the wrong form for a name that is not settled yet, which is why the
+  /// resolver is the primary member and this is expressed over it rather than
+  /// beside it: there is one place the answer comes from, so the two spellings
+  /// cannot disagree.
+  static String get globalSettingSenderId => globalSettingSenderIdResolver();
+
+  static set globalSettingSenderId(String value) =>
+      globalSettingSenderIdResolver = () => value;
+
+  /// The sender this specific message reports, from
+  /// [globalSettingSenderIdResolver] at construction.
+  ///
+  /// Empty when nothing installed a resolver, which is a statement rather than
+  /// a gap: it says the sending application did not name itself.
   String sender = "";
 
   /// ISO 8601 formatted timestamp of when the log was created.
@@ -96,7 +135,7 @@ class TomRemoteLogMessage {
     this.timeStamp,
     this.origin,
   ) {
-    sender = globalSettingSenderId;
+    sender = globalSettingSenderIdResolver();
   }
 
   @override

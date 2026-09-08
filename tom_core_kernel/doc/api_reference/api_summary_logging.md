@@ -246,7 +246,7 @@ TomRemoteLogMessage.of(
 ```
 
 The default constructor is used for deserialization; `.of` populates all fields
-and copies `globalSettingSenderId` into `sender`.
+and asks `globalSettingSenderIdResolver` for `sender`.
 
 The type is `@tomReflector`-annotated and has no `fromJson`/`toJson` of its own:
 both directions go through `tomReflectionInfo.convertToJsonString` and
@@ -259,13 +259,14 @@ the sender by construction.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `globalSettingSenderId` | `String` | Global sender identifier prepended to messages from this client (default `"RDEF"`). |
+| `globalSettingSenderIdResolver` | `String Function()` | Answers which application sent a record, asked once per message. A function rather than a value because a name is often not settled when the resolver is installed — a `tom_core_server` deployment names itself in its configuration subclass constructor, which runs after the base constructor that installs. Defaults to `() => ""`. |
+| `globalSettingSenderId` | `String` | The same answer as a value: reading asks the resolver, assigning installs one that answers the given constant forever. The right form for a client whose name is a constant, the wrong one for a name not yet settled. |
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `sender` | `String` | The sender ID for this message (copied from `globalSettingSenderId`). |
+| `sender` | `String` | The sender this message reports, from `globalSettingSenderIdResolver` at construction. Empty when nothing named the application, which the collector reads as "file this under the isolate alone". |
 | `timeStamp` | `String` | ISO 8601 timestamp of when the log was created. |
 | `loggerLevel` | `int` | The logger's configured level as a bit pattern. |
 | `logLevel` | `int` | This message's level as a bit pattern. |

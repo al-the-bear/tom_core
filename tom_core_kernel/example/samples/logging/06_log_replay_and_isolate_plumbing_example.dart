@@ -279,8 +279,8 @@ Future<void> run() async {
   print('6. Remote-logging payloads:');
 
   final emptyRemote = TomRemoteLogMessage();
-  final originalSenderId = TomRemoteLogMessage.globalSettingSenderId;
-  TomRemoteLogMessage.globalSettingSenderId = 'edge-node-7';
+  final originalSenderId = TomRemoteLogMessage.globalSettingSenderIdResolver;
+  TomRemoteLogMessage.globalSettingSenderIdResolver = () => 'edge-node-7';
   final remoteMessage = TomRemoteLogMessage.of(
     TomLogLevel.production.levelPattern,
     TomLogLevel.info.levelPattern,
@@ -290,7 +290,7 @@ Future<void> run() async {
     fixedTime.toIso8601String(),
     'App.ping',
   );
-  TomRemoteLogMessage.globalSettingSenderId = originalSenderId;
+  TomRemoteLogMessage.globalSettingSenderIdResolver = originalSenderId;
 
   print('   default sender:         "${emptyRemote.sender}"');
   print('   configured sender:      ${remoteMessage.sender}');

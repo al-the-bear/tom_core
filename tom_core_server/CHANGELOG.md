@@ -1,5 +1,25 @@
 ## 1.3.0
 
+### Fixed
+
+- **A server's remote log records now say which server they came from
+  (tcincb110).** `TomRemoteLogMessage`'s sender defaulted to the kernel's
+  placeholder and no application ever set it, so a collector aggregating
+  several servers filed them all into one stream set distinguished only by
+  isolate name. `TomBaseServerConfiguration`'s constructor now installs
+  `TomRemoteLogMessage.globalSettingSenderIdResolver = () => tomAppId`,
+  alongside the line that registers the instance as the isolate's active
+  configuration — the one place that already says "this isolate's application
+  is me".
+
+  A *resolver* rather than a copy of `tomAppId`, for the reason `tomAppId` is
+  itself a getter: a configuration is named in its **subclass** constructor
+  body, which runs after the base constructor doing the installing, so a copy
+  taken there is the empty string. Every server in this workspace once made
+  that mistake with `tomAppId` itself. Pinned by a test that names the
+  application only in the subclass body and asserts the record still reports
+  it — and verified by planting the copy, which reds exactly that test.
+
 ### Documentation
 
 - **Every field of `TomBaseServerConfiguration` now carries a dartdoc, and a

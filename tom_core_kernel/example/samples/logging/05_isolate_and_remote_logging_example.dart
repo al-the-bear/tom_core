@@ -98,8 +98,11 @@ void run() {
   final server = TomRemoteLogServer();
 
   // --- Client side: identify this client and build a record to transmit. -----
-  final originalSenderId = TomRemoteLogMessage.globalSettingSenderId;
-  TomRemoteLogMessage.globalSettingSenderId = 'client-001';
+  final originalSenderId = TomRemoteLogMessage.globalSettingSenderIdResolver;
+  // A resolver rather than a value: the sender is asked for once per
+  // message, so an application that is named after this line still reports
+  // its own name.
+  TomRemoteLogMessage.globalSettingSenderIdResolver = () => 'client-001';
   final clientMessage = TomRemoteLogMessage.of(
     TomLogLevel.production.levelPattern,
     TomLogLevel.info.levelPattern,
@@ -238,7 +241,7 @@ void run() {
 
   // --- Restore shared statics ------------------------------------------------
   TomRemoteLogServer.localOutput = originalLocal;
-  TomRemoteLogMessage.globalSettingSenderId = originalSenderId;
+  TomRemoteLogMessage.globalSettingSenderIdResolver = originalSenderId;
   TomRemoteLogOutput.globalSettingFallbackOutput = originalFallback;
 }
 

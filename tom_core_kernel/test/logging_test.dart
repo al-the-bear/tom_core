@@ -857,7 +857,7 @@ void main() {
     group('TomRemoteLogMessage.of', () {
       test('should create message with all fields populated', () {
         final fixedTimestamp = DateTime(2026, 1, 2, 12, 30, 45);
-        TomRemoteLogMessage.globalSettingSenderId = 'test-sender';
+        TomRemoteLogMessage.globalSettingSenderIdResolver = () => 'test-sender';
 
         final message = TomRemoteLogMessage.of(
           TomLogLevel.production.levelPattern,
@@ -881,20 +881,59 @@ void main() {
         expect(message.timeStamp, equals('2026-01-02T12:30:45.000'));
         expect(message.origin, equals('TestClass.testMethod'));
 
-        TomRemoteLogMessage.globalSettingSenderId = 'RDEF';
+        TomRemoteLogMessage.globalSettingSenderIdResolver = () => '';
       });
     });
 
-    group('globalSettingSenderId', () {
-      test('should have default value of RDEF', () {
-        expect(TomRemoteLogMessage.globalSettingSenderId, equals('RDEF'));
+    group('globalSettingSenderIdResolver', () {
+      tearDown(() {
+        TomRemoteLogMessage.globalSettingSenderIdResolver = () => '';
       });
 
-      test('should be configurable', () {
-        final original = TomRemoteLogMessage.globalSettingSenderId;
-        TomRemoteLogMessage.globalSettingSenderId = 'custom-id';
-        expect(TomRemoteLogMessage.globalSettingSenderId, equals('custom-id'));
-        TomRemoteLogMessage.globalSettingSenderId = original;
+      test('answers the empty string until something installs one', () {
+        // Empty rather than a placeholder, so an unset sender looks unset. A
+        // plausible default is the worse failure: it says who sent the message
+        // and is wrong for every application at once, and a collector files
+        // them all together on the strength of it.
+        expect(TomRemoteLogMessage.globalSettingSenderIdResolver(), isEmpty);
+        expect(
+          TomRemoteLogMessage.of(0, 0, '', '', 'main', '', null).sender,
+          isEmpty,
+        );
+      });
+
+      test('is asked once per message, not once at installation', () {
+        // The property the resolver exists for. An application's name is often
+        // not settled when the resolver is installed -- a tom_core_server
+        // deployment names itself in its configuration subclass constructor,
+        // which runs after the base constructor that installs -- so a copy
+        // taken at installation captures the empty string. Reading the
+        // resolver per message is what survives that ordering.
+        var name = '';
+        TomRemoteLogMessage.globalSettingSenderIdResolver = () => name;
+
+        final beforeNaming = TomRemoteLogMessage.of(
+          0,
+          0,
+          '',
+          'early',
+          'main',
+          '',
+          null,
+        );
+        name = 'auth';
+        final afterNaming = TomRemoteLogMessage.of(
+          0,
+          0,
+          '',
+          'late',
+          'main',
+          '',
+          null,
+        );
+
+        expect(beforeNaming.sender, isEmpty);
+        expect(afterNaming.sender, 'auth');
       });
     });
 
@@ -1007,6 +1046,32 @@ void main() {
         expect(mockOutput.lastMessage, equals('test message'));
         expect(mockOutput.lastIsolateName, equals('client-001_worker-1'));
       });
+
+      test(
+        'files a record whose sender said nothing under the isolate alone',
+        () {
+          // The stream name is what a collector's per-client files are named
+          // after. `_worker-1` and `client-001_worker-1` sort apart while looking
+          // like the same shape, and a reader of the directory cannot tell
+          // whether the empty half was a sender called nothing or a field that
+          // never arrived. Dropping the separator says plainly that only the
+          // isolate is known.
+          final server = TomRemoteLogServer();
+          final message = TomRemoteLogMessage.of(
+            TomLogLevel.production.levelPattern,
+            TomLogLevel.info.levelPattern,
+            'INFO   ',
+            'unnamed sender',
+            'worker-1',
+            '2026-01-02T12:00:00.000',
+            null,
+          );
+          message.sender = '';
+
+          expect(server.receive(message).hasError, isFalse);
+          expect(mockOutput.lastIsolateName, equals('worker-1'));
+        },
+      );
 
       // Two independent things can refuse a record: the message can be
       // undecodable, or the sink can be broken. Inducing both in one test

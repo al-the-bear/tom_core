@@ -885,9 +885,21 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// than reading [appId] out of it here is the point: the subclass constructor
   /// body has not run yet, so there is no value to read — only an object that
   /// will have one.
+  ///
+  /// For the same reason it installs a *resolver* over [tomAppId] as the
+  /// kernel's remote-log sender rather than a copy of it. A remote log
+  /// collector names its per-client files after the sender, so without this
+  /// every application reports the kernel's default — and several servers of
+  /// one deployment, which is exactly when a collector is worth running, write
+  /// into one file set distinguished only by isolate name. The closure is
+  /// installed here because this is the one place that already says "this
+  /// isolate's application is me", and it is idempotent: a second
+  /// configuration in the same isolate installs an equivalent closure over the
+  /// same getter.
   TomBaseServerConfiguration(List<String> args) {
     setValues(getDefaultValues(args));
     this.args = args;
     _activeConfiguration = this;
+    TomRemoteLogMessage.globalSettingSenderIdResolver = () => tomAppId;
   }
 }

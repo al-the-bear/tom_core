@@ -139,7 +139,7 @@ class TomRemoteLogServer {
         TomLogLevel(m.logLevel),
         _sanitize(m.level),
         _sanitize('${m.message}'),
-        _sanitize("${m.sender}_${m.isolateName}"),
+        _sanitize(_streamName(m)),
         DateTime.parse(m.timeStamp),
         origin == null ? null : _sanitize(origin),
       );
@@ -178,7 +178,7 @@ class TomRemoteLogServer {
         TomLogLevel.error,
         TomLogger.ERROR,
         'Refused remote log record: $reason',
-        _sanitize("${m.sender}_${m.isolateName}"),
+        _sanitize(_streamName(m)),
         DateTime.now(),
         'TomRemoteLogServer.receive',
       );
@@ -192,6 +192,19 @@ class TomRemoteLogServer {
       // client in the returned `errorMessage`.
     }
   }
+
+  /// The stream name a record is filed under: the sender and the isolate that
+  /// wrote it, or the isolate alone when the sender said nothing.
+  ///
+  /// This is what a collector's per-client files are named after, so it is the
+  /// only thing separating two servers of one deployment. Dropping the
+  /// separator for an unnamed sender is not cosmetic: `_main` and `auth_main`
+  /// sort apart while looking like the same shape, and a reader of the
+  /// directory cannot tell whether the empty half was a sender called nothing
+  /// or a field that never arrived. `main` says plainly that only the isolate
+  /// is known.
+  static String _streamName(TomRemoteLogMessage m) =>
+      m.sender.isEmpty ? m.isolateName : '${m.sender}_${m.isolateName}';
 
   /// Maximum length of any single sanitized remote-log field, in UTF-16 code
   /// units.

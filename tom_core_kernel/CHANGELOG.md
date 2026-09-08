@@ -9,6 +9,44 @@ anyone who was writing them.
 
 ### Fixed
 
+- **Every remote log record said it came from `"RDEF"` (tcincb110).**
+  `TomRemoteLogMessage.globalSettingSenderId` was documented as the identifier
+  saying which client sent a record, and defaulted to that placeholder. A
+  workspace grep found no application assigning it — not `tom_core_server`, not
+  `tom_uam_server`, not any of the four sample servers — so every record from
+  every application carried the same sender.
+
+  Not cosmetic: `TomRemoteLogServer` names its per-client streams
+  `"<sender>_<isolate>"`, so a deployment aggregating several servers into one
+  collector wrote them all into one file set distinguished only by isolate
+  name — which distinguishes nothing when the servers are alike, and a
+  deployment of several servers is the case a collector exists for.
+
+  The sender is now resolved rather than copied.
+  `globalSettingSenderIdResolver` is a `String Function()` asked once per
+  record; `globalSettingSenderId` remains, as an accessor pair over it, so the
+  value form still reads and assigning it installs a resolver answering that
+  constant forever. That is the right form for a client whose name *is* a
+  constant and the wrong one for a name settled later — a `tom_core_server`
+  deployment names itself in its configuration subclass constructor, which runs
+  after the base constructor that installs, so a copy taken at installation
+  would be the empty string. Expressing the value over the resolver rather than
+  beside it means there is one place the answer comes from and the two
+  spellings cannot disagree.
+
+  The default answers **the empty string**, not a placeholder. An unset sender
+  now looks unset: `TomRemoteLogServer` files such a record under the isolate
+  name alone rather than under `_<isolate>`, because `_worker-1` and
+  `client-001_worker-1` sort apart while looking like the same shape, and a
+  reader of the directory cannot tell an empty sender from a field that never
+  arrived.
+
+  A consumer of `tom_core_server` installs nothing: its configuration installs
+  `() => tomAppId` when it registers itself as the isolate's active
+  configuration.
+
+### Fixed
+
 - **The lint that stops a library importing its own barrel was reported and not
   enforced (tcincb109).** Six `http_connection` files once imported
   `package:tom_core_kernel/tom_core_kernel.dart`, the barrel that exports them.
