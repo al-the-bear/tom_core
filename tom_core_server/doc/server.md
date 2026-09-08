@@ -19,6 +19,7 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 - [Request Context and Zone Values](#request-context-and-zone-values)
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
+- [Verification](#verification)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
 
@@ -195,6 +196,41 @@ to guess from and an intermediary free to sniff it as anything it likes.
 - **Pre/post handlers** — set `preExecutionHandler` / `postExecutionHandler` to
   cascade handlers around the router (e.g. static assets, fallbacks).
 - **Errors** — set `errorHandler` / `authenticationErrorHandler`.
+
+## Verification
+
+Three suites cover this module, split by what each can be asked without a
+socket.
+
+`test/server_test.dart` covers the pipeline as composed functions:
+`TomRequestLogInfo`, `extractAuthentication` reading a credential off a request,
+`verifyBearerToken` refusing a token this deployment did not sign,
+`contextSetupMiddleware` and `tomLoggingMiddleware`,
+`tomDefaultAuthenticationMiddleware` — including the case where the cached
+principal has expired and the credentials survive it — and `TomServer`'s
+constructor wiring and error handler. None of that needs a bound port, because
+a middleware is a function of a request.
+
+`test/server_self_login_test.dart` covers the deployment logging in as itself:
+reading `TomServiceCredential` out of the configuration, `logIn`,
+`loginAndInstall`, and the end-to-end consequence that gives the feature its
+point — the installed principal capping what a user's grants can reach.
+
+`test/server_exception_family_test.dart` is a reading of the source tree rather
+than of behaviour: every exception class in the package is a
+`TomServerException`, so one `on TomServerException` in the pipeline reaches all
+of them.
+
+```bash
+dart run example/server/server_example.dart
+```
+
+`example/server/server_example.dart` exercises the socket-free surface the
+server is composed from — the per-request log state, the credential reader, and
+two middlewares. `TomServer.start()` binds a real socket and needs a reflected
+configuration plus TLS material, so the assembled server is described here
+rather than run there. Every step checks its own result, and
+`test/examples_test.dart` runs it.
 
 ## Not Yet Implemented
 

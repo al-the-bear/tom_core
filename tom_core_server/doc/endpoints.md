@@ -27,6 +27,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Building the Router](#building-the-router)
   - [The Routing Table](#the-routing-table)
 - [Not Yet Implemented](#not-yet-implemented)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -784,6 +785,46 @@ it means "nothing a caller can see", not "nothing at all".
   the three hooks that delegate to it all declare `Object stacktrace`, so an
   implementation that wants to walk the trace casts it to `StackTrace` first.
   The value the pipeline passes always is one.
+
+## Verification
+
+Four suites cover this module, split by what each needs.
+
+`test/endpoints_test.dart` covers the annotations and the pure functions:
+`TomEndpoint`, `TomApiEndpointImplementation` and its merge, the class-level
+annotations, `TomTransactional`, `TomDefaultErrorHandler`, the routing metadata
+types, `shelfRoutePath`, and the four parameter injectors with
+`coercePrimitiveParameter` beneath them.
+
+`test/endpoints_pipeline_test.dart` runs the reflected pipeline for real:
+scanning annotated classes, resolving access through `getClassMethodMetadata`
+(C-12 / G-API-3), a contract-declared policy gating a live request, CORS
+preflight, the HTTP methods an endpoint may declare, declared response headers,
+the readme's own Quick start, the resource-key socket endpoint, and the
+healthcheck module's `GET /health` route — which is mounted here rather than by
+that module, and so is asserted here.
+
+`test/endpoints_transport_test.dart` covers the three transports over the
+pipeline: both form decoders (`TomMultipartForm.readForm` and
+`readUrlEncodedForm`, plus `tomConsumesForm` and `injectFormFields`),
+`TomRedirect`, and WebSockets — including a socket endpoint mounted alongside
+the HTTP ones and served over a loopback server.
+
+`test/endpoints_serialization_roundtrip_test.dart` asserts the one property a
+DTO has to have: it crosses both directions identically.
+
+```bash
+dart run example/endpoints/endpoints_example.dart
+```
+
+`example/endpoints/endpoints_example.dart` runs everything that needs neither a
+server nor a socket — the annotations, the default error handler's `Response`,
+both form decoders on requests built in-process, and the file-slot registry. The
+file-slot step needs generated reflection, which comes from
+`example/example_reflection.dart`, the example suite's single reflection root
+(regenerate with `./reflection_generation.sh`); its entities are declared in
+`example/endpoints/endpoints_entities.dart`. Every step checks its own result,
+and `test/examples_test.dart` runs it.
 
 ## Core Components
 

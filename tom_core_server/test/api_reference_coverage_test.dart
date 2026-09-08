@@ -129,7 +129,17 @@
 /// every one of them violated. Reference migrations under
 /// `example/<module>/migrations/` do not satisfy this: four guides cite that
 /// SQL while explaining a table, which is data a reader reads, not a program a
-/// reader runs. Twelve modules are quarantined on one named list.
+/// reader runs.
+///
+/// Every guide satisfies it now, and settling the last twelve produced the
+/// section this check was really asking for: each guide carries a
+/// `## Verification` section saying what each of its suites settles, which of
+/// them are `db`-tagged and skip without a server, and the command that runs
+/// its example. Writing them found seven suite names that do not exist —
+/// invented by pattern from a module's other filenames — which is what the
+/// neighbouring "every suite and script a guide names exists" check is for, and
+/// the reason attribution is worth demanding rather than merely encouraging:
+/// an attribution nothing verifies is a sentence, not a pointer.
 ///
 /// The group before it asks a question about the document's *tense* rather than
 /// its content. Every check above compares a claim against the code as it
@@ -3007,8 +3017,19 @@ final RegExp _suiteReference = RegExp(r'[\w./-]*_test\.dart\b');
 /// looking — with the two suites that actually exercise the orchestrator, and
 /// the one that exercises the whole reading half, unmentioned. A guide that
 /// names *a* suite reads exactly like a guide that names them all.
-List<String> _unnamedVerification(String module) {
-  final text = File('doc/$module.md').readAsStringSync();
+List<String> _unnamedVerification(String module) =>
+    _unnamedVerificationIn(module, File('doc/$module.md').readAsStringSync());
+
+/// [_unnamedVerification] over [text] rather than over the guide on disk.
+///
+/// Separated so the shapes this measurement distinguishes can be pinned against
+/// a fixture rather than against whichever module happens to exhibit each one.
+/// Pinning them to live modules makes a meta-test that fails on the day the
+/// debt is paid off, and a guard that has to be rewritten every time the
+/// package improves is one that gets weakened rather than understood. The
+/// shapes are properties of the rule; the package is only where they were
+/// first met.
+List<String> _unnamedVerificationIn(String module, String text) {
   final examples = _exampleArtifacts(module);
   final unnamed = _moduleSuites(module).where((s) => !text.contains(s));
   return [
@@ -3048,21 +3069,6 @@ List<String> _moduleSuites(String module) =>
 /// entry sits here until it is made rather than being settled by whichever
 /// answer was cheaper to write.
 const Set<String> _suiteNamingPending = {'preferences'};
-
-/// The modules whose guide does not yet name every suite and the example that
-/// verify it.
-const Set<String> _verificationPendingAttribution = {
-  'audit',
-  'authentication',
-  'authorization',
-  'endpoints',
-  'file_storage',
-  'healthcheck',
-  'little_things',
-  'object_persistence',
-  'server',
-  'transactions',
-};
 
 /// The modules whose `lib/src/tomserver/<module>/readme.md` still leaves at
 /// least one exported file unmentioned.
@@ -5583,77 +5589,89 @@ One: `TomKind`, documented beside the type that carries it.
     });
 
     for (final module in _modules()) {
-      test(
-        '$module names both',
-        () {
-          expect(
-            _unnamedVerification(module),
-            isEmpty,
-            reason:
-                'A guide is where a reader goes to find out what backs the '
-                'claims in it. Naming a suite but not the example leaves the '
-                'example unowned, which is exactly how the datasources '
-                'example came to spend a year with nine expectations written '
-                'as `assert` — inert under the `dart run` its own header '
-                'documents, so it printed a plausible transcript and exited 0 '
-                'with every one of them violated. Nothing pointed at it, so '
-                'nothing ran it.',
-          );
-        },
-        skip: _verificationPendingAttribution.contains(module)
-            ? 'verification artefacts not attributed yet.'
-            : null,
-      );
+      test('$module names both', () {
+        expect(
+          _unnamedVerification(module),
+          isEmpty,
+          reason:
+              'A guide is where a reader goes to find out what backs the '
+              'claims in it. Naming a suite but not the example leaves the '
+              'example unowned, which is exactly how the datasources '
+              'example came to spend a year with nine expectations written '
+              'as `assert` — inert under the `dart run` its own header '
+              'documents, so it printed a plausible transcript and exited 0 '
+              'with every one of them violated. Nothing pointed at it, so '
+              'nothing ran it.',
+        );
+      });
     }
 
-    test('every quarantined module still has something to attribute', () {
-      final settled = [
-        for (final module in _verificationPendingAttribution)
-          if (_unnamedVerification(module).isEmpty) module,
-      ];
-      expect(
-        settled,
-        isEmpty,
-        reason:
-            'a quarantine entry with nothing left to suppress turns a passing '
-            'module back into an unchecked one; drop it from the set',
-      );
-    });
-
     test('an unnamed artefact is what the sweep reports', () {
-      // Emptiness for the settled modules is only worth something if the
-      // measurement can see the debt at all — so drive it over one of each.
-      expect(_unnamedVerification('datasources'), isEmpty);
-      expect(_unnamedVerification('transactions'), [
-        'does not name transactions_test.dart',
-        startsWith('names none of its examples'),
+      // Emptiness across twenty modules is only worth something if the
+      // measurement can see the debt at all, so each shape is driven over text
+      // written to have it. `transactions` is the module named because it has
+      // exactly one suite and one example, which keeps the expected strings
+      // short; what is under test is the rule, not that module.
+      expect(_unnamedVerification('transactions'), isEmpty);
+      expect(
+        _unnamedVerificationIn('transactions', 'A guide naming nothing.'),
+        [
+          'does not name transactions_test.dart',
+          'names none of its examples '
+              '(example/transactions/transactions_example.dart)',
+        ],
+      );
+      // The fallback clause, which only a module with no name-matched suite can
+      // reach: `preferences` has none, and its example directory holds nothing
+      // runnable, so a guide naming nothing at all reports exactly one fault.
+      expect(_moduleSuites('preferences'), isEmpty);
+      expect(_exampleArtifacts('preferences'), isEmpty);
+      expect(_unnamedVerificationIn('preferences', 'A guide naming nothing.'), [
+        'names no test suite',
       ]);
+      expect(
+        _unnamedVerificationIn(
+          'transactions',
+          'Covered by `test/transactions_test.dart`.',
+        ),
+        [
+          'names none of its examples '
+              '(example/transactions/transactions_example.dart)',
+        ],
+      );
+      expect(
+        _unnamedVerificationIn(
+          'transactions',
+          'Run `dart run example/transactions/transactions_example.dart`.',
+        ),
+        ['does not name transactions_test.dart'],
+      );
+
       // Reference migrations are not an example a reader runs, and `audit.md`
       // names some — so it is the case that separates citing data from
-      // pointing at a program.
+      // pointing at a program. Read off the directory, which is where that
+      // distinction is actually made.
       expect(_exampleArtifacts('audit'), ['example/audit/audit_example.dart']);
-      expect(_unnamedVerification('audit'), [
-        startsWith('does not name audit_anchor_test.dart'),
-        startsWith('names none of its examples'),
-      ]);
     });
 
     test('naming one suite is not naming the module\'s suites', () {
-      // The distinction the strengthened rule turns on, and the one no live
-      // module can demonstrate any more now that `db_migration` is settled:
-      // `authorization` names *a* suite — several, in fact, belonging to other
-      // modules — while leaving its own unnamed. Before the change that was
-      // indistinguishable from full attribution, which is how a guide came to
-      // cite three suites and own none of them.
-      final text = File('doc/authorization.md').readAsStringSync();
+      // The distinction the strengthened rule turns on. A guide may name
+      // several suites and still own none of them — which is how one came to
+      // cite three and leave its own unmentioned. The weak rule passes on this
+      // text; the strengthened one does not, and nothing but naming the
+      // module's own suite settles it.
+      const citesAnother =
+          'Covered by `test/datasources_test.dart` and '
+          '`test/framework_schema_test.dart`, and by '
+          '`dart run example/transactions/transactions_example.dart`.';
       expect(
-        _suiteReference.hasMatch(text),
+        _suiteReference.hasMatch(citesAnother),
         isTrue,
         reason: 'the weak rule is satisfied — a suite is named',
       );
       expect(
-        _unnamedVerification('authorization'),
-        ['does not name authorization_test.dart'],
+        _unnamedVerificationIn('transactions', citesAnother),
+        ['does not name transactions_test.dart'],
         reason: 'the strengthened rule is not: its own suite is missing',
       );
     });

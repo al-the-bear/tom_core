@@ -25,6 +25,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 - [Grouping and Aggregation](#grouping-and-aggregation)
 - [How Metadata Is Resolved](#how-metadata-is-resolved)
 - [SQL Dialects](#sql-dialects)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -1211,6 +1212,48 @@ A repository is **constructed, not discovered**: `MariadbRepository<User,
 int>([User])`, as every example above does. There is no registry keyed on a
 data-source type name, and one would not help — the type arguments are what make
 a repository the repository *for an entity*, and a string cannot supply them.
+
+## Verification
+
+Two suites carry the module's name, split by whether a server is needed.
+
+`test/object_persistence_test.dart` always runs, and reaches most of the module:
+the operator tree's literals, comparisons, parameters, typed column references
+and compound predicates, `BETWEEN` arity, the persistence annotations and
+`TomColumnInformation`, the save SQL builders,
+`TomAnnotationAnalyzer.getPersistentColumns`, the C-7 injection neutralisation,
+the dialect's `objectOp` dispatch, the fact that `TomPersistenceEventHandler` is
+resolved and then never invoked — pinned against the source, because two
+documents say so in prose — and that a repository is constructed rather than
+discovered.
+
+`test/object_persistence_db_test.dart` is tagged `db` and skips when no server
+is reachable, so the default run stays green without one. It covers CRUD through
+a repository against a real MariaDB, which is the half that cannot be settled by
+reading generated SQL.
+
+Several neighbouring surfaces are covered by suites named after the type rather
+than the module, and are named where each is described:
+`crud_repository_exceptions_test.dart` and
+`crud_repository_delete_counts_test.dart` for the repository's refusals and
+counts, `reference_query_test.dart` and `reference_association_db_test.dart` for
+`@TomReference`, `data_scope_test.dart` and `column_authorization_test.dart` for
+row and column authorization, and `persistence_metadata_sharing_test.dart` for
+the resolution described in [How Metadata Is Resolved](#how-metadata-is-resolved).
+
+```bash
+dart run example/object_persistence/object_persistence_example.dart
+```
+
+`example/object_persistence/object_persistence_example.dart` runs the real
+surface in sixteen steps rather than describing it — mapping an entity,
+compiling the four sentence kinds, grouping and aggregation, paging, column
+authorization, and the `TomQueryBuilder` DSL every sentence compiles down to,
+each with its refusals. The refusals are most of what the module has to say: a
+query it accepts is one you would have written anyway, so what is worth showing
+is where it stops you. Its entities live in
+`example/object_persistence/object_persistence_entities.dart`. Every step checks
+its own result, and `test/examples_test.dart` runs it.
 
 ## Core Components
 

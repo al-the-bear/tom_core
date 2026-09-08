@@ -23,6 +23,7 @@ remembering to ask.
 - [Anchoring the Chain Head](#anchoring-the-chain-head)
 - [Failure Behaviour](#failure-behaviour)
 - [Suppressing the Trail](#suppressing-the-trail)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -952,6 +953,54 @@ letting the trail's own machinery persist without auditing itself into an
 infinite regress. It is not a general opt-out — the declaration-based
 `@TomAudited(enabled: false)` is, precisely because it is visible in the source
 and therefore auditable in its own right.
+
+## Verification
+
+Six suites carry the module's name, three of which need a server.
+
+`test/audit_test.dart` is the largest and always runs: `TomAuditActor`
+attribution, `TomAuditRecord` and the normalisation of before/after values to
+what `jsonEncode` accepts, `auditDiff`, the declared-versus-automatic split
+`TomAudited` expresses and its resolution through the reflector, `TomAuditEntry`
+and the hash chain — including that the chain fields are required rather than
+defaulted — and the memory and file sinks, with the rule that every sink reports
+a failure through the future it returns rather than throwing past its caller.
+
+`test/audit_anchor_test.dart` covers the anchors: `TomAuditAnchor`, the
+self-description for any head hash, `verifyAgainstAnchor` and what it does with a
+verifier that throws, the precedence when several checks fail at once, RSA
+signing, both anchor stores — including writers whose names collide after
+sanitisation — and the publisher with its close path.
+`test/audit_anchor_monitor_test.dart` covers the monitor above them: its
+ordinary states, its findings, the round, the seam a deployment substitutes, the
+verification job and `TomAuditAnchorCheck`.
+
+`test/audit_sql_test.dart` reads the source tree: the migration files match the
+shipped DDL, the trail schema encodes the invariants the chain relies on, and the
+guard triggers reject rather than silently ignore.
+
+Two suites are tagged `db` and skip when no server is reachable, so the default
+run stays green without one. `test/audit_sql_db_test.dart` covers the relational
+sink against a live MariaDB — appending, reopening, concurrency, writer scoping,
+retention removing a prefix and nothing else, verification noticing what the
+chain exists to notice, an anchor catching what the chain cannot, the write-once
+probe, and the grant that is the guarantee. `test/audit_db_test.dart` covers the
+repository chokepoint, which is what makes the trail automatic rather than
+something a caller remembers.
+
+```bash
+dart run example/audit/audit_example.dart
+```
+
+`example/audit/audit_example.dart` walks the module without a database or a
+server: installing a sink, the record's shape, attribution from the ambient
+zone, the declared/automatic split, redaction, the hash chain, the file sink
+with its whole-file retention, the relational sink's schema and write-once
+check, and the anchors. The records are produced by hand, which is what keeps
+the example connection-free — the two chokepoints that produce them in a running
+server are covered by the two `db` suites above and by
+`test/endpoints_pipeline_test.dart`. Every step checks its own result, and
+`test/examples_test.dart` runs it.
 
 ## Core Components
 

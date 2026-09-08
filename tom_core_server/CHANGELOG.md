@@ -2,6 +2,45 @@
 
 ### Fixed
 
+- **Ten module guides named neither the suite nor the example that verifies
+  them; all twenty now do (tcincb125).** A guide is where a reader goes to find
+  out what backs the claims in it, and an example nobody points at is an example
+  nobody runs — which is how `example/datasources/datasources_example.dart` came
+  to spend a year with nine expectations written as `assert`, inert under the
+  `dart run` its own header documents, printing a plausible transcript and
+  exiting 0 with every one of them violated.
+
+  `audit`, `authentication`, `authorization`, `endpoints`, `file_storage`,
+  `healthcheck`, `little_things`, `object_persistence`, `server` and
+  `transactions` each gained a `## Verification` section on the shape
+  `doc/datasources.md` and `doc/scheduling.md` established: what each suite
+  settles, which suites are `db`-tagged and skip without a server, and the
+  command that runs the example. The suites named after a type rather than the
+  module — `two_factor_*`, `oauth_*`, `crud_repository_*`, `data_scope_*` and
+  the rest — are named too, beside the section that describes what they cover.
+
+  **Writing the sections found seven suite names that do not exist**, invented
+  by pattern from a module's other filenames (`oauth_flow_test.dart` for what is
+  really `oauth_test.dart`, and six more). The neighbouring "every suite and
+  script a guide names exists" check caught all seven, which is the reason
+  attribution is worth demanding rather than encouraging: an attribution nothing
+  verifies is a sentence, not a pointer.
+
+  The examples themselves needed no repair — every one already states its
+  expectations through the package's throwing `check` helper, and
+  `test/examples_test.dart` already spawns each one not spawned by a module
+  suite.
+
+  `_verificationPendingAttribution` is gone with its `skip:` and its staleness
+  meta-test. Two neighbouring meta-tests were pinned to the modules that
+  happened to be failing — `transactions` for a missing suite, `audit` for a
+  missing example, `authorization` for naming somebody else's — so paying the
+  debt off broke them. `_unnamedVerificationIn(module, text)` now takes the
+  guide text, and both are pinned against fixtures: a guard that has to be
+  rewritten every time the package improves is one that gets weakened rather
+  than understood.
+
+
 - **Two authentication entities were documented by their column names, which no
   caller can write (tcincb123).** `TomUserTwoFactorEnrolment` and
   `TomOAuthStateRow` each had a section that read as a complete account of the

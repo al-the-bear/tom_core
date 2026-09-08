@@ -39,6 +39,7 @@ without the second; the second is built entirely on the first.
   - [Serving a File by Hand](#serving-a-file-by-hand)
   - [A File That Arrives as Part of a Form](#a-file-that-arrives-as-part-of-a-form)
 - [Exports Ride the Same API](#exports-ride-the-same-api)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -852,6 +853,42 @@ interchangeable with. What stays here is the one claim that is about the two
 modules *agreeing*: an export key and a blob key are one grammar in two
 vocabularies, and the grammar is defined here, so `test/file_storage_test.dart`
 pins `TomExportStore.validateKey` against `TomBlobStore.validateKey`.
+
+## Verification
+
+Three suites cover this module, split by what each needs.
+
+`test/file_storage_test.dart` always runs and covers the contract every backend
+shares — the key grammar, the refusal of an invalid key on every method of every
+backend, an infrastructure failure named as a storage error rather than escaping
+as a raw `FileSystemException`, `storedAt` reported as UTC by all of them, and
+the property the whole abstraction exists for, that one key cannot reach
+another. On top of that it covers the two backends needing no infrastructure
+(`TomMemoryBlobStore`, `TomDirectoryBlobStore`), the parts of
+`TomDatabaseBlobStore` that need no database, `TomAwsV4Signer`, `TomS3BlobStore`
+and the `TomBlobStoreInfo` registry with its configuration.
+
+`test/file_storage_schema_test.dart` is a reading of the source tree: the
+migration files match the shipped DDL, and the blob schema encodes what the
+store relies on.
+
+`test/file_storage_db_test.dart` is tagged `db` and skips when no server is
+reachable. It covers what only a database can settle: `TomDatabaseBlobStore`
+with and without `createSchema`, a store built from configuration,
+file-reference columns end to end, and blob access under a C-4 grade and under a
+row scope — the two authorization rules that decide whether bytes may move at
+all.
+
+```bash
+dart run example/file_storage/file_storage_example.dart
+```
+
+`example/file_storage/file_storage_example.dart` demonstrates the whole
+capability with no database, bucket or credential. The thing to watch for is
+what is *absent*: at no point is a whole file held, and step 3 proves it — a
+payload larger than any buffer in the program arrives as a sequence of chunks,
+and the count of them is the assertion. Every step checks its own result, and
+`test/examples_test.dart` runs it.
 
 ## Core Components
 

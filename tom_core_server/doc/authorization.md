@@ -15,6 +15,7 @@ row scope.
 - [Lifetime and Expiry](#lifetime-and-expiry)
 - [Grants, Grades and Delegations](#grants-grades-and-delegations)
 - [The Grant-Driven Row Scope](#the-grant-driven-row-scope)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -379,6 +380,36 @@ the built-in `owner` and `group` scopes.
 `example/authorization/resource_data_scope_example.dart` walks all of this
 connection-free; `test/resource_data_scope_db_test.dart` covers it end to end
 against MariaDB.
+
+## Verification
+
+`test/authorization_test.dart` covers the per-token principal cache on both
+sides of the isolate boundary: storing and reading a resolved principal in the
+main isolate, the miss, the expiry — and the removal that read performs, which
+turns the next read of the same dead token back into an ordinary miss — the
+refusal to cache a token whose `validUntil` claim is unreadable, the eviction
+sweep that bounds the map, the cross-isolate command objects, and
+`TomAuthorizationCacheExecutor` servicing them. The worker-isolate cases are
+asserted through the same API the main-isolate ones use, which is the claim
+worth making: a hit, a miss and an expiry are reported identically on either
+side, so a caller cannot tell where it runs.
+
+The graded model and the grant-driven row scope are covered by suites named
+after the types rather than the module — `graded_authorization_test.dart`,
+`principal_resource_grant_test.dart`, `principal_delegation_test.dart`,
+`resource_data_scope_test.dart` and its `_db` sibling — and are described in
+[Grants, Grades and Delegations](#grants-grades-and-delegations) and
+[The Grant-Driven Row Scope](#the-grant-driven-row-scope).
+
+```bash
+dart run example/authorization/authorization_example.dart
+dart run example/authorization/resource_data_scope_example.dart
+```
+
+Both examples check every step through the package's throwing `check` helper
+and are run by `test/examples_test.dart`. The second runs connection-free by
+printing the predicate the repository would AND into its `WHERE`, which is the
+whole of what the scope contributes.
 
 ## Core Components
 

@@ -15,6 +15,7 @@ handle around.
 - [Transaction Scopes](#transaction-scopes)
 - [How the Pipeline Uses It](#how-the-pipeline-uses-it)
 - [Concurrency Model](#concurrency-model)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -213,6 +214,28 @@ A transaction may conclude in a different zone from the one that opened it (afte
 an `await`, or from a callback scheduled elsewhere), so each `TomTransaction`
 holds a reference to the scope it is current in and clears *that* scope —
 identity-guarded, so a concluded transaction can never wipe a successor.
+
+## Verification
+
+`test/transactions_test.dart` covers the manager end to end against a scripted
+participant: opening and concluding a transaction, the commit veto that turns a
+commit into a rollback, `registerParticipant`'s all-or-nothing enlistment —
+including the two failures a participant can present, a `startTransaction` that
+returns `false` and one that throws — scope isolation through
+`runInTransactionScope`, ambient enlistment, and `TomTransactionException`. It
+also holds the group `The example runs green`, which spawns the example and
+asserts its transcript, and a check that this guide and the contract agree about
+there being no prepare phase.
+
+```bash
+dart run example/transactions/transactions_example.dart
+```
+
+`example/transactions/transactions_example.dart` drives the same lifecycle with
+an in-memory participant, so the mechanics are visible without a data source. In
+production the participants are data sources — `TomDataSource` implements
+`TomTransactionParticipant` — and the endpoint pipeline opens and closes the
+transaction around a `@TomTransactional` endpoint.
 
 ## Core Components
 

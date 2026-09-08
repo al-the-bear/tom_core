@@ -14,6 +14,7 @@ principal into an authentication token and an authorization token.
 - [Two-Factor Authentication](#two-factor-authentication)
 - [Server Self-Login](#server-self-login)
 - [External Identity (OAuth 2.0 / OIDC)](#external-identity-oauth-20--oidc)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Status and Limitations](#status-and-limitations)
 - [Dependencies](#dependencies)
@@ -1913,6 +1914,38 @@ without the application registering anything.
 | `login.error.oauth.provisioning-unsupported` | `autoProvision` is configured but the directory does not implement it. |
 | `login.error.oauth.no-identity-store` | No `TomExternalIdentityStore` is installed. |
 | `login.error.oauth.credential-not-supported` | A non-OAuth credential arrived and there is no `delegate`. |
+
+## Verification
+
+`test/authentication_test.dart` covers the module's own contract:
+`TomAuthenticationData`, the dummy service, the `TomAuthenticationService`
+contract every service satisfies, the adaptor annotations the registry scans,
+and `TomAuthenticationServer` including its login flow.
+
+The surfaces this module grew later are covered by suites named after the
+mechanism rather than the module: `two_factor_test.dart`,
+`two_factor_delivered_code_test.dart` and `two_factor_enrolment_db_test.dart`
+for [Two-Factor Authentication](#two-factor-authentication);
+`server_self_login_test.dart` for [Server Self-Login](#server-self-login); and
+`oauth_test.dart`, `oauth_state_store_test.dart`,
+`oauth_state_store_db_test.dart` and `oauth_tokens_db_test.dart` for
+[External Identity](#external-identity-oauth-20--oidc). The three `_db` suites
+there are tagged `db` and skip when no server is reachable.
+
+```bash
+dart run example/authentication/authentication_example.dart
+dart run example/authentication/two_factor_login_example.dart
+dart run example/authentication/two_factor_enrolment_example.dart
+dart run example/authentication/oauth_login_example.dart
+```
+
+Four examples, because the module has four flows and one program showing all of
+them would show none of them clearly. The first configures the seams; the other
+three run a flow end to end against a scripted seam — the two-pass login, the
+enrolment round trip that turns "you must use 2FA" from a lockout into an
+onboarding step, and the OAuth handshake against a scripted provider, so no
+network and no browser is involved. Each checks every step through the package's
+throwing `check` helper, and `test/examples_test.dart` runs all four.
 
 ## Core Components
 

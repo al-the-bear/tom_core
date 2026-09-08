@@ -17,6 +17,7 @@ body a client receives.
 - [Request Correlation](#request-correlation)
 - [The clientThrow Flag](#the-clientthrow-flag)
 - [The Error Envelope](#the-error-envelope)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -205,6 +206,26 @@ The function is declared here for the same reason `TomRequestId` is.
 `TomServerException` decides the one conditional field, and this is the module
 every other one already depends on — so both error handlers reach the builder
 without either reaching the other.
+
+## Verification
+
+`test/little_things_test.dart` covers all three types the module contributes:
+`TomRequestId` and the zone it is read out of, `TomServerException`'s isolate
+attribution, its `clientThrow` flag and the request correlation it picks up, the
+one subclass declared beside it (`TomLoginException`), and `tomErrorEnvelope` —
+the wire shape every error response uses.
+
+```bash
+dart run example/little_things/little_things_example.dart
+```
+
+`example/little_things/little_things_example.dart` walks the same ground in six
+steps, ending on the one that is a claim about *the type system* rather than
+about a value: a `catch` clause written for `TomServerException` catches a
+`TomLoginException`, which is how the pipeline reaches every server exception
+with one `on` clause. Every step checks its own result through the package's
+throwing `check` helper, so a green run is a verification rather than a
+transcript; `test/examples_test.dart` runs it, which is what keeps that true.
 
 ## Core Components
 

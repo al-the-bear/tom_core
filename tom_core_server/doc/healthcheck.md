@@ -17,6 +17,7 @@ not a readiness endpoint — see
 - [One Verdict for the Process](#one-verdict-for-the-process)
 - [Customizing the Health Check](#customizing-the-health-check)
 - [How It Is Wired](#how-it-is-wired)
+- [Verification](#verification)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -111,6 +112,25 @@ caller/analyzer concern, not done by this module.
 it by reflection, resolves its bean, and mounts the `/health` route — no manual
 registration needed. The analyzer is a `static` field on `TomHealthServer`, so a
 single assignment applies to every request.
+
+## Verification
+
+`test/healthcheck_test.dart` covers the surface a deployment drives directly:
+`TomDefaultHealthAnalyzer`'s verdict, `TomHealthServer.health` delegating to
+whichever analyzer is installed, and the declared route. The *mounted* route is
+a different claim — it is produced by the reflection-based endpoints pipeline —
+so it is asserted where that pipeline runs, in
+`test/endpoints_pipeline_test.dart`'s group `healthcheck GET /health route`.
+
+```bash
+dart run example/healthcheck/healthcheck_example.dart
+```
+
+`example/healthcheck/healthcheck_example.dart` shows the analyzer seam without
+the router, deliberately: mounting the route means initializing generated
+reflection and building a pipeline, which would bury the one thing the example
+is about. Every step checks its own result, and `test/examples_test.dart` runs
+it.
 
 ## Core Components
 
