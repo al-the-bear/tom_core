@@ -883,6 +883,129 @@ void main() {
     });
   });
 
+  // A renderer and a reader are only correct as a pair, and these two were not
+  // one. `sqlDate` and `sqlTimeOfDay` write `'2026-07-15'` and `'14:30:05'`;
+  // `TomDbDate.of` and `TomDbTime.of` parsed with `TomZonedDate.parseFromString`
+  // and `TomZonedTime.parseFromString`, which read Tom's `@D@…` / `@T@…`
+  // serialization and nothing else. So every value this module wrote to a
+  // `DATE` or `TIME` column threw when it was read back — and nothing noticed,
+  // because no test had ever completed the circle. Each direction had its own
+  // tests and both passed.
+  group('a date and a time survive the round trip they are written for', () {
+    final dialect = MariadbSqlDialect();
+
+    /// The text a column holds after [value] is written through the dialect,
+    /// with the quotes the driver does not store.
+    String stored(Object value) {
+      final literal = dialect.objectOp(value);
+      return literal.substring(1, literal.length - 1);
+    }
+
+    test('a TomZonedDate reads back naming the same day', () {
+      final written = TomZonedDate(year: 2026, month: 7, day: 15);
+      final read = TomDbDate.of(stored(written)).get()!;
+      expect(read.year, 2026);
+      expect(read.month, 7);
+      expect(read.day, 15);
+    });
+
+    test('a TomZonedTime reads back naming the same reading', () {
+      final written = TomZonedTime(hour: 14, minute: 30, second: 5);
+      final read = TomDbTime.of(stored(written)).get()!;
+      expect(read.hour, 14);
+      expect(read.minute, 30);
+      expect(read.second, 5);
+    });
+
+    test('the components are those of the value, not of the reader', () {
+      // The renderer takes the components *as labelled* and applies no zone
+      // conversion, so the reader must not apply one either — a value written
+      // as 14:30 in Tokyo is stored as 14:30 and has to read back as 14:30,
+      // whatever zone the process running this test is in.
+      final tokyo = TomZonedTime(
+        hour: 14,
+        minute: 30,
+        timezone: TomTimezone.fromName('Asia/Tokyo'),
+      );
+      expect(stored(tokyo), '14:30:00');
+      expect(TomDbTime.of(stored(tokyo)).get()!.hour, 14);
+    });
+
+    test('the zone does not survive, and that is the column, not the reader', () {
+      // Stated as a test because it is the cost of storing a native `TIME`
+      // rather than Tom's serialized form: `'14:30:00'` has nowhere to put a
+      // zone, so the value comes back anchored in UTC. A caller that needs the
+      // zone stores the `@T@…` text in a text column, which both readers still
+      // accept — asserted below so the escape hatch is known to work.
+      final tokyo = TomZonedTime(
+        hour: 14,
+        minute: 30,
+        timezone: TomTimezone.fromName('Asia/Tokyo'),
+      );
+      expect(TomDbTime.of(stored(tokyo)).get()!.timezone, TomTimezone.utc);
+      expect(
+        TomDbTime.of(tokyo.toString()).get()!.timezone,
+        TomTimezone.fromName('Asia/Tokyo'),
+      );
+      expect(
+        TomDbDate.of(
+          TomZonedDate(year: 2026, month: 7, day: 15).toString(),
+        ).get()!.day,
+        15,
+      );
+    });
+
+    test('a null or empty column is an absent value, not a parse failure', () {
+      // The driver reports an absent column as `null` or as the empty string
+      // depending on the row mapper — the same pair `parseOptionalSqlInstant`
+      // collapses. Reading the empty string as a malformed date would turn a
+      // `NULL` column into an exception on every row that has one.
+      expect(TomDbDate.of(null).get(), isNull);
+      expect(TomDbDate.of('').get(), isNull);
+      expect(TomDbTime.of(null).get(), isNull);
+      expect(TomDbTime.of('').get(), isNull);
+    });
+
+    test('a TIME(6) column keeps whole seconds', () {
+      // MariaDB appends the sub-second digits a `TIME(n)` column declares.
+      // `sqlTimeOfDay` writes none, so they are dropped rather than rejected:
+      // a column declared with precision must not fail every read.
+      expect(TomDbTime.of('14:30:05.123456').get()!.second, 5);
+    });
+
+    test('an interval past 23 hours is refused, not wrapped', () {
+      // A `TIME` column doubles as MariaDB's interval type and spans to
+      // 838:59:59. `TomZonedTime` holds a clock reading, which `25:00:00` is
+      // not — so it throws rather than silently becoming 01:00 the next day,
+      // because a duration stored in a time-of-day column is a modelling
+      // mistake and rolling it over would hide it.
+      expect(() => TomDbTime.of('25:00:00'), throwsFormatException);
+      expect(() => TomDbTime.of('838:59:59'), throwsFormatException);
+    });
+
+    test('neither reader guesses at text it does not recognise', () {
+      expect(() => TomDbDate.of('15/07/2026'), throwsFormatException);
+      expect(() => TomDbTime.of('half past two'), throwsFormatException);
+      // A timestamp is the commonest wrong thing to find in either column, and
+      // the one a lenient parser would half-accept.
+      expect(() => TomDbDate.of('2026-07-15 14:30:00'), throwsFormatException);
+      expect(() => TomDbTime.of('2026-07-15 14:30:00'), throwsFormatException);
+    });
+
+    test('a DATE column arrives with the midnight the driver appends', () {
+      // Not a hypothetical: the MariaDB driver materialises a `DATE` into the
+      // same shape it gives a `DATETIME`, so the text a reader is handed is
+      // `2026-07-15 00:00:00.0` and not the `2026-07-15` the renderer wrote.
+      // Only a live server shows that — which is why the round trip has a
+      // `db`-tagged sibling — and it is why the pattern admits a trailing
+      // midnight while the assertion above still refuses a real clock reading.
+      expect(TomDbDate.of('2026-07-15 00:00:00.0').get()!.day, 15);
+      expect(TomDbDate.of('2026-07-15 00:00:00').get()!.day, 15);
+      expect(TomDbDate.of('2026-07-15T00:00').get()!.day, 15);
+      expect(() => TomDbDate.of('2026-07-15 00:00:01'), throwsFormatException);
+    });
+  });
+
   group('MariaDbDatasource.toPositionalStatement', () {
     // The MySQL binary protocol binds positional `?` placeholders. The
     // datasource translates the generated `:name` SQL to that form. A naive

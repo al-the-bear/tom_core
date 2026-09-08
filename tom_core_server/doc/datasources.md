@@ -46,6 +46,7 @@ declared.
 | `SqlString` | typedef | A `String` that documents "this is a SQL fragment" |
 | `sqlInstant` / `parseSqlInstant` / `parseOptionalSqlInstant` | function | The one encoding of an instant in a `DATETIME(6)` column — always UTC, six fractional digits |
 | `sqlDate` / `sqlTimeOfDay` | function | The two halves an instant splits into: the `YYYY-MM-DD` a `DATE` column takes and the `HH:MM:SS` a `TIME` column takes, components as labelled |
+| `parseSqlDate` / `parseSqlTimeOfDay` | function | The reading halves of those two: a `DATE` back to a `TomZonedDate`, a `TIME` back to a `TomZonedTime` |
 | `TomStandardSqlDialect` | class | Renders operator nodes to standard-SQL fragments |
 | `TomAggregateFunction` | enum | The aggregate vocabulary a dialect must render (`count`/`sum`/`avg`/`min`/`max`) |
 | `TomSqlTypeFamily` | enum | The coarse type classes a stored column can belong to — what a dialect reduces a SQL type name *to* |
@@ -144,6 +145,9 @@ calendar it was written in*: converting `2026-03-01` to UTC moves it to February
 ```dart
 sqlDate(DateTime(2026, 3, 1, 23, 30));       // 2026-03-01
 sqlTimeOfDay(DateTime(1970, 1, 1, 9, 5, 3)); // 09:05:03
+
+parseSqlDate('2026-03-01').day;        // 1
+parseSqlTimeOfDay('09:05:03').hour;    // 9
 ```
 
 Sub-second digits are dropped from a time: a `TIME` with no declared precision
@@ -155,6 +159,30 @@ the same column** and must spell a value identically — `dateOp` / `timeOp`
 inline a literal into generated SQL, while the MariaDB bind boundary renders a
 bound value. Each quotes these renderers instead of restating the format, so the
 two cannot drift apart.
+
+`parseSqlDate` and `parseSqlTimeOfDay` are the reading halves, and they live
+beside the renderers for the same reason: a writer and a reader are only correct
+as a pair. Each takes the components as labelled, which is what makes the round
+trip return the day and the reading that were written — and each also accepts
+Tom's own `@D@…` / `@T@…` serialization, for a value that reached a text column
+through `toString()` rather than through this module. What a `DATE` or `TIME`
+column cannot carry is the **zone**, so a value read back from one is anchored
+in UTC; see [Not Yet Implemented](#not-yet-implemented).
+
+Two things about reading are properties of the driver rather than of the format.
+A `DATE` column arrives as `2026-03-01 00:00:00.0` — materialised into the shape
+a `DATETIME` gets — so the trailing midnight is accepted and discarded, while a
+trailing clock reading that is not zero is refused: that value came from a
+timestamp column being read by the wrong reader. And a `TIME` column may hold up
+to 838 hours, because MariaDB's `TIME` doubles as a duration type; a value past
+23 hours is not a clock reading and is refused rather than wrapped into the next
+day.
+
+Which reader runs is decided by the entity's declared type — a `TomZonedDate`
+or `TomZonedTime` field, or a `TomDbDate` / `TomDbTime` box. A box the driver
+has no reader for raises
+`error.result_processing.unknown_type_dbtype_conversion`, naming the box and the
+column, rather than being read as text.
 
 Which half a value means is decided by its **type**. `TomZonedDate` and
 `TomZonedTime` both extend `DateTime`, so every dispatch that recognises them
@@ -989,6 +1017,10 @@ test here requires this file in particular to keep using it.
   as labelled rather than normalised to UTC. Shared by the dialect's literals
   and the bind boundary so the two routes to a column agree. See
   [The two halves an instant splits into](#the-two-halves-an-instant-splits-into).
+- **`parseSqlDate` / `parseSqlTimeOfDay`** — their reading halves, back to a
+  `TomZonedDate` and a `TomZonedTime`. A renderer and a reader are only correct
+  as a pair, so they are named as one and `TomDbDate.of` / `TomDbTime.of` call
+  through to them.
 - **`TomOperator<R>`** — the typed SQL expression node (`generate`, `getFields`,
   `getParameters`).
 - **`TomStandardSqlDialect`** — SQL-fragment generation; `SqlString`. Also the
@@ -1034,14 +1066,21 @@ test here requires this file in particular to keep using it.
   `TomPreparedStatement` and dialect and registers them with
   `@TomDatasourceDriver`, as described in
   [Data Sources and Drivers](#data-sources-and-drivers).
-- **`TomDbTime` is declared but not wired.** The box exists and is exported,
-  and a `TIME` column classifies to `TomSqlTypeFamily.time`, but nothing
-  produces one: the MariaDB read path has no branch for it and falls to
-  `error.result_processing.unknown_type_dbtype_conversion`, and `objectOp`
-  quotes a `TomZonedTime` as its `toString()` rather than dispatching to a time
-  literal. Until the wire format is settled, store a time of day as the
-  `DATETIME(6)` instant it was taken from, or as a `TomDbString` in a format
-  the application owns.
+- **A `DATE` or `TIME` column does not carry a zone, so a value read back from
+  one has none.** Both are stored as the components the value labels — the 5th
+  is written as the 5th, 14:30 as 14:30 — which is what makes the column
+  orderable and comparable in SQL, and there is nowhere in `'2026-07-05'` or
+  `'14:30:00'` to put `Pacific/Kiritimati`. So the reading survives the round
+  trip and the anchoring does not: the value comes back anchored in UTC. A
+  deployment that needs the zone stores `TomZonedDate.toString()` /
+  `TomZonedTime.toString()` — the `@D@…` / `@T@…` form, which carries it — in a
+  text column; both readers accept that form as well as the native one.
+- **A `TIME` column may hold an interval, and this module will not read one.**
+  MariaDB's `TIME` spans -838:59:59 to 838:59:59 because it doubles as a
+  duration type. `TomZonedTime` holds a clock reading, so a column value past 23
+  hours raises a `FormatException` rather than wrapping into the next day —
+  wrapping would turn a modelling mistake into a plausible wrong answer. Store a
+  duration as an integer count of its unit.
 - **One connection per data source, and no pool.** `MariaDbDatasource` holds a
   single `MySQLConnection`, so concurrent work on one data source serialises on
   it, and `delegateTo` gives two logical names the same physical link — which
@@ -1078,7 +1117,7 @@ test here requires this file in particular to keep using it.
 | ---------- | ---- | ----------- | --- |
 | `mysql_client` | package | `mariadb_datasource.dart`, `sql_failure_mode.dart` | the MariaDB / MySQL driver used by `MariaDbDatasource` |
 | `tom_basics` | package | `sql_failure_mode.dart` | `TomBaseException`, walked to find the driver exception at the root of a failure chain |
-| `tom_core_kernel` | package | `datasource_initialization.dart`, `mariadb_datasource.dart`, `sql_dialects.dart`, `types_operator.dart` | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
+| `tom_core_kernel` | package | `datasource_initialization.dart`, `mariadb_datasource.dart`, `sql_dialects.dart`, `sql_instant.dart`, `types_operator.dart` | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
 | [little_things](little_things.md) | module | `datasource_initialization.dart`, `mariadb_datasource.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `mariadb_datasource.dart`, `sql_dialects.dart` | `TomAnnotationAnalyzer`, `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow` |
 | [transactions](transactions.md) | module | `datasource_initialization.dart` | `TomTransactionParticipant` |

@@ -931,6 +931,25 @@ class MariaDbDatasource implements TomDataSource {
                 dm.simpleName,
                 parseOptionalSqlInstant(row.typedColByName<String>(col.field)),
               );
+            // The two halves a timestamp splits into. Both are `DateTime`
+            // subclasses, so neither reaches the case above — a switch on
+            // `reflectedType` matches the declared type exactly — and without
+            // their own cases an entity declaring either field could be written
+            // and never read: the row fell through to `unknown_type`.
+            //
+            // Read through the same pair of functions the renderers are the
+            // other half of, so the column text a `DATE` or `TIME` holds and the
+            // text this expects cannot drift apart.
+            case TomZonedDate:
+              im.invokeSetter(
+                dm.simpleName,
+                TomDbDate.of(row.typedColByName<String>(col.field)).get(),
+              );
+            case TomZonedTime:
+              im.invokeSetter(
+                dm.simpleName,
+                TomDbTime.of(row.typedColByName<String>(col.field)).get(),
+              );
             default:
               if (col.column != null) {
                 if (col.column!.fromDbConverter != null) {

@@ -2,6 +2,49 @@
 
 ### Fixed
 
+- **Nothing could read a `DATE` or a `TIME` column, and what was written into
+  one was the wrong day (tcincb127).** Three defects, each hidden by the next.
+
+  An entity declaring a `TomZonedDate` or `TomZonedTime` field could be written
+  and never read: `_processResult`'s switch on the declared member type has
+  cases for `int`, `double`, `String`, `bool` and `DateTime`, and both temporal
+  types are `DateTime` *subclasses*, so neither matched the `DateTime` arm and
+  both fell to `error.result_processing.unknown_type`. Both now have their own
+  case.
+
+  `TomDbDate.of` and `TomDbTime.of` parsed with `TomZonedDate.parseFromString` /
+  `TomZonedTime.parseFromString`, which read Tom's `@D@…` / `@T@…` serialization
+  and nothing else — a form no `DATE` or `TIME` column contains, because
+  `dateOp` and `timeOp` write `'2026-07-15'` and `'14:30:05'`. They now read
+  through **`parseSqlDate`** and **`parseSqlTimeOfDay`**, new and exported: the
+  reading halves of `sqlDate` and `sqlTimeOfDay`, living beside them because a
+  writer and a reader are only correct as a pair. Both still accept the `@D@…` /
+  `@T@…` form, for a value that reached a text column through `toString()`.
+
+  And `sqlDate` / `sqlTimeOfDay` did not render the components they promise.
+  Their contract is "as labelled" — the 5th is written as the 5th — but a
+  `TomTimezoned` stores UTC and answers `year`/`hour` in UTC, so a
+  `TomZonedDate` naming the 5th in `Pacific/Kiritimati` was written as the
+  **4th**, and a `TomZonedTime` naming 14:30 in `Asia/Tokyo` as **05:30**. Both
+  now read the value in its own frame, which is the rule the kernel already
+  applies when it classifies one of these values by its components.
+
+  What a `DATE` or `TIME` column still cannot carry is the zone, so a value read
+  back from one is anchored in UTC: the reading survives the round trip and the
+  anchoring does not. That is now stated in the guide's limitations section,
+  along with the refusal of a `TIME` past 23 hours — MariaDB's `TIME` spans 838
+  hours because it doubles as a duration type, and wrapping a duration into the
+  next day would turn a modelling mistake into a plausible wrong answer.
+
+  **Only a live server could have shown any of this.** Each direction had its
+  own tests and all of them passed: the renderers were asserted against each
+  other, the readers against strings a test wrote by hand. Nothing completed the
+  circle, and the circle is where they disagreed — including one fact no
+  hand-built string would have produced, that the driver materialises a `DATE`
+  into `2026-07-15 00:00:00.0`. `test/temporal_columns_db_test.dart` writes a
+  row and reads that row back.
+
+
 - **Seven module guides had nowhere to record an edge, so they recorded none
   (tcincb126).** A guide with no `## Not Yet Implemented` section has nowhere
   legal to say what the module has not done — the placement rule requires the

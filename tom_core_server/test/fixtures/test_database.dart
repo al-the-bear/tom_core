@@ -309,6 +309,34 @@ CREATE TABLE IF NOT EXISTS fixture_amount (
 )
 ''';
 
+  /// The DDL for the temporal-halves fixture.
+  ///
+  /// `DATE` and `TIME` are the two column types the framework maps
+  /// `TomZonedDate` and `TomZonedTime` onto, and they are declared here without
+  /// precision on purpose: that is what a migration derived from the type family
+  /// produces, and it is the shape whose read-back the renderers have to agree
+  /// with. A `TIME(6)` would hide the truncation `sqlTimeOfDay` performs.
+  static const String _fixtureTemporalDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_temporal (
+  id        BIGINT       NOT NULL AUTO_INCREMENT,
+  label     VARCHAR(255) NULL,
+  due_on    DATE         NULL,
+  remind_at TIME         NULL,
+  PRIMARY KEY (id)
+)
+''';
+
+  /// Creates the `fixture_temporal` table if it does not already exist.
+  static Future<void> ensureFixtureTemporalTable(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand(_fixtureTemporalDdl);
+  }
+
+  /// Empties the `fixture_temporal` table so each test starts from a known
+  /// state.
+  static Future<void> truncateFixtureTemporal(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_temporal');
+  }
+
   /// Creates the `fixture_amount` table if it does not already exist.
   static Future<void> ensureFixtureAmountTable(TomDataSourceInfo dsi) async {
     await dsi.datasource.executeCommand(_fixtureAmountDdl);

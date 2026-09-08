@@ -2164,3 +2164,45 @@ class FixtureSettingsDatasource extends MariaDbDatasource {
     );
   }
 }
+
+/// A reflected entity whose two temporal columns are the halves a timestamp
+/// splits into: a `DATE` and a `TIME`.
+///
+/// The framework maps `TomZonedDate` to `TomSqlTypeFamily.date` and
+/// `TomZonedTime` to `time`, so an entity may declare either and a migration
+/// may create the column — and until this entity existed, no test had written a
+/// value into one and read it back. Each direction had its own coverage and
+/// both passed: the renderers were checked against each other, and the readers
+/// against strings a test wrote by hand. The circle is what neither closed, and
+/// the circle is where the two disagreed.
+///
+/// The columns are nullable so the absent case is reachable, which is the other
+/// half of what a reader has to get right.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_temporal',
+  primaryKeyField: 'id',
+)
+class FixtureTemporalRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A label, so a row is identifiable in an assertion.
+  @TomDbColumn(columnName: 'label')
+  String? label;
+
+  /// The calendar half: a `DATE` column.
+  @TomDbColumn(columnName: 'due_on')
+  TomZonedDate? dueOn;
+
+  /// The clock half: a `TIME` column.
+  @TomDbColumn(columnName: 'remind_at')
+  TomZonedTime? remindAt;
+}
+
+/// The MariaDB-backed repository for [FixtureTemporalRecord].
+class FixtureTemporalRepository
+    extends TomSqlDatasourceRepository<FixtureTemporalRecord, int> {}

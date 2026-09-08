@@ -65,6 +65,8 @@
 /// touched" field, not for a boundary something is compared against.
 library;
 
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
 /// Renders [value] as the UTC `DATETIME(6)` literal the columns bind.
 ///
 /// Always UTC, always six fractional digits. A cluster whose nodes disagree
@@ -85,10 +87,35 @@ String sqlInstant(DateTime value) {
 /// is a moment, so it is normalised to the frame every node shares; a date
 /// names a day *in the calendar it was written in*, and converting it to UTC
 /// moves it to the previous or next day for half the world's zones.
+///
+/// "As labelled" is what [_labelled] establishes, and it is not what `value`'s
+/// own accessors give for a [TomTimezoned]. That type stores UTC and reports
+/// UTC through `year`/`month`/`day`, so reading them directly renders the day
+/// the value was *converted to* rather than the day it names — which is the
+/// conversion this doc comment says is not applied, applied.
 String sqlDate(DateTime value) {
+  final labelled = _labelled(value);
   String pad(int v, int width) => v.toString().padLeft(width, '0');
-  return '${pad(value.year, 4)}-${pad(value.month, 2)}-${pad(value.day, 2)}';
+  return '${pad(labelled.year, 4)}-${pad(labelled.month, 2)}-'
+      '${pad(labelled.day, 2)}';
 }
+
+/// [value]'s components as its own zone labels them.
+///
+/// A plain [DateTime] labels its components itself, so it is returned
+/// unchanged. A [TomTimezoned] holds UTC and answers `hour` in UTC — the
+/// reading a user sees is `localHour`, and `toDateTime()` is the whole value in
+/// that frame — so it is converted first. Without this,
+/// `TomZonedDate(year: 2026, month: 7, day: 5, timezone: 'Pacific/Kiritimati')`
+/// renders as the 4th and `TomZonedTime(hour: 14, timezone: 'Asia/Tokyo')` as
+/// 05:30, in both cases storing a value the caller never wrote.
+///
+/// The same rule the kernel applies when it classifies one of these values by
+/// its components, for the same reason: the inherited components are a storage
+/// detail, and the frame the anchoring was stated in is the one that means
+/// anything.
+DateTime _labelled(DateTime value) =>
+    value is TomTimezoned ? value.toDateTime() : value;
 
 /// Renders the clock half of [value] as the `TIME` text a time column takes.
 ///
@@ -97,8 +124,10 @@ String sqlDate(DateTime value) {
 /// no declared precision keeps whole seconds, and text the column cannot hold
 /// compares unequal to the value stored from it.
 String sqlTimeOfDay(DateTime value) {
+  final labelled = _labelled(value);
   String pad(int v) => v.toString().padLeft(2, '0');
-  return '${pad(value.hour)}:${pad(value.minute)}:${pad(value.second)}';
+  return '${pad(labelled.hour)}:${pad(labelled.minute)}:'
+      '${pad(labelled.second)}';
 }
 
 /// Reads a stored `DATETIME(6)` back as a UTC [DateTime].
@@ -111,6 +140,105 @@ DateTime parseSqlInstant(String value) {
   final text = value.trim();
   return DateTime.parse(text.endsWith('Z') ? text : '${text}Z');
 }
+
+/// Reads a stored `DATE` back as a [TomZonedDate].
+///
+/// The reading half of [sqlDate], and the halves have to be one pair: the
+/// renderer writes the calendar components **as labelled**, so the reader takes
+/// them as labelled too, anchored in UTC. What a `DATE` column cannot carry is
+/// the zone — there is nowhere in `2026-07-15` to put one — so a value written
+/// in `Asia/Tokyo` reads back naming the same day in UTC. The day survives, the
+/// anchoring does not, and that is the price of a column SQL can order and
+/// compare (see `doc/datasources.md`).
+///
+/// Tom's own `@D@…` serialization is accepted as well, for a date that reached
+/// a text column through [TomZonedDate.toString] rather than through this
+/// module's renderer. That form *does* carry its zone, so it round-trips
+/// exactly.
+///
+/// **A trailing midnight is accepted**, because that is what the driver
+/// actually hands back: a `DATE` column arrives as `2026-07-15 00:00:00.0`,
+/// materialised into the same shape a `DATETIME` gets. Only midnight — a
+/// trailing clock reading that is not zero means the value came from a column
+/// holding a timestamp, which is a different column type read by the wrong
+/// reader, and guessing which half was meant is exactly the mistake this
+/// function exists to refuse.
+///
+/// Throws a [FormatException] on anything else, rather than guessing.
+TomZonedDate parseSqlDate(String value) {
+  final text = value.trim();
+  if (TomZonedDate.isTomZonedDateString(text)) {
+    return TomZonedDate.parseFromString(text);
+  }
+  final match = _sqlDatePattern.firstMatch(text);
+  if (match == null) {
+    throw FormatException('Not a DATE column value or a @D@ date', text);
+  }
+  return TomZonedDate(
+    year: int.parse(match.group(1)!),
+    month: int.parse(match.group(2)!),
+    day: int.parse(match.group(3)!),
+  );
+}
+
+/// Reads a stored `TIME` back as a [TomZonedTime].
+///
+/// The reading half of [sqlTimeOfDay], and the same pairing as [parseSqlDate]:
+/// components as labelled, anchored in UTC, the zone not carried by the column
+/// and therefore not recovered. A time written as 14:30 in any zone reads back
+/// as 14:30.
+///
+/// The hour is read as written rather than bounded to 0-23. MariaDB's `TIME`
+/// spans -838:59:59 to 838:59:59 because it doubles as an interval type, and a
+/// column holding `25:00:00` is holding a duration rather than a clock reading
+/// — which [TomZonedTime] cannot represent. Such a value therefore throws here
+/// rather than silently wrapping into the next day: an interval stored in a
+/// time-of-day column is a modelling mistake, and rolling it over would hide
+/// it.
+///
+/// Sub-second digits are accepted and dropped, matching [sqlTimeOfDay], so a
+/// column declared `TIME(6)` reads back at the precision the renderer writes.
+/// Tom's own `@T@…` serialization is accepted as well, and round-trips its zone
+/// exactly.
+///
+/// Throws a [FormatException] on anything else.
+TomZonedTime parseSqlTimeOfDay(String value) {
+  final text = value.trim();
+  if (TomZonedTime.isTomZonedTimeString(text)) {
+    return TomZonedTime.parseFromString(text);
+  }
+  final match = _sqlTimePattern.firstMatch(text);
+  if (match == null) {
+    throw FormatException('Not a TIME column value or a @T@ time', text);
+  }
+  final hour = int.parse(match.group(1)!);
+  if (hour > 23) {
+    throw FormatException(
+      'TIME value $text is an interval, not a time of day: an hour past 23 '
+      'has no clock reading, and TomZonedTime holds a reading',
+      text,
+    );
+  }
+  return TomZonedTime(
+    hour: hour,
+    minute: int.parse(match.group(2)!),
+    second: int.parse(match.group(3)!),
+  );
+}
+
+/// A `DATE` column's text: `YYYY-MM-DD`, as [sqlDate] writes it, optionally
+/// followed by the midnight the driver appends when it materialises one.
+final RegExp _sqlDatePattern = RegExp(
+  r'^(\d{4})-(\d{2})-(\d{2})(?:[ T]00:00(?::00(?:\.0+)?)?)?$',
+);
+
+/// A `TIME` column's text: `HH:MM:SS`, with the sub-second digits MariaDB adds
+/// for a `TIME(n)` column optional and discarded.
+///
+/// The hour is one-or-more digits because MariaDB writes three for a value past
+/// 99 hours; [parseSqlTimeOfDay] is what refuses those, with a message about
+/// what they mean rather than about the pattern.
+final RegExp _sqlTimePattern = RegExp(r'^(\d{1,3}):(\d{2}):(\d{2})(\.\d+)?$');
 
 /// Reads an optional stored `DATETIME(6)`, treating an empty column as absent.
 ///

@@ -261,6 +261,8 @@ surface documented here.
 | `sqlInstant` | function | Renders an instant as the UTC `DATETIME(6)` literal the columns bind. |
 | `sqlDate` | function | Renders the calendar half of an instant as the `YYYY-MM-DD` a `DATE` column takes. |
 | `sqlTimeOfDay` | function | Renders the clock half of an instant as the `HH:MM:SS` a `TIME` column takes. |
+| `parseSqlDate` | function | Reads a stored `DATE` back as a `TomZonedDate` — the reading half of `sqlDate`. |
+| `parseSqlTimeOfDay` | function | Reads a stored `TIME` back as a `TomZonedTime` — the reading half of `sqlTimeOfDay`. |
 | `parseSqlInstant` | function | Reads a stored `DATETIME(6)` back as a UTC `DateTime`. |
 | `parseOptionalSqlInstant` | function | The same, treating an empty column as absent. |
 | `unknownFrameworkColumns` | function | Audits a statement for column references no framework table declares. |
@@ -627,7 +629,9 @@ surface documented here.
 | `Parameter` | Object Persistence |
 | `parseAuditLines` | Audit |
 | `parseOptionalSqlInstant` | Datasources |
+| `parseSqlDate` | Datasources |
 | `parseSqlInstant` | Datasources |
+| `parseSqlTimeOfDay` | Datasources |
 | `PrincipalDelegationStore` | Authorization |
 | `PrincipalResourceGrantStore` | Authorization |
 | `Regexp` | Object Persistence |

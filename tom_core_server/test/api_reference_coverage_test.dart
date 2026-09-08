@@ -167,8 +167,9 @@
 /// claim, and a guide with no such section has nowhere legal to put one. The
 /// pressure is then to leave the edge out rather than write it down.
 /// `doc/datasources.md` was that document: it described a module that ships one
-/// database driver, declares a `TomDbTime` nothing produces and runs XA with no
-/// recovery, and mentioned none of the three. Silence reads as "no edges",
+/// database driver, stores a date and a time in columns that cannot carry a
+/// zone and runs XA with no recovery, and mentioned none of the three. Silence
+/// reads as "no edges",
 /// which is a stronger claim than any guide in this package can make. So the
 /// per-module half requires the section to exist, and every guide now has one.
 ///
@@ -5451,8 +5452,9 @@ One: `TomKind`, documented beside the type that carries it.
               'nowhere legal to say it, and the pressure is to leave the '
               'edge undocumented rather than to write it down: '
               '`doc/datasources.md` described a module that ships one '
-              'database driver, declares a `TomDbTime` nothing produces and '
-              'runs XA with no recovery, and mentioned none of it. Silence '
+              'database driver, stores a date and a time in columns that '
+              'cannot carry a zone and runs XA with no recovery, and '
+              'mentioned none of it. Silence '
               'reads as "no edges", which is a stronger claim than any of '
               'these guides can make.',
         );

@@ -83,12 +83,23 @@ class TomDbDate extends TomDbType<TomZonedDate?> {
   /// Wraps [value] as a SQL date.
   TomDbDate(super.value);
 
-  /// Parses [s] via [TomZonedDate.parseFromString] (or `null` when [s] is
-  /// `null`).
+  /// Reads a stored `DATE` back via [parseSqlDate].
+  ///
+  /// Not [TomZonedDate.parseFromString] directly, which is what this used to
+  /// call and which reads only Tom's `@D@…` serialization — a form no `DATE`
+  /// column contains, because [TomStandardSqlDialect.dateOp] writes
+  /// `'YYYY-MM-DD'`. The writer and the reader have to be a pair, and
+  /// [parseSqlDate] is the reading half of the one this module writes; it still
+  /// accepts `@D@…`, for a date that reached a text column through
+  /// [TomZonedDate.toString].
+  ///
+  /// A `null` *or empty* column yields a box holding `null`, matching
+  /// [TomDbDateTime.of]: the driver reports an absent column either way
+  /// depending on the row mapper.
   static TomDbDate of(String? s) {
-    return s == null
+    return s == null || s.isEmpty
         ? TomDbDate(null)
-        : TomDbDate(TomZonedDate.parseFromString(s));
+        : TomDbDate(parseSqlDate(s));
   }
 }
 
@@ -97,12 +108,17 @@ class TomDbTime extends TomDbType<TomZonedTime?> {
   /// Wraps [value] as a SQL time.
   TomDbTime(super.value);
 
-  /// Parses [s] via [TomZonedTime.parseFromString] (or `null` when [s] is
-  /// `null`).
+  /// Reads a stored `TIME` back via [parseSqlTimeOfDay].
+  ///
+  /// The same pairing [TomDbDate.of] describes, for the other half a timestamp
+  /// splits into: [TomStandardSqlDialect.timeOp] writes `'HH:MM:SS'`, so that is
+  /// what a `TIME` column holds and what has to be read. `@T@…` is accepted too.
+  ///
+  /// A `null` *or empty* column yields a box holding `null`.
   static TomDbTime of(String? s) {
-    return s == null
+    return s == null || s.isEmpty
         ? TomDbTime(null)
-        : TomDbTime(TomZonedTime.parseFromString(s));
+        : TomDbTime(parseSqlTimeOfDay(s));
   }
 }
 
