@@ -200,7 +200,7 @@ reports and never gates.
 | [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
 | [`tool/check_module_dependencies.py`](tool/check_module_dependencies.py) | Audits each *module* document's Dependencies table against the imports its module actually has |
 | [`tool/check_dart_format.py`](tool/check_dart_format.py) | Holds every Dart file in the repository to `dart format`, across all 23 packages |
-| [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the "Error keys" sections in the completion documents against the keys the code raises |
+| [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the error vocabulary a document states — the completion documents' "Error keys" sections, and the hand-written module guides — against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation and requires `dart doc` to report nothing |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
@@ -369,7 +369,7 @@ snippets into — their wrapping is not a package's defect), and generated outpu
 gets the signal; this covers the other 21, which had nothing.
 
 ```bash
-python3 tool/check_doc_error_keys.py                 # every "Error keys" section
+python3 tool/check_doc_error_keys.py                 # every section and guide
 python3 tool/check_doc_error_keys.py tom_core_server # one project's documents
 python3 tool/check_doc_error_keys.py --list          # print each census
 ```
@@ -397,6 +397,37 @@ found six glosses describing the wrong condition, and a later one found thirteen
 keys missing outright — including an entire family, every failure an external
 login can report. A hand census also invents keys, which is why `UNKNOWN` is
 worth reporting at all.
+
+**Three genres, two assertions.** A completion document's `Error keys` section
+promises to be the whole vocabulary in one place, so both faults are reported
+against it. A sample's package document and a package's hand-written **module
+guide** (`tom_core_*/doc/`) are read whole instead, and only `ABSENT` is.
+
+The weaker assertion is not a shortcut in either case. A guide distributes its
+keys by topic on purpose — `authentication.md` houses seventeen
+`login.error.2fa.*` in an `### Outcomes` table and the rest across two
+`Failure keys` tables — so reading only the first matching section would report
+the other twenty-odd as missing. And prose about an API is full of dotted tokens
+that are not keys: `preferences.getOr` is a method reference, and no shape tells
+it from a key of the `preferences` family. Over the whole corpus `UNKNOWN`
+produced six findings on the guides and four were exactly that.
+
+Adding the guides is what the 330 in this gate's baseline are. The gate had
+audited only sections headed exactly `Error keys`, in one repository; the guides
+spell theirs `Failure keys` and live in this one, so they were reported clean by
+never being opened — which is how six keys went missing from `authentication.md`
+while the run before it read *0 defective across 2 sections*. 33 guides carry a
+vocabulary, 24 are short of it, and four documents hold most of the debt. It is
+frozen rather than repaired for the reason the ratchet exists: writing 330
+reference entries is separate work, and until it is done every *new* unnamed key
+would land unnoticed among them.
+
+A guide is matched to its module by position — `PROSE_PACKAGES`, the same map
+`check_module_dependencies.py` walks — because unlike a completion document a
+guide does not open with its source path. Both genres are required to resolve,
+and separately: one is found by a glob and the other by that map, so either can
+stop resolving while the other still does, and a single combined count would
+hide it. Breaking the map makes the run exit 2, not report clean.
 
 ```bash
 python3 tool/check_dartdoc_refs.py                 # the whole repository
@@ -676,8 +707,20 @@ and the writer did not choose where it broke; the narrower rule reported ``(§11
 / §11.4 of `tom_specs_editor_specification.md`)`` and its kind as faults, and a
 gate that fails correct work is a gate that gets switched off. A bare `bug §75`
 still cannot be resolved from anywhere and is still a fault.
-`comments_read_as_is_test.dart` is skipped: a rule has to be able to quote the
-shape it rejects.
+A **quoted** reference is skipped, because a rule has to be able to exhibit the
+shape it rejects. What tells the exhibit from the citation is where the sign
+falls relative to an inline code span: the house style writes the *document* in
+code and the section beside it — `` `codespecs_mapping.md` §5.16`` — so a real
+citation's sign lands outside the span, and only a text shown as text puts the
+whole of itself inside one. Measured before it was written: across the shipped
+corpus exactly three references sit inside a span, all three in a guard file,
+and every one of the four hundred-odd real citations sits outside.
+
+That replaced skipping `comments_read_as_is_test.dart` by name. The filename
+exemption cost that file every *other* reference it might carry — a bare `§45`
+added to it would never have been reported — and covered only the one guard
+anybody had noticed; `acl_shipped_text_test.dart` quotes the same shapes and was
+never listed, passing by the accident that a document name sat in view of each.
 
 The whole repository is clean and held there, prose included — every package,
 in one pass, which is what makes it a gate rather than a thing somebody
@@ -715,11 +758,10 @@ the markdown that ships outside `doc/` — every module `readme.md` under
 `lib/src/`, and the samples package's `README_advanced_*` chapters — brought 72
 more documents under both, and both stayed at zero.
 
-The one deliberate difference is `comments_read_as_is_test.dart`, which only
-`check_section_refs.py` skips. That guard has to quote `bug §50` to say which
-shape it rejects, and a quoted work item names no document — so it is a fault to
-the first gate and simply invisible to the second, which never gets a document to
-look a section up in.
+They scan **exactly** the same files, with no exception. There was one:
+`check_section_refs.py` skipped `comments_read_as_is_test.dart` by name, so the
+pair differed by two files. Recognising a quoted reference by its code span
+retired that exemption, and the populations closed.
 
 ```bash
 python3 tool/check_comments_read_as_is.py                  # the whole repository

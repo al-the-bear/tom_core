@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the "Error keys" sections in the tom_core completion documents.
+"""Audit the error vocabulary a tom_core document states against the code's.
 
 Run from anywhere::
 
@@ -7,7 +7,7 @@ Run from anywhere::
     python3 tool/check_doc_error_keys.py tom_core_server # one project's documents
     python3 tool/check_doc_error_keys.py --list          # print each census
 
-Exits non-zero when a section disagrees with the module it describes.
+Exits non-zero when a document disagrees with the code it describes.
 
 A module's error keys are its public vocabulary of failure: the section is
 written as a reference a client author branches on, so a key that is raised and
@@ -90,6 +90,24 @@ document is anchored on its opening package path (the same line
 edit to be reachable), its keys are read as tokens *anywhere* in the document,
 and only ``ABSENT`` is reported.
 
+A *prose module document* -- the hand-written guides under
+``tom_core_*/doc/`` -- is the third genre and takes the package shape rather
+than the module one, for a reason about how it is written. A completion
+document's ``Error keys`` section promises to be the whole vocabulary in one
+place; a guide distributes its keys by topic on purpose, so
+``authentication.md`` houses seventeen ``login.error.2fa.*`` keys in an
+``### Outcomes`` table and the rest across two ``Failure keys`` tables. Pointing
+[documented] at it would read the first table and report the other twenty-odd
+keys as ``ABSENT``. So the whole document is read, with [named_in], and the
+assertion weakens to *named somewhere*.
+
+``ABSENT`` only, for the reason the next paragraph gives about the samples,
+reached by a different route. A guide is prose, and prose about an API is full
+of dotted tokens that are not keys: ``preferences.getOr`` and
+``preferences.set`` are method references, and no shape tells them from a key of
+the ``preferences`` family. Measured over the whole corpus, ``UNKNOWN`` produced
+six findings on the guides and four were exactly that.
+
 That asymmetry is deliberate rather than a shortcut. A sample document names
 framework keys it does not raise, because teaching the framework is what it is
 for: ``advanced_auth_server`` names ``login.error.2fa.invalid-code``, which
@@ -125,6 +143,20 @@ MODULE_PATH = re.compile(r"`(tom_core_\w+/lib/src/[\w/]+?)/?`")
 #: package -- of which these documents have several -- cannot be taken for the
 #: subject.
 PACKAGE_PATH = re.compile(r"^`(tom_\w+/[\w/]+?)/?`\s+—", re.M)
+
+#: Where each package keeps its modules and how its guides are named -- the same
+#: map `check_module_dependencies.py` walks, and for the same reason: a guide is
+#: matched to its module by position, because unlike a completion document it
+#: does not open with the source path. Kept as a copy rather than imported so a
+#: gate stays runnable on its own; the two are checked against each other by
+#: `no module goes unaudited` below.
+PROSE_PACKAGES = {
+    "tom_core_kernel": ("lib/src/tombase", "doc/{m}/{m}.md"),
+    "tom_core_server": ("lib/src/tomserver", "doc/{m}.md"),
+    "tom_core_flutter": ("lib/src/tomclient", "doc/{m}.md"),
+    "tom_core_agentic": ("lib/src", "doc/{m}.md"),
+    "tom_flutter_ui": ("lib/src", "doc/{m}.md"),
+}
 
 #: The folders of a package whose sources carry its error vocabulary. `test/` is
 #: not among them, and that is the point of listing them rather than walking the
@@ -336,7 +368,16 @@ class Report:
         return not self.faults
 
     def render(self) -> str:
-        rel = self.path.relative_to(DOCS_ROOT)
+        # A completion document is named relative to its own root and a guide
+        # relative to the repository, so each reads as the path somebody would
+        # open. `is_relative_to` rather than a try/except: the two roots are
+        # disjoint and knowing which one a report came from is not an error
+        # condition.
+        rel = (
+            self.path.relative_to(DOCS_ROOT)
+            if self.path.is_relative_to(DOCS_ROOT)
+            else self.path.relative_to(REPO_ROOT)
+        )
         return "\n".join([str(rel), *(f"    {f}" for f in self.faults)])
 
 
@@ -426,6 +467,49 @@ def audit_package(path: Path, text: str) -> Report | None:
     return report
 
 
+def prose_documents() -> list[tuple[Path, Path, Path]]:
+    """Every `(guide, module, project)` triple `PROSE_PACKAGES` reaches.
+
+    A module with no guide is skipped rather than reported: whether every module
+    owes one is `check_module_dependencies.py`'s question, asked there against
+    the same map, and answering it twice would mean two gates going red for one
+    missing file.
+    """
+    triples: list[tuple[Path, Path, Path]] = []
+    for package, (source, pattern) in PROSE_PACKAGES.items():
+        modules = REPO_ROOT / package / source
+        if not modules.is_dir():
+            continue
+        for module in sorted(d for d in modules.iterdir() if d.is_dir()):
+            guide = REPO_ROOT / package / pattern.format(m=module.name)
+            if guide.is_file():
+                triples.append((guide, module, REPO_ROOT / package / "lib"))
+    return triples
+
+
+def audit_prose(guide: Path, module: Path, project: Path) -> Report | None:
+    """Audit a hand-written module guide against the keys its module raises.
+
+    ``ABSENT`` only -- see the module docstring for why ``UNKNOWN`` is unsound
+    over a whole document. Returns None when the module raises nothing: a module
+    with no error vocabulary owes its guide no mention of one.
+    """
+    families = raised_families([module])
+    if not families:
+        return None
+    keys, _ = census([project], families)
+    if not keys:
+        return None
+
+    report = Report(guide)
+    report.keys = keys
+    text = guide.read_text(encoding="utf-8", errors="replace")
+    named = {key for key in named_in(text) if family(key) in families}
+    for key in sorted(keys - named):
+        report.faults.append(f"ABSENT   {key}")
+    return report
+
+
 def main(argv: list[str]) -> int:
     arguments = argv[1:]
     show = "--list" in arguments
@@ -438,11 +522,31 @@ def main(argv: list[str]) -> int:
     prefix = arguments[0] if arguments else ""
     documents = sorted(p for p in DOCS_ROOT.glob("*.md") if p.name.startswith(prefix))
     reports = [r for r in (audit(p) for p in documents) if r is not None]
+    completion = len(reports)
+
+    guides: list[Report] = []
+    for guide, module, project in prose_documents():
+        # Selected by *package*, because that is what the same prefix selects on
+        # the completion side: those documents are named `tom_core_server_*.md`
+        # and a guide is `authentication.md`, so matching the filename would
+        # make one argument mean two different things.
+        if not guide.relative_to(REPO_ROOT).parts[0].startswith(prefix):
+            continue
+        report = audit_prose(guide, module, project)
+        if report is not None:
+            guides.append(report)
+    reports += guides
 
     # A checker that quietly stops finding sections reports a clean tree, which
-    # is the one way this kind of audit fails without anyone noticing.
-    if not reports:
+    # is the one way this kind of audit fails without anyone noticing. Both
+    # genres are required, and separately: the completion documents are found by
+    # a glob and the guides by a path map, so one can stop resolving while the
+    # other still does and a single combined count would hide it.
+    if not completion:
         print(f'no "Error keys" sections found under {DOCS_ROOT}', file=sys.stderr)
+        return 2
+    if not guides:
+        print("no module guides with an error vocabulary found", file=sys.stderr)
         return 2
 
     if show:
@@ -457,8 +561,8 @@ def main(argv: list[str]) -> int:
 
     total = sum(len(r.faults) for r in defective)
     print(
-        f"\n{len(reports)} error-key sections audited, "
-        f"{len(defective)} defective, {total} faults"
+        f"\n{completion} error-key sections and {len(guides)} module guides "
+        f"audited, {len(defective)} defective, {total} faults"
     )
     return report_faults(total)
 

@@ -67,11 +67,21 @@ even inside the workspace. A reference written ``§"Heading Name"`` is a
 different construction and deliberately out of scope: it quotes the heading, so
 it names what it indexes and can be found by title.
 
-**The in-suite guard is exempt.** ``comments_read_as_is_test.dart`` -- the
-per-package Dart guard that enforces the same convention from inside the test
-run -- has to quote ``bug §50`` to say which shape it rejects. A rule that
-cannot state its own subject is not a rule, so that filename is skipped
-wherever it appears; see ``EXEMPT_FILES``.
+**A quoted reference is not a reference.** A guard that enforces this same
+convention has to exhibit ``bug §50`` to say which shape it rejects, and a
+rule that cannot state its own subject is not a rule. What distinguishes the
+exhibit from the citation is where the sign falls relative to an inline code
+span: the house style writes the *document* in code and the section beside it
+(``\`codespecs_mapping.md\` §5.16``), so a real citation's sign lands outside
+the span, and only a text being shown as text puts the whole of itself in. A
+sign inside a span is therefore skipped; see [is_quoted].
+
+That replaced skipping a filename. ``comments_read_as_is_test.dart`` was named
+in an exemption list, which cost it every other reference it might ever carry --
+a *bare* ``§45`` added to it would not have been reported -- and covered only
+the one guard anybody had noticed. ``acl_shipped_text_test.dart`` quotes the
+same shapes and was never listed; it passed because a document name happened to
+sit in view of each. The rule covers both, and leaves both checked.
 
 **What counts as naming the document.** A document name is a markdown-quoted or
 bare ``.md`` filename, an ``RFC <n>``, or one of the specification names used in
@@ -171,12 +181,6 @@ SHIPPED_DOC_DIR = "doc"
 #: the repository being clean.
 SHIPPED_DOC_NAME = re.compile(r"^(README.*\.md|readme\.md)$")
 
-#: Files that quote the forbidden constructions in order to forbid them. A rule
-#: has to be able to state the shape it rejects, so the in-suite guard's own
-#: prose is the one place a bare ``bug §50`` is correct writing rather than a
-#: defect. Matched by filename, since the guard is copied per package.
-EXEMPT_FILES = {"comments_read_as_is_test.dart"}
-
 #: Markdown that is workspace-internal despite sitting where shipped prose does.
 #: The repo README indexes the quest's own working documents -- naming their
 #: sections is its job -- and a changelog is a record of the sequence of states
@@ -244,8 +248,6 @@ def shipped_files(root: Path):
         if path.suffix == ".dart":
             if not (SHIPPED_DIRS & set(path.parts)):
                 continue
-            if path.name in EXEMPT_FILES:
-                continue
             if path.name.endswith(GENERATED_SUFFIX):
                 continue
             yield path
@@ -297,6 +299,45 @@ def in_view(lines: list[str], index: int, *, prose: bool) -> str:
     return " ".join(span)
 
 
+def quoted_spans(line: str) -> list[tuple[int, int]]:
+    """The inline code spans of one line, paired left to right.
+
+    Per line rather than per document, which is what makes it safe. A
+    document-wide backtick walk goes out of phase at the first fence and reads
+    the *gaps* between spans as spans from there on -- the trap
+    `check_doc_error_keys.py` documents and sidesteps by never pairing at all.
+    Within one line there is no fence to lose phase on, and a trailing unpaired
+    backtick simply opens nothing.
+    """
+    ticks = [m.start() for m in re.finditer("`", line)]
+    return [(ticks[i], ticks[i + 1]) for i in range(0, len(ticks) - 1, 2)]
+
+
+def is_quoted(line: str, at: int) -> bool:
+    """Whether the reference at column ``at`` is being *quoted* rather than made.
+
+    The signal is that the sign is inside an inline code span. That reads as a
+    rule about typography and is really a rule about house style: a citation
+    writes the document in code and the section beside it --
+    ``\`codespecs_mapping.md\` §5.16`` -- so the sign lands *outside* the span.
+    Only a text being exhibited as text puts the whole of it in, which is what
+    the guards that enforce this convention have to do to say what they reject.
+
+    Measured before it was written, because a rule that exempted ordinary
+    citations would blind the gate rather than sharpen it: across the shipped
+    corpus exactly three references sit inside a span, all three in
+    ``acl_shipped_text_test.dart``, and every one of the 400-odd real citations
+    sits outside one.
+
+    This is what replaced skipping ``comments_read_as_is_test.dart`` by name.
+    The filename exemption cost that file all of its coverage -- a *bare*
+    ``§45`` added to it would never have been reported -- and covered only the
+    one guard that had been noticed. The rule covers every file that quotes the
+    shape it rejects, and leaves each of them checked for the shape it does not.
+    """
+    return any(start < at < end for start, end in quoted_spans(line))
+
+
 def unresolved(path: Path) -> list[tuple[int, str]]:
     """The `(line, text)` of every unresolvable section reference in ``path``."""
     try:
@@ -312,6 +353,11 @@ def unresolved(path: Path) -> list[tuple[int, str]]:
             # The heading declares a section; it does not reference one.
             continue
         for match in REFERENCE.finditer(line):
+            if is_quoted(line, match.start()):
+                # Exhibited as text, so it indexes nothing and resolves nothing.
+                # Consulted before the work-item marker, which would otherwise
+                # fault a guard for quoting the very shape it exists to reject.
+                continue
             left = line[: match.start()]
             if WORK_ITEM_MARKER.search(left):
                 # Named its list, which is not a document. Nothing in view can
@@ -394,6 +440,24 @@ SELF_TESTS = [
         "a numbered heading declares rather than references",
         ".md",
         "## 23. Things §23\n",
+        0,
+    ),
+    (
+        "is_quoted — a sign inside an inline code span is an exhibit",
+        ".dart",
+        "/// 1. **Work-item pointers** — `bug §50`, `tests §34a`.\n",
+        0,
+    ),
+    (
+        "is_quoted — a sign outside the span still faults",
+        ".dart",
+        "/// The guard rejects `bug` pointers such as §50 wherever they appear.\n",
+        1,
+    ),
+    (
+        "is_quoted — a citation's sign falls outside the span and resolves",
+        ".dart",
+        "/// per `codespecs_mapping.md` §5.16\n",
         0,
     ),
 ]
