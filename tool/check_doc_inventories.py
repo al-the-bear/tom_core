@@ -102,6 +102,26 @@ Eleven faults are reported:
     disagrees with the module it links to, or whose link names a document that
     does not exist. The census is stated twice -- once in its own document,
     once in the index -- and it is the second copy that goes stale.
+``SCREENS``
+    A demo-screen count disagreeing with the application's own list of screens.
+    The two demo applications state theirs in running prose because a screen is
+    not a file -- ``tom_flutter_ui_test`` declares 59 across 60 files -- so no
+    directory count answers the question and the number sat in the one position
+    nothing read. It drifted exactly as that predicts: 55 was claimed for 59,
+    and the wrong figure had been copied into the index, where it was found by a
+    person reading the prose. Both copies are checked, the index's by resolving
+    the application from the entry the claim sits in; the index's own subject is
+    ``tom_flutter_ui``, which has no screen list, so reading the subject alone
+    would leave every copy in it unchecked while looking as though the document
+    had been read.
+
+    What each application calls a screen is written down in ``SCREEN_SOURCES``
+    rather than derived, because it cannot be: one holds a ``demos`` list of
+    ``(slug, builder)`` records in its test harness and the other a run of
+    ``_DemoTile`` widgets in its list screen, and a checker guessing from the
+    directory would have to decide by itself whether
+    ``demo_25_remaining_widgets.dart`` is one screen or several.
+
 ``PROSE``
     A length written into a sentence that no audit above read -- ``a 74-line
     controller``, ``Eight steps, one file, 239 lines``. It is not reported as a
@@ -656,6 +676,7 @@ def audit_text(text: str, path: Path) -> Report | None:
     measured = audit_barrel_exports(text, report)
     measured |= audit_layout_lines(text, report)
     measured |= audit_package_inventory(text, report)
+    measured |= audit_screen_counts(text, report)
     measured |= audit_library_size(text, report)
     measured |= audit_index_sections(text, report)
     measured |= audit_overview_sections(text, report)
@@ -1639,6 +1660,108 @@ def audit_overview_sections(text: str, report: Report) -> bool:
 #: only inside a layout fence, and a line total only inside the parenthesis of
 #: a census segment; perturbing the first such-looking number anywhere in the
 #: document would otherwise hit running prose and prove nothing.
+#: A demo-screen count: `59 demo screens`, `33 demo screens`, `the 33-tile
+#: list`. The two demo applications state theirs in running prose rather than in
+#: a census, because a screen is not a file -- `tom_flutter_ui_test` declares 59
+#: across 60 files and `tom_flutter_form_test` 33 across 34, so counting `lib/`
+#: answers a different question and answers it wrongly.
+SCREEN_COUNT = re.compile(
+    r"(" + NUMBER + r")[\s-]+(?:demo screens|demos\b|tile list|full-featured demos)")
+
+#: Where each demo application declares its screens, and what one looks like.
+#:
+#: Written down because it cannot be derived. A screen is whatever that app's
+#: list holds, and the two apps hold theirs differently -- one a `demos` list of
+#: `(slug, builder)` records in its test harness, the other a run of `_DemoTile`
+#: widgets in its list screen. A checker that guessed from the directory would
+#: have to decide whether `demo_25_remaining_widgets.dart` is one screen or
+#: several, which is a question only the app's own list answers.
+#:
+#: This is the count that drifted: 55 was claimed for 59, and the same figure
+#: had been copied into the overview. It was found by a person reading the
+#: prose, which is the detection method a gate exists to replace.
+SCREEN_SOURCES: dict[str, tuple[str, re.Pattern[str]]] = {
+    "tom_flutter_ui_test": (
+        "test/demo_harness.dart",
+        re.compile(r"^  \(", re.M),
+    ),
+    "tom_flutter_form_test": (
+        "lib/main.dart",
+        re.compile(r"^        _DemoTile\(", re.M),
+    ),
+}
+
+
+def audit_screen_counts(text: str, report: Report) -> bool:
+    """Check every demo-screen count in `text` against the app's own list.
+
+    Returns whether this document states one at all. A document that names no
+    demo application states none, which is not a defect -- most do not have an
+    app to count.
+    """
+    subject = layout_package(text) or _census_package(text)
+    measured = False
+    for match in SCREEN_COUNT.finditer(text):
+        # A document about one package answers for every claim in it. The
+        # overview answers for none -- it is an index of seventy-nine documents
+        # -- so there the package is read from the nearest name before the
+        # claim, which is the entry the claim sits in. Without that the
+        # overview's copies go unchecked, and a copy is what drifts: the count
+        # that prompted this was wrong in the app document *and* in the
+        # overview, having been carried from one to the other.
+        # The subject only when it is one of the demo applications. The
+        # overview's own subject is `tom_flutter_ui`, which has no screen list,
+        # so preferring it unconditionally left every copy in the index
+        # unchecked while looking as though the document had been read.
+        package = subject if subject and subject.name in SCREEN_SOURCES else None
+        package = package or _nearest_screen_package(text, match.start())
+        if package is None:
+            continue
+        rule = SCREEN_SOURCES[package.name]
+        measured = True
+        listing = package / rule[0]
+        if not listing.is_file():
+            report.faults.append(
+                f"SCREENS  {package.name} states a screen count but "
+                f"{rule[0]} is gone, so nothing counts it")
+            continue
+        actual = len(rule[1].findall(listing.read_text(encoding="utf-8",
+                                                       errors="replace")))
+        claimed = _read_number(match.group(1))
+        if claimed != actual:
+            report.faults.append(
+                f"SCREENS  says {claimed} demo screens; "
+                f"{package.name}/{rule[0]} declares {actual}")
+    return measured
+
+
+def _nearest_screen_package(text: str, before: int) -> Path | None:
+    """The demo application named closest above `before`, or None."""
+    best = None
+    for name in SCREEN_SOURCES:
+        at = text.rfind(name, 0, before)
+        if at != -1 and (best is None or at > best[0]):
+            best = (at, name)
+    if best is None:
+        return None
+    package = REPO_ROOT / best[1]
+    return package if (package / "pubspec.yaml").is_file() else None
+
+
+def _census_package(text: str) -> Path | None:
+    """The package a census names, as a path, or None."""
+    match = PACKAGE_PATH.search(text)
+    if match is None:
+        return None
+    package = REPO_ROOT / match.group(1)
+    return package if (package / "pubspec.yaml").is_file() else None
+
+
+def _read_number(token: str) -> int:
+    """`"1 159"` / `"33"` as an int."""
+    return int(re.sub(r"[^\d]", "", token))
+
+
 SELF_TEST_CASES: list[tuple[str, re.Pattern[str], int, str, re.Pattern[str] | None]] = [
     ("census file count", PKG_FILES, 1, "audit_package_inventory", None),
     ("census Dart count", PKG_DART, 1, "audit_package_inventory", None),
@@ -1646,6 +1769,7 @@ SELF_TEST_CASES: list[tuple[str, re.Pattern[str], int, str, re.Pattern[str] | No
     ("census line total", PKG_LINES, 1, "audit_package_inventory", PKG_SEGMENT),
     ("per-file line label", LAYOUT_LINES, 2, "audit_layout_lines", LAYOUT_FENCE),
     ("submodule tally", OVERVIEW_TALLY, 1, "audit_overview_sections", None),
+    ("demo-screen count", SCREEN_COUNT, 1, "audit_screen_counts", None),
 ]
 
 
