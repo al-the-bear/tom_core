@@ -13,6 +13,34 @@
 
 ### Fixed
 
+- **The `scheduling` module readme was the only one of twenty missing three of
+  the four elements they all share (tcincb152).** No attribution blockquote, no
+  `## Key types` heading, no `## Quick start`. It was not a thin readme — it is
+  the third-longest in the package and has the most substantive sections of any
+  — it was a complete one written to a different shape, most likely before the
+  convention settled. A convention that settles without being written is one a
+  document can miss entirely while reading as finished work, which is how this
+  survived every review the module had.
+
+  The `## Key types` heading is the clearest of the three: the table was already
+  there, unheaded, so it appeared in no document outline and a reader scanning
+  headings — the only navigation a 150-line readme has — did not find it.
+
+  The quick start states its preconditions as numbered steps, and its third step
+  is that there is no third step: `createSchema` defaults to `true`, so the
+  stores issue their own `CREATE TABLE IF NOT EXISTS` and need no migration
+  applied first — unlike the entity-backed modules, whose quick starts have to
+  say the opposite. Its output was verified by running the sequence against a
+  live MariaDB, which is what the stated `// nightly` is worth.
+
+  `tool/check_module_readme_shape.py` holds all 53 module readmes across four
+  packages to the four elements, and
+  `_copilot_guidelines/component_module_readme_example.md` gains the level that
+  describes them. The heading is matched on its opening words: two kernel
+  modules ship functions beside their types and head the table
+  `## Key types & functions`, which is the same undertaking more accurately
+  titled.
+
 - **A pre-invocation access denial reached the client as an opaque 500
   (tcincb149).** The check runs before the invocation, so its throw was outside
   the per-endpoint `try`, escaped the endpoint's own `errorHandler`, and was

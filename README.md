@@ -216,6 +216,7 @@ reports and never gates.
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and navigating documentation that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/check_unimplemented_claims.py`](tool/check_unimplemented_claims.py) | Finds documentation that calls a shipped `Tom*` type unimplemented |
+| [`tool/check_module_readme_shape.py`](tool/check_module_readme_shape.py) | Holds every `lib/src/**/readme.md` to the four structural elements they all share |
 | [`tool/check_doc_overview_types.py`](tool/check_doc_overview_types.py) | Holds a module document's Overview table to every public type its module's barrel exports |
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
@@ -1393,6 +1394,31 @@ it in full. The match is exact rather than heuristic: every sentinel was verifie
 verbatim against freshly generated `flutter create` (app and package) and
 `dart create` (package and console) output, so a hand-written description is
 never a false positive.
+
+```bash
+python3 tool/check_module_readme_shape.py                 # every package
+python3 tool/check_module_readme_shape.py tom_core_server # one package
+python3 tool/check_module_readme_shape.py --self-test     # check the checker
+```
+
+Holds every module readme under `lib/src/` to four elements: the attribution
+blockquote, a `## Key types` heading, a `## Quick start`, and the `Part of`
+footer back to the package README. 53 readmes across four packages.
+
+`tom_core_server`'s `scheduling` readme was the longest and most substantive of
+its twenty and carried none of the first three. It was not thin — it was
+complete, written to a different shape, most likely before the convention
+settled. A convention that settles without being written is one a document can
+miss entirely while reading as finished work, which is how the omission survived
+every review the module had.
+
+Each element earns its place. The `## Key types` heading is the clearest case:
+`scheduling` *had* its type table and it was unheaded, so it appeared in no
+document outline and a reader scanning headings did not find it. The heading is
+what makes the table reachable by the only navigation a long readme has. The
+heading is matched on its opening words, because two kernel modules ship
+functions beside their types and head the table `## Key types & functions` —
+the same undertaking, more accurately titled.
 
 ```bash
 python3 tool/check_doc_overview_types.py                 # every document

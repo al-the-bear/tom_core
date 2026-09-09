@@ -1,7 +1,12 @@
 # scheduling
 
+> **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
+
 The relational implementations of the kernel's two scheduling ports, for a
 cluster whose nodes share a database but not a filesystem.
+
+## Key types
 
 | Type | Implements | Backing |
 | ---- | ---------- | ------- |
@@ -15,6 +20,80 @@ both are verified against the kernel's own parameterised contract suite (see
 `test/scheduling_db_test.dart`). The third implements no kernel contract: it
 observes *nodes* rather than leases, and nodes exist only where there is a
 cluster.
+
+## Quick start
+
+Two things have to be in place before the queue will answer, and the *third*
+thing you might expect is not one of them — the tables create themselves.
+
+```dart
+import 'package:tom_core_server/tom_core_server.dart';
+
+// Your own package's generated registration. `TomJobRunRow` is `@tomReflector`,
+// and the store reads rows back through it.
+import 'main.reflection.dart';
+
+Future<void> main() async {
+  // 1. Reflection first. The store's queries are `executeQuery<TomJobRunRow>`,
+  //    so without this the first *read* — not the construction, and not the
+  //    enqueue — throws
+  //    `annotation_analyzer.analyse_persistent_type.mirror_not_found`.
+  initializeReflection();
+
+  // 2. A registered datasource. `TomSqlJobStore.named` resolves it at
+  //    construction rather than on the first tick, so a name that is not
+  //    registered is a start-up failure instead of a scheduler that looks alive
+  //    and claims nothing.
+  await TomDataSourceInfo.initializeDatasourceInfo(<String, dynamic>{
+    'main': <String, dynamic>{
+      'type': 'mariadb',
+      'host': 'localhost',
+      'port': 3306,
+      'username': 'todo',
+      'password': 'secret',
+      'databaseName': 'todo',
+    },
+  });
+
+  // 3. There is no third step. `createSchema` defaults to `true`, so the store
+  //    issues its own `CREATE TABLE IF NOT EXISTS` on first use — unlike the
+  //    entity-backed modules, which need their migration applied first. A
+  //    deployment that does not let its application run DDL passes
+  //    `createSchema: false` and applies `example/scheduling/migrations/`
+  //    instead; see [Schema](#schema).
+  final store = TomSqlJobStore.named('main');
+
+  final now = DateTime.now().toUtc();
+  await store.enqueue(
+    TomJobRun(
+      id: 'nightly-2026-05-01',
+      jobName: 'nightly',
+      scheduledFor: now,
+      runAt: now,
+    ),
+  );
+
+  // The claim is a conditional UPDATE, so a second node running this same line
+  // against the same row gets an empty list rather than an error — which is the
+  // whole of the arbitration. `owner` is this node's identity in the claim.
+  final claimed = await store.claimDue(now, 'node-a');
+  print(claimed.single.run.jobName); // nightly
+
+  await store.complete(claimed.single, DateTime.now().toUtc());
+}
+```
+
+> **Needs your package's generated reflection and a live database.**
+> `main.reflection.dart` is written by `dart run build_runner build` in *your*
+> package, and step 2 opens a real socket — so this is a sequence to build into
+> an application rather than a program to paste and run. It is shown whole
+> because the first step fails at a place that does not point at it: a missing
+> reflection registration gets as far as enqueueing the run and fails on reading
+> it back.
+
+The same sequence runs against a live MariaDB in
+`test/scheduling_db_test.dart`, which also runs both implementations through the
+kernel's own parameterised contract suite.
 
 ## Why the pair, and why in one database
 
