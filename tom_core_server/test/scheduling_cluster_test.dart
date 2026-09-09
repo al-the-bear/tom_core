@@ -819,6 +819,15 @@ void main() {
 
   group('wiring that cannot work is refused up front', () {
     /// Matches the exception a named-data-source lookup raises for [key].
+    /// Refuses construction with [key] and names the data source that was
+    /// missing.
+    ///
+    /// The base class is what is raised, deliberately — a construction-time
+    /// wiring guard has no `catch` clause to discriminate for, so there is
+    /// nothing for a subtype to add. `TomServerException` gives the argument
+    /// and `server_exception_family_test.dart` pins the five sites that may do
+    /// it, so this matcher is as narrow as the type system allows here; the
+    /// key and the parameter carry the rest.
     Matcher refusesDatasource(String key) => throwsA(
       isA<TomServerException>()
           .having((e) => e.key, 'key', key)

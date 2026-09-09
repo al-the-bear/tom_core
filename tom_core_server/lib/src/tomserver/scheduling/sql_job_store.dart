@@ -142,8 +142,10 @@ class TomSqlJobStore implements TomJobStore {
 
   /// Creates a store over the registered data source named [datasourceName].
   ///
-  /// Throws a [TomServerException] when no such data source is registered — a
-  /// configuration error far better caught at start-up than on the first tick.
+  /// Throws a [TomServerException] keyed `scheduling.store.unknown_datasource`
+  /// when no such data source is registered — a configuration error far better
+  /// caught at start-up than on the first tick. The base class rather than a
+  /// subtype is deliberate; [TomServerException] says why.
   factory TomSqlJobStore.named(
     String datasourceName, {
     String table = defaultJobRunTable,

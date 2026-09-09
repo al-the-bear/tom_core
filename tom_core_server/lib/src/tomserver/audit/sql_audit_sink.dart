@@ -198,10 +198,11 @@ class TomSqlAuditSink implements TomAuditSink {
 
   /// Creates a sink over the registered data source named [datasourceName].
   ///
-  /// Throws a [TomServerException] when no such data source is registered — a
-  /// configuration error far better caught at start-up than on the first
-  /// audited action, which the fail-closed trail would turn into a failed
-  /// request.
+  /// Throws a [TomServerException] keyed `audit.sink.unknown_datasource` when
+  /// no such data source is registered — a configuration error far better
+  /// caught at start-up than on the first audited action, which the fail-closed
+  /// trail would turn into a failed request. The base class rather than a
+  /// subtype is deliberate; [TomServerException] says why.
   factory TomSqlAuditSink.named(
     String datasourceName, {
     required String writer,

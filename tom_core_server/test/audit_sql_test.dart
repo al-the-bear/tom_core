@@ -221,6 +221,12 @@ void main() {
       // Not on the first audited action: the trail is fail-closed, so a
       // misconfiguration discovered there turns into a failed request instead
       // of a failed start-up.
+      //
+      // The assertion names the base class is what is raised, deliberately — a construction-time
+      // wiring guard has no `catch` clause to discriminate for, so there is
+      // nothing for a subtype to add. `TomServerException` gives the argument
+      // and `server_exception_family_test.dart` pins the five sites that may do
+      // it, so this assertion is as narrow as the type system allows here.
       expect(
         () => TomSqlAuditSink.named('no_such_datasource', writer: 'node-a'),
         throwsA(

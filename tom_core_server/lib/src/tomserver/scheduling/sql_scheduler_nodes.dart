@@ -178,6 +178,11 @@ class TomSqlSchedulerNodes {
 
   /// Creates the roll call over the registered data source named
   /// [datasourceName].
+  ///
+  /// Throws a [TomServerException] keyed `scheduling.nodes.unknown_datasource`
+  /// when no such data source is registered — a configuration error far better
+  /// caught at start-up than on the first check-in. The base class rather than
+  /// a subtype is deliberate; [TomServerException] says why.
   factory TomSqlSchedulerNodes.named(
     String datasourceName, {
     required String nodeId,

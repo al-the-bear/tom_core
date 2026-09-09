@@ -30,6 +30,28 @@ import 'request_id.dart';
 /// outside the family escapes the endpoints pipeline's classification, cannot
 /// report [clientThrow] through `tomErrorEnvelope`, and arrives naming neither
 /// its isolate nor its request.
+///
+/// **This class is also raised directly, and only for one thing.** Five
+/// `.named(...)` constructors — the audit sink, the OAuth state store, the job
+/// store, the lease lock and the scheduler roll call — resolve a data source
+/// out of `TomDataSourceInfo` and refuse when the registry has no such name.
+/// Each throws this class with a key ending `.unknown_datasource` and the
+/// offending name in `parameters['datasource']`.
+///
+/// They are the exception to "name a subtype", and the reason they are is that
+/// there is nothing for a subtype to add. All five happen at construction,
+/// before a connection is opened and before any request is served, so a
+/// deployment meets them as a failed start-up rather than as something a
+/// `catch` clause discriminates: the operator's next act is to fix one name in
+/// one configuration file, which the key and the parameter already say. A type
+/// declared so a `catch` clause could name it, in a place no `catch` clause
+/// runs, would be four declarations differing only in spelling.
+///
+/// The set is closed rather than open-ended. `server_exception_family_test`
+/// pins these five sites by file and key, so a sixth direct raise has to be
+/// argued for rather than merely written — which is what keeps the rule from
+/// eroding into "the base class is fine anywhere". Anywhere else, name a
+/// subtype.
 class TomServerException extends TomException {
   /// The debug name of the isolate that constructed this exception.
   ///

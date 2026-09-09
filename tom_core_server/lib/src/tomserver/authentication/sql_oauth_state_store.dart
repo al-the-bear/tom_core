@@ -161,8 +161,11 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
 
   /// Creates a store over the registered data source named [datasourceName].
   ///
-  /// Throws a [TomServerException] when no such data source is registered — a
-  /// configuration error far better caught at start-up than on the first login.
+  /// Throws a [TomServerException] keyed
+  /// `oauth.state_store.unknown_datasource` when no such data source is
+  /// registered — a configuration error far better caught at start-up than on
+  /// the first login. The base class rather than a subtype is deliberate;
+  /// [TomServerException] says why.
   factory TomSqlOAuthStateStore.named(
     String datasourceName, {
     String table = defaultOAuthStateTable,

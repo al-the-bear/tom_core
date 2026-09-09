@@ -55,22 +55,53 @@ trail (which stores it on every entry).
 
 It is declared in this module rather than beside the middleware that seeds it
 because the dependency arrow has to point this way. `little_things` holds the
-base class that twenty-seven types across every other module extend, so it is
-the most depended-upon module in the package; `server` is the largest and most
-concrete. Declaring the id beside its producer would have made the first import
-the second, which is the cycle this placement avoids. The same move takes the
-audit trail off the server module entirely — `TomRequestId` was the only thing
-it imported from there.
+base class that every exception type in every other module extends — a rule
+the suite enforces rather than a tally — so it is the most depended-upon
+module in the package; `server` is the largest and most concrete. Declaring the
+id beside its producer would have made the first import the second, which is
+the cycle this placement avoids. The same move takes the audit trail off the
+server module entirely — `TomRequestId` was the only thing it imported from
+there.
 
 ## TomServerException
 
 ```dart
-throw TomServerException(
-  'PAYMENT_FAILED',
+class TomPaymentException extends TomServerException {
+  TomPaymentException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.clientThrow,
+  });
+}
+
+throw TomPaymentException(
+  'payment.capture.declined',
   'The payment could not be processed',
-  clientThrow: false, // internal detail — do not surface to the caller
+  parameters: {'processor': processorName},
+  clientThrow: false, // the processor's own reason is not the caller's business
 );
 ```
+
+Two things about that shape are the module's rules rather than its taste, and
+both are checked.
+
+**Name a subtype, not the base class.** The catch clause below reaches
+`TomPaymentException` through its parent, so nothing is lost by declaring one —
+and a caller that wants to handle a declined payment differently from a failed
+query needs the type to say which it has. Throwing `TomServerException` itself
+leaves it with the key string and nothing else. The package raises the base
+class directly at exactly five sites, all `.named(...)` constructors refusing an
+unregistered data source, and the exemption is narrow on purpose: they fail at
+construction, before any request is served, so no `catch` clause is running to
+discriminate and a subtype would add nothing but a declaration.
+`test/server_exception_family_test.dart` pins those five by file and key, so a
+sixth has to make the same argument rather than inherit it.
+
+**The key reads `<area>.<operation>.<condition>`**, dotted-lowercase — the shape
+`TomException`'s own dartdoc fixes. The first segment names the module, so keys
+raised by unrelated code cannot collide, and the middle segment is what lets two
+failures of the same subsystem be told apart in a log.
 
 Because every server exception subtypes `TomServerException`, a single catch
 clause reaches all of them:

@@ -13,6 +13,36 @@
 
 ### Fixed
 
+- **Five data-source guards raised the bare base exception, and nothing said
+  why (tcincb155).** The `.named(...)` constructors of the audit sink, the OAuth
+  state store, the job store, the lease lock and the scheduler roll call each
+  throw `TomServerException` itself rather than a subtype. They still do, and
+  that is now a decision with an argument attached rather than an omission: all
+  five refuse at construction, before a connection is opened and before any
+  request is served, so a deployment meets them as a failed start-up and no
+  `catch` clause is running for a subtype to serve. The key and the
+  `datasource` parameter already carry what the operator acts on — one name in
+  one configuration file. Four declarations differing only in spelling would
+  add nothing.
+
+  What was missing is that the exemption was undeclared, and an undeclared
+  exemption widens. `TomServerException`'s dartdoc now states where it is
+  raised directly and why, each of the five constructors names the key it
+  throws (one of them documented no throw at all), and
+  `test/server_exception_family_test.dart` pins the set by file and key, checks
+  every key ends `.unknown_datasource` and reads three segments, and checks each
+  site names the data source it could not resolve. A sixth direct raise now has
+  to make the same argument rather than inherit it.
+
+- **The `little_things` guide taught the pattern it should warn against
+  (tcincb155).** Its `TomServerException` example threw the base class directly,
+  with the key `'PAYMENT_FAILED'` — which is also the wrong shape, since
+  `TomException` fixes keys as dotted-lowercase
+  `<area>.<operation>.<condition>`. So the one worked example in the module's
+  documentation broke both rules the module has about raising an exception. It
+  now declares a subtype and keys it `payment.capture.declined`, and the two
+  rules are stated beneath it with what checks each.
+
 - **The `preferences` module had no suite carrying its name (tcincb154).** Its
   six were named after the types they exercise — `user_preference_dto_test.dart`,
   `user_preference_key_test.dart`, `user_preferences_service_test.dart`,

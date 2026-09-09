@@ -198,6 +198,11 @@ void main() {
   // lives here and not in `oauth_state_store_db_test.dart`.
   group('the relational state store resolves its data source by name', () {
     test('an unregistered name fails at construction, not at first login', () {
+      // The assertion names the base class is what is raised, deliberately — a construction-time
+      // wiring guard has no `catch` clause to discriminate for, so there is
+      // nothing for a subtype to add. `TomServerException` gives the argument
+      // and `server_exception_family_test.dart` pins the five sites that may do
+      // it, so this assertion is as narrow as the type system allows here.
       expect(
         () => TomSqlOAuthStateStore.named('no-such-datasource'),
         throwsA(

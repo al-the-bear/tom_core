@@ -77,7 +77,10 @@ class TomSqlLeaseLock extends TomLeaseLock {
 
   /// Creates a lock over the registered data source named [datasourceName].
   ///
-  /// Throws a [TomServerException] when no such data source is registered.
+  /// Throws a [TomServerException] keyed `scheduling.lock.unknown_datasource`
+  /// when no such data source is registered — a configuration error far better
+  /// caught at start-up than on the first claim. The base class rather than a
+  /// subtype is deliberate; [TomServerException] says why.
   factory TomSqlLeaseLock.named(
     String datasourceName, {
     String table = defaultLeaseTable,

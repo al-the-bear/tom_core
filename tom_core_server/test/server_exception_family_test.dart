@@ -189,6 +189,121 @@ void main() {
     });
   });
 
+  group('the base class is raised directly only where it is meant to be', () {
+    // The companion to the rule above, and the one that keeps it honest. "Every
+    // server exception type subtypes this class" says what a *type* must do; it
+    // says nothing about what a raise site may do, and a site that throws the
+    // base class satisfies the family rule while making the family useless at
+    // that point. A caller wanting to handle a wiring fault differently from a
+    // query fault has only the key string to match on.
+    //
+    // Five sites do exactly that, and they are meant to. Each is a `.named(...)`
+    // constructor resolving a data source out of `TomDataSourceInfo` and
+    // refusing before it opens a connection. There is nothing for a subtype to
+    // add: all five happen at construction, before any request is served, so a
+    // deployment meets them as a failed start-up in a log rather than as
+    // something a `catch` clause discriminates — and the operator's next act is
+    // to fix one name in one configuration file, which the key and the
+    // `datasource` parameter already say.
+    //
+    // What this group buys is that the five stay five. The argument above is
+    // about a construction-time wiring fault and does not carry to anything
+    // else, but nothing in the source distinguishes a sixth direct raise from
+    // these; without a pin, "the base class is fine here" erodes into "the base
+    // class is fine anywhere", one site at a time, each one locally defensible.
+    // So the set is named, and a new one has to be argued for rather than
+    // merely written.
+
+    /// Every `throw TomServerException(` under [_sourceRoot], as
+    /// `file` → the key it raises.
+    ///
+    /// Read from source rather than by catching, because the subject is where
+    /// the base class is *written*: a site reachable only by a misconfiguration
+    /// nobody has made is exactly the one a runtime sweep would miss.
+    final directRaises = <String, String>{};
+    for (final file
+        in Directory(_sourceRoot)
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart'))
+            .where((f) => !f.path.endsWith('.reflection.dart'))) {
+      final source = file.readAsStringSync();
+      for (final match in RegExp(
+        r'throw TomServerException\(\s*',
+      ).allMatches(source)) {
+        final key = RegExp(
+          r'''["']([a-z][a-z0-9_.]*)["']''',
+        ).matchAsPrefix(source.substring(match.end));
+        directRaises[file.path] = key?.group(1) ?? '<no literal key>';
+      }
+    }
+
+    /// The five sites, and the key each raises.
+    const expected = {
+      '$_sourceRoot/audit/sql_audit_sink.dart': 'audit.sink.unknown_datasource',
+      '$_sourceRoot/authentication/sql_oauth_state_store.dart':
+          'oauth.state_store.unknown_datasource',
+      '$_sourceRoot/scheduling/sql_job_store.dart':
+          'scheduling.store.unknown_datasource',
+      '$_sourceRoot/scheduling/sql_lease_lock.dart':
+          'scheduling.lock.unknown_datasource',
+      '$_sourceRoot/scheduling/sql_scheduler_nodes.dart':
+          'scheduling.nodes.unknown_datasource',
+    };
+
+    test('the five sites are exactly the five that are documented', () {
+      expect(
+        directRaises,
+        expected,
+        reason:
+            'a site throwing TomServerException directly gives a caller '
+            'nothing but the key to match on. The five listed are '
+            'construction-time data-source guards, where a subtype would add '
+            'nothing because no catch clause runs; see TomServerException. '
+            'A new one needs that argument to hold for it too — otherwise '
+            'declare a subtype for the module and throw that.',
+      );
+    });
+
+    test('every one of them refuses a data source it cannot resolve', () {
+      // The keys are what the argument rests on: it is specifically a *wiring*
+      // fault that needs no type. A site keyed anything else has left the case
+      // this exemption was written for, whatever its file.
+      for (final entry in directRaises.entries) {
+        expect(
+          entry.value,
+          endsWith('.unknown_datasource'),
+          reason: '${entry.key} raises the base class for something else',
+        );
+        expect(
+          entry.value.split('.').length,
+          3,
+          reason:
+              "[${entry.value}] should read <area>.<operation>.<condition>, "
+              "the shape TomException's own dartdoc fixes",
+        );
+      }
+    });
+
+    test('every one of them names the data source that was not found', () {
+      // The parameter is half the contract. A cluster misconfigured this way
+      // has one typo in one configuration key, and a failure that does not say
+      // which name was rejected leaves the operator to find it by reading.
+      for (final path in expected.keys) {
+        final source = File(path).readAsStringSync();
+        final raise = source.indexOf('throw TomServerException(');
+        expect(raise, greaterThanOrEqualTo(0), reason: path);
+        expect(
+          source.substring(raise, source.indexOf(');', raise)),
+          contains("parameters: {'datasource': "),
+          reason:
+              '$path throws without naming the unresolved data source, so the '
+              'operator is told a name was wrong but not which',
+        );
+      }
+    });
+  });
+
   group('the two classes the rule was written for', () {
     // The scan reads text; these read the compiled types. Together they say
     // the declaration and the runtime agree, which neither says alone.
