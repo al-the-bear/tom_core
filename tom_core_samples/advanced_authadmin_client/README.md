@@ -108,15 +108,18 @@ invents is one piece of challenge state and one byte transport. It also takes a
 leading id where the contract folds one into the payload, so no screen builds an
 `EntityIdRequest` to delete a row.
 
-- **`InMemoryAdminBackend`** — a seeded, socket-free fake the contract and widget
-  tests bind. It seeds the same demo accounts as the app client (`admin` plus
-  `alice`/`bob`/`carol`), the five application roles, an `Engineering` group, and
-  the same four-state grant matrix the auth server seeds. Every administrative
-  call requires the `admin` role: a signed-in non-admin is refused with
-  `admin.access.forbidden`, mirroring the server's contract-declared
-  `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) gate. It holds DTO
-  instances directly and never serializes one, so it is the one path through the
-  console that needs no reflection.
+- **`InMemoryAdminBackend`** — a seeded, socket-free fake the contract and
+  widget tests bind. It seeds four accounts — a dedicated `admin` plus the app
+  client's three project principals, `alice`/`bob`/`carol` — the five
+  application roles, an `Engineering` group, and the same four-state grant
+  matrix the auth server seeds. Not the app client's whole roster: that fake
+  also seeds `dave` and `erin`, who carry the second-factor story, and the
+  console has no screen that needs them. Every administrative call requires the
+  `admin` role: a signed-in non-admin is refused with `admin.access.forbidden`,
+  mirroring the server's contract-declared `TomRoleAccess(['admin'])`
+  (`TomApiEndpoint.access`) gate. It holds DTO instances directly and never
+  serializes one, so it is the one path through the console that needs no
+  reflection.
 - **`LiveAdminBackend`** — the production wiring: a thin adapter over an
   `AuthClient` (login/token storage) and an `AdminApiClient` (the `/admin/*` API)
   sharing one `JsonTransport`, normalising the client core's transport exceptions

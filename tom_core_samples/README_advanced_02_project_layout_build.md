@@ -230,8 +230,27 @@ The end-to-end run is four moves (full commands in the hub's
 Launched with `--dart-define=TEST_MODE=true`, either client boots on a **seeded
 in-memory backend** instead — the opt-in offline mode, and exactly the fake the
 socket-free widget tests inject (part
-[12](README_advanced_12_testing_integration.md)). The seeded live accounts
-(`admin` / `alice` / `bob` / `carol`) are listed in the hub.
+[12](README_advanced_12_testing_integration.md)). Each client's fake seeds its
+own accounts, and the two sets are not the same:
+
+- **End-user app** (`in_memory_app_backend.dart`) — five, signed into as
+  `alice`, `bob`, `carol`, `dave`, `erin`, keyed `u-alice` … `u-erin`. There is
+  no `admin` here. `dave` and `erin` are what make the offline second-factor
+  demo reachable: `dave` is enrolled at seed time, holding the same TOTP secret
+  the auth server's `[005]-auth_two_factor_seed` migration writes, so a code
+  that satisfies the offline backend satisfies the live one; `erin` owes a
+  factor and holds none, so her login is *offered* enrolment rather than
+  challenged for it.
+- **Admin console** (`in_memory_admin_backend.dart`) — four, signed into as
+  `admin`, `alice`, `bob`, `carol`, keyed `u-admin` … `u-carol`. `admin` is the
+  one the console cannot do without: its endpoints are gated on
+  `TomRoleAccess(['admin'])`.
+
+Those are the fakes' own ids, and they exist only inside the client process.
+The hub's **Seeded live accounts** table, under [Run the whole
+thing](README_advanced_sample.md#run-the-whole-thing), is a different id space —
+the `auth_db` rows `[002]-auth_admin_seed` and `[003]-auth_demo_seed` write,
+which is what the servers authenticate against.
 
 ## Primary sources
 
