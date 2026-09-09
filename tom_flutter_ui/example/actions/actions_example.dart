@@ -7,9 +7,9 @@
 /// action's canonical path is built in.
 ///
 /// Because it imports `package:tom_flutter_ui/tom_flutter_ui.dart` (which pulls
-/// in `flutter/material` → `dart:ui`), run it under the Flutter toolchain, e.g.
-/// `flutter test example/actions/actions_example.dart`, not bare `dart run`.
-/// The same scenarios are covered by `test/actions/actions_test.dart`.
+/// in `flutter/material` → `dart:ui`), bare `dart run` cannot execute it. Run
+/// `flutter test test/actions/actions_test.dart`, which calls this example and
+/// reports its result in the exit code.
 library;
 
 // Demonstration example: console output is intentional.

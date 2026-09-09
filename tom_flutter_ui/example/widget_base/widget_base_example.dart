@@ -4,10 +4,9 @@
 /// library is built on: `TomCtr` (text/colour/numeric/style lookups against the
 /// kernel resource provider) and `TomStyleResolvers` (parsing complex Material
 /// objects from JSON resource maps). Because it imports `flutter/material`
-/// (which pulls in `dart:ui`), run it under the Flutter toolchain, e.g.
-/// `flutter test example/widget_base/widget_base_example.dart`, not bare
-/// `dart run`. The same scenarios are covered by
-/// `test/widget_base/widget_base_resolvers_test.dart`.
+/// (which pulls in `dart:ui`), bare `dart run` cannot execute it. Run
+/// `flutter test test/widget_base/widget_base_resolvers_test.dart`, which
+/// calls this example and reports its result in the exit code.
 library;
 
 // Demonstration example: console output is intentional.

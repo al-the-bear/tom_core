@@ -25,9 +25,9 @@
 /// data models ([TomRadioGroupItem], [TomAuthTreeNode]).
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package
-/// barrel, run it under the Flutter toolchain, e.g.
-/// `flutter test example/custom/custom_example.dart`, not bare `dart run`.
-/// The same scenarios are covered by `test/custom/custom_example_test.dart`.
+/// barrel, bare `dart run` cannot execute it. Run
+/// `flutter test test/custom/custom_example_test.dart`, which calls this
+/// example and reports its result in the exit code.
 library;
 
 // Demonstration example: console output is intentional.

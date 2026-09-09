@@ -20,9 +20,9 @@
 /// `BuildContext`, and `family` is a plain getter — so all three are readable
 /// on a constructed node, and this example asserts them directly rather than
 /// pumping. Because it imports `flutter/material` (which pulls in `dart:ui`),
-/// run it under the Flutter toolchain, e.g. `flutter test
-/// example/widget_base/widget_base_nodes_example.dart`, not bare `dart run`.
-/// It is exercised by `test/widget_base/widget_base_nodes_example_test.dart`.
+/// bare `dart run` cannot execute it. Run `flutter test
+/// test/widget_base/widget_base_nodes_example_test.dart`, which calls this
+/// example and reports its result in the exit code.
 library;
 
 // Demonstration example: console output is intentional.

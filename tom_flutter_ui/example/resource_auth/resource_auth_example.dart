@@ -5,10 +5,9 @@
 /// `IconData` through pluggable adapters, plus the `TomConfigProvider`
 /// environment/flag store and the re-exported `TomAuthState`.
 ///
-/// Because it imports `flutter/material` (→ `dart:ui`), run it under the Flutter
-/// toolchain, e.g. `flutter test example/resource_auth/resource_auth_example.dart`,
-/// not bare `dart run`. The same scenarios are covered by
-/// `test/resource_auth/resource_auth_test.dart`.
+/// Because it imports `flutter/material` (→ `dart:ui`), bare `dart run` cannot
+/// execute it. Run `flutter test test/resource_auth/resource_auth_test.dart`,
+/// which calls this example and reports its result in the exit code.
 library;
 
 // Demonstration example: console output is intentional.

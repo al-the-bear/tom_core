@@ -242,6 +242,25 @@
 
 ### Added
 
+- **`test/example_instructions_test.dart`** — the guard on the command each
+  shipped example tells a reader to run. All eleven named
+  `flutter test example/<dir>/<name>_example.dart`, which *does* run the example
+  — `main()` executes at load time, every print appears, every assert is
+  evaluated — and then exits **79**, "No tests were found", because an example
+  declares no `test()` of its own. A reader watching the output concludes it
+  worked; anything reading the exit code sees a broken example that did exactly
+  what it should, and it exits 79 whether the assertions held or not, so the
+  code carried no information at all. Each header now names the suite that calls
+  its `run()`, which exits 0 on success and non-zero on a failed assertion. The
+  headers' premise was right and is kept: the barrel pulls in `flutter/material`
+  and so `dart:ui`, and bare `dart run` genuinely cannot load one of these.
+
+  The guard reads a header **unwrapped**. A dartdoc sentence breaks wherever the
+  margin falls, and one of the eleven split the command down the middle —
+  `flutter test` ending a line and `example/widget_base/…` starting the next —
+  so a line-oriented search finds ten and reports the package clean. That is how
+  the eleventh survived the sweep that measured this defect.
+
 - **`tool/check_doc_class_inventories.py`**, which holds a marked inventory to
   the directory it inventories, in **both** directions. A region declares
   itself in the markdown source —

@@ -4,10 +4,10 @@
 /// visual treatment of its two withheld authorization states — `read` and
 /// `disabled`, both described by `TomStateStyle` — and the semantic button
 /// variants (`TomButtonVariants`), plus the immutable `TomTheme` value class.
-/// Because it imports `flutter/material` (which pulls in `dart:ui`), run it
-/// under the Flutter toolchain, e.g. `flutter test example/theme/theme_example.dart`,
-/// not bare `dart run`. The same scenarios are covered by
-/// `test/theme/theme_test.dart`.
+/// Because it imports `flutter/material` (which pulls in `dart:ui`), bare
+/// `dart run` cannot execute it. Run
+/// `flutter test test/theme/theme_test.dart`, which calls this example and
+/// reports its result in the exit code.
 library;
 
 // Demonstration example: console output is intentional.
