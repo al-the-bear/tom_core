@@ -9,6 +9,19 @@ anyone who was writing them.
 
 ### Added
 
+- **`validateBeanReferences()` — the startup pass, callable on its own
+  (tcopen3).** Resolving the pending handles is the last step of
+  `initializeBeanContext`, and boot is not the only moment worth checking: a
+  handle constructed after the last pass is checked by the next one, and an
+  application that initializes once has no next one. Wiring assembled later
+  accumulated unvalidated, and its first error was whatever call first needed
+  it.
+
+  Re-running `initializeBeanContext` was not a remedy — it rebuilds the
+  registry from scratch and drops every imperative `withName` / `withType`
+  registration made since, destroying the wiring it was called to check. The
+  pass is now public and leaves the registry alone.
+
 - **`TomReflectionInfo.unknownFields` — the strict-mode question, asked in
   advance (tcincb119).** `strictUnknownFields` answers it as the walk goes and
   stops at the first offender, in this module's own words. That is the wrong
@@ -30,6 +43,16 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+
+- **A handle the validation pass skipped was dropped instead of deferred
+  (tcopen3).** A named handle whose name is not registered yet cannot be
+  judged at boot, so the pass passes over it. It then cleared the whole
+  pending list, skipped handles included, which turned "ask again later" into
+  "never ask again": the registration landed, no later pass looked at the
+  handle, and a name bound to an instance of the wrong type — the one thing
+  the skip is deliberately narrow enough to catch — was left to fail at
+  whichever call first needed it. Skipped handles now stay pending; only the
+  ones actually vouched for are dropped.
 
 - **A bean registered under a type it is not is now named, not reported as
   missing (tcopen2).** `TomBean.withType(t, bean)` takes its key as a `Type`

@@ -30,6 +30,7 @@ The Tom Bean Locator System provides a lightweight dependency injection containe
 - [Resetting the Bean Context](#resetting-the-bean-context)
 - [Implementation Resolution](#implementation-resolution)
 - [Startup validation](#startup-validation)
+  - [Validating wiring assembled after boot](#validating-wiring-assembled-after-boot)
 - [Error Handling](#error-handling)
   - [TomBeanLocatorException](#tombeanlocatorexception)
   - [Error Keys](#error-keys)
@@ -575,6 +576,46 @@ The skip is narrow. A named handle whose name **is** registered is validated
 like any other, so a name bound to an instance of the wrong type still fails at
 boot with `bean_not_found_by_type` — that question is answerable now, and no
 later registration repairs a mismatch.
+
+A skipped handle stays **pending**, so the deferral is "ask again later", not
+"never ask again". When the name it waits for is registered, the next
+validation judges it:
+
+```dart
+final port = TomBean<int>.fromName('port');
+initializeBeanContext();          // skipped: nothing bound to that name yet
+
+TomBean.withName('port', 'eight');  // a String, not an int
+validateBeanReferences();         // throws bean_not_found_by_type
+```
+
+### Validating wiring assembled after boot
+
+`validateBeanReferences()` is the pass on its own, and it is public because
+boot is not the only moment worth checking. A handle constructed after the
+last pass is checked by the **next** pass — and an application that
+initializes once has no next one. Wiring assembled later — a handle held by a
+plugin loaded on demand, a bean registered by a feature that starts when first
+used — accumulates unvalidated, and its first error is whatever call first
+needed it.
+
+Re-running `initializeBeanContext()` is **not** the remedy: it rebuilds the
+registry from scratch and drops every imperative `withName` / `withType`
+registration made since, so it would destroy the wiring it was called to check.
+Call the pass directly instead:
+
+```dart
+initializeBeanContext();          // boot
+
+TomBean.withName('config', loadConfig());
+startLateFeature();               // constructs more handles
+
+validateBeanReferences();         // vouches for them; the registry is intact
+```
+
+Calling it twice is not an error and not a second opinion: a handle it has
+vouched for is dropped from the pending list, so the second call sees only what
+was constructed — or deferred — since the first.
 
 ## Error Handling
 

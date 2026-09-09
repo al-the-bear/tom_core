@@ -288,7 +288,7 @@ class TomBean<T> {
   /// The name need not be registered yet. A handle may be held as a field and
   /// the bean registered later in startup; the handle resolves on first use.
   /// [initializeBeanContext] does not force such a handle to resolve — see
-  /// [_validateBeanReferences] — so a still-unregistered name is not a boot
+  /// [validateBeanReferences] — so a still-unregistered name is not a boot
   /// failure.
   factory TomBean.fromName(String name) {
     TomBean<T> result = TomBean();
@@ -682,7 +682,7 @@ class TomBean<T> {
   /// Such a handle is the "resolve before registration" case: the name was
   /// recorded now and [TomBean.withName] will supply the instance later. It is
   /// deliberately excluded from startup validation — see
-  /// [_validateBeanReferences].
+  /// [validateBeanReferences].
   bool get _awaitsNamedRegistration =>
       _bean == null && _name != null && !_tomBeansByName.containsKey(_name);
 
@@ -796,7 +796,7 @@ bool _platformMatches(TomPlatform selector, TomPlatform? active) =>
 /// to be declared on.
 ///
 /// Handles awaiting a named registration are the documented exception; see
-/// [_validateBeanReferences].
+/// [validateBeanReferences].
 ///
 /// ## Usage
 ///
@@ -829,11 +829,7 @@ void initializeBeanContext() {
   }
 
   _discoverAndInstantiateBeans();
-  _validateBeanReferences();
-
-  // Validated handles have served their purpose; keeping them would grow the
-  // list for the lifetime of the process.
-  TomBean._tomBeanList.clear();
+  validateBeanReferences();
   TomBean._initialized = true;
 }
 
@@ -981,6 +977,31 @@ List<_TomImplementationInfo> _findImplementors(TomComponent tc) {
 
 /// Resolves every pending handle so that wiring errors surface at startup.
 ///
+/// A *pending* handle is any [TomBean] constructed since the last validation
+/// (or since [TomBean.resetBeanContext]). [initializeBeanContext] ends by calling this,
+/// which is where most callers meet it. It is public because that is not the
+/// only moment worth checking:
+///
+/// **A handle constructed after the last pass is checked by the next one, and
+/// an application that initializes once has no next one.** Wiring assembled
+/// after boot — a handle held by a plugin loaded later, a bean registered by
+/// a feature that starts on demand — accumulates unvalidated, and its first
+/// error is whatever call first needed it. Re-running [initializeBeanContext]
+/// is not the remedy: it rebuilds the registry from scratch and drops every
+/// imperative [TomBean.withName] and [TomBean.withType] registration made
+/// since. Call this instead, at the end of whatever assembled the wiring:
+///
+/// ```dart
+/// initializeBeanContext();          // boot
+/// TomBean.withName('config', loadConfig());
+/// startLateFeature();               // constructs more handles
+/// validateBeanReferences();         // and vouches for them, registry intact
+/// ```
+///
+/// Calling it twice is not an error and not a second check: a handle it has
+/// vouched for is dropped from the pending list, so the second call sees only
+/// what was constructed since the first.
+///
 /// Validation vouches for what the pass itself could have supplied. Discovery
 /// registers under `Type` keys only — a concrete bean under its runtime type,
 /// an interface implementation under the interface — so a typed handle that is
@@ -1000,11 +1021,34 @@ List<_TomImplementationInfo> _findImplementors(TomComponent tc) {
 /// validated like any other, so a name bound to the wrong type is still caught
 /// at boot — that question is answerable now, and no later registration repairs
 /// a mismatch.
-void _validateBeanReferences() {
+void validateBeanReferences() {
+  // A handle this pass *skips* has not been vouched for, so it stays pending.
+  // Dropping it would turn "its name is not registered yet, ask again later"
+  // into "never ask again": the registration it waits for lands, no later
+  // pass looks at the handle, and a name bound to the wrong type — the one
+  // thing the skip is deliberately narrow enough to catch — is left to fail
+  // at whichever call first needed it.
+  final skipped = <TomBean>[];
   for (var bean in TomBean._tomBeanList) {
-    if (bean._awaitsNamedRegistration) continue;
+    if (bean._awaitsNamedRegistration) {
+      skipped.add(bean);
+      continue;
+    }
     bean();
   }
+
+  // Validated handles are dropped. A handle that resolved has cached its
+  // bean, so keeping it would change nothing a caller can observe — calling
+  // it again answers from the cache without touching the registry. What it
+  // would change is that the list, and the strong references it holds, grow
+  // for the lifetime of the process. That is why this is stated here rather
+  // than pinned by a test: it is a bound on memory, not a rule about answers.
+  //
+  // A throw above leaves the list untouched, so a boot that failed can be
+  // retried without the handles it had already reached going unchecked.
+  TomBean._tomBeanList
+    ..clear()
+    ..addAll(skipped);
 }
 
 // =============================================================================

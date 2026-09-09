@@ -694,6 +694,75 @@ void main() {
       },
     );
 
+    test('a late handle is vouched for without rebuilding the registry', () {
+      // The gap this closes: a handle constructed after the last pass is
+      // checked by the *next* pass, and an application that initializes once
+      // has no next one. Re-running initializeBeanContext is not the remedy
+      // — it rebuilds the registry from scratch, so the imperative
+      // registration below would be gone before the check ran, and the check
+      // would then fail for a reason the caller did not create.
+      initializeBeanContext();
+      TomBean.withName('lateWiring', AnotherService('late'));
+
+      final late = TomBean<AnotherService>.fromName('lateWiring');
+      expect(keyOfThrow(validateBeanReferences), equals('<did-not-throw>'));
+      expect(
+        late.get().value,
+        equals('late'),
+        reason: 'the registry survived the validation pass',
+      );
+
+      final orphan = TomBean<TestService>();
+      expect(
+        keyOfThrow(validateBeanReferences),
+        equals('beanlocator.bean_access.no_bean_found_uninitialized'),
+        reason: 'and a handle assembled after boot is still answerable for',
+      );
+      expect(orphan, isNotNull);
+    });
+
+    test('validating twice checks only what arrived since', () {
+      // A vouched-for handle leaves the pending list, so the second call is
+      // not a second opinion on the first call's handles. Without this the
+      // list would grow for the life of the process and every late validation
+      // would re-resolve every handle ever made.
+      initializeBeanContext();
+      TomBean.withType(TestService, TestServiceImpl());
+      final resolvable = TomBean<TestService>();
+
+      expect(keyOfThrow(validateBeanReferences), equals('<did-not-throw>'));
+      expect(resolvable.get(), isA<TestService>());
+
+      // Break the binding the first call vouched for. A second call must not
+      // notice: that handle is no longer pending, and it has already resolved.
+      TomBean.resetBeanContext();
+
+      expect(keyOfThrow(validateBeanReferences), equals('<did-not-throw>'));
+    });
+
+    test('a skipped handle stays pending until it is answerable', () {
+      // Skipping is a deferral, not a dismissal. A named handle whose name is
+      // not registered yet cannot be judged at boot, so the pass passes over
+      // it — and must leave it pending, or the deferral becomes permanent:
+      // the registration lands, no later pass looks at the handle, and the
+      // wrong-type binding the skip is deliberately narrow enough to catch is
+      // left to fail at whichever call first needed it. That is precisely the
+      // failure startup validation exists to prevent.
+      final handle = TomBean<int>.fromName('deferredName');
+
+      expect(keyOfThrow(initializeBeanContext), equals('<did-not-throw>'));
+
+      // The name arrives, bound to something that is not an int.
+      TomBean.withName('deferredName', TestServiceImpl());
+
+      expect(
+        keyOfThrow(validateBeanReferences),
+        equals('beanlocator.bean_access.bean_not_found_by_type'),
+        reason: 'the handle the first pass deferred was never looked at again',
+      );
+      expect(handle, isNotNull);
+    });
+
     test('a handle created after a pass is validated by the next one', () {
       // Validation must not depend on which side of an initializeBeanContext
       // call a handle happened to be constructed on. A handle created between

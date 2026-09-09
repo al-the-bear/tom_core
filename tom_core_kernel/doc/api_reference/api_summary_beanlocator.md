@@ -188,6 +188,7 @@ assignable to the type consumers request.
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
 | `initializeBeanContext` | `void initializeBeanContext()` | Initializes the bean context by discovering `@TomComponent`-annotated classes via reflection, filtering by environment/platform, instantiating and registering beans, and validating the pending `TomBean` references. Requires a configured runtime whenever a discovered class carries a selector or an interface has candidates to choose between. |
+| `validateBeanReferences` | `void validateBeanReferences()` | Resolves every pending `TomBean` handle so a missing binding is reported now rather than at the first call that needed it; the last step of `initializeBeanContext`, and public because that is not the only moment worth checking. A handle constructed after the last pass is checked by the next one, and an application that initializes once has none — re-running `initializeBeanContext` is not the remedy, since it rebuilds the registry and drops every imperative registration made since. A handle awaiting a *named* registration is skipped and stays pending, so the deferral ends when the name arrives; a handle it vouched for is dropped, so a second call sees only what appeared since the first. |
 
 Validation resolves every handle constructed since the previous pass — including
 one constructed *between* two passes, which the next pass validates — so a typed
