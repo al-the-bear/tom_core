@@ -375,7 +375,7 @@ an essential type.
 
 ## Status
 
-Version **0.11.2**, published on pub.dev. The suite runs with `dart test`; no
+Version **0.12.0**, published on pub.dev. The suite runs with `dart test`; no
 count is given, because a count is a claim nothing checks and every added test
 would be a README edit nobody makes. The version is checked.
 
