@@ -468,6 +468,34 @@ class OpaqueFieldHolder {
   OpaqueFieldHolder();
 }
 
+/// Test class whose object field is `late`, so reading it before it is
+/// assigned throws instead of answering null.
+///
+/// The map-setting path asks a field what it already holds, because a field
+/// holding an object is filled in place rather than replaced. `late` is the
+/// one declaration for which that question has no answer: reading an
+/// unassigned `late` field raises `LateInitializationError`, and the generated
+/// accessor is a direct field read (`(instance) => instance.address`), so the
+/// error arrives at the reflector rather than being contained by it. Treating
+/// that as anything but "there is nothing here to fill" would make a `late`
+/// object field impossible to deserialize into.
+@tomReflector
+class LateFieldHolder {
+  late Address address;
+
+  /// A map field the annotated-object strategy does not claim.
+  ///
+  /// That strategy takes any field whose declared type begins `Map<String,`,
+  /// so a raw `Map` is one of the few shapes that reaches the fill-in-place
+  /// strategy with a map already in it. Filling it can then fail on the
+  /// element type of whatever map the field actually holds, which is the only
+  /// reachable way to make that strategy fail *after* it has decided it
+  /// applies.
+  Map? raw;
+
+  LateFieldHolder();
+}
+
 /// Test class with nullable List elements (`List<X?>?`).
 @tomReflector
 class NullableElementListHolder {
@@ -4934,6 +4962,86 @@ void main() {
               ),
         ),
       );
+    });
+
+    test('a Map lands on a `late` object field that cannot be read yet', () {
+      // The one failure the map chain still absorbs, and the reason it has to.
+      // Filling in place asks the field what it already holds; a `late` field
+      // answers that question by raising, and the generated accessor is a
+      // direct field read, so the error reaches the reflector. Reading it as
+      // anything but "there is nothing here to fill" would make a `late`
+      // object field impossible to deserialize into — the strategy would
+      // report a failure instead of declining, and the strategy that *can*
+      // build an Address would never be reached.
+      final holder = LateFieldHolder();
+      tomReflectionInfo.setValues(holder, {
+        'address': {'city': 'Berlin', 'street': 'Main Street 1'},
+      });
+      expect(holder.address.city, 'Berlin');
+      expect(holder.address.street, 'Main Street 1');
+    });
+
+    test(
+      'an assigned `late` object field is filled in place, not replaced',
+      () {
+        // The control: once the field holds something the probe succeeds, the
+        // fill-in-place strategy claims the payload, and a partial one updates
+        // only what it names. Without this the test above would still pass if
+        // the probe were removed and every `late` field simply rebuilt.
+        final holder = LateFieldHolder();
+        holder.address = Address()
+          ..street = 'Old Street'
+          ..city = 'Berlin';
+        final before = holder.address;
+
+        tomReflectionInfo.setValues(holder, {
+          'address': {'city': 'Hamburg'},
+        });
+
+        expect(holder.address.city, 'Hamburg');
+        expect(holder.address.street, 'Old Street');
+        expect(identical(holder.address, before), isTrue);
+      },
+    );
+
+    test('a fill that fails past the point of no return is not a decline', () {
+      // The other half of the same rule. Once the probe has succeeded the
+      // strategy has decided it applies, and a failure after that is a verdict
+      // on the payload rather than a reason to try the next strategy. A raw
+      // `Map` field is one of the few that reaches this strategy holding a
+      // map, because the annotated-object strategy claims everything declared
+      // `Map<String, ...>`; the map it actually holds is typed, so a value of
+      // the wrong type is rejected by the map itself. Declining here would put
+      // that back where this whole group started: the entry dropped, the call
+      // reporting success.
+      final holder = LateFieldHolder();
+      holder.address = Address();
+      holder.raw = <String, int>{'count': 1};
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'raw': {'count': 'not a number'},
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.map_field_fill_failed',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                allOf(
+                  contains("'raw'"),
+                  contains('LateFieldHolder'),
+                  contains('not a number'),
+                ),
+              )
+              .having((e) => e.rootException, 'rootException', isNotNull),
+        ),
+      );
+      expect(holder.raw, {'count': 1}, reason: 'the field is not half-written');
     });
 
     test('a Map built for a field the field then rejects keeps the error', () {

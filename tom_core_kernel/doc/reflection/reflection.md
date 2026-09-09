@@ -1040,6 +1040,7 @@ apart.
 | `reflection.set.map_field_not_settable` | A Map arrived for a field no map strategy can take: the declared type is not a supported map type, names no reflected class to build, and the field holds nothing to fill in place. Names the class, the field, its declared type and the value |
 | `reflection.set.map_field_assignment_failed` | A map strategy built a value for the field and the field refused it — the common cause is a generic field such as `Box<int>`, since the registry is keyed by declaration and returns a `Box<dynamic>`. Carries the underlying error as `rootException` |
 | `reflection.set.list_field_not_settable` | A List arrived for a field that cannot hold one — a scalar, a map, or an annotated object. Names the class, the field, its declared type and the value |
+| `reflection.set.map_field_fill_failed` | A field already holding a map or object was being filled in place and the fill failed — typically the map in the field carries an element type the value does not satisfy. Carries the underlying error as `rootException` |
 | `reflection.hook.failed` | A `fromJson`, `jsonDecode`, `toJson` or `jsonEncode` hook exists and raised — names the hook and the class, and keeps the original error as `rootException` |
 | `reflection.hook.invalid_return` | A hook exists, returned normally, and returned something unusable — a `toJson` or `jsonEncode` that is not a `Map<String, Object?>`, or a `fromJson` that is not an instance of the requested type |
 
@@ -1270,6 +1271,7 @@ got before it gave up, which is the part worth knowing when you read one:
 | `Map` | `Object?`, or a class with no `@tomReflector` | `reflector.type.not_annotated` |
 | `Map` | `dynamic` | `reflection.set.map_field_not_settable` |
 | `Map` | a generic instantiation such as `Box<int>` | `reflection.set.map_field_assignment_failed` |
+| `Map` | one already holding a map whose element type the value does not fit | `reflection.set.map_field_fill_failed` |
 
 ```dart
 // MapHolder declares `Map<String, int>? intMap`
@@ -1284,7 +1286,7 @@ tomReflectionInfo.setValues(ListHolder(), {'intList': {'a': 1}});
 ```
 
 Both collection paths are built from strategies that are allowed to decline,
-which is what makes the last two rows worth separating. A field declared
+which is what makes the last three rows worth separating. A field declared
 `dynamic` names no type to build, so every strategy declines by inspection and
 nothing was ever attempted: the refusal is assembled from the field's
 declaration and the value. A field declared `Box<int>` does name a class, so
@@ -1292,6 +1294,18 @@ the last strategy builds one — but the registry is keyed by declaration and
 returns a `Box<dynamic>`, which the setter rejects. That error is kept and
 carried on the exception as `rootException`, because a bare `_TypeError` naming
 two type arguments and no field is not something a caller can act on.
+
+A strategy may also fail *after* it has decided that it applies, and that is
+not a decline either. A field already holding a map or an object is filled in
+place rather than replaced, so the payload has to satisfy whatever that map or
+object already is: a field declared `Map` holding a `Map<String, int>` rejects
+a `String` value from inside the map itself. Declining there would drop the
+entry and report success, which is the failure this whole section is about, so
+the error is kept and attributed as `reflection.set.map_field_fill_failed`.
+The one failure that *is* still read as "not applicable" is reading the field
+in the first place: an unassigned `late` field raises rather than answering
+null, and "there is nothing here to fill" is exactly what that means — so
+that one declines, and the strategy that builds a fresh instance runs instead.
 
 When the shape *does* fit, whether prior content survives depends on which
 strategy claims the payload:

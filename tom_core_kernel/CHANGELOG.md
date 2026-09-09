@@ -42,11 +42,15 @@ anyone who was writing them.
   the value: `reflection.set.map_field_not_settable`,
   `reflection.set.map_field_assignment_failed` (a strategy built a value the
   field refused; the underlying error is kept as `rootException`) and
-  `reflection.set.list_field_not_settable`. The declines themselves are decided
-  by inspection rather than by catching, so the only failure any strategy still
-  absorbs is the one that genuinely means "not applicable" — reading a `late`
-  field before it holds anything, which is how the fill-in-place strategy
-  learns there is nothing to fill. **This is a behaviour change for payloads
+  `reflection.set.list_field_not_settable`. A strategy that fails *after*
+  deciding it applies is not declining either: filling a field in place has to
+  satisfy the map or object already there, and a value its element type rejects
+  now throws `reflection.set.map_field_fill_failed` instead of dropping the
+  entry. The declines themselves are decided by inspection rather than by
+  catching, so the only failure any strategy still absorbs is the one that
+  genuinely means "not applicable" — reading a `late` field before it holds
+  anything, which is how the fill-in-place strategy learns there is nothing to
+  fill, and which is what keeps a `late` object field deserializable. **This is a behaviour change for payloads
   that were previously accepted in part:** a document with an entry of the
   wrong shape for its field now raises where it used to bind the rest and
   return.

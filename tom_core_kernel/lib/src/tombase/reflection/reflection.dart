@@ -1459,7 +1459,7 @@ class TomReflectionInfo {
     if (_trySetAnnotatedObjectMapType(im, imGet, entry)) return;
 
     // Try to fill existing object
-    if (_tryFillExistingMapOrObject(im, entry)) return;
+    if (_tryFillExistingMapOrObject(im, cm, entry)) return;
 
     // Try to instantiate and fill
     if (_instantiateAndSetMapValue(im, cm, entry)) return;
@@ -1653,6 +1653,7 @@ class TomReflectionInfo {
   /// populates it with the provided values instead of replacing it.
   bool _tryFillExistingMapOrObject(
     InstanceMirror im,
+    ClassMirror cm,
     MapEntry<String, dynamic> entry,
   ) {
     // Reading the field is the one operation here whose failure genuinely
@@ -1669,15 +1670,34 @@ class TomReflectionInfo {
 
     // Past that guard this strategy applies: the field holds something and the
     // payload is a map for it. A failure from here on is a verdict on the
-    // payload, not a signal to try the next strategy, so it is left to travel
-    // — absorbing it would demote a precise diagnosis to a field silently
-    // left as it was.
-    if (existing is Map<String, Object?>) {
-      for (var valueEntry in (entry.value as Map<String, dynamic>).entries) {
-        existing[valueEntry.key] = valueEntry.value;
+    // payload, not a signal to try the next strategy, so it is reported rather
+    // than absorbed — absorbing it would demote a precise diagnosis to a
+    // field silently left as it was.
+    try {
+      if (existing is Map<String, Object?>) {
+        for (var valueEntry in (entry.value as Map<String, dynamic>).entries) {
+          existing[valueEntry.key] = valueEntry.value;
+        }
+      } else {
+        setValues(existing, entry.value as Map<String, dynamic>);
       }
-    } else {
-      setValues(existing, entry.value as Map<String, dynamic>);
+    } on TomReflectorException {
+      rethrow;
+    } catch (error, stacktrace) {
+      // The map in the field carries its own element type, and rejects a value
+      // of the wrong one with a `_TypeError` naming two types and no field.
+      // Declining on it would drop the entry; letting it travel bare would
+      // report a failure the caller cannot attribute to anything in the
+      // payload. Keep it, and say whose it is.
+      throw TomReflectorException(
+        "reflection.set.map_field_fill_failed",
+        "Filling field '${entry.key}' of ${cm.simpleName} in place from "
+            "${limited(entry.value, 100)} failed: $error",
+        parameters: {"class": cm.simpleName, "field": entry.key},
+        rootException: error,
+        stack: stacktrace,
+        autoLog: true,
+      );
     }
     return true;
   }
