@@ -122,7 +122,12 @@
       "faults": 0,
       "measured": "2026-09-03"
     },
-    "check_resource_key_namespace": {
+    "check_reflection_artifacts": {
+   "faults": 0,
+   "measured": "2026-09-09",
+   "note": "Zero from the day it landed, because the fourteen stale artifacts it was written for were regenerated in the same pass. 35 artifacts across 18 packages are in scope. Zero is the expected steady state: the gate exists for recurrence, and a fault here is always repaired by regenerating, never by editing the file it names."
+  },
+  "check_resource_key_namespace": {
       "faults": 0,
       "measured": "2026-09-03"
     },

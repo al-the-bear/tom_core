@@ -13,6 +13,33 @@
 
 ### Fixed
 
+- **The checked-in reflection artifacts were the one file nothing read
+  (tcincb140).** `analysis_options.yaml` excludes `**/*.reflection.dart`, for a
+  good reason — a mirror reflects whatever its source declares, including
+  deprecated and `@visibleForTesting` members, and a generated file that trips
+  several lints per package teaches everyone to ignore the analyzer. The cost
+  was invisibility: not analyzed, not formatted, not reviewed, so a *reference*
+  in one could rot in silence. `advanced_ops_server` carried one —
+  `MariadbMigrationAdaptor` lost `splitSqlStatements` to the SQL-lexer
+  extraction, its mirror went on naming it, and `dart analyze lib test` reported
+  "No issues found!" while every test file in the package failed to load with
+  `Member not found`.
+
+  `tool/check_reflection_artifacts.py` analyzes the 35 artifacts across 18
+  packages by explicit path — which the analyzer honours whether or not the
+  options exclude them — and faults only on `error` severity, because a warning
+  in generated code is the generator's style and faulting on it would recreate
+  the noise the exclusion suppresses. About four seconds per package.
+
+  It is deliberately the *cheap* half. `reflection_generation.sh --check`
+  answers the stronger question — is this file what the generator would emit
+  today — at some ninety seconds per package, twenty-odd minutes for the
+  repository, which belongs before a release rather than in a gate pass. An
+  artifact can pass the new gate and still be stale, because a mirror merely
+  *missing* a class the source has added names nothing that does not exist.
+  What it cannot do is pass and fail to compile, which is the failure that takes
+  a suite down.
+
 - **A limitations bullet could name a class that no longer exists and nothing
   disagreed (tcincb139).** The sweep over `## Not Yet Implemented` checked that
   a guide *has* the section and that claims of unfinished work live only inside

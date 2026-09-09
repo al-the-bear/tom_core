@@ -32,6 +32,19 @@ import 'support/retention_fixtures.dart';
 TomJobDefinition _definition(String name) =>
     TomScheduledJobs.discover().firstWhere((job) => job.name == name);
 
+/// The jobs *this sample* declares.
+const _sampleJobs = {opsPurgeJobName, opsReportJobName, opsDigestJobName};
+
+/// The jobs the *framework* registers into the same scheduler.
+///
+/// Subtracted rather than counted, and that is the whole point of naming them.
+/// The assertions below used to state that the scheduler holds exactly three
+/// jobs, which stopped being true the day `tom_core_server` began registering
+/// its own anchor-verification job — and read as a regression in this sample,
+/// which had not changed. The framework will add more; what this sample can
+/// assert is which jobs are *its own*.
+const _frameworkJobs = {tomAuditAnchorVerificationJobName};
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -214,19 +227,28 @@ void main() {
     test('start registers all three and installs the trail', () async {
       final definitions = await runtime.start();
 
-      expect(definitions.map((d) => d.name).toSet(), {
-        opsPurgeJobName,
-        opsReportJobName,
-        opsDigestJobName,
-      });
-      expect(runtime.scheduler.jobs.keys.toSet(), {
-        opsPurgeJobName,
-        opsReportJobName,
-        opsDigestJobName,
-      });
+      expect(
+        definitions.map((d) => d.name).toSet().difference(_frameworkJobs),
+        _sampleJobs,
+      );
+      expect(
+        runtime.scheduler.jobs.keys.toSet().difference(_frameworkJobs),
+        _sampleJobs,
+      );
       // Installed first, so nothing that follows can mutate or refuse without
       // leaving a record.
       expect(TomAuditTrail.isEnabled, isTrue);
+    });
+
+    test('the framework registers its own jobs beside the sample\'s', () async {
+      // What makes the subtraction above load-bearing. Without this the two
+      // assertions would go on passing if the framework stopped registering
+      // anything at all, having subtracted a name that is no longer there.
+      await runtime.start();
+      expect(
+        runtime.scheduler.jobs.keys,
+        contains(tomAuditAnchorVerificationJobName),
+      );
     });
 
     test('start installs the deployment cap before any job may fire', () async {

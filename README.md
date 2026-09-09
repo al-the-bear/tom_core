@@ -228,6 +228,7 @@ reports and never gates.
 | [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, and links from a package's documentation into `_copilot_guidelines/` |
 | [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
 | [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped documents citing a path under `_ai/`, which no reader of the package can open |
+| [`tool/check_reflection_artifacts.py`](tool/check_reflection_artifacts.py) | Analyzes the checked-in reflection artifacts, which the analysis options exclude, and fails on a name that no longer resolves |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
 ```bash
@@ -1391,6 +1392,38 @@ it in full. The match is exact rather than heuristic: every sentinel was verifie
 verbatim against freshly generated `flutter create` (app and package) and
 `dart create` (package and console) output, so a hand-written description is
 never a false positive.
+
+```bash
+python3 tool/check_reflection_artifacts.py             # the whole repository
+python3 tool/check_reflection_artifacts.py --self-test # prove it can report
+```
+
+Analyzes every checked-in `*.reflection.dart` and fails on an `error`-severity
+finding — a name the mirror writes that no longer resolves.
+
+`analysis_options.yaml` excludes these files, for a good reason: a mirror
+reflects whatever its source declares, including deprecated and
+`@visibleForTesting` members, and a generated file that trips several lints per
+package teaches everyone to ignore the analyzer. The cost is that the artifact
+becomes the one file in the repository nothing reads — not analyzed, not
+formatted, not reviewed — so a reference in it rots silently.
+`advanced_ops_server` carried one: `MariadbMigrationAdaptor` lost
+`splitSqlStatements` to the SQL-lexer extraction, the checked-in mirror went on
+naming it, and `dart analyze lib test` reported "No issues found!" while every
+test file in the package failed to load with `Member not found`.
+
+An explicitly named file is analyzed whether or not the options exclude it,
+which is what makes the check possible without changing them. Only `error`
+severity counts: a warning or an info in generated code is the generator's
+style, and faulting on it would recreate the noise the exclusion suppresses.
+
+This is the cheap half of the question. `reflection_generation.sh --check`
+answers the stronger one — is this file what the generator would emit today —
+in about ninety seconds per package against four here, so it belongs before a
+release rather than in a gate pass. An artifact can pass this gate and still be
+stale, because a mirror merely *missing* a class the source has added references
+nothing that does not exist. What it cannot do is pass and fail to compile,
+which is the failure that takes a suite down.
 
 ```bash
 python3 tool/check_doc_source_paths.py                  # the whole repository

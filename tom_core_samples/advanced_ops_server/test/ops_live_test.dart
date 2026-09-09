@@ -354,7 +354,21 @@ void main() {
         // without a connection.
         final definitions = TomScheduledJobs.registerAll(scheduler);
 
-        expect(definitions, hasLength(3));
+        // The sample's own three, named rather than counted. The framework
+        // registers into the same scheduler — `tom.audit.anchorVerification`
+        // today — so a count reads a framework addition as a regression in a
+        // sample that has not changed, and the framework will add more.
+        expect(
+          definitions.map((definition) => definition.name).toSet().difference({
+            tomAuditAnchorVerificationJobName,
+          }),
+          {opsPurgeJobName, opsReportJobName, opsDigestJobName},
+        );
+        expect(
+          definitions.map((definition) => definition.name),
+          contains(tomAuditAnchorVerificationJobName),
+          reason: 'the subtraction above must be subtracting something',
+        );
         await scheduler.tick();
       });
     },
