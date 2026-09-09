@@ -370,7 +370,16 @@ MODULE_PATH = re.compile(r"`(tom_\w+/lib/src/[\w/]+?)/?`")
 # opening a paragraph, followed by the em dash that introduces its file count.
 # Anchored at the line start so a mid-sentence mention of a neighbour package
 # -- of which these documents have several -- cannot be taken for the subject.
-PACKAGE_PATH = re.compile(r"^`(tom_\w+/[\w/]+?)/?`\s+—", re.M)
+#
+# The path may be one segment or several. Requiring at least two silently
+# excluded every package that sits directly under `tom_ai/core` rather than
+# inside a sample tree: `tom_flutter_ui_test/` did not match where
+# `tom_core_samples/advanced_auth_server/` did, so two documents reported
+# "measures nothing" for a reason that was about their address rather than
+# about what they claimed -- and their censuses drifted, unwatched, in four
+# figures. Nothing else guards against a module path being taken for a package
+# one; the `pubspec.yaml` check below is what does that, and it is unaffected.
+PACKAGE_PATH = re.compile(r"^`(tom_\w+(?:/[\w/]+?)?)/?`\s+—", re.M)
 
 # The layout block: a ```text fence whose first line is the package directory.
 LAYOUT_FENCE = re.compile(r"^```text\n(.*?)^```", re.M | re.S)
