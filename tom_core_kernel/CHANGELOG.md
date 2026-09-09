@@ -31,6 +31,14 @@ anyone who was writing them.
 
 ### Fixed
 
+- **The README stated version 1.1.1 against a pubspec at 1.1.16
+  (tcincb153).** Fifteen releases of drift in the one number in the `## Status`
+  block a reader acts on — it says which release the document describes, so a
+  wrong one misleads rather than merely disappointing. Corrected, and the test
+  count beside it removed: nothing connected that number to the suite, so it
+  could only rot. `tom_ai/core/tool/check_readme_status.py` now holds both
+  rules across every package here.
+
 - **Every remote log record said it came from `"RDEF"` (tcincb110).**
   `TomRemoteLogMessage.globalSettingSenderId` was documented as the identifier
   saying which client sent a record, and defaulted to that placeholder. A

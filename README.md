@@ -218,6 +218,7 @@ reports and never gates.
 | [`tool/check_unimplemented_claims.py`](tool/check_unimplemented_claims.py) | Finds documentation that calls a shipped `Tom*` type unimplemented |
 | [`tool/check_module_readme_shape.py`](tool/check_module_readme_shape.py) | Holds every `lib/src/**/readme.md` to the four structural elements they all share |
 | [`tool/check_doc_overview_types.py`](tool/check_doc_overview_types.py) | Holds a module document's Overview table to every public type its module's barrel exports |
+| [`tool/check_readme_status.py`](tool/check_readme_status.py) | Holds a package README's `## Status` version to its `pubspec.yaml`, and forbids a test count |
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
@@ -1446,6 +1447,44 @@ holding a table with a `Type` (or `Symbol`) column beside a `Kind` column. All
 twenty `tom_core_server` module documents write that, and eleven others across
 `tom_flutter_ui` and `tom_core_agentic`; `tom_core_kernel`'s Overviews are prose
 and are out of scope until they are not.
+
+```bash
+python3 tool/check_readme_status.py                  # every package
+python3 tool/check_readme_status.py tom_core_server  # one package
+python3 tool/check_readme_status.py --self-test      # check the checker
+```
+
+Reads the `## Status` block of each package README — five carry one — and holds
+its two claims to opposite rules. The version must be the one `pubspec.yaml`
+declares. A test count must not appear at all.
+
+The asymmetry is the whole check. A version is what tells a reader which release
+the document describes, so a wrong one misleads rather than merely disappointing,
+and holding it true costs one file read. `tom_core_kernel` claimed 1.1.1 against
+a pubspec at 1.1.16 — fifteen releases — and `tom_flutter_ui` 1.0.0 against
+1.1.0.
+
+A count is a claim nothing connects to the suite, so it can only rot.
+`tom_core_server`'s block reached less than half the truth, 1726 stated against
+3491 actual; the correction stood for days before the same block was wrong again
+at 95 suites against 103 and 20 `db`-tagged against 24. The mechanism is
+structural rather than careless: every added test is a README edit nothing asks
+for.
+
+Enforcing the count instead is mechanically possible — run the suite, compare —
+and is the wrong trade. It makes every added test a required README edit, and a
+document test that fails on an unrelated commit gets deleted rather than obeyed.
+The count also decides nothing: nobody picks a dependency on 3491 tests over
+1726. What a reader can act on is how the suite runs and what gates part of it,
+such as `tom_core_server`'s `db` tag, which skips without a live MySQL. That is
+operational, and it cannot go stale.
+
+`tom_core_server`'s own suite pins its own block as well, in
+`test/api_reference_coverage_test.dart` — the gate covers the corpus, but a
+package's suite is what runs when that package changes, which is when its README
+rots. The convention itself is written in
+`_copilot_guidelines/component_module_readme_example.md` §2, which is where a
+README that mandates a rotting count would otherwise come from.
 
 ```bash
 python3 tool/check_reflection_artifacts.py             # the whole repository

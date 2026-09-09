@@ -347,7 +347,7 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
 ## Status
 
 - **Version:** 1.2.1
-- **Tests:** 285 tests — 8 module suites, each of which also runs the example
+- **Tests:** a module suite per module, each of which also runs the example
   it documents, plus three guards over what the package says about itself: one
   over the markdown — its links, its anchors, its tables of contents and the
   dependencies each module document claims — one over the command each
@@ -359,4 +359,8 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
   store's list-ownership contract, and — in resources — the recommendation to
   prefer a typed subclass together with its nullable-`T` exception, and the
   wording and number of the failures the module throws.
+
+  No count is given: a count is a claim nothing checks, and every added test
+  would be a README edit nobody makes. What the suites *do* is the part worth
+  stating, and it does not drift with the count.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

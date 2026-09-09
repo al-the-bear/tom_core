@@ -365,9 +365,17 @@ apps get the full kernel API through one dependency. See the
 ## Status
 
 - **Version:** 1.3.0
-- **Tests:** 3633 test cases across 95 module suites (run with `testkit :test`
-  or `dart test`). 408 of them live in the 20 suites tagged `db` and skip
-  unless a live MySQL is reachable — bring one up with `tool/run_db_tests.sh`.
+- **Tests:** run with `testkit :test` or `dart test`. Part of the suite is
+  tagged `db` and skips unless a live MySQL is reachable — bring one up with
+  `tool/run_db_tests.sh`, and the tagged tests then run too.
+
+  No count is given, and that is deliberate. A count here is a claim nothing
+  checks, and this package's whole position is that an unchecked claim about
+  itself breaks — `test/api_reference_coverage_test.dart` is a hundred-odd
+  assertions built on exactly that premise. A count breaks faster than most,
+  because every added test is a README edit nobody makes. The `db` tag above is
+  what a reader can actually act on, and the version is checked, because a
+  wrong version is the claim that actively misleads.
 - **Conformance guards:** some of those suites check the package rather than the
   code — `test/formatting_test.dart` fails when any Dart file is not
   `dart format` clean (the fix is always `dart format .`, never a code change),

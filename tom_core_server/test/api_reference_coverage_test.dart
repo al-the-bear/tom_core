@@ -4143,6 +4143,68 @@ void main() {
     });
   });
 
+  group('the README\'s Status block states what it can hold true', () {
+    // The block carries exactly one precise number, and that is the whole
+    // point of these two tests. A version a reader acts on — it says which
+    // release the document describes — so a wrong one misleads rather than
+    // merely disappointing, and it costs one file read to hold true. A test
+    // count costs a suite run to check and informs nobody: the choice between
+    // this package and another is not made on the size of its suite. So the
+    // block states the version and describes the suite, and the pair below
+    // pins each half.
+    //
+    // `../tool/check_readme_status.py` applies the same rule across every
+    // package under `tom_ai/core`. This suite is what runs when *this* package
+    // changes, which is when its own README rots.
+
+    test('the stated version is the one pubspec.yaml declares', () {
+      final status = _sectionBody('README.md', 'Status').join('\n');
+      final stated = RegExp(
+        r'\*\*Version:\*\*\s*(\S+)',
+      ).firstMatch(status)?.group(1);
+      final declared = RegExp(
+        r'^version:\s*(\S+)',
+        multiLine: true,
+      ).firstMatch(File('pubspec.yaml').readAsStringSync())?.group(1);
+
+      expect(
+        stated,
+        isNotNull,
+        reason:
+            'The README\'s Status block states no version. It is the one '
+            'number the block keeps, because it tells a reader which release '
+            'the document describes.',
+      );
+      expect(
+        stated,
+        declared,
+        reason:
+            'README.md says version $stated; pubspec.yaml says $declared. A '
+            'version is the claim in this block a reader acts on, so a wrong '
+            'one misleads rather than merely disappointing.',
+      );
+    });
+
+    test('the block states no test count', () {
+      final counts = RegExp(r'\b[0-9][0-9,]+\s+(?:test cases|tests?|suites?)\b')
+          .allMatches(_sectionBody('README.md', 'Status').join('\n'))
+          .map((match) => match.group(0)!)
+          .toList();
+
+      expect(
+        counts,
+        isEmpty,
+        reason:
+            'The README\'s Status block states a test count '
+            '(${counts.join(', ')}). Nothing connects that number to the '
+            'suite, so every added test is a README edit nobody makes and the '
+            'count drifts. Describe how the suite is run and what gates part '
+            'of it — the `db` tag is operational and cannot go stale — and '
+            'give no number.',
+      );
+    });
+  });
+
   group('the README\'s feature tour names every module', () {
     test('no module is missing from the Features section', () {
       final features = _readmeFeatures();

@@ -375,8 +375,9 @@ an essential type.
 
 ## Status
 
-Version **0.11.2**, published on pub.dev. Test suite: **95 tests, all passing**
-(`dart test`).
+Version **0.11.2**, published on pub.dev. The suite runs with `dart test`; no
+count is given, because a count is a claim nothing checks and every added test
+would be a README edit nobody makes. The version is checked.
 
 Every part the
 [`codespecs_mapping.md`](../../ai_build/tom_specs_model/doc/codespecs_mapping.md)

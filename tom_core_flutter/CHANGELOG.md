@@ -2,6 +2,12 @@
 
 ### Fixed
 
+- **The README's `## Status` block stated a test count (tcincb153).** "285
+  tests — 8 module suites" was a claim nothing checked, and every added test
+  would have been a README edit nobody makes. The block now describes what the
+  suites cover and gives no number; the version beside it is pinned to
+  `pubspec.yaml` by `tom_ai/core/tool/check_readme_status.py`.
+
 - **A whole number configured for a `TomDoubleProperty` threw instead of
   widening (tcincb107).** No configuration format can say "double": `rate: 2`
   in YAML and `"rate": 2` in JSON both decode to an `int`, so a value that was

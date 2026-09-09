@@ -2,6 +2,13 @@
 
 ## 0.11.2
 
+- Docs only, no API change: the README's `## Status` block stated "95 tests,
+  all passing". Nothing connected that number to the suite, so it could only
+  rot — every added test would have been a README edit nobody makes. The block
+  now says how the suite is run and gives no count; the version beside it is
+  pinned to `pubspec.yaml` by `tom_ai/core/tool/check_readme_status.py`
+  (tcincb153).
+
 - Docs only, no API change: five test comments cited a bare section number of
   `codespecs_mapping.md`, which does not ship with this package, so the
   justification a reader needed was one indirection away and unreachable. Each

@@ -1,178 +1,183 @@
 {
-  "about": "Fault counts the gates in tool/ are held to. Read by tool/check_gates.py, which fails when a gate's count moves in either direction: up means a new fault, down means a baseline that should be lowered so the repair sticks. 'measured' is the date the count last changed. Regenerate with `python3 tool/check_gates.py --update`; write 'note' by hand.",
-  "gates": {
-    "check_barrel_exports": {
-      "faults": 0,
-      "measured": "2026-09-04",
-      "note": "Lands at zero because all four faults it found were legitimate omissions, and each was declared with a marker in its barrel in the same pass: reflection_seed.dart in advanced_client_core, reflection_entry.dart in todo_domain, and the two generated colour/icon tables behind tom_colors.dart and tom_icons.dart in tom_flutter_ui. Zero is the expected steady state -- the gate exists for recurrence, not backlog, and the one defect of this class (session_two_factor_controller.dart, absent from advanced_app_client's app.dart) was already repaired by tcinc947. 39 barrels across 23 packages are in scope. A directory with no barrel is deliberately not covered: the six Flutter sample applications correctly re-export nothing from screens/ and groups/, and demanding it would produce some ninety faults, all wrong."
-    },
-    "check_comments_read_as_is": {
-      "faults": 31,
-      "measured": "2026-09-07",
-      "note": "31 history-narration phrases, all outside the five tom_core packages: 23 in tom_flutter_ui, 6 in tom_flutter_form_test, 2 in tom_flutter_ui_test -- see tcextension11_aidb. It was 21 until the narration rule was completed on 2026-09-07: `used to <verb>` alone left `as before`, `formerly` and a sentence-initial `Previously` unmatched, which is how the same defect kept arriving in a spelling the gate did not know. Widening it surfaced 10 more in the same three packages and 16 inside tom_core, and the 16 were repaired in that pass -- so the number went up while the corpus got cleaner, which is the only shape of increase this file should ever accept. The tom_core side stays at zero and a regression there is visible despite the 31, because every one of them sits in a package the five do not contain. `used to` is still matched only before verbs that cannot follow it in the passive sense: demanding a rewrite of \"the scope segment used to resolve display keys\" would be the gate crying wolf. Zero work-item ids remain anywhere in scope. This gate covers what check_section_refs.py does not: quest todo ids, build-plan ids, 'Todo <n>' pointers and past-indicative narration about the code's own history. It matches ids by *shape* against a closed vocabulary of English and published technical words, in both lowercase and ALL-CAPS; it does not enumerate quest prefixes, because a prefix list fails open -- minting a new one defeats it silently, which is how 104 ALL-CAPS pointers in 18 families shipped past a green gate."
-    },
-    "check_consumer_claims": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_dart_format": {
-      "faults": 0,
-      "measured": "2026-09-08",
-      "note": "Zero, and it must stay there: the fix is never a code change, it is `python3 tool/check_dart_format.py --fix`. 1537 files across 23 packages. It landed at zero only because the four drifted files it found on the day -- all in tom_flutter_form_test, a package with no guard -- were formatted in the same pass. Two packages carry their own in-suite `formatting_test.dart` and keep it; this covers the other 21, which had nothing. If it fails where nothing was edited, the SDK's formatter changed its output: reformat and commit that alone, and do not raise this."
-    },
-    "check_dartdoc_build": {
-      "faults": 0,
-      "measured": "2026-09-07",
-      "note": "Zero, and held there. `dart doc` must report neither a warning nor an error for tom_core_kernel, tom_core_agentic or tom_core_codespecs. Every fault is one bracketed name in one comment, so a rise of one is a real regression rather than noise -- this count was 11 for tom_core_kernel alone before the gate existed."
-    },
-    "check_dartdoc_refs": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_demo_counts": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_doc_ai_citations": {
-      "faults": 0,
-      "measured": "2026-09-04",
-      "note": "Lands at zero because the two faults it was written for were repaired in the same pass. Both were in tom_flutter_ui/doc/ and both cited _ai/quests/flutter_ui/acl_json_layout.md; one of them, under 'Separation with json-Acl-layout', called that document the canonical layout contract, so a shipped document deferred its authority to a file its reader cannot obtain. The cited file exists, which is what makes this class of defect survive a scan: neither find nor git ls-files follows the _ai symlink, so the citation reads as 'file does not exist' to any tool run from the container root. Keying on the citation rather than on the target is what makes the answer stable. _copilot_guidelines/, CHANGELOG.md and tool/ are out of scope because _ai/ is genuinely reachable for their readers."
-    },
-    "check_doc_artifacts": {
-      "faults": 0,
-      "measured": "2026-09-08",
-      "note": "Zero, and the artefact that held it at one is gone. tom_core_kernel/doc/analyzer_analysis.json was an 18.5 MB analyzer dump whose only reader was a tom_reflector test, and that test existed to check the dump was current — so the file was verified by the only thing that read it and neither could say anything about the analyzer. The test now produces its own JSON in-process and asserts the round trip, which is the question worth asking; the file, its inert `tom_analyzer` builder configuration and the exemptions three guards carried for it went with it. The six files this gate was written for -- three doc/last_testrun.json captures and three doc/baseline_*.csv -- were removed when it landed. Zero is the steady state: doc/ is hand-authored, and a tool's output belongs where it can be regenerated without a commit."
-    },
-    "check_doc_attributions": {
-      "faults": 0,
-      "measured": "2026-09-05",
-      "note": "Clean. 441 attribution claims, 105 type names judged. The one fault found on the first run (tom_flutter_ui_test's layout table calling lib/locale_settings.dart an AppBar language selector) was repaired in the same pass, so a rise here is a new misattribution, not a backlog."
-    },
-    "check_doc_class_inventories": {
-      "faults": 0,
-      "measured": "2026-09-05",
-      "note": "Zero is the steady state, not an untested gate: the 81 stale (TBD) markers, the 42 names that named nothing, and the 3 shipped classes the appendix never mentioned were all repaired in the pass that introduced the checker, so it is baselined on a document it has already moved. One marked region, over tom_flutter_ui/lib/src/forms/fields, holding 97 classes of the TomField hierarchy. `--self-test` perturbs that region by one name in each direction and requires MISSING and PHANTOM to fire, so a zero here still means the checker is reading."
-    },
-    "check_doc_dart_blocks": {
-      "faults": 0,
-      "measured": "2026-09-03",
-      "note": "Lands at zero because the 14 faults it was written for were repaired in the same pass, across 11 tom_core_kernel documents. Zero here does not mean the tree is clean: only tom_core_kernel is in PACKAGES, and doc/api_reference/ is excluded within it. tom_core_server reports 19 when run with its name as an argument, tom_flutter_ui and tom_core_flutter have not been surveyed -- see tcextension7_aico-doc-dart-blocks-other-packages."
-    },
-    "check_doc_dependencies": {
-      "faults": 0,
-      "measured": "2026-09-04",
-      "note": "Lands at zero because the 28 faults it was written for were repaired in the same pass. Eleven of the 15 package completion documents carried a Dependencies section and seven of those were incomplete; the four remaining package documents (advanced_app_server, advanced_auth_server, advanced_ops_server, core_server_sample) had no section at all and were written, so a missing section is a NOSECTION fault rather than a skip -- a gate you can pass by deleting the section is not a gate. Every one of the 28 omissions was a build-time entry (build, build_runner, tom_reflection_generator, lints, test, flutter_test, flutter_lints) while the runtime half was complete in every case. Module documents are skipped: a document is audited only when its opening inventory resolves to a directory carrying a pubspec.yaml."
-    },
-    "check_doc_error_keys": {
-      "faults": 327,
-      "measured": "2026-09-08",
-      "note": "1 + 327. The 1 is unchanged: `storage.blob.exists`, listed in an \"Error keys\" section and raised by nothing, in tom_core_server_file_storage_new.md. The rest are what the gate saw the first time it opened the hand-written module guides under `tom_core_*/doc/`, which it had never read — it audited only the completion documents, and only sections headed exactly `Error keys`, while the guides spell theirs `Failure keys` and distribute the rest by topic. It therefore reported the guides clean by never looking, which is how six keys went missing from authentication.md while the gate read 0 defective across 2 sections. It opened at 330; `authorization.md` was cleared in the pass that switched its cache to the standard `exp` claim, since renaming two of its keys meant rewriting that section anyway, and `transactions.md` when `registerParticipant` gained two keys (tcincb113) and documenting them meant writing the section its third key had never had. 33 guides carry a vocabulary, 22 are still short of it, and object_persistence.md (94), endpoints.md (41), datasources.md (37) and scheduling.md (30) hold most of the debt. Frozen rather than repaired, per this file's own rule: the remainder is separate work, and until it is written every new unnamed key would land among them unnoticed. Clearing it is tcextension23_aihi."
-    },
-    "check_doc_inventories": {
-      "faults": 0,
-      "measured": "2026-09-05",
-      "note": "Zero because all 94 faults were repaired by `--fix` in one pass. The repair was forced: the repo-wide `dart format` of tcincb1_ahti reflowed 777 Dart files, and an INDEX/HEADER/LINES claim is measured against the module's source line totals, not against the wording of the document -- so the reflow invalidated 46 figures on top of the 48 already stale here. `--fix` cannot repair only the 46: a figure is right or wrong, so the same pass also discharged the 48 that tcfinal1_aicl_stale_module_header_figures owned. 33 documents, 90 substitutions, every line identical in length before and after, so no line needed re-wrapping. Adding or retiring a table row still needs a hand, because a new row needs a sentence saying what the file carries. Still zero after the LAYOUT widening, which checks every layout-tree row's file for existence rather than only the rows that also claim a length: 264 rows across 16 documents, all present, and one more document audited (tom_core_samples_assets_new.md, whose drawn tree of 9 SVGs is the only inventory it has). Still zero after the PROSE widening, which reports a length figure sitting in a position no other audit read. It is instrumented rather than pattern-matched: each audit records the spans it took a length out of and PROSE reports the leftovers, so the census and index sentences -- prose, but read -- stay covered and widening any audit narrows PROSE automatically. It found 28 unchecked measurements across 14 documents, including `Eight steps, one file, 239 lines` of a file that had been 250 for four commits; all 28 were removed by rewriting the sentence rather than by restating the number, since a length nothing maintains is worse than no length. `--fix` does not repair PROSE: the number is usually right and what is wrong is where it sits."
-    },
-    "check_doc_kinds": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_doc_links": {
-      "faults": 0,
-      "measured": "2026-09-04",
-      "note": "Lands at zero because the 90 faults it was written for were repaired in the same pass: 84 ABSOLUTE links to /_copilot_guidelines/ in the 14 _copilot_guidelines/ files of this repo, 4 DEAD ../tom_core_*/ links written one level too shallow in the kernel's and server's index.md, 1 DEAD api_summary_result.md for a Result module the kernel does not have, and 1 GUIDELINE link out of tom_flutter_ui/README.md. The ABSOLUTE shape was workspace-wide -- 371 links in 70 files across tom_ai, tom_assistant, tom_sqm, tom_uam and the global _copilot_guidelines/ -- all repaired in the same pass, and its source, the index.md template in _copilot_guidelines/dart/new_project_setup.md, was corrected so the count stops growing by one table per new project. Anchors are out of scope (check_doc_tocs owns headings) and so are external URLs."
-    },
-    "check_doc_overview_types": {
+ "about": "Fault counts the gates in tool/ are held to. Read by tool/check_gates.py, which fails when a gate's count moves in either direction: up means a new fault, down means a baseline that should be lowered so the repair sticks. 'measured' is the date the count last changed. Regenerate with `python3 tool/check_gates.py --update`; write 'note' by hand.",
+ "gates": {
+  "check_barrel_exports": {
+   "faults": 0,
+   "measured": "2026-09-04",
+   "note": "Lands at zero because all four faults it found were legitimate omissions, and each was declared with a marker in its barrel in the same pass: reflection_seed.dart in advanced_client_core, reflection_entry.dart in todo_domain, and the two generated colour/icon tables behind tom_colors.dart and tom_icons.dart in tom_flutter_ui. Zero is the expected steady state -- the gate exists for recurrence, not backlog, and the one defect of this class (session_two_factor_controller.dart, absent from advanced_app_client's app.dart) was already repaired by tcinc947. 39 barrels across 23 packages are in scope. A directory with no barrel is deliberately not covered: the six Flutter sample applications correctly re-export nothing from screens/ and groups/, and demanding it would produce some ninety faults, all wrong."
+  },
+  "check_comments_read_as_is": {
+   "faults": 31,
+   "measured": "2026-09-07",
+   "note": "31 history-narration phrases, all outside the five tom_core packages: 23 in tom_flutter_ui, 6 in tom_flutter_form_test, 2 in tom_flutter_ui_test -- see tcextension11_aidb. It was 21 until the narration rule was completed on 2026-09-07: `used to <verb>` alone left `as before`, `formerly` and a sentence-initial `Previously` unmatched, which is how the same defect kept arriving in a spelling the gate did not know. Widening it surfaced 10 more in the same three packages and 16 inside tom_core, and the 16 were repaired in that pass -- so the number went up while the corpus got cleaner, which is the only shape of increase this file should ever accept. The tom_core side stays at zero and a regression there is visible despite the 31, because every one of them sits in a package the five do not contain. `used to` is still matched only before verbs that cannot follow it in the passive sense: demanding a rewrite of \"the scope segment used to resolve display keys\" would be the gate crying wolf. Zero work-item ids remain anywhere in scope. This gate covers what check_section_refs.py does not: quest todo ids, build-plan ids, 'Todo <n>' pointers and past-indicative narration about the code's own history. It matches ids by *shape* against a closed vocabulary of English and published technical words, in both lowercase and ALL-CAPS; it does not enumerate quest prefixes, because a prefix list fails open -- minting a new one defeats it silently, which is how 104 ALL-CAPS pointers in 18 families shipped past a green gate."
+  },
+  "check_consumer_claims": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_dart_format": {
+   "faults": 0,
+   "measured": "2026-09-08",
+   "note": "Zero, and it must stay there: the fix is never a code change, it is `python3 tool/check_dart_format.py --fix`. 1537 files across 23 packages. It landed at zero only because the four drifted files it found on the day -- all in tom_flutter_form_test, a package with no guard -- were formatted in the same pass. Two packages carry their own in-suite `formatting_test.dart` and keep it; this covers the other 21, which had nothing. If it fails where nothing was edited, the SDK's formatter changed its output: reformat and commit that alone, and do not raise this."
+  },
+  "check_dartdoc_build": {
+   "faults": 0,
+   "measured": "2026-09-07",
+   "note": "Zero, and held there. `dart doc` must report neither a warning nor an error for tom_core_kernel, tom_core_agentic or tom_core_codespecs. Every fault is one bracketed name in one comment, so a rise of one is a real regression rather than noise -- this count was 11 for tom_core_kernel alone before the gate existed."
+  },
+  "check_dartdoc_refs": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_demo_counts": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_doc_ai_citations": {
+   "faults": 0,
+   "measured": "2026-09-04",
+   "note": "Lands at zero because the two faults it was written for were repaired in the same pass. Both were in tom_flutter_ui/doc/ and both cited _ai/quests/flutter_ui/acl_json_layout.md; one of them, under 'Separation with json-Acl-layout', called that document the canonical layout contract, so a shipped document deferred its authority to a file its reader cannot obtain. The cited file exists, which is what makes this class of defect survive a scan: neither find nor git ls-files follows the _ai symlink, so the citation reads as 'file does not exist' to any tool run from the container root. Keying on the citation rather than on the target is what makes the answer stable. _copilot_guidelines/, CHANGELOG.md and tool/ are out of scope because _ai/ is genuinely reachable for their readers."
+  },
+  "check_doc_artifacts": {
+   "faults": 0,
+   "measured": "2026-09-08",
+   "note": "Zero, and the artefact that held it at one is gone. tom_core_kernel/doc/analyzer_analysis.json was an 18.5 MB analyzer dump whose only reader was a tom_reflector test, and that test existed to check the dump was current \u2014 so the file was verified by the only thing that read it and neither could say anything about the analyzer. The test now produces its own JSON in-process and asserts the round trip, which is the question worth asking; the file, its inert `tom_analyzer` builder configuration and the exemptions three guards carried for it went with it. The six files this gate was written for -- three doc/last_testrun.json captures and three doc/baseline_*.csv -- were removed when it landed. Zero is the steady state: doc/ is hand-authored, and a tool's output belongs where it can be regenerated without a commit."
+  },
+  "check_doc_attributions": {
+   "faults": 0,
+   "measured": "2026-09-05",
+   "note": "Clean. 441 attribution claims, 105 type names judged. The one fault found on the first run (tom_flutter_ui_test's layout table calling lib/locale_settings.dart an AppBar language selector) was repaired in the same pass, so a rise here is a new misattribution, not a backlog."
+  },
+  "check_doc_class_inventories": {
+   "faults": 0,
+   "measured": "2026-09-05",
+   "note": "Zero is the steady state, not an untested gate: the 81 stale (TBD) markers, the 42 names that named nothing, and the 3 shipped classes the appendix never mentioned were all repaired in the pass that introduced the checker, so it is baselined on a document it has already moved. One marked region, over tom_flutter_ui/lib/src/forms/fields, holding 97 classes of the TomField hierarchy. `--self-test` perturbs that region by one name in each direction and requires MISSING and PHANTOM to fire, so a zero here still means the checker is reading."
+  },
+  "check_doc_dart_blocks": {
+   "faults": 0,
+   "measured": "2026-09-03",
+   "note": "Lands at zero because the 14 faults it was written for were repaired in the same pass, across 11 tom_core_kernel documents. Zero here does not mean the tree is clean: only tom_core_kernel is in PACKAGES, and doc/api_reference/ is excluded within it. tom_core_server reports 19 when run with its name as an argument, tom_flutter_ui and tom_core_flutter have not been surveyed -- see tcextension7_aico-doc-dart-blocks-other-packages."
+  },
+  "check_doc_dependencies": {
+   "faults": 0,
+   "measured": "2026-09-04",
+   "note": "Lands at zero because the 28 faults it was written for were repaired in the same pass. Eleven of the 15 package completion documents carried a Dependencies section and seven of those were incomplete; the four remaining package documents (advanced_app_server, advanced_auth_server, advanced_ops_server, core_server_sample) had no section at all and were written, so a missing section is a NOSECTION fault rather than a skip -- a gate you can pass by deleting the section is not a gate. Every one of the 28 omissions was a build-time entry (build, build_runner, tom_reflection_generator, lints, test, flutter_test, flutter_lints) while the runtime half was complete in every case. Module documents are skipped: a document is audited only when its opening inventory resolves to a directory carrying a pubspec.yaml."
+  },
+  "check_doc_error_keys": {
+   "faults": 327,
+   "measured": "2026-09-08",
+   "note": "1 + 327. The 1 is unchanged: `storage.blob.exists`, listed in an \"Error keys\" section and raised by nothing, in tom_core_server_file_storage_new.md. The rest are what the gate saw the first time it opened the hand-written module guides under `tom_core_*/doc/`, which it had never read \u2014 it audited only the completion documents, and only sections headed exactly `Error keys`, while the guides spell theirs `Failure keys` and distribute the rest by topic. It therefore reported the guides clean by never looking, which is how six keys went missing from authentication.md while the gate read 0 defective across 2 sections. It opened at 330; `authorization.md` was cleared in the pass that switched its cache to the standard `exp` claim, since renaming two of its keys meant rewriting that section anyway, and `transactions.md` when `registerParticipant` gained two keys (tcincb113) and documenting them meant writing the section its third key had never had. 33 guides carry a vocabulary, 22 are still short of it, and object_persistence.md (94), endpoints.md (41), datasources.md (37) and scheduling.md (30) hold most of the debt. Frozen rather than repaired, per this file's own rule: the remainder is separate work, and until it is written every new unnamed key would land among them unnoticed. Clearing it is tcextension23_aihi."
+  },
+  "check_doc_inventories": {
+   "faults": 0,
+   "measured": "2026-09-05",
+   "note": "Zero because all 94 faults were repaired by `--fix` in one pass. The repair was forced: the repo-wide `dart format` of tcincb1_ahti reflowed 777 Dart files, and an INDEX/HEADER/LINES claim is measured against the module's source line totals, not against the wording of the document -- so the reflow invalidated 46 figures on top of the 48 already stale here. `--fix` cannot repair only the 46: a figure is right or wrong, so the same pass also discharged the 48 that tcfinal1_aicl_stale_module_header_figures owned. 33 documents, 90 substitutions, every line identical in length before and after, so no line needed re-wrapping. Adding or retiring a table row still needs a hand, because a new row needs a sentence saying what the file carries. Still zero after the LAYOUT widening, which checks every layout-tree row's file for existence rather than only the rows that also claim a length: 264 rows across 16 documents, all present, and one more document audited (tom_core_samples_assets_new.md, whose drawn tree of 9 SVGs is the only inventory it has). Still zero after the PROSE widening, which reports a length figure sitting in a position no other audit read. It is instrumented rather than pattern-matched: each audit records the spans it took a length out of and PROSE reports the leftovers, so the census and index sentences -- prose, but read -- stay covered and widening any audit narrows PROSE automatically. It found 28 unchecked measurements across 14 documents, including `Eight steps, one file, 239 lines` of a file that had been 250 for four commits; all 28 were removed by rewriting the sentence rather than by restating the number, since a length nothing maintains is worse than no length. `--fix` does not repair PROSE: the number is usually right and what is wrong is where it sits."
+  },
+  "check_doc_kinds": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_doc_links": {
+   "faults": 0,
+   "measured": "2026-09-04",
+   "note": "Lands at zero because the 90 faults it was written for were repaired in the same pass: 84 ABSOLUTE links to /_copilot_guidelines/ in the 14 _copilot_guidelines/ files of this repo, 4 DEAD ../tom_core_*/ links written one level too shallow in the kernel's and server's index.md, 1 DEAD api_summary_result.md for a Result module the kernel does not have, and 1 GUIDELINE link out of tom_flutter_ui/README.md. The ABSOLUTE shape was workspace-wide -- 371 links in 70 files across tom_ai, tom_assistant, tom_sqm, tom_uam and the global _copilot_guidelines/ -- all repaired in the same pass, and its source, the index.md template in _copilot_guidelines/dart/new_project_setup.md, was corrected so the count stops growing by one table per new project. Anchors are out of scope (check_doc_tocs owns headings) and so are external URLs."
+  },
+  "check_doc_overview_types": {
    "faults": 0,
    "measured": "2026-09-09",
    "note": "Zero from the day it landed. Nineteen of the twenty faults it found were one row in tom_flutter_ui/doc/widget_base.md eliding twenty branch bases behind an ellipsis, which is exactly the curation the exhaustive rule forbids; the row now names them. 31 documents and 569 public types are in scope. Zero is the expected steady state: the gate exists for recurrence, and a fault is repaired by adding the row, never by narrowing the scope."
   },
   "check_doc_samples": {
-      "faults": 0,
-      "measured": "2026-09-08",
-      "note": "Zero. The eight faults this baseline recorded were all in two tom_flutter_ui design documents, and all in blocks written against an API the framework never had: form fields called with `tomId:` named and a `binding:` parameter that does not exist, an enum dropdown given `items:` where the shipped parameter is `source:`, `saveAll()` for `save()`, and a `TomColumn<Order>('name', ...)` table column colliding with the shipped `TomColumn`, which is a layout column taking named parameters only. Correcting the eight calls alone would have silenced the gate while leaving both blocks uncompilable, so the sections around them were rewritten against the real API and modelled on compiled code. 3443 samples in 245 documents, 2064 constructors indexed in 23 packages. The 14 'documents unplaced' are unchanged: 13 tom_core_samples READMEs and the completion index, none of which names a single package."
-    },
-    "check_doc_source_paths": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_doc_tocs": {
-      "faults": 0,
-      "measured": "2026-09-07",
-      "note": "Zero is the steady state. The gate now covers every in-document anchor, not only the ones a table of contents uses: check_doc_links accepts any #fragment and names this gate as the one that decides whether the heading exists, so a [§10](#stale-anchor) in running prose is this gate's fault to report. 253 documents are scanned for that; 117 of them carry a table of contents and are additionally held to listing every ## section, in document order. The four faults are exercised by planting each in a real document and requiring it to fire."
-    },
-    "check_field_grade_matrix": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_figure_wellformed": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_kernel_bridge": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_member_attributions": {
-      "faults": 0,
-      "measured": "2026-09-06",
-      "note": "Lands at zero because every fault it found on its first repo-wide run was repaired in the same pass. The subject was tom_flutter_ui_test/doc/widget_resource_parameters.md, whose resolver table named seven methods that existed nowhere and attributed the rest to TomNodeBase, which declares no resolvers; the 1,181 references were requalified onto TomCtr and TomStyleResolvers, the types the widgets actually call. That exposed eight more across four other documents, each a single wrong name -- TomTotp2FAService.encodeBase32 for generateSecret, TomBool.value for get(), TomFormStyle.requiredIndicator for the field it is declared on, TomAclBuilder.setBpMinWidth for addRowBreakpoint, TomField.formName/fieldName for TomForm.formId and TomField.tomId, and TomDbType.of for the of() the subclasses carry. A rise means a document now names a member its type does not declare; a fall means a member was deleted or renamed and the baseline should follow it down."
-    },
-    "check_module_readme_shape": {
    "faults": 0,
-   "measured": "2026-09-09",
-   "note": "Zero from the day it landed: the one readme of 53 that was missing three of the four elements gained them in the same pass. Four packages are in scope. Zero is the expected steady state — a fault is repaired by writing the missing element, never by relaxing the shape."
+   "measured": "2026-09-08",
+   "note": "Zero. The eight faults this baseline recorded were all in two tom_flutter_ui design documents, and all in blocks written against an API the framework never had: form fields called with `tomId:` named and a `binding:` parameter that does not exist, an enum dropdown given `items:` where the shipped parameter is `source:`, `saveAll()` for `save()`, and a `TomColumn<Order>('name', ...)` table column colliding with the shipped `TomColumn`, which is a layout column taking named parameters only. Correcting the eight calls alone would have silenced the gate while leaving both blocks uncompilable, so the sections around them were rewritten against the real API and modelled on compiled code. 3443 samples in 245 documents, 2064 constructors indexed in 23 packages. The 14 'documents unplaced' are unchanged: 13 tom_core_samples READMEs and the completion index, none of which names a single package."
+  },
+  "check_doc_source_paths": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_doc_tocs": {
+   "faults": 0,
+   "measured": "2026-09-07",
+   "note": "Zero is the steady state. The gate now covers every in-document anchor, not only the ones a table of contents uses: check_doc_links accepts any #fragment and names this gate as the one that decides whether the heading exists, so a [\u00a710](#stale-anchor) in running prose is this gate's fault to report. 253 documents are scanned for that; 117 of them carry a table of contents and are additionally held to listing every ## section, in document order. The four faults are exercised by planting each in a real document and requiring it to fire."
+  },
+  "check_field_grade_matrix": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_figure_wellformed": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_kernel_bridge": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_member_attributions": {
+   "faults": 0,
+   "measured": "2026-09-06",
+   "note": "Lands at zero because every fault it found on its first repo-wide run was repaired in the same pass. The subject was tom_flutter_ui_test/doc/widget_resource_parameters.md, whose resolver table named seven methods that existed nowhere and attributed the rest to TomNodeBase, which declares no resolvers; the 1,181 references were requalified onto TomCtr and TomStyleResolvers, the types the widgets actually call. That exposed eight more across four other documents, each a single wrong name -- TomTotp2FAService.encodeBase32 for generateSecret, TomBool.value for get(), TomFormStyle.requiredIndicator for the field it is declared on, TomAclBuilder.setBpMinWidth for addRowBreakpoint, TomField.formName/fieldName for TomForm.formId and TomField.tomId, and TomDbType.of for the of() the subclasses carry. A rise means a document now names a member its type does not declare; a fall means a member was deleted or renamed and the baseline should follow it down."
   },
   "check_module_dependencies": {
-      "faults": 2,
-      "measured": "2026-09-08",
-      "note": "Two, and both are the same absence: tom_core_agentic's `agent` and `llm` modules have no document, so they have no Dependencies section to hold to their imports. Reported rather than skipped, because a module the gate cannot see is indistinguishable from one it approves of, and these two are the largest in the package. Every one of the 57 documents that does exist passes: the sweep that landed this gate normalised four table shapes and 51 prose sections into one, and filled the 115 rows no section had ever carried."
-    },
-    "check_pubspec_boilerplate": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_reflection_artifacts": {
+   "faults": 2,
+   "measured": "2026-09-08",
+   "note": "Two, and both are the same absence: tom_core_agentic's `agent` and `llm` modules have no document, so they have no Dependencies section to hold to their imports. Reported rather than skipped, because a module the gate cannot see is indistinguishable from one it approves of, and these two are the largest in the package. Every one of the 57 documents that does exist passes: the sweep that landed this gate normalised four table shapes and 51 prose sections into one, and filled the 115 rows no section had ever carried."
+  },
+  "check_module_readme_shape": {
+   "faults": 0,
+   "measured": "2026-09-09",
+   "note": "Zero from the day it landed: the one readme of 53 that was missing three of the four elements gained them in the same pass. Four packages are in scope. Zero is the expected steady state \u2014 a fault is repaired by writing the missing element, never by relaxing the shape."
+  },
+  "check_pubspec_boilerplate": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_readme_status": {
+   "faults": 0,
+   "measured": "2026-09-09",
+   "note": "Lands at zero because the two version drifts it found were repaired in the same pass (tom_core_kernel claimed 1.1.1 against a pubspec at 1.1.16, tom_flutter_ui 1.0.0 against 1.1.0) and every test count was removed rather than corrected. The asymmetry is the point: a version is held true because a reader acts on it and a file read checks it, while a count is forbidden because nothing connects it to the suite \u2014 tom_core_server's had drifted twice, most recently to 95 suites against 103. See _copilot_guidelines/component_module_readme_example.md \u00a72."
+  },
+  "check_reflection_artifacts": {
    "faults": 0,
    "measured": "2026-09-09",
    "note": "Zero from the day it landed, because the fourteen stale artifacts it was written for were regenerated in the same pass. 35 artifacts across 18 packages are in scope. Zero is the expected steady state: the gate exists for recurrence, and a fault here is always repaired by regenerating, never by editing the file it names."
   },
   "check_resource_key_namespace": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_section_numbers": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_section_refs": {
-      "faults": 0,
-      "measured": "2026-09-08",
-      "note": "Zero, and held there across every package rather than the one it started on. 1773 files: the Dart under lib/, test/, example/, bin/ and tool/ and the shipped prose of all nine packages — tom_core_kernel among them, which the checker had never been pointed at when it was written, and which is 286 of that count. Every shipped comment either says what it means in its own words or names the document its section number belongs to. A bare '§7.2' or 'Phase 2a §16' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure. Zero means something only because the gate also refuses the *marked* form — 'bug §77', 'tests §61(e)' — outright, before it asks whether a document is in view, and because --self-test exercises all thirteen rules: five of the six resolve rather than fault, so a regex that stopped matching would read as a repository that got cleaner. The guards that enforce this convention from inside the test run are covered rather than exempted: a reference inside an inline code span is an exhibit and is skipped, which is what let the one by-filename exemption go and closed the last difference between this gate's file population and check_section_numbers.py's."
-    },
-    "check_shared_chrome": {
-      "faults": 0,
-      "measured": "2026-09-04",
-      "note": "Zero from the day it landed, which took six repairs. Eight groups of file are copied between packages on purpose -- the four showcase samples' chrome, the DTO reflection helpers, the client-local login credentials -- and every copy now names its whole group in its header comment. Two demo_box.dart copies named each other and not the third, so a developer editing either was told about one other copy out of two; two further groups were identical in code and declared nowhere at all. Both halves of the rule earn their place: the declaration carries showcase_cell.dart's fourth copy, which has drifted in code, and content discovery found the two groups no declaration mentioned. The next copy to arrive undeclared, or the next pointer to fall out of step with its siblings, is a failure."
-    },
-    "check_source_citations": {
-      "faults": 0,
-      "measured": "2026-09-04",
-      "note": "Holds at zero across a scope that widened twice. Markdown was first excluded outright (173 citations in tom_core_samples), then admitted for that subtree once they had been rewritten by hand to name declarations, and now covers every document that navigates -- doc/ pages, package READMEs and the sample guides, 177 files against the previous 39. The widening cost twelve repairs, nine of them in doc/ pages shipped to consumers, and one was the class of failure this gate exists for: form_authorizers.md cited tom_authorization.dart:352 for `class TomAuthorizer`, which is a doc comment belonging to a different class eighty lines above it -- resolving, fluent and wrong. Three sites named their target and cited a line as well, and one cited `(line 151)` into a file that had since been deleted; both are the argument against validating the numbers rather than removing them. CHANGELOGs, _copilot_guidelines/ and the repo's own README stay out, each for a stated reason rather than a suppression entry -- the last so the suite can go on quoting the shapes it forbids."
-    },
-    "check_test_inventories": {
-      "faults": 0,
-      "measured": "2026-09-03"
-    },
-    "check_tooling_table": {
-      "faults": 0,
-      "measured": "2026-09-03",
-      "note": "Lands at zero because the two faults it was written for were repaired in the same pass: check_unimplemented_claims.py and this gate itself were on disk with no row in the README tooling table and no prose section. Zero is the expected steady state -- the gate exists for recurrence, not backlog. The drift it guards had already re-opened once: check_kernel_bridge.py and check_section_numbers.py were filed as missing, were added incidentally before the filing was worked, and a third script had silently taken their place by then."
-    },
-    "check_unimplemented_claims": {
-      "faults": 0,
-      "measured": "2026-09-03",
-      "note": "Lands at zero because the nine faults it was written for were repaired in the same pass: two copies of one `Implemented: No` table, in tom_ui_flutter_widgets.md and tom_ui_widgets_forms.md, each denying nine widgets that had shipped months earlier."
-    }
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_section_numbers": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_section_refs": {
+   "faults": 0,
+   "measured": "2026-09-08",
+   "note": "Zero, and held there across every package rather than the one it started on. 1773 files: the Dart under lib/, test/, example/, bin/ and tool/ and the shipped prose of all nine packages \u2014 tom_core_kernel among them, which the checker had never been pointed at when it was written, and which is 286 of that count. Every shipped comment either says what it means in its own words or names the document its section number belongs to. A bare '\u00a77.2' or 'Phase 2a \u00a716' indexes a quest plan that ships with neither the package nor its tests, so a reader of the shipped artefact cannot resolve it; the next one to arrive is a failure. Zero means something only because the gate also refuses the *marked* form \u2014 'bug \u00a777', 'tests \u00a761(e)' \u2014 outright, before it asks whether a document is in view, and because --self-test exercises all thirteen rules: five of the six resolve rather than fault, so a regex that stopped matching would read as a repository that got cleaner. The guards that enforce this convention from inside the test run are covered rather than exempted: a reference inside an inline code span is an exhibit and is skipped, which is what let the one by-filename exemption go and closed the last difference between this gate's file population and check_section_numbers.py's."
+  },
+  "check_shared_chrome": {
+   "faults": 0,
+   "measured": "2026-09-04",
+   "note": "Zero from the day it landed, which took six repairs. Eight groups of file are copied between packages on purpose -- the four showcase samples' chrome, the DTO reflection helpers, the client-local login credentials -- and every copy now names its whole group in its header comment. Two demo_box.dart copies named each other and not the third, so a developer editing either was told about one other copy out of two; two further groups were identical in code and declared nowhere at all. Both halves of the rule earn their place: the declaration carries showcase_cell.dart's fourth copy, which has drifted in code, and content discovery found the two groups no declaration mentioned. The next copy to arrive undeclared, or the next pointer to fall out of step with its siblings, is a failure."
+  },
+  "check_source_citations": {
+   "faults": 0,
+   "measured": "2026-09-04",
+   "note": "Holds at zero across a scope that widened twice. Markdown was first excluded outright (173 citations in tom_core_samples), then admitted for that subtree once they had been rewritten by hand to name declarations, and now covers every document that navigates -- doc/ pages, package READMEs and the sample guides, 177 files against the previous 39. The widening cost twelve repairs, nine of them in doc/ pages shipped to consumers, and one was the class of failure this gate exists for: form_authorizers.md cited tom_authorization.dart:352 for `class TomAuthorizer`, which is a doc comment belonging to a different class eighty lines above it -- resolving, fluent and wrong. Three sites named their target and cited a line as well, and one cited `(line 151)` into a file that had since been deleted; both are the argument against validating the numbers rather than removing them. CHANGELOGs, _copilot_guidelines/ and the repo's own README stay out, each for a stated reason rather than a suppression entry -- the last so the suite can go on quoting the shapes it forbids."
+  },
+  "check_test_inventories": {
+   "faults": 0,
+   "measured": "2026-09-03"
+  },
+  "check_tooling_table": {
+   "faults": 0,
+   "measured": "2026-09-03",
+   "note": "Lands at zero because the two faults it was written for were repaired in the same pass: check_unimplemented_claims.py and this gate itself were on disk with no row in the README tooling table and no prose section. Zero is the expected steady state -- the gate exists for recurrence, not backlog. The drift it guards had already re-opened once: check_kernel_bridge.py and check_section_numbers.py were filed as missing, were added incidentally before the filing was worked, and a third script had silently taken their place by then."
+  },
+  "check_unimplemented_claims": {
+   "faults": 0,
+   "measured": "2026-09-03",
+   "note": "Lands at zero because the nine faults it was written for were repaired in the same pass: two copies of one `Implemented: No` table, in tom_ui_flutter_widgets.md and tom_ui_widgets_forms.md, each denying nine widgets that had shipped months earlier."
   }
+ }
 }

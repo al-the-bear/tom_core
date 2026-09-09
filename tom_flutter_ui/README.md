@@ -376,5 +376,8 @@ tooling rather than part of this package's documentation.
 
 ## Status
 
-- **Version:** 1.0.0 (`publish_to: none`)
-- **Tests:** 521 test cases across 33 suites
+- **Version:** 1.1.0 (`publish_to: none`)
+- **Tests:** run with `flutter test`. No count is given: a count is a claim
+  nothing checks, and every added test would be a README edit nobody makes. The
+  version above is checked, because a wrong one is the claim that actively
+  misleads.

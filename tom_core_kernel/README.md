@@ -376,7 +376,9 @@ the common dependency of the server and Flutter layers. See the
 
 ## Status
 
-- **Version:** 1.1.1
-- **Tests:** 2,128 test cases across 27 suites (run with `testkit :test`
-  or `dart test`).
+- **Version:** 1.1.16
+- **Tests:** run with `testkit :test` or `dart test`. No count is given: a
+  count is a claim nothing checks, and every added test would be a README edit
+  nobody makes. The version above is checked, because a wrong one is the claim
+  that actively misleads.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

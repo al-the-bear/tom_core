@@ -13,6 +13,18 @@
 
 ### Fixed
 
+- **The `## Status` block claimed a test count nothing checked (tcincb153).**
+  It stated "3633 test cases across 95 module suites … 408 of them live in the
+  20 suites tagged `db`" against a tree holding 103 suite files and 24
+  `db`-tagged ones — and those figures were themselves a correction, made days
+  earlier, of a count that had reached less than half the truth. The mechanism
+  is structural, not careless: every added test is a README edit nothing asks
+  for. The block now describes how the suite is run and what the `db` tag gates,
+  and gives no number. Two new tests in
+  `test/api_reference_coverage_test.dart` hold it there — one pinning the
+  stated version to `pubspec.yaml`, the claim in the block a reader actually
+  acts on, and one failing if a count comes back.
+
 - **The `scheduling` module readme was the only one of twenty missing three of
   the four elements they all share (tcincb152).** No attribution blockquote, no
   `## Key types` heading, no `## Quick start`. It was not a thin readme — it is
