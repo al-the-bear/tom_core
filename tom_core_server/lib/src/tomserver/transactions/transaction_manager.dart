@@ -40,6 +40,12 @@ class TomTransactionException extends TomServerException {
 /// committed work. A participant that cannot undo its commit should do the work
 /// that can fail inside [commit] itself, so that its veto is raised before it
 /// has made anything durable rather than after.
+///
+/// `MariaDbXADatasource` is that participant. A branch has to be `XA END`ed and
+/// `XA PREPARE`d before it can be committed, and both statements live in its
+/// [commit] for the reason above — a prepare in [endTransaction] would run
+/// after the commit it is a precondition of, because the loops run in the order
+/// stated here.
 abstract class TomTransactionParticipant {
   /// A stable id used to deduplicate this participant within a transaction.
   String getParticipantId();
@@ -48,6 +54,12 @@ abstract class TomTransactionParticipant {
   Future<bool> startTransaction();
 
   /// Releases per-transaction resources after commit or rollback.
+  ///
+  /// Called on every participant only once *all* of them have committed or
+  /// rolled back, so nothing the outcome depends on belongs here: work placed
+  /// in this method runs after the decision it would have informed. Returning
+  /// `false` reports a failure to release, not a veto — the transaction has
+  /// already happened.
   Future<bool> endTransaction();
 
   /// Commits the participant's work; returning `false` vetoes the transaction.

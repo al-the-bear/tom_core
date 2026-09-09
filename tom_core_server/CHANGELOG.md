@@ -13,6 +13,66 @@
 
 ### Fixed
 
+- **An XA transaction could never commit (tcincb158).**
+  `MariaDbXADatasource` issued `XA END` + `XA PREPARE` from `endTransaction()`
+  and `XA COMMIT` from `commit()`, but `TomTransaction.commitTransaction`
+  drains its `commit()` loop *first* — so the prepare ran after the commit it is
+  a precondition of. Against a real server that commit is rejected, because the
+  branch was never ended; `commit()` catches and returns `false`; a `false` is a
+  veto, so the coordinator turns the whole transaction into a rollback. The
+  branch is left ACTIVE holding its locks, and nothing issues `XA RECOVER`, so
+  nothing reclaims it. The rollback path only appeared to work: `XA ROLLBACK` is
+  legal on an active branch, but the trailing `XA END null; XA PREPARE null`
+  still failed, and the `null` is the branch id the successful rollback had
+  already cleared.
+
+  Both statements now live in `commit()`, issued as two round trips so a refused
+  prepare stops short of the commit, and `endTransaction()` is the no-op that
+  reports success its one-phase sibling already was. A failing `commit()` now
+  *keeps* the branch id rather than clearing it — the rollback the coordinator
+  runs next has to name the branch, and clearing would send `XA ROLLBACK null`
+  and leave the real branch behind; `rollback()` clears it in its `finally`, and
+  issues nothing at all when there is no branch, which is the state a
+  participant is in when it committed before someone else vetoed.
+
+  The reason a suite this size held the defect is worth stating: every XA test
+  called `startTransaction` / `commit` / `endTransaction` in the order the
+  *test* chose, and every test chose the XA-correct one. Nothing drove a
+  participant through `TomTransaction`. Six tests now do, reading the recorded
+  SQL — which is the only place the fault is visible, the branch id having no
+  accessor.
+
+  The contract was right and the driver was wrong:
+  `TomTransactionParticipant` already said that a participant which cannot undo
+  its commit "should do the work that can fail inside `commit` itself". It now
+  names this driver as the case, and `endTransaction` says outright that it runs
+  after every participant has committed, so nothing the outcome depends on
+  belongs in it.
+
+- **`XA ROLLBACK` was refused on every branch it was sent to (tcincb158).**
+  Found by the live suite added for the defect above, which is the point of
+  adding it: a recording data source cannot object to a statement, and a server
+  can. `rollback()` issued `XA ROLLBACK` against a branch that had never been
+  `XA END`ed, and MariaDB answers `XAER_RMFAIL: The command cannot be executed
+  when global transaction is in the ACTIVE state`. So the rollback path did not
+  work either — the branch stayed ACTIVE holding its locks, and the next
+  statement on any other connection waited for it until the lock timeout.
+
+  `XA END` is legal exactly once and on an ACTIVE branch only, and the two
+  statements that finish a branch each require the opposite state: `XA ROLLBACK`
+  refuses an active branch, `XA END` refuses a prepared one. A rollback can
+  arrive in either — before `commit` ran at all, or after its prepare succeeded
+  and its commit did not — so the driver now tracks which, and issues
+  `XA END` + `XA ROLLBACK` for an active branch and `XA ROLLBACK` alone for a
+  prepared one, rather than sending a statement and ignoring the failure.
+
+- **`test/datasources_xa_db_test.dart`** — the XA lifecycle against a real
+  server, driven by the real coordinator. Commits through a `TomTransaction` and
+  reads the row back on a *separate* connection, because the connection that
+  wrote can see its own uncommitted work and would report success either way;
+  rolls one back and finds nothing; and runs two transactions in succession,
+  which is the cheapest assertion that no branch was left stranded.
+
 - **A malformed query sentence was reported as a missing column (tcincb156).**
   `find by title is`, `find by title is not` and `find by title not null` are
   all refused, and none of them was refused by the parser. Having declined to

@@ -808,10 +808,33 @@ two-phase commit across multiple resources.
 Each transaction runs against a branch id the data source mints in
 `startTransaction`, and that id doubles as the guard: a second start while one
 is set throws rather than opening a nested branch. So **every exit clears the
-id except a successful `endTransaction`**, which hands it on to `commit`. An
-exit that forgets locks the data source out of all later transactions
-permanently, and the caller cannot recover by rolling back — the branch it
-would have to name never began.
+id except a failing `commit`**, which hands it on to `rollback`. An exit that
+forgets locks the data source out of all later transactions permanently, and
+the caller cannot recover by rolling back — the branch it would have to name
+never began.
+
+**All four statements belong to `commit` and `rollback`, and that is a fact
+about the coordinator rather than about XA.** `TomTransaction.commitTransaction`
+drains its `commit()` loop before it calls `endTransaction()` on anyone, so a
+prepare placed in `endTransaction` would run *after* the commit it is a
+precondition of. `commit` therefore issues `XA END` + `XA PREPARE` and then, as
+a second round trip so a refused prepare stops short of it, `XA COMMIT`;
+`endTransaction` is the same no-op that reports success as its one-phase
+sibling's. An implementation that splits them the other way cannot commit at
+all: the server refuses `XA COMMIT` on a branch that was never ended, the
+`false` reads as a veto, and the transaction becomes a rollback with the branch
+left ACTIVE holding its locks.
+
+`rollback` ends the branch too, when it is still active. `XA END` is legal
+exactly once and on an ACTIVE branch only, and the two statements that finish a
+branch each require the opposite state — `XA ROLLBACK` is refused on an ACTIVE
+branch (`XAER_RMFAIL: The command cannot be executed when global transaction is
+in the ACTIVE state`) and `XA END` is refused on a prepared one. A rollback can
+arrive in either state: before `commit` has run at all, or after its prepare
+succeeded and its commit did not. So the driver tracks which, and issues
+`XA END` + `XA ROLLBACK` for an active branch and `XA ROLLBACK` alone for a
+prepared one, rather than sending a statement and ignoring the failure — a
+rollback the server refuses leaves the branch exactly where it was.
 
 Both lifecycles refuse a nested start the same way, through one shared helper:
 a **`MariadbDatasourceException` keyed `error.transaction.already_active`**,
@@ -950,6 +973,17 @@ covers, because on a real server the guard and a genuine database failure are
 both reachable through the same call — which is the only place the module's own
 exception type is doing work that `isA<Exception>()` could not.
 
+`test/datasources_xa_db_test.dart` covers the one thing neither of those can:
+that the XA lifecycle, driven by the real coordinator, is a sequence MariaDB
+accepts. The scripted suite proves the *order* of the statements by recording
+them, which is a different claim — a recorder cannot object to `XA COMMIT` on a
+branch that was never ended, and a server can. It commits through a real
+`TomTransaction` and reads the row back on a *separate* connection, because the
+connection that wrote can see its own uncommitted work and would report success
+either way; it rolls one back and finds nothing; and it runs two transactions in
+succession, which is the cheapest assertion that no branch was stranded holding
+its locks.
+
 The framework tables are covered separately, because what has to be proved
 about them is agreement rather than behaviour.
 `test/framework_schema_test.dart` runs without a server and closes the four
@@ -968,8 +1002,8 @@ creates each table by both of the routes a deployment may take — the stores'
 create-on-first-use and the reference migration files a DBA applies — reads the
 result back out of `information_schema`, and compares it with the descriptor.
 
-It and `test/datasources_db_test.dart` are tagged `db` and skip themselves when
-no MariaDB is reachable, so the default `testkit :test` run stays green with no
+It, `test/datasources_db_test.dart` and `test/datasources_xa_db_test.dart` are
+tagged `db` and skip themselves when no MariaDB is reachable, so the default `testkit :test` run stays green with no
 database. To run them:
 
 ```bash

@@ -53,6 +53,16 @@ mixin _ScriptedCommands on MariaDbDatasource {
   }
 }
 
+/// The branch id `XA START` named, read back out of the recorded SQL.
+///
+/// `_txId` is private and has no accessor, which is what makes the SQL the only
+/// place a wrongly cleared id is observable — it arrives there as the literal
+/// `null`.
+String _branchOf(_ScriptedCommands ds) {
+  final start = ds.commands.firstWhere((c) => c.startsWith('XA START '));
+  return start.substring('XA START '.length, start.length - 1);
+}
+
 class _ScriptedXADatasource extends MariaDbXADatasource with _ScriptedCommands {
   _ScriptedXADatasource({Set<String> failing = const {}}) {
     this.failing = failing;
@@ -1784,11 +1794,150 @@ void main() {
   // transaction" and there is nothing a caller can do about it, because the
   // branch it would have to roll back never began.
   //
-  // Each of the four exits is therefore driven here with a start that actually
-  // succeeded, and the assertion is always the same one — a following start is
-  // allowed. The one exit that must *not* clear is a successful end, since
-  // `commit` still needs the id; that is asserted through the SQL, which is
-  // where a cleared id would surface as `XA COMMIT null;`.
+  // Each exit is therefore driven here with a start that actually succeeded,
+  // and the assertion is always the same one — a following start is allowed.
+  //
+  // The exceptions are the two failing exits of `commit`, which keep the id on
+  // purpose. A `false` from `commit()` is a veto, and the coordinator answers a
+  // veto by rolling *every* participant back, this one included; `rollback`
+  // needs the branch to name, and clears it in its `finally`. So the pair is
+  // read together — commit leaves the id for rollback, rollback closes it —
+  // and through the SQL, which is the only place the id is observable: a
+  // wrongly cleared one surfaces as the literal `XA ROLLBACK null`.
+  // The order the *coordinator* chooses, which is the one that ships.
+  //
+  // Every other XA test in this file calls `startTransaction` / `commit` /
+  // `endTransaction` in the order the test picks, and every test picks the
+  // XA-correct one. That is why a suite this size could hold a driver whose
+  // commit path could not work: the driver put `XA END` + `XA PREPARE` in
+  // `endTransaction`, and `TomTransaction.commitTransaction` drains its
+  // `commit()` loop *first*. Against a real server `XA COMMIT` on a branch that
+  // was never ended is rejected, `commit()` returns `false`, a `false` is a
+  // veto, and the coordinator turns the whole transaction into a rollback —
+  // leaving the branch ACTIVE, holding its locks, with nothing to reclaim it
+  // because nothing issues `XA RECOVER`.
+  //
+  // So these drive the participant through `TomTransaction` and read the SQL.
+  // The branch id has no accessor, which is what makes the SQL the only place
+  // the defect is visible: a statement issued against a cleared id arrives as
+  // the literal `XA PREPARE null`.
+  group('MariaDb XA through the coordinator', () {
+    tearDown(() async {
+      await TomTransactionManager.getCurrentTransaction()
+          ?.rollbackTransaction();
+    });
+
+    test(
+      'a committed transaction issues start, prepare, then commit',
+      () async {
+        final ds = _ScriptedXADatasource();
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(ds);
+
+        expect(await txn.commitTransaction(), isTrue);
+
+        final branch = _branchOf(ds);
+        expect(branch, isNot(contains('null')));
+        expect(ds.commands, [
+          'XA START $branch;',
+          'XA END $branch; XA PREPARE $branch;',
+          'XA COMMIT $branch;',
+        ]);
+      },
+    );
+
+    test('no statement is issued against a cleared branch id', () async {
+      // Stated separately from the sequence above because it is the symptom a
+      // reader will actually meet in a log, and because it is the one an
+      // assertion on the *return value* cannot see: the coordinator reported
+      // success while the driver was sending `XA PREPARE null`.
+      final ds = _ScriptedXADatasource();
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(ds);
+      await txn.commitTransaction();
+
+      expect(
+        ds.commands.where((c) => c.contains('null')),
+        isEmpty,
+        reason: 'every statement must name the branch XA START opened',
+      );
+    });
+
+    test('a rolled-back transaction issues start then rollback', () async {
+      final ds = _ScriptedXADatasource();
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(ds);
+
+      expect(await txn.rollbackTransaction(), isTrue);
+
+      final branch = _branchOf(ds);
+      expect(ds.commands, [
+        'XA START $branch;',
+        'XA END $branch; XA ROLLBACK $branch;',
+      ]);
+      expect(
+        ds.commands.any((c) => c.startsWith('XA PREPARE')),
+        isFalse,
+        reason: 'a branch being abandoned is never prepared',
+      );
+    });
+
+    test('a refused commit rolls the branch back, naming it', () async {
+      // The veto path end to end. `XA COMMIT` failing must not leave the branch
+      // ACTIVE: the coordinator turns the failure into a rollback, and the
+      // rollback has to name the same branch rather than a cleared id.
+      final ds = _ScriptedXADatasource(failing: {'XA COMMIT'});
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(ds);
+
+      expect(await txn.commitTransaction(), isTrue);
+
+      final branch = _branchOf(ds);
+      expect(ds.commands, [
+        'XA START $branch;',
+        'XA END $branch; XA PREPARE $branch;',
+        'XA COMMIT $branch;',
+        // Prepared already, so no second `XA END` — which the server would
+        // refuse, leaving the branch where it was.
+        'XA ROLLBACK $branch;',
+      ]);
+    });
+
+    test('a refused prepare rolls back and does not commit', () async {
+      // A prepare that fails is a veto, and the branch must not be committed
+      // afterwards — the whole point of preparing before committing.
+      final ds = _ScriptedXADatasource(failing: {'XA END'});
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(ds);
+
+      expect(await txn.commitTransaction(), isTrue);
+
+      final branch = _branchOf(ds);
+      expect(
+        ds.commands.any((c) => c.startsWith('XA COMMIT')),
+        isFalse,
+        reason: 'a branch that would not prepare must not be committed',
+      );
+      // Named rather than merely present: a failed prepare that cleared the
+      // branch id would still end in a statement mentioning `XA ROLLBACK`, and
+      // that statement would name `null` — the real branch left behind with
+      // nothing to reclaim it. The branch is still ACTIVE here, the prepare
+      // having failed, so it is ended on the way out.
+      expect(ds.commands.last, 'XA END $branch; XA ROLLBACK $branch;');
+    });
+
+    test('the plain sibling is unaffected by the same drive', () async {
+      // The control. The one-phase driver has no prepare and must not grow one:
+      // `endTransaction` on it is the no-op that reports success.
+      final ds = _ScriptedDatasource();
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(ds);
+
+      expect(await txn.commitTransaction(), isTrue);
+      expect(ds.commands, ['START TRANSACTION;', 'COMMIT;']);
+    });
+  });
+
   group('MariaDb transaction lifecycle: the state each exit leaves', () {
     test('a failed start clears the branch id it had already set', () async {
       final ds = _ScriptedXADatasource(failing: {'XA START'});
@@ -1805,46 +1954,63 @@ void main() {
     test('a failed rollback clears the branch id', () async {
       final ds = _ScriptedXADatasource(failing: {'XA ROLLBACK'});
       expect(await ds.startTransaction(), isTrue);
+      final branch = _branchOf(ds);
       await ds.rollback();
       expect(await ds.startTransaction(), isTrue);
-      expect(ds.commands[1], startsWith('XA ROLLBACK '));
-      expect(ds.commands[1], isNot(contains('null')));
+      expect(ds.commands[1], 'XA END $branch; XA ROLLBACK $branch;');
     });
 
-    test('a failed endTransaction clears the branch id', () async {
+    test('a failed prepare keeps the branch id for the rollback', () async {
+      // The prepare is the first half of `commit`, so a branch that will not
+      // prepare is not committed — and is not abandoned either. The `false`
+      // reaches the coordinator as a veto, the coordinator rolls every
+      // participant back, and this one has to be able to name the branch it
+      // opened. Clearing here would send `XA ROLLBACK null` and leave the real
+      // branch behind, which is the state nothing reclaims.
       final ds = _ScriptedXADatasource(failing: {'XA END'});
       expect(await ds.startTransaction(), isTrue);
-      expect(await ds.endTransaction(), isFalse);
-      // The branch cannot be committed after a failed prepare, so holding the
-      // id would strand the data source on a transaction with no future.
+      final branch = _branchOf(ds);
+      expect(await ds.commit(), isFalse);
+      expect(ds.commands.last, 'XA END $branch; XA PREPARE $branch;');
+      await ds.rollback();
+      // The prepare failed, so the branch is still ACTIVE and has to be ended
+      // before it can be rolled back.
+      expect(ds.commands.last, 'XA END $branch; XA ROLLBACK $branch;');
       expect(await ds.startTransaction(), isTrue);
     });
 
-    test('a failed commit clears the branch id', () async {
+    test('a failed commit keeps the branch id for the rollback', () async {
+      // Same contract one step later, and the sharper case: the branch is
+      // prepared, so it is holding its locks in the PREPARED state and a
+      // rollback that cannot name it strands it there permanently.
       final ds = _ScriptedXADatasource(failing: {'XA COMMIT'});
       expect(await ds.startTransaction(), isTrue);
-      expect(await ds.endTransaction(), isTrue);
+      final branch = _branchOf(ds);
       expect(await ds.commit(), isFalse);
+      await ds.rollback();
+      expect(ds.commands.last, 'XA ROLLBACK $branch;');
       expect(await ds.startTransaction(), isTrue);
     });
 
-    test(
-      'a successful end keeps the branch id, because commit needs it',
-      () async {
-        // The counterweight to the four clears above: end is the only exit that
-        // hands the branch on rather than closing it. Read through the SQL,
-        // because `_txId` has no accessor -- an id cleared here reaches the
-        // driver as the literal `XA COMMIT null;`, which MariaDB rejects and
-        // which a test asserting only the return value would not notice.
-        final ds = _ScriptedXADatasource();
-        expect(await ds.startTransaction(), isTrue);
-        final branch = ds.commands.single.substring('XA START '.length);
-        expect(branch, isNot(contains('null')));
-        expect(await ds.endTransaction(), isTrue);
-        expect(await ds.commit(), isTrue);
-        expect(ds.commands.last, 'XA COMMIT $branch');
-      },
-    );
+    test('a successful commit prepares before it commits', () async {
+      // The order the branch's own state machine requires, read through the
+      // SQL because `_txId` has no accessor. Both statements live in `commit`
+      // because that is the only point the coordinator gives a participant
+      // before the outcome is decided — `endTransaction` runs after every
+      // commit, so a prepare there would follow the commit it is a
+      // precondition of.
+      final ds = _ScriptedXADatasource();
+      expect(await ds.startTransaction(), isTrue);
+      final branch = _branchOf(ds);
+      expect(branch, isNot(contains('null')));
+      expect(await ds.commit(), isTrue);
+      expect(ds.commands, [
+        'XA START $branch;',
+        'XA END $branch; XA PREPARE $branch;',
+        'XA COMMIT $branch;',
+      ]);
+      expect(await ds.endTransaction(), isTrue);
+    });
 
     test('the non-XA sibling is not wedged by a failed start either', () async {
       // The plain data source reaches the same contract by a different route:

@@ -986,16 +986,22 @@ MariaDbXADatasource()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `XA START` against a fresh branch id, throwing the same `error.transaction.already_active` as the base class — with the open branch in the `transactionId` parameter — if one is already open. Clears the id again when the command fails, since the database never opened that branch. |
-| `endTransaction` | `Future<bool> endTransaction()` | *(override)* Issues `XA END` + `XA PREPARE`. The one exit that **keeps** the branch id on success — `commit` still needs it — and clears it on failure, where the branch can no longer be committed. |
-| `commit` | `Future<bool> commit()` | *(override)* Issues `XA COMMIT` and clears the branch id either way. |
-| `rollback` | `Future<void> rollback()` | *(override)* Issues `XA ROLLBACK` and clears the branch id either way. |
+| `endTransaction` | `Future<bool> endTransaction()` | *(override)* A no-op that always succeeds, exactly as the one-phase sibling's is. Every XA statement belongs to `commit` and `rollback`. |
+| `commit` | `Future<bool> commit()` | *(override)* Issues `XA END` + `XA PREPARE`, then — as a second round trip, so a refused prepare stops short of it — `XA COMMIT`. Clears the branch id on success and **keeps** it on either failure, because a `false` is a veto and the rollback that follows needs the branch to name. |
+| `rollback` | `Future<void> rollback()` | *(override)* Issues `XA END` + `XA ROLLBACK` for a branch still active and `XA ROLLBACK` alone for a prepared one — the server refuses each statement in the other's state — and clears the branch id either way. Issues nothing when there is no branch, which is the state a participant is in when it committed before someone else vetoed. |
 
-Every exit puts the branch id back except a successful `endTransaction`, which
-hands it on to `commit`. The rule is what keeps the data source usable: the id
-is also the guard `startTransaction` refuses a second transaction on, so an exit
-that forgets to clear locks out every later transaction permanently — and a
-caller cannot recover by rolling back, because the branch it would name never
-began.
+Every exit puts the branch id back except a failing `commit`, which hands it on
+to `rollback`. The rule is what keeps the data source usable: the id is also the
+guard `startTransaction` refuses a second transaction on, so an exit that forgets
+to clear locks out every later transaction permanently — and a caller cannot
+recover by rolling back, because the branch it would name never began.
+
+That both prepare and commit live in `commit` is a fact about the coordinator
+rather than about XA. `TomTransaction.commitTransaction` drains its `commit()`
+loop before it calls `endTransaction()` on anyone, so a prepare in
+`endTransaction` would run after the commit it is a precondition of — the server
+would refuse that commit, the `false` would read as a veto, and the transaction
+would become a rollback with the branch left ACTIVE holding its locks.
 
 #### MariadbPreparedStatement&lt;T&gt;
 
