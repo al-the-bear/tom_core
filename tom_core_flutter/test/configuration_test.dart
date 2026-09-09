@@ -14,7 +14,6 @@ import 'package:tom_core_flutter/src/tomclient/configuration/file_configuration_
 
 import '../example/configuration/configuration_example.dart' as example;
 import 'support/conditional_export_variants.dart';
-import 'support/exception_constructor_mirror.dart';
 
 /// A holder with one setting of each supported type.
 class _TestConfiguration extends TomBaseClientConfiguration {
@@ -638,69 +637,13 @@ void main() {
   });
 
   group('the API summary mirrors the configuration sources', () {
-    // The `doc/` API summary is a mirror of the source, and a mirror is to be
-    // verified rather than trusted: nothing in the toolchain regenerates it, so
-    // it only stays true for as long as someone remembers to update it by hand,
-    // and a summary that omits a public member the source declares reads as if
-    // the member does not exist. This performs the verification on every run
-    // instead of leaving it to whoever remembers.
+    // The coverage sweep this group began as — every public member the sources
+    // declare must be named in the summary — now runs for all seven modules in
+    // `api_reference_coverage_test.dart`, along with the exception-parameter
+    // mirror. What stays here is what is genuinely about *this* module: the
+    // conditional-export store's `const` decision, and the hand-picked list of
+    // classes whose constructor call shape the summary must show.
     const summaryPath = 'doc/api_reference/api_summary_configuration.md';
-    const sources = [
-      'lib/src/tomclient/configuration/client_configuration.dart',
-      'lib/src/tomclient/configuration/client_configuration_store.dart',
-      'lib/src/tomclient/configuration/file_configuration_store_io.dart',
-    ];
-
-    /// Every public member name the configuration sources declare.
-    ///
-    /// Deliberately conservative: it reads members indented exactly one level
-    /// inside a class, skips `_private` names, and skips the declaration
-    /// keywords, so a name it reports is one a caller can type.
-    Set<String> declaredPublicMembers() {
-      final names = <String>{};
-      for (final path in sources) {
-        final source = File(path).readAsStringSync();
-        // `(?! )` pins the match to one indent level — a class member. Without
-        // it the character class swallows a method body's deeper indentation
-        // and every local variable is reported as public API.
-        for (final match in RegExp(
-          r'^  (?! )(?:@override\s+)?(?:const |final |static |late )*'
-          r'[\w<>?, ]*?\b(\w+)\s*(?:\(|=>|;|=[^=])',
-          multiLine: true,
-        ).allMatches(source)) {
-          final name = match.group(1)!;
-          if (name.startsWith('_')) continue;
-          // A top-level function's body sits at the same indent as a class
-          // member, so statement keywords reach here and must be dropped by
-          // name. The meta-test below pins that real members still survive.
-          if (const {
-            'get', 'set', 'operator', //
-            'if', 'for', 'while', 'do', 'else', 'switch', 'try', 'catch',
-            'return', 'throw', 'assert', 'await', 'yield', 'final', 'var',
-          }.contains(name)) {
-            continue;
-          }
-          names.add(name);
-        }
-      }
-      return names;
-    }
-
-    test('every public member the sources declare appears in the summary', () {
-      final summary = File(summaryPath).readAsStringSync();
-      final offenders = <String>[
-        for (final name in declaredPublicMembers())
-          if (!summary.contains('`$name`') && !summary.contains('$name(')) name,
-      ]..sort();
-
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'these public members are declared in the configuration '
-            'sources but named nowhere in $summaryPath',
-      );
-    });
 
     test('the summary reproduces the file store constructor exactly', () {
       // The one signature the summary previously disagreed with the source
@@ -752,52 +695,6 @@ void main() {
         reason:
             'these classes declare a public constructor that $summaryPath '
             'never shows the call shape of',
-      );
-    });
-
-    test('the exception constructor is typed as the kernel types it', () {
-      // The constructor-shape test above only checks that a call shape is
-      // *shown*; it cannot see a wrong type inside one. Writing `bool? autoLog`
-      // here would read plausibly and be unusable — `autoLog` is non-nullable
-      // with an inherited default, so no call site can pass a null.
-      //
-      // It also pins `stack` as `StackTrace?` against the recurring correction
-      // to `Object?`: `super.stack` resolves against `TomException`'s
-      // constructor, which narrows the `Object?` field to `StackTrace?`, not
-      // against the field declaration. See
-      // `support/exception_constructor_mirror.dart`.
-      const exceptionSource =
-          'lib/src/tomclient/configuration/client_configuration_store.dart';
-      const className = 'TomClientConfigurationException';
-
-      expect(exceptionClassesIn(const [exceptionSource]), contains(className));
-      expectSummaryListsForwardedParameters(
-        summaryPath: summaryPath,
-        sourcePaths: const [exceptionSource],
-        classNames: const [className],
-      );
-      expectSummaryTypesMatchKernel(
-        summaryPath: summaryPath,
-        classNames: const [className],
-      );
-    });
-
-    test('the members this guard was written for are among those it reads', () {
-      // A coverage test that silently stopped parsing would pass forever. Pin
-      // the six members whose omission prompted the guard, so a regex that
-      // stops matching fails here rather than going quiet.
-      expect(
-        declaredPublicMembers(),
-        containsAll(<String>[
-          'toString',
-          'path',
-          'read',
-          'write',
-          'load',
-          'save',
-          'TomClientConfigurationStore',
-          'TomClientConfigurationException',
-        ]),
       );
     });
   });

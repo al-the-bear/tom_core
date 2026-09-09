@@ -65,6 +65,13 @@
 
 ### Documentation
 
+- **`doc/api_reference/api_summary_resources.md` never showed
+  `TomPropertyException`'s constructor.** The page documents the two keys it
+  raises and what `parameters` carries, so the omission read as covered — a
+  class whose name is all over a page looks documented whether or not anyone can
+  see how to construct it. Found by the generalised coverage guard above, which
+  is the one summary of the seven it caught.
+
 - **12 `Kind` cells across three documents described the symbol instead of
   declaring it.** `TomDevicePreferences` and `TomDevicePreferenceStore` both
   read `interface` — a word Dart does not have — where both are `abstract
@@ -78,6 +85,30 @@
   old `Kind` cells were smuggling.
 
 ### Added
+
+- **`test/api_reference_coverage_test.dart`** — the API-summary coverage guard,
+  generalised from one module to all seven. It was written for `configuration`,
+  where six public members were missing from the summary and nobody noticed
+  until somebody looked; the other six modules kept the same unverified mirror.
+  The table is derived by walking `lib/src/tomclient/`, the same authority
+  `module_inventory_test.dart` uses, so a module added tomorrow is covered
+  without anyone widening a list.
+
+  Generalising the parser meant fixing it. Attributing each member to the type
+  declaring it stopped `_PreferencesResponse.body` — a public-looking field on a
+  class the module never exposes — from being demanded of the preferences
+  summary. Skipping the framework hooks stopped `build`, `createState` and
+  `paint` from being demanded of the security summary, where the only way to
+  satisfy that is to document a hook as though it were API. And a field declared
+  `Widget Function(T) child` reported `Function`, because the pattern stops at
+  the first parenthesis; losing `child` is the tolerable direction, demanding
+  `Function` of a summary is not.
+
+  The exception-parameter mirror is generalised with it, each class matched
+  against the file that declares it — `constructorBodyFrom` finds a constructor
+  by looking for `Name(` at a line end, which a multi-line *call site* matches
+  as readily as a declaration, so handing it a whole module lets a `throw` three
+  files away stand in for the thing being documented.
 
 - **`test/formatting_test.dart`** — the guard that keeps the package
   `dart format`-clean. Twenty-one of its files carried the pre-3.7 short style

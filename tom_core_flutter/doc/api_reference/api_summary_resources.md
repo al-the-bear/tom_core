@@ -173,6 +173,26 @@ return the cached value.
 
 - **Extends:** `TomClientException` (and so the kernel `TomException`)
 
+#### Constructors
+
+```dart
+TomPropertyException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
+See `TomException` (kernel) for the meaning of each argument. The types above
+are the *kernel constructor's*, reached through Dart super-parameters — which
+resolve against the immediate superclass, not against the field's original
+declaration. That matters for `stack`: the field is `Object?`, but the
+constructor narrows it to `StackTrace?`, so `Object?` here would be a plausible
+and wrong answer.
+
 | `key` | Condition | Message |
 | ----- | --------- | ------- |
 | `resources.property.not_configured` | The key is absent and no default was supplied | `Obligatory resource <key> not found in configuration resources` |
