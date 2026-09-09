@@ -302,11 +302,14 @@ void main() {
     final request = Request('post', Uri.parse('http://localhost/share'));
 
     test('denial keys map to 403', () {
-      for (final key in [
-        'app.access.forbidden',
-        'app.item.field_forbidden',
-        appEndpointAccessDeniedKey,
-      ]) {
+      // The pipeline's own pre-invocation denial is deliberately absent from
+      // this list. `tom_core_server` answers it with a bare 404 before any
+      // server-level handler sees it — the same closed/safe answer this
+      // sample's `itemNotFound` gives, and for the same reason: a status that
+      // separates "forbidden" from "absent" is an oracle for the existence the
+      // caller was refused. These three are the *services'* own keys, raised
+      // inside a method, and they are this sample's to map.
+      for (final key in ['app.access.forbidden', 'app.item.field_forbidden']) {
         final response = appForbiddenOrNotFound(
           request,
           TomEndpointHandlerException(key, 'denied'),
@@ -314,6 +317,29 @@ void main() {
         );
         expect(response?.statusCode, 403, reason: key);
       }
+    });
+
+    test('the pipeline denial never reaches this handler', () async {
+      // Both halves: it is not mapped here, and what the caller gets instead
+      // says nothing.
+      expect(
+        appForbiddenOrNotFound(
+          request,
+          TomEndpointHandlerException(
+            tomEndpointAccessDeniedErrorKey,
+            'denied',
+          ),
+          StackTrace.current,
+        ),
+        isNull,
+        reason: 'the framework answered it; this handler never sees it',
+      );
+      final answered = TomEndpointHandler.accessDeniedResponse();
+      expect(answered.statusCode, 404);
+      expect(
+        await answered.readAsString(),
+        isNot(contains(tomEndpointAccessDeniedErrorKey)),
+      );
     });
 
     test('not-found keys map to 404', () {

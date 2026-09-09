@@ -309,9 +309,8 @@ void main() {
       final c = _liveClients();
       final appFiles = ioFileTransferClient(Uri.parse(_appBaseUri));
       final authFiles = ioFileTransferClient(Uri.parse(_authBaseUri));
+      final avatar = utf8.encode('alice avatar');
       try {
-        // No login: the bearer store is reset around every test in this group,
-        // so these requests carry no token at all.
         expect(
           (await c.app.health())['status'],
           equals('ok'),
@@ -320,24 +319,47 @@ void main() {
               'dead socket',
         );
 
+        // Put an avatar there first, as somebody who may. Without this the
+        // anonymous read below would be reading an empty slot, and "no bytes"
+        // would prove nothing whatever about the gate — which is the trap in
+        // asserting a refusal that has deliberately stopped announcing itself.
+        await c.auth.login(_aliceLogin);
+        await authFiles.upload(
+          slot: _avatarSlot,
+          source: TomFileSource.bytes('avatar.txt', avatar),
+        );
+        expect(
+          await _downloadAll(authFiles, _avatarSlot),
+          equals(avatar),
+          reason: 'the slot holds bytes for a caller who may read it',
+        );
+
+        // Now drop the token: the store is a single global, so clearing it is
+        // what "anonymous" means for the requests below.
+        TomBearerAuthentication.bearerAuthentication =
+            TomBearerAuthentication();
+
         // The avatar slot is the one that matters. `auth_users` declares no
         // `@TomDbScope`, so nothing downstream of the gate would have filtered
         // this request: row scope and column grade decide *which* rows and
         // columns a principal may have, never whether there is a principal. If
         // the endpoint did not require authentication, this would return
         // somebody's avatar to anybody who asked.
-        await expectLater(
-          _downloadAll(authFiles, _avatarSlot),
-          throwsA(
-            isA<TomFileTransferException>().having(
-              (e) => e.parameters?['statusCode'],
-              'statusCode',
-              403,
-            ),
-          ),
+        //
+        // What the refusal *looks like* is the framework's decision and it is
+        // deliberately uninformative: a denied caller gets the same bare 404 a
+        // caller of a route that is not there gets, so this client reads it as
+        // "no file" and answers null. That indistinguishability is the point —
+        // an anonymous caller must not be able to tell "there is an avatar you
+        // may not have" from "there is no avatar". So the assertion is that no
+        // bytes come back, and the contrast below is what makes it about the
+        // gate rather than about an empty slot.
+        expect(
+          await _downloadAll(authFiles, _avatarSlot),
+          isNull,
           reason:
               'an anonymous read of an unscoped entity must be refused by '
-              'the endpoint itself',
+              'the endpoint itself, and told nothing',
         );
 
         // And the write direction, on the other server.
@@ -351,12 +373,16 @@ void main() {
           ),
           throwsA(
             isA<TomFileTransferException>().having(
-              (e) => e.parameters?['statusCode'],
-              'statusCode',
-              403,
+              (e) => e.key,
+              'key',
+              'file_transfer.not_found',
             ),
           ),
-          reason: 'and an anonymous write likewise',
+          reason:
+              'and an anonymous write likewise. The client cannot report it as '
+              'a refusal because the server did not say it was one: a bare 404 '
+              'reads as "no such slot", which is exactly as much as an '
+              'anonymous caller is owed',
         );
         // Whether the refused upload *stored* anything cannot be asked
         // anonymously — that is the whole point — so it is asked as alice, who
@@ -369,6 +395,16 @@ void main() {
           isNull,
           reason: 'the refused upload must have stored nothing',
         );
+
+        // The contrast that makes the null above the *gate* and not an empty
+        // slot: the same read, by a principal who may make it, still returns
+        // the same bytes it returned before the token was dropped.
+        expect(
+          await _downloadAll(authFiles, _avatarSlot),
+          equals(avatar),
+          reason: 'the avatar is there; it is anonymity that hid it',
+        );
+        await authFiles.remove(_avatarSlot);
       } on SocketException catch (e) {
         markTestSkipped(_skipMessage(e));
         return;

@@ -58,8 +58,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 // re-exports the auth/admin service implementations, the auth_db records, the
 // password helper, and the repository singletons, pulling them into this
 // entrypoint's import graph so the generator captures them — and giving the boot
-// the `forbiddenOnAccessDenied` handler, `userRepository`, and `applyPassword`
-// it references directly below.
+// the `userRepository` and `applyPassword` it references directly below.
 import 'package:advanced_auth_server/advanced_auth_server.dart';
 
 // Registers the auth/admin/app endpoint definitions with the global
@@ -153,29 +152,28 @@ class AuthServerConfiguration extends TomBaseServerConfiguration {
   }
 }
 
-/// The server-level error handler: pipeline access-denied → 403, else the
-/// framework default JSON error.
+/// The server-level error handler: the framework's default JSON error.
 ///
-/// The endpoint pipeline enforces the contract-declared `TomRoleAccess`
-/// (`TomApiEndpoint.access`) *before* the method runs and,
-/// on denial, throws the access-denied [TomEndpointHandlerException] *outside*
-/// the per-endpoint try/catch — so only a server-level handler can see it.
-/// [forbiddenOnAccessDenied] maps exactly that one key to `403 Forbidden` and
-/// returns null for everything else; the null is composed here onto
-/// [TomDefaultErrorHandler] so genuine faults still get the framework's standard
-/// JSON error response rather than an opaque shelf 500.
+/// This level sees only what no other level claimed. A pre-invocation access
+/// denial does not reach it — `tom_core_server` answers that itself, with a
+/// bare `404` that carries no key — and an error raised *inside* a method is
+/// offered to the endpoint's own handler first. What is left is a fault with no
+/// owner, and it gets the framework's standard JSON error rather than an opaque
+/// shelf 500.
+///
+/// It is a function rather than nothing because the seam is what the
+/// configuration installs, and a deployment that grows a server-wide mapping
+/// adds it here.
 Response? authServerErrorHandler(
   Request request,
   Object error,
   StackTrace stack,
-) =>
-    forbiddenOnAccessDenied(request, error, stack) ??
-    const TomDefaultErrorHandler().handleErrorDefault(
-      error,
-      stack,
-      request,
-      null,
-    );
+) => const TomDefaultErrorHandler().handleErrorDefault(
+  error,
+  stack,
+  request,
+  null,
+);
 
 /// Production environment — the root of the (small) environment hierarchy.
 const TomEnvironment environmentProd = TomEnvironment('prod');

@@ -103,15 +103,18 @@ The three surfaces gate at different granularities:
   handler by the resource- and field-level checks below
   (`api_registry.dart`, `appApi`).
 
-When the pre-invocation check denies, the pipeline throws a
-`TomEndpointHandlerException` keyed
-`endpoint_handler.handle_method_call.access_denied` — and it throws it **outside**
-the per-endpoint `try/catch`, so only a *server-level* error handler can see it.
-Both servers install one that maps exactly that key to **403 Forbidden** and
-returns `null` for everything else, composing it over the framework default so
-genuine faults still get the standard JSON error (`forbiddenOnAccessDenied`,
-`admin_endpoints.dart`; `authServerErrorHandler`, `auth_server_start.dart`;
-`appForbiddenOrNotFound`, `app_endpoints.dart`).
+When the pre-invocation check denies, the framework answers it: a bare **404**
+carrying no error key and no envelope, indistinguishable from a route that is
+not there. Neither server maps it, and neither needs to: the framework owns
+both the decision and the answer, so nothing here names
+`tomEndpointAccessDeniedErrorKey` at all. The status is the same closed/safe
+answer these servers give one level down, for the same reason: `403` says "this
+exists and you may not have it", which tells an unauthorized caller which ids
+exist.
+
+The denial is still recorded. `tom_core_server` audits it unconditionally with
+the principal, the endpoint and the outcome, so an operator asking why a caller
+got a 404 has an answer the caller does not.
 
 A throw raised *inside* a handler goes somewhere else entirely, and the two are
 not interchangeable. The pipeline catches it in the per-endpoint `try/catch` and
@@ -196,9 +199,11 @@ because the resolver reads the delegation rows on the grantee's next request
 
 The denials are **closed/safe**: a resource the caller cannot reach is reported as
 *not found* (404, `app.item.not_found` / `app.share.not_found`), never as
-forbidden — so existence is not leaked — while a genuine permission refusal is
-403 (`app.access.forbidden` / `app.item.field_forbidden`). The server-level
-`appForbiddenOrNotFound` maps those keys.
+forbidden — so existence is not leaked — while a genuine permission refusal
+*inside a method*, where the caller has already been admitted to the endpoint,
+is 403 (`app.access.forbidden` / `app.item.field_forbidden`). The server-level
+`appForbiddenOrNotFound` maps those keys. The framework applies the same rule
+one layer up, to the endpoint itself.
 
 ## The file endpoint
 

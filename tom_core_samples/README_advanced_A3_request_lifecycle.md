@@ -164,10 +164,13 @@ The doc comment on `AdvancedAppApiService._principalId` is explicit about *why*:
 the zone value is request-scoped (safe under concurrency), whereas
 `TomBearerAuthentication`'s static singleton is a client-side store the server
 middleware never fills. If the bearer is missing or invalid, the pipeline
-rejects the request *before* invocation with
-`endpoint_handler.handle_method_call.access_denied`
-(`appEndpointAccessDeniedKey` in `app_endpoints.dart`), which the server-level
-`appForbiddenOrNotFound` handler maps to **403**. Past this point the principal
+rejects the request *before* invocation, and answers a bare **404** — no error
+key, no envelope, the same response a route that does not exist would give. The
+framework owns that answer, so nothing in this sample maps it. The reason for
+the status is the reason this sample reports an unreachable item as missing: a
+`403` distinguishes "you may not have
+it" from "there is nothing here", which is an oracle for the existence the
+caller was refused. Past this point the principal
 id — `val`'s auth-user surrogate key — is the only identity the rest of the
 trace uses.
 
@@ -370,7 +373,7 @@ against sockets, not just on paper.
 - `advanced_client_core/lib/src/auth/auth_client.dart` — `AuthClient.login`, `AuthClient._store`;
   `advanced_client_core/lib/src/http/authorized_http.dart` — `AuthorizedHttp.send`, `AuthorizedHttp._sendWithBearer`
 - `advanced_auth_server/lib/src/endpoints/auth_endpoints.dart` — `AuthTokenService.login`, `AuthTokenService._issueFor`, `AuthTokenService.refresh`, `LoginUnauthorizedErrorHandler`
-- `advanced_app_server/lib/src/endpoints/app_endpoints.dart` — `AppWriteService.updateItem`, `AppWriteService._enforceFieldWrites`, `appEndpointAccessDeniedKey`, `AdvancedAppApiService._principalId`
+- `advanced_app_server/lib/src/endpoints/app_endpoints.dart` — `AppWriteService.updateItem`, `AppWriteService._enforceFieldWrites`, `AdvancedAppApiService._principalId`
 - `advanced_app_server/lib/src/access/resource_role_resolver.dart` — `ResourceRoleResolver.resolveRole`;
   `advanced_app_server/lib/src/access/field_grade_resolver.dart` — `FieldGradeResolver.gradesForRole`, `FieldGradeResolver.resolveItemFieldStates` (WRITE-path enforcement)
 - `advanced_client_core/lib/src/api/app_api_client.dart` — `AppApiClient.updateItem`, `AppApiClient.resourceRoles`;

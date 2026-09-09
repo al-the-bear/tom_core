@@ -17,6 +17,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Parameter Binding](#parameter-binding)
   - [Parameters that cannot be filled](#parameters-that-cannot-be-filled)
 - [Access Control](#access-control)
+  - [A Denial Answers 404, and Says Nothing Else](#a-denial-answers-404-and-says-nothing-else)
   - [Which control to annotate with](#which-control-to-annotate-with)
   - [Automatic endpoint protection](#automatic-endpoint-protection)
 - [Transactions](#transactions)
@@ -355,8 +356,41 @@ policy to inherit. It is governed by its own annotation, or by nothing.
 declares one it falls back to
 `TomResourceKeyProtection.globalSettingProtectionDefault` — which is `false` by
 default, so an undeclared endpoint is **open** until the deployment turns
-protection on. A still-denied request throws `TomEndpointHandlerException` with
-key `endpoint_handler.handle_method_call.access_denied`.
+protection on.
+
+### A Denial Answers 404, and Says Nothing Else
+
+A still-denied request is answered with a bare `404` — no body beyond
+`Not found`, no `tomErrorEnvelope`, no error key, and the same response a route
+that does not exist would give. The WebSocket handshake is refused the same way.
+
+**Why not `403`.** `403` says "this exists and you may not have it", which is a
+working oracle for a caller who was refused the data precisely so they could not
+learn that. Walk the id space against a resource-key-protected endpoint and the
+ids answering `403` are the rows that exist. The contract arm leaks the same way
+one level up: a `403` on `/admin/users` tells an anonymous prober that this
+deployment has an admin API and how it is spelled.
+
+The body carries no error key for the same reason. An envelope naming
+`access_denied` on a `404` undoes the whole of it in one field — the status
+would say "nothing here" and the body would say "something here, and you may not
+have it".
+
+**Where the diagnosis goes.** Not away: the denial is audited unconditionally
+(`TomAuditOutcome.denied`, with the principal, the endpoint and the reason) and
+the exception's message reaches the server log. An operator asking "why did this
+caller get a 404" has a record. The caller does not, which is the point.
+
+The key the denial is raised and audited under is
+`tomEndpointAccessDeniedErrorKey`
+(`endpoint_handler.handle_method_call.access_denied`), exported so a deployment
+writing its own refusal policy can name the one the pipeline raises.
+
+This is **not** routed through the endpoint's `errorHandler`. Those hooks handle
+errors *of the invocation* — a domain exception mapped to a `409`, a conversion
+failure — and a handler written for one would be handed a security decision it
+was not written for. A deployment that genuinely wants `403` returns one from
+its own service code, deliberately, rather than inheriting it.
 
 ### Which control to annotate with
 

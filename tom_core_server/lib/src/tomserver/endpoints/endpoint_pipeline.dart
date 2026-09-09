@@ -19,6 +19,20 @@ import 'endpoint_results.dart';
 import 'form_binding.dart';
 import 'web_socket_endpoint.dart';
 
+/// The error key a pre-invocation access denial is raised under.
+///
+/// Exported because it is a *wire* string in every sense that matters: the
+/// audit trail records it, the framework's own suites assert it, and a
+/// deployment writing its own refusal policy needs to name the one the pipeline
+/// raises. It was hand-copied into two sample servers before it had a name
+/// here, which is the shape of a constant the framework declined to own.
+///
+/// It does not reach the caller. A denied request answers a bare `404` — see
+/// [TomEndpointHandler.accessDeniedResponse] — so this key names the event on
+/// the *server* side, in the audit record and the log, and nowhere else.
+const String tomEndpointAccessDeniedErrorKey =
+    'endpoint_handler.handle_method_call.access_denied';
+
 /// Thrown while *serving* a request: access denied, parameter instantiation
 /// failure, a failing error handler, or a result that cannot be converted.
 class TomEndpointHandlerException extends TomServerException {
@@ -417,10 +431,44 @@ class TomEndpointHandler {
       detail: "Access not granted and no resource key found for endpoint $name",
     );
     throw TomEndpointHandlerException(
-      "endpoint_handler.handle_method_call.access_denied",
+      tomEndpointAccessDeniedErrorKey,
       "Access denied to endpoint, access not granted and resource key not found: $name",
     );
   }
+
+  /// The response a denied caller receives: a bare `404`, indistinguishable
+  /// from a route that does not exist.
+  ///
+  /// **A denial says nothing.** The alternative — `403`, which says "this
+  /// exists and you may not have it" — hands an unauthorized caller a working
+  /// oracle: walk the id space, read the statuses, and the ids that answer
+  /// `403` are the rows that exist. That is a disclosure the caller was refused
+  /// the data for, delivered by the refusal itself. The resource-key arm makes
+  /// it concrete, because there the id *is* the thing being protected, but the
+  /// contract arm leaks the same way at the level of the route: a `403` on
+  /// `/admin/users` tells an anonymous prober that this deployment has an admin
+  /// API and that the endpoint is spelled that way.
+  ///
+  /// So the body carries no [tomErrorEnvelope] and no error key either. An
+  /// envelope naming `access_denied` on a `404` would undo the whole of it in
+  /// one header — the status would say "nothing here" and the body would say
+  /// "something here, and you may not have it".
+  ///
+  /// The diagnosis is not lost, it moves to where it belongs. The denial is
+  /// audited unconditionally just above, with the principal, the endpoint and
+  /// the outcome, and the exception's message reaches the server log. An
+  /// operator asking "why did this caller get a 404" has a record; the caller
+  /// does not.
+  ///
+  /// Not routed through [TomEndpoint.errorHandler], and that is deliberate.
+  /// Those hooks exist for errors *of the invocation*, and a handler written
+  /// for one — mapping a domain exception to a `409`, say — would be handed a
+  /// security decision it was not written for. A deployment that genuinely
+  /// wants `403` states it by returning one, not by inheriting a handler.
+  static Response accessDeniedResponse() => Response.notFound(
+    'Not found',
+    headers: {TomHeader.contentType: TomMimeType.plainText.toHeaderValue()},
+  );
 
   /// Materialises the endpoint method's positional arguments from [req].
   ///
@@ -831,7 +879,12 @@ class TomEndpointHandler {
     final requestId = getFromCurrentZone<TomRequestId>();
     final reqId = requestId == null ? "" : requestId.uuid;
 
-    await enforceAccess();
+    try {
+      await enforceAccess();
+    } on TomEndpointHandlerException catch (denial) {
+      if (denial.key != tomEndpointAccessDeniedErrorKey) rethrow;
+      return accessDeniedResponse();
+    }
 
     final List<Object> positionalArguments = await bindParameters(req);
 
@@ -1073,7 +1126,16 @@ class TomEndpointHandler {
     final requestId = getFromCurrentZone<TomRequestId>();
     final reqId = requestId == null ? "" : requestId.uuid;
 
-    await enforceAccess();
+    try {
+      await enforceAccess();
+    } on TomEndpointHandlerException catch (denial) {
+      if (denial.key != tomEndpointAccessDeniedErrorKey) rethrow;
+      // The handshake is refused the same way a request is, and for the same
+      // reason: a socket that answered `403` where a request answers `404`
+      // would be the oracle the request path just closed, reachable by
+      // upgrading instead of asking.
+      return accessDeniedResponse();
+    }
 
     final connection = TomWebSocketConnection();
     final positionalArguments = await bindParameters(

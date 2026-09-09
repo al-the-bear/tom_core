@@ -4,15 +4,15 @@
 /// wiring needs a database (the repository-backed store) and the request zone,
 /// so it is exercised end-to-end by `bin/auth_server_start.dart`. What matters
 /// here — an admin can edit a grant and the edit is persisted,
-/// and a non-admin is rejected with HTTP 403 — is proven against the pure
-/// [AdminService] seeded with an [InMemoryAdminStore], the role-gate
-/// [TomRoleAccess], and the [forbiddenOnAccessDenied] handler, with no server.
+/// and a non-admin is refused before the method runs — is proven against the
+/// pure [AdminService] seeded with an [InMemoryAdminStore] and the role-gate
+/// [TomRoleAccess], with no server. What the refused caller *receives* is the
+/// framework's to decide, and is asserted as such.
 library;
 
 import 'package:advanced_auth_server/advanced_auth_server.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
-import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -327,29 +327,20 @@ void main() {
     });
   });
 
-  group('forbiddenOnAccessDenied', () {
-    final request = Request('GET', Uri.parse('http://localhost/admin/users'));
-
-    test('maps the pipeline access-denied exception to HTTP 403', () async {
-      final response = forbiddenOnAccessDenied(
-        request,
-        TomEndpointHandlerException(endpointAccessDeniedKey, 'Access denied'),
-        StackTrace.current,
+  group('a pre-invocation denial is the framework to answer', () {
+    test('the pipeline answers it, and says nothing', () async {
+      // The denial is `tom_core_server`'s to answer and it answers it here: a
+      // bare 404, no envelope, no key. Nothing in this sample maps it, which
+      // is why nothing in this sample names the key. The status is the same
+      // closed/safe answer this sample's own services give for an unreachable
+      // row, and for the same reason: a status that distinguishes "forbidden"
+      // from "absent" is an oracle for the existence the caller was refused.
+      final response = TomEndpointHandler.accessDeniedResponse();
+      expect(response.statusCode, 404);
+      expect(
+        await response.readAsString(),
+        isNot(contains(tomEndpointAccessDeniedErrorKey)),
       );
-
-      expect(response, isNotNull);
-      expect(response!.statusCode, 403);
-      expect(await response.readAsString(), contains(endpointAccessDeniedKey));
-    });
-
-    test('passes any other error through to the default handler', () {
-      final response = forbiddenOnAccessDenied(
-        request,
-        StateError('boom'),
-        StackTrace.current,
-      );
-
-      expect(response, isNull);
     });
   });
 }

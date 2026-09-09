@@ -13,6 +13,55 @@
 
 ### Fixed
 
+- **A pre-invocation access denial reached the client as an opaque 500
+  (tcincb149).** The check runs before the invocation, so its throw was outside
+  the per-endpoint `try`, escaped the endpoint's own `errorHandler`, and was
+  rendered by the server-level layer as `Response.internalServerError`. The
+  framework's out-of-the-box answer to "you are not allowed to do this" was the
+  same status as "the server broke": a client stack retrying `5xx` with backoff
+  would hammer an endpoint it will never be allowed to call, and both samples
+  carried a **copy of the framework's key** purely to map it to something else.
+
+  **A denial answers a bare `404` now** — no body beyond `Not found`, no
+  `tomErrorEnvelope`, no error key, and the same response a route that does not
+  exist would give. The WebSocket handshake is refused the same way.
+
+  `403` was the obvious answer and is the wrong one. It says "this exists and
+  you may not have it", which is a working oracle for the caller who was refused
+  the data precisely so they could not learn that: walk the id space against a
+  resource-key-protected endpoint and the ids answering `403` are the rows that
+  exist. The contract arm leaks the same way one level up — a `403` on
+  `/admin/users` tells an anonymous prober that this deployment has an admin API
+  and how it is spelled. The body carries no key for the same reason: an
+  envelope naming `access_denied` on a `404` undoes the whole of it in one
+  field.
+
+  This is the rule the samples had already reached for themselves. The app
+  sample's `itemNotFound` reports an unreachable row as missing "so no endpoint
+  leaks its existence"; the framework now applies that one layer up, to the
+  endpoint itself, instead of leaving each deployment to rediscover it.
+
+  The diagnosis is not lost, it moves: the denial is audited unconditionally
+  with the principal, the endpoint and the outcome, and the message reaches the
+  server log. An operator asking why a caller got a 404 has a record; the caller
+  does not. Deliberately **not** routed through `TomEndpoint.errorHandler` —
+  those hooks are for errors *of the invocation*, and one written to map a
+  domain exception to a `409` would be handed a security decision it was not
+  written for.
+
+  `tomEndpointAccessDeniedErrorKey` is exported. It names the audited event
+  rather than a wire status, and having no name here is what got it hand-copied
+  into two sample servers.
+
+  In the samples: `advanced_auth_server`'s `forbiddenOnAccessDenied` and its key
+  are deleted (the handler is unreachable now), `advanced_app_server` drops its
+  key and its 403 mapping, `advanced_client_core`'s admin exception documents
+  that a pre-invocation denial is not one of the errors it carries, and five
+  README documents are corrected. Four framework tests moved from asserting a
+  thrown exception to asserting the served response — including the socket one,
+  whose discriminator was "throw versus 404" and is now the audit record, which
+  was always the stronger of the two.
+
 - **A documented test pointer was only checked in the guides, and only if it
   was spelled as a suite (tcincb148).** `a guide names the suite that covers
   what it describes` swept `doc/*.md` and matched `*_test.dart` or `*.sh`. The

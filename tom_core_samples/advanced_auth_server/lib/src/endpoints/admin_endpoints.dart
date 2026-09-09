@@ -26,18 +26,17 @@
 ///   gate inline; it carries the production wiring and is exercised end-to-end by
 ///   `bin/auth_server_start.dart`.
 ///
-/// Two client mistakes would otherwise be reported as server faults, and they
-/// need mapping at *different* layers because they are raised at different
-/// layers. A non-admin caller is rejected by the pipeline's access check
-/// *before* the method runs (it throws the access-denied
-/// [TomEndpointHandlerException]) — that escapes the pipeline's per-endpoint
-/// try/catch, so [forbiddenOnAccessDenied] maps it to `403` and
-/// `bin/auth_server_start.dart` installs that as the **server-level** error
-/// handler. A malformed id, by contrast, is raised *inside* a method by
-/// `persistence/auth_mapping.dart` and never reaches the server level: the
-/// pipeline hands it to the **per-endpoint** handler, which is why
-/// [AdminEndpointErrorHandler] is declared on the `@TomApiImplementation` and
-/// maps it to `400`. Both defaults are an opaque 500.
+/// A non-admin caller is rejected by the pipeline's access check *before* the
+/// method runs, and this sample no longer maps that: `tom_core_server` answers
+/// it with a bare `404` itself, which is the closed/safe answer this sample was
+/// already giving one level down — an unreachable thing is reported missing,
+/// never forbidden, so nothing leaks its existence.
+///
+/// A malformed id, by contrast, is raised *inside* a method by
+/// `persistence/auth_mapping.dart`: the pipeline hands it to the
+/// **per-endpoint** handler, which is why [AdminEndpointErrorHandler] is
+/// declared on the `@TomApiImplementation` and maps it to `400`. Its default is
+/// an opaque 500.
 library;
 
 import 'dart:convert';
@@ -644,39 +643,6 @@ class AdminService {
   }
 }
 
-/// The message key the endpoint pipeline throws when an access check fails.
-///
-/// Coupled to `TomEndpointHandler`'s access-denied throw in `tom_core_server`;
-/// kept as a named constant so the boot-installed [forbiddenOnAccessDenied]
-/// handler maps exactly that exception (and nothing else) to HTTP 403.
-const String endpointAccessDeniedKey =
-    'endpoint_handler.handle_method_call.access_denied';
-
-/// Server-level error handler that maps an access-control rejection to HTTP 403.
-///
-/// The endpoint pipeline enforces the endpoint's access policy (here the
-/// contract-declared `adminAccess` on each `adminApi` endpoint) *before* the
-/// method runs and, on denial,
-/// throws the access-denied [TomEndpointHandlerException] — which the
-/// default server handler would mask behind an opaque 500. Installing this on the
-/// server configuration in `bin/auth_server_start.dart` turns that one exception
-/// into a `403 Forbidden`
-/// carrying the stable key; every other fault returns `null`, falling through to
-/// the server's default handler.
-Response? forbiddenOnAccessDenied(
-  Request request,
-  Object error,
-  StackTrace stack,
-) {
-  if (error is TomException && error.key == endpointAccessDeniedKey) {
-    return Response.forbidden(
-      jsonEncode({'error': error.key}),
-      headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
-    );
-  }
-  return null;
-}
-
 /// Maps a [MalformedIdException] raised *inside* an admin method to
 /// `400 Bad Request` carrying [malformedIdKey], and returns `null` for anything
 /// else.
@@ -709,11 +675,10 @@ Response? badRequestOnMalformedId(
 ///
 /// Declared on [AdvancedAdminApiService]'s `@TomApiImplementation` because the
 /// two admin faults surface at *different* layers. The contract-declared access
-/// check runs *before* the method and throws outside the endpoint pipeline's
-/// per-endpoint try/catch, so it escapes to the server-level
-/// [forbiddenOnAccessDenied]. A throw from *within* a method — here the
-/// mapping's id rejection — never reaches the server level: the pipeline hands
-/// it to the endpoint's own handler, which otherwise defaults to
+/// check runs *before* the method, and the framework answers a denial there
+/// itself with a bare 404 — no handler in this sample sees it. A throw from
+/// *within* a method — here the mapping's id rejection — is the pipeline's to
+/// hand to the endpoint's own handler, which otherwise defaults to
 /// [TomDefaultErrorHandler] and answers 500.
 class AdminEndpointErrorHandler extends TomErrorHandler {
   /// Const so it can be supplied as the `@TomApiImplementation` annotation's

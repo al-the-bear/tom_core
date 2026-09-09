@@ -272,14 +272,28 @@ void main() {
           },
         );
 
-    /// The `access_denied` an ordinary (non-socket) request fails with.
-    final accessDenied = throwsA(
-      isA<TomEndpointHandlerException>().having(
-        (e) => e.key,
-        'key',
-        'endpoint_handler.handle_method_call.access_denied',
-      ),
-    );
+    /// What a denied caller receives: a bare 404, indistinguishable from a
+    /// route that is not there.
+    ///
+    /// Asserted as a *response* rather than as a thrown exception because that
+    /// is what the caller sees. The exception still exists — it carries the
+    /// message into the server log — but it does not leave the pipeline, and a
+    /// test that watched for it would go on passing if the status changed.
+    Future<void> expectDenied(Future<Response> pending) async {
+      final response = await pending;
+      expect(response.statusCode, 404);
+      final body = await response.readAsString();
+      expect(
+        body,
+        isNot(contains(tomEndpointAccessDeniedErrorKey)),
+        reason: 'a body naming the denial undoes the status that hides it',
+      );
+      expect(
+        response.headers['x-tom-error'],
+        isNull,
+        reason: 'nor may a header mark it as an error envelope',
+      );
+    }
 
     test('the contract role admits a handler that declares nothing', () async {
       final response = await asPrincipalWithRoles([
@@ -294,27 +308,28 @@ void main() {
       // decorative. If this passed, the document would be telling readers to
       // rely on a declaration that gates nothing — the worse of the two
       // possible failures, because the endpoint looks protected.
-      await expectLater(
+      await expectDenied(
         asPrincipalWithRoles([
           'some-other-role',
         ], () => router.call(_get('/fixture-access/contract-gated'))),
-        accessDenied,
       );
     });
 
-    test('the handler override is what the request is checked against', () {
-      // The override stated as a request outcome rather than as an identity on
-      // a metadata object: holding the *contract's* role does not open an
-      // endpoint whose handler declared a different one. Swapping the two
-      // operands of `tea ?? ae?.access` would widen access here, which is the
-      // direction that matters.
-      expect(
-        asPrincipalWithRoles([
-          'fixture-contract-role',
-        ], () => router.call(_get('/fixture-access/overridden'))),
-        accessDenied,
-      );
-    });
+    test(
+      'the handler override is what the request is checked against',
+      () async {
+        // The override stated as a request outcome rather than as an identity on
+        // a metadata object: holding the *contract's* role does not open an
+        // endpoint whose handler declared a different one. Swapping the two
+        // operands of `tea ?? ae?.access` would widen access here, which is the
+        // direction that matters.
+        await expectDenied(
+          asPrincipalWithRoles([
+            'fixture-contract-role',
+          ], () => router.call(_get('/fixture-access/overridden'))),
+        );
+      },
+    );
 
     test('the handler role admits the endpoint that declares it', () async {
       // The converse, so the test above is about *which* policy applied and not
@@ -1162,21 +1177,31 @@ void main() {
         // The document's actual claim about sockets: a socket endpoint is
         // authorized by exactly the code that authorizes every other endpoint.
         // `handleWebSocketCall` awaits `enforceAccess()` before it builds the
-        // connection, so a denied caller never reaches the upgrade — the
-        // failure is an ordinary access denial, not a socket that opens and
-        // dies. Reached with a plain GET, which an accepted request would
-        // answer 404 ('not a WebSocket request'); getting that 404 here would
-        // mean the check had been skipped on the socket path.
-        await expectLater(
-          router.call(_get('/fixture/ticker')),
-          throwsA(
-            isA<TomEndpointHandlerException>().having(
-              (e) => e.key,
-              'key',
-              'endpoint_handler.handle_method_call.access_denied',
-            ),
-          ),
-        );
+        // connection, so a denied caller never reaches the upgrade.
+        //
+        // The *status* cannot say which of the two happened, and that is the
+        // point of it: a denial answers 404, and so does an accepted request
+        // that turns out not to be a WebSocket handshake. A socket that
+        // answered anything else would be the disclosure oracle the request
+        // path closes, reachable by upgrading instead of asking.
+        //
+        // So the discriminator is the audit trail, which is the stronger one
+        // and was always available: a denial records `TomAuditOutcome.denied`,
+        // and a request that got past the check records nothing. Skip
+        // `enforceAccess` on the socket path and this fails on an empty trail
+        // while the status stays 404.
+        final sink = TomMemoryAuditSink();
+        TomAuditTrail.install(sink);
+        addTearDown(() {
+          TomAuditTrail.uninstall();
+          TomAuditTrail.resetPolicyCache();
+        });
+
+        final response = await router.call(_get('/fixture/ticker'));
+        expect(response.statusCode, 404);
+        expect(await response.readAsString(), isNot(contains('access_denied')));
+        expect(sink.records.single.outcome, TomAuditOutcome.denied);
+        expect(sink.records.single.target, contains('ticker'));
       });
 
       test('a key-holding caller reaches the upgrade', () async {
@@ -1982,12 +2007,12 @@ void main() {
         () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
       );
 
-      // The pipeline signals the refusal by throwing; the assertion that
-      // matters is on the trail, which must hold the entry either way.
-      await expectLater(
-        router.call(_get('/fixture/unguarded')),
-        throwsA(isA<TomEndpointHandlerException>()),
-      );
+      // The caller is answered `404` and told nothing. The assertion that
+      // matters is on the *trail*, which must hold the entry either way — the
+      // record is what an operator asking "why did this caller get a 404" has,
+      // and it is the whole of what the status gives up.
+      final response = await router.call(_get('/fixture/unguarded'));
+      expect(response.statusCode, 404);
 
       final record = sink.records.single;
       expect(record.action, TomAuditAction.execute);

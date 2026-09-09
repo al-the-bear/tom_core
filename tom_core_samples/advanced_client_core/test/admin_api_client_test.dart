@@ -276,9 +276,11 @@ void main() {
           '/admin/users': [
             HttpJsonResponse(
               403,
-              jsonEncode({
-                'error': 'endpoint_handler.handle_method_call.access_denied',
-              }),
+              // A *service*-raised denial, which is what still reaches a
+              // client as a keyed 403. The pipeline's pre-invocation denial no
+              // longer does: the framework answers that one with a bare 404
+              // carrying no key, so there is nothing here to assert about it.
+              jsonEncode({'error': 'app.access.forbidden'}),
             ),
           ],
         });
@@ -288,11 +290,7 @@ void main() {
           client.listUsers(),
           throwsA(
             isA<AdminApiException>()
-                .having(
-                  (e) => e.key,
-                  'key',
-                  'endpoint_handler.handle_method_call.access_denied',
-                )
+                .having((e) => e.key, 'key', 'app.access.forbidden')
                 .having((e) => e.statusCode, 'statusCode', 403),
           ),
         );

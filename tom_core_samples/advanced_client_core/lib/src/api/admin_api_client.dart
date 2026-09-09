@@ -43,9 +43,15 @@ import '../http/json_transport.dart';
 /// already handle (a 401 becomes an `TomAuthExpiredException` upstream).
 ///
 /// Carries the HTTP [statusCode] and the server's stable error [key] from the
-/// `{"error": key}` body (e.g. `endpoint_handler.handle_method_call.access_denied`
-/// → 403 for a non-admin caller), so a UI can branch on the key without parsing a
-/// message.
+/// `{"error": key}` body (e.g. `app.item.field_forbidden` → 403), so a UI can
+/// branch on the key without parsing a message.
+///
+/// A caller denied *before* the method runs is not one of these. The framework
+/// answers that with a bare `404` carrying no key at all, deliberately — a
+/// status that separates "you may not" from "there is nothing" tells an
+/// unauthorized caller which ids exist. So a non-admin reaching `/admin/users`
+/// sees exactly what a caller of a route that is not there sees, and this
+/// client has nothing to branch on, which is the intended amount.
 class AdminApiException extends TomException {
   /// The HTTP status that triggered this.
   final int statusCode;

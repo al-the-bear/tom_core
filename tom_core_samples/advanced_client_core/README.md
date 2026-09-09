@@ -182,11 +182,14 @@ each Flutter client's own combined seed at runtime).
   is an empty `200` body. The grant matrix is the
   `{matrix: {role: {resourceKey: accessToken}}}` object (unknown tokens degrade
   closed-safe to `none`).
-- **Errors.** A denial the server maps to a non-success status (e.g. the
-  `admin`-role gate's `403` with body
-  `{"error": "endpoint_handler.handle_method_call.access_denied"}`) surfaces as a
+- **Errors.** A denial a *service* raises and the server maps to a non-success
+  status (e.g. `{"error": "app.access.forbidden"}` as a `403`) surfaces as a
   typed `AdminApiException` carrying that stable key and the status; a persistent
-  `401` was already turned into an `TomAuthExpiredException` by the wrapper.
+  `401` was already turned into an `TomAuthExpiredException` by the wrapper. A
+  caller denied by the pipeline *before* the method runs is not one of these:
+  the framework answers it with a bare `404` and no key, deliberately, so a
+  non-admin reaching `/admin/users` sees exactly what a caller of a route that
+  does not exist sees.
 
 ```dart
 final transport = IoJsonTransport();

@@ -36,8 +36,9 @@ while the session endpoints (`/auth/refresh`, `/auth/me`, `/auth/logout`) are
 endpoint pipeline extracts that declaration on first call, reads the caller's
 principal from the bearer token via the default
 `tomDefaultAuthenticationMiddleware`, and rejects a non-admin **before** the
-method runs; `bin/auth_server_start.dart` installs the server-level
-`forbiddenOnAccessDenied` handler that turns that rejection into **HTTP 403**.
+method runs. The framework answers that rejection itself, with a bare **404**
+that carries no error key — so nothing here maps it, and the server-level
+handler this sample used to install for it is gone.
 
 A rejection raised *inside* a handler needs the other handler, because the
 pipeline catches it in the per-endpoint `try/catch` and the server-level one

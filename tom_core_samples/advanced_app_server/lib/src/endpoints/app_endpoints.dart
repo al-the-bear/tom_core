@@ -46,7 +46,9 @@
 /// `viewer` write to a read-only field is rejected while an `editor` write
 /// persists only the permitted fields; a created share grants the grantee
 /// access). [appForbiddenOrNotFound] is the server-level handler the boot installs
-/// to map the services' closed/safe denial keys to HTTP 403/404.
+/// to map the *services'* closed/safe denial keys to HTTP 403/404; the
+/// pipeline's own pre-invocation denial never reaches it, being answered as a
+/// bare 404 by `tom_core_server`.
 library;
 
 import 'dart:convert';
@@ -1459,12 +1461,6 @@ class AppShareService {
 /// contract-declared `TomAuthenticatedAccess` on a missing token) fails *before*
 /// the method runs.
 ///
-/// Coupled to `TomEndpointHandler`'s access-denied throw in `tom_core_server`,
-/// it surfaces *outside* the per-endpoint try/catch, so only a server-level
-/// handler ([appForbiddenOrNotFound]) can map it.
-const String appEndpointAccessDeniedKey =
-    'endpoint_handler.handle_method_call.access_denied';
-
 /// Server-level error handler mapping the app services' closed/safe denial keys
 /// to HTTP statuses; returns `null` for everything else so genuine faults fall
 /// through to the framework's default JSON 500.
@@ -1477,8 +1473,11 @@ const String appEndpointAccessDeniedKey =
 /// - `app.item.not_found` / `app.share.not_found` / `app.subtask.not_found` →
 ///   **404** (a resource the caller cannot reach is reported missing, never
 ///   leaking its existence).
-/// - `app.access.forbidden` / `app.item.field_forbidden` (and the pipeline's
-///   pre-invocation [appEndpointAccessDeniedKey]) → **403**.
+/// - `app.access.forbidden` / `app.item.field_forbidden` → **403**. The
+///   pipeline's *pre-invocation* denial is not in this list, because it never
+///   arrives: `tom_core_server` answers it with a bare 404 itself, which is the
+///   same closed/safe answer [itemNotFound] gives one level down and for the
+///   same reason.
 /// - a framework [TomDataScopeAuthorizationException] (a non-owner's write to a
 ///   `@TomDbScope` row) → **403**, carrying its own
 ///   `data_scope.write.out_of_scope` key.
@@ -1526,7 +1525,6 @@ Response? appForbiddenOrNotFound(
       );
     case 'app.access.forbidden':
     case 'app.item.field_forbidden':
-    case appEndpointAccessDeniedKey:
       return Response.forbidden(
         jsonEncode({'error': error.key}),
         headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
