@@ -1464,11 +1464,22 @@ class TomReflectionInfo {
     // Try to instantiate and fill
     if (_instantiateAndSetMapValue(im, cm, entry)) return;
 
-    if (debugSwitchLogReflectionDetailsValues) {
-      tomLog.trace(
-        "Could not set map value for field ${entry.key} of type $returnType",
-      );
-    }
+    // Nothing claimed the payload. The caller named a field that genuinely
+    // exists and handed it a value this reflector cannot turn into that
+    // field's type, so the only two honest outcomes are to apply it or to say
+    // so. Tracing instead — under a debug switch that defaults to false —
+    // is neither: the field keeps its old value, `setValues` returns as though
+    // the entry had been applied, and nothing at the call site can tell the
+    // two apart.
+    throw TomReflectorException(
+      "reflection.set.map_field_not_settable",
+      "No strategy could set map field '${entry.key}' of ${cm.simpleName}, "
+          "declared as $returnType, from ${limited(entry.value, 100)}. "
+          "The declared type is not a supported map type, names no reflected "
+          "class to build, and the field holds nothing to fill in place.",
+      parameters: {"class": cm.simpleName, "field": entry.key},
+      autoLog: true,
+    );
   }
 
   /// Attempts to set a primitive Map type using registered handlers.
@@ -1585,17 +1596,11 @@ class TomReflectionInfo {
     if (!typeString.startsWith("Map<String,")) return false;
     final memberMirror = imGet.returnType.typeArguments[1] as ClassMirror;
 
-    Map<String, Map<String, dynamic>?>? jsonMap;
-    try {
-      jsonMap = (entry.value as Map).cast<String, Map<String, dynamic>?>();
-    } catch (e) {
-      if (debugSwitchLogReflectionDetailsValues) {
-        tomLog.trace(
-          "JSON value for map field ${entry.key} is not a Map<String, Map<String, dynamic>?>: ${entry.value.runtimeType}",
-        );
-      }
-      return false;
-    }
+    // No guard: the only caller dispatches here on `entry.value is Map`, and
+    // `cast` is a lazy view that defers every element check to the read below.
+    // A catch around this line could only decline for a reason that cannot
+    // occur, while implying to the reader one that can.
+    final jsonMap = (entry.value as Map).cast<String, Map<String, dynamic>?>();
 
     // Materialize every value into a fresh map first; only assign on full
     // success so a mid-stream failure never leaves the field half-populated.
@@ -1650,28 +1655,31 @@ class TomReflectionInfo {
     InstanceMirror im,
     MapEntry<String, dynamic> entry,
   ) {
+    // Reading the field is the one operation here whose failure genuinely
+    // means "this strategy does not apply": a `late` field that has not been
+    // initialized throws rather than returning null, and "there is nothing in
+    // the field to fill" is exactly what that says.
+    final Object? existing;
     try {
-      final value = im.invokeGetter(entry.key);
-      if (value == null || entry.value is! Map<String, dynamic>) return false;
-
-      if (value is Map<String, Object?>) {
-        for (var valueEntry in (entry.value as Map<String, dynamic>).entries) {
-          value[valueEntry.key] = valueEntry.value;
-        }
-      } else {
-        setValues(value, entry.value as Map<String, dynamic>);
-      }
-      return true;
-    } on TomReflectorException {
-      // Past the guard above, this strategy applies: the field holds an object
-      // and the payload is a map for it. Our own exception is that nested
-      // deserialization's verdict on the payload, not a signal to try the next
-      // strategy — swallowing it would demote a precise diagnosis to a field
-      // silently left as it was.
-      rethrow;
-    } catch (error) {
+      existing = im.invokeGetter(entry.key);
+    } catch (_) {
       return false;
     }
+    if (existing == null || entry.value is! Map<String, dynamic>) return false;
+
+    // Past that guard this strategy applies: the field holds something and the
+    // payload is a map for it. A failure from here on is a verdict on the
+    // payload, not a signal to try the next strategy, so it is left to travel
+    // — absorbing it would demote a precise diagnosis to a field silently
+    // left as it was.
+    if (existing is Map<String, Object?>) {
+      for (var valueEntry in (entry.value as Map<String, dynamic>).entries) {
+        existing[valueEntry.key] = valueEntry.value;
+      }
+    } else {
+      setValues(existing, entry.value as Map<String, dynamic>);
+    }
+    return true;
   }
 
   /// Attempts to create a new instance for the field and populate it.
@@ -1682,26 +1690,42 @@ class TomReflectionInfo {
     ClassMirror cm,
     MapEntry<String, dynamic> entry,
   ) {
-    final mm = cm.instanceMembers[entry.key];
+    // The only two conditions that mean "not applicable" — no mirror for
+    // the member, and a return type that names no class to build — are
+    // decided by inspection rather than by catching. This is the last strategy
+    // in the chain, so an error caught here would be the field's last chance
+    // to report anything at all; a field this strategy declines is refused at
+    // the end of [_setMapValue] instead of being left as it was.
+    final returnType = cm.instanceMembers[entry.key]?.returnType;
+    if (returnType is! ClassMirror) return false;
+
+    // Declining is over: a class was named and this strategy is going to try
+    // to build it. What is left can still fail, and the failure is not one the
+    // caller can read on its own — the registry is keyed by declaration, so a
+    // field declared `Box<int>` is built as `Box<dynamic>` and rejected by the
+    // setter with a bare `_TypeError` naming two types and no field. Keep the
+    // error and say whose it is.
     try {
-      final pm = mm!.returnType as ClassMirror;
-      final value = createInstanceFromJson(pm, entry.value);
-      im.invokeSetter(entry.key, value);
-      return true;
+      im.invokeSetter(
+        entry.key,
+        createInstanceFromJson(returnType, entry.value),
+      );
     } on TomReflectorException {
-      // The last strategy in the chain, and the only failures it should absorb
-      // are the ones that say "not applicable" — a member with no mirror, a
-      // return type that is not a class. A [TomReflectorException] says the
-      // payload itself is wrong, and there is nothing after this to try.
       rethrow;
-    } catch (error) {
-      if (debugSwitchLogReflectionDetailsValues) {
-        tomLog.trace(
-          "Could not instantiate and set map value for field ${entry.key} of type ${mm?.returnType}",
-        );
-      }
-      return false;
+    } catch (error, stacktrace) {
+      throw TomReflectorException(
+        "reflection.set.map_field_assignment_failed",
+        "Built a ${returnType.simpleName} for map field '${entry.key}' of "
+            "${cm.simpleName}, declared as ${cm.instanceMembers[entry.key]!.reflectedReturnType}, "
+            "from ${limited(entry.value, 100)}, but the field would not take "
+            "it: $error",
+        parameters: {"class": cm.simpleName, "field": entry.key},
+        rootException: error,
+        stack: stacktrace,
+        autoLog: true,
+      );
     }
+    return true;
   }
 
   // ---------------------------------------------------------------------------
@@ -1732,15 +1756,23 @@ class TomReflectionInfo {
     // Try annotated object list type
     if (_trySetAnnotatedObjectListType(im, imGet, entry)) return;
 
+    // Fallback: assign the list as it arrived. This is the last strategy in
+    // the chain, so a failure here is the field's last chance to report
+    // anything: absorbing it would make a list-shaped payload handed to a
+    // field that cannot hold one look exactly like one that was applied.
     try {
-      // Fallback: just try to set value
       im.invokeSetter(entry.key, entry.value);
-    } catch (error) {
-      if (debugSwitchLogReflectionDetailsValues) {
-        tomLog.trace(
-          "Could not set list value for field ${entry.key} of type $returnType",
-        );
-      }
+    } catch (error, stacktrace) {
+      throw TomReflectorException(
+        "reflection.set.list_field_not_settable",
+        "No strategy could set list field '${entry.key}' of ${cm.simpleName}, "
+            "declared as $returnType, from ${limited(entry.value, 100)}: "
+            "$error",
+        parameters: {"class": cm.simpleName, "field": entry.key},
+        rootException: error,
+        stack: stacktrace,
+        autoLog: true,
+      );
     }
   }
 
@@ -1864,17 +1896,10 @@ class TomReflectionInfo {
     if (!typeString.startsWith("List<")) return false;
     final memberMirror = imGet.returnType.typeArguments[0] as ClassMirror;
 
-    List<Map<String, dynamic>?>? jsonList;
-    try {
-      jsonList = (entry.value as List).cast<Map<String, dynamic>?>();
-    } catch (e) {
-      if (debugSwitchLogReflectionDetailsValues) {
-        tomLog.trace(
-          "Value for list field ${entry.key} is not a List<Map<String, dynamic>?>: ${entry.value.runtimeType}",
-        );
-      }
-      return false;
-    }
+    // See the map counterpart: the caller has already established that the
+    // value is a List, and `cast` checks nothing until the loop below reads an
+    // element, so there is no failure here for a catch to absorb.
+    final jsonList = (entry.value as List).cast<Map<String, dynamic>?>();
 
     // Materialize every element into a fresh list first; only assign on full
     // success so a mid-stream failure never leaves the field cleared-and-

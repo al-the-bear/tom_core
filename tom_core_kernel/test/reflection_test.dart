@@ -4721,44 +4721,106 @@ void main() {
   group('a value whose shape does not fit the field', () {
     // `setValues` dispatches on the *incoming value's* type, not the field's: a
     // Map goes to the map path and a List to the list path whatever the field
-    // was declared as. The two paths then disagree about what to do when the
-    // field cannot take that shape — the map path raises, the list path drops
-    // the value and reports success. This group states that difference rather
-    // than arguing with it: the asymmetry is a known open end, and until it is
-    // settled, an untested silent path is one that can change by accident.
+    // was declared as. Neither path may then leave the entry unapplied without
+    // saying so. That is the whole contract this group pins, and it is worth
+    // stating why it is not obvious: the strategies each path tries are
+    // *allowed* to decline, so the natural implementation runs out of
+    // strategies and falls off the end, and a field left holding its previous
+    // value is indistinguishable at the call site from one that was set. The
+    // two paths reach that end differently, so each is pinned separately: the
+    // map path runs out of strategies, and the list path fails in its last
+    // one. Either could regress on its own into dropping the value and
+    // reporting success, which is the asymmetry these tests exist to catch.
 
-    test('a List handed to a field that is not a list is silently dropped', () {
+    test('a List handed to a field that is not a list is refused', () {
       // Four different non-list shapes, one call each, so a future change that
-      // starts raising for one of them is attributed to that one.
-      final mapHolder = MapHolder();
-      tomReflectionInfo.setValues(mapHolder, {
-        'intMap': [1, 2, 3],
-      });
-      expect(mapHolder.intMap, isNull);
+      // stops refusing one of them is attributed to that one. The message has
+      // to carry the field and its declared type: the payload behind a refusal
+      // is a whole JSON document, and "a list is wrong somewhere in it" leaves
+      // the caller to find which one.
+      void refuses(
+        Object holder,
+        Map<String, dynamic> values, {
+        required String field,
+        required String declared,
+        required Object value,
+      }) {
+        expect(
+          () => tomReflectionInfo.setValues(holder, values),
+          throwsA(
+            isA<TomReflectorException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  'reflection.set.list_field_not_settable',
+                )
+                .having(
+                  (e) => e.defaultUserMessage,
+                  'defaultUserMessage',
+                  allOf(
+                    contains("'$field'"),
+                    contains(declared),
+                    contains('$value'),
+                  ),
+                ),
+          ),
+          reason: 'field $field',
+        );
+      }
 
-      final collections = UninitializedCollectionsHolder();
-      tomReflectionInfo.setValues(collections, {
-        'teamMembers': [
+      refuses(
+        MapHolder(),
+        {
+          'intMap': [1, 2, 3],
+        },
+        field: 'intMap',
+        declared: 'Map<String, int>',
+        value: [1, 2, 3],
+      );
+      refuses(
+        UninitializedCollectionsHolder(),
+        {
+          'teamMembers': [
+            {'name': 'Alice'},
+          ],
+        },
+        field: 'teamMembers',
+        declared: 'Map<String, TeamMember>',
+        value: [
           {'name': 'Alice'},
         ],
-      });
-      expect(collections.teamMembers, isNull);
-
-      final person = NullablePerson();
-      tomReflectionInfo.setValues(person, {
-        'age': [1],
-        'name': ['Alice'],
-      });
-      expect(person.age, isNull);
-      expect(person.name, isNull);
-
-      final nested = PersonWithAddress();
-      tomReflectionInfo.setValues(nested, {
-        'address': [
+      );
+      refuses(
+        NullablePerson(),
+        {
+          'age': [1],
+        },
+        field: 'age',
+        declared: 'int',
+        value: [1],
+      );
+      refuses(
+        NullablePerson(),
+        {
+          'name': ['Alice'],
+        },
+        field: 'name',
+        declared: 'String',
+        value: ['Alice'],
+      );
+      refuses(
+        PersonWithAddress(),
+        {
+          'address': [
+            {'city': 'Berlin'},
+          ],
+        },
+        field: 'address',
+        declared: 'Address',
+        value: [
           {'city': 'Berlin'},
         ],
-      });
-      expect(nested.address, isNull);
+      );
     });
 
     test('a List handed to a list field still binds', () {
@@ -4841,23 +4903,72 @@ void main() {
       }
     });
 
-    test(
-      'a Map handed to a field with no type to build is silently dropped',
-      () {
-        // The tail of the map path, and the only way to reach it. `dynamic`
-        // names no class at all; `GenericHolder<int>` names an instantiation the
-        // registry — keyed by declaration — does not hold. A field declared
-        // `dynamic` to carry an arbitrary payload is the realistic case, and it
-        // loses the payload without a word.
-        final holder = OpaqueFieldHolder();
-        tomReflectionInfo.setValues(holder, {
+    test('a Map handed to a field with no type to build is refused', () {
+      // One of the two tails of the map path, and the only way to reach it:
+      // every strategy declined by *inspection* rather than by failing, so
+      // there is no underlying error to report and the refusal has to be
+      // assembled from what was asked for. `dynamic` names no class at all. A
+      // field declared `dynamic` to carry an arbitrary payload is the
+      // realistic case, and losing that payload without a word is the whole
+      // failure being refused here.
+      expect(
+        () => tomReflectionInfo.setValues(OpaqueFieldHolder(), {
           'anything': {'name': 'Alice'},
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.map_field_not_settable',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                allOf(
+                  contains("'anything'"),
+                  contains('OpaqueFieldHolder'),
+                  contains('dynamic'),
+                  contains('{name: Alice}'),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('a Map built for a field the field then rejects keeps the error', () {
+      // The other tail, and the reason the two are not one key: here a
+      // strategy did apply. `GenericHolder<int>` names a class the registry
+      // holds — keyed by declaration, so what comes back is a
+      // `GenericHolder<dynamic>` — and the setter rejects it with a bare
+      // `_TypeError` that names two type arguments and no field. Letting that
+      // through unwrapped would trade a silent drop for an error nobody can
+      // attribute, so the refusal carries both the field and the cause.
+      expect(
+        () => tomReflectionInfo.setValues(OpaqueFieldHolder(), {
           'generic': {'name': 'Alice', 'count': 3},
-        });
-        expect(holder.anything, isNull);
-        expect(holder.generic, isNull);
-      },
-    );
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.map_field_assignment_failed',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                allOf(
+                  contains("'generic'"),
+                  contains('OpaqueFieldHolder'),
+                  contains('GenericHolder<int>'),
+                  contains('{name: Alice, count: 3}'),
+                ),
+              )
+              .having((e) => e.rootException, 'rootException', isNotNull),
+        ),
+      );
+    });
 
     test('a Map that does fit replaces a map field but fills an object field', () {
       // Not mismatches, but they bound the cases above from the other side and

@@ -31,6 +31,26 @@ anyone who was writing them.
 
 ### Fixed
 
+- **A map or list field no strategy could set was left unset without a word
+  (tcincb64).** `_setMapValue` tries five strategies and `_setListValue` four,
+  each free to decline; when the last one declined, the method traced under
+  `debugSwitchLogReflectionDetailsValues` — which defaults to false — and
+  returned. The field kept its previous value and `setValues` returned as
+  though the entry had been applied, so a caller who named a field that
+  genuinely exists could not tell the two apart. Both chains now end in a
+  `TomReflectorException` naming the class, the field, its declared type and
+  the value: `reflection.set.map_field_not_settable`,
+  `reflection.set.map_field_assignment_failed` (a strategy built a value the
+  field refused; the underlying error is kept as `rootException`) and
+  `reflection.set.list_field_not_settable`. The declines themselves are decided
+  by inspection rather than by catching, so the only failure any strategy still
+  absorbs is the one that genuinely means "not applicable" — reading a `late`
+  field before it holds anything, which is how the fill-in-place strategy
+  learns there is nothing to fill. **This is a behaviour change for payloads
+  that were previously accepted in part:** a document with an entry of the
+  wrong shape for its field now raises where it used to bind the rest and
+  return.
+
 - **The README stated version 1.1.1 against a pubspec at 1.1.16
   (tcincb153).** Fifteen releases of drift in the one number in the `## Status`
   block a reader acts on — it says which release the document describes, so a

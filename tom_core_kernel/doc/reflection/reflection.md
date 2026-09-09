@@ -1037,6 +1037,9 @@ apart.
 | `reflection.set.list_element_materialization_failed` | An element could not be materialized into a `List<T>` field |
 | `reflection.set.collection_element_type_mismatch` | An element of a typed primitive collection is not of the field's element type |
 | `reflection.set.map_key_type_mismatch` | A `Map<String, T>` field was given a key that is not a `String` |
+| `reflection.set.map_field_not_settable` | A Map arrived for a field no map strategy can take: the declared type is not a supported map type, names no reflected class to build, and the field holds nothing to fill in place. Names the class, the field, its declared type and the value |
+| `reflection.set.map_field_assignment_failed` | A map strategy built a value for the field and the field refused it — the common cause is a generic field such as `Box<int>`, since the registry is keyed by declaration and returns a `Box<dynamic>`. Carries the underlying error as `rootException` |
+| `reflection.set.list_field_not_settable` | A List arrived for a field that cannot hold one — a scalar, a map, or an annotated object. Names the class, the field, its declared type and the value |
 | `reflection.hook.failed` | A `fromJson`, `jsonDecode`, `toJson` or `jsonEncode` hook exists and raised — names the hook and the class, and keeps the original error as `rootException` |
 | `reflection.hook.invalid_return` | A hook exists, returned normally, and returned something unusable — a `toJson` or `jsonEncode` that is not a `Map<String, Object?>`, or a `fromJson` that is not an instance of the requested type |
 
@@ -1257,29 +1260,38 @@ from the field's. A `Map` goes to the map-setting path and a `List` to the
 list-setting path whatever the field was declared as — so the same category of
 mistake gets two different answers depending on which way round it is:
 
+Every one of them is a refusal. Which key you get says how far the reflector
+got before it gave up, which is the part worth knowing when you read one:
+
 | Payload | Field | Result |
 | --- | --- | --- |
-| `List` | any non-list field | **silently dropped** — the field is untouched and the call reports success |
+| `List` | any non-list field | `reflection.set.list_field_not_settable` |
 | `Map` | scalar, or a collection of a known element type | `reflector.instance_creation.failed` |
 | `Map` | `Object?`, or a class with no `@tomReflector` | `reflector.type.not_annotated` |
-| `Map` | `dynamic`, or a generic instantiation such as `GenericHolder<int>` | **silently dropped** |
+| `Map` | `dynamic` | `reflection.set.map_field_not_settable` |
+| `Map` | a generic instantiation such as `Box<int>` | `reflection.set.map_field_assignment_failed` |
 
 ```dart
 // MapHolder declares `Map<String, int>? intMap`
-final holder = MapHolder();
-tomReflectionInfo.setValues(holder, {'intMap': [1, 2, 3]});
-print(holder.intMap); // null — the list was discarded without a word
+tomReflectionInfo.setValues(MapHolder(), {'intMap': [1, 2, 3]});
+// throws TomReflectorException(reflection.set.list_field_not_settable):
+// "No strategy could set list field 'intMap' of MapHolder, declared as
+//  Map<String, int>, from [1, 2, 3]: type 'List<int>' is not a subtype of ..."
 
 // ListHolder declares `List<int>? intList`
 tomReflectionInfo.setValues(ListHolder(), {'intList': {'a': 1}});
 // throws TomReflectorException(reflector.instance_creation.failed)
 ```
 
-The two silent cases are a known rough edge, not a design position: a field
-declared `dynamic` to carry an arbitrary payload loses that payload, and a
-list sent to the wrong field disappears. Both are covered by tests so that the
-behaviour cannot change unnoticed, and turning either into a diagnosis is a
-separate, deliberate change.
+Both collection paths are built from strategies that are allowed to decline,
+which is what makes the last two rows worth separating. A field declared
+`dynamic` names no type to build, so every strategy declines by inspection and
+nothing was ever attempted: the refusal is assembled from the field's
+declaration and the value. A field declared `Box<int>` does name a class, so
+the last strategy builds one — but the registry is keyed by declaration and
+returns a `Box<dynamic>`, which the setter rejects. That error is kept and
+carried on the exception as `rootException`, because a bare `_TypeError` naming
+two type arguments and no field is not something a caller can act on.
 
 When the shape *does* fit, whether prior content survives depends on which
 strategy claims the payload:
