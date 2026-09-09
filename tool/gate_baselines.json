@@ -82,7 +82,12 @@
       "measured": "2026-09-04",
       "note": "Lands at zero because the 90 faults it was written for were repaired in the same pass: 84 ABSOLUTE links to /_copilot_guidelines/ in the 14 _copilot_guidelines/ files of this repo, 4 DEAD ../tom_core_*/ links written one level too shallow in the kernel's and server's index.md, 1 DEAD api_summary_result.md for a Result module the kernel does not have, and 1 GUIDELINE link out of tom_flutter_ui/README.md. The ABSOLUTE shape was workspace-wide -- 371 links in 70 files across tom_ai, tom_assistant, tom_sqm, tom_uam and the global _copilot_guidelines/ -- all repaired in the same pass, and its source, the index.md template in _copilot_guidelines/dart/new_project_setup.md, was corrected so the count stops growing by one table per new project. Anchors are out of scope (check_doc_tocs owns headings) and so are external URLs."
     },
-    "check_doc_samples": {
+    "check_doc_overview_types": {
+   "faults": 0,
+   "measured": "2026-09-09",
+   "note": "Zero from the day it landed. Nineteen of the twenty faults it found were one row in tom_flutter_ui/doc/widget_base.md eliding twenty branch bases behind an ellipsis, which is exactly the curation the exhaustive rule forbids; the row now names them. 31 documents and 569 public types are in scope. Zero is the expected steady state: the gate exists for recurrence, and a fault is repaired by adding the row, never by narrowing the scope."
+  },
+  "check_doc_samples": {
       "faults": 0,
       "measured": "2026-09-08",
       "note": "Zero. The eight faults this baseline recorded were all in two tom_flutter_ui design documents, and all in blocks written against an API the framework never had: form fields called with `tomId:` named and a `binding:` parameter that does not exist, an enum dropdown given `items:` where the shipped parameter is `source:`, `saveAll()` for `save()`, and a `TomColumn<Order>('name', ...)` table column colliding with the shipped `TomColumn`, which is a layout column taking named parameters only. Correcting the eight calls alone would have silenced the gate while leaving both blocks uncompilable, so the sections around them were rewritten against the real API and modelled on compiled code. 3443 samples in 245 documents, 2064 constructors indexed in 23 packages. The 14 'documents unplaced' are unchanged: 13 tom_core_samples READMEs and the completion index, none of which names a single package."

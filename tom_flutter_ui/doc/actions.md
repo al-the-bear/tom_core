@@ -37,7 +37,9 @@ keeps widgets dumb and reusable, and keeps logic testable without a widget tree.
 | `TomUndoHistory` | class | Application-level undo/redo stack of transactions. |
 | `TomActionTrigger<TContext, TUndo>` | class | Adapts an action to a `VoidCallback` for a widget, recording undo state. |
 | `TomCompositeAction` | class | Runs a list of guarded steps as one action. |
+| `TomCompositeStep<TContext>` | class | One step of a `TomCompositeAction`: the action to run and the guard that decides whether it runs. |
 | `TomUndoAction` / `TomRedoAction` | classes | Coordinator actions that drive a `TomUndoHistory`. |
+| `TomUndoRedoContext` | class | The `TomActionContext` those two coordinators take — a scope and nothing else, because undoing needs no domain input. |
 
 ## `TomAction` — the unit of behaviour
 

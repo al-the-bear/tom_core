@@ -216,6 +216,7 @@ reports and never gates.
 | [`tool/check_source_citations.py`](tool/check_source_citations.py) | Finds Dart comments, SVG figures and navigating documentation that cite a line number instead of naming the thing |
 | [`tool/check_doc_kinds.py`](tool/check_doc_kinds.py) | Finds `Kind` columns whose cell names something Dart does not declare |
 | [`tool/check_unimplemented_claims.py`](tool/check_unimplemented_claims.py) | Finds documentation that calls a shipped `Tom*` type unimplemented |
+| [`tool/check_doc_overview_types.py`](tool/check_doc_overview_types.py) | Holds a module document's Overview table to every public type its module's barrel exports |
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
@@ -1392,6 +1393,33 @@ it in full. The match is exact rather than heuristic: every sentinel was verifie
 verbatim against freshly generated `flutter create` (app and package) and
 `dart create` (package and console) output, so a hand-written description is
 never a false positive.
+
+```bash
+python3 tool/check_doc_overview_types.py                 # every document
+python3 tool/check_doc_overview_types.py tom_core_server # one package
+python3 tool/check_doc_overview_types.py --self-test     # check the checker
+```
+
+Holds a module document's Overview table to the types its module exports. The
+table lists **every** public type the package barrel reaches from the module,
+not a selection: a curated table cannot be checked, and `doc/preferences.md`
+named five of six public types with the missing one the subject of the
+document's own longest section. Nobody noticed, because with no rule about what
+belongs there was nothing for the omission to contradict.
+
+Exhaustive costs something and the cost is accepted. `object_persistence`
+exports eighty-five types and its table has eighty-five rows. A table that long
+is closer to an index than an overview — but an index that is complete beats an
+overview that is silently partial, because a reader takes the silence of a list
+for an answer. Rows may still group what is used as a set (`` `TomSelect` /
+`TomCount` / `TomDelete` `` on one row); what the gate asks is that the name
+appear somewhere in the table.
+
+A document declares itself in scope by the shape it already has: an Overview
+holding a table with a `Type` (or `Symbol`) column beside a `Kind` column. All
+twenty `tom_core_server` module documents write that, and eleven others across
+`tom_flutter_ui` and `tom_core_agentic`; `tom_core_kernel`'s Overviews are prose
+and are out of scope until they are not.
 
 ```bash
 python3 tool/check_reflection_artifacts.py             # the whole repository

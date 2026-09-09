@@ -39,12 +39,13 @@ in this module:
 | `TomNodeBase` | abstract class | Root of every Tom element. Holds `tomId`, `tomGroup`, `scope`, `authorizer`, and the resolved `basePath`. |
 | `TomPolicyNodeBase` | abstract class | Adds the authorization gate: resolves the effective `TomAuthState` and routes to `buildContent` / `buildReadonly` / `buildDisabled` / hidden. |
 | `TomFamilyBase` | abstract class | Adds widget-family reporting (`family`, `families`, `isFamily`). |
-| 20 family branch bases | abstract class | One per family — `TomButtonBase`, `TomInputBase`, `TomSelectBase`, … — each fixes `family` to its `TomWidgetFamily` value. |
+| The 20 family branch bases: `TomAnimatedBase`, `TomBuilderBase`, `TomButtonBase`, `TomChipBase`, `TomContainerBase`, `TomDialogBase`, `TomEffectBase`, `TomImageBase`, `TomInputBase`, `TomInteractionBase`, `TomLabelBase`, `TomListBase`, `TomNavigationBase`, `TomProgressBase`, `TomSelectBase`, `TomSliderBase`, `TomSliverBase`, `TomTableBase`, `TomToggleBase`, `TomTreeBase` | abstract class | One per family, each fixing `family` to its `TomWidgetFamily` value. Named rather than elided: a list a reader takes as complete has to be, and an ellipsis is where a branch base goes missing without contradicting anything. |
 | `TomWidgetFamily` | enum | The 26-value family taxonomy: 20 Flutter-derived values, each fixed by a branch base, plus 6 Tom form values that are reserved and claimed by nothing. |
 | `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | abstract class | Scope-capturing base widgets for non-Tom wrappers that still need scope propagation. |
 | `TomScreenElementsProvider` / `TomScreenElementsProviderBase` | abstract interface class / class | Declarative, reflection-discoverable screen widget trees with chained scopes. |
 | `TomScopePath` | class | The one place a scope path and a widget id are joined into a canonical resource path, through static helpers. Flutter-free, so the base classes can use it in an initialiser list. |
 | `TomCtr` | class | The single entry point for resource resolution, through static helpers — text, colour, icon, numeric, `EdgeInsets`, `TextStyle`, `InputBorder`, `WidgetStateProperty<Color>`, breakpointed values. |
+| `TomAuthLayers` | class | The one resolution of an effective `TomAuthState` from the layers a caller has — element, group, path, parent. Statics only, and Flutter-free for the reason `TomScopePath` is: `TomField` is not a `Widget`, and a rule the form layer cannot call is a rule with a third copy. |
 | `TomStyleResolvers` | class | Static parsing of complex Material objects (`TextStyle`, `ButtonStyle`, `InputDecoration`, `ShapeBorder`, `Decoration`, …) from JSON resource maps. |
 
 ## The node hierarchy

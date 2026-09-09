@@ -2,6 +2,22 @@
 
 ### Changed
 
+- **Two Overview tables did not list every type their module exports
+  (tcincb151).** `doc/widget_base.md` covered the twenty family branch bases
+  with one row ending in an ellipsis — `` `TomButtonBase`, `TomInputBase`,
+  `TomSelectBase`, … `` — and omitted `TomAuthLayers`; `doc/actions.md` omitted
+  `TomCompositeStep` and `TomUndoRedoContext`.
+
+  The ellipsis is the defect rather than an abbreviation of it. A reader takes
+  the silence of a list for an answer, and a list that trails off says nothing
+  about what is not on it, so a branch base can go missing without contradicting
+  anything. The row still covers the twenty on one line — grouping what is used
+  as a set is what these tables are for — but it now names them.
+
+  `tom_ai/core/tool/check_doc_overview_types.py` holds the tables to their
+  modules from now on: 31 documents and 569 public types across this package,
+  `tom_core_server` and `tom_core_agentic`.
+
 - **The package is `dart format`-clean, and a gate keeps it that way
   (tcincb91).** The 245-file reformat this todo asked for landed on its own in
   an earlier pass, and the `Radio.onChanged` deprecation it flagged was closed
