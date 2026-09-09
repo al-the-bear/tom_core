@@ -13,6 +13,43 @@
 
 ### Fixed
 
+- **Nothing checked that a summary referring the reader elsewhere referred them
+  somewhere (tcincb145).** `api_summary_file_storage.md` and
+  `api_summary_endpoints.md` each hand the row-side file contract
+  (`TomFileRepository`, `@TomFileReference`) to
+  `api_summary_object_persistence.md`. Both referrals were broken at once and
+  for months: that summary documented neither, and `TomFileRepository` — the
+  type `TomFileSlots.register` takes in its own published signature — had no
+  entry anywhere in the reference.
+
+  The sections themselves arrived with tcinc597, which reconciled the
+  object-persistence Source list and found `file_reference.dart` documented
+  nowhere. So the referrals resolve today by side effect of a different repair,
+  and nothing stops them breaking again — a section renamed, or a sentence
+  repointed at the wrong tier, and the reader finds out by opening the document.
+
+  `api_reference_coverage_test.dart` now reads every paragraph that links to
+  another summary and requires each framework name it hands over to be
+  documented **here or in one of the summaries that paragraph links to**. Both
+  halves of that rule are load-bearing: a referring paragraph routinely names
+  types belonging to two tiers — "the bytes live in a `TomBlobStore` … and the
+  row-side contract (`TomFileRepository`) is Object Persistence's" is one
+  sentence with two destinations — so demanding every name in every linked
+  summary would report the corpus's own idiom.
+
+  Documented means *has a section*, not *is mentioned*: `TomFileReference` spent
+  those months appearing as the type of a field in another class's table, and a
+  referral pointed at that appearance. Contents lists, tables and fenced blocks
+  are not referrals — the first two are full of links and neither promises
+  anything about where a type is described.
+
+  The corpus refers across summaries in exactly two places, both about file
+  transfer, which is the one feature split across three tiers — and both were
+  broken. 6 new tests (500 → 506), verified by mutation: deleting the
+  `TomFileRepository` section reproduces the reported state, naming both
+  referrals with file and line, and repointing one referral at the wrong summary
+  fails on its own.
+
 - **Backend-specific storage keys reached the callers the translation exists to
   protect (tcincb144).** `TomBlobStore._translating` and `get` both passed a
   `TomStorageException` through with a bare `on TomStorageException { rethrow; }`

@@ -2664,6 +2664,135 @@ final List<_ClassSection> _classSections = [
     ..._classSectionsOf(file.uri.pathSegments.last, file.readAsLinesSync()),
 ];
 
+/// The types each summary documents, keyed by file name.
+///
+/// A type is documented where it has a section of its own. A row naming it, or
+/// a sentence, is a *mention* — which is what [_mentionsByType] answers and is
+/// deliberately a different question: `TomFileReference` appeared for months as
+/// the type of a field in another class's table while nothing described it, and
+/// a referral pointed at that appearance.
+final Map<String, Set<String>> _documentedByFile = () {
+  final byFile = <String, Set<String>>{};
+  for (final section in _classSections) {
+    (byFile[section.file] ??= <String>{}).add(section.type);
+  }
+  return byFile;
+}();
+
+/// A link from one summary to another, as the prose writes it.
+final RegExp _summaryLink = RegExp(r'\]\((api_summary_\w+\.md)\)');
+
+/// Every framework name a summary hands to another summary without either
+/// documenting it — empty when every referral resolves.
+///
+/// A summary is one tier's reference and says so by pointing at the others:
+/// `api_summary_endpoints.md` owns the HTTP half of file transfer and refers
+/// the row-side contract to Object Persistence, which refers the bytes to File
+/// Storage. Each of those sentences is a promise about a document the reader
+/// has to open, and nothing had ever checked one. Both of the corpus's referrals
+/// were broken at once — `TomFileRepository` and `TomFileReference` were sent to
+/// a summary that documented neither, and the type the published signature of
+/// `TomFileSlots.register` takes had no entry anywhere.
+///
+/// The unit is the paragraph and the test is "documented **here or in one of
+/// the summaries this paragraph links to**". Both halves are needed. A referring
+/// paragraph routinely names types belonging to two different tiers — "the bytes
+/// live in a `TomBlobStore` … and the row-side contract (`TomFileRepository`) is
+/// Object Persistence's" is one sentence with two destinations — so demanding
+/// every name be in every linked summary would report the corpus's own idiom;
+/// and a paragraph may name a type it documents itself while pointing elsewhere
+/// for a different one.
+List<String> _danglingReferrals() => [
+  for (final entry in _summaryParagraphs())
+    for (final name in entry.names)
+      if (!(_documentedByFile[entry.file] ?? const <String>{}).contains(name))
+        if (!entry.targets.any(
+          (target) =>
+              (_documentedByFile[target] ?? const <String>{}).contains(name),
+        ))
+          '${entry.file}:${entry.line} sends `$name` to '
+              '${entry.targets.join(', ')}, which document it nowhere',
+];
+
+/// One paragraph that links to another summary: where it is, what it links to,
+/// and the framework names it hands over.
+typedef _Referral = ({
+  String file,
+  int line,
+  Set<String> targets,
+  List<String> names,
+});
+
+/// Every referring paragraph in `doc/api_reference/`.
+List<_Referral> _summaryParagraphs() => [
+  for (final file in Directory(
+    'doc/api_reference',
+  ).listSync().whereType<File>())
+    if (file.uri.pathSegments.last.startsWith('api_summary_'))
+      ..._referralsIn(file.uri.pathSegments.last, file.readAsLinesSync()),
+];
+
+/// The referring paragraphs of one summary [file] whose content is [lines].
+///
+/// A contents list and a table are skipped: both are full of links, and neither
+/// is prose making a promise about where something is described — the contents
+/// list *is* the map, and a table cell naming a type beside a link is a row of
+/// an inventory that its own checks already hold to the source.
+List<_Referral> _referralsIn(String file, List<String> lines) {
+  final referrals = <_Referral>[];
+  var openedAt = -1;
+  final paragraph = <String>[];
+  var fenced = false;
+
+  void close() {
+    if (paragraph.isNotEmpty) {
+      final text = paragraph.join(' ');
+      final targets = _summaryLink
+          .allMatches(text)
+          .map((match) => match.group(1)!)
+          .toSet();
+      if (targets.isNotEmpty) {
+        referrals.add((
+          file: file,
+          line: openedAt,
+          targets: targets,
+          names: [
+            for (final span in _backtickedSpan.allMatches(text))
+              if (_dartName.firstMatch(span.group(1)!.trim()) case final name?)
+                if (name.group(1)!.split('.').first case final head
+                    when _caseHump.hasMatch(head) &&
+                        head.startsWith(RegExp('[A-Z]')))
+                  head,
+          ],
+        ));
+      }
+    }
+    paragraph.clear();
+    openedAt = -1;
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    if (line.trimLeft().startsWith('```')) {
+      fenced = !fenced;
+      close();
+      continue;
+    }
+    if (fenced) continue;
+    if (line.trim().isEmpty ||
+        line.startsWith('#') ||
+        line.startsWith('|') ||
+        line.startsWith('- [')) {
+      close();
+      continue;
+    }
+    if (paragraph.isEmpty) openedAt = i + 1;
+    paragraph.add(line);
+  }
+  close();
+  return referrals;
+}
+
 /// Every name mentioned under a class, across all summaries.
 final Map<String, Set<String>> _mentionsByType = () {
   final byType = <String, Set<String>>{};
@@ -7181,6 +7310,111 @@ class After {}
         ),
         (name: 'seeds', type: 'Map<String, int>', forwarding: null),
       ]);
+    });
+  });
+
+  group('a summary that refers the reader elsewhere refers them somewhere', () {
+    test('every referral resolves in the summary it names', () {
+      final dangling = _danglingReferrals();
+      expect(
+        dangling,
+        isEmpty,
+        reason:
+            'these referrals name a summary that documents nothing of the '
+            'kind: ${dangling.join('; ')}. A sentence sending the reader to '
+            'another document is a promise about that document, and the reader '
+            'finds out it was wrong only after opening it.',
+      );
+    });
+
+    test('the sweep reads the referrals it claims to', () {
+      // The corpus refers across summaries in exactly two places, and both are
+      // about file transfer — the one feature split across three tiers. A
+      // check over two paragraphs is worth having *because* of that: those two
+      // paragraphs were both broken at once, and the type one of them names is
+      // in the published signature of `TomFileSlots.register`.
+      final referrals = _summaryParagraphs();
+      expect(referrals, hasLength(greaterThanOrEqualTo(2)));
+      expect(
+        referrals.expand((referral) => referral.names),
+        containsAll(<String>[
+          'TomBlobStore',
+          'TomFileRepository',
+          'TomFileReference',
+          'TomFileService',
+          'TomFileSlots',
+        ]),
+      );
+      expect(
+        _documentedByFile['api_summary_object_persistence.md'],
+        containsAll(<String>['TomFileRepository', 'TomFileReference']),
+      );
+    });
+
+    test(
+      'a referral to a summary that does not document the name is reported',
+      () {
+        expect(
+          _referralsIn('synthetic.md', const [
+            'The row-side contract (`TomFileRepository`) belongs to',
+            '[File Storage](api_summary_file_storage.md).',
+          ]).single.targets,
+          {'api_summary_file_storage.md'},
+        );
+        // The same paragraph, judged: file storage documents no
+        // `TomFileRepository`, so a referral pointing there resolves nowhere.
+        expect(
+          (_documentedByFile['api_summary_file_storage.md'] ??
+              const <String>{}),
+          isNot(contains('TomFileRepository')),
+        );
+      },
+    );
+
+    test('a paragraph with two destinations is judged against both', () {
+      // The corpus's own idiom, and the reason the rule is "here or in one of
+      // the summaries this paragraph links to" rather than "in all of them".
+      final referral = _referralsIn('synthetic.md', const [
+        'The bytes live in a `TomBlobStore` — see',
+        '[File Storage](api_summary_file_storage.md) — and the row-side',
+        'contract (`TomFileRepository`) belongs to',
+        '[Object Persistence](api_summary_object_persistence.md).',
+      ]).single;
+      expect(referral.targets, hasLength(2));
+      expect(referral.names, ['TomBlobStore', 'TomFileRepository']);
+      for (final name in referral.names) {
+        expect(
+          referral.targets.any(
+            (target) => _documentedByFile[target]!.contains(name),
+          ),
+          isTrue,
+          reason: '$name is documented in one of the two, which is the test',
+        );
+      }
+    });
+
+    test('a contents list and a table are not referrals', () {
+      // Both are full of links and neither promises anything about where a
+      // type is described: the contents list *is* the map, and a table row is
+      // an inventory its own checks already hold to the source.
+      expect(
+        _referralsIn('synthetic.md', const [
+          '- [Endpoints](api_summary_endpoints.md)',
+          '| `TomFileSlots` | see [Endpoints](api_summary_endpoints.md) | . |',
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('a fenced block is not a referral', () {
+      expect(
+        _referralsIn('synthetic.md', const [
+          '```dart',
+          '// see [Endpoints](api_summary_endpoints.md) for `TomFileSlots`',
+          '```',
+        ]),
+        isEmpty,
+      );
     });
   });
 
