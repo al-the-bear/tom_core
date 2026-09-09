@@ -13,6 +13,48 @@
 
 ### Fixed
 
+- **The `preferences` module had no suite carrying its name (tcincb154).** Its
+  six were named after the types they exercise — `user_preference_dto_test.dart`,
+  `user_preference_key_test.dart`, `user_preferences_service_test.dart`,
+  `user_preferences_endpoints_test.dart`, `user_preferences_db_test.dart` and
+  `user_preferences_roundtrip_db_test.dart` — so every inventory that matches on
+  a filename reported the module as untested, which it emphatically was not. A
+  filename is the only signal such a sweep can read without running anything,
+  and the quieter cost is that a suite filed under another module's name is
+  carried off by any change to *that* module with nothing making the loss
+  visible. All six are renamed to `preferences_*_test.dart`; the accuracy given
+  up is real, since the types genuinely are `TomUserPreference*`, and it buys a
+  rule with no exceptions. The quarantine that had been suppressing the check
+  for this one module is gone with it, so `every module has a suite that carries
+  its name` now runs over all twenty.
+
+- **`doc/preferences.md` had no `## Verification` section (tcincb154).** Twenty
+  of the twenty-one module guides have one, and this was the exception: the
+  guide named no suite of its own at all, so a reader asking what backs it had
+  nowhere to go. The omission was invisible while the module's suites were named
+  for something else — the check that a guide names every one of its
+  name-matched suites had nothing to match — and the rename above exposed it.
+  The new section describes all six, including why the DTO conversion needs a
+  file of its own (a value loaded from the column is already UTC-flagged, so the
+  round trip cannot see the normalisation) and why the round-trip suite exists
+  at all (a preference following its user is a claim about two clients and one
+  server, which neither half can make by agreeing with itself).
+
+- **`scheduling`'s readme quick start was classified by nothing
+  (tcincb154).** The readme carries a `## Quick start` and the blockquote saying
+  the snippet needs generated reflection and a live database, but
+  `test/readme_quick_start_test.dart`'s table had no row for it — and that
+  table is what decides whether a snippet is run as a program or held to its
+  disclaimer. Registered as `needsReflection`.
+
+- **A denied caller's status was asserted as `500` in a `db`-tagged suite
+  (tcincb154).** `preferences_roundtrip_db_test.dart` still described a
+  pre-invocation denial as an opaque `500` distinguished from a handler failure
+  only by its error envelope. A denial answers a bare `404` — the endpoint is
+  rendered indistinguishable from one that does not exist — so the status is now
+  the discriminator, and a stronger one: removing `access:` from the contract
+  makes the same request answer `500`, which the test catches.
+
 - **The `## Status` block claimed a test count nothing checked (tcincb153).**
   It stated "3633 test cases across 95 module suites … 408 of them live in the
   20 suites tagged `db`" against a tree holding 103 suite files and 24

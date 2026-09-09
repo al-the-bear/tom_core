@@ -3928,6 +3928,17 @@ List<String> _exampleArtifacts(String module) {
 /// Matches a suite path, however a guide writes one.
 final RegExp _suiteReference = RegExp(r'[\w./-]*_test\.dart\b');
 
+/// A module name nothing in the package answers to.
+///
+/// `_unnamedVerification`'s two clauses are alternatives, and the second is
+/// reachable only by a module with no name-matched suite. Every module has one,
+/// which is the point of the `every module has a suite that carries its name`
+/// group — so the clause has no live example, and giving it one would mean
+/// keeping a module in debt to keep a test honest. This name has no suite and
+/// no example directory by construction, so the clause can be exercised without
+/// the package being worse.
+const String _moduleWithNothing = 'no_such_module';
+
 /// What `doc/<module>.md` never points the reader at, in words.
 ///
 /// Two artefacts, checked together because a reader arrives with one question:
@@ -3992,15 +4003,6 @@ List<String> _moduleSuites(String module) =>
         .where((name) => name.startsWith(module) && name.endsWith('_test.dart'))
         .toList()
       ..sort();
-
-/// The modules for which no `<module>*_test.dart` exists.
-///
-/// `preferences` is covered, and covered well, by six `user_preferences*`
-/// suites named after the types rather than the directory. Whether that is a
-/// naming fault to fix or an inventory rule to widen is a judgement, so the
-/// entry sits here until it is made rather than being settled by whichever
-/// answer was cheaper to write.
-const Set<String> _suiteNamingPending = {'preferences'};
 
 /// The modules whose `lib/src/tomserver/<module>/readme.md` still leaves at
 /// least one exported file unmentioned.
@@ -6899,14 +6901,18 @@ class After {}
               '(example/transactions/transactions_example.dart)',
         ],
       );
-      // The fallback clause, which only a module with no name-matched suite can
-      // reach: `preferences` has none, and its example directory holds nothing
-      // runnable, so a guide naming nothing at all reports exactly one fault.
-      expect(_moduleSuites('preferences'), isEmpty);
-      expect(_exampleArtifacts('preferences'), isEmpty);
-      expect(_unnamedVerificationIn('preferences', 'A guide naming nothing.'), [
-        'names no test suite',
-      ]);
+      // The fallback clause, which only a module with no name-matched suite
+      // can reach. No module in the package is in that state — the `every
+      // module has a suite that carries its name` group is what keeps it that
+      // way — so the clause is measured against a name that matches nothing
+      // rather than against whichever module happens to be in debt. A shape
+      // pinned to live debt is a test that fails on the day the debt is paid.
+      expect(_moduleSuites(_moduleWithNothing), isEmpty);
+      expect(_exampleArtifacts(_moduleWithNothing), isEmpty);
+      expect(
+        _unnamedVerificationIn(_moduleWithNothing, 'A guide naming nothing.'),
+        ['names no test suite'],
+      );
       expect(
         _unnamedVerificationIn(
           'transactions',
@@ -6957,15 +6963,26 @@ class After {}
     test('a module with no name-matched suite still has to name one', () {
       // The two clauses are alternatives, so the fallback has to keep working
       // or a module whose suites are all named for something else would be
-      // exempted by the very rule meant to tighten the check. `preferences` is
-      // that module — no `preferences*_test.dart` exists at all, and it
-      // satisfies the check by naming the suite that does cover it.
-      expect(_moduleSuites('preferences'), isEmpty);
+      // exempted by the very rule meant to tighten the check. Every module in
+      // the package now carries a name-matched suite, so the clause is
+      // demonstrated against a name that matches nothing: naming any suite at
+      // all clears it, and naming none does not.
+      expect(_moduleSuites(_moduleWithNothing), isEmpty);
       expect(
-        _unnamedVerification('preferences'),
-        isNot(contains('names no test suite')),
-        reason: 'it does name a suite, just not one carrying its own name',
+        _unnamedVerificationIn(
+          _moduleWithNothing,
+          'Covered by `test/transactions_test.dart`.',
+        ),
+        isEmpty,
+        reason: 'with no suite of its own to name, naming one is enough',
       );
+      expect(
+        _unnamedVerificationIn(_moduleWithNothing, 'A guide naming nothing.'),
+        ['names no test suite'],
+      );
+      // And the name-matched clause is the one that applies to every real
+      // module, so it is read off one: `db_migration` has two suites and both
+      // have to be named.
       expect(_moduleSuites('db_migration'), [
         'db_migration_db_test.dart',
         'db_migration_test.dart',
@@ -7355,39 +7372,19 @@ class After {}
     // suite that vanished was never counted, so no total drops.
 
     for (final module in _modules()) {
-      test(
-        module,
-        () {
-          expect(
-            _moduleSuites(module),
-            isNotEmpty,
-            reason:
-                'No `$module*_test.dart` exists, so every inventory that '
-                'matches on the name reports this module as untested — and '
-                'whatever does cover it is filed under some other module\'s '
-                'name, where an edit to that module can carry it off '
-                'unnoticed. Name a suite after the module.',
-          );
-        },
-        skip: _suiteNamingPending.contains(module)
-            ? 'no name-matched suite yet.'
-            : null,
-      );
+      test(module, () {
+        expect(
+          _moduleSuites(module),
+          isNotEmpty,
+          reason:
+              'No `$module*_test.dart` exists, so every inventory that '
+              'matches on the name reports this module as untested — and '
+              'whatever does cover it is filed under some other module\'s '
+              'name, where an edit to that module can carry it off '
+              'unnoticed. Name a suite after the module.',
+        );
+      });
     }
-
-    test('every quarantined module is still unnamed', () {
-      final settled = [
-        for (final module in _suiteNamingPending)
-          if (_moduleSuites(module).isNotEmpty) module,
-      ];
-      expect(
-        settled,
-        isEmpty,
-        reason:
-            'a quarantine entry with nothing left to suppress turns a passing '
-            'module back into an unchecked one; drop it from the set',
-      );
-    });
   });
 
   group('every class section names the members its class declares', () {

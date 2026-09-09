@@ -366,18 +366,18 @@ preferences:
     find: "    if (row == null) return false;"
     replace: "    if (row == null) return true;"
     requires: db
-    tests: test/user_preferences_db_test.dart
+    tests: test/preferences_db_test.dart
   - behaviour: an unwritten preference answers the fallback
     file: lib/src/tomserver/preferences/user_preferences_service.dart
     find: "      await get<T>(key) ?? fallback;"
     replace: "      (await get<T>(key))!;"
     requires: db
-    tests: test/user_preferences_db_test.dart
+    tests: test/preferences_db_test.dart
   - behaviour: a key is validated before the store is touched
     file: lib/src/tomserver/preferences/user_preferences_service.dart
     find: "  Future<bool> remove(String key) async {\n    TomUserPreferenceKeys.validate(key);"
     replace: "  Future<bool> remove(String key) async {"
-    tests: test/user_preferences_endpoints_test.dart test/user_preference_key_test.dart
+    tests: test/preferences_endpoints_test.dart test/preferences_key_test.dart
 
 messaging:
   - behaviour: a message needing more segments than the cap is refused

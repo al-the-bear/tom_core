@@ -111,6 +111,12 @@ const _quickStarts = <_QuickStart>[
     reasonPrefix: "> **Needs your package's generated reflection, a live",
   ),
   _QuickStart.notRunnable(
+    'scheduling',
+    _NotRunnable.needsReflection,
+    reasonPrefix:
+        "> **Needs your package's generated reflection and a live database.**",
+  ),
+  _QuickStart.notRunnable(
     'server',
     _NotRunnable.longRunning,
     reasonPrefix: '> **A long-running service, and a fragment.**',

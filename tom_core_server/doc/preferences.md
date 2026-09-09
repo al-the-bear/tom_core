@@ -20,6 +20,7 @@ through.
 - [Reading a Preference During Login](#reading-a-preference-during-login)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
+- [Verification](#verification)
 - [Dependencies](#dependencies)
 
 ---
@@ -379,6 +380,72 @@ block every login.
   `(principal_id, preference_key)`, so there is no per-device, per-application
   or per-organization dimension: a user who wants one theme on their phone and
   another on their desktop encodes that in the key.
+
+## Verification
+
+Six suites, split by what each needs. Four run everywhere; two are
+`@Tags(['db'])` and skip themselves when no MariaDB is reachable, so the default
+`testkit :test` run stays green — bring a server up with `tool/run_db_tests.sh`
+to include them.
+
+`test/preferences_service_test.dart` covers the service without a database: how
+`TomUserPreferences.resolve` answers in a deployment that never installed a
+store — a deliberate `null` rather than a throw — and what every operation does
+outside a request zone. That second subject is the larger one. The service takes
+no principal parameter because it reads the caller from the zone, which is what
+keeps the value a handler stores and the row scope permits it to store from ever
+disagreeing; with no zone there is nothing to read and nothing to own, so each
+operation has to refuse, and refuse before it reaches the table. The suite is
+written against the public surface, so which method performs the lookup can
+move.
+
+`test/preferences_key_test.dart` covers the server half of the key rule. The
+rule itself lives in `tom_core_kernel` and is tested there; two things about it
+are only answerable here. The store refuses an illegal key *first* — before the
+caller is identified and before a statement is issued — because the key arrives
+in the request URL and is untrusted on this side. And `maxLength` agrees with
+`preference_key`'s own column width: were the DDL to widen alone, accepted keys
+would be silently truncated; were the constant to grow alone, two keys differing
+past the cut would collide on the unique key. Neither is visible from one file.
+
+`test/preferences_dto_test.dart` covers `TomUserPreference.toDto()`, and exists
+as its own file for a reason worth stating. The conversion normalises `updatedAt`
+to UTC, and a value loaded from the column is UTC-flagged before `toDto` is
+reached — so asserting `isUtc` on the round trip passes whether the
+normalisation happens or not. Only an in-memory, local-flagged value can see the
+call, and building one needs nothing.
+
+`test/preferences_endpoints_test.dart` covers the HTTP surface from the outside:
+which status a client gets, and what happens with nothing wired behind the
+endpoints. Two of the three failures a caller can meet are not server faults and
+each gets a status of its own — a never-written preference is a miss (`404`), an
+illegal key is the caller's own malformed request (`400`) — while a deployment
+that shipped the endpoints without installing a store is a genuine server fault
+and stays an opaque `500`.
+
+`test/preferences_db_test.dart` is the sequence [The Table and Its
+Migration](#the-table-and-its-migration) describes, run against a live server: it
+is what the module ships instead of an example program, because every step needs
+generated reflection in the consuming package, a real database and an
+authenticated principal. It asserts the three things only a server can answer —
+that a preference written in one session is read back in another, so the value
+lives in `tom_user_preference` and not in a service instance; that one principal
+cannot read another's, which is the whole reason the entity carries
+`@TomDbScope(field: 'principal_id', scope: 'owner')` rather than an ownership
+`if` in a handler; and that a reflected value survives the trip as an *object*,
+which is what separates a typed preference from a stringly-typed blob.
+
+`test/preferences_roundtrip_db_test.dart` asserts the claim the module exists to
+make, and the one no suite above can: **a preference follows the user**. That is
+a statement about two clients and one server, so neither half can make it by
+agreeing with itself. A real loopback server carries the shipped
+`TomUserPreferencesServer` over the real pipeline and a real table, and two
+independent callers — separate connections, no shared state but the server —
+take the two ends: the second reads what the first wrote and never wrote itself,
+and a caller signed in as somebody else does not. The callers are written in the
+file rather than imported, because `TomUserPreferencesClient` lives in
+`tom_core_flutter` and a server must not pull in the Flutter SDK to test itself;
+that client is covered against this same contract in that package's suite.
 
 ## Dependencies
 

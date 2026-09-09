@@ -12,7 +12,7 @@
 /// as its own.
 ///
 /// That is why this file exists rather than the assertion living beside the
-/// round trip in `user_preferences_db_test.dart`. A value that came back from
+/// round trip in `preferences_db_test.dart`. A value that came back from
 /// the column is UTC-flagged before `toDto` is reached, so asserting `isUtc`
 /// there passes whether the normalisation happens or not — it is the one path
 /// that cannot see it. Only an in-memory local-flagged value can, and that needs

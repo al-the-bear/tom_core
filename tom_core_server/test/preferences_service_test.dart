@@ -17,7 +17,7 @@
 /// around and which would otherwise be pinned nowhere.
 ///
 /// The round trip, the scope, and one principal's inability to read another's
-/// are only answerable against a real server — see `user_preferences_db_test.dart`.
+/// are only answerable against a real server — see `preferences_db_test.dart`.
 library;
 
 import 'package:test/test.dart';

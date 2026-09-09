@@ -26,7 +26,7 @@
 /// of error contributes, and that a key is absent rather than null when the
 /// error does not carry it. How each error handler uses the envelope is covered
 /// where those handlers live, in `server_test.dart` and
-/// `user_preferences_endpoints_test.dart`.
+/// `preferences_endpoints_test.dart`.
 library;
 
 import 'dart:async';

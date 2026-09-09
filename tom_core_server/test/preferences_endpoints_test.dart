@@ -1,7 +1,7 @@
 /// The preferences endpoints as seen from the outside — which status a
 /// client gets, and what happens with nothing wired behind them.
 ///
-/// The store's behaviour is covered by `user_preferences_db_test.dart`, which
+/// The store's behaviour is covered by `preferences_db_test.dart`, which
 /// needs a database. What this file covers needs none.
 ///
 /// Two of the three failures a caller can meet are not server faults, and each

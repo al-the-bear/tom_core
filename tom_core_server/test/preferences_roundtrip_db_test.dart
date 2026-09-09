@@ -1,8 +1,8 @@
 /// The whole trip a preference makes: written on one client, read on another
 /// (C-13).
 ///
-/// The two halves are already covered separately — `user_preferences_db_test`
-/// exercises the store through the service, `user_preferences_endpoints_test`
+/// The two halves are already covered separately — `preferences_db_test`
+/// exercises the store through the service, `preferences_endpoints_test`
 /// the status a miss produces, and `tom_core_flutter`'s `preferences_test` the
 /// shipped client against the same contract. What none of them asserts is the
 /// claim the module exists to make: **a preference follows the user**. That is
@@ -100,7 +100,7 @@ Middleware _signedInByHeader() =>
 /// Only needed to reach `TomServer.errorHandler`, which is a field and so needs
 /// an instance. `setValues` is overridden away because a real configuration is
 /// generated, and none of its merged values matter here. Mirrors
-/// `user_preferences_endpoints_test.dart`'s `_NoopConfig`.
+/// `preferences_endpoints_test.dart`'s `_NoopConfig`.
 class _NoopConfig extends TomBaseServerConfiguration {
   _NoopConfig() : super([]);
   @override
@@ -545,36 +545,31 @@ void main() async {
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
 
-      // What is asserted is *which* refusal, and that is not a matter of taste:
-      // the status alone cannot say. The framework renders a pre-invocation
-      // denial opaquely, so the gate answers `500` — and `500` is also what an
-      // *ungated* endpoint answers here, because the handler would then run,
-      // reach `TomUserPreferences.all()` and fail in `_requirePrincipal` with
-      // `preferences.no_principal`. Removing `access:` from the contract and
-      // re-running this test produces the two side by side: `500` either way,
-      // differing in the body only by the case of one letter. So an assertion
-      // on the status — `isNot(200)` or `500` alike — is satisfied by the very
-      // state the test exists to exclude.
+      // What is asserted is *which* refusal, because being refused at all is
+      // the weaker claim and the one a broken gate also satisfies. Two things
+      // can go wrong here and only one of them is this test's subject: the gate
+      // can refuse the caller before the method runs, or the gate can be absent
+      // and the handler refuse it afterwards — reaching
+      // `TomUserPreferences.all()` and failing in `_requirePrincipal` with
+      // `preferences.no_principal`. Both leave the caller with no data, so
+      // `isNot(200)` is satisfied by the very state this test exists to
+      // exclude.
       //
-      // The envelope is what separates them. A denial escapes the endpoint's
-      // own error handler and is rendered by the server layer above, which
-      // emits `x-tom-error` and a JSON [tomErrorEnvelope]; the service failure
-      // is caught *below* it by [TomDefaultErrorHandler] and rendered as bare
-      // text with neither. The key names which of the two happened.
-      expect(response.statusCode, 500);
-      expect(response.headers.value('x-tom-error'), 'true');
-      expect(
-        jsonDecode(body),
-        // Spelled out rather than taken from a constant, as
-        // `endpoints_pipeline_test.dart` spells it: the key is what a client
-        // branches on, so it is part of the wire contract and not an internal
-        // name. Sharing a constant with the thrower would let the two rename
-        // themselves together and leave every deployed client behind.
-        containsPair(
-          'errorKey',
-          'endpoint_handler.handle_method_call.access_denied',
-        ),
-      );
+      // The status separates them. A pre-invocation denial answers a bare `404`
+      // — the endpoint is rendered indistinguishable from one that does not
+      // exist, so a caller cannot map the deployment's authorization by probing
+      // it — while the service failure is caught below by
+      // [TomDefaultErrorHandler] and answers `500`. Remove `access:` from the
+      // contract and this test fails on the status, which is the point of
+      // asserting it.
+      //
+      // The body carries nothing either way. `access_denied` names the event on
+      // the server side, in the audit record and the log; a `404` that
+      // explained itself would give back exactly what the `404` withholds.
+      expect(response.statusCode, 404);
+      expect(response.headers.value('x-tom-error'), isNull);
+      expect(body, isNot(contains('access_denied')));
+      expect(body, isNot(contains('no_principal')));
     });
   }, skip: skipReason);
 }
