@@ -79,6 +79,23 @@
 
 ### Added
 
+- **`test/formatting_test.dart`** — the guard that keeps the package
+  `dart format`-clean. Twenty-one of its files carried the pre-3.7 short style
+  until they were reformatted in one whitespace-only commit; nothing then held
+  that state, and `flutter analyze` cannot see it. The observed response to the
+  drift was the bad one — the formatter was avoided and new code written to
+  match a file's existing style, which grows the drift rather than stopping it.
+  The suite walks the package rather than reading a list of directories, so a
+  file added under `tool/` is covered without anyone widening it, and it asserts
+  that the walk found something rather than passing over an empty sweep.
+
+  It cannot be the sibling guard copied across. Under `flutter test`,
+  `Platform.resolvedExecutable` is `flutter_tester`, not `dart` — the
+  non-Flutter packages' version spawns the test engine with `format` as its
+  first argument and hangs until the suite times out, failing for a reason that
+  has nothing to do with formatting. This one resolves the SDK's `dart` through
+  `FLUTTER_ROOT`, which the `flutter` tool sets for every command it runs.
+
 - **`test/bearer_auth_barrel_export_test.dart`**, which holds
   `TomClientJwtToken` to being *nameable* through this barrel (tcincb13). The
   type is `tom_crypto`'s; it reaches a Flutter application across two blanket
