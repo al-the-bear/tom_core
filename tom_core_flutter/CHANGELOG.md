@@ -86,6 +86,23 @@
 
 ### Added
 
+- **No artefact may cite a document in the AI-state mount
+  (tcincb163).** `test/test_comment_hygiene_test.dart` gains a package-wide
+  check for it. Two test comments used to cite `completion/README.md` §6 for
+  their rationale; that file exists, but only in `tom_agent_state`, a different
+  repository symlinked into the workspace — so a reader holding these sources
+  and not that layer could not follow the reference at all. It was the least
+  followable shape a citation can take, a bare relative-looking path that reads
+  like a sibling file and is four directories away in another repo. The two
+  comments were inlined earlier; nothing stopped the next one.
+
+  Citing another package in the *code* tree stays allowed, and the check is
+  written so that it is: `codespecs_mapping.md` ships with a checkout of the
+  monorepo, and three artefacts here cite it deliberately. The needle is
+  anchored for the same reason — as a plain substring it matched three files
+  citing this repository's own tooling under `tom_ai/`, which is exactly the
+  reference the rule permits.
+
 - **`test/api_reference_coverage_test.dart`** — the API-summary coverage guard,
   generalised from one module to all seven. It was written for `configuration`,
   where six public members were missing from the summary and nobody noticed
