@@ -227,8 +227,27 @@ const TomComponent _nullComponent = TomComponent(_TomNullInterface);
 /// ```
 @tomReflector
 class TomBean<T> {
-  /// The global bean context mapping types/names to instances.
-  static final Map<Object, Object> _tomBeanContext = {};
+  /// Beans registered under a [Type] — by [TomBean.withType], by
+  /// [installByEnvironment], and by annotation discovery.
+  ///
+  /// Separate from [_tomBeansByName] rather than one `Map<Object, Object>`
+  /// holding both, because the two are different namespaces that were only
+  /// sharing a container. A `String` key can never equal a `Type` key, so the
+  /// shared map was not *unsafe*; what it cost was that nothing said so. The
+  /// declaration named `Object`, which is the one thing a registry should
+  /// never be vague about; [_resolveByType] had to skip non-`Type` keys at
+  /// runtime, a filter the type system expresses for free; and that walk
+  /// iterated every named bean in order to reject it. Nothing reads the two
+  /// together — resolution by name and resolution by type are separate
+  /// methods with separate errors — so the only operation spanning both is
+  /// emptying them, which [resetBeanContext] and a re-run of
+  /// [initializeBeanContext] each do explicitly.
+  static final Map<Type, Object> _tomBeansByType = {};
+
+  /// Beans registered under a name, by [TomBean.withName].
+  ///
+  /// See [_tomBeansByType] for why the two registries are separate.
+  static final Map<String, Object> _tomBeansByName = {};
 
   /// List of unresolved beans awaiting initialization.
   static final List<TomBean> _tomBeanList = [];
@@ -274,7 +293,7 @@ class TomBean<T> {
     // created (lazy named resolution). Pre-caching the instance is only an
     // optimisation for the already-registered case.
     result._name = name;
-    Object? bean = _tomBeanContext[name];
+    Object? bean = _tomBeansByName[name];
     if (bean != null && bean is T) {
       result._bean = bean as T;
     }
@@ -293,7 +312,7 @@ class TomBean<T> {
   /// TomBean.withName("config", AppConfig());
   /// ```
   factory TomBean.withName(String name, Object bean) {
-    if (_tomBeanContext[name] != null) {
+    if (_tomBeansByName[name] != null) {
       throw TomBeanLocatorException(
         "beanlocator.initialization.duplicate_bean_with_name",
         "Duplicate bean with name $name",
@@ -328,7 +347,7 @@ class TomBean<T> {
     result._bean = bean as T;
     result._name = name;
 
-    _tomBeanContext[name] = bean;
+    _tomBeansByName[name] = bean;
     return result;
   }
 
@@ -350,7 +369,7 @@ class TomBean<T> {
   /// context is initialized, use [TomBean.overrideWithType]; this factory throws
   /// there rather than replacing.
   factory TomBean.withType(Type t, Object bean) {
-    if (_tomBeanContext[t] != null) {
+    if (_tomBeansByType[t] != null) {
       throw TomBeanLocatorException(
         "beanlocator.initialization.duplicate_bean_with_type",
         "Duplicate bean with type $t",
@@ -386,7 +405,7 @@ class TomBean<T> {
     TomBean<T> result = TomBean();
     result._bean = bean as T;
 
-    _tomBeanContext[t] = bean;
+    _tomBeansByType[t] = bean;
     return result;
   }
 
@@ -438,12 +457,12 @@ class TomBean<T> {
 
   /// Returns the bean registered for [type], or null if not found.
   static Object? getBeanByType(Type type) {
-    return _tomBeanContext[type];
+    return _tomBeansByType[type];
   }
 
   /// Returns the bean registered with [name], or null if not found.
   static Object? getBeanByName(String name) {
-    return _tomBeanContext[name];
+    return _tomBeansByName[name];
   }
 
   /// Clears all registered beans and resets the initialization flag.
@@ -457,7 +476,8 @@ class TomBean<T> {
   /// tests, where a bean registered by one test would otherwise still be
   /// present in the next. Call this between such units to isolate them.
   static void resetBeanContext() {
-    _tomBeanContext.clear();
+    _tomBeansByType.clear();
+    _tomBeansByName.clear();
     _tomBeanList.clear();
     _initialized = false;
   }
@@ -499,7 +519,7 @@ class TomBean<T> {
 
   /// Resolves bean by registered name.
   T _resolveByName() {
-    var obj = _tomBeanContext[_name];
+    var obj = _tomBeansByName[_name];
 
     if (obj == null) {
       throw TomBeanLocatorException(
@@ -542,11 +562,9 @@ class TomBean<T> {
     final matches = <MapEntry<Type, T>>[];
 
     try {
-      for (var serviceType in _tomBeanContext.keys) {
-        if (serviceType is! Type) continue;
-        final candidate = _tomBeanContext[serviceType]!;
-        if (_assignableFrom(candidate)) {
-          matches.add(MapEntry(serviceType, candidate as T));
+      for (final registration in _tomBeansByType.entries) {
+        if (_assignableFrom(registration.value)) {
+          matches.add(MapEntry(registration.key, registration.value as T));
         }
       }
     } on TomException {
@@ -621,7 +639,7 @@ class TomBean<T> {
   /// deliberately excluded from startup validation — see
   /// [_validateBeanReferences].
   bool get _awaitsNamedRegistration =>
-      _bean == null && _name != null && !_tomBeanContext.containsKey(_name);
+      _bean == null && _name != null && !_tomBeansByName.containsKey(_name);
 
   /// Returns the bean type [T].
   Type getBeanType() {
@@ -761,7 +779,8 @@ void initializeBeanContext() {
   // code, and dropping them unresolved would silently exempt everything
   // declared since the previous pass from validation.
   if (TomBean._initialized) {
-    TomBean._tomBeanContext.clear();
+    TomBean._tomBeansByType.clear();
+    TomBean._tomBeansByName.clear();
   }
 
   _discoverAndInstantiateBeans();
@@ -805,10 +824,10 @@ void _instantiateConcreteBean(ClassMirror classMirror) {
   // concrete bean as it does for an interface implementation. The check runs
   // before newInstance so the pass does not construct an object it would only
   // discard.
-  if (TomBean._tomBeanContext[classMirror.reflectedType] != null) {
+  if (TomBean._tomBeansByType[classMirror.reflectedType] != null) {
     tomLog.trace(
       "Service instance for ${classMirror.reflectedType} already assigned to "
-      "${TomBean._tomBeanContext[classMirror.reflectedType]}",
+      "${TomBean._tomBeansByType[classMirror.reflectedType]}",
     );
     return;
   }
@@ -844,15 +863,15 @@ void _instantiateConcreteBean(ClassMirror classMirror) {
     "Service class ${classMirror.qualifiedName} has been instantiated "
     "and assigned for ${obj.runtimeType}. Instance is $obj",
   );
-  TomBean._tomBeanContext[obj.runtimeType] = obj;
+  TomBean._tomBeansByType[obj.runtimeType] = obj;
 }
 
 /// Instantiates a bean that implements an interface.
 void _instantiateInterfaceBean(ClassMirror classMirror, TomComponent tc) {
-  if (TomBean._tomBeanContext[tc.getType()] != null) {
+  if (TomBean._tomBeansByType[tc.getType()] != null) {
     tomLog.trace(
       "Service Instance for ${tc.getType()} already assigned to "
-      "${TomBean._tomBeanContext[tc.getType()]}",
+      "${TomBean._tomBeansByType[tc.getType()]}",
     );
     return;
   }
@@ -867,7 +886,7 @@ void _instantiateInterfaceBean(ClassMirror classMirror, TomComponent tc) {
 
   if (implementation != null) {
     var obj = implementation.newInstance("", []);
-    TomBean._tomBeanContext[tc.getType()] = obj;
+    TomBean._tomBeansByType[tc.getType()] = obj;
     tomLog.info(
       "Service class ${implementation.qualifiedName} has been instantiated "
       "and assigned for interface ${tc.getType()} service instance is $obj.",

@@ -279,6 +279,15 @@ final primaryDb = TomBean<DatabaseConnection>.fromName('primaryDb').get();
 final replicaDb = TomBean<DatabaseConnection>.fromName('replicaDb').get();
 ```
 
+**A name and a type are two namespaces, not one lookup.** Beans registered by
+name live in their own registry, so the two `DatabaseConnection`s above are
+reachable only through `fromName`. `TomBean<DatabaseConnection>().get()` does
+not see either of them and raises `no_bean_found_uninitialized`, and that is
+the intended answer rather than an oversight: the example registers two
+connections precisely because there is no single "the" connection to resolve
+by type. Registering one of them by type as well is how you say which is the
+default.
+
 The handle may be created before the bean exists. `fromName` records the name
 whether or not anything is registered under it, so a handle held as a field
 resolves once the registration lands:

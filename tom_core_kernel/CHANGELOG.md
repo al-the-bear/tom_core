@@ -134,6 +134,23 @@ anyone who was writing them.
 
 ### Changed
 
+- **The bean registry is two typed maps, not one keyed on `Object`
+  (tcopen1).** Beans registered by type and beans registered by name shared a
+  single `Map<Object, Object>`, which cost three things and bought none. Type
+  resolution had to walk every entry and skip the keys that were not a `Type`
+  at runtime, a filter the type system expresses for free, and that walk
+  iterated every named bean in order to reject it; and the declaration said
+  `Object`, which is the one thing a registry should never be vague about. A
+  `String` key can never equal a `Type` key, so the shared map was not unsafe
+  — what it cost was that nothing said so. They are now
+  `Map<Type, Object>` and `Map<String, Object>`.
+
+  No behaviour changes — the two namespaces were already separate, enforced
+  by that runtime filter — but the separation is now structural, and stated
+  where a consumer meets it: two beans of one type registered under two names
+  are not an ambiguity, and neither is resolvable by type. `resetBeanContext`
+  and a re-run of `initializeBeanContext` empty both.
+
 - **The timezone lookups hand out views, not the index (tcincb87).**
   `TomTimezone.timezones` returned `_timezonesMap` and `allWithOffset` returned
   `_timezoneByOffset[offset]` — the internal collections themselves — so

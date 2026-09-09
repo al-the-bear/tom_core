@@ -582,6 +582,24 @@ void main() {
       );
     });
 
+    test('re-initializing empties the named registry too', () {
+      // `initializeBeanContext` rebuilds the wiring from scratch, and "from
+      // scratch" has to mean both namespaces. Beans are held in two registries
+      // — one keyed by `Type`, one by name — and a re-initialization that
+      // emptied only the first would leave named beans from the previous pass
+      // alive, which is the shape of leak the reset exists to prevent. The
+      // typed half of the same rule is pinned by 're-initializing discards an
+      // override' above; this is the half that has no other witness, because
+      // nothing else in the module reads the two registries together.
+      initializeBeanContext();
+      TomBean.withName('survivor', AnotherService('first pass'));
+      expect(TomBean.getBeanByName('survivor'), isNotNull);
+
+      initializeBeanContext();
+
+      expect(TomBean.getBeanByName('survivor'), isNull);
+    });
+
     test('overrideWithName replaces a named binding', () {
       TomBean.withName('config', AnotherService('real'));
 
@@ -805,6 +823,39 @@ void main() {
         );
       },
     );
+
+    test('a name and a type are two namespaces, not one lookup', () {
+      // The registry is two maps — one keyed by `Type`, one by name — and
+      // this is the contract that makes them two rather than an implementation
+      // detail of how they are stored. A bean put in by name is reachable
+      // *only* by that name; type resolution does not see it, even though the
+      // instance would satisfy the type. The reverse holds as well.
+      //
+      // Worth pinning because it is invisible from either call site and would
+      // survive being broken: merging the two lookups makes `withName` behave
+      // like a second `withType` that also has a label, which silently changes
+      // what an ambiguity means — two named beans of one type would start
+      // reporting more_than_one_implementation_found for a type nobody
+      // registered.
+      TomBean.withName('by-name-only', AnotherService('named'));
+
+      expect(
+        keyOfThrow(() => TomBean<AnotherService>().get()),
+        equals('beanlocator.bean_access.no_bean_found_uninitialized'),
+        reason: 'a named bean is not a typed registration',
+      );
+
+      TomBean.resetBeanContext();
+      TomBean.withType(AnotherService, AnotherService('typed'));
+
+      expect(
+        keyOfThrow(
+          () => TomBean<AnotherService>.fromName('by-name-only').get(),
+        ),
+        equals('beanlocator.bean_access.bean_not_found_by_name'),
+        reason: 'a typed bean is not reachable under an arbitrary name',
+      );
+    });
   });
 
   // ==========================================================================
