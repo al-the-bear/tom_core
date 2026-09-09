@@ -13,6 +13,45 @@
 
 ### Fixed
 
+- **A malformed query sentence was reported as a missing column (tcincb156).**
+  `find by title is`, `find by title is not` and `find by title not null` are
+  all refused, and none of them was refused by the parser. Having declined to
+  read the dangling keyword as an operator — every one of them becomes an
+  operator only in company, `IS NULL`, `IS NOT IN`, `NOT LIKE` — the compiler
+  fell through and read it as the name of the column being compared, then handed
+  it to `TomAnnotationAnalyzer.determineColumn`. The author was told "No column
+  match field [is] found. Must be a variable and must have `@TomDbColumn`
+  annotation" and went looking for a field they never wrote, about a sentence
+  that merely stops one token early. The sentence was rejected either way, which
+  is why nothing caught this: it was rejected with the wrong reason, by a
+  component that does not know it is parsing.
+
+  `is`, `not`, `null`, `like`, `regexp`, `in`, `and`, `or` are now reserved in
+  operand position, the same construction the `TRUE`/`FALSE` branches and the
+  separator characters already use, and refused as
+  `query_sentence_compiler.build_expression.keyword_in_operand_position` — which
+  names the keyword, quotes the sentence, and says the sentence stopped early
+  when the keyword is its last token. `AND` and `OR` are in the set although the
+  outer loop joins predicates, because the expression parser is entered per
+  operand: `find by title = and` presents one without the outer loop ever seeing
+  it. The cost is the same as for the boolean literals — a column named `is` or
+  `and` no longer resolves, and `@TomDbColumn(name: ...)` is how such a field is
+  renamed.
+
+- **Both annotation-analyzer exceptions were client-visible (tcincb156).**
+  Neither `TomAnnotationAnalyzerException` nor
+  `TomAnnotationAnalyzerSyntaxException` set `clientThrow`, so both inherited
+  the base default of `true`. Every diagnosis they carry describes the
+  deployment — a type absent from the reflector, an entity without
+  `@TomDbTable`, the `@TomDbColumn` a field was expected to have — and a caller
+  can act on none of it, so a sentence compiled inside a served request returned
+  the entity's shape to whoever made that request. Both now pass
+  `clientThrow: false` to `super` and neither takes it as a parameter, so it is
+  an invariant of the type rather than a default a raise site could override —
+  the construction `TomResourceLocaleException` was declared for.
+  `TomQuerySyntaxException` stays visible for the opposite reason: it names the
+  token that broke the sentence, which is the caller's own input.
+
 - **Five data-source guards raised the bare base exception, and nothing said
   why (tcincb155).** The `.named(...)` constructors of the audit sink, the OAuth
   state store, the job store, the lease lock and the scheduler roll call each

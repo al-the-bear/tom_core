@@ -138,18 +138,16 @@ void main() {
     // `TomServerException` family every caller of this library catches on, and
     // carrying no indication of which sentence was at fault.
     //
-    // The two lists below both satisfy that, and they are split because they
-    // satisfy it by different routes — which only became visible once these
-    // assertions named a type instead of the base class. The parser refuses the
-    // first three itself. It does not refuse the other two at all: it takes the
-    // dangling keyword for a column name and hands it to the annotation
-    // analyzer, which fails to find a field called `is`. The sentence is
-    // rejected either way, so the RangeError guarantee holds — but the second
-    // list is rejected by a component that does not know it is parsing.
+    // All of them are refused by the parser, which is a stronger claim than
+    // "refused". A keyword the parser declines to read as an operator is not
+    // then read as a column name: `find by title is` says the sentence stops
+    // one token early, not that the entity is missing a field called `is`.
     for (final sentence in const [
       'find by title not',
       'find by not',
       'find by title not like',
+      'find by title is',
+      'find by title is not',
     ]) {
       test('[$sentence]', () {
         expect(
@@ -160,30 +158,146 @@ void main() {
       });
     }
 
-    for (final sentence in const ['find by title is', 'find by title is not']) {
-      test('[$sentence] — via column lookup, not the parser', () {
+    test('the diagnostic names the keyword, not a missing column', () {
+      // The fault this group is really about. Having declined to read `IS` as
+      // an operator, the parser used to fall through and treat the dangling
+      // keyword as the name of the column being compared — so the developer
+      // was told "No column match field [is] found. Must be a variable and
+      // must have @TomDbColumn annotation." and went looking for a field they
+      // never wrote. The sentence was rejected, which is why nothing caught
+      // this for so long; it was rejected with the wrong reason.
+      expect(
+        () => compiler.compileQuerySentence('find by title is'),
+        throwsA(
+          isA<TomQuerySyntaxException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'query_sentence_compiler.build_expression.'
+                    'keyword_in_operand_position',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(
+                  // The author's own spelling, not a canonicalised `IS`: the
+                  // reader is scanning the sentence they wrote.
+                  contains('[is]'),
+                  contains('find by title is'),
+                  isNot(contains('@TomDbColumn')),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('a keyword mid-sentence is refused the same way', () {
+      // Not every one of these is a truncation. `find by title = and` stops
+      // nowhere — it has a token after the operator — and that token is still
+      // a keyword standing where an operand belongs. One rule covers both,
+      // which is why the check is on the token's position rather than on the
+      // sentence's length.
+      expect(
+        () => compiler.compileQuerySentence('find by title = and'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.build_expression.'
+                'keyword_in_operand_position',
+          ),
+        ),
+      );
+    });
+
+    for (final keyword in const [
+      'is',
+      'not',
+      'null',
+      'like',
+      'regexp',
+      'in',
+      'and',
+      'or',
+    ]) {
+      test('[$keyword] is reserved in operand position', () {
+        // The whole reserved set, each in a position where the operator
+        // branches have already declined it. A keyword missing from the set is
+        // one the annotation analyzer answers for, which is the defect this
+        // group exists to prevent — so the set is asserted rather than sampled.
         expect(
-          () => compiler.compileQuerySentence(sentence),
-          throwsA(isA<TomAnnotationAnalyzerSyntaxException>()),
-          reason: 'the trailing IS is read as a column name and not found',
+          () => compiler.compileQuerySentence('find by title = $keyword'),
+          throwsA(isA<TomQuerySyntaxException>()),
+          reason: '[$keyword] must not reach the column resolver',
         );
       });
     }
+
+    test('a name that is not a keyword still reaches the column resolver', () {
+      // The converse, and the boundary that keeps the rule honest. Reserving
+      // keywords must not turn every unknown name into a syntax error: an
+      // entity that really is missing a field should still be told so, by the
+      // component that knows about fields.
+      expect(
+        () => compiler.compileQuerySentence('find by nosuch = :x'),
+        throwsA(isA<TomAnnotationAnalyzerSyntaxException>()),
+        reason:
+            'an ordinary unknown name is a column question, not a syntax '
+            'one',
+      );
+    });
   });
 
   group('NOT NULL without IS is refused', () {
     test('the pair is only an operator after IS', () {
       // `NOT` declines to negate when `NULL` follows it, because `NOT NULL` is
       // the tail of `IS NOT NULL` and never a negation of a column called
-      // `null`. Without `IS` in front the sentence is simply malformed.
-      //
-      // Refused, but by the same indirect route as the two truncations above:
-      // having declined to negate, the parser reads `not` as the column being
-      // compared, and the annotation analyzer reports no field of that name.
+      // `null`. Without `IS` in front the sentence is simply malformed, and the
+      // parser says so rather than asking the entity about a field called
+      // `not`.
       expect(
         () => compiler.compileQuerySentence('find by title not null'),
-        throwsA(isA<TomAnnotationAnalyzerSyntaxException>()),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.build_expression.'
+                'keyword_in_operand_position',
+          ),
+        ),
       );
+    });
+  });
+
+  group('an analyzer failure is never surfaced to the client', () {
+    // Both analyzer exception types quote the deployment back at whoever
+    // reached them: entity type names, `@TomDbColumn` requirements, whether a
+    // type is registered with the reflector. All of it is a developer wiring
+    // fault, none of it is anything a caller can act on, and a sentence
+    // compiled inside a served request would otherwise carry it to that
+    // caller.
+    //
+    // `clientThrow` is not a constructor parameter on either type, so this is
+    // an invariant of the type rather than a default a raise site could ask to
+    // override — the same construction, and for the same reason, as
+    // `TomResourceLocaleException`.
+    test('a syntax failure is not client-visible', () {
+      expect(
+        TomAnnotationAnalyzerSyntaxException('a.b.c', 'm').clientThrow,
+        isFalse,
+      );
+    });
+
+    test('an analyzer failure is not client-visible', () {
+      expect(TomAnnotationAnalyzerException('a.b.c', 'm').clientThrow, isFalse);
+    });
+
+    test('a query syntax error still is', () {
+      // The contrast that makes the pair above a decision rather than a habit.
+      // A malformed sentence is the caller's own input when the sentence came
+      // from a request, and naming the keyword that broke it tells them what to
+      // fix without describing the deployment.
+      expect(TomQuerySyntaxException('a.b.c', 'm').clientThrow, isTrue);
     });
   });
 }

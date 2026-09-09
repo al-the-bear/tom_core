@@ -9,6 +9,19 @@ import 'persistence_annotations.dart';
 /// type is not registered with `tomReflector`, or has no `@TomDbTable`).
 class TomAnnotationAnalyzerException extends TomServerException {
   /// Creates an annotation-analyzer exception.
+  ///
+  /// Never client-visible. Every failure this type reports is a wiring fault in
+  /// the deployment — a type absent from the reflector, an entity without
+  /// `@TomDbTable`, columns that could not be resolved — and its message quotes
+  /// the entity type and the annotation it wanted. A caller can act on none of
+  /// it, and a sentence compiled inside a served request would otherwise carry
+  /// the deployment's shape back to whoever made that request.
+  ///
+  /// `clientThrow` is not a parameter, so that is an invariant of the type
+  /// rather than the value it is born with — the same construction, and the
+  /// same argument, as `TomResourceLocaleException`. As a re-defaulted
+  /// parameter it would hide today's raise sites and stop nothing from asking
+  /// to be shown tomorrow.
   TomAnnotationAnalyzerException(
     super.key,
     super.defaultUserMessage, {
@@ -16,7 +29,7 @@ class TomAnnotationAnalyzerException extends TomServerException {
     super.stack,
     super.rootException,
     super.autoLog,
-  });
+  }) : super(clientThrow: false);
 }
 
 /// Thrown when an entity's persistence annotations are present but malformed
@@ -24,6 +37,17 @@ class TomAnnotationAnalyzerException extends TomServerException {
 /// column name).
 class TomAnnotationAnalyzerSyntaxException extends TomServerException {
   /// Creates an annotation-analyzer syntax exception.
+  ///
+  /// Never client-visible, for the reason given on
+  /// [TomAnnotationAnalyzerException] and with more force: this is the type
+  /// that answers "No column match field [x] found. Must be a variable and must
+  /// have @TomDbColumn annotation", which names a field of the entity and the
+  /// annotation the deployment was expected to carry.
+  ///
+  /// A malformed *sentence* is a different matter and stays visible — see
+  /// `TomQuerySyntaxException`. When the sentence came from a request it is the
+  /// caller's own input, and naming the token that broke it tells them what to
+  /// fix without describing the deployment.
   TomAnnotationAnalyzerSyntaxException(
     super.key,
     super.defaultUserMessage, {
@@ -31,7 +55,7 @@ class TomAnnotationAnalyzerSyntaxException extends TomServerException {
     super.stack,
     super.rootException,
     super.autoLog,
-  });
+  }) : super(clientThrow: false);
 }
 
 /// Resolves the persistence metadata of an entity type from its reflection

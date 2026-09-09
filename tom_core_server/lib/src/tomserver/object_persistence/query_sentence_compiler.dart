@@ -1565,6 +1565,27 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
               "operand — a literal, a bound parameter or a column; a "
               "parenthesised predicate is not one.",
         );
+      } else if (_reservedInOperandPosition.contains(qp[i].toUpperCase())) {
+        // Declined by every operator branch above, so the fall-through would
+        // read it as a column name — see [_reservedInOperandPosition] for why
+        // that answer is worse than no answer.
+        //
+        // One key for both shapes, with the message distinguishing them, as
+        // `sentence_ended_early` does: a caller branching on the key wants to
+        // know a keyword was misplaced, and whether it was the last token is a
+        // detail for the person reading the message.
+        final atEnd = i == qp.length - 1;
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.build_expression."
+          "keyword_in_operand_position",
+          atEnd
+              ? "The QuerySentence $qs ends at [${qp[i]}]. That is a keyword, "
+                    "not a value — the sentence stops before the expression "
+                    "it started is complete."
+              : "The QuerySentence $qs cannot be compiled. [${qp[i]}] is a "
+                    "keyword and stands where a value or a column name is "
+                    "expected.",
+        );
       } else {
         if (column == null) {
           column = determineColumn(qp[i]);
@@ -1811,6 +1832,43 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
 
   /// The characters that end a token on their own, outside a quoted region.
   static const _separatorCharacters = {',', '(', ')', '=', '<', '>'};
+
+  /// The grammar's words, which are never an operand.
+  ///
+  /// Reaching a branch below is how a word becomes an operator; reaching this
+  /// set is how one that did not becomes a *diagnosis*. Every branch that
+  /// claims one of these needs a lookahead — `IS NULL`, `IS NOT IN`,
+  /// `NOT LIKE` — so a word whose partner is missing or wrong declines every
+  /// branch and arrives in operand position, where the only remaining reading
+  /// is "column name". That reading is always wrong and always plausible:
+  /// `find by title is` was answered by the *annotation analyzer* with "No
+  /// column match field [is] found. Must be a variable and must have
+  /// @TomDbColumn annotation", sending the author to look for a field they
+  /// never wrote, for a sentence that merely stops one token early.
+  ///
+  /// The set is the same construction as the `TRUE`/`FALSE` branches and
+  /// [_separatorCharacters], and carries the same cost: a column actually named
+  /// `is` or `and` no longer resolves. SQL reserves these words too, the
+  /// sentence language has no quoting for identifiers, and
+  /// `@TomDbColumn(name: ...)` already renames such a field. The alternative —
+  /// resolve the column first and fall back to the diagnosis — would make which
+  /// error you get depend on the entity's field list, so the same malformed
+  /// sentence would be reported two ways in two entities.
+  ///
+  /// `AND` and `OR` are here although the *outer* loop is what joins
+  /// predicates: this expression parser is entered per operand, so a sentence
+  /// like `find by title = and` presents one in operand position without the
+  /// outer loop ever seeing it.
+  static const Set<String> _reservedInOperandPosition = {
+    'IS',
+    'NOT',
+    'NULL',
+    'LIKE',
+    'REGEXP',
+    'IN',
+    'AND',
+    'OR',
+  };
 
   /// The two-character operators, matched before the single-character ones so
   /// `<=` is one token rather than `<` followed by `=`. This is the whole

@@ -511,6 +511,25 @@ otherwise, and Dart will not let a field be *declared* `true` or `false` — so 
 only way in is to write that name explicitly, and the way out is to write a
 different one.
 
+**The grammar's own words are reserved there too** — `is`, `not`, `null`,
+`like`, `regexp`, `in`, `and`, `or`. Each of them becomes an operator only in
+company: `IS NULL`, `IS NOT IN`, `NOT LIKE`. One whose partner is missing or
+wrong is claimed by no operator branch and arrives where an operand belongs,
+and the reading left over there — "column name" — is always wrong. So it is
+refused as `…build_expression.keyword_in_operand_position`, which names the
+keyword and quotes the sentence; when the keyword is the last token the message
+says the sentence stops before its expression is complete.
+
+The alternative is worse than it sounds. Left to fall through, `find by title
+is` was answered by the *annotation analyzer* — "No column match field [is]
+found. Must be a variable and must have `@TomDbColumn` annotation" — which sends
+the author to look for a field they never wrote, about a sentence that merely
+stops one token early. The sentence was refused either way; it was refused with
+the wrong reason, by a component that does not know it is parsing. The cost of
+reserving is the same as for the boolean literals: a column named `is` or `and`
+no longer resolves, and `@TomDbColumn(name: ...)` is how such a field is
+renamed.
+
 Three shapes worth knowing. A **decimal is written with a point**, never a
 comma: a comma separates an `IS IN` list, so a value spelled `1,5` is read as
 two values rather than one. A **timestamp is converted to UTC** as it compiles,

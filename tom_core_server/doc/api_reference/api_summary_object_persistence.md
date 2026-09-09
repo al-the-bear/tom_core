@@ -1541,7 +1541,19 @@ All extend the server `TomServerException`.
 Each exception constructor forwards the standard `TomServerException` positional
 `key` and `defaultUserMessage` plus the optional named `parameters`, `stack`,
 `rootException`, `autoLog` (and, for `TomColumnAuthorizationException` /
-`TomDataScopeAuthorizationException` / `TomRepositoryException`, `clientThrow`).
+`TomDataScopeAuthorizationException` / `TomRepositoryException`, `clientThrow`;
+the two analyzer types deliberately do not take it).
+
+The two analyzer types are never client-visible, and not by default:
+`clientThrow` is not a parameter on either, so it is an invariant of the type
+rather than a value a raise site could override. Every diagnosis they carry
+describes the deployment — a type absent from the reflector, an entity without
+`@TomDbTable`, the `@TomDbColumn` a field was expected to have — and a caller
+can act on none of it, so a sentence compiled inside a served request would
+otherwise return the entity's shape to whoever made that request.
+`TomQuerySyntaxException` stays visible for the opposite reason: it names the
+token that broke the sentence, which is the caller's own input when the sentence
+arrived in a request.
 
 `TomRepositoryException` is the one whose `clientThrow` defaults to **`false`**.
 Almost every one of its causes is a server fault — a broken deployment, a table
