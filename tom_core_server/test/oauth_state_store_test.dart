@@ -15,10 +15,24 @@
 /// means, and nothing fails until an operator notices rows a purge will not
 /// remove. The sweep now goes through `purgeExpired`, and the tests below hold
 /// it there.
+///
+/// The file also carries the module's schema guard, for the same reason: the
+/// text `oauthStateTableDdl` renders is compared to the migration a DBA
+/// applies. `framework_schema_test.dart` already replays the shipped chain and
+/// compares the schema it *arrives at*, which is the stronger check and is not
+/// repeated here — but it is deliberately blind to how a statement is spelled,
+/// and a spelling is what a deployment copies into its own migration. That
+/// blindness is measured rather than assumed: narrowing a column and dropping a
+/// nullability both converge.
+///
+/// A store constructed with `table:` set to something else ships no migration at
+/// all, so what the helper renders for that name is the only source of its DDL.
 library;
 
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
+
+import 'fixtures/sql_text.dart';
 
 // =============================================================================
 // FIXTURES
@@ -203,6 +217,84 @@ void main() {
               ),
         ),
       );
+    });
+  });
+
+  group('the OAuth-state migration matches the shipped DDL', () {
+    test('the migration is the DDL the store creates', () {
+      expect(
+        normaliseSql(
+          readMigration('authentication', '[2]-create_tom_oauth_state.sql'),
+        ),
+        normaliseSql(oauthStateTableDdl(defaultOAuthStateTable)),
+      );
+    });
+
+    test('the DDL follows the table name it is given', () {
+      // The whole reason the function takes a name. `TomSqlOAuthStateStore`
+      // accepts `table:`, and a store over a renamed table ships no migration
+      // of its own — this is where its DDL comes from, and it has to name the
+      // table the store will actually address.
+      expect(
+        oauthStateTableDdl('sso_pending'),
+        contains('CREATE TABLE IF NOT EXISTS sso_pending'),
+      );
+      expect(
+        oauthStateTableDdl('sso_pending'),
+        contains('KEY ix_sso_pending_expiry (expires_at)'),
+        reason: 'the index is named after the table, not after the default',
+      );
+    });
+  });
+
+  group('the OAuth-state schema encodes what the store relies on', () {
+    final ddl = oauthStateTableDdl(defaultOAuthStateTable);
+
+    test('the handle is the identity, with no surrogate key beside it', () {
+      // A second row for the same handle would make "which pending flow does
+      // this callback complete" depend on row order, which is the one question
+      // the table exists to answer unambiguously.
+      expect(ddl, contains('PRIMARY KEY (state)'));
+      expect(
+        ddl,
+        isNot(contains('AUTO_INCREMENT')),
+        reason: 'a surrogate key would let the handle repeat',
+      );
+    });
+
+    test('the sweep has an index to ride', () {
+      // Without it, pruning is a full scan of a table whose whole point is to
+      // be swept often — and both the throttled sweep and `purgeExpired` go
+      // through the `expires_at` predicate the tests above pin.
+      expect(
+        ddl,
+        contains('KEY ix_${defaultOAuthStateTable}_expiry (expires_at)'),
+      );
+    });
+
+    test('the PKCE pair are the only nullable columns', () {
+      // A provider may be configured without PKCE, so those two may be absent.
+      // Every other column is written on every insert — the login-context
+      // columns hold `''` for "not supplied", matching the Dart record whose
+      // fields default to the empty string. A nullable one there would be a
+      // second spelling of absence that every read would have to collapse.
+      final nullable = ddl
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.endsWith('NULL,') && !line.contains('NOT NULL'))
+          .map((line) => line.split(RegExp(r'\s+')).first);
+      expect(nullable, ['pkce_verifier', 'pkce_challenge']);
+    });
+
+    test('both instants are DATETIME(6), the width sqlInstant writes', () {
+      // Not a precision preference: every `DateTime` bound by this data source
+      // is rendered by `sqlInstant`, which always emits six fractional digits,
+      // and MariaDB silently *rounds* the excess on a narrower column rather
+      // than rejecting it. A plain `DATETIME` would therefore store a different
+      // moment, up to half a second away — and `expires_at` is a deadline the
+      // completion predicate compares against.
+      expect(ddl, contains('created_at      DATETIME(6)  NOT NULL'));
+      expect(ddl, contains('expires_at      DATETIME(6)  NOT NULL'));
     });
   });
 }

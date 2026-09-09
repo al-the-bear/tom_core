@@ -13,6 +13,36 @@
 
 ### Fixed
 
+- **`oauthStateTableDdl` was the last DDL helper nothing exercised, and the
+  OAuth-state migration the last one with no spelling guard (tcincb143).** The
+  function had zero references in `lib/`, `test/` or `example/` while its six
+  live siblings carry between five and eleven each — documented, exported public
+  API that no test would have noticed breaking.
+
+  `framework_schema_test.dart` was not covering it. That suite replays the
+  shipped chain and compares the schema it *arrives at*, which is the stronger
+  check and is deliberately blind to how a statement is spelled. Measured rather
+  than assumed: narrowing `state` from `VARCHAR(191)` to `VARCHAR(64)`, making
+  `client_language` nullable, deleting the `expires_at` index the sweep rides,
+  and coarsening `created_at` to a plain `DATETIME` **all four converge green**
+  and all four now fail. A spelling is what a deployment copies into its own
+  migration, and for a store constructed with `table:` set to a non-default name
+  there is no shipped file at all — the helper is the only source of its DDL.
+
+  `oauth_state_store_test.dart` gains the comparison the scheduling, audit and
+  file-storage suites already had (7 tests, 5 → 12), reusing `normaliseSql` and
+  `readMigration` from `test/fixtures/sql_text.dart` rather than a fourth copy
+  of the judgement about what "the same statement" means. Beyond the file
+  comparison it pins what the store relies on: the handle is the identity with
+  no surrogate key beside it, the sweep has an index to ride, the PKCE pair are
+  the only nullable columns — the login-context columns hold `''` for "not
+  supplied", so a nullable one would be a second spelling of absence — and both
+  instants are `DATETIME(6)`, the width `sqlInstant` writes.
+
+  `reference_migrations_test.dart`'s `_guardedElsewhere` now reads the same way
+  for every module: the authentication entry names the suite that compares the
+  file, not only the convergence chain.
+
 - **`toString()` on an unopened `TomBlobStoreInfo` threw
   `LateInitializationError` (tcincb142).** `_store` was a `late` field with no
   initializer and `toString()` interpolated it directly, so an entry that had

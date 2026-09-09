@@ -118,8 +118,8 @@ final List<_EntityPin> _entityPins = [
 /// which of the two an unpinned file is.
 final Map<String, String> _guardedElsewhere = {
   _migration('authentication', '[2]-create_tom_oauth_state.sql'):
-      'descriptor table — framework_schema_test.dart converges the chain '
-      'against oauthStateTable(defaultOAuthStateTable)',
+      'descriptor table — framework_schema_test.dart converges the chain, and '
+      'oauth_state_store_test.dart compares the file to oauthStateTableDdl',
   _migration('audit', '[1]-create_tom_audit_trail.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'audit_sql_test.dart compares the file to auditTrailTableDdl',
