@@ -13,6 +13,44 @@
 
 ### Fixed
 
+- **Backend-specific storage keys reached the callers the translation exists to
+  protect (tcincb144).** `TomBlobStore._translating` and `get` both passed a
+  `TomStorageException` through with a bare `on TomStorageException { rethrow; }`
+  — but that catches the **type**, and the type is also what every backend
+  raises its *own* failures as. So `storage.s3.request_failed`,
+  `storage.s3.no_upload_id`, `storage.s3.part_without_etag` and whatever an
+  application backend raises rode through the translation with the module's own
+  answers, and a caller switching on `error.key` saw one key when the deployment
+  was configured with S3 and another when it was configured with the directory
+  backend, for the same fault. That is the coupling `doc/file_storage.md` says
+  twice that the module removes.
+
+  The match is on the key now: `TomBlobStore.passThroughErrorKeys` is the closed
+  list of what reaches a caller as it was raised, and everything else is wrapped
+  under the operation's key with the original kept as `rootException` — the S3
+  status and code are still in the log, no longer part of the contract code is
+  written against.
+
+  The list turned out to be four, not the three the dartdoc named.
+  `storage.blob.invalid_key_prefix` is the deliberate sibling of `invalid_key`
+  ("a bad key is a caller's mistake, a bad prefix is a deployment's"), is
+  asserted uniformly across every method by the suite's own `_refusesEverywhere`
+  sweep, and is backend-independent for the reason that decides membership: the
+  limit it enforces inside the S3 backend is `maxKeyLength`, the rule every
+  backend obeys, not S3's own, which is twice as large.
+
+  `get` carries its own copy of the rule rather than routing through
+  `_translating`, because an `async*` body owns its `try` and handing the stream
+  to a helper would put the helper's `await` between backend and consumer —
+  which is the buffering the partial-delivery contract forbids. A test holds the
+  two in step and asserts the partial delivery alongside.
+
+  Six tests (108 → 114) plus five rewritten to state the new contract, and a
+  `_ThrowingBlobStore` fixture, because no shipped backend can be made to raise
+  an arbitrary `TomStorageException` on demand. Verified by mutation: restoring
+  either bare rethrow, dropping `invalid_key_prefix` from the list, and
+  admitting an operation key to it each fail.
+
 - **`oauthStateTableDdl` was the last DDL helper nothing exercised, and the
   OAuth-state migration the last one with no spelling guard (tcincb143).** The
   function had zero references in `lib/`, `test/` or `example/` while its six

@@ -209,6 +209,62 @@ Future<void> _refusesEverywhere(
   }
 }
 
+/// The backend's own exception, from inside the one a caller catches.
+///
+/// Every failure that is not one of [TomBlobStore.passThroughErrorKeys] reaches
+/// a caller as its operation's generic key, so the backend's `status`, `code`
+/// and `objectPath` are one level down — still in the log, still readable here,
+/// no longer something a caller has to know the backend to branch on.
+TomStorageException _backendFault(Object error) =>
+    (error as TomStorageException).rootException as TomStorageException;
+
+/// Matches a caller-visible storage failure of [operation] wrapping a backend
+/// exception of [backendKey].
+TypeMatcher<TomStorageException> _translated(
+  String operationKey,
+  String backendKey,
+) => isA<TomStorageException>()
+    .having((e) => e.key, 'key', operationKey)
+    .having((e) => _backendFault(e).key, 'rootException.key', backendKey);
+
+/// A backend whose every operation fails with a chosen error.
+///
+/// Raising a `TomStorageException` from a backend is the case under test, and no
+/// shipped backend can be made to do it on demand — the S3 store needs a rigged
+/// HTTP handler and reaches only its own keys.
+class _ThrowingBlobStore extends TomBlobStore {
+  _ThrowingBlobStore(this.error, {this.afterChunks = const []});
+
+  /// What every operation throws.
+  final Object error;
+
+  /// Chunks [doGet] yields before failing, so a partial delivery can be seen.
+  final List<List<int>> afterChunks;
+
+  @override
+  Stream<List<int>> doGet(String key) async* {
+    yield* Stream.fromIterable(afterChunks);
+    throw error;
+  }
+
+  @override
+  Future<TomStoredBlob> doPut({
+    required String key,
+    required Stream<List<int>> bytes,
+    String mediaType = TomStoredBlob.defaultMediaType,
+    String? fileName,
+  }) async => throw error;
+
+  @override
+  Future<TomStoredBlob?> doDescribe(String key) async => throw error;
+
+  @override
+  Future<bool> doDelete(String key) async => throw error;
+
+  @override
+  Future<bool> doExists(String key) async => throw error;
+}
+
 /// One statement the store issued, with the parameters it bound.
 class _IssuedStatement {
   _IssuedStatement(this.sql, this.params);
@@ -1521,13 +1577,16 @@ void main() {
         keyPrefix: 'tenant-7',
       );
 
+      // The caller hears `probe_failed`, the same key the directory backend
+      // would give for the same fault; the S3 detail is one level down. Both
+      // halves matter: the branch is backend-independent, the diagnosis is not
+      // lost.
       await expectLater(
         store.describe('a.txt'),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.s3.request_failed')
+          _translated('storage.blob.probe_failed', 'storage.s3.request_failed')
               .having(
-                (e) => e.parameters?['objectPath'],
+                (e) => _backendFault(e).parameters?['objectPath'],
                 'objectPath',
                 '/examplebucket/tenant-7/a.txt',
               )
@@ -1537,12 +1596,20 @@ void main() {
               // stopped — while the two paths building their own failure named
               // `get` and `complete`. One parameter, one vocabulary.
               .having(
-                (e) => e.parameters?['operation'],
+                (e) => _backendFault(e).parameters?['operation'],
                 'operation',
                 'describe',
               )
-              .having((e) => e.parameters?['status'], 'status', 403)
-              .having((e) => e.parameters?['code'], 'code', 'AccessDenied'),
+              .having(
+                (e) => _backendFault(e).parameters?['status'],
+                'status',
+                403,
+              )
+              .having(
+                (e) => _backendFault(e).parameters?['code'],
+                'code',
+                'AccessDenied',
+              ),
         ),
       );
     });
@@ -1574,15 +1641,19 @@ void main() {
           bytes: Stream.fromIterable([for (var i = 0; i < 6; i++) _bytes(mib)]),
         ),
         throwsA(
-          isA<TomStorageException>()
+          _translated('storage.blob.write_failed', 'storage.s3.request_failed')
               .having(
-                (e) => e.parameters?['operation'],
+                (e) => _backendFault(e).parameters?['operation'],
                 'operation',
                 'uploadPart',
               )
-              .having((e) => e.parameters?['key'], 'key', 'big.bin')
               .having(
-                (e) => e.parameters?['objectPath'],
+                (e) => _backendFault(e).parameters?['key'],
+                'key',
+                'big.bin',
+              )
+              .having(
+                (e) => _backendFault(e).parameters?['objectPath'],
                 'objectPath',
                 '/examplebucket/tenant-7/big.bin',
               ),
@@ -1729,9 +1800,14 @@ void main() {
           bytes: Stream.fromIterable([for (var i = 0; i < 6; i++) _bytes(mib)]),
         ),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.s3.request_failed')
-              .having((e) => e.parameters?['code'], 'code', 'SlowDown'),
+          _translated(
+            'storage.blob.write_failed',
+            'storage.s3.request_failed',
+          ).having(
+            (e) => _backendFault(e).parameters?['code'],
+            'code',
+            'SlowDown',
+          ),
         ),
       );
 
@@ -1766,9 +1842,14 @@ void main() {
           bytes: Stream.fromIterable([for (var i = 0; i < 6; i++) _bytes(mib)]),
         ),
         throwsA(
-          isA<TomStorageException>()
-              .having((e) => e.key, 'key', 'storage.s3.no_upload_id')
-              .having((e) => e.parameters?['key'], 'key parameter', 'big.bin'),
+          _translated(
+            'storage.blob.write_failed',
+            'storage.s3.no_upload_id',
+          ).having(
+            (e) => _backendFault(e).parameters?['key'],
+            'key parameter',
+            'big.bin',
+          ),
         ),
       );
     });
@@ -1796,9 +1877,14 @@ void main() {
             ]),
           ),
           throwsA(
-            isA<TomStorageException>()
-                .having((e) => e.key, 'key', 'storage.s3.part_without_etag')
-                .having((e) => e.parameters?['partNumber'], 'partNumber', 1),
+            _translated(
+              'storage.blob.write_failed',
+              'storage.s3.part_without_etag',
+            ).having(
+              (e) => _backendFault(e).parameters?['partNumber'],
+              'partNumber',
+              1,
+            ),
           ),
         );
 
@@ -1951,6 +2037,142 @@ void main() {
       expect(
         () => TomS3BlobStore.parseHttpDate('2015-10-21'),
         throwsFormatException,
+      );
+    });
+  });
+
+  group('a caller hears the operation, not the backend', () {
+    // The module's headline: "a backend that lets those through makes the
+    // caller's error handling depend on which backend it was configured with".
+    // The translation used to catch `TomStorageException` by *type*, which is
+    // also what every backend raises its own failures as — so for one fault a
+    // caller heard `storage.s3.request_failed` on S3 and
+    // `storage.blob.write_failed` on the directory backend, which is exactly
+    // what the four generic keys were introduced to prevent.
+
+    /// A store whose every operation fails with [error].
+    TomBlobStore failing(Object error) => _ThrowingBlobStore(error);
+
+    test(
+      'a backend-specific storage key is translated on every method',
+      () async {
+        final store = failing(
+          TomStorageException(
+            'storage.s3.request_failed',
+            'no',
+            parameters: {'status': 503},
+          ),
+        );
+        for (final method in _everyMethod(store, 'a.txt').entries) {
+          await expectLater(
+            method.value(),
+            throwsA(
+              isA<TomStorageException>().having(
+                (e) => e.key,
+                'key',
+                startsWith('storage.blob.'),
+              ),
+            ),
+            reason: '${method.key} must not report a backend key',
+          );
+        }
+      },
+    );
+
+    test('the backend exception survives as rootException', () async {
+      // The other half of the decision. Wrapping is what makes the key
+      // branchable; keeping the original is what keeps the fault diagnosable —
+      // a 403 and a 503 are still told apart in a log, they are simply no
+      // longer part of the contract code is written against.
+      final backend = TomStorageException(
+        'storage.s3.request_failed',
+        'no',
+        parameters: {'status': 503, 'code': 'SlowDown'},
+      );
+      await expectLater(
+        failing(backend).describe('a.txt'),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.blob.probe_failed')
+              .having((e) => e.rootException, 'rootException', same(backend)),
+        ),
+      );
+    });
+
+    test(
+      'every pass-through key reaches the caller as it was raised',
+      () async {
+        // The list is the contract, so it is asserted as a list rather than one
+        // key at a time: a key quietly dropped from it would otherwise only
+        // surface as whichever caller stopped being able to branch.
+        for (final key in TomBlobStore.passThroughErrorKeys) {
+          final raised = TomStorageException(key, 'the module\'s own answer');
+          await expectLater(
+            failing(raised).describe('a.txt'),
+            throwsA(same(raised)),
+            reason: '$key is one of the module\'s own answers',
+          );
+        }
+      },
+    );
+
+    test('the pass-through list is the four the module raises itself', () {
+      // Pinned by name, because membership is a judgement — "raised by code
+      // every backend shares, or by a rule every backend is held to" — and a
+      // fifth key added without that argument being made is the drift this
+      // guards.
+      expect(TomBlobStore.passThroughErrorKeys, {
+        'storage.blob.not_found',
+        'storage.blob.invalid_key',
+        'storage.blob.invalid_key_prefix',
+        'storage.blob.missing_chunk',
+      });
+      expect(
+        TomBlobStore.passThroughErrorKeys.intersection({
+          for (final operation in TomBlobStoreOperation.values)
+            operation.errorKey,
+        }),
+        isEmpty,
+        reason:
+            'an operation key is what a translation produces, never what '
+            'passes through it',
+      );
+    });
+
+    test('a read translates without buffering what already arrived', () async {
+      // `get` cannot go through `_translating` — an `async*` body owns its own
+      // `try` — so it carries its own copy of the rule, and this is the test
+      // that keeps the two in step. The partial delivery is asserted alongside,
+      // because the reason `get` is written that way is that draining the
+      // backend's stream first would turn every interrupted download into an
+      // empty one.
+      final store = _ThrowingBlobStore(
+        TomStorageException('storage.s3.request_failed', 'no'),
+        afterChunks: const [
+          [1, 2, 3],
+        ],
+      );
+      final delivered = <int>[];
+      await expectLater(
+        store.get('a.txt').forEach(delivered.addAll),
+        throwsA(
+          _translated('storage.blob.read_failed', 'storage.s3.request_failed'),
+        ),
+      );
+      expect(delivered, [1, 2, 3]);
+    });
+
+    test('a read still answers not_found as itself', () async {
+      final store = _ThrowingBlobStore(TomBlobStore.notFound('a.txt'));
+      await expectLater(
+        store.get('a.txt').drain<void>(),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.not_found',
+          ),
+        ),
       );
     });
   });

@@ -250,6 +250,7 @@ const TomBlobStore()
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `maxKeyLength` | `static const int` | The longest key any backend accepts (512) — comfortably under the shortest limit in play, so the database backend can declare a fixed-width indexed column and a filesystem is never handed a name the OS rejects. |
+| `passThroughErrorKeys` | `static const Set<String>` | The four keys that reach a caller as the backend raised them — `storage.blob.not_found`, `invalid_key`, `invalid_key_prefix` and `missing_chunk`. Everything else, *including a backend's own `TomStorageException`*, is wrapped under the operation's key with the original as `rootException`. The match is on the key rather than the type, which is what stops `storage.s3.request_failed` reaching a caller who is supposed to be backend-agnostic; the list is closed by a rule — every member is raised by shared code or enforces a limit every backend obeys — so a backend cannot add to it. |
 | `auxiliaryMarker` | `static const String` | A character no valid key can contain (`~`), for backends keeping bookkeeping files alongside the blobs. Suffixing with it makes that bookkeeping *unaddressable*, where the obvious `<key>.meta` is a key a caller may legitimately choose — so two callers picking ordinary keys destroyed each other's data. Lives on the contract because it is a fact about `isValidKey`, which `TomExportStore` shares; the suffixes themselves stay with each backend. |
 
 #### Static Methods
@@ -599,7 +600,10 @@ each valid but join past `TomBlobStore.maxKeyLength`; S3's own limit is twice
 ours, so nothing downstream would object. When no `client` is supplied the store
 creates and owns one, and `close` disposes of it.
 
-Every request the store rejects becomes one `storage.s3.request_failed`, whose
+Every request the store rejects becomes one `storage.s3.request_failed` —
+which a caller meets as the `rootException` of one of the four operation keys,
+never as its own key, because it is not in `TomBlobStore.passThroughErrorKeys` —
+whose
 parameters are `key` — always the *caller's* key, never the request path, so a
 handler that logs or renders it prints something the caller supplied and can
 look up — `objectPath` for the full path with bucket and prefix, `operation` for
@@ -643,7 +647,7 @@ render it unawares.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Buffers up to `partSize`: a stream that ends inside the first buffer is one signed `PUT`, otherwise each full buffer becomes a part and the upload is completed at the end. Any failure issues an `AbortMultipartUpload` and rethrows, so `put` reports `storage.blob.write_failed` — or passes through the storage exception already thrown. |
-| `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Streams the response body of a signed `GET`; `404` drains the body and throws `storage.blob.not_found`, any other error status throws `storage.s3.request_failed`. |
+| `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Streams the response body of a signed `GET`; `404` drains the body and throws `storage.blob.not_found`, which passes through to the caller, and any other error status throws `storage.s3.request_failed`, which `get` translates to `storage.blob.read_failed`. |
 | `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* A signed `HEAD`, mapping `content-type`, `content-length`, `last-modified` and `x-amz-meta-filename` into the descriptor; `null` on `404`. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Probes with `doExists` first, because S3 answers `204` to a delete whether or not the object was there, then sends the signed `DELETE`. |
 | `close` | `Future<void> close()` | *(override)* Closes the HTTP client, but only the one this store created. |

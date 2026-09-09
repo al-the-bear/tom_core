@@ -284,8 +284,14 @@ abstract class TomBlobStore {
       await for (final chunk in doGet(validateKey(key))) {
         yield chunk;
       }
-    } on TomStorageException {
-      rethrow;
+    } on TomStorageException catch (error, stack) {
+      // The same rule [_translating] applies, spelled out here because a
+      // `Stream` cannot be routed through it: an `async*` body owns its own
+      // `try`, and handing the stream to a helper would put the helper's
+      // `await` between the backend and the consumer — which is exactly the
+      // buffering the partial-delivery contract above forbids.
+      if (passThroughErrorKeys.contains(error.key)) rethrow;
+      throw _asStorageException(TomBlobStoreOperation.read, key, error, stack);
     } on Object catch (error, stack) {
       throw _asStorageException(TomBlobStoreOperation.read, key, error, stack);
     }
@@ -528,6 +534,39 @@ abstract class TomBlobStore {
     return keyPrefix;
   }
 
+  /// The error keys that reach a caller as the backend raised them.
+  ///
+  /// Everything a store can go wrong at is reported under one of the four
+  /// [TomBlobStoreOperation] keys, whichever backend is configured. These four
+  /// are the exceptions, and they are exceptions because they are *answers*
+  /// rather than failures: the key held nothing, the key was not a key, the
+  /// deployment's prefix leaves no room for one, the blob's chunks do not add
+  /// up. A caller branches on them — `TomBlobExportStore` on `not_found`, the
+  /// file endpoint on its 404 — so translating them would turn a decision the
+  /// caller can make into a failure it can only report.
+  ///
+  /// Every one is raised by code every backend shares, or by a rule every
+  /// backend is held to, so none of them tells a caller which backend it got.
+  /// That is the test for membership, not "the module happens to raise it":
+  /// `invalid_key_prefix` is raised inside the S3 backend as well as by
+  /// [validateKeyPrefix], and belongs here because the limit it enforces is
+  /// [maxKeyLength] — the rule every backend obeys — rather than S3's own.
+  ///
+  /// The list is closed on purpose, and that is the whole of the module's
+  /// backend-independence claim. A `TomStorageException` a backend raises under
+  /// any other key is wrapped like any other fault, so a caller switching on
+  /// `error.key` sees the same key whether the deployment is configured with
+  /// the S3 backend, the directory backend or one the application wrote. The
+  /// backend's own exception survives as `rootException`: still in the log,
+  /// still carrying its `status` and `code`, no longer part of the contract a
+  /// caller is written against.
+  static const Set<String> passThroughErrorKeys = {
+    'storage.blob.not_found',
+    'storage.blob.invalid_key',
+    'storage.blob.invalid_key_prefix',
+    'storage.blob.missing_chunk',
+  };
+
   /// The error raised when [key] holds nothing — one spelling, so a caller can
   /// match on the key string and every backend agrees on it.
   static TomStorageException notFound(String key) => TomStorageException(
@@ -556,11 +595,16 @@ abstract class TomBlobStore {
 
   /// Runs [body], reporting any infrastructure failure as [operation] on [key].
   ///
-  /// A [TomStorageException] passes through untouched, which is the clause that
-  /// makes this safe to wrap a whole method in: `not_found`, `invalid_key` and
-  /// `missing_chunk` are the module's own answers, and a caller branching on
-  /// them (`TomBlobExportStore` on `not_found`, the file endpoint on its 404)
-  /// must keep hearing them rather than the operation that stopped.
+  /// A [TomStorageException] passes through only when its key is one of
+  /// [passThroughErrorKeys], which is the clause that makes this safe to wrap a
+  /// whole method in without also making the caller's error handling depend on
+  /// which backend the deployment configured.
+  ///
+  /// Matched on the key rather than on the type. The type is what every
+  /// backend's own failures are raised as too, so catching it let
+  /// `storage.s3.request_failed` and its siblings past the translation the
+  /// module exists to perform — for the same fault, a caller heard one key on
+  /// S3 and another on the directory backend.
   ///
   /// Private, because the wrapping is now the contract's own job rather than
   /// something a backend opts into: a helper a backend *may* call is a helper a
@@ -572,8 +616,9 @@ abstract class TomBlobStore {
   ) async {
     try {
       return await body();
-    } on TomStorageException {
-      rethrow;
+    } on TomStorageException catch (error, stack) {
+      if (passThroughErrorKeys.contains(error.key)) rethrow;
+      throw _asStorageException(operation, key, error, stack);
     } on Object catch (error, stack) {
       throw _asStorageException(operation, key, error, stack);
     }

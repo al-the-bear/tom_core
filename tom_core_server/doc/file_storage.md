@@ -419,11 +419,36 @@ database backend's `storage.blob.missing_chunk` for a row whose parts are
 incomplete.
 
 The module's own answers pass through untranslated, because callers branch on
-them — `storage.blob.not_found` (which `TomBlobExportStore` re-reports as
-`export.store.not_found` and the file endpoint turns into a 404),
-`storage.blob.invalid_key`, and `storage.blob.missing_chunk`. Everything else is
-wrapped, and the original fault kept as `rootException`: the caller needs a key
-it can branch on, whoever reads the log needs the `errno` that explains it.
+them. They are a closed list, `TomBlobStore.passThroughErrorKeys`:
+
+| Key | Why it is an answer rather than a failure |
+| --- | ---------------------------------------- |
+| `storage.blob.not_found` | The key holds nothing. `TomBlobExportStore` re-reports it as `export.store.not_found`; the file endpoint turns it into a 404. |
+| `storage.blob.invalid_key` | The key is not a key — the caller's mistake, and the same one on every backend. |
+| `storage.blob.invalid_key_prefix` | The key is fine and the deployment's configured prefix leaves no room for it. A different fault from the one above, calling for a different action. |
+| `storage.blob.missing_chunk` | The blob is there and its parts do not add up. |
+
+Everything else is wrapped, and the original fault kept as `rootException`: the
+caller needs a key it can branch on, whoever reads the log needs the `errno`
+that explains it.
+
+**Everything else includes a backend's own storage exceptions.** The match is on
+the key, not on the type, and that distinction is the whole of the guarantee.
+`TomStorageException` is also what a backend raises its *own* failures as, so a
+translation that let the type through let `storage.s3.request_failed` and its
+siblings through with it — and a caller switching on `error.key` then saw one
+key when the deployment was configured with S3 and another when it was
+configured with the directory backend, for the same fault. The S3 status and
+code are not lost: they are on the `rootException`, where an operator reading
+the log still has them and a caller is no longer written against them.
+
+The list is closed by a rule rather than by taste. Every key on it is raised by
+code every backend shares, or enforces a limit every backend is held to —
+`invalid_key_prefix` is raised inside the S3 backend as well as by
+`validateKeyPrefix`, and belongs here because the limit it enforces is
+`TomBlobStore.maxKeyLength` rather than S3's own, which is twice as large. A
+backend cannot add to the list, which is what makes the guarantee hold for a
+backend an application writes later.
 
 One of the four keys is unreachable on one backend, and it is worth knowing
 which. The directory backend's `exists` never reports
@@ -458,7 +483,9 @@ infrastructure detail, both of them travelling inside an error a server may
 surface.
 
 Backends do report where a request actually went, under names that say so. The
-S3 backend's `storage.s3.request_failed` carries:
+S3 backend's `storage.s3.request_failed` — which a caller meets as the
+`rootException` of one of the four operation keys, never as its own key —
+carries:
 
 | Parameter | Meaning |
 | --------- | ------- |
