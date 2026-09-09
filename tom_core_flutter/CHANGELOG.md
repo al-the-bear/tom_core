@@ -2,6 +2,28 @@
 
 ### Fixed
 
+- **A declared setting read the configuration twice (tcincb164).** `_declare`
+  tested `exists(key)` and then read `getObject(key)`, which are the same
+  resolver — `_resolveObjectOrNull` — so every declared setting walked the
+  nested map twice to answer one question, at start-up, for every application.
+  It is now one `getObjectOrNull`.
+
+  The cost was small; the trap was not. `getObject` answers a miss with *the key
+  you asked for*, so the `exists` guard was the only thing standing between a
+  missing key and a `String` setting holding the literal `'client.server.url'` —
+  a value that coerces cleanly and is stored as though it had been configured. A
+  silent wrong value, not a failure. `getObjectOrNull` cannot produce it, so the
+  safe path no longer depends on remembering the guard, which is what the
+  kernel's own dartdoc on `getObject` has been advising.
+
+  Behaviour is unchanged, including for a key present with no value: both
+  accessors resolve through the same walk, so it reads as absent either way and
+  still takes the declared default. `configuration_test.dart` gains the
+  regression the guard was silently providing, against a fixture declaring one
+  `String` setting and nothing else — with several types declared together an
+  `int` throws a type mismatch first, so the assertion about the value of this
+  one is never reached and the test fails for the wrong reason.
+
 - **The README's `## Status` block stated a test count (tcincb153).** "285
   tests — 8 module suites" was a claim nothing checked, and every added test
   would have been a README edit nobody makes. The block now describes what the

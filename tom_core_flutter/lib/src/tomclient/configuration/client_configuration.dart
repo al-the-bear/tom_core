@@ -293,9 +293,25 @@ abstract class TomBaseClientConfiguration extends TomObservable
         parameters: {'key': key},
       );
     }
+    // One lookup, not two. `exists` and `getObjectOrNull` are the same
+    // resolver — `_resolveObjectOrNull` — so the guarded pair walked the nested
+    // map twice per declared setting to answer one question, and every
+    // application declares its settings at start-up.
+    //
+    // The guard was also the only thing standing between a missing key and a
+    // wrong value. `getObject` answers a miss with *the key you asked for*, so
+    // an unguarded `getObject` gives a `String` setting the literal
+    // `'client.server.url'` — which coerces cleanly and is stored as though it
+    // had been configured. `getObjectOrNull` cannot do that: a miss is `null`
+    // and falls to the declared default, so the safe path no longer depends on
+    // remembering the guard.
+    //
+    // A key configured with no value reads as absent on both, since both go
+    // through the same resolver, and so still takes the declared default.
     final config = TomConfigResourceProvider.getAppConfig();
-    final baseline = config.exists(key)
-        ? coerceSettingValue<T>(key, config.getObject(key))
+    final configured = config.getObjectOrNull(key);
+    final baseline = configured != null
+        ? coerceSettingValue<T>(key, configured)
         : declaredDefault;
     final setting = TomSetting<T>._(key, declaredDefault, baseline);
     // A setting declared after load() must still see its persisted override —

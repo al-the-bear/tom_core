@@ -33,6 +33,23 @@ class _TestConfiguration extends TomBaseClientConfiguration {
   }
 }
 
+/// A holder with a single `String` setting and no other type.
+///
+/// The echo a missing key can produce is a `String`, so `String` is the one
+/// declared type that swallows it silently — an `int` or a `bool` setting
+/// throws a type mismatch instead, and throws *first* when several settings are
+/// declared together. A fixture that mixes types therefore fails the wrong way:
+/// it reports a mismatch on some other key and never reaches the assertion
+/// about the value of this one.
+class _StringOnlyConfiguration extends TomBaseClientConfiguration {
+  late final TomSetting<String> serverUrl;
+
+  @override
+  void declareSettings() {
+    serverUrl = stringSetting('client.server.url', 'https://default.example');
+  }
+}
+
 /// A holder that declares nothing up front, so a test can declare a setting
 /// *after* [TomBaseClientConfiguration.load] has run.
 class _LateConfiguration extends TomBaseClientConfiguration {
@@ -74,6 +91,29 @@ void main() {
       expect(~config.ratio, 1.0);
       expect(~config.darkMode, isFalse);
       expect(config.hasOverrides, isFalse);
+    });
+
+    test('an absent key does not resolve to the key string itself', () {
+      // The sharp edge under the fallback above, stated so it cannot be
+      // weakened by accident. `TomConfigResourceProvider.getObject` answers a
+      // miss with **the key you asked for**, so a lookup that reaches it
+      // unguarded hands a `String` setting the literal `'client.server.url'` —
+      // which coerces cleanly and is stored as though somebody had configured
+      // it. A silent wrong value, not a failure.
+      //
+      // The declared default is asserted a line above; what this adds is the
+      // name of the thing that must not appear, because "equals the default"
+      // and "is not the key" fail together today and would come apart the
+      // moment a default were ever changed to match a key.
+      final config = _StringOnlyConfiguration();
+      expect(~config.serverUrl, 'https://default.example');
+      expect(
+        ~config.serverUrl,
+        isNot('client.server.url'),
+        reason:
+            'the key echoed back as its own value is the miss behaviour of '
+            '`getObject`; the resolution must not be able to reach it',
+      );
     });
 
     test('a shipped config-resources value beats the declared default', () {
