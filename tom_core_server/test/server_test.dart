@@ -19,7 +19,7 @@ import 'package:test/test.dart';
 ///
 ///  * the one property of `start()` that a running server cannot demonstrate
 ///    is asserted from the *source*, by
-///    `test/api_reference_coverage_test.dart`'s group
+///    `test/api_reference_coverage_test.dart`, in the group named
 ///    `start() logs the deployment in before it binds`. It requires the server
 ///    self-login to precede the bind, because a socket accepting requests
 ///    before the deployment principal is installed serves them with user grants

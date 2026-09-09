@@ -3509,24 +3509,71 @@ List<List<int>> _paragraphsOf(
   return paragraphs;
 }
 
+/// Every surface whose prose cites a suite, a script or a test group.
+///
+/// The guides were the first, and for a long time the only one — but a pointer
+/// rots wherever it is written, and the package writes them in five places. The
+/// module readmes and the api summaries carry them, the suite headers carry
+/// them by design (a header that says "not tested here" owes the reader the
+/// place it is), and an example's dartdoc names the suite that proves it runs.
+///
+/// A `.dart` file contributes only its comment lines. Its code is full of paths
+/// and quoted strings that are neither, and reading them would report a fixture
+/// argument as a broken citation.
+///
+/// [_selfExcludedSuite] is left out, and it is the only exclusion: this file's
+/// own fixtures spell deliberately-absent paths — `test/no_such_test.dart` is
+/// what proves the check reports one — so it cannot be its own subject.
+List<(String, List<String>)> _citingSurfaces() => [
+  ..._guides().map((guide) => ('doc/${guide.$1}', guide.$2)),
+  for (final directory in const ['doc/api_reference', 'lib', 'test', 'example'])
+    for (final entry in Directory(directory).listSync(recursive: true))
+      if (entry is File &&
+          entry.path != _selfExcludedSuite &&
+          !entry.path.endsWith('.reflection.dart'))
+        if (entry.path.endsWith('.md'))
+          (entry.path, entry.readAsLinesSync())
+        else if (entry.path.endsWith('.dart'))
+          (entry.path, _commentLinesOf(entry.readAsLinesSync())),
+]..sort((a, b) => a.$1.compareTo(b.$1));
+
+/// [lines] with every non-comment line blanked, so line numbers still line up.
+List<String> _commentLinesOf(List<String> lines) => [
+  for (final line in lines)
+    if (line.trimLeft().startsWith('//')) line else '',
+];
+
+/// The sibling packages a citation may be relative to, as directory paths.
+///
+/// A pointer written `test/ops_anchor_test.dart` in a paragraph that also says
+/// `advanced_ops_server` is a path relative to *that* package, and naming the
+/// package is what makes it unambiguous. Resolving it there rather than
+/// excusing it is the difference this check turns on: an excused reference is
+/// one nothing reads, which is the state every rotted pointer was already in.
+Map<String, String> _siblingPackages() => {
+  for (final entry in Directory('..').listSync())
+    if (entry is Directory) entry.path.split('/').last: entry.path,
+  for (final entry in Directory('../tom_core_samples').listSync())
+    if (entry is Directory) entry.path.split('/').last: entry.path,
+};
+
 /// A test suite or tool script a guide names, and where it names it.
 typedef _NamedArtifact = ({String file, int line, String path});
 
-/// A path to a suite or a script, as a guide writes one.
+/// A path to a suite, a shared test source or a script, as a guide writes one.
 ///
 /// Matched anywhere on the line rather than only inside backticks, because the
 /// reference that matters most is the runnable one — `tool/run_db_tests.sh` in
 /// a fenced block is the line a reader will actually copy.
-final RegExp _artifactReference = RegExp(r'[\w./-]+(?:_test\.dart|\.sh)\b');
-
-/// A sibling sample package, whose suites live outside this package.
 ///
-/// `doc/audit.md`, `doc/export.md`, `doc/messaging.md` and `doc/resources.md`
-/// each point at a worked example in `advanced_ops_server`, writing its suite
-/// as `test/ops_anchor_test.dart` — a path relative to *that* package. Naming
-/// the package is what makes the path unambiguous, so naming it is what excuses
-/// the reference from resolving here.
-final RegExp _samplePackage = RegExp(r'advanced_\w+');
+/// Any `.dart` file under a `test/` directory counts, not only a `_test.dart`.
+/// A suite is not the only thing a document points at:
+/// `test/contracts/scheduling_contract.dart` is the shared contract three
+/// stores are held to and two documents name it, and it went unread for as long
+/// as the pattern asked for a suite's spelling.
+final RegExp _artifactReference = RegExp(
+  r'[\w./-]*test/[\w./-]+\.dart\b|[\w./-]+(?:_test\.dart|\.sh)\b',
+);
 
 /// The suites and scripts [file] names that do not exist.
 ///
@@ -3542,21 +3589,172 @@ List<_NamedArtifact> _missingArtifacts(String file, List<String> lines) {
   final missing = <_NamedArtifact>[];
   for (final paragraph in _paragraphsOf(lines, includeFenced: true)) {
     final context = paragraph.map((i) => lines[i]).join(' ');
-    final borrowed = _samplePackage.hasMatch(context);
     for (final i in paragraph) {
       for (final match in _artifactReference.allMatches(lines[i])) {
         final path = match.group(0)!;
-        // `test/x_test.dart` as written, or the bare `x_test.dart` the prose
-        // uses once the surrounding sentence has already said where it lives.
-        if (File(path).existsSync()) continue;
-        if (File('test/${path.split('/').last}').existsSync()) continue;
-        if (borrowed) continue;
+        // No exemption for naming a sibling package. Naming one used to *excuse*
+        // the reference; it now *resolves* it, which is the difference between
+        // a pointer nothing reads and one that fails when the suite moves.
+        if (_resolveArtifact(path, context) != null) continue;
         missing.add((file: file, line: i + 1, path: path));
       }
     }
   }
   return missing;
 }
+
+/// [path] as a file, resolved the four ways a citation is legitimately written.
+///
+/// As written; as a bare basename the prose uses once the sentence has said
+/// where it lives; anywhere under this package, which is how
+/// `run_cluster_demo.sh` resolves from a paragraph that calls it by name; and
+/// under whichever sibling package [context] names, which is how
+/// `test/ops_anchor_test.dart` resolves against `advanced_ops_server` and
+/// `test/contracts/scheduling_contract.dart` against `tom_core_kernel`.
+///
+/// The last is the one worth having. Both of those were previously *excused* —
+/// the paragraph named a package, so the reference was waved through without
+/// being read — and an excused pointer is exactly as unchecked as an unwritten
+/// rule. Resolving it makes the sentence load-bearing: move the suite inside
+/// that package and this fails.
+File? _resolveArtifact(String path, String context) {
+  final basename = path.split('/').last;
+  for (final candidate in [File(path), File('test/$basename')]) {
+    if (candidate.existsSync()) return candidate;
+  }
+  for (final root in const ['lib', 'test', 'example', 'tool', 'doc']) {
+    // The package's own tree, and only the parts of it this package authors.
+    // A recursive walk of `.` reaches `.dart_tool`, which holds copies of
+    // whatever the resolver pulled in — and a citation resolving against a
+    // dependency's copy of a file is a check that passes on anything.
+    final directory = Directory(root);
+    if (!directory.existsSync()) continue;
+    for (final entry in directory.listSync(recursive: true)) {
+      if (entry is File && entry.path.endsWith('/$basename')) return entry;
+    }
+  }
+  final siblings = _siblingPackages();
+  for (final name in siblings.keys) {
+    // The package is named either in the sentence around the path or as the
+    // path's own first segment. Both spellings occur, and the qualified one is
+    // the better of the two — it needs no sentence to disambiguate it — so the
+    // prefix is stripped rather than the reference being read as a sub-path of
+    // the sibling.
+    final qualified = path.startsWith('$name/');
+    if (!qualified && !context.contains(name)) continue;
+    for (final candidate in [
+      if (qualified)
+        File('${siblings[name]}/${path.substring(name.length + 1)}'),
+      File('${siblings[name]}/$path'),
+      File('${siblings[name]}/test/$basename'),
+    ]) {
+      if (candidate.existsSync()) return candidate;
+    }
+  }
+  return null;
+}
+
+/// A test group a document or a header cites, written the one way that can be
+/// read mechanically.
+///
+/// `group named `X`` and nothing else. The looser spellings the corpus reached
+/// for cannot be told from ordinary prose: `groups `X` exposes` names three
+/// *getters* in `api_summary_audit.md`, `their `title` group value` is a SQL
+/// `GROUP BY` column, and ``object_persistence` group classes under a topic`
+/// uses the word as a verb. Measured over every surface, the loose forms
+/// produced twenty citations of which seven were none.
+///
+/// So the citation gets a spelling of its own, and the corpus was made to
+/// conform. That is the cheaper half of the trade: a convention costs one word
+/// per citation, an allowlist of exempt phrases costs a maintainer forever and
+/// is the quarantine this repository refuses elsewhere.
+final RegExp _groupCitation = RegExp(
+  r'groups? named\s+((?:`[^`]+`(?:,\s*|\s+and\s+)?)+)',
+);
+
+/// The backticked names inside a [_groupCitation] match.
+final RegExp _citedName = RegExp(r'`([^`]+)`');
+
+/// Every `group('…')` declared in [file], for the literal case.
+///
+/// A group whose name is composed at runtime is invisible here, and that is a
+/// stated limit rather than an oversight: a citation cannot name such a group
+/// either, so a pointer that resolves to one was never writable.
+Set<String> _declaredGroups(File file) {
+  final source = file.readAsStringSync();
+  return {
+    for (final match in RegExp(
+      r"""group\(\s*'((?:[^'\\]|\\.)*)'""",
+    ).allMatches(source))
+      match.group(1)!.replaceAll(r"\'", "'"),
+    for (final match in RegExp(r'group\(\s*"([^"]*)"').allMatches(source))
+      match.group(1)!,
+  };
+}
+
+/// The group citations in [file] that name no group in the suite they point at.
+///
+/// The suite is the one named in the same paragraph — the citation idiom is
+/// "asserted in `X_test.dart`, by the group named `G`" — and when a paragraph
+/// names none, every suite this package and its siblings declare is searched,
+/// because a citation that says only which group still says something checkable.
+///
+/// Groups are cited by name rather than by line number because a line number
+/// rots silently while the file around it is edited: the pointer that started
+/// this had drifted some seven hundred lines. A name only rots when somebody
+/// renames the group, which is when this fails and puts them in front of the
+/// prose.
+List<_NamedArtifact> _missingGroups(String file, List<String> lines) {
+  final missing = <_NamedArtifact>[];
+  for (final paragraph in _paragraphsOf(lines, includeFenced: true)) {
+    final context = paragraph
+        .map((i) => lines[i].replaceFirst(RegExp(r'^\s*///?\s?'), ''))
+        .join(' ');
+    if (!_groupCitation.hasMatch(context)) continue;
+
+    final suites = <File>{
+      for (final match in _artifactReference.allMatches(context))
+        if (match.group(0)!.endsWith('_test.dart'))
+          if (_resolveArtifact(match.group(0)!, context) case final suite?)
+            suite,
+    };
+    final declared = <String>{
+      for (final suite in suites.isEmpty ? _everySuite() : suites)
+        ..._declaredGroups(suite),
+    };
+
+    for (final citation in _groupCitation.allMatches(context)) {
+      for (final name in _citedName.allMatches(citation.group(1)!)) {
+        if (declared.contains(name.group(1))) continue;
+        missing.add((
+          file: file,
+          line: paragraph.first + 1,
+          path: '`${name.group(1)}`',
+        ));
+      }
+    }
+  }
+  return missing;
+}
+
+/// Every suite in this package and in the siblings a citation may point at.
+///
+/// Read once: the fallback searches all of them, and re-reading several hundred
+/// files per paragraph would be the slowest thing in this suite.
+final List<File> _everySuiteCache = [
+  for (final root in [
+    Directory('test'),
+    ...(_siblingPackages().values.map(Directory.new)),
+  ])
+    if (root.existsSync())
+      for (final entry in root.listSync(recursive: true))
+        if (entry is File &&
+            entry.path.endsWith('_test.dart') &&
+            !entry.path.endsWith('.reflection.dart'))
+          entry,
+];
+
+List<File> _everySuite() => _everySuiteCache;
 
 /// How a guide says a check needs a provisioned server.
 ///
@@ -6457,7 +6655,7 @@ class After {}
   group('a guide names the suite that covers what it describes', () {
     test('every suite and script a guide names exists', () {
       final missing = [
-        for (final (name, lines) in _guides())
+        for (final (name, lines) in _citingSurfaces())
           ..._missingArtifacts(name, lines),
       ];
       expect(
@@ -6473,17 +6671,85 @@ class After {}
       );
     });
 
+    test('every group a document or a header cites still exists', () {
+      final missing = [
+        for (final (name, lines) in _citingSurfaces())
+          ..._missingGroups(name, lines),
+      ];
+      expect(
+        missing.map((a) => '${a.file}:${a.line} ${a.path}'),
+        isEmpty,
+        reason:
+            'these citations name a group no suite declares. A group name is '
+            'what a coverage pointer cites instead of a line number, because a '
+            'line number rots while the file around it is edited and says '
+            'nothing when it does. That trade is only safe while something '
+            'reads the name.',
+      );
+    });
+
+    test('a group citation is read, and read strictly', () {
+      // Both directions. The corpus writes these a dozen-odd times, so an
+      // expression matching none would leave the check above green over
+      // nothing — and one matching loosely would report SQL.
+      // Counted over paragraphs, not lines: these citations wrap, and the
+      // check itself flattens before matching. A per-line count would report
+      // none and prove nothing about the sweep that does the work.
+      final cited = [
+        for (final (_, lines) in _citingSurfaces())
+          for (final paragraph in _paragraphsOf(lines, includeFenced: true))
+            ..._groupCitation.allMatches(
+              paragraph
+                  .map((i) => lines[i].replaceFirst(RegExp(r'^\s*///?\s?'), ''))
+                  .join(' '),
+            ),
+      ];
+      expect(cited, hasLength(greaterThan(5)));
+
+      expect(
+        _groupCitation.hasMatch('by the group named `healthcheck GET /health`'),
+        isTrue,
+      );
+      expect(
+        _groupCitation.hasMatch('keyed by their `title` group value'),
+        isFalse,
+        reason: 'a SQL GROUP BY column is not a test group',
+      );
+      expect(
+        _groupCitation.hasMatch('the three groups `TomX` exposes'),
+        isFalse,
+        reason: 'three getters are not three test groups',
+      );
+    });
+
+    test('a citation naming a group that does not exist is reported', () {
+      expect(
+        _missingGroups('synthetic.md', const [
+          'Asserted in `test/healthcheck_test.dart`, by the group named',
+          '`no such group at all`.',
+        ]).map((a) => a.path),
+        ['`no such group at all`'],
+      );
+      expect(
+        _missingGroups('synthetic.md', const [
+          'Asserted in `test/endpoints_pipeline_test.dart`, by the group named',
+          '`healthcheck GET /health route`.',
+        ]),
+        isEmpty,
+      );
+    });
+
     test('the sweep is looking at the references it claims to check', () {
       // Emptiness is also what a regex that matches nothing produces. The
       // guides really do name their suites — thirty-odd times — and that is
       // the fact this check stands on.
       final found = [
-        for (final (_, lines) in _guides())
+        for (final (_, lines) in _citingSurfaces())
           for (final line in lines) ..._artifactReference.allMatches(line),
       ];
       expect(
         found.length,
-        greaterThan(25),
+        greaterThan(200),
         reason:
             'the guides attribute their coverage by filename; if this '
             'drops, the check above is asserting that nothing matches nothing',

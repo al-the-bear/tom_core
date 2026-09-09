@@ -19,13 +19,13 @@ import 'fixtures/scripted_datasource.dart';
 ///    `query_sentence_negation_test.dart`,
 ///    `query_sentence_string_literal_test.dart` and
 ///    `query_sentence_rejection_test.dart`, and its grouped form by
-///    `grouped_query_test.dart`'s `group query sentence` group;
+///    `grouped_query_test.dart`, in the group named `group query sentence`;
 ///  * the repositories by `test/crud_repository_exceptions_test.dart` (every
 ///    failure a repository reports, by key) and
 ///    `crud_repository_delete_counts_test.dart`;
 ///  * the round trip against a real MariaDB by
-///    `test/object_persistence_db_test.dart`'s
-///    `FixtureTaskRepository (DB-backed CRUD)` group, which is
+///    `test/object_persistence_db_test.dart`, in the group named
+///    `FixtureTaskRepository (DB-backed CRUD)`, which is
 ///    `@Tags(['db'])` and self-skips without one — `tool/run_db_tests.sh`
 ///    starts the database those suites need.
 ///

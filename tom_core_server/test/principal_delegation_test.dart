@@ -46,8 +46,8 @@ TomPrincipalResourceGrant _grant(
 
 /// An [InMemoryPrincipalResourceGrantStore] that counts its reads, so a test can
 /// assert how many times resolution went to the store rather than only what it
-/// resolved. Modelled on the `_CountingGrantStore` the `per-request caching`
-/// group in `resource_data_scope_test.dart` counts [TomResourceDataScope]
+/// resolved. Modelled on the `_CountingGrantStore` the group named
+/// `per-request caching` in `resource_data_scope_test.dart` counts [TomResourceDataScope]
 /// resolutions with.
 class _CountingGrantStore implements PrincipalResourceGrantStore {
   final List<TomPrincipalResourceGrant> grants;

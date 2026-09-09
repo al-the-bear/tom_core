@@ -13,6 +13,54 @@
 
 ### Fixed
 
+- **A documented test pointer was only checked in the guides, and only if it
+  was spelled as a suite (tcincb148).** `a guide names the suite that covers
+  what it describes` swept `doc/*.md` and matched `*_test.dart` or `*.sh`. The
+  package writes pointers in five places and cites more than suites, so most of
+  them were unread: 434 citations across the guides, the api summaries, the
+  module readmes, the suite headers and the example dartdoc, of which the sweep
+  saw 145.
+
+  All five surfaces are swept now, `.dart` files by their comment lines only —
+  code is full of paths that are not citations. The pattern also reads any
+  `.dart` under a `test/` directory, not only a suite:
+  `test/contracts/scheduling_contract.dart` is the shared contract three stores
+  are held to, two documents name it, and it went unread for as long as the
+  pattern asked for a suite's spelling.
+
+  **Naming a sibling package now resolves a reference instead of excusing it.**
+  `test/ops_anchor_test.dart` in a paragraph that says `advanced_ops_server` was
+  waved through unread — an excused pointer is exactly as unchecked as an
+  unwritten rule. It is resolved against that package now, in either spelling
+  (the package named in the sentence, or as the path's own first segment), and
+  the exemption is deleted. One citation was conformed to make this work:
+  `file_endpoint_test.dart` said "the kernel's own", which named no directory.
+
+  A flaw found while proving it: the "anywhere under this package" fallback
+  walked `.` recursively, which reaches `.dart_tool` and its copies of every
+  dependency — so a citation could resolve against a package this repository
+  does not author. It walks `lib`, `test`, `example`, `tool` and `doc` now.
+
+- **A cited test *group* was checked by nothing (tcincb148).** A coverage
+  pointer names the group rather than a line number, because a line number rots
+  silently while the file around it is edited — the pointer that started this
+  had drifted some seven hundred lines. That trade is only safe if something
+  reads the name, and nothing did.
+
+  Every `group named `X`` citation is now resolved against the suite named in
+  the same paragraph. The spelling is the guard: measured over every surface,
+  the looser forms produced twenty citations of which seven were not groups at
+  all — `groups `X` exposes` names three getters, `their `title` group value` is
+  a SQL `GROUP BY` column, and ``object_persistence` group classes` uses the
+  word as a verb. So the citation got one spelling and the corpus was made to
+  conform, in nine places. A convention costs one word per citation; the
+  alternative is a list of exempt phrases, which is the quarantine this
+  repository refuses elsewhere.
+
+  8 new tests (509 → 517), verified by mutation: a readme naming a suite that
+  does not exist, a header citing a renamed group, a cross-package pointer
+  losing its package name in either direction, and the shared contract renamed.
+
 - **Three more suite headers deferred coverage to a document and to an
   integration suite this package does not have (tcincb147).** The template —
   "covered by `doc/<module>.md` and integration tests, not here" — was in

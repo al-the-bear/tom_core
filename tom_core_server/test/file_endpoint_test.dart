@@ -243,8 +243,9 @@ class _MemoryFileRepository
 ///
 /// The kernel's default factory delegates to `TomPlatformUtils.current`, whose
 /// fallback implementation has no client — a Flutter or server host installs a
-/// real one. A test is its own host, so it installs one too. (The kernel's own
-/// `file_transfer_test.dart` does exactly this.)
+/// real one. A test is its own host, so it installs one too.
+/// (`tom_core_kernel`'s own `file_transfer_test.dart` does exactly this — the
+/// package is named by its directory so the pointer resolves against it.)
 class _TestClientFactory extends TomHttpClientFactory {
   @override
   Client getClient() => Client();

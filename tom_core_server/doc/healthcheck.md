@@ -42,7 +42,8 @@ traffic does not flood the logs. Like every endpoint it is mounted by the
 endpoints pipeline (see `doc/endpoints.md`) when the server starts.
 
 All three of those choices are asserted against the mounted route, in
-`test/endpoints_pipeline_test.dart`'s group `healthcheck GET /health route`;
+`test/endpoints_pipeline_test.dart`, in the group named
+`healthcheck GET /health route`;
 deleting any one of the three fails that group. It is also where the route's
 answer to a swapped-in analyzer is pinned. `test/healthcheck_test.dart` covers
 the analyzer contract itself, away from the route.
@@ -144,7 +145,8 @@ single assignment applies to every request.
 whichever analyzer is installed, and the declared route. The *mounted* route is
 a different claim — it is produced by the reflection-based endpoints pipeline —
 so it is asserted where that pipeline runs, in
-`test/endpoints_pipeline_test.dart`'s group `healthcheck GET /health route`.
+`test/endpoints_pipeline_test.dart`, in the group named
+`healthcheck GET /health route`.
 
 ```bash
 dart run example/healthcheck/healthcheck_example.dart

@@ -258,7 +258,7 @@ commit into a rollback, `registerParticipant`'s all-or-nothing enlistment —
 including the two failures a participant can present, a `startTransaction` that
 returns `false` and one that throws — scope isolation through
 `runInTransactionScope`, ambient enlistment, and `TomTransactionException`. It
-also holds the group `The example runs green`, which spawns the example and
+also holds the group named `The example runs green`, which spawns the example and
 asserts its transcript, and a check that this guide and the contract agree about
 there being no prepare phase.
 

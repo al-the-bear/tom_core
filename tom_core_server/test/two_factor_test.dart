@@ -1120,7 +1120,7 @@ void main() {
   });
 
   // The RFC vectors for the derivation itself live with the derivation, in
-  // `tom_core_kernel/test/security_test.dart` (group `TomTotp`). What is tested
+  // `tom_core_kernel/test/security_test.dart` (the group named `TomTotp`). What is tested
   // here is only what this adaptor adds on top: policy — the secret source, the
   // accepted skew window, the digit width, and the failure modes those produce.
   group('TomTotp2FAService adaptor', () {
