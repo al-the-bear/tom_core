@@ -2282,6 +2282,112 @@ fileStores:
       expect(TomBlobStoreInfo.stores, isEmpty);
       expect(TomBlobStoreInfo.defaultStoreName, isNull);
     });
+
+    group('an entry exists before its store does', () {
+      // Every configured entry passes through the interval between
+      // construction and `open`, and the two things that read the store during
+      // it used to answer with a `LateError` -- which names the private field
+      // and not the mistake.
+      test('toString renders rather than throwing', () {
+        final entry = TomBlobStoreInfo('files', <String, dynamic>{
+          'type': 'directory',
+        });
+        expect(entry.toString(), 'TomBlobStoreInfo files directory <unopened>');
+      });
+
+      test('the rendering keeps its shape once the store is built', () async {
+        // Same three fields either way, with the store in the third place
+        // rather than the placeholder. A `toString` that dropped the field
+        // when there was nothing to put in it would be the *short* form in
+        // exactly the case a reader is trying to understand, and one a log
+        // filter would have to know about.
+        //
+        // Compared against the store's own rendering rather than counted in
+        // words: `TomMemoryBlobStore` renders as `TomMemoryBlobStore(0 blobs)`,
+        // which contains a space, so a word count measures the store's
+        // spelling and not this class's shape.
+        final entry = TomBlobStoreInfo('files', <String, dynamic>{
+          'type': 'memory',
+        });
+        await entry.open();
+        expect(
+          entry.toString(),
+          'TomBlobStoreInfo files memory ${entry.store}',
+        );
+        expect(entry.toString(), isNot(contains('<unopened>')));
+      });
+
+      test('store names the fault instead of raising a LateError', () {
+        final entry = TomBlobStoreInfo('files', <String, dynamic>{
+          'type': 'directory',
+        });
+        expect(
+          () => entry.store,
+          throwsA(
+            isA<TomStorageException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  'storage.registry.store_not_opened',
+                )
+                .having((e) => e.parameters?['store'], 'store', 'files')
+                .having((e) => e.parameters?['type'], 'type', 'directory'),
+          ),
+        );
+      });
+
+      test('isOpen answers without throwing, in both states', () async {
+        final entry = TomBlobStoreInfo('files', <String, dynamic>{
+          'type': 'memory',
+        });
+        expect(entry.isOpen, isFalse);
+        await entry.open();
+        expect(entry.isOpen, isTrue);
+      });
+
+      test('a failed open leaves an entry that still renders', () async {
+        // The way an unopened entry is most often met: not held deliberately,
+        // but left behind by the `open` whose failure is being diagnosed. The
+        // rendering is what an error report interpolates, so it is the worst
+        // place for a throw.
+        final entry = TomBlobStoreInfo('files', <String, dynamic>{
+          'type': 'directory',
+        });
+        await expectLater(
+          entry.open(),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.registry.missing_setting',
+            ),
+          ),
+        );
+        expect(entry.isOpen, isFalse);
+        expect(entry.toString(), 'TomBlobStoreInfo files directory <unopened>');
+        expect(
+          () => entry.store,
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.registry.store_not_opened',
+            ),
+          ),
+        );
+      });
+
+      test('a failed open registers nothing', () async {
+        // `stores[name] = this` runs after the factory, so the registry never
+        // holds an entry whose `store` would throw -- which is what lets
+        // `closeAll` read `info.store` directly.
+        final entry = TomBlobStoreInfo('files', <String, dynamic>{
+          'type': 'nosuchbackend',
+        });
+        await expectLater(entry.open(), throwsA(isA<TomStorageException>()));
+        expect(TomBlobStoreInfo.stores, isNot(contains('files')));
+      });
+    });
   });
 
   group('the defaults are declared once', () {

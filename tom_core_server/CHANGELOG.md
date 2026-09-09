@@ -13,6 +13,32 @@
 
 ### Fixed
 
+- **`toString()` on an unopened `TomBlobStoreInfo` threw
+  `LateInitializationError` (tcincb142).** `_store` was a `late` field with no
+  initializer and `toString()` interpolated it directly, so an entry that had
+  been constructed but not opened could not be rendered at all — and neither
+  could `store` be read. Every configured entry passes through that interval,
+  and an `open()` that throws (an unregistered backend, a missing setting)
+  leaves one behind, so the two places it bites are a debugger's variable pane
+  and the error report about the very failure being diagnosed. A `toString` that
+  throws is a hazard out of all proportion to its purpose.
+
+  The field is nullable now rather than `late`, because the entry genuinely
+  spends an interval without a store and a `LateError` names the private field
+  instead of the mistake. `toString()` renders `TomBlobStoreInfo files directory
+  <unopened>` — the same three segments either way, since a rendering that
+  dropped the field would be the short form in exactly the case a reader is
+  trying to understand. `store` raises the named
+  `storage.registry.store_not_opened`, carrying the store's name and its
+  configured type, and the new `isOpen` asks the same question without throwing.
+
+  Six tests in `file_storage_test.dart` (102 → 108), including the way an
+  unopened entry is actually met: after a failed `open()`, where the entry must
+  still render, still refuse `store` by name, and still be absent from the
+  registry. Verified by mutation — restoring the raw interpolation, replacing
+  the guard with `_store!`, dropping the exception's parameters, and registering
+  the entry before building its store each fail.
+
 - **The checked-in reflection artifacts were the one file nothing read
   (tcincb140).** `analysis_options.yaml` excludes `**/*.reflection.dart`, for a
   good reason — a mirror reflects whatever its source declares, including

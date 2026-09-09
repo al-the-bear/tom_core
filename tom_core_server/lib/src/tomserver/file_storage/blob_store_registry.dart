@@ -68,10 +68,40 @@ class TomBlobStoreInfo {
   /// This entry's own builder, when it has one; see the constructor.
   final TomBlobStoreFactory? _factory;
 
-  late TomBlobStore _store;
+  /// The built store, or `null` while the entry is unopened.
+  ///
+  /// Nullable rather than `late`, because an entry spends a real interval
+  /// without one and two things read it during that interval. A `late` field
+  /// answers both with a `LateError`, which names the field and not the
+  /// mistake — and one of the two is [toString], where throwing is worst of
+  /// all: it fires in a debugger's variable pane and inside the error report
+  /// about the failed [open] that left the entry this way.
+  TomBlobStore? _store;
+
+  /// Whether [open] has built this entry's store.
+  ///
+  /// The question [store] answers by throwing, asked without throwing — which
+  /// is what a caller holding an entry of uncertain provenance needs.
+  bool get isOpen => _store != null;
 
   /// The live store.
-  TomBlobStore get store => _store;
+  ///
+  /// Throws `storage.registry.store_not_opened` when [open] has not run or did
+  /// not complete. An entry is constructed unopened and stays that way until
+  /// [open] builds its store, and an [open] that throws — an unregistered
+  /// backend, a missing setting — leaves one behind; [isOpen] answers the same
+  /// question without throwing.
+  TomBlobStore get store {
+    final built = _store;
+    if (built == null) {
+      throw TomStorageException(
+        'storage.registry.store_not_opened',
+        'This file store has not been opened yet.',
+        parameters: {'store': name, 'type': type},
+      );
+    }
+    return built;
+  }
 
   /// The backend type, from `settings['type']`.
   String get type => '${settings['type'] ?? ''}';
@@ -316,6 +346,13 @@ class TomBlobStoreInfo {
         parameters: {'store': store, 'setting': setting},
       );
 
+  /// `TomBlobStoreInfo <name> <type> <store>`, with `<unopened>` in the store's
+  /// place while the entry has none.
+  ///
+  /// The shape is constant either way. A rendering that dropped the third
+  /// segment would be shorter in exactly the case a reader is trying to
+  /// understand, and a `toString` that varies its arity is one a log filter has
+  /// to know about.
   @override
-  String toString() => 'TomBlobStoreInfo $name $type $_store';
+  String toString() => 'TomBlobStoreInfo $name $type ${_store ?? '<unopened>'}';
 }

@@ -28,6 +28,7 @@ without the second; the second is built entirely on the first.
 - [A Failure Is a Storage Error, Not the Backend's](#a-failure-is-a-storage-error-not-the-backends)
   - [`key` Is the Caller's Key, on Every Error](#key-is-the-callers-key-on-every-error)
 - [Configuration Selects the Backend](#configuration-selects-the-backend)
+  - [An Entry Exists Before Its Store Does](#an-entry-exists-before-its-store-does)
 - [File-Reference Columns](#file-reference-columns)
 - [Where the Key Comes From](#where-the-key-comes-from)
 - [Authorization Is the Column's, Not a Second Copy](#authorization-is-the-columns-not-a-second-copy)
@@ -553,6 +554,21 @@ The provided type is not itself a registered backend, and `backendTypes` does
 not list it. It names how the store arrived rather than a way to build one, and
 there is no instance in a YAML file to hand over, so a configuration naming it
 fails like any other unknown type.
+
+### An Entry Exists Before Its Store Does
+
+`TomBlobStoreInfo(name, settings)` constructs an entry; `open()` builds its
+store. Every configured entry passes through the interval between the two, and
+an `open()` that throws — an unregistered backend, a missing setting — leaves an
+entry sitting in it. Reading `store` there raises
+`storage.registry.store_not_opened`, naming the store and its configured type,
+and `isOpen` answers the same question without throwing.
+
+`toString()` renders such an entry as `TomBlobStoreInfo files directory
+<unopened>` — the shape is the same three segments either way. That matters more
+than it sounds: an unopened entry is most often seen in a debugger's variable
+pane or inside the error report about the very `open()` that failed, which is
+the worst possible moment for rendering it to be what throws.
 
 ## File-Reference Columns
 

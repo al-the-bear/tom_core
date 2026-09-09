@@ -711,7 +711,8 @@ could describe still gets an entry that can build itself.
 | -------- | ---- | ----------- |
 | `name` | `String` | The registry key / logical name of this store (final). |
 | `settings` | `Map<String, dynamic>` | The raw configuration for this store (final). |
-| `store` | `TomBlobStore` | *(getter)* The live store; available once `open` or `register` has run. |
+| `isOpen` | `bool` | *(getter)* Whether `open` has built this entry's store — the question `store` answers by throwing, asked without throwing. |
+| `store` | `TomBlobStore` | *(getter)* The live store. Throws `storage.registry.store_not_opened`, naming the store and its configured type, when `open` has not run or did not complete — an entry is constructed unopened, and an `open` that throws leaves one behind. |
 | `type` | `String` | *(getter)* The backend type, from `settings['type']` — a registered backend for a configured store, `providedType` for one handed over as an instance. |
 
 #### Methods
@@ -719,7 +720,7 @@ could describe still gets an entry that can build itself.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `open` | `Future<void> open()` | Builds this entry's store and registers it — from the entry's own factory when it has one, otherwise from the backend its `type` names. An entry always has one or the other, so `storage.registry.unknown_backend` reports a configuration naming a backend nobody registered and never an entry that cannot describe itself; `storage.registry.missing_setting` reports a built-in backend's required setting being absent. |
-| `toString` | `String toString()` | *(override)* Renders `TomBlobStoreInfo <name> <type> <store>`. |
+| `toString` | `String toString()` | *(override)* Renders `TomBlobStoreInfo <name> <type> <store>`, with `<unopened>` in the store's place while the entry has none. Three segments either way: an unopened entry is most often seen in a debugger or inside the error report about the `open` that failed, so it renders rather than throws. |
 
 ## Global Functions and Constants
 
