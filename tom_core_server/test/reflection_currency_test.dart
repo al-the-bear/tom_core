@@ -57,6 +57,18 @@ typedef _ReflectionRoot = ({
 
   /// The hand-written sources whose declarations must appear in the output.
   List<String> sources,
+
+  /// Directories walked for the same purpose, when the sources are too many to
+  /// name and adding one is not a wiring decision.
+  ///
+  /// The distinction from [sources] is which mistake the list is protecting
+  /// against. An *example* entity file has to be wired into the example root by
+  /// hand, so a glob there would hide a file that was never wired in at all —
+  /// the list is the wiring. `lib/` needs no wiring: the fixture root imports
+  /// the package barrel, so every reflected class the package exports is
+  /// already in the graph, and naming them one by one would be a second
+  /// inventory of `lib/` that goes stale on its own.
+  List<String> sourceDirectories,
 });
 
 /// The two roots configured in `build.yaml`, each with the sources a person
@@ -72,6 +84,13 @@ const List<_ReflectionRoot> _roots = [
     rootPath: 'test/fixtures/reflection_fixture.dart',
     generatedPath: 'test/fixtures/reflection_fixture.reflection.dart',
     sources: ['test/fixtures/reflection_fixture.dart'],
+    // `lib/` as well as the fixture, and this is the half that matters most.
+    // The fixture's own classes are read by tests that would fail loudly
+    // without them; the package's are read by *discovery* — the walks over
+    // `tomReflector.annotatedClasses` that find services, components,
+    // datasource drivers and scheduled jobs — and a class missing from those
+    // is a start-up failure at a deployment and silence in a suite.
+    sourceDirectories: ['lib/src/tomserver'],
   ),
   (
     rootPath: 'example/example_reflection.dart',
@@ -82,8 +101,23 @@ const List<_ReflectionRoot> _roots = [
       'example/object_persistence/object_persistence_entities.dart',
       'example/scheduling/cluster/cluster_reflection.dart',
     ],
+    sourceDirectories: [],
   ),
 ];
+
+/// Every `.dart` file [root] draws declarations from, generated files excluded.
+///
+/// An artifact restates the annotations it was built from, so reading one would
+/// make the comparison below run the generated file against itself.
+Map<String, String> _sourcesOf(_ReflectionRoot root) => {
+  for (final path in root.sources) path: _read(path),
+  for (final directory in root.sourceDirectories)
+    for (final entry in Directory(directory).listSync(recursive: true))
+      if (entry is File &&
+          entry.path.endsWith('.dart') &&
+          !entry.path.endsWith('.reflection.dart'))
+        entry.path: entry.readAsStringSync(),
+};
 
 /// The classes in [source] carrying a `@tomReflector` annotation.
 ///
@@ -168,6 +202,78 @@ Set<String> _declaredExampleTypes(String source) {
 /// whose absence from the generated file is hardest to attribute: the entity
 /// still reflects, so the failure is a null column rather than a missing class.
 ///
+/// The class annotations in [source] that bind to something other than a class.
+///
+/// The mirror image of [_reflectorClasses], and needed because that check is
+/// one-directional. It reports a class the generated file is missing — but an
+/// annotation that has come loose takes its class *out of the declared set*, so
+/// nothing is missing and nothing is reported. The class simply stops being
+/// discoverable, quietly, in both the source and the artifact.
+///
+/// That is not hypothetical. `MariaDbDatasource`'s `@tomReflector` and
+/// `@TomDatasourceDriver('mariadb')` were separated from their class by two
+/// private helpers written between them, so the `mariadb` driver left the
+/// registry and every server configured for that type would have failed at
+/// start-up with `no_driver_found`. Nothing said so: driver discovery is
+/// exercised only by a `@Tags(['db'])` suite that skips itself without a
+/// database.
+///
+/// Attribution is the same line-based run [_reflectorClasses] uses — anything
+/// that is not a further annotation, a comment or a blank line ends it — so the
+/// two agree by construction about what "attached" means. What differs is only
+/// which side of the answer is reported.
+Set<String> _looseClassAnnotations(String source) {
+  final loose = <String>{};
+  final pending = <String>[];
+  var parenDepth = 0;
+
+  for (final raw in const LineSplitter().convert(source)) {
+    final line = raw.trim();
+
+    if (parenDepth > 0) {
+      parenDepth += _netParens(line);
+      continue;
+    }
+    if (line.isEmpty || line.startsWith('//')) continue;
+
+    if (line.startsWith('@')) {
+      final name = RegExp(r'^@([A-Za-z_]\w*)').firstMatch(line)?.group(1);
+      if (name != null && _classAnnotations.contains(name)) pending.add(name);
+      parenDepth += _netParens(line);
+      continue;
+    }
+
+    if (pending.isNotEmpty) {
+      final onClass = RegExp(
+        r'^(?:abstract\s+)?(?:base\s+|final\s+|interface\s+|sealed\s+)?'
+        r'(?:class|mixin|enum)\s+\w+',
+      ).hasMatch(line);
+      if (!onClass) loose.addAll(pending.map((name) => '@$name -> $line'));
+      pending.clear();
+    }
+  }
+  return loose;
+}
+
+/// The annotations that make a **class** discoverable at runtime.
+///
+/// Each is read by a `tomReflector.annotatedClasses` walk somewhere in the
+/// framework — services and components by the endpoint pipeline and the bean
+/// locator, `TomDatasourceDriver` by datasource initialisation,
+/// `TomScheduledJob` by the scheduler. One of these on anything but a class is
+/// read by nobody.
+///
+/// `@TomEndpoint` is deliberately absent: it belongs on a *method*, so its
+/// being on something other than a class is the normal case.
+const Set<String> _classAnnotations = {
+  'tomReflector',
+  'tomService',
+  'tomComponent',
+  'TomDatasourceDriver',
+  'TomApiImplementation',
+  'TomScheduledJob',
+};
+
 /// Line-based for the same reason as [_reflectorClasses], and with one
 /// difference that matters here: a field commonly carries `@TomEntityId()` or
 /// `@TomAudited(...)` as well, in either order, so a pattern demanding the
@@ -211,7 +317,7 @@ void main() {
   group('a generated reflection file still describes its root', () {
     for (final root in _roots) {
       final generated = _read(root.generatedPath);
-      final sources = {for (final path in root.sources) path: _read(path)};
+      final sources = _sourcesOf(root);
 
       test('${root.generatedPath} captures every reflected class', () {
         final declared = <String>{};
@@ -228,7 +334,7 @@ void main() {
           declared,
           isNotEmpty,
           reason:
-              'No reflected class was found in ${root.sources}. Either the '
+              'No reflected class was found in ${sources.keys}. Either the '
               'sources moved or the annotation spelling changed; this test '
               'would then pass while checking nothing.',
         );
@@ -259,7 +365,7 @@ void main() {
           declared,
           isNotEmpty,
           reason:
-              'No @TomDbColumn field was found in ${root.sources}, so this '
+              'No @TomDbColumn field was found in ${sources.keys}, so this '
               'test is checking nothing.',
         );
 
@@ -279,6 +385,94 @@ void main() {
         );
       });
     }
+  });
+
+  test('the fixture root is read against lib/, not the fixture alone', () {
+    // Pins the scope by name. Narrowing `sourceDirectories` back to nothing
+    // leaves every assertion above passing over the fixture's own dozen
+    // classes, which is the state that let a detached `@tomReflector` in
+    // `lib/` go unreported: the check ran, and `lib/` was not in it.
+    final declared = <String>{};
+    for (final source in _sourcesOf(_roots.first).values) {
+      declared.addAll(_reflectorClasses(source));
+    }
+    expect(
+      declared,
+      containsAll(<String>['MariaDbDatasource', 'TomUserPreference']),
+      reason: 'these are declared in lib/, not in the fixture',
+    );
+    expect(declared, hasLength(greaterThan(40)));
+  });
+
+  group('no class annotation has come loose from its class', () {
+    for (final directory in const ['lib/src/tomserver', 'test/fixtures']) {
+      test('in $directory', () {
+        final loose = <String>[];
+        var scanned = 0;
+        for (final entry in Directory(directory).listSync(recursive: true)) {
+          if (entry is! File ||
+              !entry.path.endsWith('.dart') ||
+              entry.path.endsWith('.reflection.dart')) {
+            continue;
+          }
+          scanned++;
+          for (final fault in _looseClassAnnotations(
+            entry.readAsStringSync(),
+          )) {
+            loose.add('${entry.path}: $fault');
+          }
+        }
+        expect(scanned, greaterThan(0), reason: 'nothing was read');
+        expect(
+          loose,
+          isEmpty,
+          reason:
+              'a class annotation binds to whatever declaration follows it, so '
+              'anything written in between silently moves it: '
+              '${loose.join('; ')}. The class then leaves '
+              '`tomReflector.annotatedClasses`, which is where every discovery '
+              'walk in the framework looks — a start-up failure at a '
+              'deployment, and nothing at all in a suite.',
+        );
+      });
+    }
+
+    test('the extractor reports a separated annotation', () {
+      // Both directions, because a scanner that found nothing would pass the
+      // two tests above while reading the same files.
+      expect(
+        _looseClassAnnotations('''
+@tomReflector
+@TomDatasourceDriver("mariadb")
+String _helper(String s) => s;
+
+class MariaDbDatasource {}
+'''),
+        {
+          '@tomReflector -> String _helper(String s) => s;',
+          '@TomDatasourceDriver -> String _helper(String s) => s;',
+        },
+      );
+    });
+
+    test('the extractor accepts what the package actually writes', () {
+      // A wrapped argument list, a named-constructor annotation and a comment
+      // between the run and the class all occur in `lib/`, and each is a shape
+      // a stricter reading would report.
+      expect(
+        _looseClassAnnotations('''
+@tomReflector
+@TomDbTable(
+  datasource: 'main',
+  table: 'tom_thing',
+)
+// The grant rows are the row scope's own input.
+@TomDbScope.unscoped()
+abstract class TomThing {}
+'''),
+        isEmpty,
+      );
+    });
   });
 
   // The checks above are only as good as the two extractors feeding them: a

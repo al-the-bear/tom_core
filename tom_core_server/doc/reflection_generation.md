@@ -20,6 +20,7 @@ know that is to have been told.
 - [Telling Stale from Current](#telling-stale-from-current)
 - [The Fast Check and What It Cannot See](#the-fast-check-and-what-it-cannot-see)
 - [Adding Something the Generator Must Capture](#adding-something-the-generator-must-capture)
+- [An Annotation Binds to the Next Declaration](#an-annotation-binds-to-the-next-declaration)
 - [Verification](#verification)
 
 ---
@@ -173,12 +174,37 @@ deliberately carrying no `@tomReflector`.
 A fifth example entity file must also be added to `_roots` in
 `test/reflection_currency_test.dart`. That list is written out rather than
 globbed on purpose: a glob would silently cover a file that was never wired into
-`example_reflection.dart` at all, which is the mistake worth catching.
+`example_reflection.dart` at all, which is the mistake worth catching. `lib/` is
+walked rather than listed, for the opposite reason — the fixture root imports
+the package barrel, so a reflected class the package exports is already in the
+graph and needs no wiring, and naming them one by one would be a second
+inventory of `lib/` that goes stale on its own.
+
+## An Annotation Binds to the Next Declaration
+
+Whatever that turns out to be. A class annotation is not attached to a class by
+being written *near* it, so anything written in between takes it somewhere else
+— and the class then leaves `tomReflector.annotatedClasses`, which is where
+every discovery walk in the framework looks: services and components for the
+endpoint pipeline and the bean locator, `@TomDatasourceDriver` for datasource
+initialisation, `@TomScheduledJob` for the scheduler.
+
+Nothing in Dart objects. The annotation is still valid, it is simply on
+something else, so the tree compiles and analyzes clean and the class is
+discovered by nobody — which surfaces as a start-up failure at a deployment and
+as nothing at all in a suite.
+
+`test/reflection_currency_test.dart` reports it, and reports it separately from
+the staleness check above because the two are opposite halves of one question.
+The staleness check names a class the generated file is missing; a detached
+annotation takes the class *out of the declared set*, so nothing is missing and
+nothing would be said.
 
 ## Verification
 
 | Check | What it settles |
 | ----- | --------------- |
 | `tool/check_reflection_current.sh` | Exactly: the committed files match a fresh generation |
-| `test/reflection_currency_test.dart` | Fast: every recently added class and column appears |
+| `test/reflection_currency_test.dart` | Fast: every reflected class and column in `lib/`, the fixture and the example roots appears, and no class annotation has come loose from its class |
+| `../tool/check_reflection_artifacts.py` | Every name a committed artifact writes still resolves |
 | `./reflection_generation.sh` run twice | The second run is clean — generation is deterministic |

@@ -13,6 +13,42 @@
 
 ### Fixed
 
+- **The reflection-currency guard never read `lib/`, which is where the defect
+  it exists for happened (tcincb146).** `test/reflection_currency_test.dart`
+  compared the committed artifacts against the fixture and example roots only.
+  `MariaDbDatasource`'s `@tomReflector` and `@TomDatasourceDriver('mariadb')`
+  were separated from their class by two private helpers written between them,
+  so the `mariadb` driver left the runtime registry and every server configured
+  for that type would have failed at start-up — and the guard was looking
+  elsewhere. The fixture root imports the package barrel, so `lib/` is walked
+  now: 44 more reflected classes, and a test that pins the widened scope by
+  name, because narrowing it back leaves every other assertion passing over the
+  fixture's own dozen.
+
+- **A class annotation that had come loose was reported by nothing
+  (tcincb146).** The staleness check is one-directional — it names a class the
+  generated file is missing — and a detached annotation takes its class *out of
+  the declared set*, so nothing is missing and nothing is said. The class simply
+  stops being discoverable, in the source and the artifact alike, and Dart does
+  not object: the annotation is still valid, it is just on something else.
+
+  `_looseClassAnnotations` reports the other half, over `lib/` and the fixtures,
+  for the six annotations a `tomReflector.annotatedClasses` walk reads
+  (`@TomEndpoint` is excluded — it belongs on a method). It shares the
+  line-based attribution `_reflectorClasses` already used, so the two agree by
+  construction about what "attached" means, and it accepts the shapes the
+  package actually writes: a wrapped argument list, a named-constructor
+  annotation (`@TomDbScope.unscoped()`), a comment between the run and the class.
+
+  5 new tests (7 → 12). Verified by mutation on real source: reinstating the
+  detachment fails the new group while `datasources_test.dart` still passes,
+  which is the whole of why it went unseen; adding a class to `lib/` without
+  regenerating fails the widened staleness check; and narrowing the scope back
+  fails the test that pins it.
+
+  `doc/reflection_generation.md` gains the rule and its consequence, and its
+  verification table now names all four checks and what each settles.
+
 - **Nothing checked that a summary referring the reader elsewhere referred them
   somewhere (tcincb145).** `api_summary_file_storage.md` and
   `api_summary_endpoints.md` each hand the row-side file contract
