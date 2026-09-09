@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.0
+
+8 files, +1878/-142 since 0.11.2.
+
+- The gap-class set grew with the CodeSpecs parts catalogue: only the concrete
+  classes `tom_core` genuinely lacks live here, and `doc/gap_classes.md` states
+  which and why for each.
+- The barrel re-exports the additions.
+- Documented and test-covered at the quest's standard; the README's status
+  block is now derived rather than transcribed.
+
 ## 0.11.2
 
 - Docs only, no API change: the README's `## Status` block stated "95 tests,
