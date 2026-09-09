@@ -824,6 +824,42 @@ void main() {
       },
     );
 
+    test('a bean under a type it is not names both types', () {
+      // `withType` takes its key as a `Type` *value*, and Dart has no
+      // expression that decides whether an object is an instance of one, so
+      // the registration below cannot be refused where it is made. Resolution
+      // is the first point at which the relation is decidable, because there
+      // `T` is a real type argument.
+      //
+      // Reporting it as an absence would be wrong twice over: the key *is*
+      // bound, and "no bean found" sends the reader looking for a missing
+      // registration rather than the wrong one sitting in front of them. That
+      // is the failure this test exists for; a consumer in tom_core_server
+      // already type-tests what it resolves rather than trust the key.
+      TomBean.withType(TestService, AnotherService('not a TestService'));
+
+      final error = errorOfThrow(() => TomBean<TestService>().get());
+      expect(
+        error?.key,
+        equals('beanlocator.bean_access.bean_not_assignable_to_type'),
+      );
+      expect(
+        error?.defaultUserMessage,
+        allOf(contains('TestService'), contains('AnotherService')),
+        reason: 'the type asked for and the type found, both named',
+      );
+    });
+
+    test('a genuinely absent type still reports an absence', () {
+      // The control. Without it the report above could widen to cover every
+      // miss, and a missing registration would start reading as a mis-keyed
+      // bean — trading one misdirection for another.
+      expect(
+        keyOfThrow(() => TomBean<TestService>().get()),
+        equals('beanlocator.bean_access.no_bean_found_uninitialized'),
+      );
+    });
+
     test('a name and a type are two namespaces, not one lookup', () {
       // The registry is two maps — one keyed by `Type`, one by name — and
       // this is the contract that makes them two rather than an implementation

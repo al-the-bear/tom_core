@@ -31,6 +31,25 @@ anyone who was writing them.
 
 ### Fixed
 
+- **A bean registered under a type it is not is now named, not reported as
+  missing (tcopen2).** `TomBean.withType(t, bean)` takes its key as a `Type`
+  *value* and cannot check `bean` against it — Dart has no expression
+  relating a `Type` value to an instance, and reflection does not close the
+  gap, measured: `canReflectType` answers false for any class carrying no
+  `@tomReflector`, which is exactly the population the factory serves, and
+  `superinterfaces` comes back empty even for a class it can reflect. So the
+  mis-registration used to travel until some consumer happened to ask, and
+  arrived as `no_bean_found_uninitialized` — which sends the reader looking
+  for a registration that is right there.
+
+  Resolution is the first point where the relation is decidable, because
+  `TomBean<X>()` carries a real type argument. A key that is bound to something
+  failing the assignability test now raises
+  `beanlocator.bean_access.bean_not_assignable_to_type`, naming the type asked
+  for and the type found. A genuinely unbound type still reports an absence;
+  both halves are pinned, because widening either one trades one misdirection
+  for the other.
+
 - **A map or list field no strategy could set was left unset without a word
   (tcincb64).** `_setMapValue` tries five strategies and `_setListValue` four,
   each free to decline; when the last one declined, the method traced under

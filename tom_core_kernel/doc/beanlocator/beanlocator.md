@@ -323,6 +323,29 @@ TomBean.withType(MyService, MyServiceImplementation());
 final myService = TomBean<MyService>().get();
 ```
 
+**The key is not checked against the bean, and cannot be.** `MyService` here is
+a `Type` *value*, and Dart has no expression that decides whether an object is
+an instance of one — `is` needs a type, not a value of type `Type`.
+Reflection does not close the gap: `canReflectType` answers false for any class
+carrying no `@tomReflector`, which is exactly the population this registration
+form exists for.
+
+So the mismatch is reported where it becomes decidable, on resolution, because
+`TomBean<MyService>()` has a real type argument:
+
+```dart
+TomBean.withType(MyService, NotAMyService());   // accepted, unchecked
+
+TomBean<MyService>().get();
+// throws beanlocator.bean_access.bean_not_assignable_to_type:
+// "Bean registered under type MyService is a NotAMyService, which is not a
+//  MyService"
+```
+
+That is deliberately *not* reported as `no_bean_found_uninitialized`. The key is
+bound; telling the reader the bean is missing sends them looking for a
+registration that is right there.
+
 ### Substituting an Implementation
 
 Discovery only binds a key nothing has bound yet, so a registration made *before*
@@ -584,6 +607,7 @@ so the handler above is sufficient and does not need a second `catch`.
 | `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found. Raised on `get()`, never by [startup validation](#startup-validation) — a name that is not registered yet is a supported state |
 | `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean. Also raised by [startup validation](#startup-validation), since the name is registered and the mismatch is answerable at boot |
 | `beanlocator.bean_access.no_bean_found_uninitialized` | Bean type not registered. Also raised by [startup validation](#startup-validation) for a typed handle nothing bound |
+| `beanlocator.bean_access.bean_not_assignable_to_type` | The type key *is* bound, but to something that is not an instance of it — a bean registered through `withType` under a type it does not implement. Names both the type asked for and the type found |
 | `beanlocator.bean_access.more_than_one_implementation_found` | More than one registered bean satisfies the requested type. Raised on *every* `get()` — a handle that failed to resolve caches nothing, so the ambiguity never wears down into an arbitrary answer |
 | `beanlocator.bean_access.no_bean_found_unknown_error` | The type walk failed for a reason the locator does not model; the cause travels as the root exception |
 | `beanlocator.environment.no_factory_for_environment` | `installByEnvironment` has no factory for the active environment |

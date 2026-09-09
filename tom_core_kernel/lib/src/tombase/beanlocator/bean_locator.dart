@@ -70,6 +70,10 @@ import '../reflection/reflection.dart';
 /// - `beanlocator.bean_access.no_bean_found_uninitialized`: nothing is
 ///   registered for the requested type — typically a handle resolved before
 ///   [initializeBeanContext] ran, or an interface with no component
+/// - `beanlocator.bean_access.bean_not_assignable_to_type`: the requested type
+///   *is* registered, but to something that is not an instance of it. The
+///   sibling of the key above, and worth its own: a caller told the bean is
+///   missing goes looking for a registration that is right there
 /// - `beanlocator.bean_access.more_than_one_implementation_found`: two registered
 ///   beans satisfy one requested type
 /// - `beanlocator.bean_access.no_bean_found_unknown_error`: The type walk failed
@@ -368,6 +372,23 @@ class TomBean<T> {
   /// a key that is already bound alone. To substitute an implementation once the
   /// context is initialized, use [TomBean.overrideWithType]; this factory throws
   /// there rather than replacing.
+  ///
+  /// **[bean] is not checked against [t] here, and cannot be.** [t] arrives as
+  /// a `Type` *value*, and Dart has no expression that decides whether an
+  /// object is an instance of one: `is` needs a type, not a value of type
+  /// `Type`. Reflection does not close the gap either, and that is measured
+  /// rather than assumed — `tomReflector.canReflectType` answers false for
+  /// any class carrying no `@tomReflector`, which is precisely the population
+  /// this factory exists to serve, and `superinterfaces` comes back empty even
+  /// for a class it can reflect.
+  ///
+  /// So the check happens where the relation *is* decidable: resolving
+  /// `TomBean<X>()` has a real type argument, and a bean registered under `X`
+  /// that is not an `X` raises
+  /// `beanlocator.bean_access.bean_not_assignable_to_type` naming both the
+  /// type asked for and the type found — rather than reporting the bean as
+  /// missing, which sends the reader looking for a registration that is in
+  /// fact right there.
   factory TomBean.withType(Type t, Object bean) {
     if (_tomBeansByType[t] != null) {
       throw TomBeanLocatorException(
@@ -399,8 +420,10 @@ class TomBean<T> {
   ///   handles created (or first used) after the override see the replacement.
   /// - [initializeBeanContext] empties the registry, so an override must be
   ///   applied *after* the pass, and re-applied after every later pass.
-  /// - [bean] must be assignable to the type consumers ask for, or resolution
-  ///   skips it and reports the bean as missing.
+  /// - [bean] must be assignable to the type consumers ask for. It is not
+  ///   checked here — see [TomBean.withType] for why that is not possible —
+  ///   and a mismatch is raised by resolution as
+  ///   `beanlocator.bean_access.bean_not_assignable_to_type`.
   factory TomBean.overrideWithType(Type t, Object bean) {
     TomBean<T> result = TomBean();
     result._bean = bean as T;
@@ -581,6 +604,28 @@ class TomBean<T> {
     }
 
     if (matches.isEmpty) {
+      // Nothing assignable. Before reporting an absence, ask whether the key
+      // itself is bound: a bean sitting under exactly this type and failing
+      // the assignability test is not a missing registration but a wrong one,
+      // and the two send the reader looking in different places.
+      //
+      // This is also the only point at which that relation can be decided at
+      // all. [TomBean.withType] takes the key as a `Type` value, and Dart has
+      // no expression relating a `Type` to an instance — see the note there
+      // for why reflection does not close the gap either. Here `T` is a real
+      // type argument, so `is` answers, and a bean mis-keyed at registration
+      // is named here or nowhere.
+      final misKeyed = _tomBeansByType[T];
+      if (misKeyed != null) {
+        throw TomBeanLocatorException(
+          "beanlocator.bean_access.bean_not_assignable_to_type",
+          "Bean registered under type $T is a ${misKeyed.runtimeType}, "
+              "which is not a $T",
+          parameters: {"type": T, "registered": misKeyed.runtimeType},
+          autoLog: true,
+        );
+      }
+
       throw TomBeanLocatorException(
         "beanlocator.bean_access.no_bean_found_uninitialized",
         "Uninitialized bean without name for type $T",
