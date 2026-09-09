@@ -11,9 +11,32 @@ import 'fixtures/scripted_datasource.dart';
 /// the [TomQueryBuilder] DSL and the [TomOperator] tree rendering SQL through a
 /// dialect, plus the persistence annotations and `TomColumnInformation`.
 ///
-/// The repositories and the query-sentence compiler need a reflected entity and
-/// a live data source, so they are covered by `doc/object_persistence.md` and
-/// integration tests, not here.
+/// The repositories and the query-sentence compiler are asserted elsewhere in
+/// this package, and mostly without a database:
+///
+///  * the sentence grammar by `test/query_sentence_is_in_test.dart`,
+///    `query_sentence_boolean_operand_test.dart`,
+///    `query_sentence_negation_test.dart`,
+///    `query_sentence_string_literal_test.dart` and
+///    `query_sentence_rejection_test.dart`, and its grouped form by
+///    `grouped_query_test.dart`'s `group query sentence` group;
+///  * the repositories by `test/crud_repository_exceptions_test.dart` (every
+///    failure a repository reports, by key) and
+///    `crud_repository_delete_counts_test.dart`;
+///  * the round trip against a real MariaDB by
+///    `test/object_persistence_db_test.dart`'s
+///    `FixtureTaskRepository (DB-backed CRUD)` group, which is
+///    `@Tags(['db'])` and self-skips without one — `tool/run_db_tests.sh`
+///    starts the database those suites need.
+///
+/// So a live data source is what the *last* of those needs, not the others: a
+/// scripted datasource (`test/fixtures/scripted_datasource.dart`) answers a
+/// repository's statements from a script, which is how the failure paths are
+/// reachable at all — a real database will not produce a broken row set on
+/// request.
+///
+/// Named by file and group rather than by line number on purpose: these
+/// pointers have to survive the files they point into being edited.
 
 /// A trivial host for the [TomQueryBuilder] DSL.
 class _Builder with TomQueryBuilder {}

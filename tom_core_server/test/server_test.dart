@@ -12,12 +12,36 @@ import 'package:test/test.dart';
 /// [tomDefaultAuthenticationMiddleware], [noopHandler]), and the default
 /// [TomServer.errorHandler] mapping closure.
 ///
-/// [TomServer.start] binds a real socket and needs a reflected `TomConfiguration`
-/// plus TLS material, so the listen/pipeline path is covered by `doc/server.md`
-/// and integration tests, not here. The default [TomServer.errorHandler] is a
-/// self-contained closure that maps a thrown error to a JSON HTTP-500 response;
-/// it touches no socket, so it *is* pinned here (constructing a [TomServer] from
-/// a no-op configuration subclass, without bootstrapping codegen reflection).
+/// [TomServer.start] binds a real socket and needs a reflected
+/// `TomConfiguration` plus TLS material, so **nothing in this package calls
+/// it** — no suite here binds a port. Its coverage is in two places, and each
+/// answers a different half:
+///
+///  * the one property of `start()` that a running server cannot demonstrate
+///    is asserted from the *source*, by
+///    `test/api_reference_coverage_test.dart`'s group
+///    `start() logs the deployment in before it binds`. It requires the server
+///    self-login to precede the bind, because a socket accepting requests
+///    before the deployment principal is installed serves them with user grants
+///    uncapped — a window a passing integration run would not notice.
+///  * the bind itself, end to end against real databases, by the sample
+///    integration scripts in `tom_core_samples`:
+///    `core_server_sample/tool/run_integration.sh` and
+///    `advanced_client_core/tool/run_cross_tier_integration.sh`, whose servers
+///    end their `main` with `TomServer(configuration).start()`.
+///
+/// That second half is a *sample's* script rather than an integration suite of
+/// this package's, and saying so is the point: this package has no integration
+/// directory and no integration suite, so a header claiming one sends the
+/// reader looking for something that does not exist.
+///
+/// The default [TomServer.errorHandler] is a self-contained closure that maps a
+/// thrown error to a JSON HTTP-500 response; it touches no socket, so it *is*
+/// pinned here (constructing a [TomServer] from a no-op configuration subclass,
+/// without bootstrapping codegen reflection).
+///
+/// Named by group and by script rather than by line number on purpose: these
+/// pointers have to survive the files they point into being edited.
 
 /// A JWT signed with the configuration this deployment has installed.
 String _signed(Map<String, dynamic> claims) =>

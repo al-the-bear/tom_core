@@ -13,6 +13,51 @@
 
 ### Fixed
 
+- **Three more suite headers deferred coverage to a document and to an
+  integration suite this package does not have (tcincb147).** The template —
+  "covered by `doc/<module>.md` and integration tests, not here" — was in
+  `server_test.dart`, `endpoints_test.dart` and `object_persistence_test.dart`,
+  and in an in-file comment of the endpoints suite that cited the header as its
+  authority. Neither clause located anything: a document covers no code path,
+  and there is no integration directory, no such file, and
+  `tool/run_db_tests.sh` only starts the database the `@Tags(['db'])` suites
+  already need. Each now names where the coverage is, established by looking
+  rather than assumed, and each answer was different:
+
+  * **endpoints** — `endpoints_pipeline_test.dart`, which builds a router over
+    the reflected fixture and serves requests through it. The header's premise
+    was half wrong: the split is generated reflection, *not* a socket. That
+    suite binds no port and needs no database.
+  * **object persistence** — the sentence grammar has five dedicated
+    connection-free suites (`query_sentence_is_in_test.dart` and its three
+    siblings, plus `query_sentence_rejection_test.dart`), the repositories two
+    (`crud_repository_exceptions_test.dart`,
+    `crud_repository_delete_counts_test.dart`), and only the round trip needs a
+    database. A scripted datasource is what makes the failure paths reachable at
+    all — a real database will not produce a broken row set on request.
+  * **server** — nothing in this package calls `TomServer.start()`; no suite
+    binds a port. Its coverage is the *source-order* guard in
+    `api_reference_coverage_test.dart` (the self-login must precede the bind, a
+    window a passing integration run would not notice) and the sample scripts
+    `core_server_sample/tool/run_integration.sh` and
+    `advanced_client_core/tool/run_cross_tier_integration.sh`, whose servers end
+    their `main` with `TomServer(configuration).start()`. Saying "a sample's
+    script" rather than "integration tests" is the point.
+
+  A phrase guard now sweeps every suite in `test/` for the template, flattening
+  wrapped comments first because the original spanned three lines. It is honest
+  about its reach: it cannot tell a true pointer from a false one, only that the
+  phrase four headers reached for is gone. The stronger rule — that a named
+  group exists — was measured and refused, on the same finding as the
+  documentation guards: a backticked span in a comment means "a literal token",
+  not "a group name". Of 150 multi-word backticked spans in `test/`, nine name a
+  group; restricting to paragraphs that also name a suite leaves 26, of which 19
+  still do not. Enforcing it would need a list of exempt phrases.
+
+  4 new tests (506 → 509). `api_reference_coverage_test.dart` excludes itself
+  from its own sweep — by name, with a test asserting the exclusion is still
+  exactly one file, so the rule cannot be escaped by moving a claim next door.
+
 - **The reflection-currency guard never read `lib/`, which is where the defect
   it exists for happened (tcincb146).** `test/reflection_currency_test.dart`
   compared the committed artifacts against the fixture and example roots only.

@@ -8212,6 +8212,88 @@ class After {}
   // leaves the reader unable to tell whether the thing is planned, abandoned,
   // or already done elsewhere. Saying nothing would have been better. An open
   // end is stated outright or not at all.
+  group('a suite that defers coverage names where it went', () {
+    // A suite header saying "this is not tested here" owes the reader the
+    // place it *is*, and four of them owed a template instead: "covered by
+    // `doc/<module>.md` and integration tests, not here". Neither clause
+    // located anything. A document covers no code path, and this package has
+    // no integration suite — no integration directory, no such file, and
+    // `tool/run_db_tests.sh` only starts the database the `@Tags(['db'])`
+    // suites in `test/` already need.
+    //
+    // The cost is specific: coverage nobody can find is written a second time
+    // by whoever adds the next assertion, and deleted by whoever reads its
+    // group name as another module's.
+    //
+    // This is a phrase check and is worth being honest about. It cannot tell a
+    // true pointer from a false one — only that the one phrase four headers
+    // reached for is gone. Naming the covering file and its *group* is what
+    // makes a pointer checkable by a reader, and no rule over the corpus can
+    // enforce it: a backticked span in a comment means "a literal token", not
+    // "a group name". Measured over `test/`, of 150 multi-word backticked
+    // spans only nine name a group, and restricting to paragraphs that also
+    // name a suite leaves 26 with 19 still not group names. A guard on that
+    // would need a list of exempt phrases, which is the quarantine this
+    // repository refuses elsewhere.
+    final claim = RegExp(r'\bintegration tests?\b', caseSensitive: false);
+
+    test('no test comment claims a suite this package does not have', () {
+      final offenders = <String>[
+        for (final path in _testSources())
+          for (final hit in _flattenedLines(
+            path,
+          ).where((line) => claim.hasMatch(line.text)))
+            '  $path:${hit.line}  ${hit.text.trim()}',
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'these comments defer coverage to an integration suite that does '
+            'not exist:\n${offenders.join('\n')}\n'
+            'Name the suite and group that does cover it, or — when the '
+            'coverage really is outside this package — the sample script, as '
+            '`test/server_test.dart` names '
+            '`core_server_sample/tool/run_integration.sh`.',
+      );
+    });
+
+    test('the sweep reads the test sources', () {
+      // An emptiness check over a lister that found nothing reports a clean
+      // package. Pinned by shape, not by count.
+      expect(_testSources(), isNotEmpty);
+      expect(_testSources(), contains('test/server_test.dart'));
+      expect(
+        _testSources(),
+        isNot(contains('test/fixtures/reflection_fixture.reflection.dart')),
+        reason: 'a generated artifact carries no prose to read',
+      );
+
+      // The one exclusion, still one. Every other suite in the package is
+      // read, so the rule cannot be escaped by moving a claim next door.
+      final all = [
+        for (final entry in Directory('test').listSync(recursive: true))
+          if (entry is File &&
+              entry.path.endsWith('.dart') &&
+              !entry.path.endsWith('.reflection.dart'))
+            entry.path,
+      ];
+      expect(all.length - _testSources().length, 1);
+      expect(_testSources(), isNot(contains(_selfExcludedSuite)));
+    });
+
+    test('a claim is found however it happens to wrap', () {
+      // The original spanned three lines. Reflowed prose that still says the
+      // same thing must still be reported, which is why the paragraphs are
+      // flattened before matching rather than the lines matched one by one.
+      final wrapped = _flattenLines([
+        '/// so the listen path is covered by `doc/server.md` and',
+        '/// integration tests, not here.',
+      ]);
+      expect(wrapped.any((line) => claim.hasMatch(line.text)), isTrue);
+    });
+  });
+
   group('shipped text stands on its own', () {
     final markers = <String, RegExp>{
       'quest references': RegExp(r'\bquests?\b', caseSensitive: false),
@@ -8395,6 +8477,31 @@ List<String> _libSources() => [
 List<String> _exampleSources() => [
   for (final entry in Directory('example').listSync(recursive: true))
     if (entry is File && entry.path.endsWith('.dart')) entry.path,
+]..sort();
+
+/// Every Dart file under `test/`, generated artifacts excluded.
+///
+/// Listed for one marker rather than joining the surfaces above, and the
+/// distinction is the one [_exampleSources] states: a test's allowlist cites a
+/// todo id on purpose, because a skip that cannot name what would lift it is a
+/// skip nobody removes. What a test may not do is send the reader to coverage
+/// that is not there.
+///
+/// This file is excluded, and it is the only one. A checker cannot be its own
+/// subject: the phrase has to appear here to define the rule and again in the
+/// fixture that proves the matcher reads a wrapped one, and both would report
+/// themselves. The exclusion is by name rather than by a pattern so that it
+/// cannot quietly grow to cover a second file, and a test above asserts it is
+/// still one.
+const String _selfExcludedSuite = 'test/api_reference_coverage_test.dart';
+
+List<String> _testSources() => [
+  for (final entry in Directory('test').listSync(recursive: true))
+    if (entry is File &&
+        entry.path.endsWith('.dart') &&
+        !entry.path.endsWith('.reflection.dart') &&
+        entry.path != _selfExcludedSuite)
+      entry.path,
 ]..sort();
 
 /// One paragraph of comment or prose, with the line it starts on.

@@ -17,14 +17,26 @@ Request _reqWithParams(Map<String, String> params) => Request(
 Request _reqWithQuery(String uri, {Map<String, String> params = const {}}) =>
     Request('GET', Uri.parse(uri), context: {'shelf_router/params': params});
 
-/// Tests for the reflection-free surface of the endpoints module.
+/// Tests for the reflection-free surface of the endpoints module: the
+/// annotation surface a developer touches at declaration time, and the default
+/// error handler's response.
 ///
-/// The router builder ([TomEndpointRouting]) and per-request handler
-/// ([TomEndpointHandler]) reflect over annotated service classes and serve live
-/// HTTP requests, so they need a running server and generated reflection — they
-/// are covered by `doc/endpoints.md` and integration tests, not here. This suite
-/// pins the annotation surface a developer touches at declaration time and the
-/// default error handler's response.
+/// The router builder ([TomEndpointRouting]) and the per-request handler
+/// ([TomEndpointHandler]) are asserted in `test/endpoints_pipeline_test.dart`,
+/// which builds a router over a reflected fixture and serves requests through
+/// it — among others by the groups `TomEndpointRouting.scanClasses`,
+/// `initializeRouter + live requests`, `TomEndpointHandler access checks`,
+/// `routingInfo is keyed by route and method` and
+/// `binding preserves argument positions`.
+///
+/// The split is generated reflection, not a socket. That suite calls
+/// `initializeReflection()` in its setup, which is what makes a `ClassMirror`
+/// constructible and so what makes a router buildable at all; it binds no port
+/// and needs no database. Keeping the reflection-free surface here means this
+/// file stays runnable when the generated fixture is mid-regeneration.
+///
+/// Named by group rather than by line number on purpose: this pointer has to
+/// survive the file it points into being edited.
 Request _req() => Request('POST', Uri.parse('http://localhost/greet'));
 
 /// A distinguishable [TomErrorHandler] so tests can assert *which* handler an
@@ -206,13 +218,13 @@ void main() {
   // binding, access-control gating, transaction wrap/commit/rollback,
   // invocation/conversion error routing) and router assembly
   // (TomEndpointRouting.initializeRouter / scanClasses / createRoutesForEndpoint
-  // and their TomEndpointPipelineException paths) are deferred: every entry
-  // point needs a TomEndpointHandler, which requires real InstanceMirror /
+  // and their TomEndpointPipelineException paths) are not here, because every
+  // entry point needs a TomEndpointHandler and that needs real InstanceMirror /
   // MethodMirror / ClassMirror for an annotated fixture service. This suite does
-  // not bootstrap generated reflection (constructing those mirrors throws
-  // "Reflection has not been initialized"), so those paths belong to an
-  // integration test with a reflected fixture — as the suite header already
-  // documents.
+  // not bootstrap generated reflection — constructing those mirrors throws
+  // "Reflection has not been initialized" — so they are asserted in
+  // endpoints_pipeline_test.dart, which does, over the reflected fixture. The
+  // header names the groups.
 
   group('class-level annotations', () {
     test('TomApiImplementation defaults to logging requests', () {
