@@ -85,7 +85,7 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
   }) : baseUri = _withoutTrailingSlash(baseUri),
        headers = Map.unmodifiable(headers),
        _headerProvider = headerProvider,
-       channel = channel ?? TomServerChannel(baseUri.host, _portOf(baseUri)),
+       channel = channel ?? TomServerChannel.forUri(baseUri),
        _ownsChannel = channel == null;
 
   /// The root the slot paths are resolved against.
@@ -385,9 +385,6 @@ class TomHttpFileTransferClient extends TomFileTransferClient {
     final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
     return uri.replace(pathSegments: segments);
   }
-
-  static int _portOf(Uri uri) =>
-      uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
 }
 
 /// Writes the descriptor header a `HEAD` response needs so

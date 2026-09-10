@@ -208,7 +208,7 @@ class TomHttpServiceLoginTransport extends TomServiceLoginTransport {
 
   @override
   Future<TomServiceLoginResponse> postJson(Uri uri, String body) async {
-    final channel = TomServerChannel(uri.host, _portOf(uri));
+    final channel = TomServerChannel.forUri(uri);
     try {
       final call = channel.prepareCall(
         TomServerCallSpecs(
@@ -235,10 +235,6 @@ class TomHttpServiceLoginTransport extends TomServiceLoginTransport {
       channel.close();
     }
   }
-
-  /// The port to dial: the URI's own, else the scheme default.
-  static int _portOf(Uri uri) =>
-      uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
 }
 
 // =============================================================================

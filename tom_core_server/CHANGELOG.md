@@ -1,5 +1,13 @@
 ## 1.3.0
 
+### Changed
+
+- **`TomHttpServiceLoginTransport` derives its channel through
+  `TomServerChannel.forUri` (tcopen14).** The scheme-aware port derivation lived
+  in three places, one of which had it wrong; it is now a named constructor in
+  the kernel, and this transport's private copy is gone. The port it dials is
+  unchanged.
+
 ### Added
 
 - **`example/resources/resources_example.dart`** — the module had no example at

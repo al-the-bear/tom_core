@@ -923,7 +923,18 @@ TomServerChannel(
   int port, {
   TomHttpClientFactory? clientFactory,
 })
+
+factory TomServerChannel.forUri(
+  Uri uri, {
+  TomHttpClientFactory? clientFactory,
+})
 ```
+
+`forUri` is the derivation every caller that builds a channel from a URI shares:
+the port is the URI's own when it names one, and otherwise its scheme's — `443`
+for `https`, `80` for anything else. A URI writes its port only when it differs
+from the scheme's default, so any other derivation dials an ordinary
+`https://host/path` on port 80.
 
 ##### Properties
 

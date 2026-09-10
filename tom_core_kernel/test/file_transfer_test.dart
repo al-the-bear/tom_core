@@ -954,6 +954,18 @@ void main() {
       expect(await second.describe('a'), isNotNull);
       channel.close();
     });
+
+    test('the channel built for a client addresses its base URI', () {
+      // A client given no channel builds one, and it has to name the server the
+      // slot URIs name — host and port both, so an `https` store is not dialled
+      // on port 80.
+      final derived = TomHttpFileTransferClient(
+        baseUri: Uri.parse('https://files.example.com/store'),
+      );
+      expect(derived.channel.host, equals('files.example.com'));
+      expect(derived.channel.port, equals(443));
+      derived.close();
+    });
   });
 }
 

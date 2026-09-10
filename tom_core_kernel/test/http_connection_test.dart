@@ -2505,6 +2505,49 @@ void main() {
       });
     });
 
+    group('forUri', () {
+      test('takes the host and the explicit port of the URI', () {
+        final channel = TomServerChannel.forUri(
+          Uri.parse('https://api.example.com:8443/api/v1'),
+        );
+
+        expect(channel.host, equals('api.example.com'));
+        expect(channel.port, equals(8443));
+      });
+
+      test('defaults the port by scheme when the URI names none', () {
+        // A URI writes its port only when it differs from its scheme's, so a
+        // default that ignored the scheme would open port 80 to every `https`
+        // deployment that spells its address the ordinary way.
+        expect(
+          TomServerChannel.forUri(Uri.parse('https://api.example.com')).port,
+          equals(443),
+        );
+        expect(
+          TomServerChannel.forUri(Uri.parse('http://api.example.com')).port,
+          equals(80),
+        );
+      });
+
+      test('falls back to 80 for a scheme with no port of its own', () {
+        // `Uri.port` answers 0 for an unknown scheme, which addresses nothing.
+        expect(
+          TomServerChannel.forUri(Uri.parse('gopher://api.example.com')).port,
+          equals(80),
+        );
+      });
+
+      test('passes the client factory through', () {
+        final customFactory = TomHttpClientFactory();
+        final channel = TomServerChannel.forUri(
+          Uri.parse('https://api.example.com'),
+          clientFactory: customFactory,
+        );
+
+        expect(channel.clientFactory, equals(customFactory));
+      });
+    });
+
     group('close', () {
       test('should handle close when client is null', () {
         final channel = TomServerChannel('api.example.com', 443);
@@ -3525,6 +3568,33 @@ void main() {
       );
 
       expect(endpoint.specs.url.host, equals('reporting.example.com'));
+    });
+
+    test('the channel takes the port of the base URI, defaulting by scheme', () {
+      // The channel and the specs URI address one server, so a channel port
+      // derived without the scheme sends an `https` deployment to port 80 while
+      // the URI beside it still reads 443.
+      final api = TomApi(
+        id: 'portApi',
+        uri: '/api/v1',
+        endpoints: [
+          TomApiEndpoint<String, String>(
+            id: 'thing',
+            uri: '/thing',
+            method: TomHttpMethod.get,
+          ),
+        ],
+      );
+
+      TomServerChannel channelFor(String baseUri) =>
+          TomServerEndpoint.createApiServerEndpoint<String, String>(
+            api['thing'],
+            baseUri: Uri.parse(baseUri),
+          ).channel;
+
+      expect(channelFor('https://api.example.com').port, equals(443));
+      expect(channelFor('http://api.example.com').port, equals(80));
+      expect(channelFor('https://api.example.com:8443').port, equals(8443));
     });
 
     test('substitutes a path capture and appends a mapped query parameter', () {

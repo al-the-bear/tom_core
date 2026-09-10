@@ -900,6 +900,26 @@ class TomServerChannel {
     }
   }
 
+  /// Creates a channel for the server [uri] addresses.
+  ///
+  /// The port is [uri]'s own when it names one, and otherwise its scheme's:
+  /// `443` for `https`, `80` for anything else. A URI writes its port only when
+  /// it differs from the scheme's default, so deriving it any other way sends
+  /// an ordinary `https://host/path` to port 80.
+  ///
+  /// This is the derivation every caller that builds a channel from a URI
+  /// shares — the channel behind an endpoint, a file-transfer client, a
+  /// server's own login call — so the address a channel opens agrees with the
+  /// address written into the call's specs.
+  factory TomServerChannel.forUri(
+    Uri uri, {
+    TomHttpClientFactory? clientFactory,
+  }) => TomServerChannel(
+    uri.host,
+    uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80),
+    clientFactory: clientFactory,
+  );
+
   /// Prepares a new server call with the given specification.
   TomServerCall prepareCall(TomServerCallSpecs spec) {
     return TomServerCall(getClient(), spec);
@@ -1288,9 +1308,7 @@ class TomServerEndpoint<T extends Object, R extends Object> {
       );
     }
     Uri callUri = baseUri ?? TomClientRemoteContext.current!.baseUri;
-    TomServerChannel callChannel =
-        channel ??
-        TomServerChannel(callUri.host, callUri.hasPort ? callUri.port : 80);
+    TomServerChannel callChannel = channel ?? TomServerChannel.forUri(callUri);
     TomServerCallSpecs callSpecs =
         specs ??
         TomServerCallSpecs(

@@ -44,6 +44,22 @@ anyone who was writing them.
 
 ### Fixed
 
+- **A channel built from an `https` URI with no explicit port addressed port 80
+  (tcopen14).** `TomServerEndpoint.createApiServerEndpoint` derived its
+  channel's port as `hasPort ? port : 80`, ignoring the scheme, while the specs
+  URI it built alongside kept the scheme and so resolved to `443`. A URI writes
+  its port only when it differs from its scheme's default, so the ordinary
+  spelling `https://api.example.com` produced a channel naming
+  `api.example.com:80` beside specs naming port 443.
+
+  The derivation is now `TomServerChannel.forUri`, a named constructor the three
+  callers that build a channel from a URI share — the endpoint factory,
+  `TomHttpFileTransferClient`, and `tom_core_server`'s
+  `TomHttpServiceLoginTransport`, the latter two of which each carried their own
+  correct copy of it. It takes the URI's port when it names one and its scheme's
+  otherwise: `443` for `https`, `80` for anything else, including a scheme with
+  no port of its own, for which `Uri.port` answers `0`.
+
 - **`noResponseError` and `serverError` no longer share the value `2`
   (tcopen13).** Two different answers to the same question — the server
   replied and the reply was a failure, versus there was no reply to read —

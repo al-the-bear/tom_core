@@ -453,6 +453,19 @@ final response = await call.readAsString(utf8);
 channel.close();
 ```
 
+`TomServerChannel.forUri` builds the same channel from an address that is already
+a `Uri`, taking the port the URI names or, failing that, its scheme's — `443` for
+`https`, `80` for anything else:
+
+```dart
+final channel = TomServerChannel.forUri(Uri.parse('https://api.example.com'));
+// channel.port == 443
+```
+
+This is the derivation `TomServerEndpoint.createApiServerEndpoint` and
+`TomHttpFileTransferClient` use for the channels they build, so a channel
+addresses the same port as the URI written into the call's specs.
+
 ### TomServerCall
 
 Low-level HTTP request handling with abort support:
