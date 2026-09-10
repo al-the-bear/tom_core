@@ -130,6 +130,32 @@ class SuicideCommand extends TomCommand {
   }
 }
 
+/// Answers immediately, then blocks its isolate for [blockMs].
+///
+/// The delay before the block is what makes this different from
+/// [BlockingCommand] and is the whole point: a pool frees a worker once its
+/// command resolves, so a command that blocked *before* returning leaves a
+/// **busy** worker, which supervision deliberately never probes. This one
+/// leaves a worker the pool believes is idle and that cannot answer anything —
+/// the shape the health ping exists to catch.
+class HangAfterAnsweringCommand extends TomCommand {
+  final int blockMs;
+
+  HangAfterAnsweringCommand(this.blockMs);
+
+  @override
+  Future<Object?> execute() async {
+    Timer(const Duration(milliseconds: 30), () {
+      final until = DateTime.now().add(Duration(milliseconds: blockMs));
+      while (DateTime.now().isBefore(until)) {
+        // Deliberately tight: nothing here yields to the event loop, so the
+        // isolate cannot read the health ping.
+      }
+    });
+    return 'answered';
+  }
+}
+
 /// Command executed in the CREATOR isolate via the back-channel.
 ///
 /// Used by [CreatorRoundTripCommand] to exercise the worker→creator
@@ -1483,11 +1509,89 @@ void main() {
           // The worker was healthy all along: its command still resolves, and a
           // later ping is answered once the isolate is free again.
           expect(await pending, equals('blocked'));
+
+          // The abandoned probe's pong arrives *after* that, addressed to a
+          // request slot the timeout removed. Two things follow, and both are
+          // asserted because neither is visible in the `false` above: the
+          // response loop must discard it rather than crash on a null
+          // completer, and the slot must be gone — a timed-out probe that left
+          // its entry behind would make `isBusy` report a worker busy forever,
+          // on nothing but a ping that was given up on.
           expect(await worker.ping(const Duration(seconds: 5)), isTrue);
+          expect(await worker.executeCommand(ComputeCommand(2, 3)), equals(5));
+          expect(
+            worker.isBusy(),
+            isFalse,
+            reason: 'the abandoned probe must not leave a request behind',
+          );
 
           worker.close();
         },
       );
+
+      test('a probe given up on leaves no request behind', () async {
+        // The timeout path removes its own request slot, and that only shows
+        // where the pong never comes: an isolate wedged with no command of its
+        // own. A leaked slot would leave `isBusy` reporting a worker busy for
+        // as long as the process lives, on the strength of a ping nobody is
+        // waiting for any more.
+        final context = TestWorkerContext(namePrefix: 'PingAbandoned');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        expect(
+          await worker.executeCommand(HangAfterAnsweringCommand(3000)),
+          equals('answered'),
+        );
+        // The command has resolved — the worker is idle by every measure the
+        // creator has — and its isolate wedges a beat later.
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(worker.isBusy(), isFalse);
+
+        expect(await worker.ping(const Duration(milliseconds: 200)), isFalse);
+        expect(
+          worker.isBusy(),
+          isFalse,
+          reason: 'the abandoned probe must not be left counting as work',
+        );
+
+        // Ends the wedge rather than waiting it out.
+        worker.killUnresponsive();
+      });
+
+      test('answers false for a worker that has already died', () async {
+        // A supervisor that learns of a death and probes to confirm it must get
+        // an answer, not a hang: the isolate is gone, so nothing will ever send
+        // the pong a request awaiting one would wait for.
+        final context = TestWorkerContext(namePrefix: 'PingDead');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+        worker.superviseExit(() {});
+
+        await expectLater(
+          worker.executeCommand(SuicideCommand()),
+          throwsA(isA<TomWorkerDiedException>()),
+        );
+
+        expect(worker.isClosed, isTrue);
+
+        // The timeout is long on purpose. A closed worker answers from its own
+        // state without sending anything, so the answer is immediate; probing
+        // the dead isolate instead would arrive at the same `false` five
+        // seconds later, and the elapsed time is the only thing that tells the
+        // two apart.
+        final started = DateTime.now();
+        expect(await worker.ping(const Duration(seconds: 5)), isFalse);
+        expect(
+          DateTime.now().difference(started),
+          lessThan(const Duration(seconds: 1)),
+          reason: 'a closed worker must answer without waiting out a probe',
+        );
+      });
     });
 
     group('superviseExit', () {
@@ -1560,6 +1664,78 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 200));
 
         expect(deaths, isZero);
+        expect(worker.isClosed, isTrue);
+      });
+
+      test('a second registration is ignored, and one after close is a '
+          'no-op', () async {
+        // Both halves of "idempotent, and a no-op once closed". A second
+        // registration that stacked another port would leave the isolate with
+        // two exit listeners and run recovery twice; one accepted after close
+        // would arm a listener for a shutdown that has already been torn down,
+        // and every orderly close would look like a crash to it.
+        final context = TestWorkerContext(namePrefix: 'SuperviseTwice');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        final fired = <String>[];
+        worker.superviseExit(() => fired.add('first'));
+        worker.superviseExit(() => fired.add('second'));
+
+        await expectLater(
+          worker.executeCommand(SuicideCommand()),
+          throwsA(isA<TomWorkerDiedException>()),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(
+          fired,
+          equals(['first']),
+          reason: 'the second registration must neither replace nor stack',
+        );
+
+        // The worker is closed now (an unexpected death closes it), so a fresh
+        // registration is dropped rather than throwing or arming anything.
+        expect(
+          () => worker.superviseExit(() => fired.add('late')),
+          returnsNormally,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(fired, equals(['first']));
+      });
+
+      test('killUnresponsive runs the same death path as a crash', () async {
+        // What a supervisor does with a `false` from ping. It is the pool's
+        // route from "did not answer" back to "replaced", and on a bare worker
+        // it is the only way to end a hang at all.
+        final context = TestWorkerContext(namePrefix: 'KillHung');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        var deaths = 0;
+        worker.superviseExit(() => deaths++);
+        final pending = worker.executeCommand(DelayedCommand(5000, 'never'));
+
+        worker.killUnresponsive();
+
+        await expectLater(
+          pending,
+          throwsA(
+            isA<TomWorkerDiedException>().having(
+              (e) => e.key,
+              'key',
+              'isolate.worker_died.in_flight_request',
+            ),
+          ),
+          reason:
+              'the in-flight command fails rather than waiting out the kill',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(deaths, equals(1), reason: 'a kill is a death like any other');
         expect(worker.isClosed, isTrue);
       });
     });
@@ -2620,6 +2796,50 @@ void main() {
         },
       );
 
+      test('force-kills and replaces an idle worker that cannot answer', () async {
+        // The other half of the probe, and the only path on which
+        // `healthCheckTimeout` decides anything: a worker the pool believes is
+        // idle, whose isolate is in fact wedged. Exit detection cannot see this
+        // — nothing died — so without the ping the worker would sit in the free
+        // list forever and every command dispatched to it would hang.
+        final context = TestWorkerContext(namePrefix: 'HungIdle');
+        final pool = await TomWorkerPool.withSize(
+          1,
+          context,
+          healthCheckInterval: const Duration(milliseconds: 20),
+          healthCheckTimeout: const Duration(milliseconds: 100),
+        );
+        addTearDown(pool.close);
+
+        final spawnsBefore = TomWorker.workerCount;
+        expect(
+          await pool.execute(HangAfterAnsweringCommand(2000)),
+          equals('answered'),
+          reason: 'the command answers before its isolate wedges',
+        );
+
+        // The health pass reserves the idle worker, pings, gives up after
+        // healthCheckTimeout, force-kills it, and the death path replaces it.
+        // Counted by spawns rather than by workerCount, which dips to zero and
+        // back and would have to be caught mid-dip.
+        final deadline = DateTime.now().add(const Duration(seconds: 20));
+        while (TomWorker.workerCount == spawnsBefore &&
+            DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+
+        expect(
+          TomWorker.workerCount,
+          equals(spawnsBefore + 1),
+          reason: 'the wedged worker should have been killed and replaced',
+        );
+        expect(
+          await pool.execute(ComputeCommand(4, 5)),
+          equals(9),
+          reason: 'the replacement serves the pool normally',
+        );
+      });
+
       test(
         'supervision never probes a worker running synchronous work',
         () async {
@@ -2670,11 +2890,11 @@ void main() {
       test('a caller already waiting for a free worker fails when the pool '
           'closes', () async {
         // The guard sits in two places, and this is the branch that actually
-        // rescues a caller: `execute` re-checks `_closed` on every turn of the
-        // loop it parks in while all workers are busy. Without that check the
-        // caller would spin forever, because close() clears the free list and
-        // nothing will ever refill it — the entry check above cannot help
-        // someone who got past it before the close.
+        // rescues a caller: `close` completes every parked caller with the
+        // refusal. Without that, the caller would wait forever, because a
+        // parked caller has no timer of its own and close() leaves no worker to
+        // release — the entry check above cannot help someone who got past it
+        // before the close.
         final context = TestWorkerContext(namePrefix: 'ClosedWhileWaiting');
         final pool = await TomWorkerPool.withSize(1, context);
 
