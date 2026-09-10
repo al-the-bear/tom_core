@@ -20,6 +20,7 @@ The isolate pooling module provides a robust framework for managing Dart isolate
   - [TomWorkerPool](#tomworkerpool)
   - [Liveness Supervision](#liveness-supervision)
     - [Supervising a bare worker](#supervising-a-bare-worker)
+  - [When the pool stops replacing](#when-the-pool-stops-replacing)
 - [Architecture](#architecture)
 - [Usage Examples](#usage-examples)
   - [Example 1: CPU-Intensive Computation](#example-1-cpu-intensive-computation)
@@ -429,6 +430,14 @@ turn; a zero timeout would expire before any healthy worker could answer,
 force-killing and respawning the pool on every pass while `workerCount` still
 read healthy.
 
+`respawnLimit` and `respawnWindow` bound how hard supervision tries, defaulting
+to ten replacements a minute. They are validated the same way and for the same
+reason — `isolate.invalid_respawn_limit.with_size` rejects a limit below one,
+which would give up on the first death and leave a caller who asked for
+supervision with none; `isolate.invalid_respawn_window.with_size` rejects a
+window of zero, in which every recorded respawn falls outside the window the
+moment it is recorded, so the budget never fills and respawn is unbounded again.
+
 Two mechanisms then run. **Exit detection** watches every worker: if an isolate
 dies for any reason — an uncaught error, `Isolate.kill`, an out-of-memory kill —
 each in-flight command on it is failed with a `TomWorkerDiedException` instead
@@ -482,11 +491,11 @@ if (pool.workerCount < 4) {
 ```
 
 The deadline is not defensive padding. A replacement is attempted **exactly
-once**: the exit listener drops the dead worker and starts one respawn. If that
-spawn throws — an `initializeIsolate` that cannot reach the very resource whose
-loss killed the first worker, say — the pool logs the failure and gives up.
-Nothing retries it, so `workerCount` stays down for the rest of the pool's life.
-An unbounded `while (pool.workerCount < 4)` would therefore not merely risk
+once** per death: the exit listener drops the dead worker and starts one
+respawn. If that spawn throws — an `initializeIsolate` that cannot reach the very
+resource whose loss killed the first worker, say — the pool logs the failure and
+does not retry, so `workerCount` stays down for the rest of the pool's life. An
+unbounded `while (pool.workerCount < 4)` would therefore not merely risk
 spinning forever in theory; it would spin forever in exactly the case the caller
 is waiting for news about.
 
@@ -550,6 +559,39 @@ at the moment you catch the exception. On a pool, `_handleWorkerDeath` *is* that
 callback, so reading `pool.workerCount` immediately inside the `catch` still
 counts the worker that just died. This is why the recovery snippet above polls
 towards the expected count instead of asserting it once.
+
+### When the pool stops replacing
+
+Replacing is bounded, because replacing unconditionally is its own failure. A
+command that reliably kills its worker — an allocation the isolate cannot
+satisfy, a native crash, a stray `Isolate.kill` in library code — otherwise
+produces an endless kill-and-replace cycle: each replacement takes the next such
+command, dies, and is replaced, while `workerCount` reports healthy capacity
+throughout and the only outward sign is isolate churn.
+
+The pool spawns at most `respawnLimit` replacements per `respawnWindow` and then
+stops. `isRespawnExhausted` reports that it has, and the reason is logged once.
+It is also raised when a replacement spawn *fails* and leaves the pool empty:
+a respawn is only ever triggered by a death, and a pool with no workers can have
+none, so nothing would ever try again.
+
+A pool that has given up keeps serving on whatever workers remain — giving up
+on replacement is not giving up on work. Once none remain, `execute` refuses
+with `isolate.respawn_exhausted.execute_without_workers` instead of parking a
+caller for a worker that cannot arrive, and any caller already parked is failed
+with the same error.
+
+```dart
+if (pool.isRespawnExhausted) {
+  // The pool stopped replacing. Decide whether to carry on with what is left
+  // or to close it and build a new one; nothing will restore capacity now.
+}
+```
+
+The budget is a **rate**, not a total: a pool that loses one worker a week to an
+ordinary cause must not exhaust a counter that never resets, and a pool losing
+one per command must not be let through because its deaths are spread over a
+long enough run.
 
 ## Architecture
 

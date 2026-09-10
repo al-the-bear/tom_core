@@ -403,6 +403,31 @@ class ExecutorWorkerContext extends TomWorkerContext {
   }
 }
 
+/// A context that starts a worker normally until [failNextSpawn] is set.
+///
+/// `initializeIsolate` runs inside the new isolate, against the *copy* of this
+/// context that travelled there — so the flag a spawn sees is whatever the
+/// creator's instance held when that spawn was sent. The pool retains its
+/// context for respawns, which is what lets a test start a pool successfully
+/// and then make its *replacement* spawn fail.
+class FlakySpawnContext extends TomWorkerContext {
+  FlakySpawnContext({String namePrefix = 'FlakySpawn'})
+    : super(
+        const TomEnvironment('test', isTest: true),
+        platformLinux,
+        [],
+        namePrefix,
+      );
+
+  /// Whether the next isolate to start should refuse to initialize.
+  bool failNextSpawn = false;
+
+  @override
+  Future<void> initializeIsolate() async {
+    if (failNextSpawn) throw StateError('this spawn was told to refuse');
+  }
+}
+
 /// The ways a worker can fail to become ready, as exercised by
 /// [FailingInitContext].
 ///
@@ -2362,6 +2387,212 @@ void main() {
         expect(result, equals(15));
 
         pool.close();
+      });
+
+      test('stops replacing workers once the respawn budget is spent', () async {
+        // A command that reliably kills its worker is the shape this bounds: a
+        // pool that replaces unconditionally hands the next such command to
+        // each replacement forever, reporting healthy capacity all the while.
+        final context = TestWorkerContext(namePrefix: 'Churn');
+        final pool = await TomWorkerPool.withSize(
+          1,
+          context,
+          healthCheckInterval: const Duration(milliseconds: 50),
+          respawnLimit: 2,
+        );
+        addTearDown(pool.close);
+
+        // Three deaths: the first two are replaced, the third finds the budget
+        // spent. Each caller is served by the replacement the previous death
+        // produced, so the loop needs no waiting of its own.
+        for (var attempt = 1; attempt <= 3; attempt++) {
+          await expectLater(
+            pool.execute(SuicideCommand()),
+            throwsA(isA<TomWorkerDiedException>()),
+            reason: 'attempt $attempt should die with its worker',
+          );
+        }
+
+        // The give-up runs on the (unawaited) death path.
+        final deadline = DateTime.now().add(const Duration(seconds: 10));
+        while (!pool.isRespawnExhausted && DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+
+        expect(
+          pool.isRespawnExhausted,
+          isTrue,
+          reason: 'the third death exceeded a budget of two',
+        );
+        expect(
+          pool.workerCount,
+          isZero,
+          reason: 'the third worker was not replaced',
+        );
+
+        // And a later command is refused rather than parked: waiting would be
+        // waiting for a worker that cannot arrive.
+        await expectLater(
+          pool.execute(FixedValueCommand(1)),
+          throwsA(
+            isA<TomWorkerException>().having(
+              (e) => e.key,
+              'key',
+              'isolate.respawn_exhausted.execute_without_workers',
+            ),
+          ),
+        );
+      });
+
+      test('releases the callers parked when it gives up', () async {
+        // The hazard the refusal exists for: a caller queued behind the command
+        // that kills the last worker has no timer of its own, so without an
+        // explicit release it waits forever on a pool that has stopped
+        // replacing.
+        final context = TestWorkerContext(namePrefix: 'ChurnQueue');
+        final pool = await TomWorkerPool.withSize(
+          1,
+          context,
+          healthCheckInterval: const Duration(milliseconds: 50),
+          respawnLimit: 1,
+        );
+        addTearDown(pool.close);
+
+        // First death: replaced, spending the budget of one.
+        await expectLater(
+          pool.execute(SuicideCommand()),
+          throwsA(isA<TomWorkerDiedException>()),
+        );
+
+        // Second death, with a caller queued behind it. `execute` takes the
+        // free worker synchronously, so the second call parks.
+        final fatal = pool.execute(SuicideCommand());
+        final parked = pool.execute(FixedValueCommand(7));
+
+        await expectLater(fatal, throwsA(isA<TomWorkerDiedException>()));
+        await expectLater(
+          parked,
+          throwsA(
+            isA<TomWorkerException>().having(
+              (e) => e.key,
+              'key',
+              'isolate.respawn_exhausted.execute_without_workers',
+            ),
+          ),
+        );
+      });
+
+      test('spends the budget on churn, not on wear', () async {
+        // The budget is a rate. A pool that loses one worker a week to an
+        // ordinary cause must not exhaust a counter that never resets; only
+        // deaths close together are churn.
+        final context = TestWorkerContext(namePrefix: 'Rate');
+        final pool = await TomWorkerPool.withSize(
+          1,
+          context,
+          healthCheckInterval: const Duration(milliseconds: 50),
+          respawnLimit: 1,
+          respawnWindow: const Duration(milliseconds: 50),
+        );
+        addTearDown(pool.close);
+
+        await expectLater(
+          pool.execute(SuicideCommand()),
+          throwsA(isA<TomWorkerDiedException>()),
+        );
+        // Comfortably past the window, so the first replacement no longer
+        // counts against the second.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        await expectLater(
+          pool.execute(SuicideCommand()),
+          throwsA(isA<TomWorkerDiedException>()),
+        );
+
+        final deadline = DateTime.now().add(const Duration(seconds: 10));
+        while (pool.workerCount < 1 && DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+
+        expect(
+          pool.isRespawnExhausted,
+          isFalse,
+          reason: 'the two deaths were a whole window apart',
+        );
+        expect(pool.workerCount, equals(1));
+        expect(await pool.execute(ComputeCommand(2, 3)), equals(5));
+      });
+
+      test(
+        'gives up when a replacement spawn fails and nothing is left',
+        () async {
+          // The quieter half of unbounded respawn: the spawn itself fails, is
+          // caught and logged, and is not retried — because only a death
+          // triggers a respawn and a pool with no workers can have none. Before
+          // this, the pool sat there empty and every caller waited forever on the
+          // strength of one log line.
+          final context = FlakySpawnContext();
+          final pool = await TomWorkerPool.withSize(
+            1,
+            context,
+            healthCheckInterval: const Duration(milliseconds: 50),
+          );
+          addTearDown(pool.close);
+
+          // The replacement will refuse to initialize. The budget is untouched:
+          // this is the *spawn* failing, not the churn.
+          context.failNextSpawn = true;
+          final fatal = pool.execute(SuicideCommand());
+          final parked = pool.execute(FixedValueCommand(7));
+
+          await expectLater(fatal, throwsA(isA<TomWorkerDiedException>()));
+          await expectLater(
+            parked,
+            throwsA(
+              isA<TomWorkerException>().having(
+                (e) => e.key,
+                'key',
+                'isolate.respawn_exhausted.execute_without_workers',
+              ),
+            ),
+          );
+          expect(pool.isRespawnExhausted, isTrue);
+          expect(pool.workerCount, isZero);
+        },
+      );
+
+      test('rejects a respawn budget that would never replace anything', () {
+        final context = TestWorkerContext(namePrefix: 'BadBudget');
+
+        expect(
+          TomWorkerPool.withSize(
+            1,
+            context,
+            healthCheckInterval: const Duration(milliseconds: 50),
+            respawnLimit: 0,
+          ),
+          throwsA(
+            isA<TomWorkerException>().having(
+              (e) => e.key,
+              'key',
+              'isolate.invalid_respawn_limit.with_size',
+            ),
+          ),
+        );
+        expect(
+          TomWorkerPool.withSize(
+            1,
+            context,
+            healthCheckInterval: const Duration(milliseconds: 50),
+            respawnWindow: Duration.zero,
+          ),
+          throwsA(
+            isA<TomWorkerException>().having(
+              (e) => e.key,
+              'key',
+              'isolate.invalid_respawn_window.with_size',
+            ),
+          ),
+        );
       });
 
       test(

@@ -1679,11 +1679,43 @@ class TomWorkerPool {
   /// Whether [close] has been called; stops supervision and new dispatch.
   bool _closed = false;
 
+  /// How many replacements may be spawned within [_respawnWindow].
+  int _respawnLimit = 10;
+
+  /// The window [_respawnLimit] is counted over.
+  Duration _respawnWindow = const Duration(minutes: 1);
+
+  /// When each recent replacement was spawned, pruned to [_respawnWindow].
+  final List<DateTime> _respawns = [];
+
+  /// Whether the pool has stopped replacing workers that die.
+  bool _respawnExhausted = false;
+
   /// Private constructor - use [withSize] to create instances.
   TomWorkerPool._();
 
   /// Whether liveness supervision is enabled for this pool.
   bool get isSupervised => _healthCheckInterval != null;
+
+  /// Whether the pool has given up replacing workers that die.
+  ///
+  /// A command that reliably kills its worker — an allocation the isolate
+  /// cannot satisfy, a native crash, a stray `Isolate.kill` in library code —
+  /// otherwise produces an endless kill-and-replace cycle: each replacement
+  /// takes the next such command, dies, and is replaced, while [workerCount]
+  /// reports healthy capacity throughout and the only outward sign is isolate
+  /// churn. The pool spawns at most `respawnLimit` replacements per
+  /// `respawnWindow` (see [withSize]) and then stops, which is what this
+  /// reports.
+  ///
+  /// It is also raised when a replacement spawn *fails* and leaves the pool
+  /// empty. A respawn is only ever triggered by a death, and a pool with no
+  /// workers can have none, so nothing would try again.
+  ///
+  /// The pool keeps serving on whatever workers remain. Once none do, [execute]
+  /// refuses with `isolate.respawn_exhausted.execute_without_workers` rather
+  /// than parking a caller for a worker that cannot arrive.
+  bool get isRespawnExhausted => _respawnExhausted;
 
   /// Number of live workers currently registered in the pool.
   int get workerCount => _workers.length;
@@ -1720,6 +1752,13 @@ class TomWorkerPool {
   ///   worker, including later replacements. The pool performs every spawn its
   ///   callers ever make, so a bound it did not forward would be one nobody
   ///   could set; see [TomWorker.spawn] for what it covers.
+  /// - [respawnLimit] / [respawnWindow]: how many replacements supervision may
+  ///   spawn within a rolling window before it gives up (see
+  ///   [isRespawnExhausted]). Defaults to ten a minute, which no pool losing
+  ///   workers to ordinary causes reaches and which a churning one reaches in
+  ///   well under a second. Only used — and only validated — when
+  ///   [healthCheckInterval] is set, since nothing replaces a dead worker
+  ///   without supervision; both must be positive.
   ///
   /// Returns a [Future] that completes when all workers are ready.
   ///
@@ -1735,6 +1774,8 @@ class TomWorkerPool {
     Duration? healthCheckInterval,
     Duration healthCheckTimeout = const Duration(seconds: 5),
     Duration readyTimeout = const Duration(seconds: 30),
+    int respawnLimit = 10,
+    Duration respawnWindow = const Duration(minutes: 1),
   }) async {
     if (size < 1) {
       // A pool with no workers can never acquire one: workers are added at
@@ -1762,6 +1803,30 @@ class TomWorkerPool {
           parameters: {'healthCheckInterval': healthCheckInterval.toString()},
         );
       }
+      if (respawnLimit < 1) {
+        // Supervision would then give up on the first death, which is the
+        // behaviour of an unsupervised pool reached by a longer route: a
+        // caller asking for supervision and getting none.
+        throw TomWorkerException(
+          'isolate.invalid_respawn_limit.with_size',
+          'Cannot supervise a TomWorkerPool with a respawnLimit of '
+              '$respawnLimit: it must be at least 1, or no dead worker is '
+              'ever replaced.',
+          parameters: {'respawnLimit': respawnLimit},
+        );
+      }
+      if (respawnWindow <= Duration.zero) {
+        // Every recorded respawn would be outside the window the moment it was
+        // recorded, so the budget could never fill and the churn this bounds
+        // would be unbounded again.
+        throw TomWorkerException(
+          'isolate.invalid_respawn_window.with_size',
+          'Cannot supervise a TomWorkerPool with a respawnWindow of '
+              '$respawnWindow: it must be positive, or the respawn budget can '
+              'never fill and respawn is unbounded again.',
+          parameters: {'respawnWindow': respawnWindow.toString()},
+        );
+      }
       if (healthCheckTimeout <= Duration.zero) {
         // Every probe would expire before a healthy worker could answer, so
         // supervision would force-kill and respawn the whole pool on every
@@ -1780,6 +1845,8 @@ class TomWorkerPool {
     twp._healthCheckInterval = healthCheckInterval;
     twp._healthCheckTimeout = healthCheckTimeout;
     twp._readyTimeout = readyTimeout;
+    twp._respawnLimit = respawnLimit;
+    twp._respawnWindow = respawnWindow;
     for (int i = 0; i < size; i++) {
       tomLog.info(
         'Creating worker #$i for workerpool in  ${Isolate.current.debugName}',
@@ -1833,15 +1900,69 @@ class TomWorkerPool {
     unawaited(_replaceDeadWorker());
   }
 
-  /// Restores pool capacity by spawning one replacement worker.
+  /// Restores pool capacity by spawning one replacement worker, while the
+  /// respawn budget allows it.
   Future<void> _replaceDeadWorker() async {
     if (_closed) return;
+    if (_respawnExhausted || !_recordRespawn()) {
+      _giveUpRespawning(
+        'the respawn budget of $_respawnLimit per $_respawnWindow is spent',
+      );
+      // Reached again on every later death, and the pool may only now have run
+      // out of workers, so the parked callers are re-examined each time.
+      _refuseWaitersWithoutWorkers();
+      return;
+    }
     try {
       await _spawnAndRegister();
     } catch (e) {
       tomLog.error(
         'TomWorkerPool: failed to respawn a worker after an isolate death: $e',
       );
+      if (_workers.isEmpty) {
+        // Nothing will try again: a respawn is only ever triggered by a death,
+        // and a pool with no workers can have none. Saying so is the whole
+        // difference between a pool that runs below capacity and one that has
+        // silently stopped.
+        _giveUpRespawning('a replacement spawn failed and no worker is left');
+        _refuseWaitersWithoutWorkers();
+      }
+    }
+  }
+
+  /// Records a replacement against the budget, or refuses it.
+  ///
+  /// A rate rather than a total: a pool that loses one worker a week to an
+  /// ordinary cause must not exhaust a counter that never resets, and a pool
+  /// losing one per command must not be allowed to keep going because the
+  /// deaths are spread over a long enough run.
+  bool _recordRespawn() {
+    final now = DateTime.now();
+    _respawns.removeWhere((at) => now.difference(at) > _respawnWindow);
+    if (_respawns.length >= _respawnLimit) return false;
+    _respawns.add(now);
+    return true;
+  }
+
+  /// Stops replacing dead workers, once, saying why.
+  void _giveUpRespawning(String reason) {
+    if (_respawnExhausted) return;
+    _respawnExhausted = true;
+    tomLog.error(
+      'TomWorkerPool: no longer replacing workers that die, because $reason. '
+      'The pool keeps serving on its remaining $workerCount worker(s); with '
+      'none left, execute() refuses instead of waiting.',
+    );
+  }
+
+  /// Fails every parked caller once no worker can ever serve them.
+  ///
+  /// A waiter has no timer of its own, so a pool that has stopped replacing and
+  /// has nothing left would hold its callers forever.
+  void _refuseWaitersWithoutWorkers() {
+    if (!_respawnExhausted || _workers.isNotEmpty) return;
+    while (_waiting.isNotEmpty) {
+      _waiting.removeFirst().completeError(_exhaustedException());
     }
   }
 
@@ -1890,6 +2011,11 @@ class TomWorkerPool {
       final tw = _free.removeAt(0);
       _busy.add(tw);
       return Future.value(tw);
+    }
+    if (_respawnExhausted && _workers.isEmpty) {
+      // Parking here would be waiting for a worker that cannot arrive: the
+      // pool has stopped replacing, and only a death triggers a replacement.
+      throw _exhaustedException();
     }
     final waiter = Completer<TomWorker>();
     _waiting.add(waiter);
@@ -1946,6 +2072,13 @@ class TomWorkerPool {
       }
     }
   }
+
+  TomWorkerException _exhaustedException() => TomWorkerException(
+    'isolate.respawn_exhausted.execute_without_workers',
+    'This TomWorkerPool has stopped replacing workers that die and has none '
+        'left, so no command it is given can ever run. See '
+        'TomWorkerPool.isRespawnExhausted.',
+  );
 
   TomWorkerException _closedException() => TomWorkerException(
     'isolate.pool_closed.execute_after_close',

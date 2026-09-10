@@ -65,6 +65,33 @@ anyone who was writing them.
 
 ### Fixed
 
+- **Worker respawn is bounded (tcopen20).** Supervision replaced a dead worker
+  unconditionally — no rate, no counter, no give-up. A command that reliably
+  kills its worker (an allocation the isolate cannot satisfy, a native crash, a
+  stray `Isolate.kill` in library code) therefore produced an endless
+  kill-and-replace cycle: each replacement took the next such command, died,
+  and was replaced, while `workerCount` reported healthy capacity throughout
+  and the only outward sign was isolate churn.
+
+  The pool now spawns at most `respawnLimit` replacements per `respawnWindow`
+  — ten a minute by default, both settable on `withSize` and both validated
+  like the health-check parameters — and then stops. `isRespawnExhausted`
+  reports that it has, and the reason is logged once. The budget is a *rate*
+  rather than a total, so a pool that loses one worker a week to an ordinary
+  cause never exhausts it.
+
+  The quieter half is fixed with it: a replacement spawn that *fails* was
+  logged and abandoned, and because only a death triggers a respawn and a pool
+  with no workers can have none, nothing would ever try again — the pool sat
+  empty while every caller waited forever on the strength of one log line. A
+  failed spawn that leaves the pool empty now stops replacement explicitly.
+
+  A pool that has given up keeps serving on whatever workers remain. Once none
+  do, `execute` refuses with
+  `isolate.respawn_exhausted.execute_without_workers` rather than parking a
+  caller for a worker that cannot arrive, and any caller already parked is
+  failed with the same error.
+
 - **`TomWorkerPool.execute` no longer busy-waits for a free worker
   (tcopen19).** A caller that found every worker busy looped on
   `await Future.delayed(Duration(milliseconds: 1))` — a thousand event-loop
