@@ -1031,12 +1031,13 @@ void main() {
     });
 
     group('where received records go', () {
-      // The field used to be `static TomLogOutput localOutput =
-      // tomLog.logOutput`. Dart initialises a static lazily, so that captured
-      // whatever the application's sink was at the moment something first
-      // touched the field — an unspecified time that depends on program
-      // ordering. An application configuring its logging during startup got
-      // the new sink only if nothing had read this field first.
+      // `localOutput` is a nullable override, not `static TomLogOutput
+      // localOutput = tomLog.logOutput`. Dart initialises a static lazily, so
+      // such a default captures whatever the application's sink is at the
+      // moment something first touches the field — an unspecified time that
+      // depends on program ordering. An application configuring its logging
+      // during startup would get the new sink only if nothing had read the
+      // field first.
 
       TomRemoteLogMessage recordNamed(String message) {
         final m = TomRemoteLogMessage.of(
@@ -1503,10 +1504,10 @@ void main() {
           expect(source, contains('    $field'));
         }
 
-        // The pass-through that used to stand between the two sinks and this
-        // constructor is gone: it forwarded all seven positionally and
-        // unchanged, so it doubled the transposition risk it was meant to
-        // contain while deduplicating a single constructor call.
+        // Nothing stands between the two sinks and this constructor. A
+        // pass-through forwarding all seven positionally and unchanged would
+        // double the transposition risk it was meant to contain, while
+        // deduplicating a single constructor call.
         expect(source, isNot(contains('_interIsolateMessage')));
       });
 
@@ -3128,12 +3129,13 @@ void main() {
 
   group('TomIsolateLogging', () {
     group('startIsolatedLogging', () {
-      // The method used to return `bool` with no path that produced `false`,
-      // so `if (!await startIsolatedLogging(args))` was dead code wherever it
-      // was written. Completing is the success signal now, and the one genuine
-      // failure — the runtime platform not registered, so the default worker
-      // context cannot be built — names itself instead of arriving as a bare
-      // null-check TypeError during application startup.
+      // Completing is the success signal. A `bool` return would promise a
+      // failure report no path here can produce, making
+      // `if (!await startIsolatedLogging(args))` dead code wherever it was
+      // written — and the one genuine failure, the runtime platform not
+      // registered so the default worker context cannot be built, names itself
+      // rather than arriving as a bare null-check TypeError during application
+      // startup.
 
       test('returns nothing, so there is no result to branch on', () {
         expect(

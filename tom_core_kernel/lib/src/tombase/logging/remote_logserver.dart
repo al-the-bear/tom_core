@@ -122,16 +122,16 @@ class TomRemoteLogServer {
   /// [TomLogOutput] to send received records somewhere else; assign `null`
   /// again to go back to following the application.
   ///
-  /// Nullable rather than initialised to `tomLog.logOutput`, which is what it
-  /// used to be. Dart initialises a static lazily, on first access, so that
-  /// default captured whatever the application's sink happened to be at the
-  /// moment something first touched this field — an unspecified time that
+  /// Nullable rather than initialised to `tomLog.logOutput`, and that is the
+  /// point. Dart initialises a static lazily, on first access, so such a
+  /// default captures whatever the application's sink happens to be at the
+  /// moment something first touches the field — an unspecified time that
   /// depends on program ordering rather than on intent. An application that
-  /// configured its logging during startup got the new sink only if nothing
-  /// had read this field first; if something had, the collector wrote to the
-  /// original sink for the life of the process and nothing reported the
-  /// divergence. "The local sink" now means the sink the application currently
-  /// has, which is what this field's description always implied.
+  /// configures its logging during startup would get the new sink only if
+  /// nothing had read the field first; otherwise the collector writes to the
+  /// original sink for the life of the process and nothing reports the
+  /// divergence. "The local sink" means the sink the application currently
+  /// has, which is what this field's description says.
   ///
   /// [effectiveOutput] answers where records actually go.
   static TomLogOutput? localOutput;
