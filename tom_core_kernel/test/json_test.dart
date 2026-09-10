@@ -1750,11 +1750,7 @@ void main() {
       final servers = tree['servers'] as List;
       final entry = servers.single as Map<String, dynamic>;
       expect(entry['db'], equals('resolved_value'));
-      // Resolution *inserts*: the directive key stays where it was. That is
-      // what made the omission invisible — an unresolved directive and a
-      // resolved one look identical at the directive key, and only the presence
-      // of the resolved key tells them apart.
-      expect(entry.containsKey('db@profiles.db@production'), isTrue);
+      expect(entry.containsKey('db@profiles.db@production'), isFalse);
     });
 
     test('should spread values with ... directive', () {
@@ -1796,6 +1792,104 @@ void main() {
 
       expect(tree['data'], isA<Map>());
       expect((tree['data'] as Map)['nested'], isA<Map>());
+    });
+
+    group('the directive key is consumed', () {
+      // A directive is an instruction. One that has been carried out is not
+      // part of the configuration it produced, and leaving it behind made the
+      // resolved tree describe work still to do: anything that later encodes,
+      // iterates, diffs or re-merges it saw both the instruction and its
+      // result, and re-running `processTree` called the provider again.
+
+      test('the "@" directive leaves only its resolved key', () {
+        final tree = <String, dynamic>{
+          'config@profiles.db@production': '@',
+          'untouched': 'kept',
+        };
+
+        processTree(
+          tree,
+          (keyName, path, profileName) => <String, dynamic>{
+            'config': 'resolved_value',
+          },
+        );
+
+        expect(tree['config'], equals('resolved_value'));
+        expect(tree.containsKey('config@profiles.db@production'), isFalse);
+        expect(tree['untouched'], equals('kept'));
+      });
+
+      test('a spread leaves only what it spread', () {
+        final tree = <String, dynamic>{'spread@source.data@profile': '...'};
+
+        processTree(
+          tree,
+          (keyName, path, profileName) => <String, dynamic>{
+            'newKey1': 'value1',
+            'newKey2': 'value2',
+          },
+        );
+
+        expect(
+          tree.keys.toSet(),
+          equals({'newKey1', 'newKey2'}),
+          reason: 'the directive that asked for the spread is gone with it',
+        );
+      });
+
+      test('a whole-map directive leaves only its key', () {
+        final tree = <String, dynamic>{'db@profiles@prod': 'anything else'};
+
+        processTree(
+          tree,
+          (keyName, path, profileName) => <String, dynamic>{'host': 'h'},
+        );
+
+        expect(tree.keys.toSet(), equals({'db'}));
+        expect(tree['db'], equals(<String, dynamic>{'host': 'h'}));
+      });
+
+      test('a spread whose provider echoes the directive key cannot '
+          'resurrect it', () {
+        // Why the removal comes after the write rather than before it. Removing
+        // first would let the spread put the directive key straight back, under
+        // the provider's value — and the next `processTree` would resolve it
+        // again, undoing the idempotence the removal exists for.
+        final tree = <String, dynamic>{'x@p@q': '...'};
+        var calls = 0;
+
+        Map<String, dynamic> provider(String k, String p, String n) {
+          calls++;
+          return <String, dynamic>{'x@p@q': 'echoed', 'other': 1};
+        }
+
+        processTree(tree, provider);
+        expect(tree.keys.toSet(), equals({'other'}));
+
+        processTree(tree, provider);
+        expect(calls, equals(1));
+      });
+
+      test('resolving twice does not call the provider twice', () {
+        // The sharpest consequence, and the reason this is not cosmetic. A
+        // provider is a vault read, a file load, a token mint — running one
+        // again because the tree still carries the instruction is work the
+        // caller did not ask for, and for a provider with side effects it is
+        // the side effect twice.
+        final tree = <String, dynamic>{'config@profiles.db@production': '@'};
+        var calls = 0;
+
+        Map<String, dynamic> provider(String k, String p, String n) {
+          calls++;
+          return <String, dynamic>{'config': 'resolved_value'};
+        }
+
+        processTree(tree, provider);
+        processTree(tree, provider);
+
+        expect(calls, equals(1));
+        expect(tree['config'], equals('resolved_value'));
+      });
     });
 
     test('should process nested references', () {
@@ -2147,6 +2241,10 @@ void main() {
 
         expect(tree.containsKey('first'), isFalse);
         expect(tree['untouched'], equals('kept'));
+        // Including the directives themselves: a directive is consumed by the
+        // apply, and no apply ran.
+        expect(tree.containsKey('first@profiles@prod'), isTrue);
+        expect(tree.containsKey('second@profiles@prod'), isTrue);
       });
     });
   });

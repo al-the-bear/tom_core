@@ -455,6 +455,33 @@ and a caller that catches can retry with a corrected provider on the same tree.
 That holds for a provider failure too: a directive resolved earlier in the same
 call is discarded rather than written.
 
+##### A resolved directive's key is consumed
+
+The key that asked for a value is removed from its map once the value is
+written. A directive is an *instruction*; one that has been carried out is not
+part of the configuration it produced. Left in place it would travel with the
+resolved tree into everything downstream — an encode, a diff against the
+unresolved document, a re-merge — each of which would see the instruction beside
+its own result.
+
+```dart
+final tree = {'database@services.db@production': '@'};
+processTree(tree, provider);
+// tree == {'database': {...}}   — not {'database@services.db@production': '@', 'database': {...}}
+```
+
+The consequence worth naming is **idempotence**: resolving an already-resolved
+tree calls the provider for nothing, because there is no directive left to
+resolve. A provider is typically a vault read, a file load or a token mint, so
+running one a second time is at best wasted work and at worst a repeated side
+effect.
+
+Removal happens with the write rather than with the resolution, so the
+collect-before-apply guarantee above covers it too: a failure leaves every
+directive key exactly where it was. It also settles the one case where the order
+shows: a spread whose provider echoes the directive key back cannot resurrect
+it, which would otherwise leave a key the next resolution would act on again.
+
 #### `makeCleanJsonMap(map)`
 
 Creates a sanitized copy containing only JSON-compatible values (String, int,

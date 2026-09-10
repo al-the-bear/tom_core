@@ -65,6 +65,29 @@ anyone who was writing them.
 
 ### Fixed
 
+- **`processTree` consumes the directive key it resolved (tcopen25).**
+  `_TreeModification.apply()` only ever *added* — it spread, or set the
+  resolved key, or set it to the whole provider map — and left the
+  `keyName@path@profileName` key that triggered it in place. A resolved
+  configuration therefore carried the instruction beside its own result, and
+  everything downstream saw both: an encode, a diff against the unresolved
+  document, a re-merge.
+
+  The sharpest consequence was that resolution was **not idempotent**. Running
+  `processTree` over an already-resolved tree found every directive still
+  there and called the provider again — typically a vault read, a file load
+  or a token mint, so at best wasted work and at worst a repeated side effect.
+
+  The open end asked for a decision, and this is it: the key is removed rather
+  than the contract being declared additive. Requiring every caller to strip
+  directive keys itself makes each of them repeat the same walk, and a caller
+  that forgets gets a configuration describing work still to do.
+
+  Removal happens with the write, not with the resolution, so the
+  collect-before-apply guarantee covers it: a failure leaves every directive
+  key exactly where it was. **This is a behaviour change for anyone reading
+  the directive key back after resolution.**
+
 - **`traverseAndCreate` walks decoded arrays (tcopen24).** Its list branch was
   guarded by `if (oValue is List<Map<String, dynamic>>)` — the same shape
   removed from `traverseAndProcess` earlier, one traversal over. `jsonDecode`

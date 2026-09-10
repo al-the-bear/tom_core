@@ -686,9 +686,16 @@ class _TreeModification {
   ///
   /// - [value]: The directive value ("...", "@", or other)
   /// - [tree]: The parent map where modification will be applied
+  /// - [directiveKey]: The `keyName@path@profileName` key that asked for this
   /// - [keyName]: The key to modify or insert
   /// - [insertTree]: The data to insert
-  const _TreeModification(this.value, this.tree, this.keyName, this.insertTree);
+  const _TreeModification(
+    this.value,
+    this.tree,
+    this.directiveKey,
+    this.keyName,
+    this.insertTree,
+  );
 
   /// The directive value determining how to apply the modification.
   final String value;
@@ -696,13 +703,19 @@ class _TreeModification {
   /// The parent map to modify.
   final Map<String, dynamic> tree;
 
+  /// The `keyName@path@profileName` key that asked for this modification.
+  ///
+  /// Kept so [apply] can remove it: a directive is an instruction, and one that
+  /// has been carried out is not part of the configuration it produced.
+  final String directiveKey;
+
   /// The key name for the modification.
   final String keyName;
 
   /// The data to insert into the tree.
   final Map<String, dynamic> insertTree;
 
-  /// Applies this modification to the tree.
+  /// Applies this modification to the tree, and consumes the directive.
   ///
   /// Behavior depends on [value]:
   /// - `"..."`: Spreads [insertTree] entries into [tree] (non-overwriting)
@@ -711,6 +724,11 @@ class _TreeModification {
   ///
   /// The `"@"` directive assumes [insertTree] contains [keyName]; that is
   /// checked in [_modifyTree], before any modification is applied.
+  ///
+  /// [directiveKey] is then removed. Removal comes *after* the write so the
+  /// spread's non-overwrite check sees the tree the directive found; the two
+  /// keys cannot collide in any case, since a directive key contains `@` and
+  /// [keyName] is the part before the first one.
   void apply() {
     if ("..." == value) {
       insertTree.forEach((key, val) {
@@ -723,6 +741,7 @@ class _TreeModification {
     } else {
       tree[keyName] = insertTree;
     }
+    tree.remove(directiveKey);
   }
 }
 
@@ -822,7 +841,7 @@ _TreeModification? _modifyTree(
     );
   }
 
-  return _TreeModification(value, tree, keyName, insertTree);
+  return _TreeModification(value, tree, name, keyName, insertTree);
 }
 
 /// Processes a tree by resolving profile-based references.
@@ -857,6 +876,23 @@ _TreeModification? _modifyTree(
 /// key*, so `wanted@path@profile: "@"` needs a provider result containing
 /// `wanted`. A result containing the key with a `null` value is a value like
 /// any other and is assigned; only an absent key is a failure.
+///
+/// ## The directive key is consumed
+///
+/// A resolved directive's own key is removed from its map. A directive is an
+/// instruction, and one that has been carried out is not part of the
+/// configuration it produced — so the resolved tree is ordinary data that can
+/// be encoded, diffed or merged without carrying work still to do beside its
+/// result.
+///
+/// The consequence worth naming is idempotence: running this again over an
+/// already-resolved tree calls the [provider] for nothing, because there is no
+/// directive left to resolve. A provider is typically a vault read or a file
+/// load, and may have side effects.
+///
+/// Removal happens with the write, not with the resolution, so the
+/// collect-before-apply guarantee below covers it: a failure leaves every
+/// directive key exactly where it was.
 ///
 /// ## Failures
 /// Throws [Exception] if:

@@ -120,6 +120,10 @@ void run() {
   print('   - database (via @):  $resolvedDb');
   print('   - beta (via ...):    ${tree['beta']}');
   print('   - audit (preserved): ${tree['audit']}');
+  // A directive is an instruction, and a carried-out instruction is not part of
+  // the configuration it produced: the keys that asked for these values are
+  // gone, so the resolved tree is ordinary data.
+  print('   - keys afterwards:   ${tree.keys.toList()..sort()}');
   print('');
 
   // ===========================================================================
@@ -144,6 +148,9 @@ void run() {
   assert(tree['beta'] == false); // spread from "..."
   assert(tree['audit'] == 'preset'); // pre-existing key not overwritten
   assert(tree['flags'] is Map); // spread also injected the keyName map
+  // Both directives were consumed by their own resolution.
+  assert(!tree.containsKey('database@services.database@production'));
+  assert(!tree.containsKey('flags@services.featureFlags@production'));
 }
 
 /// Standalone entry point.
