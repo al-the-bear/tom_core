@@ -86,7 +86,8 @@ constants). The client side runs requests through `TomServerCall` (one
 send/read cycle with abort support) obtained from a `TomServerChannel` (client
 pooling per host), while `TomServerEndpoint` layers type-safe JSON
 serialization on top and maps status codes to typed error responses. HTTP
-clients are created through the pluggable `TomHttpClientFactory` chain, the
+clients come from a `TomHttpClientAbstractFactory` — the shipped one, or an
+application's, resolved through the `TomHttpClientFactory` chain. The
 client's target servers come from `TomClientRemoteContext`, and
 `tomRunWithAuthRetry` wraps any transport in the transport-agnostic
 expired-token refresh-and-retry policy (`TomAuthRefresher` /
@@ -121,9 +122,9 @@ Object
     ├── TomServerCallError
     ├── TomServerCall
     ├── TomServerChannel
-    ├── TomHttpClientAbstractFactory
+    ├── TomHttpClientAbstractFactory  (abstract interface)
     ├── TomHttpClientFactory  (implements TomHttpClientAbstractFactory)
-    │       └── TomDefaultHttpClientFactory
+    ├── TomDefaultHttpClientFactory  (implements TomHttpClientAbstractFactory)
     ├── TomServerEndpoint<T, R>
     ├── TomFileSource
     ├── TomFileMetadata
@@ -921,12 +922,12 @@ preparation for a specific host.
 TomServerChannel(
   String host,
   int port, {
-  TomHttpClientFactory? clientFactory,
+  TomHttpClientAbstractFactory? clientFactory,
 })
 
 factory TomServerChannel.forUri(
   Uri uri, {
-  TomHttpClientFactory? clientFactory,
+  TomHttpClientAbstractFactory? clientFactory,
 })
 ```
 
@@ -943,7 +944,7 @@ from the scheme's default, so any other derivation dials an ordinary
 | `client` | `Client?` | The cached HTTP client. |
 | `host` | `String` | The server hostname. |
 | `port` | `int` | The server port. |
-| `clientFactory` | `TomHttpClientFactory` | Factory for creating HTTP clients. |
+| `clientFactory` | `TomHttpClientAbstractFactory` | Factory for creating HTTP clients. |
 
 ##### Methods
 
@@ -955,14 +956,13 @@ from the scheme's default, so any other derivation dials an ordinary
 
 #### TomHttpClientFactory
 
-Factory for creating HTTP clients, supporting a global configuration and
-per-instance overrides. Falls back to `TomDefaultHttpClientFactory` when no
-custom factory is set.
+Resolves an HTTP client through a per-instance override or the global factory,
+falling back to `TomDefaultHttpClientFactory` when nothing has been registered.
 
 This class creates no clients of its own — it only forwards, to
-`instanceClientFactory` or, failing that, to the global factory. A subclass
-overriding `getClient` is what eventually produces one, so the factory
-registered as the global must be such a subclass. A chain that leads back to a
+`instanceClientFactory` or, failing that, to the global factory. A
+`TomHttpClientAbstractFactory` implementation is what eventually produces one,
+so that is what the global registration has to be. A chain that leads back to a
 factory already in it is refused with
 `server.connect.client_factory_delegation_cycle`.
 
@@ -978,15 +978,15 @@ TomHttpClientFactory()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `setGlobalHttpClientFactory` | `static void setGlobalHttpClientFactory(TomHttpClientFactory factory)` | Sets the global HTTP client factory used by instances without their own factory. The factory must override `getClient`; a plain `TomHttpClientFactory` only forwards, and forwards to itself. |
-| `initialize` | `static void initialize([TomHttpClientFactory? defaultFactory])` | Initializes the factory system, setting the global factory to `defaultFactory` or the default. One-shot: `defaultFactory` is ignored once anything has initialized, until `resetGlobalHttpClientFactory`. |
+| `setGlobalHttpClientFactory` | `static void setGlobalHttpClientFactory(TomHttpClientAbstractFactory factory)` | Sets the global HTTP client factory used by instances without their own factory. The factory must produce a client; a plain `TomHttpClientFactory` only forwards, and forwards to itself. |
+| `initialize` | `static void initialize([TomHttpClientAbstractFactory? defaultFactory])` | Initializes the factory system, setting the global factory to `defaultFactory` or the default. One-shot: `defaultFactory` is ignored once anything has initialized, until `resetGlobalHttpClientFactory`. |
 | `resetGlobalHttpClientFactory` | `static void resetGlobalHttpClientFactory()` | Returns the factory system to its unconfigured state so a later `initialize` or `setGlobalHttpClientFactory` takes effect again. Restores the statics only — instances that already resolved keep their cached `instanceClientFactory`. |
 
 ##### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `instanceClientFactory` | `TomHttpClientFactory?` | Instance-specific client factory override. |
+| `instanceClientFactory` | `TomHttpClientAbstractFactory?` | Instance-specific client factory override. |
 
 ##### Methods
 
@@ -996,19 +996,33 @@ TomHttpClientFactory()
 
 #### TomHttpClientAbstractFactory
 
-Abstract base class for HTTP client factories.
+The contract for producing an HTTP client. Implement it to supply a client of
+your own — one carrying an interceptor, a proxy, a pinned certificate, or a
+scripted response in a test — and register it with
+`TomHttpClientFactory.setGlobalHttpClientFactory`, or hand it to a single
+`TomServerChannel`.
+
+Implementing this rather than extending `TomHttpClientFactory` is what a
+producing factory wants: `TomHttpClientFactory` is the resolver, and a subclass
+of it that forgets to override `getClient` forwards forever.
+
+```dart
+abstract interface class TomHttpClientAbstractFactory
+```
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getClient` | `Client getClient()` | Creates and returns an HTTP client (throws `UnimplementedError` in the base). |
+| `getClient` | `Client getClient()` | *(abstract)* Creates and returns an HTTP client. |
 
 #### TomDefaultHttpClientFactory
 
-Default HTTP client factory using platform-specific clients.
+Default HTTP client factory using platform-specific clients. It *produces*, so
+it implements the contract rather than extending the resolver: there is nothing
+for it to delegate to.
 
-- **Extends:** `TomHttpClientFactory`
+- **Implements:** `TomHttpClientAbstractFactory`
 
 ##### Constructors
 

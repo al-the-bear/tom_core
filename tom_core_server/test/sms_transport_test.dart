@@ -47,7 +47,7 @@ class _FakeGateway extends BaseClient {
 }
 
 /// Hands a [TomServerChannel] the scripted client instead of a real one.
-class _FakeGatewayFactory extends TomHttpClientFactory {
+class _FakeGatewayFactory implements TomHttpClientAbstractFactory {
   _FakeGatewayFactory(this._client);
 
   final _FakeGateway _client;

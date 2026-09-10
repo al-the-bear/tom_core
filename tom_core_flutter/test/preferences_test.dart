@@ -1491,13 +1491,13 @@ String _bearerJwt(Map<String, dynamic> payload) {
 String _dtoBody(String key, Object value) => tomReflectionInfo
     .convertToJsonString(TomUserPreferenceCodec.encode(key, value));
 
-/// An [TomHttpClientFactory] that answers every call from a script and records
-/// what was asked.
+/// A [TomHttpClientAbstractFactory] that answers every call from a script and
+/// records what was asked.
 ///
 /// A fake rather than a live server: what these tests are about is the *shape*
 /// of the request the contract produces and the decoding of the answer, and
 /// neither needs a socket to be wrong in an interesting way.
-class _ScriptedTransport extends TomHttpClientFactory {
+class _ScriptedTransport implements TomHttpClientAbstractFactory {
   int _statusCode = 200;
   String _body = '';
 

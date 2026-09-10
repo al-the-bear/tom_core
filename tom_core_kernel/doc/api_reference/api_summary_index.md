@@ -69,9 +69,9 @@ declarations are omitted.
 | `TomServerEndpoint<T, R>` | class | Typed server-side endpoint. |
 | `TomServerConnectionException` | class | Connection failure (extends `TomException`). |
 | `TomRequestAbortedException` | class | Aborted-request failure (extends `TomException`). |
-| `TomHttpClientFactory` | class | Default HTTP client factory. |
-| `TomHttpClientAbstractFactory` | class | Abstract client-factory contract. |
-| `TomDefaultHttpClientFactory` | class | Concrete default factory. |
+| `TomHttpClientFactory` | class | Resolves a client through a per-instance override or the global registration. |
+| `TomHttpClientAbstractFactory` | abstract interface class | The client-factory contract a custom factory implements. |
+| `TomDefaultHttpClientFactory` | class | The shipped factory, over the platform's client. |
 | `TomRemoteApis` | class | Registry of remote API groups. |
 | `TomApi` | class | A remote API group. |
 | `TomApiEndpoint<ReturnType, RequestType>` | class | A typed remote API endpoint. |

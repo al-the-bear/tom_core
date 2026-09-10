@@ -246,7 +246,7 @@ class _MemoryFileRepository
 /// real one. A test is its own host, so it installs one too.
 /// (`tom_core_kernel`'s own `file_transfer_test.dart` does exactly this — the
 /// package is named by its directory so the pointer resolves against it.)
-class _TestClientFactory extends TomHttpClientFactory {
+class _TestClientFactory implements TomHttpClientAbstractFactory {
   @override
   Client getClient() => Client();
 }

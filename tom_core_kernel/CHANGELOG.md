@@ -215,6 +215,30 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomHttpClientAbstractFactory` is a real contract, and the extension point
+  it documents now works (tcopen15).** It was a concrete class whose only
+  constructor was private and whose `getClient()` threw `UnimplementedError`:
+  it could not be extended from outside the library, no signature in the
+  framework accepted it, and nothing implemented it. The one working way to
+  supply a client was to extend `TomHttpClientFactory` — the *resolver*, whose
+  `getClient` forwards to an instance factory or to the global one — and
+  remember to override the method. Forgetting is the documented trap that
+  `server.connect.client_factory_delegation_cycle` exists to report.
+
+  It is now `abstract interface class TomHttpClientAbstractFactory` with an
+  abstract `Client getClient()`, and it is the type the framework asks for:
+  `setGlobalHttpClientFactory`, `initialize`, `instanceClientFactory`,
+  `TomServerChannel`'s `clientFactory` parameter and field all take it.
+  `TomDefaultHttpClientFactory` implements it rather than extending the
+  resolver, because it produces and has nothing to delegate to; so do the eight
+  scripted factories across the kernel, server, Flutter binding and samples
+  suites.
+
+  A caller now writes one method and inherits no delegation it has to remember
+  to override. `example/samples/http_connection/01_http_client_example.dart`
+  shows it end to end, asserting that a registered factory answers for a
+  channel with none of its own and that a per-channel factory wins over it.
+
 - **`TomZoneValues.zoneValues` is `final`, and no longer `late` (tcopen11).**
   The field was assigned on every path through the constructor, so `late`
   bought nothing: it only gave up the compiler's guarantee that the field is

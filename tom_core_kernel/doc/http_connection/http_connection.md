@@ -788,7 +788,7 @@ belongs to the endpoint, because the tuple is the endpoint's contract.
 ### Custom HTTP Client Factory
 
 ```dart
-class MyCustomClientFactory extends TomHttpClientFactory {
+class MyCustomClientFactory implements TomHttpClientAbstractFactory {
   @override
   Client getClient() {
     // Return your custom client (e.g., with interceptors)
@@ -798,14 +798,24 @@ class MyCustomClientFactory extends TomHttpClientFactory {
 
 // Set globally
 TomHttpClientFactory.setGlobalHttpClientFactory(MyCustomClientFactory());
+
+// Or for one channel only
+TomServerChannel('api.example.com', 443,
+    clientFactory: MyCustomClientFactory());
 ```
 
-The `@override getClient` is not optional. `TomHttpClientFactory` creates no
-clients itself — it forwards to its instance factory, or to the global one when
-it has none — so a factory that does not override it can only pass the request
-on. Register such a factory as the global and it forwards to itself; that is
-refused with `server.connect.client_factory_delegation_cycle` rather than
-recursing until the stack runs out.
+`TomHttpClientAbstractFactory` is the whole contract: one method returning a
+client. Implement it rather than extending `TomHttpClientFactory`, which is the
+*resolver* — it creates no clients itself, forwarding to its instance factory
+or to the global one when it has none. A subclass of the resolver that does not
+override `getClient` can only pass the request on; register such a factory as
+the global and it forwards to itself, which is refused with
+`server.connect.client_factory_delegation_cycle` rather than recursing until the
+stack runs out.
+
+A running version of this, asserting that the registered factory answers for a
+channel with none of its own and that a per-channel factory wins over it, is
+`example/samples/http_connection/01_http_client_example.dart`.
 
 Tests that install a global factory should undo it with
 `TomHttpClientFactory.resetGlobalHttpClientFactory()`. The global is

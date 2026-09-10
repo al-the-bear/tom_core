@@ -880,7 +880,7 @@ class TomServerChannel {
   int port;
 
   /// Factory for creating HTTP clients.
-  late TomHttpClientFactory clientFactory;
+  late TomHttpClientAbstractFactory clientFactory;
 
   /// Creates a new server channel.
   ///
@@ -890,7 +890,7 @@ class TomServerChannel {
   TomServerChannel(
     this.host,
     this.port, {
-    TomHttpClientFactory? clientFactory,
+    TomHttpClientAbstractFactory? clientFactory,
   }) {
     if (clientFactory != null) {
       this.clientFactory = clientFactory;
@@ -913,7 +913,7 @@ class TomServerChannel {
   /// address written into the call's specs.
   factory TomServerChannel.forUri(
     Uri uri, {
-    TomHttpClientFactory? clientFactory,
+    TomHttpClientAbstractFactory? clientFactory,
   }) => TomServerChannel(
     uri.host,
     uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80),
@@ -945,10 +945,14 @@ class TomServerChannel {
 // HTTP CLIENT FACTORY
 // =============================================================================
 
-/// Factory for creating HTTP clients.
+/// Resolves an HTTP client through a per-instance override or the global
+/// factory.
 ///
-/// Supports global configuration and per-instance overrides.
-/// Uses [TomDefaultHttpClientFactory] if no custom factory is set.
+/// It produces no client of its own — [TomDefaultHttpClientFactory] does that,
+/// and so does any [TomHttpClientAbstractFactory] an application registers. This
+/// is the type the framework holds when it has somewhere to *ask*: a
+/// [TomServerChannel] with no factory of its own carries one, and it answers
+/// from whatever the process has been configured with.
 ///
 /// ## Example
 ///
@@ -962,16 +966,16 @@ class TomServerChannel {
 class TomHttpClientFactory implements TomHttpClientAbstractFactory {
   static bool _initialized = false;
 
-  static TomHttpClientFactory? _defaultHttpClientFactory =
+  static TomHttpClientAbstractFactory? _defaultHttpClientFactory =
       TomDefaultHttpClientFactory();
 
-  static TomHttpClientFactory? _globalClientFactory;
+  static TomHttpClientAbstractFactory? _globalClientFactory;
 
   /// Sets the global HTTP client factory.
   ///
   /// This factory will be used by all [TomHttpClientFactory] instances
   /// that don't have a custom instance factory set.
-  static void setGlobalHttpClientFactory(TomHttpClientFactory factory) {
+  static void setGlobalHttpClientFactory(TomHttpClientAbstractFactory factory) {
     _globalClientFactory = factory;
     _initialized = true;
   }
@@ -986,7 +990,7 @@ class TomHttpClientFactory implements TomHttpClientAbstractFactory {
   /// consequence is that [defaultFactory] is *ignored* once anything has
   /// initialized — call [resetGlobalHttpClientFactory] first if you need a
   /// second initialization to take effect.
-  static void initialize([TomHttpClientFactory? defaultFactory]) {
+  static void initialize([TomHttpClientAbstractFactory? defaultFactory]) {
     if (_initialized == false) {
       _defaultHttpClientFactory = defaultFactory ?? _defaultHttpClientFactory;
       _globalClientFactory = _defaultHttpClientFactory;
@@ -1014,7 +1018,7 @@ class TomHttpClientFactory implements TomHttpClientAbstractFactory {
   TomHttpClientFactory();
 
   /// Instance-specific client factory override.
-  TomHttpClientFactory? instanceClientFactory;
+  TomHttpClientAbstractFactory? instanceClientFactory;
 
   /// Whether this instance is part of a delegation currently in progress.
   ///
@@ -1026,11 +1030,12 @@ class TomHttpClientFactory implements TomHttpClientAbstractFactory {
   /// Resolves a client, delegating to [instanceClientFactory] — or, if none was
   /// set, to the global factory.
   ///
-  /// This class creates no clients of its own; it only forwards. A subclass
-  /// that overrides this method is what eventually produces one. Delegation
-  /// therefore has to end somewhere, and it does not when the chain leads back
-  /// to a factory already in it — most easily by registering a plain
-  /// `TomHttpClientFactory` as the global, which then forwards to itself.
+  /// This class creates no clients of its own; it only forwards. A
+  /// [TomHttpClientAbstractFactory] implementation is what eventually produces
+  /// one. Delegation therefore has to end somewhere, and it does not when the
+  /// chain leads back to a factory already in it — most easily by registering
+  /// a plain `TomHttpClientFactory` as the global, which then forwards to
+  /// itself.
   ///
   /// Such a chain would recurse until the stack ran out, reporting a wiring
   /// mistake as a `StackOverflowError` that names neither the factory nor the
@@ -1045,7 +1050,8 @@ class TomHttpClientFactory implements TomHttpClientAbstractFactory {
             "produce a client. The usual cause is registering a plain "
             "TomHttpClientFactory as the global factory: it creates no clients, "
             "so it forwards to the global — which is itself. Register a factory "
-            "that overrides getClient(), such as TomDefaultHttpClientFactory.",
+            "that produces one — an implementation of "
+            "TomHttpClientAbstractFactory, such as TomDefaultHttpClientFactory.",
       );
     }
     if (instanceClientFactory == null) {
@@ -1063,18 +1069,35 @@ class TomHttpClientFactory implements TomHttpClientAbstractFactory {
   }
 }
 
-/// Abstract base class for HTTP client factories.
-class TomHttpClientAbstractFactory {
-  const TomHttpClientAbstractFactory._();
-
+/// The contract for producing an HTTP client.
+///
+/// Implement it to supply a client of your own — one carrying an
+/// interceptor, a proxy, a pinned certificate, or a scripted response in a test:
+///
+/// ```dart
+/// class MyClientFactory implements TomHttpClientAbstractFactory {
+///   @override
+///   Client getClient() => MyClient();
+/// }
+///
+/// TomHttpClientFactory.setGlobalHttpClientFactory(MyClientFactory());
+/// ```
+///
+/// Implementing this rather than extending [TomHttpClientFactory] is what a
+/// producing factory wants: [TomHttpClientFactory] is the *resolver*, whose
+/// `getClient` forwards to an instance factory or to the global one, and a
+/// subclass that forgets to override it forwards forever — registered as the
+/// global, to itself.
+abstract interface class TomHttpClientAbstractFactory {
   /// Creates and returns an HTTP client.
-  Client getClient() {
-    throw UnimplementedError();
-  }
+  Client getClient();
 }
 
 /// Default HTTP client factory using platform-specific clients.
-class TomDefaultHttpClientFactory extends TomHttpClientFactory {
+///
+/// It *produces*, so it implements the contract rather than extending the
+/// resolver: there is nothing for it to delegate to.
+class TomDefaultHttpClientFactory implements TomHttpClientAbstractFactory {
   @override
   Client getClient() {
     return TomPlatformUtils.current.httpClient();

@@ -56,7 +56,7 @@ class RecordingClient extends BaseClient {
 }
 
 /// Hands a `TomServerChannel` the one [RecordingClient] under test.
-class RecordingClientFactory extends TomHttpClientFactory {
+class RecordingClientFactory implements TomHttpClientAbstractFactory {
   RecordingClientFactory(this._client);
 
   final RecordingClient _client;

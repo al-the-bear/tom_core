@@ -179,7 +179,7 @@ class _FileTestServer {
 /// The kernel's default factory delegates to `TomPlatformUtils.current`, whose
 /// fallback implementation has no client — a Flutter or server host installs a
 /// real one. A test is its own host, so it installs one too.
-class _TestClientFactory extends TomHttpClientFactory {
+class _TestClientFactory implements TomHttpClientAbstractFactory {
   @override
   Client getClient() => Client();
 }

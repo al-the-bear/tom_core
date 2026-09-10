@@ -2570,6 +2570,63 @@ void main() {
   });
 
   // ==========================================================================
+  // TomHttpClientAbstractFactory Tests
+  // ==========================================================================
+  group('TomHttpClientAbstractFactory', () {
+    // Every test here installs a global, which is process-wide state.
+    tearDown(TomHttpClientFactory.resetGlobalHttpClientFactory);
+
+    test('an implementation supplies the client every channel resolves', () {
+      // `_MockClientFactory` is the whole of what a custom factory has to be:
+      // one method returning a client. It implements the contract rather than
+      // extending TomHttpClientFactory, so it inherits no delegation it would
+      // have to remember to override.
+      final produced = _MockClient((_) async => _streamed('global'));
+      TomHttpClientFactory.setGlobalHttpClientFactory(
+        _MockClientFactory(produced),
+      );
+
+      expect(
+        TomServerChannel('api.example.com', 443).getClient(),
+        same(produced),
+      );
+    });
+
+    test('an implementation supplies one channel, leaving the global be', () {
+      final ambient = _MockClient((_) async => _streamed('ambient'));
+      final scoped = _MockClient((_) async => _streamed('scoped'));
+      TomHttpClientFactory.setGlobalHttpClientFactory(
+        _MockClientFactory(ambient),
+      );
+
+      final channel = TomServerChannel(
+        'api.example.com',
+        443,
+        clientFactory: _MockClientFactory(scoped),
+      );
+
+      expect(channel.getClient(), same(scoped));
+      expect(
+        TomServerChannel('api.example.com', 443).getClient(),
+        same(ambient),
+        reason: 'a per-channel factory is not a registration',
+      );
+    });
+
+    test('an implementation ends a delegation chain', () {
+      // The resolver's cycle guard exists because a delegate may forward again.
+      // An implementation of the contract has nothing to forward to, which is
+      // why implementing — rather than extending the resolver — is the shape
+      // a producing factory wants.
+      final produced = _MockClient((_) async => _streamed('x'));
+      final delegating = TomHttpClientFactory()
+        ..instanceClientFactory = _MockClientFactory(produced);
+
+      expect(delegating.getClient(), same(produced));
+    });
+  });
+
+  // ==========================================================================
   // TomHttpClientFactory Tests
   // ==========================================================================
   group('TomHttpClientFactory', () {
@@ -4251,9 +4308,9 @@ class _MockClient extends BaseClient {
   }
 }
 
-/// A [TomHttpClientFactory] that always hands out the same mock client, so a
-/// [TomServerChannel] can be wired to a [_MockClient].
-class _MockClientFactory extends TomHttpClientFactory {
+/// A [TomHttpClientAbstractFactory] that always hands out the same mock
+/// client, so a [TomServerChannel] can be wired to a [_MockClient].
+class _MockClientFactory implements TomHttpClientAbstractFactory {
   _MockClientFactory(this._client);
 
   final _MockClient _client;

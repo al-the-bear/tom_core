@@ -16,8 +16,10 @@
 /// ```
 library;
 
+import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:http/http.dart' as http;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../sample_preamble.dart';
@@ -222,22 +224,45 @@ class HttpClientExample {
   }
 
   // -------------------------------------------------------------------------
-  // Example 6: HTTP client factory initialization
+  // Example 6: Supplying your own HTTP client
   // -------------------------------------------------------------------------
   static void example6ClientFactory() {
     print('\n6. HTTP client factory:');
 
-    // Initialize the default factory
-    TomHttpClientFactory.initialize();
-    print('   - Factory initialized with defaults');
+    // A custom factory is one method: implement
+    // TomHttpClientAbstractFactory and return the client every call should
+    // use — one carrying an interceptor, a proxy, or, here, a canned answer.
+    final ambientClient = _StubClient();
+    TomHttpClientFactory.setGlobalHttpClientFactory(
+      _StubClientFactory(ambientClient),
+    );
 
-    // Create a factory instance
-    final factory = TomHttpClientFactory();
-    print('   - Factory instance created: ${factory.runtimeType}');
+    // A channel that names no factory of its own resolves through the global.
+    final ambient = TomServerChannel('api.example.com', 443);
+    print('   - Ambient channel client: ${ambient.getClient().runtimeType}');
 
-    // Note: In real applications, you can set a custom global factory:
-    // TomHttpClientFactory.setGlobalHttpClientFactory(myCustomFactory);
-    print('   - Custom factories can be set globally');
+    // One channel can be given its own without disturbing that choice.
+    final scopedClient = _StubClient();
+    final scoped = TomServerChannel(
+      'reporting.example.com',
+      443,
+      clientFactory: _StubClientFactory(scopedClient),
+    );
+    print('   - Scoped channel client:  ${scoped.getClient().runtimeType}');
+
+    // Assertions
+    assert(
+      identical(ambient.getClient(), ambientClient),
+      'The registered factory should answer for a channel with none of its own',
+    );
+    assert(
+      identical(scoped.getClient(), scopedClient),
+      'A per-channel factory should win over the registered one',
+    );
+
+    // The global factory is process-wide state: an application sets it once at
+    // startup, and anything that borrows it puts it back.
+    TomHttpClientFactory.resetGlobalHttpClientFactory();
   }
 
   // -------------------------------------------------------------------------
@@ -255,6 +280,29 @@ class HttpClientExample {
 
     print('\n=== HTTP Client Example Complete ===\n');
   }
+}
+
+/// A client that answers every request from memory, so the example needs no
+/// network.
+class _StubClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async =>
+      http.StreamedResponse(Stream.value(utf8.encode('{}')), 200);
+}
+
+/// The whole of a custom client factory: one method, returning a client.
+///
+/// It implements the contract rather than extending [TomHttpClientFactory],
+/// which is the *resolver* — a subclass of that which forgets to override
+/// `getClient` forwards forever, and forwards to itself once registered as the
+/// global.
+class _StubClientFactory implements TomHttpClientAbstractFactory {
+  _StubClientFactory(this._client);
+
+  final _StubClient _client;
+
+  @override
+  _StubClient getClient() => _client;
 }
 
 void run() => HttpClientExample.run();

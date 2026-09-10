@@ -280,7 +280,7 @@ class _TransferAttempt<R> {
 ///
 /// See the library doc for why this package answers the question itself instead
 /// of requiring a `TomPlatformUtils.setCurrentPlatform` call at startup.
-class _IoHttpClientFactory extends TomHttpClientFactory {
+class _IoHttpClientFactory implements TomHttpClientAbstractFactory {
   @override
   Client getClient() => IOClient(HttpClient());
 }
