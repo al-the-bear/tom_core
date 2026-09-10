@@ -52,9 +52,9 @@ class _StatementLog extends TomLogOutput {
     String level,
     Object message,
     String isolateName,
-    DateTime timeStamp,
+    DateTime timeStamp, [
     String? origin,
-  ) {
+  ]) {
     final text = convertToString(message);
     if (text.contains('MariaDbDatasourceExecuting SQL:')) {
       statements.add(text);

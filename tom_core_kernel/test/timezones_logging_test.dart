@@ -32,9 +32,9 @@ class _RecordingLogOutput extends TomLogOutput {
     String level,
     Object message,
     String isolateName,
-    DateTime timeStamp,
+    DateTime timeStamp, [
     String? origin,
-  ) {
+  ]) {
     records.add((level: level.trim(), message: convertToString(message)));
   }
 

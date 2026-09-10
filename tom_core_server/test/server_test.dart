@@ -100,9 +100,9 @@ class _CapturingLogOutput extends TomLogOutput {
     String level,
     Object message,
     String isolateName,
-    DateTime timeStamp,
+    DateTime timeStamp, [
     String? origin,
-  ) => messages.add(convertToString(message));
+  ]) => messages.add(convertToString(message));
 }
 
 void main() {

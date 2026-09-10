@@ -594,6 +594,24 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **`TomLogOutput.output` declares `origin` optional (tcopen43).** Requires
+  **tom_basics 3.1.1**; the floor moved to match. The base declared it a
+  required positional while its own parameter documentation called it
+  "Optional caller information" and its dartdoc example showed
+  `[String? origin,]`.
+
+  It compiled both ways — an override may widen a required positional to
+  optional — so this module implemented both spellings, and a reader could not
+  tell from the base which was intended. Now only one compiles: a required
+  positional cannot override an optional one, so the compiler keeps the module
+  to a single form. Ten implementations across the workspace were updated.
+
+- **`_isUnreachable` no longer tests `statusCode == 0` (tcopen43).** That half
+  was load-bearing only while `TomServerCallError.noResponseError` and
+  `serverError` shared the value `2`. They differ, so the internal code decides
+  it alone, and a redundant condition on an error path is a condition nobody
+  can tell is dead.
+
 - **`TomRemoteLogServer.localOutput` is a nullable override, not a snapshot
   (tcopen40).** It was `static TomLogOutput localOutput = tomLog.logOutput`,
   and Dart initialises a static lazily — so the default captured whatever the

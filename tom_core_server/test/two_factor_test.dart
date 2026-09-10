@@ -315,9 +315,9 @@ class _CapturingLogOutput implements TomLogOutput {
     String level,
     Object message,
     String isolateName,
-    DateTime timeStamp,
+    DateTime timeStamp, [
     String? origin,
-  ) => messages.add('$message');
+  ]) => messages.add('$message');
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

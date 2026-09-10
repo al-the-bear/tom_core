@@ -655,13 +655,15 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// Whether [error] means the request never produced a response, as opposed to
   /// producing one that failed.
   ///
-  /// The internal code alone cannot decide this: `noResponseError` and
-  /// `serverError` currently share the value `2`. A delivered response always
-  /// carries a status, so a status of `0` is what separates them. Once the two
-  /// codes differ, the status test becomes redundant and can go.
+  /// The internal code decides it on its own. [TomServerCallError] distinguishes
+  /// the two conditions — `noResponseError` means there was no reply to read,
+  /// `serverError` means the server replied and the reply was a failure — so
+  /// there is nothing left for a second test to separate. A `statusCode == 0`
+  /// check beside it would be load-bearing only if the two codes shared a
+  /// value, and a redundant condition on an error path is a condition nobody
+  /// can tell is dead.
   static bool _isUnreachable(TomServerCallError error) =>
-      error.internalError == TomServerCallError.noResponseError &&
-      error.statusCode == 0;
+      error.internalError == TomServerCallError.noResponseError;
 
   /// Sends [remoteMessage] with bounded retry and linear backoff.
   ///

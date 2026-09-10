@@ -37,9 +37,9 @@ class _CapturingLogOutput extends TomLogOutput {
     String level,
     Object message,
     String isolateName,
-    DateTime timeStamp,
+    DateTime timeStamp, [
     String? origin,
-  ) => lines.add(convertToString(message));
+  ]) => lines.add(convertToString(message));
 }
 
 /// Captures log output for the duration of the calling test.
