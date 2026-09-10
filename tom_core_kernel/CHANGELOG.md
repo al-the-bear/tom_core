@@ -183,6 +183,32 @@ anyone who was writing them.
 
 ### Changed
 
+- **A foreign value under one of the context module's two zone keys is
+  refused, not absorbed (tcopen9).** `TomExecutionContext` and
+  `TomZoneValues` are installed under their own `Type` as the zone key, so a
+  bare `runZoned(zoneValues: {TomZoneValues: something})` can occupy one. The
+  module read those keys with `getFromCurrentZone`, which answers null for
+  "not there" and "there but not a T" alike — so a nested run inherited
+  nothing, every entry the enclosing run installed disappeared, and every read
+  went on answering null. Nesting kept working, which is the shape of failure
+  that survives a suite.
+
+  The keys stay public, and that is the decision rather than the default:
+  they are what makes `getFromCurrentZone<TomExecutionContext>()` — the
+  module's own documented read — possible, and a private sentinel would
+  break it silently, which is a wider version of the hazard it would close.
+  Both are documented as reserved, in the library dartdoc and the guide, and
+  a collision now raises
+  `context.zone_key.reserved_key_holds_foreign_value` naming the key and what
+  was found under it. Reading such a zone with `getFromCurrentZone` still
+  answers null, deliberately: that reader asked for a `TomZoneValues` and
+  there is none. The refusal belongs to the module, which knows the key is
+  its own.
+
+  Passing either type through `runInContext`'s own `zoneValues:` is not a
+  collision and never was: that map is nested inside the container rather
+  than merged into the zone.
+
 - **`TomExecutionContext.contextMap` is a read-only view (tcopen8).** It was
   a public, mutable `Map`, so any consumer that read a context out of the zone
   could add, replace or clear entries that every other caller in that zone

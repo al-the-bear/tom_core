@@ -29,9 +29,18 @@
 /// ## Two reads, and which one to use
 ///
 /// A zone is keyed by `Type`, and [runInContext] installs exactly two keys:
-/// [TomExecutionContext] and [TomZoneValues]. Everything else lives *inside*
-/// one of those two containers, so which read applies depends on what is being
-/// fetched:
+/// [TomExecutionContext] and [TomZoneValues]. **Both are reserved.** They are
+/// ordinary `Type` keys, which is what makes the reads below possible — a
+/// private sentinel would be collision-proof and unreadable — so a bare
+/// `runZoned(zoneValues: {TomZoneValues: something})` can put a foreign value
+/// under one of them. Use a key of your own instead; a collision made that way
+/// is refused with `context.zone_key.reserved_key_holds_foreign_value` the
+/// next time a run nests, rather than silently inheriting nothing. Passing
+/// either type through [runInContext]'s own `zoneValues:` is not a collision:
+/// that map is nested inside the container, not merged into the zone.
+///
+/// Everything else lives *inside* one of those two containers, so which read
+/// applies depends on what is being fetched:
 ///
 /// - **The containers themselves** are read by type, with
 ///   `getFromCurrentZone<TomExecutionContext>()` and
@@ -51,6 +60,7 @@ library;
 import 'dart:async';
 import 'dart:collection';
 
+import '../little_things/exception_base.dart';
 import '../little_things/little_things.dart';
 import '../security/user_principal_aci.dart';
 
@@ -287,13 +297,37 @@ class TomExecutionContext {
   Map<Object, Object> _buildZoneValues(Map<Object?, Object?> zoneValues) {
     final newCtx = TomExecutionContext(
       contextMap,
-      parentContext: getFromCurrentZone<TomExecutionContext>(),
+      parentContext: _inheritedOrRefuse<TomExecutionContext>(),
     );
     final newZoneValues = TomZoneValues(
       zoneValues,
-      existingValues: getFromCurrentZone<TomZoneValues>(),
+      existingValues: _inheritedOrRefuse<TomZoneValues>(),
     );
     return {TomExecutionContext: newCtx, TomZoneValues: newZoneValues};
+  }
+
+  /// The [T] this run inherits from the zone, or null when there is none.
+  ///
+  /// [getFromCurrentZone] answers null for both "nothing there" and "something
+  /// there that is not a [T]", which is the right answer for a *reader*: it
+  /// asked for a [T] and there is none. It is the wrong answer here. The keys
+  /// `TomExecutionContext` and `TomZoneValues` are reserved for these two
+  /// containers, so a foreign value under one of them is not an absence —
+  /// it is a collision, and inheriting nothing would silently drop every
+  /// entry the enclosing run installed. Nesting would keep working and keep
+  /// answering null, which is the shape of failure that survives a test suite.
+  static T? _inheritedOrRefuse<T>() {
+    final existing = Zone.current[T];
+    if (existing == null || existing is T) return existing as T?;
+    throw TomException(
+      "context.zone_key.reserved_key_holds_foreign_value",
+      "The zone key $T is reserved for the context module's own container, "
+          "and holds a ${existing.runtimeType}. Something installed it with "
+          "runZoned(zoneValues: {$T: ...}); use a key of your own, or read "
+          "the container with getFromCurrentZone<$T>().",
+      parameters: {"key": "$T", "found": existing.runtimeType},
+      autoLog: true,
+    );
   }
 
   /// Runs asynchronous code within this context.

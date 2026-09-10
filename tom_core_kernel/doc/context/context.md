@@ -7,6 +7,7 @@ The Tom Execution Context System provides zone-based context propagation for pas
 - [Overview](#overview)
   - [How It Works](#how-it-works)
   - [Two reads, and which one to use](#two-reads-and-which-one-to-use)
+    - [Both keys are reserved](#both-keys-are-reserved)
   - [The `zoneValues:` argument is not zone values](#the-zonevalues-argument-is-not-zone-values)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
@@ -76,6 +77,40 @@ Reaching for the wrong one returns `null` rather than failing, so it is worth
 being deliberate: `getFromCurrentZone<String>()` never sees an entry named
 `'userId'`, however that entry is typed, because nothing ever installs `String`
 as a zone key.
+
+#### Both keys are reserved
+
+`TomExecutionContext` and `TomZoneValues` are ordinary `Type` keys, which is
+what makes the reads above possible — a private sentinel would be
+collision-proof and unreadable. The price is that a bare
+`runZoned(zoneValues: {TomZoneValues: something})` can put a foreign value
+under one of them. **Do not.** Use a key of your own; there is nothing special
+about these two except that this module owns them.
+
+Passing them through `runInContext`'s own `zoneValues:` is *not* a collision:
+that map is nested inside the container rather than merged into the zone, so it
+cannot displace anything.
+
+A collision made the other way is reported rather than absorbed. The module
+reads these two keys when a run nests inside another, and a foreign value there
+is not an absence — inheriting nothing would silently drop every entry the
+enclosing run installed, while nesting went on working and every read went on
+answering `null`:
+
+```dart
+runZoned(
+  () => context.runInContext(() {}),   // throws
+  zoneValues: {TomZoneValues: 'not a container'},
+);
+// TomException: context.zone_key.reserved_key_holds_foreign_value
+// "The zone key TomZoneValues is reserved for the context module's own
+//  container, and holds a String."
+```
+
+A plain `getFromCurrentZone<TomZoneValues>()` in such a zone still answers
+`null`, and that is correct for a *reader*: it asked for a `TomZoneValues` and
+there is none. The refusal belongs to the module, which knows the key is its
+own.
 
 ### The `zoneValues:` argument is not zone values
 

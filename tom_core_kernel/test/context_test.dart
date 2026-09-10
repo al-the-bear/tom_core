@@ -73,6 +73,82 @@ void main() {
       });
     });
 
+    group('the two zone keys are reserved', () {
+      // Both containers are installed under their own Type as the zone key,
+      // which is what makes `getFromCurrentZone<TomExecutionContext>()` the
+      // documented read. The cost is that the keys are ordinary and anyone
+      // can install something else under them with a bare runZoned.
+
+      test('a foreign value under a reserved key is refused, not ignored', () {
+        // Inheriting nothing would be the silent outcome: nesting keeps
+        // working, every entry the enclosing run installed disappears, and
+        // every read answers null. The collision is unambiguous — the key is
+        // reserved — so it is reported where it is seen.
+        final context = TomExecutionContext({
+          'tenant': TomContextEntry<String>(() => 'acme'),
+        });
+
+        Object? thrown;
+        runZoned(() {
+          try {
+            context.runInContext(() {});
+          } catch (e) {
+            thrown = e;
+          }
+        }, zoneValues: {TomZoneValues: 'not a container'});
+
+        expect(thrown, isA<TomException>());
+        final error = thrown as TomException;
+        expect(
+          error.key,
+          equals('context.zone_key.reserved_key_holds_foreign_value'),
+        );
+        expect(
+          error.defaultUserMessage,
+          allOf(contains('TomZoneValues'), contains('String')),
+          reason: 'the key that collided and what was found under it',
+        );
+      });
+
+      test('the same holds for the context key', () {
+        // Both keys, because a guard written for one of them reads as if it
+        // covered both.
+        final context = TomExecutionContext({});
+
+        Object? thrown;
+        runZoned(() {
+          try {
+            context.runInContext(() {});
+          } catch (e) {
+            thrown = e;
+          }
+        }, zoneValues: {TomExecutionContext: 42});
+
+        expect(
+          (thrown as TomException?)?.key,
+          equals('context.zone_key.reserved_key_holds_foreign_value'),
+        );
+        expect(thrown.toString(), contains('int'));
+      });
+
+      test('a plain read of an occupied key still answers null', () {
+        // The reader's side is unchanged, and deliberately so:
+        // getFromCurrentZone asked for a TomZoneValues and there is none, so
+        // null is the honest answer for it. The refusal above belongs to the
+        // module, which knows the key is its own.
+        runZoned(
+          () {
+            expect(getFromCurrentZone<TomZoneValues>(), isNull);
+            expect(getFromCurrentZone<TomExecutionContext>(), isNull);
+          },
+          zoneValues: {
+            TomZoneValues: 'not a container',
+            TomExecutionContext: 42,
+          },
+        );
+      });
+    });
+
     group('contextMap is a read-only view', () {
       // A context is installed in a zone and every caller in that zone reads
       // the same object, so a write through the map would be a write into
