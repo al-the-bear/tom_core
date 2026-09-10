@@ -2408,17 +2408,57 @@ void main() {
       });
     });
 
-    group('constants', () {
-      test('should have correct jsonDecodingError constant', () {
+    group('internal error codes', () {
+      test('no two codes share a value', () {
+        // `noResponseError` and `serverError` were both 2, so a caller
+        // switching on `internalError` could not tell "the service said no"
+        // from "the service was not reachable" — different handling, and
+        // different retries.
+        //
+        // The codes are read out of the source rather than listed here. A
+        // test that names the three it knows about cannot object to a fourth
+        // added later with a value already taken, which is exactly how the
+        // collision arrived: the suite asserted each constant's value
+        // separately and both assertions passed.
+        final source = File(
+          'lib/src/tombase/http_connection/server_connection.dart',
+        ).readAsStringSync();
+        final declaration = RegExp(
+          r'^\s+static const (\w+)\s*=\s*(-?\d+);',
+          multiLine: true,
+        );
+
+        final byValue = <int, List<String>>{};
+        for (final match in declaration.allMatches(source)) {
+          byValue
+              .putIfAbsent(int.parse(match.group(2)!), () => <String>[])
+              .add(match.group(1)!);
+        }
+
+        expect(
+          byValue,
+          isNotEmpty,
+          reason:
+              'no `static const <name> = <int>;` found — the declarations '
+              'moved or changed shape, so the check below is vacuous',
+        );
+
+        final collisions = byValue.entries
+            .where((entry) => entry.value.length > 1)
+            .map(
+              (entry) => '${entry.value.join(" and ")} are both ${entry.key}',
+            )
+            .toList();
+
+        expect(collisions, isEmpty, reason: collisions.join('; '));
+      });
+
+      test('each code keeps the value callers were given', () {
+        // Distinctness alone would be satisfied by renumbering everything, so
+        // the published values are pinned too.
         expect(TomServerCallError.jsonDecodingError, equals(1));
-      });
-
-      test('should have correct noResponseError constant', () {
         expect(TomServerCallError.noResponseError, equals(2));
-      });
-
-      test('should have correct serverError constant', () {
-        expect(TomServerCallError.serverError, equals(2));
+        expect(TomServerCallError.serverError, equals(3));
       });
     });
 
@@ -2863,20 +2903,6 @@ void main() {
         TomServerCallError(statusCode: 200, internalError: 1).hasError,
         isTrue,
       );
-    });
-
-    group('error constants', () {
-      test('jsonDecodingError is defined', () {
-        expect(TomServerCallError.jsonDecodingError, equals(1));
-      });
-
-      test('noResponseError is defined', () {
-        expect(TomServerCallError.noResponseError, equals(2));
-      });
-
-      test('serverError is defined', () {
-        expect(TomServerCallError.serverError, equals(2));
-      });
     });
   });
 

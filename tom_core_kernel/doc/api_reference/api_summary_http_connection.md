@@ -835,7 +835,7 @@ TomServerCallError({
 | -------- | ---- | ----------- |
 | `jsonDecodingError` | `int` | Internal error code for JSON decoding failures (`1`). |
 | `noResponseError` | `int` | Internal error code when no response was received (`2`). Raised by `TomServerEndpoint.send` when the request never produced a response — a refused connection, an expired deadline, an aborted request. Such an error carries `statusCode` `0` and no body; the underlying failure is in `exception`. |
-| `serverError` | `int` | Internal error code for general server errors (`2`). |
+| `serverError` | `int` | Internal error code for general server errors (`3`). Distinct from `noResponseError` because the two answer the same question differently — the server replied and the reply was a failure, versus there was no reply to read. They call for different handling and different retries. |
 
 ##### Static Methods
 

@@ -331,7 +331,14 @@ class TomServerCallError {
   static const noResponseError = 2;
 
   /// Internal error code for general server errors.
-  static const serverError = 2;
+  ///
+  /// Distinct from [noResponseError] because the two are different answers to
+  /// the same question: this one means the server replied and the reply was a
+  /// failure, that one means there was no reply to read. A caller switching on
+  /// [internalError] has to be able to tell "the service said no" from "the
+  /// service was not reachable" — they call for different handling and
+  /// different retries.
+  static const serverError = 3;
 
   /// The HTTP status code from the server.
   int statusCode;

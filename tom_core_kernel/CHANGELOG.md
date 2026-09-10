@@ -44,6 +44,22 @@ anyone who was writing them.
 
 ### Fixed
 
+- **`noResponseError` and `serverError` no longer share the value `2`
+  (tcopen13).** Two different answers to the same question — the server
+  replied and the reply was a failure, versus there was no reply to read —
+  arrived at the caller as the same `internalError`, so a switch on it could
+  not tell "the service said no" from "the service was not reachable". They
+  call for different handling and different retries. `serverError` is now `3`;
+  the codes are not serialised anywhere, so the renumber is local.
+
+  The suite had asserted each constant's value in its own test, twice over in
+  two duplicate groups, and both assertions passed while the collision stood.
+  Those are replaced by a guard that reads the `static const <name> = <int>;`
+  declarations out of the source and requires the values to be pairwise
+  distinct, so a *fourth* code added later with a value already taken is
+  refused by name. It also fails when it finds no declarations at all, since
+  a check that has stopped reading passes for the wrong reason.
+
 - **A documented failure mode that could not occur is gone, and a guard now
   finds the next one (tcopen5).** `_resolveByType` wrapped its walk in a
   catch that raised `beanlocator.bean_access.no_bean_found_unknown_error`.
