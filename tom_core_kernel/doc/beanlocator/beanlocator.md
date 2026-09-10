@@ -651,7 +651,6 @@ so the handler above is sufficient and does not need a second `catch`.
 | `beanlocator.bean_access.no_bean_found_uninitialized` | Bean type not registered. Also raised by [startup validation](#startup-validation) for a typed handle nothing bound |
 | `beanlocator.bean_access.bean_not_assignable_to_type` | The type key *is* bound, but to something that is not an instance of it — a bean registered through `withType` under a type it does not implement. Names both the type asked for and the type found |
 | `beanlocator.bean_access.more_than_one_implementation_found` | More than one registered bean satisfies the requested type. Raised on *every* `get()` — a handle that failed to resolve caches nothing, so the ambiguity never wears down into an arbitrary answer |
-| `beanlocator.bean_access.no_bean_found_unknown_error` | The type walk failed for a reason the locator does not model; the cause travels as the root exception |
 | `beanlocator.environment.no_factory_for_environment` | `installByEnvironment` has no factory for the active environment |
 | `beanlocator.environment.runtime_environment_not_initialized` | An operation needed the active environment and the runtime was never configured — see [Initialize in Correct Sequence](#1-initialize-in-correct-sequence). The `operation` and `subject` parameters name what was being wired |
 

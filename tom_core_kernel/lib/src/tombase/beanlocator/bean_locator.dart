@@ -79,9 +79,6 @@ import '../reflection/reflection.dart';
 ///   missing goes looking for a registration that is right there
 /// - `beanlocator.bean_access.more_than_one_implementation_found`: two registered
 ///   beans satisfy one requested type
-/// - `beanlocator.bean_access.no_bean_found_unknown_error`: The type walk failed
-///   for a reason the locator does not model; the cause travels as the root
-///   exception
 /// - `beanlocator.environment.no_factory_for_environment`: `installByEnvironment`
 ///   has no factory for the active environment
 /// - `beanlocator.environment.runtime_environment_not_initialized`: An operation
@@ -619,23 +616,16 @@ class TomBean<T> {
   T _resolveByType() {
     final matches = <MapEntry<Type, T>>[];
 
-    try {
-      for (final registration in _tomBeansByType.entries) {
-        if (_assignableFrom(registration.value)) {
-          matches.add(MapEntry(registration.key, registration.value as T));
-        }
+    // No guard around the walk: nothing in it can fail. `_assignableFrom` is
+    // `is T`, a pure type test that runs no user code; the cast below it is
+    // decided by that same test; and nothing here modifies the map it is
+    // iterating. A catch would report a failure mode that does not exist,
+    // which reads as authoritative precisely because it sits in a maintained
+    // list of them.
+    for (final registration in _tomBeansByType.entries) {
+      if (_assignableFrom(registration.value)) {
+        matches.add(MapEntry(registration.key, registration.value as T));
       }
-    } on TomException {
-      rethrow;
-    } catch (exception, stacktrace) {
-      throw TomBeanLocatorException(
-        "beanlocator.bean_access.no_bean_found_unknown_error",
-        "TomBean of type $T could not be resolved. "
-            "Exception $exception Stacktrace $stacktrace",
-        parameters: {"type": T},
-        rootException: exception,
-        autoLog: true,
-      );
     }
 
     if (matches.isEmpty) {

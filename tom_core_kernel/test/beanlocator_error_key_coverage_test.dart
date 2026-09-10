@@ -41,6 +41,11 @@ import 'package:test/test.dart';
 /// The module source, relative to the package root the test runs from.
 const String _sourcePath = 'lib/src/tombase/beanlocator/bean_locator.dart';
 
+/// This file, excluded from the exercised-key scan: it names every key in
+/// order to compare the lists, which would make every key look exercised.
+const String _coverageTestPath =
+    'test/beanlocator_error_key_coverage_test.dart';
+
 /// The narrative guide that carries the prose key table.
 const String _docPath = 'doc/beanlocator/beanlocator.md';
 
@@ -169,6 +174,27 @@ Map<String, String> _proseKeys() {
   );
 }
 
+/// The keys some test in this directory names as a literal.
+///
+/// A key a test never mentions is a failure mode nobody is checking: the code
+/// can raise it, both documents promise it, and no run would notice if it
+/// stopped happening. Matching on the literal is deliberately loose — it asks
+/// only that some test names the key, not how — because the alternative is a
+/// parser that decides what counts as an assertion, and a guard that can be
+/// argued with is one that gets argued with.
+Set<String> _exercisedKeys(Set<String> thrown) {
+  final exercised = <String>{};
+  for (final file in Directory('test').listSync().whereType<File>()) {
+    if (!file.path.endsWith('_test.dart')) continue;
+    if (file.path == _coverageTestPath) continue;
+    final body = file.readAsStringSync();
+    for (final key in thrown) {
+      if (body.contains(key)) exercised.add(key);
+    }
+  }
+  return exercised;
+}
+
 void main() {
   group('documented error keys mirror the thrown ones', () {
     test('the module throws keys at all', () {
@@ -242,6 +268,30 @@ void main() {
             'These keys are listed in $_docPath but nothing throws them: '
             '${orphaned.join(', ')}. Delete the row, or rename it if the key '
             'was renamed.',
+      );
+    });
+
+    test('every key the module throws is exercised by a test', () {
+      // The three sets above keep the *documentation* honest. This one keeps
+      // the *suite* honest, and it is the half that was missing: four
+      // behaviours of this module once went untested behind a green run, and
+      // each was found by probing the built package rather than by reading
+      // the suite, because every test asserted exactly what it was written to
+      // assert. A key nothing raises in a test is the same hole, and it is
+      // one a machine can see.
+      final thrown = _thrownKeys();
+      final unexercised =
+          (thrown..removeAll(_exercisedKeys(_thrownKeys()))).toList()..sort();
+
+      expect(
+        unexercised,
+        isEmpty,
+        reason:
+            'No test names these keys, so nothing would notice if the module '
+            'stopped raising them: ${unexercised.join(", ")}. Either pin the '
+            'behaviour with a test, or, if the failure cannot be reached at '
+            'all, delete the throw and both of its documented entries, which '
+            'is what a phantom failure mode deserves.',
       );
     });
 

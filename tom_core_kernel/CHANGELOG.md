@@ -44,6 +44,25 @@ anyone who was writing them.
 
 ### Fixed
 
+- **A documented failure mode that could not occur is gone, and a guard now
+  finds the next one (tcopen5).** `_resolveByType` wrapped its walk in a
+  catch that raised `beanlocator.bean_access.no_bean_found_unknown_error`.
+  Nothing in that walk can fail: `_assignableFrom` is `is T`, a pure type
+  test that runs no user code, the cast is decided by that same test, and
+  nothing there modifies the map it iterates. The catch guarded a null
+  assertion from the single-map era; the split to two typed registries
+  removed the assertion and left the catch, so the module went on promising
+  a failure it could not produce — which reads as authoritative precisely
+  because it sits in a maintained list of them. The catch and both of its
+  documented entries are removed.
+
+  It was found by generalising, not by reading. The suite already held the
+  two documented key lists equal to the set of keys the code throws; it now
+  compares a fourth set with them — the keys some test in the directory
+  names as a literal. A key no test raises is a behaviour nobody is checking,
+  and that is the exact shape of the four gaps that once hid three defects
+  behind a green run.
+
 - **A component asking for a constructor argument now hears why (tcopen4).**
   Discovery builds every `@TomComponent` class with `newInstance("", [])`, so
   a class declaring a required parameter names a constructor the pass will
