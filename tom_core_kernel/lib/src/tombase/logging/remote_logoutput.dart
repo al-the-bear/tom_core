@@ -435,6 +435,62 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// endpoint are not replayed to the new one.
   static void clearReplayQueue() => globalSettingReplayStore.clear();
 
+  /// Settles every record this isolate has handed to [output], then gives the
+  /// replay queue a chance to drain.
+  ///
+  /// [output] returns before its record has been sent — deliberately, since a
+  /// logging call must never block the code that made it — so at any moment
+  /// there may be records in flight and records buffered from an earlier
+  /// outage. A process that exits straight after logging loses both, and had
+  /// no supported way to wait. This is that way: call it once, at shutdown,
+  /// after the code that logs has stopped.
+  ///
+  /// It deliberately does **not** make an individual [output] call awaitable.
+  /// A sink that a caller can await per record invites exactly the coupling
+  /// this one exists to avoid.
+  ///
+  /// It covers exactly what was logged **before it was called**. [output]
+  /// claims its place in the delivery lane before its first await, so every
+  /// call that had started is already in the chain this awaits; a record logged
+  /// while the flush runs appends behind it and is not waited for. Waiting for
+  /// those too would mean re-reading the lane until it stopped moving, which in
+  /// a process that never stops logging is a loop that never ends. Call it
+  /// after the code that logs has stopped, and call it again if that was not
+  /// true.
+  ///
+  /// The drain takes a lane slot of its own, exactly as a record does, so it
+  /// cannot overlap a delivery in flight — and it runs in the same
+  /// `inRemoteLogging` zone [output] uses, so a line the transport logs on its
+  /// way out does not re-enter remote logging.
+  ///
+  /// Returning does not promise delivery succeeded. A record the endpoint
+  /// still refuses stays buffered, which is what the replay queue is for; the
+  /// promise is only that nothing is left half-done.
+  ///
+  /// The lane and the queue are per-isolate statics, so this flushes whatever
+  /// this isolate produced, whichever instance is installed.
+  static Future<void> flush() async {
+    // The same three lines [output] uses, and for the same reason: claim the
+    // slot before the first await, so the drain is ordered against records
+    // rather than racing them. Awaiting the predecessor is also what settles
+    // everything already in the lane, so no separate wait is needed.
+    final predecessor = _deliveryLane;
+    final slot = Completer<void>();
+    _deliveryLane = slot.future;
+    try {
+      await predecessor;
+      await runZoned(
+        zoneValues: {
+          TomLoggingContext: TomLoggingContext(inRemoteLogging: true),
+        },
+        () async => _drainReplayQueue(),
+      );
+    } finally {
+      // Completed, never completed with an error — see [output].
+      slot.complete();
+    }
+  }
+
   /// Tail of the delivery lane: completes when the most recently claimed
   /// record has finished draining, sending and (if it failed) being buffered.
   ///
@@ -539,7 +595,7 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// transport error at all. Testing only the transport channel treated such a
   /// rejection as a complete success and dropped the record without retry,
   /// fallback or replay.
-  Future<String?> _sendOnce(TomRemoteLogMessage remoteMessage) async {
+  static Future<String?> _sendOnce(TomRemoteLogMessage remoteMessage) async {
     try {
       var (result, error) = await remoteEndpoint!.send(
         remoteMessage,
@@ -581,7 +637,7 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// `serverError` currently share the value `2`. A delivered response always
   /// carries a status, so a status of `0` is what separates them. Once the two
   /// codes differ, the status test becomes redundant and can go.
-  bool _isUnreachable(TomServerCallError error) =>
+  static bool _isUnreachable(TomServerCallError error) =>
       error.internalError == TomServerCallError.noResponseError &&
       error.statusCode == 0;
 
@@ -590,7 +646,9 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// Returns `null` once a send succeeds, or the last failure description if
   /// every attempt (the first plus [globalSettingMaxSendRetries] retries)
   /// fails.
-  Future<String?> _sendWithRetry(TomRemoteLogMessage remoteMessage) async {
+  static Future<String?> _sendWithRetry(
+    TomRemoteLogMessage remoteMessage,
+  ) async {
     final maxRetries = globalSettingMaxSendRetries < 0
         ? 0
         : globalSettingMaxSendRetries;
@@ -613,7 +671,7 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// readable by anyone else draining at the same time, which is why callers
   /// must hold a delivery-lane slot (see [output]): the lane, not this loop,
   /// is what stops a second drain from re-sending what this one has in flight.
-  Future<void> _drainReplayQueue() async {
+  static Future<void> _drainReplayQueue() async {
     final store = globalSettingReplayStore;
     for (var next = store.oldest; next != null; next = store.oldest) {
       if (await _sendWithRetry(next) == null) {
@@ -627,7 +685,7 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// Buffers [remoteMessage] for later replay, dropping the oldest record when
   /// the queue exceeds [globalSettingReplayQueueMaxSize]. A non-positive size
   /// disables buffering.
-  void _enqueueForReplay(TomRemoteLogMessage remoteMessage) {
+  static void _enqueueForReplay(TomRemoteLogMessage remoteMessage) {
     final maxSize = globalSettingReplayQueueMaxSize;
     if (maxSize <= 0) return;
     globalSettingReplayStore.append(remoteMessage);
@@ -636,7 +694,7 @@ class TomRemoteLogOutput extends TomLogOutput {
 
   /// Writes the original record (and a warning describing [cause]) to the
   /// fallback output so a failed transmission never loses data.
-  void _logToFallback(
+  static void _logToFallback(
     TomLogLevel loggerLevel,
     TomLogLevel logLevel,
     String level,

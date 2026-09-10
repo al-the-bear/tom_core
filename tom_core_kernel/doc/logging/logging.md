@@ -25,6 +25,7 @@ A flexible, configurable logging framework for Dart applications with support fo
   - [3. Configure Levels Per Environment](#3-configure-levels-per-environment)
   - [4. Use Status for Important Lifecycle Events](#4-use-status-for-important-lifecycle-events)
   - [5. Disable Stack Analysis in Production](#5-disable-stack-analysis-in-production)
+- [What the module throws](#what-the-module-throws)
 - [Configuration Reference](#configuration-reference)
   - [Logger Settings](#logger-settings)
   - [Console Output Settings](#console-output-settings)
@@ -269,6 +270,9 @@ takes on the client, which is what makes the two agree by construction:
 
 ```dart
 final logServer = TomRemoteLogServer();
+// Leave `localOutput` unset and the collector writes to whatever
+// `tomLog.logOutput` is when each record arrives. Assign it to send received
+// records somewhere else instead:
 TomRemoteLogServer.localOutput = TomConsoleLogOutput();
 
 router.post('/remotelog', (request) async {
@@ -292,7 +296,7 @@ document, unlike an example, cannot fail to build.
 
 Every field of a received message is controlled by whoever sent it, and
 `receive` reconstructs those fields into the collector's *own* log stream. Two
-things are done to each field before it reaches `localOutput`.
+things are done to each field before it reaches the collector's sink.
 
 **Control characters are removed** — the C0 range (`0x00`–`0x1F`, which is
 CR, LF, TAB and ESC) and the C1 range (`0x7F`–`0x9F`). Left in, a CR/LF lets a
@@ -319,7 +323,7 @@ endpoint.
 ##### When the collector refuses a record
 
 Two independent things can make `receive` refuse: the message can be undecodable
-(a malformed `timeStamp`), or `localOutput` can be broken. The returned
+(a malformed `timeStamp`), or the collector's sink can be broken. The returned
 `errorMessage` names which — the caller is a remote process with nothing else to
 inspect, and the client reproduces that text verbatim in the warning it writes
 beside the fallback record, so the reason reaches the client's own log.
@@ -402,6 +406,42 @@ back-to-back log lines overlap by default; without serialisation each of them
 would run its own drain over the same replay queue and re-send records another
 drain had read but not yet removed. The guarantee covers one isolate — the same
 scope as the queue it protects, since both are statics.
+
+#### Waiting before the process exits
+
+`output` returns before its record has been sent. That is deliberate — a
+logging call must never block the code that made it — but it means a process
+that exits straight after logging loses whatever was in flight, and whatever an
+earlier outage left buffered. `flush` is the supported way to wait:
+
+```dart
+Future<void> shutdown() async {
+  // ... stop the code that logs first, then:
+  await TomRemoteLogOutput.flush();
+}
+```
+
+It settles every record handed to `output` **before the call**, then gives the
+replay queue a chance to drain — which is the only way to empty the queue with
+nothing left to log, since a drain otherwise happens only as a side effect of
+sending the next record.
+
+Four things it deliberately is not:
+
+- **Not a per-record await.** `output` stays fire-and-forget. A sink a caller
+  can await per record invites exactly the coupling this one exists to avoid.
+- **Not a promise of delivery.** A record the endpoint still refuses stays
+  buffered, which is what the replay queue is for. The promise is only that
+  nothing is left half-done.
+- **Not a moving target.** A record logged *while* the flush runs appends
+  behind it and is not waited for. Waiting for those too would mean re-reading
+  the lane until it stopped moving, which in a process that never stops logging
+  never returns. Call it after the code that logs has stopped — and again if
+  that was not true.
+- **Not a way around the delivery lane.** The drain takes a lane slot exactly
+  as a record does, so it cannot overlap a delivery in flight, and it runs in
+  the same re-entrancy-guarded zone, so a line the HTTP client writes on its
+  way out does not become another remote record.
 
 The queue's *storage* is pluggable through `TomLogReplayStore`. The default
 (`TomInMemoryLogReplayStore`) keeps records in memory, so they are lost if the
@@ -488,6 +528,10 @@ void initWorker() {
 ```
 
 #### Where the logging isolate writes
+
+`startIsolatedLogging` returns nothing. Completing is the success signal —
+the pool is either spawned and installed, or the call throws on the way — so
+there is no result to branch on.
 
 `startIsolatedLogging` replaces the *main* isolate's output with a
 `TomIsolateLogOutput` that forwards every record to the pool. The record is
@@ -661,6 +705,21 @@ if (isProduction) {
 }
 ```
 
+## What the module throws
+
+One failure, and it is a startup-ordering mistake rather than a condition to
+recover from — which is why it is raised rather than reported through a return
+value a caller would ignore.
+
+| Type | Error key | Raised when |
+| ---- | --------- | ----------- |
+| `TomException` | `logging.isolate.runtime_not_initialized` | `TomIsolateLogging.startIsolatedLogging` was called without a `workerContext` and the runtime platform has not been registered, so the default worker context cannot be built. Register it during application startup — normally `TomRuntime.setCurrentPlatform(...)` — or pass a context of your own. |
+
+Delivery failures are not in this table and never throw. A record the remote
+endpoint refuses is written to the fallback output and, if the replay queue is
+enabled, buffered — see *Delivery Resilience*. A logging sink that threw at its
+caller would take down the code it was reporting on.
+
 ## Configuration Reference
 
 Every setting below is a static field, so it is per-isolate and global within
@@ -722,7 +781,7 @@ Resilience](#delivery-resilience) for what each knob buys.
 
 | Setting                             | Default                            | Description                                                                 |
 |-------------------------------------|------------------------------------|-----------------------------------------------------------------------------|
-| `TomRemoteLogServer.localOutput`    | `tomLog.logOutput`, read once on first access | Where a collector writes the records it receives                 |
+| `TomRemoteLogServer.localOutput`    | `null` — follow `tomLog.logOutput` | Overrides where a collector writes the records it receives; `TomRemoteLogServer.effectiveOutput` reports the resolved sink |
 | `TomCreatorLogOutput.fallbackOutput` | `TomConsoleLogOutput()`            | Where a worker writes when its creator channel is absent ([When the creator channel is absent](#when-the-creator-channel-is-absent)) |
 
 ## File Structure
@@ -752,7 +811,7 @@ that route records off the emitting isolate.
 | `tom_basics` | package | every file | `tomLog` and the `TomLogOutput` interface this module plugs into. The module does not *define* logging — it supplies outputs for the logger that already exists |
 | [http_connection](../http_connection/http_connection.md) | module | `remote_logoutput.dart` | `TomServerEndpoint`, which ships batches to the log server |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `logging_isolate.dart` | `TomWorker`, which is what moves file writes off the calling isolate |
-| [little_things](../little_things/little_things.md) | module | `file_log_replay_store.dart`, `remote_logoutput.dart` | `getFromCurrentZone` for the ambient `TomLoggingContext`, and `tomWriteFileAtomically` for the replay store. Note that `exception_base.dart` is *not* imported — this module raises no `TomException` |
+| [little_things](../little_things/little_things.md) | module | `file_log_replay_store.dart`, `logging_isolate.dart`, `remote_logoutput.dart` | `getFromCurrentZone` for the ambient `TomLoggingContext`, `tomWriteFileAtomically` for the replay store, and `TomException` for the module's one raised failure — `logging.isolate.runtime_not_initialized`, see *What the module throws* |
 | [reflection](../reflection/reflection.md) | module | `remote_logoutput.dart`, `remote_logserver.dart` | `@tomReflector` on the wire DTOs — the remote path does not work without generated reflection data |
 
 The isolate-pooling row runs one way only: logging depends on isolate pooling,

@@ -64,8 +64,10 @@ import 'remote_logoutput.dart';
 ///
 /// ## Configuration
 ///
-/// Set [localOutput] to control where received logs are written. It is a
-/// [TomLogOutput], so any sink can receive the collected records:
+/// Records go to the application's own sink — whatever `tomLog.logOutput` is
+/// when each record arrives — unless [localOutput] is set to override it. Set
+/// it to control where received logs are written; it is a [TomLogOutput], so
+/// any sink can receive the collected records:
 ///
 /// ```dart
 /// // Write to the console.
@@ -113,10 +115,34 @@ import 'remote_logoutput.dart';
 /// sender's own logger level.
 @tomReflector
 class TomRemoteLogServer {
-  /// The output destination for received log messages.
+  /// Overrides where received log messages are written.
   ///
-  /// Defaults to [tomLog]'s [TomLogger.logOutput] at initialization time.
-  static TomLogOutput localOutput = tomLog.logOutput;
+  /// `null` — the default — means the collector writes to the application's
+  /// own sink, read from `tomLog.logOutput` as each record arrives. Assign a
+  /// [TomLogOutput] to send received records somewhere else; assign `null`
+  /// again to go back to following the application.
+  ///
+  /// Nullable rather than initialised to `tomLog.logOutput`, which is what it
+  /// used to be. Dart initialises a static lazily, on first access, so that
+  /// default captured whatever the application's sink happened to be at the
+  /// moment something first touched this field — an unspecified time that
+  /// depends on program ordering rather than on intent. An application that
+  /// configured its logging during startup got the new sink only if nothing
+  /// had read this field first; if something had, the collector wrote to the
+  /// original sink for the life of the process and nothing reported the
+  /// divergence. "The local sink" now means the sink the application currently
+  /// has, which is what this field's description always implied.
+  ///
+  /// [effectiveOutput] answers where records actually go.
+  static TomLogOutput? localOutput;
+
+  /// The sink received records are written to: [localOutput] when one is set,
+  /// the application's `tomLog.logOutput` otherwise.
+  ///
+  /// Resolved per record rather than once, so reconfiguring either side takes
+  /// effect on the next record instead of depending on which was touched
+  /// first.
+  static TomLogOutput get effectiveOutput => localOutput ?? tomLog.logOutput;
 
   /// Processes an incoming remote log message.
   ///
@@ -134,7 +160,7 @@ class TomRemoteLogServer {
   TomRemoteLogResult receive(TomRemoteLogMessage m) {
     try {
       final origin = m.origin;
-      localOutput.output(
+      effectiveOutput.output(
         TomLogLevel(m.loggerLevel),
         TomLogLevel(m.logLevel),
         _sanitize(m.level),
@@ -173,7 +199,7 @@ class TomRemoteLogServer {
   /// to have been written.
   void _reportRefusal(TomRemoteLogMessage m, String reason) {
     try {
-      localOutput.output(
+      effectiveOutput.output(
         TomLogLevel.errors,
         TomLogLevel.error,
         TomLogger.ERROR,
@@ -183,9 +209,10 @@ class TomRemoteLogServer {
         'TomRemoteLogServer.receive',
       );
     } catch (_) {
-      // A broken [localOutput] is one of the two causes this method exists to
-      // report, so the sink may well fail again here. There is no second sink
-      // to fall back to — `tomLog.logOutput` is routinely the same object.
+      // A broken sink is one of the two causes this method exists to report,
+      // so it may well fail again here. There is no second sink to fall back
+      // to — `tomLog.logOutput` is routinely the same object, and is the sink
+      // itself whenever [localOutput] is unset.
       // Rethrowing would escape `receive`'s catch and take down the
       // collector's HTTP handler on input a remote client controls, which is
       // strictly worse than a lost diagnostic. The cause still reaches that

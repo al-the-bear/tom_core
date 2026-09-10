@@ -53,6 +53,7 @@ import 'dart:async';
 import 'package:tom_basics/tom_basics.dart';
 
 import '../isolate_pooling/tom_worker.dart';
+import '../little_things/exception_base.dart';
 
 // =============================================================================
 // Logging Isolate Executor
@@ -161,50 +162,27 @@ class TomInterIsolateLogMessage {
   String? origin;
 
   /// Creates a new inter-isolate log message.
-  TomInterIsolateLogMessage(
-    this.loggerLevel,
-    this.logLevel,
-    this.level,
-    this.message,
-    this.isolateName,
-    this.timeStamp,
+  ///
+  /// Named rather than positional, and every field required except [origin],
+  /// which is optional in the record itself. Seven arguments of which two are
+  /// `TomLogLevel` and three are `String` cannot be checked by the compiler in
+  /// positional form: swapping [level] with [message], or [loggerLevel] with
+  /// [logLevel], compiles and silently ships the wrong record. Naming them is
+  /// what makes the call site both readable and reordering-proof.
+  TomInterIsolateLogMessage({
+    required this.loggerLevel,
+    required this.logLevel,
+    required this.level,
+    required this.message,
+    required this.isolateName,
+    required this.timeStamp,
     this.origin,
-  );
+  });
 
   @override
   String toString() {
     return "TomInterIsolateLogMessage $isolateName $level $message";
   }
-}
-
-/// Packages a single emitted log line into the [TomInterIsolateLogMessage]
-/// that the isolate-routing outputs dispatch.
-///
-/// [TomIsolateLogOutput] (route to a worker pool) and [TomCreatorLogOutput]
-/// (route back to the creator) build the *identical* record before dispatch —
-/// only the destination differs, not the construction. Keeping that one shared
-/// construction here means a change to the record's shape (a new field, a
-/// different field order) lands in a single place instead of drifting between
-/// the two outputs. Callers pass [message] already reduced to its string form
-/// via their inherited [TomLogOutput.convertToString].
-TomInterIsolateLogMessage _interIsolateMessage(
-  TomLogLevel loggerLevel,
-  TomLogLevel logLevel,
-  String level,
-  String message,
-  String isolateName,
-  DateTime timeStamp,
-  String? origin,
-) {
-  return TomInterIsolateLogMessage(
-    loggerLevel,
-    logLevel,
-    level,
-    message,
-    isolateName,
-    timeStamp,
-    origin,
-  );
 }
 
 // =============================================================================
@@ -249,14 +227,14 @@ class TomIsolateLogOutput extends TomLogOutput {
       // delivery future is deliberately not awaited.
       unawaited(
         workerPool.execute(
-          _interIsolateMessage(
-            loggerLevel,
-            logLevel,
-            level,
-            convertToString(message),
-            isolateName,
-            timeStamp,
-            origin,
+          TomInterIsolateLogMessage(
+            loggerLevel: loggerLevel,
+            logLevel: logLevel,
+            level: level,
+            message: convertToString(message),
+            isolateName: isolateName,
+            timeStamp: timeStamp,
+            origin: origin,
           ),
         ),
       );
@@ -309,14 +287,14 @@ class TomCreatorLogOutput extends TomLogOutput {
     if (logLevel.matches(loggerLevel)) {
       if (TomWorker.canSendToCreator()) {
         TomWorker.sendToCreator(
-          _interIsolateMessage(
-            loggerLevel,
-            logLevel,
-            level,
-            convertToString(message),
-            isolateName,
-            timeStamp,
-            origin,
+          TomInterIsolateLogMessage(
+            loggerLevel: loggerLevel,
+            logLevel: logLevel,
+            level: level,
+            message: convertToString(message),
+            isolateName: isolateName,
+            timeStamp: timeStamp,
+            origin: origin,
           ),
         );
       } else {
@@ -398,24 +376,57 @@ class TomIsolateLogging {
   /// - [poolSize]: Number of logging workers (default: 1)
   /// - [workerContext]: Optional custom worker context for initialization
   ///
-  /// Returns `true` when logging is successfully initialized.
-  static Future<bool> startIsolatedLogging(
+  /// ## Failure
+  /// Returns nothing. Completing is the success signal: there is no partial
+  /// outcome to report, because the pool is either spawned and installed or the
+  /// call throws on the way. A `bool` here promised a failure report that no
+  /// path ever produced — every return was `true` — so
+  /// `if (!await startIsolatedLogging(args))` was dead code at every call site.
+  ///
+  /// Throws [TomException] (`logging.isolate.runtime_not_initialized`) when the
+  /// runtime platform has not been registered and no [workerContext] was
+  /// supplied, since the default context cannot be built without it. That is a
+  /// startup-ordering mistake rather than a condition to recover from, which is
+  /// why it is raised rather than reported: a boot step that cannot proceed
+  /// should say so loudly, and a value callers would ignore is how a silent
+  /// misconfiguration starts.
+  static Future<void> startIsolatedLogging(
     List<String> args, {
     int poolSize = 1,
     TomLoggingWorkerContext? workerContext,
   }) async {
-    TomWorkerContext context =
-        workerContext ??
-        TomLoggingWorkerContext(
-          TomRuntime.getCurrentEnvironment(),
-          TomRuntime.getCurrentPlatform()!,
-          args,
-          "L",
-        );
+    final TomWorkerContext context =
+        workerContext ?? _defaultWorkerContext(args);
     tomLog.logOutput = TomIsolateLogOutput(
       await TomWorkerPool.withSize(poolSize, context),
     );
-    return true;
+  }
+
+  /// The context [startIsolatedLogging] builds when the caller supplies none.
+  ///
+  /// Separate so the platform it needs is read in one place and refused with a
+  /// sentence. Reading it as `TomRuntime.getCurrentPlatform()!` raised a bare
+  /// `TypeError` naming the null check and nothing else — during application
+  /// startup, where the reader has no context at all for what a null check
+  /// operator has to do with logging.
+  static TomLoggingWorkerContext _defaultWorkerContext(List<String> args) {
+    final platform = TomRuntime.getCurrentPlatform();
+    if (platform == null) {
+      throw TomException(
+        "logging.isolate.runtime_not_initialized",
+        "Isolated logging cannot build its worker context because the runtime "
+            "platform has not been registered. Register it during application "
+            "startup — normally TomRuntime.setCurrentPlatform(...) — before "
+            "calling startIsolatedLogging, or pass a workerContext of your "
+            "own.",
+      );
+    }
+    return TomLoggingWorkerContext(
+      TomRuntime.getCurrentEnvironment(),
+      platform,
+      args,
+      "L",
+    );
   }
 
   /// Configures logging to send all messages to the creator isolate.

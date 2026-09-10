@@ -108,16 +108,20 @@ logger/message levels, level string, message, isolate name, and optional origin.
 #### Constructors
 
 ```dart
-TomInterIsolateLogMessage(
-  TomLogLevel loggerLevel,
-  TomLogLevel logLevel,
-  String level,
-  String message,
-  String isolateName,
-  DateTime timeStamp,
+TomInterIsolateLogMessage({
+  required TomLogLevel loggerLevel,
+  required TomLogLevel logLevel,
+  required String level,
+  required String message,
+  required String isolateName,
+  required DateTime timeStamp,
   String? origin,
-)
+})
 ```
+
+Named rather than positional. Two of the seven are `TomLogLevel` and three are
+`String`, so in positional form swapping `level` with `message`, or
+`loggerLevel` with `logLevel`, compiles and silently ships the wrong record.
 
 #### Properties
 
@@ -221,7 +225,7 @@ worker isolates.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `startIsolatedLogging` | `static Future<bool> startIsolatedLogging(List<String> args, {int poolSize = 1, TomLoggingWorkerContext? workerContext})` | Creates a pool of logging workers and redirects `tomLog` output to them; returns `true` on success. |
+| `startIsolatedLogging` | `static Future<void> startIsolatedLogging(List<String> args, {int poolSize = 1, TomLoggingWorkerContext? workerContext})` | Creates a pool of logging workers and redirects `tomLog` output to them. Returns nothing: completing is the success signal, since the pool is either spawned and installed or the call throws on the way. Throws `TomException` (`logging.isolate.runtime_not_initialized`) when no `workerContext` was supplied and the runtime platform has not been registered — the default context cannot be built without it. That is a startup-ordering mistake rather than a condition to recover from, so it is raised rather than reported. |
 | `startLoggingToCreator` | `static void startLoggingToCreator()` | Configures `tomLog` to route all messages to the creator isolate via `TomCreatorLogOutput`. |
 
 ### TomRemoteLogMessage
@@ -441,6 +445,7 @@ delivery fails.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `clearReplayQueue` | `void clearReplayQueue()` | Discards every buffered record — use when reconfiguring `remoteEndpoint` so records queued for a previous endpoint are not replayed to the new one. |
+| `flush` | `Future<void> flush()` | Settles every record this isolate handed to `output` before the call, then gives the replay queue a chance to drain. `output` returns before its record has been sent, so a process exiting straight after logging loses what was in flight and what an earlier outage buffered; this is the supported way to wait, and is meant to be called once at shutdown. It does **not** make an individual `output` call awaitable — a sink a caller can await per record invites the coupling this one avoids. A record logged *while* the flush runs is not waited for. The drain takes a delivery-lane slot of its own, so it cannot overlap a delivery in flight, and runs in the same re-entrancy-guarded zone, so a line the transport logs on its way out does not become another send. Returning is not a promise of delivery: a record the endpoint still refuses stays buffered. |
 
 #### Methods
 
@@ -458,13 +463,14 @@ prefixing the isolate name with the sender ID.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `localOutput` | `TomLogOutput` | Destination for received log messages (defaults to `tomLog.logOutput` at initialization). |
+| `localOutput` | `TomLogOutput?` | Overrides where received log messages are written. `null` — the default — means the collector follows the application's own sink, read from `tomLog.logOutput` as each record arrives; assign `null` again to go back to that. |
+| `effectiveOutput` | `TomLogOutput` | *(read-only)* Where received records actually go: `localOutput` when one is set, `tomLog.logOutput` otherwise. Resolved per record rather than once, so reconfiguring either side takes effect on the next record instead of depending on which was touched first. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `receive` | `TomRemoteLogResult receive(TomRemoteLogMessage m)` | Reconstructs the log entry from `m`, strips control characters and caps each field at 8192 UTF-16 code units — a cut field ends in `…[truncated]` inside that cap (CWE-117 hardening) — outputs it via `localOutput`, and returns a success or error `TomRemoteLogResult`. On failure the caught error is folded into `errorMessage` and the refusal is also logged locally at error level. |
+| `receive` | `TomRemoteLogResult receive(TomRemoteLogMessage m)` | Reconstructs the log entry from `m`, strips control characters and caps each field at 8192 UTF-16 code units — a cut field ends in `…[truncated]` inside that cap (CWE-117 hardening) — outputs it via `effectiveOutput`, and returns a success or error `TomRemoteLogResult`. On failure the caught error is folded into `errorMessage` and the refusal is also logged locally at error level. |
 
 The cap is per field, so the bound on one `receive` call is four times it, over
 the four sanitized fields; the number of calls is the transport's concern, not
@@ -478,7 +484,7 @@ above for the `tomReflectionInfo` route both directions use, and step 4 of
 round-trip running end to end.
 
 Two independent things can make `receive` refuse a record: the message can be
-undecodable (a malformed `timeStamp`), or `localOutput` can be broken. The
+undecodable (a malformed `timeStamp`), or the resolved sink can be broken. The
 returned `errorMessage` names which, because the caller is a remote process
 with nothing else to inspect — `TomRemoteLogOutput` reproduces it verbatim in
 the warning it writes beside the fallback record, so the reason survives all

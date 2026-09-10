@@ -21,7 +21,7 @@ survives a restart during an endpoint outage.
 | `TomIsolateLogOutput` / `TomCreatorLogOutput` | Log sinks for the worker and creator sides. |
 | `TomLoggingExecutor` / `TomLoggingWorkerContext` | Worker-side logging plumbing ([`isolate_pooling`](../isolate_pooling/readme.md)). |
 | `TomInterIsolateLogMessage` | A log record passed between isolates. |
-| `TomRemoteLogOutput` / `TomRemoteLogServer` | Ship logs to / receive logs at a remote endpoint. |
+| `TomRemoteLogOutput` / `TomRemoteLogServer` | Ship logs to / receive logs at a remote endpoint. `TomRemoteLogOutput.flush()` settles what is in flight and drains the replay queue, for a process about to exit. |
 | `TomRemoteLogMessage` / `TomRemoteLogResult` / `TomLoggingContext` | Remote-logging payloads and context. |
 | `TomLogReplayStore` | Storage contract behind `TomRemoteLogOutput`'s replay queue: FIFO append, snapshot, and overflow that drops from the head. |
 | `TomInMemoryLogReplayStore` | The zero-config default — buffered records live in a list and are lost if the process exits with the queue non-empty. |

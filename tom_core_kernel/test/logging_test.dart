@@ -1024,6 +1024,120 @@ void main() {
     setUp(() {
       mockOutput = _MockLogOutput();
       TomRemoteLogServer.localOutput = mockOutput;
+      // The default is `null`, meaning "follow the application's sink". Every
+      // test here overrides it, so it has to be put back or the override
+      // leaks into the group below that depends on the default.
+      addTearDown(() => TomRemoteLogServer.localOutput = null);
+    });
+
+    group('where received records go', () {
+      // The field used to be `static TomLogOutput localOutput =
+      // tomLog.logOutput`. Dart initialises a static lazily, so that captured
+      // whatever the application's sink was at the moment something first
+      // touched the field — an unspecified time that depends on program
+      // ordering. An application configuring its logging during startup got
+      // the new sink only if nothing had read this field first.
+
+      TomRemoteLogMessage recordNamed(String message) {
+        final m = TomRemoteLogMessage.of(
+          TomLogLevel.production.levelPattern,
+          TomLogLevel.info.levelPattern,
+          'INFO   ',
+          message,
+          'worker-1',
+          '2026-01-02T12:00:00.000',
+          null,
+        );
+        m.sender = 'client-001';
+        return m;
+      }
+
+      test('the default follows the application sink', () {
+        final appOutput = _MockLogOutput();
+        final previous = tomLog.logOutput;
+        addTearDown(() => tomLog.logOutput = previous);
+        tomLog.logOutput = appOutput;
+        TomRemoteLogServer.localOutput = null;
+
+        TomRemoteLogServer().receive(recordNamed('to the app sink'));
+
+        expect(appOutput.lastMessage, equals('to the app sink'));
+        expect(TomRemoteLogServer.effectiveOutput, same(appOutput));
+      });
+
+      test('reconfiguring the application sink is picked up', () {
+        // The ordering dependency, reproduced: the field is read once here
+        // and the application's sink is replaced afterwards. A snapshot keeps
+        // writing to the first sink for the life of the process.
+        final firstSink = _MockLogOutput();
+        final secondSink = _MockLogOutput();
+        final previous = tomLog.logOutput;
+        addTearDown(() => tomLog.logOutput = previous);
+        TomRemoteLogServer.localOutput = null;
+
+        tomLog.logOutput = firstSink;
+        TomRemoteLogServer().receive(recordNamed('before'));
+
+        tomLog.logOutput = secondSink;
+        TomRemoteLogServer().receive(recordNamed('after'));
+
+        expect(firstSink.messages, equals(['before']));
+        expect(secondSink.messages, equals(['after']));
+      });
+
+      test('an explicit override wins over the application sink', () {
+        final appOutput = _MockLogOutput();
+        final override = _MockLogOutput();
+        final previous = tomLog.logOutput;
+        addTearDown(() => tomLog.logOutput = previous);
+        tomLog.logOutput = appOutput;
+        TomRemoteLogServer.localOutput = override;
+
+        TomRemoteLogServer().receive(recordNamed('to the override'));
+
+        expect(override.lastMessage, equals('to the override'));
+        expect(appOutput.lastMessage, isNull);
+        expect(TomRemoteLogServer.effectiveOutput, same(override));
+      });
+
+      test('clearing the override goes back to following the app', () {
+        final appOutput = _MockLogOutput();
+        final override = _MockLogOutput();
+        final previous = tomLog.logOutput;
+        addTearDown(() => tomLog.logOutput = previous);
+        tomLog.logOutput = appOutput;
+
+        TomRemoteLogServer.localOutput = override;
+        TomRemoteLogServer().receive(recordNamed('one'));
+        TomRemoteLogServer.localOutput = null;
+        TomRemoteLogServer().receive(recordNamed('two'));
+
+        expect(override.messages, equals(['one']));
+        expect(appOutput.messages, equals(['two']));
+      });
+
+      test('a refusal is reported to the same resolved sink', () {
+        // _reportRefusal writes through the same resolution, so a collector
+        // that follows the application does not send its diagnostics
+        // somewhere else.
+        final appOutput = _MockLogOutput();
+        final previous = tomLog.logOutput;
+        addTearDown(() => tomLog.logOutput = previous);
+        tomLog.logOutput = appOutput;
+        TomRemoteLogServer.localOutput = null;
+
+        final undecodable = recordNamed('never arrives')
+          ..timeStamp = 'not-a-date';
+        final result = TomRemoteLogServer().receive(undecodable);
+
+        expect(result.hasError, isTrue);
+        expect(
+          appOutput.messages.any(
+            (m) => m.contains('Refused remote log record'),
+          ),
+          isTrue,
+        );
+      });
     });
 
     group('receive', () {
@@ -1359,16 +1473,53 @@ void main() {
 
   group('TomInterIsolateLogMessage', () {
     group('constructor', () {
+      test('takes named parameters, so the seven cannot be transposed', () {
+        // Two of the seven are `TomLogLevel` and three are `String`, so in
+        // positional form swapping `level` with `message`, or `loggerLevel`
+        // with `logLevel`, compiles and ships the wrong record. The compiler
+        // cannot observe the guarantee being lost, so it is asserted against
+        // the declaration — which is also what the "all fields" test below
+        // now checks the *binding* of, name by name.
+        const path = 'lib/src/tombase/logging/logging_isolate.dart';
+        final file = File(path);
+        expect(
+          file.existsSync(),
+          isTrue,
+          reason:
+              'Expected to find $path relative to ${Directory.current.path}',
+        );
+        final source = file.readAsStringSync();
+
+        expect(source, contains('  TomInterIsolateLogMessage({'));
+        for (final field in const [
+          'required this.loggerLevel,',
+          'required this.logLevel,',
+          'required this.level,',
+          'required this.message,',
+          'required this.isolateName,',
+          'required this.timeStamp,',
+          'this.origin,',
+        ]) {
+          expect(source, contains('    $field'));
+        }
+
+        // The pass-through that used to stand between the two sinks and this
+        // constructor is gone: it forwarded all seven positionally and
+        // unchanged, so it doubled the transposition risk it was meant to
+        // contain while deduplicating a single constructor call.
+        expect(source, isNot(contains('_interIsolateMessage')));
+      });
+
       test('should create message with all fields', () {
         final fixedTime = DateTime(2026, 1, 2, 10, 30, 0);
         final message = TomInterIsolateLogMessage(
-          TomLogLevel.production,
-          TomLogLevel.info,
-          'INFO   ',
-          'test message',
-          'worker',
-          fixedTime,
-          'TestClass.method',
+          loggerLevel: TomLogLevel.production,
+          logLevel: TomLogLevel.info,
+          level: 'INFO   ',
+          message: 'test message',
+          isolateName: 'worker',
+          timeStamp: fixedTime,
+          origin: 'TestClass.method',
         );
 
         expect(
@@ -1388,13 +1539,13 @@ void main() {
 
       test('should allow null origin', () {
         final message = TomInterIsolateLogMessage(
-          TomLogLevel.info,
-          TomLogLevel.info,
-          'INFO   ',
-          'message',
-          'isolate',
-          DateTime.now(),
-          null,
+          loggerLevel: TomLogLevel.info,
+          logLevel: TomLogLevel.info,
+          level: 'INFO   ',
+          message: 'message',
+          isolateName: 'isolate',
+          timeStamp: DateTime.now(),
+          origin: null,
         );
 
         expect(message.origin, isNull);
@@ -1404,13 +1555,13 @@ void main() {
     group('toString', () {
       test('should return string representation', () {
         final message = TomInterIsolateLogMessage(
-          TomLogLevel.info,
-          TomLogLevel.info,
-          'INFO   ',
-          'log content',
-          'worker-2',
-          DateTime(2026, 1, 2),
-          null,
+          loggerLevel: TomLogLevel.info,
+          logLevel: TomLogLevel.info,
+          level: 'INFO   ',
+          message: 'log content',
+          isolateName: 'worker-2',
+          timeStamp: DateTime(2026, 1, 2),
+          origin: null,
         );
 
         expect(
@@ -1443,19 +1594,37 @@ void main() {
       test('should process TomInterIsolateLogMessage', () {
         final fixedTime = DateTime(2026, 1, 2, 15, 45, 0);
         final message = TomInterIsolateLogMessage(
-          TomLogLevel.production,
-          TomLogLevel.info,
-          'INFO   ',
-          'executor test',
-          'worker',
-          fixedTime,
-          'Test.method',
+          loggerLevel: TomLogLevel.production,
+          logLevel: TomLogLevel.info,
+          level: 'INFO   ',
+          message: 'executor test',
+          isolateName: 'worker',
+          timeStamp: fixedTime,
+          origin: 'Test.method',
         );
 
         final result = executor.execute(message);
 
         expect(result, isTrue);
+
+        // Every field, not only the message: the executor unpacks seven
+        // members into seven positional arguments of the same few types, so
+        // asserting one of them leaves six transpositions invisible — and
+        // `level` and `message` are both `String`, as are `level` and
+        // `isolateName`.
         expect(mockOutput.lastMessage, equals('executor test'));
+        expect(mockOutput.lastLevel, equals('INFO   '));
+        expect(mockOutput.lastIsolateName, equals('worker'));
+        expect(mockOutput.lastOrigin, equals('Test.method'));
+        expect(mockOutput.lastTimeStamp, equals(fixedTime));
+        expect(
+          mockOutput.lastLoggerLevel?.levelPattern,
+          equals(TomLogLevel.production.levelPattern),
+        );
+        expect(
+          mockOutput.lastLogLevel?.levelPattern,
+          equals(TomLogLevel.info.levelPattern),
+        );
       });
 
       test('should return noResult for non-log messages', () {
@@ -1875,6 +2044,200 @@ void main() {
           // Total wait spans both backoffs (20 + 40 = 60ms); assert a safe
           // lower bound to prove the delays actually happened.
           expect(stopwatch.elapsedMilliseconds, greaterThanOrEqualTo(55));
+        });
+      });
+
+      group('flush', () {
+        // `output` returns before its record has been sent, deliberately: a
+        // logging call must never block the code that made it. The cost is
+        // that a process exiting straight after logging loses whatever was in
+        // flight, and whatever an earlier outage left buffered. `flush` is the
+        // supported way to wait, and is meant to be called once at shutdown.
+
+        void emitWithoutSettling(TomRemoteLogOutput out, String message) {
+          out.output(
+            TomLogLevel.production,
+            TomLogLevel.info,
+            'INFO   ',
+            message,
+            'main',
+            fixedTime,
+            null,
+          );
+        }
+
+        test('settles a record that is still in flight', () async {
+          final endpoint = _MockLogEndpoint(script: const [_SendOutcome.ok]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+          final out = TomRemoteLogOutput();
+
+          emitWithoutSettling(out, 'inflight');
+          // Nothing has been awaited, so without the flush the isolate could
+          // end here with the record unsent.
+          await TomRemoteLogOutput.flush();
+
+          expect(endpoint.accepted.map((m) => m.message), equals(['inflight']));
+        });
+
+        test('settles records emitted back to back, in order', () async {
+          final endpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.ok, _SendOutcome.ok],
+          );
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+          final out = TomRemoteLogOutput();
+
+          emitWithoutSettling(out, 'a');
+          emitWithoutSettling(out, 'b');
+          await TomRemoteLogOutput.flush();
+
+          expect(endpoint.accepted.map((m) => m.message), equals(['a', 'b']));
+        });
+
+        test('drains the replay queue with no further record logged', () async {
+          // The capability that did not exist: the queue used to drain only as
+          // a side effect of sending the *next* record, so a process with
+          // nothing left to say could not empty it before exiting.
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+          TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
+          final out = TomRemoteLogOutput();
+          await emit(out, 'buffered');
+          expect(TomRemoteLogOutput.replayQueueLength, equals(1));
+
+          final recovered = _MockLogEndpoint(script: const [_SendOutcome.ok]);
+          TomRemoteLogOutput.remoteEndpoint = recovered;
+
+          await TomRemoteLogOutput.flush();
+
+          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+          expect(
+            recovered.accepted.map((m) => m.message),
+            equals(['buffered']),
+          );
+        });
+
+        test(
+          'leaves a record buffered when the endpoint still refuses',
+          () async {
+            // Returning is not a promise that delivery succeeded — only that
+            // nothing is left half-done. A record the endpoint still refuses
+            // stays queued, which is what the replay queue is for.
+            TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+            TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.throwError],
+            );
+            final out = TomRemoteLogOutput();
+            await emit(out, 'still-down');
+            expect(TomRemoteLogOutput.replayQueueLength, equals(1));
+
+            await TomRemoteLogOutput.flush();
+
+            expect(TomRemoteLogOutput.replayQueueLength, equals(1));
+          },
+        );
+
+        test('completes on an idle output with nothing configured', () async {
+          TomRemoteLogOutput.remoteEndpoint = null;
+
+          await expectLater(TomRemoteLogOutput.flush(), completes);
+        });
+
+        test('a record logged during a flush cannot re-send what it is '
+            'draining', () async {
+          // The reason the flush takes a lane slot rather than just awaiting
+          // the lane. A record is removed from the store only once the server
+          // has accepted it, so while the flush has one in flight the record
+          // is still readable — and an `output` that started meanwhile would
+          // run its own drain, read the same record and send it twice.
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+          TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
+          final out = TomRemoteLogOutput();
+          await emit(out, 'b1');
+          await emit(out, 'b2');
+          expect(TomRemoteLogOutput.replayQueueLength, equals(2));
+
+          // The endpoint recovers, but holds the second drained record open.
+          final recovered = _MockLogEndpoint(
+            script: const [_SendOutcome.ok],
+            gateSend: 2,
+          );
+          TomRemoteLogOutput.remoteEndpoint = recovered;
+
+          final flushing = TomRemoteLogOutput.flush();
+          await Future<void>.delayed(Duration.zero);
+
+          // 'b2' is in flight and still in the store. This is the moment the
+          // overlap would happen.
+          emitWithoutSettling(out, 'r1');
+          await Future<void>.delayed(Duration.zero);
+
+          recovered.gate.complete();
+          await flushing;
+          await Future<void>.delayed(Duration.zero);
+
+          expect(
+            recovered.accepted.map((m) => m.message),
+            equals(['b1', 'b2', 'r1']),
+          );
+          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+        });
+
+        test(
+          'a line the transport logs does not become another send',
+          () async {
+            // The drain runs in the same `inRemoteLogging` zone `output` uses.
+            // Without it, a line the HTTP client writes on its way out is read
+            // as an ordinary record, sent remotely, and logs again on the way —
+            // a feedback loop whose first turn this test catches.
+            TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+            TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+              script: const [_SendOutcome.throwError],
+            );
+            final out = TomRemoteLogOutput();
+            await emit(out, 'b1');
+            expect(TomRemoteLogOutput.replayQueueLength, equals(1));
+
+            final recovered = _MockLogEndpoint(
+              script: const [_SendOutcome.ok],
+              logOnSend: 'transport chatter',
+            );
+            TomRemoteLogOutput.remoteEndpoint = recovered;
+
+            final previousLogOutput = tomLog.logOutput;
+            tomLog.logOutput = out;
+            addTearDown(() => tomLog.logOutput = previousLogOutput);
+
+            await TomRemoteLogOutput.flush();
+            await Future<void>.delayed(Duration.zero);
+
+            // The drained record, and nothing the transport said about sending
+            // it.
+            expect(recovered.accepted.map((m) => m.message), equals(['b1']));
+            expect(recovered.sendCount, equals(1));
+            expect(
+              fallbackOutput.messages.any(
+                (m) => m.contains('transport chatter'),
+              ),
+              isTrue,
+              reason:
+                  'the transport line belongs in the fallback, not on the wire',
+            );
+          },
+        );
+
+        test('is safe to call twice', () async {
+          final endpoint = _MockLogEndpoint(script: const [_SendOutcome.ok]);
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+          final out = TomRemoteLogOutput();
+
+          emitWithoutSettling(out, 'once');
+          await TomRemoteLogOutput.flush();
+          await TomRemoteLogOutput.flush();
+
+          expect(endpoint.accepted.map((m) => m.message), equals(['once']));
         });
       });
 
@@ -2764,6 +3127,93 @@ void main() {
   // =========================================================================
 
   group('TomIsolateLogging', () {
+    group('startIsolatedLogging', () {
+      // The method used to return `bool` with no path that produced `false`,
+      // so `if (!await startIsolatedLogging(args))` was dead code wherever it
+      // was written. Completing is the success signal now, and the one genuine
+      // failure — the runtime platform not registered, so the default worker
+      // context cannot be built — names itself instead of arriving as a bare
+      // null-check TypeError during application startup.
+
+      test('returns nothing, so there is no result to branch on', () {
+        expect(
+          TomIsolateLogging.startIsolatedLogging,
+          isA<
+            Future<void> Function(
+              List<String>, {
+              int poolSize,
+              TomLoggingWorkerContext? workerContext,
+            })
+          >(),
+        );
+        expect(
+          TomIsolateLogging.startIsolatedLogging,
+          isNot(
+            isA<
+              Future<bool> Function(
+                List<String>, {
+                int poolSize,
+                TomLoggingWorkerContext? workerContext,
+              })
+            >(),
+          ),
+        );
+      });
+
+      test(
+        'refuses with a sentence when the runtime is not registered',
+        () async {
+          final previousPlatform = TomRuntime.getCurrentPlatform();
+          addTearDown(() {
+            if (previousPlatform != null) {
+              TomRuntime.setCurrentPlatform(previousPlatform);
+            }
+          });
+          TomRuntime.reset();
+
+          await expectLater(
+            TomIsolateLogging.startIsolatedLogging(const <String>[]),
+            throwsA(
+              isA<TomException>()
+                  .having(
+                    (e) => e.key,
+                    'key',
+                    'logging.isolate.runtime_not_initialized',
+                  )
+                  .having(
+                    (e) => e.defaultUserMessage,
+                    'message',
+                    contains('startIsolatedLogging'),
+                  ),
+            ),
+          );
+        },
+      );
+
+      test('an explicit context needs no registered runtime', () async {
+        // The platform is only read to build the *default* context, so a
+        // caller that brings its own is unaffected by the check.
+        final previousPlatform = TomRuntime.getCurrentPlatform();
+        final previousOutput = tomLog.logOutput;
+        addTearDown(() {
+          tomLog.logOutput = previousOutput;
+          if (previousPlatform != null) {
+            TomRuntime.setCurrentPlatform(previousPlatform);
+          }
+        });
+        TomRuntime.reset();
+
+        await expectLater(
+          TomIsolateLogging.startIsolatedLogging(
+            const <String>[],
+            workerContext: _testLoggingContext(),
+          ),
+          completes,
+        );
+        expect(tomLog.logOutput, isA<TomIsolateLogOutput>());
+      });
+    });
+
     test(
       'startLoggingToCreator swaps tomLog.logOutput to TomCreatorLogOutput',
       () {
@@ -3013,19 +3463,38 @@ const String _serverRejectionReason = 'disk full';
 /// `super` are never used because [send] is fully overridden.
 class _MockLogEndpoint
     extends TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult> {
-  _MockLogEndpoint({bool throwOnSend = false, List<_SendOutcome>? script})
-    : script =
-          script ??
-          (throwOnSend
-              ? const [_SendOutcome.throwError]
-              : const [_SendOutcome.ok]),
-      super(
-        TomServerChannel('localhost', 80),
-        TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
-      );
+  _MockLogEndpoint({
+    bool throwOnSend = false,
+    List<_SendOutcome>? script,
+    this.gateSend,
+    this.logOnSend,
+  }) : script =
+           script ??
+           (throwOnSend
+               ? const [_SendOutcome.throwError]
+               : const [_SendOutcome.ok]),
+       super(
+         TomServerChannel('localhost', 80),
+         TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
+       );
 
   /// Per-call outcomes; the last entry repeats once the script is exhausted.
   final List<_SendOutcome> script;
+
+  /// 1-based index of the send to hold open on [gate], or `null` to answer
+  /// every send immediately. Holding one send lets a test place a second
+  /// caller against a delivery that is genuinely in flight, which is the only
+  /// way to observe the delivery lane doing its job.
+  final int? gateSend;
+
+  /// Completed by the test to release the gated send.
+  final Completer<void> gate = Completer<void>();
+
+  /// A line the transport writes to `tomLog` on its **first** send, standing
+  /// for any logging a real HTTP client does on its way out. Only the first,
+  /// so that a sink which fails to break the cycle recurses once and stops
+  /// rather than hanging the suite.
+  final String? logOnSend;
 
   int sendCount = 0;
   TomRemoteLogMessage? lastMessage;
@@ -3044,6 +3513,12 @@ class _MockLogEndpoint
         script[sendCount < script.length ? sendCount : script.length - 1];
     sendCount++;
     lastMessage = load;
+    if (logOnSend != null && sendCount == 1) {
+      tomLog.info(logOnSend!);
+    }
+    if (gateSend == sendCount) {
+      await gate.future;
+    }
     if (!sent.isCompleted) {
       sent.complete();
     }

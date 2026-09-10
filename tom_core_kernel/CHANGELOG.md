@@ -8,6 +8,31 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **`TomRemoteLogOutput.flush()` (tcopen37).** `output` returns before its
+  record has been sent — deliberately, since a logging call must never block
+  the code that made it — and the replay queue drains only as a side effect of
+  sending the *next* record. Together that left a process exiting straight
+  after logging with no supported way to wait: what was in flight was lost, and
+  a process with nothing left to say could not empty the queue at all.
+
+  `await TomRemoteLogOutput.flush()` settles every record handed to `output`
+  before the call, then drains the queue. Call it once, at shutdown, after the
+  code that logs has stopped.
+
+  It deliberately does **not** make an individual `output` call awaitable: a
+  sink a caller can await per record invites the coupling this one exists to
+  avoid, and the alternative — widening `TomLogOutput.output` to
+  `FutureOr<void>` in `tom_basics` — reaches every implementation of the
+  interface in the workspace. Returning is not a promise of delivery either; a
+  record the endpoint still refuses stays buffered.
+
+  The drain takes a delivery-lane slot exactly as a record does, so it cannot
+  re-send what another delivery has in flight, and runs in the same
+  re-entrancy-guarded zone, so a line the transport logs on its way out does
+  not become another send. The six private helpers of the send path are now
+  `static` — none ever used `this` — which is what lets `flush` sit beside
+  `clearReplayQueue` rather than requiring a cast of `tomLog.logOutput`.
+
 
 - **Two `http_connection` examples for the three things the module had none
   for (tcopen18).** Seven example files covered the client, the connection
@@ -64,6 +89,139 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **`TomIsolateLogging.startIsolatedLogging` returns `Future<void>`
+  (tcopen38).** It returned `bool` and every path returned `true`, so
+  `if (!await startIsolatedLogging(args))` was dead code wherever it was
+  written. Completing is the success signal now: the pool is either spawned and
+  installed, or the call throws on the way.
+
+  The one genuine failure — the runtime platform unregistered, so the default
+  worker context cannot be built — bypassed the boolean anyway and surfaced as
+  `TomRuntime.getCurrentPlatform()!`, a bare `TypeError` naming a null check
+  operator during application startup. It now raises `TomException`
+  (`logging.isolate.runtime_not_initialized`) naming what to register and the
+  `workerContext` escape hatch. The check stays inside the default-context
+  path, so a caller supplying its own context is unaffected.
+
+  No call site changed: every one in the workspace already discarded the
+  boolean.
+
+- **`runChecked` and `runCheckedSync` no longer swallow a bug (tcopen34).**
+  Both caught with a bare `catch (error, stacktrace)`, so every `Error` — a
+  `StateError` from `.first` on an empty list, a `TypeError` from a bad cast,
+  even a `StackOverflowError` — was handed to `onError` and replaced by a
+  domain exception. A caller wrapping a parse was converting its own bugs into
+  domain failures, and neither the dartdoc nor the docs said so: both spoke
+  only of "any thrown error".
+
+  Both now catch `on Exception`. An `Error`, and any other object a body
+  throws, propagates unchanged and never reaches `onError`. **This is a
+  behaviour change for any body that relied on an `Error` being translated** —
+  a body meaning "no such thing" must now throw an `Exception` saying so
+  instead of letting `.first` raise `StateError`.
+
+  `tom_uam`'s authentication service had exactly that shape in five lookups and
+  was updated with the change; the login failure a caller sees is unchanged.
+
+- **`onError` returns an `Exception` rather than an `Object` (tcopen35).** Its
+  result is thrown directly, and nothing said what a valid replacement was: an
+  `onError` returning `42` made `runCheckedSync` throw the integer — a failure
+  no `on SomeException catch` clause can ever match, arriving at the top of the
+  isolate as an unhandled `int`.
+
+  The narrower type is the symmetric half of the rule above: these wrappers
+  translate an `Exception` into an `Exception`. No call site changed — every
+  one in the workspace already returned an exception type. What the design got
+  right is unchanged: `onError` *returns* the replacement rather than throwing
+  it, so a transform that swallows the failure does not compile.
+
+- **The residue of the trace-parameter narrowing is gone (tcopen36).**
+  `TomException.printStackTrace`'s dartdoc still described what happens to "a
+  `stack` that is not a `StackTrace`", and `_dropOwnConstructorFrames` still
+  opened with `if (raw is! StackTrace) return`. The field is `StackTrace?`, so
+  absence is the only shape either has to answer for; both now say so instead
+  of guarding a value the type system already refuses.
+
+  Two coverage gaps were closed in the same pass, both on paths that render a
+  trace without being asked for one by name and neither of which had a
+  multi-segment case: the `stackTrace` string an exception derives at
+  construction, and the line `tomPrintStackTrace` composes for the log.
+
+- **`TomException.autoLog` and `serverCallError` are `final` (tcopen32).**
+  Both were public and non-final, and one of them was a lie: `autoLog` is read
+  in exactly one place — the constructor body that writes the two `EXCEPTION`
+  log lines — so `e.autoLog = true` afterwards produced no log record while the
+  settable field advertised otherwise. It now reports what the constructor did,
+  and stays readable because a server returns it in the error envelope.
+
+  `serverCallError` was at least meaningfully mutable, which is a weaker
+  defence than it sounds: an exception is a report of something that has
+  already happened, and a payload that can be swapped after the throw lets a
+  handler five frames up read a description the code between it and the throw
+  site had rewritten.
+
+  No call site changed — nothing in the workspace assigned either field after
+  construction. `final` is the compiler's guarantee, so the decision is pinned
+  against the declarations: a test reads the two field lines out of the source
+  and fails the moment a `final` is dropped.
+
+- **One renderer produces both of an exception's stack representations
+  (tcopen31).** An exception carries its stack twice — as the `stack` trace,
+  and as the `stackTrace` string `TomBaseException`'s constructor derives from
+  it — and the two were produced by different code. `tom_basics` rendered the
+  string with its own private formatter (core frames folded, each frame written
+  with `Frame.toString()`) while `printStackTrace` formatted the same trace
+  with `tomGetStackTrace`, which folds a wider set and writes a different line.
+  One exception, two descriptions of its own stack, differing in which frames
+  appeared and in how each was written.
+
+  `tom_basics` sits below this framework and cannot depend on it, so the fix is
+  a seam there: `TomBaseException.renderStackTrace(stack, depth)` is
+  overridable and fills `stackTrace`; `TomException` overrides it with
+  `tomGetStackTrace`. Requires **tom_basics 3.1.0**, and the floor moved to
+  match.
+
+  `e.stackTrace == tomGetStackTrace(e.stack)` now holds, and a registration on
+  `tomStackTraceNoise` reaches the stored string too — so an application that
+  folds its own framework layer folds it out of `EXCEPTION_STACKTRACE` log
+  lines as well. `_dropOwnConstructorFrames` rewrites the string through the
+  same seam, so the one place the class rewrites both representations cannot
+  let them drift apart.
+
+  Two `tom_basics` defects were fixed in that release on the way:
+  `printStackTrace(depth)` documented `depth` as a frame limit and ignored it,
+  and its renderer read `depth > 0`, so a computed zero meant "every frame".
+
+- **The stack-frame fold takes an application's own layer (tcopen30).** The
+  set of frames treated as noise — core frames, `package:shelf`, `TomLogger.*`,
+  this library's own formatters — was one boolean expression inside
+  `_processStackFrames`. Every entry in it names framework machinery, and an
+  application built on the framework has a layer of exactly that character with
+  no way to say so: folding its own request pipeline meant reimplementing the
+  function.
+
+  The classification is now `TomStackTraceNoise`, with one process-wide
+  instance `tomStackTraceNoise`. Register at startup —
+  `tomStackTraceNoise.addPackage('my_framework')`,
+  `.addMemberPrefix('MyPipeline.')`, or `.addPredicate(...)` for anything else
+  — and every trace the process formats folds it.
+
+  Process-wide rather than a parameter on the four formatting functions,
+  because the traces worth trimming are mostly not formatted from an
+  application's own call sites: `TomException.printStackTrace` and the logger
+  format their own, where there is no argument to pass. `Frame` is re-exported
+  from the library so the general form needs no direct `stack_trace`
+  dependency.
+
+  The built-in four cannot be unregistered and a registration can only add.
+  Folding **collapses** a contiguous run into one summary frame rather than
+  deleting it — the same thing the `shelf` rule has always done. A registered
+  predicate that throws is read as "not noise" and the frame is kept: these
+  functions run while some other failure is being reported, and losing that
+  report to complain about the machinery describing it is the trade this
+  library already refuses elsewhere.
+
+
 - **A cycle in a tree is recognised instead of overflowing the stack
   (tcopen29).** A JSON document is a tree, but the Dart maps and lists these
   functions are handed are a general object graph. Every recursive function in
@@ -436,6 +594,36 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **`TomRemoteLogServer.localOutput` is a nullable override, not a snapshot
+  (tcopen40).** It was `static TomLogOutput localOutput = tomLog.logOutput`,
+  and Dart initialises a static lazily — so the default captured whatever the
+  application's sink was at the moment something first touched the field, an
+  unspecified time depending on program ordering. An application configuring
+  its logging during startup got the new sink only if nothing had read the
+  field first; otherwise the collector wrote to the original sink for the life
+  of the process and nothing reported it.
+
+  `null` is now the default and means "follow the application's sink", read
+  from `tomLog.logOutput` as each record arrives. Assigning a `TomLogOutput`
+  overrides it; assigning `null` again goes back to following. The new
+  `TomRemoteLogServer.effectiveOutput` reports where records actually go.
+
+  Code that read `localOutput` expecting a non-null `TomLogOutput` must read
+  `effectiveOutput` instead.
+
+- **`TomInterIsolateLogMessage` takes named parameters, and the pass-through
+  that built it is gone (tcopen39).** `_interIsolateMessage` took seven
+  positional parameters and forwarded all seven, unchanged and in order, to an
+  equally positional constructor. It claimed to keep the record's shape from
+  drifting between the two isolate sinks, but the duplication it removed was a
+  single constructor call while the indirection it added was a second
+  seven-parameter signature to keep in step — and two of the seven are
+  `TomLogLevel` and three are `String`, so a transposition in either signature
+  compiled and silently shipped a record whose level was its message.
+
+  Both sinks now construct the record directly, with named arguments. Callers
+  constructing one themselves must name the arguments.
+
 
 - **`TomHttpClientAbstractFactory` is a real contract, and the extension point
   it documents now works (tcopen15).** It was a concrete class whose only

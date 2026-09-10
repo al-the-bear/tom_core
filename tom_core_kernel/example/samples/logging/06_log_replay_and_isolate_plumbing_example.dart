@@ -103,13 +103,13 @@ Future<void> run() async {
   print('1. TomInterIsolateLogMessage (the record passed between isolates):');
 
   final record = TomInterIsolateLogMessage(
-    TomLogLevel.production,
-    TomLogLevel.info,
-    TomLogger.INFO,
-    'worker started',
-    'worker-1',
-    fixedTime,
-    'App.boot',
+    loggerLevel: TomLogLevel.production,
+    logLevel: TomLogLevel.info,
+    level: TomLogger.INFO,
+    message: 'worker started',
+    isolateName: 'worker-1',
+    timeStamp: fixedTime,
+    origin: 'App.boot',
   );
 
   print('   isolateName: ${record.isolateName}');
