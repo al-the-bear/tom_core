@@ -434,9 +434,9 @@ delivery fails.
 | -------- | ---- | ----------- |
 | `globalSettingFallbackOutput` | `TomLogOutput` | Fallback output used when remote logging fails or is unconfigured (console by default). Being the last sink in the chain, a throw here loses the record — but never silently: the failure is announced on `TomPlatformUtils.outError`, once per installed output, and assigning a new output re-arms that report. The throw itself never reaches the caller. |
 | `remoteEndpoint` | `TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult>?` | The configured remote endpoint; if `null`, all messages fall back to `globalSettingFallbackOutput`. |
-| `globalSettingMaxSendRetries` | `int` | Number of *additional* send attempts after the first fails (`0` = single attempt, the default). |
-| `globalSettingRetryBackoff` | `Duration` | Base delay between retries; the wait before retry *k* is `backoff × k` (`Duration.zero` by default = retry immediately). |
-| `globalSettingReplayQueueMaxSize` | `int` | Maximum records held in the replay queue; `0` (default) disables buffering, drop-oldest on overflow otherwise. |
+| `globalSettingMaxSendRetries` | `int` | Number of *additional* send attempts after the first fails (`0` = single attempt, the default). A negative value reads as `0`. |
+| `globalSettingRetryBackoff` | `Duration` | Base delay between retries; the wait before retry *k* is `backoff × k` (`Duration.zero` by default = retry immediately). A negative duration reads as `Duration.zero`: retries never wait a negative time and never stop because of one. |
+| `globalSettingReplayQueueMaxSize` | `int` | Maximum records held in the replay queue; `0` (default) disables buffering, drop-oldest on overflow otherwise. A negative value reads as `0` and does **not** mean unlimited — a plausible misreading, since many buffering APIs use `-1` that way, and here it turns "never drop anything" into "drop everything that exhausts its retries". There is no unbounded setting: that is the failure this one exists to prevent. |
 | `globalSettingReplayStore` | `TomLogReplayStore` | Storage backing the replay queue (defaults to `TomInMemoryLogReplayStore`); assign `TomFileLogReplayStore` for durability across a restart. Shared across instances. |
 | `replayQueueLength` | `int` | *(read-only)* Number of records currently buffered for replay. |
 

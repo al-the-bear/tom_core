@@ -728,6 +728,20 @@ anyone who was writing them.
   keep passing for a reason that is now stated correctly.
 
 ### Documentation
+- **The three remote-logging resilience settings state their domain
+  (tcopen42).** `globalSettingMaxSendRetries`, `globalSettingRetryBackoff` and
+  `globalSettingReplayQueueMaxSize` all clamp a negative value to zero, and
+  nothing said so.
+
+  The queue size is the one that matters: `-1` is how plenty of buffering APIs
+  spell "unlimited", so it is a plausible way to try to say *never drop
+  anything* — and here it says the opposite. The declaration, the prose
+  document, its Configuration Reference row and the API summary now each say
+  that a negative value reads as `0`, that `-1` does not mean unlimited, and
+  why there is no unbounded setting at all.
+
+  No behaviour change; five tests pin the clamps through the real send path.
+
 
 - **The context collision rule is stated where each side of it lives
   (tcopen6).** Three operations merge two sets of entries and resolve a name

@@ -2048,6 +2048,93 @@ void main() {
         });
       });
 
+      group('a negative setting reads as zero', () {
+        // `-1` is a plausible way to try to say "never drop anything", because
+        // plenty of buffering APIs use it for exactly that. Here it says the
+        // opposite. The clamp is asserted through the real send path rather
+        // than by restating the guard, which would only prove the guard says
+        // what it says.
+
+        test('a negative queue size buffers nothing', () async {
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = -1;
+          TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'dropped');
+
+          expect(TomRemoteLogOutput.replayQueueLength, equals(0));
+          // Not lost, though: the fallback still has it, which is why the
+          // clamp is survivable rather than silent data loss.
+          expect(fallbackOutput.messages, contains('dropped'));
+        });
+
+        test('a positive queue size is the control for that', () async {
+          TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 5;
+          TomRemoteLogOutput.remoteEndpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'buffered');
+
+          // Without this, an empty queue above would be equally consistent
+          // with buffering never working at all.
+          expect(TomRemoteLogOutput.replayQueueLength, equals(1));
+        });
+
+        test('a negative retry count means one attempt, not forever', () async {
+          TomRemoteLogOutput.globalSettingMaxSendRetries = -1;
+          final endpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'once only');
+
+          expect(endpoint.sendCount, equals(1));
+        });
+
+        test('a positive retry count is the control for that', () async {
+          TomRemoteLogOutput.globalSettingMaxSendRetries = 2;
+          final endpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          final out = TomRemoteLogOutput();
+          await emit(out, 'three attempts');
+
+          expect(endpoint.sendCount, equals(3));
+        });
+
+        test('a negative backoff waits no time and skips no retry', () async {
+          TomRemoteLogOutput.globalSettingMaxSendRetries = 2;
+          TomRemoteLogOutput.globalSettingRetryBackoff = const Duration(
+            milliseconds: -50,
+          );
+          final endpoint = _MockLogEndpoint(
+            script: const [_SendOutcome.throwError],
+          );
+          TomRemoteLogOutput.remoteEndpoint = endpoint;
+
+          final out = TomRemoteLogOutput();
+          final started = DateTime.now();
+          await emit(out, 'no waiting');
+
+          // All three attempts happen, and none of them waits: a negative
+          // duration must not be multiplied into a delay, nor read as a
+          // reason to stop retrying.
+          expect(endpoint.sendCount, equals(3));
+          expect(
+            DateTime.now().difference(started),
+            lessThan(const Duration(seconds: 1)),
+          );
+        });
+      });
+
       group('flush', () {
         // `output` returns before its record has been sent, deliberately: a
         // logging call must never block the code that made it. The cost is

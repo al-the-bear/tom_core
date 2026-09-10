@@ -397,12 +397,18 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// A value of `0` (the default) means a single attempt with no retry. A
   /// value of `n` means up to `n + 1` total attempts before the record is
   /// routed to the fallback / replay queue.
+  ///
+  /// **A negative value is read as `0`**, not as "retry forever". The three
+  /// resilience knobs share that rule — see
+  /// [globalSettingReplayQueueMaxSize], where it matters most.
   static int globalSettingMaxSendRetries = 0;
 
   /// Base delay between retries; the wait before retry *k* is `backoff × k`.
   ///
   /// [Duration.zero] (the default) retries immediately with no delay, which
-  /// keeps tests fast and behaviour deterministic.
+  /// keeps tests fast and behaviour deterministic. **A negative duration is
+  /// read as [Duration.zero]**; retries never wait a negative time and never
+  /// skip a retry because of one.
   static Duration globalSettingRetryBackoff = Duration.zero;
 
   /// Maximum number of records held in the in-memory replay queue.
@@ -410,6 +416,22 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// `0` (the default) disables the queue entirely. When greater than zero,
   /// records that exhaust their retries are enqueued (dropping the oldest on
   /// overflow) and re-sent, oldest-first, on the next successful transmission.
+  ///
+  /// **A negative value is read as `0` — it does not mean "unlimited".** That
+  /// is worth saying because plenty of buffering APIs use `-1` for exactly
+  /// that, so `-1` here is a plausible way to try to say "never drop
+  /// anything", and it says the opposite: buffering off, every record that
+  /// exhausts its retries dropped after the fallback write. There is no
+  /// unbounded setting, deliberately — a queue that grows without limit while
+  /// an endpoint is down is the failure this one exists to prevent, and the
+  /// records it would hold are already safe in
+  /// [globalSettingFallbackOutput]. To buffer a lot, name a large number.
+  ///
+  /// The mistake is silent by design rather than by omission: this is read on
+  /// the path that reports some other failure, so refusing a value here would
+  /// make a misconfiguration take down the reporting, and warning about it
+  /// would emit a line per record for the length of the outage — which is the
+  /// flood the fallback's one-shot report exists to avoid.
   static int globalSettingReplayQueueMaxSize = 0;
 
   /// Backend that stores records awaiting replay after failing every send

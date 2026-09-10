@@ -397,6 +397,18 @@ TomRemoteLogOutput.globalSettingReplayQueueMaxSize = 500;
 TomRemoteLogOutput.clearReplayQueue();
 ```
 
+**A negative value on any of the three reads as zero, and `-1` does not mean
+"unlimited".** Plenty of buffering APIs use `-1` that way, so it is a plausible
+way to try to say "never drop anything" — and here it says the opposite:
+buffering off, every record that exhausts its retries dropped after the fallback
+write. A negative retry count is one attempt, and a negative backoff waits no
+time without skipping a retry.
+
+There is no unbounded setting, deliberately. A queue that grows without limit
+while an endpoint is down is the failure this one exists to prevent, and the
+records it would hold are already safe in the fallback output. To buffer a lot,
+name a large number.
+
 The defaults (no retries, no backoff, no replay queue) keep behaviour
 predictable and testable without a live server.
 
@@ -770,9 +782,9 @@ Resilience](#delivery-resilience) for what each knob buys.
 |-----------------------------------------------------|-----------------------------|-----------------------------------------------------------------------------|
 | `TomRemoteLogOutput.remoteEndpoint`                 | `null`                      | Where records are sent. While `null`, every record goes to the fallback instead |
 | `TomRemoteLogOutput.globalSettingFallbackOutput`    | `TomConsoleLogOutput()`     | Sink for records that could not be delivered, and for the warnings explaining why. If it throws, the loss is announced once on `TomPlatformUtils.outError`; assigning a new sink re-arms that report |
-| `TomRemoteLogOutput.globalSettingMaxSendRetries`    | `0`                         | *Additional* attempts after the first fails, so `n` means up to `n + 1` sends |
-| `TomRemoteLogOutput.globalSettingRetryBackoff`      | `Duration.zero`             | Base delay; the wait before retry *k* is `backoff × k`                       |
-| `TomRemoteLogOutput.globalSettingReplayQueueMaxSize` | `0`                         | Records buffered after retries are exhausted. `0` disables the queue; on overflow the oldest is dropped |
+| `TomRemoteLogOutput.globalSettingMaxSendRetries`    | `0`                         | *Additional* attempts after the first fails, so `n` means up to `n + 1` sends. A negative value reads as `0` |
+| `TomRemoteLogOutput.globalSettingRetryBackoff`      | `Duration.zero`             | Base delay; the wait before retry *k* is `backoff × k`. A negative duration reads as `Duration.zero` |
+| `TomRemoteLogOutput.globalSettingReplayQueueMaxSize` | `0`                         | Records buffered after retries are exhausted. `0` disables the queue; on overflow the oldest is dropped. A negative value reads as `0` — it does **not** mean unlimited |
 | `TomRemoteLogOutput.globalSettingReplayStore`       | `TomInMemoryLogReplayStore()` | Storage behind that queue. Swap in `TomFileLogReplayStore` to survive a restart mid-outage |
 | `TomRemoteLogMessage.globalSettingSenderIdResolver` | `() => ""`                  | Answers which application sent a record, asked once per message. A function so that a name settled after installation is still reported |
 | `TomRemoteLogMessage.globalSettingSenderId`         | `""`                        | The same answer as a value: reading asks the resolver, assigning installs one that answers that constant. Empty until something names the application, so an unset sender looks unset |
