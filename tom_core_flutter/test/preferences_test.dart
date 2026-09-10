@@ -303,6 +303,35 @@ void runSharedStoreTests(
       },
     );
 
+    test(
+      'getPreferred answers from the device when the server has none',
+      () async {
+        final preferences = build();
+        await preferences.set(TomUserPreferenceKeys.theme, 'dark');
+
+        final resolved = await preferences.getPreferred<String>(
+          TomUserPreferenceKeys.theme,
+          () async => null,
+        );
+
+        expect(resolved, 'dark');
+      },
+    );
+
+    test(
+      'getPreferred answers null when neither store holds the key',
+      () async {
+        final preferences = build();
+
+        final resolved = await preferences.getPreferred<String>(
+          TomUserPreferenceKeys.theme,
+          () async => null,
+        );
+
+        expect(resolved, isNull);
+      },
+    );
+
     test('an illegal key is refused, and nothing is stored under it', () async {
       // A device store never builds a URL, so nothing *here* would break
       // under a looser rule — but the precedence above only means
@@ -1252,6 +1281,24 @@ void main() {
 
         expect(theme, 'light');
         expect(transport.callCount, 1);
+      });
+
+      test('a key only this device holds is answered locally', () async {
+        final device = TomStoredDevicePreferences(
+          TomMemoryDevicePreferenceStore(),
+        );
+        await device.set(TomUserPreferenceKeys.theme, 'dark');
+        // The server would answer "absent" if it were asked; it must not be.
+        transport.answer(statusCode: 404, body: '');
+        final client = build();
+
+        final theme = await device.getPreferred<String>(
+          TomUserPreferenceKeys.theme,
+          () => client.get<String>(TomUserPreferenceKeys.theme),
+        );
+
+        expect(theme, 'dark');
+        expect(transport.callCount, 0);
       });
 
       test('neither store holding the key answers null', () async {

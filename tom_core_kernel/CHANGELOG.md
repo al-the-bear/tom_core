@@ -771,6 +771,16 @@ anyone who was writing them.
   keep passing for a reason that is now stated correctly.
 
 ### Documentation
+- **The two preference stores' precedence is stated in the kernel
+  (tcopen52).** The rule existed only in `tom_core_flutter`'s
+  `TomDevicePreferences`: when a key is in both stores, the device value wins
+  for as long as it exists and the server's answers only a key the device never
+  wrote. `doc/preferences/preferences.md` — the contract both halves read — now
+  states it, with the reason and a four-row table, and says where it is applied
+  and why the kernel declares no resolver of its own. `tom_core_flutter` gained
+  the two cases its tests lacked, so every row is covered against every device
+  backend and through the real HTTP client.
+
 - **The three remote-logging resilience settings state their domain
   (tcopen42).** `globalSettingMaxSendRetries`, `globalSettingRetryBackoff` and
   `globalSettingReplayQueueMaxSize` all clamp a negative value to zero, and

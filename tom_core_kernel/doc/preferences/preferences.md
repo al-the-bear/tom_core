@@ -26,6 +26,7 @@ client and a server both bind to.
     - [Where the key is stated](#where-the-key-is-stated)
   - [TomUserPreferencesApiService](#tomuserpreferencesapiservice)
 - [The Two Stores](#the-two-stores)
+  - [When both stores hold the same key](#when-both-stores-hold-the-same-key)
 - [Usage Examples](#usage-examples)
   - [Storing a Structured Preference](#storing-a-structured-preference)
   - [Preferring a Stored Value Over an Asserted One](#preferring-a-stored-value-over-an-asserted-one)
@@ -658,6 +659,45 @@ Both use the keys, DTOs and codec declared here, so a value can move between
 them without being re-encoded. Deciding *which* store a given preference belongs
 in is the application's call: ask whether the answer should change when the user
 picks up a different device.
+
+### When both stores hold the same key
+
+A key normally belongs to exactly one store, but nothing prevents the same key
+from being written to both — and a device-side override of an account-wide
+setting is the natural reason to do it. When both hold it, **the device value
+wins for as long as it exists**, and the server value answers only a key this
+device has never written.
+
+That order matches what the user did. Writing a preference on *this* device is
+a later, more deliberate and more specific act than the value that arrived with
+the account, so the account value behaves as a cross-device default and the
+device value as this machine's override. Reversed, a setting the user changed
+here would revert the moment their other device wrote the same key. It is the
+same relationship the client-configuration module has between shipped defaults
+and install overrides.
+
+| Device store | Server store | Answer |
+| ------------ | ------------ | ------ |
+| holds the key | holds the key | the device value — the server is not asked |
+| holds the key | does not | the device value |
+| does not | holds the key | the server value |
+| does not | does not | nothing (`null`) |
+
+The rule is applied in one place, `tom_core_flutter`'s
+`TomDevicePreferences.getPreferred`, which reads the device first and consults
+the server only when the device has no answer — so a device that has written
+the key never pays for the round trip. Its tests cover each row of the table
+above against every device backend — memory, file and read-only — and again
+through the real HTTP client, and reversing the order or asking the server
+eagerly fails them.
+
+The kernel declares no resolver of its own, on purpose: it owns no device store,
+so a kernel resolver could only take two lookups and return the first non-null
+one, and the one reader that combines the stores already does exactly that next
+to the store it reads. A client outside the Flutter binding that reads both
+stores applies the same order — the local answer first, the server's only when
+the local one is absent, and the server not asked at all when the local one is
+present.
 
 ## Usage Examples
 
