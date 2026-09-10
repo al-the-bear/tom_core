@@ -150,11 +150,14 @@ access.
 
 - **Type Parameters:** `<T>`
 
-`TomExecutionContext.getEntry` matches `T` exactly, so `T` must be written
-explicitly at every call site: `TomContextEntry<String>(() => 'acme')`. Written
-bare inside the `Map<String, TomContextEntry>` a context is constructed from,
-the entry infers `TomContextEntry<dynamic>` from the map's value type rather
-than from the value expression, and every typed read of it returns `null`.
+`TomExecutionContext.getEntry` reads by assignability, so an entry declared
+`TomContextEntry<int>` is found by `getEntry<num>` and `getEntry<Object>`, and
+not by `getEntry<String>`. `T` must still be written explicitly at every call
+site: `TomContextEntry<String>(() => 'acme')`. Written bare inside the
+`Map<String, TomContextEntry>` a context is constructed from, the entry infers
+`TomContextEntry<dynamic>` from the map's value type rather than from the value
+expression — and `dynamic` is a subtype of nothing, so every typed read of it
+still returns `null`.
 
 #### Constructors
 

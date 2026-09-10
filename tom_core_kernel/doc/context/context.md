@@ -126,8 +126,8 @@ void main() {
 
 void processRequest() {
   // Access context entries from anywhere in the zone, by entry name. The type
-  // argument must match the declared entry type exactly — reading 'userId'
-  // as <int> here would return null, not 'user-12345'.
+  // argument must be the declared entry type or a supertype of it — reading
+  // 'userId' as <int> here would return null, not 'user-12345'.
   final requestId =
       TomExecutionContext.getValueFromCurrentZone<String>('requestId');
   final userId =
@@ -165,13 +165,13 @@ final childContext = TomExecutionContext(
 
 ```dart
 // Get entry by name with type checking. 'tenant' was declared above as
-// TomContextEntry<String>, and getEntry matches that type exactly — asking
-// for getEntry<Object>('tenant') would return null.
+// TomContextEntry<String>, and getEntry reads it by assignability — asking
+// for getEntry<Object>('tenant') finds it too, getEntry<int>('tenant') does not.
 final entry = context.getEntry<String>('tenant');
 final value = entry?.value;  // Access via value getter
 
 // Static method to read the same entry from the current zone, inside a
-// runInContext body. The same exact-match rule applies.
+// runInContext body. The same assignability rule applies.
 final tenant = TomExecutionContext.getValueFromCurrentZone<String>('tenant');
 ```
 
@@ -528,9 +528,10 @@ This is not a style preference; omitting the type parameter breaks the entry.
 The constructor takes a `Map<String, TomContextEntry>`, so a raw
 `TomContextEntry(() => 'value')` written inside that map literal gets
 `TomContextEntry<dynamic>` as its inference context — the value expression never
-gets a say. `getEntry<T>` requires `entry.type == T` exactly, so
-`getValueFromCurrentZone<String>('tenant')` then returns `null` rather than
-`'value'`, with no error to point at the cause.
+gets a say. `getEntry<T>` reads by assignability, and `dynamic` is not a subtype
+of anything, so `getValueFromCurrentZone<String>('tenant')` still returns `null`
+rather than `'value'`, with no error to point at the cause. The entry promises
+nothing, so there is nothing to assign.
 
 The same expression assigned to a local infers `String`, which is what makes the
 trap easy to miss: it is the *position* inside the map literal that changes the

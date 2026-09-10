@@ -92,15 +92,24 @@ class TomExecutionContext {
   /// Map of context entry names to their entries.
   final Map<String, TomContextEntry> contextMap = {};
 
-  /// Gets a context entry by name.
-  /// [name] The name of the context entry.
-  /// Returns the [TomContextEntry] if found, or null.
+  /// Gets a context entry by name, when it can be read as [T].
+  ///
+  /// [name] The name of the context entry. Returns the entry when it is a
+  /// `TomContextEntry<T>` *or a subtype of one*, and null otherwise — so an
+  /// entry declared `TomContextEntry<int>` is found by `getEntry<num>` and by
+  /// `getEntry<Object>`, and its value can be read as either. The test is
+  /// Dart's own, which is why it follows the language's variance rather than
+  /// a rule of this module's invention.
+  ///
+  /// An entry whose type argument is `dynamic` is **not** a
+  /// `TomContextEntry<String>`, so it is still invisible to a typed read.
+  /// That is not a leftover of the old exact match: `dynamic` is not a
+  /// subtype of `String`, and the entry genuinely does not promise a String.
+  /// It matters because the raw form is easy to write by accident — see
+  /// [TomContextEntry] for how a map literal infers it.
   TomContextEntry<T>? getEntry<T>(String name) {
-    var entry = contextMap[name];
-    if (entry != null && entry.type == T) {
-      return entry as TomContextEntry<T>;
-    }
-    return null;
+    final entry = contextMap[name];
+    return entry is TomContextEntry<T> ? entry : null;
   }
 
   /// Reads the entry named [name] from the [TomExecutionContext] installed in
@@ -111,10 +120,15 @@ class TomExecutionContext {
   /// name, so `getFromCurrentZone<T>()` does not reach an entry (see the
   /// library documentation).
   ///
-  /// Returns `null` when no context is installed, when no entry carries [name],
-  /// or when the entry found is not typed [T] — the same answer for all three,
-  /// so a caller that needs to tell them apart should use [getEntry] on the
-  /// context directly.
+  /// Returns `null` when no context is installed, when no entry carries
+  /// [name], or when the entry found cannot be read as [T] — the same answer
+  /// for all three, so a caller that needs to tell them apart should use
+  /// [getEntry] on the context directly.
+  ///
+  /// "Cannot be read as [T]" is assignability, not identity: an entry
+  /// declared `TomContextEntry<int>` answers a `getValueFromCurrentZone<num>`
+  /// read. An entry whose type argument is `dynamic` answers neither, since
+  /// it promises nothing.
   static T? getValueFromCurrentZone<T>(String name) {
     var ctx = getFromCurrentZone<TomExecutionContext>();
     if (ctx != null) {
@@ -388,8 +402,9 @@ class TomZoneValues {
 /// ## Type Parameter
 ///
 /// The type parameter [T] specifies the type of value this entry provides, and
-/// [TomExecutionContext.getEntry] matches it exactly — an entry is only found
-/// by a read for the very same [T].
+/// [TomExecutionContext.getEntry] reads it by assignability — an entry is
+/// found by a read for [T] or for any supertype of it, so a
+/// `TomContextEntry<int>` answers `getEntry<num>`.
 ///
 /// **Always write [T] explicitly when registering an entry.** The context
 /// constructor takes a `Map<String, TomContextEntry>`, which supplies

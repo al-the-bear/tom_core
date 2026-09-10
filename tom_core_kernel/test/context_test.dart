@@ -740,8 +740,9 @@ void main() {
     // The constructor parameter is Map<String, TomContextEntry>, so a raw
     // TomContextEntry(() => x) written directly in that map literal gets
     // TomContextEntry<dynamic> as its downward inference context — the value
-    // expression never gets a say. Since getEntry requires entry.type == T
-    // exactly, every typed read of such an entry then returns null. The same
+    // expression never gets a say. `dynamic` is not a subtype of anything, so
+    // every typed read of such an entry returns null even though the read is
+    // assignability-based: the entry promises nothing to assign. The same
     // expression assigned to a local infers from the value instead, so the
     // trap is *positional*: it is pinned here from both sides.
     // ------------------------------------------------------------------------
@@ -756,7 +757,9 @@ void main() {
         expect(
           context.getEntry<String>('tenant'),
           isNull,
-          reason: 'getEntry requires entry.type == T exactly',
+          reason:
+              'a TomContextEntry<dynamic> is not a TomContextEntry<String> '
+              '— it promises nothing, so assignability does not save it',
         );
         expect(
           context.getEntry<dynamic>('tenant')?.value,
@@ -791,22 +794,50 @@ void main() {
         expect(tenant, equals('acme'));
       });
 
-      test('the match is exact, not assignable — a supertype read misses', () {
-        // The likeliest wrong assumption is that the read is covariant, since
-        // every other typed lookup in Dart is. It is not: getEntry compares
-        // entry.type == T, so neither a supertype nor a sibling type of the
-        // declared type reaches the entry.
+      test('the match is assignability, so a supertype read finds it', () {
+        // The read is covariant, like every other typed lookup in Dart: the
+        // test is `entry is TomContextEntry<T>`, so a supertype of the
+        // declared type reaches the entry and a sibling type does not. An
+        // exact match would answer null for `getEntry<Object>` below, which
+        // is a legitimate read of a String — and answering it with the same
+        // null that means "no such entry" is the expensive half: the caller
+        // has no way to tell a missing entry from one it asked for wrongly.
         final context = TomExecutionContext({
           'tenant': TomContextEntry<String>(() => 'acme'),
         });
 
         expect(
-          context.getEntry<Object>('tenant'),
-          isNull,
-          reason: 'Object is a supertype of String, and still misses',
+          context.getEntry<Object>('tenant')?.value,
+          equals('acme'),
+          reason: 'Object is a supertype of String, so the read succeeds',
         );
-        expect(context.getEntry<int>('tenant'), isNull);
+        expect(
+          context.getEntry<int>('tenant'),
+          isNull,
+          reason: 'int is neither String nor a supertype of it',
+        );
         expect(context.getEntry<String>('tenant')?.value, equals('acme'));
+      });
+
+      test('a numeric entry answers the supertype read it was missing', () {
+        // The case the open end was filed for, in the shape it was probed in:
+        // an int entry and a num read. Under an exact match this is null, and
+        // silently so.
+        final context = TomExecutionContext({
+          'count': TomContextEntry<int>(() => 7),
+        });
+
+        expect(context.getEntry<num>('count')?.value, equals(7));
+
+        String? seen;
+        num? asNum;
+        context.runInContext(() {
+          asNum = TomExecutionContext.getValueFromCurrentZone<num>('count');
+          seen = TomExecutionContext.getValueFromCurrentZone<String>('count');
+        });
+
+        expect(asNum, equals(7), reason: 'the zone read is the same rule');
+        expect(seen, isNull, reason: 'and it is still a rule, not a cast');
       });
     });
   });

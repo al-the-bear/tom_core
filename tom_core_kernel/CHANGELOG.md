@@ -181,6 +181,24 @@ anyone who was writing them.
   `() => tomAppId` when it registers itself as the isolate's active
   configuration.
 
+### Changed
+
+- **`getEntry<T>` reads a context entry by assignability, not by identity
+  (tcopen7).** It compared `entry.type == T` — two `Type` objects for
+  identity — so an entry declared `TomContextEntry<int>` was invisible to
+  `getEntry<num>`, and `getValueFromCurrentZone<num>('n')` answered null. That
+  null is the same one that means "no such entry" and "no context installed",
+  so a legitimate supertype read was indistinguishable from a missing one.
+
+  The test is now Dart's own `entry is TomContextEntry<T>`, which follows the
+  language's variance rather than a rule of this module's invention, needs no
+  cast, and makes the read consistent with `_assignableFrom` in the bean
+  locator. A `TomContextEntry<dynamic>` is **still** invisible to a typed read
+  — not as a leftover of the old comparison, but because `dynamic` is a
+  subtype of nothing and such an entry promises nothing to assign. The
+  inference trap that makes raw entries `dynamic` is unchanged, and its tests
+  keep passing for a reason that is now stated correctly.
+
 ### Documentation
 
 - **The context collision rule is stated where each side of it lives
