@@ -1,8 +1,10 @@
 /// Unit tests for the streaming file transfer layer: the value types
 /// ([TomFileSource], [TomFileMetadata], [TomTransferProgress],
-/// [TomTransferCancellation]), the in-memory client, and the HTTP client
-/// against a **real** `HttpServer` that implements the documented wire
-/// contract.
+/// [TomTransferCancellation]), the wire-contract helpers
+/// ([tomFileDescriptorHeaders], [tomEscapeFileNameForDisposition],
+/// [tomFileNameFromDisposition], [decodeFileDescriptor]), the in-memory client,
+/// and the HTTP client against a **real** `HttpServer` that implements the
+/// documented wire contract.
 ///
 /// The server is real on purpose. The point of this layer is that bytes are
 /// never buffered and that a cancel reaches the socket — neither claim can be
@@ -357,6 +359,23 @@ void main() {
       );
     });
 
+    test('guessMediaType answers for any name, mapped or not', () {
+      // `TomMimeType.fromFileName` throws for an unknown extension; the
+      // mimetypes module's own doc points callers wanting a *total* function
+      // here, so this one must never throw.
+      expect(
+        TomFileSource.guessMediaType('report.pdf'),
+        TomMimeType.pdf.toHeaderValue(),
+      );
+      for (final name in ['', '.', 'noextension', 'archive.zzz', 'trailing.']) {
+        expect(
+          TomFileSource.guessMediaType(name),
+          TomMimeType.octetStream.toHeaderValue(),
+          reason: 'guessMediaType must be total, and $name has no mapping',
+        );
+      }
+    });
+
     test('a streamed source may have an unknown size', () {
       final source = TomFileSource.stream(
         fileName: 'live.bin',
@@ -387,6 +406,66 @@ void main() {
       );
       expect(meta.toJson().containsKey('fileName'), isFalse);
       expect(meta.toJson().containsKey('storedAt'), isFalse);
+    });
+
+    test('equal members make equal descriptors, and equal hashes', () {
+      // `describe` is asserted against an upload's return value all over this
+      // file, so value equality is load-bearing for the suite itself.
+      final stored = DateTime.utc(2026, 7, 28, 9);
+      final one = TomFileMetadata(
+        key: 'store/1',
+        mediaType: 'application/pdf',
+        byteCount: 12,
+        fileName: 'scan.pdf',
+        storedAt: stored,
+      );
+      final same = TomFileMetadata(
+        key: 'store/1',
+        mediaType: 'application/pdf',
+        byteCount: 12,
+        fileName: 'scan.pdf',
+        storedAt: stored,
+      );
+      expect(one, equals(same));
+      expect(one.hashCode, equals(same.hashCode));
+
+      for (final other in [
+        TomFileMetadata(
+          key: 'store/2',
+          mediaType: 'application/pdf',
+          byteCount: 12,
+          fileName: 'scan.pdf',
+          storedAt: stored,
+        ),
+        TomFileMetadata(
+          key: 'store/1',
+          mediaType: 'text/plain',
+          byteCount: 12,
+          fileName: 'scan.pdf',
+          storedAt: stored,
+        ),
+        TomFileMetadata(
+          key: 'store/1',
+          mediaType: 'application/pdf',
+          byteCount: 13,
+          fileName: 'scan.pdf',
+          storedAt: stored,
+        ),
+        TomFileMetadata(
+          key: 'store/1',
+          mediaType: 'application/pdf',
+          byteCount: 12,
+          storedAt: stored,
+        ),
+        TomFileMetadata(
+          key: 'store/1',
+          mediaType: 'application/pdf',
+          byteCount: 12,
+          fileName: 'scan.pdf',
+        ),
+      ]) {
+        expect(one, isNot(equals(other)));
+      }
     });
 
     test('a descriptor missing a required member is a protocol error', () {
@@ -456,6 +535,116 @@ void main() {
             'file_transfer.cancelled',
           ),
         ),
+      );
+    });
+  });
+
+  group('the Content-Disposition codec', () {
+    // The file name travels in both directions — the client writes it on an
+    // upload, the server writes it back on a download — which is why the two
+    // halves live in one file. These fix what each half produces and accepts.
+
+    test('escaping touches only the quote and the backslash', () {
+      expect(tomEscapeFileNameForDisposition(r'a"b\c.txt'), r'a\"b\\c.txt');
+      expect(
+        tomEscapeFileNameForDisposition('rapport été (final).pdf'),
+        'rapport été (final).pdf',
+        reason: 'anything more aggressive would mangle a legitimate name',
+      );
+    });
+
+    test('a quoted file name is read back unescaped', () {
+      expect(
+        tomFileNameFromDisposition(r'attachment; filename="a\"b\\c.txt"'),
+        r'a"b\c.txt',
+      );
+    });
+
+    test('a bare file name is read without quotes', () {
+      expect(
+        tomFileNameFromDisposition('attachment; filename=note.txt'),
+        'note.txt',
+      );
+    });
+
+    test('the RFC 5987 filename* form is percent-decoded', () {
+      expect(
+        tomFileNameFromDisposition(
+          "attachment; filename*=UTF-8''rapport%20%C3%A9t%C3%A9.pdf",
+        ),
+        'rapport été.pdf',
+      );
+    });
+
+    test('an absent header, or one naming no file, is null', () {
+      expect(tomFileNameFromDisposition(null), isNull);
+      expect(tomFileNameFromDisposition('attachment'), isNull);
+      expect(tomFileNameFromDisposition('attachment; filename='), isNull);
+    });
+
+    test('a name carrying both escape characters survives a round trip', () {
+      // The round trip is the contract: whatever the writer escapes, the
+      // reader has to give back unchanged, or a download renames the file.
+      const name = r'quarterly "Q3" report\final.pdf';
+      final header =
+          'attachment; filename="${tomEscapeFileNameForDisposition(name)}"';
+      expect(tomFileNameFromDisposition(header), name);
+    });
+  });
+
+  group('tomFileDescriptorHeaders', () {
+    test('writes the descriptor, the media type, the length and the name', () {
+      final metadata = TomFileMetadata(
+        key: 'store/1',
+        mediaType: 'application/pdf',
+        byteCount: 12,
+        fileName: 'scan.pdf',
+        storedAt: DateTime.utc(2026, 7, 28, 9),
+      );
+
+      final headers = tomFileDescriptorHeaders(metadata);
+
+      // Read back through the client's own decoder: the point of the header is
+      // that `describe` can rebuild the descriptor from it.
+      expect(decodeFileDescriptor(headers['x-tom-file']!), equals(metadata));
+      expect(headers[TomHeader.contentType], 'application/pdf');
+      expect(headers['content-length'], '12');
+      expect(
+        headers[TomHeader.contentDisposition],
+        'attachment; filename="scan.pdf"',
+      );
+    });
+
+    test('omits the disposition when the metadata names no file', () {
+      final headers = tomFileDescriptorHeaders(
+        const TomFileMetadata(
+          key: 'store/2',
+          mediaType: 'application/octet-stream',
+          byteCount: 0,
+        ),
+      );
+
+      expect(headers.containsKey(TomHeader.contentDisposition), isFalse);
+      expect(headers['content-length'], '0');
+    });
+
+    test('a file name needing escapes is written escaped', () {
+      final headers = tomFileDescriptorHeaders(
+        const TomFileMetadata(
+          key: 'store/3',
+          mediaType: 'text/plain',
+          byteCount: 1,
+          fileName: r'say "hi".txt',
+        ),
+      );
+
+      expect(
+        headers[TomHeader.contentDisposition],
+        r'attachment; filename="say \"hi\".txt"',
+      );
+      expect(
+        tomFileNameFromDisposition(headers[TomHeader.contentDisposition]),
+        r'say "hi".txt',
       );
     });
   });
@@ -537,6 +726,129 @@ void main() {
         ),
       );
       expect(await client.describe('a'), isNull);
+    });
+
+    test('an empty file stores, and downloads as no chunks at all', () async {
+      // The zero-byte case is the one a slicer and a progress reporter most
+      // easily get wrong, and it is ordinary: a user attaches an empty file.
+      final uploads = <TomTransferProgress>[];
+      final stored = await client.upload(
+        slot: 'a',
+        source: TomFileSource.bytes('empty.bin', const []),
+        onProgress: uploads.add,
+      );
+
+      expect(stored.byteCount, 0);
+      expect(await client.describe('a'), stored);
+      // The source still hands over one (empty) chunk, so one event is
+      // reported — and it is indeterminate, because a total of zero has no
+      // meaningful fraction to show.
+      expect(uploads.map((p) => p.transferred), [0]);
+      expect(uploads.single.isDeterminate, isFalse);
+      expect(uploads.single.fraction, isNull);
+
+      final downloads = <TomTransferProgress>[];
+      expect(
+        await client.download('a', onProgress: downloads.add).toList(),
+        isEmpty,
+      );
+      expect(
+        downloads,
+        isEmpty,
+        reason: 'nothing was replayed, so nothing progressed',
+      );
+    });
+
+    test('download slices the stored bytes into chunkSize pieces', () async {
+      // chunkSize is 4 here. The three relations a slicer gets wrong are a file
+      // below one chunk, one that is an exact multiple (which must not end on a
+      // trailing empty chunk), and one whose last chunk is partial.
+      Future<List<int>> chunkLengths(int byteCount) async {
+        final slot = 'size/$byteCount';
+        await client.upload(
+          slot: slot,
+          source: TomFileSource.bytes('x.bin', List.filled(byteCount, 1)),
+        );
+        final chunks = await client.download(slot).toList();
+        return chunks.map((chunk) => chunk.length).toList();
+      }
+
+      expect(await chunkLengths(3), [3]);
+      expect(await chunkLengths(8), [4, 4]);
+      expect(await chunkLengths(10), [4, 4, 2]);
+    });
+
+    test('an upload cancelled mid-stream throws and stores nothing', () async {
+      // Distinct from cancelling before the call: this arrives once the bytes
+      // are already moving, which is the only moment an in-memory transfer can
+      // notice it, and the moment a user actually presses Cancel.
+      final cancellation = TomTransferCancellation();
+      final source = TomFileSource.stream(
+        fileName: 'x.bin',
+        byteCount: 8,
+        open: () async* {
+          yield const [1, 2, 3, 4];
+          cancellation.cancel();
+          yield const [5, 6, 7, 8];
+        },
+      );
+
+      await expectLater(
+        client.upload(slot: 'a', source: source, cancellation: cancellation),
+        throwsA(
+          isA<TomFileTransferException>().having(
+            (e) => e.key,
+            'key',
+            'file_transfer.cancelled',
+          ),
+        ),
+      );
+      expect(await client.describe('a'), isNull);
+    });
+
+    test('a download cancelled mid-stream stops at the next chunk', () async {
+      await client.upload(
+        slot: 'a',
+        source: TomFileSource.bytes('x.bin', List.filled(12, 1)),
+      );
+      final cancellation = TomTransferCancellation();
+      final delivered = <int>[];
+
+      await expectLater(
+        client.download('a', cancellation: cancellation).map((chunk) {
+          delivered.add(chunk.length);
+          cancellation.cancel();
+          return chunk;
+        }).drain<void>(),
+        throwsA(
+          isA<TomFileTransferException>().having(
+            (e) => e.key,
+            'key',
+            'file_transfer.cancelled',
+          ),
+        ),
+      );
+      expect(
+        delivered,
+        [4],
+        reason: 'the chunk in flight is delivered; the next one is refused',
+      );
+    });
+
+    test('slots names every stored slot', () async {
+      expect(client.slots, isEmpty);
+      await client.upload(
+        slot: 'a',
+        source: TomFileSource.bytes('x.bin', const [1]),
+      );
+      await client.upload(
+        slot: 'b/c',
+        source: TomFileSource.bytes('y.bin', const [2]),
+      );
+
+      expect(client.slots, unorderedEquals(['a', 'b/c']));
+      await client.remove('a');
+      expect(client.slots, ['b/c']);
     });
 
     test('a re-upload replaces the previous content', () async {
@@ -752,6 +1064,62 @@ void main() {
       },
     );
 
+    test('an empty file round-trips over the wire', () async {
+      final stored = await client.upload(
+        slot: 'a',
+        source: TomFileSource.bytes('empty.bin', const []),
+      );
+
+      expect(stored.byteCount, 0);
+      expect(await _collect(client.download('a')), isEmpty);
+      expect((await client.describe('a'))!.byteCount, 0);
+    });
+
+    test('a non-2xx download becomes a rejected error', () async {
+      // Each verb tests the status itself, so each needs its own guard: a
+      // download that mistook 403 for a body would hand the caller the error
+      // page as the file's bytes.
+      server.forcedStatus = HttpStatus.forbidden;
+
+      await expectLater(
+        _collect(client.download('a')),
+        throwsA(
+          isA<TomFileTransferException>()
+              .having((e) => e.key, 'key', 'file_transfer.rejected')
+              .having((e) => e.parameters?['statusCode'], 'statusCode', 403),
+        ),
+      );
+    });
+
+    test('a non-2xx describe becomes a rejected error', () async {
+      // Distinct from the 404 that answers `null`: a refusal is not "no file".
+      server.forcedStatus = HttpStatus.forbidden;
+
+      await expectLater(
+        client.describe('a'),
+        throwsA(
+          isA<TomFileTransferException>()
+              .having((e) => e.key, 'key', 'file_transfer.rejected')
+              .having((e) => e.parameters?['statusCode'], 'statusCode', 403),
+        ),
+      );
+    });
+
+    test('a non-2xx remove becomes a rejected error', () async {
+      // Distinct from the 404 that answers `false`: a refusal is not "nothing
+      // was there", and reporting it as one loses the file silently.
+      server.forcedStatus = HttpStatus.forbidden;
+
+      await expectLater(
+        client.remove('a'),
+        throwsA(
+          isA<TomFileTransferException>()
+              .having((e) => e.key, 'key', 'file_transfer.rejected')
+              .having((e) => e.parameters?['statusCode'], 'statusCode', 403),
+        ),
+      );
+    });
+
     test('cancelling mid-download aborts the transfer', () async {
       await client.upload(
         slot: 'a',
@@ -782,6 +1150,35 @@ void main() {
         ),
       );
       expect(received.length, lessThan(200));
+    });
+
+    test('cancelling mid-upload aborts the request', () async {
+      // The mirror of the mid-download case, and a different code path: the
+      // abort surfaces while the client waits on the response to a body it is
+      // still pumping, rather than while it reads one.
+      final cancellation = TomTransferCancellation();
+      final source = TomFileSource.stream(
+        fileName: 'big.bin',
+        byteCount: 8 * 1024,
+        open: () async* {
+          for (var piece = 0; piece < 8; piece++) {
+            yield Uint8List(1024);
+            if (piece == 0) cancellation.cancel();
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          }
+        },
+      );
+
+      await expectLater(
+        client.upload(slot: 'a', source: source, cancellation: cancellation),
+        throwsA(
+          isA<TomFileTransferException>().having(
+            (e) => e.key,
+            'key',
+            'file_transfer.cancelled',
+          ),
+        ),
+      );
     });
 
     test('a transfer cancelled before it starts fails immediately', () async {
@@ -821,6 +1218,26 @@ void main() {
         slot: 'a',
         source: TomFileSource.bytes('x.bin', const [1]),
       );
+      expect(server.seenAuthorization.single, isNull);
+    });
+
+    test('includeBearerAuthentication: false sends no credential', () async {
+      // A file store is exactly the endpoint that should not be public, so the
+      // flag defaults on; a caller that turns it off has to actually get an
+      // anonymous request, tokens present or not.
+      TomBearerAuthentication.setTokens(_authJwt, _authzJwt, false);
+      addTearDown(TomBearerAuthentication.clearTokens);
+
+      final anonymous = TomHttpFileTransferClient(
+        baseUri: server.baseUri,
+        includeBearerAuthentication: false,
+      );
+      addTearDown(anonymous.close);
+      await anonymous.upload(
+        slot: 'a',
+        source: TomFileSource.bytes('x.bin', const [1]),
+      );
+
       expect(server.seenAuthorization.single, isNull);
     });
 
