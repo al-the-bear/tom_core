@@ -11,7 +11,10 @@
 
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 
+import '../require_asserts.dart';
+
 Future<void> main() async {
+  requireAsserts();
   _demoSimpleAndEnv();
   _demoOptional();
   _demoScopeStack();

@@ -22,7 +22,10 @@ import 'dart:isolate';
 
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 
+import '../require_asserts.dart';
+
 Future<void> main() async {
+  requireAsserts();
   await _demoCancellation();
   await _demoCloseSignal();
   await _demoBackpressure();

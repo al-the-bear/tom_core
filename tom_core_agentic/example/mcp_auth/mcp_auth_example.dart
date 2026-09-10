@@ -12,7 +12,10 @@
 
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 
+import '../require_asserts.dart';
+
 void main() {
+  requireAsserts();
   // A server binds one authenticator over its principal type. Here the
   // principal is a String username; a framework server would bind
   // BearerTokenAuthenticator<TomPrincipal>.

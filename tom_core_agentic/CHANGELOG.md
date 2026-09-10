@@ -2,6 +2,18 @@
 
 ### Changed
 
+- **Every example refuses to run without `--enable-asserts`.** The examples
+  verify themselves with `assert`, and `dart run` strips asserts unless given
+  the flag, so a flagless run printed a plausible transcript and exited 0 having
+  checked nothing — a result that cannot be told from success.
+  `test/examples_test.dart` already ran each example under its documented
+  command, which kept the examples honest; it did nothing for a reader running
+  one from memory. Each example now opens with `requireAsserts()`
+  (`example/require_asserts.dart`), which exits with status 2 and the corrected
+  command when asserts are off, and the test requires that refusal of every
+  example. `tom_core_kernel`'s samples refuse the same way.
+
+
 - **`isolate_streaming` closed its last two open classes.**
   `IsolateRequestGuard` and `IsolateExceptionRegistry` were plain `class` while
   the module's other eight public types were `final`. Nothing in the workspace

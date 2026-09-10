@@ -107,13 +107,19 @@ dart run --enable-asserts example/placeholders/placeholders_example.dart
 
 `--enable-asserts` is not optional. Each example states its expectations with
 `assert`, and `dart run` leaves assertions *disabled* — that is what the flag is
-for — so a flagless run prints the same transcript and exits 0 with every
-expectation in it removed. `test/examples_test.dart` holds both halves: it runs
-every example under exactly that command, and it requires every header to name
-it, because a sweep that passes a flag the header omits proves nothing about
-what a reader will see. (`tom_core_server` answers the same question the other
-way, with a helper that throws instead of asserting; either is sound, and
-documenting one while verifying the other is not.)
+for — so under a flagless run every expectation would compile out and the
+example would print its transcript and exit 0 having verified nothing. It
+refuses instead: each example opens by checking that asserts are on, and exits
+with status 2 and the corrected command if they are not.
+
+`test/examples_test.dart` holds all three parts: it runs every example under
+exactly the command its header names, it requires every header to name that
+command — a sweep that passes a flag the header omits proves nothing about what
+a reader will see — and it requires every example to refuse a flagless run.
+(`tom_core_server` answers the same question the other way, with a helper that
+throws instead of asserting; either is sound, and documenting one while
+verifying the other is not. `tom_core_kernel`'s samples refuse a flagless run
+the same way these do.)
 
 ## What does NOT live here
 
