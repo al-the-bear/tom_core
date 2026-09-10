@@ -505,6 +505,77 @@ void main() {
         expect(base['items'], equals(['plain']));
       });
 
+      test('merging scalar lists reports nothing', () async {
+        // The overlap loop used to warn per element pair that was not two maps,
+        // *without comparing them* — so the module's own documented layering
+        // example, a `features` list restated with one addition, emitted a
+        // warning per unchanged entry on every merge, saying each "would be
+        // overwritten" by a value identical to it.
+        final recorder = _CapturingLogOutput();
+        final previousOutput = tomLog.logOutput;
+        tomLog.logOutput = recorder;
+        addTearDown(() => tomLog.logOutput = previousOutput);
+
+        // Prove the recorder can see this module's log before asserting it
+        // stays empty: a structural mismatch is a report that really is made.
+        mergeMapsOneSided(
+          <String, dynamic>{'a': 1},
+          <String, dynamic>{
+            'a': <String, dynamic>{'nested': true},
+          },
+        );
+        expect(
+          recorder.messages,
+          isNotEmpty,
+          reason: 'the recorder must be able to see this module log',
+        );
+        recorder.messages.clear();
+
+        // Equal elements, differing elements, and an override that is longer:
+        // three ordinary layerings, none of which is a problem to report.
+        final base = <String, dynamic>{
+          'unchanged': ['auth', 'logging'],
+          'changed': ['auth', 'logging'],
+          'extended': ['auth'],
+        };
+        mergeMapsOneSided(base, <String, dynamic>{
+          'unchanged': ['auth', 'logging'],
+          'changed': ['oauth', 'logging'],
+          'extended': ['auth', 'metrics'],
+        });
+
+        expect(base['unchanged'], equals(['auth', 'logging']));
+        expect(base['changed'], equals(['oauth', 'logging']));
+        expect(base['extended'], equals(['auth', 'metrics']));
+        expect(recorder.messages, isEmpty);
+      });
+
+      test('a refused element says which index it kept', () async {
+        // What remains of that reporting, and the one thing in this module a
+        // caller cannot learn from the merged tree: the override element was
+        // discarded. It has to name the array and the index, because the
+        // result looks exactly like a merge that had nothing to do there.
+        final recorder = _CapturingLogOutput();
+        final previousOutput = tomLog.logOutput;
+        tomLog.logOutput = recorder;
+        addTearDown(() => tomLog.logOutput = previousOutput);
+
+        final base = <String, dynamic>{
+          'items': ['plain', 'kept'],
+        };
+        mergeMapsOneSided(base, <String, dynamic>{
+          'items': [
+            'replaced',
+            <String, dynamic>{'a': 1},
+          ],
+        });
+
+        expect(base['items'], equals(['replaced', 'kept']));
+        expect(recorder.messages, hasLength(1));
+        expect(recorder.messages.single, contains('items[1]'));
+        expect(recorder.messages.single, contains('Keeping the base element'));
+      });
+
       test('a narrowly typed base list accepts an override of another type', () {
         // A Dart list literal is reified at its element type, so `<int>[1, 2]`
         // is a List<int> and cannot hold a String. Writing the override
