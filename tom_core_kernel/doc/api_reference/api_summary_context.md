@@ -74,7 +74,7 @@ Merges `parentContext`'s entries (if any) as the base and overwrites them with
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `contextMap` | `Map<String, TomContextEntry>` | Map of context entry names to their entries (final). |
+| `contextMap` | `Map<String, TomContextEntry>` | The entries by name, as a **live unmodifiable view** — reads and iteration only, and it tracks later changes rather than snapshotting. A write throws `UnsupportedError`: a context is installed in a zone and every caller there reads the same object, so a write through this map would be a write into everyone else's context. Change a context with `add`, `clear` or `combineWith`. Prefer `getEntry` / `getValueFromCurrentZone` for reading a single entry — they answer with the entry's type; this view is for what they cannot answer, such as which names exist. |
 
 #### Methods
 

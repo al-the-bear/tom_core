@@ -49,6 +49,7 @@
 library;
 
 import 'dart:async';
+import 'dart:collection';
 
 import '../little_things/little_things.dart';
 import '../security/user_principal_aci.dart';
@@ -89,8 +90,29 @@ import '../security/user_principal_aci.dart';
 /// });
 /// ```
 class TomExecutionContext {
-  /// Map of context entry names to their entries.
-  final Map<String, TomContextEntry> contextMap = {};
+  /// The entries, keyed by name.
+  final Map<String, TomContextEntry> _entries = {};
+
+  /// The entries, keyed by name — a read-only view.
+  ///
+  /// Reading is the whole of what a consumer needs here, and the typed reads
+  /// ([getEntry], [getValueFromCurrentZone]) are the ones to prefer: they
+  /// answer with the entry's type rather than with `TomContextEntry<dynamic>`.
+  /// This view is for the questions they cannot answer — how many entries
+  /// there are, which names exist, iterating them for a diagnostic.
+  ///
+  /// It is unmodifiable because a context is installed in a zone and every
+  /// caller in that zone reads the same object: a write through this map would
+  /// be a write into everyone else's context, from a place none of them can
+  /// see. Changing a context is done through [add], [clear] and [combineWith],
+  /// which say so at the call site — and are meant for a context you own,
+  /// typically while assembling one before it is ever run.
+  ///
+  /// The container that *is* meant to be written from inside a zone is
+  /// [TomZoneValues]; see [runInContext] for why the two differ.
+  late final Map<String, TomContextEntry> contextMap = UnmodifiableMapView(
+    _entries,
+  );
 
   /// Gets a context entry by name, when it can be read as [T].
   ///
@@ -108,7 +130,7 @@ class TomExecutionContext {
   /// It matters because the raw form is easy to write by accident — see
   /// [TomContextEntry] for how a map literal infers it.
   TomContextEntry<T>? getEntry<T>(String name) {
-    final entry = contextMap[name];
+    final entry = _entries[name];
     return entry is TomContextEntry<T> ? entry : null;
   }
 
@@ -165,9 +187,9 @@ class TomExecutionContext {
     // overwrites them on collision, so the inner context wins and the source
     // map passed in is left unchanged (no aliasing mutation).
     if (parentContext != null) {
-      this.contextMap.addAll(parentContext.contextMap);
+      _entries.addAll(parentContext.contextMap);
     }
-    this.contextMap.addAll(contextMap);
+    _entries.addAll(contextMap);
   }
 
   // ---------------------------------------------------------------------------
@@ -179,12 +201,12 @@ class TomExecutionContext {
   /// [name] The unique name for this entry.
   /// [entry] The context entry containing the value provider.
   void add(String name, TomContextEntry entry) {
-    contextMap[name] = entry;
+    _entries[name] = entry;
   }
 
   /// Removes all entries from this context.
   void clear() {
-    contextMap.clear();
+    _entries.clear();
   }
 
   /// Merges another context's entries into this context.
@@ -196,7 +218,7 @@ class TomExecutionContext {
   /// `other.combineWith(this)` when the receiver's values are the ones that
   /// should stand.
   void combineWith(TomExecutionContext other) {
-    contextMap.addAll(other.contextMap);
+    _entries.addAll(other.contextMap);
   }
 
   // ---------------------------------------------------------------------------

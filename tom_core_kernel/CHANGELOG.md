@@ -183,6 +183,27 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomExecutionContext.contextMap` is a read-only view (tcopen8).** It was
+  a public, mutable `Map`, so any consumer that read a context out of the zone
+  could add, replace or clear entries that every other caller in that zone
+  would then see — a write into everyone else's context, from a place none
+  of them can look. It is now a live `UnmodifiableMapView` over a private
+  backing map.
+
+  Nothing outside the class was writing through it: every write in the
+  repository is one of the class's own, and the two consumers in
+  `tom_core_server` read an entry by name. So the change costs no call-site
+  churn, and the module already had the mutation API this leaves as the only
+  way in — `add`, `clear` and `combineWith`, each of which says what it is
+  doing at the call site, and each meant for a context you own.
+
+  The view is live rather than a snapshot, and a test pins that: an
+  unmodifiable *copy* would look like the same fix while introducing a new
+  failure, a caller holding a view of a context that has since changed.
+  `TomZoneValues` remains the container that is meant to be written from
+  inside a zone; the two were never the same thing, and now do not look it.
+
+
 - **`getEntry<T>` reads a context entry by assignability, not by identity
   (tcopen7).** It compared `entry.type == T` — two `Type` objects for
   identity — so an entry declared `TomContextEntry<int>` was invisible to

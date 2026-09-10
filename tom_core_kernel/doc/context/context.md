@@ -660,5 +660,6 @@ than a `!`.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | every file | `Future` |
+| `dart:collection` | dart | `execution_context.dart` | `UnmodifiableMapView`, the read-only view `contextMap` hands out |
 | [little_things](../little_things/little_things.md) | module | every file | `getFromCurrentZone`, the zone lookup the context installs itself for |
 | [security](../security/security.md) | module | every file | `TomPrincipal` for authenticated user context |

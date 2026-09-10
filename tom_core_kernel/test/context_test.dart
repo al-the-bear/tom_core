@@ -73,6 +73,50 @@ void main() {
       });
     });
 
+    group('contextMap is a read-only view', () {
+      // A context is installed in a zone and every caller in that zone reads
+      // the same object, so a write through the map would be a write into
+      // everyone else's context from a place none of them can see. The
+      // mutation API says so at the call site instead.
+
+      test('a write through the map is refused', () {
+        final context = TomExecutionContext({
+          'tenant': TomContextEntry<String>(() => 'acme'),
+        });
+
+        expect(
+          () =>
+              context.contextMap['other'] = TomContextEntry<String>(() => 'x'),
+          throwsUnsupportedError,
+        );
+        expect(() => context.contextMap.clear(), throwsUnsupportedError);
+        expect(
+          () => context.contextMap.remove('tenant'),
+          throwsUnsupportedError,
+        );
+        expect(
+          context.contextMap.keys,
+          equals(['tenant']),
+          reason: 'and nothing got through',
+        );
+      });
+
+      test('the view reflects the mutation API, it does not snapshot', () {
+        // The view has to stay live, or a caller holding it would read a
+        // context that has since changed — which is the failure an
+        // unmodifiable *copy* would introduce while looking like the same
+        // fix.
+        final context = TomExecutionContext({});
+        final view = context.contextMap;
+
+        context.add('added', TomContextEntry<String>(() => 'later'));
+        expect(view.keys, equals(['added']));
+
+        context.clear();
+        expect(view, isEmpty);
+      });
+    });
+
     group('collision precedence', () {
       // Three operations merge two sets of entries, and they resolve a name
       // held by both from two different ends. The unifying rule is that the
