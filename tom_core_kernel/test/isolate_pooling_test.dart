@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:test/test.dart';
@@ -2202,6 +2203,68 @@ void main() {
         expect(results, containsAll([0, 2, 4, 6]));
       });
 
+      test(
+        'serves callers queued on a saturated pool in arrival order',
+        () async {
+          // One worker, six callers: the first takes it, the other five park. The
+          // order they are served in is the whole point of a queue — a design
+          // that leaves a released worker in the free list for waiters to find
+          // serves whoever happens to look next, and under sustained load one
+          // caller can be passed over indefinitely.
+          final smallContext = TestWorkerContext(namePrefix: 'Fifo');
+          final smallPool = await TomWorkerPool.withSize(1, smallContext);
+          addTearDown(smallPool.close);
+
+          final served = <int>[];
+          final pending = <Future<void>>[];
+          for (var caller = 0; caller < 6; caller++) {
+            // `execute` runs synchronously up to its first await, so the calls
+            // enqueue in loop order — which is what makes "arrival order"
+            // well-defined here rather than a race the test would be asserting.
+            pending.add(
+              smallPool
+                  .execute(DelayedCommand(5, caller))
+                  .then((result) => served.add(result! as int)),
+            );
+          }
+          await Future.wait(pending);
+
+          expect(served, equals([0, 1, 2, 3, 4, 5]));
+        },
+      );
+
+      test('closing the pool releases the callers waiting on it', () async {
+        // A parked caller has no timer of its own, so nothing but the close can
+        // wake it: without this, closing a saturated pool would leave every
+        // queued caller awaiting a worker that will never be released.
+        final smallContext = TestWorkerContext(namePrefix: 'CloseWaiters');
+        final smallPool = await TomWorkerPool.withSize(1, smallContext);
+
+        final running = smallPool.execute(DelayedCommand(50, 'running'));
+        // One turn of the event loop, so the first command actually reaches its
+        // worker: `execute` reserves the worker synchronously but dispatches
+        // only after its first await, and closing in the same turn would close
+        // the pool with nothing yet in flight.
+        await Future<void>.delayed(Duration.zero);
+        final queued = smallPool.execute(DelayedCommand(5, 'queued'));
+
+        smallPool.close();
+
+        await expectLater(
+          queued,
+          throwsA(
+            isA<TomWorkerException>().having(
+              (e) => e.key,
+              'key',
+              'isolate.pool_closed.execute_after_close',
+            ),
+          ),
+        );
+        // The command already dispatched is not cancelled by the close; it is
+        // the *waiting* that ends.
+        expect(await running, equals('running'));
+      });
+
       test('should handle commands when all workers are busy', () async {
         // Create a pool with just 1 worker
         final smallContext = TestWorkerContext(namePrefix: 'Small');
@@ -2219,6 +2282,38 @@ void main() {
         expect(results, containsAll(['first', 'second', 'third']));
 
         smallPool.close();
+      });
+    });
+
+    group('dispatch mechanism', () {
+      test('the pool waits on a completer, never on a clock', () {
+        // Dispatch used to wait for a free worker by polling
+        // `Future.delayed(Duration(milliseconds: 1))`, waking the event loop a
+        // thousand times a second per waiting caller. The ordering test above
+        // pins the queue's *behaviour*; this pins the mechanism, because a poll
+        // that then served the queue head would satisfy that test while putting
+        // the busy-wait back.
+        //
+        // Read out of the source because there is no runtime surface for "how
+        // this waits": the only observable difference is timing, and a timing
+        // assertion is the flakiest thing that could stand here.
+        final path = 'lib/src/tombase/isolate_pooling/tom_worker.dart';
+        final source = File(path).readAsStringSync();
+        final start = source.indexOf('class TomWorkerPool {');
+        expect(
+          start,
+          greaterThanOrEqualTo(0),
+          reason: 'TomWorkerPool moved or was renamed — retarget this guard',
+        );
+
+        expect(
+          source.substring(start).contains('Future.delayed'),
+          isFalse,
+          reason:
+              'TomWorkerPool must not wait by sleeping. Park the caller on a '
+              'completer and hand a released worker to it; a genuine deadline '
+              'is a Timer or .timeout(), not a poll.',
+        );
       });
     });
 

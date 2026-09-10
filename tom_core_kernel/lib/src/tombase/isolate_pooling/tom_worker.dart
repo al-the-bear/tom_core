@@ -1632,7 +1632,8 @@ class TomWorker {
 /// - Workers are created during pool initialization
 /// - A pool needs at least one worker; [withSize] rejects a smaller size
 ///   rather than returning a pool on which every command would wait forever
-/// - Commands wait if all workers are busy (polling every 1ms)
+/// - A command that finds every worker busy is queued, and the next worker
+///   released is handed to it directly, in arrival order
 /// - Consider pool size based on CPU cores and task characteristics
 class TomWorkerPool {
   /// All workers in this pool.
@@ -1643,6 +1644,16 @@ class TomWorkerPool {
 
   /// Workers currently processing tasks.
   final List<TomWorker> _busy = [];
+
+  /// Callers waiting for a worker, in arrival order.
+  ///
+  /// A saturated pool parks each caller here instead of letting it poll, and a
+  /// released worker is handed to the head of this queue directly. Two
+  /// properties follow that a polling wait cannot offer: the wait costs nothing
+  /// while it lasts, and it is **first-come, first-served** — waiters woken by
+  /// their own timers are served in whatever order those timers happen to fire,
+  /// which under sustained load can starve one indefinitely.
+  final Queue<Completer<TomWorker>> _waiting = Queue();
 
   /// Context used to (re)spawn workers; stored so dead workers can be replaced.
   late final TomWorkerContext _context;
@@ -1727,8 +1738,8 @@ class TomWorkerPool {
   }) async {
     if (size < 1) {
       // A pool with no workers can never acquire one: workers are added at
-      // construction and on respawn-after-death only, so execute() would spin
-      // its 1 ms wait loop forever against a permanently empty free list.
+      // construction and on respawn-after-death only, so every execute() would
+      // park in the waiting queue that nothing can ever drain.
       throw TomWorkerException(
         'isolate.invalid_pool_size.with_size',
         'Cannot create a TomWorkerPool with $size workers: at least 1 is '
@@ -1801,7 +1812,9 @@ class TomWorkerPool {
       return;
     }
     _workers.add(tw);
-    _free.add(tw);
+    // A replacement spawned after a death may be the worker a parked caller is
+    // waiting for, so it goes through the same hand-out as a released one.
+    _handOut(tw);
     if (_healthCheckInterval != null) {
       tw.superviseExit(() => _handleWorkerDeath(tw));
     }
@@ -1856,7 +1869,7 @@ class TomWorkerPool {
         }
         if (_closed) break;
         if (alive) {
-          _free.add(tw);
+          _handOut(tw);
         } else {
           tw.killUnresponsive();
         }
@@ -1866,11 +1879,46 @@ class TomWorkerPool {
     }
   }
 
+  /// Takes a worker for the caller, parking it in [_waiting] when none is free.
+  ///
+  /// The free list is only read when nothing is queued. Serving a newcomer
+  /// while someone waits would be a fairness bug the fast path cannot see, and
+  /// the check that prevents it is cheaper than reasoning about whether the
+  /// case can arise.
+  Future<TomWorker> _acquire() {
+    if (_waiting.isEmpty && _free.isNotEmpty) {
+      final tw = _free.removeAt(0);
+      _busy.add(tw);
+      return Future.value(tw);
+    }
+    final waiter = Completer<TomWorker>();
+    _waiting.add(waiter);
+    return waiter.future;
+  }
+
+  /// Gives [tw] to the longest-waiting caller, or returns it to the free list.
+  ///
+  /// The worker never passes through [_free] on its way to a waiter: leaving it
+  /// there for the waiter to find is what a polling design does, and it is what
+  /// lets a newcomer take it first.
+  void _handOut(TomWorker tw) {
+    if (_waiting.isEmpty) {
+      _free.add(tw);
+      return;
+    }
+    _busy.add(tw);
+    _waiting.removeFirst().complete(tw);
+  }
+
   /// Executes a command using an available worker from the pool.
   ///
-  /// If all workers are busy, this method waits (polling every 1ms)
-  /// until a worker becomes available. The command is then executed
-  /// and the worker is returned to the pool.
+  /// If every worker is busy the caller is queued, and the next worker to be
+  /// released is handed to it directly. Waiting costs nothing while it lasts,
+  /// and callers are served in arrival order.
+  ///
+  /// The wait is unbounded: a pool whose workers are all occupied by long
+  /// commands keeps its callers parked until one finishes. [close] releases
+  /// them, with the same exception a call made after the close would raise.
   ///
   /// - [command]: The command to execute
   ///
@@ -1886,20 +1934,15 @@ class TomWorkerPool {
   /// ```
   Future<Object?> execute(Object command) async {
     if (_closed) throw _closedException();
-    while (_free.isEmpty) {
-      if (_closed) throw _closedException();
-      await Future.delayed(Duration(milliseconds: 1));
-    }
-    final TomWorker tw = _free.removeAt(0);
-    _busy.add(tw);
+    final TomWorker tw = await _acquire();
     try {
       return await tw.executeCommand(command);
     } finally {
       // Only recycle a worker that is still alive. A worker that died mid-
       // command has already been pulled from [_busy] by [_handleWorkerDeath];
-      // in that case the removal below returns false and we do not re-add it.
-      if (_busy.remove(tw) && !tw.isClosed) {
-        _free.add(tw);
+      // in that case the removal below returns false and we do not hand it on.
+      if (_busy.remove(tw) && !tw.isClosed && !_closed) {
+        _handOut(tw);
       }
     }
   }
@@ -1919,6 +1962,11 @@ class TomWorkerPool {
     _closed = true;
     _healthTimer?.cancel();
     _healthTimer = null;
+    // Parked callers are woken here, and this is the only thing that wakes
+    // them: a queued waiter has no timer of its own to notice the close on.
+    while (_waiting.isNotEmpty) {
+      _waiting.removeFirst().completeError(_closedException());
+    }
     for (final TomWorker tw in _workers) {
       tw.close();
     }

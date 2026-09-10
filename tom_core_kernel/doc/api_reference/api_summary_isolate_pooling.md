@@ -280,7 +280,7 @@ supervision is available but **off by default**.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `execute` | `Future<Object?> execute(Object command)` | Executes `command` on an available worker, waiting (polling every 1ms) if all are busy, then returns the worker to the pool in a `finally` — a throwing command does not leak its worker, and a worker closed meanwhile is not re-added. Throws `TomWorkerException` (`isolate.pool_closed.execute_after_close`) if the pool is closed — both when it was already closed on entry and when it closes while this call is still waiting for a free worker, since `close` clears the free list and nothing would ever refill it. |
+| `execute` | `Future<Object?> execute(Object command)` | Executes `command` on an available worker. When all are busy the caller is parked in an arrival-ordered queue and the next worker released is handed to it directly — no polling, and first-come, first-served. The worker is passed on in a `finally`, so a throwing command does not leak it and a worker closed meanwhile is not re-used. Throws `TomWorkerException` (`isolate.pool_closed.execute_after_close`) if the pool is closed — both when it was already closed on entry and when it closes while this call is still waiting, since `close` completes every parked caller with that error. |
 | `close` | `void close()` | Cancels the supervision timer, shuts down every worker via `TomWorker.close`, and empties the pool, so `workerCount` reads zero afterwards; the pool must not be reused. Idempotent. |
 
 #### Liveness supervision

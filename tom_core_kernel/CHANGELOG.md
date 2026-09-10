@@ -65,6 +65,26 @@ anyone who was writing them.
 
 ### Fixed
 
+- **`TomWorkerPool.execute` no longer busy-waits for a free worker
+  (tcopen19).** A caller that found every worker busy looped on
+  `await Future.delayed(Duration(milliseconds: 1))` — a thousand event-loop
+  wake-ups a second, per waiting caller, for the whole wait, on precisely the
+  saturated-pool workload the module exists to serve. It also put a 1 ms floor
+  under dispatch latency and gave no ordering: waiters raced for a freed worker
+  in whatever order their timers happened to fire, so one could be passed over
+  indefinitely.
+
+  Callers now park on a completer in an arrival-ordered queue, and a released
+  worker is handed to the head of that queue directly rather than being left in
+  the free list for whoever looks next. Waiting costs nothing, dispatch is
+  immediate, and service is first-come, first-served.
+
+  `close()` now completes every parked caller with
+  `isolate.pool_closed.execute_after_close`. That is not a courtesy: a queued
+  waiter has no timer of its own, so without it, closing a saturated pool would
+  leave its callers awaiting a worker that will never be released. The polling
+  loop noticed the close on its next tick; the queue has no tick.
+
 - **A `statusCodeResponseTypes` entry naming the endpoint's own `R` was
   silently skipped (tcopen17).** `TomServerEndpoint.send` built the declared
   failure DTO only when its type differed from `R`, so an endpoint declaring
