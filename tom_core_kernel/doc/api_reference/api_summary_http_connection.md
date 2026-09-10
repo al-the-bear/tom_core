@@ -1075,7 +1075,7 @@ caller has then named the address outright, and `parameters` is unused.
 | -------- | ---- | ----------- |
 | `channel` | `TomServerChannel` | The server channel for HTTP communication. |
 | `specs` | `TomServerCallSpecs` | The call specification. |
-| `statusCodeResponseTypes` | `Map<int, Type>?` | Maps *failing* status codes to the types their bodies carry. Consulted only when the response is not a 2xx, so declaring entries never diverts a success away from the endpoint's own response type. |
+| `statusCodeResponseTypes` | `Map<int, Type>?` | Maps *failing* status codes to the types their bodies carry. Consulted only when the response is not a 2xx, so declaring entries never diverts a success away from the endpoint's own response type. An entry is honoured whatever type it names, the endpoint's own response type included — a failing status never fills the result object, so such a body still arrives as `TomServerCallError.statusCodeResponse`. |
 
 ##### Methods
 

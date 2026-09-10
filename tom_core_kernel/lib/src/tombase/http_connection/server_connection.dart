@@ -1138,7 +1138,12 @@ class TomServerEndpoint<T extends Object, R extends Object> {
   /// The call specification.
   TomServerCallSpecs specs;
 
-  /// Maps status codes to response types for error handling.
+  /// Maps *failing* status codes to the types their bodies carry.
+  ///
+  /// Consulted only when the response is not a 2xx, so an entry never diverts a
+  /// success away from [R]. An entry is honoured whatever type it names, [R]
+  /// included: a failing status does not fill the result object, so the body
+  /// arrives as [TomServerCallError.statusCodeResponse] either way.
   Map<int, Type>? statusCodeResponseTypes;
 
   /// Creates a new server endpoint.
@@ -1222,7 +1227,13 @@ class TomServerEndpoint<T extends Object, R extends Object> {
       if (!TomServerCallError.isSuccessStatusCode(statusCode) &&
           statusCodeResponseTypes != null) {
         Type? responseType = statusCodeResponseTypes![statusCode];
-        if (responseType != null && responseType != R) {
+        // An entry is honoured whatever type it names, [R] included: the map
+        // says what a body of this status carries, and a failing status never
+        // fills the result object, so an entry naming [R] has nowhere else to
+        // go. Skipping it left the declaration a no-op and
+        // [TomServerCallError.statusCodeResponse] `null` for a status that has
+        // an entry.
+        if (responseType != null) {
           statusCodeResponse = tomReflectionInfo.createInstance(responseType);
           statusCodeResponse = tomReflectionInfo.convertFromJsonString(
             statusCodeResponse,

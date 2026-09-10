@@ -44,6 +44,26 @@ anyone who was writing them.
 
 ### Fixed
 
+- **A `statusCodeResponseTypes` entry naming the endpoint's own `R` was
+  silently skipped (tcopen17).** `TomServerEndpoint.send` built the declared
+  failure DTO only when its type differed from `R`, so an endpoint declaring
+  `{409: MyResponse}` for an endpoint returning `MyResponse` got
+  `TomServerCallError.statusCodeResponse` `null` — for a status that *has* an
+  entry, which is precisely what the documented contract says cannot happen.
+  The body was not lost (it stays in `TomServerCallError.response` as raw
+  text), but the declaration bought nothing and nothing said so.
+
+  The map now means one thing: a body of this status carries this type. A
+  failing status never fills the result object, so an entry naming `R` has
+  nowhere to go but `statusCodeResponse`, and that is where it goes.
+
+  Found while covering `send`, whose eight new tests also pin the request JSON,
+  the caller-supplied response object, a failing status with no map declared at
+  all, the `clientRethrow` throw and its complement, an unparseable body
+  reporting `serverError` rather than `noResponseError`, and an endpoint
+  declared with a path capture calling the resolved URL rather than the
+  template.
+
 - **A channel built from an `https` URI with no explicit port addressed port 80
   (tcopen14).** `TomServerEndpoint.createApiServerEndpoint` derived its
   channel's port as `hasPort ? port : 80`, ignoring the scheme, while the specs

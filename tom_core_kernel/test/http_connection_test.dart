@@ -3968,6 +3968,212 @@ void main() {
   });
 
   // ==========================================================================
+  // TomServerEndpoint.send — the request, the rethrow, and the caller's object
+  // ==========================================================================
+  group('TomServerEndpoint.send', () {
+    late _MockClient client;
+
+    /// An endpoint whose client answers with [handler], keeping the mock
+    /// reachable so a test can read the request that was actually sent.
+    TomServerEndpoint<EndpointRequest, EndpointResponse> endpointFor(
+      Future<StreamedResponse> Function(BaseRequest request) handler, {
+      Map<int, Type>? statusCodeResponseTypes,
+    }) {
+      client = _MockClient(handler);
+      return TomServerEndpoint<EndpointRequest, EndpointResponse>(
+        TomServerChannel(
+          'api.example.com',
+          443,
+          clientFactory: _MockClientFactory(client),
+        ),
+        TomServerCallSpecs(
+          'POST',
+          Uri.parse('https://api.example.com/resources'),
+          includeBearerAuthentication: false,
+        ),
+        statusCodeResponseTypes: statusCodeResponseTypes,
+      );
+    }
+
+    test('the request carries the DTO as JSON', () async {
+      // "Serializes request objects to JSON" is the first line of what this
+      // class claims to do, and nothing had read the request back to see it.
+      await endpointFor(
+        (_) async => _streamed('{"id":"r-1"}'),
+      ).send(EndpointRequest()..note = 'create');
+
+      final request = client.lastRequest! as Request;
+      expect(request.body, equals('{"note":"create"}'));
+      expect(request.method, equals('POST'));
+      expect(request.url.path, equals('/resources'));
+      expect(
+        request.headers[TomHeader.contentType],
+        startsWith('application/json'),
+      );
+    });
+
+    test('a supplied response object is the one that is populated', () async {
+      // The documented second argument: a caller that already holds the object
+      // hands it in, and has to get *that* object back filled, not a copy it
+      // is still holding a stale version of.
+      final target = EndpointResponse();
+
+      final (response, error) = await endpointFor(
+        (_) async => _streamed('{"id":"r-supplied"}'),
+      ).send(EndpointRequest()..note = 'create', target);
+
+      expect(error?.hasError ?? false, isFalse);
+      expect(identical(response, target), isTrue);
+      expect(target.id, equals('r-supplied'));
+    });
+
+    test('a failing status with no declared types still fails', () async {
+      // The other half of the `statusCodeResponseTypes` axis: an endpoint that
+      // declares none at all. There is no failure type to build, so the body
+      // is read into R and the failure is reported by the status alone.
+      final (response, error) = await endpointFor(
+        (_) async => _streamed('{"id":"partial"}', statusCode: 500),
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error, isNotNull);
+      expect(error!.hasError, isTrue);
+      expect(error.statusCode, equals(500));
+      expect(response.id, equals('partial'));
+    });
+
+    test('an unparseable body is a server error, not a missing one', () async {
+      // Pinned by name rather than by value: `noResponseError` and
+      // `serverError` are different answers to "what went wrong", and a caller
+      // switching on the code has to be able to tell them apart.
+      final (_, error) = await endpointFor(
+        (_) async => _streamed('<html>not json</html>'),
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error!.internalError, equals(TomServerCallError.serverError));
+      expect(
+        error.internalError,
+        isNot(equals(TomServerCallError.noResponseError)),
+      );
+      expect(error.statusCode, equals(200));
+      expect(error.exception, isNotNull);
+    });
+
+    test('a body asking the client to rethrow raises past the tuple', () async {
+      // The one documented exception to "every failure comes back through the
+      // tuple". A server that sets `clientRethrow` is asking the client to
+      // treat its error as an exception, and the identifying fields have to
+      // travel into it or the caller cannot report which failure it was.
+      await expectLater(
+        endpointFor(
+          (_) async => _streamed(
+            '{"errorKey":"access.check.denied","uuid":"srv-1",'
+            '"requestUuid":"req-1","clientRethrow":true}',
+            statusCode: 403,
+            headers: const {'x-tom-error': 'true'},
+          ),
+        ).send(EndpointRequest()..note = 'create'),
+        throwsA(
+          isA<TomServerConnectionException>()
+              .having((e) => e.key, 'key', 'access.check.denied')
+              .having((e) => e.uuid, 'uuid', 'srv-1')
+              .having((e) => e.requestUuid, 'requestUuid', 'req-1')
+              .having((e) => e.autoLog, 'autoLog', isTrue)
+              .having(
+                (e) => e.serverCallError?.statusCode,
+                'serverCallError.statusCode',
+                403,
+              ),
+        ),
+      );
+    });
+
+    test('a body that does not ask to rethrow returns the tuple', () async {
+      // The complement, so the guard above cannot be satisfied by throwing on
+      // every Tom error body.
+      final (_, error) = await endpointFor(
+        (_) async => _streamed(
+          '{"errorKey":"access.check.denied","clientRethrow":false}',
+          statusCode: 403,
+          headers: const {'x-tom-error': 'true'},
+        ),
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error!.hasError, isTrue);
+      expect(error.errorKey, equals('access.check.denied'));
+    });
+
+    test('a declared failure type equal to R is still built', () async {
+      // The map says what a body of this status carries; nothing about it is
+      // special when the type it names happens to be the endpoint's own
+      // response type. Skipping that case made the entry a no-op and left
+      // `statusCodeResponse` null for a status that has one — which is exactly
+      // what the documented contract says cannot happen.
+      final (response, error) = await endpointFor(
+        (_) async => _streamed('{"id":"failure-body"}', statusCode: 409),
+        statusCodeResponseTypes: const {409: EndpointResponse},
+      ).send(EndpointRequest()..note = 'create');
+
+      expect(error!.hasError, isTrue);
+      expect(error.statusCode, equals(409));
+      expect(error.statusCodeResponse, isA<EndpointResponse>());
+      expect(
+        (error.statusCodeResponse! as EndpointResponse).id,
+        equals('failure-body'),
+      );
+      expect(
+        response.id,
+        isEmpty,
+        reason: 'a failing status does not fill the result object',
+      );
+    });
+
+    test(
+      'an endpoint declared with a capture calls the resolved URL',
+      () async {
+        // The declaration is the only place the address is written down, so the
+        // proof that resolution reaches the wire has to be a *sent* request:
+        // asserting `specs.url` alone leaves open whether `send` uses it.
+        final api = TomApi(
+          id: 'sendCaptureApi',
+          uri: '/api/items',
+          endpoints: [
+            TomApiEndpoint<EndpointRequest, EndpointResponse>(
+              id: 'byId',
+              uri: '/{id}',
+              method: TomHttpMethod.post,
+              urlParameterMapping: const {'id': 'itemId', 'lang': 'language'},
+            ),
+          ],
+        );
+        final mock = _MockClient((_) async => _streamed('{"id":"r-42"}'));
+
+        final (response, error) =
+            await TomServerEndpoint.createApiServerEndpoint<
+                  EndpointRequest,
+                  EndpointResponse
+                >(
+                  api['byId'],
+                  baseUri: Uri.parse('https://api.example.com'),
+                  parameters: {'itemId': 42, 'language': 'de'},
+                  channel: TomServerChannel(
+                    'api.example.com',
+                    443,
+                    clientFactory: _MockClientFactory(mock),
+                  ),
+                )
+                .send(EndpointRequest()..note = 'create');
+
+        expect(
+          mock.lastRequest!.url.toString(),
+          equals('https://api.example.com/api/items/42?lang=de'),
+        );
+        expect(error?.hasError ?? false, isFalse);
+        expect(response.id, equals('r-42'));
+      },
+    );
+  });
+
+  // ==========================================================================
   // TomServerCallError status-code classification
   // ==========================================================================
   group('TomServerCallError status classification', () {
