@@ -65,6 +65,25 @@ anyone who was writing them.
 
 ### Fixed
 
+- **`TomWorkerPool.withSize` builds its workers together (tcopen23).** Each
+  spawn was awaited before the next began, so construction cost the sum of the
+  spawns rather than roughly the longest. A spawn is not just an isolate start:
+  it also awaits the context's `initializeWorker`, the documented place to open
+  a database handle or warm a cache, so a 200 ms hook made an eight-worker pool
+  a 1.6-second wait, all of it serial.
+
+  The spawns now run under one `Future.wait`. Worker names are unchanged — the
+  counter behind them is incremented on one event loop, so two spawns cannot
+  read the same value however they interleave, and a pool of four still gets
+  `<prefix>000` through `<prefix>003`. That was measured rather than assumed:
+  an `await` planted before the counter read produces the same names in the
+  same order.
+
+  The failure path was worse than slow. A spawn that threw aborted the loop and
+  left every worker already built running, owned by a pool the caller never
+  received and so closed by nothing, for the life of the process. Any failure
+  now closes what came up before rethrowing.
+
 - **Worker respawn is bounded (tcopen20).** Supervision replaced a dead worker
   unconditionally — no rate, no counter, no give-up. A command that reliably
   kills its worker (an allocation the isolate cannot satisfy, a native crash, a

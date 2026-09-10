@@ -130,6 +130,75 @@ class SuicideCommand extends TomCommand {
   }
 }
 
+/// Reports the debug name of the isolate it runs in.
+///
+/// The only way to read a pool worker's generated name from outside: the pool
+/// keeps its workers to itself, and the name is what the shared counter decides.
+class IsolateNameCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async => Isolate.current.debugName;
+}
+
+/// A context whose creator-side hook takes [hookMs], so a pool's construction
+/// cost is dominated by something the test chooses.
+///
+/// `initializeWorker` is awaited by `spawn`, and is the documented place to open
+/// a resource — which is exactly why building a pool serially was expensive.
+class SlowHookContext extends TomWorkerContext {
+  SlowHookContext(this.hookMs, {String namePrefix = 'SlowHook'})
+    : super(
+        const TomEnvironment('test', isTest: true),
+        platformLinux,
+        [],
+        namePrefix,
+      );
+
+  final int hookMs;
+
+  @override
+  Future<void> initializeWorker(TomWorker worker) async {
+    await Future<void>.delayed(Duration(milliseconds: hookMs));
+  }
+}
+
+/// A context that refuses the [failAt]-th worker it is asked to initialize.
+///
+/// The counter lives on the creator side and `initializeWorker` runs there, so
+/// it counts correctly however the spawns are interleaved. [exitPort] is armed
+/// inside every isolate that does start, which is how a test can tell whether
+/// the ones that came up before the refusal were torn down.
+class FailNthWorkerContext extends TomWorkerContext {
+  FailNthWorkerContext(
+    this.exitPort, {
+    required this.failAt,
+    String namePrefix = 'FailNth',
+  }) : super(
+         const TomEnvironment('test', isTest: true),
+         platformLinux,
+         [],
+         namePrefix,
+       );
+
+  final SendPort exitPort;
+  final int failAt;
+
+  /// How many workers have reached the creator-side hook.
+  int started = 0;
+
+  @override
+  Future<void> initializeIsolate() async {
+    Isolate.current.addOnExitListener(exitPort, response: 'exited');
+  }
+
+  @override
+  Future<void> initializeWorker(TomWorker worker) async {
+    started++;
+    if (started == failAt) {
+      throw StateError('worker #$failAt was refused');
+    }
+  }
+}
+
 /// Answers immediately, then blocks its isolate for [blockMs].
 ///
 /// The delay before the block is what makes this different from
@@ -2362,6 +2431,93 @@ void main() {
           pool.close();
         },
       );
+    });
+
+    group('construction', () {
+      test('spawns its workers together, not one after the other', () async {
+        // The cost of a spawn is dominated by whatever the context's hooks do,
+        // and `initializeWorker` is the documented place to open a resource. A
+        // serial build pays that per worker; this one pays it once.
+        const hookMs = 300;
+        const size = 4;
+
+        final started = DateTime.now();
+        final pool = await TomWorkerPool.withSize(
+          size,
+          SlowHookContext(hookMs, namePrefix: 'Parallel'),
+        );
+        addTearDown(pool.close);
+        final elapsed = DateTime.now().difference(started);
+
+        expect(pool.workerCount, equals(size));
+        // Serially this is at least size * hookMs = 1200 ms, before isolate
+        // start-up. The bound is deliberately loose: what it must separate is
+        // "one hook" from "four hooks", not one machine from another.
+        expect(
+          elapsed,
+          lessThan(const Duration(milliseconds: size * hookMs ~/ 2)),
+          reason: 'construction should cost about one hook, not $size of them',
+        );
+      });
+
+      test('names the workers of a concurrently built pool distinctly and in '
+          'sequence', () async {
+        // The one ordering effect concurrency was expected to have, and does
+        // not: the counter is incremented on a single event loop, so two spawns
+        // cannot read the same value however they interleave. What this holds
+        // is the property a reader would doubt — four distinct, consecutive
+        // names — because two isolates sharing a number is a pool whose log
+        // lines cannot tell them apart.
+        final pool = await TomWorkerPool.withSize(
+          4,
+          TestWorkerContext(namePrefix: 'Named'),
+        );
+        addTearDown(pool.close);
+
+        // Four commands dispatched together take four distinct free workers,
+        // because `execute` reserves one synchronously before it awaits.
+        final names = (await Future.wait([
+          for (var i = 0; i < 4; i++) pool.execute(IsolateNameCommand()),
+        ])).cast<String>();
+
+        expect(
+          names.toSet(),
+          equals({'Named000', 'Named001', 'Named002', 'Named003'}),
+        );
+      });
+
+      test('closes the workers that did come up when a spawn fails', () async {
+        // Every spawn runs before the first failure is reported, so the ones
+        // that succeeded have registered into a pool the caller never receives.
+        // Left alone they would hold their isolates for the life of the
+        // process, with no reference anywhere to close them.
+        final exits = ReceivePort();
+        addTearDown(exits.close);
+        final seen = <Object?>[];
+        exits.listen(seen.add);
+
+        await expectLater(
+          TomWorkerPool.withSize(
+            4,
+            FailNthWorkerContext(exits.sendPort, failAt: 3),
+          ),
+          // A refusing hook throws its own error through `spawn`, which is the
+          // contract the single-worker case already pins.
+          throwsA(isA<StateError>()),
+        );
+
+        // Four isolates started: three closed by the cleanup, and the refused
+        // one torn down by `spawn` itself.
+        final deadline = DateTime.now().add(const Duration(seconds: 20));
+        while (seen.length < 4 && DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+        expect(
+          seen.length,
+          equals(4),
+          reason: 'a failed construction must leave no isolate running',
+        );
+      });
     });
 
     group('execute', () {

@@ -378,6 +378,22 @@ final results = await Future.wait([
 pool.close();
 ```
 
+`withSize` spawns its workers **together** and returns once every one is ready,
+so construction costs about one spawn rather than `size` of them. That is worth
+saying because a spawn is not just an isolate start: it also awaits the
+context's `initializeWorker`, the documented place to open a database handle or
+warm a cache. A context with a 200 ms hook builds an eight-worker pool in about
+200 ms rather than 1.6 seconds.
+
+Worker names are unaffected by that. The counter behind them is incremented on
+one event loop, so two spawns cannot read the same value however they
+interleave: a pool of four still gets `<prefix>000` through `<prefix>003`.
+
+If any spawn fails, the workers that did come up are closed before the error is
+rethrown. The caller receives no pool, so nothing else would ever close them,
+and their isolates would otherwise stay in their message loops for the life of
+the process.
+
 A pool needs at least one worker, so `withSize` rejects a size below 1 with a
 `TomWorkerException` naming the value:
 

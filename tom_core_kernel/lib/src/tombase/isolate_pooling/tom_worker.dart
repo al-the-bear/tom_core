@@ -1736,8 +1736,14 @@ class TomWorkerPool {
   /// Creates a worker pool with the specified number of workers.
   ///
   /// Each worker is spawned using [TomWorker.spawn] with the provided
-  /// [context]. The method waits for all workers to be ready before
-  /// returning.
+  /// [context]. The spawns run **together**, and the method returns once every
+  /// worker is ready — so construction costs about one spawn rather than
+  /// [size] of them, which matters because each awaits the context's
+  /// [TomWorkerContext.initializeWorker].
+  ///
+  /// If any spawn fails, the workers that did come up are closed before the
+  /// error is rethrown: the caller receives no pool, so nothing else would ever
+  /// close them.
   ///
   /// - [size]: Number of workers to create; must be at least 1
   /// - [context]: Configuration for each worker (also retained to respawn
@@ -1847,15 +1853,39 @@ class TomWorkerPool {
     twp._readyTimeout = readyTimeout;
     twp._respawnLimit = respawnLimit;
     twp._respawnWindow = respawnWindow;
-    for (int i = 0; i < size; i++) {
-      tomLog.info(
-        'Creating worker #$i for workerpool in  ${Isolate.current.debugName}',
-      );
-      await twp._spawnAndRegister();
-      tomLog.info(
-        'Done creating worker #$i for workerpool in  ${Isolate.current.debugName}',
-      );
+    tomLog.info(
+      'Creating $size workers for workerpool in ${Isolate.current.debugName}',
+    );
+    // Spawned together, not one after the other. Nothing in a spawn depends on
+    // a previous worker existing, while every spawn awaits an isolate start
+    // *and* the context's `initializeWorker` — the documented place to open a
+    // database handle or warm a cache. Serially, a pool of eight with a 200 ms
+    // hook took 1.6 seconds to build, all of it spent waiting.
+    //
+    // Worker names are unaffected. The counter behind them is incremented on
+    // one event loop, so two spawns cannot read the same value however they
+    // interleave, and a suspended spawn resumes in the order it suspended —
+    // measured, not assumed: an `await` planted before the counter read still
+    // produces the same names in the same order. A test pins the names a
+    // concurrently built pool ends up with, because "distinct and consecutive"
+    // is the property that matters and it is the one a reader will doubt.
+    try {
+      await Future.wait([
+        for (int i = 0; i < size; i++) twp._spawnAndRegister(),
+      ]);
+    } on Object {
+      // `Future.wait` waits for every spawn before reporting the first error,
+      // so by now the ones that succeeded have registered into a pool the
+      // caller will never receive. Closing them here is the difference between
+      // a failed construction and a failed construction that leaves live
+      // isolates behind for the rest of the process.
+      twp.close();
+      rethrow;
     }
+    tomLog.info(
+      'Done creating $size workers for workerpool in '
+      '${Isolate.current.debugName}',
+    );
     if (healthCheckInterval != null) {
       twp._healthTimer = Timer.periodic(
         healthCheckInterval,
