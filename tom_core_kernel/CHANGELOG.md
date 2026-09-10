@@ -64,6 +64,36 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **A cycle in a tree is recognised instead of overflowing the stack
+  (tcopen29).** A JSON document is a tree, but the Dart maps and lists these
+  functions are handed are a general object graph. Every recursive function in
+  `map_merge_and_process.dart` followed references without tracking what
+  enclosed them, so `m['self'] = m; makeCleanJsonMap(m);` recursed until the
+  stack was exhausted. `StackOverflowError` is an `Error` rather than an
+  `Exception`, so no documented handling caught it, and unlike a thrown
+  exception it can leave the enclosing isolate in an unclear state.
+
+  `jsonDecode` never produces such a value, but `makeCleanJsonMap` exists to be
+  pointed at maps whose contents are not fully under the caller's control,
+  typically just before logging — and a live object graph reached through a
+  `TomJsonSerializable.toJson()` that returns a parent reference is exactly
+  that case.
+
+  Every walker now carries the containers on its current path.
+  `deepCopyJsonTree`, `traverseAndProcess`, `traverseAndCreate`,
+  `substituteEnvVars` and `processTree` raise the new `TomJsonCycleException`
+  (`json.tree.cycle`), naming the dotted path to the offending value;
+  `mergeMapsOneSided` raises it from the deep copy of its override, before
+  anything is written into the base. `makeCleanJsonMap` is the deliberate
+  exception and **drops** the back-reference like any other value with no JSON
+  form: it exists to hand back something encodable and loggable, so turning a
+  log call into an exception would be as poor a trade as turning it into a
+  stack overflow.
+
+  The guard tracks the *enclosing* containers by identity, not everything
+  already seen, so the same subtree at two places — a directed acyclic graph —
+  still copies and encodes. It is not a depth bound either: a legitimately deep
+  document is walked to an end whatever its depth.
 
 - **The json module's failures are typed (tcopen28).** Every failure it raised
   was a bare `Exception` carrying a message and nothing else, so a caller could

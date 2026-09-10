@@ -25,6 +25,23 @@
 /// than walked halfway. The in-place traversals still edit in place — the
 /// string-keyed view they walk writes through to the caller's map.
 ///
+/// ## Cycles
+/// A JSON document is a tree, but the Dart maps and lists these functions are
+/// handed are a general object graph: nothing stops a value from referring back
+/// to one of its own ancestors. Every function here that walks a tree therefore
+/// keeps the containers on its current path and recognises such a reference
+/// instead of following it, because following it recurses until the stack is
+/// exhausted — and a `StackOverflowError` is an `Error` rather than an
+/// `Exception`, so no documented handling catches it.
+///
+/// The walkers raise [TomJsonCycleException]. [makeCleanJsonMap] does not: it
+/// exists to make a value safe to encode or log, so a back-reference is
+/// *dropped* there like any other value with no JSON form.
+///
+/// A container that appears twice at *different* places is not a cycle. That is
+/// a directed acyclic graph, it encodes and copies perfectly well, and only a
+/// container that encloses itself is refused.
+///
 /// ## Example: Merging configurations
 /// ```dart
 /// final base = {'database': {'host': 'localhost', 'port': 5432}};
@@ -108,6 +125,40 @@ class TomJsonDirectiveException extends TomException {
   });
 }
 
+/// Raised when a tree walk meets a value that refers back to one of its own
+/// ancestors.
+///
+/// Raised by [deepCopyJsonTree], [mergeMapsOneSided], [traverseAndProcess],
+/// [traverseAndCreate], [substituteEnvVars] and [processTree] — every function
+/// here that descends into a tree, except [makeCleanJsonMap], which drops the
+/// back-reference rather than raising because it exists to produce something
+/// encodable.
+///
+/// Distinct from [TomJsonPathException] and [TomJsonDirectiveException] because
+/// it says something about the *input document* rather than about a path or a
+/// directive in it: whatever the caller passed is a graph, not a tree, and no
+/// walk of it can terminate. A caller that wants to tolerate that will want to
+/// catch exactly this and nothing else.
+///
+/// Error key:
+///
+/// - `json.tree.cycle` — a container on the current path was reached again.
+///   The `parameters` carry `path` (the dotted path to the offending value,
+///   with list indices as `[i]`) and `segment` (its last step).
+class TomJsonCycleException extends TomException {
+  /// Creates a cycle failure.
+  TomJsonCycleException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.requestUuid,
+    super.uuid,
+  });
+}
+
 // =============================================================================
 // Private Helpers
 // =============================================================================
@@ -146,6 +197,80 @@ Map<String, dynamic>? _asStringKeyedMap(Object? value) {
     }
   }
   return value.cast<String, dynamic>();
+}
+
+/// The chain of containers the current walk has descended through, so a value
+/// that refers back to one of its own ancestors can be recognised rather than
+/// followed forever.
+///
+/// Membership is by **identity**, and covers only the current path rather than
+/// every container already visited. A document may legitimately hold the same
+/// subtree at two places — that is a directed acyclic graph, it copies and
+/// encodes perfectly well, and an all-visited set would refuse it. Only a
+/// container that is its own ancestor closes a cycle.
+///
+/// Guard on the value a container was *reached through*, never on a view of it:
+/// [_asStringKeyedMap] returns a fresh `cast` wrapper on every call for a map
+/// that is not already `Map<String, dynamic>`, so a view is a different object
+/// each time and could never be recognised as its own ancestor.
+class _AncestorPath {
+  final Set<Object> _onPath = Set<Object>.identity();
+  final List<String> _segments = <String>[];
+
+  /// Whether [container] already encloses the position being walked.
+  ///
+  /// For callers that answer a cycle with something other than an exception;
+  /// [enter] makes the same test and raises.
+  bool holds(Object container) => _onPath.contains(container);
+
+  /// Descends into [container], reached through [segment].
+  ///
+  /// Raises [TomJsonCycleException] when [container] is already on the path.
+  void enter(Object container, String segment) {
+    if (_onPath.contains(container)) {
+      final String where = _pathTo(segment);
+      throw TomJsonCycleException(
+        "json.tree.cycle",
+        "The value at $where refers back to a container that already encloses "
+            "it, so this tree cannot be walked to an end.",
+        parameters: <String, Object?>{"path": where, "segment": segment},
+      );
+    }
+    _onPath.add(container);
+    _segments.add(segment);
+  }
+
+  /// Leaves [container], undoing the matching [enter].
+  void leave(Object container) {
+    _onPath.remove(container);
+    _segments.removeLast();
+  }
+
+  /// Runs [body] with [container] on the path.
+  ///
+  /// No `finally`: the only way out other than returning is the cycle
+  /// exception, which abandons the whole walk, so there is no half-unwound
+  /// path left for anyone to observe.
+  void descend(Object container, String segment, void Function() body) {
+    enter(container, segment);
+    body();
+    leave(container);
+  }
+
+  /// The dotted path from the root down to [segment].
+  ///
+  /// List indices are written `[i]` and joined without a separating dot, so
+  /// `servers[0].host` reads the way a caller would write it.
+  String _pathTo(String segment) {
+    final StringBuffer buffer = StringBuffer();
+    for (final String part in <String>[..._segments, segment]) {
+      if (buffer.isNotEmpty && !part.startsWith('[')) {
+        buffer.write('.');
+      }
+      buffer.write(part);
+    }
+    return buffer.toString();
+  }
 }
 
 /// Merges [override] into [base] positionally and returns the merged list.
@@ -251,23 +376,47 @@ List<dynamic> _mergeListsOneSided(
 /// scalars — `String`, `num`, `bool`, `null` are immutable — and is the only
 /// option for any other object a tree happens to carry, which cannot be
 /// cloned generically.
+///
+/// Throws [TomJsonCycleException] when a container refers back to one of its
+/// own ancestors. A copy of such a graph is not expressible here anyway: every
+/// container is rebuilt, so a shared subtree becomes two independent copies,
+/// and a self-reference has no copy to point at. See the library doc's
+/// *Cycles*.
 Map<String, dynamic> deepCopyJsonTree(Map<String, dynamic> source) {
+  final _AncestorPath path = _AncestorPath();
+  path.enter(source, '');
   final Map<String, dynamic> copy = <String, dynamic>{};
   source.forEach((String key, dynamic value) {
-    copy[key] = _deepCopyJsonValue(value);
+    copy[key] = _deepCopyJsonValue(value, path, key);
   });
   return copy;
 }
 
 /// Deep-copies one value of a JSON tree. See [deepCopyJsonTree].
-dynamic _deepCopyJsonValue(dynamic value) {
+///
+/// [path] carries the containers this value is nested inside, and [segment] is
+/// the key or index it was reached through — together they recognise a
+/// back-reference and name where it sits.
+dynamic _deepCopyJsonValue(dynamic value, _AncestorPath path, String segment) {
   if (value is Map) {
+    path.enter(value, segment);
     final Map<String, dynamic> copy = <String, dynamic>{};
-    value.forEach((dynamic k, dynamic v) => copy['$k'] = _deepCopyJsonValue(v));
+    value.forEach(
+      (dynamic k, dynamic v) => copy['$k'] = _deepCopyJsonValue(v, path, '$k'),
+    );
+    path.leave(value);
     return copy;
   }
   if (value is List) {
-    return value.map<dynamic>(_deepCopyJsonValue).toList();
+    path.enter(value, segment);
+    // Indexed rather than `map`, so each element knows the `[i]` it was
+    // reached through and a cycle inside an array can be named.
+    final List<dynamic> copy = <dynamic>[
+      for (int i = 0; i < value.length; i++)
+        _deepCopyJsonValue(value[i], path, '[$i]'),
+    ];
+    path.leave(value);
+    return copy;
   }
   return value;
 }
@@ -304,6 +453,12 @@ dynamic _deepCopyJsonValue(dynamic value) {
 ///
 /// A base subtree counts whatever its reified type, as long as its keys are all
 /// `String`; see the library doc's *What counts as a subtree*.
+///
+/// Throws [TomJsonCycleException] when [override] contains a cycle — raised by
+/// the deep copy, before any of [base] is touched. [base] needs no guard of its
+/// own: the merge descends only where [override] descends, and [override] has
+/// by then been rebuilt as a tree, so the recursion is bounded by its depth
+/// however the base tree is shaped.
 ///
 /// ## Parameters
 /// - [base]: The target map that will be modified with merged values
@@ -404,6 +559,9 @@ void _mergeMapsOneSided(
 /// A map child counts whatever its reified type, as long as its keys are all
 /// `String`; see the library doc's *What counts as a subtree*.
 ///
+/// Throws [TomJsonCycleException] when a container refers back to one of its
+/// own ancestors; see the library doc's *Cycles*.
+///
 /// ## Parameters
 /// - [tree]: The nested map structure to traverse
 /// - [test]: Predicate function that determines which strings to process
@@ -424,12 +582,39 @@ void traverseAndProcess(
   bool Function(String) test,
   String Function(String) processor,
 ) {
+  final _AncestorPath path = _AncestorPath();
+  path.enter(tree, '');
+  _traverseAndProcess(tree, test, processor, path);
+}
+
+/// The recursive body of [traverseAndProcess].
+///
+/// Separate so the ancestor path is allocated exactly once, at the outermost
+/// call, and so the public entry point cannot be re-entered with a path that
+/// already holds the tree it is about to walk.
+void _traverseAndProcess(
+  Map<String, dynamic> tree,
+  bool Function(String) test,
+  String Function(String) processor,
+  _AncestorPath path,
+) {
   tree.forEach((String oKey, dynamic oValue) {
     final Map<String, dynamic>? childMap = _asStringKeyedMap(oValue);
     if (childMap != null) {
-      traverseAndProcess(childMap, test, processor);
+      // Guard on oValue, not on childMap: for a map that is not already
+      // `Map<String, dynamic>` the helper hands back a fresh cast view every
+      // call, and a new object each time can never be its own ancestor.
+      path.descend(
+        oValue as Object,
+        oKey,
+        () => _traverseAndProcess(childMap, test, processor, path),
+      );
     } else if (oValue is List) {
-      _processList(oValue, test, processor);
+      path.descend(
+        oValue,
+        oKey,
+        () => _processList(oValue, test, processor, path),
+      );
     } else if (oValue is String) {
       if (test(oValue)) {
         tree[oKey] = processor(oValue);
@@ -454,14 +639,23 @@ void _processList(
   List<dynamic> list,
   bool Function(String) test,
   String Function(String) processor,
+  _AncestorPath path,
 ) {
   for (int i = 0; i < list.length; i++) {
     final element = list[i];
     final Map<String, dynamic>? elementMap = _asStringKeyedMap(element);
     if (elementMap != null) {
-      traverseAndProcess(elementMap, test, processor);
+      path.descend(
+        element as Object,
+        '[$i]',
+        () => _traverseAndProcess(elementMap, test, processor, path),
+      );
     } else if (element is List) {
-      _processList(element, test, processor);
+      path.descend(
+        element,
+        '[$i]',
+        () => _processList(element, test, processor, path),
+      );
     } else if (element is String && test(element)) {
       list[i] = processor(element);
     }
@@ -512,6 +706,11 @@ void _processList(
 /// what makes a document straight out of `jsonDecode` — `Map<String, dynamic>`
 /// and `List<dynamic>` throughout — behave the same as one built in Dart code.
 ///
+/// Throws [TomJsonCycleException] when a container refers back to one of its
+/// own ancestors; see the library doc's *Cycles*. A creator that *inserts* a
+/// cycle is not caught by this — the keys it adds are never traversed — but
+/// the next walk of the tree will refuse it.
+///
 /// ## Example
 /// ```dart
 /// final config = {'ref@profiles@dev': 'value'};
@@ -530,6 +729,23 @@ void traverseAndCreate(
   void Function(String key, String value, Map<String, dynamic> location)
   creator,
 ) {
+  final _AncestorPath path = _AncestorPath();
+  path.enter(tree, '');
+  _traverseAndCreate(tree, nameTest, creator, path);
+}
+
+/// The recursive body of [traverseAndCreate].
+///
+/// Separate so the ancestor path is allocated exactly once, at the outermost
+/// call, and so the public entry point cannot be re-entered with a path that
+/// already holds the tree it is about to walk.
+void _traverseAndCreate(
+  Map<String, dynamic> tree,
+  bool Function(String) nameTest,
+  void Function(String key, String value, Map<String, dynamic> location)
+  creator,
+  _AncestorPath path,
+) {
   // Iterate a snapshot of the keys rather than the map itself, so the creator
   // can insert into [tree] — which is the whole point of handing it the
   // location. `forEach` would throw `ConcurrentModificationError` on the first
@@ -545,9 +761,20 @@ void traverseAndCreate(
     final Object? oValue = tree[oKey];
     final Map<String, dynamic>? childMap = _asStringKeyedMap(oValue);
     if (childMap != null) {
-      traverseAndCreate(childMap, nameTest, creator);
+      // Guard on oValue, not on childMap: for a map that is not already
+      // `Map<String, dynamic>` the helper hands back a fresh cast view every
+      // call, and a new object each time can never be its own ancestor.
+      path.descend(
+        oValue as Object,
+        oKey,
+        () => _traverseAndCreate(childMap, nameTest, creator, path),
+      );
     } else if (oValue is List) {
-      _createInList(oValue, nameTest, creator);
+      path.descend(
+        oValue,
+        oKey,
+        () => _createInList(oValue, nameTest, creator, path),
+      );
     } else if (nameTest(oKey) && oValue is String) {
       creator(oKey, oValue, tree);
     }
@@ -576,14 +803,23 @@ void _createInList(
   bool Function(String) nameTest,
   void Function(String key, String value, Map<String, dynamic> location)
   creator,
+  _AncestorPath path,
 ) {
   for (int i = 0; i < list.length; i++) {
     final element = list[i];
     final Map<String, dynamic>? elementMap = _asStringKeyedMap(element);
     if (elementMap != null) {
-      traverseAndCreate(elementMap, nameTest, creator);
+      path.descend(
+        element as Object,
+        '[$i]',
+        () => _traverseAndCreate(elementMap, nameTest, creator, path),
+      );
     } else if (element is List) {
-      _createInList(element, nameTest, creator);
+      path.descend(
+        element,
+        '[$i]',
+        () => _createInList(element, nameTest, creator, path),
+      );
     }
   }
 }
@@ -982,12 +1218,17 @@ _TreeModification? _modifyTree(
 /// directive key exactly where it was.
 ///
 /// ## Failures
-/// Throws [Exception] if:
-/// - a key carries three or more `@` but is not a well-formed directive — the
-///   message names the key and restates the expected form;
+/// Throws [TomJsonDirectiveException] if:
+/// - a key carries three or more `@` but is not a well-formed directive
+///   (`json.directive.malformed_key`) — the message names the key and restates
+///   the expected form;
 /// - a `"@"` directive's provider result has no entry under the directive's key
-///   — the message names the key, the resolved path, the profile and the keys
-///   the provider did return.
+///   (`json.directive.unresolved_key`) — the message names the key, the
+///   resolved path, the profile and the keys the provider did return.
+///
+/// Throws [TomJsonCycleException] when [tree] contains a container that refers
+/// back to one of its own ancestors, through the [traverseAndCreate] this is
+/// built on. It is raised during collection, so no directive has been applied.
 ///
 /// Anything the [provider] throws propagates **unaltered** — same type, same
 /// message, same stack trace — so a caller can `catch` on the provider's own
@@ -1058,6 +1299,26 @@ void processTree(
 /// error, so give a type a `toJson()` via [TomJsonSerializable] when its value
 /// must survive.
 ///
+/// ## A cycle is dropped, not raised
+/// A value that refers back to a container already enclosing it is filtered
+/// out like any other value with no JSON form — a cyclic reference has none,
+/// and `jsonEncode` refuses one. This function is the module's one walker that
+/// does not raise [TomJsonCycleException], because it exists to hand back
+/// something encodable and loggable: turning a log call into an exception
+/// would be as poor a trade as turning it into a stack overflow.
+///
+/// The test is on the *enclosing* containers only, so the same subtree
+/// appearing at two places is emitted twice rather than refused. A
+/// [TomJsonSerializable] is tracked as well as the maps and lists, because its
+/// `toJson()` builds a fresh map at every call and a parent re-serialised at
+/// each level would otherwise never repeat.
+///
+/// ```dart
+/// final m = <String, dynamic>{'name': 'x'};
+/// m['self'] = m;
+/// makeCleanJsonMap(m);   // {'name': 'x'} — the back-reference is dropped
+/// ```
+///
 /// ## Parameters
 /// - [map]: The source map to clean (not modified)
 ///
@@ -1081,10 +1342,21 @@ void processTree(
 /// // cleaned = {'name': 'App', 'price': {'amount': 12, 'currency': 'EUR'}}
 /// ```
 Map<String, Object?> makeCleanJsonMap(Map map) {
+  final _AncestorPath path = _AncestorPath();
+  path.enter(map, '');
+  return _cleanMap(map, path);
+}
+
+/// The recursive body of [makeCleanJsonMap].
+///
+/// Separate so the ancestor path is allocated exactly once, at the outermost
+/// call, and so the public entry point cannot be re-entered with a path that
+/// already holds the map it is about to clean.
+Map<String, Object?> _cleanMap(Map map, _AncestorPath path) {
   var result = <String, Object?>{};
   for (var entry in map.entries) {
     if (entry.key is String) {
-      final cleaned = _cleanJsonValue(entry.value);
+      final cleaned = _cleanJsonValue(entry.value, path, entry.key as String);
       if (!identical(cleaned, _notJsonEncodable)) {
         result[entry.key] = cleaned;
       }
@@ -1098,10 +1370,10 @@ Map<String, Object?> makeCleanJsonMap(Map map) {
 /// Internal helper for [makeCleanJsonMap]. `null` elements are kept — a JSON
 /// array may hold them, and dropping them would silently shift every later
 /// element's index.
-List<Object?> _cleanList(List list) {
+List<Object?> _cleanList(List list, _AncestorPath path) {
   var result = <Object?>[];
-  for (var listEntry in list) {
-    final cleaned = _cleanJsonValue(listEntry);
+  for (int i = 0; i < list.length; i++) {
+    final cleaned = _cleanJsonValue(list[i], path, '[$i]');
     if (!identical(cleaned, _notJsonEncodable)) {
       result.add(cleaned);
     }
@@ -1142,7 +1414,7 @@ class _NotJsonEncodable {
 /// never contains a Dart object in the first place. Sanitisation is the one
 /// point where a live object tree meets JSON, so it is the one place the
 /// interface belongs.
-Object? _cleanJsonValue(Object? value) {
+Object? _cleanJsonValue(Object? value, _AncestorPath path, String segment) {
   if (value == null) {
     return null;
   }
@@ -1152,16 +1424,37 @@ Object? _cleanJsonValue(Object? value) {
   // Ahead of the Map check so a type that implements both is still given the
   // chance to describe itself, rather than being read as a raw map.
   if (value is TomJsonSerializable) {
-    // Recurse through [makeCleanJsonMap] rather than returning `toJson()` as
-    // it stands: a `toJson` that nests a non-JSON value of its own would
+    // The object goes on the path, not just the map its `toJson` returns:
+    // every call builds a fresh map, so tracking the maps alone would never
+    // recognise a parent the object re-serialises at each level.
+    if (path.holds(value)) {
+      return _notJsonEncodable;
+    }
+    path.enter(value, segment);
+    // Recurse through the cleaner rather than returning `toJson()` as it
+    // stands: a `toJson` that nests a non-JSON value of its own would
     // otherwise smuggle it past the sanitiser and fail at `jsonEncode`.
-    return makeCleanJsonMap(value.toJson());
+    final Map<String, Object?> cleaned = _cleanMap(value.toJson(), path);
+    path.leave(value);
+    return cleaned;
   }
   if (value is Map) {
-    return makeCleanJsonMap(value);
+    if (path.holds(value)) {
+      return _notJsonEncodable;
+    }
+    path.enter(value, segment);
+    final Map<String, Object?> cleaned = _cleanMap(value, path);
+    path.leave(value);
+    return cleaned;
   }
   if (value is List) {
-    return _cleanList(value);
+    if (path.holds(value)) {
+      return _notJsonEncodable;
+    }
+    path.enter(value, segment);
+    final List<Object?> cleaned = _cleanList(value, path);
+    path.leave(value);
+    return cleaned;
   }
   return _notJsonEncodable;
 }
@@ -1182,6 +1475,9 @@ final RegExp _envVarPattern = RegExp(r'\$\{([^:}]+)(?::([^}]*))?\}');
 /// Processes the entire [tree] in-place, replacing placeholders like `${VAR_NAME}`
 /// with values from the provided [environment] map. Supports default values
 /// using the syntax `${VAR_NAME:default}`.
+///
+/// Throws [TomJsonCycleException] when a container refers back to one of its
+/// own ancestors, through the [traverseAndProcess] this is built on.
 ///
 /// ## Parameters
 /// - [tree]: The nested map structure to process (modified in-place)

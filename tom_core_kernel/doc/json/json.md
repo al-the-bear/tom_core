@@ -24,6 +24,7 @@ This module provides utilities for working with JSON data structures in Dart, in
   - [4. JSON Sanitization](#4-json-sanitization)
 - [Dependencies](#dependencies)
   - [What the module throws](#what-the-module-throws)
+  - [Cycles](#cycles)
   - [What the module logs](#what-the-module-logs)
 
 ---
@@ -736,9 +737,9 @@ the module does not compile without `tom_basics`.
 
 ### What the module throws
 
-Two families, so a caller can tell them apart by type instead of by reading the
-message, and can catch this module's failures without catching every other
-`Exception` on the stack. Both derive from `TomException`.
+Three families, so a caller can tell them apart by type instead of by reading
+the message, and can catch this module's failures without catching every other
+`Exception` on the stack. All three derive from `TomException`.
 
 | Type | Error key | Raised when |
 | ---- | --------- | ----------- |
@@ -746,14 +747,76 @@ message, and can catch this module's failures without catching every other
 | `TomJsonPathException` | `json.path.not_a_subtree` | A segment before the last holds a scalar or `null`, so there is nothing to descend into. `parameters`: `path`, `key`, `position`, `holds`. |
 | `TomJsonDirectiveException` | `json.directive.malformed_key` | A key carries three or more `@`, so it cannot be an ordinary key, but is not the three-part directive shape either. `parameters`: `key`. |
 | `TomJsonDirectiveException` | `json.directive.unresolved_key` | A `"@"` directive's provider returned no entry under the directive's own key. `parameters`: `key`, `path`, `profile`, `providerKeys`. |
+| `TomJsonCycleException` | `json.tree.cycle` | A tree walk met a value that refers back to one of its own ancestors. `parameters`: `path` (dotted, with list indices as `[i]`), `segment`. |
 
 The split is not cosmetic: a path failure is usually a typo in a caller's path,
 a directive failure usually a provider looking in the wrong place, and the two
-are answered by different people.
+are answered by different people. A cycle says something about the input
+document rather than about a path or a directive in it — whatever was handed in
+is a graph, not a tree — so it is a third type again.
 
-A failure raised by a `processTree` provider is neither of these and is not
+A failure raised by a `processTree` provider is none of these and is not
 wrapped in one — it propagates with its own type, message and stack trace. See
 *A provider's failure is the caller's failure*.
+
+### Cycles
+
+A JSON document is a tree, but the Dart maps and lists these functions are
+handed are a general object graph: nothing stops a value from referring back to
+one of its own ancestors. `jsonDecode` never produces such a value, but
+`makeCleanJsonMap` exists precisely to be pointed at maps whose contents are not
+fully under the caller's control — a live object graph reached through a
+`TomJsonSerializable.toJson()` that returns a parent reference is exactly that.
+
+Every function here that walks a tree keeps the containers on its current path
+and recognises a back-reference instead of following it. Following it would
+recurse until the stack was exhausted, and `StackOverflowError` is an `Error`
+rather than an `Exception`: no documented handling catches it, and unlike a
+thrown exception it can leave the isolate in an unclear state.
+
+The walkers raise `TomJsonCycleException`:
+
+```dart
+final tree = <String, dynamic>{'name': 'x'};
+tree['self'] = tree;
+
+try {
+  substituteEnvVars(tree, Platform.environment);
+} on TomJsonCycleException catch (e) {
+  print(e.parameters?['path']);   // 'self'
+}
+```
+
+`makeCleanJsonMap` is the exception, and deliberately so. It exists to hand back
+something encodable and loggable, so a cyclic reference is *dropped* there like
+any other value with no JSON form — turning a log call into an exception would
+be as poor a trade as turning it into a stack overflow:
+
+```dart
+final map = <String, dynamic>{'name': 'x'};
+map['self'] = map;
+
+makeCleanJsonMap(map);   // {'name': 'x'}
+```
+
+Two properties are worth naming, because both are easy to get wrong:
+
+- **The test is on the enclosing containers, not on everything already seen.**
+  The same subtree at two places is a directed acyclic graph; it copies and
+  encodes perfectly well and is not refused. Only a container that is its own
+  ancestor closes a cycle.
+- **A depth bound is not what this is.** A legitimately deep document is walked
+  to an end, whatever its depth; only a genuine back-reference is reported.
+
+`mergeMapsOneSided` inherits the guard from the `deepCopyJsonTree` it runs on
+its override, and raises before it writes anything into the base. The base
+itself needs no guard: the merge descends only where the override descends, and
+the override has by then been rebuilt as a tree, so the recursion is bounded by
+its depth however the base tree is shaped.
+
+Path access — `getPathFromTree` and `getObjectFromTree` — is
+bounded by the number of segments in the path rather than by the shape of the
+tree, so it terminates on a cyclic tree without a guard of its own.
 
 ### What the module logs
 

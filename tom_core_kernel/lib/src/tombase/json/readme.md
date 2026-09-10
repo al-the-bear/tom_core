@@ -28,6 +28,7 @@ what the module raises.
 | `indentEncoder` | The shared 2-space `JsonEncoder` behind both formatters, exported for callers that encode directly. |
 | `TomJsonPathException` | Raised when a dotted path cannot be resolved: `json.path.missing_key` for an absent key, `json.path.not_a_subtree` for an interior segment with nothing to descend into. |
 | `TomJsonDirectiveException` | Raised when `processTree` cannot resolve a directive: `json.directive.malformed_key` for a key that carries three or more `@`, `json.directive.unresolved_key` when a `"@"` directive's provider returned no entry under its key. |
+| `TomJsonCycleException` | Raised (`json.tree.cycle`) when a tree walk meets a value that refers back to one of its own ancestors. Every walker raises it except `makeCleanJsonMap`, which drops the back-reference instead. |
 
 ## What counts as a subtree
 

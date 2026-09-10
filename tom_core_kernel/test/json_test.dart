@@ -2476,6 +2476,249 @@ void main() {
     });
   });
 
+  group('cycles', () {
+    // A JSON document is a tree, but the maps and lists these functions are
+    // handed are a general object graph. Following a reference back to an
+    // ancestor recurses until the stack is exhausted, and a
+    // `StackOverflowError` is an `Error` rather than an `Exception`, so no
+    // documented handling catches it.
+
+    test('deepCopyJsonTree refuses a self-referential map', () {
+      final tree = <String, dynamic>{'name': 'x'};
+      tree['self'] = tree;
+
+      expect(
+        () => deepCopyJsonTree(tree),
+        throwsA(
+          isA<TomJsonCycleException>()
+              .having((e) => e.key, 'key', 'json.tree.cycle')
+              .having((e) => e.parameters?['path'], 'path', 'self')
+              .having((e) => e.parameters?['segment'], 'segment', 'self'),
+        ),
+      );
+    });
+
+    test('mergeMapsOneSided refuses a cyclic override, base untouched', () {
+      final override = <String, dynamic>{'name': 'x'};
+      override['self'] = override;
+      final base = <String, dynamic>{'kept': 'yes'};
+
+      expect(
+        () => mergeMapsOneSided(base, override),
+        throwsA(isA<TomJsonCycleException>()),
+      );
+      // The deep copy runs before anything is written, so a refused merge is
+      // a merge that did not half-happen.
+      expect(base, {'kept': 'yes'});
+    });
+
+    test('a cyclic base is walked to an end when the override is finite', () {
+      // The merge descends only where the override descends, and the override
+      // has been rebuilt as a tree by then, so no guard on the base is needed.
+      final shared = <String, dynamic>{'host': 'old'};
+      final base = <String, dynamic>{'db': shared};
+      shared['up'] = base;
+
+      mergeMapsOneSided(base, <String, dynamic>{
+        'db': <String, dynamic>{'host': 'new'},
+      });
+
+      expect((base['db'] as Map)['host'], 'new');
+    });
+
+    test('traverseAndProcess refuses a self-referential map', () {
+      final tree = <String, dynamic>{'name': 'x'};
+      tree['self'] = tree;
+
+      expect(
+        () => traverseAndProcess(tree, (s) => true, (s) => s.toUpperCase()),
+        throwsA(
+          isA<TomJsonCycleException>().having(
+            (e) => e.key,
+            'key',
+            'json.tree.cycle',
+          ),
+        ),
+      );
+    });
+
+    test('a cycle through a list names the index it sits at', () {
+      final servers = <dynamic>['a'];
+      servers.add(servers);
+
+      expect(
+        () => traverseAndProcess(
+          <String, dynamic>{'servers': servers},
+          (s) => true,
+          (s) => s,
+        ),
+        throwsA(
+          isA<TomJsonCycleException>().having(
+            (e) => e.parameters?['path'],
+            'path',
+            'servers[1]',
+          ),
+        ),
+      );
+    });
+
+    test('a cycle several levels down names the whole path', () {
+      final inner = <String, dynamic>{'x': 'v'};
+      final root = <String, dynamic>{
+        'a': <String, dynamic>{'b': inner},
+      };
+      inner['up'] = root;
+
+      expect(
+        () => traverseAndProcess(root, (s) => true, (s) => s),
+        throwsA(
+          isA<TomJsonCycleException>().having(
+            (e) => e.parameters?['path'],
+            'path',
+            'a.b.up',
+          ),
+        ),
+      );
+    });
+
+    test('a cycle through a Map<dynamic, dynamic> child is recognised', () {
+      // _asStringKeyedMap hands back a fresh cast view on every call, so a
+      // guard that tracked the view rather than the map it wraps would see a
+      // new object each time and never close the loop.
+      final inner = <dynamic, dynamic>{'x': 'v'};
+      inner['self'] = inner;
+
+      expect(
+        () => traverseAndProcess(
+          <String, dynamic>{'inner': inner},
+          (s) => true,
+          (s) => s,
+        ),
+        throwsA(isA<TomJsonCycleException>()),
+      );
+    });
+
+    test('traverseAndCreate refuses a self-referential map', () {
+      final tree = <String, dynamic>{'name': 'x'};
+      tree['self'] = tree;
+
+      expect(
+        () => traverseAndCreate(tree, (n) => n == 'name', (k, v, loc) {}),
+        throwsA(isA<TomJsonCycleException>()),
+      );
+    });
+
+    test('substituteEnvVars refuses a self-referential map', () {
+      final tree = <String, dynamic>{'v': r'${A}'};
+      tree['self'] = tree;
+
+      expect(
+        () => substituteEnvVars(tree, {'A': 'z'}),
+        throwsA(isA<TomJsonCycleException>()),
+      );
+    });
+
+    test('processTree refuses a cycle before applying any directive', () {
+      final tree = <String, dynamic>{'name@profiles@dev': 'value'};
+      tree['self'] = tree;
+
+      expect(
+        () => processTree(
+          tree,
+          (keyName, path, profile) => <String, dynamic>{keyName: 'resolved'},
+        ),
+        throwsA(isA<TomJsonCycleException>()),
+      );
+      // Collection runs to completion before the first write, so the refused
+      // call leaves the directive key exactly where it was.
+      expect(tree.containsKey('name@profiles@dev'), isTrue);
+    });
+
+    test('makeCleanJsonMap drops a back-reference rather than raising', () {
+      // The sanitiser exists to hand back something encodable and loggable.
+      // Turning a log call into an exception would be as poor a trade as
+      // turning it into a stack overflow, so a cyclic reference is filtered
+      // out like any other value with no JSON form.
+      final map = <String, dynamic>{'name': 'x'};
+      map['self'] = map;
+
+      final cleaned = makeCleanJsonMap(map);
+
+      expect(cleaned, {'name': 'x'});
+      expect(() => jsonEncode(cleaned), returnsNormally);
+    });
+
+    test('makeCleanJsonMap drops a cycle reached through toJson', () {
+      // Every toJson call builds a fresh map, so tracking the maps alone would
+      // never recognise a parent the object re-serialises at each level: the
+      // object itself has to go on the path.
+      final node = _SelfReferencingSerializable('a');
+      node.parent = node;
+
+      final cleaned = makeCleanJsonMap(<String, dynamic>{'root': node});
+
+      expect(cleaned, {
+        'root': {'name': 'a'},
+      });
+    });
+
+    test('makeCleanJsonMap drops a cyclic list element', () {
+      final list = <dynamic>['a'];
+      list.add(list);
+
+      final cleaned = makeCleanJsonMap(<String, dynamic>{'items': list});
+
+      expect(cleaned, {
+        'items': ['a'],
+      });
+    });
+
+    test('the same subtree at two places is not a cycle', () {
+      // A directed acyclic graph encodes and copies perfectly well. Only a
+      // container that is its own ancestor is refused, so the test is on the
+      // current path rather than on everything already visited.
+      final shared = <String, dynamic>{'k': 'v'};
+      final tree = <String, dynamic>{'a': shared, 'b': shared};
+
+      expect(makeCleanJsonMap(tree), {
+        'a': {'k': 'v'},
+        'b': {'k': 'v'},
+      });
+      expect(
+        () => traverseAndProcess(tree, (s) => true, (s) => s),
+        returnsNormally,
+      );
+    });
+
+    test('a shared subtree is copied twice, independently', () {
+      final shared = <String, dynamic>{'k': 'v'};
+      final copy = deepCopyJsonTree(<String, dynamic>{
+        'a': shared,
+        'b': shared,
+      });
+
+      (copy['a'] as Map)['k'] = 'changed';
+
+      expect((copy['b'] as Map)['k'], 'v');
+      expect(shared['k'], 'v');
+    });
+
+    test('a deeply nested but finite tree is walked to an end', () {
+      // The guard names cycles, not depth: a legitimately deep document is not
+      // refused, which an arbitrary depth bound could not promise.
+      Map<String, dynamic> tree = <String, dynamic>{'leaf': 'v'};
+      for (int i = 0; i < 400; i++) {
+        tree = <String, dynamic>{'level': tree};
+      }
+
+      expect(() => deepCopyJsonTree(tree), returnsNormally);
+      expect(
+        () => traverseAndProcess(tree, (s) => s == 'v', (s) => 'w'),
+        returnsNormally,
+      );
+    });
+  });
+
   group('makeCleanJsonMap', () {
     group('valid JSON types', () {
       test('should preserve string values', () {
@@ -3102,6 +3345,23 @@ class _CapturingLogOutput extends TomLogOutput {
   ]) {
     messages.add(convertToString(message));
   }
+}
+
+/// Test double whose `toJson` can hand back a reference to itself.
+///
+/// Each call builds a *fresh* map, so the cycle is not visible in the maps the
+/// sanitiser sees — only in the object that produced them.
+class _SelfReferencingSerializable implements TomJsonSerializable {
+  _SelfReferencingSerializable(this.name);
+
+  final String name;
+  _SelfReferencingSerializable? parent;
+
+  @override
+  Map<String, Object?> toJson() => <String, Object?>{
+    'name': name,
+    if (parent != null) 'parent': parent,
+  };
 }
 
 /// Test double standing for a provider's own failure type.
