@@ -1440,6 +1440,44 @@ void main() {
       expect(result['portValue'], equals(8080));
     });
 
+    test('wrapping a terminal value logs nothing', () {
+      // Wrapping is what this function is for, so it is a success path, and a
+      // success path that logs teaches a reader to ignore this module's log
+      // lines. It used to emit a WARN on every ordinary read of a scalar
+      // through this accessor.
+      final recorder = _CapturingLogOutput();
+      final previousOutput = tomLog.logOutput;
+      tomLog.logOutput = recorder;
+      addTearDown(() => tomLog.logOutput = previousOutput);
+
+      // First prove the recorder is wired, using a line the module really does
+      // emit: a structural mismatch during a merge. Without this the test would
+      // pass just as well against a recorder that captures nothing.
+      mergeMapsOneSided(
+        <String, dynamic>{'a': 1},
+        <String, dynamic>{
+          'a': <String, dynamic>{'nested': true},
+        },
+      );
+      expect(
+        recorder.messages,
+        isNotEmpty,
+        reason: 'the recorder must be able to see this module log',
+      );
+      recorder.messages.clear();
+
+      final wrapped = getPathFromTree(
+        <String, dynamic>{
+          'config': <String, dynamic>{'port': 8080},
+        },
+        'config.port',
+        'portValue',
+      );
+
+      expect(wrapped, equals(<String, dynamic>{'portValue': 8080}));
+      expect(recorder.messages, isEmpty);
+    });
+
     test('should throw for non-existent path', () {
       final tree = <String, dynamic>{
         'a': <String, dynamic>{'b': 'value'},
@@ -2853,6 +2891,28 @@ class _DirtySerializable implements TomJsonSerializable {
 
   @override
   Map<String, Object?> toJson() => {'label': 'dirty', 'when': when};
+}
+
+/// Log output that records every message, whatever its level.
+///
+/// Deliberately unfiltered: a test asserting that *nothing* was logged must not
+/// be able to pass because a level filter swallowed the line it was looking
+/// for.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    messages.add(convertToString(message));
+  }
 }
 
 /// Test double standing for a provider's own failure type.

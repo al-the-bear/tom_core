@@ -545,6 +545,10 @@ void _createInList(
 /// whatever its reified type, as long as its keys are all `String`; see the
 /// library doc's *What counts as a subtree*.
 ///
+/// Wrapping is silent: it is what this function exists to do, and the returned
+/// map says which branch was taken. A caller that wants the raw value, or wants
+/// to decide for itself, calls [getObjectFromTree].
+///
 /// ## Throws
 /// - [Exception] if the path cannot be resolved or contains invalid segments
 ///
@@ -567,16 +571,15 @@ Map<String, dynamic> getPathFromTree(
   if (subtree != null) {
     return subtree;
   }
-  // A terminal non-map value only surfaces at the last path segment (an
-  // interior non-map throws inside [getObjectFromTree]), so the reporting
-  // context is always that final segment. `null` is one such value and is
-  // wrapped like any other: the caller can then tell it apart from an absent
-  // path, which threw above.
-  final List<String> pathParts = path.split(".");
-  tomLog.warn(
-    "Path $path resolves to a non-map value at ${pathParts.last} position "
-    "${pathParts.length - 1}; wrapping it as {$name: ...}.",
-  );
+  // Wrapped silently, and deliberately. Handing back a map whatever is at the
+  // path is what this function is *for* — a caller that did not want that
+  // reaches for [getObjectFromTree] instead — so the wrap is the success path,
+  // not an anomaly to report. Logging here fired on every ordinary read of a
+  // scalar through this accessor, which is the way to teach a reader that this
+  // module's log lines are worth ignoring.
+  //
+  // `null` is one such value and is wrapped like any other: the caller can then
+  // tell it apart from an absent path, which threw above.
   return <String, dynamic>{name: value};
 }
 

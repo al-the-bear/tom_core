@@ -728,15 +728,19 @@ the module does not compile without `tom_basics`.
 
 ### What the module logs
 
-Two functions report through `tomLog`, and both report *only* there. Neither
-throws, and neither returns anything that indicates the report happened:
+One function reports through `tomLog`, and reports *only* there. It does not
+throw, and returns nothing that indicates the report happened:
 
 | Function | Level | Reported when |
 | -------- | ----- | ------------- |
 | `mergeMapsOneSided` | `error` | A structured override lands on a base value of another shape and is refused: a map onto a non-map, a list onto a non-list, or either onto a differently-shaped element at an array index. The base value is kept and the merge continues. |
-| `getPathFromTree` | `warn` | The path resolves to a terminal non-map value, which is then wrapped as `{name: value}`. |
 
 The consequence is worth stating plainly: a caller that discards log output has
 no way to learn that a merge silently kept the base value instead of applying
 part of its override. If that matters, capture `tomLog` output around the call
 rather than inspecting the merged tree, which looks the same either way.
+
+`getPathFromTree` reports nothing. Wrapping a terminal non-map value is what it
+exists to do — a caller that wants the raw value calls `getObjectFromTree` — so
+it is a success path, and a success path that logs is how a module teaches its
+readers to ignore its log.

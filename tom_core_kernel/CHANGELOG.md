@@ -65,6 +65,23 @@ anyone who was writing them.
 
 ### Fixed
 
+- **`getPathFromTree` no longer logs when it wraps (tcopen26).** A path that
+  resolves to a terminal non-map value is wrapped as `{name: value}` — the
+  documented, tested reason the function exists, since a caller that wants the
+  raw value calls `getObjectFromTree`. It emitted a `tomLog.warn` on the way,
+  so reading `config.port` through the map-returning accessor produced one
+  warning per call, on a success path.
+
+  (The message itself had already been corrected from its original "Path not
+  found", which said a failure had occurred where none had. What was left was
+  an accurate line at a level that still described the ordinary case as a
+  problem.)
+
+  The line is gone rather than demoted. There is nothing to report: the
+  returned map is the answer, and a success path that logs is how a module
+  teaches its readers to ignore its log. `mergeMapsOneSided` is now the only
+  function in the module that reports through `tomLog`.
+
 - **`processTree` consumes the directive key it resolved (tcopen25).**
   `_TreeModification.apply()` only ever *added* — it spread, or set the
   resolved key, or set it to the whole provider map — and left the
