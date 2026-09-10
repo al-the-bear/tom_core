@@ -606,6 +606,19 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **`TomObservable.notifyObservers` takes no payload (tcopen49).** It took an
+  optional `[dynamic message]` that was "reserved for future use" and silently
+  discarded: every observer received `onNotify(this)` and nothing else. Two
+  documents claimed otherwise — that the message "reaches every observer" — and
+  showed examples passing one.
+
+  Removed rather than implemented, because the mute contract cannot honour a
+  payload: calls made while muted collapse into the single notification
+  `unmute` sends, so a per-call message would have to be chosen among several
+  and the rest dropped. Observers read the observable's state instead, which
+  survives the collapse. None of the 67 call sites passed a message; code that
+  did must now read the state from the observable.
+
 - **`TomLogOutput.output` declares `origin` optional (tcopen43).** Requires
   **tom_basics 3.1.1**; the floor moved to match. The base declared it a
   required positional while its own parameter documentation called it

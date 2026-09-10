@@ -204,7 +204,7 @@ class Counter extends TomObservable {
   
   void reset() {
     _count = 0;
-    notifyObservers("reset");  // Optional message
+    notifyObservers();  // observers read the new count themselves
   }
 }
 ```
@@ -221,7 +221,7 @@ class Counter extends TomObservable {
 |--------|-------------|
 | `void addObserver(TomObserver observer)` | Registers an observer (as a `WeakReference`); a no-op if the *same object* is already registered. Keyed on identity, not `==`, and O(1) whatever the observer count |
 | `void removeObserver(TomObserver observer)` | Unregisters an observer; a no-op if it is not registered |
-| `void notifyObservers([dynamic message])` | Notifies every live observer, or marks the object dirty if muted. Also prunes references whose observer has been collected. `message` is accepted but unused — reserved for future context |
+| `void notifyObservers()` | Notifies every live observer, or marks the object dirty if muted. Also prunes references whose observer has been collected. Takes no payload, because the mute contract could not honour one: calls made while muted collapse into the single notification `unmute` sends, so a per-call message would have to be chosen among several and the rest dropped. Observers read the observable's state instead, which gives the same answer however many changes were collapsed |
 | `T batch<T>(T Function() body)` | Runs `body` with notifications suppressed, releasing even if it throws; returns the body's result |
 | `T batchSelf<T>(T Function() body)` | Like `batch`, but suppresses this object only — the members stay audible |
 | `void mute()` | Suppresses notifications; nests, so each call needs one `unmute()` |

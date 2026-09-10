@@ -44,7 +44,7 @@ The foundation of the observer pattern. Any class that needs to notify others of
 |--------|-------------|
 | `addObserver(TomObserver)` | Registers an observer to receive notifications |
 | `removeObserver(TomObserver)` | Unregisters an observer |
-| `notifyObservers([message])` | Notifies all registered observers of a change; the optional message is passed through untouched |
+| `notifyObservers()` | Notifies all registered observers of a change. Takes no payload: each observer receives the observable itself and reads its state, which is what survives the collapse of several changes into one notification while muted |
 | `batch<T>(T Function() body)` | Runs `body` with notifications muted and emits **one** notification afterwards, returning whatever `body` returned |
 | `mute()` | Suppresses notifications until the matching `unmute()` |
 | `unmute()` | Releases one `mute()`, notifying once if anything changed meanwhile |
@@ -78,9 +78,11 @@ so the kernel must be imported for `>>` to be in scope)
 class Counter extends TomObservable {
   int _count = 0;
 
+  int get count => _count;
+
   void increment() {
     _count++;
-    notifyObservers(_count); // the optional message reaches every observer
+    notifyObservers(); // observers read `count` from the counter itself
   }
 }
 ```

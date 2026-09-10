@@ -315,6 +315,38 @@ void main() {
   tearDown(retainedObservers.clear);
 
   group('TomObservable', () {
+    test('notifyObservers takes no payload', () {
+      // Asserted on the function type, because what matters is what the
+      // signature refuses: a call passing a message cannot appear in a test
+      // that has to compile. The negative half carries the weight — a function
+      // with an optional parameter also satisfies `void Function()`.
+      final observable = TomObservable();
+
+      expect(observable.notifyObservers, isA<void Function()>());
+      expect(
+        observable.notifyObservers,
+        isNot(isA<void Function([dynamic])>()),
+      );
+    });
+
+    test('an observer reads the state, which survives a collapsed batch', () {
+      // Why there is no payload: calls made while muted collapse into the one
+      // notification unmute sends, so a per-call message would have to be
+      // chosen among several and the rest dropped. Reading the observable
+      // itself gives the final answer however many changes were collapsed.
+      final count = TomInt(0);
+      final seen = <int>[];
+      retainedObservers.add(count >> (c) => seen.add(c.get()));
+
+      count.batch(() {
+        count | 1;
+        count | 2;
+        count | 3;
+      });
+
+      expect(seen, equals([3]));
+    });
+
     test('addObserver and notifyObservers', () {
       final observable = TomObservable();
       final observer = TestObserver<TomObservable>();

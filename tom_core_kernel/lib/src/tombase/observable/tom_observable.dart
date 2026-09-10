@@ -199,9 +199,18 @@ class TomObservable {
   /// This method also cleans up any weak references to observers that have been
   /// garbage collected.
   ///
-  /// The optional [message] parameter is currently unused but reserved for
-  /// future use to pass additional context about the change.
-  void notifyObservers([dynamic message]) {
+  /// Observers are told *that* this observable changed, not *what* changed:
+  /// each receives the observable itself and reads its current state. There is
+  /// deliberately no payload, and the reason is the mute contract rather than
+  /// taste. While muted, calls here only mark the observable dirty, and the
+  /// matching [unmute] sends a single notification for all of them — cascade
+  /// targets' notifications included. A per-call message could not survive
+  /// that: the one notification sent would have to carry one of the collapsed
+  /// messages and drop the rest, and a caller batching through [batch] would
+  /// see its payloads disappear depending on whether anyone else held a mute.
+  /// Reading state from the observable gives the same answer however many
+  /// changes were collapsed.
+  void notifyObservers() {
     if (isMuted) {
       _dirty = true;
       return;
