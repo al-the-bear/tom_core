@@ -17,6 +17,9 @@ targets:
           - test/beanlocator_selection_test.dart
           - test/beanlocator_ambiguous_selection_test.dart
           - test/beanlocator_excluded_selection_test.dart
+          # A component the pass cannot construct aborts the pass, so it
+          # needs a domain of its own.
+          - test/beanlocator_constructor_arity_test.dart
           - test/crypto_test.dart
           - test/http_connection_test.dart
           - test/little_things_test.dart

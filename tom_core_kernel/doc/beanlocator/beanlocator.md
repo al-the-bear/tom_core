@@ -644,6 +644,7 @@ so the handler above is sufficient and does not need a second `catch`.
 | `beanlocator.initialization.duplicate_bean_with_name` | Duplicate named bean registration via `TomBean.withName`. To replace a binding deliberately, see [Substituting an Implementation](#substituting-an-implementation) |
 | `beanlocator.initialization.duplicate_bean_with_type` | Duplicate typed bean registration via `TomBean.withType` — including a type discovery has already bound. To replace a binding deliberately, see [Substituting an Implementation](#substituting-an-implementation) |
 | `beanlocator.initialization.no_matching_implementation_found` | Every implementation of an interface was ruled out by its `@TomEnvironment` or `@TomPlatform` selector, leaving discovery nothing to bind — see [Environment-Specific Beans](#environment-specific-beans) |
+| `beanlocator.initialization.constructor_takes_arguments` | A discovered component declares a constructor with a required parameter. Discovery calls the unnamed constructor with no arguments, so the parameter names a constructor it will never call — see [No Bean Resolution in Constructors](#5-no-bean-resolution-in-constructors) |
 | `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
 | `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found. Raised on `get()`, never by [startup validation](#startup-validation) — a name that is not registered yet is a supported state |
 | `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean. Also raised by [startup validation](#startup-validation), since the name is registered and the mismatch is answerable at boot |
@@ -752,15 +753,66 @@ const prodEnv = TomEnvironment('prod', parent: baseEnv);
 
 ### 5. No Bean Resolution in Constructors
 
-The bean locator uses lazy resolution, but circular dependencies during construction will fail:
+Discovery builds every component by calling its **unnamed constructor with no
+arguments**. Two rules follow, and both are about the constructor.
+
+**A component takes its dependencies from fields, not from parameters.** There
+is no constructor injection: the pass has no arguments to pass, so a component
+holds `TomBean` handles and resolves them on use.
 
 ```dart
-// Avoid: ServiceA constructor calls TomBean<ServiceB>().get()
-//        while ServiceB constructor calls TomBean<ServiceA>().get()
+@tomReflector
+@TomComponent(OrderService)
+class OrderServiceImpl implements OrderService {
+  final TomBean<UserService> _users = TomBean();
 
-// Better: Never use any TomBean-based component inside of any of the constructors 
-// of the beans. All TomBean-components must have a simple no-args constructor!
+  Order place(int id) => Order(_users.get().find(id));
+}
+```
+
+Declaring a required parameter anyway is refused at discovery, by name:
+
+```dart
+@tomReflector
+@TomComponent(OrderService)
+class OrderServiceImpl implements OrderService {
+  OrderServiceImpl(this.users);        // never called
+  final UserService users;
+}
+
+initializeBeanContext();
+// throws beanlocator.initialization.constructor_takes_arguments:
+// "Component OrderServiceImpl declares a constructor requiring users, and
+//  discovery builds every component by calling the unnamed constructor with
+//  no arguments. Hold it in a TomBean field and resolve it on use instead."
+```
+
+Three consequences are worth knowing before designing around the constraint:
+
+- **A component cannot be immutable in its dependencies.** A `final` field
+  holding the collaborator itself cannot be initialized, because there is no
+  constructor argument to initialize it from. The `final` on the handle above
+  is a weaker promise: the handle cannot be replaced, but what it resolves to
+  is decided later.
+- **A missing dependency is not detected at construction.** The component is
+  built regardless; the binding is answered for when the handle resolves, or
+  by the next [validation pass](#startup-validation) while it is still
+  pending.
+- **Optional parameters are not affected.** The pass omits them, so a
+  defaulted argument is no obstacle to discovery.
+
+**A constructor must not resolve a bean.** Holding the handle is not the same
+as calling it, and the difference is what makes mutual dependencies work:
+because resolution is lazy, `ServiceA` and `ServiceB` may each hold a handle to
+the other. Resolving in the constructor removes the laziness and the cycle
+closes during construction:
+
+```dart
+// Avoid: ServiceA's constructor calls TomBean<ServiceB>().get()
+//        while ServiceB's constructor calls TomBean<ServiceA>().get()
 //
+// Fine:  each holds `final TomBean<TheOther> _other = TomBean();`
+//        and calls `_other.get()` from a method.
 ```
 
 ### 6. For Client/Flutter Apps: Use Environment-Specific main_xxx.dart Files

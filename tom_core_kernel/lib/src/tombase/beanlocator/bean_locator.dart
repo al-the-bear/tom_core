@@ -63,6 +63,9 @@ import '../reflection/reflection.dart';
 ///   `@TomPlatform` selector, leaving discovery nothing to bind
 /// - `beanlocator.initialization.ambiguous_implementation`: two implementations
 ///   qualify equally for one interface
+/// - `beanlocator.initialization.constructor_takes_arguments`: a discovered
+///   component declares a constructor with a required parameter, and discovery
+///   calls the unnamed constructor with no arguments
 /// - `beanlocator.bean_access.bean_not_found_by_name`: nothing is registered
 ///   under the name the handle resolves by
 /// - `beanlocator.bean_access.bean_not_found_by_type`: a bean is registered
@@ -145,6 +148,38 @@ class TomBeanLocatorException extends TomException {
 /// `TomEnvironment("test", isTest: true)` are the same environment as far as
 /// selection is concerned, and `"none"` is reserved for the sentinels that mean
 /// "unconstrained".
+///
+/// ## Dependencies come from fields, not from the constructor
+///
+/// Discovery builds every component by calling its **unnamed constructor with
+/// no arguments**. A component cannot therefore declare its dependencies as
+/// constructor parameters; it holds [TomBean] fields and resolves them on use:
+///
+/// ```dart
+/// @tomReflector
+/// @TomComponent(OrderService)
+/// class OrderServiceImpl implements OrderService {
+///   final TomBean<UserService> _users = TomBean();
+///
+///   Order place(int id) => Order(_users.get().find(id));
+/// }
+/// ```
+///
+/// Declaring a required parameter anyway is refused by name at discovery with
+/// `beanlocator.initialization.constructor_takes_arguments`, rather than left
+/// to fail inside the reflector. Three consequences are worth knowing before
+/// designing around the constraint:
+///
+/// - **A component cannot be immutable in its dependencies.** A `final` field
+///   holding the collaborator itself cannot be initialized, because there is
+///   no constructor argument to initialize it from. The `final` above is on
+///   the *handle*, which is a weaker promise: the handle cannot be replaced,
+///   but what it resolves to is decided later.
+/// - **A missing dependency is not detected at construction.** The component
+///   builds regardless; the binding is answered for when the handle resolves,
+///   or by the next [validateBeanReferences] pass while it is still pending.
+/// - **Optional parameters are not affected.** The pass omits them, so a
+///   defaulted argument is no obstacle to discovery.
 class TomComponent extends Object {
   /// Creates a TomComponent annotation.
   ///
@@ -853,6 +888,54 @@ void _discoverAndInstantiateBeans() {
   }
 }
 
+/// Refuses a component whose unnamed constructor takes required arguments.
+///
+/// Discovery builds every component with `newInstance("", [])`, so a class
+/// that declares a required parameter names a constructor the pass will never
+/// call. Left to `newInstance`, that arrives as
+/// `NoSuchCapabilityError: no capability to invoke the constructor ""` —
+/// which points at the reflector's configuration, not at the parameter, and
+/// sends the reader to add capabilities that would not have helped. It is also
+/// an exception type this module never tells anyone to catch.
+///
+/// Decided by inspection rather than by catching, so the message can name the
+/// parameters the class actually declares.
+void _refuseConstructorArguments(ClassMirror classMirror) {
+  MethodMirror? unnamed;
+  for (final declaration in classMirror.declarations.values) {
+    if (declaration is MethodMirror &&
+        declaration.isConstructor &&
+        declaration.constructorName.isEmpty) {
+      unnamed = declaration;
+      break;
+    }
+  }
+  if (unnamed == null) return;
+
+  // Optional and defaulted parameters are fine: the pass simply does not pass
+  // them. Only a parameter the constructor insists on makes it uncallable.
+  final required = unnamed.parameters
+      .where((parameter) => !parameter.isOptional)
+      .toList();
+  if (required.isEmpty) return;
+
+  final named = required
+      .map((parameter) => "${parameter.simpleName}")
+      .join(", ");
+  throw TomBeanLocatorException(
+    "beanlocator.initialization.constructor_takes_arguments",
+    "Component ${classMirror.simpleName} declares a constructor requiring "
+        "$named, and discovery builds every component by calling the unnamed "
+        "constructor with no arguments. Hold it in a TomBean field and resolve "
+        "it on use instead.",
+    parameters: {
+      "class": classMirror.simpleName,
+      "parameters": required.map((p) => p.simpleName).toList(),
+    },
+    autoLog: true,
+  );
+}
+
 /// Instantiates a bean without an interface (concrete type).
 void _instantiateConcreteBean(ClassMirror classMirror) {
   tomLog.trace(
@@ -899,6 +982,7 @@ void _instantiateConcreteBean(ClassMirror classMirror) {
     }
   }
 
+  _refuseConstructorArguments(classMirror);
   var obj = classMirror.newInstance("", []);
   tomLog.info(
     "Service class ${classMirror.qualifiedName} has been instantiated "
@@ -926,6 +1010,7 @@ void _instantiateInterfaceBean(ClassMirror classMirror, TomComponent tc) {
   );
 
   if (implementation != null) {
+    _refuseConstructorArguments(implementation);
     var obj = implementation.newInstance("", []);
     TomBean._tomBeansByType[tc.getType()] = obj;
     tomLog.info(

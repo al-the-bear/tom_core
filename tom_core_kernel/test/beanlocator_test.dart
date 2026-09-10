@@ -53,6 +53,22 @@ class DiscoveredConcreteService {
   String ping() => 'concrete';
 }
 
+/// A component whose constructor parameters are all optional.
+///
+/// The control for the refusal in `beanlocator_constructor_arity_test.dart`:
+/// discovery calls the unnamed constructor with no arguments, so a parameter
+/// it can leave out is no obstacle and this component must still be built.
+/// Without it, a guard that refused *any* parameter would look correct —
+/// every test of the refusal would still pass, and only a real component with
+/// a defaulted argument would find out.
+@tomReflector
+@tomComponent
+class OptionalArgumentService {
+  final String label;
+
+  OptionalArgumentService([this.label = 'defaulted']);
+}
+
 /// A stand-in for [DiscoveredConcreteService], as a test would write one.
 ///
 /// Deliberately *not* annotated: discovery must never find it on its own. An
@@ -738,6 +754,18 @@ void main() {
       TomBean.resetBeanContext();
 
       expect(keyOfThrow(validateBeanReferences), equals('<did-not-throw>'));
+    });
+
+    test('a component with only optional arguments is still built', () {
+      // The other side of the constructor-arity rule. Discovery leaves optional
+      // parameters out, so they are no obstacle; a guard that refused every
+      // parameter would pass every test of the refusal and break this.
+      initializeBeanContext();
+
+      expect(
+        TomBean<OptionalArgumentService>().get().label,
+        equals('defaulted'),
+      );
     });
 
     test('a skipped handle stays pending until it is answerable', () {

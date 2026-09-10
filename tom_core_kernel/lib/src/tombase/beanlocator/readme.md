@@ -75,6 +75,19 @@ void main() {
 }
 ```
 
+The handle is not a stylistic preference. Discovery calls the unnamed
+constructor with no arguments, so there is no constructor injection: a
+component that declares a required parameter names a constructor the pass will
+never call, and discovery refuses it by name with
+`beanlocator.initialization.constructor_takes_arguments`. Optional parameters
+are unaffected — the pass simply omits them.
+
+Two consequences follow from taking dependencies through handles. A component
+cannot be immutable in its dependencies — `final` on the handle says the
+handle will not be replaced, not that what it resolves to is fixed — and a
+missing dependency is not detected when the component is built, but when the
+handle resolves, or at the next validation pass while it is still pending.
+
 ### Registered by hand
 
 ```dart

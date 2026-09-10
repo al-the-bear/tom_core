@@ -44,6 +44,27 @@ anyone who was writing them.
 
 ### Fixed
 
+- **A component asking for a constructor argument now hears why (tcopen4).**
+  Discovery builds every `@TomComponent` class with `newInstance("", [])`, so
+  a class declaring a required parameter names a constructor the pass will
+  never call. It reached `newInstance` and failed with
+  `NoSuchCapabilityError: no capability to invoke the constructor ""` — a
+  message that names the reflector's configuration rather than the parameter,
+  sends the reader to add capabilities that cannot help (no capability makes a
+  one-argument constructor callable with none), and arrives as an exception
+  type this module never tells anyone to catch. Discovery now decides it by
+  inspection and raises
+  `beanlocator.initialization.constructor_takes_arguments`, naming the class,
+  the parameters it insists on, and the remedy. Optional and defaulted
+  parameters are unaffected: the pass omits them, and a control fixture keeps
+  the guard from widening to reject them.
+
+  The constraint itself is unchanged, and is now stated where components are
+  described rather than left to be discovered: the `TomComponent` dartdoc, the
+  module readme and the prose guide each carry it with its three consequences
+  — no immutable dependencies, no detection at construction time, and
+  optional parameters excepted.
+
 - **A handle the validation pass skipped was dropped instead of deferred
   (tcopen3).** A named handle whose name is not registered yet cannot be
   judged at boot, so the pass passes over it. It then cleared the whole
