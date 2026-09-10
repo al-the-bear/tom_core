@@ -397,14 +397,30 @@ class TomExecutionContext {
 /// constructor argument) instead of replacing them.
 class TomZoneValues {
   /// The underlying zone values map.
-  late Map<Object?, Object?> zoneValues;
+  ///
+  /// The map is mutable on purpose, and that is the whole point of this
+  /// container: values routed through it can be written from inside the zone
+  /// (`getFromCurrentZone<TomZoneValues>()?['requestId'] = id`), which raw
+  /// zone values cannot. [TomExecutionContext.contextMap] is the opposite —
+  /// a read-only view — because nothing is meant to write it from inside a
+  /// zone. The two containers differ here on purpose; see
+  /// [TomExecutionContext.runInContext].
+  ///
+  /// The *slot* is `final` even so. Reassigning it would swap the backing map
+  /// of a container other code in the same zone is already reading through,
+  /// which no amount of intended mutability asks for: writing a value is
+  /// [operator []=], and emptying the map is [clear].
+  final Map<Object?, Object?> zoneValues = {};
 
   /// Creates a zone values container.
+  ///
+  /// [existingValues] is laid down first and [zoneValues] over it, so a nested
+  /// run's own values win on a colliding key — the same rule as
+  /// [TomExecutionContext]'s constructor, and for the same reason.
   TomZoneValues(
     Map<Object?, Object?>? zoneValues, {
     TomZoneValues? existingValues,
   }) {
-    this.zoneValues = {};
     if (existingValues != null) {
       this.zoneValues.addAll(existingValues.zoneValues);
     }

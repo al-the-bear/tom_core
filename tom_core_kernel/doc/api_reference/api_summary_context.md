@@ -125,7 +125,7 @@ Starts from `existingValues` (if any) and adds `zoneValues` on top.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `zoneValues` | `Map<Object?, Object?>` | The underlying zone values map (late). |
+| `zoneValues` | `final Map<Object?, Object?>` | The underlying zone values map. The map is mutable by design — writing values from inside the zone is what this container exists for, and is what raw zone values cannot do — so unlike `TomExecutionContext.contextMap` it is not a read-only view. The *slot* is `final`: the backing map of a container other code in the same zone is reading through cannot be swapped. Write with `[]=`, empty with `clear()`. |
 
 #### Methods
 

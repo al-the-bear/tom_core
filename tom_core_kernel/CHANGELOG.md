@@ -183,6 +183,21 @@ anyone who was writing them.
 
 ### Changed
 
+- **`TomZoneValues.zoneValues` is `final`, and no longer `late` (tcopen11).**
+  The field was assigned on every path through the constructor, so `late`
+  bought nothing: it only gave up the compiler's guarantee that the field is
+  initialised and deferred a would-be compile error to runtime. It was also
+  reassignable, so a consumer could swap the backing map of a container other
+  code in the same zone was reading through.
+
+  The map itself stays mutable, and deliberately: writing values from inside
+  the zone is what this container exists for and what raw zone values cannot
+  do. That is the opposite of `TomExecutionContext.contextMap`, which became a
+  read-only view because nothing is meant to write it from inside a zone — the
+  two containers differ here on purpose, and each now says so where it is
+  declared. Only the slot is closed: writing a value is `[]=`, emptying the
+  map is `clear()`.
+
 - **A foreign value under one of the context module's two zone keys is
   refused, not absorbed (tcopen9).** `TomExecutionContext` and
   `TomZoneValues` are installed under their own `Type` as the zone key, so a
