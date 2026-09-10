@@ -130,6 +130,18 @@ class TomExecutionContext {
   /// entry's type parameter explicitly — `TomContextEntry<String>(...)`, not
   /// `TomContextEntry(...)` — or it infers `dynamic` from this parameter's type
   /// and no typed read will find it; see [TomContextEntry].
+  ///
+  /// **On a name held by both, [contextMap] wins over [parentContext].** The
+  /// parent is the inherited background and this map is the foreground, which
+  /// is also what makes a nested [runInContext] override the values it
+  /// inherits: nesting builds a new context this way, with the installed one
+  /// as the parent.
+  ///
+  /// Note that [combineWith] resolves a collision from the opposite end —
+  /// there the *argument* wins over the receiver. Both are the same rule seen
+  /// from different sides — the map applied last wins, and it is the one
+  /// named closest to the call — but the receiver's entries surviving here
+  /// and losing there is worth knowing before relying on either.
   TomExecutionContext(
     Map<String, TomContextEntry> contextMap, {
     TomExecutionContext? parentContext,
@@ -163,7 +175,12 @@ class TomExecutionContext {
 
   /// Merges another context's entries into this context.
   ///
-  /// Entries from [other] will overwrite entries with the same name.
+  /// **On a name held by both, [other] wins over this context.** This is the
+  /// mirror image of the constructor, where a context's own map wins over its
+  /// [parentContext]: the same rule — the map applied last wins — but the
+  /// receiver's entries survive construction and lose a merge. Reach for
+  /// `other.combineWith(this)` when the receiver's values are the ones that
+  /// should stand.
   void combineWith(TomExecutionContext other) {
     contextMap.addAll(other.contextMap);
   }

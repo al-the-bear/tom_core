@@ -73,6 +73,65 @@ void main() {
       });
     });
 
+    group('collision precedence', () {
+      // Three operations merge two sets of entries, and they resolve a name
+      // held by both from two different ends. The unifying rule is that the
+      // map applied last wins, and it is always the one named closest to the
+      // call — but which *object* that is differs, and nothing about either
+      // call site shows it.
+
+      test('the constructor lets its own map win over the parent', () {
+        // The direction the nesting tests reach indirectly: a nested
+        // runInContext builds a context exactly this way, with the installed
+        // one as the parent, so this is the rule underneath that one.
+        final parent = TomExecutionContext({
+          'shared': TomContextEntry<String>(() => 'parent'),
+        });
+
+        final child = TomExecutionContext({
+          'shared': TomContextEntry<String>(() => 'child'),
+        }, parentContext: parent);
+
+        expect(child.getEntry<String>('shared')?.value, equals('child'));
+        expect(
+          parent.getEntry<String>('shared')?.value,
+          equals('parent'),
+          reason: 'the parent is read, not written',
+        );
+      });
+
+      test('the receiver wins on construction and loses on a merge', () {
+        // The asymmetry as one fact. Read as "the last map applied wins" the
+        // two operations agree; read from the receiver's point of view they
+        // are opposite, and that is the reading a caller does when deciding
+        // which object to put on the left. Asserting them apart would let one
+        // side change without the pair being reconsidered.
+        TomExecutionContext base() => TomExecutionContext({
+          'shared': TomContextEntry<String>(() => 'receiver'),
+        });
+        TomExecutionContext other() => TomExecutionContext({
+          'shared': TomContextEntry<String>(() => 'argument'),
+        });
+
+        final constructed = TomExecutionContext(
+          base().contextMap,
+          parentContext: other(),
+        );
+        final merged = base()..combineWith(other());
+
+        expect(
+          constructed.getEntry<String>('shared')?.value,
+          equals('receiver'),
+          reason: 'constructing: the context',
+        );
+        expect(
+          merged.getEntry<String>('shared')?.value,
+          equals('argument'),
+          reason: 'merging: the argument',
+        );
+      });
+    });
+
     group('combineWith', () {
       test('should merge entries from another context', () {
         final context1 = TomExecutionContext({

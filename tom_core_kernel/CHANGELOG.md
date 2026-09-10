@@ -181,6 +181,26 @@ anyone who was writing them.
   `() => tomAppId` when it registers itself as the isolate's active
   configuration.
 
+### Documentation
+
+- **The context collision rule is stated where each side of it lives
+  (tcopen6).** Three operations merge two sets of entries and resolve a name
+  held by both from two different ends: the constructor lets a context's own
+  map win over its `parentContext`, a nested `runInContext` does the same (it
+  builds a context that way), and `combineWith(other)` lets the argument win
+  over the receiver. No behaviour changed — both readings are defensible, and
+  picking one would break the other call site's reading rather than settle
+  anything — but neither dartdoc said which side won, and the prose guide's
+  merge example used no colliding key, so it did not show the rule either.
+
+  Both dartdocs now state their own side and name the other; the guide gains a
+  three-row table of the merge sites with a worked collision; and a test
+  asserts the two directions in one case, so neither can move without the pair
+  being reconsidered. The unifying sentence is that the map applied last wins,
+  and it is always the one named closest to the call. The asymmetry is only
+  visible from the receiver, whose entries survive construction and lose a
+  merge.
+
 ### Fixed
 
 - **The lint that stops a library importing its own barrel was reported and not

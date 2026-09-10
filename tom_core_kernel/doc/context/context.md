@@ -16,6 +16,7 @@ The Tom Execution Context System provides zone-based context propagation for pas
   - [TomContextProviders](#tomcontextproviders)
 - [Context Propagation](#context-propagation)
 - [Context Composition](#context-composition)
+  - [Which side wins on a colliding name](#which-side-wins-on-a-colliding-name)
 - [Default Context](#default-context)
 - [Best Practices](#best-practices)
   - [1. Always write the entry's type parameter](#1-always-write-the-entrys-type-parameter)
@@ -438,15 +439,55 @@ final requestContext = TomExecutionContext({
 
 tenantContext.runInContext(() {
   // tenant = 'acme'
-  
+
   userContext.runInContext(() {
     // tenant = 'acme', user = 'john'
-    
+
     requestContext.runInContext(() {
       // tenant = 'override-tenant', user = 'john', requestId = 'req-123'
     });
   });
 });
+```
+
+### Which side wins on a colliding name
+
+Three operations merge two sets of entries, and they resolve a collision from
+two different ends. **The map applied last wins, and that is always the one
+named closest to the call** — but which object that *is* differs:
+
+| operation | on a shared name, the winner is |
+| --- | --- |
+| `TomExecutionContext(own, parentContext: p)` | `own` — the context's own map |
+| `inner.runInContext(...)` nested inside `outer` | `inner` — it builds a context with `outer` as the parent |
+| `receiver.combineWith(other)` | `other` — the argument |
+
+The first two are the same operation: nesting constructs a new context with the
+installed one as its parent. The third is the one to watch, because from the
+receiver's point of view it is the opposite rule — its entries survive
+construction and lose a merge:
+
+```dart
+final base = TomExecutionContext({
+  'tenant': TomContextEntry<String>(() => 'acme'),
+});
+final override = TomExecutionContext({
+  'tenant': TomContextEntry<String>(() => 'zeta'),
+});
+
+// Constructed: the context's own map wins over the parent.
+final child = TomExecutionContext(
+  {'tenant': TomContextEntry<String>(() => 'zeta')},
+  parentContext: base,
+);
+child.getEntry<String>('tenant')?.value;      // 'zeta'
+
+// Merged: the argument wins over the receiver.
+base.combineWith(override);
+base.getEntry<String>('tenant')?.value;       // 'zeta'
+
+// Reverse the merge when the receiver's value is the one that should stand.
+override.combineWith(base);                   // now 'acme' would win
 ```
 
 ## Default Context
