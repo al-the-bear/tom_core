@@ -22,6 +22,8 @@ import '03_retry_policies_example.dart' as retry_policies;
 import '04_api_endpoint_definition_example.dart' as api_endpoints;
 import '05_remote_context_example.dart' as remote_context;
 import '06_auth_retry_example.dart' as auth_retry;
+import '07_endpoint_call_example.dart' as endpoint_call;
+import '08_file_transfer_example.dart' as file_transfer;
 
 /// Standalone entry point for running HTTP connection examples.
 Future<void> main() async {
@@ -45,6 +47,8 @@ Future<void> run() async {
   api_endpoints.run();
   remote_context.run();
   await auth_retry.run();
+  await endpoint_call.run();
+  await file_transfer.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Samples Complete!                         ║');

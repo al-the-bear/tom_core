@@ -289,6 +289,13 @@ expression the server pipeline mounts the route from — so client and server
 addresses are two readings of one declaration rather than two spellings that
 have to be kept in step.
 
+`example/samples/http_connection/07_endpoint_call_example.dart` carries one
+declaration the whole way: it resolves the address, calls it against a loopback
+`HttpServer`, and asserts that the path the server *received* is the resolved
+one rather than the template. It also shows the failing half, where a status
+declared in `statusCodeResponseTypes` arrives as its own type instead of as
+raw text.
+
 ### TomHttpMethod
 
 Predefined HTTP methods. `acceptsBody` records whether the verb typically
@@ -630,6 +637,12 @@ can be listened to once and a retry needs the same bytes again: use
 `open:` callback that re-opens a file. `byteCount` is optional — when it is
 absent the upload is sent chunked and progress is indeterminate, which
 `TomTransferProgress.isDeterminate` reports so a UI can fall back to a spinner.
+
+`example/samples/http_connection/08_file_transfer_example.dart` runs all four
+operations twice over: once against `TomMemoryFileTransferClient`, which needs
+no server, and once against a loopback `HttpServer` that speaks the wire
+contract — writing its descriptor with `tomFileDescriptorHeaders`, which is
+public for exactly that reason.
 
 `TomTransferCancellation` is the shared cancel signal. It aborts the socket
 rather than merely stopping the caller from waiting, and `cancel()` is idempotent

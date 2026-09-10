@@ -9,6 +9,27 @@ anyone who was writing them.
 
 ### Added
 
+- **Two `http_connection` examples for the three things the module had none
+  for (tcopen18).** Seven example files covered the client, the connection
+  config, retry, API *declaration*, remote context and auth retry. Nothing
+  performed a call through a `TomServerEndpoint`, nothing called `resolveUri`
+  — the readme's headline feature — and nothing touched either transfer file.
+
+  `07_endpoint_call_example.dart` carries one declaration the whole way:
+  `resolveUri` builds the address, `createApiServerEndpoint` turns the
+  declaration into a callable endpoint, and `send` calls it against a loopback
+  `HttpServer`. The transport is real rather than mocked, which is what makes
+  the point checkable: the assertions read the path the *server received*, so
+  they show the resolved address reaching the wire rather than the template.
+  A declared `statusCodeResponseTypes` entry shows the failing half arriving
+  typed.
+
+  `08_file_transfer_example.dart` runs all four transfer operations twice:
+  against `TomMemoryFileTransferClient`, which needs no server, and against a
+  loopback file server that speaks the wire contract and writes its descriptor
+  with `tomFileDescriptorHeaders`. Progress, chunking and cancellation are
+  shown where each is observable.
+
 - **`validateBeanReferences()` — the startup pass, callable on its own
   (tcopen3).** Resolving the pending handles is the last step of
   `initializeBeanContext`, and boot is not the only moment worth checking: a
