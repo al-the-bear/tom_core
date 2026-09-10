@@ -1197,6 +1197,68 @@ void main() {
       expect(foundKeys, contains('item@2'));
     });
 
+    test('reports a key inside a decoded array', () {
+      // The array a program actually meets. `jsonDecode` produces
+      // `List<dynamic>`, and a typed check on the list itself
+      // (`List<Map<String, dynamic>>`) matches only an array a Dart literal
+      // built — so the same document read from disk had its arrays walked
+      // past in silence, leaving a directive key in the tree looking exactly
+      // like one that had been resolved.
+      final tree =
+          jsonDecode('{"items":[{"item@1":"value1"},{"item@2":"value2"}]}')
+              as Map<String, dynamic>;
+      final foundKeys = <String>[];
+
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        foundKeys.add(key);
+      });
+
+      expect(foundKeys, equals(['item@1', 'item@2']));
+    });
+
+    test('reaches a map inside a list inside a list', () {
+      // Handling only the outermost array would leave every ordinary nested
+      // shape — a matrix, a list of groups — unvisited.
+      final tree =
+          jsonDecode('{"rows":[[{"deep@key":"v"}],[[{"deeper@key":"w"}]]]}')
+              as Map<String, dynamic>;
+      final foundKeys = <String>[];
+
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        foundKeys.add(key);
+      });
+
+      expect(foundKeys, equals(['deep@key', 'deeper@key']));
+    });
+
+    test('a bare string in a list has no key, so nothing is reported', () {
+      // The asymmetry with `traverseAndProcess`'s list walk, which transforms
+      // strings by value. This traversal selects on key *names*, and an element
+      // of a list has none; a string reaches the creator only as the value of a
+      // matching key.
+      final tree = jsonDecode('{"tags":["a@b","c@d"]}') as Map<String, dynamic>;
+      final foundKeys = <String>[];
+
+      traverseAndCreate(tree, (name) => name.contains('@'), (
+        key,
+        value,
+        location,
+      ) {
+        foundKeys.add(key);
+      });
+
+      expect(foundKeys, isEmpty);
+      expect(tree['tags'], equals(['a@b', 'c@d']));
+    });
+
     test('should pass location map to creator for potential modification', () {
       final tree = <String, dynamic>{'ref@pattern': 'targetValue'};
       Map<String, dynamic>? capturedLocation;
@@ -1665,6 +1727,34 @@ void main() {
       });
 
       expect(tree['config'], equals('resolved_value'));
+    });
+
+    test('resolves a directive inside a decoded array', () {
+      // The symptom a program meets: a configuration file read from disk, with
+      // a profile directive nested in one of its arrays. The traversal used to
+      // walk the array past, so the provider was never called at all.
+      final tree =
+          jsonDecode('{"servers":[{"db@profiles.db@production":"@"}]}')
+              as Map<String, dynamic>;
+      var providerCalls = 0;
+
+      processTree(tree, (keyName, path, profileName) {
+        providerCalls++;
+        expect(keyName, equals('db'));
+        expect(path, equals('profiles.db'));
+        expect(profileName, equals('production'));
+        return <String, dynamic>{'db': 'resolved_value'};
+      });
+
+      expect(providerCalls, equals(1));
+      final servers = tree['servers'] as List;
+      final entry = servers.single as Map<String, dynamic>;
+      expect(entry['db'], equals('resolved_value'));
+      // Resolution *inserts*: the directive key stays where it was. That is
+      // what made the omission invisible — an unresolved directive and a
+      // resolved one look identical at the directive key, and only the presence
+      // of the resolved key tells them apart.
+      expect(entry.containsKey('db@profiles.db@production'), isTrue);
     });
 
     test('should spread values with ... directive', () {

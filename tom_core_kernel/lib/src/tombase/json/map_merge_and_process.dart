@@ -440,6 +440,12 @@ void _processList(
 /// A map child counts whatever its reified type, as long as its keys are all
 /// `String`; see the library doc's *What counts as a subtree*.
 ///
+/// Lists are walked per element, so a map inside a list, a list inside a list,
+/// and any deeper combination are all descended into. Dispatch is on each
+/// value's runtime shape rather than on a container's declared type, which is
+/// what makes a document straight out of `jsonDecode` — `Map<String, dynamic>`
+/// and `List<dynamic>` throughout — behave the same as one built in Dart code.
+///
 /// ## Example
 /// ```dart
 /// final config = {'ref@profiles@dev': 'value'};
@@ -475,14 +481,43 @@ void traverseAndCreate(
     if (childMap != null) {
       traverseAndCreate(childMap, nameTest, creator);
     } else if (oValue is List) {
-      if (oValue is List<Map<String, dynamic>>) {
-        List<Map<String, dynamic>> mapArray = oValue;
-        for (int i = 0; i < mapArray.length; i++) {
-          traverseAndCreate(mapArray[i], nameTest, creator);
-        }
-      }
+      _createInList(oValue, nameTest, creator);
     } else if (nameTest(oKey) && oValue is String) {
       creator(oKey, oValue, tree);
+    }
+  }
+}
+
+/// Applies [traverseAndCreate]'s rules to the elements of [list], in place.
+///
+/// Dispatch is per element rather than on the list's own type, so mixed lists
+/// from `jsonDecode` — `List<dynamic>` holding maps, strings and further lists
+/// side by side — are handled. A typed check on the list itself
+/// (`List<Map<String, dynamic>>`) never matches a decoded JSON list at all and
+/// skips its contents in silence, which is a worse answer than not descending:
+/// a directive inside an array read from disk stays in the tree looking exactly
+/// like one that was resolved.
+///
+/// A list element recurses through this same function, so a list nested inside
+/// a list is reached at any depth.
+///
+/// Unlike [traverseAndProcess]'s list walk there is no string branch, and the
+/// asymmetry is the point rather than an omission: this traversal selects on
+/// *key names*, and an element of a list has no key to test. A string only
+/// reaches [creator] as the value of a matching key.
+void _createInList(
+  List<dynamic> list,
+  bool Function(String) nameTest,
+  void Function(String key, String value, Map<String, dynamic> location)
+  creator,
+) {
+  for (int i = 0; i < list.length; i++) {
+    final element = list[i];
+    final Map<String, dynamic>? elementMap = _asStringKeyedMap(element);
+    if (elementMap != null) {
+      traverseAndCreate(elementMap, nameTest, creator);
+    } else if (element is List) {
+      _createInList(element, nameTest, creator);
     }
   }
 }

@@ -65,6 +65,28 @@ anyone who was writing them.
 
 ### Fixed
 
+- **`traverseAndCreate` walks decoded arrays (tcopen24).** Its list branch was
+  guarded by `if (oValue is List<Map<String, dynamic>>)` — the same shape
+  removed from `traverseAndProcess` earlier, one traversal over. `jsonDecode`
+  produces `List<dynamic>`, which fails that test, so every array in a decoded
+  document was walked past in silence.
+
+  `processTree` is built on it, so a profile directive nested inside an array
+  of a configuration file read from disk was never resolved: the provider was
+  not called at all. That failure was invisible from the tree, because
+  resolution *inserts* rather than replaces — an unresolved directive key and
+  a resolved one look identical at that key, and only the absence of the
+  injected key said anything.
+
+  It now dispatches per element through `_createInList`, the counterpart to
+  `_processList`, so decoded arrays and arrays nested inside arrays are both
+  reached. One asymmetry with `_processList` is deliberate: no string branch,
+  because this traversal selects on key *names* and an element of a list has
+  no key. `{'tags': ['a@b']}` reports nothing.
+
+  The suite could not see any of it: its one array test built the list as a
+  `<Map<String, dynamic>>[...]` literal, which satisfies the guard.
+
 - **`TomWorkerPool.withSize` builds its workers together (tcopen23).** Each
   spawn was awaited before the next began, so construction cost the sum of the
   spawns rather than roughly the longest. A spawn is not just an isolate start:

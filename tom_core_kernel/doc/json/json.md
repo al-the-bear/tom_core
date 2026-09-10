@@ -307,6 +307,19 @@ designed around map- or list-valued keys is therefore one this function cannot
 deliver, however well the names match; express such a directive as a string
 value, the way `processTree` does.
 
+##### Lists are walked per element
+
+Dispatch is on each value's runtime shape, not on a container's declared type,
+so a decoded `List<dynamic>` is descended into like any other and a list nested
+inside a list is reached at any depth. A typed check on the list itself would
+match only an array a Dart literal built, and would skip a decoded one in
+silence.
+
+There is no string branch, unlike `traverseAndProcess`'s list walk. That is the
+point rather than an omission: this traversal selects on key *names*, and an
+element of a list has no key. A string reaches the creator only as the value of
+a matching key — `{'tags': ['a@b']}` reports nothing.
+
 ##### The creator may edit the map it is given
 
 Inserting into `location`, removing from it, and overwriting it are all
