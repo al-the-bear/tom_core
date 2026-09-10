@@ -134,6 +134,20 @@ class TestUserProfile extends TomClass {
   final followerCount = TomInt(0);
 }
 
+/// Test class whose members are [TomMap]s — one of scalar wrappers, one of
+/// nested [TomClass]es.
+///
+/// The pair exists because the two need different things from serialization:
+/// a scalar value unwraps with `get()`, a nested class has to recurse through
+/// its own `getValues()`. A fix that handled one shape would still leave the
+/// other leaking raw `TomObject`s into `jsonEncode`.
+@tomReflector
+class TestDirectory extends TomClass {
+  final label = TomString("");
+  final scores = TomMap<String, TomInt>();
+  final profiles = TomMap<String, TestUserProfile>();
+}
+
 /// A [TomString] whose [get] always throws, used to verify that
 /// [TomClass.getValues] surfaces a serialization failure instead of silently
 /// swallowing it into partial data.
@@ -858,6 +872,81 @@ void main() {
       final now = DateTime.now();
       dt | now;
       expect(~dt, equals(now));
+    });
+  });
+
+  group('a TomMap member serializes to plain values', () {
+    // `getValues` unwraps a `TomClass` member through its own `getValues` and
+    // a `TomList` member element by element, and a map member has to be
+    // handled the same way: `TomMap.get()` returns the backing map with its
+    // `TomObject` values still wrapped, which `jsonEncode` refuses.
+
+    TestDirectory populated() {
+      final directory = TestDirectory();
+      directory.label | 'team';
+      directory.scores['alice'] = TomInt(3);
+      directory.scores['bob'] = TomInt(5);
+      directory.profiles['alice'] = TestUserProfile()
+        ..displayName.set('Alice')
+        ..followerCount.set(10);
+      directory.profiles['bob'] = TestUserProfile()
+        ..displayName.set('Bob')
+        ..bio.set('builds things');
+      return directory;
+    }
+
+    test('scalar values come out unwrapped', () {
+      final values = populated().getValues();
+
+      expect(values['scores'], equals({'alice': 3, 'bob': 5}));
+      expect(
+        (values['scores'] as Map).values,
+        everyElement(isA<int>()),
+        reason: 'a raw TomInt here is what jsonEncode cannot encode',
+      );
+    });
+
+    test('nested TomClass values come out as maps of their own', () {
+      final values = populated().getValues();
+
+      expect(values['profiles'], {
+        'alice': {'displayName': 'Alice', 'bio': null, 'followerCount': 10},
+        'bob': {
+          'displayName': 'Bob',
+          'bio': 'builds things',
+          'followerCount': 0,
+        },
+      });
+    });
+
+    test('the result encodes as JSON', () {
+      expect(() => jsonEncode(populated().getValues()), returnsNormally);
+    });
+
+    test('an empty map member serializes to an empty map', () {
+      expect(
+        TestDirectory().getValues()['scores'],
+        equals(<String, Object?>{}),
+      );
+    });
+
+    test('getValues and setValues round-trip the unwrapped contents', () {
+      final original = populated();
+
+      final restored = TestDirectory()..setValues(original.getValues());
+
+      expect(restored.getValues(), equals(original.getValues()));
+      expect(restored.scores['bob']!.get(), equals(5));
+      expect(restored.profiles['alice']!.displayName.get(), equals('Alice'));
+      expect(restored.profiles['bob']!.bio.get(), equals('builds things'));
+    });
+
+    test('a JSON round trip restores both maps', () {
+      final original = populated();
+
+      final restored = TestDirectory()..fromJson(jsonEncode(original.toJson()));
+
+      expect(restored.getValues(), equals(original.getValues()));
     });
   });
 
@@ -4135,14 +4224,11 @@ void main() {
       });
 
       test('a price survives a real JSON encode/decode round trip', () {
-        // The map member is left empty on purpose: `_serializeMember` has no
-        // TomMap branch, so a populated map member fails at `jsonEncode`
-        // before any of this reaches the number handling. That is a separate
-        // defect, and it afflicts every value type equally — the map's number
-        // handling is covered above through `setValues`.
         item.price | 19.99;
         item.discount | 1.5;
         item.rates.addAll([TomDouble(0.5), TomDouble(1.25)]);
+        item.surcharges['vat'] = TomDouble(0.2);
+        item.surcharges['fee'] = TomDouble(3.0);
 
         final restored = TestPricedItem()..fromJson(jsonEncode(item.toJson()));
 
@@ -4152,6 +4238,12 @@ void main() {
           restored.rates.map((e) => e.get()).toList(),
           equals([0.5, 1.25]),
         );
+        // The map member, populated: every value type reaches `jsonEncode`
+        // through the same serializer, so this is the case that proves a map
+        // member does too.
+        expect(restored.surcharges['vat']!.get(), equals(0.2));
+        expect(restored.surcharges['fee']!.get(), equals(3.0));
+        expect(restored.surcharges['fee']!.get(), isA<double>());
       });
 
       test('an integral double survives the JSON round trip as a double', () {

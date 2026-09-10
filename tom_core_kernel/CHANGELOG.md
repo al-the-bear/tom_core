@@ -89,6 +89,18 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **A `TomMap` member serializes (tcopen44).** `_serializeMember` unwrapped a
+  `TomClass` member and a `TomList` member's elements, but had no branch for
+  `TomMap`: a map member fell through to `get()`, which returns the backing map
+  with its cells still wrapped, so `jsonEncode` refused it and a `TomClass`
+  carrying a `TomMap` did not round-trip. Map values now go through the same
+  serializer, so scalar cells unwrap and nested classes recurse; keys pass
+  through unchanged.
+
+  The module's last `TODO:` — "serialization for other DateTime-derived
+  classes" — went with it: every such class already reaches a branch, the
+  nullable zoned cells because `TomNOTimezoned` extends `TomOTimezoned`.
+
 - **`TomIsolateLogging.startIsolatedLogging` returns `Future<void>`
   (tcopen38).** It returned `bool` and every path returned `true`, so
   `if (!await startIsolatedLogging(args))` was dead code wherever it was

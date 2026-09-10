@@ -1408,18 +1408,34 @@ class TomClass extends TomObject<Map<String, TomObject>>
   ///
   /// Applies the same per-type handling to a member as [getValues] applies to a
   /// `TomClass`'s own fields — and, crucially, is reused for the **elements** of
-  /// a [TomList]. A `TomList<TomString>` (or a list of nested `TomClass`) would
-  /// otherwise leak raw `TomObject` instances into `jsonEncode`, since
-  /// `TomList.get()` returns the backing `List<E>` without unwrapping its
-  /// elements. Nested lists recurse element-by-element.
+  /// a [TomList] and the **values** of a [TomMap]. Both containers' `get()`
+  /// returns the backing collection with its `TomObject`s still wrapped, so a
+  /// `TomList<TomString>` or a `TomMap<String, TomInt>` — or either holding
+  /// nested `TomClass`es — would otherwise leak raw `TomObject` instances into
+  /// `jsonEncode`, which refuses them. Nested containers recurse the same way.
+  ///
+  /// A map's keys pass through unchanged. The value side is the one that holds
+  /// `TomObject`s; a key is whatever `K` is, and [setValues] restores it from
+  /// the decoded map's own keys, so rewriting keys here would break the round
+  /// trip rather than serve it.
   static Object? _serializeMember(TomObject value) {
     // Check for TomClass before calling .get(), since TomClass.get() throws.
     if (value is TomClass) return value.getValues();
     if (value is TomList) {
       return [for (final element in value) _serializeMember(element)];
     }
+    if (value is TomMap) {
+      return {
+        for (final entry in value.entries)
+          entry.key: _serializeMember(entry.value),
+      };
+    }
     final valueValue = value.get();
-    // TODO: add serialization/deserialization for other DateTime-derived classes
+    // Every DateTime-holding observable reaches one of the two branches below:
+    // the plain pair here, and all six zoned types through TomOTimezoned, which
+    // TomNOTimezoned extends. TomDateTimeRange is a TomClass and was taken
+    // above. A new DateTime-derived type needs a branch here and a matching
+    // one in setOrMergeValues, or it serializes as a bare `DateTime`.
     if (value is TomDateTime || value is TomNDateTime) {
       // Emit `<prefix><iso8601>` for round-trip via setValues(), which strips
       // the prefix and DateTime.parse()s the rest (see setOrMergeValues above).
