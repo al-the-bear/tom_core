@@ -17,6 +17,8 @@
 /// ```
 library;
 
+import 'dart:async';
+
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../sample_preamble.dart';
@@ -112,7 +114,9 @@ Future<void> run() async {
     await runChecked<int>(
       () async {
         await Future<void>.delayed(const Duration(milliseconds: 1));
-        throw StateError('connection dropped');
+        // An Exception, not an Error: a dropped connection is a condition the
+        // caller handles, and `runChecked` translates only Exceptions.
+        throw TimeoutException('connection dropped');
       },
       (error, stack) => TomException(
         'network.request.connection_failed',

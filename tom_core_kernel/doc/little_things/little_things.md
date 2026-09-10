@@ -188,11 +188,61 @@ final config = runCheckedSync(
 );
 ```
 
-`onError` returns `Object`, so any type will do — but returning a
-[`TomException`](#tomexception) is what makes the wrapping worth doing. It is
-the one shape that carries `rootException` and the caught `stack` forward, so
-the original failure survives the transformation instead of being replaced by
-a message about it.
+`onError` *returns* the replacement rather than throwing it, which is what
+makes it impossible to write a transform that swallows the failure: a handler
+that falls off its end does not compile.
+
+It returns an `Exception`, so the replacement is something a caller can catch by
+type. `Object` would have let a transform return `42`, and the wrapper would
+then have thrown the integer — a failure no `on SomeException catch` clause can
+ever match, reaching the top of the isolate as an unhandled `int`. It is also
+the symmetric half of the rule below: these wrappers translate an `Exception`
+into an `Exception`, and neither manufacture a bug nor hide one.
+
+Returning a [`TomException`](#tomexception) is what makes the wrapping worth
+doing. It is the one shape that carries `rootException` and the caught `stack`
+forward, so the original failure survives the transformation instead of being
+replaced by a message about it.
+
+#### Only an `Exception` is translated
+
+An `Error` — `StateError`, `RangeError`, `TypeError`, `StackOverflowError` —
+propagates unchanged, and so does any other object a body throws. `onError` is
+never called for one.
+
+The distinction is Dart's own: an `Exception` reports a condition the program is
+expected to handle, an `Error` reports a fault in the program itself.
+Translating the second kind turns a bug into a domain failure the caller then
+treats as an ordinary outcome — `.first` on an empty list becomes "not found", a
+bad cast becomes "the request was invalid" — and the defect is reported at the
+wrong layer, under a message describing something else. A wrapper this small
+should not be able to hide a bug.
+
+So a body that means "no such thing" has to say so:
+
+```dart
+// Wrong: `.first` throws StateError, which is a bug, and now propagates.
+final one = await runChecked(
+  () async => (await repository.find(query)).first,
+  (error, stack) => TomException('catalog.find.failed', 'Lookup failed'),
+);
+
+// Right: absence is a condition, so it is thrown as one.
+final other = await runChecked(
+  () async {
+    final rows = await repository.find(query);
+    if (rows.isEmpty) {
+      throw TomException('catalog.find.no_match', 'Nothing matched $query');
+    }
+    return rows.first;
+  },
+  (error, stack) => TomException('catalog.find.failed', 'Lookup failed'),
+);
+```
+
+A caller that genuinely must translate an `Error` should catch it where it
+happens, with an explicit `on Error`. That says so at the point it is decided,
+rather than everywhere these wrappers are used.
 
 ### Stack Trace Processing
 
@@ -226,6 +276,31 @@ at ERROR level:
 The name is inherited from `TomBaseException.printStackTrace` in
 `tom_basics`, which genuinely does call `print`. `TomException` overrides it
 to log instead, so the two behave differently under the same name.
+
+##### One renderer produces both representations
+
+An exception carries its stack twice — as the `stack` trace, and as the
+`stackTrace` string `TomBaseException`'s constructor derives from it. The two
+are produced by the *same* formatter: `tom_basics` exposes a
+`renderStackTrace` seam and `TomException` overrides it with
+`tomGetStackTrace`.
+
+That matters because `tom_basics` sits below the framework and has no view of
+what counts as noise here. Its own renderer folds core frames only and writes
+each frame with `Frame.toString()`, so without the override one exception
+described its own stack two ways: `e.stackTrace` and
+`tomGetStackTrace(e.stack)` folded different frames and wrote each of them
+differently. They are now equal, and a registration on `tomStackTraceNoise`
+reaches both.
+
+```dart
+final e = TomException('orders.submit.rejected', 'Rejected');
+e.stackTrace == tomGetStackTrace(e.stack);   // true
+```
+
+The same holds after the constructor drops its own frames from an implicitly
+captured trace: `stack` and `stackTrace` are rewritten together, through the
+seam.
 
 `TomException.printStackTrace` supplies its own message —
 `"$uuid-$requestUuid exception stacktrace"` — and `tomPrintStackTrace` joins
@@ -311,6 +386,59 @@ Future<void> inner() async => throw StateError('boom');  // ← throw site
 
 This is what makes an async trace useful: the throw site alone rarely
 identifies who initiated the failing work.
+
+#### What counts as noise, and adding your own
+
+Four groups are folded by default, each describing machinery rather than the
+failure:
+
+| Folded | Why |
+| ------ | --- |
+| Dart core-library frames | The runtime's own plumbing. |
+| `package:shelf` frames | The HTTP server the request arrived through. |
+| Members named `TomLogger.*` | The logger that is reporting the failure. |
+| This library's formatting functions | They record the act of formatting. |
+
+An application built on the framework has a layer of its own that is noise in
+exactly the same way — a request pipeline, a mediator, a generated client.
+Register it on `tomStackTraceNoise` at startup:
+
+```dart
+void main() {
+  tomStackTraceNoise.addPackage('my_framework');       // a package you depend on
+  tomStackTraceNoise.addMemberPrefix('MyPipeline.');   // a layer compiled in
+  runMyApp();
+}
+```
+
+The list is **process-wide** rather than a parameter on each function, and that
+is the point: the traces worth trimming are mostly not formatted from the
+application's own call sites. `TomException.printStackTrace` and the logger
+format their own, and a per-call parameter would reach neither.
+
+`addPredicate` takes the general form, `bool Function(Frame frame)`, when
+neither shortcut fits — `Frame` is re-exported from this library, so no
+separate `stack_trace` dependency is needed. `clear()` removes every
+registration and is meant for a test's teardown; a process that registers at
+startup should not call it, since it would also drop a registration made by a
+library it depends on.
+
+Two properties are worth stating plainly:
+
+- **Folding collapses, it does not delete.** A contiguous run of matching
+  frames becomes one summary frame carrying the outermost member of the run,
+  without a line or column — the same thing the built-in `shelf` rule does. A
+  fifteen-frame `shelf` run reads as one line; it does not vanish.
+- **A registration can only add.** There is no way to say "not noise", so a
+  frame the built-in set already claimed stays folded.
+
+A registered predicate that throws is treated as answering `false` and the
+frame is kept. These functions run while some *other* failure is being
+reported, and letting a predicate's failure out would lose that report in order
+to complain about the machinery describing it. It is not logged either — the
+logger formats its own traces through the same classification, so reporting
+there would re-enter it. The visible symptom is a trace that is longer than the
+author expected, which is the safe direction to be wrong in.
 
 ### Time Zone Formatting
 
@@ -476,6 +604,20 @@ throw TomException('storage.connect.unreachable', 'msg', autoLog: true);
 // Disable for expected/handled errors
 throw TomException('signup.validate.invalid_email', 'msg', autoLog: false);
 ```
+
+**Decide it where you raise it.** `autoLog` is read in exactly one place — the
+constructor body that writes the two `EXCEPTION` log lines — so by the time
+anyone holds the exception the decision has been carried out. The field is
+`final` and reports what happened; there is no later moment at which turning it
+on could produce a log record.
+
+It stays readable because a server returns it in the error envelope, so a client
+can tell whether the failure was logged on the far side.
+
+`serverCallError` is `final` for a related reason: an exception is a report of
+something that has already happened, and a payload that can be swapped after the
+throw would let a handler five frames up read a description that the code
+between it and the throw site had rewritten.
 
 ---
 

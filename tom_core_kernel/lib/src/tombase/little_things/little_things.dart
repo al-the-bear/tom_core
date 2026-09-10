@@ -30,6 +30,12 @@ import 'dart:async';
 import 'package:stack_trace/stack_trace.dart';
 import 'package:tom_basics/tom_basics.dart';
 
+// [TomStackTraceNoise.addPredicate] hands a [Frame] to consumer code, so the
+// type is part of this library's contract and is re-exported with it. Without
+// this a consumer would have to take a direct dependency on `stack_trace` to
+// write the callback the kernel asked it for.
+export 'package:stack_trace/stack_trace.dart' show Frame;
+
 // =============================================================================
 // ZONE UTILITIES
 // =============================================================================
@@ -131,11 +137,11 @@ Object? getObjectFromCurrentZone(Type t) {
 // CHECKED EXECUTION
 // =============================================================================
 
-/// Runs an async function with error transformation.
+/// Runs an async function, translating any [Exception] it throws.
 ///
-/// Executes [body] and catches any errors, transforming them using [onError]
-/// before rethrowing. This is useful for wrapping low-level errors in
-/// domain-specific exceptions.
+/// Executes [body] and catches every [Exception], transforming it with
+/// [onError] before throwing the result. This is useful for wrapping a
+/// low-level failure in a domain-specific exception.
 ///
 /// ## Example
 ///
@@ -151,14 +157,64 @@ Object? getObjectFromCurrentZone(Type t) {
 /// );
 /// ```
 ///
-/// [onError] returns `Object`, so any type will do; returning a [TomException]
-/// is what carries its `error` and `stacktrace` arguments forward rather than
-/// discarding them.
+/// [onError] *returns* the replacement rather than throwing it, which is what
+/// makes it impossible to write a transform that swallows the failure: a
+/// handler that falls off its end does not compile.
+///
+/// It returns an [Exception], so the replacement is something a caller can
+/// catch by type. `Object` would have let a transform return `42`, and the
+/// wrapper would then have thrown the integer — a failure no
+/// `on SomeException catch` clause can ever match, reaching the top of the
+/// isolate as an unhandled `int`. The narrower type is also the symmetric half
+/// of the rule below: this translates an [Exception] into an [Exception], and
+/// neither manufactures a bug nor hides one.
+///
+/// Returning a [TomException] is what carries the `error` and `stacktrace`
+/// arguments forward rather than discarding them.
+///
+/// ## An `Error` is not translated
+/// Only an [Exception] reaches [onError]. An [Error] — `StateError`,
+/// `RangeError`, `TypeError`, `StackOverflowError` — propagates unchanged, and
+/// so does any other object a body throws.
+///
+/// The distinction is Dart's own: an `Exception` reports a condition the
+/// program is expected to handle, an `Error` reports a fault in the program
+/// itself. Translating the second kind turns a bug into a domain failure the
+/// caller then treats as an ordinary outcome — `.first` on an empty list
+/// becomes "not found", a bad cast becomes "the request was invalid" — and the
+/// defect is reported at the wrong layer, under a message that describes
+/// something else. A wrapper this small should not be able to hide a bug.
+///
+/// So a body that means "no such thing" has to say so:
+///
+/// ```dart
+/// // Wrong: `.first` throws StateError, which is a bug, and now propagates.
+/// final one = await runChecked(
+///   () async => (await repository.find(query)).first,
+///   (error, stack) => TomException('catalog.find.failed', 'Lookup failed'),
+/// );
+///
+/// // Right: absence is a condition, so it is thrown as one.
+/// final other = await runChecked(
+///   () async {
+///     final rows = await repository.find(query);
+///     if (rows.isEmpty) {
+///       throw TomException('catalog.find.no_match', 'Nothing matched $query');
+///     }
+///     return rows.first;
+///   },
+///   (error, stack) => TomException('catalog.find.failed', 'Lookup failed'),
+/// );
+/// ```
+///
+/// A caller that genuinely must translate an `Error` should catch it where it
+/// happens, with an explicit `on Error`, which says so at the point it is
+/// decided rather than everywhere this wrapper is used.
 ///
 /// ## Parameters
 ///
 /// - [body]: The async function to execute.
-/// - [onError]: Transform function called when [body] throws.
+/// - [onError]: Transform function called when [body] throws an [Exception].
 ///
 /// ## Returns
 ///
@@ -166,22 +222,26 @@ Object? getObjectFromCurrentZone(Type t) {
 ///
 /// ## Throws
 ///
-/// The transformed error from [onError] if [body] throws.
+/// The [Exception] [onError] returns, when [body] throws an [Exception]; and
+/// anything else [body] throws, unaltered.
 Future<T> runChecked<T>(
   Future<T> Function() body,
-  Object Function(Object error, StackTrace stacktrace) onError,
+  Exception Function(Object error, StackTrace stacktrace) onError,
 ) async {
   try {
     return await body();
-  } catch (error, stacktrace) {
+  } on Exception catch (error, stacktrace) {
     throw onError(error, stacktrace);
   }
 }
 
 /// Synchronous version of [runChecked].
 ///
-/// Executes [body] synchronously and catches any errors, transforming them
-/// using [onError] before rethrowing.
+/// Executes [body] synchronously and catches every [Exception], transforming it
+/// with [onError] into another [Exception] before throwing that. An [Error],
+/// and anything else that is not an [Exception], propagates unchanged — see
+/// [runChecked] for why, and for why [onError] cannot return an arbitrary
+/// object.
 ///
 /// ## Example
 ///
@@ -198,11 +258,11 @@ Future<T> runChecked<T>(
 /// ```
 T runCheckedSync<T>(
   T Function() body,
-  Object Function(Object error, StackTrace stacktrace) onError,
+  Exception Function(Object error, StackTrace stacktrace) onError,
 ) {
   try {
     return body();
-  } catch (error, stacktrace) {
+  } on Exception catch (error, stacktrace) {
     throw onError(error, stacktrace);
   }
 }
@@ -267,11 +327,139 @@ const _formatterMembers = {
 /// Whether [frame] belongs to this library's own stack-trace formatting.
 bool _isFormatterFrame(Frame frame) => _formatterMembers.contains(frame.member);
 
+/// Classifies a stack frame as noise for the formatting functions in this
+/// library.
+///
+/// Four groups are folded by default. Each describes machinery rather than the
+/// failure, so none of them can be unregistered:
+///
+/// | Folded | Why |
+/// | ------ | --- |
+/// | Dart core-library frames (`frame.isCore`) | The runtime's own plumbing. |
+/// | `package:shelf` frames | The HTTP server the request arrived through. |
+/// | Members named `TomLogger.*` | The logger that is reporting the failure. |
+/// | This library's formatting functions | They record the act of formatting, never the failure. |
+///
+/// An application built on this framework has a layer of its own that is noise
+/// in the same way, and folding it needs no change here. Register a predicate
+/// at startup and every trace formatted anywhere in the process folds it —
+/// including the ones [TomException] and the logger format for themselves,
+/// which a per-call parameter could never reach:
+///
+/// ```dart
+/// void main() {
+///   tomStackTraceNoise.addPackage('my_framework');
+///   tomStackTraceNoise.addMemberPrefix('MyRequestPipeline.');
+///   runMyApp();
+/// }
+/// ```
+///
+/// Registration is a startup act. The list is process-wide and is read while a
+/// trace is being formatted, so a registration made mid-flight changes what a
+/// trace formatted concurrently shows.
+///
+/// A registered predicate only *adds* to the fold. It cannot rescue a frame the
+/// built-in set already claimed, which is why the two are asked in that order
+/// and why there is no way to say "not noise".
+class TomStackTraceNoise {
+  final List<bool Function(Frame frame)> _additional =
+      <bool Function(Frame frame)>[];
+
+  /// The predicates registered on top of the built-in set, in registration
+  /// order.
+  ///
+  /// Unmodifiable: register through [addPredicate], [addPackage] or
+  /// [addMemberPrefix] so that every registration goes through one place.
+  List<bool Function(Frame frame)> get predicates =>
+      List<bool Function(Frame frame)>.unmodifiable(_additional);
+
+  /// Folds every frame [predicate] accepts, in addition to the built-in set.
+  ///
+  /// The general form. [addPackage] and [addMemberPrefix] are the two shapes
+  /// that cover nearly every case, and neither requires the caller to name a
+  /// [Frame] at all.
+  void addPredicate(bool Function(Frame frame) predicate) {
+    _additional.add(predicate);
+  }
+
+  /// Folds every frame belonging to [package].
+  ///
+  /// [Frame.package] is the package name without the `package:` scheme, and is
+  /// `null` for a frame from a `file:` or `dart:` URI. So this matches a layer
+  /// resolved as a package — which is how a framework a consumer depends on
+  /// appears in its traces.
+  void addPackage(String package) {
+    addPredicate((Frame frame) => frame.package == package);
+  }
+
+  /// Folds every frame whose member name starts with [prefix].
+  ///
+  /// The shape the built-in `TomLogger.` rule takes, and the one that reaches a
+  /// layer compiled into the application itself, where there is no package name
+  /// to match on. Include the trailing `.` to match a class's members without
+  /// also matching a class whose name merely starts the same way.
+  void addMemberPrefix(String prefix) {
+    addPredicate((Frame frame) => frame.member?.startsWith(prefix) ?? false);
+  }
+
+  /// Removes every registered predicate. The built-in set is unaffected.
+  ///
+  /// For a test that registered one and must not leak it into the next. A
+  /// process that registers at startup has no reason to call it — and should
+  /// not, since it would also drop a registration made by a library it depends
+  /// on.
+  void clear() {
+    _additional.clear();
+  }
+
+  /// Whether [frame] is noise and should be folded away.
+  ///
+  /// A registered predicate that throws is treated as answering `false`, and
+  /// the frame is kept. These functions run while some *other* failure is being
+  /// reported, and letting a predicate's failure out would lose that report in
+  /// order to complain about the machinery describing it — the same trade this
+  /// library already makes for an out-of-range depth and for a `stack` that is
+  /// not a [StackTrace]. Nor is it logged: the logger formats its own traces
+  /// through this very function, so reporting here would re-enter it.
+  ///
+  /// Keeping the frame is the safe direction. An unfolded frame makes a trace
+  /// longer, which the author of the broken predicate will see; folding on a
+  /// failure would hide frames for a reason no one could observe.
+  bool isNoise(Frame frame) {
+    if (frame.isCore ||
+        frame.package == 'shelf' ||
+        _isFormatterFrame(frame) ||
+        (frame.member?.startsWith("TomLogger.") ?? false)) {
+      return true;
+    }
+    for (final bool Function(Frame frame) predicate in _additional) {
+      bool matched = false;
+      try {
+        matched = predicate(frame);
+      } on Object {
+        matched = false;
+      }
+      if (matched) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+/// The process-wide noise classification every formatter in this library uses.
+///
+/// One instance rather than a parameter on each function, because the callers
+/// that most need the classification are not the application's own: a trace
+/// formatted by [TomException] or by the logger takes the same path, and a
+/// per-call parameter would reach neither. See [TomStackTraceNoise].
+final TomStackTraceNoise tomStackTraceNoise = TomStackTraceNoise();
+
 /// Core implementation for processing stack trace frames.
 ///
-/// Folds and filters stack frames to remove noise from core libraries,
-/// shelf, TomLogger internals and this library's own formatting functions,
-/// then flattens every segment of the async chain into one list.
+/// Folds and filters stack frames to remove noise — the built-in set plus
+/// whatever a consumer registered on [tomStackTraceNoise] — then flattens
+/// every segment of the async chain into one list.
 ///
 /// ## Parameters
 ///
@@ -307,14 +495,7 @@ List<String> _processStackFrames([StackTrace? s, int depth = -1]) {
   // `Completer.completeError`), so it reaches this function through ordinary
   // use, not only through contrived input. `expand` yields nothing for it.
   final frames = Chain.forTrace(stackTrace)
-      .foldFrames(
-        (frame) =>
-            frame.isCore ||
-            frame.package == 'shelf' ||
-            _isFormatterFrame(frame) ||
-            (frame.member?.startsWith("TomLogger.") ?? false),
-        terse: true,
-      )
+      .foldFrames(tomStackTraceNoise.isNoise, terse: true)
       .traces
       .expand((trace) => trace.frames)
       // Folding *collapses* a contiguous run of matching frames into one; it

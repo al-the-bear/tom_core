@@ -15,7 +15,11 @@ dependencies:
   # TomRuntime.reset() (clears the process-global environment/platform registries
   # so the runtime samples isolate themselves in the single-process master
   # runner). 1.0.1 was the TomLogger push/pop log-level stack fix.
-  tom_basics: ">=3.0.0"
+  # Floor 3.1.0: TomBaseException.renderStackTrace, the seam TomException
+  # overrides so one renderer produces both the `stackTrace` string the base
+  # constructor stores and the trace `printStackTrace` logs. Before it the two
+  # were formatted by different algorithms with different fold sets.
+  tom_basics: ">=3.1.0"
   # Floor 1.1.0: earlier versions drew secure random bytes with an exclusive
   # bound of 255, so no byte could be 0xFF — a bias inherited by every RSA key
   # pair and every password salt, both of which this package re-exports.

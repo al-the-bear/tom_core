@@ -17,6 +17,7 @@ import '01_utility_functions_example.dart' as utility_functions;
 import '02_zone_helpers_example.dart' as zone_helpers;
 import '03_tom_exception_example.dart' as tom_exception;
 import '04_formatting_and_exceptions_example.dart' as formatting_exceptions;
+import '05_stack_trace_noise_example.dart' as stack_trace_noise;
 
 /// Standalone entry point for running little things examples.
 Future<void> main() async {
@@ -42,6 +43,9 @@ Future<void> run() async {
 
   await formatting_exceptions.run();
   print('✓ Formatting and exception examples passed\n');
+
+  stack_trace_noise.run();
+  print('✓ Stack trace noise examples passed\n');
 
   print('=' * 60);
   print('All little_things examples completed successfully!');

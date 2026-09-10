@@ -245,23 +245,28 @@ class AsyncCheckedExecutionExample {
 }
 
 // =============================================================================
-// EXAMPLE 7: Async Checked Execution with Error
+// EXAMPLE 7: Async Checked Execution — an Exception is translated, an Error is
+// not
 // =============================================================================
 
 class AsyncCheckedErrorExample {
   static String? asyncErrorKey;
   static bool asyncErrorCaught = false;
+  static Type? propagatedErrorType;
+  static bool handlerRanForError = false;
 
   static Future<void> example7AsyncCheckedError() async {
+    // An Exception reports a condition the caller is expected to handle, so it
+    // is what `onError` translates.
     try {
       await runChecked<int>(
         () async {
           await Future.delayed(Duration(milliseconds: 10));
-          throw StateError('Async state error');
+          throw TimeoutException('the server did not answer');
         },
         (error, stacktrace) => TomException(
-          'sample.async_operation.state_error',
-          'State error in async operation',
+          'sample.async_operation.timed_out',
+          'The async operation timed out',
           rootException: error,
         ),
       );
@@ -271,10 +276,34 @@ class AsyncCheckedErrorExample {
     }
 
     assert(
-      asyncErrorKey == 'sample.async_operation.state_error',
+      asyncErrorKey == 'sample.async_operation.timed_out',
       'Error key should match',
     );
     assert(asyncErrorCaught, 'Async error should be caught');
+
+    // An Error reports a fault in the program itself. Translating it would turn
+    // a bug into a domain failure the caller then treats as an ordinary
+    // outcome, so it propagates untouched and `onError` is never called.
+    try {
+      await runChecked<int>(
+        () async {
+          await Future.delayed(Duration(milliseconds: 10));
+          throw StateError('a bug in this sample');
+        },
+        (error, stacktrace) {
+          handlerRanForError = true;
+          return TomException('sample.async_operation.wrapped', 'Wrapped');
+        },
+      );
+    } on StateError catch (e) {
+      propagatedErrorType = e.runtimeType;
+    }
+
+    assert(
+      propagatedErrorType == StateError,
+      'An Error must reach the caller as itself',
+    );
+    assert(!handlerRanForError, 'onError must not see an Error');
   }
 }
 
@@ -393,9 +422,17 @@ Future<void> run() async {
   print('');
 
   await AsyncCheckedErrorExample.example7AsyncCheckedError();
-  print('7. An error thrown inside the awaited body arrives as TomException:');
-  print('   exception key    : ${AsyncCheckedErrorExample.asyncErrorKey}');
-  print('   error caught     : ${AsyncCheckedErrorExample.asyncErrorCaught}');
+  print('7. An Exception is translated, an Error is left alone:');
+  print('   exception key    : \${AsyncCheckedErrorExample.asyncErrorKey}');
+  print('   error caught     : \${AsyncCheckedErrorExample.asyncErrorCaught}');
+  print(
+    '   Error propagated : '
+    '\${AsyncCheckedErrorExample.propagatedErrorType}',
+  );
+  print(
+    '   onError ran      : '
+    '\${AsyncCheckedErrorExample.handlerRanForError}',
+  );
   print('');
 
   ZoneInheritanceExample.example8ZoneInheritance();

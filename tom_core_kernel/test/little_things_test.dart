@@ -1,5 +1,8 @@
 import 'package:test/test.dart';
 import 'dart:async';
+import 'dart:io';
+
+import 'package:stack_trace/stack_trace.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -333,15 +336,152 @@ void main() {
       expect(result, equals(42));
     });
 
-    test('should work with async errors', () async {
+    test('should work with an exception raised after an await', () async {
       await expectLater(
         runChecked(
           () => Future.delayed(
             Duration(milliseconds: 10),
-            () => throw StateError('async error'),
+            () => throw FormatException('async failure'),
           ),
           (error, stack) => _CustomException('async transformed'),
         ),
+        throwsA(isA<_CustomException>()),
+      );
+    });
+  });
+
+  group('runChecked and Error', () {
+    // Dart's own distinction: an `Exception` reports a condition the program is
+    // expected to handle, an `Error` reports a fault in the program itself.
+    // Translating the second kind turns a bug into a domain failure the caller
+    // then treats as an ordinary outcome, reported at the wrong layer under a
+    // message describing something else.
+
+    test('an Error propagates instead of reaching onError', () async {
+      var handlerRan = false;
+
+      await expectLater(
+        runChecked(() async => throw StateError('a bug'), (error, stack) {
+          handlerRan = true;
+          return _CustomException('wrapped');
+        }),
+        throwsA(isA<StateError>()),
+      );
+      expect(handlerRan, isFalse);
+    });
+
+    test('an Error raised after an await propagates too', () async {
+      await expectLater(
+        runChecked(
+          () => Future.delayed(
+            Duration(milliseconds: 10),
+            () => throw RangeError('index out of range'),
+          ),
+          (error, stack) => _CustomException('wrapped'),
+        ),
+        throwsA(isA<RangeError>()),
+      );
+    });
+
+    test('the sync form refuses an Error the same way', () {
+      var handlerRan = false;
+
+      expect(
+        () => runCheckedSync<int>(() => throw ArgumentError('a bug'), (
+          error,
+          stack,
+        ) {
+          handlerRan = true;
+          return _CustomException('wrapped');
+        }),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(handlerRan, isFalse);
+    });
+
+    test('a thrown object that is neither propagates as well', () {
+      // `on Exception` states the contract in the type. Anything else a body
+      // throws is left alone rather than being given a second meaning here.
+      expect(
+        () => runCheckedSync<int>(
+          () => throw 'a bare string',
+          (error, stack) => _CustomException('wrapped'),
+        ),
+        throwsA(isA<String>()),
+      );
+    });
+
+    test('an Exception thrown beside an Error is still translated', () {
+      // The narrowing must not have cost the wrapper its purpose.
+      expect(
+        () => runCheckedSync<int>(
+          () => throw FormatException('bad input'),
+          (error, stack) => _CustomException('wrapped'),
+        ),
+        throwsA(isA<_CustomException>()),
+      );
+    });
+
+    test('the replacement is catchable by its own type', () {
+      // The point of translating at all. `onError` returns an `Exception`, so
+      // whatever it produces is something a caller can name in an `on` clause.
+      expect(
+        () => runCheckedSync<int>(
+          () => throw FormatException('bad input'),
+          (error, stack) => TomException('catalog.parse.invalid', 'Invalid'),
+        ),
+        throwsA(
+          isA<TomException>().having(
+            (e) => e.key,
+            'key',
+            'catalog.parse.invalid',
+          ),
+        ),
+      );
+    });
+
+    test('onError is declared to return an Exception', () {
+      // `Object` let a transform return `42`, and the wrapper then threw the
+      // integer — a failure no `on SomeException catch` clause can ever match,
+      // reaching the top of the isolate as an unhandled `int`. The narrowing
+      // is the compiler's, so it is asserted against the declarations: this
+      // fails the moment either signature widens again.
+      const path = 'lib/src/tombase/little_things/little_things.dart';
+      final source = File(path).readAsStringSync();
+
+      expect(
+        File(path).existsSync(),
+        isTrue,
+        reason: 'Expected to find $path relative to ${Directory.current.path}',
+      );
+      expect(
+        source,
+        contains(
+          '  Exception Function(Object error, StackTrace stacktrace) onError,',
+        ),
+      );
+      expect(
+        source,
+        isNot(
+          contains(
+            '  Object Function(Object error, StackTrace stacktrace) onError,',
+          ),
+        ),
+      );
+    });
+
+    test('absence is a condition, so a body says so with an Exception', () {
+      // The pattern the narrowing asks a caller to write instead of relying on
+      // `.first` throwing StateError for an empty result.
+      List<String> rows = const [];
+
+      expect(
+        () => runCheckedSync<String>(() {
+          if (rows.isEmpty) {
+            throw TomException('catalog.find.no_match', 'Nothing matched');
+          }
+          return rows.first;
+        }, (error, stack) => _CustomException('not found')),
         throwsA(isA<_CustomException>()),
       );
     });
@@ -369,7 +509,7 @@ void main() {
     test('should pass original error to onError handler', () {
       Object? capturedError;
       try {
-        runCheckedSync(() => throw ArgumentError('bad argument'), (
+        runCheckedSync(() => throw FormatException('bad input'), (
           error,
           stack,
         ) {
@@ -378,7 +518,7 @@ void main() {
         });
       } catch (_) {}
 
-      expect(capturedError, isA<ArgumentError>());
+      expect(capturedError, isA<FormatException>());
     });
 
     test('should pass stack trace to onError handler', () {
@@ -517,6 +657,46 @@ void main() {
       expect(traceString.split('\n'), hasLength(2));
       expect(traceList[0], contains('_asyncLevelInnermost'));
       expect(traceList[1], contains('_asyncLevelMiddle'));
+    });
+
+    test(
+      'an exception carries every segment in its stackTrace string',
+      () async {
+        // The two representations are rendered by one formatter, so the string
+        // an exception stores has to carry the whole chain too — not only the
+        // traces the formatting functions are asked for by name. This is the
+        // path an `autoLog` line takes, and the one a reader of
+        // `EXCEPTION_STACKTRACE` sees.
+        final stack = await _captureAsyncChainStack();
+        final exception = TomException(
+          'test.async.chain',
+          'boom',
+          stack: stack,
+        );
+
+        expect(exception.stackTrace, contains('_asyncLevelInnermost'));
+        expect(exception.stackTrace, contains('_asyncLevelMiddle'));
+        expect(exception.stackTrace, contains('_asyncLevelOuter'));
+        expect(exception.stackTrace, tomGetStackTrace(exception.stack));
+      },
+    );
+
+    test('the log path reports every segment too', () async {
+      // The three read-back forms share `_processStackFrames`, but the logging
+      // path composes its own line around the result, and nothing else covers
+      // a multi-segment trace through it.
+      final captured = _CapturingLogOutput();
+      final previousOutput = tomLog.logOutput;
+      tomLog.logOutput = captured;
+      addTearDown(() => tomLog.logOutput = previousOutput);
+
+      tomPrintStackTrace(await _captureAsyncChainStack(), message: 'failed');
+
+      final logged = captured.messages.last;
+      expect(logged, startsWith('failed'));
+      expect(logged, contains('_asyncLevelInnermost'));
+      expect(logged, contains('_asyncLevelMiddle'));
+      expect(logged, contains('_asyncLevelOuter'));
     });
 
     test('a synchronous trace is unaffected by flattening', () {
@@ -668,6 +848,223 @@ void main() {
   // =========================================================================
   // FORMATTING UTILITIES
   // =========================================================================
+
+  group('tomStackTraceNoise', () {
+    // The built-in fold names core frames, `shelf`, `TomLogger.*` and this
+    // library's own formatting functions. An application built on the
+    // framework has a layer of its own that is noise in exactly the same way,
+    // and the classification is process-wide rather than a parameter because
+    // the formatters that matter most — the ones TomException and the logger
+    // call for themselves — are not reached from the application's call sites.
+
+    final consumerTrace = Trace.parse(
+      '#0      MyFramework.dispatch (package:my_framework/dispatch.dart:10:5)\n'
+      '#1      MyFramework.route (package:my_framework/dispatch.dart:20:5)\n'
+      '#2      appHandler (package:my_app/handler.dart:22:7)\n'
+      '#3      MyPipeline.run (package:my_app/pipeline.dart:5:3)\n'
+      '#4      main (package:my_app/main.dart:3:3)\n',
+    );
+
+    setUp(() {
+      addTearDown(tomStackTraceNoise.clear);
+    });
+
+    test('a consumer package is kept in full by default', () {
+      final frames = tomGetStackTraceAsList(consumerTrace);
+
+      expect(frames, hasLength(5));
+      expect(frames[0], contains('MyFramework.dispatch'));
+      expect(frames[0], contains('dispatch.dart 10:5'));
+      expect(frames[1], contains('MyFramework.route'));
+    });
+
+    test('addPackage collapses a run of that package into one frame', () {
+      tomStackTraceNoise.addPackage('my_framework');
+
+      final frames = tomGetStackTraceAsList(consumerTrace);
+
+      // Folding collapses a contiguous run into a single summary frame; it
+      // does not delete it, which is exactly what the built-in `shelf` rule
+      // does. The summary keeps the outermost member of the run and loses the
+      // line and column, because it no longer stands for one line of source.
+      expect(frames, hasLength(4));
+      expect(frames.first, contains('MyFramework.route'));
+      expect(frames.first, contains('package:my_framework l:null c:null'));
+      expect(frames.first, isNot(contains('dispatch.dart')));
+
+      // The application's own frames are untouched.
+      expect(frames[1], contains('appHandler'));
+      expect(frames[1], contains('handler.dart 22:7'));
+
+      // The package name is matched whole. A different package that merely
+      // starts with the same characters is a different package.
+      expect(
+        tomStackTraceNoise.isNoise(
+          Frame.parseVM('#0      X.y (package:my_framework_extra/x.dart:1:1)'),
+        ),
+        isFalse,
+      );
+    });
+
+    test('addMemberPrefix folds a layer that has no package of its own', () {
+      tomStackTraceNoise.addMemberPrefix('MyPipeline.');
+
+      final frames = tomGetStackTraceAsList(consumerTrace);
+
+      expect(frames, hasLength(5));
+      expect(frames[3], contains('MyPipeline.run'));
+      expect(frames[3], isNot(contains('pipeline.dart 5:3')));
+      // Everything around it is untouched — the fold is per frame, not per
+      // trace.
+      expect(frames[2], contains('handler.dart 22:7'));
+      expect(frames[4], contains('main.dart 3:3'));
+
+      // The match is on the *start* of the member name, so a class whose name
+      // merely ends with the prefix is not swept up with it.
+      expect(
+        tomStackTraceNoise.isNoise(
+          Frame.parseVM('#0      MyPipeline.run (package:my_app/p.dart:1:1)'),
+        ),
+        isTrue,
+      );
+      tomStackTraceNoise.clear();
+      tomStackTraceNoise.addMemberPrefix('Pipeline.');
+      expect(
+        tomStackTraceNoise.isNoise(
+          Frame.parseVM('#0      MyPipeline.run (package:my_app/p.dart:1:1)'),
+        ),
+        isFalse,
+      );
+    });
+
+    test('addPredicate takes any classification of a frame', () {
+      tomStackTraceNoise.addPredicate(
+        (Frame frame) => frame.uri.path.endsWith('/handler.dart'),
+      );
+
+      final frames = tomGetStackTraceAsList(consumerTrace);
+
+      expect(frames[2], contains('appHandler'));
+      expect(frames[2], isNot(contains('handler.dart 22:7')));
+    });
+
+    test('every registration is asked, in order', () {
+      tomStackTraceNoise.addPackage('my_framework');
+      tomStackTraceNoise.addMemberPrefix('MyPipeline.');
+
+      final frames = tomGetStackTraceAsList(consumerTrace);
+
+      expect(frames, hasLength(4));
+      expect(frames.first, contains('MyFramework.route'));
+      expect(frames[2], isNot(contains('pipeline.dart 5:3')));
+      expect(tomStackTraceNoise.predicates, hasLength(2));
+    });
+
+    test('predicates is a snapshot the caller cannot write through', () {
+      tomStackTraceNoise.addPackage('my_framework');
+
+      expect(
+        () => tomStackTraceNoise.predicates.add((Frame frame) => true),
+        throwsUnsupportedError,
+      );
+      expect(tomStackTraceNoise.predicates, hasLength(1));
+    });
+
+    test('clear restores the default classification', () {
+      tomStackTraceNoise.addPackage('my_framework');
+      expect(tomGetStackTraceAsList(consumerTrace), hasLength(4));
+
+      tomStackTraceNoise.clear();
+
+      expect(tomStackTraceNoise.predicates, isEmpty);
+      expect(tomGetStackTraceAsList(consumerTrace), hasLength(5));
+    });
+
+    test('clear leaves the built-in set standing', () {
+      tomStackTraceNoise.clear();
+
+      expect(
+        tomStackTraceNoise.isNoise(
+          Frame.parseVM('#0      Object.noSuchMethod (dart:core-patch/x.dart)'),
+        ),
+        isTrue,
+      );
+      expect(
+        tomStackTraceNoise.isNoise(
+          Frame.parseVM(
+            '#0      Server.handle (package:shelf/src/server.dart:9:1)',
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        tomStackTraceNoise.isNoise(
+          Frame.parseVM(
+            '#0      TomLogger.error (package:tom_basics/log.dart:9:1)',
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        tomStackTraceNoise.isNoise(
+          Frame.parseVM(
+            '#0      appHandler (package:my_app/handler.dart:22:7)',
+          ),
+        ),
+        isFalse,
+      );
+    });
+
+    test('a predicate that throws keeps the frame instead of the failure', () {
+      // These functions run while some *other* failure is being reported.
+      // Letting a predicate's failure out would lose that report in order to
+      // complain about the machinery describing it.
+      tomStackTraceNoise.addPredicate(
+        (Frame frame) => throw StateError('broken predicate'),
+      );
+
+      final frames = tomGetStackTraceAsList(consumerTrace);
+
+      expect(frames, hasLength(5));
+      expect(frames.first, contains('dispatch.dart 10:5'));
+    });
+
+    test('a later predicate still runs after one throws', () {
+      tomStackTraceNoise.addPredicate(
+        (Frame frame) => throw StateError('broken predicate'),
+      );
+      tomStackTraceNoise.addPackage('my_framework');
+
+      expect(tomGetStackTraceAsList(consumerTrace), hasLength(4));
+    });
+
+    test('a registration reaches a formatter the caller never calls', () {
+      // The point of the process-wide list: the traces that matter most are
+      // formatted by the framework, not by the application.
+      final captured = _CapturingLogOutput();
+      final previousOutput = tomLog.logOutput;
+      tomLog.logOutput = captured;
+      addTearDown(() => tomLog.logOutput = previousOutput);
+
+      tomStackTraceNoise.addPackage('my_framework');
+      tomPrintStackTrace(consumerTrace);
+
+      final logged = captured.messages.last;
+      expect(logged, contains('MyFramework.route'));
+      expect(logged, isNot(contains('dispatch.dart 10:5')));
+    });
+
+    test('the string and list formatters agree with each other', () {
+      tomStackTraceNoise.addPackage('my_framework');
+
+      final asList = tomGetStackTraceAsList(consumerTrace);
+      final (asString, fromTuple) = tomGetStackTraceAsTuple(consumerTrace);
+
+      expect(tomGetStackTrace(consumerTrace), asList.join('\n'));
+      expect(fromTuple, asList);
+      expect(asString, asList.join('\n'));
+    });
+  });
 
   group('convertMinutesToUtcOffset', () {
     group('UTC (zero offset)', () {
@@ -1131,6 +1528,35 @@ void main() {
         );
         expect(trace, contains('${exception.uuid}-req-77'));
       });
+
+      test('reports what the constructor did, and stays that way', () {
+        // The field is a record of what happened, not a switch. It is read in
+        // exactly one place — the constructor body that writes the two log
+        // lines — so by the time anyone holds the exception the decision has
+        // been carried out and the field can only describe it.
+        final logged = TomException('test.error.on', 'boom', autoLog: true);
+        final silent = TomException('test.error.off', 'quiet');
+
+        expect(logged.autoLog, isTrue);
+        expect(silent.autoLog, isFalse);
+        expect(
+          captured.messages.where((m) => m.contains('test.error.off')),
+          isEmpty,
+        );
+      });
+
+      test('is declared final, so it cannot promise a control it lacks', () {
+        // A settable field advertised something it could not do: `e.autoLog =
+        // true` produced no log line, because the only read is the one the
+        // constructor already made. The guarantee is the compiler's, so
+        // nothing at runtime can observe it being lost — it is asserted
+        // against the declaration instead, which is the only way the defect
+        // could come back.
+        expect(
+          _fieldDeclarationOfTomException('autoLog'),
+          'final bool autoLog;',
+        );
+      });
     });
 
     // -----------------------------------------------------------------------
@@ -1156,11 +1582,94 @@ void main() {
         expect(exception.serverCallError!.statusCode, equals(404));
         expect(exception.serverCallError!.reasonPhrase, equals('Not Found'));
       });
+
+      test('is declared final, so the report cannot be edited in flight', () {
+        // An exception is a report of something that has already happened. A
+        // payload that can be swapped after the throw would let a handler five
+        // frames up read a description of the failure that the code between it
+        // and the throw site had rewritten.
+        expect(
+          _fieldDeclarationOfTomException('serverCallError'),
+          'final TomServerCallError? serverCallError;',
+        );
+      });
     });
 
     // -----------------------------------------------------------------------
     // printStackTrace
     // -----------------------------------------------------------------------
+    group('one renderer serves both representations', () {
+      // An exception carries its stack twice: as the `stack` trace and as the
+      // `stackTrace` string the base constructor derives from it. Both come
+      // from one formatter, because `TomException` overrides the
+      // `renderStackTrace` seam `tom_basics` exposes. Left to the base's own
+      // narrow renderer the string would fold core frames only and write each
+      // frame differently from `printStackTrace`, so one exception would
+      // describe its own stack two ways.
+
+      final handed = StackTrace.fromString(
+        '#0      MyFramework.dispatch (package:my_framework/dispatch.dart:10:5)\n'
+        '#1      appHandler (package:my_app/handler.dart:22:7)\n'
+        '#2      main (package:my_app/main.dart:3:3)\n',
+      );
+
+      setUp(() {
+        addTearDown(tomStackTraceNoise.clear);
+      });
+
+      test('the string equals what the formatter renders from the trace', () {
+        final exception = TomException('seam.agree.given', 'x', stack: handed);
+
+        expect(exception.stackTrace, tomGetStackTrace(exception.stack));
+      });
+
+      test('the string carries this framework\'s frame format', () {
+        final exception = TomException('seam.format.given', 'x', stack: handed);
+
+        // `tom_basics` renders a frame with `Frame.toString()`, which has no
+        // `l:`/`c:` fields and does not repeat the library. Seeing them is how
+        // the test tells which renderer produced the string.
+        expect(exception.stackTrace, contains('l:10 c:5'));
+        expect(
+          exception.stackTrace.split('\n').first,
+          contains('MyFramework.dispatch'),
+        );
+      });
+
+      test('this framework\'s fold applies to the string too', () {
+        // The base renderer folds core frames only, so a registration made for
+        // this framework would have reached `printStackTrace` and left the
+        // stored string untouched.
+        tomStackTraceNoise.addPackage('my_framework');
+
+        final exception = TomException('seam.fold.given', 'x', stack: handed);
+
+        expect(exception.stackTrace, isNot(contains('dispatch.dart 10:5')));
+        expect(exception.stackTrace, contains('MyFramework.dispatch'));
+        expect(exception.stackTrace, tomGetStackTrace(exception.stack));
+      });
+
+      test('an implicit capture keeps both in step after trimming', () {
+        // The constructor frames are dropped from `stack` and the string is
+        // re-derived through the same seam, so the two cannot drift apart at
+        // the one point the class rewrites them.
+        final exception = _implicitlyCapturingCaller();
+
+        expect(exception.stackTrace, tomGetStackTrace(exception.stack));
+        expect(
+          exception.stackTrace.split('\n').first,
+          contains('_implicitlyCapturingCaller'),
+        );
+      });
+
+      test('a subclass keeps the override', () {
+        final exception = _SeamSubclass('seam.subclass.given', 'x', handed);
+
+        expect(exception.stackTrace, tomGetStackTrace(exception.stack));
+        expect(exception.stackTrace, contains('l:10 c:5'));
+      });
+    });
+
     group('printStackTrace', () {
       late _CapturingLogOutput captured;
       late TomLogOutput previousOutput;
@@ -1718,6 +2227,59 @@ class _CustomException implements Exception {
 
 /// Log output that records every emitted message so log side-effects
 /// (autoLog, printStackTrace, tomPrintStackTrace) can be asserted.
+/// The source line declaring [name] on `TomException`, whitespace collapsed.
+///
+/// `final` is a compile-time guarantee, so nothing at run time can observe it
+/// being lost. Reading the declaration is what lets a test fail the moment one
+/// is dropped, which is the only way either field could become settable again.
+String _fieldDeclarationOfTomException(String name) {
+  const path = 'lib/src/tombase/little_things/exception_base.dart';
+  final file = File(path);
+  expect(
+    file.existsSync(),
+    isTrue,
+    reason: 'Expected to find $path relative to ${Directory.current.path}',
+  );
+  final source = file.readAsStringSync();
+
+  final classStart = source.indexOf('class TomException extends');
+  expect(
+    classStart,
+    greaterThan(-1),
+    reason: 'TomException is no longer declared in $path',
+  );
+  final constructorStart = source.indexOf('TomException(', classStart + 1);
+  expect(
+    constructorStart,
+    greaterThan(classStart),
+    reason: 'TomException has no generative constructor',
+  );
+
+  final declaration = RegExp(
+    r'^  ((?:final )?[\w<>,? ]+? ' + name + r';)$',
+    multiLine: true,
+  ).firstMatch(source.substring(classStart, constructorStart));
+  expect(
+    declaration,
+    isNotNull,
+    reason: 'TomException no longer declares a field named $name',
+  );
+  return declaration!.group(1)!;
+}
+
+/// Builds a [TomException] with no `stack` argument, so the trace is captured
+/// in the constructor and this function is the first frame that matters.
+TomException _implicitlyCapturingCaller() =>
+    TomException('seam.agree.implicit', 'x');
+
+/// A subclass, so the override is exercised one level down — where the base
+/// constructor runs before this class's own body and an override that read
+/// instance state would fail.
+class _SeamSubclass extends TomException {
+  _SeamSubclass(String key, String message, StackTrace stack)
+    : super(key, message, stack: stack);
+}
+
 class _CapturingLogOutput extends TomLogOutput {
   final List<String> messages = [];
 

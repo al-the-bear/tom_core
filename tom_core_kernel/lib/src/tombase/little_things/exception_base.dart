@@ -77,11 +77,31 @@ import 'little_things.dart';
 /// - [TomServerConnectionException] for HTTP-related errors
 /// - [TomLoggable] for the logging interface
 class TomException extends TomBaseException implements TomLoggable {
-  /// Whether to automatically log this exception when created.
-  bool autoLog;
+  /// Whether this exception logged itself when it was created.
+  ///
+  /// A record of what happened, not a switch. It is read in exactly one place —
+  /// the constructor body, which writes the two `EXCEPTION` log lines — so by
+  /// the time anyone holds the exception the decision has been carried out.
+  /// Assigning afterwards could only mislead: the record has already been
+  /// written, or has already not been.
+  ///
+  /// `final` for that reason. A settable field advertised a control it did not
+  /// have — `e.autoLog = true` produced no log line — and there is nothing a
+  /// caller could mean by setting it that the constructor argument does not
+  /// already say.
+  ///
+  /// It stays readable because it is part of the error envelope a server
+  /// returns: a client can tell whether the failure was logged on the far side.
+  final bool autoLog;
 
   /// Server call error details, if this exception originated from an HTTP call.
-  TomServerCallError? serverCallError;
+  ///
+  /// `final`. An exception is a report of something that has already happened,
+  /// and a payload that can be swapped after the throw is a poor contract: a
+  /// handler five frames up would be reading a description of the failure that
+  /// the code between it and the throw site had edited. Everything the report
+  /// needs is known where it is raised, which is where this is supplied.
+  final TomServerCallError? serverCallError;
 
   /// Creates a new [TomException] with the given error details.
   ///
@@ -160,21 +180,29 @@ class TomException extends TomBaseException implements TomLoggable {
   /// Stopping at `new $runtimeType` keeps `new MyThing`, because for a directly
   /// constructed `TomException` the leaf *is* the first frame.
   ///
-  /// Both representations are rewritten together. `TomBaseException` derives
-  /// its `stackTrace` string from `stack` in its constructor, so leaving one
-  /// trimmed and the other not would have the raw trace and the string an
-  /// `autoLog` writes disagree about which frame comes first.
+  /// Both representations are rewritten together, and the string is rewritten
+  /// through [renderStackTrace] — the same renderer the base constructor used
+  /// a moment ago. `TomBaseException` derives its `stackTrace` string from
+  /// `stack`, so leaving one trimmed and the other not would have the raw trace
+  /// and the string an `autoLog` writes disagree about which frame comes
+  /// first.
   ///
   /// Leaves the trace untouched when the leaf frame is not found, rather than
   /// guessing how much to drop: this runs while an exception is being built, so
   /// a wrong answer here corrupts the report of some other failure.
   void _dropOwnConstructorFrames() {
     final raw = stack;
-    if (raw is! StackTrace) return;
+    // A null check, not a type test. `stack` is `StackTrace?`, so absence is
+    // the only shape this has to answer for, and writing it as `is! StackTrace`
+    // dressed that up as a guard against a value the type system already
+    // refuses.
+    if (raw == null) return;
 
-    // Fold core frames first, exactly as `TomBaseException` does before
-    // rendering, so the trimmed trace and the string it derives stay identical
-    // to what the base would have produced for it.
+    // Fold core frames before scanning, so that runtime plumbing interleaved
+    // with the constructor chain cannot end the run early. This is only about
+    // *locating* the leading constructors; the rendering below goes through
+    // [renderStackTrace], so the trimmed trace and the string derived from it
+    // agree whatever the renderer folds.
     final frames = Chain.forTrace(raw)
         .foldFrames((frame) => frame.isCore, terse: true)
         .traces
@@ -197,8 +225,27 @@ class TomException extends TomBaseException implements TomLoggable {
 
     final trimmed = Trace(frames.skip(last + 1));
     stack = trimmed;
-    stackTrace = trimmed.toString();
+    stackTrace = renderStackTrace(trimmed, -1);
   }
+
+  /// Renders a trace with this framework's own formatter.
+  ///
+  /// [TomBaseException] fills its `stackTrace` string through this method, so
+  /// overriding it is what makes one formatter serve both halves of the
+  /// framework. Without it the base produced that string with its own narrow
+  /// renderer — core frames only, each written with `Frame.toString()` — while
+  /// [printStackTrace] formatted the very same trace with [tomGetStackTrace],
+  /// which folds a wider set and writes a different line. One exception then
+  /// carried two descriptions of its own stack, disagreeing about both which
+  /// frames appeared and how each was written.
+  ///
+  /// Reached from the base constructor's body, before this class's own body
+  /// runs. It reads no instance state, which is what makes that safe:
+  /// [tomGetStackTrace] is a top-level function and both arguments are handed
+  /// to it.
+  @override
+  String renderStackTrace(StackTrace? stack, int depth) =>
+      tomGetStackTrace(stack, depth);
 
   @override
   String get logRepresentation => toString();
@@ -215,8 +262,9 @@ class TomException extends TomBaseException implements TomLoggable {
   /// log outputs are, not stdout — worth knowing when a caught exception
   /// appears to report nothing.
   ///
-  /// A `stack` that is not a [StackTrace] is reported as no trace at all — the
-  /// identifying message alone. See below for why nothing is substituted.
+  /// An absent `stack` is reported as no trace at all — the identifying message
+  /// alone. See below for why nothing is substituted. It is the only unusable
+  /// value: the field is `StackTrace?`, so nothing else can be assigned to it.
   @override
   void printStackTrace([int depth = -1]) {
     // `StackTrace.empty`, not `null`. The field is publicly mutable and can be
