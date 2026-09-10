@@ -23,6 +23,7 @@ client and a server both bind to.
     - [Which name a value is stored under](#which-name-a-value-is-stored-under)
     - [A reflected value is rebuilt member by member](#a-reflected-value-is-rebuilt-member-by-member)
   - [tomUserPreferencesApi](#tomuserpreferencesapi)
+    - [What "not set" looks like on the wire](#what-not-set-looks-like-on-the-wire)
     - [Where the key is stated](#where-the-key-is-stated)
   - [TomUserPreferencesApiService](#tomuserpreferencesapiservice)
 - [The Two Stores](#the-two-stores)
@@ -590,12 +591,12 @@ default.
 
 The API declaration, mounted at `/preferences`.
 
-| Endpoint id | Method | URI | Request | Result |
-|-------------|--------|-----|---------|--------|
-| `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` |
-| `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` |
-| `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` |
-| `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` |
+| Endpoint id | Method | URI | Request | Result | When the preference is not there |
+|-------------|--------|-----|---------|--------|----------------------------------|
+| `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` | not in the list |
+| `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` | `404` + envelope, `errorKey` = `tomUserPreferencesNotFoundErrorKey` |
+| `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` | created |
+| `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` | `200` — deleting nothing succeeds |
 
 The two kinds of nothing in that table are different. `listPreferences` takes
 no request at all — its `requestTypes` is empty, and the `—` says so.
@@ -603,6 +604,44 @@ no request at all — its `requestTypes` is empty, and the `—` says so.
 handler returns nothing, the pipeline answers `200` with an empty body, and
 `void` is the declaration that says exactly that. `TomUserPreferencesApiService`
 spells the same thing `Future<void>`.
+
+#### What "not set" looks like on the wire
+
+The read's result type is `TomUserPreferenceDto`, not `TomUserPreferenceDto?`,
+because the endpoint pipeline answers a `null` result exactly as it answers a
+`void` one — `200` with an empty body — and "not set" would then look like
+success. So absence is an *error of the invocation*: the server raises the key
+`tomUserPreferencesNotFoundErrorKey` (`preferences.not_found`) and answers
+
+```text
+GET /preferences/tom.theme
+→ 404  Content-Type: application/json   x-tom-error: true
+{"errorKey": "preferences.not_found", …}
+```
+
+**The key is the signal, not the status.** The pipeline answers a denied or
+unauthenticated call with a `404` too — a *bare* one, plain text and no
+envelope, so that a refusal cannot be told from a route that does not exist —
+and a deployment that never mounted the API answers the same way. A caller that
+read every `404` as "not set" would hand a signed-out user the defaults. The
+rule is therefore:
+
+| Answer | Meaning |
+|--------|---------|
+| `200` with a DTO | The preference as stored. |
+| `404` whose envelope's `errorKey` is `tomUserPreferencesNotFoundErrorKey` | Never written by this caller — an ordinary state, answered with a default. |
+| `404` without that envelope | Refused, or no such route — a failure. |
+| `400` with `errorKey` `preferences.key.invalid` | The key is not a legal key — the caller's own mistake. |
+| anything else | A failure. |
+
+The constant is declared here, beside the endpoints, because both halves use it:
+`tom_core_server` raises it and `tom_core_flutter`'s `TomUserPreferencesClient`
+recognises it, answering `null` from `read` and `get` for that answer and
+throwing for every other one.
+
+The delete never answers it. Deleting a preference that is not there has already
+achieved its purpose and answers `200`, so a `404` from the delete endpoint is
+always a refusal.
 
 #### Where the key is stated
 

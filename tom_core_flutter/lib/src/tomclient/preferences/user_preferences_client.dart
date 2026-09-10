@@ -27,13 +27,20 @@
 ///
 /// ## What a miss looks like
 ///
-/// The server answers `404` for a key the caller has never written
-/// (`TomUserPreferencesErrorHandler`) and that is the only status this client
+/// The server answers a key the caller has never written with a `404` carrying
+/// the error envelope keyed [tomUserPreferencesNotFoundErrorKey]
+/// (`TomUserPreferencesErrorHandler`), and that is the only answer this client
 /// reads as absence: [read] and [get] answer `null`, [getOr] answers its
 /// fallback. Every other failure throws, because a deployment whose preference
 /// store is unreachable must not be indistinguishable from a user who has set
 /// nothing — an application that could not tell them apart would paper the
 /// outage over with a default and never learn.
+///
+/// That includes a *bare* `404`. The endpoint pipeline answers a denied or
+/// unauthenticated call that way, deliberately indistinguishable from a route
+/// that does not exist, so the status alone says only "refused or not there".
+/// Read as absence it would hand a signed-out user the defaults; the envelope's
+/// key is what separates "you have not set this" from "you may not ask".
 ///
 /// ## Example
 ///
@@ -162,6 +169,11 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   /// The preference stored under [key] as stored, or `null` when the server has
   /// never been given one.
   ///
+  /// Throws a [TomUserPreferencesClientException] keyed
+  /// `preferences.client.rejected` for any other failure — including a `404`
+  /// that does not carry [tomUserPreferencesNotFoundErrorKey], which is a
+  /// refusal rather than a miss.
+  ///
   /// Throws a [TomUserPreferenceKeyException] when [key] is not a legal key —
   /// see [TomUserPreferenceKeys]. The check is here rather than left to the
   /// server because an illegal key does not survive being made into a URI: an
@@ -173,7 +185,7 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
       tomUserPreferencesApi[tomUserPreferencesReadEndpointId],
       parameters: {'key': key},
     );
-    if (response.statusCode == 404) return null;
+    if (_reportsAbsence(response)) return null;
     _requireSuccess(response, key: key);
     return _decodeDto(response, key: key);
   }
@@ -214,6 +226,10 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   }
 
   /// Deletes the preference stored under [key].
+  ///
+  /// Throws a [TomUserPreferencesClientException] keyed
+  /// `preferences.client.rejected` when the server refuses the delete — see
+  /// [deletePreference].
   ///
   /// Returns nothing, where the device store's `remove` answers a `bool`. That
   /// is not an oversight and not a gap to be filled later: the delete endpoint
@@ -286,6 +302,12 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   /// legal key — including the empty one [TomUserPreferenceKeyRequest]'s own
   /// default produces, which would otherwise resolve to the list endpoint's URI
   /// and send a `DELETE` at the collection.
+  ///
+  /// Every non-2xx answer throws, a `404` included. The server's delete is
+  /// idempotent — a preference that is not there is deleted with a `200` — so
+  /// a `404` from this endpoint is never "already gone": it is the pipeline's
+  /// refusal, and reporting it as success would tell the caller a preference
+  /// was cleared that is still stored.
   @override
   Future<void> deletePreference(TomUserPreferenceKeyRequest request) async {
     TomUserPreferenceKeys.validate(request.key);
@@ -293,9 +315,6 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
       tomUserPreferencesApi[tomUserPreferencesDeleteEndpointId],
       parameters: {'key': request.key},
     );
-    // A delete of something that is not there has already achieved its purpose,
-    // so a 404 is success here — the same rule the server applies.
-    if (response.statusCode == 404) return;
     _requireSuccess(response, key: request.key);
   }
 
@@ -369,6 +388,26 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   /// spelling would send two.
   static bool _carriesAuthorization(Map<String, String> headers) =>
       headers.keys.any((name) => name.toLowerCase() == 'authorization');
+
+  /// Whether [response] is the server saying the preference was never written.
+  ///
+  /// A `404` whose body is the error envelope with `errorKey`
+  /// [tomUserPreferencesNotFoundErrorKey], and nothing less: a bare `404` is
+  /// the pipeline refusing the call, and an envelope naming any other key is a
+  /// different failure that merely shares the status. A body that is not JSON
+  /// is not an envelope, so it answers `false` rather than throwing — the
+  /// caller then reports the response as the rejection it is.
+  static bool _reportsAbsence(_PreferencesResponse response) {
+    if (response.statusCode != 404) return false;
+    final Object? envelope;
+    try {
+      envelope = jsonDecode(response.body);
+    } on FormatException {
+      return false;
+    }
+    return envelope is Map &&
+        envelope['errorKey'] == tomUserPreferencesNotFoundErrorKey;
+  }
 
   /// Throws unless [response] carries a 2xx status.
   void _requireSuccess(_PreferencesResponse response, {String? key}) {

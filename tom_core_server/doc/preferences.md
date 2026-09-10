@@ -245,7 +245,7 @@ handler failure leaves as a `500`. So each key-taking endpoint is served under
 
 | Error key | Status | Why it is not a server fault |
 |-----------|--------|------------------------------|
-| `preferences.not_found` | `404` | A preference that was never written is a miss, not a break |
+| `preferences.not_found` (the kernel's `tomUserPreferencesNotFoundErrorKey`) | `404` | A preference that was never written is a miss, not a break |
 | `preferences.key.invalid` | `400` | The key is the caller's input — the URL for a read or a delete, the body for a write — so a bad one is a bad *request* |
 
 Everything else goes to `handleErrorDefault` and stays a `500`. The narrowness
@@ -279,9 +279,20 @@ could produce would leave two thirds of the surface answering `500` for the same
 mistake — while the list endpoint takes no key and cannot miss, since an empty
 list is an answer.
 
-`TomUserPreferencesClient` (`tom_core_flutter`) is the counterpart: `404` is the
-only status it reads as absence, so `read` and `get` answer `null` and `getOr`
-answers its fallback, while every other status throws. It rarely sees the `400`
+**For the `404` the envelope is the meaning, not a courtesy.** The pipeline
+answers a denied or unauthenticated call with a `404` as well — a bare one,
+plain text with no envelope, so that a refusal cannot be told from a route that
+does not exist. A never-written preference and a refused caller therefore share
+a status and differ only in the body, which is why the absence key is declared
+in the kernel contract (`tomUserPreferencesNotFoundErrorKey`) rather than here:
+the client has to recognise it.
+
+`TomUserPreferencesClient` (`tom_core_flutter`) is the counterpart: a `404`
+whose envelope names that key is the only answer it reads as absence, so `read`
+and `get` answer `null` and `getOr` answers its fallback, while every other
+answer — a bare `404` included — throws. The delete never raises the key: it
+answers `200` for a preference that is not there, so a `404` from it is always a
+refusal, and the client reports it as one. It rarely sees the `400`
 at all — it validates the key before building the request — but the server
 cannot rely on that, because a client is not the only thing that can send an
 HTTP request.
@@ -445,7 +456,10 @@ take the two ends: the second reads what the first wrote and never wrote itself,
 and a caller signed in as somebody else does not. The callers are written in the
 file rather than imported, because `TomUserPreferencesClient` lives in
 `tom_core_flutter` and a server must not pull in the Flutter SDK to test itself;
-that client is covered against this same contract in that package's suite.
+that client is covered against this same contract in that package's suite. The
+same suite asserts the absence convention against the served pipeline: a
+signed-in caller's miss and an anonymous caller's refusal both answer `404`, and
+only the miss carries the envelope naming `tomUserPreferencesNotFoundErrorKey`.
 
 ## Dependencies
 

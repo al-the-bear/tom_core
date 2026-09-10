@@ -113,7 +113,9 @@ Future<void> run() async {
       await userPreferences.get<String>(TomUserPreferenceKeys.language) == 'de',
     );
     // A key the account has never held answers null, not an error: an unset
-    // preference is an ordinary state.
+    // preference is an ordinary state. The server says so with a 404 whose
+    // envelope names `tomUserPreferencesNotFoundErrorKey`; a 404 without it
+    // would be a refusal, and would throw.
     assert(await userPreferences.get<String>('account.unset') == null);
     print(
       'account keys=${(await userPreferences.all()).map((p) => p.key).toList()}',
@@ -214,7 +216,15 @@ class _ExamplePreferencesServer {
       case ('GET', final String k):
         final stored = _stored[k];
         if (stored == null) {
+          // A miss is a 404 *carrying the error envelope* keyed by the
+          // contract's absence key — the real server's answer. A bare 404 is
+          // what the pipeline sends a caller it refuses, and the client reads
+          // that as a failure, not as "not set".
           response.statusCode = HttpStatus.notFound;
+          _writeJson(
+            response,
+            jsonEncode({'errorKey': tomUserPreferencesNotFoundErrorKey}),
+          );
           return;
         }
         _writeJson(response, tomReflectionInfo.convertToJsonString(stored));

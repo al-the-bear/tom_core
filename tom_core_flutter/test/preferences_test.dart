@@ -1076,19 +1076,18 @@ void main() {
       test(
         'answers null for a preference the server has never stored',
         () async {
-          // The server distinguishes a miss from a fault with a 404
-          // (`TomUserPreferencesErrorHandler`); reading that as `null` is what
-          // makes an unset preference an ordinary state rather than an error.
+          // The server distinguishes a miss from a fault with a 404 carrying
+          // the error envelope (`TomUserPreferencesErrorHandler`); reading that
+          // as `null` is what makes an unset preference an ordinary state
+          // rather than an error. The body is spelled out literally here, once,
+          // so the wire value is pinned and not only the constant naming it.
           transport.answer(
             statusCode: 404,
             body: '{"errorKey":"preferences.not_found"}',
           );
           expect(await build().get<String>('tom.theme'), isNull);
 
-          transport.answer(
-            statusCode: 404,
-            body: '{"errorKey":"preferences.not_found"}',
-          );
+          transport.answer(statusCode: 404, body: _absentBody);
           expect(await build().read('tom.theme'), isNull);
         },
       );
@@ -1096,7 +1095,7 @@ void main() {
       test(
         'getOr answers the fallback for a preference that is not there',
         () async {
-          transport.answer(statusCode: 404, body: '');
+          transport.answer(statusCode: 404, body: _absentBody);
           expect(await build().getOr<String>('tom.theme', 'light'), 'light');
         },
       );
@@ -1212,7 +1211,7 @@ void main() {
           // The contract face keeps the wire's shape — `TomUserPreferenceDto`,
           // not `TomUserPreferenceDto?` — so the miss has to be an error here.
           // The `null` lives on the store face (`read` / `get`) instead.
-          transport.answer(statusCode: 404, body: '');
+          transport.answer(statusCode: 404, body: _absentBody);
 
           expect(
             build().readPreference(
@@ -1228,6 +1227,55 @@ void main() {
           );
         },
       );
+
+      test('a bare 404 is a refusal, not absence', () async {
+        // The endpoint pipeline answers a denied or unauthenticated call with a
+        // bare `404`, so that a refusal looks like a route that does not
+        // exist. Reading that as "not set" would hand a signed-out user the
+        // defaults and never tell anyone they were refused, so only the
+        // envelope carrying the contract's absence key means absence.
+        transport.answer(statusCode: 404, body: 'Not found');
+
+        await expectLater(
+          build().read('tom.theme'),
+          throwsA(_rejectedWith(404)),
+        );
+
+        transport.answer(statusCode: 404, body: 'Not found');
+        await expectLater(
+          build().getOr<String>('tom.theme', 'light'),
+          throwsA(_rejectedWith(404)),
+          reason: 'a refusal must not be papered over with the fallback',
+        );
+      });
+
+      test('a 404 whose envelope names another key is not absence', () async {
+        // The key is what the client branches on, not the envelope's presence:
+        // an error handler that translated some other failure to a 404 must
+        // not be read as "not set" merely because it, too, sent an envelope.
+        transport.answer(
+          statusCode: 404,
+          body: '{"errorKey":"preferences.not_configured"}',
+        );
+
+        await expectLater(
+          build().read('tom.theme'),
+          throwsA(_rejectedWith(404)),
+        );
+      });
+
+      test('a refused delete fails rather than reporting success', () async {
+        // The delete is idempotent on the server, which answers `200` for a
+        // preference that is not there — so a `404` from it is never "already
+        // gone". It is the pipeline's refusal, and a client that swallowed it
+        // would tell its caller a preference was cleared that is still stored.
+        transport.answer(statusCode: 404, body: 'Not found');
+
+        await expectLater(
+          build().remove(TomUserPreferenceKeys.theme),
+          throwsA(_rejectedWith(404)),
+        );
+      });
 
       test('an unreadable body fails loudly', () async {
         transport.answer(body: 'not json at all');
@@ -1289,7 +1337,7 @@ void main() {
         );
         await device.set(TomUserPreferenceKeys.theme, 'dark');
         // The server would answer "absent" if it were asked; it must not be.
-        transport.answer(statusCode: 404, body: '');
+        transport.answer(statusCode: 404, body: _absentBody);
         final client = build();
 
         final theme = await device.getPreferred<String>(
@@ -1305,7 +1353,7 @@ void main() {
         final device = TomStoredDevicePreferences(
           TomMemoryDevicePreferenceStore(),
         );
-        transport.answer(statusCode: 404, body: '');
+        transport.answer(statusCode: 404, body: _absentBody);
         final client = build();
 
         expect(
@@ -1535,6 +1583,23 @@ String _bearerJwt(Map<String, dynamic> payload) {
 ///
 /// Built through the real codec and the real reflection encoder, so a test
 /// never asserts against a shape the server does not actually produce.
+/// The body the server's read endpoint answers a never-written preference
+/// with: the error envelope, keyed by the contract's absence key.
+final String _absentBody = jsonEncode({
+  'errorKey': tomUserPreferencesNotFoundErrorKey,
+});
+
+/// Matches the client's `preferences.client.rejected` failure for a response
+/// with [statusCode].
+Matcher _rejectedWith(int statusCode) =>
+    isA<TomUserPreferencesClientException>()
+        .having((error) => error.key, 'key', 'preferences.client.rejected')
+        .having(
+          (error) => error.parameters?['statusCode'],
+          'statusCode',
+          statusCode,
+        );
+
 String _dtoBody(String key, Object value) => tomReflectionInfo
     .convertToJsonString(TomUserPreferenceCodec.encode(key, value));
 

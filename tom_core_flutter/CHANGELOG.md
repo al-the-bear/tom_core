@@ -2,6 +2,18 @@
 
 ### Fixed
 
+- **`TomUserPreferencesClient` read a refusal as "not set" (tcopen53).** Any
+  `404` from the read answered `null`, and any `404` from the delete answered
+  success. But the endpoint pipeline answers a denied or signed-out caller with
+  a bare `404`, so a signed-out user was silently handed the defaults, and a
+  refused delete was reported as done — while the server deletes a missing
+  preference with a `200`, so a delete `404` was never "already gone".
+
+  Absence is now only a `404` whose envelope names the kernel's
+  `tomUserPreferencesNotFoundErrorKey`; every other `404` throws
+  `preferences.client.rejected`, on the read and the delete alike. The example's
+  loopback server answers a miss the way the real one does.
+
 - **A declared setting read the configuration twice (tcincb164).** `_declare`
   tested `exists(key)` and then read `getObject(key)`, which are the same
   resolver — `_resolveObjectOrNull` — so every declared setting walked the

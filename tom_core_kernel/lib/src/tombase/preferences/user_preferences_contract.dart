@@ -162,6 +162,29 @@ const String tomUserPreferencesWriteEndpointId = 'writePreference';
 /// Endpoint id: delete one preference of the calling principal by key.
 const String tomUserPreferencesDeleteEndpointId = 'deletePreference';
 
+/// The error key the read endpoint answers with for a preference the caller
+/// has never written — the contract's statement of absence.
+///
+/// **Absence is a status plus a key, never a status alone.** The read answers a
+/// miss with `404` and the framework's error envelope, whose `errorKey` is this
+/// constant. A `404` *without* that envelope means something else entirely:
+/// the endpoint pipeline answers a denied or unauthenticated call with a bare
+/// `404`, deliberately indistinguishable from a route that does not exist, and
+/// a deployment that never mounted the API answers the same way. A caller that
+/// read every `404` as "not set" would hand a signed-out user the defaults and
+/// report a refused delete as done — so the key, not the status, is what a
+/// caller branches on.
+///
+/// The result type stays [TomUserPreferenceDto] rather than a nullable one
+/// because the endpoint pipeline answers a `null` result exactly as it answers
+/// a `void` one — `200` with an empty body — which would make "not set" look
+/// like success. Absence therefore has to be an error of the invocation, and
+/// this constant is
+/// what lets the two halves agree on which one. It lives here, in the contract,
+/// because the server raises it and the client recognises it, and a key spelled
+/// twice is a key that drifts.
+const String tomUserPreferencesNotFoundErrorKey = 'preferences.not_found';
+
 /// Server-stored user preferences (`/preferences/*`).
 ///
 /// Every endpoint is [TomAuthenticatedAccess]: there is no anonymous preference,
@@ -258,6 +281,11 @@ abstract class TomUserPreferencesApiService {
 
   /// [tomUserPreferencesReadEndpointId] — the caller's preference under
   /// [TomUserPreferenceKeyRequest.key].
+  ///
+  /// A preference the caller has never written is a failure keyed
+  /// [tomUserPreferencesNotFoundErrorKey] — on the wire, a `404` carrying the
+  /// error envelope with that `errorKey`. A bare `404` is not absence: it is a
+  /// denial, or a route that is not there.
   Future<TomUserPreferenceDto> readPreference(
     TomUserPreferenceKeyRequest request,
   );
@@ -274,6 +302,10 @@ abstract class TomUserPreferencesApiService {
 
   /// [tomUserPreferencesDeleteEndpointId] — deletes the caller's preference
   /// under [TomUserPreferenceKeyRequest.key].
+  ///
+  /// Idempotent: deleting a preference that is not there succeeds, so a delete
+  /// never answers [tomUserPreferencesNotFoundErrorKey] and a `404` from it is
+  /// always a refusal.
   Future<void> deletePreference(TomUserPreferenceKeyRequest request);
 }
 

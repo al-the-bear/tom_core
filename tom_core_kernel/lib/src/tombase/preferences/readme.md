@@ -21,6 +21,7 @@ agree on, in the one package they both already depend on.
 | `TomUserPreferenceCodecException` | What that refusal raises — e.g. `preferences.encode.not_json` for a value with no JSON form, where a substitute would be a different value read back as if it were the one stored |
 | `TomUserPreferencesApiService` | The typed service interface behind the API. It carries no server annotations, because `@tomComponent` and `@TomApiEndpointImplementation` live in `tom_core_server` and cannot be named here — the same split every framework contract follows |
 | `tomUserPreferencesApi` | The `TomApi`: `GET`/`PUT`/`DELETE` under `/preferences`, all `TomAuthenticatedAccess` |
+| `tomUserPreferencesNotFoundErrorKey` | `preferences.not_found` — how the read says "never written": a `404` carrying the error envelope with this `errorKey`. A bare `404` is a refusal, so the key, not the status, is what a caller branches on |
 
 ## Quick start
 

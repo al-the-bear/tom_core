@@ -315,9 +315,15 @@ delete endpoint is idempotent by design and the server does not report whether a
 row existed — a `bool` invented here could only be a second round trip
 pretending to be an answer.
 
-**A miss is `404`, and only `404` is a miss.** `read` and `get` answer `null`,
-`getOr` answers its fallback. Every other failure throws
-`TomUserPreferencesClientException`, because a deployment whose preference store
+**A miss is a `404` that says so.** The server answers a never-written key with
+a `404` whose error envelope names the kernel's
+`tomUserPreferencesNotFoundErrorKey`; for that answer `read` and `get` answer
+`null` and `getOr` answers its fallback. A *bare* `404` is not a miss: the
+endpoint pipeline answers a denied or signed-out caller that way, so that a
+refusal looks like a route that does not exist, and reading it as "not set"
+would hand that caller the defaults. Every answer other than the enveloped miss
+throws `TomUserPreferencesClientException` — a `404` from `remove` included,
+since the server deletes a missing preference with a `200` — because a deployment whose preference store
 is unreachable must not be indistinguishable from a user who has set nothing —
 an application that could not tell them apart would paper the outage over with a
 default and never learn. A *value* failure — a preference stored as the wrong

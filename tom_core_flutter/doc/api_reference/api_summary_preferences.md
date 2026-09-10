@@ -371,7 +371,7 @@ There is no `clear()`. The contract declares no bulk delete, and a loop over
 | `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | The list endpoint; decodes the bare JSON array the pipeline produces. |
 | `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | Throws `preferences.client.not_found` on a miss, because the contract's result type is not nullable. `read` is the same call with the miss expressed as `null`, and is what an application should use. |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | The write endpoint; passes no path parameters, because the write URI carries no `{key}` and `request.key` is the whole of what is addressed. |
-| `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | The delete endpoint; a `404` is success, the same rule the server applies. |
+| `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | The delete endpoint. Throws `preferences.client.rejected` for every non-2xx answer, a `404` included: the server's delete answers `200` for a preference that is not there, so a `404` from it is a refusal, never "already gone". |
 
 #### Addressing
 
@@ -398,12 +398,20 @@ of `''` would silently become a read of everything.
 
 #### What a miss looks like
 
-The server answers `404` for a key the caller has never written
-(`TomUserPreferencesErrorHandler`, `tom_core_server`) and that is the **only**
-status this client reads as absence: `read` and `get` answer `null`, `getOr`
-answers its fallback. Every other failure throws, because a deployment whose
+The server answers a key the caller has never written with a `404` carrying the
+error envelope whose `errorKey` is the kernel's
+`tomUserPreferencesNotFoundErrorKey` (`TomUserPreferencesErrorHandler`,
+`tom_core_server`), and that is the **only** answer this client reads as
+absence: `read` and `get` answer `null`, `getOr` answers its fallback. Every
+other failure throws `preferences.client.rejected`, because a deployment whose
 preference store is unreachable must not be indistinguishable from a user who has
-set nothing. The same handler answers `400` for `preferences.key.invalid`; this
+set nothing.
+
+That includes a **bare** `404`. The endpoint pipeline answers a denied or
+unauthenticated call that way, with no envelope, so that a refusal cannot be
+told from a route that does not exist; an envelope naming any other key is a
+different failure that merely shares the status. Reading either as absence would
+hand a signed-out user the defaults. The same handler answers `400` for `preferences.key.invalid`; this
 client rarely provokes it, having refused the key itself, but the server checks
 because a client is not the only thing that can send an HTTP request.
 

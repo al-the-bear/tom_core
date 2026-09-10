@@ -46,6 +46,12 @@ import 'user_preferences_service.dart';
 /// it is untrusted input, and reporting a `500` would tell a client its own
 /// malformed request was a server fault it should retry.
 ///
+/// Both answers carry the error envelope, and for the `404` that is what gives
+/// it its meaning: the pipeline answers a denied call with a *bare* `404`, so
+/// "never written" and "refused" share a status and differ only in the body.
+/// A client reads absence from the envelope's `errorKey`
+/// ([tomUserPreferencesNotFoundErrorKey]), never from the status alone.
+///
 /// Only those two keys are translated. `preferences.not_configured` is a
 /// deployment fault, not the client's business, and stays opaque along with
 /// everything else.
@@ -53,15 +59,16 @@ class TomUserPreferencesErrorHandler extends TomErrorHandler {
   /// Const constructor so the handler can be used as an annotation argument.
   const TomUserPreferencesErrorHandler();
 
-  /// The error key a read raises for a key the caller has never written.
-  static const String notFoundKey = 'preferences.not_found';
-
   /// The error key raised for a key that violates [TomUserPreferenceKeys].
   static const String invalidKeyKey = 'preferences.key.invalid';
 
   /// The status each translated error key answers with.
+  ///
+  /// The miss is keyed by the contract's [tomUserPreferencesNotFoundErrorKey]
+  /// rather than a key of this module's own, because the client has to
+  /// recognise it: a `404` is absence only when it carries that key.
   static const Map<String, int> _statusByErrorKey = {
-    notFoundKey: 404,
+    tomUserPreferencesNotFoundErrorKey: 404,
     invalidKeyKey: 400,
   };
 
@@ -137,7 +144,7 @@ class TomUserPreferencesServer implements TomUserPreferencesApiService {
       // indistinguishable from "not there" — the answer leaks nothing about
       // another principal.
       throw TomEndpointHandlerException(
-        'preferences.not_found',
+        tomUserPreferencesNotFoundErrorKey,
         "No preference is stored under '${request.key}'.",
         parameters: {'key': request.key},
       );

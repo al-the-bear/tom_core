@@ -228,9 +228,9 @@ carries an inline access annotation: the contract declares
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
 | `listPreferences()` | `listPreferences` — `GET /preferences` | Every preference of the caller. |
-| `readPreference(TomUserPreferenceKeyRequest request)` | `readPreference` — `GET /preferences/{key}` | One preference; throws `TomEndpointHandlerException('preferences.not_found')` when absent, and is served under `TomUserPreferencesErrorHandler` so that miss reaches the client as a `404`. Reporting a miss distinctly is safe because the scope makes "not yours" indistinguishable from "not there". |
+| `readPreference(TomUserPreferenceKeyRequest request)` | `readPreference` — `GET /preferences/{key}` | One preference; throws a `TomEndpointHandlerException` keyed by the kernel's `tomUserPreferencesNotFoundErrorKey` (`preferences.not_found`) when absent, and is served under `TomUserPreferencesErrorHandler` so that miss reaches the client as a `404` carrying the error envelope — which is what separates it from the pipeline's bare `404` for a denied call. Reporting a miss distinctly is safe because the scope makes "not yours" indistinguishable from "not there". |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `writePreference` — `PUT /preferences` | Validates the encoded pair, then upserts under `request.key`. The URI carries no `{key}`: the request already has one, and a second statement of the key would be one the body could contradict. |
-| `deletePreference(TomUserPreferenceKeyRequest request)` | `deletePreference` — `DELETE /preferences/{key}` | Deletes; the absent case is not an error. |
+| `deletePreference(TomUserPreferenceKeyRequest request)` | `deletePreference` — `DELETE /preferences/{key}` | Deletes; the absent case is not an error and answers `200`, so a `404` from this endpoint is always a refusal. |
 
 All four resolve the store per call and throw
 `TomEndpointHandlerException('preferences.not_configured')` when no
@@ -241,9 +241,9 @@ handler is obeyed.
 ### TomUserPreferencesErrorHandler
 
 The error handler the read endpoint is served under: it maps
-`preferences.not_found` to a `404` and `preferences.key.invalid` to a `400` —
-and *only* those two keys — leaving every other failure to
-`handleErrorDefault`.
+`preferences.not_found` (the kernel's `tomUserPreferencesNotFoundErrorKey`) to a
+`404` and `preferences.key.invalid` to a `400` — and *only* those two keys —
+leaving every other failure to `handleErrorDefault`.
 
 - **Extends:** `TomErrorHandler`.
 
@@ -267,7 +267,6 @@ const TomUserPreferencesErrorHandler()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `notFoundKey` | `String` | `'preferences.not_found'` — the key a read raises for a preference the caller has never written; becomes a `404`. |
 | `invalidKeyKey` | `String` | `'preferences.key.invalid'` — the key raised for a preference key that violates `TomUserPreferenceKeys`; becomes a `400`. |
 
 #### Methods
@@ -294,6 +293,14 @@ handler — under the `x-tom-error: true` header and
 rather than on message text, is told there is a body to decode before it decides
 whether to decode one, and sees the same shape here as it does from
 `TomServer.errorHandler`. What this handler contributes is the status.
+
+For the `404` the envelope is not a courtesy but the meaning. The endpoint
+pipeline answers a denied or unauthenticated call with a bare `404` and no
+envelope, so that a refusal cannot be told from a route that does not exist; a
+preference that was never written shares that status and differs only in its
+body. A client therefore reads absence from `errorKey ==
+tomUserPreferencesNotFoundErrorKey` and treats any other `404` as a refusal —
+`TomUserPreferencesClient` in `tom_core_flutter` does exactly that.
 
 The two do not carry identical *fields*, and that is the envelope working as
 intended: the `404` is raised as a `TomEndpointHandlerException` and therefore

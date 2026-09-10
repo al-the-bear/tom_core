@@ -186,12 +186,14 @@ class _PreferencesCaller {
 
   /// Reads [key] as a [T], or `null` when this user has never written it.
   ///
-  /// `404` is absence and nothing else is — the same rule the shipped client
-  /// applies, and the reason the read endpoint carries an error handler of its
-  /// own.
+  /// Absence is a `404` whose envelope names
+  /// [tomUserPreferencesNotFoundErrorKey], and nothing else is — the same rule
+  /// the shipped client applies, and the reason the read endpoint carries an
+  /// error handler of its own. A bare `404` is a refusal and fails the
+  /// expectation below like any other status.
   Future<T?> read<T extends Object>(String key) async {
     final answer = await _send(tomUserPreferencesReadEndpointId, key: key);
-    if (answer.statusCode == 404) return null;
+    if (answer.reportsAbsence) return null;
     expect(
       answer.statusCode,
       200,
@@ -250,6 +252,19 @@ class _Answer {
 
   final int statusCode;
   final String body;
+
+  /// Whether this is the read endpoint saying "never written": a `404`
+  /// carrying the error envelope keyed [tomUserPreferencesNotFoundErrorKey].
+  bool get reportsAbsence {
+    if (statusCode != 404) return false;
+    try {
+      final envelope = jsonDecode(body);
+      return envelope is Map &&
+          envelope['errorKey'] == tomUserPreferencesNotFoundErrorKey;
+    } on FormatException {
+      return false;
+    }
+  }
 }
 
 void main() async {
@@ -529,6 +544,49 @@ void main() async {
         expect(await other.read<String>(TomUserPreferenceKeys.theme), 'light');
       },
     );
+
+    test('a miss and a refusal share a status and differ in the body', () async {
+      // The absence convention, asserted against the served pipeline rather
+      // than against a handler in isolation. Both answers are a `404` — the
+      // refusal so that it cannot be told from a route that does not exist —
+      // so the body is the whole of the difference, and a client that read the
+      // status alone would hand a signed-out caller the defaults.
+      final (first, _, _) = callers();
+      final endpoint = tomUserPreferencesApi[tomUserPreferencesReadEndpointId];
+      final uri = endpoint.resolveUri(
+        baseUri,
+        parameters: {'key': TomUserPreferenceKeys.theme},
+      );
+
+      final http = HttpClient();
+      addTearDown(http.close);
+
+      Future<_Answer> get({required bool signedIn}) async {
+        final request = await http.openUrl('GET', uri);
+        if (signedIn) request.headers.set(_userHeader, '${first.userId}');
+        final response = await request.close();
+        return _Answer(
+          response.statusCode,
+          await response.transform(utf8.decoder).join(),
+        );
+      }
+
+      final miss = await get(signedIn: true);
+      expect(miss.statusCode, 404);
+      expect(
+        miss.reportsAbsence,
+        isTrue,
+        reason: 'a never-written preference must name the absence key',
+      );
+
+      final refusal = await get(signedIn: false);
+      expect(refusal.statusCode, 404);
+      expect(
+        refusal.reportsAbsence,
+        isFalse,
+        reason: 'a refusal must not read as a preference that is not set',
+      );
+    });
 
     test('a caller with no principal is refused, not served unscoped', () async {
       final (first, _, _) = callers();

@@ -8,6 +8,21 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **`tomUserPreferencesNotFoundErrorKey` (tcopen53).** The preferences
+  contract now states how a read says "never written": a `404` carrying the
+  error envelope whose `errorKey` is `preferences.not_found`. Before, absence
+  existed only as a convention the one client held — "a `404` means not set" —
+  and that convention was wrong, because the endpoint pipeline answers a denied
+  or unauthenticated call with a bare `404` too. The key, not the status, is the
+  signal, and it is declared here because the server raises it and the client
+  recognises it.
+
+  The read's result type stays non-nullable: the pipeline answers a `null`
+  result with a `200` and an empty body, so a nullable result would make "not
+  set" look like success. `doc/preferences/preferences.md` gains *What "not set"
+  looks like on the wire*, and both endpoint tables state what each endpoint
+  answers when the preference is not there.
+
 - **`TomRemoteLogOutput.flush()` (tcopen37).** `output` returns before its
   record has been sent — deliberately, since a logging call must never block
   the code that made it — and the replay queue drains only as a side effect of

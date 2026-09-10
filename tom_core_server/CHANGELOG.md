@@ -2,6 +2,19 @@
 
 ### Changed
 
+- **The preferences read raises the kernel's absence key (tcopen53).**
+  `readPreference` throws `tomUserPreferencesNotFoundErrorKey` and
+  `TomUserPreferencesErrorHandler` maps that constant, so the key the client
+  recognises and the key the server raises are one declaration. The wire is
+  unchanged — still `preferences.not_found` in the envelope of a `404`.
+  `TomUserPreferencesErrorHandler.notFoundKey` is removed: it restated the
+  kernel's constant under a second name.
+
+  `test/preferences_roundtrip_db_test.dart` asserts the convention against the
+  served pipeline — a signed-in miss and an anonymous refusal both answer `404`,
+  and only the miss carries the envelope — and its caller no longer reads a
+  bare `404` as absence.
+
 - **`TomHttpServiceLoginTransport` derives its channel through
   `TomServerChannel.forUri` (tcopen14).** The scheme-aware port derivation lived
   in three places, one of which had it wrong; it is now a named constructor in

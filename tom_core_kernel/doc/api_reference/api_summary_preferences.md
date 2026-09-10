@@ -233,9 +233,9 @@ annotation because the server-side annotations live in `tom_core_server`.
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
 | `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the calling principal. |
-| `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | The caller's preference under `request.key`. |
+| `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | The caller's preference under `request.key`. A preference never written is a failure keyed `tomUserPreferencesNotFoundErrorKey` — on the wire a `404` carrying the error envelope with that `errorKey`; a bare `404` is a refusal, not absence. |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | Writes one preference of the caller, replacing any previous value. The written key is `request.key` and only that — the endpoint is a `PUT` at the collection, so the URL names no key. |
-| `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | Deletes the caller's preference under `request.key`. |
+| `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | Deletes the caller's preference under `request.key`. Idempotent: deleting a preference that is not there succeeds, so a `404` from it is always a refusal. |
 
 ### TomUserPreferenceCodec
 
@@ -337,6 +337,7 @@ raised while *naming* a value, so they belong to both the write and the read.
 | `tomUserPreferencesReadEndpointId` | `String` | `readPreference`. |
 | `tomUserPreferencesWriteEndpointId` | `String` | `writePreference`. |
 | `tomUserPreferencesDeleteEndpointId` | `String` | `deletePreference`. |
+| `tomUserPreferencesNotFoundErrorKey` | `String` | `preferences.not_found` — the error key the read answers a never-written preference with, and the contract's only statement of absence. Declared here because the server raises it and the client recognises it. |
 | `tomUserPreferencesApi` | `TomApi` | The `/preferences` API — see below. |
 | `registerTomUserPreferencesApi()` | `void` | Registers `tomUserPreferencesApi` with the global `tomRemoteApis` registry. Idempotent, and called by both halves. Explicit rather than implicit so a deployment that stores no preferences does not carry the API. |
 
@@ -345,12 +346,21 @@ raised while *naming* a value, so they belong to both the write and the read.
 Base URI `/preferences`. Every endpoint is `TomAuthenticatedAccess`: there is no
 anonymous preference, because a preference is per principal.
 
-| Endpoint id | Method | URI | Request type | Result type |
-| ----------- | ------ | --- | ------------ | ----------- |
-| `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` |
-| `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` |
-| `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` |
-| `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` |
+| Endpoint id | Method | URI | Request type | Result type | When the preference is not there |
+| ----------- | ------ | --- | ------------ | ----------- | -------------------------------- |
+| `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` | not in the list |
+| `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` | `404` + envelope, `errorKey` = `tomUserPreferencesNotFoundErrorKey` |
+| `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` | created |
+| `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` | `200` — deleting nothing succeeds |
+
+**Absence is a key, not a status.** The read's result type is not nullable,
+because the endpoint pipeline answers a `null` result as it answers a `void`
+one — `200` with an empty body — so a miss is
+raised as `tomUserPreferencesNotFoundErrorKey` and reaches the wire as a `404`
+carrying the error envelope. The pipeline answers a denied or unauthenticated
+call with a *bare* `404` — no envelope, so a refusal looks like a missing route
+— and a caller must not read that as "not set": only the envelope's `errorKey`
+separates the two.
 
 The two kinds of nothing in that table are different. `listPreferences` takes no
 request at all, and the `—` says so; `deletePreference` has a request and no
