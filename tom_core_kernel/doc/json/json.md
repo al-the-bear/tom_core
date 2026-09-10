@@ -23,6 +23,7 @@ This module provides utilities for working with JSON data structures in Dart, in
   - [3. Type Safety](#3-type-safety)
   - [4. JSON Sanitization](#4-json-sanitization)
 - [Dependencies](#dependencies)
+  - [What the module throws](#what-the-module-throws)
   - [What the module logs](#what-the-module-logs)
 
 ---
@@ -409,7 +410,8 @@ carry `@` without meaning a directive.
 
 The one exception is a key carrying **three or more** `@`. A directive uses
 exactly two, so a third can only be a separator too many — no ordinary string in
-this framework reaches three. Such a key throws an `Exception` naming it and
+this framework reaches three. Such a key throws a `TomJsonDirectiveException`
+(`json.directive.malformed_key`) naming it and
 restating the expected form, rather than being silently skipped, because a
 skipped directive is an injection the caller believes happened and did not.
 
@@ -422,7 +424,8 @@ skipped directive is an injection the caller believes happened and did not.
 
 `"@"` takes the value the provider returned *under the same key*, so
 `wanted@path@profile: "@"` needs a provider result containing `wanted`. When it
-is absent, `processTree` throws an `Exception` naming the directive key, the
+is absent, `processTree` throws a `TomJsonDirectiveException`
+(`json.directive.unresolved_key`) naming the directive key, the
 resolved path, the profile, and the keys the provider did return — enough to see
 whether the provider looked in the wrong place or the profile is simply missing
 the entry.
@@ -670,11 +673,15 @@ appropriately:
 final Object? value;
 try {
   value = getObjectFromTree(config, 'path.to.value');
-} catch (e) {
+} on TomJsonPathException {
   // The path doesn't exist — nobody configured it, so a default applies.
   value = defaultValue;
 }
 ```
+
+Catch the type, not `Exception`. A bare `catch (e)` here also swallows anything
+else the surrounding frame can raise, and the comment above it would then be a
+guess: this module raises two families, and the code around it raises more.
 
 **A `null` result is not an error and must not reach that fallback.** It means
 the key is present and was deliberately set to null; substituting the default
@@ -716,6 +723,7 @@ final jsonString = jsonEncode(safeData);
 | ---------- | ---- | ----------- | --- |
 | `dart:convert` | dart | `pretty_json.dart` | The `JsonEncoder` behind the formatters |
 | `tom_basics` | package | `map_merge_and_process.dart` | `tomLog`, for the reports listed below |
+| [little_things](../little_things/little_things.md) | module | `map_merge_and_process.dart` | `TomException`, the base of `TomJsonPathException` and `TomJsonDirectiveException` |
 
 `json_serializable.dart` imports nothing — the interface is plain Dart. Note
 that `map_merge_and_process.dart` does *not* use `dart:convert`:
@@ -725,6 +733,27 @@ the caller.
 `tomLog` is a live global with a working default, so nothing has to be wired up
 before calling into this module. The package dependency is nonetheless real —
 the module does not compile without `tom_basics`.
+
+### What the module throws
+
+Two families, so a caller can tell them apart by type instead of by reading the
+message, and can catch this module's failures without catching every other
+`Exception` on the stack. Both derive from `TomException`.
+
+| Type | Error key | Raised when |
+| ---- | --------- | ----------- |
+| `TomJsonPathException` | `json.path.missing_key` | A path names a key that is not there. `parameters`: `path`, `key`, `position`. |
+| `TomJsonPathException` | `json.path.not_a_subtree` | A segment before the last holds a scalar or `null`, so there is nothing to descend into. `parameters`: `path`, `key`, `position`, `holds`. |
+| `TomJsonDirectiveException` | `json.directive.malformed_key` | A key carries three or more `@`, so it cannot be an ordinary key, but is not the three-part directive shape either. `parameters`: `key`. |
+| `TomJsonDirectiveException` | `json.directive.unresolved_key` | A `"@"` directive's provider returned no entry under the directive's own key. `parameters`: `key`, `path`, `profile`, `providerKeys`. |
+
+The split is not cosmetic: a path failure is usually a typo in a caller's path,
+a directive failure usually a provider looking in the wrong place, and the two
+are answered by different people.
+
+A failure raised by a `processTree` provider is neither of these and is not
+wrapped in one — it propagates with its own type, message and stack trace. See
+*A provider's failure is the caller's failure*.
 
 ### What the module logs
 

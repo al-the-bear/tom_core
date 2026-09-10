@@ -11,6 +11,8 @@ pretty-printing formatters.
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomJsonSerializable](#tomjsonserializable)
+  - [TomJsonPathException](#tomjsonpathexception)
+  - [TomJsonDirectiveException](#tomjsondirectiveexception)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [Constants](#constants)
   - [Functions](#functions)
@@ -46,6 +48,10 @@ substitution (`substituteEnvVars`). `pretty_json.dart` provides `prettyJson` /
 
 ```
 Object
+├── TomBaseException
+│   └── TomException
+│       ├── TomJsonPathException
+│       └── TomJsonDirectiveException
 └── (interfaces)
     └── TomJsonSerializable  (abstract interface)
 ```
@@ -66,6 +72,35 @@ match a wire shape they do not own, not the design default.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `toJson` | `Map<String, Object?> toJson()` | The JSON-encodable representation of this object — a map whose values are themselves `jsonEncode`-able. |
+
+### TomJsonPathException
+
+Raised when a dot-separated path cannot be resolved against a tree, by both
+`getPathFromTree` and `getObjectFromTree`. A terminal key that is present and
+holds `null` is a value and is returned, not raised — which is the reason this
+is an exception rather than a `null` result.
+
+- **Extends:** `TomException`
+
+| Error key | Raised when | `parameters` |
+| --------- | ----------- | ------------ |
+| `json.path.missing_key` | A path names a key that is not there. | `path`, `key`, `position` |
+| `json.path.not_a_subtree` | A segment before the last holds a scalar or `null`, so there is nothing to descend into. | `path`, `key`, `position`, `holds` |
+
+### TomJsonDirectiveException
+
+Raised when `processTree` cannot resolve a profile directive. Distinct from
+`TomJsonPathException` because the two are answered differently: a path failure
+is usually a typo in a caller's path, a directive failure usually a provider
+looking in the wrong place. A failure raised by the provider *itself* is neither
+and is not wrapped in one — it propagates with its own type, message and stack.
+
+- **Extends:** `TomException`
+
+| Error key | Raised when | `parameters` |
+| --------- | ----------- | ------------ |
+| `json.directive.malformed_key` | A key carries three or more `@`, so it cannot be an ordinary key, but is not the three-part directive shape either. | `key` |
+| `json.directive.unresolved_key` | A `"@"` directive's provider returned no entry under the directive's own key. | `key`, `path`, `profile`, `providerKeys` |
 
 ## Global Functions and Constants
 
@@ -95,9 +130,9 @@ rather than walked halfway.
 | `deepCopyJsonTree` | `Map<String, dynamic> deepCopyJsonTree(Map<String, dynamic> source)` | Returns a deep copy of `source` sharing no map or list with it — unlike `Map<String, dynamic>.from`, which copies only the top level. Nested maps are normalised to `Map<String, dynamic>` and lists to `List<dynamic>` so the copy accepts values of any type; scalar leaves are shared, which is correct because JSON scalars are immutable. |
 | `traverseAndProcess` | `void traverseAndProcess(Map<String, dynamic> tree, bool Function(String) test, String Function(String) processor)` | Walks `tree` in-place, applying `processor` to each String value where `test` returns `true`. Reaches every string whatever holds it: nested maps recurse, lists are walked per element, and a list element that is itself a list recurses too, so a map inside a list and a list inside a list are both descended into at any depth. Dispatch is on each value's runtime shape rather than a container's declared type, so a document straight out of `jsonDecode` behaves like one built in Dart code. |
 | `traverseAndCreate` | `void traverseAndCreate(Map<String, dynamic> tree, bool Function(String) nameTest, void Function(String key, String value, Map<String, dynamic> location) creator)` | Walks `tree` and invokes `creator` for each *string-valued* key matching `nameTest`, handing it the key, that string, and the containing map. The value's shape is part of the match, not just the name: a matching key whose value is a map is recursed into instead of being reported, one whose value is a list is taken by the list branch and likewise never reported (its elements are walked per element, at any nesting depth, so a decoded `List<dynamic>` is descended into like any other; an element that is a bare string has no key to test and so reaches nothing), and one whose value is an `int`, `bool` or `null` is skipped outright. The creator takes a `String value`, so a non-string could not be delivered to it in any case. The creator may insert into, remove from, or overwrite that map directly — every recursion level iterates a snapshot of its map's keys, so mutating during the callback is safe at any depth, including a map an outer level is still walking. Keys the creator adds are not themselves traversed (the snapshot predates the visit), which is what keeps a creator that inserts a matching key from recursing forever; an entry it removes is skipped, because values are read through the map rather than from the snapshot. |
-| `getPathFromTree` | `Map<String, dynamic> getPathFromTree(Map<String, dynamic> baseTree, String path, String name)` | Returns the subtree at a dot-separated `path`; wraps a non-map terminal value in a map keyed by `name`. A terminal `null` is such a value and yields `{name: null}`, which keeps it distinguishable from an absent path. The wrapping is silent: it is what this function exists to do, and a caller that wants the raw value, or wants to decide for itself, calls `getObjectFromTree`. Throws `Exception` if the path cannot be resolved. |
-| `getObjectFromTree` | `Object? getObjectFromTree(Map<String, dynamic> baseTree, String path)` | Returns the raw value at a dot-separated `path` (map, list, primitive, or `null`). Presence is decided by `containsKey`, matching `makeCleanJsonMap`: a key present with a `null` value is a value and is returned as `null`, while a key that is absent throws. Throws `Exception` if a segment names a key that is not there, or if an interior segment holds something with no subtree to descend into — the message distinguishes a `null` from another non-map value. |
-| `processTree` | `void processTree(Map<String, dynamic> tree, Map<String, dynamic> Function(String keyName, String path, String profileName) provider)` | Resolves `keyName@path@profileName` keys in-place, injecting data from `provider` per the value directive (`"..."` spread, `"@"` replace-key, else replace). The key pattern is anchored, so a key must be *entirely* three non-empty parts: a fourth part is not resolved against the first three. A key that does not match is an ordinary key and is left untouched (`user@example.com`, `@scope/pkg@1.0.0`), except that a key carrying three or more `@` — which a directive never does — throws `Exception` naming it and restating the expected form. The `"@"` directive takes the provider result's entry under the *same* key; an entry present with a `null` value is assigned like any other, while an absent one throws `Exception` naming the directive key, the resolved path, the profile and the keys the provider did return. Anything the provider throws propagates **unaltered** — same type, same message, same stack trace — so a caller catches the provider's own failure type instead of recovering it from a string; nothing is wrapped around it, because the only context a wrapper could add is the directive key, and that is just the three arguments the provider was called with. A resolved directive's own key is **removed** from its map — a carried-out instruction is not part of the configuration it produced — which is what makes resolution idempotent: running it again over a resolved tree calls the provider for nothing. Every directive is resolved before any is applied, so any of these failures leaves `tree` exactly as it was passed, directive keys included. |
+| `getPathFromTree` | `Map<String, dynamic> getPathFromTree(Map<String, dynamic> baseTree, String path, String name)` | Returns the subtree at a dot-separated `path`; wraps a non-map terminal value in a map keyed by `name`. A terminal `null` is such a value and yields `{name: null}`, which keeps it distinguishable from an absent path. The wrapping is silent: it is what this function exists to do, and a caller that wants the raw value, or wants to decide for itself, calls `getObjectFromTree`. Throws `TomJsonPathException` if the path cannot be resolved. |
+| `getObjectFromTree` | `Object? getObjectFromTree(Map<String, dynamic> baseTree, String path)` | Returns the raw value at a dot-separated `path` (map, list, primitive, or `null`). Presence is decided by `containsKey`, matching `makeCleanJsonMap`: a key present with a `null` value is a value and is returned as `null`, while a key that is absent throws. Throws `TomJsonPathException` if a segment names a key that is not there (`json.path.missing_key`), or if an interior segment holds something with no subtree to descend into (`json.path.not_a_subtree`) — the message and the `holds` parameter distinguish a `null` from another non-map value. |
+| `processTree` | `void processTree(Map<String, dynamic> tree, Map<String, dynamic> Function(String keyName, String path, String profileName) provider)` | Resolves `keyName@path@profileName` keys in-place, injecting data from `provider` per the value directive (`"..."` spread, `"@"` replace-key, else replace). The key pattern is anchored, so a key must be *entirely* three non-empty parts: a fourth part is not resolved against the first three. A key that does not match is an ordinary key and is left untouched (`user@example.com`, `@scope/pkg@1.0.0`), except that a key carrying three or more `@` — which a directive never does — throws `TomJsonDirectiveException` (`json.directive.malformed_key`) naming it and restating the expected form. The `"@"` directive takes the provider result's entry under the *same* key; an entry present with a `null` value is assigned like any other, while an absent one throws `TomJsonDirectiveException` (`json.directive.unresolved_key`) naming the directive key, the resolved path, the profile and the keys the provider did return, each also in `parameters`. Anything the provider throws propagates **unaltered** — same type, same message, same stack trace — so a caller catches the provider's own failure type instead of recovering it from a string; nothing is wrapped around it, because the only context a wrapper could add is the directive key, and that is just the three arguments the provider was called with. A resolved directive's own key is **removed** from its map — a carried-out instruction is not part of the configuration it produced — which is what makes resolution idempotent: running it again over a resolved tree calls the provider for nothing. Every directive is resolved before any is applied, so any of these failures leaves `tree` exactly as it was passed, directive keys included. |
 | `makeCleanJsonMap` | `Map<String, Object?> makeCleanJsonMap(Map map)` | Returns a new map containing only JSON-compatible values (String, int, double, bool, `null`, Map, List), recursively filtering out non-String keys and unsupported values. `null` is a JSON value and is kept, so an absent field stays distinguishable from one that is present and null. A `TomJsonSerializable` value is the one exception to the type filter: it is converted through its `toJson()` and the result cleaned in turn, wherever it appears in the tree. |
 | `substituteEnvVars` | `void substituteEnvVars(Map<String, dynamic> tree, Map<String, String> environment)` | Substitutes `${VAR}` / `${VAR:default}` placeholders in all string values of `tree` in-place using `environment`. A variable present with an **empty** value counts as unset — `{'VAR': ''}` behaves as `{}` — following the shell's `${VAR:-default}` convention that the `:` mirrors. An empty *default* still resolves, so `${VAR:}` is how a caller asks for an empty string; a `${VAR}` whose value is empty keeps its placeholder. |
 | `prettyJson` | `String prettyJson(String json)` | Parses `json` and re-encodes it with 2-space indentation and line breaks. Throws `FormatException` on invalid JSON. |

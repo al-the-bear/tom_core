@@ -6,8 +6,9 @@
 Map/JSON utilities used across the kernel: deep merging, dotted-path lookup,
 recursive tree traversal/transformation, profile-based injection,
 environment-variable substitution, and pretty-printing. These are mostly plain
-top-level functions; the one type, `TomJsonSerializable`, is an interface a
-value object implements rather than a class to instantiate.
+top-level functions; `TomJsonSerializable` is an interface a value object
+implements rather than a class to instantiate, and the two exception types are
+what the module raises.
 
 ## Key types & functions
 
@@ -25,6 +26,8 @@ value object implements rather than a class to instantiate.
 | `makeCleanJsonMap(map)` | Produce a JSON-safe `Map<String, Object?>`, keeping deliberate nulls and converting any `TomJsonSerializable` it meets. |
 | `prettyJson(json)` / `prettyJsonLine(json)` | Indented / single-line formatting. |
 | `indentEncoder` | The shared 2-space `JsonEncoder` behind both formatters, exported for callers that encode directly. |
+| `TomJsonPathException` | Raised when a dotted path cannot be resolved: `json.path.missing_key` for an absent key, `json.path.not_a_subtree` for an interior segment with nothing to descend into. |
+| `TomJsonDirectiveException` | Raised when `processTree` cannot resolve a directive: `json.directive.malformed_key` for a key that carries three or more `@`, `json.directive.unresolved_key` when a `"@"` directive's provider returned no entry under its key. |
 
 ## What counts as a subtree
 

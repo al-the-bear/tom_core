@@ -40,7 +40,73 @@ library;
 
 import 'package:tom_basics/tom_basics.dart';
 
+import '../little_things/exception_base.dart';
 import 'json_serializable.dart';
+
+// =============================================================================
+// Exceptions
+// =============================================================================
+
+/// Raised when a dot-separated path cannot be resolved against a tree.
+///
+/// Both [getObjectFromTree] and [getPathFromTree] raise it, and only for a path
+/// that does not lead anywhere. A terminal key that is *present and holds null*
+/// is a value, not a failure, and is returned — that distinction is the reason
+/// this is an exception rather than a `null` return.
+///
+/// Error keys, each naming a condition a running system can meet:
+///
+/// - `json.path.missing_key` — no key of that name at that position. The
+///   `parameters` carry `path`, `key` and `position`.
+/// - `json.path.not_a_subtree` — a segment before the last holds a scalar or
+///   `null`, so there is nothing to descend into. The `parameters` carry
+///   `path`, `key`, `position` and `holds`.
+class TomJsonPathException extends TomException {
+  /// Creates a path-resolution failure.
+  TomJsonPathException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.requestUuid,
+    super.uuid,
+  });
+}
+
+/// Raised when a profile directive cannot be resolved by [processTree].
+///
+/// Distinct from [TomJsonPathException] because the two are answered
+/// differently: a path failure is usually a typo in a caller's path, while a
+/// directive failure is usually a provider that looked in the wrong place. A
+/// caller that could only catch `Exception` had to read the message to tell
+/// them apart.
+///
+/// This does **not** cover a failure raised by the provider itself. Those
+/// propagate unaltered, by design — see [processTree].
+///
+/// Error keys:
+///
+/// - `json.directive.malformed_key` — a key carries three or more `@` and so
+///   cannot be an ordinary key, but is not the three-part directive shape
+///   either. The `parameters` carry `key`.
+/// - `json.directive.unresolved_key` — a `"@"` directive's provider returned no
+///   entry under the directive's own key. The `parameters` carry `key`, `path`,
+///   `profile` and `providerKeys`.
+class TomJsonDirectiveException extends TomException {
+  /// Creates a directive-resolution failure.
+  TomJsonDirectiveException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.requestUuid,
+    super.uuid,
+  });
+}
 
 // =============================================================================
 // Private Helpers
@@ -627,10 +693,17 @@ Object? getObjectFromTree(Map<String, dynamic> baseTree, String path) {
     final Object? value = _readSegment(tree, pathParts[i], path, i);
     final Map<String, dynamic>? subtree = _asStringKeyedMap(value);
     if (subtree == null) {
-      throw Exception(
+      throw TomJsonPathException(
+        "json.path.not_a_subtree",
         "Path $path cannot be resolved. Key ${pathParts[i]} at position $i "
-        "holds ${value == null ? "null" : "a non-map value"}, which has no "
-        "subtree to descend into.",
+            "holds ${value == null ? "null" : "a non-map value"}, which has no "
+            "subtree to descend into.",
+        parameters: {
+          "path": path,
+          "key": pathParts[i],
+          "position": i,
+          "holds": value == null ? "null" : "a non-map value",
+        },
       );
     }
     tree = subtree;
@@ -659,9 +732,11 @@ Object? _readSegment(
   int position,
 ) {
   if (!tree.containsKey(key)) {
-    throw Exception(
+    throw TomJsonPathException(
+      "json.path.missing_key",
       "Path $path cannot be resolved. There is no key $key at position "
-      "$position.",
+          "$position.",
+      parameters: {"path": path, "key": key, "position": position},
     );
   }
   return tree[key];
@@ -804,10 +879,12 @@ _TreeModification? _modifyTree(
     // simply not happen. Below the threshold the key is ordinary and is left
     // alone, so no working tree starts failing.
     if ("@".allMatches(name).length >= _malformedDirectiveAtCount) {
-      throw Exception(
+      throw TomJsonDirectiveException(
+        "json.directive.malformed_key",
         "Malformed profile directive key $name: a directive is exactly three "
-        "non-empty parts, keyName@path@profileName. Rename the key if it was "
-        "not meant as a directive.",
+            "non-empty parts, keyName@path@profileName. Rename the key if it was "
+            "not meant as a directive.",
+        parameters: {"key": name},
       );
     }
     return null;
@@ -836,11 +913,18 @@ _TreeModification? _modifyTree(
   // insertTree cannot change between the two points — the check is equally
   // valid here and strictly safer.
   if ("@" == value && !insertTree.containsKey(keyName)) {
-    throw Exception(
+    throw TomJsonDirectiveException(
+      "json.directive.unresolved_key",
       'Cannot resolve the "@" directive of key $name: the provider for path '
-      "$path and profile $profileName returned "
-      "${_describeProviderKeys(insertTree)}, so there is no $keyName to take a "
-      "value from",
+          "$path and profile $profileName returned "
+          "${_describeProviderKeys(insertTree)}, so there is no $keyName to take a "
+          "value from",
+      parameters: {
+        "key": name,
+        "path": path,
+        "profile": profileName,
+        "providerKeys": insertTree.keys.toList(),
+      },
     );
   }
 

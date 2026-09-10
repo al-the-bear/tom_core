@@ -2358,6 +2358,124 @@ void main() {
     });
   });
 
+  group('the module\'s failure types', () {
+    // A bare `Exception` carrying only a message would leave a caller
+    // substring-matching the text to tell an unresolvable path from a directive
+    // the provider could not answer, and unable to catch this module's failures
+    // without catching every other `Exception` on the stack. Both types derive
+    // from `TomException`, so a caller that wants the whole framework's
+    // failures still catches one thing.
+
+    test('a missing path segment is a path exception', () {
+      final tree = <String, dynamic>{
+        'db': <String, dynamic>{'host': 'h'},
+      };
+
+      expect(
+        () => getObjectFromTree(tree, 'db.absent'),
+        throwsA(
+          isA<TomJsonPathException>()
+              .having((e) => e.key, 'key', 'json.path.missing_key')
+              .having((e) => e.parameters?['path'], 'path', 'db.absent')
+              .having((e) => e.parameters?['key'], 'key parameter', 'absent')
+              .having((e) => e.parameters?['position'], 'position', 1),
+        ),
+      );
+    });
+
+    test('descending into a scalar is a path exception', () {
+      final tree = <String, dynamic>{'db': 'not a subtree'};
+
+      expect(
+        () => getObjectFromTree(tree, 'db.host'),
+        throwsA(
+          isA<TomJsonPathException>()
+              .having((e) => e.key, 'key', 'json.path.not_a_subtree')
+              .having((e) => e.parameters?['position'], 'position', 0)
+              .having(
+                (e) => e.parameters?['holds'],
+                'holds',
+                'a non-map value',
+              ),
+        ),
+      );
+    });
+
+    test('getPathFromTree raises the same type as getObjectFromTree', () {
+      // It delegates the walk, so it must not raise a second vocabulary for
+      // the same failure.
+      expect(
+        () => getPathFromTree(<String, dynamic>{'a': 1}, 'a.b', 'v'),
+        throwsA(isA<TomJsonPathException>()),
+      );
+    });
+
+    test('a malformed directive key is a directive exception', () {
+      final tree = <String, dynamic>{'a@b@c@d': 'value'};
+
+      expect(
+        () => processTree(
+          tree,
+          (keyName, path, profileName) => <String, dynamic>{},
+        ),
+        throwsA(
+          isA<TomJsonDirectiveException>()
+              .having((e) => e.key, 'key', 'json.directive.malformed_key')
+              .having((e) => e.parameters?['key'], 'key parameter', 'a@b@c@d'),
+        ),
+      );
+    });
+
+    test('an unanswerable "@" directive is a directive exception', () {
+      final tree = <String, dynamic>{'wanted@some.path@prod': '@'};
+
+      expect(
+        () => processTree(
+          tree,
+          (keyName, path, profileName) => <String, dynamic>{'other': 1},
+        ),
+        throwsA(
+          isA<TomJsonDirectiveException>()
+              .having((e) => e.key, 'key', 'json.directive.unresolved_key')
+              .having((e) => e.parameters?['path'], 'path', 'some.path')
+              .having((e) => e.parameters?['profile'], 'profile', 'prod')
+              .having(
+                (e) => e.parameters?['providerKeys'],
+                'providerKeys',
+                equals(['other']),
+              ),
+        ),
+      );
+    });
+
+    test('the two failures are distinguishable by type', () {
+      // The point of the split: catching one must not catch the other, or the
+      // types would be decoration on a single vocabulary.
+      expect(
+        () => getObjectFromTree(<String, dynamic>{}, 'nope'),
+        throwsA(isNot(isA<TomJsonDirectiveException>())),
+      );
+      expect(
+        () => processTree(<String, dynamic>{'a@b@c@d': 'v'}, (k, p, n) => {}),
+        throwsA(isNot(isA<TomJsonPathException>())),
+      );
+    });
+
+    test('both are TomExceptions, and so still Exceptions', () {
+      // A caller that catches the framework's own base type keeps working, and
+      // so does one that catches `Exception` — the split narrows what a caller
+      // *may* catch, not what it must.
+      expect(
+        () => getObjectFromTree(<String, dynamic>{}, 'nope'),
+        throwsA(isA<TomException>()),
+      );
+      expect(
+        () => getObjectFromTree(<String, dynamic>{}, 'nope'),
+        throwsA(isA<Exception>()),
+      );
+    });
+  });
+
   group('makeCleanJsonMap', () {
     group('valid JSON types', () {
       test('should preserve string values', () {

@@ -65,6 +65,29 @@ anyone who was writing them.
 
 ### Fixed
 
+- **The json module's failures are typed (tcopen28).** Every failure it raised
+  was a bare `Exception` carrying a message and nothing else, so a caller could
+  not tell an unresolvable path from a directive the provider could not answer
+  except by substring-matching the text — and could not catch this module's
+  failures at all without catching every other `Exception` on the stack. The
+  prose doc's own error-handling example showed the cost: a bare `catch (e)`
+  whose comment assumed the cause was a missing path, one of at least three
+  things it could have been.
+
+  Two types now, both `TomException` subclasses:
+  `TomJsonPathException` (`json.path.missing_key`, `json.path.not_a_subtree`)
+  and `TomJsonDirectiveException` (`json.directive.malformed_key`,
+  `json.directive.unresolved_key`). Two rather than one because they are
+  answered by different people: a path failure is usually a typo in a caller's
+  path, a directive failure usually a provider looking in the wrong place.
+  Each carries its specifics in `parameters` — the path, key and position; the
+  directive key, resolved path, profile and the keys the provider did return —
+  so a caller reads them rather than parsing a message.
+
+  A failure raised by a `processTree` provider is neither of these and is
+  still not wrapped in one. Callers catching `Exception` are unaffected: the
+  split narrows what a caller *may* catch, not what it must.
+
 - **`getPathFromTree` no longer logs when it wraps (tcopen26).** A path that
   resolves to a terminal non-map value is wrapped as `{name: value}` — the
   documented, tested reason the function exists, since a caller that wants the
