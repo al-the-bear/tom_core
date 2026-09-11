@@ -8,6 +8,19 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **Client limits get a source and a refresh path (tcopen76).**
+  `TomClientLimitsProvider` is the contract a subscription and quota service
+  (Tom SQM) implements — `clientLimitsFor(principal)` — installed at
+  `TomClientLimitsProvider.installed`; the framework ships no implementation.
+  `tom_core_server` asks it at login, and
+  `TomBearerAuthentication.refreshClientLimits()` asks it mid-session.
+  `TomBearerAuthentication.replaceClientLimits(enabledModules:, quotas:)` is
+  the sibling of `replacePrincipalAci` for values already in hand, and
+  `TomPrincipal.cli` is now assignable, replaced as a whole value like `aci` —
+  the instance stays immutable. Limits had been a login-time snapshot with no
+  way to change them short of a new login. Example 9 of
+  `security/04_bearer_authentication_example.dart` runs both.
+
 - **The automatic protection tiers are real, on by default, and switchable
   from the command line (tcopen75).** `@TomProtectedField('key')` protects a
   reflected field: the JSON tier — `TomReflectionInfo.getValues`' field walk —

@@ -12,6 +12,7 @@ per-principal-per-resource role resolution.
 - [Classes](#classes)
   - [TomAccessControlInformation](#tomaccesscontrolinformation)
   - [TomClientLimitsInformation](#tomclientlimitsinformation)
+  - [TomClientLimitsProvider](#tomclientlimitsprovider)
   - [TomAccessControlDefinition](#tomaccesscontroldefinition)
   - [TomGroup](#tomgroup)
   - [TomRole](#tomrole)
@@ -148,6 +149,7 @@ here would be the first step towards a second token issuer.
 Object
 ├── TomAccessControlInformation
 ├── TomClientLimitsInformation
+├── TomClientLimitsProvider                  (abstract)
 ├── TomAccessControlDefinition
 ├── TomGroup
 ├── TomRole
@@ -242,11 +244,13 @@ Controls system capabilities independent of user rights — subscription-based
 limits and feature flags (enabled modules and quotas).
 
 The values come from the application's authentication service, on the principal
-it returns from a login, and from nowhere else; neither the kernel nor
+it returns from a login — or from the installed [TomClientLimitsProvider], which
+`tom_core_server` asks before minting tokens. Neither the kernel nor
 `tom_core_server` holds a subscription store. They travel in the **public** half
 of the JWT as the `subscription_enabledModules` / `subscription_quotas` claims,
-so they are a login-time snapshot and their figures are readable by whoever
-holds the token.
+so the token carries a login-time snapshot readable by whoever holds it; a
+client revises its copy with `TomBearerAuthentication.refreshClientLimits` or
+`replaceClientLimits`.
 
 #### Constructors
 
@@ -269,6 +273,28 @@ TomClientLimitsInformation({
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `toString()` | `String` | *(override)* Module count and quotas summary. |
+
+### TomClientLimitsProvider
+
+The source of a client's limits — the seam a subscription and quota service
+(Tom SQM) fills. The framework ships the contract, the installation point and
+the two places that ask it; no implementation. Abstract.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `installed` | `TomClientLimitsProvider?` | The installed provider, or `null` (the default) — limits are then the authentication service's answer. Process-wide. |
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `clientLimitsFor(TomPrincipal principal)` | `Future<TomClientLimitsInformation?>` | The limits `principal`'s client is currently granted, or `null` for no answer — the principal keeps what it carries. Answers about `principal`, not the ambient zone: at login there is none. |
+
+Asked by `tom_core_server`'s authentication server for every principal before it
+mints tokens (a failure is logged and the authentication service's limits are
+minted), and by [TomBearerAuthentication.refreshClientLimits] on the client.
 
 ### TomAccessControlDefinition
 
@@ -505,7 +531,7 @@ TomPrincipal({
 | `requires2FA` | `bool` | Whether two-factor authentication is required. |
 | `twoFactorType` | `String?` | The type of 2FA required (e.g. `'totp'`, `'sms'`, `'email'`). |
 | `aci` | `TomAccessControlInformation` | The user's access control information (roles, groups, entitlements). |
-| `cli` | `TomClientLimitsInformation` | The client's limits information (quotas, enabled modules). |
+| `cli` | `TomClientLimitsInformation` | Assignable; replaced as a whole value, never edited (the instance is immutable). The client's limits information (quotas, enabled modules). |
 
 #### Methods
 
@@ -1160,6 +1186,8 @@ TomBearerAuthentication()
 | `convertTokenPayloadToPrincipal(TomClientJwtToken authenticationToken, [TomClientJwtToken? authorizationToken])` | `TomPrincipal` | Builds a [TomPrincipal] from JWT token payloads (defensive against malformed claims). Throws [StateError] when the token has no payload. This is the single point at which `authenticated` is derived, and it is derived rather than read: true only when the username is not [TomUser.guestUsername] **and** no second factor is owed, so every access check rejects an interim token without having to test `requires2FA` itself. The factor test goes through [Tom2FAClaims.isTrue], which recognises exactly the four values Tom writes: the string `"true"` its own issuer produces and the JSON boolean `true` mean "a factor is owed" and yield an *un*authenticated principal; `"false"`, `false` and an absent claim mean none is. **Any other value throws** `security.two_factor.unreadable_claim` rather than being read as "no factor owed" — `"True"`, `1` and `"yes"` are refused. Both halves are the fail-safe direction at this gate: a reader that took only the string would authenticate a token saying, in the encoding it did not expect, that it had not finished logging in, and one that shrugged at an unreadable value would do the same for an issuer whose convention it had never seen. |
 | `getPrincipal()` | `TomPrincipal` | The current authenticated principal (cached); throws [StateError] without valid tokens. |
 | `replacePrincipalAci({required List<String> groups, required List<String> roles, required List<String> entitlements, required List<String> resourceKeys, required Map<String, String> resourceRoles})` | `void` | Refreshes the current principal's ACI without re-authentication. **Replaces** it: each collection becomes exactly what is passed, so a caller supplies the whole set rather than a delta. All five are required and named, which closes the two silent failures the shape otherwise invites — an omitted `resourceRoles` clearing every per-resource grant, and two identically typed lists swapped by position granting the wrong things. Clearing one is spelled `const []` / `const {}`. |
+| `replaceClientLimits({required List<String> enabledModules, required Map<String, int> quotas})` | `void` | Replaces the current principal's client limits with exactly what is passed — the sibling of `replacePrincipalAci`, for values already in hand (a server push). Does not re-mint the token. |
+| `refreshClientLimits()` | `Future<bool>` | Asks the installed [TomClientLimitsProvider] for the current principal's limits and replaces them with the answer. `false` when no provider is installed or it had no answer; a provider failure propagates to the caller. |
 | `convertPrincipalToTokenPayload(TomPrincipal principal, TomAccessControlDefinition? definition, String? clientCountry, String? clientLanguage, {Tom2FAChallenge? challenge, Map<String, Object?>? twoFactorVerification, bool twoFactorSatisfied = false})` | `(Map<String, Object?>, Map<String, Object?>)` | Converts a principal to the public and private JWT payloads. The two second-factor parameters are **not** independent — a `challenge` decides both. Supplying one projects its claims, which include `requires2FA: "true"` unconditionally: `twoFactorSatisfied` is consulted only when there is *no* challenge, so `(challenge: c, twoFactorSatisfied: true)` still yields an interim token. That is the fail-safe direction — forgetting a parameter produces an unusable token, never an over-privileged one. `twoFactorVerification` is written into the private payload **only alongside a `challenge`**, and is silently dropped without one, so a mechanism secret cannot outlive the challenge it was minted for. With no challenge, `requires2FA` is `"true"` exactly when the principal owes a factor and `twoFactorSatisfied` is `false`. |
 
 ### Tom2FAClaims

@@ -14,6 +14,8 @@
 /// - which identity fields redaction removes, and whose keys decide it
 /// - `setTokens` / `getPrincipal` / `clearTokens`
 /// - `replacePrincipalAci`, and the fact that it *replaces* an ACI
+/// - revising client limits mid-session: `replaceClientLimits`, and
+///   `refreshClientLimits` through an installed `TomClientLimitsProvider`
 ///
 /// `03_advanced_access_control_example.dart` owns [TomResourceKeyProtection]
 /// in general — `protect()` against the ambient zone. What example 4 below
@@ -44,6 +46,7 @@ class BearerAuthenticationExample {
   static bool redactionFollowsSubject = false;
   static bool clientLimitsTravel = false;
   static bool updateReplacesAci = false;
+  static bool clientLimitsRevise = false;
   static bool sessionLifecycleWorks = false;
 
   /// The subject every example below mints a token for.
@@ -542,6 +545,55 @@ class BearerAuthenticationExample {
   }
 
   // --------------------------------------------------------------------------
+  // Example 9: Revising client limits mid-session
+  // --------------------------------------------------------------------------
+  static Future<void> example9ClientLimitsRefresh() async {
+    print('\n9. Revising client limits mid-session:');
+
+    final (authentication, authorization) = _issueTokens(_subject());
+    TomBearerAuthentication.setTokens(authentication, authorization);
+    final loginQuota = TomBearerAuthentication.getPrincipal().cli.quotas;
+    print('   At login (the token snapshot) : $loginQuota');
+
+    // A server push that already carries the new plan.
+    TomBearerAuthentication.replaceClientLimits(
+      enabledModules: ['module.reports', 'module.export'],
+      quotas: {'api.calls': 20000},
+    );
+    final pushed = TomBearerAuthentication.getPrincipal().cli;
+    print('   After replaceClientLimits()   : ${pushed.quotas}');
+
+    // A provider — the seam a subscription service fills. With none installed
+    // a refresh changes nothing; with one, its answer replaces the limits.
+    final withoutProvider = await TomBearerAuthentication.refreshClientLimits();
+    TomClientLimitsProvider.installed = _PlanProvider();
+    final withProvider = await TomBearerAuthentication.refreshClientLimits();
+    final refreshed = TomBearerAuthentication.getPrincipal().cli;
+    print('   refresh without a provider    : $withoutProvider');
+    print(
+      '   refresh with a provider       : $withProvider '
+      '-> ${refreshed.quotas}',
+    );
+
+    TomClientLimitsProvider.installed = null;
+    TomBearerAuthentication.clearTokens();
+
+    clientLimitsRevise =
+        pushed.quotas['api.calls'] == 20000 &&
+        !withoutProvider &&
+        withProvider &&
+        refreshed.quotas['api.calls'] == 50000;
+
+    assert(loginQuota['api.calls'] == 10000, 'the login snapshot');
+    assert(
+      pushed.enabledModules.contains('module.export'),
+      'replaceClientLimits replaces the modules too',
+    );
+    assert(!withoutProvider, 'no provider, no refresh');
+    assert(clientLimitsRevise, 'the limits follow the provider');
+  }
+
+  // --------------------------------------------------------------------------
   // Example 8: The static accessors, over a session's lifetime
   // --------------------------------------------------------------------------
   static void example8StaticAccessors() {
@@ -616,11 +668,23 @@ class BearerAuthenticationExample {
   }
 }
 
+/// A [TomClientLimitsProvider] standing in for a subscription service: it
+/// answers every principal with the plan it has just been moved to.
+class _PlanProvider extends TomClientLimitsProvider {
+  @override
+  Future<TomClientLimitsInformation?> clientLimitsFor(
+    TomPrincipal principal,
+  ) async => TomClientLimitsInformation(
+    enabledModules: ['module.reports', 'module.export'],
+    quotas: {'api.calls': 50000},
+  );
+}
+
 // ============================================================================
 // Run Function
 // ============================================================================
 
-void run() {
+Future<void> run() async {
   print('=== 04: Bearer Authentication Example ===\n');
 
   BearerAuthenticationExample.example1AuthenticationStructure();
@@ -631,6 +695,7 @@ void run() {
   BearerAuthenticationExample.example6TokenFlowPattern();
   BearerAuthenticationExample.example7ReplacePrincipalAci();
   BearerAuthenticationExample.example8StaticAccessors();
+  await BearerAuthenticationExample.example9ClientLimitsRefresh();
 
   // Final assertions
   assert(
@@ -661,6 +726,10 @@ void run() {
     BearerAuthenticationExample.sessionLifecycleWorks,
     'The session lifecycle should work',
   );
+  assert(
+    BearerAuthenticationExample.clientLimitsRevise,
+    'Client limits should follow a refresh',
+  );
 
   // Leave no session behind for the samples that follow.
   assert(
@@ -671,7 +740,7 @@ void run() {
   print('\n✓ All bearer authentication examples passed!\n');
 }
 
-void main() {
+Future<void> main() async {
   prepareSampleProcess();
-  run();
+  await run();
 }

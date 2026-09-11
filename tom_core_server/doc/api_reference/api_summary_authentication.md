@@ -414,9 +414,11 @@ The contract an application implements to authenticate a login
 
 Everything the returned principal asserts is the implementation's answer — the
 identity, the locale, the ACI, and the client limits (`principal.cli`, the
-subscription's enabled modules and quotas). The server resolves none of it and
-holds no subscription store. The one value it overwrites is
-`principal.timezone`, from the user's stored preference.
+subscription's enabled modules and quotas). The server holds no subscription
+store. Two values it resolves after the credential is accepted:
+`principal.timezone`, from the user's stored preference, and `principal.cli`,
+from the kernel's installed `TomClientLimitsProvider` when there is one (a
+`null` answer or a failure keeps the implementation's limits).
 
 - **Abstract**
 

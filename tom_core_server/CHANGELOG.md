@@ -2,6 +2,12 @@
 
 ### Changed
 
+- **The login asks the installed `TomClientLimitsProvider` for the client
+  limits (tcopen76)** before minting tokens, so a subscription service answers
+  what a client bought; `null` keeps the authentication service's limits, and a
+  provider failure is logged and the service's limits are minted, so an
+  unreachable subscription service does not stop every sign-in.
+
 - **Column authorization is the kernel's database protection tier
   (tcopen75).** It applies while
   `TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection` is on

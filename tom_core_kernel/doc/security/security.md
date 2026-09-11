@@ -370,20 +370,45 @@ Like the ACI, it is read-only once constructed — the constructor copies its
 arguments and the getters return unmodifiable views, so a caller cannot raise
 its own ceiling by writing to the object it was handed.
 
-**Where the values come from.** The application's authentication service builds
-them, on the principal it returns from a login, and nothing else does — the same
-call that answers the ACI, so that what a client bought and what a user may do
-are decided together against one view of the account. Neither the kernel nor
-`tom_core_server` holds a subscription store or reads the environment for these.
+**Where the values come from.** At login, the application's authentication
+service builds them on the principal it returns — the same call that answers the
+ACI. When a `TomClientLimitsProvider` is installed, `tom_core_server` asks it
+instead, before it mints the tokens: the provider is the seam a subscription
+service (Tom SQM) fills, so that what a client bought is answered by the service
+that sells it. The framework ships the contract, the installation point and the
+places that ask it — no implementation. Neither the kernel nor `tom_core_server`
+holds a subscription store or reads the environment for these.
 
-From there they ride in the **public** half of the JWT, as
-the claims `subscription_enabledModules` and `subscription_quotas`, and are read
-back into `principal.cli` when the token is parsed. Two consequences follow, and
-both matter in practice. First, they are a **login-time snapshot**: a principal's
-CLI is fixed when the principal is built, there is no updater for it (unlike the
-ACI, which [`replacePrincipalAci`](#token-management) can replace mid-session), so a
-subscription change takes effect on the next login. Second, being in the public
-half, the quota figures are readable by anyone holding the token.
+```dart
+class SqmClientLimits extends TomClientLimitsProvider {
+  @override
+  Future<TomClientLimitsInformation?> clientLimitsFor(
+    TomPrincipal principal,
+  ) async => null; // the subscription service's answer, or null for "no answer"
+}
+
+TomClientLimitsProvider.installed = SqmClientLimits();
+```
+
+A provider answering `null` leaves the limits the principal already carries, and
+a provider that fails at login is logged and the authentication service's answer
+is minted — an unreachable subscription service does not stop every sign-in.
+
+From there they ride in the **public** half of the JWT, as the claims
+`subscription_enabledModules` and `subscription_quotas`, and are read back into
+`principal.cli` when the token is parsed. The token therefore carries a
+**login-time snapshot**, readable by anyone holding it. A client revises its copy
+mid-session the way it revises the ACI:
+
+| Call | Does |
+| ---- | ---- |
+| `TomBearerAuthentication.refreshClientLimits()` | asks the installed provider for the current principal and replaces `cli` with the answer; `false` when there is no provider or no answer |
+| `TomBearerAuthentication.replaceClientLimits(enabledModules:, quotas:)` | replaces `cli` with values already in hand — a server push — with the same all-`required` replacement contract as [`replacePrincipalAci`](#token-management) |
+
+Neither re-mints the token, so a server reading limits from a request's token
+sees the snapshot until the next login; a server that needs the current figures
+asks the provider itself. `principal.cli` is replaced as a whole value, never
+edited, which is what keeps the "read-only once constructed" rule above true.
 
 #### TomAccessControlDefinition
 

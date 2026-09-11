@@ -468,6 +468,45 @@ class TomBearerAuthentication {
     );
   }
 
+  /// Replaces the current principal's client limits.
+  ///
+  /// The sibling of [replacePrincipalAci], with the same contract: both
+  /// collections are `required`, and what is passed is what the principal ends
+  /// up with — pass `const []` or `const {}` deliberately to clear one. Use it
+  /// when the new values are already in hand (a server push); to fetch them,
+  /// call [refreshClientLimits].
+  ///
+  /// The token is not re-minted: the replacement is the client's view. A server
+  /// reading limits from a request's token sees the login-time snapshot until
+  /// the next login, and asks the installed [TomClientLimitsProvider] when it
+  /// needs the current figures.
+  static void replaceClientLimits({
+    required List<String> enabledModules,
+    required Map<String, int> quotas,
+  }) {
+    getPrincipal().cli = TomClientLimitsInformation(
+      enabledModules: enabledModules,
+      quotas: quotas,
+    );
+  }
+
+  /// Asks the installed [TomClientLimitsProvider] for the current principal's
+  /// limits and replaces them with the answer.
+  ///
+  /// Returns `true` when the limits were replaced; `false` when no provider is
+  /// installed or it had no answer, in which case the principal keeps the
+  /// limits it carries. A provider failure propagates: the caller decided to
+  /// refresh, so it is the one to decide whether a failed refresh matters.
+  static Future<bool> refreshClientLimits() async {
+    final provider = TomClientLimitsProvider.installed;
+    if (provider == null) return false;
+    final principal = getPrincipal();
+    final limits = await provider.clientLimitsFor(principal);
+    if (limits == null) return false;
+    principal.cli = limits;
+    return true;
+  }
+
   // -------------------------------------------------------------------------
   // Token payload conversion
   // -------------------------------------------------------------------------

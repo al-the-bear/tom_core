@@ -34,6 +34,7 @@ an element is hidden, locked, read-only, or fully editable.
 | `TomGuestAccess` | The rule for endpoints reachable by anyone, authenticated or not. |
 | `TomServerPrincipal` | The process's own identity, installed from a service token. `isConfigured` answers which regime is in force — unconfigured is the designed default, not a failure. |
 | `TomClientLimitsInformation` | Per-client limits, travelling in the **public** half of the JWT. |
+| `TomClientLimitsProvider` | The source of a client's limits — the seam a subscription service fills (no implementation ships). Installed process-wide; asked at login before tokens are minted, and by `TomBearerAuthentication.refreshClientLimits` mid-session. |
 
 ### Second factor
 

@@ -44,7 +44,7 @@ Future<void> run() async {
   user_principal.run();
   access_control.run();
   advanced_access.run();
-  bearer_auth.run();
+  await bearer_auth.run();
   ui_authorization.run();
   graded_access.run();
   resource_roles.run();

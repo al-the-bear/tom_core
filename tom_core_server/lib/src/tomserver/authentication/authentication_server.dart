@@ -87,22 +87,25 @@ class TomAuthenticationData {
 /// [TomDummyAuthenticationService], accepts everything and is for scaffolding
 /// only.
 ///
-/// ## The implementation is the only source of what the principal asserts
+/// ## The implementation is the source of what the principal asserts
 ///
 /// Everything the returned [TomPrincipal] carries is the implementation's
 /// answer: the identity and its numeric ids, the locale, the access-control
 /// information, and the client limits — [TomPrincipal.cli], the enabled modules
 /// and quotas the client's subscription grants. [TomAuthenticationServer]
-/// resolves none of it. It reads no subscription store and consults no
-/// environment; it encodes what it was handed into the tokens and stops there.
-/// So there is exactly one authority for what a client has bought, and it is
-/// the same one that decides what the user may do — which is what lets the two
-/// be checked against each other without asking which is more current.
+/// reads no subscription store and consults no environment; it encodes what it
+/// was handed into the tokens.
 ///
-/// The one exception is [TomPrincipal.timezone], which the server overwrites
-/// from the user's stored preference once the credential is accepted. It is an
-/// exception because it is a server-held *preference* rather than a fact about
-/// the identity being asserted; see `_applyStoredTimezone`.
+/// Two values are resolved after the credential is accepted, each because the
+/// implementation is not their authority:
+///
+/// - [TomPrincipal.timezone], from the user's stored preference — a
+///   server-held *preference* rather than a fact about the identity being
+///   asserted; see `_applyStoredTimezone`.
+/// - [TomPrincipal.cli], from the installed [TomClientLimitsProvider], when one
+///   is installed — the seam a subscription service fills, so that what a
+///   client bought is answered by the service that sells it. With no provider,
+///   the implementation's answer stands; see `_applyClientLimits`.
 @tomReflector
 abstract class TomAuthenticationService {
   /// Authenticates [authData], returning the principal and its access rights,
@@ -860,8 +863,10 @@ class TomAuthenticationServer {
   /// pair into an *interim* token that grants no session.
   ///
   /// It is also where the principal's stored preferences are applied
-  /// ([_applyStoredTimezone]), for the same reason: every token this server
-  /// mints, on every pass, then carries the same resolved values.
+  /// ([_applyStoredTimezone]) and its client limits are asked of the installed
+  /// [TomClientLimitsProvider] ([_applyClientLimits]), for the same reason:
+  /// every token this server mints, on every pass, then carries the same
+  /// resolved values.
   Future<TomAuthenticationResult> _issueTokens(
     TomPrincipal principal,
     TomAccessControlDefinition? definition,
@@ -872,6 +877,7 @@ class TomAuthenticationServer {
     bool twoFactorSatisfied = false,
   }) async {
     await _applyStoredTimezone(principal, m);
+    await _applyClientLimits(principal);
 
     var (
       publicInfo,
@@ -941,6 +947,33 @@ class TomAuthenticationServer {
   ) async {
     principal.clientTimezone = m.clientTimezone;
     principal.timezone = await _storedTimezone(principal) ?? m.clientTimezone;
+  }
+
+  /// Replaces [principal]'s client limits with the installed
+  /// [TomClientLimitsProvider]'s answer, when there is a provider and it has
+  /// one.
+  ///
+  /// The provider is the seam a subscription service fills; with none
+  /// installed, the limits stay what the authentication service put on the
+  /// principal. A provider that fails costs no one their login, for the same
+  /// reason as a stored-preference failure: an unreachable subscription service
+  /// would otherwise stop every sign-in. The failure is logged and the
+  /// authentication service's answer is minted — exactly what a deployment
+  /// without a provider issues.
+  Future<void> _applyClientLimits(TomPrincipal principal) async {
+    final provider = TomClientLimitsProvider.installed;
+    if (provider == null) return;
+    try {
+      final limits = await provider.clientLimitsFor(principal);
+      if (limits != null) principal.cli = limits;
+    } catch (error) {
+      tomLog.warn(
+        'TomAuthenticationServer: the client limits of '
+        '"${principal.username}" could not be read from the installed '
+        'TomClientLimitsProvider; minting the limits the authentication '
+        'service returned. Cause: $error',
+      );
+    }
   }
 
   /// [principal]'s stored timezone preference, or `null` when there is none to

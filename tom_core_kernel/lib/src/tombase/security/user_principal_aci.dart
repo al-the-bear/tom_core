@@ -271,19 +271,23 @@ bool _resourceKeyGrantCovers(String grant, String resourceKey) {
 ///
 /// ## Where the values come from
 ///
-/// The application's authentication service, on the principal it returns from a
-/// login, and from nowhere else — the same call that answers the
-/// [TomAccessControlInformation], so that what a client bought and what a user
-/// may do are decided together against one view of the account. Neither the
-/// kernel nor `tom_core_server` holds a subscription store or reads the
-/// environment for these.
+/// At login, from the application's authentication service, on the principal it
+/// returns — the same call that answers the [TomAccessControlInformation] — or,
+/// when a [TomClientLimitsProvider] is installed, from that provider, which the
+/// server asks before it mints the tokens. The provider is the seam a
+/// subscription service fills (Tom SQM); the framework ships the contract and
+/// no implementation. Neither the kernel nor `tom_core_server` holds a
+/// subscription store or reads the environment for these.
 ///
 /// From there they travel in the **public** half of the JWT, as the claims
 /// `subscription_enabledModules` and `subscription_quotas`, and are read back
-/// into [TomPrincipal.cli] when a token is parsed. Two consequences: they are a
-/// login-time snapshot, with no mid-session updater of the kind that can replace
-/// the ACI, so a subscription change lands on the next login; and being public,
-/// the quota figures are readable by whoever holds the token.
+/// into [TomPrincipal.cli] when a token is parsed. So the token carries a
+/// login-time snapshot, readable by whoever holds it. A client revises its copy
+/// mid-session with `TomBearerAuthentication.refreshClientLimits`, which asks
+/// the installed provider, or `TomBearerAuthentication.replaceClientLimits`
+/// when it already holds the new values — the same replacement the ACI has.
+/// A server wanting the current figures rather than the snapshot asks the
+/// provider itself.
 class TomClientLimitsInformation {
   final List<String> _enabledModules = [];
 
@@ -308,6 +312,60 @@ class TomClientLimitsInformation {
 
   @override
   String toString() => "CLI ${enabledModules.length} modules, quotas: $quotas.";
+}
+
+/// The source of a client's limits: what its subscription currently grants.
+///
+/// The seam a subscription and quota service — Tom SQM — fills. The framework
+/// ships this contract, the installation point and the two places that ask it,
+/// and deliberately no implementation:
+///
+/// - `tom_core_server`'s authentication server asks it for every principal
+///   before minting tokens, so a login carries the provider's answer rather
+///   than the authentication service's;
+/// - `TomBearerAuthentication.refreshClientLimits` asks it for the client's
+///   current principal, so a subscription change reaches a running session
+///   without a new login.
+///
+/// With no provider installed — the default — limits are the authentication
+/// service's answer and nothing else.
+///
+/// ```dart
+/// class SqmClientLimits extends TomClientLimitsProvider {
+///   @override
+///   Future<TomClientLimitsInformation?> clientLimitsFor(
+///     TomPrincipal principal,
+///   ) async {
+///     final plan = await sqm.planFor(principal.clientId);
+///     return plan == null
+///         ? null
+///         : TomClientLimitsInformation(
+///             enabledModules: plan.modules,
+///             quotas: plan.quotas,
+///           );
+///   }
+/// }
+///
+/// TomClientLimitsProvider.installed = SqmClientLimits();
+/// ```
+abstract class TomClientLimitsProvider {
+  /// Const constructor for subclasses.
+  const TomClientLimitsProvider();
+
+  /// The installed provider, or `null` — the default, under which a client's
+  /// limits are whatever its authentication service put on the principal.
+  ///
+  /// Process-wide, like `TomAuthorization.adapter`: a provider answers about
+  /// the principal it is handed, so one installation serves every request.
+  static TomClientLimitsProvider? installed;
+
+  /// The limits [principal]'s client is currently granted, or `null` when this
+  /// provider has no answer for it — the principal then keeps the limits it
+  /// already carries.
+  ///
+  /// Answer about [principal], not about the ambient zone: at login there is
+  /// no principal on the zone yet.
+  Future<TomClientLimitsInformation?> clientLimitsFor(TomPrincipal principal);
 }
 
 // =============================================================================
@@ -1017,10 +1075,12 @@ class TomPrincipal {
   /// The user's access control information (roles, groups, entitlements).
   TomAccessControlInformation aci = TomAccessControlInformation();
 
-  TomClientLimitsInformation _cli = TomClientLimitsInformation();
-
   /// The client's limits information (quotas, enabled modules).
-  TomClientLimitsInformation get cli => _cli;
+  ///
+  /// Replaced as a whole value, never edited: [TomClientLimitsInformation] is
+  /// immutable, so a refresh assigns a new instance — the way [aci] is
+  /// replaced. See [TomClientLimitsProvider] for where a new value comes from.
+  TomClientLimitsInformation cli = TomClientLimitsInformation();
 
   @override
   String toString() =>
@@ -1058,7 +1118,7 @@ class TomPrincipal {
   }) {
     _user = user ?? _user;
     this.aci = aci ?? this.aci;
-    _cli = cli ?? _cli;
+    this.cli = cli ?? this.cli;
     _authenticated = authenticated;
     _requires2FA = requires2FA;
     _twoFactorType = twoFactorType;

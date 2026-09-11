@@ -10,7 +10,7 @@ principal into an authentication token and an authorization token.
 - [Overview](#overview)
 - [The Login Flow](#the-login-flow)
 - [Implementing a Service](#implementing-a-service)
-  - [Your service is the only source of what the principal asserts](#your-service-is-the-only-source-of-what-the-principal-asserts)
+  - [Your service is the source of what the principal asserts](#your-service-is-the-source-of-what-the-principal-asserts)
 - [Wiring the Server](#wiring-the-server)
   - [The signing keys](#the-signing-keys)
   - [Verifying an inbound token](#verifying-an-inbound-token)
@@ -217,15 +217,14 @@ class MyAuthService implements TomAuthenticationService {
 `application`, `process`, `client`) and *who* (`username`), plus the credential
 (`key`) and client locale (`language` / `country` / `timezone`).
 
-### Your service is the only source of what the principal asserts
+### Your service is the source of what the principal asserts
 
-Everything the returned principal carries is your answer, and the server
-resolves none of it. That includes the part it is easy to assume the framework
-fills in: `principal.cli`, the client limits — the `enabledModules` and `quotas`
-the client's subscription grants. There is no subscription store in
-`tom_core_server` and no environment lookup behind it. If your service does not
-put the limits on the principal, the principal has none, and the tokens will say
-so.
+Everything the returned principal carries is your answer. That includes the part
+it is easy to assume the framework fills in: `principal.cli`, the client limits —
+the `enabledModules` and `quotas` the client's subscription grants. There is no
+subscription store in `tom_core_server` and no environment lookup behind it. If
+your service does not put the limits on the principal, and no provider supplies
+them, the principal has none, and the tokens will say so.
 
 ```dart
 final principal = TomPrincipal(
@@ -238,27 +237,34 @@ final principal = TomPrincipal(
 );
 ```
 
-This is deliberate rather than unfinished. The ACI says what this *user* may do
-and the CLI says what this *client* has bought; both must allow an action, so
-letting them be answered by two different authorities would raise the question
-of which one is more current at exactly the moment it must not be asked. One
-service resolves both, in one call, against one view of the account.
+Two values are resolved after the credential is accepted, each because your
+service is not their authority:
 
-Two consequences worth knowing before you rely on it. The limits are a
-**login-time snapshot** — they ride in the *public* half of the JWT as the
+- **`principal.timezone`**, from the user's stored preference — a server-held
+  preference rather than a fact about the identity being asserted.
+- **`principal.cli`**, from the kernel's `TomClientLimitsProvider`, when one is
+  installed (`TomClientLimitsProvider.installed = …`). The provider is the seam
+  a subscription and quota service fills — Tom SQM, when it exists — so that
+  what a client bought is answered by the service that sells it. The server asks
+  it for every principal before minting tokens; an answer of `null` keeps your
+  service's limits, and a provider that fails is logged and your service's
+  limits are minted, so an unreachable subscription service does not stop every
+  sign-in. With no provider installed, your service's answer stands. The
+  framework ships the contract and these call sites, and no implementation.
+
+Two consequences worth knowing before you rely on it. The token carries a
+**login-time snapshot** — the limits ride in the *public* half of the JWT as the
 `subscription_enabledModules` / `subscription_quotas` claims and are read back
-into `principal.cli` when a token is parsed, and there is no updater for them
-the way `replacePrincipalAci` can replace the ACI, so a subscription change takes
-effect on the user's next login. And because that half is public, the quota
-figures are readable by anyone holding the token: they are a ceiling to enforce
-against, not a secret. Nothing in the framework counts usage or refuses the
-1001st call — carrying the ceiling to where the application can read it is the
-whole of what the kernel does.
-
-The single exception to "your service is the only source" is
-`principal.timezone`, which the server overwrites from the user's stored
-preference once the credential is accepted, because that is a server-held
-preference rather than a fact about the identity being asserted.
+into `principal.cli` when a token is parsed. A client revises its copy
+mid-session with `TomBearerAuthentication.refreshClientLimits()` (which asks the
+provider) or `replaceClientLimits(...)` (values already in hand), the way
+`replacePrincipalAci` revises the ACI; neither re-mints the token, so a server
+reading limits from a request's token sees the snapshot until the next login and
+asks the provider itself when it needs current figures. And because that half is
+public, the quota figures are readable by anyone holding the token: they are a
+ceiling to enforce against, not a secret. Nothing in the framework counts usage
+or refuses the 1001st call — carrying the ceiling to where the application can
+read it is the whole of what the kernel does.
 
 ## Wiring the Server
 

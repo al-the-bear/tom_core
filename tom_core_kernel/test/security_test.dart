@@ -3066,6 +3066,81 @@ void main() {
       });
 
       test(
+        'replaceClientLimits replaces the limits on the current principal',
+        () {
+          final jwt = _makeJwt({
+            'username': 'gwen',
+            'subscription_enabledModules': ['core'],
+            'subscription_quotas': {'api_calls': 10},
+          });
+          TomBearerAuthentication.setTokens(jwt, jwt, false);
+          addTearDown(TomBearerAuthentication.clearTokens);
+          expect(TomBearerAuthentication.getPrincipal().cli.quotas, {
+            'api_calls': 10,
+          });
+
+          TomBearerAuthentication.replaceClientLimits(
+            enabledModules: ['core', 'reporting'],
+            quotas: {'api_calls': 5000},
+          );
+
+          final cli = TomBearerAuthentication.getPrincipal().cli;
+          expect(cli.enabledModules, ['core', 'reporting']);
+          expect(cli.quotas, {'api_calls': 5000});
+        },
+      );
+
+      group('refreshClientLimits', () {
+        setUp(() {
+          final jwt = _makeJwt({
+            'username': 'hank',
+            'subscription_enabledModules': ['core'],
+            'subscription_quotas': {'seats': 1},
+          });
+          TomBearerAuthentication.setTokens(jwt, jwt, false);
+        });
+        tearDown(() {
+          TomBearerAuthentication.clearTokens();
+          TomClientLimitsProvider.installed = null;
+        });
+
+        test('with no provider installed it changes nothing', () async {
+          expect(await TomBearerAuthentication.refreshClientLimits(), isFalse);
+          expect(TomBearerAuthentication.getPrincipal().cli.quotas, {
+            'seats': 1,
+          });
+        });
+
+        test(
+          'takes the installed provider\'s answer for the principal',
+          () async {
+            final provider = _FixedLimitsProvider(
+              TomClientLimitsInformation(
+                enabledModules: ['core', 'reporting'],
+                quotas: {'seats': 25},
+              ),
+            );
+            TomClientLimitsProvider.installed = provider;
+
+            expect(await TomBearerAuthentication.refreshClientLimits(), isTrue);
+
+            final cli = TomBearerAuthentication.getPrincipal().cli;
+            expect(cli.enabledModules, ['core', 'reporting']);
+            expect(cli.quotas, {'seats': 25});
+            expect(provider.askedFor?.username, 'hank');
+          },
+        );
+
+        test('a provider with no answer leaves the limits alone', () async {
+          TomClientLimitsProvider.installed = _FixedLimitsProvider(null);
+          expect(await TomBearerAuthentication.refreshClientLimits(), isFalse);
+          expect(TomBearerAuthentication.getPrincipal().cli.quotas, {
+            'seats': 1,
+          });
+        });
+      });
+
+      test(
         'clearTokens leaves the singleton with no identity to hand back',
         () {
           final jwt = _makeJwt({'username': 'frank'});
@@ -4645,3 +4720,20 @@ List<bool> _switches() => [
   TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection,
   TomResourceKeyProtection.globalSettingUseAutomaticUIProtection,
 ];
+
+/// A [TomClientLimitsProvider] answering every principal with [limits], and
+/// remembering whom it was asked about.
+class _FixedLimitsProvider extends TomClientLimitsProvider {
+  _FixedLimitsProvider(this.limits);
+
+  final TomClientLimitsInformation? limits;
+  TomPrincipal? askedFor;
+
+  @override
+  Future<TomClientLimitsInformation?> clientLimitsFor(
+    TomPrincipal principal,
+  ) async {
+    askedFor = principal;
+    return limits;
+  }
+}

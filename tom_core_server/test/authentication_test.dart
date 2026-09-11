@@ -347,10 +347,10 @@ void main() {
       },
     );
 
-    // Where the principal's client limits come from was once an open question
-    // in the login path itself. These two pin the answer: the service is the
-    // only source, and the server neither invents a subscription nor drops the
-    // one it was handed.
+    // Where the principal's client limits come from: the authentication
+    // service, unless a TomClientLimitsProvider is installed — the seam a
+    // subscription service fills. The server invents no subscription of its
+    // own and drops none it was handed.
     test(
       'the subscription the service put on the principal reaches the token',
       () async {
@@ -411,6 +411,76 @@ void main() {
       );
       expect(auth.payload?['subscription_enabledModules'], isEmpty);
       expect(auth.payload?['subscription_quotas'], isEmpty);
+    });
+
+    group('with a TomClientLimitsProvider installed', () {
+      tearDown(() => TomClientLimitsProvider.installed = null);
+
+      _RecordingAuthService serviceGranting(TomClientLimitsInformation cli) =>
+          _RecordingAuthService(
+            build: (a) => TomAuthenticationInfo(
+              _principal(a, cli: cli),
+              TomAccessControlDefinition(),
+            ),
+          );
+
+      Future<TomClientJwtToken> login() async {
+        final result = await TomAuthenticationServer().authenticatePass1(
+          _message(),
+        );
+        return TomClientJwtToken(result.authenticationToken, decrypt: false);
+      }
+
+      final fromService = TomClientLimitsInformation(
+        enabledModules: ['core'],
+        quotas: {'api_calls': 10},
+      );
+
+      test('the provider\'s answer is what the token carries', () async {
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            serviceGranting(fromService);
+        final provider = _LimitsProvider(
+          (principal) async => TomClientLimitsInformation(
+            enabledModules: ['core', 'reporting'],
+            quotas: {'api_calls': 5000},
+          ),
+        );
+        TomClientLimitsProvider.installed = provider;
+
+        final auth = await login();
+
+        expect(auth.payload?['subscription_enabledModules'], [
+          'core',
+          'reporting',
+        ]);
+        expect(auth.payload?['subscription_quotas'], {'api_calls': 5000});
+        expect(provider.askedFor, ['alice']);
+      });
+
+      test('a provider with no answer keeps the service\'s limits', () async {
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            serviceGranting(fromService);
+        TomClientLimitsProvider.installed = _LimitsProvider(
+          (principal) async => null,
+        );
+
+        final auth = await login();
+        expect(auth.payload?['subscription_quotas'], {'api_calls': 10});
+      });
+
+      test('a failing provider costs no one their login', () async {
+        // The subscription service being down must not stop every sign-in:
+        // the service's own answer is the fallback, as it is with no provider.
+        TomAuthenticationServer.globalSettingUserAuthenticationService =
+            serviceGranting(fromService);
+        TomClientLimitsProvider.installed = _LimitsProvider(
+          (principal) async => throw StateError('sqm unreachable'),
+        );
+
+        final auth = await login();
+        expect(auth.payload?['username'], 'alice');
+        expect(auth.payload?['subscription_quotas'], {'api_calls': 10});
+      });
     });
 
     test('authenticatePass1 routes to the user service', () async {
@@ -549,4 +619,19 @@ void main() {
       },
     );
   });
+}
+
+/// A [TomClientLimitsProvider] answering through [answer], recording the
+/// usernames it was asked about.
+class _LimitsProvider extends TomClientLimitsProvider {
+  _LimitsProvider(this.answer);
+
+  final Future<TomClientLimitsInformation?> Function(TomPrincipal) answer;
+  final List<String> askedFor = [];
+
+  @override
+  Future<TomClientLimitsInformation?> clientLimitsFor(TomPrincipal principal) {
+    askedFor.add(principal.username);
+    return answer(principal);
+  }
 }
