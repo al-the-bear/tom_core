@@ -154,10 +154,10 @@ assigning the fields it found on the wire.
 TomGetSettingsResult({
   Map<String, Object?>? texts,
   Map<String, Object?>? config,
-  List<String>? groups,
-  List<String>? roles,
-  List<String>? entitlements,
-  List<String>? resourceKeys,
+  Iterable<String>? groups,
+  Iterable<String>? roles,
+  Iterable<String>? entitlements,
+  Iterable<String>? resourceKeys,
   String? organization,
   String? process,
   String? application,
@@ -217,10 +217,17 @@ TomGetSettingsResult buildSettings(User user, Tenant tenant) {
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `groups` | `List<String>` | `[]` (fresh) | Security groups the user belongs to |
-| `roles` | `List<String>` | `[]` (fresh) | Roles assigned to the user |
-| `entitlements` | `List<String>` | `[]` (fresh) | Fine-grained permissions |
-| `resourceKeys` | `List<String>` | `[]` (fresh) | Accessible resource identifiers |
+| `groups` | `Set<String>` | `{}` (fresh) | Security groups the user belongs to |
+| `roles` | `Set<String>` | `{}` (fresh) | Roles assigned to the user |
+| `entitlements` | `Set<String>` | `{}` (fresh) | Fine-grained permissions |
+| `resourceKeys` | `Set<String>` | `{}` (fresh) | Accessible resource identifiers |
+
+Sets, because membership is the only question these four are asked: a grant is
+held or not, a role the server resolved through two groups is still one role,
+and `contains` is a hash lookup. On the wire each travels as a JSON array — a
+set is an `Iterable` — and the reflected deserializer builds the set from it,
+so a duplicate the server sent collapses on arrival. The constructor takes any
+`Iterable<String>` (a principal's ACI lists, say) and copies it into a new set.
 
 #### Application Context
 

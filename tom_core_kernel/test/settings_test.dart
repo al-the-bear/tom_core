@@ -212,7 +212,7 @@ void main() {
         );
 
         // Assert
-        expect(result.roles, equals(['viewer']));
+        expect(result.roles, equals({'viewer'}));
         expect(result.clientLanguage, equals('de'));
         expect(result.texts, isEmpty);
         expect(result.groups, isEmpty);
@@ -761,10 +761,10 @@ void main() {
         final result = TomGetSettingsResult(roles: ['initial']);
 
         // Act
-        result.roles = ['updated', 'roles'];
+        result.roles = {'updated', 'roles'};
 
         // Assert
-        expect(result.roles, equals(['updated', 'roles']));
+        expect(result.roles, equals({'updated', 'roles'}));
       });
 
       test('should allow modifying groups after creation', () {
@@ -772,10 +772,10 @@ void main() {
         final result = TomGetSettingsResult(groups: ['group1']);
 
         // Act
-        result.groups = ['newGroup1', 'newGroup2'];
+        result.groups = {'newGroup1', 'newGroup2'};
 
         // Assert
-        expect(result.groups, equals(['newGroup1', 'newGroup2']));
+        expect(result.groups, equals({'newGroup1', 'newGroup2'}));
       });
 
       test('should allow modifying entitlements after creation', () {
@@ -783,10 +783,10 @@ void main() {
         final result = TomGetSettingsResult();
 
         // Act
-        result.entitlements = ['permission1', 'permission2'];
+        result.entitlements = {'permission1', 'permission2'};
 
         // Assert
-        expect(result.entitlements, equals(['permission1', 'permission2']));
+        expect(result.entitlements, equals({'permission1', 'permission2'}));
       });
 
       test('should allow modifying resourceKeys after creation', () {
@@ -794,10 +794,10 @@ void main() {
         final result = TomGetSettingsResult();
 
         // Act
-        result.resourceKeys = ['resource1', 'resource2'];
+        result.resourceKeys = {'resource1', 'resource2'};
 
         // Assert
-        expect(result.resourceKeys, equals(['resource1', 'resource2']));
+        expect(result.resourceKeys, equals({'resource1', 'resource2'}));
       });
 
       test('should allow modifying organization after creation', () {
@@ -860,10 +860,10 @@ void main() {
           result.entitlements.add('read');
           result.resourceKeys.add('dashboard');
 
-          expect(result.groups, equals(['staff']));
-          expect(result.roles, equals(['admin']));
-          expect(result.entitlements, equals(['read']));
-          expect(result.resourceKeys, equals(['dashboard']));
+          expect(result.groups, equals({'staff'}));
+          expect(result.roles, equals({'admin'}));
+          expect(result.entitlements, equals({'read'}));
+          expect(result.resourceKeys, equals({'dashboard'}));
         },
       );
 
@@ -911,10 +911,10 @@ void main() {
 
         expect(restored.texts, equals({'welcome': 'Hello, World!'}));
         expect(restored.config, equals({'theme': 'dark', 'maxItems': 50}));
-        expect(restored.groups, equals(['staff']));
-        expect(restored.roles, equals(['admin', 'editor']));
-        expect(restored.entitlements, equals(['read', 'write']));
-        expect(restored.resourceKeys, equals(['dashboard', 'reports']));
+        expect(restored.groups, equals({'staff'}));
+        expect(restored.roles, equals({'admin', 'editor'}));
+        expect(restored.entitlements, equals({'read', 'write'}));
+        expect(restored.resourceKeys, equals({'dashboard', 'reports'}));
         expect(restored.organization, equals('acme-corp'));
         expect(restored.process, equals('checkout'));
         expect(restored.application, equals('portal'));
@@ -1224,6 +1224,48 @@ void main() {
       expect(restored.clientCountry, 'USA');
       expect(restored.clientLanguage, 'en-US');
       expect(restored.clientTimezone, 'Amerca/New_York');
+    });
+  });
+
+  // The four authorization collections are sets: membership is all they are
+  // asked, and a role resolved through two groups is still one role. The wire
+  // keeps a JSON array, and the set is built on arrival.
+  group('authorization collections are sets', () {
+    test('a duplicate arriving over the wire collapses', () {
+      final mirror =
+          tomReflector.reflectType(TomGetSettingsResult) as ClassMirror;
+      final restored = tomReflectionInfo
+          .createInstanceFromJsonString<TomGetSettingsResult>(
+            mirror,
+            '{"roles": ["admin", "user", "admin"], '
+            '"groups": ["staff", "staff"], '
+            '"entitlements": ["read"], "resourceKeys": []}',
+          );
+
+      expect(restored.roles, {'admin', 'user'});
+      expect(restored.groups, {'staff'});
+      expect(restored.entitlements, isA<Set<String>>());
+      expect(restored.resourceKeys, isEmpty);
+    });
+
+    test('they travel as JSON arrays', () {
+      final json = tomReflectionInfo.convertToJsonString(
+        TomGetSettingsResult(roles: ['admin', 'user']),
+      );
+      expect(json, contains('"roles":["admin","user"]'));
+    });
+
+    test('the constructor copies any iterable, dropping duplicates', () {
+      final fromAci = ['editor', 'viewer', 'editor'];
+      final result = TomGetSettingsResult(roles: fromAci);
+
+      expect(result.roles, {'editor', 'viewer'});
+      fromAci.add('admin');
+      expect(
+        result.roles.contains('admin'),
+        isFalse,
+        reason: 'the result does not alias the caller\'s collection',
+      );
     });
   });
 

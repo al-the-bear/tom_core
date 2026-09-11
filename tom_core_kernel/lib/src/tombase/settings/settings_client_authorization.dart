@@ -132,7 +132,7 @@ class TomGetSettingsMessage {
 ///
 /// ## Mutable on the client too, by design
 ///
-/// Every field is public and assignable, and the collections are plain `List`
+/// Every field is public and assignable, and the collections are plain `Set`
 /// and `Map`, on the client as on the server. The reflected deserializer needs
 /// assignable fields, and the authorization lists here decide only what a
 /// client *shows*: the server judges every call against the principal in the
@@ -161,6 +161,13 @@ class TomGetSettingsResult {
 
   // ---------------------------------------------------------------------------
   // Client Authorization Information
+  //
+  // Sets, because membership is the only question these four are asked: a
+  // grant is either held or not, a role resolved through two groups is still
+  // one role, and `contains` is a hash lookup rather than a scan. On the wire
+  // each is a JSON array (a set is an Iterable), and the reflected
+  // deserializer builds the set from it, so a duplicate the server sent
+  // collapses on arrival.
   // ---------------------------------------------------------------------------
 
   /// Security groups the user belongs to.
@@ -168,25 +175,25 @@ class TomGetSettingsResult {
   /// Groups are typically used for coarse-grained access control.
   /// Note: These may differ from what was sent in the request,
   /// as the server determines the authoritative group membership.
-  List<String> groups;
+  Set<String> groups;
 
   /// Roles assigned to the user.
   ///
   /// Roles define what actions a user can perform within the application.
   /// Common examples: 'admin', 'editor', 'viewer'.
-  List<String> roles;
+  Set<String> roles;
 
   /// Specific entitlements granted to the user.
   ///
   /// Entitlements are fine-grained permissions for specific features
   /// or operations. Examples: 'create-report', 'delete-user'.
-  List<String> entitlements;
+  Set<String> entitlements;
 
   /// Resource keys the user has access to.
   ///
   /// Identifies specific resources (screens, modules, data sets)
   /// that the user is permitted to access.
-  List<String> resourceKeys;
+  Set<String> resourceKeys;
 
   // ---------------------------------------------------------------------------
   // Application Context
@@ -299,13 +306,17 @@ class TomGetSettingsResult {
   /// (a new instance per result), so callers can mutate them in place — e.g.
   /// `result.roles.add(...)` or `result.config['k'] = v`. All string parameters
   /// default to null.
+  ///
+  /// The four authorization parameters take any `Iterable<String>` — a
+  /// principal's ACI lists, say — and copy it into a new set, so a duplicate
+  /// is dropped and the result never aliases the caller's collection.
   TomGetSettingsResult({
     Map<String, Object?>? texts,
     Map<String, Object?>? config,
-    List<String>? groups,
-    List<String>? roles,
-    List<String>? entitlements,
-    List<String>? resourceKeys,
+    Iterable<String>? groups,
+    Iterable<String>? roles,
+    Iterable<String>? entitlements,
+    Iterable<String>? resourceKeys,
     this.organization,
     this.process,
     this.application,
@@ -317,8 +328,8 @@ class TomGetSettingsResult {
     this.clientTimezone,
   }) : texts = texts ?? <String, Object?>{},
        config = config ?? <String, Object?>{},
-       groups = groups ?? <String>[],
-       roles = roles ?? <String>[],
-       entitlements = entitlements ?? <String>[],
-       resourceKeys = resourceKeys ?? <String>[];
+       groups = {...?groups},
+       roles = {...?roles},
+       entitlements = {...?entitlements},
+       resourceKeys = {...?resourceKeys};
 }

@@ -13,7 +13,7 @@ user's authorization (groups/roles/entitlements), and localization.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomGetSettingsMessage` | The settings request; carries `authorizationToken`. |
-| `TomGetSettingsResult` | The settings response: `texts`, `config`, `groups`, `roles`, `entitlements`, `resourceKeys`, plus locale fields. |
+| `TomGetSettingsResult` | The settings response: `texts`, `config`, the four authorization sets `groups`, `roles`, `entitlements`, `resourceKeys` (JSON arrays on the wire, sets on arrival), plus locale fields. |
 
 ## Quick start
 
@@ -32,7 +32,7 @@ void main() {
 
   print(request.authorizationToken);  // jwt-token
   print(result.texts['welcome']);     // Welcome
-  print(result.roles);                // [admin]
+  print(result.roles);                // {admin}
 }
 ```
 

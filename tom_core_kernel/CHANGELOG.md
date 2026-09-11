@@ -811,6 +811,18 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **The four settings authorization collections are sets (tcopen82).**
+  `TomGetSettingsResult.groups`, `roles`, `entitlements` and `resourceKeys`
+  are `Set<String>`: membership is all they are asked, a role resolved through
+  two groups is one role, and `contains` is a hash lookup. The wire is still a
+  JSON array; the constructor takes any `Iterable<String>` and copies it.
+- **The reflected deserializer fills a `Set` field from a JSON array
+  (tcopen82).** A set serialized as an array but read back only as far as
+  assigning the list, which the field refused
+  (`reflection.set.list_field_not_settable`). Primitive sets (`String`, `int`,
+  `double`, `bool`, `Object`, `dynamic`, and nullable-element forms) are now
+  built through the same per-element check as lists; a duplicate collapses.
+
 - **`TomGetSettingsMessage.authorizationToken` defaults to `null`
   (tcopen80).** Its `""` field initializer made an unset token read as `""`,
   indistinguishable from one deliberately cleared, while the declared

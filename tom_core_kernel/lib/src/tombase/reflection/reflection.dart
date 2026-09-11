@@ -1093,7 +1093,9 @@ class TomReflectionInfo {
   /// - Primitive types: `int`, `double`, `bool`, `String`, `null`
   /// - DateTime types: `DateTime`, `TomZonedDate`, `TomZonedTime`, `TomZonedDateTime`
   /// - Nested objects: Any class annotated with `@tomReflector`
-  /// - Collections: `List<T>` and `Map<String, T>` where T is a supported type
+  /// - Collections: `List<T>` and `Map<String, T>` where T is a supported type,
+  ///   and `Set<T>` of a primitive T — filled from the JSON array a set
+  ///   serializes to
   ///
   /// Example:
   /// ```dart

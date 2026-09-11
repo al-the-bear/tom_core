@@ -72,10 +72,10 @@ everything a client needs to configure itself.
 TomGetSettingsResult({
   Map<String, Object?>? texts,
   Map<String, Object?>? config,
-  List<String>? groups,
-  List<String>? roles,
-  List<String>? entitlements,
-  List<String>? resourceKeys,
+  Iterable<String>? groups,
+  Iterable<String>? roles,
+  Iterable<String>? entitlements,
+  Iterable<String>? resourceKeys,
   String? organization,
   String? process,
   String? application,
@@ -103,10 +103,10 @@ answered as the empty string. Consumers must null-check rather than reach for
 | -------- | ---- | ----------- |
 | `texts` | `Map<String, Object?>` | Localized text resources for UI rendering. |
 | `config` | `Map<String, Object?>` | Application configuration settings that control behavior. |
-| `groups` | `List<String>` | Security groups the user belongs to (server-authoritative). |
-| `roles` | `List<String>` | Roles assigned to the user (e.g. `admin`, `editor`, `viewer`). |
-| `entitlements` | `List<String>` | Fine-grained permissions for specific features or operations. |
-| `resourceKeys` | `List<String>` | Resource keys (screens, modules, data sets) the user may access. |
+| `groups` | `Set<String>` | Security groups the user belongs to (server-authoritative). |
+| `roles` | `Set<String>` | Roles assigned to the user (e.g. `admin`, `editor`, `viewer`). |
+| `entitlements` | `Set<String>` | Fine-grained permissions for specific features or operations. |
+| `resourceKeys` | `Set<String>` | Resource keys (screens, modules, data sets) the user may access. |
 | `organization` | `String?` | The organization context for this session (default `null`). |
 | `process` | `String?` | The business process/workflow context (default `null`). |
 | `application` | `String?` | The application identifier selecting the configuration to use (default `null`). |

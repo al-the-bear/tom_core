@@ -734,6 +734,18 @@ once every one of them has succeeded.
 - `List<TomZonedDate>`, `List<TomZonedTime>`, `List<TomZonedDateTime>` and their nullable forms
 - `List<MyClass>`, `List<MyClass?>` (where MyClass is annotated)
 
+**Sets** — serialized as a JSON array, and filled from one:
+- `Set<dynamic>`, `Set<Object>`, `Set<Object?>`
+- `Set<String>`, `Set<String?>`
+- `Set<int>`, `Set<int?>`
+- `Set<double>`, `Set<double?>`
+- `Set<bool>`, `Set<bool?>`
+
+Each element is checked exactly as for a list, so a wrong-typed one is refused
+with its position; a repeated element collapses, which is what the field's
+type says. Sets of dates and of annotated classes are not supported — declare
+a `List` for those.
+
 **Maps:**
 - `Map<String, dynamic>`, `Map<String, Object>`, `Map<String, Object?>` — see
   [Dynamic Collections Carry Values, Not Types](#dynamic-collections-carry-values-not-types)
