@@ -394,6 +394,21 @@ class TomTextResourceProvider {
   /// Assigning a new map to the *installed* provider bumps
   /// [appResourcesRevision]; mutating the map in place cannot be observed, so
   /// call [notifyAppResourcesChanged] after such an edit.
+  ///
+  /// **The in-place rule is a manual contract, and it is kept that way on
+  /// purpose.** Every ordinary change announces itself: installing a provider
+  /// and assigning a new map both bump the revision, and a locale switch is one
+  /// of those two. Editing the live map is the rare case — patching one label
+  /// at run time — and it has an explicit signal. Enforcing the rule instead
+  /// would mean handing out a read-only view, and there is no view that both
+  /// protects the whole bundle and leaves it as stored: an unmodifiable
+  /// top-level view leaves every nested map and list writable, so the edits
+  /// most likely to be made would still be silent, while a deep read-only copy
+  /// has to rebuild each nested collection and so loses its element type — a
+  /// `List<Color>` palette would read back as a `List<dynamic>` and fail the
+  /// cast its owner writes. A contract that is half enforced is harder to rely
+  /// on than one that is stated, so the map stays live and the rule stays
+  /// written down: here, on [appResourcesRevision], and in the module docs.
   Map<String, dynamic> get resources => _resources;
 
   set resources(Map<String, dynamic> value) {

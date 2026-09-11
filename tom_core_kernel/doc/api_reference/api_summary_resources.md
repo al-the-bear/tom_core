@@ -116,7 +116,7 @@ TomTextResourceProvider.from(Map<String, dynamic> resources)
 | ------ | --------- | ----------- |
 | `setAppResourceProvider` | `static void setAppResourceProvider(TomTextResourceProvider provider)` | Installs `provider` as the application-wide text resource provider and bumps `appResourcesRevision`. |
 | `getAppResources` | `static TomTextResourceProvider getAppResources()` | Returns the installed application-wide provider. Throws `TomResourceException` (`resources.text_provider.not_installed`) if `setAppResourceProvider` has not run. |
-| `notifyAppResourcesChanged` | `static void notifyAppResourcesChanged()` | Bumps `appResourcesRevision`. Call after mutating the installed provider's `resources` map in place. |
+| `notifyAppResourcesChanged` | `static void notifyAppResourcesChanged()` | Bumps `appResourcesRevision`. Call after mutating the installed provider's `resources` map in place. A manual contract by design: `resources` hands out the live map, because a read-only view would either leave nested values writable or, as a deep copy, drop the element type of stored collections. |
 | `clearAppResourceProvider` | `@visibleForTesting static void clearAppResourceProvider()` | Returns the process to the un-bootstrapped state. Does not bump `appResourcesRevision` — there is no bundle left for observers to re-derive from. |
 
 #### Properties

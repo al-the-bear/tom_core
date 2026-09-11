@@ -1223,6 +1223,27 @@ void main() {
       expect(~TomTextResourceProvider.appResourcesRevision, equals(before + 1));
     });
 
+    test('the bundle is handed out as stored, typed collections included', () {
+      // Why the in-place rule is a stated contract rather than an enforced
+      // one (see the dartdoc on `resources`). Enforcing it would take a
+      // read-only view, and the only view that protects nested values is a
+      // deep copy, which rebuilds each collection and drops its element type.
+      // A palette stored as a typed list must come back as one — its owner
+      // casts it — so the live map, and the manual signal, stay.
+      final palette = <int>[0xFF0000, 0x00FF00];
+      final installed = TomTextResourceProvider.from({
+        'theme': {'palette': palette},
+      });
+      TomTextResourceProvider.setAppResourceProvider(installed);
+
+      final read = TomTextResourceProvider.getAppResources().getObject(
+        'theme.palette',
+      );
+
+      expect(read, isA<List<int>>());
+      expect(identical(read, palette), isTrue);
+    });
+
     test('the revision reaches observers', () {
       // The counter is only useful because something reacts to it; a bump that
       // notified nobody would satisfy every test above. Observers are held

@@ -280,7 +280,7 @@ type of the value at the key, not on which provider holds it.
 |--------|------|-------------|
 | `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor builds the bundle from — every construction, not just the singleton's. Declares *how* to build, not *when* to install. **Process-wide and persistent**: it stays set, so later providers built for local scopes pick it up too. **Synchronous** — asynchronous sources are awaited before the install instead |
 | `appResourcesRevision` | `TomInt` | Observable revision counter, bumped whenever the installed bundle changes |
-| `notifyAppResourcesChanged()` | Method | Bumps `appResourcesRevision` after an in-place edit of the installed bundle |
+| `notifyAppResourcesChanged()` | Method | Bumps `appResourcesRevision` after an in-place edit of the installed bundle — a manual contract by design; see [Observing bundle changes](#observing-bundle-changes) |
 | `setAppResourceProvider()` | Method | Sets the application-wide provider instance and bumps `appResourcesRevision` |
 | `getAppResources()` | Method | Returns the installed provider; throws `resources.text_provider.not_installed` if there is none |
 
@@ -443,6 +443,18 @@ announce it yourself:
 TomTextResourceProvider.getAppResources().resources['app.title'] = 'Renamed';
 TomTextResourceProvider.notifyAppResourcesChanged();
 ```
+
+That is a manual contract, and it is kept manual on purpose. Every ordinary
+change — installing a provider, assigning a new map, and so every locale switch
+— already announces itself; an in-place edit is the rare case, and it has an
+explicit signal. Enforcing it would take a read-only view of the bundle, and
+none both protects it and leaves it as stored: an unmodifiable top-level view
+leaves nested maps and lists writable, so the likeliest edits would still be
+silent, while a deep read-only copy rebuilds every nested collection and loses
+its element type — a `List<Color>` palette would read back as `List<dynamic>`
+and fail its owner's cast. So `resources` hands out the live map, typed
+collections intact, and a missed call shows as stale text rather than as an
+error.
 
 Assigning `resources` on a provider that is *not* the installed one is silent by
 design: a provider nobody reads from has not changed anything

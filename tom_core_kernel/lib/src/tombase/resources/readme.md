@@ -24,7 +24,10 @@ The app-wide provider is installed once via
 Installing a provider — or assigning a new map to the installed provider's
 `resources` — bumps the observable `TomTextResourceProvider.appResourcesRevision`
 (a `TomInt`). Mutating the installed map *in place* cannot be detected, so call
-`TomTextResourceProvider.notifyAppResourcesChanged()` after doing so.
+`TomTextResourceProvider.notifyAppResourcesChanged()` after doing so. That rule
+is a stated contract rather than an enforced one, deliberately: the only
+read-only view that would enforce it for nested values is a deep copy, which
+drops the element type of every stored collection.
 
 This is what makes a locale switch visible to derived observables: an
 [`observable`](../observable/readme.md) `TomObservableEnum` observes the

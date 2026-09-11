@@ -8,6 +8,14 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **The manual in-place contract of `resources` is recorded as a decision
+  (tcopen60).** Editing the installed text bundle in place still needs
+  `notifyAppResourcesChanged()`, and the reason it is not enforced is now
+  stated beside the `resources` getter and in the module docs: a read-only
+  view either leaves nested maps and lists writable or, as a deep copy, drops
+  the element type of every stored collection. `resources_test.dart` pins
+  that a stored typed collection is handed back as the same typed object.
+
 - **Configuration's missing revision is stated as the design (tcopen58).**
   `setAppConfigProvider` announces nothing, unlike `setAppResourceProvider`,
   and that is now said where the two providers are compared — the provider
