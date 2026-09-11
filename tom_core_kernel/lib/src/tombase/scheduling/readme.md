@@ -40,7 +40,7 @@ one node when several are running.
 | ---- | -------------- |
 | `TomJobStore` | Durable storage for job runs; the queue the scheduler works from. |
 | `TomMemoryJobStore` | Keeps everything in memory and nothing across restarts. For tests and single-shot processes. |
-| `TomFileJobStore` | Mirrors the queue to a JSON file on every mutation. |
+| `TomFileJobStore` | Keeps the queue in a JSON file that survives a restart. Several stores over one file share one queue: every operation holds a file mutex and re-reads the file, so a claim is atomic between processes and isolates. |
 | `TomJobRun` | One attempt-carrying occurrence of a job: its window, attempt count, state and claim. |
 | `TomJobRunState` | The lifecycle of a single `TomJobRun`. |
 | `TomJobClaim` | A ticket proving one particular claim of a run was won — the fencing token a displaced node fails to present. |

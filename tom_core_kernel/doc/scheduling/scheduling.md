@@ -24,6 +24,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [Job Definitions](#job-definitions)
 - [The Job Store](#the-job-store)
   - [The on-disk format](#the-on-disk-format)
+  - [Shared by several processes](#shared-by-several-processes)
   - [When the file is damaged](#when-the-file-is-damaged)
 - [The Scheduler](#the-scheduler)
 - [Missed Windows](#missed-windows)
@@ -479,7 +480,11 @@ Two implementations ship here:
 - **`TomFileJobStore`** — a JSON file holding the whole queue as **one array**,
   rewritten on every mutation. Survives a restart; an in-flight run comes back
   as an *expired claim* rather than as lost work, so the scheduler recovers it
-  on its next tick.
+  on its next tick. Several stores over one file — processes on one host or a
+  shared mount, isolates in one process — share **one queue**: every operation
+  holds a file mutex, re-reads the file and writes it back, so a run is claimed
+  by exactly one of them and what one completes is completed for all. See
+  [Shared by several processes](#shared-by-several-processes).
 
 A third, **`TomSqlJobStore`**, ships in `tom_core_server` — the kernel has no
 persistence layer, so the relational implementation belongs one layer up. It is
@@ -546,6 +551,28 @@ the run being recorded, it would lose *every* run. The staging file carries the
 process id so that two nodes on a shared mount cannot publish each other's
 half-written files; a stray one left by a crash is ignored by the loader and
 overwritten by that process's next write.
+
+### Shared by several processes
+
+A store's in-memory queue is only a working copy. Each operation — enqueue,
+claim, complete, fail, renew, recover, even `all()` — takes an exclusive mutex,
+**re-reads the file**, applies itself, writes the file back if it changed
+anything, and releases the mutex. The mutex is a `TomFileLeaseLock` on the
+sibling directory `<queue>.lock`, so it holds between processes and between
+isolates alike, and a fresh owner per operation makes two concurrent operations
+of one store exclude each other too.
+
+Both halves are needed. A store that read the file only at construction and
+then mirrored its own copy to it would not share anything: each would work from
+a copy the others never see, overwrite their writes wholesale, and run windows
+they had already completed.
+
+The mutex is a lease of 30 seconds, so a process that dies while holding it —
+inside one operation, which takes milliseconds — blocks its peers for at most
+that long before one of them takes it over. A holder *paused* for longer than
+that inside an operation could still write a stale queue over a newer one; that
+is the hazard every lease carries, here needing a half-minute stall inside a
+millisecond operation.
 
 ### When the file is damaged
 
@@ -820,12 +847,18 @@ Point two schedulers at one shared store and both will try to claim the same due
 run. Whether that is a problem depends on the store:
 
 - A **`TomMemoryJobStore`** is not shared across processes at all.
-- A **`TomFileJobStore`**'s claim is *not* atomic between processes — two nodes
-  can both come away believing they claimed the same run.
+- A **`TomFileJobStore`**'s claim *is* atomic between every store sharing the
+  file: each operation holds a file mutex and re-reads the queue, so the second
+  of two racing claims finds the run taken — see
+  [Shared by several processes](#shared-by-several-processes).
 - A **`TomSqlJobStore`**'s claim *is* atomic: it is a conditional `UPDATE` and
-  the database picks the winner. The lock is still worth having — it is what
-  enforces `allowOverlap` across nodes — but this store does not need it to
-  make a claim mean something.
+  the database picks the winner.
+
+For both shared stores the lock is still worth having. A claim decides who runs
+a *run*; it cannot see the *job*. Two windows of a job with `allowOverlap:
+false` are two runs, each correctly claimed by a different node — only a lease
+on the job's name keeps them from executing at once. The lock also fences a
+node paused past its lease.
 
 The `lock` is the arbiter that makes the answer uniform:
 
@@ -925,8 +958,9 @@ the lease TTL remains the correctness floor either way. See
 `tom_core_server/doc/scheduling.md`.
 
 The file pair remains correct wherever every node mounts the same filesystem —
-it is what the cross-process tests exercise — but most clusters do not have a
-shared mount, and all of them have a database.
+the store's tests share one file between separate stores and separate isolates,
+and two schedulers over one file and one file lock run a window once — but most
+clusters do not have a shared mount, and all of them have a database.
 
 `TomFileLeaseLock` coordinates separate processes through a shared directory,
 built on `File.createSync(exclusive: true)` — `O_EXCL`, an atomic test-and-set
@@ -1018,7 +1052,7 @@ Three questions and where they are answered:
 | `dart:async` | dart | `job_definition.dart`, `scheduler.dart` | `Completer`, `Future`, `StreamSubscription`, `Timer`, `unawaited` |
 | `dart:convert` | dart | `job_store.dart`, `lease_lock.dart` | `base64Url`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `job_store.dart`, `lease_lock.dart` | `TomFileJobStore` and `TomFileLeaseLock` only |
-| `dart:math` | dart | `job_definition.dart`, `scheduler.dart` | `Random`, `pow` |
+| `dart:math` | dart | `job_definition.dart`, `job_store.dart`, `scheduler.dart` | `Random` and `pow`; in `job_store.dart`, the random part of `TomFileJobStore`'s mutex owner |
 | `tom_basics` | package | `job_store.dart`, `scheduler.dart` | `tomLog`, the default `onAlert` sink |
 | `tom_reflection` | package | `scheduled_job.dart` | `ClassMirror`, which appears in `TomScheduledJobs.discover`'s own signature. The whole of [Declaring a Job](#declaring-a-job) rests on it |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `job_definition.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomCommand`, which *is* the job body type; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |

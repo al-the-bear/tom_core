@@ -179,6 +179,20 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **`TomFileJobStore` is now a shared queue, as the docs said it was
+  (tcopen67).** The store read its file once, at construction, and then
+  rewrote it whole from its own copy on every mutation. Two stores over one
+  file — the "nodes on a shared mount" deployment the substrate table
+  recommended it for — therefore shared nothing: each claimed runs the other
+  had already taken or completed, and overwrote the other's writes. With a
+  `TomFileLeaseLock` beside it, two nodes ran every window twice (the lock
+  stopped concurrent bodies, not re-execution). Every store operation now holds
+  an exclusive mutex (a `TomFileLeaseLock` on `<path>.lock`, 30-second lease,
+  a fresh owner per operation), re-reads the file, applies itself and writes
+  back only when it changed something. A claim is atomic across processes and
+  isolates. `05_durable_store_example.dart`'s example 4, which demonstrated the
+  double claim, now demonstrates the single one, and what the lock is still for.
+
 - **A timed-out attempt no longer frees its job while its body still runs
   (tcopen66).** A timeout fails the attempt but cannot cancel the body, and the
   scheduler released the job's busy mark and its cluster lease at the timeout —

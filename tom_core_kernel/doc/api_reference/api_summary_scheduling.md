@@ -740,7 +740,7 @@ An in-process store — the default for tests and single-process use.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `onMutated` | `void onMutated()` | Hook called after every mutation; the extension point `TomFileJobStore` persists from. |
+| `onMutated` | `void onMutated()` | Hook called after every mutation; the extension point `TomFileJobStore` uses to learn that an operation changed the queue and must be written back. |
 | `snapshotSync` | `List<TomJobRun> snapshotSync()` | A synchronous copy of the held runs. |
 | `replaceAll` | `void replaceAll(Iterable<TomJobRun> runs)` | Replaces the contents wholesale (used when loading). |
 
@@ -757,6 +757,14 @@ queue intact rather than a truncated file — which the loader, being deliberate
 forgiving of corruption, would otherwise read back as an *empty* queue. The
 process id in the staging name keeps two nodes on a shared mount from publishing
 each other's partial writes; strays are ignored on load.
+
+Several stores over one file — processes on one host or a shared mount, isolates
+in one process — share one queue. Every operation (all twelve `TomJobStore`
+methods, `all()` included) holds an exclusive mutex, a `TomFileLeaseLock` on
+the sibling directory `<path>.lock` with a 30-second lease, re-reads the file,
+applies itself and writes the file back if it changed anything. A claim is
+therefore atomic across every store on the file, and the in-memory queue is only
+a working copy — `snapshotSync()` returns it as of the last operation.
 
 A file that is damaged anyway — by an older build, a failing disk, a hand-edit —
 never makes the constructor throw, because the store is built during startup

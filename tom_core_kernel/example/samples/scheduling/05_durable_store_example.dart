@@ -21,8 +21,9 @@
 ///    claim — visible, attributable, and recoverable.
 /// 3. A lease outlives the process that took it, and its fencing token keeps
 ///    increasing across the restart.
-/// 4. And the honest limit: a file store's claim is not atomic between
-///    processes, which is *why* the file pair wants the lock beside it.
+/// 4. Two stores over one file share one queue — a run is claimed once — and
+///    the lock beside the store is still what keeps a *job* from running on
+///    two nodes at once.
 ///
 /// To run this file on its own:
 /// ```bash
@@ -371,18 +372,26 @@ class FileLeaseLockExample {
 // EXAMPLE 4: Why The File Pair Is A Pair
 // =============================================================================
 
-/// The limitation that makes the lock non-optional here, run rather than
-/// warned about.
+/// One file is one queue — and the lock still has a job the queue cannot do.
 ///
-/// `TomFileJobStore` claims a run by rewriting the queue file, and two processes
-/// doing that at once do not see each other in time. The claim is durable but it
-/// is **not atomic between processes** — so on a shared mount two nodes can both
-/// come away believing they own the same window. This is not a bug being
-/// tolerated; it is the reason the substrate table pairs this store with a lock,
-/// and the reason a cluster should take the relational pair from
-/// `tom_core_server` instead.
-class ClaimIsNotAtomicExample {
-  static bool bothClaimed = false;
+/// Every `TomFileJobStore` operation takes a file mutex, re-reads the queue,
+/// applies itself and writes it back, so stores sharing a file — two processes
+/// on a shared mount — share one queue. Two nodes that both loaded the queue
+/// while a run was pending cannot both claim it: the second claim re-reads the
+/// file and finds the run already taken, and a run one node completes is
+/// completed for the other.
+///
+/// What a claim cannot see is the *job*. With `allowOverlap: false` a job must
+/// not run on two nodes at once, but two different windows of it are two
+/// different runs, and each can be claimed perfectly correctly by a different
+/// node. Only a lease on the job's name arbitrates that, which is why the
+/// substrate table pairs this store with a lock — and why a cluster should take
+/// the relational pair from `tom_core_server`, whose lock lives in the same
+/// database as its queue.
+class SharedQueueExample {
+  static int claimedByA = -1;
+  static int claimedByB = -1;
+  static TomJobRunState? stateSeenByB;
   static String? leaseWinner;
   static bool loserRefused = false;
 
@@ -405,18 +414,22 @@ class ClaimIsNotAtomicExample {
       );
 
       // Two stores over that one file — two processes on a shared mount. Both
-      // are constructed before either claims, which is the whole of the race:
-      // each loaded the queue while the run was still pending.
+      // are constructed before either claims, so each loaded the queue while
+      // the run was still pending. That copy is not what they act on.
       final nodeA = TomFileJobStore(path);
       final nodeB = TomFileJobStore(path);
 
-      final claimedByA = await nodeA.claimDue(window, 'node-a');
-      final claimedByB = await nodeB.claimDue(window, 'node-b');
-      bothClaimed = claimedByA.length == 1 && claimedByB.length == 1;
+      final claimsA = await nodeA.claimDue(window, 'node-a');
+      final claimsB = await nodeB.claimDue(window, 'node-b');
+      claimedByA = claimsA.length;
+      claimedByB = claimsB.length;
 
-      // The lock is the arbiter the store cannot be. Both nodes ask for the same
-      // resource; exactly one is told yes, and the other hands its claim back
-      // rather than running a body it does not own.
+      await nodeA.complete(claimsA.single, window);
+      stateSeenByB = (await nodeB.all()).single.state;
+
+      // The job, not the run, is what the lock arbitrates: both nodes ask for
+      // `job:reconcile`, exactly one is told yes, and a second window of the
+      // job would wait for the winner rather than run beside it.
       final lock = TomFileLeaseLock('${dir.path}/locks', clock: clock.call);
       const ttl = Duration(minutes: 1);
       final aGot = await lock.acquire('job:reconcile', 'node-a', ttl);
@@ -426,21 +439,24 @@ class ClaimIsNotAtomicExample {
       lock.close();
 
       assert(
-        bothClaimed,
-        'Both nodes claimed the same run. Shown rather than warned about, '
-        'because "the claim is not atomic between processes" reads like a '
-        'footnote until you watch it happen',
+        claimedByA == 1 && claimedByB == 0,
+        'The run is claimed once: node-b re-read the file under the mutex and '
+        'found it taken, although its own copy still said pending',
+      );
+      assert(
+        stateSeenByB == TomJobRunState.succeeded,
+        'And what node-a completed, node-b sees completed — one file, one queue',
       );
       assert(
         leaseWinner == 'node-a',
-        'The lease, unlike the claim, is decided by an exclusive create — one '
-        'winner, and the filesystem picks it',
+        'The lease is decided by an exclusive create — one winner, and the '
+        'filesystem picks it',
       );
       assert(
         loserRefused,
         'Exactly one of the two was refused. That is what makes the file pair a '
-        'pair: the store makes the queue durable, the lock makes the claim '
-        'mean something, and neither does the other\'s job',
+        'pair: the store makes each run claimed once, the lock makes each job '
+        'run once at a time, and neither does the other\'s job',
       );
     } finally {
       dir.deleteSync(recursive: true);
@@ -483,11 +499,13 @@ Future<void> run() async {
   print('   token on takeover  : ${FileLeaseLockExample.tokenAfterTakeover}');
   print('');
 
-  await ClaimIsNotAtomicExample.example4WhyTheFilePairIsAPair();
+  await SharedQueueExample.example4WhyTheFilePairIsAPair();
   print('4. Why the file pair is a pair:');
-  print('   both claimed the run : ${ClaimIsNotAtomicExample.bothClaimed}');
-  print('   lease winner         : ${ClaimIsNotAtomicExample.leaseWinner}');
-  print('   loser refused        : ${ClaimIsNotAtomicExample.loserRefused}');
+  print('   claimed by node-a    : ${SharedQueueExample.claimedByA}');
+  print('   claimed by node-b    : ${SharedQueueExample.claimedByB}');
+  print('   node-b then sees     : ${SharedQueueExample.stateSeenByB}');
+  print('   lease winner         : ${SharedQueueExample.leaseWinner}');
+  print('   loser refused        : ${SharedQueueExample.loserRefused}');
   print('');
 }
 

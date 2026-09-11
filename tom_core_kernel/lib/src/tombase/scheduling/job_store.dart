@@ -42,10 +42,12 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:tom_basics/tom_basics.dart';
 
 import '../little_things/atomic_file.dart';
+import 'lease_lock.dart';
 import 'schedule.dart';
 
 // =============================================================================
@@ -818,9 +820,62 @@ class TomMemoryJobStore implements TomJobStore {
 /// The queue is small (one record per window, purged once terminal), so
 /// rewriting it whole is cheaper than the bookkeeping an append-only journal
 /// would need to compact.
+///
+/// ## Shared by several stores
+///
+/// Several stores may point at one file — scheduler processes on one host, or
+/// on a shared mount, or isolates in one process — and they then share one
+/// queue. Every operation takes an exclusive file mutex (a [TomFileLeaseLock]
+/// on the sibling directory `<path>.lock`), **re-reads the file**, applies
+/// itself, writes the file back if it changed anything, and releases the
+/// mutex. So a claim is atomic across every store on the file: a run is claimed
+/// by exactly one of them, and a run one store completed is completed for all.
+///
+/// Each store's own copy of the queue is therefore only a working copy,
+/// refreshed at the start of every operation, and never the truth. That is
+/// the whole difference from its superclass, and the reason neither half is
+/// optional: a store that read the file once and then mirrored its own copy to
+/// it would overwrite every other store's writes and act on runs they had
+/// already completed.
+///
+/// The mutex is a lease, 30 seconds long, so a process that dies while holding
+/// it — in the middle of one operation, which takes milliseconds — blocks its
+/// peers for at most that long before one of them takes it over. A holder
+/// *paused* for longer than that mid-operation could still write a stale queue
+/// over a newer one, the hazard every lease carries; the operation is short
+/// enough that this needs a stall of half a minute inside it.
+///
+/// The claim being atomic does not make the lease lock redundant for a
+/// scheduler: it is still what enforces `allowOverlap` across nodes, and it is
+/// what fences a node paused past its lease.
+///
+/// The filesystem must make exclusive create and rename atomic between the
+/// processes sharing it — true of local filesystems and of well-behaved network
+/// ones; see [TomFileLeaseLock].
 class TomFileJobStore extends TomMemoryJobStore {
   /// The file the queue is mirrored to and reloaded from.
   final File file;
+
+  /// The mutex every operation holds — see "Shared by several stores".
+  final TomFileLeaseLock _mutex;
+
+  /// Distinguishes this store's operations from every other's as mutex
+  /// owners. A fresh owner per operation (see [_exclusively]) is what makes two
+  /// concurrent operations of one store exclude each other as well: a lease
+  /// lock re-grants a live lease to its own owner.
+  final String _ownerPrefix;
+
+  int _operations = 0;
+
+  /// Set by [onMutated] during an operation, so the file is written once, at
+  /// its end, and only when the operation changed something.
+  bool _changed = false;
+
+  /// The mutex resource inside the `<path>.lock` directory.
+  static const String _mutexResource = 'queue';
+
+  /// How long a dead holder can keep the mutex from its peers.
+  static const Duration _mutexTtl = Duration(seconds: 30);
 
   /// Creates a store backed by [path], loading any previously persisted runs.
   ///
@@ -830,12 +885,107 @@ class TomFileJobStore extends TomMemoryJobStore {
   /// has an effect on disk, and it is deliberate. A salvage that lived only in
   /// memory would be undone by the next restart, and the original has just been
   /// renamed away, so not rewriting would lose the runs a second time.
-  TomFileJobStore(String path) : file = File(path) {
+  TomFileJobStore(String path)
+    : file = File(path),
+      _mutex = TomFileLeaseLock('$path.lock'),
+      _ownerPrefix =
+          '$pid-${Random.secure().nextInt(1 << 32).toRadixString(16)}' {
     _load();
   }
 
   @override
-  void onMutated() => _persist();
+  void onMutated() => _changed = true;
+
+  /// Runs [operation] against the file's current queue, holding the mutex.
+  ///
+  /// Re-reads the file first, because this store's copy may be stale — another
+  /// store may have written since — and writes it back at the end if the
+  /// operation changed anything. A read-only operation leaves the file alone.
+  Future<T> _exclusively<T>(Future<T> Function() operation) async {
+    final owner = '$_ownerPrefix#${_operations++}';
+    var wait = const Duration(milliseconds: 1);
+    TomLease? lease;
+    while ((lease = await _mutex.acquire(_mutexResource, owner, _mutexTtl)) ==
+        null) {
+      await Future<void>.delayed(wait);
+      if (wait < const Duration(milliseconds: 32)) wait *= 2;
+    }
+    try {
+      _load();
+      _changed = false;
+      final result = await operation();
+      if (_changed) _persist();
+      return result;
+    } finally {
+      _changed = false;
+      await _mutex.release(lease!);
+    }
+  }
+
+  @override
+  Future<void> enqueue(TomJobRun run) => _exclusively(() => super.enqueue(run));
+
+  @override
+  Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor) =>
+      _exclusively(() => super.findWindow(jobName, scheduledFor));
+
+  @override
+  Future<DateTime?> lastWindow(String jobName) =>
+      _exclusively(() => super.lastWindow(jobName));
+
+  @override
+  Future<List<TomJobClaim>> claimDue(
+    DateTime now,
+    String owner, {
+    int limit = 16,
+    bool Function(TomJobRun run)? accept,
+  }) => _exclusively(
+    () => super.claimDue(now, owner, limit: limit, accept: accept),
+  );
+
+  @override
+  Future<void> release(TomJobClaim claim) =>
+      _exclusively(() => super.release(claim));
+
+  @override
+  Future<void> markStarted(TomJobClaim claim, DateTime now) =>
+      _exclusively(() => super.markStarted(claim, now));
+
+  @override
+  Future<void> renewClaim(TomJobClaim claim, DateTime now) =>
+      _exclusively(() => super.renewClaim(claim, now));
+
+  @override
+  Future<void> complete(TomJobClaim claim, DateTime now) =>
+      _exclusively(() => super.complete(claim, now));
+
+  @override
+  Future<void> fail(
+    TomJobClaim claim,
+    String error,
+    DateTime now, {
+    DateTime? retryAt,
+  }) => _exclusively(() => super.fail(claim, error, now, retryAt: retryAt));
+
+  @override
+  Future<List<TomJobRun>> recoverAbandoned(
+    DateTime now,
+    Duration leaseTimeout, {
+    bool Function(String jobName)? requestsRecovery,
+  }) => _exclusively(
+    () => super.recoverAbandoned(
+      now,
+      leaseTimeout,
+      requestsRecovery: requestsRecovery,
+    ),
+  );
+
+  @override
+  Future<List<TomJobRun>> all() => _exclusively(() => super.all());
+
+  @override
+  Future<int> purgeFinished(DateTime before) =>
+      _exclusively(() => super.purgeFinished(before));
 
   /// Where damaged content is moved so the next [_persist] cannot overwrite the
   /// evidence of what was lost.
@@ -860,7 +1010,12 @@ class TomFileJobStore extends TomMemoryJobStore {
   /// "carry on with what could be salvaged, and say what was lost", because an
   /// empty queue and a destroyed queue otherwise look identical at startup.
   void _load() {
-    if (!file.existsSync()) return;
+    if (!file.existsSync()) {
+      // Also the reload of a queue another store has not written yet — or one
+      // somebody deleted — so what memory held before is not kept.
+      replaceAll(const []);
+      return;
+    }
 
     final String raw;
     try {
@@ -872,7 +1027,10 @@ class TomFileJobStore extends TomMemoryJobStore {
     }
     // A zero-byte file is what a create-then-crash leaves behind. It holds no
     // runs, but nothing was lost either, so it is not corruption.
-    if (raw.trim().isEmpty) return;
+    if (raw.trim().isEmpty) {
+      replaceAll(const []);
+      return;
+    }
 
     final Object? decoded;
     try {

@@ -1124,6 +1124,158 @@ void main() {
       );
     });
 
+    group('shared by several stores on one file', () {
+      // Two scheduler processes on one host, or on one shared mount, each
+      // construct their own store over the same path. Each store is its own
+      // in-memory copy, so the file is the only thing they share — and a
+      // store that read it once at construction and then rewrote it whole on
+      // every mutation would not share it at all: each would work from a copy
+      // the other never sees, and overwrite the other's writes. These tests
+      // use separate instances in one isolate, and separate isolates, which is
+      // exactly what separate processes are to the store: separate memory
+      // over one file.
+
+      test('a store sees what another store on the same file wrote', () async {
+        final path = '${makeTempDir().path}/queue.json';
+        final first = TomFileJobStore(path);
+        final second = TomFileJobStore(path);
+
+        await first.enqueue(
+          TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+
+        expect((await second.all()).map((r) => r.id), ['a']);
+      });
+
+      test('neither store overwrites what the other wrote', () async {
+        final path = '${makeTempDir().path}/queue.json';
+        final first = TomFileJobStore(path);
+        final second = TomFileJobStore(path);
+
+        await first.enqueue(
+          TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+        await second.enqueue(
+          TomJobRun(id: 'b', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+
+        final ids = (await TomFileJobStore(path).all()).map((r) => r.id);
+        expect(ids, unorderedEquals(['a', 'b']));
+      });
+
+      test('a run completed through one store is not claimable through the '
+          'other', () async {
+        final path = '${makeTempDir().path}/queue.json';
+        final first = TomFileJobStore(path);
+        await first.enqueue(
+          TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+        // Constructed after the enqueue, so its own copy holds the run as
+        // pending — the state it would act on if it trusted that copy.
+        final second = TomFileJobStore(path);
+
+        await first.complete((await first.claimDue(at, 'node-1')).single, at);
+
+        expect(await second.claimDue(at, 'node-2'), isEmpty);
+        expect((await second.all()).single.state, TomJobRunState.succeeded);
+      });
+
+      test('concurrent operations of one store lose nothing', () async {
+        // A scheduler issues store calls concurrently — a heartbeat's renewal
+        // lands in the middle of a pass — so one store's operations must
+        // exclude each other as well as other stores'. Twenty enqueues at once,
+        // and every one of them has to reach the file.
+        final path = '${makeTempDir().path}/queue.json';
+        final store = TomFileJobStore(path);
+
+        await Future.wait([
+          for (var i = 0; i < 20; i++)
+            store.enqueue(
+              TomJobRun(id: 'r$i', jobName: 'job', scheduledFor: at, runAt: at),
+            ),
+        ]);
+
+        expect(await TomFileJobStore(path).all(), hasLength(20));
+      });
+
+      test('isolates claiming through their own stores claim each run '
+          'exactly once', () async {
+        final path = '${makeTempDir().path}/queue.json';
+        const runs = 40;
+        final seed = TomFileJobStore(path);
+        for (var i = 0; i < runs; i++) {
+          await seed.enqueue(
+            TomJobRun(id: 'r$i', jobName: 'job', scheduledFor: at, runAt: at),
+          );
+        }
+
+        // Real isolates, real syscalls: separate memory over one file, each
+        // claiming a few at a time until nothing is left.
+        final claimed = await Future.wait([
+          for (var i = 0; i < 4; i++)
+            Isolate.run(() async {
+              final store = TomFileJobStore(path);
+              final ids = <String>[];
+              while (true) {
+                final batch = await store.claimDue(at, 'isolate-$i', limit: 3);
+                if (batch.isEmpty) return ids;
+                ids.addAll(batch.map((c) => c.run.id));
+              }
+            }),
+        ]);
+
+        final all = [for (final ids in claimed) ...ids];
+        expect(all, hasLength(runs), reason: 'no run claimed twice: $claimed');
+        expect(all.toSet(), hasLength(runs));
+      });
+
+      test(
+        'two schedulers over one file and one lock run a window once',
+        () async {
+          // The deployment the file pair is documented for: separate nodes, each
+          // with its own store over a shared file, coordinating through a file
+          // lease lock. The lock stops two bodies running at once; only the
+          // shared store stops the second node from running the window again
+          // after the first has completed it.
+          final dir = makeTempDir();
+          final clock = FakeClock(DateTime.utc(2026, 3, 1, 10));
+          final lock = TomFileLeaseLock('${dir.path}/locks', clock: clock.call);
+          final dispatcher = RecordingDispatcher();
+          final nodes = [
+            for (final id in ['node-1', 'node-2'])
+              schedulerFor(
+                TomFileJobStore('${dir.path}/queue.json'),
+                clock,
+                lock: lock,
+                ownerId: id,
+                dispatcher: dispatcher,
+              ),
+          ];
+          addTearDown(() {
+            for (final node in nodes) {
+              node.close();
+            }
+          });
+          final job = jobNamed(
+            'hourly',
+            TomIntervalSchedule(const Duration(hours: 1)),
+          );
+          for (final node in nodes) {
+            node.register(job);
+            await node.tick();
+          }
+
+          clock.advance(const Duration(hours: 1));
+          for (final node in nodes) {
+            await node.tick();
+            await node.drain();
+          }
+
+          expect(dispatcher.dispatched, hasLength(1));
+        },
+      );
+    });
+
     test('creates the parent directory on first write', () async {
       final path = '${makeTempDir().path}/nested/deeper/queue.json';
       final store = TomFileJobStore(path);
@@ -1363,11 +1515,15 @@ void main() {
         );
 
         expect(File(tomAtomicWriteTempPath(path)).existsSync(), isFalse);
+        // The queue and its mutex directory — the lock every operation holds so
+        // that stores sharing the file share one queue — and nothing else: no
+        // staging file survives a completed persist.
         expect(
-          Directory(
-            File(path).parent.path,
-          ).listSync().map((e) => e.uri.pathSegments.last),
-          ['queue.json'],
+          Directory(File(path).parent.path)
+              .listSync()
+              .map((e) => e.path.split(Platform.pathSeparator).last)
+              .where((name) => name.isNotEmpty),
+          unorderedEquals(['queue.json', 'queue.json.lock']),
         );
       });
 
