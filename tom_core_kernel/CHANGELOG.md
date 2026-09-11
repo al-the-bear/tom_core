@@ -811,6 +811,14 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **A `TomShutdownCleanup` is a `TomDisposable` (tcopen88).** One coordinator
+  can be registered on another with `addDisposable`: the outer shutdown awaits
+  the inner `dispose()`, which cancels its watchers and drops its
+  registrations. Disposing does not run the inner shutdown; a signal handler
+  `(signal) => inner.performShutdown(signal: signal)` on the outer does, ahead
+  of the disposables phase. `dispose()` had shared `TomDisposable`'s name
+  without its type, so nesting needed an adaptor.
+
 - **`TomCloseAdaptor` fails with keys, and accepts optional parameters
   (tcopen87).** A target with no callable method raises
   `TomCloseAdaptorException` with `shutdown_cleanup.close_adaptor.no_close_method`,

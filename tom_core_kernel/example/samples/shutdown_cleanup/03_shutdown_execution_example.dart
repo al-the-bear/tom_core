@@ -21,6 +21,8 @@
 ///   before the next entry is called and before `performShutdown()` completes
 /// - [TomShutdownCleanup.phaseTimeout]: a phase that overruns its budget is
 ///   abandoned, and the next phase still runs
+/// - Nesting: a coordinator is a [TomDisposable], registered on another and
+///   run from its handler
 ///
 /// To run this file on its own:
 /// ```bash
@@ -301,6 +303,27 @@ Future<void> run() async {
   );
 
   // ---------------------------------------------------------------------------
+  // Example 10: nesting one coordinator inside another
+  // ---------------------------------------------------------------------------
+  print('10. Nesting coordinators:');
+
+  final nestedTrace = <String>[];
+  final session = TomShutdownCleanup();
+  session.addClosable(CountingClosable(nestedTrace)); // the session's resource
+  final host = TomShutdownCleanup();
+  // A coordinator is a TomDisposable. The handler runs the inner shutdown, so
+  // its resource is closed; the disposable releases the inner coordinator.
+  host
+    ..addSignalHandler((signal) => session.performShutdown(signal: signal))
+    ..addDisposable(session)
+    ..addDisposable(CountingDisposable(nestedTrace));
+
+  await host.performShutdown();
+
+  print('   - Execution trace:  $nestedTrace');
+  print('   - Session spent:    ${session.hasShutDown}\n');
+
+  // ---------------------------------------------------------------------------
   // Teardown for the instances the examples above created
   // ---------------------------------------------------------------------------
   // Running a cleanup is not the same as disposing it: `performShutdown()`
@@ -318,6 +341,7 @@ Future<void> run() async {
     adaptorCleanup,
     asyncCleanup,
     bounded,
+    host,
   ]) {
     await cleanup.dispose();
   }
@@ -367,6 +391,13 @@ Future<void> run() async {
   assert(timeoutTrace.length == 1);
   assert(timeoutTrace.single == 'disposable');
   assert(took < const Duration(seconds: 5), 'the budget bounded the shutdown');
+
+  // Example 10: the inner resource closed in the handlers phase, before the
+  // host's own disposable, and the inner coordinator was spent.
+  assert(nestedTrace.length == 2);
+  assert(nestedTrace[0] == 'closable');
+  assert(nestedTrace[1] == 'disposable');
+  assert(session.hasShutDown);
 }
 
 /// Standalone entry point.

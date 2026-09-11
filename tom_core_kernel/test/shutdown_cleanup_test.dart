@@ -1978,6 +1978,72 @@ void main() {
     });
   });
 
+  // A coordinator is itself a TomDisposable, so one can be registered on
+  // another — a hosted runtime tearing down the coordinator it keeps per
+  // session. Disposing releases the inner one; running its shutdown is a
+  // separate registration, which the last test shows.
+  group('nesting coordinators', () {
+    test('a coordinator can be registered as a disposable', () {
+      final inner = _newCleanup();
+      final outer = _newCleanup();
+
+      expect(inner, isA<TomDisposable>());
+      expect(() => outer.addDisposable(inner), returnsNormally);
+    });
+
+    test(
+      'the outer shutdown cancels the inner watchers',
+      () async {
+        final inner = _sendableCleanup();
+        var innerReacted = false;
+        inner.addSignalHandler((signal) => innerReacted = true);
+        inner.addSignal(ProcessSignal.sigusr1);
+        final outer = _newCleanup()..addDisposable(inner);
+
+        await outer.performShutdown();
+        await _sendAndSettle(ProcessSignal.sigusr1);
+
+        expect(innerReacted, isFalse);
+      },
+      skip: _signalSendingSkipReason,
+    );
+
+    test('disposing the inner coordinator does not run it', () async {
+      // The trap this pins: registering a coordinator as a disposable
+      // releases it, and its entries with it, without closing them.
+      final innerResource = TestClosable();
+      final inner = _newCleanup()..addClosable(innerResource);
+      final outer = _newCleanup()..addDisposable(inner);
+
+      await outer.performShutdown();
+      await inner.performShutdown();
+
+      expect(innerResource.closed, isFalse);
+      expect(inner.hasShutDown, isTrue);
+    });
+
+    test(
+      'running the inner shutdown from a handler, then disposing it',
+      () async {
+        // The composing shape: the handlers phase runs the inner shutdown and
+        // is awaited, the closables phase closes the outer's own resources, and
+        // the disposables phase releases the inner coordinator.
+        final log = <String>[];
+        final inner = _newCleanup()..addClosable(NamedClosable('inner', log));
+        final outer = _newCleanup()
+          ..addSignalHandler((signal) => inner.performShutdown(signal: signal))
+          ..addClosable(NamedClosable('outer', log))
+          ..addDisposable(inner)
+          ..addDisposable(NamedDisposable('outer disposable', log));
+
+        await outer.performShutdown();
+
+        expect(log, equals(['inner', 'outer', 'outer disposable']));
+        expect(inner.hasShutDown, isTrue);
+      },
+    );
+  });
+
   group('dispose / cancelAll', () {
     test(
       'dispose stops the instance reacting to its signals',

@@ -22,6 +22,7 @@ The shutdown cleanup module provides a comprehensive system for managing gracefu
   - [Basic Resource Cleanup](#basic-resource-cleanup)
   - [Custom Signal Handlers](#custom-signal-handlers)
   - [Multiple Cleanup Instances](#multiple-cleanup-instances)
+  - [Nesting Coordinators](#nesting-coordinators)
   - [Server Application Pattern](#server-application-pattern)
 - [Execution Order](#execution-order)
   - [Asynchronous teardown](#asynchronous-teardown)
@@ -472,6 +473,31 @@ the process alive:
 ```dart
 await debugCleanup.dispose();
 ```
+
+### Nesting Coordinators
+
+`TomShutdownCleanup` is itself a `TomDisposable`, so a coordinator can be
+registered on another — a hosted runtime that keeps one per session hands each
+to its own. The outer shutdown disposes the inner coordinator in its
+disposables phase, awaited like any other entry: the inner watchers are
+cancelled and its registrations dropped.
+
+Disposing does not run the inner shutdown, so on its own it lets the inner
+resources go unclosed. To have them closed, run the inner shutdown from a
+signal handler on the outer. The handlers phase is awaited and comes first, so
+the inner resources are closed before the outer's own, and the inner
+coordinator is released last:
+
+```dart
+final session = TomShutdownCleanup()..addClosable(sessionStore);
+
+tomShutdownCleanup
+  ..addSignalHandler((signal) => session.performShutdown(signal: signal))
+  ..addDisposable(session);
+```
+
+A signal the inner coordinator also watches starts its shutdown directly; the
+outer handler is then handed that same shutdown rather than a second one.
 
 ### Server Application Pattern
 

@@ -46,7 +46,8 @@ TomClosable  (abstract interface)
 TomException  (kernel)
     └── TomCloseAdaptorException
 
-TomShutdownCleanup
+TomDisposable  (abstract interface)
+    └── TomShutdownCleanup  (implements TomDisposable)
 ```
 
 ## Classes
@@ -136,7 +137,13 @@ Central coordinator for graceful shutdown cleanup, single-use by design: it runs
 one shutdown and is then spent. Automatically listens for
 SIGHUP and SIGINT; on the first signal (or a manual `performShutdown`) it runs
 signal handlers, then closables, then disposables, exactly once — awaiting each
-entry, within `phaseTimeout` per phase.
+entry, within `phaseTimeout` per phase. It is a `TomDisposable`, so one
+coordinator can be registered on another: the outer shutdown disposes the inner
+one — watchers cancelled, registrations dropped, nothing run. To run the inner
+shutdown too, register `(signal) => inner.performShutdown(signal: signal)` as a
+signal handler on the outer.
+
+- **Implements:** `TomDisposable`
 
 #### Constructors
 
@@ -170,7 +177,7 @@ TomShutdownCleanup()
 | `addDisposable` | `TomShutdownUnregister addDisposable(TomDisposable disposable)` | Adds a disposable object, disposed last. Returns the canceller for this registration. |
 | `addSignal` | `void addSignal(ProcessSignal processSignal)` | Registers an additional OS signal to listen for (SIGHUP and SIGINT are registered by default). Idempotent per signal — a repeat registration does nothing. |
 | `cancelAll` | `Future<void> cancelAll()` | Releases everything the instance holds: cancels every OS-signal watcher and drops every registered handler, closable and disposable, without running them. Empties the instance without spending it — a later registration is held again. Safe to call more than once. |
-| `dispose` | `Future<void> dispose()` | Tears the instance down; the same operation as `cancelAll`. |
+| `dispose` | `Future<void> dispose()` | *(override)* Tears the instance down; the same operation as `cancelAll`. `TomDisposable`'s method, so a coordinator registered on another is disposed by the outer shutdown. |
 
 ## Global Functions and Constants
 

@@ -422,6 +422,25 @@ class TomCloseAdaptor implements TomClosable {
 /// A subsystem that restarts within one process therefore builds a new
 /// instance for each run and disposes the one it replaces.
 ///
+/// ## Nesting coordinators
+///
+/// A coordinator is a [TomDisposable], so one may be registered on another —
+/// a hosted runtime that keeps a coordinator per session hands it to its own.
+/// The outer shutdown then disposes the inner coordinator in its disposables
+/// phase, awaited like any other entry: the inner watchers are cancelled and
+/// its registrations dropped.
+///
+/// Disposing does **not** run the inner shutdown, so its resources would be
+/// let go unclosed. To have them closed, run the inner shutdown from a signal
+/// handler on the outer — the handlers phase is awaited, and comes before the
+/// disposables phase that releases the inner coordinator:
+///
+/// ```dart
+/// outer
+///   ..addSignalHandler((signal) => inner.performShutdown(signal: signal))
+///   ..addDisposable(inner);
+/// ```
+///
 /// ## Creating Custom Instances
 ///
 /// ```dart
@@ -437,7 +456,7 @@ class TomCloseAdaptor implements TomClosable {
 /// // disposed, because its watchers keep the process alive:
 /// await customCleanup.dispose();
 /// ```
-class TomShutdownCleanup {
+class TomShutdownCleanup implements TomDisposable {
   /// Frames kept from a failing cleanup's stack trace.
   ///
   /// Bounded rather than unlimited: a shutdown can fail in several entries at
@@ -889,6 +908,10 @@ class TomShutdownCleanup {
   /// [TomShutdownCleanup] so its watchers stop keeping the process alive and
   /// its registrations stop keeping their entries reachable; the
   /// process-lifetime global [tomShutdownCleanup] normally never needs it.
+  ///
+  /// This is [TomDisposable]'s method, so a coordinator registered on another
+  /// is torn down by the outer shutdown — see "Nesting coordinators".
+  @override
   Future<void> dispose() => cancelAll();
 }
 
