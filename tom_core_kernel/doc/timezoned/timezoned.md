@@ -460,15 +460,14 @@ print(standupMarch11); // 2024-03-11 09:00:00.000-0400
 {PREFIX}{ISO8601}_{OFFSET}_{TIMEZONE}{SPACE}
 ```
 
-Three underscore-separated fields, carrying a prefix in front and a single
-space behind:
+Three underscore-separated fields, carrying a prefix in front:
 
 - **PREFIX**: `@D@` (date), `@T@` (time), or `@X@` (datetime)
 - **ISO8601**: UTC datetime in ISO 8601 format, ending in a mandatory `Z`, with
   up to six fractional digits
-- **OFFSET**: UTC offset at serialization time (`Z`, `+09:00`, `-05:00`, etc.)
+- **OFFSET**: the UTC offset the zone had at that instant (`Z`, `+09:00`,
+  `-05:00`, etc.)
 - **TIMEZONE**: IANA timezone name
-- **SPACE**: one literal space, always present
 
 The form ends where the zone name ends, with no trailing character. That is
 worth saying because the alternative is invisible: a serialized value is
@@ -496,14 +495,15 @@ zone name is authoritative: the offset is derived from it, and because the IANA
 database revises historical offsets, an offset stored under an older database
 is not evidence about the value.
 
-Re-serializing restates the offset from the zone as it stands *now*, not as it
-stood at the value's instant — `toString()` reads `timezoneOffsetMin`. For a
-DST zone the two differ half the year, so a round trip in the other season
-changes the offset field: a January `America/New_York` value written again in
-July reads `-04:00` where it went in `-05:00`. The instant, the zone and every
-`local*` reading are untouched, since none of them comes from that field. Where
-the offset at the value's own instant is wanted, `TomTimezone.toStringOn(when)`
-and `getUtcOffsetOn(when)` compute it.
+The offset describes the value, not the zone today: it is the offset the zone
+had at the value's own instant — `toString()` renders the zone through
+`TomTimezone.toStringOn(this)` — which is also the offset every `local*`
+reading is computed with. A January `America/New_York` value reads `-05:00`
+and a July one `-04:00`, whichever season it is written in, so the string is
+self-describing and a round trip writes it back unchanged. A date is stored as
+its local midnight and carries the offset in force then; a time is stored on
+1970-01-01 and carries the zone's offset on that day, since that is the offset
+its local fields use.
 
 ### Examples
 

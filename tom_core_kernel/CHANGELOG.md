@@ -811,6 +811,17 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **A serialized zoned value's offset is the one at its own instant
+  (tcopen89).** `TomTimezoned`, `TomZonedDate`, `TomZonedTime` and
+  `TomZonedDateTime` render their zone through `TomTimezone.toStringOn(this)`,
+  so the offset field is the zone's offset at the value's instant — the one its
+  `local*` fields use — instead of the zone's offset on the day the string was
+  written. A January `Europe/Berlin` value writes `+01:00` in any season, and a
+  round trip writes the string back unchanged. Parsing is unaffected: it reads
+  the instant and the zone name, never the offset. Stored strings for values on
+  the other side of a DST boundary from their writing date now differ in that
+  field.
+
 - **A `TomShutdownCleanup` is a `TomDisposable` (tcopen88).** One coordinator
   can be registered on another with `addDisposable`: the outer shutdown awaits
   the inner `dispose()`, which cancels its watchers and drops its

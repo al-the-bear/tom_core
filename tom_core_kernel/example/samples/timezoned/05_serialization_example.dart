@@ -5,6 +5,7 @@
 /// - Parsing from serialized strings
 /// - Type detection from prefixes
 /// - Error handling for invalid strings
+/// - The offset in the string is the zone's offset at the value's instant
 ///
 /// To run this file on its own:
 /// ```bash
@@ -346,6 +347,35 @@ class SerializationExample {
   }
 
   // -------------------------------------------------------------------------
+  // Example 10: The offset belongs to the value
+  // -------------------------------------------------------------------------
+  static void example10OffsetAtInstant() {
+    print('\n10. The offset belongs to the value, not to today:');
+
+    final berlin = TomTimezone.fromName('Europe/Berlin')!;
+    final winter = TomZonedDateTime.fromDateTime(
+      DateTime.utc(2024, 1, 15, 12),
+      berlin,
+    ).toString();
+    final summer = TomZonedDateTime.fromDateTime(
+      DateTime.utc(2024, 7, 15, 12),
+      berlin,
+    ).toString();
+
+    // Each carries the offset Berlin had at its own instant, whichever season
+    // the string is written in, so the same value always writes the same bytes.
+    print('   - January: $winter');
+    print('   - July:    $summer');
+
+    assert(winter.contains('_+01:00_Europe/Berlin'), 'CET in January');
+    assert(summer.contains('_+02:00_Europe/Berlin'), 'CEST in July');
+    assert(
+      TomZonedDateTime.parseFromString(winter).toString() == winter,
+      'A round trip writes the string back unchanged',
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Run all examples
   // -------------------------------------------------------------------------
   static void run() {
@@ -360,6 +390,7 @@ class SerializationExample {
     example7TypeDetection();
     example8RoundTrip();
     example9ErrorHandling();
+    example10OffsetAtInstant();
 
     print('\n=== Serialization Example Complete ===\n');
   }

@@ -95,7 +95,10 @@ final RegExp _zonedDateTimeForm = _serializedForm(
 ///
 /// TomTimezoned values serialize to a string format that includes:
 /// - ISO 8601 datetime (always in UTC)
-/// - UTC offset at the time of serialization
+/// - UTC offset the zone had at that instant — the one the value's local
+///   fields are computed with, so it does not depend on when the string was
+///   written. It is informational: parsing reads the instant and the zone
+///   name, never the offset
 /// - Timezone name
 ///
 /// Format: `ISO8601_OFFSET_TIMEZONE`
@@ -393,7 +396,7 @@ class TomTimezoned extends DateTime {
   /// Example: `2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo`
   @override
   String toString() {
-    return "${super.toIso8601String()}_$_timezone";
+    return "${super.toIso8601String()}_${_timezone.toStringOn(this)}";
   }
 
   /// Checks if a string is in valid [TomTimezoned] format.
@@ -660,7 +663,7 @@ class TomZonedDate extends TomTimezoned {
   /// Example: `@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo`
   @override
   String toString() {
-    return "${TomZonedDate.serializationPrefix}${super.toIso8601String()}_$_timezone";
+    return "${TomZonedDate.serializationPrefix}${super.toIso8601String()}_${_timezone.toStringOn(this)}";
   }
 
   /// Checks if a string is in valid [TomZonedDate] format.
@@ -958,7 +961,7 @@ class TomZonedTime extends TomTimezoned {
   /// Example: `@T@1970-01-01T05:30:00.000Z_+09:00_Asia/Tokyo`
   @override
   String toString() {
-    return "${TomZonedTime.serializationPrefix}${super.toIso8601String()}_$_timezone";
+    return "${TomZonedTime.serializationPrefix}${super.toIso8601String()}_${_timezone.toStringOn(this)}";
   }
 
   /// Checks if a string is in valid [TomZonedTime] format.
@@ -1257,7 +1260,7 @@ class TomZonedDateTime extends TomTimezoned {
   /// Example: `@X@2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo`
   @override
   String toString() {
-    return "${TomZonedDateTime.serializationPrefix}${super.toIso8601String()}_$_timezone";
+    return "${TomZonedDateTime.serializationPrefix}${super.toIso8601String()}_${_timezone.toStringOn(this)}";
   }
 
   /// Parses a [TomZonedDateTime] from its serialized string format.

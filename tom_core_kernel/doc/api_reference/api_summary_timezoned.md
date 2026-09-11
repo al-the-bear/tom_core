@@ -34,8 +34,9 @@ prefix), `TomZonedTime` (time-only anchored at 1970-01-01, `@T@` prefix), and
 `TomZonedDateTime` (full datetime, `@X@` prefix). Each serializes to
 `ISO8601_OFFSET_TIMEZONE` and parses back with a matching `parseFromString` /
 `isTom…String` pair. The ISO section must end in `Z`, since it is the only part
-of the string that fixes a point in time; the offset that follows is derived
-from the zone, is written for readability, and is not read back. A produced
+of the string that fixes a point in time; the offset that follows is the zone's
+offset at that instant — the one the value's local fields use — and is written
+for readability, not read back. A produced
 string ends where the zone name ends: `TomTimezone.toString()` appends nothing,
 and the parse regexes anchor there, so stray whitespace is rejected rather than
 accepted into a value that then fails an equality check for no visible reason.
@@ -396,8 +397,8 @@ before sorting or filtering.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `toString` | `String toString()` | *(override)* `{offset}_{timezone}` using the current offset. Every serialized value ends with whatever this returns, which is why it appends nothing. |
-| `toStringOn` | `String toStringOn(DateTime when)` | `{offset}_{timezone}` with the offset computed for `when` (DST-aware). |
+| `toString` | `String toString()` | *(override)* `{offset}_{timezone}` using the current offset. Zoned values do not use it: they render their zone through `toStringOn` at their own instant. |
+| `toStringOn` | `String toStringOn(DateTime when)` | `{offset}_{timezone}` with the offset computed for `when` (DST-aware). Every zoned value renders its zone through this at its own instant, so whatever it returns is the tail of every serialized string — which is why it appends nothing. |
 | `getUtcOffsetOn` | `int getUtcOffsetOn(DateTime dt)` | The UTC offset in minutes at `dt`. |
 | `getUtcOffsetStringOn` | `String getUtcOffsetStringOn(DateTime dt)` | The formatted UTC offset string at `dt`. |
 | `getCurrentUtcOffset` | `int getCurrentUtcOffset()` | The current UTC offset in minutes. |

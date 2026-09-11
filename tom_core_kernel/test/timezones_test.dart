@@ -2651,13 +2651,12 @@ void main() {
       expect(dt.toString(), contains('_+09:00_Asia/Tokyo'));
     });
 
-    test('restates the offset from the zone now, not from the instant', () {
+    test('writes the offset at the value\'s own instant, not today\'s', () {
       // Asia/Tokyo above cannot tell the two apart: it has no DST, so its
       // offset now and its offset at the value's instant are the same number.
-      // A DST zone separates them, and the answer is the offset *now* —
-      // `TomTimezone.toString()` reads `timezoneOffsetMin`, which is the
-      // current offset. So a value's serialized offset field depends on when
-      // the string was written, and a round trip can change it.
+      // A DST zone separates them, and the serialized offset is the one the
+      // zone had at the value's instant — the offset its own local fields are
+      // computed with — so it does not depend on when the string was written.
       final newYork = TomTimezone.fromName('America/New_York')!;
       final now = newYork.getCurrentUtcOffset();
 
@@ -2678,22 +2677,88 @@ void main() {
 
       expect(
         serialized,
-        contains('_${TomTimezone.convertMinutesToUtcOffset(now)}_'),
-        reason: 'the serialized offset is the zone\'s offset now',
+        contains('_${TomTimezone.convertMinutesToUtcOffset(atInstant)}_'),
+        reason: 'the serialized offset is the zone\'s offset at the instant',
       );
       expect(
         serialized,
-        isNot(contains(TomTimezone.convertMinutesToUtcOffset(atInstant))),
-        reason: 'it is not the offset at the value\'s instant',
+        isNot(contains(TomTimezone.convertMinutesToUtcOffset(now))),
+        reason: 'it is not the zone\'s offset today',
       );
 
-      // Nothing is lost by it: the instant and the zone survive the round
-      // trip, and the local reading is derived from them — never from the
-      // offset field, which the parse does not read.
+      // The round trip keeps the instant and the zone, and re-serializing
+      // writes the same string — the offset no longer drifts with the season.
       final restored = TomZonedDateTime.parseFromString(serialized);
       expect(restored.microsecondsSinceEpoch, value.microsecondsSinceEpoch);
       expect(restored.timezone.timezone, equals('America/New_York'));
-      expect(restored.timezone.getUtcOffsetOn(instant), equals(atInstant));
+      expect(restored.toString(), equals(serialized));
+    });
+
+    group('the offset on either side of a DST boundary', () {
+      // Fixed instants, so the expected strings are the same on every day
+      // the suite runs: one January and one July value per zone, whichever
+      // of the two is "now".
+      final berlin = TomTimezone.fromName('Europe/Berlin')!;
+      final newYork = TomTimezone.fromName('America/New_York')!;
+      final january = DateTime.utc(2024, 1, 15, 12);
+      final july = DateTime.utc(2024, 7, 15, 12);
+
+      test('TomTimezoned', () {
+        expect(
+          TomTimezoned.fromDateTime(january, berlin).toString(),
+          '2024-01-15T12:00:00.000Z_+01:00_Europe/Berlin',
+        );
+        expect(
+          TomTimezoned.fromDateTime(july, berlin).toString(),
+          '2024-07-15T12:00:00.000Z_+02:00_Europe/Berlin',
+        );
+      });
+
+      test('TomZonedDateTime', () {
+        expect(
+          TomZonedDateTime.fromDateTime(january, newYork).toString(),
+          '@X@2024-01-15T12:00:00.000Z_-05:00_America/New_York',
+        );
+        expect(
+          TomZonedDateTime.fromDateTime(july, newYork).toString(),
+          '@X@2024-07-15T12:00:00.000Z_-04:00_America/New_York',
+        );
+      });
+
+      test('TomZonedDate', () {
+        // A date is stored as its local midnight, so the offset is the one in
+        // force at that midnight.
+        expect(
+          TomZonedDate(
+            year: 2024,
+            month: 1,
+            day: 15,
+            timezone: berlin,
+          ).toString(),
+          '@D@2024-01-14T23:00:00.000Z_+01:00_Europe/Berlin',
+        );
+        expect(
+          TomZonedDate(
+            year: 2024,
+            month: 7,
+            day: 15,
+            timezone: berlin,
+          ).toString(),
+          '@D@2024-07-14T22:00:00.000Z_+02:00_Europe/Berlin',
+        );
+      });
+
+      test('TomZonedTime', () {
+        // A time is stored on the epoch day, and its local fields use the
+        // zone's offset there — Berlin kept no summer time in 1970 — so that
+        // is the offset it writes, whatever the season now.
+        final nine = TomZonedTime(hour: 9, timezone: berlin);
+        expect(nine.localHour, 9);
+        expect(
+          nine.toString(),
+          '@T@1970-01-01T08:00:00.000Z_+01:00_Europe/Berlin',
+        );
+      });
     });
 
     test('toString is the whole form, prefix included', () {

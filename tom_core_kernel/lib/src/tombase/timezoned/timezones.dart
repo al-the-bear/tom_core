@@ -421,11 +421,10 @@ class TomTimezone {
   /// Format: `{offset}_{timezone}`, where offset is `Z` for UTC or
   /// `+HH:MM`/`-HH:MM` for other timezones.
   ///
-  /// Every zoned value renders its zone through this method, so whatever this
-  /// returns is the tail of every serialized string the module produces —
-  /// which is why it ends where the zone name ends. A trailing character
-  /// nobody asked for is carried into every stored value, every map key and
-  /// every URL built from one, and is invisible in each of them.
+  /// The offset is the zone's offset **now**. A zoned value does not render
+  /// its zone through this method but through [toStringOn] at its own
+  /// instant, because the offset belongs to the value: a January Berlin value
+  /// written in July still reads `+01:00`.
   ///
   /// Example:
   /// ```dart
@@ -442,6 +441,13 @@ class TomTimezone {
   /// Format: `{offset}_{timezone}`, as
   /// [toString], with the offset calculated for the given date and
   /// accounting for DST transitions.
+  ///
+  /// Every zoned value renders its zone through this method, at its own
+  /// instant, so whatever this returns is the tail of every serialized string
+  /// the module produces — which is why it ends where the zone name ends. A
+  /// trailing character nobody asked for is carried into every stored value,
+  /// every map key and every URL built from one, and is invisible in each of
+  /// them.
   ///
   /// [when] The DateTime to calculate the offset for.
   ///
