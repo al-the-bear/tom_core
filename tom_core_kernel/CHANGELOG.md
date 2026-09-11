@@ -811,6 +811,14 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **A `TomShutdownCleanup` is single-use, and says whether it has run
+  (tcopen84).** `hasShutDown` reads `true` once the shutdown has run to its
+  end — every phase finished or abandoned — and never turns back. The class
+  documentation states the lifecycle: one shutdown per instance, later calls
+  handed that finished shutdown, entries registered afterwards kept but never
+  run, and a new instance for a subsystem that restarts. Whether shutdown had
+  run could not be asked at all.
+
 - **Shutdown teardown is awaited, within a per-phase budget (tcopen83).**
   `TomClosable.close`, `TomDisposable.dispose` and `TomSignalHandler` return
   `FutureOr<void>`, and `TomShutdownCleanup.performShutdown` awaits each entry

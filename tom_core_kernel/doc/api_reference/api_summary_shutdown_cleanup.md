@@ -108,7 +108,8 @@ close/dispose method is found, or if the method requires parameters.
 
 ### TomShutdownCleanup
 
-Central coordinator for graceful shutdown cleanup. Automatically listens for
+Central coordinator for graceful shutdown cleanup, single-use by design: it runs
+one shutdown and is then spent. Automatically listens for
 SIGHUP and SIGINT; on the first signal (or a manual `performShutdown`) it runs
 signal handlers, then closables, then disposables, exactly once — awaiting each
 entry, within `phaseTimeout` per phase.
@@ -132,6 +133,7 @@ TomShutdownCleanup()
 | `phaseTimeout` | `Duration` | How long each phase may take before it is abandoned — the entry being awaited is left to finish on its own and the entries behind it are not called. Covers the whole phase, synchronous entries included. Must be positive; a zero or negative value throws `ArgumentError`. Default `defaultPhaseTimeout`. |
 | `paused` | `bool` | When true, signal handling is paused and signals are ignored (for REPLs with their own CTRL-C handling) (default `false`). |
 | `silent` | `bool` | When true, suppresses output messages during shutdown — status messages, failure reports and phase-timeout reports (default `false`). |
+| `hasShutDown` | `bool` *(read-only)* | Whether the shutdown has run to its end, every phase finished or abandoned. `false` while it is still running; once `true` it never turns back — the instance is single-use, and an entry registered afterwards never runs. Unaffected by a signal ignored under `paused` and by `dispose`. |
 
 #### Methods
 

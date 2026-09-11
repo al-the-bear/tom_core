@@ -1365,6 +1365,93 @@ void main() {
       expect(log, equals(['handler', 'closable', 'disposable']));
     });
 
+    // An instance is single-use: one shutdown, then it is spent. These pin the
+    // three halves of that — what hasShutDown reports and when, that nothing
+    // can run a second shutdown, and that registering on a spent instance
+    // keeps the entry without ever running it.
+    group('lifecycle', () {
+      test('hasShutDown is false until the shutdown has finished', () async {
+        final cleanup = _newCleanup();
+        cleanup.addClosable(AsyncClosable());
+        expect(cleanup.hasShutDown, isFalse);
+
+        final shutdown = cleanup.performShutdown();
+        // Started but not finished: the async close is still to come.
+        expect(cleanup.hasShutDown, isFalse);
+
+        await shutdown;
+        expect(cleanup.hasShutDown, isTrue);
+      });
+
+      test('a paused signal does not count as a shutdown', () async {
+        final cleanup = _newCleanup()
+          ..paused = true
+          ..silent = true;
+
+        await cleanup.performShutdown(fromSignal: true);
+
+        expect(cleanup.hasShutDown, isFalse);
+      });
+
+      test('an abandoned phase still ends the shutdown', () async {
+        final cleanup = _newCleanup()
+          ..silent = true
+          ..phaseTimeout = const Duration(milliseconds: 50);
+        cleanup.addClosable(HangingClosable());
+
+        await cleanup.performShutdown();
+
+        expect(cleanup.hasShutDown, isTrue);
+      });
+
+      test('hasShutDown survives dispose, and never turns back', () async {
+        final cleanup = _newCleanup();
+        await cleanup.performShutdown();
+        await cleanup.dispose();
+        await cleanup.performShutdown();
+
+        expect(cleanup.hasShutDown, isTrue);
+      });
+
+      test('an entry registered after the shutdown never runs', () async {
+        // Kept rather than refused: a registration racing a shutdown is
+        // ordinary at process exit, and throwing there would fail code that
+        // did nothing wrong. It is simply too late to run.
+        final cleanup = _newCleanup();
+        await cleanup.performShutdown();
+
+        final late = TestClosable();
+        final lateDisposable = TestDisposable();
+        var lateHandlerRan = false;
+        cleanup
+          ..addClosable(late)
+          ..addDisposable(lateDisposable)
+          ..addSignalHandler((signal) => lateHandlerRan = true);
+        await cleanup.performShutdown();
+        await cleanup.performShutdown(fromSignal: true);
+
+        expect(late.closed, isFalse);
+        expect(lateDisposable.disposed, isFalse);
+        expect(lateHandlerRan, isFalse);
+      });
+
+      test('a restart builds a new instance, which runs its own', () async {
+        // The documented way to shut a subsystem down twice.
+        final firstRun = TestClosable();
+        final first = _newCleanup()..addClosable(firstRun);
+        await first.performShutdown();
+        await first.dispose();
+
+        final secondRun = TestClosable();
+        final second = _newCleanup()..addClosable(secondRun);
+        await second.performShutdown();
+
+        expect(firstRun.closeCount, 1);
+        expect(secondRun.closeCount, 1);
+        expect(second.hasShutDown, isTrue);
+      });
+    });
+
     test('executes only once across repeated calls', () async {
       final cleanup = _newCleanup();
       final closable = TestClosable();

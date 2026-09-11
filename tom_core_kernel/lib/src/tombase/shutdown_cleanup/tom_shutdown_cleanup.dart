@@ -350,6 +350,19 @@ class TomCloseAdaptor implements TomClosable {
 /// tomShutdownCleanup.addSignal(ProcessSignal.sigterm);
 /// ```
 ///
+/// ## Lifecycle
+///
+/// An instance is **single-use**. It is armed from construction, runs its
+/// shutdown once — [performShutdown], or the first watched signal — and is
+/// then spent: [hasShutDown] reads `true` for the rest of its life, every
+/// later [performShutdown] is handed that finished shutdown, and an entry
+/// registered afterwards is kept but never runs. Nothing resets it, because
+/// "the cleanup runs exactly once" is the guarantee the rest of this class is
+/// built on — a second run would close again what the first had closed.
+///
+/// A subsystem that restarts within one process therefore builds a new
+/// instance for each run and disposes the one it replaces.
+///
 /// ## Creating Custom Instances
 ///
 /// ```dart
@@ -386,9 +399,7 @@ class TomShutdownCleanup {
   /// The shutdown, once one has started; every later caller gets this one.
   Future<void>? _shutdown;
 
-  /// Whether [_shutdown] has finished — which decides what a late signal
-  /// reports, not whether anything runs.
-  bool _shutdownFinished = false;
+  bool _hasShutDown = false;
 
   Duration _phaseTimeout = defaultPhaseTimeout;
 
@@ -398,6 +409,17 @@ class TomShutdownCleanup {
 
   /// When true, suppresses output messages during shutdown.
   bool silent = false;
+
+  /// Whether this instance's shutdown has run to its end — every phase
+  /// finished or abandoned.
+  ///
+  /// `false` before [performShutdown] is first called, and still `false`
+  /// while the shutdown runs; to wait for it, await [performShutdown], which
+  /// hands every caller the shutdown under way. Once `true` it never turns
+  /// back: the instance is spent — see the class documentation's
+  /// "Lifecycle". A signal ignored while [paused] is not a shutdown, and
+  /// [dispose] does not change this either.
+  bool get hasShutDown => _hasShutDown;
 
   /// How long each of the three phases may take before it is abandoned.
   ///
@@ -479,7 +501,7 @@ class TomShutdownCleanup {
     if (running != null) {
       if (announce) {
         print(
-          _shutdownFinished
+          _hasShutDown
               ? "Shutdown has already been performed"
               : "Shutdown is already in progress",
         );
@@ -507,7 +529,7 @@ class TomShutdownCleanup {
       "disposable",
       (disposable) => disposable.dispose(),
     );
-    _shutdownFinished = true;
+    _hasShutDown = true;
     if (announce) print("Shutdown performed");
   }
 

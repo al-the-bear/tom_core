@@ -6,7 +6,8 @@
 ///
 /// Key concepts covered:
 /// - Cleanup phase order: signal handlers → closables → disposables
-/// - Once-only execution: repeated triggers run cleanup once
+/// - Once-only execution: repeated triggers run cleanup once, and
+///   [TomShutdownCleanup.hasShutDown] records that it has
 /// - Fault isolation: a throwing entry never aborts the remaining cleanups
 /// - [TomShutdownCleanup.paused]: the signal path is skipped while paused,
 ///   but a manual `performShutdown()` always runs
@@ -148,8 +149,18 @@ Future<void> run() async {
   await once.performShutdown();
   await once.performShutdown();
 
+  // The instance is spent now: a closable registered after the shutdown is
+  // kept, but never runs. A second run needs a new instance.
+  final lateClosable = CountingClosable(onceTrace);
+  once.addClosable(lateClosable);
+  await once.performShutdown();
+
   print(
-    '   - close() invocations after 3 triggers: ${onceClosable.closeCount}\n',
+    '   - close() invocations after 3 triggers: ${onceClosable.closeCount}',
+  );
+  print('   - hasShutDown:                       ${once.hasShutDown}');
+  print(
+    '   - late registration closed:          ${lateClosable.closeCount > 0}\n',
   );
 
   // ---------------------------------------------------------------------------
@@ -309,8 +320,11 @@ Future<void> run() async {
   assert(orderTrace[1] == 'closable');
   assert(orderTrace[2] == 'disposable');
 
-  // Example 2: cleanup runs exactly once even across repeated triggers.
+  // Example 2: cleanup runs exactly once even across repeated triggers, and a
+  // spent instance runs nothing registered after it.
   assert(onceClosable.closeCount == 1);
+  assert(once.hasShutDown);
+  assert(lateClosable.closeCount == 0);
 
   // Example 3: the throwing handler and closable are skipped, survivors run.
   assert(isolationTrace.length == 2);

@@ -10,6 +10,7 @@ The shutdown cleanup module provides a comprehensive system for managing gracefu
   - [Interfaces](#interfaces)
   - [TomCloseAdaptor](#tomcloseadaptor)
   - [TomShutdownCleanup](#tomshutdowncleanup)
+    - [One shutdown per instance](#one-shutdown-per-instance)
     - [paused and silent](#paused-and-silent)
     - [phaseTimeout](#phasetimeout)
     - [Exiting after a signal](#exiting-after-a-signal)
@@ -237,6 +238,28 @@ performed.
 Do not await `performShutdown()` from inside one of the entries. The entry
 would be waiting for the shutdown that is waiting for the entry, and only the
 phase timeout would end it.
+
+#### One shutdown per instance
+
+An instance is single-use. After its shutdown has run, `hasShutDown` reads
+`true` for good, every later `performShutdown()` is handed that finished
+shutdown, and an entry registered afterwards is kept but never runs — a
+registration racing the exit is ordinary, so it is not refused, but it is too
+late. Nothing resets an instance: "the cleanup runs exactly once" is what keeps
+a second run from closing again what the first had closed.
+
+```dart
+await cleanup.performShutdown();
+print(cleanup.hasShutDown); // true
+```
+
+`hasShutDown` is a completion record: it stays `false` while the shutdown is
+still running. To wait for a shutdown someone else may have started, await
+`performShutdown()` instead. A signal ignored under `paused` does not count,
+and `dispose()` leaves the flag alone.
+
+A subsystem that shuts down and starts again within one process builds a new
+instance for each run and disposes the one it replaces.
 
 #### paused and silent
 
@@ -547,7 +570,7 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
 - The cleanup system uses `print()` for logging during shutdown (not the full logging system) to ensure output even if logging is affected
 - `silent` suppresses the failure diagnostics along with the status messages, so a silent instance says nothing when a cleanup throws — the cleanup still continues, but the reason it failed is gone
 - A failure's stack trace is cut to its top ten frames, enough to identify the failing `close()`/`dispose()` but not to follow a deep call chain
-- Cleanup executes only once — every later call or signal is handed the same shutdown
+- Cleanup executes only once per instance — every later call or signal is handed the same shutdown, and nothing resets it; a restarted subsystem uses a new instance
 - On some platforms, certain signals may not be available
 - `TomCloseAdaptor` requires the target's class to carry `@tomReflector` and to have been through `build_runner`, so it cannot wrap a type from outside your own build no matter what methods that type declares; an unreflectable target raises a `TomReflectorException` from the constructor
 
