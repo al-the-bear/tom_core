@@ -344,7 +344,7 @@ rather than at the constructor that built it — see `TomRetryPolicy.validate`.
 | `schedule` | `TomSchedule` | When it fires. |
 | `body` | `TomCommand Function(TomJobRun run)` | Builds the command for one run — a factory, not an instance, so each run gets a fresh command. |
 | `retryPolicy` | `TomRetryPolicy` | Attempts and backoff. |
-| `timeout` | `Duration` | Per-attempt time limit. |
+| `timeout` | `Duration` | Per-attempt time limit. A timed-out attempt is failed and retried, but its body — which cannot be cancelled — keeps its job (or, with `allowOverlap`, its run) held, including the cluster lease, until it settles; the retry waits for it. |
 | `missedWindowPolicy` | `TomMissedWindowPolicy` | What to do about windows that elapsed while nothing was running. |
 | `catchUpLimit` | `int` | Upper bound on windows enqueued in one catch-up. |
 | `allowOverlap` | `bool` | Whether a second run may start while one is still in flight. |
@@ -1006,6 +1006,7 @@ the interval is defaulted from it.
 | `jobs` | `Map<String, TomJobDefinition>` | Registered jobs, unmodifiable (getter). |
 | `isRunning` | `bool` | Whether the periodic timer is armed (getter). |
 | `inFlightCount` | `int` | Runs currently executing (getter). |
+| `overrunningCount` | `int` | Bodies still executing after their attempt timed out (getter). Each holds its job — or, with `allowOverlap`, its own run — until it settles; a count that does not fall is a body that never returns. Not included in `inFlightCount`. |
 | `heldLeases` | `Map<String, TomLease>` | Leases this scheduler holds, unmodifiable (getter). |
 
 #### Methods
@@ -1018,7 +1019,7 @@ the interval is defaulted from it.
 | `stop` | `void stop()` | Stops the timer; in-flight runs are left to finish. |
 | `close` | `void close()` | *(override)* Shutdown: stops, cancels subscriptions, and releases held leases fire-and-forget so peers can take the work at once instead of waiting out `leaseTtl`. |
 | `tick` | `Future<void> tick()` | One complete pass — recover, plan, claim, dispatch. Safe to call directly (this is what tests drive); overlapping calls are collapsed rather than re-entered. Awaiting it awaits the pass, not the runs it started — for that, follow with `drain`. |
-| `drain` | `Future<void> drain()` | Completes once every run in flight has finished and written its outcome to the store — success, scheduled retry, or terminal failure. The affordance a test asserting an effect, or a shutdown emptying its queue, needs; `stop()` then `await drain()` quiesces the scheduler. |
+| `drain` | `Future<void> drain()` | Completes once every run in flight has finished and written its outcome to the store — success, scheduled retry, or terminal failure. The affordance a test asserting an effect, or a shutdown emptying its queue, needs; `stop()` then `await drain()` quiesces the scheduler. A body that outlived its timeout is not waited for — its attempt finished at the timeout, and it may never settle — see `overrunningCount`. |
 
 ## Enums
 
@@ -1053,7 +1054,7 @@ What to do about windows that elapsed while nothing was running.
 | Value | Meaning |
 | ----- | ------- |
 | `attemptFailed` | An attempt failed and another will follow. |
-| `timedOut` | An attempt exceeded the job's `timeout`. |
+| `timedOut` | An attempt exceeded the job's `timeout`. Its body is still running and holds the job until it settles. |
 | `runFailed` | Every attempt is spent; the run is terminally failed. |
 | `runAbandoned` | A run whose lease expired was returned to the queue — it *will* run again. |
 | `recoveryDeclined` | A run interrupted mid-execution was **not** re-queued, because its job does not set `requestsRecovery`. It will *not* run again; if that work mattered, a human has to decide what to do. |

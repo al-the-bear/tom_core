@@ -2871,6 +2871,180 @@ void main() {
         },
       );
 
+      group('a timed-out body that is still running', () {
+        // The timeout bounds the scheduler's wait, not the body: Dart cannot
+        // cancel arbitrary asynchronous work, so the body goes on running
+        // after its attempt has been failed. The overlap rule has to survive
+        // that, or `allowOverlap: false` holds only for attempts that finish —
+        // and a timeout is precisely the case where one does not. So the
+        // protection the attempt held stays held until the body settles: the
+        // job (or, with overlap allowed, the window) is busy on this node, and
+        // its cluster lease is kept.
+
+        /// A dispatcher whose first dispatch is held open by [gate] and whose
+        /// later dispatches finish at once.
+        RecordingDispatcher heldFirst(Completer<Object?> gate) {
+          var calls = 0;
+          return RecordingDispatcher(
+            handler: (command) =>
+                calls++ == 0 ? gate.future : Future<Object?>.value('ok'),
+          );
+        }
+
+        const retryAtOnce = TomRetryPolicy(
+          maxAttempts: 2,
+          initialBackoff: Duration.zero,
+          jitter: 0,
+        );
+
+        Future<TomJobRun> runA() async =>
+            (await store.all()).firstWhere((r) => r.id == 'a');
+
+        test('holds the job, so the retry waits for the body', () async {
+          final gate = Completer<Object?>();
+          final dispatcher = heldFirst(gate);
+          final scheduler = schedulerFor(
+            store,
+            clock,
+            dispatcher: dispatcher,
+            alerts: alerts,
+          );
+          addTearDown(scheduler.close);
+          scheduler.register(
+            dailyJob(
+              timeout: const Duration(milliseconds: 20),
+              retry: retryAtOnce,
+            ),
+          );
+          final past = clock.now.subtract(const Duration(hours: 1));
+          await store.enqueue(
+            TomJobRun(
+              id: 'a',
+              jobName: 'daily',
+              scheduledFor: past,
+              runAt: past,
+            ),
+          );
+
+          await scheduler.tick();
+          await Future<void>.delayed(const Duration(milliseconds: 60));
+          // The attempt is over as far as the record goes: failed, and a retry
+          // is due now.
+          expect((await runA()).state, TomJobRunState.pending);
+          expect((await runA()).attempt, 2);
+          expect(scheduler.inFlightCount, 0);
+          expect(scheduler.overrunningCount, 1);
+
+          // But the first body is still executing, so the retry is not started.
+          await scheduler.tick();
+          await pumpEventQueue();
+          expect(dispatcher.dispatched, hasLength(1));
+
+          gate.complete('late');
+          await pumpEventQueue();
+          expect(scheduler.overrunningCount, 0);
+
+          await scheduler.tick();
+          await scheduler.drain();
+          expect(dispatcher.dispatched, hasLength(2));
+          expect((await runA()).state, TomJobRunState.succeeded);
+        });
+
+        test('with overlap allowed, holds only its own window', () async {
+          final gate = Completer<Object?>();
+          final dispatcher = heldFirst(gate);
+          final scheduler = schedulerFor(
+            store,
+            clock,
+            dispatcher: dispatcher,
+            alerts: alerts,
+          );
+          addTearDown(scheduler.close);
+          scheduler.register(
+            dailyJob(
+              allowOverlap: true,
+              timeout: const Duration(milliseconds: 20),
+              retry: retryAtOnce,
+            ),
+          );
+          final past = clock.now.subtract(const Duration(hours: 1));
+          await store.enqueue(
+            TomJobRun(
+              id: 'a',
+              jobName: 'daily',
+              scheduledFor: past,
+              runAt: past,
+            ),
+          );
+          await scheduler.tick();
+          await Future<void>.delayed(const Duration(milliseconds: 60));
+
+          // Another window of the same job is free to run beside the overrun;
+          // the timed-out window's own retry is not.
+          await store.enqueue(
+            TomJobRun(
+              id: 'b',
+              jobName: 'daily',
+              scheduledFor: past.add(const Duration(minutes: 1)),
+              runAt: past.add(const Duration(minutes: 1)),
+            ),
+          );
+          await scheduler.tick();
+          await scheduler.drain();
+          final b = (await store.all()).firstWhere((r) => r.id == 'b');
+          expect(b.state, TomJobRunState.succeeded);
+          expect((await runA()).state, TomJobRunState.pending);
+          expect(dispatcher.dispatched, hasLength(2));
+
+          gate.complete('late');
+          await pumpEventQueue();
+          await scheduler.tick();
+          await scheduler.drain();
+          expect((await runA()).state, TomJobRunState.succeeded);
+        });
+
+        test('a body that fails after its timeout is absorbed, and releases '
+            'the job', () async {
+          // Its outcome stopped being an outcome at the timeout. The error must
+          // not escape as an unhandled one — the test zone would fail on it —
+          // and must still end the hold.
+          final gate = Completer<Object?>();
+          final dispatcher = heldFirst(gate);
+          final scheduler = schedulerFor(
+            store,
+            clock,
+            dispatcher: dispatcher,
+            alerts: alerts,
+          );
+          addTearDown(scheduler.close);
+          scheduler.register(
+            dailyJob(
+              timeout: const Duration(milliseconds: 20),
+              retry: retryAtOnce,
+            ),
+          );
+          final past = clock.now.subtract(const Duration(hours: 1));
+          await store.enqueue(
+            TomJobRun(
+              id: 'a',
+              jobName: 'daily',
+              scheduledFor: past,
+              runAt: past,
+            ),
+          );
+          await scheduler.tick();
+          await Future<void>.delayed(const Duration(milliseconds: 60));
+
+          gate.completeError(StateError('the late body failed'));
+          await pumpEventQueue();
+          expect(scheduler.overrunningCount, 0);
+
+          await scheduler.tick();
+          await scheduler.drain();
+          expect((await runA()).state, TomJobRunState.succeeded);
+        });
+      });
+
       test('a successful run is not retried', () async {
         final scheduler = schedulerFor(store, clock, alerts: alerts);
         addTearDown(scheduler.close);
@@ -3964,6 +4138,65 @@ void main() {
         runs.where((r) => r.state == TomJobRunState.succeeded),
         hasLength(1),
       );
+    });
+
+    test('a timed-out body keeps its lease, so no peer starts the job while it '
+        'runs', () async {
+      // Across the cluster the overlap rule is the lease, so the lease is what
+      // has to outlive the attempt. Released at the timeout, it would let a
+      // peer claim the retry and run a second body beside the first — the
+      // duplicate the lease exists to prevent, produced by the one path that
+      // is certain to leave a body running.
+      final gate = Completer<Object?>();
+      var node0Calls = 0;
+      final node0 = RecordingDispatcher(
+        handler: (_) =>
+            node0Calls++ == 0 ? gate.future : Future<Object?>.value('ok'),
+      );
+      final node1 = RecordingDispatcher();
+      final nodes = cluster(2, dispatcher: (i) => i == 0 ? node0 : node1);
+      addTearDown(() {
+        for (final node in nodes) {
+          node.close();
+        }
+      });
+      final job = TomJobDefinition(
+        name: 'nightly',
+        schedule: TomCronSchedule('0 3 * * *'),
+        body: (_) => OkCommand(),
+        timeout: const Duration(milliseconds: 20),
+        retryPolicy: const TomRetryPolicy(
+          maxAttempts: 2,
+          initialBackoff: Duration.zero,
+          jitter: 0,
+        ),
+      );
+      for (final node in nodes) {
+        node.register(job);
+      }
+      final past = start.subtract(const Duration(hours: 1));
+      await store.enqueue(
+        TomJobRun(id: 'a', jobName: 'nightly', scheduledFor: past, runAt: past),
+      );
+
+      await nodes[0].tick();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(nodes[0].heldLeases.keys, contains('a'));
+
+      // The retry is due and node-1 is free — but the job's lease is not.
+      await nodes[1].tick();
+      await nodes[1].drain();
+      expect(node1.dispatched, isEmpty);
+
+      gate.complete('late');
+      await settle();
+      expect(nodes[0].heldLeases, isEmpty);
+
+      await nodes[1].tick();
+      await nodes[1].drain();
+      expect(node1.dispatched, hasLength(1));
+      final a = (await store.all()).firstWhere((r) => r.id == 'a');
+      expect(a.state, TomJobRunState.succeeded);
     });
 
     // A peer already holds the job's lease. This is the case the lock exists

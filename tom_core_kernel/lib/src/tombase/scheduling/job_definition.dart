@@ -552,12 +552,22 @@ class TomJobDefinition {
   /// How long one attempt may take before it is treated as failed.
   ///
   /// A timed-out attempt is failed and retried per [retryPolicy]. The work
-  /// itself is **not** cancelled — an isolate command cannot be interrupted
-  /// from outside, and killing the worker would take unrelated work with it.
-  /// Worker liveness stays the pool's concern; a body that can overrun must be
-  /// written to tolerate a later attempt overlapping it, or must set
-  /// [allowOverlap] to `false` (the default) so the scheduler holds the next
-  /// window back.
+  /// itself is **not** cancelled — Dart cannot cancel arbitrary asynchronous
+  /// work, an isolate command cannot be interrupted from outside, and killing
+  /// the worker would take unrelated work with it. The timeout bounds the
+  /// scheduler's wait, not the body.
+  ///
+  /// So the body is still treated as executing until it settles: the
+  /// scheduler keeps the protection the attempt held — the job counts as busy
+  /// (with [allowOverlap] `true`, only its own run does) and the run's cluster
+  /// lease is kept and renewed — and the retry is not started until the body
+  /// returns or throws. What a late body produces is discarded; the attempt
+  /// was already failed. Two consequences follow. A body that finishes late
+  /// has done its work *and* its retry will do it again, one after the other —
+  /// a duplicate the at-least-once contract already asks bodies to absorb. And
+  /// a body that never settles holds its job (or window) indefinitely, which
+  /// `TomScheduler.overrunningCount` shows; give a body that can hang a
+  /// deadline of its own, shorter than this one.
   final Duration timeout;
 
   /// What to do about windows missed while the scheduler was down.

@@ -22,6 +22,8 @@
 /// 3. A run interrupted mid-execution, where re-offering is the job's call.
 /// 4. The pause that no store can rule out, and the fencing token that survives
 ///    it when the effect genuinely cannot be made idempotent.
+/// 5. A body that outlives its timeout, which the scheduler holds the job for
+///    rather than starting the retry beside it.
 ///
 /// The last one steps back from the duplicate to the policy that spaces them:
 /// how far apart retries actually fall, and why the curve settles below the
@@ -33,6 +35,7 @@
 /// ```
 library;
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -411,7 +414,134 @@ class _FencedLedger {
 }
 
 // =============================================================================
-// EXAMPLE 5: The Curve, And Why Its Ceiling Is Not Where You Left It
+// EXAMPLE 5: A Body That Outlives Its Timeout
+// =============================================================================
+
+/// A timeout ends the attempt, not the body.
+///
+/// Dart cannot cancel arbitrary asynchronous work, so when an attempt overruns
+/// its `timeout` the scheduler fails it — alerts, records the failure, makes
+/// the retry due — while the body carries on. What the scheduler will not do is
+/// start that retry *beside* it. Until the first body returns, the job stays
+/// held: on this node through its busy mark, across a cluster through its
+/// lease, which the heartbeat keeps renewing. Releasing either at the timeout
+/// would put two bodies in flight for one window — the very thing
+/// `allowOverlap: false` promises against — on the one path certain to leave a
+/// body running.
+///
+/// The duplicate that remains is the sequential one. The late body did its
+/// work, and the retry does it again afterwards. That is at-least-once, not a
+/// breach of it, and the window key absorbs it exactly as it absorbs the retry
+/// in example 1.
+class OverrunningBodyExample {
+  /// The report store, keyed on the window as example 1 recommends.
+  static final Map<DateTime, String> upserted = {};
+
+  static int executions = 0;
+  static int overrunningAfterTimeout = -1;
+  static int executionsWhileHeld = -1;
+  static TomJobRunState? finalState;
+
+  /// Holds the first attempt's body open until the example lets it finish.
+  static Completer<void> firstBodyGate = Completer<void>();
+
+  static Future<void> example5ABodyThatOutlivesItsTimeout() async {
+    upserted.clear();
+    executions = 0;
+    firstBodyGate = Completer<void>();
+
+    final clock = FakeClock(DateTime.utc(2026, 3, 2, 9));
+    final store = TomMemoryJobStore();
+    final scheduler = TomScheduler(
+      store: store,
+      dispatcher: const TomInlineJobDispatcher(),
+      clock: clock.call,
+      ownerId: 'node-a',
+      tickJitter: 0,
+      onAlert: (_) {},
+    );
+
+    scheduler.register(
+      TomJobDefinition(
+        name: 'slow-report',
+        schedule: TomIntervalSchedule(const Duration(hours: 1)),
+        body: (run) => _SlowReportBody(run),
+        // Absurdly short, so the example does not have to wait for it.
+        timeout: const Duration(milliseconds: 20),
+        // Due again the moment it fails, so the only thing holding the retry
+        // back is the body still running.
+        retryPolicy: const TomRetryPolicy(
+          maxAttempts: 2,
+          initialBackoff: Duration.zero,
+          jitter: 0,
+        ),
+      ),
+    );
+
+    await scheduler.tick();
+    clock.advance(const Duration(hours: 1));
+    await scheduler.tick();
+    // The timeout is a real timer; let it fire.
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    overrunningAfterTimeout = scheduler.overrunningCount;
+
+    // The retry is due, the scheduler is idle — and the first body has not
+    // returned, so the pass does not start it.
+    await scheduler.tick();
+    await settle();
+    executionsWhileHeld = executions;
+
+    // The late body finishes. Only now is the job free, and the retry runs.
+    firstBodyGate.complete();
+    await settle();
+    await scheduler.tick();
+    await settle();
+
+    final run = (await store.all()).firstWhere(
+      (r) => r.scheduledFor == DateTime.utc(2026, 3, 2, 10),
+    );
+    finalState = run.state;
+    scheduler.close();
+
+    assert(
+      overrunningAfterTimeout == 1,
+      'The attempt timed out with its body still running',
+    );
+    assert(
+      executionsWhileHeld == 1,
+      'The retry was due, but not started beside the body still in flight',
+    );
+    assert(executions == 2, 'After the body settled, the retry ran');
+    assert(
+      finalState == TomJobRunState.succeeded,
+      'The run succeeded on its retry',
+    );
+    assert(
+      upserted.length == 1,
+      'Two executions, one after the other, and one row — the window key '
+      'absorbs the sequential duplicate a timeout leaves',
+    );
+  }
+}
+
+/// A report whose first attempt takes far longer than its timeout.
+class _SlowReportBody extends TomCommand {
+  final TomJobRun run;
+
+  _SlowReportBody(this.run);
+
+  @override
+  Future<Object?> execute() async {
+    OverrunningBodyExample.executions++;
+    if (run.attempt == 1) await OverrunningBodyExample.firstBodyGate.future;
+    OverrunningBodyExample.upserted[run.scheduledFor] =
+        'report for ${run.scheduledFor.toIso8601String()}';
+    return 'written';
+  }
+}
+
+// =============================================================================
+// EXAMPLE 6: The Curve, And Why Its Ceiling Is Not Where You Left It
 // =============================================================================
 
 /// How far apart the retries of example 1 actually are, and the one arithmetic
@@ -451,7 +581,7 @@ class BackoffCurveExample {
     jitter: 0.5,
   );
 
-  static Future<void> example5TheCurveAndItsCeiling() async {
+  static Future<void> example6TheCurveAndItsCeiling() async {
     // Without a Random, backoff is the bare curve: no jitter is applied, which
     // is what makes a policy testable at all.
     steepCurve = [
@@ -562,8 +692,34 @@ Future<void> run() async {
   print('   renewal refused     : ${FencingTokenExample.renewRefused}');
   print('');
 
-  await BackoffCurveExample.example5TheCurveAndItsCeiling();
-  print('5. The backoff curve, and the plateau below its ceiling:');
+  await OverrunningBodyExample.example5ABodyThatOutlivesItsTimeout();
+  print(
+    '5. A body that outlives its timeout — the job is held until it settles:',
+  );
+  print(
+    '   still running after the timeout : '
+    '${OverrunningBodyExample.overrunningAfterTimeout}',
+  );
+  print(
+    '   executions while held           : '
+    '${OverrunningBodyExample.executionsWhileHeld}',
+  );
+  print(
+    '   executions in total             : '
+    '${OverrunningBodyExample.executions}',
+  );
+  print(
+    '   final run state                 : '
+    '${OverrunningBodyExample.finalState}',
+  );
+  print(
+    '   window-keyed rows               : '
+    '${OverrunningBodyExample.upserted.length}',
+  );
+  print('');
+
+  await BackoffCurveExample.example6TheCurveAndItsCeiling();
+  print('6. The backoff curve, and the plateau below its ceiling:');
   print('   steep curve 1..4 : ${BackoffCurveExample.steepCurve}');
   print('   plateau          : ${BackoffCurveExample.plateau}');
   print('   jittered lowest  : ${BackoffCurveExample.lowestJittered}');

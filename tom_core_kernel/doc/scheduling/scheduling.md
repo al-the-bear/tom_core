@@ -116,7 +116,7 @@ timing.
 | [`01_memory_substrate_example.dart`](../../example/samples/scheduling/01_memory_substrate_example.dart) | One window from registration to a completed row; what a `TomJobRun` records; what the lease is taken on |
 | [`02_declared_job_example.dart`](../../example/samples/scheduling/02_declared_job_example.dart) | `@TomScheduledJob` discovery, a malformed declaration failing the scan by name, and declared jobs coexisting with hand-written ones |
 | [`03_schedule_kinds_example.dart`](../../example/samples/scheduling/03_schedule_kinds_example.dart) | What each schedule kind answers, an event job in motion, and every missed-window policy across one outage — including a one-shot deadline that survives it |
-| [`04_execution_guarantee_example.dart`](../../example/samples/scheduling/04_execution_guarantee_example.dart) | The duplicate a retry produces, the two abandonment cases, and a fencing token making a displaced node harmless |
+| [`04_execution_guarantee_example.dart`](../../example/samples/scheduling/04_execution_guarantee_example.dart) | The duplicate a retry produces, the two abandonment cases, a fencing token making a displaced node harmless, and a body that outlives its timeout holding its job until it settles |
 
 ```bash
 dart run --enable-asserts example/samples/scheduling/00_run_all_examples.dart
@@ -175,6 +175,25 @@ Closing that last gap requires the protected resource to check the **fencing
 token** — see [Lease Locks](#lease-locks). Against a token-checking resource the
 effect is single-fire even under a pause. Against everything else, idempotence is
 the contract.
+
+The other source is a **timeout**. A `timeout` fails the *attempt*; it cannot
+stop the *body*, because Dart cannot cancel arbitrary asynchronous work, so the
+body goes on running after its attempt was failed and its retry made due. The
+scheduler does not start that retry beside it: until the body settles, the job
+stays held — on this node through its busy mark, across the cluster through its
+lease, which the heartbeat keeps renewing — and `overrunningCount` counts it
+(with `allowOverlap: true` only the timed-out window is held, not the job). So a
+timeout never puts two bodies in flight for one window. What it does leave is a
+**sequential** duplicate: the late body completed its work, discarded as an
+outcome but not undone, and the retry then does the work again. That is the
+same duplicate a retry always is, and the same window key absorbs it — see
+example 5 of `04_execution_guarantee_example.dart`.
+
+A body that never settles holds its job — or, with overlap allowed, its window —
+indefinitely: nothing behind it starts, and a `timedOut` alert followed by an
+`overrunningCount` that does not fall is the signal. A body that can hang should
+carry a deadline of its own, shorter than the job's `timeout`, so that it
+returns and releases the job.
 
 ## Schedules
 
@@ -787,7 +806,10 @@ throw from. The placement is also the honest one — an unattached policy govern
 nothing, so the moment a bad value starts producing wrong answers is the moment a
 job adopts it, and only then is there a job name to put in the message.
 
-An attempt that overruns `timeout` is failed and retried like any other failure.
+An attempt that overruns `timeout` is failed and retried like any other failure
+— but the retry waits for the timed-out body to settle, because the body cannot
+be cancelled and is still the one execution the overlap rule is about. See
+[Where the duplicate comes from](#where-the-duplicate-comes-from).
 A **body factory that throws** is different: that is a permanent defect, not a
 transient failure, so the run fails outright rather than retrying identically
 four more times.
@@ -838,6 +860,11 @@ The resource key *is* the policy:
 | -------------- | -------------- | ------ |
 | `false` | `job:<name>` | The whole cluster runs at most one of this job at a time |
 | `true` | `run:<id>` | Concurrent windows are fine; no single window runs twice |
+
+The lease is held for as long as the body executes, not merely for as long as
+the scheduler waits for it: a body that outlives its `timeout` keeps the lease,
+renewed by the heartbeat, until it settles, so no peer can start its retry
+beside it.
 
 ## Lease Locks
 
@@ -924,7 +951,7 @@ Everything worth an operator's attention arrives as a `TomJobAlert` on
 | Kind | Meaning | Default level |
 | ---- | ------- | ------------- |
 | `attemptFailed` | An attempt failed; `retryAt` says when the next one is | warn |
-| `timedOut` | An attempt overran `timeout` | warn |
+| `timedOut` | An attempt overran `timeout`. The body is still running and holds its job until it settles — see `overrunningCount` | warn |
 | `runFailed` | Every attempt is spent; the run is terminally failed | error |
 | `runAbandoned` | A claim outlived `leaseTimeout` and was returned to the queue | error |
 | `recoveryDeclined` | A run was interrupted mid-execution and *not* re-queued, because its job does not set `requestsRecovery` | error |
@@ -962,6 +989,9 @@ Three questions and where they are answered:
   name is the store key, and a rename without it orphans the job's history.
 - **Write idempotent bodies keyed on `run.scheduledFor`.** This is the contract,
   not a precaution.
+- **Give a body that can hang a deadline shorter than its `timeout`.** The
+  timeout cannot stop the body, so a body that never returns holds its job
+  indefinitely; one that honours its own deadline returns and releases it.
 - **Give every node a distinct `ownerId`.** Sharing one silently disables the
   lock.
 - **Size `leaseTtl` against clock skew, not against job duration.** Renewal

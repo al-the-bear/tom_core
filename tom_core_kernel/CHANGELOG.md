@@ -179,6 +179,20 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **A timed-out attempt no longer frees its job while its body still runs
+  (tcopen66).** A timeout fails the attempt but cannot cancel the body, and the
+  scheduler released the job's busy mark and its cluster lease at the timeout —
+  so the retry could start a second body beside the first, breaking
+  `allowOverlap: false` (and "no single window runs twice") on the one path
+  certain to leave a body running. The `timeout` dartdoc said the opposite.
+  The protection is now kept until the body settles: the job (or, with overlap
+  allowed, the run) stays busy, and the lease is kept and renewed. A late
+  body's value or error is discarded — its attempt was already failed — and
+  never surfaces as an unhandled error. New getter
+  `TomScheduler.overrunningCount`. `drain()` does not wait for such bodies.
+  Documented under *Where the duplicate comes from*, and demonstrated as
+  example 5 of `04_execution_guarantee_example.dart`.
+
 - **The resources examples no longer teach the key-echo cast (tcopen59).**
   `01_resource_provider_example.dart` read three `String` settings as
   `getObject(key) as String?` and `02_config_resource_provider_example.dart`

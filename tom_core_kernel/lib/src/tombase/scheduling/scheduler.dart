@@ -168,6 +168,21 @@ class TomScheduler implements TomClosable {
   /// after the run is finished and its entry gone.
   final Map<String, ({String jobName, Future<void> finished})> _inFlight = {};
 
+  /// Bodies still executing after their attempt timed out: run id to the job
+  /// and the heartbeat keeping the run's lease alive.
+  ///
+  /// A timeout fails the *attempt* — the store records it and schedules the
+  /// retry — but it cannot stop the body, because Dart cannot cancel arbitrary
+  /// asynchronous work. The body goes on running, and it is still the one
+  /// execution the overlap rule is about. So the protection the attempt held
+  /// is kept until the body settles: the job (or, when overlap is allowed, the
+  /// run) counts as busy in [_dispatchDue], and the run's lease is neither
+  /// released nor left to lapse. Releasing either at the timeout would let
+  /// the retry start a second body beside the first — the duplicate
+  /// `allowOverlap: false` exists to prevent, produced by the one path certain
+  /// to leave a body running.
+  final Map<String, ({String jobName, Timer? heartbeat})> _overrunning = {};
+
   /// Coordination leases currently held, keyed by run id.
   ///
   /// Exposed through [heldLeases] so an operator can ask what this node is
@@ -329,6 +344,15 @@ class TomScheduler implements TomClosable {
   /// How many runs this scheduler currently has dispatched.
   int get inFlightCount => _inFlight.length;
 
+  /// How many bodies are still executing after their attempt timed out.
+  ///
+  /// Each one holds its job — or, for a job that allows overlap, its own run —
+  /// until it settles, so a non-zero count that does not fall is a body that
+  /// never returns, holding back the work behind it. The attempt itself is
+  /// already over: it was failed at the timeout, alerted as
+  /// [TomJobAlertKind.timedOut], and is not counted in [inFlightCount].
+  int get overrunningCount => _overrunning.length;
+
   /// The coordination leases this node currently holds, keyed by run id.
   ///
   /// The local half of "who holds the lock": what *this* node believes it owns.
@@ -466,6 +490,11 @@ class TomScheduler implements TomClosable {
     }
     _leases.clear();
     _lostLeases.clear();
+    // The leases they kept were released above; their heartbeats would renew
+    // nothing, and a body that never settles would keep its timer forever.
+    for (final overrun in _overrunning.values) {
+      overrun.heartbeat?.cancel();
+    }
     dispatcher.close();
   }
 
@@ -512,8 +541,13 @@ class TomScheduler implements TomClosable {
   ///
   /// "Finished" means the attempt returned and its outcome was written to the
   /// store — success, a scheduled retry, or terminal failure — not that the run
-  /// succeeded. A drain reports that nothing is still executing here; the store
-  /// reports what happened.
+  /// succeeded. A drain reports that no attempt is still executing here; the
+  /// store reports what happened.
+  ///
+  /// A body that outlived its timeout is not waited for: its attempt finished
+  /// at the timeout, and the body may never settle, so a drain that waited for
+  /// it could hang for good. It still holds its job until it does — see
+  /// [overrunningCount].
   ///
   /// Re-checks after each wave, because a run that finishes may leave another
   /// claimable and a concurrent pass may have started more. It therefore
@@ -756,7 +790,10 @@ class TomScheduler implements TomClosable {
 
   /// Claims every due run this scheduler is willing to take, and starts it.
   Future<void> _dispatchDue(DateTime now) async {
-    final busy = {for (final entry in _inFlight.values) entry.jobName};
+    final busy = {
+      for (final entry in _inFlight.values) entry.jobName,
+      for (final entry in _overrunning.values) entry.jobName,
+    };
     final claimed = await store.claimDue(
       now,
       ownerId,
@@ -767,7 +804,9 @@ class TomScheduler implements TomClosable {
         // scheduler (or an older build); leave it for whoever owns it rather
         // than claiming work we cannot execute.
         if (job == null) return false;
-        if (job.allowOverlap) return true;
+        // Overlap allowed: other windows run beside an overrunning body, but
+        // not this window's own retry — see [_overrunning].
+        if (job.allowOverlap) return !_overrunning.containsKey(run.id);
         // `busy` grows *during* the claim, not after it. Two due windows of a
         // non-overlapping job arrive in the same pass — a catch-up run and the
         // window it was late for, say — and a predicate that only consulted the
@@ -867,6 +906,9 @@ class TomScheduler implements TomClosable {
   ) async {
     final run = claim.run;
     final heartbeat = _startHeartbeat(job, claim, lease);
+    // Set only when the attempt timed out with its body still executing; the
+    // `finally` then hands the run's protection over instead of releasing it.
+    Future<Object?>? overrunningBody;
     try {
       final TomCommand command;
       try {
@@ -885,7 +927,13 @@ class TomScheduler implements TomClosable {
       // dispatch never happened — and that one is safe, because it only ever
       // makes recovery more cautious.
       await store.markStarted(claim, clock());
-      await dispatcher.dispatch(command).timeout(job.timeout);
+      final body = dispatcher.dispatch(command);
+      try {
+        await body.timeout(job.timeout);
+      } on TimeoutException {
+        overrunningBody = body;
+        rethrow;
+      }
       if (_stillOurs(run)) await store.complete(claim, clock());
     } on TimeoutException catch (error, stack) {
       onAlert(
@@ -900,11 +948,44 @@ class TomScheduler implements TomClosable {
     } catch (error, stack) {
       if (_stillOurs(run)) await _failAttempt(job, claim, error, stack);
     } finally {
-      heartbeat?.cancel();
       _inFlight.remove(run.id);
-      await _releaseLease(job, run);
-      _lostLeases.remove(run.id);
+      final overrun = overrunningBody;
+      if (overrun == null) {
+        heartbeat?.cancel();
+        await _releaseLease(job, run);
+        _lostLeases.remove(run.id);
+      } else {
+        _holdUntilSettled(job, run, overrun, heartbeat);
+      }
     }
+  }
+
+  /// Keeps [run]'s overlap protection — its busy mark and its lease, kept
+  /// alive by [heartbeat] — until [body] settles, after its attempt timed out.
+  ///
+  /// See [_overrunning] for why. The body's value and its error are both
+  /// dropped: its attempt was failed at the timeout, so neither is an outcome
+  /// any more, and dropping them here is a decision rather than an unhandled
+  /// error surfacing later. The heartbeat's store half is harmless meanwhile —
+  /// the attempt's claim is no longer the store's, and a renewal of a claim
+  /// the store no longer holds is a no-op.
+  void _holdUntilSettled(
+    TomJobDefinition job,
+    TomJobRun run,
+    Future<Object?> body,
+    Timer? heartbeat,
+  ) {
+    _overrunning[run.id] = (jobName: run.jobName, heartbeat: heartbeat);
+    unawaited(
+      body
+          .then<void>((_) {}, onError: (Object _, StackTrace _) {})
+          .whenComplete(() async {
+            heartbeat?.cancel();
+            _overrunning.remove(run.id);
+            await _releaseLease(job, run);
+            _lostLeases.remove(run.id);
+          }),
+    );
   }
 
   /// Whether this node may still write [run]'s outcome to the store.
