@@ -213,23 +213,38 @@ class TomGetSettingsResult {
 
   // ---------------------------------------------------------------------------
   // Localization Settings
+  //
+  // The six localization strings carry *conventional* formats, not validated
+  // ones: country and language are usually ISO codes and the two timezones
+  // IANA identifiers, but each is a plain string and nothing checks it — not
+  // the constructor, not the reflected deserializer. A DTO that refused an
+  // unexpected value would turn one odd field into a failed settings request,
+  // and a deployment may need a code outside the standard (a regional
+  // language tag, an internal country code). A consumer that relies on a
+  // format validates it where it uses the value.
   // ---------------------------------------------------------------------------
 
   /// Server-determined country setting.
   ///
-  /// The country code used for server-side localization decisions.
-  /// May differ from [clientCountry] based on server configuration.
+  /// The country the server resolved for server-side localization decisions.
+  /// Conventionally an ISO 3166-1 alpha-2 code (`'US'`, `'GB'`, `'DE'`), but
+  /// a plain string: nothing validates it, and a deployment may use another
+  /// scheme. May differ from [clientCountry] based on server configuration.
   String? country;
 
   /// Server-determined language setting.
   ///
-  /// The language code used for server-side localization.
-  /// May differ from [clientLanguage] based on server configuration.
+  /// The language the server resolved for server-side localization.
+  /// Conventionally an ISO 639-1 code (`'en'`, `'de'`, `'fr'`), but a plain
+  /// string: nothing validates it, and a deployment may need a regional tag
+  /// such as `'de-CH'`. May differ from [clientLanguage] based on server
+  /// configuration.
   String? language;
 
   /// Server-determined timezone setting.
   ///
-  /// The IANA timezone identifier the server resolved for this session — set
+  /// The timezone identifier the server resolved for this session —
+  /// conventionally an IANA identifier, not validated — set
   /// when the deployment pins a timezone (a tenant fixed to one, say) or when
   /// it declines the client's request. May differ from [clientTimezone] based
   /// on server configuration.
@@ -254,19 +269,24 @@ class TomGetSettingsResult {
   /// Client's preferred country code.
   ///
   /// The country setting as determined by or requested from the client.
-  /// Follows ISO 3166-1 alpha-2 format (e.g., 'US', 'GB', 'DE').
+  /// Conventionally an ISO 3166-1 alpha-2 code (`'US'`, `'GB'`, `'DE'`); not
+  /// validated.
   String? clientCountry;
 
   /// Client's preferred language code.
   ///
   /// The language setting as determined by or requested from the client.
-  /// Follows ISO 639-1 format (e.g., 'en', 'de', 'fr').
+  /// Conventionally an ISO 639-1 code (`'en'`, `'de'`, `'fr'`); not validated,
+  /// so a regional tag such as `'de-CH'` passes through unchanged.
   String? clientLanguage;
 
   /// Client's timezone identifier.
   ///
   /// The timezone used for date/time display and calculations.
-  /// Uses IANA timezone database identifiers (e.g., 'America/New_York').
+  /// Conventionally an IANA timezone database identifier
+  /// (`'America/New_York'`); not validated, so a consumer that resolves the
+  /// zone checks it there — `TomTimezone.fromName` answers `null` for an
+  /// identifier the database does not know.
   String? clientTimezone;
 
   // ---------------------------------------------------------------------------

@@ -1024,6 +1024,15 @@ anyone who was writing them.
   keep passing for a reason that is now stated correctly.
 
 ### Documentation
+- **The settings localization formats read as conventions (tcopen81).**
+  `country`, `language`, `timezone` and the three `client…` fields documented
+  ISO and IANA formats as if enforced, and nothing checked them. They are
+  plain strings by decision — a deployment may need a regional tag such as
+  `de-CH` or an internal code, and rejecting one would fail the whole settings
+  request — so the dartdoc, `doc/settings/settings.md` and the API mirror now
+  state each format as the convention, and a test pins that other values pass
+  through the reflected round trip.
+
 - **A received `TomGetSettingsResult` stays mutable, and why is written down
   (tcopen79).** Every field is public and assignable on the client too; the
   authorization lists decide what a client shows, never what it may do, since

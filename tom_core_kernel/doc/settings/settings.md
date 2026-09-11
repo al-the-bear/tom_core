@@ -234,12 +234,21 @@ TomGetSettingsResult buildSettings(User user, Tenant tenant) {
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `country` | `String?` | `null` | Server-side country code |
-| `language` | `String?` | `null` | Server-side language code |
-| `timezone` | `String?` | `null` | Server-side timezone (IANA format) |
-| `clientCountry` | `String?` | `null` | Client's preferred country (ISO 3166-1) |
-| `clientLanguage` | `String?` | `null` | Client's preferred language (ISO 639-1) |
-| `clientTimezone` | `String?` | `null` | Client's timezone (IANA format) |
+| `country` | `String?` | `null` | Server-side country — conventionally ISO 3166-1 alpha-2 |
+| `language` | `String?` | `null` | Server-side language — conventionally ISO 639-1 |
+| `timezone` | `String?` | `null` | Server-side timezone — conventionally an IANA identifier |
+| `clientCountry` | `String?` | `null` | Client's preferred country — conventionally ISO 3166-1 alpha-2 |
+| `clientLanguage` | `String?` | `null` | Client's preferred language — conventionally ISO 639-1 |
+| `clientTimezone` | `String?` | `null` | Client's timezone — conventionally an IANA identifier |
+
+The formats are **conventions, not validation.** Each field is a plain string,
+and nothing checks it — not the constructor, not the reflected deserializer.
+Country and language are usually ISO codes, but a deployment may need a
+regional tag (`'de-CH'`) or an internal code, and a settings DTO that refused an
+unexpected value would turn one odd field into a failed settings request. A
+consumer that depends on a format checks it where it uses the value — the
+kernel's `TomTimezone.fromName` answers `null` for an identifier the timezone
+database does not know, which is the point at which that consumer learns it.
 
 The three localization concepts are each carried as a **pair**: the server
 states what it decided, the client states what it asked for. A consumer reads

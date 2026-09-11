@@ -1197,6 +1197,36 @@ void main() {
   // The documented transport
   // ==========================================================================
 
+  // The localization formats are conventions, not validation: a deployment may
+  // need a regional language tag or an internal code, and a DTO that refused
+  // one would fail the whole settings request. Pinned, so adding validation
+  // has to revisit the dartdoc and settings.md that state the decision.
+  group('localization strings are not validated', () {
+    test('values outside the conventional formats pass through', () {
+      final original = TomGetSettingsResult(
+        country: 'XK-internal',
+        language: 'de-CH',
+        timezone: 'Company/Headquarters',
+        clientCountry: 'USA',
+        clientLanguage: 'en-US',
+        clientTimezone: 'Amerca/New_York',
+      );
+
+      final json = tomReflectionInfo.convertToJsonString(original);
+      final mirror =
+          tomReflector.reflectType(TomGetSettingsResult) as ClassMirror;
+      final restored = tomReflectionInfo
+          .createInstanceFromJsonString<TomGetSettingsResult>(mirror, json);
+
+      expect(restored.country, 'XK-internal');
+      expect(restored.language, 'de-CH');
+      expect(restored.timezone, 'Company/Headquarters');
+      expect(restored.clientCountry, 'USA');
+      expect(restored.clientLanguage, 'en-US');
+      expect(restored.clientTimezone, 'Amerca/New_York');
+    });
+  });
+
   // A received result is mutable on the client by decision: its grant lists
   // decide what a client shows, and the server judges every call against the
   // bearer token, so editing the copy grants nothing. The consumer that wants a

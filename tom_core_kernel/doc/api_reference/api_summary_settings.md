@@ -110,12 +110,16 @@ answered as the empty string. Consumers must null-check rather than reach for
 | `organization` | `String?` | The organization context for this session (default `null`). |
 | `process` | `String?` | The business process/workflow context (default `null`). |
 | `application` | `String?` | The application identifier selecting the configuration to use (default `null`). |
-| `country` | `String?` | Server-determined country code for localization (default `null`). |
-| `language` | `String?` | Server-determined language code for localization (default `null`). |
-| `timezone` | `String?` | Server-determined IANA timezone identifier for the session (default `null`). |
-| `clientCountry` | `String?` | Client's preferred country code, ISO 3166-1 alpha-2 (default `null`). |
-| `clientLanguage` | `String?` | Client's preferred language code, ISO 639-1 (default `null`). |
-| `clientTimezone` | `String?` | Client's IANA timezone identifier (e.g. `America/New_York`) (default `null`). |
+| `country` | `String?` | Server-determined country for localization — conventionally ISO 3166-1 alpha-2, not validated (default `null`). |
+| `language` | `String?` | Server-determined language for localization — conventionally ISO 639-1, not validated (default `null`). |
+| `timezone` | `String?` | Server-determined timezone for the session — conventionally an IANA identifier, not validated (default `null`). |
+| `clientCountry` | `String?` | Client's preferred country — conventionally ISO 3166-1 alpha-2, not validated (default `null`). |
+| `clientLanguage` | `String?` | Client's preferred language — conventionally ISO 639-1, not validated, so a regional tag passes through (default `null`). |
+| `clientTimezone` | `String?` | Client's timezone — conventionally an IANA identifier (e.g. `America/New_York`), not validated (default `null`). |
+
+The localization formats are conventions: every field is a plain string that
+neither the constructor nor the deserializer checks, so a consumer relying on a
+format validates it where it uses the value.
 
 Localization is carried in server/client pairs — `country`/`clientCountry`,
 `language`/`clientLanguage`, `timezone`/`clientTimezone`. The server field is
