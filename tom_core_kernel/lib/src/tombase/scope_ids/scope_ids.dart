@@ -327,36 +327,67 @@ mixin TomScopeMixin on Object implements TomScope {
 ///       : _builder = ScopeCapture(scope: scope).wrap1(builder);
 /// }
 /// ```
+///
+/// ## Why a family of fixed arities
+///
+/// [run] is the whole mechanism; `wrap0`…`wrap5` and their nullable `…n`
+/// twins are sugar for the positional shapes that recur. The family is
+/// written out by hand because Dart has no variadic generics: no single method
+/// can accept "a function of any signature" and return one of the *same*
+/// signature with its static types intact. `Function.apply` would accept the
+/// function, but the result is untyped, and every call site would lose the
+/// compiler's checking of the callback it passed.
+///
+/// Anything else — a sixth argument, or named parameters like Flutter's
+/// `InputCounterWidgetBuilder` — is a closure of the target type around
+/// [run]:
+///
+/// ```dart
+/// final capture = ScopeCapture(scope: scope);
+/// final InputCounterWidgetBuilder counter =
+///     (context, {required currentLength, required maxLength,
+///         required isFocused}) =>
+///         capture.run(() => build(context, currentLength: currentLength,
+///             maxLength: maxLength, isFocused: isFocused));
+/// ```
 class ScopeCapture {
   final TomScope _scope;
 
   ScopeCapture({TomScope? scope}) : _scope = scope ?? TomScope.current;
 
+  /// Runs [body] in the captured scope and returns its result.
+  ///
+  /// The general form every `wrapN` builds on: wrap a callback of any shape
+  /// by forwarding its arguments inside [body]. Throws [TomScopeException] —
+  /// without running [body] — when the captured scope is a [TomScopeMixin]
+  /// whose [TomScopeMixin.initScope] never ran.
+  R run<R>(R Function() body) => _scope.runInScope(body);
+
   /// Wraps a 0-argument callback.
   R Function() wrap0<R>(R Function() fn) =>
-      () => _scope.runInScope(() => fn());
+      () => run(fn);
 
   /// Wraps a 1-argument callback.
   R Function(A) wrap1<R, A>(R Function(A) fn) =>
-      (a) => _scope.runInScope(() => fn(a));
+      (a) => run(() => fn(a));
 
   /// Wraps a 2-argument callback.
   R Function(A, B) wrap2<R, A, B>(R Function(A, B) fn) =>
-      (a, b) => _scope.runInScope(() => fn(a, b));
+      (a, b) => run(() => fn(a, b));
 
   /// Wraps a 3-argument callback.
   R Function(A, B, C) wrap3<R, A, B, C>(R Function(A, B, C) fn) =>
-      (a, b, c) => _scope.runInScope(() => fn(a, b, c));
+      (a, b, c) => run(() => fn(a, b, c));
 
   /// Wraps a 4-argument callback.
   R Function(A, B, C, D) wrap4<R, A, B, C, D>(R Function(A, B, C, D) fn) =>
-      (a, b, c, d) => _scope.runInScope(() => fn(a, b, c, d));
+      (a, b, c, d) => run(() => fn(a, b, c, d));
 
   /// Wraps a 5-argument callback.
   R Function(A, B, C, D, E) wrap5<R, A, B, C, D, E>(
     R Function(A, B, C, D, E) fn,
   ) =>
-      (a, b, c, d, e) => _scope.runInScope(() => fn(a, b, c, d, e));
+      (a, b, c, d, e) => run(() => fn(a, b, c, d, e));
 
   /// Wraps a nullable 0-argument callback. Returns null if [fn] is null.
   R Function()? wrap0n<R>(R Function()? fn) => fn == null ? null : wrap0(fn);
@@ -381,32 +412,4 @@ class ScopeCapture {
   R Function(A, B, C, D, E)? wrap5n<R, A, B, C, D, E>(
     R Function(A, B, C, D, E)? fn,
   ) => fn == null ? null : wrap5(fn);
-
-  /// Wraps a callback with one positional and named parameters.
-  /// Use for Flutter's `InputCounterWidgetBuilder` and similar typedefs
-  /// that use named parameters.
-  R Function(
-    A, {
-    required B currentLength,
-    required C maxLength,
-    required D isFocused,
-  })
-  wrapCounter<R, A, B, C, D>(
-    R Function(
-      A, {
-      required B currentLength,
-      required C maxLength,
-      required D isFocused,
-    })
-    fn,
-  ) =>
-      (a, {required currentLength, required maxLength, required isFocused}) =>
-          _scope.runInScope(
-            () => fn(
-              a,
-              currentLength: currentLength,
-              maxLength: maxLength,
-              isFocused: isFocused,
-            ),
-          );
 }

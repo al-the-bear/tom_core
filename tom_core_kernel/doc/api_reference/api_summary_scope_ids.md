@@ -187,6 +187,7 @@ the wrapped callbacks carry that scope wherever they are later invoked.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `run` | `R run<R>(R Function() body)` | Runs `body` in the captured scope and returns its result — the general form every `wrapN` builds on. A callback of any other shape (a sixth argument, named parameters) is a closure of its own type around `run`. Throws `TomScopeException`, without running `body`, when the captured scope is an uninitialised `TomScopeMixin`. |
 | `wrap0` | `R Function() wrap0<R>(R Function() fn)` | Wraps a 0-argument callback to run within the captured scope. |
 | `wrap1` | `R Function(A) wrap1<R, A>(R Function(A) fn)` | Wraps a 1-argument callback to run within the captured scope. |
 | `wrap2` | `R Function(A, B) wrap2<R, A, B>(R Function(A, B) fn)` | Wraps a 2-argument callback to run within the captured scope. |
@@ -199,7 +200,12 @@ the wrapped callbacks carry that scope wherever they are later invoked.
 | `wrap3n` | `R Function(A, B, C)? wrap3n<R, A, B, C>(R Function(A, B, C)? fn)` | Wraps a nullable 3-argument callback; returns null if `fn` is null. |
 | `wrap4n` | `R Function(A, B, C, D)? wrap4n<R, A, B, C, D>(R Function(A, B, C, D)? fn)` | Wraps a nullable 4-argument callback; returns null if `fn` is null. |
 | `wrap5n` | `R Function(A, B, C, D, E)? wrap5n<R, A, B, C, D, E>(R Function(A, B, C, D, E)? fn)` | Wraps a nullable 5-argument callback; returns null if `fn` is null. |
-| `wrapCounter` | `R Function(A, {required B currentLength, required C maxLength, required D isFocused}) wrapCounter<R, A, B, C, D>(...)` | Wraps a callback with one positional and named parameters (for Flutter's `InputCounterWidgetBuilder`-style typedefs). |
+
+The `wrapN` family is written out per arity because Dart has no variadic
+generics: no single method can take a function of any signature and return one
+of the same signature with its static types intact, and `Function.apply` gives
+up the types. It stops at five positional arguments, which covers every Flutter
+callback the toolkit wraps; beyond that, and for named parameters, use `run`.
 
 ## Global Functions and Constants
 

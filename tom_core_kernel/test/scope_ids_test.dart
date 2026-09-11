@@ -501,6 +501,14 @@ void main() {
         expectNamesTypeAndInitScope(wrapped);
       });
 
+      test('ScopeCapture.run refuses too, and the body never runs', () {
+        var ran = false;
+        expectNamesTypeAndInitScope(
+          () => ScopeCapture(scope: _LazyMixinScope()).run(() => ran = true),
+        );
+        expect(ran, isFalse);
+      });
+
       // Reading the identity directly already threw, but as a
       // LateInitializationError naming a mangled private field. The diagnosis
       // is the same whichever door you came through, so the message is too.
@@ -930,19 +938,69 @@ void main() {
       });
     });
 
-    test('wrapCounter restores the scope and forwards named arguments', () {
-      late ScopeCapture builder;
-      TomScope.withScope('captured', () {
-        builder = ScopeCapture();
+    // `run` is the general form the wrap family is sugar for. Dart has no
+    // variadic generics, so no single method can take "a function of any
+    // signature" and hand back one of the same signature with its static
+    // types intact; any shape outside wrap0…wrap5 is a one-line closure
+    // around `run` instead.
+    group('run', () {
+      test('runs a body in the captured scope and returns its result', () {
+        late ScopeCapture capture;
+        TomScope.withScope('captured', () {
+          capture = ScopeCapture();
+        });
+
+        final result = TomScope.withScope(
+          'elsewhere',
+          () => capture.run(() => TomScope.current.getScopePath()),
+        );
+
+        expect(result, equals('captured'));
+        expect(TomScope.current, same(TomScope.defaultScope));
       });
-      final wrapped = builder.wrapCounter<String, int, int, int, bool>(
-        (a, {required currentLength, required maxLength, required isFocused}) =>
-            '${TomScope.current.getScopePath()}:$a:$currentLength:$maxLength:$isFocused',
-      );
-      expect(
-        wrapped(1, currentLength: 2, maxLength: 3, isFocused: true),
-        equals('captured:1:2:3:true'),
-      );
+
+      test('wraps a named-parameter callback', () {
+        late ScopeCapture capture;
+        TomScope.withScope('captured', () {
+          capture = ScopeCapture();
+        });
+        String counter(
+          int a, {
+          required int currentLength,
+          required int maxLength,
+          required bool isFocused,
+        }) =>
+            '${TomScope.current.getScopePath()}:$a:$currentLength:$maxLength:$isFocused';
+
+        String wrapped(
+          int a, {
+          required int currentLength,
+          required int maxLength,
+          required bool isFocused,
+        }) => capture.run(
+          () => counter(
+            a,
+            currentLength: currentLength,
+            maxLength: maxLength,
+            isFocused: isFocused,
+          ),
+        );
+
+        expect(
+          wrapped(1, currentLength: 2, maxLength: 3, isFocused: true),
+          equals('captured:1:2:3:true'),
+        );
+      });
+
+      test('wraps a callback wider than wrap5', () {
+        final capture = ScopeCapture(scope: TomScopeBase(scopeId: 'wide'));
+        String six(int a, int b, int c, int d, int e, int f) =>
+            '${TomScope.current.getScopePath()}:${a + b + c + d + e + f}';
+        String wrapped(int a, int b, int c, int d, int e, int f) =>
+            capture.run(() => six(a, b, c, d, e, f));
+
+        expect(wrapped(1, 2, 3, 4, 5, 6), equals('wide:21'));
+      });
     });
   });
 }

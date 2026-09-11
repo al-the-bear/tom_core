@@ -8,7 +8,7 @@
 /// - Restoring the captured scope when the callback runs outside its zone
 /// - Passing an explicit scope instead of the ambient one
 /// - The nullable wrappers (`wrap1n`) returning `null` for `null` input
-/// - The named-parameter `wrapCounter` variant
+/// - `run`, the general form, wrapping a callback with named parameters
 ///
 /// The core guarantee: the wrapped callback always observes the scope that was
 /// current when the [ScopeCapture] was built, regardless of where it is
@@ -106,16 +106,35 @@ void run() {
   print('');
 
   // ===========================================================================
-  // Example 5: The named-parameter wrapCounter variant
+  // Example 5: `run`, the general form, for a named-parameter callback
   // ===========================================================================
 
-  print('5. wrapCounter handles a callback with named parameters:');
+  // Dart has no variadic generics, so the wrap family stops at fixed
+  // positional shapes. Any other shape — here, Flutter-style named parameters
+  // — is a closure of the target type around `run`.
+  print('5. run wraps a callback with named parameters:');
 
   final counterScope = TomScopeBase(scopeId: 'form', parentScope: null);
-  final counterBuilder = ScopeCapture(scope: counterScope);
-  final counter = counterBuilder.wrapCounter<String, String, int, int, bool>(
-    (label, {required currentLength, required maxLength, required isFocused}) =>
-        '${TomScope.current.getScopePath()}:$label $currentLength/$maxLength',
+  final counterCapture = ScopeCapture(scope: counterScope);
+  String buildCounter(
+    String label, {
+    required int currentLength,
+    required int maxLength,
+    required bool isFocused,
+  }) => '${TomScope.current.getScopePath()}:$label $currentLength/$maxLength';
+
+  String counter(
+    String label, {
+    required int currentLength,
+    required int maxLength,
+    required bool isFocused,
+  }) => counterCapture.run(
+    () => buildCounter(
+      label,
+      currentLength: currentLength,
+      maxLength: maxLength,
+      isFocused: isFocused,
+    ),
   );
 
   final counterResult = counter(
@@ -125,7 +144,7 @@ void run() {
     isFocused: true,
   );
 
-  print('   wrapCounter result: "$counterResult"');
+  print('   run result: "$counterResult"');
   print('');
 
   // ===========================================================================
@@ -146,7 +165,7 @@ void run() {
   assert(nullWrapped == null);
   assert(realWrapped(3) == 'value:3');
 
-  // Example 5: named-parameter wrapper
+  // Example 5: `run` wraps a named-parameter callback in the captured scope
   assert(counterResult == 'form:chars 4/10');
 }
 

@@ -191,10 +191,28 @@ class TomFoo extends TomNodeBase {
 }
 ```
 
-`ScopeCapture` provides `wrap0`…`wrap5` for fixed-arity callbacks, the
-`wrap0n`…`wrap5n` nullable variants (return `null` when the callback is `null`),
-and `wrapCounter` for Flutter's named-parameter `InputCounterWidgetBuilder`
-signature.
+`ScopeCapture` provides `wrap0`…`wrap5` for fixed-arity callbacks and the
+`wrap0n`…`wrap5n` nullable variants (return `null` when the callback is `null`).
+Both are sugar for `run`, which runs any body in the captured scope and returns
+its result.
+
+The family is written out per arity because Dart has no variadic generics: no
+single method can take "a function of any signature" and return one of the
+*same* signature with its static types intact. `Function.apply` would take the
+function but return it untyped, and every call site would lose the compiler's
+check of the callback it passed. So a shape outside the family — a sixth
+argument, or named parameters such as Flutter's `InputCounterWidgetBuilder` —
+is a closure of the target type around `run`:
+
+```dart
+final capture = ScopeCapture(scope: scope);
+final InputCounterWidgetBuilder counter =
+    (context, {required currentLength, required maxLength, required isFocused}) =>
+        capture.run(() => build(context,
+            currentLength: currentLength,
+            maxLength: maxLength,
+            isFocused: isFocused));
+```
 
 ## Scope Paths
 

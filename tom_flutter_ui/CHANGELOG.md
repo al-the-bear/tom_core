@@ -2,6 +2,12 @@
 
 ### Changed
 
+- **`TomTextField.buildCounter` is wrapped around `ScopeCapture.run`
+  (tcopen73).** The kernel's `wrapCounter` is gone; the named-parameter
+  `InputCounterWidgetBuilder` is now wrapped here, still re-entering the scope
+  the field was built in. A widget test pins the scope and every forwarded
+  argument.
+
 - **The README stated version 1.0.0 against a pubspec at 1.1.0 (tcincb153).**
   The version in a `## Status` block is what tells a reader which release the
   document describes, so a wrong one misleads rather than merely disappointing.

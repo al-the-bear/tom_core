@@ -253,9 +253,9 @@ class TomTextField extends TomInputBase {
        ).wrap2n(onAppPrivateCommand),
        onTap = ScopeCapture(scope: scope).wrap0n(onTap),
        onTapOutside = ScopeCapture(scope: scope).wrap1n(onTapOutside),
-       buildCounter = buildCounter != null
-           ? ScopeCapture(scope: scope).wrapCounter(buildCounter)
-           : null {
+       buildCounter = buildCounter == null
+           ? null
+           : _inScopeCounter(scope, buildCounter) {
     _resolvedCursorColor = cursorColor ?? TomCtr.color(basePath, 'cursorColor');
     _resolvedCursorErrorColor =
         cursorErrorColor ?? TomCtr.color(basePath, 'cursorErrorColor');
@@ -1946,4 +1946,30 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
+}
+
+/// Runs [build] in [scope], or in the scope current at construction when
+/// [scope] is `null`.
+///
+/// `InputCounterWidgetBuilder` takes named parameters, which the positional
+/// `wrapN` family cannot express, so it is wrapped by hand around
+/// `ScopeCapture.run` — the general form that family is sugar for.
+InputCounterWidgetBuilder _inScopeCounter(
+  TomScope? scope,
+  InputCounterWidgetBuilder build,
+) {
+  final capture = ScopeCapture(scope: scope);
+  return (
+    context, {
+    required currentLength,
+    required maxLength,
+    required isFocused,
+  }) => capture.run(
+    () => build(
+      context,
+      currentLength: currentLength,
+      maxLength: maxLength,
+      isFocused: isFocused,
+    ),
+  );
 }

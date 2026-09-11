@@ -769,6 +769,17 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **`ScopeCapture.run` replaces `wrapCounter` (tcopen73).** `run` runs any
+  body in the captured scope and is the general form the `wrap0`…`wrap5`
+  family is sugar for, so a callback of any other shape — a sixth argument,
+  named parameters — is a closure of its own type around it. `wrapCounter`
+  spelled Flutter's `InputCounterWidgetBuilder` parameter names into the
+  platform-neutral kernel and fitted nothing else; its one caller,
+  `tom_flutter_ui`'s `TomTextField`, now wraps the counter around `run`. Why
+  the family is written per arity (Dart has no variadic generics, and
+  `Function.apply` gives up the static types) is stated on the class and in
+  `doc/scope_ids/scope_ids.md`.
+
 - **`TomObservable.notifyObservers` takes no payload (tcopen49).** It took an
   optional `[dynamic message]` that was "reserved for future use" and silently
   discarded: every observer received `onNotify(this)` and nothing else. Two
