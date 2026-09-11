@@ -152,8 +152,26 @@ class Worker {
 tomShutdownCleanup.addClosable(TomCloseAdaptor(Worker(), 'shutdown'));
 ```
 
-An unreflectable target fails in the constructor with a `TomReflectorException`
-naming the type and the annotation that would have fixed it:
+Every failure surfaces in the constructor — at registration, not during the
+shutdown — as a `TomException` with a key and the target's type in its
+parameters:
+
+| Key | Exception | When |
+| --- | --------- | ---- |
+| `shutdown_cleanup.close_adaptor.not_reflectable` | `TomReflectorException` | the class is not reflectable |
+| `shutdown_cleanup.close_adaptor.no_close_method` | `TomCloseAdaptorException` | no `close`/`dispose`, or no method of the given name, anywhere in the chain (`method` holds the name asked for) |
+| `shutdown_cleanup.close_adaptor.method_requires_parameters` | `TomCloseAdaptorException` | the method has a required parameter (`method`, `parameterCount`); a method whose parameters are all optional is accepted and called without arguments |
+
+```dart
+try {
+  tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
+} on TomCloseAdaptorException catch (e) {
+  tomLog.warn('cannot adapt ${e.parameters?['type']}: ${e.key}');
+}
+```
+
+The unreflectable case names the type and the annotation that would have
+fixed it:
 
 ```text
 TomCloseAdaptor: cannot reflect on HttpClient — the class is not annotated
@@ -630,7 +648,7 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
 | `dart:async` | dart | every file | `FutureOr`, the return type of the three contracts; `Timer` and `Completer`, which bound a phase by `phaseTimeout`; `StreamSubscription`, held per registered signal so the handlers can be cancelled |
 | `dart:io` | dart | every file | `ProcessSignal` — the whole signal-handling half of the module, and what makes it native-only |
 | `tom_reflection` | package | every file | `ClassMirror`, walked up the supertype chain by the adaptor — `ClassMirror.declarations` holds only a type's *own* members, so an inherited `close` needs the walk |
-| [little_things](../little_things/little_things.md) | module | every file | `tomGetStackTrace`, which formats and depth-limits the trace attached to a failed cleanup's diagnostic |
+| [little_things](../little_things/little_things.md) | module | every file | `tomGetStackTrace`, which formats and depth-limits the trace attached to a failed cleanup's diagnostic, and `TomException`, the base of `TomCloseAdaptorException` |
 | [reflection](../reflection/reflection.md) | module | every file | The global `tomReflector`, which is how `TomCloseAdaptor` finds a `close`/`dispose` method on an object that implements neither interface |
 
 `tom_shutdown_cleanup.dart` is the module's only source file. Its imports:

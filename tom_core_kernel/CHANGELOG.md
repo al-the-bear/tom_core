@@ -811,6 +811,17 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **`TomCloseAdaptor` fails with keys, and accepts optional parameters
+  (tcopen87).** A target with no callable method raises
+  `TomCloseAdaptorException` with `shutdown_cleanup.close_adaptor.no_close_method`,
+  and one whose method has a required parameter with
+  `shutdown_cleanup.close_adaptor.method_requires_parameters`; both carry the
+  target's `type` and the `method` in `parameters`, and the unreflectable case's
+  `TomReflectorException` carries `type` too. A method whose parameters are all
+  optional is accepted and called without arguments — the documented rule,
+  which the constructor had enforced as "no parameters at all". The two
+  failures had been bare `Exception`s told apart only by their message.
+
 - **Shutdown output goes through one sink the host can supply (tcopen86).**
   `TomShutdownCleanup.output` receives every line the module writes — status
   messages, failure reports and phase-timeout reports — and defaults to

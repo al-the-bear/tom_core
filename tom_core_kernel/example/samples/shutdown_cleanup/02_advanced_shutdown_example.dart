@@ -181,28 +181,30 @@ Future<void> run() async {
   // not during a shutdown, where the diagnostic scrolls past unread.
   print('4. Construction fails when there is no teardown method:');
 
-  Object? noMethodFailure;
+  TomCloseAdaptorException? noMethodFailure;
   try {
     TomCloseAdaptor(NoCloseMethod());
-  } catch (e) {
+  } on TomCloseAdaptorException catch (e) {
     noMethodFailure = e;
   }
 
-  print('   - ${_firstLine(noMethodFailure)}\n');
+  print('   - key: ${noMethodFailure?.key}');
+  print('   - ${noMethodFailure?.defaultUserMessage}\n');
 
   // ---------------------------------------------------------------------------
   // Example 5: a teardown method that takes an argument
   // ---------------------------------------------------------------------------
   print('5. Construction fails when the method needs an argument:');
 
-  Object? parameterFailure;
+  TomCloseAdaptorException? parameterFailure;
   try {
     TomCloseAdaptor(ParameterizedClose());
-  } catch (e) {
+  } on TomCloseAdaptorException catch (e) {
     parameterFailure = e;
   }
 
-  print('   - ${_firstLine(parameterFailure)}\n');
+  print('   - key: ${parameterFailure?.key}');
+  print('   - parameters: ${parameterFailure?.parameters}\n');
 
   // ---------------------------------------------------------------------------
   // Example 6: a class the reflector cannot see
@@ -271,30 +273,27 @@ Future<void> run() async {
   assert(!resourceShutdownBefore, 'Building an adaptor must not tear down');
   assert(resourceShutdownAfter, 'The adaptor must invoke the named method');
 
-  // Example 4: rejected, and the message says what was looked for.
+  // Example 4: rejected with its own key, naming the target type.
   assert(
-    noMethodFailure is Exception,
-    'A target with no teardown method must be rejected',
+    noMethodFailure?.key == 'shutdown_cleanup.close_adaptor.no_close_method',
+    'A target with no teardown method must be rejected with its key',
   );
   assert(
-    '$noMethodFailure'.contains("didn't find a close method"),
-    'The failure must say that no close method was found',
+    noMethodFailure?.parameters?['type'] == 'NoCloseMethod',
+    'The failure must carry the target type',
   );
 
-  // Example 5: rejected too — a parameter the adaptor cannot supply is as
-  // fatal as no method at all, and is reported separately so the caller can
-  // tell the two apart.
+  // Example 5: rejected too — a required parameter the adaptor cannot supply
+  // is as fatal as no method at all, and carries a key of its own so the
+  // caller can tell the two apart without reading the message.
   assert(
-    parameterFailure is Exception,
-    'A teardown method with a parameter must be rejected',
+    parameterFailure?.key ==
+        'shutdown_cleanup.close_adaptor.method_requires_parameters',
+    'A teardown method with a required parameter must be rejected',
   );
   assert(
-    '$parameterFailure'.contains('needs parameter'),
-    'The failure must say the method needs a parameter',
-  );
-  assert(
-    '$noMethodFailure' != '$parameterFailure',
-    'The two construction failures must be distinguishable',
+    parameterFailure?.parameters?['method'] == 'close',
+    'The failure must name the method',
   );
 
   // Example 6: reported as a TomReflectorException carrying the module's key,
@@ -319,9 +318,6 @@ Future<void> run() async {
 
   print('✓ All advanced shutdown cleanup examples passed!\n');
 }
-
-/// The first line of [failure], which is the part that names the condition.
-String _firstLine(Object? failure) => '$failure'.split('\n').first;
 
 /// Standalone entry point.
 Future<void> main() async {

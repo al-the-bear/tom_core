@@ -12,6 +12,7 @@ reflection-based adaptor for objects lacking explicit interfaces.
   - [TomDisposable](#tomdisposable)
   - [TomClosable](#tomclosable)
   - [TomCloseAdaptor](#tomcloseadaptor)
+  - [TomCloseAdaptorException](#tomcloseadaptorexception)
   - [TomShutdownCleanup](#tomshutdowncleanup)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -41,6 +42,9 @@ TomDisposable  (abstract interface)
 
 TomClosable  (abstract interface)
     └── TomCloseAdaptor  (implements TomClosable)
+
+TomException  (kernel)
+    └── TomCloseAdaptorException
 
 TomShutdownCleanup
 ```
@@ -90,9 +94,16 @@ you do not own in a class of your own implementing `TomClosable` instead.
 TomCloseAdaptor(Object closableObject, [String? methodName])
 ```
 
-Throws an `Exception` if the class is not reflectable (a
-`TomReflectorException` naming the type and the annotation), if no
-close/dispose method is found, or if the method requires parameters.
+Throws at construction, with the target's runtime type as the `type`
+parameter in every case:
+
+| Key | Exception | When | Other parameters |
+| --- | --------- | ---- | ---------------- |
+| `shutdown_cleanup.close_adaptor.not_reflectable` | `TomReflectorException` | the class is not reflectable — not annotated with `@tomReflector`, or its generated data not initialized | — |
+| `shutdown_cleanup.close_adaptor.no_close_method` | `TomCloseAdaptorException` | no `close`/`dispose` — or no method of the given name — anywhere in the class's chain | `method`: the name asked for, or `null` |
+| `shutdown_cleanup.close_adaptor.method_requires_parameters` | `TomCloseAdaptorException` | the method has a required parameter; one whose parameters are all optional is accepted | `method`, `parameterCount` |
+
+All three are `TomException`s.
 
 #### Properties
 
@@ -105,6 +116,19 @@ close/dispose method is found, or if the method requires parameters.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `close` | `FutureOr<void> close()` | *(override)* Invokes the resolved close/dispose method on the wrapped object, handing on the `Future` an asynchronous target returns. |
+
+### TomCloseAdaptorException
+
+Raised by the `TomCloseAdaptor` constructor when the target has no method the
+adaptor can call. Keys `shutdown_cleanup.close_adaptor.no_close_method` and
+`shutdown_cleanup.close_adaptor.method_requires_parameters`; the target's
+`type` and the `method` concerned are in `parameters`.
+
+- **Extends:** `TomException`
+
+```dart
+TomCloseAdaptorException(String key, String defaultUserMessage, {Map<String, Object?>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false, String? uuid, TomServerCallError? serverCallError})
+```
 
 ### TomShutdownCleanup
 

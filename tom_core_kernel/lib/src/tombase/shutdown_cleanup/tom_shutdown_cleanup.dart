@@ -41,6 +41,7 @@ import 'dart:io';
 
 import 'package:tom_reflection/mirrors.dart';
 
+import '../little_things/exception_base.dart';
 import '../little_things/little_things.dart';
 import '../reflection/reflection.dart';
 
@@ -152,6 +153,27 @@ abstract class TomClosable {
 // Adaptor Classes
 // =============================================================================
 
+/// Raised by the [TomCloseAdaptor] constructor when the target has no method
+/// the adaptor can call.
+///
+/// Keys: `shutdown_cleanup.close_adaptor.no_close_method` and
+/// `shutdown_cleanup.close_adaptor.method_requires_parameters`, each carrying
+/// the target's `type` and the `method` concerned in [parameters]. The third
+/// construction failure, an unreflectable class, is a [TomReflectorException]
+/// with the key `shutdown_cleanup.close_adaptor.not_reflectable`.
+class TomCloseAdaptorException extends TomException {
+  TomCloseAdaptorException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.uuid,
+    super.serverCallError,
+  });
+}
+
 /// Adaptor that wraps objects with close/dispose methods to implement [TomClosable].
 ///
 /// This class uses reflection to find and invoke close or dispose methods
@@ -194,10 +216,21 @@ abstract class TomClosable {
 ///   class of your own that implements [TomClosable] instead — which is also
 ///   cheaper, because it needs no reflection at all
 ///
-/// Throws an [Exception] if:
-/// - The object's class is not reflectable (a [TomReflectorException])
-/// - No close/dispose method is found on the object
-/// - The method requires parameters
+/// The constructor throws — at registration, not during the shutdown — with
+/// one of three keys, each carrying the target's runtime type as the `type`
+/// parameter:
+/// - `shutdown_cleanup.close_adaptor.not_reflectable`: the object's class is
+///   not reflectable. A [TomReflectorException], the type the package raises
+///   for that condition everywhere.
+/// - `shutdown_cleanup.close_adaptor.no_close_method`: no close/dispose
+///   method — or no method of the given name — anywhere in the class's chain.
+///   A [TomCloseAdaptorException]; `method` holds the name asked for, or
+///   `null` when none was.
+/// - `shutdown_cleanup.close_adaptor.method_requires_parameters`: the method
+///   has a required parameter the adaptor cannot supply. A
+///   [TomCloseAdaptorException]; `method` and `parameterCount` name it.
+///
+/// All three are [TomException]s, so a caller catches them in one clause.
 class TomCloseAdaptor implements TomClosable {
   /// The object being adapted for closure.
   ///
@@ -218,15 +251,30 @@ class TomCloseAdaptor implements TomClosable {
   ///                looks for 'close' first, then 'dispose'.
   TomCloseAdaptor(this.closableObject, [String? methodName]) {
     final classMirror = _reflectClass(closableObject);
-    MethodMirror? mm = _resolveCloseMethod(classMirror, methodName);
+    final type = '${closableObject.runtimeType}';
+    final mm = _resolveCloseMethod(classMirror, methodName);
     if (mm == null) {
-      throw Exception(
-        "TomCloseAdaptor: didn't find a close method in the object you provided.",
+      throw TomCloseAdaptorException(
+        'shutdown_cleanup.close_adaptor.no_close_method',
+        methodName == null
+            ? "TomCloseAdaptor: $type has no close() or dispose() method."
+            : "TomCloseAdaptor: $type has no method named $methodName.",
+        parameters: {'type': type, 'method': methodName},
       );
     }
-    if (mm.parameters.isNotEmpty) {
-      throw Exception(
-        "TomCloseAdaptor: the method ${mm.simpleName} needs parameter. You need to implement a custom solution for this.",
+    // `close` is invoked with no arguments, which an optional parameter —
+    // positional or named — allows and a required one does not.
+    if (mm.parameters.any((parameter) => !parameter.isOptional)) {
+      throw TomCloseAdaptorException(
+        'shutdown_cleanup.close_adaptor.method_requires_parameters',
+        "TomCloseAdaptor: $type.${mm.simpleName} has a required parameter the "
+            "adaptor cannot supply; implement TomClosable on a small wrapper "
+            "that calls it with the right arguments instead.",
+        parameters: {
+          'type': type,
+          'method': mm.simpleName,
+          'parameterCount': mm.parameters.length,
+        },
       );
     }
     _mm = mm;
@@ -261,6 +309,7 @@ class TomCloseAdaptor implements TomClosable {
             "reflection data was not initialized. A type you do not own cannot "
             "be annotated; wrap it in a class of your own that implements "
             "TomClosable instead: $e",
+        parameters: {'type': '${closableObject.runtimeType}'},
         rootException: e,
         stack: s,
       );

@@ -227,6 +227,28 @@ class CloseWithParam {
   void close(int code) {}
 }
 
+/// Target whose close takes an optional positional parameter, which the
+/// adaptor can leave out.
+@tomReflector
+class OptionalPositionalClose {
+  bool closed = false;
+  void close([bool force = false]) => closed = true;
+}
+
+/// Target whose close takes an optional named parameter.
+@tomReflector
+class OptionalNamedClose {
+  bool closed = false;
+  void close({bool force = false}) => closed = true;
+}
+
+/// Target whose close takes a required named parameter, which the adaptor
+/// has no way to supply.
+@tomReflector
+class RequiredNamedClose {
+  void close({required bool force}) {}
+}
+
 /// Target with neither close nor dispose (not-found error path).
 @tomReflector
 class NoCloseTarget {
@@ -1252,34 +1274,101 @@ void main() {
       expect(target.disposedFlag, isTrue);
     });
 
-    test('throws when the resolved method requires a parameter', () {
+    // Both construction failures are one exception type with a key each, so a
+    // caller matches on the key rather than on the prose, and each carries
+    // what it is about as parameters rather than only inside the message.
+    test('a method that needs a parameter is refused with its own key', () {
       expect(
         () => TomCloseAdaptor(CloseWithParam()),
         throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('needs parameter'),
+          isA<TomCloseAdaptorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'shutdown_cleanup.close_adaptor.method_requires_parameters',
+              )
+              .having((e) => e.parameters, 'parameters', {
+                'type': 'CloseWithParam',
+                'method': 'close',
+                'parameterCount': 1,
+              }),
+        ),
+      );
+    });
+
+    test('a required named parameter is refused like a positional one', () {
+      expect(
+        () => TomCloseAdaptor(RequiredNamedClose()),
+        throwsA(
+          isA<TomCloseAdaptorException>().having(
+            (e) => e.key,
+            'key',
+            'shutdown_cleanup.close_adaptor.method_requires_parameters',
           ),
         ),
       );
     });
 
-    test(
-      'throws when no close/dispose method exists anywhere in the chain',
-      () {
-        expect(
-          () => TomCloseAdaptor(NoCloseTarget()),
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              contains("didn't find a close method"),
-            ),
-          ),
-        );
-      },
-    );
+    test('a method whose parameters are all optional is accepted', () async {
+      // The adaptor calls with no arguments, which an optional parameter —
+      // positional or named — allows.
+      final positional = OptionalPositionalClose();
+      final named = OptionalNamedClose();
+
+      await TomCloseAdaptor(positional).close();
+      await TomCloseAdaptor(named).close();
+
+      expect(positional.closed, isTrue);
+      expect(named.closed, isTrue);
+    });
+
+    test('no close/dispose method anywhere in the chain has its own key', () {
+      expect(
+        () => TomCloseAdaptor(NoCloseTarget()),
+        throwsA(
+          isA<TomCloseAdaptorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'shutdown_cleanup.close_adaptor.no_close_method',
+              )
+              .having((e) => e.parameters, 'parameters', {
+                'type': 'NoCloseTarget',
+                'method': null,
+              }),
+        ),
+      );
+    });
+
+    test('a named method that does not exist names what was asked for', () {
+      expect(
+        () => TomCloseAdaptor(OwnCloseTarget(), 'shutdown'),
+        throwsA(
+          isA<TomCloseAdaptorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'shutdown_cleanup.close_adaptor.no_close_method',
+              )
+              .having((e) => e.parameters, 'parameters', {
+                'type': 'OwnCloseTarget',
+                'method': 'shutdown',
+              }),
+        ),
+      );
+    });
+
+    test('the construction failures are TomExceptions', () {
+      // One base for all three failures, so a caller can catch the kernel's
+      // exception type once — the reflector's included.
+      for (final target in <Object>[
+        CloseWithParam(),
+        NoCloseTarget(),
+        UnreflectedTarget(),
+      ]) {
+        expect(() => TomCloseAdaptor(target), throwsA(isA<TomException>()));
+      }
+    });
 
     // An unreflectable target is the adaptor's most likely failure, not an
     // exotic one: the class exists to wrap objects you do not own, and an
@@ -1309,10 +1398,21 @@ void main() {
 
     test('the unreflectable-class failure is a TomReflectorException', () {
       // Same type the rest of the package raises for this exact condition, so
-      // a caller can catch one thing rather than one thing plus an Error.
+      // a caller can catch one thing rather than one thing plus an Error. It
+      // carries its own key, and the type as a parameter like the other two.
       expect(
         () => TomCloseAdaptor(UnreflectedTarget()),
-        throwsA(isA<TomReflectorException>()),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'shutdown_cleanup.close_adaptor.not_reflectable',
+              )
+              .having((e) => e.parameters, 'parameters', {
+                'type': 'UnreflectedTarget',
+              }),
+        ),
       );
     });
 
