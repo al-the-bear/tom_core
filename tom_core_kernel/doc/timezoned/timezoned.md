@@ -597,6 +597,17 @@ TomTimezone.findTimezone(null, 7);    // timezone.not_found.offset
 TomTimezone.findTimezone(null, null); // timezone.find.no_criteria
 ```
 
+The name cases — unknown name, and a name whose offset disagrees — share the
+key `timezone.not_found.name_offset_mismatch`.
+
+One more call raises this type, and it is not a lookup:
+`populateFromLocations`, the `@visibleForTesting` entry point a test uses to
+drive the empty-database branch, populates **once per isolate**. A second call
+throws `timezone.database.already_populated`, carrying the `loaded` and
+`offered` counts, rather than replacing the database — which would detach every
+`TomTimezone` a caller holds from the index it is looked up through — or
+ignoring the call and keeping a database nobody asked it to keep.
+
 ### Null Returns
 
 Most lookups return `null` for unknown values:
