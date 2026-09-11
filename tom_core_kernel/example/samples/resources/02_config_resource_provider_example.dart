@@ -237,8 +237,11 @@ class ConfigResourceProviderExample {
     final devConfig = createConfigForEnv('dev');
     final prodConfig = createConfigForEnv('prod');
 
-    devApiUrl = devConfig.getObject('api.baseUrl') as String;
-    prodApiUrl = prodConfig.getObject('api.baseUrl') as String;
+    // A String setting is where getObject's key echo is most dangerous: a
+    // missing 'api.baseUrl' would not throw on `as String`, it would quietly
+    // become the URL 'api.baseUrl'. getObjectOrNull makes the miss a null.
+    devApiUrl = devConfig.getObjectOrNull('api.baseUrl') as String? ?? '';
+    prodApiUrl = prodConfig.getObjectOrNull('api.baseUrl') as String? ?? '';
 
     print('   - Dev API URL: $devApiUrl');
     print('   - Dev debug: ${devConfig.getObject('api.debug')}');

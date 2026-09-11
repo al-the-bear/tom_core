@@ -160,6 +160,15 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **The resources examples no longer teach the key-echo cast (tcopen59).**
+  `01_resource_provider_example.dart` read three `String` settings as
+  `getObject(key) as String?` and `02_config_resource_provider_example.dart`
+  two as `getObject(key) as String`. For a `String` setting that is the most
+  dangerous form of the trap: on a miss `getObject` echoes the key, the cast
+  succeeds, and the key text becomes the value. They now read through
+  `getObjectOrNull`, which `TomConfigResourceProvider` already carries and the
+  docs already lead with.
+
 - **A `TomMap` member serializes (tcopen44).** `_serializeMember` unwrapped a
   `TomClass` member and a `TomList` member's elements, but had no branch for
   `TomMap`: a map member fell through to `get()`, which returns the backing map

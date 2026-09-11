@@ -165,12 +165,14 @@ class ConfigResourceExample {
       'features': {'darkMode': true},
     });
 
-    apiBaseUrl = configProvider.getObject('api.baseUrl') as String?;
+    // getObjectOrNull, not getObject: on a miss getObject echoes the key back
+    // as a String, so `as String?` would hand the key text over as the URL.
+    apiBaseUrl = configProvider.getObjectOrNull('api.baseUrl') as String?;
     apiTimeout = configProvider.getObject('api.timeout').toString();
     darkModeEnabled = configProvider.getObject('features.darkMode').toString();
 
     print('5. TomConfigResourceProvider for configuration values:');
-    print('   getObject("api.baseUrl"): $apiBaseUrl');
+    print('   getObjectOrNull("api.baseUrl"): $apiBaseUrl');
     print('   getObject("api.timeout"): $apiTimeout');
     print('   getObject("features.darkMode"): $darkModeEnabled');
     print('');
@@ -203,14 +205,14 @@ class ConfigLoaderExample {
 
     final envConfig = TomConfigResourceProvider.load(loadEnvironmentConfig);
 
-    environment = envConfig.getObject('environment') as String?;
-    logLevel = envConfig.getObject('logging.level') as String?;
+    environment = envConfig.getObjectOrNull('environment') as String?;
+    logLevel = envConfig.getObjectOrNull('logging.level') as String?;
 
     configLoaderWorks = environment == 'development' && logLevel == 'debug';
 
     print('6. Config provider built from a loader function:');
-    print('   getObject("environment"): $environment');
-    print('   getObject("logging.level"): $logLevel');
+    print('   getObjectOrNull("environment"): $environment');
+    print('   getObjectOrNull("logging.level"): $logLevel');
     print('');
 
     assert(environment == 'development', 'Environment should be development');
