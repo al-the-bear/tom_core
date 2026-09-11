@@ -95,7 +95,7 @@ const TomDevicePreferences()
 | `read(String key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` when never written. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` on a stored-type mismatch. |
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
-| `set<T extends Object>(String key, T value)` | `Future<TomUserPreferenceDto>` | Encodes and stores, returning the stored DTO. Scalars and `DateTime`s go through the codec; anything else must be a `@tomReflector` class. |
+| `set<T extends Object>(String key, T value)` | `Future<TomUserPreferenceDto>` | Encodes and stores, returning the stored DTO. Scalars and `DateTime`s go through the codec; anything else must be a `@tomReflector` class. A value whose encoding exceeds the codec's `maxValueBytes` (16 KiB) is refused with `preferences.encode.too_large` — the same ceiling the account store applies, so a value either store takes, both take. |
 | `remove(String key)` | `Future<bool>` | Deletes; answers whether a preference was removed, so a caller can tell "deleted" from "was never there". |
 | `clear()` | `Future<void>` | Deletes everything on this device. Its own method rather than a loop over `all`, because a backend can do it atomically and a loop that fails half way leaves a state no user asked for. |
 | `getPreferred<T extends Object>(String key, Future<T?> Function() fromUserStore)` | `Future<T?>` | Applies the documented precedence: the device value wins while it exists; `fromUserStore` is consulted only for a key this device has never written. |
@@ -356,7 +356,7 @@ whichever store it addresses.
 | `read(String key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` when the server has never been given one. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` on a stored-type mismatch. |
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
-| `set<T extends Object>(String key, T value)` | `Future<TomUserPreferenceDto>` | Encodes and writes, returning the stored DTO. |
+| `set<T extends Object>(String key, T value)` | `Future<TomUserPreferenceDto>` | Encodes and writes, returning the stored DTO. A value over the codec's `maxValueBytes` (16 KiB) is refused with `preferences.encode.too_large` before a request is made; a new key beyond the account's 256 preferences is refused by the server with a `409`, surfaced as `preferences.client.rejected` carrying `errorKey` `preferences.limit.exceeded`. |
 | `remove(String key)` | `Future<void>` | Deletes. Returns nothing where the device store answers a `bool` — the delete endpoint is idempotent by design, so the server does not report whether a row existed, and a `bool` invented here could only be a second round trip pretending to be an answer. |
 | `close()` | `void` | Releases the HTTP client, when this client created it. |
 
@@ -411,9 +411,18 @@ That includes a **bare** `404`. The endpoint pipeline answers a denied or
 unauthenticated call that way, with no envelope, so that a refusal cannot be
 told from a route that does not exist; an envelope naming any other key is a
 different failure that merely shares the status. Reading either as absence would
-hand a signed-out user the defaults. The same handler answers `400` for `preferences.key.invalid`; this
-client rarely provokes it, having refused the key itself, but the server checks
-because a client is not the only thing that can send an HTTP request.
+hand a signed-out user the defaults. The same handler answers `400` for
+`preferences.key.invalid`; this client rarely provokes it, having refused the
+key itself, but the server checks because a client is not the only thing that
+can send an HTTP request.
+
+**Every rejection says why.** `preferences.client.rejected` is one code, so its
+`parameters` carry what tells rejections apart: `statusCode`, the raw
+`response`, and — when the server answered with its error envelope — the
+server's own `errorKey`. That is how a caller tells an account at its ceiling
+(`409`, `preferences.limit.exceeded`) from a value the server would not store
+(`400`, `preferences.encoded.*`) without parsing the body. A bare `404` carries
+no `errorKey`, because it has no envelope to carry one.
 
 #### Credentials
 
@@ -431,7 +440,9 @@ fallback throws rather than guessing an implementation.
 
 A failure raised by the server-preferences client —
 `preferences.client.not_found`, `preferences.client.rejected`,
-`preferences.client.invalid_response`.
+`preferences.client.invalid_response`. A `rejected` failure carries
+`statusCode`, `response`, and the server's `errorKey` when the answer was the
+framework's error envelope.
 
 - **Extends:** `TomClientException`.
 

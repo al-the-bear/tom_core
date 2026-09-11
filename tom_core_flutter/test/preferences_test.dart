@@ -1277,6 +1277,64 @@ void main() {
         );
       });
 
+      test('a rejection carries the server\'s error key', () async {
+        // The client has one rejection code, so the server's own key is what a
+        // caller branches on to tell "this account is full" from any other
+        // refusal — and it is only reachable if the client passes it on.
+        transport.answer(
+          statusCode: 409,
+          body: jsonEncode({
+            'errorKey': tomUserPreferencesLimitExceededErrorKey,
+          }),
+        );
+
+        await expectLater(
+          build().set('ui.one_too_many', 'x'),
+          throwsA(
+            _rejectedWith(409).having(
+              (error) => error.parameters?['errorKey'],
+              'errorKey',
+              tomUserPreferencesLimitExceededErrorKey,
+            ),
+          ),
+        );
+      });
+
+      test('a rejection without an envelope carries no error key', () async {
+        transport.answer(statusCode: 404, body: 'Not found');
+
+        await expectLater(
+          build().remove(TomUserPreferenceKeys.theme),
+          throwsA(
+            _rejectedWith(404).having(
+              (error) => error.parameters?.containsKey('errorKey'),
+              'has errorKey',
+              isFalse,
+            ),
+          ),
+        );
+      });
+
+      test('an oversized value is refused before a request is made', () {
+        // The codec's ceiling applies on this side too, so the server is never
+        // sent a write it would refuse, and the refusal names the value rather
+        // than arriving as a status.
+        expect(
+          () => build().set(
+            'ui.notes',
+            'a' * TomUserPreferenceCodec.maxValueBytes,
+          ),
+          throwsA(
+            isA<TomUserPreferenceCodecException>().having(
+              (error) => error.key,
+              'key',
+              'preferences.encode.too_large',
+            ),
+          ),
+        );
+        expect(transport.callCount, 0);
+      });
+
       test('an unreadable body fails loudly', () async {
         transport.answer(body: 'not json at all');
 
@@ -1591,7 +1649,7 @@ final String _absentBody = jsonEncode({
 
 /// Matches the client's `preferences.client.rejected` failure for a response
 /// with [statusCode].
-Matcher _rejectedWith(int statusCode) =>
+TypeMatcher<TomUserPreferencesClientException> _rejectedWith(int statusCode) =>
     isA<TomUserPreferencesClientException>()
         .having((error) => error.key, 'key', 'preferences.client.rejected')
         .having(

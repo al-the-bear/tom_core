@@ -2,6 +2,20 @@
 
 ### Changed
 
+- **The preference store enforces the contract's ceilings (tcopen54).** A
+  write that would add a key beyond `tomUserPreferencesMaxPerPrincipal` (256)
+  throws `TomUserPreferenceException('preferences.limit.exceeded')`; replacing a
+  held key is never refused for the count. An oversized value is refused by the
+  codec before a statement is built, well inside `value_json`'s 64 KiB.
+
+  `TomUserPreferencesErrorHandler` maps the ceiling to a `409` and — a fix —
+  every write-boundary refusal (`preferences.encoded.*`: too large, not JSON,
+  not the declared type, an instant with no zone) to a `400`. Those were opaque
+  `500`s, telling a client its own malformed body was a server fault worth
+  retrying. They are matched by prefix, so a refusal added to the codec needs no
+  handler change. Covered by the handler suite, the DB suite (ceiling, exact
+  boundary, replacement, per-principal) and the live round trip.
+
 - **The preferences read raises the kernel's absence key (tcopen53).**
   `readPreference` throws `tomUserPreferencesNotFoundErrorKey` and
   `TomUserPreferencesErrorHandler` maps that constant, so the key the client

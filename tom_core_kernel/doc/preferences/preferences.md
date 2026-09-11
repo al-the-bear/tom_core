@@ -24,6 +24,7 @@ client and a server both bind to.
     - [A reflected value is rebuilt member by member](#a-reflected-value-is-rebuilt-member-by-member)
   - [tomUserPreferencesApi](#tomuserpreferencesapi)
     - [What "not set" looks like on the wire](#what-not-set-looks-like-on-the-wire)
+    - [How big the account store can get](#how-big-the-account-store-can-get)
     - [Where the key is stated](#where-the-key-is-stated)
   - [TomUserPreferencesApiService](#tomuserpreferencesapiservice)
 - [The Two Stores](#the-two-stores)
@@ -37,7 +38,8 @@ client and a server both bind to.
   - [2. Let a Mismatch Throw](#2-let-a-mismatch-throw)
   - [3. Annotate Reflected Preference Values](#3-annotate-reflected-preference-values)
   - [4. Namespace Application Keys](#4-namespace-application-keys)
-  - [5. Register the API Only Where It Is Used](#5-register-the-api-only-where-it-is-used)
+  - [5. Keep a Preference a Setting](#5-keep-a-preference-a-setting)
+  - [6. Register the API Only Where It Is Used](#6-register-the-api-only-where-it-is-used)
 - [Dependencies](#dependencies)
 
 ---
@@ -126,9 +128,10 @@ registerTomUserPreferencesApi(); // idempotent; both halves may call it
 ### TomUserPreferenceKeys
 
 The keys the framework's own code looks up. An application invents its own
-freely — any key satisfying the rule below is its to use; these exist so that an
-application storing the same concept lands on the same key rather than a
-synonym.
+freely — any key satisfying the rule below is its to use, up to the 256
+preferences one principal may hold (see [How big the account store can
+get](#how-big-the-account-store-can-get)); these exist so that an application
+storing the same concept lands on the same key rather than a synonym.
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
@@ -525,6 +528,7 @@ is the only exception the rest of this module tells callers to catch:
 | A collection that is not one of the ten supported shapes | `typeNameOf`, and so `encode` | `preferences.type.unsupported_collection` |
 | A value JSON cannot represent — in practice a non-finite `double`, at the top level or as a collection element | `encodeValue` | `preferences.encode.not_json` |
 | A value whose JSON text could not be written for any other reason | `encodeValue` | `preferences.encode.failed` |
+| A value whose JSON text is longer than `maxValueBytes` (16 KiB of UTF-8) | `encodeValue`, and so `encode` | `preferences.encode.too_large` |
 
 `preferences.type.not_reflected` and `preferences.encode.failed` both mean "an
 unreflected object", reached from two directions: `encode` asks for the name
@@ -642,6 +646,44 @@ throwing for every other one.
 The delete never answers it. Deleting a preference that is not there has already
 achieved its purpose and answers `200`, so a `404` from the delete endpoint is
 always a refusal.
+
+#### How big the account store can get
+
+`listPreferences` takes no page and no filter, and answers every preference the
+caller holds. That is a decision, not an omission: every caller of the list —
+one that renders a settings screen, one that syncs a device — wants all of it,
+and a paged answer would make each of them loop to get it. It is only safe
+because the store is bounded by construction, by two ceilings the contract
+declares:
+
+| Ceiling | Value | Enforced by | Refusal |
+|---------|-------|-------------|---------|
+| `tomUserPreferencesMaxPerPrincipal` — preferences one principal may hold | 256 | the server, on a write that would **add** a key | `409`, `errorKey` `preferences.limit.exceeded` (`tomUserPreferencesLimitExceededErrorKey`) |
+| `TomUserPreferenceCodec.maxValueBytes` — the encoded value of one preference | 16 KiB of UTF-8 | the codec: `encodeValue` on the writing side, `validateEncoded` at the server's boundary | `preferences.encode.too_large` before a request is made; `400`, `errorKey` `preferences.encoded.too_large` from the server |
+
+So the largest list the endpoint can ever answer is about four megabytes, and a
+real one — a timezone, a language, a theme and a handful of application
+settings — is a few hundred bytes. The list endpoint and the write endpoint both
+state their ceilings in their own `description`, so a reader of the declaration
+finds them where the endpoint is declared.
+
+**Replacing a preference is never refused for the count.** A principal at the
+ceiling can still change every setting it has; deleting one frees a place. The
+count is read before an insert, so two inserts racing for the last place can both
+succeed and leave the caller one or two over — the ceiling exists to keep the
+list small, not to be exact.
+
+**The ceilings say what a preference is for.** 256 is far beyond what settings
+need, and 16 KiB holds a reflected settings object with dozens of members. An
+application that reaches either has put data in a preference that belongs in a
+table of its own — a preference *per document* or *per project* is the usual
+case, and it is exactly the shape that would otherwise make every device
+download everything on every sync.
+
+The value ceiling is the codec's, not the endpoint's, so it applies to every
+store that encodes through the codec — `tom_core_flutter`'s device store as well
+as the account store. A value one store would take is a value every store takes,
+which is what lets a preference move between them.
 
 #### Where the key is stated
 
@@ -875,7 +917,16 @@ prefix is a convention on top of the rule in [What a key may
 be](#what-a-key-may-be), not a second rule: `TomUserPreferenceKeys` says what a
 key *can* be, and a prefix says which part of that space is yours.
 
-### 5. Register the API Only Where It Is Used
+### 5. Keep a Preference a Setting
+
+A preference is a setting that follows the user, not a place to keep data. The
+store is bounded — at most 256 preferences per principal, each at most 16 KiB of
+encoded value (see [How big the account store can get](#how-big-the-account-store-can-get))
+— and the bounds are what make it safe to hand every device the whole list. A
+key minted per document, per project or per record is a table's worth of rows
+and belongs in a table.
+
+### 6. Register the API Only Where It Is Used
 
 `registerTomUserPreferencesApi()` is explicit rather than run from a top-level
 initializer: a deployment that stores no preferences should not carry the API in

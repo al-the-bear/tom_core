@@ -45,7 +45,10 @@ import '../little_things/server_exception.dart';
 import '../object_persistence/crud_repository.dart';
 import 'user_preference.dart';
 
-/// Raised when a preference operation cannot identify the caller.
+/// Raised when a preference operation cannot identify the caller
+/// (`preferences.no_principal`), or when a write would add a preference beyond
+/// [tomUserPreferencesMaxPerPrincipal]
+/// ([tomUserPreferencesLimitExceededErrorKey]).
 class TomUserPreferenceException extends TomServerException {
   /// Creates the exception; parameters mirror [TomServerException].
   TomUserPreferenceException(
@@ -200,6 +203,14 @@ class TomUserPreferences {
   }
 
   /// Upserts the calling principal's row under [key].
+  ///
+  /// A write that would **add** a key is refused once the principal holds
+  /// [tomUserPreferencesMaxPerPrincipal] preferences; a write that replaces one
+  /// is never refused for the count. The count is read before the insert, so
+  /// two inserts racing for the last place can both pass and leave the caller
+  /// one or two over. That is accepted: the ceiling exists to keep the list
+  /// small, not to be exact, and an insert that overshoots it leaves the
+  /// principal able only to replace and delete until it is back under.
   Future<TomUserPreferenceDto> _write(
     String key,
     String valueType,
@@ -207,6 +218,7 @@ class TomUserPreferences {
   ) async {
     final principal = _requirePrincipal();
     final existing = await _rowFor(principal, key);
+    if (existing == null) await _requireRoomFor(principal, key);
 
     // Reuse the found row rather than inserting a second: the repository takes
     // its UPDATE path exactly when the surrogate key is set, so carrying the id
@@ -248,6 +260,28 @@ class TomUserPreferences {
     return runZoned(
       () => get<T>(key),
       zoneValues: <Object, Object?>{TomPrincipal: principal},
+    );
+  }
+
+  /// Throws unless [principal] holds fewer than
+  /// [tomUserPreferencesMaxPerPrincipal] preferences, so that one more may be
+  /// added under [key].
+  ///
+  /// Counted with the principal named, for the reason [_rowFor] names it: under
+  /// [TomDataScope.runUnscoped] the scope filters nothing, and a count that
+  /// relied on it would be everyone's.
+  Future<void> _requireRoomFor(TomPrincipal principal, String key) async {
+    final held = await repository.countByQuerySentence(
+      'COUNT BY principal_id = :principalId',
+      {'principalId': principal.id},
+    );
+    if ((held.get() ?? 0) < tomUserPreferencesMaxPerPrincipal) return;
+    throw TomUserPreferenceException(
+      tomUserPreferencesLimitExceededErrorKey,
+      "Preference '$key' cannot be added: the caller already holds "
+      '$tomUserPreferencesMaxPerPrincipal preferences, the most allowed. '
+      'Replace or delete one first.',
+      parameters: {'key': key, 'limit': tomUserPreferencesMaxPerPrincipal},
     );
   }
 

@@ -116,6 +116,27 @@ class TomUserPreferenceCodec {
   /// device's local time. See [parseInstant].
   static const String dateTimeType = 'DateTime';
 
+  /// The longest a preference's encoded value may be, in UTF-8 bytes of its
+  /// JSON text: 16 KiB.
+  ///
+  /// **A preference is a setting, not a document.** The ceiling is what lets
+  /// that sentence be enforced rather than hoped for: together with
+  /// [tomUserPreferencesMaxPerPrincipal] it bounds everything a principal can
+  /// store, and so bounds the one answer that returns all of it —
+  /// [TomUserPreferencesApiService.listPreferences]. 16 KiB is generous for a
+  /// setting, including a reflected settings object with dozens of members,
+  /// and small enough that a caller reaching it has put data in a preference
+  /// that belongs in a table of its own.
+  ///
+  /// Bytes rather than characters because the server stores the text in a
+  /// byte-sized column: a character count would admit a value the column
+  /// cannot hold. Enforced on both paths — [encodeValue] (so [encode] too)
+  /// refuses with `preferences.encode.too_large`, and [validateEncoded], the
+  /// server's check on a body that did not come from this codec, with
+  /// `preferences.encoded.too_large` — so a value one store would take is a
+  /// value every store takes, and a preference can move between them.
+  static const int maxValueBytes = 16 * 1024;
+
   /// The five scalar shapes, in the order [typeNameOf] tests a value against
   /// them.
   ///
@@ -468,7 +489,18 @@ class TomUserPreferenceCodec {
   /// its top-level twin has — `[1.0, double.nan]` is a well-formed
   /// `List<double>` that [typeNameOf] names, so the defect is the number, not
   /// the shape.
-  static String encodeValue(Object value, [String key = '']) {
+  ///
+  /// A text longer than [maxValueBytes] is refused as
+  /// `preferences.encode.too_large`, whatever produced it.
+  static String encodeValue(Object value, [String key = '']) =>
+      _requireWithinCeiling(
+        _encodeText(value, key),
+        key,
+        'preferences.encode.too_large',
+      );
+
+  /// [encodeValue]'s text, before the ceiling is applied.
+  static String _encodeText(Object value, String key) {
     final scalar = _scalarOf(value);
     if (scalar != null) {
       try {
@@ -514,6 +546,32 @@ class TomUserPreferenceCodec {
     } catch (error, stack) {
       throw _notEncodable(value, key, error, stack);
     }
+  }
+
+  /// [text], unless it is longer than [maxValueBytes] in UTF-8 — then a
+  /// refusal under [errorKey], carrying the measured size and the ceiling so a
+  /// caller can report both.
+  ///
+  /// One check for both paths, keyed by the path, because the two refusals
+  /// mean different things to the caller: `encode.too_large` is a value this
+  /// process tried to store, `encoded.too_large` a body someone else sent.
+  static String _requireWithinCeiling(
+    String text,
+    String key,
+    String errorKey,
+  ) {
+    // The byte length is at least the code-unit length and at most three times
+    // it, so the common case — a short setting — is settled without encoding.
+    if (text.length * 3 <= maxValueBytes) return text;
+    final bytes = utf8.encode(text).length;
+    if (bytes <= maxValueBytes) return text;
+    throw TomUserPreferenceCodecException(
+      errorKey,
+      '${_subjectOf(key)} is $bytes bytes of JSON, more than the '
+      '$maxValueBytes a preference may hold. A preference is a setting; '
+      'data of this size belongs in a table of its own.',
+      parameters: {'key': key, 'bytes': bytes, 'limit': maxValueBytes},
+    );
   }
 
   /// The refusal for a value whose JSON text could not be written.
@@ -741,12 +799,17 @@ class TomUserPreferenceCodec {
   /// giving enums a shape of their own would mean either weakening the rule
   /// for every class or asking the server the question it must not ask.
   ///
+  /// A text longer than [maxValueBytes] is refused first, as
+  /// `preferences.encoded.too_large`: it is the cheaper question, and a body
+  /// that is going to be refused anyway should not be parsed.
+  ///
   /// [key] only names the preference in an error.
   static void validateEncoded(
     String valueType,
     String valueJson, {
     String key = '',
   }) {
+    _requireWithinCeiling(valueJson, key, 'preferences.encoded.too_large');
     final Object? raw;
     try {
       raw = jsonDecode(valueJson);

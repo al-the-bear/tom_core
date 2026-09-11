@@ -2,6 +2,14 @@
 
 ### Fixed
 
+- **A preferences rejection now says why (tcopen54).** A
+  `preferences.client.rejected` failure carries the server's `errorKey` in its
+  `parameters` when the answer was the error envelope, so a caller tells an
+  account at its ceiling (`409`, `preferences.limit.exceeded`) from a value the
+  server would not store (`400`, `preferences.encoded.*`) without parsing the
+  body. Both stores refuse a value over the kernel codec's 16 KiB, the client
+  before it makes a request.
+
 - **`TomUserPreferencesClient` read a refusal as "not set" (tcopen53).** Any
   `404` from the read answered `null`, and any `404` from the delete answered
   success. But the endpoint pipeline answers a denied or signed-out caller with

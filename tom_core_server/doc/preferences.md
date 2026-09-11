@@ -14,8 +14,9 @@ through.
 - [Authorization Is the Row Scope](#authorization-is-the-row-scope)
   - [Why the lookups name the principal anyway](#why-the-lookups-name-the-principal-anyway)
 - [The Table and Its Migration](#the-table-and-its-migration)
+- [The Store Is Bounded](#the-store-is-bounded)
 - [The Endpoints](#the-endpoints)
-  - [A miss is a 404, a bad key is a 400, and nothing else is either](#a-miss-is-a-404-a-bad-key-is-a-400-and-nothing-else-is-either)
+  - [A miss is a 404, a bad request a 400, a full account a 409](#a-miss-is-a-404-a-bad-request-a-400-a-full-account-a-409)
   - [Installing the store](#installing-the-store)
 - [Reading a Preference During Login](#reading-a-preference-during-login)
 - [Core Components](#core-components)
@@ -34,7 +35,7 @@ through.
 | `TomUserPreferences` | class | Typed reads and writes of the caller's preferences |
 | `TomUserPreferenceException` | class | Raised when an operation cannot identify the caller |
 | `TomUserPreferencesServer` | class | The `/preferences/*` handlers |
-| `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` to a `404` and `preferences.key.invalid` to a `400`, and no other key to anything |
+| `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` to a `404`, `preferences.key.invalid` and every `preferences.encoded.*` refusal to a `400`, and `preferences.limit.exceeded` to a `409` — and no other key to anything |
 
 The *contract* is not here. The keys (`TomUserPreferenceKeys`), the wire DTOs
 (`TomUserPreferenceDto` and friends), the value codec
@@ -201,6 +202,35 @@ server's edge the flag is load-bearing, because the DTO is serialized to
 ISO-8601 for a client that may be in another zone and a local-flagged instant
 renders without an offset.
 
+## The Store Is Bounded
+
+`all()` — and so the list endpoint — answers every preference the caller holds,
+with no page and no filter. That is safe because the store is bounded by the
+two ceilings the kernel contract declares:
+
+| Ceiling | Value | Where it is enforced | Refusal |
+|---------|-------|----------------------|---------|
+| `tomUserPreferencesMaxPerPrincipal` | 256 preferences | `set` / `setEncoded`, when the write would **add** a key | `TomUserPreferenceException`, `preferences.limit.exceeded` |
+| `TomUserPreferenceCodec.maxValueBytes` | 16 KiB of encoded value | the codec, which `set` encodes with and `setEncoded` validates with | `TomUserPreferenceCodecException`, `preferences.encode.too_large` / `preferences.encoded.too_large` |
+
+The count is checked only for a key the caller does not hold yet: replacing a
+preference is never refused for the count, so a principal at the ceiling can
+still change every setting it has, and removing one frees a place. It is
+counted with the principal named, for the same reason the lookups name it —
+inside `TomDataScope.runUnscoped` the scope filters nothing, and a count that
+relied on it would be everyone's. It is read before the insert, so two inserts
+racing for the last place can both pass and leave the caller one or two over;
+the ceiling exists to keep the list small, not to be exact.
+
+The value ceiling sits well inside the column: `value_json` is `TEXT`, 64 KiB in
+MariaDB. So an oversized value is refused as the caller's mistake, by the codec,
+before the statement is built — rather than failing inside the database as a
+fault of the server's, or, under a lax SQL mode, being truncated into text that
+is no longer JSON.
+
+Together they cap the largest list at about four megabytes; a real one is a few
+hundred bytes.
+
 ## The Endpoints
 
 `TomUserPreferencesServer` implements the kernel's
@@ -210,9 +240,9 @@ pipeline binds each method to the contract's declaration:
 
 | Endpoint | Method | URI | Behaviour |
 |----------|--------|-----|-----------|
-| `listPreferences` | GET | `/preferences` | Every preference of the caller |
+| `listPreferences` | GET | `/preferences` | Every preference of the caller — unpaged, and bounded by [the store's ceilings](#the-store-is-bounded) |
 | `readPreference` | GET | `/preferences/{key}` | One preference; `preferences.not_found` when absent |
-| `writePreference` | PUT | `/preferences` | Validates the encoded pair, then upserts the key named in the body |
+| `writePreference` | PUT | `/preferences` | Validates the encoded pair, then upserts the key named in the body; refuses a value over 16 KiB (`400`) and a new key beyond the principal's 256 (`409`) |
 | `deletePreference` | DELETE | `/preferences/{key}` | Deletes; absent is not an error |
 
 Access is `TomAuthenticatedAccess`, declared **on the contract** and extracted by
@@ -228,12 +258,13 @@ Reporting a missing key distinctly is safe precisely because the scope makes
 another principal. A delete of something absent has already achieved its purpose,
 so a client clearing a preference twice is not a client doing anything wrong.
 
-### A miss is a 404, a bad key is a 400, and nothing else is either
+### A miss is a 404, a bad request a 400, a full account a 409
 
-Neither `preferences.not_found` nor `preferences.key.invalid` helps a client
-unless it *arrives* as something a client can branch on, and by default every
-handler failure leaves as a `500`. So each key-taking endpoint is served under
-`TomUserPreferencesErrorHandler`:
+None of `preferences.not_found`, `preferences.key.invalid`, the write
+boundary's `preferences.encoded.*` refusals or `preferences.limit.exceeded`
+helps a client unless it *arrives* as something a client can branch on, and by
+default every handler failure leaves as a `500`. So each key-taking endpoint is
+served under `TomUserPreferencesErrorHandler`:
 
 ```dart
 @TomApiEndpointImplementation(
@@ -247,6 +278,8 @@ handler failure leaves as a `500`. So each key-taking endpoint is served under
 |-----------|--------|------------------------------|
 | `preferences.not_found` (the kernel's `tomUserPreferencesNotFoundErrorKey`) | `404` | A preference that was never written is a miss, not a break |
 | `preferences.key.invalid` | `400` | The key is the caller's input — the URL for a read or a delete, the body for a write — so a bad one is a bad *request* |
+| `preferences.encoded.*` — `too_large`, `invalid_json`, `type_mismatch`, `not_an_instant` | `400` | The encoded value is the caller's input too, arriving in the write's body |
+| `preferences.limit.exceeded` (the kernel's `tomUserPreferencesLimitExceededErrorKey`) | `409` | The write is sound — it succeeds for a principal holding fewer preferences, and for this one once it deletes one — so it conflicts with the state rather than being wrong |
 
 Everything else goes to `handleErrorDefault` and stays a `500`. The narrowness
 is the design: a client must be able to tell "you have no such preference" from
@@ -254,18 +287,21 @@ is the design: a client must be able to tell "you have no such preference" from
 failure as a miss or every miss as a failure. Mapping
 `preferences.not_configured` — a deployment fault — the same way would let a
 client read an outage as absence and paper it over with a default. Answering
-`500` for a malformed key makes the
-opposite mistake: it tells a client its own bad request is worth retrying.
+`500` for a malformed key or value makes the opposite mistake: it tells a client
+its own bad request is worth retrying. The write boundary's refusals are matched
+as a family, by the `preferences.encoded.` prefix every key
+`TomUserPreferenceCodec.validateEncoded` raises is under, so a refusal added to
+the codec is a `400` here without the handler being revisited.
 
-Both translated statuses answer with the framework's error envelope, the
+Every translated status answers with the framework's error envelope, the
 `x-tom-error: true` header and `Content-Type: application/json;charset=UTF-8`.
 The body is not this module's: it is `tomErrorEnvelope`, the same builder
 `TomServer.errorHandler` renders its `500` from, so what this handler
 contributes is the *status* and nothing else. Which fields the body carries, and
 why one of them is absent for a key refusal, is described in
-[little_things.md](little_things.md#the-error-envelope) — the `404` is raised as
-a `TomServerException` and so reports `clientThrow`, while the `400` arrives from
-the kernel as a plain `TomException` and does not.
+[little_things.md](little_things.md#the-error-envelope) — the `404` and the
+`409` are raised as `TomServerException`s and so report `clientThrow`, while the
+`400`s arrive from the kernel as plain `TomException`s and do not.
 
 The media type is what makes the envelope usable: the argument for the `404` is
 that a client branches on `errorKey` rather than on the status, and a client
@@ -357,8 +393,10 @@ block every login.
   the next read.
 - **`TomUserPreferencesServer`** — the `/preferences/*` implementation.
 - **`TomUserPreferencesErrorHandler`** — the endpoint error handler that makes
-  a miss and a bad key distinguishable: `preferences.not_found` becomes a `404`,
-  `preferences.key.invalid` a `400`, and every other key stays an opaque `500`.
+  a miss, a bad request and a full account distinguishable:
+  `preferences.not_found` becomes a `404`, `preferences.key.invalid` and every
+  `preferences.encoded.*` refusal a `400`, `preferences.limit.exceeded` a `409`,
+  and every other key stays an opaque `500`.
   The narrowness is the design, not an omission — mapping a deployment fault
   such as `preferences.not_configured` the same way would let a client read an
   outage as absence.
@@ -428,11 +466,12 @@ call, and building one needs nothing.
 
 `test/preferences_endpoints_test.dart` covers the HTTP surface from the outside:
 which status a client gets, and what happens with nothing wired behind the
-endpoints. Two of the three failures a caller can meet are not server faults and
-each gets a status of its own — a never-written preference is a miss (`404`), an
-illegal key is the caller's own malformed request (`400`) — while a deployment
-that shipped the endpoints without installing a store is a genuine server fault
-and stays an opaque `500`.
+endpoints. Every failure a caller can cause gets a status of its own — a
+never-written preference is a miss (`404`), an illegal key or a value the write
+boundary refuses is the caller's own malformed request (`400`), and a write
+beyond the principal's ceiling conflicts with its state (`409`) — while a
+deployment that shipped the endpoints without installing a store is a genuine
+server fault and stays an opaque `500`.
 
 `test/preferences_db_test.dart` is the sequence [The Table and Its
 Migration](#the-table-and-its-migration) describes, run against a live server: it
@@ -444,7 +483,11 @@ lives in `tom_user_preference` and not in a service instance; that one principal
 cannot read another's, which is the whole reason the entity carries
 `@TomDbScope(field: 'principal_id', scope: 'owner')` rather than an ownership
 `if` in a handler; and that a reflected value survives the trip as an *object*,
-which is what separates a typed preference from a stringly-typed blob.
+which is what separates a typed preference from a stringly-typed blob. It also
+drives [the store's ceilings](#the-store-is-bounded) against the table: a
+principal filled to 256 cannot add a key but can still replace one, one short of
+the ceiling can add exactly one, another principal is unaffected, and an
+oversized value never reaches a row.
 
 `test/preferences_roundtrip_db_test.dart` asserts the claim the module exists to
 make, and the one no suite above can: **a preference follows the user**. That is
@@ -460,6 +503,9 @@ that client is covered against this same contract in that package's suite. The
 same suite asserts the absence convention against the served pipeline: a
 signed-in caller's miss and an anonymous caller's refusal both answer `404`, and
 only the miss carries the envelope naming `tomUserPreferencesNotFoundErrorKey`.
+And it carries both ceilings to the wire: a write beyond the count answers `409`
+naming `preferences.limit.exceeded` while a replacement still answers `200`, and
+an oversized value answers `400` naming `preferences.encoded.too_large`.
 
 ## Dependencies
 

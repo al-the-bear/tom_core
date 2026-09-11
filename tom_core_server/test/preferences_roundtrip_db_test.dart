@@ -184,6 +184,23 @@ class _PreferencesCaller {
     );
   }
 
+  /// PUTs an already-encoded pair and hands back the answer unjudged — for the
+  /// writes the server is expected to refuse.
+  Future<_Answer> writeEncoded(
+    String key,
+    String valueType,
+    String valueJson,
+  ) => _send(
+    tomUserPreferencesWriteEndpointId,
+    body: tomReflectionInfo.convertToJsonString(
+      TomUserPreferenceWriteRequest(
+        key: key,
+        valueType: valueType,
+        value: valueJson,
+      ),
+    ),
+  );
+
   /// Reads [key] as a [T], or `null` when this user has never written it.
   ///
   /// Absence is a `404` whose envelope names
@@ -253,18 +270,21 @@ class _Answer {
   final int statusCode;
   final String body;
 
-  /// Whether this is the read endpoint saying "never written": a `404`
-  /// carrying the error envelope keyed [tomUserPreferencesNotFoundErrorKey].
-  bool get reportsAbsence {
-    if (statusCode != 404) return false;
+  /// The `errorKey` of the error envelope this answer carries, or `null` when
+  /// the body is not one.
+  String? get errorKey {
     try {
       final envelope = jsonDecode(body);
-      return envelope is Map &&
-          envelope['errorKey'] == tomUserPreferencesNotFoundErrorKey;
+      return envelope is Map ? envelope['errorKey'] as String? : null;
     } on FormatException {
-      return false;
+      return null;
     }
   }
+
+  /// Whether this is the read endpoint saying "never written": a `404`
+  /// carrying the error envelope keyed [tomUserPreferencesNotFoundErrorKey].
+  bool get reportsAbsence =>
+      statusCode == 404 && errorKey == tomUserPreferencesNotFoundErrorKey;
 }
 
 void main() async {
@@ -586,6 +606,44 @@ void main() async {
         isFalse,
         reason: 'a refusal must not read as a preference that is not set',
       );
+    });
+
+    test('a write beyond the ceiling answers 409 naming the limit', () async {
+      // The store's refusal, carried to the wire by the write endpoint's error
+      // handler. Filled with raw rows so that what is under test is the
+      // refusal, not 256 writes on the way to it.
+      final (first, _, _) = callers();
+      final rows = [
+        for (var i = 0; i < tomUserPreferencesMaxPerPrincipal; i++)
+          "(${first.userId}, 'k$i', 'String', '\"x\"', '2026-01-01 00:00:00')",
+      ];
+      await dsi.datasource.executeCommand(
+        'INSERT INTO tom_user_preference '
+        '(principal_id, preference_key, value_type, value_json, updated_at) '
+        'VALUES ${rows.join(', ')}',
+      );
+
+      final refused = await first.writeEncoded('one.too.many', 'String', '"x"');
+      expect(refused.statusCode, 409, reason: refused.body);
+      expect(refused.errorKey, tomUserPreferencesLimitExceededErrorKey);
+
+      // Replacing a held key is not a new preference, so it still succeeds.
+      final replaced = await first.writeEncoded('k0', 'String', '"y"');
+      expect(replaced.statusCode, 200, reason: replaced.body);
+    });
+
+    test('an oversized value answers 400, the caller\'s own mistake', () async {
+      final (first, _, _) = callers();
+
+      final answer = await first.writeEncoded(
+        'ui.notes',
+        TomUserPreferenceCodec.stringType,
+        jsonEncode('a' * TomUserPreferenceCodec.maxValueBytes),
+      );
+
+      expect(answer.statusCode, 400, reason: answer.body);
+      expect(answer.errorKey, 'preferences.encoded.too_large');
+      expect(await first.keys(), isEmpty);
     });
 
     test('a caller with no principal is refused, not served unscoped', () async {

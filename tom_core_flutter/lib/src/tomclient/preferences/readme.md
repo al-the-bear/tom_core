@@ -31,7 +31,7 @@ call site changing.
 | `TomDevicePreferenceJson` | The stored JSON document, written once so every persistent backend stores the same text. |
 | `TomDevicePreferenceException` | `device_preferences.unsupported_platform`, `device_preferences.store.invalid_content`. |
 | `TomUserPreferencesClient` | The account store: `all` / `read` / `get` / `getOr` / `set` / `remove` over the server's `/preferences/*` routes. Implements the kernel's `TomUserPreferencesApiService`; every URI is resolved from the contract, none is written. |
-| `TomUserPreferencesClientException` | `preferences.client.not_found`, `preferences.client.rejected`, `preferences.client.invalid_response`. |
+| `TomUserPreferencesClientException` | `preferences.client.not_found`, `preferences.client.rejected`, `preferences.client.invalid_response`. A rejection carries the `statusCode` and, when the server sent its error envelope, the server's `errorKey` — `preferences.limit.exceeded` for an account at its ceiling. |
 
 ## Quick start
 

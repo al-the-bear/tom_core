@@ -397,27 +397,43 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   /// different failure that merely shares the status. A body that is not JSON
   /// is not an envelope, so it answers `false` rather than throwing — the
   /// caller then reports the response as the rejection it is.
-  static bool _reportsAbsence(_PreferencesResponse response) {
-    if (response.statusCode != 404) return false;
+  static bool _reportsAbsence(_PreferencesResponse response) =>
+      response.statusCode == 404 &&
+      _envelopeErrorKey(response) == tomUserPreferencesNotFoundErrorKey;
+
+  /// The `errorKey` of the framework error envelope [response] carries, or
+  /// `null` when its body is not one — plain text, or JSON of another shape.
+  static String? _envelopeErrorKey(_PreferencesResponse response) {
     final Object? envelope;
     try {
       envelope = jsonDecode(response.body);
     } on FormatException {
-      return false;
+      return null;
     }
-    return envelope is Map &&
-        envelope['errorKey'] == tomUserPreferencesNotFoundErrorKey;
+    if (envelope is! Map) return null;
+    final errorKey = envelope['errorKey'];
+    return errorKey is String ? errorKey : null;
   }
 
   /// Throws unless [response] carries a 2xx status.
+  ///
+  /// Every rejection is `preferences.client.rejected`; what tells them apart
+  /// is carried in its parameters — the status, and, when the server answered
+  /// with its error envelope, the server's own `errorKey`. That is how a caller
+  /// tells a write refused for the account's ceiling
+  /// ([tomUserPreferencesLimitExceededErrorKey], a `409`) from a value the
+  /// server would not store (`preferences.encoded.*`, a `400`) without parsing
+  /// the body itself.
   void _requireSuccess(_PreferencesResponse response, {String? key}) {
     if (response.statusCode >= 200 && response.statusCode < 300) return;
+    final errorKey = _envelopeErrorKey(response);
     throw TomUserPreferencesClientException(
       'preferences.client.rejected',
       'The server rejected the preference request.',
       parameters: {
         if (key != null) 'key': key,
         'statusCode': response.statusCode,
+        if (errorKey != null) 'errorKey': errorKey,
         if (response.body.isNotEmpty) 'response': response.body,
       },
     );

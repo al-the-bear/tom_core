@@ -8,6 +8,22 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **The preference store is bounded, so the unpaged list is safe (tcopen54).**
+  `listPreferences` answers everything a principal holds, with no page and no
+  filter — right for every caller of it, and safe only if "everything" is
+  bounded. Keys are shape-checked rather than drawn from a closed set, so it was
+  not: a caller writing a key per document could accumulate rows without limit
+  and every device would download all of them. The contract now declares two
+  ceilings: `tomUserPreferencesMaxPerPrincipal` (256 preferences, refused with a
+  `409` keyed `tomUserPreferencesLimitExceededErrorKey` when a write would *add*
+  one) and `TomUserPreferenceCodec.maxValueBytes` (16 KiB of UTF-8 per encoded
+  value, refused as `preferences.encode.too_large` by `encodeValue`/`encode` and
+  as `preferences.encoded.too_large` by `validateEncoded`, before it parses). The
+  worst-case list is about four megabytes. The list and write endpoints state
+  both ceilings in their `description`; `doc/preferences/preferences.md` gains
+  *How big the account store can get* and the best practice *Keep a Preference a
+  Setting*.
+
 - **`tomUserPreferencesNotFoundErrorKey` (tcopen53).** The preferences
   contract now states how a read says "never written": a `404` carrying the
   error envelope whose `errorKey` is `preferences.not_found`. Before, absence

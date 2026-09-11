@@ -65,6 +65,18 @@ TomException _keyRefusal(String key) {
   throw StateError("'$key' was expected to be refused, and was not");
 }
 
+/// The refusal the write boundary actually raises for an encoded pair — caught
+/// from [TomUserPreferenceCodec.validateEncoded] for the same reason as
+/// [_keyRefusal].
+TomException _encodedRefusal(String valueType, String valueJson) {
+  try {
+    TomUserPreferenceCodec.validateEncoded(valueType, valueJson, key: 'k');
+  } on TomException catch (error) {
+    return error;
+  }
+  throw StateError("'$valueJson' as $valueType was expected to be refused");
+}
+
 /// The failure [call] actually raises against a [TomUserPreferencesServer] with
 /// no store installed.
 ///
@@ -268,6 +280,63 @@ void main() {
       expect(response.headers['x-tom-error'], 'true');
       final body = jsonDecode(await response.readAsString()) as Map;
       expect(body['errorKey'], 'preferences.key.invalid');
+    });
+
+    test('answers 409 for a write that would exceed the ceiling', () async {
+      // Built from the contract's constant rather than caught from a store:
+      // reaching the ceiling needs a database, and the key the handler matches
+      // is the constant itself, so there is no second spelling to drift. The
+      // DB suite asserts that the store raises it.
+      final response = handler.handleInvocationError(
+        TomUserPreferenceException(
+          tomUserPreferencesLimitExceededErrorKey,
+          'The caller already holds the most preferences allowed.',
+        ),
+        StackTrace.current,
+        _request(),
+      );
+
+      expect(response.statusCode, 409);
+      expect(response.headers['x-tom-error'], 'true');
+      final body = jsonDecode(await response.readAsString()) as Map;
+      expect(body['errorKey'], tomUserPreferencesLimitExceededErrorKey);
+    });
+
+    test('answers 400 for every refusal of the write boundary', () async {
+      // The encoded pair arrives in the request body, so it is the caller's
+      // input exactly as the key is: an oversized value, text that is not
+      // JSON, a value that is not the type it names, or an instant that names
+      // no zone is a bad request, and a 500 would tell the client to retry it.
+      final refusals = {
+        'preferences.encoded.too_large': _encodedRefusal(
+          TomUserPreferenceCodec.stringType,
+          jsonEncode('a' * TomUserPreferenceCodec.maxValueBytes),
+        ),
+        'preferences.encoded.invalid_json': _encodedRefusal(
+          TomUserPreferenceCodec.stringType,
+          '{oops',
+        ),
+        'preferences.encoded.type_mismatch': _encodedRefusal(
+          TomUserPreferenceCodec.intType,
+          '"three"',
+        ),
+        'preferences.encoded.not_an_instant': _encodedRefusal(
+          TomUserPreferenceCodec.dateTimeType,
+          '"2026-01-01T00:00:00"',
+        ),
+      };
+
+      for (final MapEntry(key: errorKey, value: error) in refusals.entries) {
+        expect(error.key, errorKey, reason: 'the fixture raised another key');
+        final response = handler.handleInvocationError(
+          error,
+          StackTrace.current,
+          _request(),
+        );
+        expect(response.statusCode, 400, reason: errorKey);
+        final body = jsonDecode(await response.readAsString()) as Map;
+        expect(body['errorKey'], errorKey);
+      }
     });
 
     test('answers 400 for the empty key, which is the list endpoint', () {

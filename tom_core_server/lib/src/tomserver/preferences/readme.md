@@ -22,9 +22,9 @@ principal: there is nothing to address but your own.
 | `TomUserPreference` | The persisted row — `@TomDbTable('tom_user_preference')` with the `owner` row scope on `principal_id`; `toDto()` renders it for the wire in UTC. |
 | `TomUserPreferenceRepository` | The CRUD repository for that entity. |
 | `TomUserPreferences` | The service: typed `get` / `set` / `getOr` / `read` / `all` / `remove` for *the caller*, plus `getFor` for the login path. Installed as a bean. |
-| `TomUserPreferenceException` | Raised when an operation cannot identify the caller. |
+| `TomUserPreferenceException` | Raised when an operation cannot identify the caller, or when a write would add a preference beyond the principal's ceiling of 256 (`preferences.limit.exceeded`). |
 | `TomUserPreferencesServer` | The `@TomApiImplementation` behind `tomUserPreferencesApi`. |
-| `TomUserPreferencesErrorHandler` | Maps `preferences.not_found` to a `404` and `preferences.key.invalid` to a `400` — and no other key to anything. Everything else stays opaque, so a client can tell "you have no such preference" and "you sent a key that is not a key" from "the server is broken", instead of papering an outage over with a default or retrying its own bad request. |
+| `TomUserPreferencesErrorHandler` | Maps `preferences.not_found` to a `404`, `preferences.key.invalid` and every `preferences.encoded.*` refusal to a `400`, and `preferences.limit.exceeded` to a `409` — and no other key to anything. Everything else stays opaque, so a client can tell "you have no such preference", "you sent a key or value that cannot be stored" and "you hold as many preferences as you may" from "the server is broken", instead of papering an outage over with a default or retrying its own bad request. |
 
 ## Quick start
 

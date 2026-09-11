@@ -22,6 +22,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -332,6 +333,103 @@ void main() async {
         );
       },
     );
+
+    // ------------------------------------------------------------------
+    // The store is bounded
+    // ------------------------------------------------------------------
+
+    /// Fills [userId]'s preferences to the ceiling with raw rows `k000`,
+    /// `k001`, … — one statement rather than 256 service writes, and outside
+    /// the service so the ceiling under test is not what placed them.
+    Future<void> fillToCeiling(int userId) async {
+      final rows = [
+        for (var i = 0; i < tomUserPreferencesMaxPerPrincipal; i++)
+          "($userId, 'k${i.toString().padLeft(3, '0')}', 'String', '\"x\"', "
+              "'2026-01-01 00:00:00')",
+      ];
+      await dsi.datasource.executeCommand(
+        'INSERT INTO tom_user_preference '
+        '(principal_id, preference_key, value_type, value_json, updated_at) '
+        'VALUES ${rows.join(', ')}',
+      );
+    }
+
+    test('a principal at the ceiling cannot add another key', () async {
+      await fillToCeiling(7);
+
+      await expectLater(
+        asSession(7, (p) => p.set('one.too.many', 'x')),
+        throwsA(
+          isA<TomUserPreferenceException>()
+              .having(
+                (error) => error.key,
+                'key',
+                tomUserPreferencesLimitExceededErrorKey,
+              )
+              .having(
+                (error) => error.parameters?['limit'],
+                'limit',
+                tomUserPreferencesMaxPerPrincipal,
+              ),
+        ),
+      );
+      expect(await rawRows(), hasLength(tomUserPreferencesMaxPerPrincipal));
+    });
+
+    test('the ceiling admits exactly its own number of keys', () async {
+      // One short of the ceiling, the next new key is still accepted: the
+      // bound is "at most", not "fewer than".
+      await fillToCeiling(7);
+      await asSession(7, (p) => p.remove('k000'));
+
+      await asSession(7, (p) => p.set('the.last.place', 'x'));
+
+      expect(await rawRows(), hasLength(tomUserPreferencesMaxPerPrincipal));
+    });
+
+    test('at the ceiling a held key can still be replaced', () async {
+      // The ceiling bounds how many preferences exist, not how often they
+      // change: a full account must still be able to change every setting
+      // it has.
+      await fillToCeiling(7);
+
+      await asSession(7, (p) => p.set('k000', 'changed'));
+
+      expect(await asSession(7, (p) => p.get<String>('k000')), 'changed');
+      expect(await rawRows(), hasLength(tomUserPreferencesMaxPerPrincipal));
+    });
+
+    test('the ceiling is counted per principal', () async {
+      await fillToCeiling(7);
+
+      await asSession(8, (p) => p.set('theme', 'dark'));
+
+      expect(await asSession(8, (p) => p.get<String>('theme')), 'dark');
+    });
+
+    test('an oversized value is refused before it reaches the table', () async {
+      // The column holds 64 KiB; the codec's ceiling is well inside it, so a
+      // value is refused as the caller's mistake rather than failing in the
+      // database as a fault of the server's.
+      await expectLater(
+        asSession(
+          7,
+          (p) => p.setEncoded(
+            'ui.notes',
+            valueType: TomUserPreferenceCodec.stringType,
+            valueJson: jsonEncode('a' * TomUserPreferenceCodec.maxValueBytes),
+          ),
+        ),
+        throwsA(
+          isA<TomUserPreferenceCodecException>().having(
+            (error) => error.key,
+            'key',
+            'preferences.encoded.too_large',
+          ),
+        ),
+      );
+      expect(await rawRows(), isEmpty);
+    });
 
     // ------------------------------------------------------------------
     // Typed values round-trip

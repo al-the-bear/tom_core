@@ -143,12 +143,23 @@ All of the following read the caller from the request zone, except `getFor`.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller, ordered by key (unmodifiable). |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller, ordered by key (unmodifiable). Unpaged, and bounded by the two ceilings below. |
 | `read(String key)` | `Future<TomUserPreferenceDto?>` | The caller's preference under `key`, or `null` when never written. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` when the preference exists but was written as a different type. |
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
 | `set<T extends Object>(String key, T value)` | `Future<TomUserPreferenceDto>` | Encodes `value` and upserts it, returning the stored DTO. Scalars and `DateTime`s go through the codec; anything else must be a `@tomReflector` class. |
 | `setEncoded(String key, {required String valueType, required String valueJson})` | `Future<TomUserPreferenceDto>` | `set` for a value that arrives already encoded — the endpoint's write path. The pair is validated before it is stored. |
+
+**Both writes are bounded.** A write that would **add** a key is refused with
+`TomUserPreferenceException('preferences.limit.exceeded')` once the caller holds
+`tomUserPreferencesMaxPerPrincipal` (256) preferences; replacing a held key is
+never refused for the count, and `remove` frees a place. The count is taken with
+the principal named, so it means "mine" under `TomDataScope.runUnscoped` too, and
+before the insert, so two racing inserts can overshoot by one or two. A value
+over `TomUserPreferenceCodec.maxValueBytes` (16 KiB) is refused by the codec —
+`preferences.encode.too_large` from `set`, `preferences.encoded.too_large` from
+`setEncoded` — before a statement is built, well inside `value_json`'s 64 KiB
+`TEXT`.
 | `remove(String key)` | `Future<bool>` | Deletes the caller's preference under `key`; answers whether a row was removed, so a caller can tell "deleted" from "was never there" without a second read. |
 | `getFor<T extends Object>(TomPrincipal principal, String key)` | `Future<T?>` | `get` for a principal that is not the zone's. Exists for the authentication path, which needs a preference before a request zone carries a principal; it installs one and delegates, so even login reaches the same scoped query. |
 
@@ -167,7 +178,10 @@ guarantee costs no sort.
 ### TomUserPreferenceException
 
 Raised when a preference operation cannot identify the caller —
-`preferences.no_principal`.
+`preferences.no_principal` — or when a write would add a preference beyond the
+kernel's `tomUserPreferencesMaxPerPrincipal` — `preferences.limit.exceeded`
+(`tomUserPreferencesLimitExceededErrorKey`), carrying `key` and `limit`
+parameters.
 
 - **Extends:** `TomServerException`.
 
@@ -240,9 +254,11 @@ handler is obeyed.
 
 ### TomUserPreferencesErrorHandler
 
-The error handler the read endpoint is served under: it maps
-`preferences.not_found` (the kernel's `tomUserPreferencesNotFoundErrorKey`) to a
-`404` and `preferences.key.invalid` to a `400` — and *only* those two keys —
+The error handler the read, write and delete endpoints are served under. It
+maps `preferences.not_found` (the kernel's `tomUserPreferencesNotFoundErrorKey`)
+to a `404`; `preferences.key.invalid` and every key under `preferences.encoded.`
+— the write boundary's refusals — to a `400`; and `preferences.limit.exceeded`
+(`tomUserPreferencesLimitExceededErrorKey`) to a `409` — and *only* those —
 leaving every other failure to `handleErrorDefault`.
 
 - **Extends:** `TomErrorHandler`.
@@ -273,19 +289,23 @@ const TomUserPreferencesErrorHandler()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the two translated ones, carrying `tomErrorEnvelope(error)` as the body, the `x-tom-error` header and `Content-Type: application/json` so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
-| `handleErrorDefault` | `Response handleErrorDefault(Object error, Object stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not one of the two translated keys is answered exactly as it would have been without this handler. |
+| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the translated ones, carrying `tomErrorEnvelope(error)` as the body, the `x-tom-error` header and `Content-Type: application/json` so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
+| `handleErrorDefault` | `Response handleErrorDefault(Object error, Object stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not one of the translated keys is answered exactly as it would have been without this handler. |
 
-Why only those two keys: a client must be able to tell **"you have no such
+Why only those keys: a client must be able to tell **"you have no such
 preference"** from **"the server is broken"**, and a client that cannot must
 either treat every failure as a miss or every miss as a failure. A rejected key
-is the *caller's* own mistake — it arrives in the request URL, so on this side
-it is untrusted input, and a `500` would tell the client its malformed request
-was a server fault worth retrying. Everything else stays opaque: mapping
+or value is the *caller's* own mistake — the key arrives in the request URL and
+the value in its body, so on this side both are untrusted input, and a `500`
+would tell the client its malformed request was a server fault worth retrying.
+The write boundary's refusals are matched by prefix, so one added to
+`TomUserPreferenceCodec.validateEncoded` is a `400` without this handler
+changing. The ceiling is a `409` because the request is sound: it would
+succeed for a principal holding fewer preferences. Everything else stays opaque: mapping
 `preferences.not_configured` — a deployment fault — to a `404` would let a
 client read it as absence and paper the outage over with a default.
 
-Both translated bodies are `tomErrorEnvelope(error)` — the package's single
+Every translated body is `tomErrorEnvelope(error)` — the package's single
 definition of the wire error shape, rendered by
 [`little_things`](api_summary_little_things.md#tomerrorenvelope) and not by this
 handler — under the `x-tom-error: true` header and
@@ -302,10 +322,11 @@ body. A client therefore reads absence from `errorKey ==
 tomUserPreferencesNotFoundErrorKey` and treats any other `404` as a refusal —
 `TomUserPreferencesClient` in `tom_core_flutter` does exactly that.
 
-The two do not carry identical *fields*, and that is the envelope working as
-intended: the `404` is raised as a `TomEndpointHandlerException` and therefore
-reports `clientThrow`, while the `400` arrives from the kernel as a plain
-`TomException` and omits it. The opaque `500` from `handleErrorDefault` keeps
+They do not all carry identical *fields*, and that is the envelope working as
+intended: the `404` and the `409` are raised as `TomServerException`s — a
+`TomEndpointHandlerException` and a `TomUserPreferenceException` — and therefore
+report `clientThrow`, while the `400`s arrive from the kernel as plain
+`TomException`s and omit it. The opaque `500` from `handleErrorDefault` keeps
 `text/plain`, because it carries no envelope at all.
 
 ## Global Functions and Constants

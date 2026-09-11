@@ -66,7 +66,7 @@ The method set deliberately mirrors `TomUserPreferences` (`tom_core_server`):
 | `read(key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` |
 | `get<T>(key)` | `Future<T?>` | Decoded as a `T`; `null` when never written |
 | `getOr<T>(key, fallback)` | `Future<T>` | `get`, with a default for the unwritten case |
-| `set<T>(key, value)` | `Future<TomUserPreferenceDto>` | Encodes and stores |
+| `set<T>(key, value)` | `Future<TomUserPreferenceDto>` | Encodes and stores; a value over 16 KiB of encoded JSON is refused, in both stores |
 | `remove(key)` | `Future<bool>` | Deletes; answers whether one was removed |
 | `clear()` | `Future<void>` | Deletes everything on this device |
 | `getPreferred<T>(key, fromUserStore)` | `Future<T?>` | Applies the documented precedence |
@@ -326,9 +326,13 @@ throws `TomUserPreferencesClientException` — a `404` from `remove` included,
 since the server deletes a missing preference with a `200` — because a deployment whose preference store
 is unreachable must not be indistinguishable from a user who has set nothing —
 an application that could not tell them apart would paper the outage over with a
-default and never learn. A *value* failure — a preference stored as the wrong
-type — arrives as the kernel's `TomUserPreferenceCodecException` instead, since
-it means the same thing in both stores.
+default and never learn. A rejection's `parameters` carry the `statusCode` and,
+when the server answered with its error envelope, the server's `errorKey` — so an
+account at its ceiling of 256 preferences (`409`, `preferences.limit.exceeded`)
+is told apart from any other refusal without parsing the body. A *value* failure
+— a preference stored as the wrong type, or one whose encoding exceeds the
+codec's 16 KiB — arrives as the kernel's `TomUserPreferenceCodecException`
+instead, since it means the same thing in both stores.
 
 Requests carry the signed-in bearer token from `TomBearerAuthentication`. An
 `Authorization` supplied through `headers` or `headerProvider` **suppresses** it,

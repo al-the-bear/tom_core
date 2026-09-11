@@ -26,6 +26,7 @@ import '../http_connection/endpoints_apis.dart';
 import '../http_connection/httpmethods.dart';
 import '../reflection/reflection.dart';
 import '../security/access_controls.dart';
+import 'user_preference_codec.dart';
 
 /// One stored preference as it travels the wire.
 ///
@@ -185,6 +186,40 @@ const String tomUserPreferencesDeleteEndpointId = 'deletePreference';
 /// twice is a key that drifts.
 const String tomUserPreferencesNotFoundErrorKey = 'preferences.not_found';
 
+/// The most preferences one principal may hold: 256.
+///
+/// **This is what makes [TomUserPreferencesApiService.listPreferences] safe to
+/// answer in full.** The list takes no page and no filter, because a caller
+/// that syncs or renders preferences wants all of them, and a paged answer
+/// would make every such caller loop. That is only sound if "all of them" is a
+/// bounded quantity, so it is bounded here: at most this many entries, each
+/// holding at most [TomUserPreferenceCodec.maxValueBytes] of value — a
+/// worst-case answer of about four megabytes, and a typical one of a few
+/// hundred bytes.
+///
+/// Keys are shape-checked rather than drawn from a closed set, so without the
+/// ceiling a caller — or a bug in one, writing a key per document it opens —
+/// could accumulate rows without limit, and every device would then download
+/// all of them. 256 is far beyond what settings need and far below what would
+/// make that download a problem; an application that wants a preference *per
+/// item* has a table's worth of data and should store it in a table.
+///
+/// The server enforces it when a write would **add** a key: replacing an
+/// existing preference is always allowed, so a principal at the ceiling can
+/// still change every setting it has, and deleting one frees a place. A write
+/// refused for the ceiling fails with [tomUserPreferencesLimitExceededErrorKey].
+const int tomUserPreferencesMaxPerPrincipal = 256;
+
+/// The error key a write answers with when it would add a preference beyond
+/// [tomUserPreferencesMaxPerPrincipal].
+///
+/// On the wire a `409` carrying the error envelope with this `errorKey`: the
+/// request is well-formed, and would succeed against a principal holding
+/// fewer preferences, so it conflicts with the state rather than being wrong in
+/// itself.
+const String tomUserPreferencesLimitExceededErrorKey =
+    'preferences.limit.exceeded';
+
 /// Server-stored user preferences (`/preferences/*`).
 ///
 /// Every endpoint is [TomAuthenticatedAccess]: there is no anonymous preference,
@@ -205,6 +240,11 @@ final TomApi tomUserPreferencesApi = TomApi(
       id: tomUserPreferencesListEndpointId,
       uri: '',
       method: TomHttpMethod.get,
+      description:
+          'Every preference of the caller, ordered by key. Unpaged by design '
+          'and bounded by construction: at most '
+          '$tomUserPreferencesMaxPerPrincipal entries, each value at most '
+          '${TomUserPreferenceCodec.maxValueBytes} bytes of JSON.',
       requestTypes: const [],
       access: const TomAuthenticatedAccess(),
     ),
@@ -225,6 +265,13 @@ final TomApi tomUserPreferencesApi = TomApi(
       id: tomUserPreferencesWriteEndpointId,
       uri: '',
       method: TomHttpMethod.put,
+      description:
+          'Writes one preference of the caller, replacing any previous value. '
+          'A value longer than ${TomUserPreferenceCodec.maxValueBytes} bytes '
+          'of JSON is refused (400, preferences.encoded.too_large); a write '
+          'that would add a key beyond $tomUserPreferencesMaxPerPrincipal '
+          'preferences is refused (409, '
+          '$tomUserPreferencesLimitExceededErrorKey).',
       access: const TomAuthenticatedAccess(),
     ),
     // `void` and not `Object?`: the delete answers `200` with an empty body,
@@ -277,6 +324,11 @@ abstract class TomUserPreferencesApiService {
   /// whose backing column carries a case-insensitive collation *does* deviate
   /// from this, and that is a defect in the store rather than a second
   /// permitted reading of this sentence.
+  ///
+  /// **Unpaged, and bounded.** There is no page and no filter: every caller of
+  /// this list wants all of it, and the list is small by construction — at
+  /// most [tomUserPreferencesMaxPerPrincipal] entries, each holding at most
+  /// [TomUserPreferenceCodec.maxValueBytes] of value.
   Future<List<TomUserPreferenceDto>> listPreferences();
 
   /// [tomUserPreferencesReadEndpointId] — the caller's preference under
@@ -296,6 +348,12 @@ abstract class TomUserPreferencesApiService {
   /// The written preference is [TomUserPreferenceWriteRequest.key] and only
   /// that: the endpoint is a `PUT` at the collection, so unlike
   /// [readPreference] and [deletePreference] the URL names no key.
+  ///
+  /// Refuses a value longer than [TomUserPreferenceCodec.maxValueBytes]
+  /// (`preferences.encoded.too_large`, a `400`), and a write that would add a
+  /// key beyond [tomUserPreferencesMaxPerPrincipal] preferences
+  /// ([tomUserPreferencesLimitExceededErrorKey], a `409`). Replacing a key the
+  /// caller already holds is never refused for the count.
   Future<TomUserPreferenceDto> writePreference(
     TomUserPreferenceWriteRequest request,
   );

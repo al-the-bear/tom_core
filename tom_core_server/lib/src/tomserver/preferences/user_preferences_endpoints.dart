@@ -34,27 +34,42 @@ import '../endpoints/endpoint_pipeline.dart';
 import '../little_things/server_exception.dart';
 import 'user_preferences_service.dart';
 
-/// Answers `404` for a preference that was never written and `400` for a key
-/// that is not a legal key at all, and nothing else.
+/// Answers the failures that are the caller's business with a status of their
+/// own, and leaves every other failure opaque.
+///
+/// | Error key | Status | Why it is not a server fault |
+/// | --------- | ------ | ---------------------------- |
+/// | [tomUserPreferencesNotFoundErrorKey] | `404` | a preference never written is a miss |
+/// | `preferences.key.invalid` | `400` | the key is the caller's input |
+/// | `preferences.encoded.*` | `400` | so is the encoded value in a write's body |
+/// | [tomUserPreferencesLimitExceededErrorKey] | `409` | the write is sound, the caller is full |
 ///
 /// The default handler turns every failure into an opaque `500`, which is right
-/// for a fault and wrong for both of these. A client that cannot tell a miss
+/// for a fault and wrong for all of these. A client that cannot tell a miss
 /// from a fault must either treat every failure as "no such preference" —
 /// papering a broken server over with a default — or every miss as a failure,
-/// which makes reading an unset key an error. And a rejected key is squarely
-/// the *caller's* mistake: the key arrives in the request URL, so on this side
-/// it is untrusted input, and reporting a `500` would tell a client its own
-/// malformed request was a server fault it should retry.
+/// which makes reading an unset key an error. And a rejected key or value is
+/// squarely the *caller's* mistake: the key arrives in the request URL and the
+/// value in its body, so on this side both are untrusted input, and reporting
+/// a `500` would tell a client its own malformed request was a server fault it
+/// should retry. The write boundary's refusals are matched as a family — every
+/// key `TomUserPreferenceCodec.validateEncoded` raises is under
+/// `preferences.encoded.` — so a refusal added there is a `400` here without
+/// this table being revisited.
 ///
-/// Both answers carry the error envelope, and for the `404` that is what gives
-/// it its meaning: the pipeline answers a denied call with a *bare* `404`, so
-/// "never written" and "refused" share a status and differ only in the body.
-/// A client reads absence from the envelope's `errorKey`
+/// The ceiling is a `409` rather than a `400` because nothing is wrong with the
+/// request: the same write succeeds for a principal holding fewer preferences,
+/// and succeeds for this one after it deletes one.
+///
+/// Every answer carries the error envelope, and for the `404` that is what
+/// gives it its meaning: the pipeline answers a denied call with a *bare*
+/// `404`, so "never written" and "refused" share a status and differ only in
+/// the body. A client reads absence from the envelope's `errorKey`
 /// ([tomUserPreferencesNotFoundErrorKey]), never from the status alone.
 ///
-/// Only those two keys are translated. `preferences.not_configured` is a
-/// deployment fault, not the client's business, and stays opaque along with
-/// everything else.
+/// Nothing else is translated. `preferences.not_configured` is a deployment
+/// fault, not the client's business, and stays opaque along with everything
+/// else.
 class TomUserPreferencesErrorHandler extends TomErrorHandler {
   /// Const constructor so the handler can be used as an annotation argument.
   const TomUserPreferencesErrorHandler();
@@ -70,11 +85,21 @@ class TomUserPreferencesErrorHandler extends TomErrorHandler {
   static const Map<String, int> _statusByErrorKey = {
     tomUserPreferencesNotFoundErrorKey: 404,
     invalidKeyKey: 400,
+    tomUserPreferencesLimitExceededErrorKey: 409,
   };
+
+  /// The family every refusal of the write boundary
+  /// (`TomUserPreferenceCodec.validateEncoded`) is raised under.
+  static const String _encodedRefusalPrefix = 'preferences.encoded.';
+
+  /// The status [errorKey] answers with, or `null` for one left opaque.
+  static int? _statusFor(String errorKey) =>
+      _statusByErrorKey[errorKey] ??
+      (errorKey.startsWith(_encodedRefusalPrefix) ? 400 : null);
 
   @override
   Response handleInvocationError(Object error, Object stacktrace, Request r) {
-    final status = error is TomException ? _statusByErrorKey[error.key] : null;
+    final status = error is TomException ? _statusFor(error.key) : null;
     if (error is TomException && status != null) {
       // The body is the framework's own envelope, rendered by the same function
       // `TomServer.errorHandler` uses, so a client branches on `errorKey` and

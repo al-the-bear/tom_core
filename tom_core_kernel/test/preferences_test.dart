@@ -2010,6 +2010,151 @@ void main() {
     });
   });
 
+  group('TomUserPreferenceCodec — a value has a ceiling', () {
+    /// A `String` whose JSON text is exactly [bytes] UTF-8 bytes long: the
+    /// two quotes plus `bytes - 2` ASCII characters.
+    String stringOfEncodedBytes(int bytes) => 'a' * (bytes - 2);
+
+    test('the ceiling is 16 KiB of encoded text', () {
+      // Pinned because it is part of the contract: a client and a server
+      // compiled against different values would disagree about which writes
+      // are legal, and the one that allowed more would store values the other
+      // then refuses to validate.
+      expect(TomUserPreferenceCodec.maxValueBytes, 16 * 1024);
+    });
+
+    test('a value exactly at the ceiling is written', () {
+      final value = stringOfEncodedBytes(TomUserPreferenceCodec.maxValueBytes);
+
+      final text = TomUserPreferenceCodec.encodeValue(value, 'ui.notes');
+
+      expect(
+        utf8.encode(text),
+        hasLength(TomUserPreferenceCodec.maxValueBytes),
+      );
+    });
+
+    test('one byte over the ceiling is refused before it is stored', () {
+      final value = stringOfEncodedBytes(
+        TomUserPreferenceCodec.maxValueBytes + 1,
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.encodeValue(value, 'ui.notes'),
+        throwsA(
+          isA<TomUserPreferenceCodecException>()
+              .having(
+                (error) => error.key,
+                'key',
+                'preferences.encode.too_large',
+              )
+              .having(
+                (error) => error.parameters?['bytes'],
+                'bytes',
+                TomUserPreferenceCodec.maxValueBytes + 1,
+              )
+              .having(
+                (error) => error.parameters?['limit'],
+                'limit',
+                TomUserPreferenceCodec.maxValueBytes,
+              ),
+        ),
+      );
+    });
+
+    test('the ceiling counts bytes, not characters', () {
+      // `é` is one character and two UTF-8 bytes. The column the server stores
+      // into is sized in bytes, so a character count would admit a value the
+      // store cannot hold — and a store that cannot hold it either refuses the
+      // write as a fault of its own or truncates it into text that is no longer
+      // JSON.
+      final halfCeiling = TomUserPreferenceCodec.maxValueBytes ~/ 2;
+      final value = 'é' * halfCeiling;
+      expect(
+        value.length + 2,
+        lessThan(TomUserPreferenceCodec.maxValueBytes),
+        reason: 'the value must be under the ceiling in characters',
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.encodeValue(value, 'ui.notes'),
+        throwsCodecKey('preferences.encode.too_large'),
+      );
+    });
+
+    test('encode() refuses an oversized value too', () {
+      expect(
+        () => TomUserPreferenceCodec.encode(
+          'ui.notes',
+          stringOfEncodedBytes(TomUserPreferenceCodec.maxValueBytes + 1),
+        ),
+        throwsCodecKey('preferences.encode.too_large'),
+      );
+    });
+
+    test('a collection is measured by its whole text', () {
+      // The ceiling is on what is stored, and a list is stored as one text —
+      // so a list of small elements can exceed it where no element does.
+      final elements = List.filled(
+        TomUserPreferenceCodec.maxValueBytes ~/ 4,
+        'abc',
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.encodeValue(elements, 'ui.tags'),
+        throwsCodecKey('preferences.encode.too_large'),
+      );
+    });
+
+    test('the write boundary refuses an oversized text', () {
+      // The server's check, for a body that did not come from this codec: a
+      // client in another language, or one compiled against a larger ceiling.
+      final text = jsonEncode(
+        stringOfEncodedBytes(TomUserPreferenceCodec.maxValueBytes + 1),
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          TomUserPreferenceCodec.stringType,
+          text,
+          key: 'ui.notes',
+        ),
+        throwsCodecKey('preferences.encoded.too_large'),
+      );
+    });
+
+    test('the write boundary refuses size before it parses', () {
+      // An oversized body that is not even JSON is reported as too large, not
+      // as malformed: the size is the cheaper question, and a server should
+      // not spend a parse on a body it is going to refuse anyway.
+      final text = '{${'x' * TomUserPreferenceCodec.maxValueBytes}';
+
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          TomUserPreferenceCodec.stringType,
+          text,
+          key: 'ui.notes',
+        ),
+        throwsCodecKey('preferences.encoded.too_large'),
+      );
+    });
+
+    test('the write boundary accepts a text exactly at the ceiling', () {
+      final text = jsonEncode(
+        stringOfEncodedBytes(TomUserPreferenceCodec.maxValueBytes),
+      );
+
+      expect(
+        () => TomUserPreferenceCodec.validateEncoded(
+          TomUserPreferenceCodec.stringType,
+          text,
+          key: 'ui.notes',
+        ),
+        returnsNormally,
+      );
+    });
+  });
+
   group('the preference wire DTOs', () {
     test('a DTO carries key, declared type, value and timestamp', () {
       final dto = TomUserPreferenceDto(
@@ -2277,6 +2422,39 @@ void main() {
         expect(endpoint.uri ?? '', isNot(contains('principal')));
         expect(endpoint.urlParameterMapping, isNot(contains('principal')));
       }
+    });
+
+    test('the ceilings and the limit key are pinned', () {
+      // Part of the contract, so pinned like the endpoint ids: a server that
+      // allowed more than a client was told to expect would be a server whose
+      // list the client cannot size.
+      expect(tomUserPreferencesMaxPerPrincipal, 256);
+      expect(
+        tomUserPreferencesLimitExceededErrorKey,
+        'preferences.limit.exceeded',
+      );
+    });
+
+    test('the list and the write declare their bounds on the endpoint', () {
+      // The bound is a property of the answer and of the request, so it is
+      // stated where each is declared, not only in prose a client may not read.
+      final list = tomUserPreferencesApi[tomUserPreferencesListEndpointId];
+      final write = tomUserPreferencesApi[tomUserPreferencesWriteEndpointId];
+
+      expect(list.description, contains('$tomUserPreferencesMaxPerPrincipal'));
+      expect(
+        list.description,
+        contains('${TomUserPreferenceCodec.maxValueBytes}'),
+      );
+      expect(write.description, contains('$tomUserPreferencesMaxPerPrincipal'));
+      expect(
+        write.description,
+        contains('${TomUserPreferenceCodec.maxValueBytes}'),
+      );
+      expect(
+        write.description,
+        contains(tomUserPreferencesLimitExceededErrorKey),
+      );
     });
 
     test('a read addresses one preference by its key', () {
