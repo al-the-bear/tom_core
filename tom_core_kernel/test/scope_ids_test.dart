@@ -348,14 +348,20 @@ void main() {
 
         test('an established parent link cannot be re-pointed', () {
           // Every parent being older than its child only rules out cycles while
-          // the links stay put. They do: initScope writes `late final` fields,
-          // so a second call is rejected rather than bending the chain back.
+          // the links stay put. They do: the identity is written once, so a
+          // second initScope is refused rather than bending the chain back.
           final root = _MixinScope(scopeId: 'root');
           final child = _MixinScope(scopeId: 'child', parentScope: root);
 
           expect(
             () => child.initScope(scopeId: 'child', parentScope: root),
-            throwsA(isA<Error>()),
+            throwsA(
+              isA<TomScopeException>().having(
+                (e) => e.key,
+                'key',
+                equals('scope_ids.init_scope.already_initialised'),
+              ),
+            ),
           );
           expect(child.parent, same(root), reason: 'the link must be intact');
         });
@@ -515,9 +521,57 @@ void main() {
     // mutables, and the failure that would cause — a path that changes after
     // something cached it — surfaces nowhere near the change.
     group('after initScope has run', () {
-      test('a second initScope is refused', () {
+      // A second call is refused in the module's own words. Left to the
+      // `late final` fields, it surfaced as a LateInitializationError naming a
+      // VM-mangled private field (`_id@23310018`) — correct, and unreadable to
+      // anyone who does not know the mixin's internals.
+      Matcher refusedAsAlreadyInitialised({
+        required String type,
+        required String existing,
+        required String attempted,
+      }) => throwsA(
+        isA<TomScopeException>()
+            .having(
+              (e) => e.key,
+              'key',
+              equals('scope_ids.init_scope.already_initialised'),
+            )
+            .having((e) => e.parameters, 'parameters', {
+              'type': type,
+              'scopeId': existing,
+              'attemptedScopeId': attempted,
+            })
+            .having(
+              (e) => e.defaultUserMessage,
+              'message',
+              allOf(contains(type), contains(existing), contains('initScope')),
+            ),
+      );
+
+      test('a second initScope is refused, naming the scope it would move', () {
         final lazy = _LazyMixinScope()..initScope(scopeId: 'first');
-        expect(() => lazy.initScope(scopeId: 'second'), throwsA(isA<Error>()));
+        expect(
+          () => lazy.initScope(scopeId: 'second'),
+          refusedAsAlreadyInitialised(
+            type: '_LazyMixinScope',
+            existing: 'first',
+            attempted: 'second',
+          ),
+        );
+      });
+
+      test('repeating the same values is refused too', () {
+        // Write-once means once: a base and a subclass constructor that both
+        // initialise are two owners of the identity, even when they agree.
+        final scope = _MixinScope(scopeId: 'same');
+        expect(
+          () => scope.initScope(scopeId: 'same'),
+          refusedAsAlreadyInitialised(
+            type: '_MixinScope',
+            existing: 'same',
+            attempted: 'same',
+          ),
+        );
       });
 
       test('a refused second call moves neither the id nor the parent', () {
@@ -529,7 +583,11 @@ void main() {
         // would show up as a changed id even if the parent survived.
         expect(
           () => child.initScope(scopeId: 'renamed', parentScope: other),
-          throwsA(isA<Error>()),
+          refusedAsAlreadyInitialised(
+            type: '_MixinScope',
+            existing: 'child',
+            attempted: 'renamed',
+          ),
         );
 
         expect(child.id, equals('child'));
@@ -539,13 +597,18 @@ void main() {
 
       test('an unusable id is refused before the write-once field is', () {
         // When both rules are broken at once the id check wins, because it runs
-        // first. Worth pinning: it means the diagnostic names the thing the
-        // caller can actually fix, rather than a LateError about a private
-        // field. Reordering the two checks would silently degrade that.
+        // first: an id that can never be valid is the more fundamental mistake,
+        // and fixing only the double call would leave it in place.
         final scope = _LazyMixinScope()..initScope(scopeId: 'kept');
         expect(
           () => scope.initScope(scopeId: 'a.b'),
-          throwsA(isA<TomScopeException>()),
+          throwsA(
+            isA<TomScopeException>().having(
+              (e) => e.key,
+              'key',
+              equals('scope_ids.init_scope.separator_in_id'),
+            ),
+          ),
         );
         expect(scope.id, equals('kept'));
       });

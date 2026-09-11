@@ -134,7 +134,7 @@ known later.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. Throws `TomScopeException` if `scopeId` is empty or contains `.`, or if `parentScope` has no identity of its own — the latter is also what keeps the chain acyclic, since it makes every parent strictly older than its child and the link is then written once. Validation runs before any field is written, so a refused call leaves the instance still initialisable. |
+| `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. Throws `TomScopeException` if `scopeId` is empty or contains `.`, if the scope already has an identity (a second call, even with the same values), or if `parentScope` has no identity of its own — the latter is also what keeps the chain acyclic, since it makes every parent strictly older than its child and the link is then written once. Validation runs before any field is written, so a refused call leaves the instance still initialisable. |
 | `getScopePath` | `String getScopePath()` | *(override)* Returns the full dot-separated scope path. |
 | `runInScope` | `T runInScope<T>(T Function() body)` | *(override)* Runs `body` inside this scope's zone, reusing the current zone when already active. Throws `TomScopeException` before `initScope` has run, without running `body`. |
 
@@ -163,6 +163,7 @@ offending value.
 | --- | ----------- |
 | `scope_ids.init_scope.empty_id` | `initScope` is given an empty `scopeId` (`parameters['scopeId']`) |
 | `scope_ids.init_scope.separator_in_id` | `initScope` is given a `scopeId` containing `.` (`parameters['scopeId']`, `parameters['separator']`) |
+| `scope_ids.init_scope.already_initialised` | `initScope` is called on a scope that already has an identity (`parameters['type']`, `parameters['scopeId']` — the id it keeps — and `parameters['attemptedScopeId']`) |
 | `scope_ids.use_scope.no_identity` | a `TomScopeMixin` instance is installed or used as a parent before `initScope` has run (`parameters['type']`) |
 
 ### ScopeCapture

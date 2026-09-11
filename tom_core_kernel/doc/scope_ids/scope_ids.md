@@ -121,6 +121,24 @@ print(child.getScopePath()); // app.checkout
 > constructor (`TomScopeBase(scopeId:, parentScope:)`), or call `initScope`
 > exactly once when mixing `TomScopeMixin` into your own type.
 
+A second `initScope` is refused with
+`TomScopeException(scope_ids.init_scope.already_initialised)`, whose message
+names the class, the id the scope already has and the one the call tried to
+give it:
+
+```dart
+final scope = TomScopeBase(scopeId: 'orders');
+scope.initScope(scopeId: 'invoices');
+// TomScopeException(scope_ids.init_scope.already_initialised): Cannot
+// initialise TomScopeBase as "invoices": initScope() has already given it the
+// id "orders", and a scope's identity is written once. ...
+```
+
+It is refused even when both calls pass the same values: a scope whose identity
+two places write has two owners, and the second one is the bug. When a call is
+wrong twice over — a second call *and* an unusable id — the id is reported,
+because that is the mistake still there after the extra call is removed.
+
 #### The window before initScope
 
 Because `initScope` may run after construction, there is a window in which an
@@ -276,7 +294,7 @@ a.initScope(scopeId: 'a', parentScope: b);  // TomScopeException — b has no id
 b.initScope(scopeId: 'b', parentScope: a);
 
 final child = TomScopeBase(scopeId: 'child', parentScope: root);
-child.initScope(scopeId: 'child', parentScope: other);  // LateError — write-once
+child.initScope(scopeId: 'child', parentScope: other);  // TomScopeException — written once
 ```
 
 **The requirement does bind a hand-rolled `implements TomScope`.** Such a type

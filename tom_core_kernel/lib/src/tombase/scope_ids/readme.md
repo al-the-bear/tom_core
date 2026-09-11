@@ -15,7 +15,7 @@ namespace instances (e.g. one form per detail row).
 | `TomScope` | Scope contract; `withScope`, `current`, `defaultScope`, `buildScopePath`. |
 | `TomScopeBase` / `TomScopeMixin` | Default implementation and the mixin behind it. |
 | `ScopeCapture` | Captures the active scope and wraps callbacks so they run in it when invoked later. |
-| `TomScopeException` | Raised when a scope is used before `initScope` gave it an identity (`scope_ids.use_scope.no_identity`). It fails at the point of use, because a half-built scope otherwise surfaces later on a stack mentioning neither scopes nor the constructor that skipped the call. |
+| `TomScopeException` | Raised when a scope is used before `initScope` gave it an identity (`scope_ids.use_scope.no_identity`). It fails at the point of use, because a half-built scope otherwise surfaces later on a stack mentioning neither scopes nor the constructor that skipped the call. A second `initScope` is refused the same way (`scope_ids.init_scope.already_initialised`), naming the class and the id the scope keeps. |
 
 ## Quick start
 

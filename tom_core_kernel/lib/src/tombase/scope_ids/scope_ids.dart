@@ -7,7 +7,8 @@ import '../little_things/little_things.dart';
 ///
 /// Keys are `scope_ids.<operation>.<condition>`:
 /// `scope_ids.init_scope.empty_id`, `scope_ids.init_scope.separator_in_id`,
-/// and `scope_ids.use_scope.no_identity`.
+/// `scope_ids.init_scope.already_initialised` and
+/// `scope_ids.use_scope.no_identity`.
 class TomScopeException extends TomException {
   TomScopeException(
     super.key,
@@ -219,8 +220,10 @@ mixin TomScopeMixin on Object implements TomScope {
   /// Whether [initScope] has run.
   ///
   /// Tracked separately because Dart offers no way to ask a `late` field
-  /// whether it has been written — reading it to find out throws, which is the
-  /// very failure this flag exists to pre-empt.
+  /// whether it has been written — reading it to find out throws, and writing
+  /// it twice throws, and both errors name a VM-mangled private field rather
+  /// than the scope or the call that was wrong. This flag is what lets the
+  /// module refuse both mistakes in its own words.
   bool _hasIdentity = false;
 
   /// Initialises this scope's identity.
@@ -251,10 +254,30 @@ mixin TomScopeMixin on Object implements TomScope {
   /// started. Closing a loop would need this call to accept a scope that is not
   /// yet initialised, or to run a second time on a scope that already is;
   /// neither is allowed.
+  ///
+  /// A second call is refused with `scope_ids.init_scope.already_initialised`,
+  /// naming the class, the id the scope already has and the one the call tried
+  /// to give it — even when the two agree, since a scope whose identity two
+  /// callers both write has two owners. An unusable [scopeId] is reported
+  /// first: it is the mistake that survives fixing the double call.
   void initScope({required String scopeId, TomScope? parentScope}) {
     // Validate before mutating: a rejected call must leave the instance in the
-    // state it was in, still initialisable.
+    // state it was in — still initialisable, or still carrying its identity.
     _requireUsableScopeId(scopeId);
+    if (_hasIdentity) {
+      throw TomScopeException(
+        'scope_ids.init_scope.already_initialised',
+        'Cannot initialise $runtimeType as "$scopeId": initScope() has already '
+            'given it the id "$_id", and a scope\'s identity is written once. '
+            'Call initScope() from exactly one place — the constructor, or the '
+            'code that creates the instance once its parent is known.',
+        parameters: {
+          'type': runtimeType.toString(),
+          'scopeId': _id,
+          'attemptedScopeId': scopeId,
+        },
+      );
+    }
     _requireScopeIdentity(parentScope, 'Cannot use a scope as parentScope');
     _id = scopeId;
     _parent = parentScope;

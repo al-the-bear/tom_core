@@ -170,22 +170,19 @@ void run() {
     b.initScope(scopeId: 'b', parentScope: a);
   });
 
-  // Re-point an established parent. `initScope` backs `late final` fields, so
-  // this fails as a LateError rather than a TomScopeException.
+  // Re-point an established parent. The identity is written once, so a
+  // second `initScope` is refused — naming the class and the id it already has.
   final child = ScreenSection(
     title: 'Child',
     scopeId: 'child',
     parentScope: app,
   );
-  var rePointRefused = false;
-  try {
-    child.initScope(scopeId: 'child', parentScope: checkout);
-  } on Error {
-    rePointRefused = true;
-  }
+  final rePointRefusal = refusalOf(
+    () => child.initScope(scopeId: 'child', parentScope: checkout),
+  );
 
   print('   parent not yet initialised: $unbornParentRefusal');
-  print('   re-pointing a parent:       refused: $rePointRefused');
+  print('   re-pointing a parent:       $rePointRefusal');
   print('   child.parent unchanged:     ${identical(child.parent, app)}');
   print('');
 
@@ -223,7 +220,8 @@ void run() {
   // leaves the existing link intact
   assert(unbornParentRefusal.contains('LazyScope'));
   assert(unbornParentRefusal.contains('initScope'));
-  assert(rePointRefused);
+  assert(rePointRefusal.contains('ScreenSection'));
+  assert(rePointRefusal.contains('already'));
   assert(identical(child.parent, app));
 }
 

@@ -193,6 +193,16 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **A second `initScope` is refused in the module's own words (tcopen71).**
+  It reached the `late final` fields and failed as `LateInitializationError:
+  Field '_id@23310018' has already been initialized.` — a VM-mangled private
+  name identifying neither the scope, the class nor the call. `initScope` now
+  reads the `_hasIdentity` flag the mixin keeps for the never-initialised case
+  and throws `TomScopeException` with `scope_ids.init_scope.already_initialised`,
+  naming the class, the id the scope keeps and the id the call tried to set.
+  Repeating the same values is refused too: two places writing one identity
+  is the defect. An unusable id in the same call is still reported first.
+
 - **A slow but healthy run is no longer abandoned on a single node
   (tcopen69).** A run's store claim was renewed only by the lock's heartbeat,
   so a scheduler without a lock let every claim age from the moment it was
