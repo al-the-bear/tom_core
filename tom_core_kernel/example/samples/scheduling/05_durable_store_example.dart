@@ -124,7 +124,7 @@ class QueueOutlivesProcessExample {
       // The process exits. `close()` stops the timer chain; dropping the last
       // reference to `firstStore` is what makes the rest of this example a
       // genuine restart rather than a shared object with a file beside it.
-      first.close();
+      await first.close();
 
       // --- What is on disk, between the two processes ----------------------
       // Readable without the kernel, which is the point of a JSON array: an
@@ -157,7 +157,7 @@ class QueueOutlivesProcessExample {
           .where((run) => run.state == TomJobRunState.succeeded)
           .toList();
       executedId = succeeded.isEmpty ? null : succeeded.single.id;
-      second.close();
+      await second.close();
 
       assert(
         fileIsJsonArray && rowsOnDisk == 1,

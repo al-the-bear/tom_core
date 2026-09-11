@@ -205,7 +205,7 @@ class EventTriggerExample {
     runCount = runs.length;
     windows = runs.map((run) => run.scheduledFor).toList()..sort();
 
-    scheduler.close();
+    await scheduler.close();
     await events.close();
 
     assert(
@@ -295,7 +295,7 @@ class MissedWindowPolicyExample {
       clock.advance(const Duration(minutes: 1));
     }
 
-    scheduler.close();
+    await scheduler.close();
     ran.sort();
     return ran;
   }
@@ -383,7 +383,7 @@ class OneShotSurvivesExample {
     await settle();
     ranAfterMoreTicks = ran.length;
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(
       ran.length == 1 && ran.single == DateTime.utc(2026, 3, 2, 12),
@@ -458,7 +458,7 @@ class OneShotAlreadyPastExample {
     await settle();
     alertsAfterMoreTicks = alerts.length;
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(
       ran.isEmpty && storedRuns == 0,
@@ -542,7 +542,7 @@ class CronInMotionExample {
         .toList();
     nextPlanned = pending.length == 1 ? pending.single.scheduledFor : null;
 
-    scheduler.close();
+    await scheduler.close();
 
     // --- The day fields are OR'd, not AND'ed --------------------------------
     // Both day fields restricted means "day-of-month OR day-of-week", which is

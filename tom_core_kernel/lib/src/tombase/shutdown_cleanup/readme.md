@@ -27,10 +27,12 @@ class CacheService implements TomClosable {
   final IOSink _journal;
   CacheService(this._journal);
 
-  // Synchronous on purpose: nothing awaits what close() returns, so an
-  // `async` body here would run only as far as its first `await`.
+  // Awaited: the journal has flushed before the next closable is called.
   @override
-  void close() => _journal.writeln('cache flushed');
+  Future<void> close() async {
+    _journal.writeln('cache flushed');
+    await _journal.flush();
+  }
 }
 
 void main() {
@@ -42,10 +44,10 @@ void main() {
 }
 ```
 
-Teardown here is **synchronous throughout** — handlers, `close()` and
-`dispose()` alike. Anything that has to await belongs in your own control
-flow; see
-[Teardown is never awaited](../../../../doc/shutdown_cleanup/shutdown_cleanup.md#teardown-is-never-awaited).
+Handlers, `close()` and `dispose()` may all be asynchronous: each is awaited
+before the next runs, and each phase has `phaseTimeout` — ten seconds by
+default — before it is abandoned. See
+[Asynchronous teardown](../../../../doc/shutdown_cleanup/shutdown_cleanup.md#asynchronous-teardown).
 
 ---
 

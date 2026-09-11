@@ -811,6 +811,21 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **Shutdown teardown is awaited, within a per-phase budget (tcopen83).**
+  `TomClosable.close`, `TomDisposable.dispose` and `TomSignalHandler` return
+  `FutureOr<void>`, and `TomShutdownCleanup.performShutdown` awaits each entry
+  before calling the next, so an asynchronous flush or socket close has
+  finished before the phase moves on, and a failure inside its future is
+  reported like a thrown one instead of escaping as an unhandled error.
+  `performShutdown` returns `Future<void>` and hands every later caller the
+  shutdown already under way. Each phase has `phaseTimeout` —
+  `defaultPhaseTimeout`, ten seconds — to finish in; a phase that overruns it
+  is abandoned, reported, and the next phase runs. `TomCloseAdaptor` hands on
+  the future of an asynchronous target. `TomScheduler.close` returns
+  `Future<void>` and completes once its held leases are released; a release
+  that fails is logged rather than raised. A returned future had been
+  discarded, so asynchronous teardown ran only as far as its first `await`.
+
 - **The four settings authorization collections are sets (tcopen82).**
   `TomGetSettingsResult.groups`, `roles`, `entitlements` and `resourceKeys`
   are `Set<String>`: membership is all they are asked, a role resolved through

@@ -79,7 +79,7 @@ Future<void> run() async {
   // Registering does not run anything — the resource is live until the
   // shutdown happens.
   final disposedAfterRegistering = controller.isDisposed;
-  disposableCleanup.performShutdown();
+  await disposableCleanup.performShutdown();
   final disposedAfterShutdown = controller.isDisposed;
 
   print(
@@ -101,7 +101,7 @@ Future<void> run() async {
   closableCleanup.addClosable(connection);
 
   final closedAfterRegistering = connection.isClosed;
-  closableCleanup.performShutdown();
+  await closableCleanup.performShutdown();
   final closedAfterShutdown = connection.isClosed;
 
   print(
@@ -125,7 +125,7 @@ Future<void> run() async {
   final signalBeforeShutdown = handlerSawSignal;
   // The signal is forwarded to every registered handler, so one handler can
   // clean up differently for SIGTERM than for SIGINT.
-  handlerCleanup.performShutdown(signal: ProcessSignal.sigterm);
+  await handlerCleanup.performShutdown(signal: ProcessSignal.sigterm);
 
   print(
     '   - Handler invoked before shutdown: '
@@ -150,7 +150,7 @@ Future<void> run() async {
   final closedByDispose = unrun.isClosed;
 
   // The registrations survive, and a later manual shutdown still honours them.
-  disposedCleanup.performShutdown();
+  await disposedCleanup.performShutdown();
   final closedByLaterShutdown = unrun.isClosed;
 
   print('   - ${unrun.name} closed by dispose():      $closedByDispose');
@@ -173,7 +173,7 @@ Future<void> run() async {
 
   final custom = TomShutdownCleanup();
   custom.addDisposable(customResource);
-  custom.performShutdown();
+  await custom.performShutdown();
 
   print('   - ${customResource.name} disposed: ${customResource.isDisposed}');
   print('   - ${globalResource.name} disposed: ${globalResource.isDisposed}\n');

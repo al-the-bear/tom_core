@@ -122,7 +122,7 @@ class LifecycleExample {
         .firstWhere((r) => r.state == TomJobRunState.pending)
         .scheduledFor;
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(afterPlanning == 0, 'Planning a window does not execute it');
     assert(
@@ -213,7 +213,7 @@ class StoreRecordExample {
     startedAtRecorded = run.startedAt != null;
     claimReleased = run.claimedBy == null;
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(jobName == 'hourly-rollup', 'Runs are keyed by the job name');
     assert(
@@ -289,7 +289,7 @@ class LeaseLockExample {
     holderVanished = info.holderVanished;
     heldDuringRun = info.lease != null;
 
-    scheduler.close();
+    await scheduler.close();
     lock.close();
 
     assert(

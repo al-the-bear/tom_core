@@ -131,7 +131,7 @@ Future<void> run() async {
   final databaseClosedBefore = database.isClosed;
   // The adaptor *is* a TomClosable — that is the whole conversion.
   final TomClosable asClosable = databaseAdaptor;
-  asClosable.close();
+  await asClosable.close();
   final databaseClosedAfter = database.isClosed;
 
   print('   - ${database.connectionString}');
@@ -149,7 +149,7 @@ Future<void> run() async {
   final streamDisposedBefore = stream.isDisposed;
   // Still `close()` on the adaptor — the adaptor's own name for teardown does
   // not change with the target's.
-  streamAdaptor.close();
+  await streamAdaptor.close();
   final streamDisposedAfter = stream.isDisposed;
 
   print('   - ${stream.streamName}');
@@ -165,7 +165,7 @@ Future<void> run() async {
   final resourceAdaptor = TomCloseAdaptor(resource, 'shutdown');
 
   final resourceShutdownBefore = resource.isShutdown;
-  resourceAdaptor.close();
+  await resourceAdaptor.close();
   final resourceShutdownAfter = resource.isShutdown;
 
   print('   - ${resource.resourceId}');
@@ -232,7 +232,7 @@ Future<void> run() async {
   cleanup.addClosable(TomCloseAdaptor(replica));
   cleanup.addClosable(TomCloseAdaptor(auditLog));
 
-  cleanup.performShutdown();
+  await cleanup.performShutdown();
 
   print('   - ${primary.connectionString} closed: ${primary.isClosed}');
   print('   - ${replica.connectionString} closed: ${replica.isClosed}');

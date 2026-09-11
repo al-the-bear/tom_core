@@ -161,7 +161,7 @@ class DiscoveryExample {
     reconciliationTimeout = reconciliation.timeout;
     reconciliationPolicy = reconciliation.missedWindowPolicy;
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(
       registeredNames.length == 2,
@@ -228,7 +228,7 @@ class DeclaredRunExample {
         .firstWhere((r) => r.state != TomJobRunState.pending)
         .state;
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(runsAfterPlanning == 0, 'The first tick plans; it does not execute');
     assert(
@@ -279,7 +279,7 @@ class ScanValidationExample {
     }
     nothingRegistered = scheduler.jobs.isEmpty;
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(
       errorKey == 'scheduled_job.multiple_schedules',
@@ -355,7 +355,7 @@ class CoexistenceExample {
       collisionKey = error.key;
     }
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(
       bothRegistered.length == 2,

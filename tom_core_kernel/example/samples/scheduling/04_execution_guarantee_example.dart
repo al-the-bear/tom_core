@@ -125,7 +125,7 @@ class RetryIdempotenceExample {
     finalAttempt = run.attempt;
     finalState = run.state;
 
-    scheduler.close();
+    await scheduler.close();
 
     assert(attemptsMade == 2, 'One failure, one retry');
     assert(
@@ -501,7 +501,7 @@ class OverrunningBodyExample {
       (r) => r.scheduledFor == DateTime.utc(2026, 3, 2, 10),
     );
     finalState = run.state;
-    scheduler.close();
+    await scheduler.close();
 
     assert(
       overrunningAfterTimeout == 1,

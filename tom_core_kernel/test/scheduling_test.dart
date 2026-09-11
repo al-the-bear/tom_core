@@ -208,6 +208,37 @@ class StallingLeaseLock extends TomLeaseLock {
   void close() => inner.close();
 }
 
+/// A lock whose releases fail — a coordinator that is unreachable by the time
+/// the node shuts down.
+class FailingReleaseLeaseLock extends TomLeaseLock {
+  final TomLeaseLock inner;
+
+  FailingReleaseLeaseLock(this.inner);
+
+  @override
+  Future<TomLease?> acquire(String resource, String owner, Duration ttl) =>
+      inner.acquire(resource, owner, ttl);
+
+  @override
+  Future<TomLease?> renew(TomLease lease, Duration ttl) =>
+      inner.renew(lease, ttl);
+
+  @override
+  Future<void> release(TomLease lease) async {
+    await Future<void>.delayed(Duration.zero);
+    throw StateError('coordinator unreachable');
+  }
+
+  @override
+  Future<TomLeaseInfo> inspect(String resource) => inner.inspect(resource);
+
+  @override
+  Future<void> forget(TomOneShotResource resource) => inner.forget(resource);
+
+  @override
+  void close() => inner.close();
+}
+
 /// Lets the runs a `tick()` started actually finish.
 ///
 /// `tick()` deliberately does not await the work it dispatches — a slow job must
@@ -1251,11 +1282,9 @@ void main() {
                 dispatcher: dispatcher,
               ),
           ];
-          addTearDown(() {
-            for (final node in nodes) {
-              node.close();
-            }
-          });
+          addTearDown(
+            () => Future.wait([for (final node in nodes) node.close()]),
+          );
           final job = jobNamed(
             'hourly',
             TomIntervalSchedule(const Duration(hours: 1)),
@@ -2097,8 +2126,9 @@ void main() {
         },
       );
 
-      test('register after close is refused', () {
-        final scheduler = schedulerFor(store, clock, alerts: alerts)..close();
+      test('register after close is refused', () async {
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        await scheduler.close();
         expect(
           () => scheduler.register(dailyJob()),
           throwsA(isA<TomScheduleException>()),
@@ -2378,7 +2408,7 @@ void main() {
           final before = schedulerFor(outageStore, outageClock);
           before.register(job);
           await before.tick();
-          before.close();
+          await before.close();
 
           // The process was down across the instant. The window is durable
           // state, so the policy — which governs windows the schedule would
@@ -3820,7 +3850,7 @@ void main() {
       test('a tick after close does nothing', () async {
         final scheduler = schedulerFor(store, clock, alerts: alerts);
         scheduler.register(dailyJob());
-        scheduler.close();
+        await scheduler.close();
         await scheduler.tick();
         expect(await store.all(), isEmpty);
       });
@@ -3859,7 +3889,7 @@ void main() {
               .state,
           TomJobRunState.running,
         );
-        firstScheduler.close(); // process exits holding the lease
+        await firstScheduler.close(); // process exits holding the lease
 
         // --- Second process: same file, later clock.
         clock.now = DateTime.utc(2026, 3, 2, 0, 30);
@@ -4433,11 +4463,7 @@ void main() {
           return dispatchers[i] = RecordingDispatcher();
         },
       );
-      addTearDown(() {
-        for (final node in nodes) {
-          node.close();
-        }
-      });
+      addTearDown(() => Future.wait([for (final node in nodes) node.close()]));
 
       final job = jobNamed('nightly', TomCronSchedule('0 3 * * *'));
       for (final node in nodes) {
@@ -4483,11 +4509,7 @@ void main() {
       );
       final node1 = RecordingDispatcher();
       final nodes = cluster(2, dispatcher: (i) => i == 0 ? node0 : node1);
-      addTearDown(() {
-        for (final node in nodes) {
-          node.close();
-        }
-      });
+      addTearDown(() => Future.wait([for (final node in nodes) node.close()]));
       final job = TomJobDefinition(
         name: 'nightly',
         schedule: TomCronSchedule('0 3 * * *'),
@@ -4767,11 +4789,9 @@ void main() {
       'allowOverlap false serialises a job across the whole cluster',
       () async {
         final nodes = cluster(2);
-        addTearDown(() {
-          for (final node in nodes) {
-            node.close();
-          }
-        });
+        addTearDown(
+          () => Future.wait([for (final node in nodes) node.close()]),
+        );
 
         GatedCommand.open('serial');
         final job = TomJobDefinition(
@@ -4812,11 +4832,7 @@ void main() {
         2,
         dispatcher: (i) => dispatchers[i] = RecordingDispatcher(),
       );
-      addTearDown(() {
-        for (final node in nodes) {
-          node.close();
-        }
-      });
+      addTearDown(() => Future.wait([for (final node in nodes) node.close()]));
 
       final job = TomJobDefinition(
         name: 'parallel',
@@ -4907,15 +4923,44 @@ void main() {
         await node.tick();
         expect(node.heldLeases, hasLength(1));
 
-        node.close();
-        // The release is fire-and-forget, so let the microtask queue drain.
-        await Future<void>.delayed(Duration.zero);
+        // Awaiting close is enough: it completes once the releases have.
+        await node.close();
 
         expect((await lock.inspect('job:closing')).isHeld, isFalse);
         GatedCommand.release('closing');
         await Future<void>.delayed(Duration.zero);
       },
     );
+
+    test('a lease that fails to release does not fail close', () async {
+      // The lease expires after its TTL, as it would after a hard kill, so a
+      // release that cannot land is no reason to report the close as failed.
+      final node = schedulerFor(
+        store,
+        clock,
+        lock: FailingReleaseLeaseLock(lock),
+        ownerId: 'node-0',
+      );
+      GatedCommand.open('unreleased');
+      node.register(
+        TomJobDefinition(
+          name: 'unreleased',
+          schedule: TomIntervalSchedule(const Duration(minutes: 5)),
+          body: (_) => GatedCommand('unreleased'),
+          retryPolicy: TomRetryPolicy.none,
+        ),
+      );
+
+      await node.tick();
+      clock.advance(const Duration(minutes: 6));
+      await node.tick();
+      expect(node.heldLeases, hasLength(1));
+
+      await expectLater(node.close(), completes);
+      expect((await lock.inspect('job:unreleased')).isHeld, isTrue);
+      GatedCommand.release('unreleased');
+      await Future<void>.delayed(Duration.zero);
+    });
 
     test('heldLeases reports what this node is sitting on', () async {
       final node = schedulerFor(store, clock, lock: lock, ownerId: 'node-0');

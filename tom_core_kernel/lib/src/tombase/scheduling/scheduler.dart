@@ -482,21 +482,22 @@ class TomScheduler implements TomClosable {
     _timer = null;
   }
 
-  /// Stops the scheduler, cancels event subscriptions and closes the
-  /// dispatcher.
+  /// Stops the scheduler, cancels event subscriptions, closes the dispatcher
+  /// and releases the leases it holds, completing once the releases have
+  /// landed.
   ///
   /// Runs already dispatched are not waited for — [close] is the shutdown path,
   /// and their leases will expire so another process picks them up. A shutdown
   /// that would rather finish the work than hand it on calls [stop] and awaits
-  /// [drain] first; [close] itself cannot, being synchronous.
+  /// [drain] first.
   ///
-  /// Held leases are released on the way out so peers can take the work
-  /// immediately instead of waiting out [leaseTtl]. That release is
-  /// fire-and-forget: [TomClosable.close] is synchronous, and a lease that fails
-  /// to release simply expires, which is the behaviour a hard kill would have
-  /// produced anyway.
+  /// Releasing the held leases is what lets peers take the work immediately
+  /// instead of waiting out [leaseTtl], so a shutdown awaiting this has handed
+  /// the work on by the time it continues. A lease that fails to release is
+  /// logged and left to expire — the behaviour a hard kill would have produced
+  /// anyway — rather than failing the close.
   @override
-  void close() {
+  Future<void> close() async {
     _closed = true;
     stop();
     for (final subscription in _eventSubscriptions.values) {
@@ -504,11 +505,10 @@ class TomScheduler implements TomClosable {
     }
     _eventSubscriptions.clear();
     final coordinator = lock;
-    if (coordinator != null) {
-      for (final lease in _leases.values) {
-        unawaited(coordinator.release(lease));
-      }
-    }
+    final releases = <Future<void>>[
+      if (coordinator != null)
+        for (final lease in _leases.values) _releaseOnClose(coordinator, lease),
+    ];
     _leases.clear();
     _lostLeases.clear();
     // The leases they kept were released above; their heartbeats would renew
@@ -517,6 +517,22 @@ class TomScheduler implements TomClosable {
       overrun.heartbeat.cancel();
     }
     dispatcher.close();
+    await Future.wait(releases);
+  }
+
+  /// Releases [lease] for [close], logging a failure instead of raising it.
+  static Future<void> _releaseOnClose(
+    TomLeaseLock coordinator,
+    TomLease lease,
+  ) async {
+    try {
+      await coordinator.release(lease);
+    } catch (e) {
+      tomLog.warn(
+        'Scheduler close could not release the lease on ${lease.resource}; '
+        'it expires after its TTL instead: $e',
+      );
+    }
   }
 
   // ===========================================================================

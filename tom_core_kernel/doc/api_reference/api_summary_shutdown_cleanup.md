@@ -24,10 +24,10 @@ for SIGHUP and SIGINT (and any additional signals added via `addSignal`) and, on
 the first signal — or on a manual `performShutdown` call — runs three cleanup
 phases in order: registered signal handlers, then closables (`TomClosable`), then
 disposables (`TomDisposable`). Each callout is isolated so a failing handler
-never blocks the rest, and cleanup runs at most once per instance. All three
-phases are **synchronous**: an entry is called through a `void`-returning
-function and whatever it returns is discarded, so an `async` handler, `close()`
-or `dispose()` compiles but runs only as far as its first `await`. `TomClosable`
+never blocks the rest, and cleanup runs at most once per instance. Every entry
+may be asynchronous and is awaited before the next is called; each phase has
+`phaseTimeout` (ten seconds by default) to finish in, and a phase that overruns
+it is abandoned while the next phase still runs. `TomClosable`
 and `TomDisposable` are the interfaces objects implement to participate;
 `TomCloseAdaptor` uses reflection to wrap objects that expose a `close()` /
 `dispose()` (or custom-named) method without implementing those interfaces. The
@@ -58,7 +58,7 @@ terminates. `dispose` is called automatically by `TomShutdownCleanup`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `dispose` | `void dispose()` | Disposes of resources held by this object; called automatically during shutdown cleanup. Must complete synchronously — a returned `Future` is discarded. |
+| `dispose` | `FutureOr<void> dispose()` | Disposes of resources held by this object; called automatically during shutdown cleanup. May be asynchronous — a returned `Future` is awaited before the next object is disposed. |
 
 ### TomClosable
 
@@ -71,7 +71,7 @@ is called automatically by `TomShutdownCleanup`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `close` | `void close()` | Closes resources (connections, streams, etc.) held by this object; called automatically during shutdown cleanup. Must complete synchronously — a returned `Future` is discarded, and a throw after its first `await` misses the per-entry failure report. |
+| `close` | `FutureOr<void> close()` | Closes resources (connections, streams, etc.) held by this object; called automatically during shutdown cleanup. May be asynchronous — a returned `Future` is awaited, within the phase's `phaseTimeout`, and a failure inside it is reported like a thrown one. |
 
 ### TomCloseAdaptor
 
@@ -104,13 +104,14 @@ close/dispose method is found, or if the method requires parameters.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `close` | `void close()` | *(override)* Invokes the resolved close/dispose method on the wrapped object. |
+| `close` | `FutureOr<void> close()` | *(override)* Invokes the resolved close/dispose method on the wrapped object, handing on the `Future` an asynchronous target returns. |
 
 ### TomShutdownCleanup
 
 Central coordinator for graceful shutdown cleanup. Automatically listens for
 SIGHUP and SIGINT; on the first signal (or a manual `performShutdown`) it runs
-signal handlers, then closables, then disposables, exactly once.
+signal handlers, then closables, then disposables, exactly once — awaiting each
+entry, within `phaseTimeout` per phase.
 
 #### Constructors
 
@@ -118,18 +119,25 @@ signal handlers, then closables, then disposables, exactly once.
 TomShutdownCleanup()
 ```
 
+#### Constants
+
+| Constant | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultPhaseTimeout` | `static const Duration` | The `phaseTimeout` a new instance starts with: ten seconds. |
+
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `phaseTimeout` | `Duration` | How long each phase may take before it is abandoned — the entry being awaited is left to finish on its own and the entries behind it are not called. Covers the whole phase, synchronous entries included. Must be positive; a zero or negative value throws `ArgumentError`. Default `defaultPhaseTimeout`. |
 | `paused` | `bool` | When true, signal handling is paused and signals are ignored (for REPLs with their own CTRL-C handling) (default `false`). |
-| `silent` | `bool` | When true, suppresses output messages during shutdown (default `false`). |
+| `silent` | `bool` | When true, suppresses output messages during shutdown — status messages, failure reports and phase-timeout reports (default `false`). |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `performShutdown` | `void performShutdown({ProcessSignal signal = ProcessSignal.sigint, bool fromSignal = false})` | Triggers cleanup once across the instance's life; the manual path (`fromSignal` false) always runs quietly, the signal path honours `paused` and `silent`. |
+| `performShutdown` | `Future<void> performShutdown({ProcessSignal signal = ProcessSignal.sigint, bool fromSignal = false})` | Runs the cleanup once across the instance's life and completes when every entry has finished or its phase was abandoned; every later call gets the same shutdown. The manual path (`fromSignal` false) always runs quietly, the signal path honours `paused` and `silent`. Never await it from inside an entry. |
 | `addSignalHandler` | `void addSignalHandler(TomSignalHandler handler)` | Adds a custom signal handler, executed first (before closables and disposables). |
 | `addClosable` | `void addClosable(TomClosable closable)` | Adds a closable object, closed after signal handlers but before disposables. |
 | `addDisposable` | `void addDisposable(TomDisposable disposable)` | Adds a disposable object, disposed last. |
@@ -141,5 +149,5 @@ TomShutdownCleanup()
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `TomSignalHandler` | `typedef TomSignalHandler = void Function(ProcessSignal onData)` | Handler function type for processing system signals; the `onData` parameter carries the received signal. The return value is discarded, so an `async` handler runs only as far as its first `await`. |
+| `TomSignalHandler` | `typedef TomSignalHandler = FutureOr<void> Function(ProcessSignal onData)` | Handler function type for processing system signals; the `onData` parameter carries the received signal. An `async` handler is awaited before the next handler runs. |
 | `tomShutdownCleanup` | `final TomShutdownCleanup tomShutdownCleanup` | Global default `TomShutdownCleanup` instance, automatically listening for SIGHUP and SIGINT. |

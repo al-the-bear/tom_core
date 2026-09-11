@@ -6,7 +6,7 @@
 ///
 /// Key concepts covered:
 /// - Cleanup phase order: signal handlers → closables → disposables
-/// - Once-only execution (`_executed`): repeated triggers run cleanup once
+/// - Once-only execution: repeated triggers run cleanup once
 /// - Fault isolation: a throwing entry never aborts the remaining cleanups
 /// - [TomShutdownCleanup.paused]: the signal path is skipped while paused,
 ///   but a manual `performShutdown()` always runs
@@ -15,6 +15,10 @@
 ///   signal watchers down so a short-lived instance stops leaking
 /// - [TomCloseAdaptor]: adapts an object with a `close()`/`dispose()`/custom
 ///   teardown method (resolved via reflection) into a [TomClosable]
+/// - Asynchronous teardown: a `close()` that returns a `Future` has finished
+///   before the next entry is called and before `performShutdown()` completes
+/// - [TomShutdownCleanup.phaseTimeout]: a phase that overruns its budget is
+///   abandoned, and the next phase still runs
 ///
 /// To run this file on its own:
 /// ```bash
@@ -22,6 +26,7 @@
 /// ```
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -68,6 +73,27 @@ class FailingClosable implements TomClosable {
   void close() => throw StateError('close boom');
 }
 
+/// A journal whose close flushes asynchronously, as a file or socket would.
+class FlushingJournal implements TomClosable {
+  FlushingJournal(this.trace);
+  final List<String> trace;
+  bool flushed = false;
+
+  @override
+  Future<void> close() async {
+    // Stands in for `await sink.flush(); await sink.close();`.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    flushed = true;
+    trace.add('journal flushed');
+  }
+}
+
+/// A connection whose close is never acknowledged by the peer.
+class UnresponsivePeer implements TomClosable {
+  @override
+  Future<void> close() => Completer<void>().future;
+}
+
 /// A legacy service with a custom-named teardown method and no Tom interface.
 ///
 /// Registered with the Tom reflector so [TomCloseAdaptor] can resolve and
@@ -104,7 +130,7 @@ Future<void> run() async {
   ordered.addSignalHandler((signal) => orderTrace.add('handler'));
   ordered.addClosable(CountingClosable(orderTrace));
 
-  ordered.performShutdown();
+  await ordered.performShutdown();
 
   print('   - Execution trace: $orderTrace\n');
 
@@ -118,9 +144,9 @@ Future<void> run() async {
   final onceClosable = CountingClosable(onceTrace);
   once.addClosable(onceClosable);
 
-  once.performShutdown();
-  once.performShutdown();
-  once.performShutdown();
+  await once.performShutdown();
+  await once.performShutdown();
+  await once.performShutdown();
 
   print(
     '   - close() invocations after 3 triggers: ${onceClosable.closeCount}\n',
@@ -139,7 +165,7 @@ Future<void> run() async {
   isolated.addClosable(CountingClosable(isolationTrace));
   isolated.addDisposable(CountingDisposable(isolationTrace));
 
-  isolated.performShutdown();
+  await isolated.performShutdown();
 
   print('   - Survivors still ran: $isolationTrace\n');
 
@@ -155,11 +181,11 @@ Future<void> run() async {
   paused.paused = true;
 
   // Signal-driven trigger is ignored while paused …
-  paused.performShutdown(fromSignal: true);
+  await paused.performShutdown(fromSignal: true);
   final afterSignalWhilePaused = List<String>.from(pausedTrace);
 
   // … but a manual call always runs.
-  paused.performShutdown();
+  await paused.performShutdown();
   final afterManual = List<String>.from(pausedTrace);
 
   print('   - After signal while paused: $afterSignalWhilePaused');
@@ -174,7 +200,7 @@ Future<void> run() async {
   silent.silent = true;
   silent.addClosable(CountingClosable(<String>[]));
   // With silent = true the signal path emits no "Received …"/"Shutdown …" lines.
-  silent.performShutdown(fromSignal: true);
+  await silent.performShutdown(fromSignal: true);
 
   print('   - Ran signal-path cleanup without emitting status lines\n');
 
@@ -188,7 +214,7 @@ Future<void> run() async {
   final adaptorCleanup = TomShutdownCleanup();
   adaptorCleanup.addClosable(adaptor);
 
-  adaptorCleanup.performShutdown();
+  await adaptorCleanup.performShutdown();
 
   print(
     '   - LegacyService.shutdown() called via adaptor: '
@@ -212,6 +238,47 @@ Future<void> run() async {
   print('   - cancelAll() is idempotent and dispose() tears down cleanly\n');
 
   // ---------------------------------------------------------------------------
+  // Example 8: asynchronous teardown is awaited
+  // ---------------------------------------------------------------------------
+  print('8. Asynchronous teardown:');
+
+  final asyncTrace = <String>[];
+  final journal = FlushingJournal(asyncTrace);
+  final asyncCleanup = TomShutdownCleanup();
+  asyncCleanup.addClosable(journal);
+  asyncCleanup.addDisposable(CountingDisposable(asyncTrace));
+
+  // Completes only once the journal has flushed — which is what makes it safe
+  // to exit the process straight after awaiting it.
+  await asyncCleanup.performShutdown();
+
+  print('   - Execution trace: $asyncTrace\n');
+
+  // ---------------------------------------------------------------------------
+  // Example 9: a phase that overruns its budget is abandoned
+  // ---------------------------------------------------------------------------
+  print('9. Phase timeout:');
+
+  final timeoutTrace = <String>[];
+  final bounded = TomShutdownCleanup()
+    ..silent = true
+    ..phaseTimeout = const Duration(milliseconds: 100);
+  bounded.addClosable(UnresponsivePeer());
+  bounded.addClosable(CountingClosable(timeoutTrace)); // behind the hang
+  bounded.addDisposable(CountingDisposable(timeoutTrace));
+
+  final started = DateTime.now();
+  await bounded.performShutdown();
+  final took = DateTime.now().difference(started);
+
+  print(
+    '   - Default budget per phase: ${TomShutdownCleanup.defaultPhaseTimeout}',
+  );
+  print(
+    '   - Survivors: $timeoutTrace, shutdown took ${took.inMilliseconds} ms\n',
+  );
+
+  // ---------------------------------------------------------------------------
   // Teardown for the instances the examples above created
   // ---------------------------------------------------------------------------
   // Running a cleanup is not the same as disposing it: `performShutdown()`
@@ -226,6 +293,8 @@ Future<void> run() async {
     paused,
     silent,
     adaptorCleanup,
+    asyncCleanup,
+    bounded,
   ]) {
     await cleanup.dispose();
   }
@@ -255,6 +324,18 @@ Future<void> run() async {
 
   // Example 6: the adaptor resolved and invoked the custom teardown method.
   assert(legacy.shutdownCalled == true);
+
+  // Example 8: the flush finished before the disposables phase began.
+  assert(journal.flushed, 'performShutdown() completes after the flush');
+  assert(asyncTrace.length == 2);
+  assert(asyncTrace[0] == 'journal flushed');
+  assert(asyncTrace[1] == 'disposable');
+
+  // Example 9: the closables phase was abandoned at the hang — the closable
+  // behind it never ran — and the disposables phase ran in full.
+  assert(timeoutTrace.length == 1);
+  assert(timeoutTrace.single == 'disposable');
+  assert(took < const Duration(seconds: 5), 'the budget bounded the shutdown');
 }
 
 /// Standalone entry point.

@@ -627,7 +627,8 @@ Every `tick()` does three things, in order:
 `tick()` is public and directly awaitable, which is what makes the whole engine
 testable without waiting on wall-clock time. `start()` runs a pass immediately
 and then every `tickInterval`; `stop()` halts the timer but leaves the scheduler
-usable; `close()` releases held leases and refuses further registration.
+usable; `close()` releases held leases, completing once they have landed, and
+refuses further registration.
 
 Note the third step: dispatch *starts* the runs it claims. Awaiting `tick()`
 therefore awaits the pass, not the work — deliberately, so that one slow job
