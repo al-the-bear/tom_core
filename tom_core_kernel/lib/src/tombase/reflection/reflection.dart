@@ -185,12 +185,17 @@ class TomReflectionInfo {
         im.invokeSetter(e.key, _checkedMap<bool?>(e)),
   };
 
-  /// Handlers for setting primitive List types via reflection.
+  /// Handlers for setting a primitive List or Set field from a JSON array.
   ///
   /// Maps type signatures to functions that set the value correctly, building
   /// a checked list for typed targets like `List<int>`. The two unconstrained
-  /// targets pass the source list through unchanged — there is no element type
-  /// for them to violate.
+  /// list targets pass the source list through unchanged — there is no element
+  /// type for them to violate.
+  ///
+  /// A `Set` field is filled from the same JSON array — a set serializes as
+  /// one, since it is an `Iterable` — through the same per-element check, so a
+  /// wrong-typed element is refused with its position exactly as for a list.
+  /// A duplicate on the wire collapses: that is what the field's type says.
   static final Map<
     Type,
     void Function(InstanceMirror, MapEntry<String, dynamic>)
@@ -207,7 +212,23 @@ class TomReflectionInfo {
     List<double?>: (im, e) => im.invokeSetter(e.key, _checkedList<double?>(e)),
     List<bool>: (im, e) => im.invokeSetter(e.key, _checkedList<bool>(e)),
     List<bool?>: (im, e) => im.invokeSetter(e.key, _checkedList<bool?>(e)),
+    Set<Object?>: (im, e) => im.invokeSetter(e.key, _checkedSet<Object?>(e)),
+    Set<dynamic>: (im, e) => im.invokeSetter(e.key, _checkedSet<dynamic>(e)),
+    Set<Object>: (im, e) => im.invokeSetter(e.key, _checkedSet<Object>(e)),
+    Set<String>: (im, e) => im.invokeSetter(e.key, _checkedSet<String>(e)),
+    Set<String?>: (im, e) => im.invokeSetter(e.key, _checkedSet<String?>(e)),
+    Set<int>: (im, e) => im.invokeSetter(e.key, _checkedSet<int>(e)),
+    Set<int?>: (im, e) => im.invokeSetter(e.key, _checkedSet<int?>(e)),
+    Set<double>: (im, e) => im.invokeSetter(e.key, _checkedSet<double>(e)),
+    Set<double?>: (im, e) => im.invokeSetter(e.key, _checkedSet<double?>(e)),
+    Set<bool>: (im, e) => im.invokeSetter(e.key, _checkedSet<bool>(e)),
+    Set<bool?>: (im, e) => im.invokeSetter(e.key, _checkedSet<bool?>(e)),
   };
+
+  /// Builds a `Set<T>` from [entry]'s JSON array, checking every element up
+  /// front exactly as [_checkedList] does; a repeated element collapses.
+  static Set<T> _checkedSet<T>(MapEntry<String, dynamic> entry) =>
+      _checkedList<T>(entry).toSet();
 
   /// Builds a `List<T>` from [entry]'s value, checking every element up front.
   ///
@@ -1904,7 +1925,8 @@ class TomReflectionInfo {
   /// Sets a List value on a field.
   ///
   /// Handles multiple scenarios in order:
-  /// 1. Primitive list types (`List<int>`, `List<String>`, etc.)
+  /// 1. Primitive list and set types (`List<int>`, `Set<String>`, etc.) — a
+  ///    set field is filled from the JSON array a set serializes to
   /// 2. DateTime list types (`List<DateTime>`, etc.)
   /// 3. Annotated object list types (`List<MyClass>`)
   /// 4. Fallback: assign the list as it arrived, or refuse with

@@ -73,6 +73,15 @@ class ListHolder {
 }
 
 @tomReflector
+class SetHolder {
+  Set<String>? stringSet;
+  Set<int>? intSet;
+  Set<String?>? nullableStringSet;
+
+  SetHolder();
+}
+
+@tomReflector
 class DateTimeMapHolder {
   Map<String, DateTime>? dateTimeMap;
   Map<String, TomZonedDate>? zonedDateMap;
@@ -1259,6 +1268,72 @@ void main() {
         'dynamicList': ['text', 123, true, 4.5],
       });
       expect(holder.dynamicList, ['text', 123, true, 4.5]);
+    });
+  });
+
+  // A JSON array read into a Set field: the collection a membership-only field
+  // really is. The wire stays an array; the set is built from it, so a
+  // duplicate collapses rather than being carried, and every element is
+  // checked exactly as for a list.
+  group('tomReflectionInfo.setValues - Sets', () {
+    test('should set Set<String> from a JSON array', () {
+      final holder = SetHolder();
+      tomReflectionInfo.setValues(holder, {
+        'stringSet': ['a', 'b', 'c'],
+      });
+      expect(holder.stringSet, {'a', 'b', 'c'});
+      expect(holder.stringSet, isA<Set<String>>());
+    });
+
+    test('a duplicate on the wire collapses', () {
+      final holder = SetHolder();
+      tomReflectionInfo.setValues(holder, {
+        'stringSet': ['admin', 'user', 'admin'],
+        'intSet': [1, 2, 2, 3],
+      });
+      expect(holder.stringSet, {'admin', 'user'});
+      expect(holder.intSet, {1, 2, 3});
+    });
+
+    test('should set a set of nullable elements', () {
+      final holder = SetHolder();
+      tomReflectionInfo.setValues(holder, {
+        'nullableStringSet': ['a', null],
+      });
+      expect(holder.nullableStringSet, {'a', null});
+    });
+
+    test('a wrong-typed element is refused, naming its position', () {
+      final holder = SetHolder();
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'intSet': [1, 'x'],
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'reflection.set.collection_element_type_mismatch',
+              )
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                allOf(contains('intSet'), contains('[1]'), contains("'x'")),
+              ),
+        ),
+      );
+    });
+
+    test('a set serializes as a JSON array and round-trips', () {
+      final holder = SetHolder()..stringSet = {'x', 'y'};
+      final values = tomReflectionInfo.getValues(holder);
+      expect(values['stringSet'], ['x', 'y']);
+
+      final restored = SetHolder();
+      tomReflectionInfo.setValues(holder, values);
+      tomReflectionInfo.setValues(restored, values);
+      expect(restored.stringSet, {'x', 'y'});
     });
   });
 
