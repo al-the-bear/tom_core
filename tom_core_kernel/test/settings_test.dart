@@ -17,12 +17,24 @@ void main() {
 
   group('TomGetSettingsMessage', () {
     group('constructor', () {
-      test('should create message with default empty authorization token', () {
-        // Act
+      test('an unset authorization token is null', () {
+        // No field initializer: an unset token is `null`, the same answer the
+        // result's strings give, rather than a `""` that could not be told
+        // from a token deliberately cleared.
         final message = TomGetSettingsMessage();
 
-        // Assert
-        expect(message.authorizationToken, equals(''));
+        expect(message.authorizationToken, isNull);
+      });
+
+      test('and null however the message was built', () {
+        // The reflected deserializer's zero-argument path must agree with the
+        // constructor, which is what the result's strings were fixed for.
+        final mirror =
+            tomReflector.reflectType(TomGetSettingsMessage) as ClassMirror;
+        final restored = tomReflectionInfo
+            .createInstanceFromJsonString<TomGetSettingsMessage>(mirror, '{}');
+
+        expect(restored.authorizationToken, isNull);
       });
 
       test('should allow null authorization token', () {

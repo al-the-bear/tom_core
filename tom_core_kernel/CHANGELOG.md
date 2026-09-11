@@ -811,6 +811,14 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **`TomGetSettingsMessage.authorizationToken` defaults to `null`
+  (tcopen80).** Its `""` field initializer made an unset token read as `""`,
+  indistinguishable from one deliberately cleared, while the declared
+  `String?` suggested a `null` that never occurred — the ambiguity the result's
+  eight strings had already shed. The initializer is gone, so an unset token is
+  `null` through the constructor and through reflected deserialization alike.
+  A server still treats `null` and `""` the same, as an anonymous request.
+
 - **Personal fields travel in the token's encrypted half (tcopen78).**
   `convertPrincipalToTokenPayload` put first and last name, email, phone,
   mobile, both address lines, city, postcode, state/region and `attributes`

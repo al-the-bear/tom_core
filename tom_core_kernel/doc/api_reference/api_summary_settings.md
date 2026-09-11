@@ -50,7 +50,7 @@ permissions to return.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `authorizationToken` | `String?` | The authorization token (typically a JWT bearer token) authenticating the settings request; if null or empty, the server may return default/anonymous settings (default `""`). This is the one string in the module that really does default to the empty string — it is a field initializer, so an unset token reads as `""` rather than `null` and the two are not distinguishable here. `TomGetSettingsResult`'s strings default to `null` instead; do not carry the convention across. |
+| `authorizationToken` | `String?` | The authorization token (typically a JWT bearer token) authenticating the settings request. Default `null`: the field has no initializer, so an unset token is `null` however the message was built — the convention every string on `TomGetSettingsResult` follows. A server treats `null` and empty alike, as an anonymous request it may answer with default settings. |
 
 ### TomGetSettingsResult
 

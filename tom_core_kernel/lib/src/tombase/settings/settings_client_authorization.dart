@@ -77,8 +77,11 @@ class TomGetSettingsMessage {
   /// The authorization token for authenticating the settings request.
   ///
   /// Typically a JWT bearer token obtained from the authentication process.
-  /// If null or empty, the server may return default/anonymous settings.
-  String? authorizationToken = "";
+  /// `null` when the client sent none — however the message was built, since
+  /// the field has no initializer, exactly like every string on
+  /// [TomGetSettingsResult]. A server treats `null` and an empty string alike,
+  /// as an anonymous request, and may answer with default settings.
+  String? authorizationToken;
 }
 
 // =============================================================================

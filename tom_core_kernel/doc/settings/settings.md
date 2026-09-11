@@ -131,12 +131,14 @@ The request message for fetching settings from the server.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `authorizationToken` | `String?` | `""` | JWT bearer token for authentication |
+| `authorizationToken` | `String?` | `null` | JWT bearer token for authentication |
 
-The empty-string default is a field initializer, and it is the one place in the
-module where an unset string reads as `""` rather than `null`. Every string on
-`TomGetSettingsResult` defaults to `null` instead — do not carry the convention
-across.
+The field has no initializer, so an unset token is `null` however the message
+was built — through the constructor or the reflected deserializer's
+zero-argument path — the same convention every string on `TomGetSettingsResult`
+follows. A server treats `null` and an empty string alike, as an anonymous
+request it may answer with default settings; a server testing the token checks
+both (`token == null || token.isEmpty`).
 
 ### TomGetSettingsResult
 
