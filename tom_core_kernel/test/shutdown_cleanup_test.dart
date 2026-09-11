@@ -1766,6 +1766,26 @@ void main() {
       expect(log, equals(['first', 'releasing', 'third']));
     });
 
+    test('an entry that unregisters itself does not cost the next', () async {
+      // The common shape: a close() that takes its own registration back, as
+      // it would when the same code also runs outside a shutdown. Removing an
+      // entry the phase has already reached must not shift it past the next.
+      final log = <String>[];
+      final cleanup = _newCleanup();
+      late final TomShutdownUnregister unregisterSelf;
+      unregisterSelf = cleanup.addClosable(
+        _CallbackClosable(() {
+          log.add('self');
+          unregisterSelf();
+        }),
+      );
+      cleanup.addClosable(NamedClosable('next', log));
+
+      await cleanup.performShutdown();
+
+      expect(log, equals(['self', 'next']));
+    });
+
     test('an entry registered during its own phase still runs', () async {
       final log = <String>[];
       final cleanup = _newCleanup();
