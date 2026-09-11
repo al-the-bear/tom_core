@@ -651,14 +651,25 @@ The jitter is downward-only, so a tick never happens *later* than
 `tickInterval`: lateness is the property schedules care about.
 
 Every constructor argument whose range matters is checked at construction, each
-under its own `schedule.scheduler.*` code: `tickInterval`, `leaseTimeout` and
-`leaseTtl` must be positive, `leaseRenewInterval` must be shorter than
-`leaseTtl`, `maxRunsPerTick` and `maxCatchUpPerTick` must be at least 1, and
-`tickJitter` must be in `[0, 1)`. Each of these values has a way of failing that
-produces no error and no output — a zero dispatch budget claims nothing on every
-pass while planning keeps filling the queue, a zero lease timeout abandons every
-run the instant it is claimed — so the constructor is the last place the mistake
-is still cheap to see.
+under its own `TomScheduleException` code:
+
+| Code | Raised when |
+| ---- | ----------- |
+| `schedule.scheduler.tick_interval` | `tickInterval` is not positive |
+| `schedule.scheduler.lease_timeout` | `leaseTimeout` is not positive |
+| `schedule.scheduler.lease_ttl` | `leaseTtl` is not positive |
+| `schedule.scheduler.renew_interval` | `leaseRenewInterval` is not shorter than `leaseTtl` |
+| `schedule.scheduler.lease_timeout_renewal` | `leaseTimeout` is not longer than `leaseRenewInterval` |
+| `schedule.scheduler.runs_per_tick` | `maxRunsPerTick` is below 1 |
+| `schedule.scheduler.catch_up_per_tick` | `maxCatchUpPerTick` is below 1 |
+| `schedule.scheduler.tick_jitter` | `tickJitter` is outside `[0, 1)` |
+
+Each of these values has a way of failing that produces no error and no output
+— a zero dispatch budget claims nothing on every pass while planning keeps
+filling the queue, a zero lease timeout abandons every run the instant it is
+claimed — so the constructor is the last place the mistake is still cheap to
+see. A closed scheduler refuses `register` and `start` with
+`schedule.scheduler.closed`: it cannot be reused.
 
 Dispatch does **not** await the work it starts — a slow job must not hold up the
 next window of a fast one — so completion, the store write and the lease release
@@ -710,9 +721,19 @@ perfectly satisfiable job as `neverFires`.
 
 ## Recovering an Interrupted Run
 
-A claim that outlives `leaseTimeout` means its holder is gone. What to do with
-the run depends on how far it got, and re-queueing everything is not safe by
-default:
+A claim that outlives `leaseTimeout` means its holder is gone. It can mean
+nothing else, because a running attempt renews its claim every
+`leaseRenewInterval` — with or without a lock — so a slow but healthy attempt
+keeps its claim fresh however long it runs. `leaseTimeout` is therefore how long
+a dead node's run waits to be recovered, and it has no relation to any job's
+`timeout`: a job may be allowed an hour while the lease timeout is fifteen
+minutes, and neither number needs checking against the other. The one relation
+that does exist — `leaseTimeout` above `leaseRenewInterval`, or a live claim
+lapses between two renewals — is between two of the scheduler's own arguments,
+and the constructor enforces it.
+
+What to do with the recovered run depends on how far it got, and re-queueing
+everything is not safe by default:
 
 | The run | Recovered as | Because |
 | ------- | ------------ | ------- |

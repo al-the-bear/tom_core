@@ -74,13 +74,20 @@ class TomScheduler implements TomClosable {
   /// How often [start] runs a [tick]. Positive.
   final Duration tickInterval;
 
-  /// How long a claim may go unrefreshed before the run is considered
-  /// abandoned and returned to the queue.
+  /// How long a claim may go unrenewed before the run is considered abandoned
+  /// and returned to the queue.
   ///
-  /// Must comfortably exceed the longest [TomJobDefinition.timeout] in the
-  /// registry, or a slow-but-healthy run will be handed to a second attempt
-  /// while the first is still going. Positive — only the lower bound can be
-  /// checked here, since the registry is not populated until [register].
+  /// A running attempt renews its claim every [leaseRenewInterval], with or
+  /// without a [lock], so a claim goes unrenewed only when the node holding it
+  /// has stopped — crashed, killed, or partitioned from the store. This is
+  /// therefore how long a *dead* node's run waits to be recovered, and it is
+  /// independent of how long any job takes: a slow but healthy attempt keeps
+  /// its claim fresh however long it runs, and [TomJobDefinition.timeout]
+  /// bounds attempts separately.
+  ///
+  /// Must be strictly above [leaseRenewInterval] — comfortably above it, so a
+  /// late renewal or a slow store does not lapse a live claim — which is
+  /// checked here, because both are this scheduler's own arguments.
   final Duration leaseTimeout;
 
   /// Identifies this scheduler in [TomJobRun.claimedBy].
@@ -144,10 +151,12 @@ class TomScheduler implements TomClosable {
   /// slowest job. Positive, and strictly above [leaseRenewInterval].
   final Duration leaseTtl;
 
-  /// How often a held lease is renewed while its work runs.
+  /// How often a running attempt renews its store claim — and, with a
+  /// [lock], its lease.
   ///
   /// Must be comfortably shorter than [leaseTtl] — a third of it by default —
-  /// so a single missed renewal does not lapse the lease. The gap is the margin
+  /// so a single missed renewal does not lapse the lease, and shorter than
+  /// [leaseTimeout] for the same reason about the claim. The gap is the margin
   /// that absorbs a slow store, a GC pause or a moment of clock skew.
   final Duration leaseRenewInterval;
 
@@ -181,7 +190,7 @@ class TomScheduler implements TomClosable {
   /// the retry start a second body beside the first — the duplicate
   /// `allowOverlap: false` exists to prevent, produced by the one path certain
   /// to leave a body running.
-  final Map<String, ({String jobName, Timer? heartbeat})> _overrunning = {};
+  final Map<String, ({String jobName, Timer heartbeat})> _overrunning = {};
 
   /// Coordination leases currently held, keyed by run id.
   ///
@@ -282,6 +291,18 @@ class TomScheduler implements TomClosable {
             'before it is ever renewed.',
         parameters: {
           'leaseTtl': leaseTtl.toString(),
+          'leaseRenewInterval': this.leaseRenewInterval.toString(),
+        },
+      );
+    }
+    if (leaseTimeout <= this.leaseRenewInterval) {
+      throw TomScheduleException(
+        'schedule.scheduler.lease_timeout_renewal',
+        'leaseTimeout must be longer than leaseRenewInterval, or a running '
+            'attempt is declared abandoned between two renewals of its claim '
+            'and handed to a second attempt while the first is still working.',
+        parameters: {
+          'leaseTimeout': leaseTimeout.toString(),
           'leaseRenewInterval': this.leaseRenewInterval.toString(),
         },
       );
@@ -493,7 +514,7 @@ class TomScheduler implements TomClosable {
     // The leases they kept were released above; their heartbeats would renew
     // nothing, and a body that never settles would keep its timer forever.
     for (final overrun in _overrunning.values) {
-      overrun.heartbeat?.cancel();
+      overrun.heartbeat.cancel();
     }
     dispatcher.close();
   }
@@ -905,7 +926,7 @@ class TomScheduler implements TomClosable {
     TomLease? lease,
   ) async {
     final run = claim.run;
-    final heartbeat = _startHeartbeat(job, claim, lease);
+    final heartbeat = _startHeartbeat(job, claim);
     // Set only when the attempt timed out with its body still executing; the
     // `finally` then hands the run's protection over instead of releasing it.
     Future<Object?>? overrunningBody;
@@ -951,7 +972,7 @@ class TomScheduler implements TomClosable {
       _inFlight.remove(run.id);
       final overrun = overrunningBody;
       if (overrun == null) {
-        heartbeat?.cancel();
+        heartbeat.cancel();
         await _releaseLease(job, run);
         _lostLeases.remove(run.id);
       } else {
@@ -973,14 +994,14 @@ class TomScheduler implements TomClosable {
     TomJobDefinition job,
     TomJobRun run,
     Future<Object?> body,
-    Timer? heartbeat,
+    Timer heartbeat,
   ) {
     _overrunning[run.id] = (jobName: run.jobName, heartbeat: heartbeat);
     unawaited(
       body
           .then<void>((_) {}, onError: (Object _, StackTrace _) {})
           .whenComplete(() async {
-            heartbeat?.cancel();
+            heartbeat.cancel();
             _overrunning.remove(run.id);
             await _releaseLease(job, run);
             _lostLeases.remove(run.id);
@@ -998,45 +1019,49 @@ class TomScheduler implements TomClosable {
   bool _stillOurs(TomJobRun run) =>
       lock == null || !_lostLeases.contains(run.id);
 
-  /// Starts the renewal timer that keeps [lease] alive while the work runs.
+  /// Starts the renewal timer that keeps [claim] — and its lease, with a
+  /// [lock] — alive while the work runs.
   ///
-  /// Renewal is what decouples the lease TTL from job duration: without it the
-  /// TTL would have to exceed the slowest possible run, and a dead node would
-  /// then block its work for exactly that long.
-  Timer? _startHeartbeat(
-    TomJobDefinition job,
-    TomJobClaim claim,
-    TomLease? lease,
-  ) {
-    if (lock == null || lease == null) return null;
-    return Timer.periodic(
-      leaseRenewInterval,
-      (_) => unawaited(_renewLease(job, claim)),
-    );
-  }
+  /// Renewal is what decouples both expiries from job duration. Without it the
+  /// lease TTL would have to exceed the slowest possible run, and a dead node
+  /// would then block its work for exactly that long; and [leaseTimeout] would
+  /// have to exceed every job's timeout, a relation between two independently
+  /// supplied numbers that nothing could check, whose violation abandons a
+  /// healthy run and starts a second copy beside it. Started with or without a
+  /// lock for that second reason: a single-node scheduler's claim needs
+  /// renewing as much as a cluster's.
+  Timer _startHeartbeat(TomJobDefinition job, TomJobClaim claim) =>
+      Timer.periodic(
+        leaseRenewInterval,
+        (_) => unawaited(_renewLease(job, claim)),
+      );
 
-  /// One heartbeat: push the lease expiry forward and refresh the store claim.
+  /// One heartbeat: push the lease expiry forward, when there is a lock, and
+  /// refresh the store claim.
   Future<void> _renewLease(TomJobDefinition job, TomJobClaim claim) async {
     final run = claim.run;
     final coordinator = lock;
-    final current = _leases[run.id];
-    if (coordinator == null || current == null) return;
-
-    final renewed = await coordinator.renew(current, leaseTtl);
-    if (renewed == null) {
-      _leases.remove(run.id);
-      _lostLeases.add(run.id);
-      onAlert(
-        TomJobAlert(
-          jobName: job.name,
-          kind: TomJobAlertKind.leaseLost,
-          run: run,
-          lease: current,
-        ),
-      );
-      return;
+    if (coordinator != null) {
+      final current = _leases[run.id];
+      // Lost at an earlier heartbeat: the run is a peer's now, and renewing
+      // this node's claim would only be fenced off.
+      if (current == null) return;
+      final renewed = await coordinator.renew(current, leaseTtl);
+      if (renewed == null) {
+        _leases.remove(run.id);
+        _lostLeases.add(run.id);
+        onAlert(
+          TomJobAlert(
+            jobName: job.name,
+            kind: TomJobAlertKind.leaseLost,
+            run: run,
+            lease: current,
+          ),
+        );
+        return;
+      }
+      _leases[run.id] = renewed;
     }
-    _leases[run.id] = renewed;
     // The store lease moves with the lock lease, so `recoverAbandoned` and the
     // coordinator agree about who is alive rather than expiring independently.
     // The claim itself is untouched by this: a heartbeat proves an attempt is

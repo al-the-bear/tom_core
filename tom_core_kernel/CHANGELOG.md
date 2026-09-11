@@ -193,6 +193,18 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **A slow but healthy run is no longer abandoned on a single node
+  (tcopen69).** A run's store claim was renewed only by the lock's heartbeat,
+  so a scheduler without a lock let every claim age from the moment it was
+  taken, and any attempt that ran longer than `leaseTimeout` was declared
+  abandoned — failed, or re-queued and started again beside the first. The
+  docs asked `leaseTimeout` to exceed every job's `timeout`, a relation between
+  two numbers supplied at different times that nothing could check. The
+  heartbeat now runs with or without a lock and always renews the claim, so a
+  recovered claim means only that its node stopped, and `leaseTimeout` needs to
+  exceed only `leaseRenewInterval` — checked at construction under
+  `schedule.scheduler.lease_timeout_renewal`.
+
 - **`TomFileJobStore` is now a shared queue, as the docs said it was
   (tcopen67).** The store read its file once, at construction, and then
   rewrote it whole from its own copy on every mutation. Two stores over one

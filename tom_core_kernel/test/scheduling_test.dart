@@ -1983,6 +1983,27 @@ void main() {
         }
       });
 
+      test('a lease timeout not above the renewal interval is rejected', () {
+        // A running attempt proves itself alive by renewing its claim every
+        // renewal interval. A lease timeout no longer than that interval
+        // declares the run abandoned between two renewals of a perfectly
+        // healthy attempt, and hands it to a second one.
+        for (final timeout in [
+          const Duration(seconds: 20),
+          const Duration(seconds: 10),
+        ]) {
+          expectRejected(
+            'lease_timeout_renewal',
+            () => schedulerFor(
+              store,
+              clock,
+              leaseTimeout: timeout,
+              leaseRenewInterval: const Duration(seconds: 20),
+            ),
+          );
+        }
+      });
+
       test('a non-positive lease TTL is rejected', () {
         // Caught in its own right rather than left to the renew-interval check.
         // That check only catches a bad TTL when the interval is defaulted from
@@ -2027,6 +2048,9 @@ void main() {
         // the exact-period setting the docs recommend for a single node; and a
         // microsecond is a legal, if absurd, duration. Pinning these keeps a
         // future tightening from quietly turning "unusual" into "rejected".
+        // The lease TTL and the lease timeout sit one microsecond above the
+        // renewal interval, the closest either may come: both expire unless
+        // renewed, so each must outlast one renewal.
         final scheduler = schedulerFor(
           store,
           clock,
@@ -2034,7 +2058,7 @@ void main() {
           maxCatchUpPerTick: 1,
           tickJitter: 0,
           tickInterval: const Duration(microseconds: 1),
-          leaseTimeout: const Duration(microseconds: 1),
+          leaseTimeout: const Duration(microseconds: 2),
           leaseTtl: const Duration(microseconds: 2),
           leaseRenewInterval: const Duration(microseconds: 1),
         );
@@ -3255,6 +3279,64 @@ void main() {
           TomJobRunState.succeeded,
         );
       });
+
+      test(
+        'a slow but healthy run is never abandoned, however long it runs',
+        () async {
+          // Single node, no lock. The run's claim is renewed while its attempt
+          // executes, so a job whose timeout is far above `leaseTimeout` is not
+          // declared abandoned and dispatched a second time while the first is
+          // still working — `leaseTimeout` bounds how long a *dead* node's claim
+          // blocks its run, not how long a live one may take.
+          final gate = Completer<Object?>();
+          final dispatcher = RecordingDispatcher(handler: (_) => gate.future);
+          final scheduler = schedulerFor(
+            store,
+            clock,
+            alerts: alerts,
+            dispatcher: dispatcher,
+            leaseTimeout: const Duration(minutes: 1),
+            leaseRenewInterval: const Duration(milliseconds: 10),
+          );
+          addTearDown(scheduler.close);
+          scheduler.register(dailyJob(timeout: const Duration(hours: 1)));
+          final past = clock.now.subtract(const Duration(hours: 1));
+          await store.enqueue(
+            TomJobRun(
+              id: 'a',
+              jobName: 'daily',
+              scheduledFor: past,
+              runAt: past,
+            ),
+          );
+
+          await scheduler.tick();
+          // Five lease timeouts pass on the scheduler's clock while the body
+          // works; renewals land in between.
+          for (var i = 0; i < 5; i++) {
+            clock.now = clock.now.add(const Duration(minutes: 1));
+            await Future<void>.delayed(const Duration(milliseconds: 40));
+            await scheduler.tick();
+          }
+
+          expect(
+            alerts.where((a) => a.kind == TomJobAlertKind.runAbandoned),
+            isEmpty,
+          );
+          expect(dispatcher.dispatched, hasLength(1));
+          expect(
+            (await store.all()).firstWhere((r) => r.id == 'a').state,
+            TomJobRunState.running,
+          );
+
+          gate.complete('done');
+          await scheduler.drain();
+          expect(
+            (await store.all()).firstWhere((r) => r.id == 'a').state,
+            TomJobRunState.succeeded,
+          );
+        },
+      );
 
       test('a run whose lease is still valid is left in flight', () async {
         final scheduler = schedulerFor(

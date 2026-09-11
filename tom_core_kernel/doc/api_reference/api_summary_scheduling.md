@@ -1002,6 +1002,7 @@ Every argument whose range matters is checked at construction, each throwing a
 | `leaseTimeout <= 0` | `lease_timeout` | Every run is abandoned the moment it is claimed, so nothing finishes. |
 | `leaseTtl <= 0` | `lease_ttl` | A coordination lease expires as soon as it is acquired. |
 | `leaseRenewInterval >= leaseTtl` | `renew_interval` | The lease lapses before its first renewal. |
+| `leaseTimeout <= leaseRenewInterval` | `lease_timeout_renewal` | A running attempt is declared abandoned between two renewals of its claim, and handed to a second attempt while the first still works. |
 | `maxRunsPerTick < 1` | `runs_per_tick` | No pass claims anything while planning keeps filling the queue. |
 | `maxCatchUpPerTick < 1` | `catch_up_per_tick` | Catch-up never progresses. |
 | `tickJitter` outside `[0, 1)` | `tick_jitter` | At 1 a tick could be scheduled for immediately. |
@@ -1023,7 +1024,7 @@ the interval is defaulted from it.
 | `store` | `TomJobStore` | Where runs live. |
 | `dispatcher` | `TomJobDispatcher` | How commands are executed. |
 | `tickInterval` | `Duration` | Nominal gap between passes. Positive. |
-| `leaseTimeout` | `Duration` | After which a claim counts as abandoned. Positive. |
+| `leaseTimeout` | `Duration` | After which an **unrenewed** claim counts as abandoned. A running attempt renews its claim every `leaseRenewInterval`, with or without a lock, so this is how long a dead node's run waits to be recovered — independent of any job's `timeout`. Positive, and above `leaseRenewInterval`. |
 | `ownerId` | `String` | This scheduler's identity in the store and the lock. |
 | `clock` | `DateTime Function()` | Injectable time source. |
 | `onAlert` | `TomJobAlertSink` | Where alerts go. |
