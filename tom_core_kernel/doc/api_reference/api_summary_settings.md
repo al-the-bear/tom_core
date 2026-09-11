@@ -60,6 +60,11 @@ everything a client needs to configure itself.
 - **Annotations:** `@tomReflector` — reflected JSON serialization. Every field
   is mutable and every constructor parameter optional, so the deserializer can
   create an instance and assign into it.
+- **Mutable on the client by design.** The authorization lists decide what a
+  client shows, never what it may do — the server judges every call against the
+  bearer token's principal — so a client editing its copy grants itself
+  nothing. A consumer wanting a guard takes an unmodifiable snapshot
+  (`Set.unmodifiable(settings.roles)`) where it receives the result.
 
 #### Constructors
 

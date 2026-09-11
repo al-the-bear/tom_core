@@ -1016,6 +1016,16 @@ anyone who was writing them.
   keep passing for a reason that is now stated correctly.
 
 ### Documentation
+- **A received `TomGetSettingsResult` stays mutable, and why is written down
+  (tcopen79).** Every field is public and assignable on the client too; the
+  authorization lists decide what a client shows, never what it may do, since
+  the server judges every call against the bearer token's principal, so a
+  client editing its copy grants itself nothing. Unmodifiable views or a split
+  builder/value type would complicate the reflected round trip for protection
+  the server already gives. The module readme, the class dartdoc and
+  `doc/settings/settings.md` say so, and the documented `AuthorizationService`
+  now takes an unmodifiable snapshot where it receives the result.
+
 - **The scope path is rebuilt on every call, by design (tcopen72).**
   `buildScopePath` caches nothing. The walk is linear in the depth and costs a
   fraction of a microsecond at practical depths, and rebuilding keeps the

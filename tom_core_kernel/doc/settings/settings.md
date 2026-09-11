@@ -113,6 +113,18 @@ module at all. Adding a field to either class is therefore the whole of
 extending the wire contract; the [Dependencies](#dependencies) section covers
 the `build_runner` step that makes it take effect.
 
+The fields stay mutable on the **client** too, where a result is an answer the
+server gave, and that is a decision rather than an oversight. The authorization
+lists in a result decide what a client *shows*, never what it may do: the
+server judges every call against the principal in the bearer token, so a client
+that runs `settings.roles.add('admin')` changes its own screen and grants
+itself nothing — the call behind the button it now shows is refused. Protecting
+the lists with unmodifiable views, or splitting the type into a mutable server
+builder and an immutable client value, would complicate the reflected round
+trip for protection the server already provides. Code that wants to guard
+itself against editing the answer takes an unmodifiable snapshot where it
+receives it, as [Separate Concerns](#4-separate-concerns) shows.
+
 ### TomGetSettingsMessage
 
 The request message for fetching settings from the server.
@@ -387,19 +399,32 @@ void validateAccess(TomGetSettingsResult settings) {
 
 ### 4. Separate Concerns
 
-Keep authorization checks separate from UI logic:
+Keep the questions the UI asks separate from UI logic, and take the answer as
+it arrived — a snapshot the rest of the client cannot edit:
 
 ```dart
+/// What the signed-in user may be *shown*. The server still judges every call
+/// the user makes; these answers only decide which controls appear.
 class AuthorizationService {
-  final TomGetSettingsResult settings;
-  
-  AuthorizationService(this.settings);
-  
-  bool canViewReports() => settings.entitlements.contains('view-reports');
-  bool canEditUsers() => settings.roles.contains('admin');
-  bool hasResourceAccess(String key) => settings.resourceKeys.contains(key);
+  AuthorizationService(TomGetSettingsResult settings)
+    : _roles = Set.unmodifiable(settings.roles),
+      _entitlements = Set.unmodifiable(settings.entitlements),
+      _resourceKeys = Set.unmodifiable(settings.resourceKeys);
+
+  final Set<String> _roles;
+  final Set<String> _entitlements;
+  final Set<String> _resourceKeys;
+
+  bool canViewReports() => _entitlements.contains('view-reports');
+  bool canEditUsers() => _roles.contains('admin');
+  bool hasResourceAccess(String key) => _resourceKeys.contains(key);
 }
 ```
+
+The snapshot is the consumer's choice, not the result's: a received
+`TomGetSettingsResult` is mutable by design (see [Core
+Components](#core-components)), and taking the copy here means code elsewhere
+that edits the result cannot change what this service answers.
 
 ### 5. Use Type-Safe Configuration Access
 

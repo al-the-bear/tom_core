@@ -126,6 +126,16 @@ class TomGetSettingsMessage {
 ///   // Show admin features
 /// }
 /// ```
+///
+/// ## Mutable on the client too, by design
+///
+/// Every field is public and assignable, and the collections are plain `List`
+/// and `Map`, on the client as on the server. The reflected deserializer needs
+/// assignable fields, and the authorization lists here decide only what a
+/// client *shows*: the server judges every call against the principal in the
+/// bearer token, so a client editing its copy changes its own screen and
+/// grants itself nothing. Code that wants to protect itself from editing the
+/// answer takes an unmodifiable snapshot where it receives it.
 @tomReflector
 class TomGetSettingsResult {
   // ---------------------------------------------------------------------------

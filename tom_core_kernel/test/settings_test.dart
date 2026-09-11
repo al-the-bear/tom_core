@@ -1185,6 +1185,42 @@ void main() {
   // The documented transport
   // ==========================================================================
 
+  // A received result is mutable on the client by decision: its grant lists
+  // decide what a client shows, and the server judges every call against the
+  // bearer token, so editing the copy grants nothing. The consumer that wants a
+  // guard takes a snapshot where it receives the result. Both halves are
+  // pinned, so making the collections unmodifiable later has to revisit the
+  // readme and settings.md that state the decision.
+  group('a received TomGetSettingsResult', () {
+    TomGetSettingsResult received() {
+      final json = tomReflectionInfo.convertToJsonString(
+        TomGetSettingsResult(roles: ['user'], texts: {'welcome': 'Hi'}),
+      );
+      final mirror =
+          tomReflector.reflectType(TomGetSettingsResult) as ClassMirror;
+      return tomReflectionInfo
+          .createInstanceFromJsonString<TomGetSettingsResult>(mirror, json);
+    }
+
+    test('stays mutable after the round trip', () {
+      final settings = received();
+      settings.roles.add('admin');
+      settings.texts['welcome'] = 'Edited';
+      expect(settings.roles, ['user', 'admin']);
+      expect(settings.texts['welcome'], 'Edited');
+    });
+
+    test('a snapshot taken on receipt is unaffected by later edits', () {
+      final settings = received();
+      final roles = Set<String>.unmodifiable(settings.roles);
+
+      settings.roles.add('admin');
+
+      expect(roles, {'user'});
+      expect(() => roles.add('admin'), throwsUnsupportedError);
+    });
+  });
+
   // The submodule declares the two DTOs and no transport, so every document
   // showing how to *send* a settings request has to reach outside it. What the
   // documents show now is `TomServerEndpoint`, and this group is what keeps
