@@ -190,14 +190,35 @@ class TomTimezone {
   /// the embedded database always loads, so "it did not load" is the one state
   /// that cannot be provoked through the public entry points — and it is
   /// precisely the state whose handling must not go untested.
+  ///
+  /// **Populates once per isolate.** A second call is refused with
+  /// `timezone.database.already_populated` rather than replacing the database
+  /// or being ignored. Replacing it would detach every [TomTimezone] a caller
+  /// already holds from the index those instances are compared and looked up
+  /// through; ignoring it would mark the module initialized against a database
+  /// nobody asked it to keep, which is the case that matters on web, where a
+  /// partial database can arrive before the full one. Refusing puts the choice
+  /// where it belongs: populate once, before the first lookup, and sequence a
+  /// `tomSetupTimezones()` that must win ahead of any access.
   @visibleForTesting
   static void populateFromLocations(Map<String, tz.Location> locations) {
-    if (_timezonesMap.isEmpty) {
-      for (var entry in locations.entries) {
-        _insertTimezone(
-          TomTimezone._(timezone: entry.value.name, location: entry.value),
-        );
-      }
+    if (_initialized) {
+      throw TomTimezoneException(
+        'timezone.database.already_populated',
+        'The timezone database is already populated with '
+            '${_timezonesMap.length} zone(s); a second population of '
+            '${locations.length} location(s) is refused. Populate once, before '
+            'the first timezone lookup.',
+        parameters: {
+          'loaded': _timezonesMap.length,
+          'offered': locations.length,
+        },
+      );
+    }
+    for (var entry in locations.entries) {
+      _insertTimezone(
+        TomTimezone._(timezone: entry.value.name, location: entry.value),
+      );
     }
     _initialized = true;
 

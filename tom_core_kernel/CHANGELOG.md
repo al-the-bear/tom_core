@@ -811,6 +811,14 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **The timezone database populates once per isolate (tcopen91).** A second
+  `TomTimezone.populateFromLocations` throws `TomTimezoneException`
+  (`timezone.database.already_populated`, carrying the `loaded` and `offered`
+  counts) instead of being dropped while still reporting success. The database
+  a caller's `TomTimezone` instances are indexed in cannot be swapped under
+  them, and a second load — a partial web database arriving before the full one
+  — is a refusal at the call rather than a silently kept first answer.
+
 - **`TomTimezone.findTimezone` never returns `null` (tcopen90).** Every lookup
   it cannot satisfy throws `TomTimezoneException`: besides an unknown name and
   an offset mismatch, a name-less lookup whose offset no zone is at
