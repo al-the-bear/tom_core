@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **The UI protection switch can be turned off by a define (tcopen75).**
+  `flutter run --dart-define=tom.protection.ui=false` (or `tom.protection=false`)
+  starts the app with the four-state model bypassed; application code can call
+  the kernel's `TomResourceKeyProtection.applyArguments` or `disableAll()`.
+
 - **`TomTextField.buildCounter` is wrapped around `ScopeCapture.run`
   (tcopen73).** The kernel's `wrapCounter` is gone; the named-parameter
   `InputCounterWidgetBuilder` is now wrapped here, still re-entering the scope

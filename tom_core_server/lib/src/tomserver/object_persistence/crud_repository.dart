@@ -611,7 +611,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// The grade the current principal holds on [column] (C-4);
   /// [TomAuthState.full] for an unrestricted column.
   TomAuthState _columnGrade(TomColumnInformation column) =>
-      TomColumnAuthorization.stateForKey(column.column?.authKey);
+      TomColumnAuthorization.stateForKey(column.authKey);
 
   /// The grade the current principal holds on [column] **for the row keyed by
   /// [rowId]** — a registered per-row resolver when the column has one
@@ -626,7 +626,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     TomColumnInformation column,
     Object? rowId,
   ) async =>
-      await TomRowColumnAuthorization.resolve(column.column?.authKey, rowId) ??
+      await TomRowColumnAuthorization.resolve(column.authKey, rowId) ??
       _columnGrade(column);
 
   /// Raises when the principal may not **write** [column] on the row keyed by
@@ -643,7 +643,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     if (grade.isInteractive) return;
     throw TomColumnAuthorizationException(
       'column_authorization.write.field_forbidden',
-      'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
+      'Column "${column.declaredName}" (resource "${column.authKey}") '
           'is not writable at your access level (${grade.name}).',
     );
   }
@@ -658,7 +658,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     if (grade.showsContent) return;
     throw TomColumnAuthorizationException(
       'column_authorization.read.field_forbidden',
-      'Column "${column.declaredName}" (resource "${column.column?.authKey}") '
+      'Column "${column.declaredName}" (resource "${column.authKey}") '
           'is not readable at your access level (${grade.name}).',
     );
   }
@@ -1390,7 +1390,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
           baseline == null ? null : col.getVariableValue(baseline);
       final decision = TomColumnAuthorization.decideWrites<TomColumnInformation>(
         columns: authColumns,
-        gradeOf: (col) => col.column?.authKey,
+        gradeOf: (col) => col.authKey,
         changed: (col) => col.getVariableValue(toSave) != baselineOf(col),
         onForbidden: (col, key, grade) => throw TomColumnAuthorizationException(
           'column_authorization.write.field_forbidden',
@@ -1744,7 +1744,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     if (authColumns.isEmpty) return;
     final masked = TomColumnAuthorization.maskedColumns<TomColumnInformation>(
       columns: authColumns,
-      keyOf: (column) => column.column?.authKey,
+      keyOf: (column) => column.authKey,
     );
     if (masked.isEmpty) return;
     final maskedNames = {for (final column in masked) column.declaredName};

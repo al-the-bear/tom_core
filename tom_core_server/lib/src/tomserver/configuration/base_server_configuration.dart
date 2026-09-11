@@ -896,7 +896,17 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// isolate's application is me", and it is idempotent: a second
   /// configuration in the same isolate installs an equivalent closure over the
   /// same getter.
+  ///
+  /// It applies the kernel's protection settings from [args] too
+  /// ([TomResourceKeyProtection.applyArguments]), so `tom.protection=false` or
+  /// `tom.protection.json=false` on a server's command line switches the
+  /// authorization system or one tier of it off. A misspelt setting throws
+  /// before anything else is configured: a server that believed a tier off
+  /// while it was on — or the reverse — is worse than one that does not start.
   TomBaseServerConfiguration(List<String> args) {
+    // First, so a misspelt `tom.protection` argument stops the server before
+    // anything else has been configured.
+    TomResourceKeyProtection.applyArguments(args);
     setValues(getDefaultValues(args));
     this.args = args;
     _activeConfiguration = this;

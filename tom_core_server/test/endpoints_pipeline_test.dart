@@ -1411,20 +1411,17 @@ void main() {
       expect(unguardedHandler.checkAccess(null), isFalse);
     });
 
-    test(
-      'checkAutomaticAccess upgrades access for an unprotected interface',
-      () {
-        // Default (protection off): the interface is unprotected, so a prior
-        // false decision is upgraded to true.
-        //
-        // This also pins the one case where `isProtected` must *not* be asked
-        // about the `-<member>` revocation. With protection off it answers
-        // "held" for every key there is, so consulting it here would read as
-        // "this endpoint has been revoked" — for every endpoint — and turn the
-        // open default into a blanket denial.
-        expect(unguardedHandler.checkAutomaticAccess(false), isTrue);
-      },
-    );
+    test('checkAutomaticAccess grants nothing while resource keys are off', () {
+      // With resource keys not enforced `isProtected` answers "held" for
+      // every key there is. Granting from that would overturn every refusal
+      // the ordinary check made — the endpoint switch is on by default, so
+      // every role-gated endpoint would open — and asking about `-<member>`
+      // would read as every endpoint revoked. The prior decision stands,
+      // both ways round.
+      expect(TomResourceKeyProtection.globalSettingProtectionDefault, isFalse);
+      expect(unguardedHandler.checkAutomaticAccess(false), isFalse);
+      expect(unguardedHandler.checkAutomaticAccess(true), isTrue);
+    });
 
     test('checkAutomaticAccess keeps the denial when protection is on', () {
       TomResourceKeyProtection.globalSettingProtectionDefault = true;
@@ -1438,11 +1435,10 @@ void main() {
   });
 
   // Automatic protection is a *second chance*: `enforceAccess` reaches it only
-  // after the ordinary check has already refused, and only while
-  // `globalSettingUseAutomaticEndpointProtection` is on. Both facts are why the
-  // rule below could be wrong in three independent ways without a single test
-  // or sample noticing — the switch is off by default, so nothing in the
-  // workspace ever evaluated it.
+  // after the ordinary check has already refused, only while
+  // `globalSettingUseAutomaticEndpointProtection` is on, and it grants only
+  // while resource keys are enforced. All three keep the rule out of ordinary
+  // traffic, which is why it is pinned here directly.
   //
   // The rule has two keys per endpoint. The *container* key grants the whole
   // interface/API; the *member* key grants one method within it, and its
@@ -1642,27 +1638,20 @@ void main() {
   });
 
   // The group above establishes *which* keys protect an endpoint, by calling
-  // `checkAutomaticAccess` directly. What a direct call cannot show is that
-  // anything ever makes it. `enforceAccess` reaches the rule down two
-  // conditions — the ordinary check must have refused, and
-  // `globalSettingUseAutomaticEndpointProtection` must be on — and that switch
-  // was assigned `true` in exactly no place in the package: not a test, not a
-  // sample, not a default. So every key pinned above was pinned against a rule
-  // no request had been shown to reach, and the question an operator actually
-  // asks — "I minted a key for this API; does it open the endpoint?" — had no
-  // answer in the suite. These tests ask it through `enforceAccess`, which is
-  // the unit that owns both conditions and the denial that follows them.
+  // `checkAutomaticAccess` directly. What a direct call cannot show is that a
+  // request reaches it. `enforceAccess` reaches the rule down two conditions —
+  // the ordinary check must have refused, and
+  // `globalSettingUseAutomaticEndpointProtection` must be on — and the question
+  // an operator actually asks is "I minted a key for this API; does it open the
+  // endpoint?". These tests ask it through `enforceAccess`, which is the unit
+  // that owns both conditions and the denial that follows them.
   group('automatic protection through enforceAccess', () {
     late TomEndpointHandler contractGatedHandler;
     late TomEndpointHandler overriddenHandler;
 
     setUp(() {
       TomResourceKeyProtection.globalSettingProtectionDefault = true;
-      addTearDown(() {
-        TomResourceKeyProtection.globalSettingProtectionDefault = false;
-        TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
-            false;
-      });
+      addTearDown(TomResourceKeyProtection.restoreDefaults);
       TomBean.resetBeanContext();
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
@@ -1704,8 +1693,27 @@ void main() {
       // key the rule would honour, and the endpoint stays shut because nothing
       // asks. Without this the next test would pass just as well against an
       // `enforceAccess` that consulted the rule unconditionally.
+      TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
+          false;
       await expectLater(
         enforceAs(contractGatedHandler, keys: ['fixture_access']),
+        throwsA(isA<TomEndpointHandlerException>()),
+      );
+    });
+
+    test('the gate opens nothing while resource keys are not enforced', () {
+      // The gate is on by default, so this is the configuration of every
+      // deployment that has not switched resource keys on. With no grants in
+      // force every key reads as held; granting from that would open every
+      // role-gated endpoint to anyone, which is what this pins shut.
+      TomResourceKeyProtection.restoreDefaults();
+      expect(
+        TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection,
+        isTrue,
+      );
+      expect(TomResourceKeyProtection.globalSettingProtectionDefault, isFalse);
+      return expectLater(
+        enforceAs(contractGatedHandler),
         throwsA(isA<TomEndpointHandlerException>()),
       );
     });

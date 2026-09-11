@@ -2,6 +2,23 @@
 
 ### Changed
 
+- **Column authorization is the kernel's database protection tier
+  (tcopen75).** It applies while
+  `TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection` is on
+  — the default; `tom.protection.database=false` switches it off, per-row
+  resolvers included. A column is authorized by `TomDbColumn.authKey` or by the
+  kernel's `@TomProtectedField` on the entity field
+  (`TomColumnInformation.protectedField`, resolved by the new
+  `TomColumnInformation.authKey` getter), so one annotation protects a field in
+  JSON output and in the store. The default resolver is the kernel's
+  `automaticState` — the `TomAuthorization` adapter's grade met with the request
+  principal's resource-key grade — where it was the adapter alone, which on a
+  server without one answered `full` for every column.
+- **`TomBaseServerConfiguration` applies the protection settings from its
+  arguments (tcopen75)** before anything else, so `tom.protection=false` or
+  `tom.protection.json=false` on a server's command line switches the system or
+  one tier off; a misspelt setting stops the server from starting.
+
 - **Pattern grants reach the graded view and automatic endpoint protection
   (tcopen74).** `TomGradedAccessControlInformation.resolveState` reads its
   binary fallback through the kernel's new
@@ -61,6 +78,12 @@
   can see it.
 
 ### Fixed
+
+- **Automatic endpoint protection grants nothing while resource keys are not
+  enforced (tcopen75).** With `globalSettingProtectionDefault` off every key
+  reads as held, so `checkAutomaticAccess` upgraded every refusal to a grant —
+  harmless only because its switch was off by default. The switch is now on by
+  default, and the second chance applies only while resource keys are enforced.
 
 - **An XA transaction could never commit (tcincb158).**
   `MariaDbXADatasource` issued `XA END` + `XA PREPARE` from `endTransaction()`

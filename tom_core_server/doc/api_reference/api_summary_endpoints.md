@@ -487,7 +487,7 @@ TomEndpointHandler({
 | `shouldLogRequests` | `bool get shouldLogRequests` | Whether this endpoint's requests are logged: the `logRequests` annotation when it states one, otherwise `globalSettingLogRequestsDefault`. Every log statement in the pipeline reads this rather than the annotation, so a `null` annotation reaches the global default. |
 | `checkAccess` | `bool checkAccess(TomPrincipal? principal)` | Decides whether `principal` may call this endpoint from its resolved access control, falling back to the global protection default. |
 | `automaticProtectionKeys` | `(String container, String member) get automaticProtectionKeys` | The pair of resource keys this endpoint is automatically protected under: the API id/interface name granting all of it, and the `<container>.<member>` key granting this one endpoint. |
-| `checkAutomaticAccess` | `bool checkAutomaticAccess(bool accessCheck)` | Second-chance access check over `automaticProtectionKeys`; returns the possibly-upgraded decision. |
+| `checkAutomaticAccess` | `bool checkAutomaticAccess(bool accessCheck)` | Second-chance access check over `automaticProtectionKeys`; returns the possibly-upgraded decision. Returns `accessCheck` unchanged while resource keys are not enforced (`TomResourceKeyProtection.globalSettingProtectionDefault` off), since every key would read as held. |
 
 ### TomEndpointRouteKey
 

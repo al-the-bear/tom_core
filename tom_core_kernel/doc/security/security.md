@@ -21,6 +21,7 @@ The security module provides a comprehensive authentication and authorization sy
     - [Built-in Access Control Types](#built-in-access-control-types)
     - [Graded Access (all four states)](#graded-access-all-four-states)
     - [Resource Key Protection](#resource-key-protection)
+    - [Automatic Protection](#automatic-protection)
 - [UI Authorization (Four-State Model)](#ui-authorization-four-state-model)
   - [TomAuthState](#tomauthstate)
   - [TomAuthorizable](#tomauthorizable)
@@ -614,6 +615,74 @@ is asked about a principal, so it takes the second form. So does
 `convertPrincipalToTokenPayload`, which filters the fields of the principal it
 was handed. Reading the zone when the caller has named someone answers a
 different question — and outside a request zone, a fail-closed one.
+
+#### Automatic Protection
+
+`protect` protects the value it is handed. The **automatic tiers** protect
+values nobody handed them, at the four layers a value passes through, and each
+has a switch:
+
+| Tier | Switch | Applies | Setting |
+| ---- | ------ | ------- | ------- |
+| Endpoint | `globalSettingUseAutomaticEndpointProtection` | a refused call is granted from the `<api>` / `<api>.<endpoint>` resource keys (`tom_core_server`) | `tom.protection.endpoint` |
+| JSON | `globalSettingUseAutomaticJsonProtection` | the reflective serializer leaves out a `@TomProtectedField` field | `tom.protection.json` |
+| Database | `globalSettingUseAutomaticDatabaseProtection` | the repository masks and write-protects an authorized column (`tom_core_server`) | `tom.protection.database` |
+| UI | `globalSettingUseAutomaticUIProtection` | `tom_flutter_ui` renders every element at its four-state grade | `tom.protection.ui` |
+
+All four are **on by default**. A tier applies whatever the deployment
+configured, so one that configured no grants is restricted by none of them;
+the switches exist to be turned off. Resource-key enforcement itself
+(`globalSettingProtectionDefault`, setting `tom.protection.resourceKeys`) is the
+exception and stays off by default: switching it on is what makes resource-key
+grants binding, and doing that by default would refuse every unannotated
+endpoint and blank every `protect` call of an application with no grants yet.
+
+A field opts into the JSON and database tiers with one annotation:
+
+```dart
+@tomReflector
+class Employee {
+  String? name;
+
+  @TomProtectedField('employee.salary')
+  int? salary;
+}
+```
+
+Both grade it through `TomResourceKeyProtection.automaticState(key)`: the
+installed `TomAuthorization` adapter's grade met with the ambient principal's
+resource-key grade. Each side is `full` when it is not configured — no adapter,
+resource keys not enforced — so a client grading through an adapter and a server
+grading from its principals' grants both work without the other. The JSON tier
+**omits** a field whose grade shows no content rather than nulling it, since the
+reader may be a non-nullable field; only the reflective field walk is protected,
+so a type with its own `toJson` protects what it writes with `protect`.
+
+**Switching off.** Every switch reads its start-up value from a compile-time
+define, and `applyArguments` applies the same settings at run time:
+
+```bash
+dart run -Dtom.protection=false bin/server.dart         # every switch off
+flutter run --dart-define=tom.protection.ui=false       # the UI tier off
+dart run bin/server.dart tom.protection.json=false      # an argument
+```
+
+`tom_core_server`'s server configuration calls `applyArguments` with the
+process arguments; a client passes its own. `tom.protection` sets every switch,
+a specific setting beats it, and anything outside the namespace is ignored — so
+a whole argument list can be passed. A bad setting throws
+`TomProtectionSettingException` before any switch changes:
+
+| Key | Raised when |
+| --- | ----------- |
+| `security.protection.unknown_setting` | a name in the `tom.protection` namespace is not a setting — `tom.protection.jsn` |
+| `security.protection.invalid_value` | a setting's value is not `true` or `false` — `tom.protection.json=off` |
+
+From code, `disableAll()` switches everything off and `restoreDefaults()` puts
+every switch back to its start-up value.
+
+Runnable:
+[`example/samples/security/12_automatic_protection_example.dart`](../../example/samples/security/12_automatic_protection_example.dart).
 
 ---
 

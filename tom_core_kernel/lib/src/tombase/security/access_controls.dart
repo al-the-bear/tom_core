@@ -38,6 +38,7 @@ library;
 
 import 'package:meta/meta.dart';
 
+import '../little_things/exception_base.dart';
 import '../little_things/little_things.dart';
 import 'resource_role_authorization.dart';
 import 'server_principal.dart';
@@ -48,30 +49,112 @@ import 'user_principal_aci.dart';
 // RESOURCE KEY PROTECTION
 // =============================================================================
 
+/// Raised when a protection setting cannot be applied: a name in the
+/// `tom.protection` namespace that is not a switch, or a value that is not
+/// `true` or `false`.
+///
+/// Keys: `security.protection.unknown_setting` and
+/// `security.protection.invalid_value`. Refusing both matters more here than
+/// for most settings: a misspelt `tom.protection.jsn=false` that was ignored
+/// would leave the tier on while the operator believed it off, and a mistyped
+/// value in the other direction would leave it off.
+class TomProtectionSettingException extends TomException {
+  TomProtectionSettingException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.uuid,
+    super.serverCallError,
+  });
+}
+
+/// Marks a reflected field as protected by [resourceKey].
+///
+/// The automatic protection tiers read it and grade the field through
+/// [TomResourceKeyProtection.automaticState]:
+///
+/// - the **JSON** tier ([TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection])
+///   leaves the field out of the reflective serializer's output when its
+///   grade shows no content;
+/// - the **database** tier
+///   ([TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection])
+///   masks and write-protects the column of an entity field that carries it,
+///   exactly as a `TomDbColumn.authKey` does.
+///
+/// One annotation therefore protects a field in every tier it passes through:
+///
+/// ```dart
+/// @tomReflector
+/// class Employee {
+///   String? name;
+///
+///   @TomProtectedField('employee.salary')
+///   int? salary;
+/// }
+/// ```
+class TomProtectedField {
+  /// The resource key the field is graded on.
+  final String resourceKey;
+
+  /// Protects the annotated field by [resourceKey].
+  const TomProtectedField(this.resourceKey);
+}
+
 /// Provides resource-level protection based on resource keys.
 ///
 /// This class implements a protection mechanism that can selectively hide
 /// or expose data based on the current user's access rights. It integrates
 /// with the zone-based [TomPrincipal] to determine accessibility.
 ///
-/// ## Global Settings
+/// ## Switches
 ///
-/// The protection behavior can be controlled through global settings:
-/// - [globalSettingProtectionDefault]: Master switch for protection
-/// - [globalSettingUseAutomaticEndpointProtection]: Auto-protect API endpoints
-/// - [globalSettingUseAutomaticJsonProtection]: Auto-protect JSON serialization
-/// - [globalSettingUseAutomaticDatabaseProtection]: Auto-protect database queries
-/// - [globalSettingUseAutomaticUIProtection]: Whether the Flutter toolkit's
-///   four-state authorization model applies at all
+/// | Switch | Default | Applied by |
+/// | ------ | ------- | ---------- |
+/// | [globalSettingProtectionDefault] | off | every resource-key check: while off, no resource-key grant is enforced |
+/// | [globalSettingUseAutomaticEndpointProtection] | on | `tom_core_server`'s endpoint pipeline |
+/// | [globalSettingUseAutomaticJsonProtection] | on | the reflective JSON serializer, for [TomProtectedField] fields |
+/// | [globalSettingUseAutomaticDatabaseProtection] | on | `tom_core_server`'s repository, for authorized columns |
+/// | [globalSettingUseAutomaticUIProtection] | on | `tom_flutter_ui`'s `TomAuthLayers` |
 ///
-/// Two of the four are honoured: [globalSettingUseAutomaticEndpointProtection]
-/// by the server's endpoint pipeline, and [globalSettingUseAutomaticUIProtection]
-/// by `tom_flutter_ui`'s `TomAuthLayers`. The remaining two —
-/// [globalSettingUseAutomaticJsonProtection] and
-/// [globalSettingUseAutomaticDatabaseProtection] — name tiers that do not exist
-/// yet and are read by nothing; each says so on its own declaration, and until
-/// a tier is built, the protection at that layer is whatever the deployment
-/// writes by hand with [protect].
+/// The four tier switches are on by default: a tier applies whatever grants
+/// the deployment configured, and a deployment that configured none is not
+/// restricted by any of them. They exist to be switched **off** — during
+/// development, to take the authorization system out of the way, or at start-up
+/// to run an application without it.
+///
+/// The master switch is the exception and is off by default: turning it on is
+/// what makes resource-key grants binding at all, so it would refuse every
+/// unannotated endpoint and blank every [protect] call in an application that
+/// has not configured grants yet.
+///
+/// ## Switching from the command line
+///
+/// Every switch has a setting name, read at start-up from a compile-time define
+/// and applicable at run time from arguments:
+///
+/// | Setting | Switch |
+/// | ------- | ------ |
+/// | `tom.protection` | all of them at once |
+/// | `tom.protection.resourceKeys` | [globalSettingProtectionDefault] |
+/// | `tom.protection.endpoint` | [globalSettingUseAutomaticEndpointProtection] |
+/// | `tom.protection.json` | [globalSettingUseAutomaticJsonProtection] |
+/// | `tom.protection.database` | [globalSettingUseAutomaticDatabaseProtection] |
+/// | `tom.protection.ui` | [globalSettingUseAutomaticUIProtection] |
+///
+/// ```bash
+/// dart run -Dtom.protection=false bin/server.dart          # a define
+/// flutter run --dart-define=tom.protection.ui=false        # a Flutter define
+/// dart run bin/server.dart tom.protection.json=false       # an argument
+/// ```
+///
+/// A define sets the start-up value. An argument is applied by
+/// [applyArguments], which `tom_core_server`'s server configuration calls with
+/// the process arguments; a client calls it itself. A specific setting beats
+/// `tom.protection`, so `tom.protection=false tom.protection.ui=true` keeps
+/// only the UI tier. [disableAll] is the same switch-off from application code.
 ///
 /// ## Example
 ///
@@ -87,67 +170,207 @@ import 'user_principal_aci.dart';
 /// );
 /// ```
 class TomResourceKeyProtection {
-  /// Master switch to enable/disable resource protection globally.
-  ///
-  /// When `false`, all resources are accessible. When `true`, resource
-  /// access is evaluated based on the current principal's resource keys.
-  static bool globalSettingProtectionDefault = false;
+  /// The setting that switches every protection switch at once.
+  static const String settingAll = 'tom.protection';
 
-  /// When enabled, API endpoints are automatically protected based on metadata.
+  /// The setting for [globalSettingProtectionDefault].
+  static const String settingResourceKeys = 'tom.protection.resourceKeys';
+
+  /// The setting for [globalSettingUseAutomaticEndpointProtection].
+  static const String settingEndpoint = 'tom.protection.endpoint';
+
+  /// The setting for [globalSettingUseAutomaticJsonProtection].
+  static const String settingJson = 'tom.protection.json';
+
+  /// The setting for [globalSettingUseAutomaticDatabaseProtection].
+  static const String settingDatabase = 'tom.protection.database';
+
+  /// The setting for [globalSettingUseAutomaticUIProtection].
+  static const String settingUi = 'tom.protection.ui';
+
+  // Start-up values: a define for the switch itself, else a define for all of
+  // them, else the switch's own default. Const, because a define is only
+  // guaranteed to be readable in a constant expression.
+  static const bool _allDefined = bool.hasEnvironment(settingAll);
+  static const bool _allDefine = bool.fromEnvironment(settingAll);
+  static const bool _tierDefault = _allDefined ? _allDefine : true;
+  static const bool _resourceKeysDefault =
+      bool.hasEnvironment(settingResourceKeys)
+      ? bool.fromEnvironment(settingResourceKeys)
+      : (_allDefined ? _allDefine : false);
+  static const bool _endpointDefault = bool.hasEnvironment(settingEndpoint)
+      ? bool.fromEnvironment(settingEndpoint)
+      : _tierDefault;
+  static const bool _jsonDefault = bool.hasEnvironment(settingJson)
+      ? bool.fromEnvironment(settingJson)
+      : _tierDefault;
+  static const bool _databaseDefault = bool.hasEnvironment(settingDatabase)
+      ? bool.fromEnvironment(settingDatabase)
+      : _tierDefault;
+  static const bool _uiDefault = bool.hasEnvironment(settingUi)
+      ? bool.fromEnvironment(settingUi)
+      : _tierDefault;
+
+  /// Master switch: whether resource-key grants are enforced at all.
   ///
-  /// The one automatic switch that is honoured: `tom_core_server`'s endpoint
-  /// pipeline consults it when the ordinary access check has already refused.
-  static bool globalSettingUseAutomaticEndpointProtection = false;
+  /// When `false` — the default — every resource is accessible and every
+  /// resource-key check answers "not protected". When `true`, access is
+  /// graded by [resourceStateFor] from the principal's resource grants.
+  /// Setting: `tom.protection.resourceKeys`.
+  static bool globalSettingProtectionDefault = _resourceKeysDefault;
+
+  /// Whether `tom_core_server`'s endpoint pipeline may grant an endpoint from
+  /// resource keys after the ordinary access check has refused.
+  ///
+  /// On by default. The pipeline consults it only while
+  /// [globalSettingProtectionDefault] is on: with resource keys not enforced
+  /// every key reads as held, and a second chance granted from them would
+  /// overturn every refusal. Setting: `tom.protection.endpoint`.
+  static bool globalSettingUseAutomaticEndpointProtection = _endpointDefault;
 
   /// Whether `tom_flutter_ui`'s four-state authorization model applies.
   ///
   /// `true` by default and normally left there: with it on, every element
   /// resolves through `TomAuthLayers` — resource, group, enclosing ceiling,
   /// authorizer, UI-state controller — and renders at the state that
-  /// composition produces.
+  /// composition produces. It is the one switch for form fields, actions and
+  /// components alike: hidden, read-only and disabled are states of the one
+  /// model, resolved per element rather than per category.
   ///
   /// Setting it `false` **bypasses the model and grants every UI resource it
   /// protects**. Build-time UI state still applies, because a controller that
   /// says "this form is in view mode" is describing the screen rather than the
-  /// principal. This is a diagnostic switch: it answers "is this element hidden
-  /// because of authorization, or because of something else?" in one step,
-  /// without editing grants. It is not a deployment setting, and a server that
-  /// relies on it for anything is relying on the client to police itself.
-  ///
-  /// It replaces three earlier switches — for form fields, for actions, and for
-  /// disabling rather than hiding an action — that described distinctions the
-  /// four-state model already draws: hidden, read-only and disabled are three
-  /// of its four states, resolved per element rather than per category.
-  static bool globalSettingUseAutomaticUIProtection = true;
+  /// principal. It answers "is this element hidden because of authorization,
+  /// or because of something else?" in one step, without editing grants; a
+  /// server that relies on it for anything is relying on the client to police
+  /// itself. Setting: `tom.protection.ui`.
+  static bool globalSettingUseAutomaticUIProtection = _uiDefault;
 
-  // TODO: neither of the two switches below has a tier behind it. Each names a
-  // layer at which protection could be applied automatically, and at which
-  // nothing applies it, so what protects a payload or a query today is
-  // whatever the deployment writes by hand with `protect`. Building either is
-  // a design question rather than a wiring one -- JSON needs a per-member
-  // resource key and pays a per-object cost, and a query predicate derived
-  // from the principal silently changes result sets and meets the transaction
-  // and cache layers. The switches are kept, and say what they do not do, so
-  // the gap stays visible instead of being closed by deleting the evidence.
-
-  /// When enabled, JSON serialization would automatically respect resource
-  /// protection.
+  /// Whether the reflective JSON serializer applies [TomProtectedField].
   ///
-  /// **No tier implements this.** Nothing reads the flag; the `json` module
-  /// does not reference resource-key protection at all, so setting it changes
-  /// nothing. Serialization protects what the caller protects explicitly with
-  /// [protect] or [protectFor], and nothing else.
-  static bool globalSettingUseAutomaticJsonProtection = false;
+  /// On by default. While on, `TomReflectionInfo.getValues` — the path every
+  /// reflected object takes to the wire — leaves out a field annotated
+  /// [TomProtectedField] whose [automaticState] shows no content. A type that
+  /// renders itself (`toJson`, `jsonEncode`, `TomJsonSerializable`,
+  /// `TomClass`) is not walked, so it protects what it writes with [protect].
+  /// Setting: `tom.protection.json`.
+  static bool globalSettingUseAutomaticJsonProtection = _jsonDefault;
 
-  /// When enabled, database queries would automatically filter protected
-  /// resources.
+  /// Whether `tom_core_server`'s repository applies column authorization.
   ///
-  /// **No tier implements this.** Nothing reads the flag; `object_persistence`
-  /// does not reference resource-key protection, so setting it changes
-  /// nothing. Row-level filtering that *is* implemented lives in the server's
-  /// data-scope layer (`TomDataScope` and its sources), which is a separate
-  /// mechanism keyed on scopes rather than on resource keys.
-  static bool globalSettingUseAutomaticDatabaseProtection = false;
+  /// On by default. While on, a column carrying a `TomDbColumn.authKey` or a
+  /// [TomProtectedField] is graded on every read and write: masked when its
+  /// grade shows no content, and write-protected unless it is full. While off,
+  /// every column is unrestricted — including those with a per-row resolver.
+  /// Row filtering by data scope is not part of this tier: a scope says which
+  /// rows a query addresses, and switching it off would change what a query
+  /// means rather than what it may reveal. Setting: `tom.protection.database`.
+  static bool globalSettingUseAutomaticDatabaseProtection = _databaseDefault;
+
+  /// Every setting name [applyArguments] accepts.
+  static const List<String> settingNames = [
+    settingAll,
+    settingResourceKeys,
+    settingEndpoint,
+    settingJson,
+    settingDatabase,
+    settingUi,
+  ];
+
+  /// Applies the `tom.protection` settings among [arguments].
+  ///
+  /// An argument is `name=value`, optionally with leading dashes
+  /// (`--tom.protection.json=false`); `value` is `true` or `false`. Arguments
+  /// outside the `tom.protection` namespace are ignored, so the whole process
+  /// argument list can be passed. A specific setting beats `tom.protection`
+  /// whatever their order.
+  ///
+  /// Throws [TomProtectionSettingException], before changing any switch, for a
+  /// name in the namespace that is not a setting or a value that is not a
+  /// boolean.
+  static void applyArguments(Iterable<String> arguments) {
+    final settings = <String, bool>{};
+    for (final argument in arguments) {
+      final text = argument.replaceFirst(RegExp('^-+'), '');
+      final separator = text.indexOf('=');
+      final name = separator < 0 ? text : text.substring(0, separator);
+      if (name != settingAll && !name.startsWith('$settingAll.')) continue;
+      if (!settingNames.contains(name)) {
+        throw TomProtectionSettingException(
+          'security.protection.unknown_setting',
+          'Unknown protection setting "$name"; the settings are '
+              '${settingNames.join(', ')}.',
+          parameters: {'setting': name},
+        );
+      }
+      final value = separator < 0 ? null : text.substring(separator + 1);
+      settings[name] = switch (value) {
+        'true' => true,
+        'false' => false,
+        _ => throw TomProtectionSettingException(
+          'security.protection.invalid_value',
+          'Protection setting "$name" needs the value true or false, got '
+              '"${value ?? ''}".',
+          parameters: {'setting': name, 'value': value ?? ''},
+        ),
+      };
+    }
+    final all = settings.remove(settingAll);
+    if (all != null) _setAll(all);
+    settings.forEach(_set);
+  }
+
+  /// Switches every protection switch off: no resource-key grant is enforced
+  /// and no automatic tier applies. The application-code form of
+  /// `tom.protection=false`.
+  static void disableAll() => _setAll(false);
+
+  /// Puts every switch back to its start-up value — its define, or its
+  /// default.
+  static void restoreDefaults() {
+    globalSettingProtectionDefault = _resourceKeysDefault;
+    globalSettingUseAutomaticEndpointProtection = _endpointDefault;
+    globalSettingUseAutomaticJsonProtection = _jsonDefault;
+    globalSettingUseAutomaticDatabaseProtection = _databaseDefault;
+    globalSettingUseAutomaticUIProtection = _uiDefault;
+  }
+
+  static void _setAll(bool enabled) {
+    for (final name in settingNames) {
+      if (name != settingAll) _set(name, enabled);
+    }
+  }
+
+  static void _set(String name, bool enabled) {
+    switch (name) {
+      case settingResourceKeys:
+        globalSettingProtectionDefault = enabled;
+      case settingEndpoint:
+        globalSettingUseAutomaticEndpointProtection = enabled;
+      case settingJson:
+        globalSettingUseAutomaticJsonProtection = enabled;
+      case settingDatabase:
+        globalSettingUseAutomaticDatabaseProtection = enabled;
+      case settingUi:
+        globalSettingUseAutomaticUIProtection = enabled;
+    }
+  }
+
+  /// The grade the automatic tiers apply to [resourceKey]: the installed
+  /// [TomAuthorization] adapter's grade met with the ambient principal's
+  /// resource-key grade ([resourceState]).
+  ///
+  /// Both sources are consulted because deployments configure either. A client
+  /// installs an adapter built from its principal; a server has a principal on
+  /// every request zone and usually no adapter. Each source is `full` when it
+  /// is not configured — no adapter, or [globalSettingProtectionDefault] off —
+  /// so the meet is whichever one is, and the more restrictive when both are.
+  /// It does not consult the tier switches: each tier checks its own before
+  /// asking.
+  static TomAuthState automaticState(String resourceKey) =>
+      TomAuthorization.resolveAuth(
+        resourceKey,
+      ).narrow(resourceState(resourceKey));
 
   /// Protects a value based on [principal]'s resource key access.
   ///

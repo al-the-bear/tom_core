@@ -752,20 +752,39 @@ filter a caller opts into.
 
 ### Grading a column
 
-A column opts in by naming a resource key:
+A column opts in by naming a resource key, in either of two ways:
 
 ```dart
 @TomDbColumn(columnName: 'salary', authKey: 'employee.salary')
 int? salary;
+
+// or, with the kernel's field annotation — which the JSON serializer honours
+// too, so one key protects the field on the wire as well as in the store:
+@TomProtectedField('employee.salary')
+@TomDbColumn(columnName: 'salary')
+int? salary;
 ```
 
-The key is resolved to a kernel `TomAuthState`, the four-state grade
-`none < disabled < read < full`. A column with **no** `authKey` is unrestricted:
-`TomColumnAuthorization.stateForKey(null)` is `full`, so an entity that grades
-nothing pays nothing. The resolver is the process-wide `TomAuthorization`
-singleton unless one is passed explicitly — which is what a test does, and it is
-worth knowing that the singleton answers `full` for everything in development
-mode.
+`TomColumnInformation.authKey` is the resolved key: the column's `authKey`, else
+the field's `@TomProtectedField`. It is resolved to a kernel `TomAuthState`, the
+four-state grade `none < disabled < read < full`. A column with **no** key is
+unrestricted: `TomColumnAuthorization.stateForKey(null)` is `full`, so an entity
+that grades nothing pays nothing.
+
+Unless a resolver is passed explicitly — which is what a test does — the grade
+is `TomResourceKeyProtection.automaticState`: the installed `TomAuthorization`
+adapter's grade met with the request principal's resource-key grade. Each side
+answers `full` when it is not configured (no adapter; resource keys not
+enforced), so an unconfigured deployment is unrestricted, a server grading from
+its principals' grants needs no adapter, and a deployment configuring both gets
+the more restrictive answer.
+
+This is the **database tier** of the kernel's automatic protection. It applies
+while `TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection` is
+on — its default — and `tom.protection.database=false` (or
+`tom.protection=false`) on the server's command line switches it off: every
+column is then unrestricted, per-row resolvers included. Row filtering by
+`@TomDbScope` is not part of the tier and stays in force.
 
 The grade is honoured *here*, at the persistence boundary, rather than being left
 to whatever renders the entity. A field the caller may not see never leaves the

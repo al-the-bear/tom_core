@@ -1325,19 +1325,23 @@ class TomEndpointHandler {
   /// never covers a `-` key ([TomAccessControlInformation.holdsResourceKey]): a
   /// principal granted every container is not thereby issued every
   /// revocation.
+  ///
+  /// **Nothing is granted while resource keys are not enforced**
+  /// ([TomResourceKeyProtection.globalSettingProtectionDefault] off). There,
+  /// `isProtected` answers "held" for every key there is, so a second chance
+  /// taken from it would overturn every refusal the ordinary check made — a
+  /// role requirement included — and asking about `-<member>` would report
+  /// every revocation as issued. With no grants in force there is nothing to
+  /// grant from, and the prior decision stands.
   bool checkAutomaticAccess(bool accessCheck) {
+    if (!TomResourceKeyProtection.globalSettingProtectionDefault) {
+      return accessCheck;
+    }
     final (container, member) = automaticProtectionKeys;
 
     final holdsContainer = !TomResourceKeyProtection.isProtected(container);
     if (holdsContainer) {
-      // The revocation is only consulted while protection is actually on.
-      // `isProtected` answers "false" — *held* — for every key once protection
-      // is switched off, and asking it about `-<member>` there would report
-      // every conceivable revocation as issued and deny every endpoint. A
-      // revocation exists only by having been granted to someone.
-      final revoked =
-          TomResourceKeyProtection.globalSettingProtectionDefault &&
-          !TomResourceKeyProtection.isProtected("-$member");
+      final revoked = !TomResourceKeyProtection.isProtected("-$member");
       return !revoked;
     }
     final holdsMember = !TomResourceKeyProtection.isProtected(member);

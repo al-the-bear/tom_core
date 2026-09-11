@@ -1445,6 +1445,31 @@ class FixtureDocumentRecord {
   String? secretAttachment;
 }
 
+/// A reflected entity whose graded column is protected by the kernel's
+/// `@TomProtectedField` instead of a `TomDbColumn.authKey` — the one
+/// annotation both automatic tiers, JSON and database, honour.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_protected',
+  primaryKeyField: 'id',
+)
+class FixtureProtectedRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// An unrestricted column.
+  @TomDbColumn(columnName: 'name')
+  String? name;
+
+  /// The column graded through `@TomProtectedField` alone.
+  @TomProtectedField('fixture.protected.salary')
+  @TomDbColumn(columnName: 'salary')
+  int? salary;
+}
+
 /// The MariaDB-backed repository for [FixtureDocumentRecord].
 class FixtureDocumentRepository
     extends TomSqlDatasourceRepository<FixtureDocumentRecord, int> {}

@@ -711,6 +711,47 @@ void main() {
     });
   });
 
+  // The protection switches are the one setting every server shares and no
+  // configuration class declares, so the base constructor applies them from
+  // the same arguments it records.
+  group('TomBaseServerConfiguration applies the protection settings', () {
+    tearDown(TomResourceKeyProtection.restoreDefaults);
+
+    test('a tom.protection argument reaches its switch', () {
+      _install({});
+      _CapturingConfig(['port=9000', 'tom.protection.json=false']);
+      expect(
+        TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection,
+        isFalse,
+      );
+      expect(
+        TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection,
+        isTrue,
+      );
+    });
+
+    test('tom.protection=false switches the whole system off', () {
+      _install({});
+      _CapturingConfig(['tom.protection=false']);
+      expect(
+        TomResourceKeyProtection.globalSettingUseAutomaticUIProtection,
+        isFalse,
+      );
+      expect(
+        TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection,
+        isFalse,
+      );
+    });
+
+    test('a misspelt setting stops the server from starting', () {
+      _install({});
+      expect(
+        () => _CapturingConfig(['tom.protection.jsn=false']),
+        throwsA(isA<TomProtectionSettingException>()),
+      );
+    });
+  });
+
   // `tomAppId` is the process-wide answer to "which application is this", and
   // for as long as it existed the library neither produced nor consumed one:
   // five servers across this workspace each published it by hand and nothing

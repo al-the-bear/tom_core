@@ -8,6 +8,7 @@ import '../little_things/exception_base.dart';
 import '../timezoned/date_timestamp.dart';
 import '../json/json_serializable.dart';
 import '../observable/tom_observable_objects.dart';
+import '../security/access_controls.dart';
 
 /// Exception thrown when reflection operations fail.
 ///
@@ -2228,7 +2229,8 @@ class TomReflectionInfo {
   /// 3. **a `toJson()` method** — the same rendering declared structurally
   ///    rather than nominally, found on the reflected type.
   /// 4. **a `jsonEncode` getter** — the kernel's own hook name.
-  /// 5. **the reflected fields** — non-static, non-final, non-private.
+  /// 5. **the reflected fields** — non-static, non-final, non-private, less
+  ///    any the JSON protection tier withholds (see below).
   ///
   /// Why `toJson` outranks `jsonEncode`: steps 2 and 3 are the same method
   /// under two spellings, one nominal and one structural. Were `jsonEncode`
@@ -2240,6 +2242,17 @@ class TomReflectionInfo {
   /// Steps 1 and 2 are `is` tests by design, not lookups: see
   /// [TomJsonSerializable] for why "this type serializes itself" is worth
   /// making a type-system fact rather than something to probe for.
+  ///
+  /// ## Protected fields
+  ///
+  /// While [TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection]
+  /// is on — its default — a field annotated [TomProtectedField] is graded
+  /// through [TomResourceKeyProtection.automaticState] and **left out** when
+  /// the grade shows no content (`none` or `disabled`). Omitted rather than
+  /// nulled: the reader may be a non-nullable field, and a missing member leaves
+  /// it at its default where a `null` would fail the read. Only step 5 walks
+  /// fields, so a type that renders itself protects what it renders with
+  /// [TomResourceKeyProtection.protect].
   ///
   /// ## Supported Field Types
   ///
@@ -2299,6 +2312,7 @@ class TomReflectionInfo {
         skippedFinals.add(d.key);
         continue;
       }
+      if (_withheldByProtection(dm)) continue;
       _addFieldToResult(im, d.key, result);
     }
 
@@ -2421,6 +2435,22 @@ class TomReflectionInfo {
   }
 
   /// Adds a single field's value to the result map.
+  /// Whether the JSON protection tier withholds [field]: the tier is on, the
+  /// field carries a [TomProtectedField], and its grade shows no content.
+  static bool _withheldByProtection(VariableMirror field) {
+    if (!TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection) {
+      return false;
+    }
+    for (final annotation in field.metadata) {
+      if (annotation is TomProtectedField) {
+        return !TomResourceKeyProtection.automaticState(
+          annotation.resourceKey,
+        ).showsContent;
+      }
+    }
+    return false;
+  }
+
   void _addFieldToResult(
     InstanceMirror im,
     String fieldKey,

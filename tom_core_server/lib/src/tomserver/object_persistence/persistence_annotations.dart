@@ -434,6 +434,18 @@ class TomColumnInformation {
   /// The file-reference annotation, if this column holds a blob storage key.
   final TomFileReference? fileReference;
 
+  /// The kernel's field-protection annotation, if the field carries one.
+  final TomProtectedField? protectedField;
+
+  /// The resource key that gates this column (C-4): the column's own
+  /// [TomDbColumn.authKey], else the field's [TomProtectedField] key, else
+  /// `null` for an unrestricted column.
+  ///
+  /// Reading the kernel annotation here is what makes one `@TomProtectedField`
+  /// protect a field in both automatic tiers it passes through — the JSON
+  /// serializer and this repository — without the key being written twice.
+  String? get authKey => column?.authKey ?? protectedField?.resourceKey;
+
   /// The declared Dart type of the field.
   final Type declaredType;
 
@@ -447,10 +459,10 @@ class TomColumnInformation {
   ///
   /// The five required parameters are the ones every mapped field has: the
   /// owning entity type ([tableType]) and its table ([table]), and the field's
-  /// own [declaredType], [declaredName] and mapped [field] name. The five
+  /// own [declaredType], [declaredName] and mapped [field] name. The six
   /// optional ones each correspond to an annotation the field may or may not
   /// carry — [column], [entityId], [reference], [eventHandler],
-  /// [fileReference] — and are `null` when it does not.
+  /// [fileReference], [protectedField] — and are `null` when it does not.
   ///
   /// All are named. Two pairs are the reason: [declaredName] and [field] are
   /// both `String`, and passing them the wrong way round type-checks — it maps
@@ -470,6 +482,7 @@ class TomColumnInformation {
     this.reference,
     this.eventHandler,
     this.fileReference,
+    this.protectedField,
   });
 
   /// The owning entity type ([tableType]).

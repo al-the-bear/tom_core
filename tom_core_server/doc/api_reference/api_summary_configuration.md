@@ -117,8 +117,11 @@ the constructor.
 TomBaseServerConfiguration(List<String> args)
 ```
 
-Calls `setValues(getDefaultValues(args))`, then assigns `args` to the field of
-the same name. The order matters in both directions: `setValues` runs first so
+Applies the kernel's protection settings from `args`
+(`TomResourceKeyProtection.applyArguments` — `tom.protection…=true|false`;
+throws `TomProtectionSettingException` for a misspelt setting), then calls
+`setValues(getDefaultValues(args))`, then assigns `args` to the field of the
+same name. The order matters in both directions: `setValues` runs first so
 a subclass's constructor body sees resolved fields, and the `args` assignment
 runs after it so a merged key spelled `args` cannot displace the invocation.
 

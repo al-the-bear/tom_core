@@ -22,6 +22,7 @@ targets:
           - test/beanlocator_constructor_arity_test.dart
           - test/crypto_test.dart
           - test/http_connection_test.dart
+          - test/json_protection_test.dart
           - test/little_things_test.dart
           - test/observable_test.dart
           - test/preferences_test.dart

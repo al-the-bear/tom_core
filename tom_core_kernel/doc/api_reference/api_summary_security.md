@@ -27,6 +27,8 @@ per-principal-per-resource role resolution.
   - [TomResourceRoleRegistry](#tomresourceroleregistry)
   - [TomResourceRoleAdapter](#tomresourceroleadapter)
   - [TomResourceKeyProtection](#tomresourcekeyprotection)
+  - [TomProtectedField](#tomprotectedfield)
+  - [TomProtectionSettingException](#tomprotectionsettingexception)
   - [TomAccessControl](#tomaccesscontrol)
   - [TomGradedAccess](#tomgradedaccess)
   - [TomNoAccess](#tomnoaccess)
@@ -158,6 +160,7 @@ Object
 ├── TomUIStateController
 ├── TomResourceRoleRegistry                  (private constructor)
 ├── TomResourceKeyProtection
+├── TomProtectedField                        (annotation)
 ├── TomAuthenticationMessage                 (@tomReflector)
 ├── TomAuthenticationResult                  (@tomReflector)
 ├── TomBearerAuthentication
@@ -719,13 +722,29 @@ the principal the current request installed. Every one of them is gated on
 
 #### Static Properties
 
+The five switches. Each reads its start-up value from a compile-time define
+named by its setting, else from a `tom.protection` define, else from its
+default; [applyArguments] sets them at run time.
+
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `globalSettingProtectionDefault` | `bool` | Master switch for resource protection. **Defaults to `false`**, and while it is off every method below short-circuits to "accessible" — a protection call added to the code protects nothing until this is set. |
-| `globalSettingUseAutomaticEndpointProtection` | `bool` | When enabled, API endpoints are automatically protected based on metadata. Defaults to `false`. The one automatic switch that is honoured — `tom_core_server`'s endpoint pipeline consults it. |
-| `globalSettingUseAutomaticUIProtection` | `bool` | Whether `tom_flutter_ui`'s four-state model applies. **Defaults to `true`**, unlike every other switch here. Setting it `false` bypasses the model and grants every UI resource it protects, leaving only the build-time `TomUIStateController` in force — a diagnostic for "is this hidden by authorization or by something else?", read by `TomAuthLayers.resolve`. It replaces three switches for form fields, actions and action-disabling that nothing read and that named distinctions the four states already draw. |
-| `globalSettingUseAutomaticJsonProtection` | `bool` | Defaults to `false`. **No tier implements this** — nothing reads the flag, and the `json` module does not reference resource-key protection at all. Serialization protects what a caller protects explicitly with `protect`, and nothing else. |
-| `globalSettingUseAutomaticDatabaseProtection` | `bool` | Defaults to `false`. **No tier implements this** — nothing reads the flag, and `object_persistence` does not reference resource-key protection. Row filtering that *is* implemented is the server's data-scope layer, a separate mechanism keyed on scopes rather than resource keys. |
+| `globalSettingProtectionDefault` | `bool` | Whether resource-key grants are enforced at all. **Defaults to `false`**, and while it is off every method below short-circuits to "accessible" — a protection call added to the code protects nothing until this is set. Setting `tom.protection.resourceKeys`. |
+| `globalSettingUseAutomaticEndpointProtection` | `bool` | Whether `tom_core_server`'s endpoint pipeline may grant a refused call from resource keys. **Defaults to `true`**; consulted only while `globalSettingProtectionDefault` is on, since with keys not enforced every key reads as held. Setting `tom.protection.endpoint`. |
+| `globalSettingUseAutomaticUIProtection` | `bool` | Whether `tom_flutter_ui`'s four-state model applies — the one switch for form fields, actions and components. **Defaults to `true`**. Setting it `false` bypasses the model and grants every UI resource it protects, leaving only the build-time `TomUIStateController` in force; read by `TomAuthLayers.resolve`. Setting `tom.protection.ui`. |
+| `globalSettingUseAutomaticJsonProtection` | `bool` | Whether the reflective serializer (`TomReflectionInfo.getValues`) leaves out a [TomProtectedField] field whose [automaticState] shows no content. **Defaults to `true`**. Types that render themselves are not walked. Setting `tom.protection.json`. |
+| `globalSettingUseAutomaticDatabaseProtection` | `bool` | Whether `tom_core_server`'s repository applies column authorization — masking and write-protecting a column with a `TomDbColumn.authKey` or a [TomProtectedField]. **Defaults to `true`**; off, every column is unrestricted, per-row resolvers included. Data scopes are unaffected. Setting `tom.protection.database`. |
+
+#### Static Constants
+
+| Constant | Value | Description |
+| -------- | ----- | ----------- |
+| `settingAll` | `'tom.protection'` | Sets every switch at once. |
+| `settingResourceKeys` | `'tom.protection.resourceKeys'` | Sets `globalSettingProtectionDefault`. |
+| `settingEndpoint` | `'tom.protection.endpoint'` | Sets `globalSettingUseAutomaticEndpointProtection`. |
+| `settingJson` | `'tom.protection.json'` | Sets `globalSettingUseAutomaticJsonProtection`. |
+| `settingDatabase` | `'tom.protection.database'` | Sets `globalSettingUseAutomaticDatabaseProtection`. |
+| `settingUi` | `'tom.protection.ui'` | Sets `globalSettingUseAutomaticUIProtection`. |
+| `settingNames` | `List<String>` | Every setting name, in the order above. |
 
 #### Static Methods
 
@@ -735,7 +754,36 @@ the principal the current request installed. Every one of them is gated on
 | `resourceStateFor(TomPrincipal? principal, String resourceKey)` | `TomAuthState` | The rule itself, over an explicit principal. `full` whenever [globalSettingProtectionDefault] is `false`, before any grant is consulted; otherwise `full` for a flat grant covering the key (`TomAccessControlInformation.holdsResourceKey`), else the principal's resource role for it mapped through `TomResourceRoleRegistry` (an unknown role, or none, is `none`). A `null` principal is `none`. |
 | `resourceState(String resourceKey)` | `TomAuthState` | [resourceStateFor] applied to the principal on the ambient zone. Outside a request zone, with protection on, `none` for everything — fail-closed. |
 | `isProtectedFor(TomPrincipal? principal, String resourceKey)` | `bool` | [resourceStateFor] collapsed to two outcomes: protected unless the state `showsContent`. A read-only role is therefore not protected; a `disabled` one is. A `null` principal holds nothing, so with protection on it is denied everything. |
+| `automaticState(String resourceKey)` | `TomAuthState` | The grade the automatic tiers apply: `TomAuthorization.resolveAuth(key)` met (`narrow`) with [resourceState]. Each side is `full` when unconfigured — no adapter, or resource keys not enforced. Does not consult the tier switches; each tier checks its own. |
+| `applyArguments(Iterable<String> arguments)` | `void` | Applies the `name=value` settings among `arguments` (leading dashes allowed; other arguments ignored; a specific setting beats `tom.protection`). Throws [TomProtectionSettingException] — before changing any switch — for an unknown name in the namespace (`security.protection.unknown_setting`) or a value other than `true`/`false` (`security.protection.invalid_value`). |
+| `disableAll()` | `void` | Switches every switch off — the code form of `tom.protection=false`. |
+| `restoreDefaults()` | `void` | Puts every switch back to its start-up value (its define, or its default). |
 | `isProtected(String resourceKey)` | `bool` | [isProtectedFor] applied to the principal on the ambient zone — the operand is read from the zone, not passed. Note the two ways it answers `false`: protection is switched off, or the principal holds the resource. Outside a request zone there is no principal, so with protection on this answers `true` for everything — fail-closed. Where a principal is already in hand, call [isProtectedFor]. |
+
+### TomProtectedField
+
+Annotation marking a reflected field as protected by a resource key. The JSON
+tier leaves the field out of reflective output, and `tom_core_server`'s
+database tier masks and write-protects its column, when
+[TomResourceKeyProtection.automaticState] for the key shows no content.
+
+```dart
+const TomProtectedField(String resourceKey)
+```
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `resourceKey` | `String` | The resource key the field is graded on. |
+
+### TomProtectionSettingException
+
+Raised by [TomResourceKeyProtection.applyArguments] before any switch changes.
+Extends `TomException`.
+
+| Key | Raised when |
+| --- | ----------- |
+| `security.protection.unknown_setting` | a name in the `tom.protection` namespace is not a setting (`parameters['setting']`) |
+| `security.protection.invalid_value` | a setting's value is not `true` or `false` (`parameters['setting']`, `parameters['value']`) |
 
 ### TomAccessControl
 

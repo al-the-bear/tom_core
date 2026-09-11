@@ -1,7 +1,10 @@
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
-import 'fixtures/reflection_fixture.dart' show FixtureDocumentRecord;
+import 'dart:async';
+
+import 'fixtures/reflection_fixture.dart'
+    show FixtureDocumentRecord, FixtureProtectedRecord;
 import 'fixtures/reflection_fixture.reflection.dart';
 
 /// C-4 (G-AUTHZ-4) column-level access-rights tests.
@@ -86,6 +89,126 @@ void main() {
       // A null key is unrestricted *before* the resolver is reached, so the
       // adapter is never asked about a column that carries no key.
       expect(TomColumnAuthorization.stateForKey(null), TomAuthState.full);
+    });
+  });
+
+  group('the database tier switch', () {
+    // The kernel's automatic protection has a switch per tier, and this one is
+    // the repository's. Off, the tier does not apply at all: every graded
+    // column is unrestricted, whatever the resolver would have said.
+    tearDown(TomResourceKeyProtection.restoreDefaults);
+
+    test('is on by default', () {
+      expect(
+        TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection,
+        isTrue,
+      );
+      final resolver = _resolver({'secret': TomAuthState.none});
+      expect(
+        TomColumnAuthorization.stateForKey('secret', resolver: resolver),
+        TomAuthState.none,
+      );
+    });
+
+    test('switched off, every column is full and no resolver is asked', () {
+      TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection =
+          false;
+      var asked = false;
+      expect(
+        TomColumnAuthorization.stateForKey(
+          'secret',
+          resolver: (key) {
+            asked = true;
+            return TomAuthState.none;
+          },
+        ),
+        TomAuthState.full,
+      );
+      expect(asked, isFalse);
+    });
+
+    test('switched off, a per-row resolver is not consulted either', () async {
+      TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection =
+          false;
+      TomRowColumnAuthorization.register(
+        'row.secret',
+        (principal, rowId) async => TomAuthState.none,
+      );
+      addTearDown(TomRowColumnAuthorization.reset);
+      expect(
+        await TomRowColumnAuthorization.resolve('row.secret', 1),
+        TomAuthState.full,
+      );
+    });
+  });
+
+  group('the default resolver reads the request principal too', () {
+    // A server usually installs no TomAuthorization adapter; its caller is
+    // the principal on the request zone. The default resolver is the kernel's
+    // automatic grade, which meets the adapter's answer with that principal's
+    // resource-key grade.
+    setUp(() {
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+    });
+    tearDown(() {
+      TomResourceKeyProtection.restoreDefaults();
+      TomAuthorization.reset();
+    });
+
+    TomPrincipal principal(List<String> keys) => TomPrincipal(
+      user: TomUser(id: 3, username: 'grace'),
+      authenticated: true,
+      aci: TomAccessControlInformation(resourceKeys: keys),
+    );
+
+    test('a principal holding the key sees the column', () {
+      final state = runZoned(
+        () => TomColumnAuthorization.stateForKey(_secretKey),
+        zoneValues: {
+          TomPrincipal: principal([_secretKey]),
+        },
+      );
+      expect(state, TomAuthState.full);
+    });
+
+    test('a principal without it does not', () {
+      final state = runZoned(
+        () => TomColumnAuthorization.stateForKey(_secretKey),
+        zoneValues: {
+          TomPrincipal: principal(['fixture.other']),
+        },
+      );
+      expect(state, TomAuthState.none);
+    });
+  });
+
+  group('@TomProtectedField on an entity field', () {
+    setUpAll(initializeReflection);
+    tearDown(TomResourceKeyProtection.restoreDefaults);
+
+    test('makes the column an authorized column under its key', () {
+      final authColumns = TomAnnotationAnalyzer.findAuthColumns(
+        FixtureProtectedRecord,
+      );
+      expect(authColumns.map((c) => c.declaredName), ['salary']);
+      expect(authColumns.single.authKey, 'fixture.protected.salary');
+    });
+
+    test('is masked on read like an authKey column', () {
+      final columns = TomAnnotationAnalyzer.findAuthColumns(
+        FixtureProtectedRecord,
+      );
+      final record = FixtureProtectedRecord()
+        ..id = 1
+        ..name = 'Grace'
+        ..salary = 91000;
+      TomColumnAuthorization.applyReadMask(
+        record,
+        columns,
+        resolver: _resolver({'fixture.protected.salary': TomAuthState.none}),
+      );
+      expect(record.salary, isNull);
+      expect(record.name, 'Grace');
     });
   });
 

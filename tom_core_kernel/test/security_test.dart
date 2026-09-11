@@ -1183,43 +1183,132 @@ void main() {
   // ===========================================================================
 
   group('TomResourceKeyProtection', () {
-    setUp(() {
-      // Reset global settings before each test
-      TomResourceKeyProtection.globalSettingProtectionDefault = false;
-      TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection =
-          false;
-      TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection = false;
-      TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection =
-          false;
-    });
+    setUp(TomResourceKeyProtection.restoreDefaults);
+    tearDown(TomResourceKeyProtection.restoreDefaults);
 
     group('global settings', () {
-      test('should have protection disabled by default', () {
+      // No define is passed to the test run, so these are the defaults a
+      // deployment starts from: the tiers armed, resource keys not enforced.
+      test('resource-key enforcement is off by default', () {
         expect(
           TomResourceKeyProtection.globalSettingProtectionDefault,
           isFalse,
         );
       });
 
-      test('should have automatic endpoint protection disabled by default', () {
+      test('every automatic tier is on by default', () {
         expect(
           TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection,
-          isFalse,
+          isTrue,
         );
-      });
-
-      test('should have automatic JSON protection disabled by default', () {
         expect(
           TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection,
-          isFalse,
+          isTrue,
+        );
+        expect(
+          TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection,
+          isTrue,
+        );
+        expect(
+          TomResourceKeyProtection.globalSettingUseAutomaticUIProtection,
+          isTrue,
         );
       });
 
-      test('should have automatic database protection disabled by default', () {
-        expect(
-          TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection,
-          isFalse,
-        );
+      test('disableAll switches everything off; restoreDefaults undoes it', () {
+        TomResourceKeyProtection.globalSettingProtectionDefault = true;
+        TomResourceKeyProtection.disableAll();
+        expect(_switches(), everyElement(isFalse));
+
+        TomResourceKeyProtection.restoreDefaults();
+        expect(_switches(), [false, true, true, true, true]);
+      });
+
+      group('applyArguments', () {
+        test('each setting names its own switch', () {
+          TomResourceKeyProtection.applyArguments([
+            'tom.protection.resourceKeys=true',
+            'tom.protection.endpoint=false',
+            'tom.protection.json=false',
+            'tom.protection.database=false',
+            'tom.protection.ui=false',
+          ]);
+          expect(_switches(), [true, false, false, false, false]);
+        });
+
+        test('"tom.protection" switches them all', () {
+          TomResourceKeyProtection.applyArguments(['tom.protection=false']);
+          expect(_switches(), everyElement(isFalse));
+          TomResourceKeyProtection.applyArguments(['tom.protection=true']);
+          expect(_switches(), everyElement(isTrue));
+        });
+
+        test('a specific setting beats "tom.protection", in any order', () {
+          TomResourceKeyProtection.applyArguments([
+            'tom.protection.ui=true',
+            'tom.protection=false',
+          ]);
+          expect(_switches(), [false, false, false, false, true]);
+        });
+
+        test('leading dashes are accepted and other arguments ignored', () {
+          TomResourceKeyProtection.applyArguments([
+            'port=8080',
+            '--debug',
+            '--tom.protection.json=false',
+            'tom.protectionist=true',
+          ]);
+          expect(
+            TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection,
+            isFalse,
+          );
+          expect(_switches(), [false, true, false, true, true]);
+        });
+
+        test('an unknown name in the namespace is refused', () {
+          expect(
+            () => TomResourceKeyProtection.applyArguments([
+              'tom.protection.json=false',
+              'tom.protection.jsn=false',
+            ]),
+            throwsA(
+              isA<TomProtectionSettingException>().having(
+                (e) => e.key,
+                'key',
+                'security.protection.unknown_setting',
+              ),
+            ),
+          );
+          // Refused before anything changed: the valid half was not applied.
+          expect(
+            TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection,
+            isTrue,
+          );
+        });
+
+        test('a value that is not a boolean is refused', () {
+          for (final argument in [
+            'tom.protection.database=off',
+            'tom.protection.database',
+          ]) {
+            expect(
+              () => TomResourceKeyProtection.applyArguments([argument]),
+              throwsA(
+                isA<TomProtectionSettingException>().having(
+                  (e) => e.key,
+                  'key',
+                  'security.protection.invalid_value',
+                ),
+              ),
+              reason: argument,
+            );
+          }
+          expect(
+            TomResourceKeyProtection
+                .globalSettingUseAutomaticDatabaseProtection,
+            isTrue,
+          );
+        });
       });
 
       test('should allow enabling global protection', () {
@@ -4546,3 +4635,13 @@ String _makeJwt(Map<String, dynamic> payload) {
   final header = {'alg': 'HS256', 'typ': 'JWT'};
   return '${seg(header)}.${seg(payload)}.sig';
 }
+
+/// The five switches, master first, in [TomResourceKeyProtection.settingNames]
+/// order.
+List<bool> _switches() => [
+  TomResourceKeyProtection.globalSettingProtectionDefault,
+  TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection,
+  TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection,
+  TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection,
+  TomResourceKeyProtection.globalSettingUseAutomaticUIProtection,
+];

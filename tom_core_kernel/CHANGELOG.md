@@ -8,6 +8,24 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **The automatic protection tiers are real, on by default, and switchable
+  from the command line (tcopen75).** `@TomProtectedField('key')` protects a
+  reflected field: the JSON tier — `TomReflectionInfo.getValues`' field walk —
+  leaves it out when its grade shows no content, and `tom_core_server`'s
+  repository masks and write-protects the column. Both grade through the new
+  `TomResourceKeyProtection.automaticState`, the installed `TomAuthorization`
+  adapter's grade met with the ambient principal's resource-key grade. The
+  endpoint, JSON, database and UI switches now default to `true`;
+  resource-key enforcement (`globalSettingProtectionDefault`) stays `false`.
+  Every switch takes its start-up value from a define (`-Dtom.protection=false`,
+  `--dart-define=tom.protection.ui=false`), and
+  `applyArguments(['tom.protection.json=false'])` sets them at run time;
+  `disableAll()` and `restoreDefaults()` do the same from code. A misspelt
+  setting or a non-boolean value throws `TomProtectionSettingException`
+  (`security.protection.unknown_setting`, `security.protection.invalid_value`).
+  The JSON and database switches had no tier behind them and were read by
+  nothing. Runnable: `example/samples/security/12_automatic_protection_example.dart`.
+
 - **`TomOneShotResource`, and `TomLeaseLock.forget` takes only that
   (tcopen68).** Forgetting a resource erases its fencing-token chain, which is
   safe for a name never acquired again (a run's `run:<id>`) and a silent

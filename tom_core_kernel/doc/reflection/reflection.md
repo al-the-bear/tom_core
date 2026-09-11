@@ -538,6 +538,16 @@ In order, stopping at the first that applies:
    member, it raises `reflector.type.all_final` rather than returning `{}` —
    see [Use Non-Final Fields](#2-use-non-final-fields).
 
+The field walk is also where the security module's **JSON protection tier**
+applies. While `TomResourceKeyProtection.globalSettingUseAutomaticJsonProtection`
+is on — its default — a field annotated `@TomProtectedField('key')` is graded
+through `TomResourceKeyProtection.automaticState` and **left out** when the
+grade shows no content. It is omitted rather than nulled, because the reader
+may be a non-nullable field that a missing member leaves at its default. Steps
+1–4 render a whole object themselves, so a type using one protects what it
+writes with `TomResourceKeyProtection.protect`. See the security guide's
+Automatic Protection section.
+
 Steps 1–3 are one hook under three spellings — two nominal, one structural —
 which is why they are ranked together, ahead of `jsonEncode`:
 
@@ -1636,6 +1646,7 @@ searching for a type that cannot exist.
 | [json](../json/json.md) | module | every file | `TomJsonSerializable` |
 | [little_things](../little_things/little_things.md) | module | every file | `TomException`, the base of `TomReflectorException` |
 | [observable](../observable/observable.md) | module | every file | `TomClass` and the observable field types, which the JSON conversion special-cases rather than treating as opaque objects |
+| [security](../security/security.md) | module | every file | `TomProtectedField` and `TomResourceKeyProtection`, which the field walk consults to leave out a field the caller may not see |
 | [timezoned](../timezoned/timezoned.md) | module | every file | the conversion knows these three types by name, which is why a zoned value survives a round trip that a general object graph would flatten |
 
 The whole module is one file, `reflection.dart`, so every row above applies to

@@ -329,6 +329,12 @@ One global switch governs whether the four-state model applies at all:
   element that is still hidden or disabled is hidden for some other reason.
   Read by `TomAuthLayers.resolve`; the build-time `TomUIStateController`
   survives the bypass, because it describes the screen rather than the user.
+  It is the one switch for form fields, actions and components alike. For a
+  development build, switch it off without touching code:
+  `flutter run --dart-define=tom.protection.ui=false` (or
+  `--dart-define=tom.protection=false` to switch every protection tier off);
+  application code can call `TomResourceKeyProtection.applyArguments` with its
+  own arguments, or `disableAll()`.
 
 **TomAccessControl hierarchy**
 

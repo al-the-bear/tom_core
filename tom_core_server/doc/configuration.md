@@ -16,6 +16,7 @@ environment-variable substitution.
   - [What a bad cast throws](#what-a-bad-cast-throws)
 - [The Server Configuration Base](#the-server-configuration-base)
   - [Naming the application](#naming-the-application)
+  - [Switching protection off from the command line](#switching-protection-off-from-the-command-line)
 - [Deployment Settings](#deployment-settings)
   - [JWT Signing Keys](#jwt-signing-keys)
   - [Server Self-Login](#server-self-login)
@@ -281,6 +282,27 @@ MyServerConfig(super.args) {
 The guard is what makes it a *default*. A constructor body runs after the base
 has applied the merged values, so an unconditional `appId = 'billing';` discards
 whatever the environment or the command line supplied.
+
+### Switching protection off from the command line
+
+The base constructor also hands its arguments to the kernel's
+`TomResourceKeyProtection.applyArguments`, before anything else, so the
+authorization system's switches can be set on any server's command line:
+
+```bash
+dart run bin/server.dart tom.protection=false          # everything off
+dart run bin/server.dart tom.protection.json=false     # one tier off
+dart run -Dtom.protection.database=false bin/server.dart  # the same as a define
+```
+
+The settings are `tom.protection` (all at once), `tom.protection.resourceKeys`
+(whether resource-key grants are enforced — off by default), and
+`tom.protection.endpoint`, `.json`, `.database` and `.ui` for the four automatic
+tiers, which are on by default. A specific setting beats `tom.protection`. A
+misspelt setting or a value other than `true`/`false` throws
+`TomProtectionSettingException` and the server does not start: a tier believed
+off while it is on, or the reverse, is worse than a failed start. The kernel's
+security guide describes what each switch governs.
 
 ## Deployment Settings
 

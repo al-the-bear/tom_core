@@ -15,10 +15,19 @@
 ///   from the stored value when the column is *masked* (`none`/`disabled`), so a
 ///   round-tripped masked-null never clobbers the stored value.
 ///
-/// A column opts in through [TomDbColumn.authKey]; the repository resolves that
-/// key to a [TomAuthState] through a resolver (by default the process-wide
-/// [TomAuthorization] singleton, per the C-4 spec). A column with no `authKey`
-/// is unrestricted, so entities that declare none keep their behaviour exactly.
+/// A column opts in through [TomDbColumn.authKey], or through the kernel's
+/// `@TomProtectedField` on the entity field — the same annotation the JSON
+/// serializer honours. The repository resolves the key to a [TomAuthState]
+/// through a resolver, by default [TomResourceKeyProtection.automaticState]: the
+/// installed [TomAuthorization] adapter's grade met with the request principal's
+/// resource-key grade. A column with no key is unrestricted, so entities that
+/// declare none keep their behaviour exactly.
+///
+/// This is the database tier of the kernel's automatic protection, and it
+/// applies only while
+/// [TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection] is on
+/// — its default. Switched off (`tom.protection.database=false`), every column
+/// is unrestricted, per-row resolvers included.
 ///
 /// The **decision** ([decideWrites], [maskedColumns], [stateForKey]) is pure and
 /// reflection-free: it takes value/­key accessors as callbacks so the same
@@ -35,8 +44,9 @@ import 'persistence_annotations.dart';
 /// Resolves a column's [TomDbColumn.authKey] to the current principal's
 /// [TomAuthState] for that resource key.
 ///
-/// The repository's default resolver is [TomAuthorization.resolveAuth]; tests
-/// pass a stub mapping keys to states.
+/// The repository's default resolver is
+/// [TomResourceKeyProtection.automaticState]; tests pass a stub mapping keys to
+/// states.
 typedef TomColumnAuthResolver = TomAuthState Function(String authKey);
 
 /// Thrown when a write changes a column the current principal is not authorized
@@ -80,22 +90,29 @@ class TomColumnWriteDecision<C> {
 class TomColumnAuthorization {
   TomColumnAuthorization._();
 
-  /// The resource-key resolver used when a caller passes none: the process-wide
-  /// [TomAuthorization] singleton (which yields [TomAuthState.full] in
-  /// development mode, leaving unconfigured deployments unrestricted).
+  /// The resource-key resolver used when a caller passes none: the kernel's
+  /// [TomResourceKeyProtection.automaticState] — the installed
+  /// [TomAuthorization] adapter's grade met with the request principal's
+  /// resource-key grade. Each is [TomAuthState.full] when unconfigured, so a
+  /// deployment that configured neither is unrestricted.
   static TomAuthState _defaultResolver(String authKey) =>
-      TomAuthorization.resolveAuth(authKey);
+      TomResourceKeyProtection.automaticState(authKey);
 
   /// The [TomAuthState] the principal holds on the column identified by
   /// [authKey], or [TomAuthState.full] when [authKey] is `null` (an
-  /// unrestricted column).
+  /// unrestricted column) or the database tier is switched off
+  /// ([TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection]).
   static TomAuthState stateForKey(
     String? authKey, {
     TomColumnAuthResolver? resolver,
   }) {
-    if (authKey == null) return TomAuthState.full;
+    if (authKey == null || !_tierEnabled) return TomAuthState.full;
     return (resolver ?? _defaultResolver)(authKey);
   }
+
+  /// Whether the database protection tier applies at all.
+  static bool get _tierEnabled =>
+      TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection;
 
   /// The subset of [columns] the principal may **not** see — their grade lacks
   /// [TomAuthState.showsContent] (`none`/`disabled`). The caller nulls these out
@@ -174,7 +191,7 @@ class TomColumnAuthorization {
     final masked = maskedColumns<TomColumnInformation>(
       columns: columns,
       keyOf: (column) {
-        final authKey = column.column?.authKey;
+        final authKey = column.authKey;
         return TomRowColumnAuthorization.isRegistered(authKey) ? null : authKey;
       },
       resolver: resolver,
@@ -197,9 +214,9 @@ typedef TomRowColumnAuthResolver =
 /// Per-row column grades (C-4), for columns whose grade depends on *which row*
 /// is addressed rather than only on who is asking.
 ///
-/// [TomColumnAuthorization] resolves a column's `authKey` through the
-/// process-wide [TomAuthorization] singleton, which is a pure `key → state`
-/// function: it can express "this principal may not see salaries", but not "this
+/// [TomColumnAuthorization] resolves a column's `authKey` through
+/// [TomResourceKeyProtection.automaticState], which is a pure `key → state`
+/// function of the caller: it can express "this principal may not see salaries", but not "this
 /// principal may edit the attachment of the items in the project they own and
 /// only read the ones in a project shared with them". A deployment whose grades
 /// are *relational* — derived from the caller's role on the row's owning
@@ -243,12 +260,18 @@ class TomRowColumnAuthorization {
 
   /// The per-row grade for [authKey] on the row keyed by [rowId], or `null` when
   /// the column is unrestricted (`authKey == null`) or has no per-row resolver —
-  /// in which case the caller keeps its own column-wide resolution.
+  /// in which case the caller keeps its own column-wide resolution. While the
+  /// database tier is switched off
+  /// ([TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection])
+  /// the resolver is not consulted and the grade is [TomAuthState.full].
   ///
   /// The principal is read from the current zone, exactly as the C-3 row scope
   /// reads it, so a resolver sees the same caller the rest of the request does.
   static Future<TomAuthState?> resolve(String? authKey, Object? rowId) async {
     if (authKey == null) return null;
+    if (!TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection) {
+      return TomAuthState.full;
+    }
     final resolver = _resolvers[authKey];
     if (resolver == null) return null;
     return resolver(getFromCurrentZone<TomPrincipal>(), rowId);

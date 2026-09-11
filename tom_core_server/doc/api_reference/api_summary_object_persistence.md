@@ -204,7 +204,8 @@ const TomDbTable({
 #### TomDbColumn&lt;DART_TYPE, COL_TYPE&gt;
 
 Annotation that maps an entity field to a database column. `authKey` opts the
-column into column-level access rights (C-4).
+column into column-level access rights (C-4); the kernel's `@TomProtectedField`
+on the same field does the same, and also protects the field in JSON output.
 
 - **Type Parameters:** `DART_TYPE` — the Dart-side type; `COL_TYPE extends TomDbType` — the SQL-side boxed type.
 
@@ -423,10 +424,11 @@ TomColumnInformation({
   TomReference? reference,
   TomPersistenceEventHandler? eventHandler,
   TomFileReference? fileReference,
+  TomProtectedField? protectedField,
 })
 ```
 
-The five required parameters are the ones every mapped field has; the five
+The five required parameters are the ones every mapped field has; the six
 optional ones each correspond to an annotation the field may or may not carry,
 and are `null` when it does not.
 
@@ -455,6 +457,8 @@ editing its metadata in place.
 | `reference` | `TomReference?` | The reference annotation, if this field is an association. |
 | `eventHandler` | `TomPersistenceEventHandler?` | The lifecycle-callback annotation, if any. Populated by the analyzer but read by nothing. |
 | `fileReference` | `TomFileReference?` | The file-reference annotation, if this column holds a blob storage key. |
+| `protectedField` | `TomProtectedField?` | The kernel's field-protection annotation, if the field carries one. |
+| `authKey` | `String?` | *(getter)* The resource key gating this column (C-4): `column.authKey`, else `protectedField.resourceKey`, else `null`. One `@TomProtectedField` therefore protects the field in the JSON tier and here. |
 | `declaredType` | `Type` | The declared Dart type of the field. |
 | `declaredName` | `String` | The field's name on the entity. |
 | `field` | `String` | The mapped column name. |
@@ -1254,7 +1258,7 @@ reflection-backed read-mask. All members are static.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `stateForKey` | `static TomAuthState stateForKey(String? authKey, {TomColumnAuthResolver? resolver})` | The `TomAuthState` the principal holds on the column identified by `authKey`, or `full` when `authKey` is `null`. |
+| `stateForKey` | `static TomAuthState stateForKey(String? authKey, {TomColumnAuthResolver? resolver})` | The `TomAuthState` the principal holds on the column identified by `authKey`, or `full` when `authKey` is `null` or the database tier is off (`TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection`). Without a `resolver` it grades through `TomResourceKeyProtection.automaticState` — the installed adapter's grade met with the request principal's resource-key grade. |
 | `maskedColumns` | `static List<C> maskedColumns<C>({required Iterable<C> columns, required String? Function(C) keyOf, TomColumnAuthResolver? resolver})` | The subset of `columns` the principal may not see (grade lacks `showsContent`). |
 | `decideWrites` | `static TomColumnWriteDecision<C> decideWrites<C>({required Iterable<C> columns, required String? Function(C) gradeOf, required bool Function(C) changed, required Never Function(C column, String authKey, TomAuthState grade) onForbidden, TomColumnAuthResolver? resolver})` | Partitions `columns` into writable vs preserved, rejecting an unauthorized visible change. |
 | `applyReadMask` | `static T applyReadMask<T extends Object>(T instance, List<TomColumnInformation> columns, {TomColumnAuthResolver? resolver})` | Nulls out — in place — every masked field of `instance` (skipping per-row-graded columns); returns `instance`. |
@@ -1274,7 +1278,7 @@ exactly one row and are already asynchronous. All members are static.
 | ------ | --------- | ----------- |
 | `register` | `static void register(String authKey, TomRowColumnAuthResolver resolver)` | Registers (or replaces) the per-row grade source for `authKey`. |
 | `isRegistered` | `static bool isRegistered(String? authKey)` | Whether `authKey` has a per-row resolver — the read mask skips such columns. |
-| `resolve` | `static Future<TomAuthState?> resolve(String? authKey, Object? rowId)` | The per-row grade, or `null` when the column is unrestricted or has no resolver. |
+| `resolve` | `static Future<TomAuthState?> resolve(String? authKey, Object? rowId)` | The per-row grade, or `null` when the column is unrestricted or has no resolver; `full`, without consulting the resolver, while the database tier is off. |
 | `reset` | `static void reset()` | Clears every registration (tests, re-boot). |
 
 #### TomResourceScopeSource

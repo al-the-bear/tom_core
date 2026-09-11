@@ -24,6 +24,7 @@ import '08_server_principal_meet_example.dart' as server_principal_meet;
 import '09_two_factor_login_example.dart' as two_factor_login;
 import '10_oauth_contract_example.dart' as oauth_contract;
 import '11_access_control_definition_example.dart' as acl_definition;
+import '12_automatic_protection_example.dart' as automatic_protection;
 
 /// Standalone entry point for running security examples.
 Future<void> main() async {
@@ -51,6 +52,7 @@ Future<void> run() async {
   two_factor_login.run();
   await oauth_contract.run();
   acl_definition.run();
+  automatic_protection.run();
 
   print('╔══════════════════════════════════════════════════════════════════╗');
   print('║                    All Samples Complete!                         ║');

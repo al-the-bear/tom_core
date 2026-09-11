@@ -357,8 +357,9 @@ mixin TomAnnotationAnalyzer {
   }
 
   /// Returns the columns of [dbType] that opt into column-level access rights
-  /// (C-4) — those whose `@TomDbColumn` declares an [TomDbColumn.authKey] — or
-  /// an empty list when the entity declares none.
+  /// (C-4) — those with a [TomColumnInformation.authKey], from a
+  /// `@TomDbColumn(authKey:)` or a `@TomProtectedField` — or an empty list when
+  /// the entity declares none.
   ///
   /// Cached per type. An empty result lets a repository skip all C-4 work for
   /// entities that declare no column access rights (zero overhead by default).
@@ -368,7 +369,7 @@ mixin TomAnnotationAnalyzer {
     final columns = getPersistentColumns(dbType) ?? const [];
     final result = List<TomColumnInformation>.unmodifiable([
       for (final column in columns)
-        if (column.column?.authKey != null) column,
+        if (column.authKey != null) column,
     ]);
     _authColumnCache[dbType] = result;
     return result;
@@ -531,6 +532,7 @@ mixin TomAnnotationAnalyzer {
     TomReference? reference;
     TomPersistenceEventHandler? eventHandler;
     TomFileReference? fileReference;
+    TomProtectedField? protectedField;
     for (var md in decl.metadata) {
       if (md is TomDbColumn) {
         column = md;
@@ -542,6 +544,8 @@ mixin TomAnnotationAnalyzer {
         eventHandler = md;
       } else if (md is TomFileReference) {
         fileReference = md;
+      } else if (md is TomProtectedField) {
+        protectedField = md;
       }
     }
     column ??= TomDbColumn(columnName: field);
@@ -558,6 +562,7 @@ mixin TomAnnotationAnalyzer {
         reference: reference,
         eventHandler: eventHandler,
         fileReference: fileReference,
+        protectedField: protectedField,
       );
     } else {
       throw TomAnnotationAnalyzerException(

@@ -438,12 +438,23 @@ Only one access annotation per method: a second one throws
 ### Automatic endpoint protection
 
 When `TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection` is
-on — it is **off by default** — a denial gets a second chance from
-`checkAutomaticAccess`, which grants access if the principal holds the right
-resource key. It is only ever a second chance: `enforceAccess` calls it after
-the ordinary check has already refused, so it can raise a refusal to a grant,
-but a request the ordinary check allowed never reaches it and a principal
-holding no relevant key keeps the decision it arrived with.
+on — its default; `tom.protection.endpoint=false` switches it off — a denial
+gets a second chance from `checkAutomaticAccess`, which grants access if the
+principal holds the right resource key. It is only ever a second chance:
+`enforceAccess` calls it after the ordinary check has already refused, so it can
+raise a refusal to a grant, but a request the ordinary check allowed never
+reaches it and a principal holding no relevant key keeps the decision it arrived
+with.
+
+It grants only while resource keys are enforced
+(`TomResourceKeyProtection.globalSettingProtectionDefault`, off by default).
+Without that, every key reads as held, and a second chance taken from them
+would overturn every refusal the ordinary check made — a role requirement
+included. So the switch being on by default opens nothing: it takes effect in a
+deployment that has switched resource keys on and issued them.
+
+A key is held as `TomAccessControlInformation.holdsResourceKey` defines it, so
+`*` and `<api>.*` grants work here — and a `*` never covers a `-` revocation.
 
 Every endpoint has **two** keys:
 
