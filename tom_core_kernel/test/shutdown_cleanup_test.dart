@@ -87,6 +87,15 @@ class AsyncDisposable implements TomDisposable {
   }
 }
 
+/// Closable that runs [onClose] when it is closed.
+class _CallbackClosable implements TomClosable {
+  _CallbackClosable(this.onClose);
+  final void Function() onClose;
+
+  @override
+  void close() => onClose();
+}
+
 /// Closable whose teardown never finishes — a peer that never acknowledges the
 /// close. Only a phase timeout gets a shutdown past it.
 class HangingClosable implements TomClosable {
@@ -970,11 +979,11 @@ void main() {
   // Global Instance Tests
   // ===========================================================================
 
-  // The global is shared by the whole process and offers no unregister path,
-  // so anything registered on it here would still be registered when the last
-  // test in this file runs. That rules out exercising its behaviour: the tests
-  // would pay a permanent cost for coverage the groups above already provide
-  // against instances that get torn down.
+  // The global is shared by the whole process. Its registrations can be taken
+  // back, but paused, silent and a spent shutdown cannot, and a test that
+  // fails before unregistering leaves its entry behind for every test after
+  // it. So its behaviour is not exercised here: the groups above already cover
+  // it against instances that get torn down.
   //
   // What remains is what only the global can be asked — that it exists with
   // the right type, and that it ships in the state an application expects to
@@ -1682,6 +1691,97 @@ void main() {
     });
   });
 
+  // Each add* returns the way to take that registration back. A released
+  // resource would otherwise stay reachable — and be closed again at exit —
+  // for the coordinator's whole life, which for the global is the process's.
+  group('unregistering', () {
+    test('an unregistered entry of each kind is not run', () async {
+      final cleanup = _newCleanup();
+      var handlerRan = false;
+      final closable = TestClosable();
+      final disposable = TestDisposable();
+      final unregisterHandler = cleanup.addSignalHandler(
+        (signal) => handlerRan = true,
+      );
+      final unregisterClosable = cleanup.addClosable(closable);
+      final unregisterDisposable = cleanup.addDisposable(disposable);
+
+      unregisterHandler();
+      unregisterClosable();
+      unregisterDisposable();
+      await cleanup.performShutdown();
+
+      expect(handlerRan, isFalse);
+      expect(closable.closed, isFalse);
+      expect(disposable.disposed, isFalse);
+    });
+
+    test('only the registration it was returned for is removed', () async {
+      // Registering the same object twice makes two registrations, and each
+      // canceller takes back its own — so the object is still closed once.
+      final cleanup = _newCleanup();
+      final closable = TestClosable();
+      final first = cleanup.addClosable(closable);
+      cleanup.addClosable(closable);
+      final other = TestClosable();
+      cleanup.addClosable(other);
+
+      first();
+      await cleanup.performShutdown();
+
+      expect(closable.closeCount, 1);
+      expect(other.closed, isTrue);
+    });
+
+    test('unregistering twice, or after the shutdown, is harmless', () async {
+      final cleanup = _newCleanup();
+      final unregister = cleanup.addClosable(TestClosable());
+
+      unregister();
+      unregister();
+      await cleanup.performShutdown();
+
+      expect(unregister, returnsNormally);
+    });
+
+    test('an entry unregistered during the shutdown is not reached', () async {
+      // A handler that releases a resource of its own — closing it in the
+      // handler and taking it off the list so the closables phase does not
+      // close it again.
+      final log = <String>[];
+      final cleanup = _newCleanup();
+      late final TomShutdownUnregister unregisterSecond;
+      cleanup.addClosable(NamedClosable('first', log));
+      cleanup.addClosable(
+        _CallbackClosable(() {
+          log.add('releasing');
+          unregisterSecond();
+        }),
+      );
+      unregisterSecond = cleanup.addClosable(NamedClosable('second', log));
+      cleanup.addClosable(NamedClosable('third', log));
+
+      await cleanup.performShutdown();
+
+      expect(log, equals(['first', 'releasing', 'third']));
+    });
+
+    test('an entry registered during its own phase still runs', () async {
+      final log = <String>[];
+      final cleanup = _newCleanup();
+      cleanup.addClosable(
+        _CallbackClosable(() {
+          log.add('registering');
+          cleanup.addClosable(NamedClosable('registered late', log));
+        }),
+      );
+
+      await cleanup.performShutdown();
+
+      expect(log, equals(['registering', 'registered late']));
+    });
+  });
+
   group('dispose / cancelAll', () {
     test(
       'dispose stops the instance reacting to its signals',
@@ -1701,6 +1801,51 @@ void main() {
       },
       skip: _signalSendingSkipReason,
     );
+
+    test('dispose releases the registrations, so nothing is run', () async {
+      // Teardown releases everything the instance holds — the watchers and
+      // every registered entry — so a manual shutdown afterwards has nothing
+      // to close, and nothing registered before the dispose stays reachable.
+      final cleanup = _newCleanup();
+      var handlerRan = false;
+      final closable = TestClosable();
+      final disposable = TestDisposable();
+      cleanup
+        ..addSignalHandler((signal) => handlerRan = true)
+        ..addClosable(closable)
+        ..addDisposable(disposable);
+
+      await cleanup.dispose();
+      await cleanup.performShutdown();
+
+      expect(handlerRan, isFalse);
+      expect(closable.closed, isFalse);
+      expect(disposable.disposed, isFalse);
+    });
+
+    test('cancelAll releases the registrations too', () async {
+      final cleanup = _newCleanup();
+      final closable = TestClosable();
+      cleanup.addClosable(closable);
+
+      await cleanup.cancelAll();
+      await cleanup.performShutdown();
+
+      expect(closable.closed, isFalse);
+    });
+
+    test('a registration made after dispose is held again', () async {
+      // Dispose empties the instance; it does not spend it. What is
+      // registered afterwards is held, and a manual shutdown runs it.
+      final cleanup = _newCleanup();
+      await cleanup.dispose();
+      final closable = TestClosable();
+      cleanup.addClosable(closable);
+
+      await cleanup.performShutdown();
+
+      expect(closable.closed, isTrue);
+    });
 
     test('cancelAll is safe to call repeatedly', () async {
       // Cancelling an already-cancelled subscription is the failure this

@@ -57,6 +57,16 @@ import '../reflection/reflection.dart';
 /// it calls the next handler, and before the closables phase begins.
 typedef TomSignalHandler = FutureOr<void> Function(ProcessSignal onData);
 
+/// Takes back one registration made on a [TomShutdownCleanup].
+///
+/// Returned by [TomShutdownCleanup.addSignalHandler],
+/// [TomShutdownCleanup.addClosable] and [TomShutdownCleanup.addDisposable],
+/// in the manner of a stream subscription's `cancel`. Calling it removes that
+/// registration and nothing else — the same object registered twice has two
+/// registrations — and releases the coordinator's reference to the entry.
+/// Calling it again, or after the entry has run, does nothing.
+typedef TomShutdownUnregister = void Function();
+
 // =============================================================================
 // Interfaces
 // =============================================================================
@@ -533,8 +543,9 @@ class TomShutdownCleanup {
     if (announce) print("Shutdown performed");
   }
 
-  /// Runs [action] over every entry of [items] in order, awaiting each one
-  /// that returns a `Future`, within a budget of [phaseTimeout] for the phase.
+  /// Runs [action] over every registration in [registrations] in order,
+  /// awaiting each entry that returns a `Future`, within a budget of
+  /// [phaseTimeout] for the phase.
   ///
   /// This is the single owner of the per-entry policy all three phases share.
   /// A failing entry — thrown by the call or by the future it returned — never
@@ -545,23 +556,34 @@ class TomShutdownCleanup {
   /// what went wrong. Message and trace go out in a single `print` so that
   /// concurrent output cannot separate a failure from its evidence.
   ///
+  /// The list is consulted afresh for each entry rather than iterated as it
+  /// stood when the phase began, because entries run the application's code
+  /// and that code may register or unregister: an entry unregistered before
+  /// the phase reaches it is not run, and one registered while the phase runs
+  /// still is.
+  ///
   /// When the budget runs out the phase is abandoned: the entry being awaited
   /// is left to finish on its own, and the ones behind it are not called.
   /// A synchronous entry is never awaited, so a phase of synchronous entries
   /// runs straight through without yielding.
   Future<void> _runPhase<T>(
-    List<T> items,
+    List<_Registration<T>> registrations,
     String label,
     FutureOr<void> Function(T item) action,
   ) async {
     final elapsed = Stopwatch()..start();
-    for (var index = 0; index < items.length; index++) {
-      final item = items[index];
+    for (
+      var next = _firstUnreached(registrations);
+      next != null;
+      next = _firstUnreached(registrations)
+    ) {
       final remaining = _phaseTimeout - elapsed.elapsed;
       if (remaining <= Duration.zero) {
-        _reportAbandoned(label, items, index, waitingOn: null);
+        _reportAbandoned(label, registrations, waitingOn: null);
         return;
       }
+      next.reached = true;
+      final item = next.entry;
       try {
         final result = action(item);
         if (result is Future<void>) {
@@ -577,7 +599,7 @@ class TomShutdownCleanup {
             ),
           );
           if (!finished) {
-            _reportAbandoned(label, items, index, waitingOn: item);
+            _reportAbandoned(label, registrations, waitingOn: item);
             return;
           }
         }
@@ -585,6 +607,15 @@ class TomShutdownCleanup {
         _reportFailure(label, item, exception, stackTrace);
       }
     }
+  }
+
+  static _Registration<T>? _firstUnreached<T>(
+    List<_Registration<T>> registrations,
+  ) {
+    for (final registration in registrations) {
+      if (!registration.reached) return registration;
+    }
+    return null;
   }
 
   /// Whether [work] finishes within [budget]; rethrows its failure if it fails
@@ -638,17 +669,16 @@ class TomShutdownCleanup {
     print(trace.isEmpty ? report : "$report\n$trace");
   }
 
-  /// Reports that the [label] phase ran out of [phaseTimeout] at [index]:
-  /// [waitingOn] had not finished — or, when `null`, the budget was already
-  /// spent before the entry at [index] could be called.
+  /// Reports that the [label] phase ran out of [phaseTimeout]: [waitingOn]
+  /// had not finished — or, when `null`, the budget was already spent before
+  /// the next entry could be called.
   void _reportAbandoned<T>(
     String label,
-    List<T> items,
-    int index, {
+    List<_Registration<T>> registrations, {
     required T? waitingOn,
   }) {
     if (silent) return;
-    final skipped = items.length - index - (waitingOn == null ? 0 : 1);
+    final skipped = registrations.where((r) => !r.reached).length;
     final budget = "${_phaseTimeout.inMilliseconds} ms";
     final cause = waitingOn == null
         ? "its time was spent"
@@ -659,9 +689,19 @@ class TomShutdownCleanup {
     );
   }
 
-  final List<TomSignalHandler> _signalHandlers = [];
-  final List<TomClosable> _closables = [];
-  final List<TomDisposable> _disposables = [];
+  final List<_Registration<TomSignalHandler>> _signalHandlers = [];
+  final List<_Registration<TomClosable>> _closables = [];
+  final List<_Registration<TomDisposable>> _disposables = [];
+
+  /// Appends [entry] to [registrations] and returns the canceller for it.
+  static TomShutdownUnregister _register<T>(
+    List<_Registration<T>> registrations,
+    T entry,
+  ) {
+    final registration = _Registration(entry);
+    registrations.add(registration);
+    return () => registrations.remove(registration);
+  }
 
   /// Active OS-signal watcher subscriptions, retained so they can be cancelled
   /// by [dispose]/[cancelAll] — otherwise each watcher keeps the process alive
@@ -680,27 +720,33 @@ class TomShutdownCleanup {
   /// pattern.
   ///
   /// [handler] - The function to call when a signal is received.
-  void addSignalHandler(TomSignalHandler handler) {
-    _signalHandlers.add(handler);
-  }
+  ///
+  /// Returns the [TomShutdownUnregister] that takes this registration back.
+  TomShutdownUnregister addSignalHandler(TomSignalHandler handler) =>
+      _register(_signalHandlers, handler);
 
   /// Adds a closable object to be closed during shutdown.
   ///
   /// Closables are closed after signal handlers but before disposables.
   ///
   /// [closable] - An object implementing [TomClosable].
-  void addClosable(TomClosable closable) {
-    _closables.add(closable);
-  }
+  ///
+  /// Returns the [TomShutdownUnregister] that takes this registration back —
+  /// for a resource the application closes and releases on its own before
+  /// the process ends, which the coordinator would otherwise hold, and close
+  /// again at exit.
+  TomShutdownUnregister addClosable(TomClosable closable) =>
+      _register(_closables, closable);
 
   /// Adds a disposable object to be disposed during shutdown.
   ///
   /// Disposables are disposed last, after signal handlers and closables.
   ///
   /// [disposable] - An object implementing [TomDisposable].
-  void addDisposable(TomDisposable disposable) {
-    _disposables.add(disposable);
-  }
+  ///
+  /// Returns the [TomShutdownUnregister] that takes this registration back.
+  TomShutdownUnregister addDisposable(TomDisposable disposable) =>
+      _register(_disposables, disposable);
 
   /// Adds an additional system signal to listen for.
   ///
@@ -729,22 +775,38 @@ class TomShutdownCleanup {
     );
   }
 
-  /// Cancels every registered OS-signal watcher subscription.
+  /// Releases everything the instance holds: cancels every OS-signal watcher
+  /// — SIGHUP, SIGINT and any added with [addSignal] — and drops every
+  /// registered signal handler, closable and disposable.
   ///
-  /// After this completes the instance no longer keeps the process alive via
-  /// its SIGHUP/SIGINT (and any [addSignal]-registered) watchers. Safe to call
-  /// more than once; the subscription list is emptied.
+  /// It runs nothing. The registered entries are let go, not closed: call
+  /// [performShutdown] first if they still need releasing. Afterwards the
+  /// instance no longer keeps the process alive and no longer holds a
+  /// reference to anything registered on it, so a manual [performShutdown]
+  /// finds nothing to do.
+  ///
+  /// It empties the instance without spending it. A registration made
+  /// afterwards is held again, and a later [performShutdown] runs it — unless
+  /// the shutdown has already run, which spends the instance regardless (see
+  /// "Lifecycle"). Called during a running shutdown, it leaves the entry being
+  /// awaited to finish and drops the entries not yet reached.
+  ///
+  /// Safe to call more than once.
   Future<void> cancelAll() async {
     for (final subscription in _signalSubscriptions.values) {
       await subscription.cancel();
     }
     _signalSubscriptions.clear();
+    _signalHandlers.clear();
+    _closables.clear();
+    _disposables.clear();
   }
 
-  /// Tears the instance down by cancelling its signal watchers (see
-  /// [cancelAll]). Call this for any short-lived [TomShutdownCleanup] so its
-  /// watchers stop leaking; the process-lifetime global
-  /// [tomShutdownCleanup] normally never needs it.
+  /// Tears the instance down — the same operation as [cancelAll], under the
+  /// name teardown is looked for by. Call this for any short-lived
+  /// [TomShutdownCleanup] so its watchers stop keeping the process alive and
+  /// its registrations stop keeping their entries reachable; the
+  /// process-lifetime global [tomShutdownCleanup] normally never needs it.
   Future<void> dispose() => cancelAll();
 }
 
@@ -769,3 +831,17 @@ class TomShutdownCleanup {
 /// and equally none to reach for: a shared instance is already listening
 /// before the first resource is registered.
 final TomShutdownCleanup tomShutdownCleanup = TomShutdownCleanup();
+
+/// One registration on a [TomShutdownCleanup].
+///
+/// A wrapper rather than the entry itself, so that the same object registered
+/// twice is two registrations, each with its own canceller, and so that a
+/// phase can tell the entries it has reached from those still to come.
+class _Registration<T> {
+  _Registration(this.entry);
+
+  final T entry;
+
+  /// Whether the phase this registration belongs to has called [entry].
+  bool reached = false;
+}

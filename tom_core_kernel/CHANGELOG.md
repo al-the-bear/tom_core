@@ -811,6 +811,18 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **A shutdown registration can be taken back, and teardown releases
+  everything (tcopen85).** `addSignalHandler`, `addClosable` and
+  `addDisposable` return a `TomShutdownUnregister` that removes that one
+  registration — the same object registered twice is two registrations. A
+  phase consults its list afresh for each entry, so an entry unregistered
+  before its phase reaches it is not run, and one registered during its phase
+  still is. `cancelAll()` and its synonym `dispose()` drop the registered
+  entries as well as cancelling the watchers, so a disposed instance holds
+  nothing and a manual `performShutdown()` after it runs nothing. A resource
+  released during normal operation had stayed reachable — and been closed
+  again at exit — for the coordinator's whole life.
+
 - **A `TomShutdownCleanup` is single-use, and says whether it has run
   (tcopen84).** `hasShutDown` reads `true` once the shutdown has run to its
   end — every phase finished or abandoned — and never turns back. The class

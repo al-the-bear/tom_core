@@ -11,6 +11,8 @@
 ///   [TomShutdownCleanup.addSignalHandler], which receives the signal that
 ///   triggered the shutdown
 ///
+/// Each registration returns a [TomShutdownUnregister] that takes it back.
+///
 /// It also draws the two distinctions the module is most often misread on:
 /// disposing a coordinator is *not* running it, and a custom coordinator is
 /// independent of the global [tomShutdownCleanup].
@@ -136,20 +138,22 @@ Future<void> run() async {
   // ---------------------------------------------------------------------------
   // Example 4: disposing a coordinator is not running it
   // ---------------------------------------------------------------------------
-  print('4. dispose() releases the watchers without cleaning anything up:');
+  print('4. dispose() releases everything without cleaning anything up:');
 
   final unrun = SampleConnection('cache');
   final disposedCleanup = TomShutdownCleanup();
   disposedCleanup.addClosable(unrun);
 
   // dispose() cancels the SIGHUP/SIGINT watchers this instance started in its
-  // constructor. Those watchers keep the Dart process alive, so any
-  // short-lived coordinator must be disposed — but disposal is a teardown of
-  // the *coordinator*, not of the resources registered on it.
+  // constructor, and drops every registration. The watchers keep the Dart
+  // process alive, so any short-lived coordinator must be disposed — but
+  // disposal is a teardown of the *coordinator*, not of the resources
+  // registered on it: they are let go, not closed.
   await disposedCleanup.dispose();
   final closedByDispose = unrun.isClosed;
 
-  // The registrations survive, and a later manual shutdown still honours them.
+  // Nothing is registered any more, so a later manual shutdown closes nothing.
+  // Run the shutdown first when the resources still need it.
   await disposedCleanup.performShutdown();
   final closedByLaterShutdown = unrun.isClosed;
 
@@ -179,6 +183,28 @@ Future<void> run() async {
   print('   - ${globalResource.name} disposed: ${globalResource.isDisposed}\n');
 
   // ---------------------------------------------------------------------------
+  // Example 6: taking a registration back
+  // ---------------------------------------------------------------------------
+  print('6. Each add* returns the way to take the registration back:');
+
+  final session = SampleConnection('user-session');
+  final keeper = SampleConnection('keeper');
+  final sessionCleanup = TomShutdownCleanup();
+  final unregisterSession = sessionCleanup.addClosable(session);
+  sessionCleanup.addClosable(keeper);
+
+  // The application ends the session itself, long before the process exits,
+  // and takes it off the list — otherwise the coordinator would hold it for
+  // its whole life and close it a second time at exit.
+  unregisterSession();
+  await sessionCleanup.performShutdown();
+
+  print('   - ${session.name} closed by the shutdown: ${session.isClosed}');
+  print(
+    '   - ${keeper.name} closed by the shutdown:       ${keeper.isClosed}\n',
+  );
+
+  // ---------------------------------------------------------------------------
   // Teardown for the instances the examples above created
   // ---------------------------------------------------------------------------
   // Running a cleanup is not the same as disposing it: `performShutdown()`
@@ -192,6 +218,7 @@ Future<void> run() async {
     closableCleanup,
     handlerCleanup,
     custom,
+    sessionCleanup,
     tomShutdownCleanup,
   ]) {
     await cleanup.dispose();
@@ -216,9 +243,13 @@ Future<void> run() async {
     'The handler must receive the signal the shutdown was given',
   );
 
-  // Example 4: dispose() tears the coordinator down, not the registrations.
+  // Example 4: dispose() lets the registrations go without running them.
   assert(!closedByDispose, 'dispose() must not run the registered cleanups');
-  assert(closedByLaterShutdown, 'The registrations survive dispose()');
+  assert(!closedByLaterShutdown, 'dispose() drops the registrations');
+
+  // Example 6: an unregistered entry is not run; the others still are.
+  assert(!session.isClosed, 'An unregistered closable must not be closed');
+  assert(keeper.isClosed, 'The registration left in place still runs');
 
   // Example 5: the two coordinators keep separate registration lists.
   assert(customResource.isDisposed, 'The custom coordinator ran its own entry');

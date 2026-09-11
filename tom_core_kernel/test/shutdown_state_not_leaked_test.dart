@@ -17,12 +17,13 @@ import 'package:test/test.dart';
 /// watcher makes the *suite* hang after the last test reports, or the sample
 /// print its final line and never exit.
 ///
-/// **The global cannot be cleaned up after.** It has no unregister path, so a
-/// test that registers a closable on it registers it for the rest of the run,
-/// and `cancelAll()` is no escape — that would cancel the global's own
-/// watchers. Every later test then meets a pre-populated global. Nothing fails
-/// today only because nothing drives the global's `performShutdown()`; the
-/// first test that does would inherit every registration made before it.
+/// **The global cannot be reliably cleaned up after.** A registration on it can
+/// be taken back, but only by a test that gets as far as doing so — one that
+/// fails first leaves its entry behind for the rest of the run — and `paused`,
+/// `silent` and a spent shutdown cannot be taken back at all. `cancelAll()` is
+/// no escape: it would cancel the global's own watchers and drop every
+/// application registration with them. Every later test would then meet a
+/// global that is not the one the process started with.
 ///
 /// What this can and cannot check: proving "disposed on every path" needs
 /// dataflow analysis, which a test like this has no business attempting. It
@@ -232,10 +233,9 @@ const _exampleReason =
     'sample prints its last line and then hangs instead of exiting.';
 
 const _globalReason =
-    'A test changes the state of the process-wide tomShutdownCleanup. There is '
-    'no unregister path, and cancelAll() would cancel the very watchers the '
-    'global exists to hold, so what the test registers is still registered '
-    'when the last test in '
-    'the run executes. Exercise a local instance instead — the whole API is '
-    'covered that way already — and keep the global for assertions that only '
-    'read it.';
+    'A test changes the state of the process-wide tomShutdownCleanup. A test '
+    'that fails before unregistering leaves its entry behind, paused, silent '
+    'and a spent shutdown cannot be undone, and cancelAll() would cancel the '
+    'very watchers the global exists to hold. Exercise a local instance '
+    'instead — the whole API is covered that way already — and keep the '
+    'global for assertions that only read it.';

@@ -14,6 +14,7 @@ The shutdown cleanup module provides a comprehensive system for managing gracefu
     - [paused and silent](#paused-and-silent)
     - [phaseTimeout](#phasetimeout)
     - [Exiting after a signal](#exiting-after-a-signal)
+    - [Taking a registration back](#taking-a-registration-back)
     - [Tearing an instance down — dispose() and cancelAll()](#tearing-an-instance-down--dispose-and-cancelall)
     - [There is no arming step](#there-is-no-arming-step)
 - [Usage Examples](#usage-examples)
@@ -317,11 +318,36 @@ tomShutdownCleanup.addSignalHandler((signal) {
 });
 ```
 
+#### Taking a registration back
+
+`addSignalHandler`, `addClosable` and `addDisposable` each return a
+`TomShutdownUnregister` — a `void Function()` that takes that one registration
+back, the way `cancel` takes back a stream subscription. Use it for a resource
+the application closes and releases on its own before the process ends; left
+registered, the coordinator would hold it for its whole life — for the global,
+the life of the process — and close it a second time at exit.
+
+```dart
+final session = await openSession();
+final unregister = tomShutdownCleanup.addClosable(session);
+
+// …the session ends normally, long before the process does:
+await session.close();
+unregister();
+```
+
+It removes only the registration it was returned for: the same object
+registered twice is two registrations. Calling it again, or after the shutdown,
+does nothing. An entry unregistered while a shutdown runs is not called if its
+phase has not reached it yet, and an entry registered while its phase runs is
+still called.
+
 #### Tearing an instance down — dispose() and cancelAll()
 
-`cancelAll()` cancels every signal watcher the instance holds: the two the
-constructor installed and any added with `addSignal()`. `dispose()` is the same
-operation under the name callers look for — it delegates and adds nothing.
+`cancelAll()` releases everything the instance holds: it cancels every signal
+watcher — the two the constructor installed and any added with `addSignal()` —
+and drops every registered handler, closable and disposable. `dispose()` is the
+same operation under the name callers look for — it delegates and adds nothing.
 Both are safe to call more than once.
 
 Call one of them for **any instance whose lifetime is shorter than the
@@ -330,9 +356,12 @@ stops the program from exiting, and the symptom is a hang rather than an error.
 The global `tomShutdownCleanup` is the exception: it is meant to last as long
 as the program, so it is never disposed.
 
-Neither method runs the cleanup. Disposing releases the instance's watchers; it
-does not close the closables registered on it. Call `performShutdown()` first
-if the resources still need releasing.
+Neither method runs the cleanup. Disposing lets the registered entries go
+without closing them, so a `performShutdown()` afterwards finds nothing to do;
+call `performShutdown()` first if the resources still need releasing. It
+empties the instance without spending it — a registration made afterwards is
+held again and a later manual shutdown runs it — and a disposed instance no
+longer keeps anything that was registered on it reachable.
 
 #### There is no arming step
 

@@ -140,16 +140,17 @@ TomShutdownCleanup()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `performShutdown` | `Future<void> performShutdown({ProcessSignal signal = ProcessSignal.sigint, bool fromSignal = false})` | Runs the cleanup once across the instance's life and completes when every entry has finished or its phase was abandoned; every later call gets the same shutdown. The manual path (`fromSignal` false) always runs quietly, the signal path honours `paused` and `silent`. Never await it from inside an entry. |
-| `addSignalHandler` | `void addSignalHandler(TomSignalHandler handler)` | Adds a custom signal handler, executed first (before closables and disposables). |
-| `addClosable` | `void addClosable(TomClosable closable)` | Adds a closable object, closed after signal handlers but before disposables. |
-| `addDisposable` | `void addDisposable(TomDisposable disposable)` | Adds a disposable object, disposed last. |
+| `addSignalHandler` | `TomShutdownUnregister addSignalHandler(TomSignalHandler handler)` | Adds a custom signal handler, executed first (before closables and disposables). Returns the canceller for this registration. |
+| `addClosable` | `TomShutdownUnregister addClosable(TomClosable closable)` | Adds a closable object, closed after signal handlers but before disposables. Returns the canceller for this registration. |
+| `addDisposable` | `TomShutdownUnregister addDisposable(TomDisposable disposable)` | Adds a disposable object, disposed last. Returns the canceller for this registration. |
 | `addSignal` | `void addSignal(ProcessSignal processSignal)` | Registers an additional OS signal to listen for (SIGHUP and SIGINT are registered by default). Idempotent per signal — a repeat registration does nothing. |
-| `cancelAll` | `Future<void> cancelAll()` | Cancels every registered OS-signal watcher subscription; safe to call more than once. |
-| `dispose` | `Future<void> dispose()` | Tears the instance down by cancelling its signal watchers (delegates to `cancelAll`). |
+| `cancelAll` | `Future<void> cancelAll()` | Releases everything the instance holds: cancels every OS-signal watcher and drops every registered handler, closable and disposable, without running them. Empties the instance without spending it — a later registration is held again. Safe to call more than once. |
+| `dispose` | `Future<void> dispose()` | Tears the instance down; the same operation as `cancelAll`. |
 
 ## Global Functions and Constants
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
 | `TomSignalHandler` | `typedef TomSignalHandler = FutureOr<void> Function(ProcessSignal onData)` | Handler function type for processing system signals; the `onData` parameter carries the received signal. An `async` handler is awaited before the next handler runs. |
+| `TomShutdownUnregister` | `typedef TomShutdownUnregister = void Function()` | Returned by the three `add*` methods; takes back the one registration it was returned for and releases the coordinator's reference to the entry. Calling it again, or after the entry has run, does nothing. |
 | `tomShutdownCleanup` | `final TomShutdownCleanup tomShutdownCleanup` | Global default `TomShutdownCleanup` instance, automatically listening for SIGHUP and SIGINT. |

@@ -17,6 +17,7 @@ signal handlers and runs them when the process shuts down, so resources
 | `TomCloseAdaptor` | Adapts a close-style method into a `TomClosable`, via the global `tomReflector` — so the target's class must carry `@tomReflector`. |
 | `tomShutdownCleanup` | The shared global `TomShutdownCleanup` instance. |
 | `TomSignalHandler` | Typedef for an OS-signal callback. |
+| `TomShutdownUnregister` | What each registration returns: the call that takes it back. |
 
 ## Quick start
 
