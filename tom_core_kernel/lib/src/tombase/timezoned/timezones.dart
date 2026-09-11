@@ -118,6 +118,16 @@ class TomTimezone {
   /// The underlying timezone location from the `timezone` package.
   ///
   /// Provides access to low-level timezone operations and data.
+  ///
+  /// This is the **shared** object the database holds, not a copy: every
+  /// lookup of a zone hands out the same instance, which is what makes
+  /// `identical` comparisons between zones meaningful. It also means its
+  /// contents are the database's — the package's `Location` exposes its
+  /// transition and zone lists as plain mutable lists, so emptying or sorting
+  /// one rewrites what that zone's offsets are for the rest of the process.
+  /// The lookups this class owns hand out unmodifiable views for that reason;
+  /// this one cannot, because the type belongs to the `timezone` package.
+  /// Read it, and leave its lists alone.
   final tz.Location location;
 
   TomTimezone._({required this.timezone, required this.location});

@@ -397,7 +397,7 @@ before sorting or filtering.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `timezone` | `String` | The IANA timezone name (e.g. `America/New_York`). |
-| `location` | `tz.Location` | The underlying `timezone` package location. |
+| `location` | `tz.Location` | The underlying `timezone` package location — the **shared** object the database holds, so every lookup of a zone yields the same instance. Its transition and zone lists are the package's own mutable lists: rewriting one rewrites that zone's offsets for the process. The lookups this class owns hand out unmodifiable views; this type cannot be wrapped, so read it and leave its lists alone. |
 | `timezoneOffsetMin` | `int` | *(getter)* The current UTC offset in minutes, including DST. |
 
 #### Methods

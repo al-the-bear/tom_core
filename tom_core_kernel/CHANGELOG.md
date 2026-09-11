@@ -8,6 +8,14 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **`TomTimezone.location` says it is the database's own object (tcopen94).**
+  The lookups this class owns hand out unmodifiable views of the index, and
+  `location` is the one thing they cannot wrap: `tz.Location` belongs to the
+  `timezone` package and exposes its transition and zone lists mutable, so
+  rewriting one rewrites that zone's offsets for the process. The dartdoc and
+  the API mirror say so, and a test pins that the instance is shared rather
+  than copied.
+
 - **Offset lookup can ask about an instant (tcopen93).**
   `TomTimezone.allWithOffsetOn(offset, when)` and
   `firstWithOffsetOn(offset, when)` answer "which zones were at this offset

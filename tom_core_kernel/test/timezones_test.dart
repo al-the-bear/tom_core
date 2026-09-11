@@ -295,6 +295,25 @@ void main() {
         expect(TomTimezone.firstWithOffset(0)!.timezone, equals(first));
       });
 
+      test('a zone hands out the database\'s own Location, not a copy', () {
+        // The one thing the class cannot wrap: `tz.Location` belongs to the
+        // `timezone` package and exposes its lists mutable. Pinning that the
+        // instance is shared is what makes the dartdoc's warning — leave its
+        // lists alone — a statement about this object rather than a guess.
+        final first = TomTimezone.fromName('Europe/London')!;
+        final second = TomTimezone.fromName('europe/london')!;
+
+        expect(identical(first, second), isTrue);
+        expect(identical(first.location, second.location), isTrue);
+        expect(
+          identical(
+            first.location,
+            TomTimezone.timezones['EUROPE/LONDON']!.location,
+          ),
+          isTrue,
+        );
+      });
+
       test('a view still reads what the index holds', () {
         // The other half of the contract: unmodifiable must not mean stale or
         // partial. Both getters answer with everything the class itself sees.
