@@ -37,6 +37,7 @@ library;
 // =============================================================================
 
 import 'package:meta/meta.dart';
+import 'package:tom_basics/tom_basics.dart';
 
 import '../json/map_merge_and_process.dart';
 import '../little_things/exception_base.dart';
@@ -123,6 +124,28 @@ class TomResourceException extends TomException {
 // Because the lenient fallback is the *designed* answer for a genuine miss,
 // nothing downstream could tell the two apart. Letting the `Error` propagate is
 // the only signal available, so it is kept.
+//
+// ## Two shapes for one key
+//
+// A dotted key can exist twice in one bundle: as a path through nested maps
+// (`{'a': {'b': …}}`) and as a literal flat key (`{'a.b': …}`). That is not a
+// shape any bundle means to have — it is a nested bundle partly flattened by
+// tooling, or two bundles merged — and the precedence rule gives it a
+// plausible answer either way. The tree wins, except for the text family when
+// the tree holds a non-String: there the flat String is surfaced, so the two
+// families answer the same key differently (`getText` the flat String,
+// `getObject` the nested value). When the tree holds a String the flat entry
+// is dead text instead, shadowed in both families.
+//
+// Neither case renders anything a reader would notice — a missing key at least
+// renders as its own name — so the resolvers report it: whenever a dotted key
+// resolves through the tree *and* names a flat key, one `tomLog.warn` names
+// the key, once per key per bundle map. The set of reported keys lives beside
+// the bundle, in an [Expando], so a new bundle reports afresh and a discarded
+// one takes its set with it; it is bounded by the bundle, since only keys the
+// bundle itself holds flat can enter it. The check is one `containsKey` on a
+// tree hit for a dotted key, cheap enough to leave on in every build: a
+// mis-shaped bundle in production renders wrong text too.
 
 /// Resolves the raw object at [path] in [resources].
 ///
@@ -130,12 +153,17 @@ class TomResourceException extends TomException {
 /// flat-key value `resources[path]`, otherwise `null`. Backs the object-family
 /// accessors (any value type is accepted).
 Object? _resolveObjectOrNull(Map<String, dynamic> resources, String path) {
+  final Object? treeValue;
   try {
-    return getObjectFromTree(resources, path);
+    treeValue = getObjectFromTree(resources, path);
   } on Exception catch (_) {
     // Path not resolvable as a tree walk — fall back to a flat-key lookup.
+    return resources[path];
   }
-  return resources[path];
+  // Outside the guard: nothing the report does may be mistaken for a failed
+  // walk and sent down the flat leg.
+  _reportBothShapes(resources, path);
+  return treeValue;
 }
 
 /// Resolves the String value at [path] in [resources].
@@ -146,14 +174,38 @@ Object? _resolveObjectOrNull(Map<String, dynamic> resources, String path) {
 /// leg is consulted even when the tree walk lands on a non-String value, so a
 /// literal dotted key (e.g. `'a.b'`) still resolves.
 String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
+  Object? treeValue;
+  var treeResolved = false;
   try {
-    final value = getObjectFromTree(resources, path);
-    if (value is String) return value;
+    treeValue = getObjectFromTree(resources, path);
+    treeResolved = true;
   } on Exception catch (_) {
     // Path not resolvable as a tree walk — fall back to a flat-key lookup.
   }
+  if (treeResolved) _reportBothShapes(resources, path);
+  if (treeValue is String) return treeValue;
   final flat = resources[path];
   return flat is String ? flat : null;
+}
+
+/// The dotted keys already reported for each bundle map — see "Two shapes for
+/// one key" above.
+final Expando<Set<String>> _reportedBothShapes = Expando(
+  'resource keys held in both shapes',
+);
+
+/// Warns once per bundle when the dotted [path], which has just resolved
+/// through the tree, also names a literal flat key in [resources].
+void _reportBothShapes(Map<String, dynamic> resources, String path) {
+  if (!path.contains('.') || !resources.containsKey(path)) return;
+  final reported = _reportedBothShapes[resources] ??= <String>{};
+  if (!reported.add(path)) return;
+  tomLog.warn(
+    "Resource key '$path' exists both as a nested path and as a literal flat "
+    "key. The nested value answers, except to the text accessors when it is "
+    "not a String, which answer the flat one — so the two accessor families "
+    "can disagree about this key. Keep one shape.",
+  );
 }
 
 // =============================================================================

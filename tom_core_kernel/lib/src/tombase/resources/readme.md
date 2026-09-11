@@ -7,6 +7,9 @@ Text- and config-resource lookup. A `TomTextResourceProvider` resolves keys
 (flat `'title'` or dotted `'screens.home.title'`) against a nested resource map,
 falling back to the key itself so missing strings are visible during
 development. The provider feeds the labels/hints used by the forms and UI layers.
+A bundle that holds one dotted key both as a nested path and as a literal flat
+key is logged once per key (`tomLog.warn`), because the two accessor families
+can answer such a key differently.
 
 ## Key types
 

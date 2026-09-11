@@ -39,6 +39,13 @@ so a caller that needs the distinction reads `provider.resources` directly —
 `containsKey` for a flat key, `getObjectFromTree` for a dotted path (it returns
 `null` for a present null and throws for an absent key).
 
+A dotted key is tried as a path first and as a literal flat key second; the
+text accessors also fall through to the flat key when the path lands on a
+non-String, where the object accessors take the path's value as final. A bundle
+holding **one key in both shapes** can therefore answer the two families
+differently, so the resolvers `tomLog.warn` once per such key per bundle,
+naming it.
+
 A dotted path descends only through a `Map` whose keys are **all Strings** —
 tested against the runtime keys, not the declared type, so `Map<String, String>`
 and a String-keyed `Map<dynamic, dynamic>` both traverse. A `List` does not

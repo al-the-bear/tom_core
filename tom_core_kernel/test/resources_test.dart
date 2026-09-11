@@ -1366,6 +1366,103 @@ void main() {
         expect(provider.exists('a.b'), isTrue);
       });
 
+      group('a key held in both shapes', () {
+        // A dotted key that resolves through the tree *and* names a literal
+        // flat key is a bundle holding two answers for one question — usually
+        // a nested bundle partly flattened by tooling, or merged with a flat
+        // one. The precedence rule settles which answer each family gives,
+        // but the answer is plausible text either way, so nothing on screen
+        // says the bundle is mis-shaped. The resolver reports it instead:
+        // once per key per bundle, so a label read in every frame logs once.
+        late _RecordingLogOutput recorder;
+
+        setUp(() {
+          recorder = _RecordingLogOutput();
+          final previous = tomLog.logOutput;
+          tomLog.logOutput = recorder;
+          addTearDown(() => tomLog.logOutput = previous);
+        });
+
+        test('resolves differently per family when the tree holds a '
+            'non-String, and says so once', () {
+          final provider = TomTextResourceProvider.from({
+            'a': {'b': 5},
+            'a.b': 'flat literal',
+          });
+
+          // The disagreement itself, pinned: the same key answers the flat
+          // String to the text family and the nested int to the object family.
+          expect(provider.getText('a.b'), equals('flat literal'));
+          expect(provider.getTextOrNull('a.b'), equals('flat literal'));
+          expect(provider.exists('a.b'), isTrue);
+          expect(provider.getObject('a.b'), equals(5));
+          expect(provider.getObjectOrNull('a.b'), equals(5));
+          expect(provider.existsObject('a.b'), isTrue);
+
+          expect(recorder.collisionWarnings, hasLength(1));
+          expect(recorder.collisionWarnings.single, contains("'a.b'"));
+        });
+
+        test('a String tree hit shadows the flat key, and that is reported '
+            'too', () {
+          // Both families agree here — the tree wins — so the flat entry is
+          // dead text, and nothing but the report says it is there.
+          final provider = TomTextResourceProvider.from({
+            'a': {'b': 'tree'},
+            'a.b': 'flat',
+          });
+
+          expect(provider.getText('a.b'), equals('tree'));
+          expect(provider.getObject('a.b'), equals('tree'));
+          expect(provider.getText('a.b'), equals('tree'));
+
+          expect(recorder.collisionWarnings, hasLength(1));
+        });
+
+        test('the configuration provider reports it the same way', () {
+          final config = TomConfigResourceProvider.from({
+            'api': {'timeout': 30000},
+            'api.timeout': 5000,
+          });
+
+          expect(config.getObjectOrNull('api.timeout'), equals(30000));
+          expect(config.exists('api.timeout'), isTrue);
+
+          expect(recorder.collisionWarnings, hasLength(1));
+          expect(recorder.collisionWarnings.single, contains("'api.timeout'"));
+        });
+
+        test('each bundle is reported afresh', () {
+          Map<String, dynamic> bundle() => {
+            'a': {'b': 'tree'},
+            'a.b': 'flat',
+          };
+          TomTextResourceProvider.from(bundle()).getText('a.b');
+          TomTextResourceProvider.from(bundle()).getText('a.b');
+
+          expect(recorder.collisionWarnings, hasLength(2));
+        });
+
+        test('a bundle with one shape per key stays silent', () {
+          // Nested keys, literal dotted flat keys and plain top-level keys are
+          // all legitimate on their own; only the same key in both shapes is
+          // reported.
+          final provider = TomTextResourceProvider.from({
+            'nested': {'leaf': 'Leaf'},
+            'flat.only': 'Flat',
+            'plain': 'Plain',
+          });
+
+          expect(provider.getText('nested.leaf'), equals('Leaf'));
+          expect(provider.getText('flat.only'), equals('Flat'));
+          expect(provider.getText('plain'), equals('Plain'));
+          expect(provider.getObject('nested'), isA<Map>());
+          expect(provider.getText('missing.key'), equals('missing.key'));
+
+          expect(recorder.collisionWarnings, isEmpty);
+        });
+      });
+
       test(
         'object family returns a non-String value at a hierarchical path',
         () {
@@ -1803,4 +1900,26 @@ class _ThrowingSubtree implements Map<String, dynamic> {
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw StateError('bundle is corrupt');
+}
+
+/// Captures log records instead of printing them.
+class _RecordingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  /// The records the resolvers emit for a key held in both shapes.
+  Iterable<String> get collisionWarnings =>
+      messages.where((m) => m.contains('both as a nested path'));
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    messages.add(convertToString(message));
+  }
 }

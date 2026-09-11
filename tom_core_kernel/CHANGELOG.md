@@ -8,6 +8,17 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **A resource key held in both shapes is reported (tcopen61).** A dotted key
+  that resolves through the nested tree *and* exists as a literal flat key is a
+  mis-shaped bundle — partly flattened by tooling, or two bundles merged — and
+  the precedence rule gives it a plausible answer either way: the families can
+  even disagree (`getText` the flat String, `getObject` the nested value). Both
+  shared resolvers now `tomLog.warn` such a key once per key per bundle map,
+  on every build. Flat-only and nested-only bundles stay silent. The two-shape
+  disagreement is pinned in the `shared resolution contract` group, and
+  `doc/resources/resources.md` gains *A literal dotted key, and the same key in
+  both shapes*.
+
 - **The manual in-place contract of `resources` is recorded as a decision
   (tcopen60).** Editing the installed text bundle in place still needs
   `notifyAppResourcesChanged()`, and the reason it is not enforced is now

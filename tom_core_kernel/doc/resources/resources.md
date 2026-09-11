@@ -33,6 +33,7 @@ The Resources module provides singleton-based resource management for applicatio
   - [Singleton Pattern](#singleton-pattern)
   - [Hierarchical Access](#hierarchical-access)
     - [What a segment can descend into](#what-a-segment-can-descend-into)
+    - [A literal dotted key, and the same key in both shapes](#a-literal-dotted-key-and-the-same-key-in-both-shapes)
   - [What the silence covers](#what-the-silence-covers)
 - [Dependencies](#dependencies)
 
@@ -696,6 +697,41 @@ fallback echoes the key — so `getText('items.0.label')` renders the literal te
 rendering as itself, check the shape of what it walks through before assuming
 the key is missing.
 
+#### A literal dotted key, and the same key in both shapes
+
+A dotted key is first tried as a path through nested maps, then as a literal
+flat key, so a bundle exported flat — `{'screens.home.title': 'Home'}` — reads
+exactly like a nested one. The tree answers when it can. The one exception is
+the text family: when the tree walk lands on a value that is not a String, the
+text accessors go on to the flat key and surface a String found there, where
+the object accessors take the tree's value as final.
+
+That exception only matters for a bundle that holds **the same key in both
+shapes** — a nested path *and* a literal flat key — which no bundle means to
+do: it is a nested bundle partly flattened by tooling, or two bundles merged.
+Such a key has two answers, and the accessors pick one without anything on
+screen saying so:
+
+```dart
+final provider = TomTextResourceProvider.from({
+  'a': {'b': 5},
+  'a.b': 'flat literal',
+});
+provider.getText('a.b');   // 'flat literal' — the tree holds an int
+provider.getObject('a.b'); // 5 — the families disagree about one key
+
+// With {'a': {'b': 'tree'}, 'a.b': 'flat'} both answer 'tree', and the flat
+// entry is dead text.
+```
+
+A missing key at least renders as its own name; this renders plausible text.
+So the resolvers report it: when a dotted key resolves through the tree and the
+bundle also holds it as a flat key, `tomLog.warn` names the key — once per key
+per bundle, so a label read in every frame logs once, and a newly installed
+bundle reports afresh. It is on in every build, since a mis-shaped bundle in
+production renders wrong text just the same. The remedy is to keep one shape
+for the key.
+
 ### What the silence covers
 
 Only lookup outcomes. The guard around the walk absorbs `Exception` — the class
@@ -718,6 +754,7 @@ placeholder.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `meta` | package | every file | `@visibleForTesting` only; no runtime behaviour |
+| `tom_basics` | package | every file | `tomLog`, for the one warning the resolvers emit — a key held in both shapes; see [A literal dotted key](#a-literal-dotted-key-and-the-same-key-in-both-shapes) |
 | [json](../json/json.md) | module | every file | `getObjectFromTree`, the tree walk behind every dotted-path lookup |
 | [little_things](../little_things/little_things.md) | module | every file | `TomException`, the base of `TomResourceException` |
 | [observable](../observable/observable.md) | module | every file | it is what carries a bundle change to everything derived from the bundle, so a locale switch reaches bound widgets at all |
