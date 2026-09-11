@@ -132,6 +132,55 @@ class TomTimezone {
 
   TomTimezone._({required this.timezone, required this.location});
 
+  /// A zone named [name] that sits at [utcOffsetMinutes] at every instant.
+  ///
+  /// For a zone the IANA database of this runtime does not hold. A serialized
+  /// value carries an offset beside its zone name, and that is what a parse
+  /// falls back to when the name resolves to nothing — the value keeps the
+  /// name it was stored under and is read at the offset it was stored with,
+  /// rather than being refused because this host's database is older or
+  /// smaller than the one that wrote it. See the module guide's
+  /// "Serialization Format".
+  ///
+  /// It observes no daylight saving and has no transitions, so
+  /// [getUtcOffsetOn] answers [utcOffsetMinutes] for every instant, past or
+  /// future. That is the honest reading of what the string says: one offset,
+  /// with nothing to say when it might have been different.
+  ///
+  /// **It does not join the database.** [fromName] does not resolve it,
+  /// [timezones] does not hold it, and the offset lookups do not find it —
+  /// a value that arrives over the wire must not be able to write to the
+  /// index every other lookup in the process reads.
+  ///
+  /// [utcOffsetMinutes] outside ±840 minutes (±14:00) throws
+  /// [TomFormattingException], the bound the rest of the module keeps.
+  ///
+  /// Example:
+  /// ```dart
+  /// final zone = TomTimezone.fixedOffset(
+  ///   name: 'Mars/Olympus',
+  ///   utcOffsetMinutes: 330,
+  /// );
+  /// print(zone.toString()); // +05:30_Mars/Olympus
+  /// ```
+  factory TomTimezone.fixedOffset({
+    required String name,
+    required int utcOffsetMinutes,
+  }) {
+    // Formats the offset, and with it refuses one no zone could have.
+    final abbreviation = convertMinutesToUtcOffset(utcOffsetMinutes);
+    return TomTimezone._(
+      timezone: name,
+      location: tz.Location(name, const <int>[], const <int>[], [
+        tz.TimeZone(
+          Duration(minutes: utcOffsetMinutes),
+          isDst: false,
+          abbreviation: abbreviation,
+        ),
+      ]),
+    );
+  }
+
   /// The UTC timezone singleton.
   ///
   /// UTC (Coordinated Universal Time) has no offset and no daylight saving time.

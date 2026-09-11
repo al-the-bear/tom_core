@@ -158,11 +158,10 @@ class _Refusal {
 
 /// Every refusal the module can be provoked into on this platform.
 ///
-/// The two parse entries share a surface and a trigger set but not a cause, and
-/// both are listed because the readme's claim was about the *category*: if only
-/// the malformed-string case were executed, "an unknown zone is a parse
-/// failure" — the half that reads like a `TomTimezoneException` and is not one
-/// — would go unchecked.
+/// Parsing refuses one thing: a string that is not in the serialized form. A
+/// zone this runtime does not know is not among them — the string carries an
+/// offset beside the name, and the parse reads the value with it rather than
+/// refusing — so the only parse entry here is the malformed one.
 final List<_Refusal> _refusals = [
   _Refusal(
     what: 'a name the lenient lookup cannot find',
@@ -181,15 +180,6 @@ final List<_Refusal> _refusals = [
   _Refusal(
     what: 'a string that is not in the serialized form',
     provoke: () => TomZonedDateTime.parseFromString('invalid'),
-    surfaces: FormatException,
-    surfaceNamed: 'formatexception',
-    triggeredBy: {'parsefromstring', 'parse failure', 'parsing'},
-  ),
-  _Refusal(
-    what: 'a serialized string naming a zone the database does not hold',
-    provoke: () => TomZonedDateTime.parseFromString(
-      '@X@2024-06-15T05:30:00.000Z_+09:00_Mars/Olympus',
-    ),
     surfaces: FormatException,
     surfaceNamed: 'formatexception',
     triggeredBy: {'parsefromstring', 'parse failure', 'parsing'},

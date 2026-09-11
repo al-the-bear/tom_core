@@ -524,10 +524,13 @@ different instants on different hosts; such a string is rejected by both the
 `is…String` predicates and `parseFromString`.
 
 The offset is written for readability — it lets a stored value be understood
-without a timezone database to hand — but it is not consulted when parsing. The
-zone name is authoritative: the offset is derived from it, and because the IANA
-database revises historical offsets, an offset stored under an older database
-is not evidence about the value.
+without a timezone database to hand — and it is consulted in exactly one case:
+a zone name this runtime does not know. Where the name resolves, the zone is
+authoritative, because the database also holds what that zone did at the
+instant, and because it revises historical offsets, so an offset stored under
+an older database is not evidence about a zone this one holds. Where the name
+resolves to nothing, the offset is the only reading the string carries, and the
+value is read with it — see [Error Handling](#error-handling).
 
 The offset describes the value, not the zone today: it is the offset the zone
 had at the value's own instant — `toString()` renders the zone through
@@ -670,17 +673,27 @@ try {
   print(e.message); // Invalid TomZonedDateTime string: invalid
 }
 
-try {
-  TomZonedDateTime.parseFromString(
-    '@X@2024-06-15T05:30:00.000Z_+09:00_Mars/Olympus',
-  );
-} on FormatException catch (e) {
-  print(e.message); // Unknown timezone 'Mars/Olympus' in ...
-}
 ```
 
-An unknown zone is a parse failure, not a silent substitution: the parsed value
-would otherwise carry UTC while claiming a zone it never had.
+A zone this runtime does not know is **not** a parse failure. The string
+carries an offset beside the name, and that is what the value is read with:
+
+```dart
+final value = TomZonedDateTime.parseFromString(
+  '@X@2024-06-15T05:30:00.000Z_+09:00_Mars/Olympus',
+);
+
+value.timezone.timezone; // Mars/Olympus — the name it was stored under
+value.localHour;         // 14 — 05:30Z read at the stored +09:00
+value.toString();        // the string it came from
+```
+
+The zone it gets is a `TomTimezone.fixedOffset`: that one offset at every
+instant, with no daylight saving, which is the whole of what the string says.
+It does not join the database — `fromName` still answers `null` for the name —
+so a value arriving over the wire cannot write to the index the process reads.
+A host whose database *does* hold the zone reads the same string as the zone
+itself, and the name is what makes that possible.
 
 ### Safe Parsing Pattern
 

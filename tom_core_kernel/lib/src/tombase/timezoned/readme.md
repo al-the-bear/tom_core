@@ -77,10 +77,11 @@ when both arguments are null. It never returns `null`. Ask with `fromName` when
 a zone's absence is an answer, with `findTimezone` when it is a fault.
 
 Parsing refuses differently again: `parseFromString`, on all three variants,
-throws `FormatException` and never `TomTimezoneException` — both for a string
-that is not in the serialized form and for one naming a zone the database does
-not hold. An unknown zone is a parse failure rather than a silent substitution,
-because the value would otherwise carry UTC while claiming a zone it never had.
+throws `FormatException` and never `TomTimezoneException`, for a string that is
+not in the serialized form. A zone this runtime does not know is not a refusal:
+the value keeps the name it was stored under and is read at the offset stored
+beside it, so a database older or smaller than the one that wrote the string
+does not turn a good value into an error.
 
 ---
 

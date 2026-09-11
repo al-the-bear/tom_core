@@ -6,8 +6,9 @@ import 'timezones.dart';
 ///
 /// The trailing `Z` is required. It is the only thing in the whole serialized
 /// form that ties the reading to a point in time: the offset that follows is
-/// derived from the zone and is not consulted, and the zone alone cannot say
-/// which of its two readings a summer-time boundary meant. Without the `Z`,
+/// derived from the zone and is consulted only when this runtime does not know
+/// the zone, and the zone alone cannot say which of its two readings a
+/// summer-time boundary meant. Without the `Z`,
 /// [DateTime.parse] would resolve the reading against whatever zone the host
 /// machine is in, so the same string would name different instants on
 /// different machines.
@@ -50,12 +51,14 @@ final RegExp _zonedDateTimeForm = _serializedForm(
   TomZonedDateTime.serializationPrefix,
 );
 
-/// Reads the two sections of a serialized value that carry information.
+/// Reads the sections of a serialized value that carry information.
 ///
-/// The offset is deliberately not read. It restates the zone's offset at the
-/// instant, and the IANA database revises historical offsets, so an incoming
-/// offset is not evidence about the value; the zone decides, and serializing
-/// restates the offset from it.
+/// The zone decides where this runtime knows it, and serializing restates the
+/// offset from the zone: an incoming offset is not evidence about a zone the
+/// database holds, since the database also holds what that zone did at the
+/// instant, and it revises historical offsets. The offset is read only for a
+/// zone the database does not hold, where it is the only reading the string
+/// carries — see [TomTimezone.fixedOffset].
 ///
 /// [pattern] The form for the expected prefix, from [_serializedForm].
 /// [formattedString] The string to read.
@@ -74,14 +77,33 @@ final RegExp _zonedDateTimeForm = _serializedForm(
     throw FormatException('Invalid $typeName string: $formattedString');
   }
   final zone = match.group(3)!;
-  final timezone = TomTimezone.fromName(zone);
-  if (timezone == null) {
-    throw FormatException(
-      "Unknown timezone '$zone' in $typeName string: $formattedString",
-    );
-  }
+  // The zone name is authoritative where this runtime knows it: the database
+  // says what the zone did at the value's instant, which a single stored
+  // offset cannot. Where it does not know the name — an older or smaller
+  // database than the one that wrote the string — the offset beside the name
+  // is what the value is read with, so the value survives the crossing with
+  // its name and its reading intact instead of being refused.
+  final timezone =
+      TomTimezone.fromName(zone) ??
+      TomTimezone.fixedOffset(
+        name: zone,
+        utcOffsetMinutes: _offsetMinutesOf(match.group(2)!),
+      );
   // The `Z` is mandatory, so this is a UTC value already.
   return (instant: DateTime.parse(match.group(1)!), timezone: timezone);
+}
+
+/// The minutes east of UTC that [offsetSection] names.
+///
+/// Reads what [_offsetSection] matches and nothing else: `Z`, or `+HH:MM` /
+/// `-HH:MM`. The pattern has already accepted the string by the time this is
+/// called, so there is no malformed case left to report.
+int _offsetMinutesOf(String offsetSection) {
+  if (offsetSection == 'Z') return 0;
+  final sign = offsetSection.startsWith('-') ? -1 : 1;
+  final hours = int.parse(offsetSection.substring(1, 3));
+  final minutes = int.parse(offsetSection.substring(4, 6));
+  return sign * (hours * 60 + minutes);
 }
 
 /// Base class for timezone-aware date/time values.

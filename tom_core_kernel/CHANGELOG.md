@@ -8,6 +8,17 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **A serialized value whose zone this runtime does not know is read at its
+  stored offset (tcopen95).** The offset beside the zone name stops being
+  write-only: where the name resolves, the zone stays authoritative and a
+  contradicting offset is ignored; where it resolves to nothing — an older or
+  smaller IANA database than the one that wrote the string — the value keeps
+  its name and is read at that offset through the new
+  `TomTimezone.fixedOffset(name:, utcOffsetMinutes:)`, instead of being refused
+  with a `FormatException`. Such a zone does not join the database, so a value
+  off the wire cannot write to the index. `parseFromString` still refuses a
+  string that is not in the serialized form.
+
 - **`TomTimezone.location` says it is the database's own object (tcopen94).**
   The lookups this class owns hand out unmodifiable views of the index, and
   `location` is the one thing they cannot wrap: `tz.Location` belongs to the

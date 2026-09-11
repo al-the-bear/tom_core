@@ -36,7 +36,8 @@ prefix), `TomZonedTime` (time-only anchored at 1970-01-01, `@T@` prefix), and
 `isTom…String` pair. The ISO section must end in `Z`, since it is the only part
 of the string that fixes a point in time; the offset that follows is the zone's
 offset at that instant — the one the value's local fields use — and is written
-for readability, not read back. A produced
+for readability, and read back only for a zone name this runtime does not know,
+where it is the only reading the string carries. A produced
 string ends where the zone name ends: nothing appends to it, and the parse
 regexes anchor there, so whitespace inside the form is refused. Whitespace
 *around* a stored value is trimmed by both `parseFromString` and the
@@ -111,8 +112,9 @@ factory TomTimezoned.parseFromString(String formattedString)
 ```
 
 The default factory interprets the components as local time in `timezone` and
-converts to UTC. `parseFromString` throws `FormatException` for an invalid
-string or unknown zone.
+converts to UTC. `parseFromString` throws `FormatException` for a string that is
+not in the serialized form; a zone name this runtime does not know is read as a
+`TomTimezone.fixedOffset` at the offset stored beside it, not refused.
 
 All of them return `TomTimezoned` itself rather than one of the subclasses, so
 the methods below are the whole of what such a value offers. No `convertToTz*`
@@ -346,8 +348,21 @@ and conversion between zones. The database is lazily initialized on first access
 
 #### Constructors
 
-None — the constructor is private. Obtain instances via `TomTimezone.utc`,
-`fromName`, `firstWithOffset`, `allWithOffset`, or `findTimezone`.
+```dart
+factory TomTimezone.fixedOffset({required String name, required int utcOffsetMinutes})
+```
+
+A zone named `name` that sits at `utcOffsetMinutes` at every instant, with no
+transitions and no daylight saving. What a parse falls back to for a zone name
+this runtime's database does not hold: the value keeps its stored name and is
+read at its stored offset. It **does not join the database** — `fromName`,
+`timezones` and the offset lookups do not see it — so a value arriving over the
+wire cannot write to the index. An offset outside ±840 minutes throws
+`TomFormattingException`.
+
+Otherwise the constructor is private; obtain instances via `TomTimezone.utc`,
+`fromName`, `firstWithOffset`, `allWithOffset`, `firstWithOffsetOn`,
+`allWithOffsetOn`, or `findTimezone`.
 
 #### Static Properties
 

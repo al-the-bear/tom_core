@@ -2632,45 +2632,113 @@ void main() {
     });
   });
 
-  // parseFromString must throw a FormatException when the timezone name does
-  // not resolve, instead of silently downgrading to UTC.
-  group('parseFromString unknown timezone', () {
-    test('TomTimezoned.parseFromString throws for unknown zone', () {
-      expect(
-        () => TomTimezoned.parseFromString(
-          '2024-06-15T05:30:00.000Z_+09:00_Unknown/Zone',
-        ),
-        throwsA(isA<FormatException>()),
-      );
+  // A zone this runtime does not know is not a broken value: the string
+  // carries an offset beside the name, and that offset is what the value is
+  // read with. It keeps the name it was stored under, so a host whose database
+  // does know the zone reads the same string as the zone.
+  group('parseFromString with a zone this runtime does not know', () {
+    const stored = '@X@2024-06-15T05:30:00.000Z_+09:00_Mars/Olympus';
+
+    test('parses, keeping the name and reading with the offset', () {
+      final value = TomZonedDateTime.parseFromString(stored);
+
+      expect(value.timezone.timezone, 'Mars/Olympus');
+      expect(value.toUtc().hour, 5);
+      // +09:00 of the stored offset, applied to 05:30Z.
+      expect(value.localHour, 14);
+      expect(value.localMinute, 30);
     });
 
-    test('TomZonedDate.parseFromString throws for unknown zone', () {
-      expect(
-        () => TomZonedDate.parseFromString(
-          '@D@2024-06-15T00:00:00.000Z_+09:00_Unknown/Zone',
-        ),
-        throwsA(isA<FormatException>()),
-      );
+    test('re-serializes to the string it came from', () {
+      expect(TomZonedDateTime.parseFromString(stored).toString(), stored);
     });
 
-    test('TomZonedTime.parseFromString throws for unknown zone', () {
-      expect(
-        () => TomZonedTime.parseFromString(
-          '@T@1970-01-01T09:00:00.000Z_+09:00_Unknown/Zone',
-        ),
-        throwsA(isA<FormatException>()),
-      );
+    test('the zone is not added to the database', () {
+      final before = TomTimezone.timezones.length;
+      TomZonedDateTime.parseFromString(stored);
+
+      expect(TomTimezone.fromName('Mars/Olympus'), isNull);
+      expect(TomTimezone.timezones.length, before);
     });
 
-    test('TomZonedDateTime.parseFromString throws for unknown zone', () {
-      expect(
-        () => TomZonedDateTime.parseFromString(
-          '@X@2024-06-15T14:30:00.000Z_+09:00_Unknown/Zone',
-        ),
-        throwsA(isA<FormatException>()),
+    test('a Z offset reads as UTC', () {
+      final value = TomZonedDateTime.parseFromString(
+        '@X@2024-06-15T05:30:00.000Z_Z_Mars/Olympus',
       );
+      expect(value.localHour, 5);
+      expect(value.timezone.getCurrentUtcOffset(), 0);
     });
 
+    test('a negative offset reads west of UTC', () {
+      final value = TomZonedDateTime.parseFromString(
+        '@X@2024-06-15T05:30:00.000Z_-03:30_Mars/Olympus',
+      );
+      expect(value.localHour, 2);
+      expect(value.localMinute, 0);
+    });
+
+    test('every type reads it, each keeping its own shape', () {
+      final timezoned = TomTimezoned.parseFromString(
+        '2024-06-15T05:30:00.000Z_+09:00_Mars/Olympus',
+      );
+      final date = TomZonedDate.parseFromString(
+        '@D@2024-06-14T15:00:00.000Z_+09:00_Mars/Olympus',
+      );
+      final time = TomZonedTime.parseFromString(
+        '@T@1970-01-01T09:00:00.000Z_+09:00_Mars/Olympus',
+      );
+
+      expect(timezoned.localHour, 14);
+      expect(date.localDay, 15);
+      expect(time.localHour, 18);
+      for (final value in [timezoned, date, time]) {
+        expect(value.timezone.timezone, 'Mars/Olympus');
+      }
+    });
+
+    test('a known zone still wins over the offset beside it', () {
+      // The offset is only consulted when the name resolves to nothing. A
+      // name this runtime knows is authoritative, and a stale or hand-edited
+      // offset next to it changes nothing.
+      final value = TomZonedDateTime.parseFromString(
+        '@X@2024-06-15T05:30:00.000Z_-11:30_Asia/Tokyo',
+      );
+
+      expect(value.timezone.timezone, 'Asia/Tokyo');
+      expect(value.localHour, 14);
+      expect(value.toString(), contains('_+09:00_Asia/Tokyo'));
+    });
+  });
+
+  group('TomTimezone.fixedOffset', () {
+    test('is the named zone at one offset, for every instant', () {
+      final zone = TomTimezone.fixedOffset(
+        name: 'Mars/Olympus',
+        utcOffsetMinutes: 330,
+      );
+
+      expect(zone.timezone, 'Mars/Olympus');
+      expect(zone.getCurrentUtcOffset(), 330);
+      expect(zone.getUtcOffsetOn(DateTime.utc(1970)), 330);
+      expect(zone.getUtcOffsetOn(DateTime.utc(2024, 7, 15)), 330);
+      expect(zone.toString(), '+05:30_Mars/Olympus');
+    });
+
+    test('does not join the database', () {
+      TomTimezone.fixedOffset(name: 'Mars/Elysium', utcOffsetMinutes: 0);
+      expect(TomTimezone.fromName('Mars/Elysium'), isNull);
+    });
+
+    test('an offset no zone could have is refused', () {
+      // The same bound the rest of the module keeps: ±14:00.
+      expect(
+        () => TomTimezone.fixedOffset(name: 'X', utcOffsetMinutes: 900),
+        throwsA(isA<TomFormattingException>()),
+      );
+    });
+  });
+
+  group('parseFromString keeps a known zone', () {
     test('TomTimezoned.parseFromString still resolves a known zone', () {
       final tt = TomTimezoned.parseFromString(
         '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo',

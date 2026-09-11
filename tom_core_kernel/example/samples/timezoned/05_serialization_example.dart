@@ -6,6 +6,7 @@
 /// - Type detection from prefixes
 /// - Error handling for invalid strings
 /// - The offset in the string is the zone's offset at the value's instant
+/// - A zone this runtime does not know is read at the offset stored beside it
 ///
 /// To run this file on its own:
 /// ```bash
@@ -376,6 +377,39 @@ class SerializationExample {
   }
 
   // -------------------------------------------------------------------------
+  // Example 11: A zone this runtime does not know
+  // -------------------------------------------------------------------------
+  static void example11UnknownZone() {
+    print('\n11. A stored value whose zone this database does not hold:');
+
+    // A host with an older or smaller IANA database than the one that wrote
+    // the value. The name does not resolve, so the offset stored beside it is
+    // what the value is read with — the value crosses intact instead of
+    // becoming a parse error.
+    const stored = '@X@2024-06-15T05:30:00.000Z_+09:00_Mars/Olympus';
+    final value = TomZonedDateTime.parseFromString(stored);
+
+    print('   - zone name kept     : ${value.timezone.timezone}');
+    print(
+      '   - read at its offset : ${value.localHour}:'
+      '${value.localMinute.toString().padLeft(2, '0')} local',
+    );
+    print('   - re-serializes to   : ${value.toString()}');
+    print(
+      '   - joined the database: '
+      '${TomTimezone.fromName('Mars/Olympus') != null}',
+    );
+
+    assert(value.timezone.timezone == 'Mars/Olympus');
+    assert(value.localHour == 14, 'read at the stored +09:00');
+    assert(value.toString() == stored, 'and it re-serializes unchanged');
+    assert(
+      TomTimezone.fromName('Mars/Olympus') == null,
+      'a value off the wire must not write to the database',
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Run all examples
   // -------------------------------------------------------------------------
   static void run() {
@@ -391,6 +425,7 @@ class SerializationExample {
     example8RoundTrip();
     example9ErrorHandling();
     example10OffsetAtInstant();
+    example11UnknownZone();
 
     print('\n=== Serialization Example Complete ===\n');
   }
