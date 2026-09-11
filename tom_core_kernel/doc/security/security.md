@@ -285,13 +285,25 @@ keeps a reference to the map it passed in cannot edit the identity afterwards.
 This is the same contract as ACI and CLI: to change an identity, issue a new
 one.
 
-**Identity fields are resource-key protected on the way into a token.**
-`convertPrincipalToTokenPayload` runs every optional field through
+**Personal fields travel in the token's encrypted half.** A JWT's public half
+is base64, readable by anyone holding the token and by anything with access to
+where it is stored, so `convertPrincipalToTokenPayload` puts only what
+identifies the session there — `username`, `id` (`userId`), `timezone`
+(`userTimezone`), the organization/application/process context, the locale and
+the subscription and second-factor claims. First and last name, email, phone,
+mobile, both address lines, city, postcode, state/region and `attributes` go in
+the **private** half, beside the ACI. A reader that decrypts the authorization
+token — every server, and a client given the deployment's configuration — gets
+them back; one that does not sees who the session belongs to and nothing
+personal. The split holds whatever the resource-key switches say.
+
+**And they are resource-key protected on the way in.**
+`convertPrincipalToTokenPayload` runs each of those personal fields through
 [`TomResourceKeyProtection.protectFor`](#resource-key-protection) under the key
 `tom.user.<field>` — `tom.user.email`, `tom.user.phone`,
 `tom.user.attributes`, and so on — falling back to `null` (or `const {}` for
-attributes) when the key is protected. Three fields are *not* filtered and
-always travel in the clear: `username`, `id` and `timezone`. Note the prefix:
+attributes) when the key is protected. The three identity fields are *not*
+filtered: `username`, `id` and `timezone`. Note the prefix:
 `tom.user.email` is a different key from the `user.email` used as an
 application-level example elsewhere in this document, and protecting one does
 not protect the other.

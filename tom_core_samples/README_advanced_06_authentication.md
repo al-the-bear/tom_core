@@ -87,9 +87,12 @@ is left untouched, so a real credential is never clobbered.
 A successful login mints **two** JWTs, mirroring what
 `TomAuthenticationServer.authenticateUser` produces:
 
-- the **authentication token** (`authToken`) — the public principal payload;
+- the **authentication token** (`authToken`) — the public principal payload:
+  who the session is (username, id, context, locale), nothing personal;
 - the **authorization token** (`authzToken`) — the same public payload plus the
-  *encrypted* access-control data (the roles/groups definition).
+  *encrypted* section: the personal fields (name, email, address…) and the
+  access-control data (the roles/groups definition). The auth server reads the
+  login DTO's display name and email back from this token, decrypted.
 
 The login deliberately does **not** bake the principal's effective per-resource
 role map into the token. The bearer token is opaque to the

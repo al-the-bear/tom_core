@@ -264,11 +264,15 @@ class AuthTokenService {
   /// The principal is read back out of the issued token rather than kept aside
   /// from the credential check, so both passes project from the same place —
   /// and the DTO can only ever describe what the token actually says.
+  ///
+  /// It is the *authorization* token, decrypted: the personal fields the DTO
+  /// shows (display name, email) travel in the token's encrypted half, and the
+  /// server holds the key.
   LoginResult _resultFor(TomAuthenticationResult result) {
     if (result.error.isNotEmpty) throw _failureFor(result);
 
     final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
-      TomClientJwtToken(result.authenticationToken, decrypt: false),
+      TomClientJwtToken(result.authorizationToken),
     );
     return LoginResult(
       user: userDtoOf(principal),

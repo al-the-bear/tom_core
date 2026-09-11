@@ -297,6 +297,14 @@ class TomBearerAuthentication {
       return v is String ? v : null;
     }
 
+    // The personal fields travel in the encrypted half; a token read without
+    // decryption has no secret, and yields a principal that names the user and
+    // carries nothing personal.
+    String? secretStr(String key) {
+      final v = secret?[key];
+      return v is String ? v : null;
+    }
+
     int intOr(String key, int fallback) {
       final v = payload[key];
       return v is int ? v : fallback;
@@ -367,17 +375,17 @@ class TomBearerAuthentication {
       user: TomUser(
         id: intOr("userId", -1),
         username: str("username") ?? TomUser.guestUsername,
-        firstname: str("firstname"),
-        lastname: str("lastname"),
-        email: str("email"),
-        phone: str("phone"),
-        mobile: str("mobile"),
-        addressLine1: str("addressLine1"),
-        addressLine2: str("addressLine2"),
-        city: str("city"),
-        postcode: str("postcode"),
-        stateRegion: str("stateRegion"),
-        attributes: mapFrom(payload, "attributes"),
+        firstname: secretStr("firstname"),
+        lastname: secretStr("lastname"),
+        email: secretStr("email"),
+        phone: secretStr("phone"),
+        mobile: secretStr("mobile"),
+        addressLine1: secretStr("addressLine1"),
+        addressLine2: secretStr("addressLine2"),
+        city: secretStr("city"),
+        postcode: secretStr("postcode"),
+        stateRegion: secretStr("stateRegion"),
+        attributes: mapFrom(secret, "attributes"),
         timezone: str("userTimezone"),
       ),
       aci: TomAccessControlInformation(
@@ -539,9 +547,26 @@ class TomBearerAuthentication {
   /// - [twoFactorSatisfied]: Set on the second pass, once the factor has been
   ///   verified, to clear the requirement the principal still carries
   ///
+  /// ## What each half carries
+  ///
+  /// The **public** half is base64, not encryption: anyone holding the token —
+  /// and anything with access to where it is stored — can read it. It carries
+  /// what identifies and routes the session and nothing personal: `username`,
+  /// `userId`, `userTimezone`, the organization/application/process context
+  /// and its ids, `clientId`, the effective and client locale, the
+  /// subscription claims, and the second-factor claims.
+  ///
+  /// The **private** half is encrypted. It carries every personal field —
+  /// first and last name, email, phone, mobile, both address lines, city,
+  /// postcode, state/region and `attributes` — beside the context and the five
+  /// ACI collections. A reader that decrypts gets them back through
+  /// [convertTokenPayloadToPrincipal]; one that does not sees who the session
+  /// belongs to and no personal data. The split does not depend on any
+  /// resource-key switch being set.
+  ///
   /// ## Which principal decides redaction
   ///
-  /// Eleven identity fields are filtered through
+  /// Eleven personal fields — all in the private half — are filtered through
   /// [TomResourceKeyProtection.protectFor] under the key `tom.user.<field>`,
   /// and the operand is **[principal] itself** — the subject the token is being
   /// minted for — not whoever the ambient zone names. A field survives when the
@@ -554,8 +579,8 @@ class TomBearerAuthentication {
   /// with [TomResourceKeyProtection.globalSettingProtectionDefault] on, every
   /// protected field in every minted token would come back empty.
   ///
-  /// `username`, `userId` and `userTimezone` are not filtered and always travel
-  /// in the clear.
+  /// `username`, `userId` and `userTimezone` are not filtered and travel in the
+  /// public half.
   ///
   /// ## The `requires2FA` claim
   ///
@@ -567,8 +592,8 @@ class TomBearerAuthentication {
   /// produces an unusable interim token, not an over-privileged one.
   ///
   /// Returns a tuple of (publicPayload, privatePayload):
-  /// - Public payload: User info visible in the JWT
-  /// - Private payload: Encrypted security information (ACI)
+  /// - Public payload: the session's identity, readable by any token holder
+  /// - Private payload: encrypted personal fields, context and ACI
   ///
   /// ```dart
   /// var (publicPayload, privatePayload) =
@@ -603,10 +628,47 @@ class TomBearerAuthentication {
           resourceKey,
         );
 
-    // TODO: consider adding access rights-based filtering or sorting in public/private
+    // The public half is base64, readable by anyone holding the token: it
+    // carries what identifies the session and nothing personal. See the
+    // dartdoc's "What each half carries".
     Map<String, Object?> publicInfo = {
       "username": principal.username,
       "userId": principal.user.id,
+      "userTimezone": principal.user.timezone,
+      "organization": principal.organization,
+      "application": principal.application,
+      "process": principal.process,
+      "organizationId": principal.organizationId,
+      "applicationId": principal.applicationId,
+      "processId": principal.processId,
+      "clientId": principal.clientId,
+      "language": principal.language,
+      "country": principal.country,
+      "timezone": principal.timezone,
+      "clientLanguage": clientLanguage,
+      "clientCountry": clientCountry,
+      "clientTimezone": principal.clientTimezone,
+      "subscription_enabledModules": principal.cli.enabledModules,
+      "subscription_quotas": principal.cli.quotas,
+    };
+
+    if (challenge != null) {
+      publicInfo.addAll(challenge.toClaims());
+    } else {
+      // No challenge in flight: the token still owes a factor only if the
+      // principal says so and nobody has reported it satisfied.
+      final stillOwed = principal.requires2FA && !twoFactorSatisfied;
+      publicInfo[Tom2FAClaims.requires2FA] = stillOwed ? "true" : "false";
+      publicInfo[Tom2FAClaims.type] = stillOwed
+          ? principal.twoFactorType
+          : null;
+    }
+
+    TomAccessControlInformation aci = definition != null
+        ? definition.completeFromDefinition(principal.aci)
+        : principal.aci;
+
+    Map<String, Object?> privateInfo = {
       "firstname": protectField<String?>(
         principal.user.firstname,
         null,
@@ -653,46 +715,11 @@ class TomBearerAuthentication {
         null,
         "tom.user.stateRegion",
       ),
-      "userTimezone": principal.user.timezone,
-      "organization": principal.organization,
-      "application": principal.application,
-      "process": principal.process,
-      "organizationId": principal.organizationId,
-      "applicationId": principal.applicationId,
-      "processId": principal.processId,
-      "clientId": principal.clientId,
-      "language": principal.language,
-      "country": principal.country,
-      "timezone": principal.timezone,
-      "clientLanguage": clientLanguage,
-      "clientCountry": clientCountry,
-      "clientTimezone": principal.clientTimezone,
       "attributes": protectField<Map<String, Object?>>(
         principal.user.attributes,
         const {},
         "tom.user.attributes",
       ),
-      "subscription_enabledModules": principal.cli.enabledModules,
-      "subscription_quotas": principal.cli.quotas,
-    };
-
-    if (challenge != null) {
-      publicInfo.addAll(challenge.toClaims());
-    } else {
-      // No challenge in flight: the token still owes a factor only if the
-      // principal says so and nobody has reported it satisfied.
-      final stillOwed = principal.requires2FA && !twoFactorSatisfied;
-      publicInfo[Tom2FAClaims.requires2FA] = stillOwed ? "true" : "false";
-      publicInfo[Tom2FAClaims.type] = stillOwed
-          ? principal.twoFactorType
-          : null;
-    }
-
-    TomAccessControlInformation aci = definition != null
-        ? definition.completeFromDefinition(principal.aci)
-        : principal.aci;
-
-    Map<String, Object?> privateInfo = {
       "context": principal.currentContext,
       "groups": aci.groups,
       "roles": aci.roles,

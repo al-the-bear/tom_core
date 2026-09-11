@@ -2752,8 +2752,8 @@ void main() {
           // nothing is installed on the zone. Reading the zone here would be
           // fail-closed and blank every protected field in every minted token.
           final (
-            publicInfo,
             _,
+            privateInfo,
           ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
             subject(
               resourceKeys: [
@@ -2768,11 +2768,11 @@ void main() {
             'en',
           );
 
-          expect(publicInfo['firstname'], equals('Alice'));
-          expect(publicInfo['lastname'], equals('Anders'));
-          expect(publicInfo['email'], equals('alice@example.com'));
+          expect(privateInfo['firstname'], equals('Alice'));
+          expect(privateInfo['lastname'], equals('Anders'));
+          expect(privateInfo['email'], equals('alice@example.com'));
           expect(
-            publicInfo['attributes'],
+            privateInfo['attributes'],
             equals({'department': 'engineering'}),
           );
         },
@@ -2780,8 +2780,8 @@ void main() {
 
       test('fields the subject holds no key for fall back', () {
         final (
-          publicInfo,
           _,
+          privateInfo,
         ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
           subject(resourceKeys: ['tom.user.email']),
           null,
@@ -2789,16 +2789,16 @@ void main() {
           'en',
         );
 
-        expect(publicInfo['email'], equals('alice@example.com'));
-        expect(publicInfo['firstname'], isNull);
-        expect(publicInfo['phone'], isNull);
-        expect(publicInfo['mobile'], isNull);
-        expect(publicInfo['addressLine1'], isNull);
-        expect(publicInfo['addressLine2'], isNull);
-        expect(publicInfo['city'], isNull);
-        expect(publicInfo['postcode'], isNull);
-        expect(publicInfo['stateRegion'], isNull);
-        expect(publicInfo['attributes'], isEmpty);
+        expect(privateInfo['email'], equals('alice@example.com'));
+        expect(privateInfo['firstname'], isNull);
+        expect(privateInfo['phone'], isNull);
+        expect(privateInfo['mobile'], isNull);
+        expect(privateInfo['addressLine1'], isNull);
+        expect(privateInfo['addressLine2'], isNull);
+        expect(privateInfo['city'], isNull);
+        expect(privateInfo['postcode'], isNull);
+        expect(privateInfo['stateRegion'], isNull);
+        expect(privateInfo['attributes'], isEmpty);
       });
 
       test('the three unfiltered fields travel in the clear regardless', () {
@@ -2825,34 +2825,155 @@ void main() {
           resourceKeys: ['tom.user.firstname', 'tom.user.email'],
         );
 
-        final publicInfo = runZoned(
+        final privateInfo = runZoned(
           () => TomBearerAuthentication.convertPrincipalToTokenPayload(
             subject(),
             null,
             'US',
             'en',
-          ).$1,
+          ).$2,
           zoneValues: {TomPrincipal: onZone},
         );
 
-        expect(publicInfo['firstname'], isNull);
-        expect(publicInfo['email'], isNull);
+        expect(privateInfo['firstname'], isNull);
+        expect(privateInfo['email'], isNull);
       });
 
       test('nor does it withhold from a subject that holds the key', () {
         // The mirror case: an unprivileged principal on the zone must not
         // redact fields the subject's own keys unlock.
-        final publicInfo = runZoned(
+        final privateInfo = runZoned(
           () => TomBearerAuthentication.convertPrincipalToTokenPayload(
             subject(resourceKeys: ['tom.user.email']),
             null,
             'US',
             'en',
-          ).$1,
+          ).$2,
           zoneValues: {TomPrincipal: subject()},
         );
 
-        expect(publicInfo['email'], equals('alice@example.com'));
+        expect(privateInfo['email'], equals('alice@example.com'));
+      });
+    });
+
+    // The public half of a JWT is base64, readable by anyone holding the
+    // token and by anything with access to where it is stored. It carries what
+    // identifies the session and nothing personal: username and user id, the
+    // organization/application/process context, locale, and the subscription
+    // claims. Every personal field travels in the encrypted half, beside the
+    // ACI, whatever the resource-key switches say.
+    group('which half carries the personal fields', () {
+      const personal = [
+        'firstname',
+        'lastname',
+        'email',
+        'phone',
+        'mobile',
+        'addressLine1',
+        'addressLine2',
+        'city',
+        'postcode',
+        'stateRegion',
+        'attributes',
+      ];
+
+      TomPrincipal subject() => TomPrincipal(
+        authenticated: true,
+        user: TomUser(
+          id: 7,
+          username: 'alice',
+          firstname: 'Alice',
+          lastname: 'Anders',
+          email: 'alice@example.com',
+          phone: '+1-555-0100',
+          mobile: '+1-555-0199',
+          addressLine1: '1 Main St',
+          addressLine2: 'Apt 2',
+          city: 'Springfield',
+          postcode: '12345',
+          stateRegion: 'IL',
+          timezone: 'America/Chicago',
+          attributes: {'department': 'engineering'},
+        ),
+      );
+
+      test('none of them is in the public half', () {
+        final (
+          publicInfo,
+          _,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+          subject(),
+          null,
+          'US',
+          'en',
+        );
+        for (final field in personal) {
+          expect(publicInfo.containsKey(field), isFalse, reason: field);
+        }
+        expect(publicInfo['username'], 'alice');
+        expect(publicInfo['userId'], 7);
+      });
+
+      test('all of them are in the private half', () {
+        // Resource-key enforcement is off (the default), so no field is
+        // redacted and every one is present.
+        final (
+          _,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+          subject(),
+          null,
+          'US',
+          'en',
+        );
+        expect(privateInfo['email'], 'alice@example.com');
+        expect(privateInfo['firstname'], 'Alice');
+        expect(privateInfo['city'], 'Springfield');
+        expect(privateInfo['attributes'], {'department': 'engineering'});
+        for (final field in personal) {
+          expect(privateInfo.containsKey(field), isTrue, reason: field);
+        }
+      });
+
+      test('a decrypted token restores them', () {
+        final (
+          publicInfo,
+          privateInfo,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+          subject(),
+          null,
+          'US',
+          'en',
+        );
+        final restored = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo),
+        );
+        expect(restored.user.email, 'alice@example.com');
+        expect(restored.user.lastname, 'Anders');
+        expect(restored.user.stateRegion, 'IL');
+        expect(restored.user.attributes, {'department': 'engineering'});
+      });
+
+      test('a token read without decryption identifies the user only', () {
+        // A client that cannot decrypt sees exactly what anyone holding the
+        // token sees: who the session belongs to, and no personal data.
+        final (
+          publicInfo,
+          _,
+        ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+          subject(),
+          null,
+          'US',
+          'en',
+        );
+        final seen = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          _FakeClientJwtToken(payload: publicInfo),
+        );
+        expect(seen.username, 'alice');
+        expect(seen.user.id, 7);
+        expect(seen.user.email, isNull);
+        expect(seen.user.firstname, isNull);
+        expect(seen.user.attributes, isEmpty);
       });
     });
 

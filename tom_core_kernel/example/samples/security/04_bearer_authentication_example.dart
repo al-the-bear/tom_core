@@ -219,9 +219,8 @@ class BearerAuthenticationExample {
   static void example3PayloadStructure() {
     print('\n3. Token payload structure:');
 
-    print('   PUBLIC PAYLOAD (visible in the JWT):');
-    print('   ├── User Info    — username, userId, firstname, lastname,');
-    print('   │                  email, phone, mobile, address, userTimezone');
+    print('   PUBLIC PAYLOAD (readable by anyone holding the token):');
+    print('   ├── Identity     — username, userId, userTimezone');
     print('   ├── Context      — organization, application, process (+ ids)');
     print('   ├── Localization — language, country, timezone, client*');
     print('   ├── 2FA          — requires2FA, twoFactorType');
@@ -229,20 +228,17 @@ class BearerAuthenticationExample {
     print('                      subscription_quotas');
     print('');
     print('   PRIVATE PAYLOAD (encrypted in the JWT):');
-    print('   └── context, groups, roles, entitlements, resourceKeys,');
-    print('       resourceRoles');
+    print('   ├── Personal     — firstname, lastname, email, phone, mobile,');
+    print('   │                  address, city, postcode, stateRegion,');
+    print('   │                  attributes');
+    print('   └── Rights       — context, groups, roles, entitlements,');
+    print('                      resourceKeys, resourceRoles');
 
     // The tree above is a claim about the payload example 2 built, so it is
     // checked against it rather than left to drift.
     const publicGroups = [
       'username',
       'userId',
-      'firstname',
-      'lastname',
-      'email',
-      'phone',
-      'mobile',
-      'addressLine1',
       'userTimezone',
       'organization',
       'application',
@@ -262,6 +258,17 @@ class BearerAuthenticationExample {
       'subscription_quotas',
     ];
     const privateGroups = [
+      'firstname',
+      'lastname',
+      'email',
+      'phone',
+      'mobile',
+      'addressLine1',
+      'addressLine2',
+      'city',
+      'postcode',
+      'stateRegion',
+      'attributes',
       'context',
       'groups',
       'roles',
@@ -289,7 +296,13 @@ class BearerAuthenticationExample {
       missingPrivate.isEmpty,
       'Every documented private claim should exist',
     );
-    // The private half is exactly these six; a new one should update the tree.
+    // Nothing personal is readable: the public half names the session only.
+    assert(
+      !publicPayload.containsKey('email') &&
+          !publicPayload.containsKey('firstname'),
+      'Personal fields travel in the encrypted half only',
+    );
+    // The private half is exactly these; a new one should update the tree.
     assert(
       privatePayload.keys.toSet().difference(privateGroups.toSet()).isEmpty,
       'The private payload carries nothing the tree above omits',
@@ -314,9 +327,11 @@ class BearerAuthenticationExample {
     // by the subject the token is *for* — not by the ambient zone, which on
     // the login path holds nobody yet, and reading it would blank every
     // protected field of every minted token.
+    // The personal fields — and so the redaction — are in the private half;
+    // the public half carries the identity.
     final (
-      holdsEmail,
       _,
+      holdsEmail,
     ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
       _subject(resourceKeys: ['tom.user.email']),
       null,
@@ -324,8 +339,8 @@ class BearerAuthenticationExample {
       'en',
     );
     final (
+      nothingPublic,
       holdsNothing,
-      _,
     ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
       _subject(resourceKeys: const []),
       null,
@@ -344,9 +359,9 @@ class BearerAuthenticationExample {
     );
     print('   Subject holding no keys at all:');
     print('     email     : ${holdsNothing['email']}');
-    print('   Never filtered, for either subject:');
-    print('     username  : ${holdsNothing['username']}');
-    print('     userId    : ${holdsNothing['userId']}');
+    print('   Never filtered, and in the public half:');
+    print('     username  : ${nothingPublic['username']}');
+    print('     userId    : ${nothingPublic['userId']}');
 
     redactionFollowsSubject =
         holdsEmail['email'] == 'john.doe@example.com' &&
@@ -369,8 +384,8 @@ class BearerAuthenticationExample {
     );
     assert(holdsNothing['email'] == null, 'Redaction follows the subject');
     assert(
-      holdsNothing['username'] == 'john.doe' && holdsNothing['userId'] == 123,
-      'username and userId always travel in the clear',
+      nothingPublic['username'] == 'john.doe' && nothingPublic['userId'] == 123,
+      'username and userId always travel in the public half',
     );
     assert(
       TomResourceKeyProtection.globalSettingProtectionDefault == wasProtecting,

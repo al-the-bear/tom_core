@@ -811,6 +811,19 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **Personal fields travel in the token's encrypted half (tcopen78).**
+  `convertPrincipalToTokenPayload` put first and last name, email, phone,
+  mobile, both address lines, city, postcode, state/region and `attributes`
+  in the public half — base64, readable by anyone holding the token — and only
+  redacted them while resource-key enforcement was on, which it is not by
+  default. They now go in the private (encrypted) half beside the ACI, and
+  `convertTokenPayloadToPrincipal` reads them from the decrypted section. The
+  public half carries what identifies the session: `username`, `userId`,
+  `userTimezone`, the context and ids, locale, and the subscription and
+  second-factor claims. A reader that does not decrypt now sees who the session
+  belongs to and no personal data. Redaction by the subject's own
+  `tom.user.<field>` keys still applies to the moved fields.
+
 - **Resource-key protection answers in four states, from both resource grants
   (tcopen74).** `TomResourceKeyProtection.resourceStateFor(principal, key)` —
   with the zone form `resourceState` and the helper `tomResourceState` — grades
