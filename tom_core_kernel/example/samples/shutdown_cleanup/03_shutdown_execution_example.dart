@@ -12,6 +12,7 @@
 /// - [TomShutdownCleanup.paused]: the signal path is skipped while paused,
 ///   but a manual `performShutdown()` always runs
 /// - [TomShutdownCleanup.silent]: suppresses status/diagnostic output
+/// - [TomShutdownCleanup.output]: the one sink every line goes to
 /// - [TomShutdownCleanup.cancelAll] / [TomShutdownCleanup.dispose]: tear the
 ///   signal watchers down so a short-lived instance stops leaking
 /// - [TomCloseAdaptor]: adapts an object with a `close()`/`dispose()`/custom
@@ -213,7 +214,17 @@ Future<void> run() async {
   // With silent = true the signal path emits no "Received …"/"Shutdown …" lines.
   await silent.performShutdown(fromSignal: true);
 
-  print('   - Ran signal-path cleanup without emitting status lines\n');
+  print('   - Ran signal-path cleanup without emitting status lines');
+
+  // Every line goes to `output`, which is `print` unless the host supplies a
+  // sink — here a list, where a server would hand it to its logger.
+  final routedLines = <String>[];
+  final routed = TomShutdownCleanup()..output = routedLines.add;
+  routed.addClosable(FailingClosable());
+  await routed.performShutdown(fromSignal: true);
+
+  print('   - Lines routed to the supplied sink: ${routedLines.length}');
+  print('     first: ${routedLines.first}\n');
 
   // ---------------------------------------------------------------------------
   // Example 6: TomCloseAdaptor — adapt a custom teardown method
@@ -303,6 +314,7 @@ Future<void> run() async {
     isolated,
     paused,
     silent,
+    routed,
     adaptorCleanup,
     asyncCleanup,
     bounded,
@@ -335,6 +347,11 @@ Future<void> run() async {
   assert(afterSignalWhilePaused.isEmpty);
   assert(afterManual.length == 1);
   assert(afterManual.first == 'closable');
+
+  // Example 5: the status lines and the failure report all went to the sink.
+  assert(routedLines.length == 3);
+  assert(routedLines.first == 'Received SIGINT');
+  assert(routedLines[1].contains('close boom'));
 
   // Example 6: the adaptor resolved and invoked the custom teardown method.
   assert(legacy.shutdownCalled == true);

@@ -12,6 +12,7 @@ The shutdown cleanup module provides a comprehensive system for managing gracefu
   - [TomShutdownCleanup](#tomshutdowncleanup)
     - [One shutdown per instance](#one-shutdown-per-instance)
     - [paused and silent](#paused-and-silent)
+    - [output](#output)
     - [phaseTimeout](#phasetimeout)
     - [Exiting after a signal](#exiting-after-a-signal)
     - [Taking a registration back](#taking-a-registration-back)
@@ -53,8 +54,8 @@ of its phase rather than the whole shutdown.
 The system is designed to be fault-tolerant—if one cleanup operation fails, it
 reports the failure and continues with the remaining operations. The report
 names the phase, the entry, the exception and the top frames of its stack, and
-goes to `print` rather than the logging system (see
-[Limitations](#limitations)); setting `silent` suppresses it.
+goes to the instance's [`output`](#output) — `print` unless the host supplies
+another sink; setting `silent` suppresses it.
 
 ## Quick Start
 
@@ -279,6 +280,23 @@ signal path emits anyway, and the per-entry failure and phase-timeout
 diagnostics, which both paths emit — so a silent instance stays quiet about a
 cleanup that throws or hangs. See [Limitations](#limitations) for what that
 costs.
+
+#### output
+
+Every line the instance writes goes through one sink, `output`: the status
+messages of the signal path, the per-entry failure reports, and the
+phase-timeout reports. It defaults to `print`, which reaches the console even
+when the logging system is among the things being torn down. A host that wants
+the shutdown record in its log routes it there:
+
+```dart
+tomShutdownCleanup.output = (line) => tomLog.info(line);
+```
+
+Each call receives one complete line — a failure report carries its stack
+frames in the same call, so the two cannot be separated. `silent` silences the
+sink as a whole. A sink that throws — a log already closed — does not fail the
+shutdown: that line goes to `print` instead, with the reason appended.
 
 #### phaseTimeout
 
@@ -596,7 +614,7 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
 
 - A phase that overruns [`phaseTimeout`](#phasetimeout) is abandoned: the entry it was waiting on is left running and the entries behind it are not called. A synchronous entry cannot be interrupted at all
 - A handled signal does not terminate the process; the application exits when the shutdown has finished — see [Exiting after a signal](#exiting-after-a-signal)
-- The cleanup system uses `print()` for logging during shutdown (not the full logging system) to ensure output even if logging is affected
+- Every line goes through one sink, [`output`](#output), which defaults to `print` rather than the logging system so the record survives a logger that is already closed; a host routes it into its log by supplying the sink, and a sink that throws falls back to `print` for that line
 - `silent` suppresses the failure diagnostics along with the status messages, so a silent instance says nothing when a cleanup throws — the cleanup still continues, but the reason it failed is gone
 - A failure's stack trace is cut to its top ten frames, enough to identify the failing `close()`/`dispose()` but not to follow a deep call chain
 - Cleanup executes only once per instance — every later call or signal is handed the same shutdown, and nothing resets it; a restarted subsystem uses a new instance
@@ -622,10 +640,10 @@ from generated reflection data, so a package registering objects through
 `TomCloseAdaptor` needs a **`build_runner` step**. Objects that implement
 [`TomClosable` or `TomDisposable`](#interfaces) directly need none of it — the build step is the price of the adaptor, not of the module.
 
-Note what is *not* here. The module logs nothing at all — its shutdown
-diagnostics are `print`, deliberately, because a logger may already be closed
-by the time they run — so it depends on neither `tom_basics` nor the
-[logging module](../logging/logging.md). Nor does it depend on the
+Note what is *not* here. The module logs nothing itself — its shutdown
+diagnostics go to `output`, which is `print` unless the host supplies a sink,
+because a logger may already be closed by the time they run — so it depends on
+neither `tom_basics` nor the [logging module](../logging/logging.md). Nor does it depend on the
 [observable module](../observable/observable.md): `tomReflector` belongs to the
 reflection module and is imported from there directly. Observable re-exports
 it, which is the only reason the two are ever confused.

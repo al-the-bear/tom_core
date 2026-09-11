@@ -1691,6 +1691,82 @@ void main() {
     });
   });
 
+  // Every line the module writes — status, failure reports, phase-timeout
+  // reports — goes through one sink, `output`, which defaults to `print` and
+  // is silenced as a whole by `silent`.
+  group('output', () {
+    test('defaults to print', () async {
+      final lines = <String>[];
+      final cleanup = _newCleanup();
+      cleanup.addClosable(ThrowingClosable());
+
+      await _capturePrints(lines, cleanup.performShutdown);
+
+      expect(lines.single, contains('Close failed'));
+    });
+
+    test(
+      'every kind of line goes to the supplied sink, none to print',
+      () async {
+        final written = <String>[];
+        final printed = <String>[];
+        final cleanup = _newCleanup()
+          ..output = written.add
+          ..phaseTimeout = const Duration(milliseconds: 50);
+        cleanup.addClosable(ThrowingClosable());
+        cleanup.addClosable(HangingClosable());
+
+        await _capturePrints(printed, () async {
+          await cleanup.performShutdown(fromSignal: true);
+          await cleanup.performShutdown(fromSignal: true);
+        });
+
+        expect(printed, isEmpty);
+        expect(written, hasLength(6));
+        expect(written[0], 'Received SIGINT');
+        expect(written[1], contains('Close failed'));
+        expect(written[2], startsWith('Abandoned the closable phase'));
+        expect(written[3], 'Shutdown performed');
+        expect(written[4], 'Received SIGINT');
+        expect(written[5], 'Shutdown has already been performed');
+      },
+    );
+
+    test('silent silences the supplied sink too', () async {
+      final written = <String>[];
+      final cleanup = _newCleanup()
+        ..output = written.add
+        ..silent = true;
+      cleanup.addClosable(ThrowingClosable());
+
+      await cleanup.performShutdown(fromSignal: true);
+
+      expect(written, isEmpty);
+    });
+
+    test('a sink that fails does not fail the shutdown', () async {
+      // A host that routes the lines into its logging system may find that
+      // system already torn down. The line then goes to print, with the
+      // reason, and the shutdown carries on.
+      final printed = <String>[];
+      final survivor = TestClosable();
+      final cleanup = _newCleanup()
+        ..output = (line) => throw StateError('log closed');
+      cleanup.addClosable(ThrowingClosable());
+      cleanup.addClosable(survivor);
+
+      await _capturePrints(printed, cleanup.performShutdown);
+
+      expect(printed, hasLength(1));
+      expect(
+        printed.single,
+        allOf(contains('Close failed'), contains('log closed')),
+      );
+      expect(survivor.closed, isTrue);
+      expect(cleanup.hasShutDown, isTrue);
+    });
+  });
+
   // Each add* returns the way to take that registration back. A released
   // resource would otherwise stay reachable — and be closed again at exit —
   // for the coordinator's whole life, which for the global is the process's.

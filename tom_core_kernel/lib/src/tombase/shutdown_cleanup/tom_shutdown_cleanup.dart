@@ -322,8 +322,8 @@ class TomCloseAdaptor implements TomClosable {
 /// Every entry is awaited before the next one is called, and each phase has
 /// [phaseTimeout] to finish in. A failing entry — whether it throws or its
 /// future fails — does not stop the ones behind it: the failure is reported
-/// with its exception and the top frames of its stack, printed rather than
-/// logged, and suppressed by [silent].
+/// with its exception and the top frames of its stack, written to [output]
+/// (`print` by default), and suppressed by [silent].
 ///
 /// ## Basic Usage
 ///
@@ -417,8 +417,26 @@ class TomShutdownCleanup {
   /// Use this in interactive REPLs that have their own CTRL-C handling.
   bool paused = false;
 
-  /// When true, suppresses output messages during shutdown.
+  /// When true, suppresses output messages during shutdown — every line
+  /// [output] would otherwise receive.
   bool silent = false;
+
+  /// Where the instance writes its lines: the status messages of the signal
+  /// path, the per-entry failure reports and the phase-timeout reports. Each
+  /// call receives one complete line — a failure report carries its stack
+  /// frames in the same call, so they cannot be separated from it.
+  ///
+  /// Defaults to `print`, which reaches the console even when a logging system
+  /// is among the things being torn down. A host that wants the shutdown record
+  /// in its log routes it there:
+  ///
+  /// ```dart
+  /// tomShutdownCleanup.output = (line) => tomLog.info(line);
+  /// ```
+  ///
+  /// A sink that throws does not fail the shutdown: that line goes to `print`
+  /// instead, together with the reason. [silent] silences the sink as a whole.
+  void Function(String line) output = print;
 
   /// Whether this instance's shutdown has run to its end — every phase
   /// finished or abandoned.
@@ -506,11 +524,11 @@ class TomShutdownCleanup {
     if (fromSignal && paused) return Future<void>.value();
 
     final announce = fromSignal && !silent;
-    if (announce) print("Received $signal");
+    if (announce) _emit("Received $signal");
     final running = _shutdown;
     if (running != null) {
       if (announce) {
-        print(
+        _emit(
           _hasShutDown
               ? "Shutdown has already been performed"
               : "Shutdown is already in progress",
@@ -540,7 +558,7 @@ class TomShutdownCleanup {
       (disposable) => disposable.dispose(),
     );
     _hasShutDown = true;
-    if (announce) print("Shutdown performed");
+    if (announce) _emit("Shutdown performed");
   }
 
   /// Runs [action] over every registration in [registrations] in order,
@@ -550,11 +568,12 @@ class TomShutdownCleanup {
   /// This is the single owner of the per-entry policy all three phases share.
   /// A failing entry — thrown by the call or by the future it returned — never
   /// aborts the phase: a `Failed to call $label $item: $exception` diagnostic
-  /// is printed, followed by the top [_diagnosticStackDepth] frames, unless
-  /// [silent]. The exception and its trace are part of the report because a
-  /// shutdown runs once, usually unattended, and cannot be re-run to find out
-  /// what went wrong. Message and trace go out in a single `print` so that
-  /// concurrent output cannot separate a failure from its evidence.
+  /// is written to [output], followed by the top [_diagnosticStackDepth]
+  /// frames, unless [silent]. The exception and its trace are part of the
+  /// report because a shutdown runs once, usually unattended, and cannot be
+  /// re-run to find out what went wrong. Message and trace go out in a single
+  /// line so that concurrent output cannot separate a failure from its
+  /// evidence.
   ///
   /// The list is consulted afresh for each entry rather than iterated as it
   /// stood when the phase began, because entries run the application's code
@@ -666,7 +685,7 @@ class TomShutdownCleanup {
     final trace = tomGetStackTrace(stackTrace, _diagnosticStackDepth);
     final when = abandoned ? " (after its phase abandoned it)" : "";
     final report = "Failed to call $label $item$when: $exception";
-    print(trace.isEmpty ? report : "$report\n$trace");
+    _emit(trace.isEmpty ? report : "$report\n$trace");
   }
 
   /// Reports that the [label] phase ran out of [phaseTimeout]: [waitingOn]
@@ -683,10 +702,24 @@ class TomShutdownCleanup {
     final cause = waitingOn == null
         ? "its time was spent"
         : "$waitingOn had not finished";
-    print(
+    _emit(
       "Abandoned the $label phase after $budget: $cause, "
       "$skipped ${skipped == 1 ? 'entry' : 'entries'} behind it not called",
     );
+  }
+
+  /// Writes [line] to [output], or to `print` when [output] throws.
+  ///
+  /// The one place a line leaves the module. The fallback is what keeps the
+  /// shutdown record from vanishing with the sink that was meant to hold it —
+  /// a logging system is among the things a shutdown tears down — and what
+  /// keeps a failing sink from failing the shutdown it is reporting on.
+  void _emit(String line) {
+    try {
+      output(line);
+    } catch (e) {
+      print("$line\n(shutdown output failed, so this went to print: $e)");
+    }
   }
 
   final List<_Registration<TomSignalHandler>> _signalHandlers = [];

@@ -811,6 +811,14 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **Shutdown output goes through one sink the host can supply (tcopen86).**
+  `TomShutdownCleanup.output` receives every line the module writes — status
+  messages, failure reports and phase-timeout reports — and defaults to
+  `print`. `silent` silences it as a whole, and a sink that throws does not
+  fail the shutdown: that line goes to `print` with the reason. A host routes
+  the shutdown record into its log with
+  `tomShutdownCleanup.output = (line) => tomLog.info(line)`.
+
 - **A shutdown registration can be taken back, and teardown releases
   everything (tcopen85).** `addSignalHandler`, `addClosable` and
   `addDisposable` return a `TomShutdownUnregister` that removes that one
